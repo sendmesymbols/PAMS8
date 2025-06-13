@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no">
+
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>LCC</title>
+
+
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+
+
+
+    <style>
+        html,
+        body,
+        #mainWindow,
+        #map {
+            font-family: sans-serif;
+            height: 100%;
+            width: 100%;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #header {
+            height: 80px;
+            overflow: auto;
+            padding: 0.5em;
+        }
+    </style>
+
+
+
+    <script src="http://arb-pc2:9632/3.15/init.js"></script>
+
+    <script>
+
+        var map;
+        require([
+            "esri/map",
+            "esri/toolbars/draw",
+            "esri/graphic",
+            "esri/symbols/SimpleMarkerSymbol",
+            "esri/symbols/SimpleLineSymbol",
+            "esri/symbols/SimpleFillSymbol",
+            "esri/geometry/Circle",
+            "esri/symbols/Font",
+
+
+
+            "esri/geometry/Point",
+            "esri/geometry/Polyline",
+            "esri/geometry/Polygon",
+            "esri/symbols/TextSymbol",
+
+            "dojo/parser",
+            "dijit/registry",
+            "dojo/_base/event",
+            "dojo/dom",
+            "dojo/dom-style",
+            "dijit/Menu",
+            "esri/layers/GraphicsLayer",
+            "esri/layers/ArcGISTiledMapServiceLayer",
+            "esri/symbols/PictureMarkerSymbol",
+            "esri/Color",
+            "dojo/on",
+            "dijit/Menu",
+            "dijit/MenuItem",
+            "dijit/MenuSeparator",
+            "dojo/parser",
+            "dojox/gfx/matrix",
+            "dojo/_base/array",
+            "esri/geometry/jsonUtils",
+            "esri/layers/ArcGISDynamicMapServiceLayer",
+            "esri/geometry/Extent",
+            "dijit/layout/BorderContainer",
+            "dijit/layout/ContentPane",
+            "dijit/form/Button",
+            "dijit/WidgetSet",
+            "dijit/form/ToggleButton",
+            "dijit/form/DropDownButton",
+            "dijit/CheckedMenuItem",
+            "dojo/domReady!"
+        ], function (
+            Map, Draw, Graphic,
+            SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, Circle, Font,
+            Point, Polyline, Polygon,
+            TextSymbol, parser, registry, event, dom, domStyle, Menu, GraphicsLayer, ArcGISTiledMapServiceLayer,
+            PictureMarkerSymbol, Color, on, Menu, MenuItem, MenuSeparator, parser, matrix, Array,
+            geometryJsonUtils, ArcGISDynamicMapServiceLayer,
+            Extent
+
+        ) {
+
+
+
+
+
+                parser.parse();
+
+
+
+                dojo.byId("GCSBtn").onclick = showGCS;
+                dojo.byId("LCC1Btn").onclick = showLCC1;
+                dojo.byId("LCC2Btn").onclick = showLCC2;
+
+                map = createMap();
+
+
+                 var grid2 = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/grid2/MapServer");
+                grid2.id = "LCCG2";
+                map.addLayer(grid2);
+
+                
+
+                /*
+                var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+                map.addLayer(tiled);                
+                */
+
+
+
+                /*
+                map.setLevel(0);
+                var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+                map.addLayer(tiled);                
+
+                
+                scrapeMap(map);
+                map = createMap();
+
+
+                var grid1 = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/grid1/MapServer");
+                grid1.id = "LCCG1";
+                map.addLayer(grid1);
+
+
+                
+
+                scrapeMap(map);
+                map = createMap();
+
+                var grid2 = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/grid2/MapServer");
+                grid2.id = "LCCG2";
+                map.addLayer(grid2);
+                */
+                
+
+
+                function showLCC1(e) {
+                    scrapeMap(map);
+                    map = createMap(map);
+                    loadLCC1(map);
+                    
+                    
+                }
+
+                function showLCC2(e) {
+                    scrapeMap(map);
+                    map = createMap(map);
+                    loadLCC2(map);
+                    
+                }
+
+
+                function showGCS(e) {
+                    scrapeMap(map);
+                    map = createMap(map);
+                    loadLGCS(map);
+                    
+                }
+
+                 function createMap(map, callback) {
+                    if(map === undefined || map === null) {
+                    var localMap = new Map("map", {
+                        showAttribution: false
+                    });
+                    localMap.on("mouse-move", function (evt) {
+                        var el = document.getElementById('latLonSpan');
+                        el.innerHTML = '<b>[ </b>' + evt.mapPoint.x + ' <b>]  [ </b>' + evt.mapPoint.y + '<b> ]</b>';
+                    });
+
+
+                    localMap.on("zoom-end", function (evt) {
+                        console.log('Activity')
+                        shiftLayers(evt);
+                    });
+
+
+                    localMap.on("extent-change", function (evt) {
+                        console.log('Extent Change')
+                        shiftLayers(evt);
+                    });
+
+                    if(callback !== undefined) { callback(map); }
+                    return localMap;
+                    } else {
+                    if(callback !== undefined) { callback(map); }
+                    return map;
+                    }
+                    
+                    
+
+                }
+
+
+                function scrapeMap(map) {
+                    map.destroy();
+                    map = null;
+                    }
+
+
+                function loadLCC1(map) {
+                    var grid1 = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/grid1/MapServer");
+                    grid1.id = "LCCG1";
+                    map.addLayer(grid1);
+                    
+                }
+
+
+                function loadLCC2(map) {
+                    var grid2 = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/grid2/MapServer");
+                    grid2.id = "LCCG2";
+                    map.addLayer(grid2);
+
+                }
+
+
+                function loadLGCS(map) {
+                    var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+                    tiled.id = "GCS";
+                    map.addLayer(tiled);
+
+                }
+
+
+                function shiftLayers(evt) {
+                    console.log('Called')
+                    //loadLCC1(map);
+                    /*
+                    console.info(evt.level);
+                    if (evt.level >= 0 && evt.level <= 3) {
+                      console.log('Load GCS');
+                      scrapeMap(map);
+                      loadLGCS(map);          
+                    } else if (evt.level >= 4 && evt.level <= 5) {
+                        console.log('Load Load LLC 1');
+                      scrapeMap(map)
+                      loadLCC1(map);
+                    } else if (evt.level <= 6) {
+                        console.log('Load Load LLC 2');
+                      scrapeMap(map)
+                      loadLCC2(map);
+                    }
+                    */
+                   
+
+
+
+                }
+
+
+
+
+
+
+
+
+
+
+            });
+    </script>
+</head>
+
+<body class="nihilo">
+
+    <div id="mainWindow" data-dojo-type="dijit/layout/BorderContainer" data-dojo-props="design:'headline'">
+        <div id="header3" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'" style="text-align: center;">
+            <button id="GCSBtn">GCC</button>
+            <button id="LCC1Btn">LCC1</button>
+            <button id="LCC2Btn">LCC2</button>
+            <span id="latLonSpan" style="size: 10px;"></span>
+        </div>
+        <div id="map" stytle="width: 100%; height: 100%;"></div>
+
+    </div>
+
+
+
+</body>
+
+</html>

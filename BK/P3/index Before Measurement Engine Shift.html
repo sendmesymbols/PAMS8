@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width,user-scalable=no">
+
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+  <title>P3</title>
+
+  <link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+  <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+
+  <!--Measure Widget CSS -->
+  <link rel="stylesheet" type="text/css" href="http://arb-pc2:9632/P3/home/css/HomeButton.css">
+
+
+  <link rel="stylesheet" href="animate.css">
+
+
+  <style>
+    html,
+        body,
+        #mainWindow {
+            font-family: sans-serif;
+            height: 100%;
+            width: 100%;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #header {
+            height: 80px;
+            overflow: auto;
+            padding: 0.5em;
+        }
+
+
+        .map .logo-med {
+           display: inline-block;
+           vertical-align: bottom;
+           width: 255px;
+           height: 56px;
+           z-index: 30;
+           background-image: url("logo.png");
+           cursor: pointer;
+          
+          }
+            /*
+          #HomeButton{
+            position: absolute;
+            top:95px;
+            left: 20px;
+            z-index: 50;
+        }
+        */
+    </style>
+
+  <script src="http://arb-pc2:9632/MilitarySymbology/ThirdParty/tween.js"></script>
+  <script src="http://arb-pc2:9632/MilitarySymbology/ThirdParty/turf.min.js"></script>
+  <script src="http://arb-pc2:9632/MilitarySymbology/ThirdParty/milsymbol.js"></script>
+
+  <!--
+    <script src="MilitarySymbology/ThirdParty/dms.js"></script>
+    <script src="MilitarySymbology/ThirdParty/latlon-spherical.js"></script>
+    -->
+
+  <script type="text/javascript">
+
+
+    var dojoConfig = {
+      paths: {
+        MilSymbologyExt: location.origin + "/" + "MilitarySymbology/Extensions",
+        MilSymbologyComponents: location.origin + "/" + "MilitarySymbology/Components",
+        MilSymbologySymbols: location.origin + "/" + "MilitarySymbology/Symbols",
+        MilSymbologySymbolsEngine: location.origin + "/" + "MilitarySymbology/Engines",
+        MilSymbologySymbolsData: location.origin + "/" + "MilitarySymbology/Data",
+        MilSymbologyThirdParty: location.origin + "/" + "MilitarySymbology/ThirdParty",
+        MilSymbologySymbolsImages: location.origin + "/" + "MilitarySymbology/Images"
+
+      }
+    };
+
+
+
+  </script>
+  <!--
+    <script src="http://arb-pc2:9632/3.17/"></script>
+    -->
+  <script src="http://arb-pc2:9632/3.15/init.js"></script>
+
+  <!--
+    <script src="http://:arb-pc2:9632/3.15/init.js"></script> 
+    -->
+
+
+
+
+  <script>
+
+    var extent, map;
+    var measurementGraphicsLayer, measureExtentGraphic, measureLineGraphic, measureExtentHGraphic, measureExtentWGraphic, measureExtentAGraphic, measureSegGraphic, measureExtentTGraphic;
+    require([
+      "esri/map",
+      "esri/toolbars/draw",
+      "esri/graphic",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/geometry/Circle",
+      "esri/symbols/Font",
+
+
+
+      "esri/geometry/Point",
+      "esri/geometry/Polyline",
+      "esri/geometry/Polygon",
+      "esri/symbols/TextSymbol",
+
+      "dojo/parser",
+      "dijit/registry",
+      "dojo/_base/event",
+      "dojo/dom",
+      "dojo/dom-style",
+      "dijit/Menu",
+      "esri/layers/GraphicsLayer",
+      "esri/layers/ArcGISTiledMapServiceLayer",
+
+      "esri/symbols/PictureMarkerSymbol",
+      "esri/Color",
+      "dojo/on",
+      "dijit/Menu",
+      "dijit/MenuItem",
+      "dijit/MenuSeparator",
+      "dojo/parser",
+      "dojox/gfx/matrix",
+      "dojo/_base/array",
+      "esri/geometry/jsonUtils",
+
+      "esri/layers/ArcGISDynamicMapServiceLayer",
+      "MilSymbologySymbolsEngine/SymbolEngine",
+      "MilSymbologySymbolsEngine/Amplifier",
+      "MilSymbologySymbolsEngine/EditEngine",
+      "MilSymbologySymbolsEngine/DrawEssentials",
+      "MilSymbologyExt/GeoTools",
+
+      "esri/geometry/Extent",
+      "esri/SnappingManager",
+      "dojo/keys",
+      'esri/units',
+      'esri/geometry/geometryEngine',
+      'esri/geometry/Multipoint',
+      'esri/symbols/Font',
+
+
+
+
+
+
+
+      "dijit/layout/BorderContainer",
+      "dijit/layout/ContentPane",
+      "dijit/form/Button",
+      "dijit/WidgetSet",
+
+      "dijit/form/ToggleButton",
+      "dijit/form/DropDownButton",
+      "dijit/CheckedMenuItem",
+
+
+      "dojo/domReady!"
+    ], function (
+      Map, Draw, Graphic,
+      SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, Circle, Font,
+      Point, Polyline, Polygon,
+      TextSymbol, parser, registry, event, dom, domStyle, Menu, GraphicsLayer, ArcGISTiledMapServiceLayer,
+      PictureMarkerSymbol, Color, on, Menu, MenuItem, MenuSeparator, parser, matrix, Array,
+      geometryJsonUtils, ArcGISDynamicMapServiceLayer, SymbolEngine, Amplifier,
+      EditEngine, DrawEssentials, GeoTools,
+      Extent, SnappingManager, keys, esriUnits, geometryEngine, Multipoint, Font
+
+
+    ) {
+
+
+
+
+
+        parser.parse();
+        var graphicsLayer, textGraphicsLayer, toolbar, symbol, geomTask, editToolbar, isDrawing, ctxMenuForGraphics, ctxMenuForMap;
+        var selected, currentLocation;
+
+
+
+
+
+        var endEvent, symDrawProgressEvent, symDrawClickEvent, editEngine, enddeactivateCpEvent;
+        map = new Map("map", {
+          logo: true,
+          showAttribution: false
+
+          //, basemap: "streets",
+          //center: [-15.469, 36.428],  zoom: 3
+        });
+
+        //map.getScale()
+
+
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/grid2/MapServer");
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+        //var tiled = new ArcGISDynamicMapServiceLayer("http://20.60.201.20:6080/arcgis/rest/services/Punjab/MapServer");
+
+
+
+
+
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.71/arcgis/rest/services/MapdataV3/MapServer");
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/arcgis/rest/services/ESRI_StreetMap_World_2D/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.35.65:8399/arcgis/rest/services/MapVector/MapServer"); //GCS
+
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/"); //PCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.61:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.62:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.63:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.64:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.71/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/arcgis/rest/services/ESRI_StreetMap_World_2D/MapServer");
+        map.addLayer(tiled);
+
+        esri.config.defaults.map.logoLink = 'http://nacsys.met.af';
+
+
+
+        map.on("load", function () {
+
+
+
+          //Remove 
+
+
+          /*
+
+          var a = new Point(68.99174366565728, 27.709813703606667, map.spatialReference);
+          var b = new Point(71.38832676708246, 26.346257021638, map.spatialReference);
+          var c = new Point(71.99174366565728, 28.709813703606667, map.spatialReference);
+
+          var newCenter = new Point(68.99174366565728, 30.709813703606667, map.spatialReference);
+
+         
+          var centerExtent = new Extent();
+          centerExtent.setSpatialReference(map.spatialReference);
+
+          centerExtent = addIntoExtent(centerExtent, a, true);
+          centerExtent = addIntoExtent(centerExtent, b, false);
+          centerExtent = addIntoExtent(centerExtent, c, false);
+
+          
+
+
+
+          GeoTools.displayPointText(map, a, "A");
+          GeoTools.displayPointText(map, b, "B");
+          GeoTools.displayPointText(map, c, "C");
+
+          //Center Point Display
+
+          GeoTools.displayPointText(map, centerExtent.getExtent().getCenter(), "Center");
+          GeoTools.displayPointText(map, newCenter, "New Center");
+
+          //Translation
+          GeoTools.displayPointText(map, GeoTools.movePt(a, centerExtent.getExtent().getCenter(), newCenter), 'Translated A');
+          GeoTools.displayPointText(map, GeoTools.movePt(b, centerExtent.getExtent().getCenter(), newCenter), 'Translated B');
+          GeoTools.displayPointText(map, GeoTools.movePt(c, centerExtent.getExtent().getCenter(), newCenter), 'Translated C');
+
+
+            */
+
+
+
+
+
+
+
+
+
+
+
+
+
+          //Remove
+
+
+
+
+
+
+
+
+          extent = new Extent();
+
+
+
+
+
+          graphicsLayer = new GraphicsLayer();
+          map.addLayer(graphicsLayer);
+
+          textGraphicsLayer = new GraphicsLayer();
+          map.addLayer(textGraphicsLayer);
+
+          measurementGraphicsLayer = new GraphicsLayer();
+          measurementGraphicsLayer.id = 'measurementGraphicsLayer';
+          map.addLayer(measurementGraphicsLayer);
+
+
+
+
+
+
+
+
+
+
+
+
+
+          dojo.byId("createSymBtn").onclick = createSym;
+          dojo.byId("createSymFromGeomBtn").onclick = createSymFromGeom;
+          dojo.byId("ZoomBtn").onclick = zoomGeom;
+
+          //Measurement Widget
+
+          dojo.byId("openMeasureWdgt").onclick = openMeasureWdgt;
+          dojo.byId("closeMeasureWdgt").onclick = closeMeasureWdgt;
+          dojo.byId("minMeasureWdgt").onclick = minMeasureWdgt;
+          dojo.byId("maxMeasureWdgt").onclick = maxMeasureWdgt;
+          dojo.byId("destroyMeasureWdgt").onclick = destroyMeasureWdgt;
+
+          dojo.byId("drawPolyLineBtn").onclick = drawPolyLineHandler;
+          dojo.byId("drawPolygonBtn").onclick = drawPolygonHandler;
+
+
+          //End of Measurement Widget
+
+
+
+
+
+          var btn = dojo.byId("ZoomBtn");
+          btn.onclick = dojo.partial(zoomGeom, map, graphicsLayer, textGraphicsLayer);
+
+
+
+
+
+          editEngine = new EditEngine(map, graphicsLayer, textGraphicsLayer);
+
+          //debugger;
+          enddeactivateCpEvent = editEngine.on("changeInSymbol", deactivateCp);
+
+          createGraphicsMenu();
+
+
+          graphicsLayer.on("mouse-over", function (evt) {
+            // We'll use this "selected" graphic to enable editing tools
+            // on this graphic when the user click on one of the tools
+            // listed in the menu.
+            selected = evt.graphic;
+
+            console.log("MOUSE OVER");
+
+
+
+
+
+
+
+
+
+            // Let's bind to the graphic underneath the mouse cursor
+            ctxMenuForGraphics.bindDomNode(evt.graphic.getDojoShape().getNode());
+
+          });
+
+          graphicsLayer.on("mouse-out", function (evt) {
+            ctxMenuForGraphics.unBindDomNode(evt.graphic.getDojoShape().getNode());
+
+
+
+
+
+          });
+
+
+          map.graphics.on("click", function (evt) {
+
+            if (!isDrawing) {
+              editEngine.activateEditText(evt.graphic);
+
+
+            }
+          });
+
+
+          //deactivate the toolbar when you click outside a graphic
+          map.on("dbl-click", function (evt) {
+
+            if (!isDrawing) {
+              event.stop(evt);
+              map.disableDoubleClickZoom();
+              editEngine.deactivateEdit();
+
+            }
+
+          });
+
+
+
+          map.on("mouse-move", function (evt) {
+            //console.log(evt.mapPoint);
+
+
+          });
+
+
+
+          graphicsLayer.on("dbl-click", function (evt) {
+
+            if (!isDrawing) {
+              event.stop(evt);
+              editEngine.activateEdit(evt.graphic);
+            }
+          });
+
+
+
+
+
+
+        });
+
+
+
+        function addIntoExtent(extent, geometry, isFirst) {
+
+          var resExtent = new Extent();
+          if (extent !== null || extent !== undefined) {
+            if (isFirst) {
+              if (geometry.type === 'point') {
+                var newExtent = new Extent();
+                newExtent.setSpatialReference(extent.spatialReference);
+
+                newExtent.xmin = geometry.x;
+                newExtent.xmax = geometry.x;
+
+                newExtent.ymin = geometry.y;
+                newExtent.ymax = geometry.y;
+
+                resExtent = newExtent;
+              }
+              if (geometry.type === 'polygon' || geometry.type === 'polyline') {
+                var t = geometry.getExtent();
+                if (t !== undefined) {
+                  resExtent = t;
+                }
+
+              }
+
+            } else {
+              if (geometry.type === 'point')
+                resExtent = extent.union({
+                  'xmin': geometry.x,
+                  'ymin': geometry.y,
+                  'xmax': geometry.x,
+                  'ymax': geometry.y
+                });
+              if (geometry.type === 'polygon' || geometry.type === 'polyline') {
+                var s = geometry.getExtent();
+                if (s !== undefined) {
+                  resExtent = extent.union(s);
+                }
+
+
+              }
+
+            }
+
+
+            return resExtent;
+          }
+        }
+
+
+
+
+
+
+
+
+        function createGraphicsMenu() {
+          // Creates right-click context menu for GRAPHICS
+          ctxMenuForGraphics = new Menu({});
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Edit",
+            onClick: function () {
+              if (selected.geometry.type !== "point") {
+                if (!isDrawing) {
+                  selected.getLayer()._map.enableDoubleClickZoom();
+                  editEngine.activateEdit(selected);
+                }
+
+              }
+            }
+          }));
+
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Style",
+            onClick: function () {
+              alert("Not implemented");
+            }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Edit Control Points",
+            onClick: function () {
+              if (selected.geometry.type === "point") {
+                editEngine.activateEdit(selected);
+              } else {
+                editEngine.activateEditPts(selected);
+              }
+
+            }
+          }));
+
+
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Disable Edit Control Points",
+            onClick: function () {
+              editEngine.deactivateEditPts(graphicsLayer);
+            }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Save",
+            onClick: function () {
+              console.info("Geometry");
+
+              if (selected.geometry.type === "polyline") {
+                console.log(JSON.stringify(selected.geometry.paths));
+              } else if (selected.geometry.type === "polygon") {
+                console.log(JSON.stringify(selected.geometry.rings));
+              } else if (selected.geometry.type === "point") {
+                console.log(JSON.stringify(selected.geometry));
+              }
+
+
+
+
+              console.info("Control Points");
+              console.log(JSON.stringify(selected.drawEssentials.CTRL_PTS));
+
+
+              console.info("Baseline Points");
+              console.log(JSON.stringify(selected.drawEssentials.BASE_LN_PTS));
+
+              if (selected.geometry.type === "polyline") {
+                dojo.byId("geoText").value = JSON.stringify(selected.geometry.paths);
+              } else if (selected.geometry.type === "polygon") {
+                dojo.byId("geoText").value = JSON.stringify(selected.geometry.rings);
+              } else if (selected.geometry.type === "point") {
+                dojo.byId("geoText").value = JSON.stringify(selected.geometry);
+              }
+
+              dojo.byId("ctrlPtsText").value = JSON.stringify(selected.drawEssentials.CTRL_PTS);
+              dojo.byId("baseLinePtsText").value = JSON.stringify(selected.drawEssentials.BASE_LN_PTS);
+
+
+
+
+
+
+            }
+          }));
+
+
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Save As PNG",
+            onClick: function () {
+
+
+              if (selected.geometry.type === "point") {
+                var image = new Image();
+                if (selected.drawEssentials.SYM_GEO_TYPE === 'FPoint') {
+                  image.src = selected.symbol.url;
+                } else {
+                  var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                  svg.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns", "http://www.w3.org/2000/svg");
+                  svg.setAttribute('width', '612');
+                  svg.setAttribute('height', '792');
+                  svg.setAttribute('stroke', 'rgb(' + selected.symbol.outline.color.toRgb() + ')');
+                  svg.setAttribute('stroke-width', selected.symbol.outline.width);
+                  if (selected.symbol.outline.style !== 'solid') svg.setAttribute('stroke-dasharray', "50, 20");
+
+                  var path = document.createElement('path');
+                  path.setAttribute('d', selected.symbol.path);
+                  svg.appendChild(path);
+                  console.log(svg);
+                  var xml = (new XMLSerializer).serializeToString(svg);
+                  image.src = "data:image/svg+xml;base64," + btoa(xml);
+                  console.log(image.src);
+
+
+
+                }
+
+
+                var canvas = document.createElement('canvas'); //Place these Lines somewhere where creation of canvas is not called evry time a new symbol is created for performance purposes
+
+                image.onload = dojo.hitch(this, function () {
+
+                  canvas.width = image.width;
+                  canvas.height = image.height;
+                  var context = canvas.getContext('2d');
+                  context.drawImage(image, 0, 0);
+                  console.log(canvas.toDataURL('image/png'));
+
+                });
+
+
+
+
+
+
+
+              }
+
+
+
+            }
+          }));
+
+
+          ctxMenuForGraphics.startup();
+
+
+        }
+
+
+
+
+        function createSym(e) {
+
+
+
+          //Add Measurement Graphics to 
+
+
+
+          var p = new Point(77, 30);
+          var q = new Point(77, 30);
+          //var res = geometryEngine.distance(q, p, 'miles');
+          //var res = geometryEngine.geodesicLength(q, p, 'miles');
+
+
+          isDrawing = true;
+
+          var amplifier = new Amplifier();
+          /*
+          amplifier.DTG = "DDHHMMSSZMONYYYY";
+          amplifier.EDTG = "DDHHMMSSZMONYYYY00";
+          */
+
+          //amplifier.UNIQUE_DESIG = "Tact";
+          amplifier.UNIQUE_DESIG = "Qta CMH";
+          amplifier.HIGHER_FORM = "HHH";
+          amplifier.SIZE = 60;
+
+
+
+          var attr = {
+            plnOrdrOverlayId: 2000,
+            plnOrdrId: 300,
+            creatorId: 700,
+            symbolId: '500'
+          }
+
+
+          var r = new Point(68.99174366565728, 27.709813703606667, map.spatialReference);
+
+
+
+          var symEngine = new SymbolEngine(dojo.byId("sicText").value, amplifier, map, graphicsLayer, textGraphicsLayer, attr);
+
+          var drawEssentials = new DrawEssentials();
+
+          drawEssentials.uniqueDesignation = "FORCE 123456";
+
+
+
+          /*
+          drawEssentials.BK_LN_DIST_RATIO = 5;
+          drawEssentials.BK_LN_ANGL_RATIO = 5;
+          drawEssentials.FRNT_LN_ANGL_RATIO = 5;
+          drawEssentials.FRNT_LN_DIST_RATIO = 5;
+          drawEssentials.IS_LINE = false;
+          */
+          //drawEssentials.SIZE = 150;
+          //drawEssentials.ANGLE = 90;
+
+          //drawEssentials.GEOM = new Point(68.99174366565728 , 27.709813703606667, map.spatialReference);
+
+          //z.OPTIONS.GEOM = new Point(z.GEOM.x, z.GEOM.y, z.spatialReference);
+
+          //drawEssentials.HEAD_RATIO = 0.17;
+          //drawEssentials.TAIL_FACTOR = 0.17;
+
+          drawEssentials.ECHELON = symEngine.getEchelon();
+          //drawEssentials.TEETH_SIZE = 2;
+          drawEssentials.DRAW_TYPE = 1;
+          //drawEssentials.FACE_GAP = 0;
+          //drawEssentials.TEETH_GAP = 5;
+          //drawEssentials.TEETH_SIZE = 2;
+
+
+          //drawEssentials.WIDTH = 150;
+          //drawEssentials.HEIGHT = 150;
+
+          //drawEssentials.uniqueDesignation = "JHHHH";
+
+          //drawEssentials.size = "30";
+
+
+
+          //drawEssentials.GEOM = map.extent.getCenter();
+
+          /*
+          drawEssentials.TEETH_GAP = 30;
+          drawEssentials.TEETH_SIZE = 3;
+          drawEssentials.HEAD_RATIO = 10;
+          drawEssentials.TAIL_FACTOR = 10;
+          */
+
+
+
+          drawEssentials.FLAP_ANGLE = 45;
+
+
+
+
+
+
+          drawEssentials.BK_LN_DIST_RATIO = 5;
+          drawEssentials.BK_LN_ANGL_RATIO = 5;
+          drawEssentials.FRNT_LN_ANGL_RATIO = 0.8;
+          drawEssentials.FRNT_LN_DIST_RATIO = 1.5;
+          drawEssentials.FLAP_DIST_RATIO = 3;
+
+
+
+
+          endEvent = symEngine.on("symDrawEnd", symDrawEnd);
+          symDrawProgressEvent = symEngine.on("symDrawProgress", symDrawProgreseEventHandler);
+          symDrawClickEvent = symEngine.on('symDrawClick', symDrawClickEventHandler)
+          var extraSettings = {};
+          extraSettings.lineWidth = 4;
+          extraSettings.size = 50;
+          extraSettings.textSize = 12;
+
+
+
+          var labelOptions = { 'haloColor': [255, 0, 0], 'haloColorSize': 5, 'color': [0, 255, 0], 'textSize': 20, 'bold': 1, 'italic': 0, 'uLine': 0, 'oLine': 0, 'tLine': 0 };
+          //var labelOptions = {'haloColor': [255,0,0], 'haloColorSize': 5, 'color': [0,255, 0]};
+          //symEngine.initialize(drawEssentials, extraSettings, labelOptions);
+          symEngine.initialize(drawEssentials, extraSettings);
+          //symEngine.initialize(z);
+
+        }
+
+
+
+
+
+        function createSymFromGeom(e) {
+
+
+          var amplifier = new Amplifier();
+          amplifier.UNIQUE_DESIG = "Tango Alpha Golf";
+          amplifier.DTG = "DDHHMMSSZMONYYYY";
+          amplifier.EDTG = "DDHHMMSSZMONYYYY00";
+
+          var attr = {
+            plnOrdrOverlayId: 2000,
+            plnOrdrId: 300,
+            creatorId: 700,
+            symbolId: '500'
+          }
+
+
+          var symEngine = new SymbolEngine(dojo.byId("sicText").value, amplifier, map, graphicsLayer, textGraphicsLayer, attr);
+          var drawEssentials = new DrawEssentials();
+          drawEssentials.BK_LN_DIST_RATIO = 5;
+          drawEssentials.BK_LN_ANGL_RATIO = 5;
+          drawEssentials.FRNT_LN_ANGL_RATIO = 0.8;
+          drawEssentials.FLAP_DIST_RATIO = 3;
+
+          drawEssentials.IS_LINE = false;
+
+          var geom = new Polyline(JSON.parse(dojo.byId("geoText").value));
+          geom.setSpatialReference(map.spatialReference);
+
+          //debugger;
+          drawEssentials.CTRL_PTS = JSON.parse(dojo.byId("ctrlPtsText").value);
+          drawEssentials.BASE_LN_PTS = JSON.parse(dojo.byId("baseLinePtsText").value);
+
+          drawEssentials.DRAW_TYPE = 3;
+          drawEssentials.ECHELON = symEngine.getEchelon();
+
+          //drawEssentials.BASE_LN_PTS = { startPt: new Point(68.34848969518515, 25.409693445554794, map.spatialReference) , endPt: new Point(70.67784877007666 , 25.692335341671342, map.spatialReference) };
+
+          //drawEssentials.CTRL_PTS = [new Point(68.99174366565728 , 27.709813703606667, map.spatialReference)];
+          //drawEssentials.DISTANCE = 5;
+
+          endEvent = symEngine.on("symDrawEnd", symDrawEnd);
+          symEngine.initialize(drawEssentials);
+
+
+
+        }
+
+
+
+        function zoomGeom(map, graphicsLayer, textGraphicsLayer, event) {
+          if (graphicsLayer.graphics.length > 0) {
+            var extent = new Extent();
+            extent.setSpatialReference(map.spatialReference);
+            extent = addIntoExtent(extent, graphicsLayer.graphics[0].geometry, true);
+            for (var i = graphicsLayer.graphics.length - 1; i >= 1; i--) {
+              extent = addIntoExtent(extent, graphicsLayer.graphics[i].geometry);
+            }
+
+
+
+            map.setExtent(extent.expand(1.5));
+
+
+
+
+            var SnappingManager = map.enableSnapping({
+              snapKey: has("mac") ? keys.META : keys.CTRL
+            });
+
+          }
+
+
+
+
+        }
+
+        function addIntoExtent(extent, geometry, isFirst) {
+          var resExtent = new Extent();
+
+          if (isFirst) {
+            if (geometry.type === 'point') {
+              var p = new Polyline();
+              p.setSpatialReference(geometry.spatialReference);
+              p.addPath([geometry, geometry]);
+              resExtent = p.getExtent();
+            }
+            if (geometry.type === 'polygon' || geometry.type === 'polyline') resExtent = geometry.getExtent();
+          } else {
+            if (geometry.type === 'point') resExtent = extent.union({ 'xmin': geometry.x, 'ymin': geometry.y, 'xmax': geometry.x, 'ymax': geometry.y });
+            if (geometry.type === 'polygon' || geometry.type === 'polyline') resExtent = extent.union(geometry.getExtent());
+          }
+
+
+          return resExtent;
+        }
+
+
+        function symDrawEnd(event) {
+
+
+
+          isDrawing = false;
+          endEvent.remove();
+          symDrawProgressEvent.remove();
+
+        }
+
+
+        function symDrawClickEventHandler(event) {
+
+          console.info(event.currentPts);
+          var pl = new Polyline(event.currentPts);
+          //var graphic = new Graphic();
+
+          //measurementGraphicsLayer.add(graphic);
+
+
+
+          //Measure Segment Graphic
+          var measureSegGeom = new Point(event.currentPts[event.currentPts.length - 1], event.currentPts[0].spatialReference);
+          measureSegGraphic = new Graphic(measureSegGeom, getMeasureSymbol(measureSegGeom, 45, 'AAA'), {});
+          measurementGraphicsLayer.add(measureSegGraphic);
+          console.log('Measure Segment Graphics Added');
+          measureSegGraphic.getDojoShape().moveToFront();
+          //End of Measure Segment Graphic
+
+
+          if (event.currentPts.length <= 1) {
+            var lc = new Color([255, 0, 0, 0.3]);
+            //var ls = new SimpleLineSymbol(SimpleLineSymbol., lc, this.lineSymChooser.lineWidth.value);
+            var ls = new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, lc, 5);
+
+            //measureLineGeom = new Polyline([new Point(0,0,map.spatialReference), new Point(0,0,map.spatialReference)], map.spatialReference);
+            var measureLineGeom = new Polyline(map.spatialReference);
+            measureLineGeom.addPath([new Point(0, 0), new Point(0, 0)]);
+            measureLineGraphic = new Graphic(measureLineGeom, ls, {});
+            measurementGraphicsLayer.add(measureLineGraphic);
+            console.log('Measure Line Graphics Added');
+
+
+            //Measure Extent Graphic
+            var measureExtentGeom = new Extent(map.extent, map.spatialReference);
+            measureExtentGraphic = new Graphic(measureExtentGeom, ls, {});
+            measurementGraphicsLayer.add(measureExtentGraphic);
+
+            console.log('Measure Extent Graphics Added');
+
+
+
+            //Measure Extent H Graphic
+            var measureExtentHGeom = new Point(0, 0, map.spatialReference);
+            measureExtentHGraphic = new Graphic(measureExtentHGeom, getMeasureSymbol(measureExtentHGeom, 45, ''), {});
+            measurementGraphicsLayer.add(measureExtentHGraphic);
+            console.log('Measure Extent H Graphics Added');
+
+
+
+            //Measure Extent W Graphic
+            var measureExtentWGeom = new Point(0, 0, map.spatialReference);
+            measureExtentWGraphic = new Graphic(measureExtentWGeom, getMeasureSymbol(measureExtentWGeom, 45, ''), {});
+            measurementGraphicsLayer.add(measureExtentWGraphic);
+            console.log('Measure Extent W Graphics Added');
+
+
+            //Measure Extent A Graphic
+            var measureExtentAGeom = new Point(0, 0, map.spatialReference);
+            measureExtentAGraphic = new Graphic(measureExtentAGeom, getMeasureSymbol(measureExtentAGeom, 45, ''), {});
+            measurementGraphicsLayer.add(measureExtentAGraphic);
+            console.log('Measure Extent A Graphics Added');
+
+
+
+            //Measure Extent T Graphic
+            var measureExtentTGeom = new Point(0, 0, map.spatialReference);
+            measureExtentTGraphic = new Graphic(event.currentPts[0], getMeasureSymbol(measureExtentTGeom, 45, ''), {});
+            measurementGraphicsLayer.add(measureExtentTGraphic);
+            console.log('Measure Extent T Graphics Added');
+
+          }
+
+
+          //_reorderGraphics(measurementGraphicsLayer);
+
+
+
+
+
+
+
+
+        }
+
+
+        function symDrawProgreseEventHandler(event) {
+
+
+
+
+          if (event.currentGeometry.type === 'polyline' || event.currentGeometry.type === 'polygon') {
+
+
+
+            //Measure Segment Graphic
+            var firstPt = event.currentDrawEssentials.CTRL_PTS[event.currentDrawEssentials.CTRL_PTS.length - 2];
+            var lastPt = event.currentDrawEssentials.CTRL_PTS[event.currentDrawEssentials.CTRL_PTS.length - 1];
+            var measureSegGeom = _calculateMidPoint(firstPt, lastPt);
+            var angle = _calculateAngle(firstPt, lastPt);
+            measureSegGraphic.setSymbol(getMeasureSymbol(measureSegGeom, angle, _calculateSegmentLength(firstPt, lastPt, "miles", true) + ' ' +_getBearing(firstPt, lastPt)));
+            measureSegGraphic.setGeometry(measureSegGeom);
+            //measureSegGraphic.getDojoShape().moveToFront();
+            //End of Measure Segment Graphic
+
+
+            var measureLineGeom = new Polyline();
+            measureLineGeom.addPath(event.currentDrawEssentials.CTRL_PTS);
+
+            measureLineGraphic.setGeometry(measureLineGeom);
+            //measureLineGraphic.getDojoShape().moveToBack();
+
+            //Convert it into option of whole symbol area
+            //var measureExtentGeom = new Extent(measureLineGeom.getExtent(), map.spatialReference);
+            var measureExtentGeom = new Extent(event.currentGeometry.getExtent(), map.spatialReference);
+            measureExtentGraphic.setGeometry(measureExtentGeom);
+            //measureExtentGraphic.getDojoShape().moveToBack();
+
+
+
+
+            //Measure H Graphic
+            var measureExtentHGeom = GeoTools.getMidpointLeft(measureExtentGraphic.geometry);
+            var angle = _calculateAngle(GeoTools.getLowerLeft(measureExtentGraphic.geometry), GeoTools.getUpperLeft(measureExtentGraphic.geometry));
+            measureExtentHGraphic.setSymbol(getMeasureSymbol(measureExtentHGeom, angle, _calculateSegmentLength(GeoTools.getLowerLeft(measureExtentGraphic.geometry), GeoTools.getUpperLeft(measureExtentGraphic.geometry), "miles", true)));
+            measureExtentHGraphic.setGeometry(measureExtentHGeom);
+            //End of Measure H Graphic
+
+
+
+            //Measure W Graphic
+            var measureExtentWGeom = GeoTools.getMidpointTop(measureExtentGraphic.geometry);
+            var angle = _calculateAngle(GeoTools.getUpperLeft(measureExtentGraphic.geometry), GeoTools.getUpperRight(measureExtentGraphic.geometry));
+            measureExtentWGraphic.setSymbol(getMeasureSymbol(measureExtentWGeom, angle, _calculateSegmentLength(GeoTools.getLowerLeft(measureExtentGraphic.geometry), GeoTools.getUpperLeft(measureExtentGraphic.geometry), "miles", true)));
+            measureExtentWGraphic.setGeometry(measureExtentWGeom);
+            //End of Measure W Graphic
+
+
+
+            //Measure A Graphic
+
+            var measureExtentAGeom = GeoTools.getCenterOfExtent(measureExtentGraphic.geometry);
+            //var angle = _calculateAngle(getUpperLeft(measureExtentGraphic.geometry), getUpperRight(measureExtentGraphic.geometry));
+            measureExtentAGraphic.setSymbol(getMeasureSymbol(measureExtentAGeom, 0, _calculateArea(measureExtentGraphic.geometry, 'square-miles', true)));
+            measureExtentAGraphic.setGeometry(measureExtentAGeom);
+            //measureExtentAGraphic.getDojoShape().moveToFront();
+
+            //End of Measure A Graphic
+
+
+            //Measure T Graphic
+            var pt = event.currentDrawEssentials.CTRL_PTS[event.currentDrawEssentials.CTRL_PTS.length-1];
+            measureExtentTGraphic.symbol.setOffset(80, 30);
+
+            var pl = new Polyline(pt.spatialReference);
+            pl.addPath(event.currentDrawEssentials.CTRL_PTS);
+
+            measureExtentTGraphic.setSymbol(getMeasureSymbol(pl, 0, _calculatePolylineLength(pl, 'miles', true)));
+            measureExtentTGraphic.setGeometry(pt);
+            
+            
+            //End of Measure T Graphic
+
+
+
+            //_reorderGraphics(measurementGraphicsLayer);
+
+
+
+
+
+          }
+
+
+
+
+
+
+
+          /*
+          if (event.currentGeometry.type === 'polyline') {
+            var pl = new Polyline([event.currentDrawEssentials.CTRL_PTS[0], event.currentDrawEssentials.CTRL_PTS[1]], map.spatialReference);
+            
+            
+            var firstPoint = event.currentDrawEssentials.CTRL_PTS[[0]];  
+            var lastPoint = event.currentDrawEssentials.CTRL_PTS[[event.currentDrawEssentials.CTRL_PTS.length -1]];
+
+
+            //var segLength = _calculateSegmentLength(firstPoint, lastPoint);            
+            //console.log(segLength);
+            var angle = _calculateAngle(firstPoint, lastPoint);
+            var midPT = _calculateMidPoint(firstPoint, lastPoint);
+            
+            console.log(angle);
+            console.log(midPT);
+            _addClickMeasure(midPT, angle, "Hello");
+            
+
+
+          } else if(event.currentGeometry.type === 'polygon') {
+            console.info('Not Implemenetd Yet');
+          }
+          */
+
+
+        }
+
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////Measurement Engine
+
+
+
+      // function to calculate and provide a bearing for the points being drawn.  Code provided by Dean Anderson of Polk County, OR
+      function _getBearing(point_a, point_b) {
+        var bearing = '-';
+        if(point_a && point_b) {
+          var bearing = 'N0-0-0E';
+    
+          var rise = point_b.y - point_a.y;
+          var run = point_b.x - point_a.x;
+          if(rise == 0) {
+            if(point_a.x > point_b.x) {
+              bearing = 'Due West';
+            } else {
+              bearing = 'Due East';
+            }
+          } else if(run == 0) {
+            if(point_a.y > point_b.y) {
+              bearing = 'Due South';
+            } else {
+              bearing = 'Due North';
+            }
+          } else {
+            var ns_quad = 'N';
+            var ew_quad = 'E';
+            if(rise < 0) {
+              ns_quad = 'S';
+            }
+            if(run < 0) {
+              ew_quad = 'W';
+            }
+            /* we've determined the quadrant, so we can make these absolute */
+            rise = Math.abs(rise);
+            run = Math.abs(run);
+            /* convert to degrees */
+            // var degrees = Math.atan(rise/run) / (2*Math.PI) * 360;
+            // Calculation suggested by Dean Anderson, refs: #153
+            var degrees = Math.atan(run/rise) / (2*Math.PI) * 360;
+    
+            /* and to DMS ... */
+            var d = parseInt(degrees);
+            var t = (degrees - d) * 60;
+            var m = parseInt(t);
+            var s = parseInt(60 * (t-m));
+    
+            bearing = ns_quad+d+'-'+m+'-'+s+ew_quad;
+    
+          }
+        }
+        return bearing;
+      }
+
+
+        /***
+        * meters | feet | kilometers | miles | nautical-miles | yards
+        **/
+
+        function _calculateSegmentLength(pt1, pt2, unit, useGeodesic) {
+          var pl = new Polyline(pt1.spatialReference);
+          pl.addPath([pt1, pt2]);
+          // we want the last point being drawn
+          var geoLength = 0;
+          if (useGeodesic === true) {
+            geoLength = geometryEngine.geodesicLength(pl, unit);
+          } else {
+            geoLength = geometryEngine.planarLength(pl, unit);
+          }
+
+          return geoLength;
+        }
+
+        /***
+        * meters | feet | kilometers | miles | nautical-miles | yards
+        **/
+        function _calculatePolylineLength(pl, unit, useGeodesic) {
+          // we want the last point being drawn
+
+          var geoLength = 0;
+          if (useGeodesic === true) {
+            geoLength = geometryEngine.geodesicLength(pl, unit);
+          } else {
+            geoLength = geometryEngine.planarLength(pl, unit);
+          } return geoLength;
+        }
+
+        /***
+        * acres | ares | hectares | square-feet | square-meters | square-yards | square-kilometers | square-miles
+        **/
+        function _calculateArea(geometry, unit, useGeodesic) {
+          var geoArea = 0;
+          if (useGeodesic === true) {
+            geoArea = geometryEngine.geodesicArea(geometry, unit);
+          } else {
+            geoArea = geometryEngine.planarArea(geometry, unit);
+          } return geoArea;
+        }
+
+        function _reorderGraphics(measureLayer) {
+          // text for measurements needs to be on type all others
+          var graArray = [];
+          // make 2 pass through the graphics in the measure array move text to the top.
+          // second pass adds text graphics
+          for (var i = 0; i < measureLayer.graphics.length; i++) {
+            var gra = measureLayer.graphics[i];
+            if (gra.symbol.type === 'textsymbol') {
+              graArray.push(gra);
+            }
+          }
+          // first pass adds non text graphics
+          for (var i = 0; i < measureLayer.graphics.length; i++) {
+            var gra = measureLayer.graphics[i];
+            if (gra.symbol.type !== 'textsymbol') {
+              graArray.push(gra);
+            }
+          }
+          measureLayer.graphics = graArray;
+          measureLayer.redraw();
+
+          console.log('R');
+        }
+       
+
+        function getMeasureSymbol(pt, angle, length) {
+          var a = Font.STYLE_ITALIC;
+          var b = Font.VARIANT_NORMAL;
+          var c = Font.WEIGHT_BOLD;
+          var symbolFont = new Font(12 + "px", a, b, c, "Courier");
+          var fontColor = new Color([255, 0, 0]);
+          var textSymbol = new TextSymbol(length, symbolFont, fontColor);
+          var xOff = 0;
+          var yOff = 0;
+          if (angle >= 0 && angle < 45) {
+            xOff = 5;
+            yOff = 10;
+          } else if (angle > 45) {
+            xOff = 10;
+            yOff = 5;
+          } else if (angle > -45 && angle < 0) {
+            xOff = 5;
+            yOff = 13;
+          } else {
+            xOff = -10;
+            yOff = 5;
+          }
+          textSymbol.setOffset(xOff, yOff);
+          textSymbol.setAngle(angle);
+          return textSymbol;
+        }
+
+        function _addClickMeasure(pt, angle, length) {
+          var a = Font.STYLE_ITALIC;
+          var b = Font.VARIANT_NORMAL;
+          var c = Font.WEIGHT_BOLD;
+          var symbolFont = new Font(20 + "px", a, b, c, "Courier");
+          var fontColor = new Color([255, 0, 0]);
+          var textSymbol = new TextSymbol(length, symbolFont, fontColor);
+          var xOff = 0;
+          var yOff = 0;
+          if (angle >= 0 && angle < 45) {
+            xOff = 5;
+            yOff = 10;
+          } else if (angle > 45) {
+            xOff = 10;
+            yOff = 5;
+          } else if (angle > -45 && angle < 0) {
+            xOff = 5;
+            yOff = 13;
+          } else {
+            xOff = -10;
+            yOff = 5;
+          }
+          textSymbol.setOffset(xOff, yOff);
+          textSymbol.setAngle(angle);
+          // console.log("angle: " + angle);
+          var att = { 'id': '10000' };
+          var gra = new Graphic(pt, textSymbol, att, null);
+          measurementGraphicsLayer.add(gra);
+        }
+
+        function _getBearing(point_a, point_b) {
+          var bearing = '-';
+          if (point_a && point_b) {
+            var bearing = 'N0-0-0E';
+
+            var rise = point_b.y - point_a.y;
+            var run = point_b.x - point_a.x;
+            if (rise == 0) {
+              if (point_a.x > point_b.x) {
+                bearing = 'Due West';
+              } else {
+                bearing = 'Due East';
+              }
+            } else if (run == 0) {
+              if (point_a.y > point_b.y) {
+                bearing = 'Due South';
+              } else {
+                bearing = 'Due North';
+              }
+            } else {
+              var ns_quad = 'N';
+              var ew_quad = 'E';
+              if (rise < 0) {
+                ns_quad = 'S';
+              }
+              if (run < 0) {
+                ew_quad = 'W';
+              }
+              /* we've determined the quadrant, so we can make these absolute */
+              rise = Math.abs(rise);
+              run = Math.abs(run);
+              /* convert to degrees */
+              // var degrees = Math.atan(rise/run) / (2*Math.PI) * 360;
+              // Calculation suggested by Dean Anderson, refs: #153
+              var degrees = Math.atan(run / rise) / (2 * Math.PI) * 360;
+
+              /* and to DMS ... */
+              var d = parseInt(degrees);
+              var t = (degrees - d) * 60;
+              var m = parseInt(t);
+              var s = parseInt(60 * (t - m));
+
+              bearing = ns_quad + d + '-' + m + '-' + s + ew_quad;
+
+            }
+          }
+          return bearing;
+        }
+
+
+
+        function _calculateAngle(pt1, pt2) {
+          // some basic trig to calculate the angle for the text to be placed
+          var y = pt2.y - pt1.y;
+          var x = pt2.x - pt1.x;
+          var r = y / x;
+          var angle = Math.atan(r) * 180 / Math.PI * -1;
+          return angle;
+        }
+
+
+        function _calculateMidPoint(pt1, pt2) {
+          var midX = (pt1.x + pt2.x) / 2;
+          var midY = (pt1.y + pt2.y) / 2;
+          var midPoint = new Point(midX, midY, pt1.spatialReference);
+          return midPoint;
+        }
+
+
+
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////Measurement Engine
+        function deactivateCp(graphic) {
+          console.log('------------------');
+
+          //enddeactivateCpEvent.remove();
+        }
+
+
+        function displayPoint(pt) {
+          map.graphics.add(new Graphic(new Point(pt.x, pt.y, map.spatialReference), new SimpleMarkerSymbol()));
+        }
+
+
+
+        function openMeasureWdgt(event) {
+
+        }
+
+
+        function closeMeasureWdgt(event) {
+
+
+        }
+
+
+        function minMeasureWdgt(event) {
+
+
+        }
+
+
+        function maxMeasureWdgt(event) {
+
+
+        }
+
+
+        function destroyMeasureWdgt(event) {
+
+
+        }
+
+
+        function drawPolyLineHandler(event) {
+
+
+        }
+
+        function drawPolygonHandler(event) {
+
+
+        }
+
+
+
+
+
+
+
+
+      });
+  </script>
+</head>
+
+<body class="nihilo">
+
+  <div id="mainWindow" data-dojo-type="dijit/layout/BorderContainer" data-dojo-props="design:'headline'">
+    <div id="header3" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'">
+      <!-- 
+          Support By Fire
+          10002500001521000000 Pending
+          10012500001521000000 Unknown
+          10022500001521000000 Assumed Friend
+          10032500001521000000  Friend
+          10042500001521000000 Neutral
+          10052500001521000000 Suspect / Joker
+          10062500001521000000 Hostile / Faker
+          
+
+          Attack By Fire Position named as sp by fire posn
+          10032500001520000000 Friend
+          10042500001520000000 Neutral
+          10062500001520000000 Hostile
+
+          //Clear 
+          10032500003405000000 Friend
+          10062500003405000000 Hostile
+          10042500003405000000 Neutral
+
+          //Block Obstacle Effect
+          10032500002705010000 Friend
+          10062500002705010000 Hostile
+          10042500002705010000 Neutral
+          
+          //Block
+          10032500003401000000 Friend
+          10062500003401000000 Hostile
+          10042500003401000000 Neutral
+
+          //Canalize
+          10032500003404000000 Friend
+          10062500003404000000 Hostile
+
+          //Breach
+          10032500003402000000 Friend
+          10062500003402000000 Hostile
+
+          //Bypass
+          10032500003403000000 Friend
+          10062500003403000000 Hostile
+
+          //Bypass Easy
+          10032500002706010000 Friend
+          10062500002706010000 Hostile
+
+
+          //Penetrate
+          10032500003418000000 Friend
+          10062500003418000000 Hostile
+          
+
+          //Disrupt
+          10032500003410000000 Friend
+          10062500003410000000 Hostile
+
+
+          //Disrupt Obstacle Effect
+          10032500002705020000 Friend
+
+
+          //Interdict
+          10032500003414000000 Friend
+          10062500003414000000 Hostile
+
+          //Neutralize
+          10032500003416000000 Friend
+          10062500003416000000 Hostile
+
+          //Destroy
+
+          10032500003409000000 Friend
+          10042500003409000000 Neutral
+
+          //Coordinating Point
+          10032500001306000000 Friend
+
+          //CAP Station
+          10032500001807000000
+
+          //Decision Point
+          10032500001307000000
+
+          //Supporting Attack
+          10032500001514040000
+
+          //Main Attack
+          10032500001514030000
+          10062500001514030000
+
+          //Axis of Advance Feint
+          10032500001514060000
+          10062500001514060000
+
+          //CounterAttack
+          10032500003406000000
+
+          //Boundary
+          10032500001101000000
+          10042500001101000000
+          10032500141101000000
+
+          //Screen  
+          10032500003422030000
+          10022500003422030000 //Assumed Friend
+
+          //Cover
+          10032500003422010000
+
+
+          //Secure
+          10032500003421000000
+
+          //Guard
+          10032500003422020000
+
+
+          //Occupy
+          10032500003417000000
+
+          //Isolate
+          10032500003415000000
+
+          //Battle Postion
+          10032500001512000000
+
+          10032500161512000000 Bde
+          10032500141512000000 Platoon
+          10032500211512000000 Div
+
+          //Withdraw
+          10032500003424000000
+
+          //Delay
+          10032500003408000000
+
+          //Ambush
+          10032500001417000000
+
+
+          //Contain
+          10032500001512040000
+
+          //Withdraw Under Pressure
+          10032500003425000000
+
+
+
+          //Radar 
+          Done
+          10031500002203000000
+
+
+          //Friendly Direction of Supporting Attack
+          10032500001406030000
+
+          //Friendly Direction of Main Attack
+          10032500001406020000
+
+          //Single Fence Wire
+          10032500002903020000
+
+          //Double Fence Wire
+          10032500002903030000
+
+
+          //Double Apron Fence
+          10032500002903040000
+
+          //Unspecified Wire
+          10032500002903010000
+
+          //Low Wire Fence
+          10032500002903050000
+
+          //High Wire Fence
+          10032500002903060000
+
+          //Triple Strand Concertina
+          10032500002903090000
+
+          //Double Strand Concertina
+          10032500002903080000
+
+          //Single Concertina
+          10032500002903070000
+
+          //Phase Line
+          10032500001403000000
+
+          //Forward Line of Troops
+          10032500001401010000
+
+          //Penetration Box
+          10032500001519000000
+
+          //Assembly Area
+          10032500001502000000
+
+          //Area of Operations
+          10032500001201000000
+
+          //Attack Position
+          10032500001516000000
+
+          //Named Area of Interest
+          10032500001202000000
+
+          //Zone of Responsibility
+          10032500002419010000
+
+          //Minefield - Antipersonnel Mine
+          10032500002707010000
+
+          //Minefield - Antipersonnel Mine with Directional Effects
+          10032500002707020000
+
+          //Minefield - Antitank Mine
+          10032500002707030000
+
+          //Minefield - Antitank Mine with Anti-handling Device
+          10032500002707040000
+
+
+          //Minefield - Wide Area Antitank Mine
+          10032500002707050000
+
+          //Minefield - Unspecified Mine  ERR
+          10032500002707060000
+
+
+
+          //Minefield - Antipersonnel Mine + Antitank
+          10032500002707070000
+
+          //Corps Line Of Denial
+          10032500001418000000
+
+          //Army Line Of Denial
+          10032500001418010000
+
+          //Div Line Of No Penetration
+
+          //Line Of No Penetration
+          10032500001419010000
+
+          //BHOL
+          10032500001419020000
+
+
+
+          //Forward Assembly Area
+          10032500001502010000
+
+          //Div Adm Area
+          10032500001502020000
+
+          //Bridgehead Line
+          10032500001414000000
+
+          //Fix
+          10032500003411000000
+
+          //Strong Point
+          10032500211512030000
+
+          //Infiltration Lane
+          10032500001408000000
+          //Moving Convoy
+          10032500003301000000
+
+           //Counter Attack Objectives
+          10032500001403010000
+
+           //FUP
+          10032500001403020000
+
+          //Unmanned Aircraft (UA) Route
+          10032500001707000000
+
+          //Freehand Line
+          10030000000000010000
+
+          //Freehand Area
+          10030000000000020000
+
+           //Freehand Line Dotted
+          10030000000000030000
+
+           //Freehand Double Line Arrow
+          10030000000000040000
+
+           //Freehand Dot
+          10030000000000050000
+
+          //Freehand Arrow
+          10030000000000060000
+
+          //Freehand Dotted Arrow
+          10030000000000070000
+
+          //Freehand Main Attack Like Arrow
+          10030000000000080000
+
+          //Freehand Supporting Attack Like Arrow
+          10030000000000090000
+
+          //Freehand Close Supporting Attack Like Arrow
+          10030000000000100000
+
+          //Freehand Area Filled
+          10030000000001200000
+
+           //Freehand Semi Circle
+          10030000000001300000
+
+          //Freehand Text
+          10030000000001100000
+
+          //Ditch Under Construction
+          10032500002902010000
+
+          //Ditch Filled
+          10032500002902020000
+
+          //Arc Of Fire
+          10032500211523000000
+
+          //Road Block Executed
+          10032500002712040000
+
+          //Aircraft Carrier (Missile Armed) SD
+          10032500002712060000
+
+          //Armed Merchant Cruiser
+          10032500002712100000
+
+
+          //Mayday
+          10032500002712140000
+
+          //SMCC
+          10032500002712200000
+
+
+
+          //OCC
+          10032500002712210000
+
+
+          //Bridge SD
+          10032500002714000000
+
+          //Land Mark SD
+          10032500002712310000
+
+          //H
+          //10032500002712400000
+          F
+          //10032500002712410000
+
+          Helo
+          //10032500002712500000
+
+          //Hazard
+          10032500002712510000
+
+          //Chaff Jamming
+          10032500002712600000
+
+
+          //Contact Lost
+          10032500002712610000
+
+          //Destroyer
+          10032500002712700000
+
+          //Destroyer Guided Missile
+          10032500002712710000
+
+          //Helipad
+          10032500002712800000
+
+          //Target Area of Interest
+          //10032500001202010000
+
+          //Slow Go
+          //10032500001202020000
+
+          //No Go
+          //10032500001202030000
+
+          //Avenue of Apchs
+          //10032500001202040000
+
+          //Mob Corridor
+          10032500141101010000
+
+
+         //Ditch Under Construction
+          10032500002902010000
+
+          //Ditch Filled
+          10032500002902020000
+
+
+          //POST
+
+          10032500001602010000
+
+
+          //IED Suicide Bomber
+          10034000001103040000
+
+
+          //Threat
+          10034000001102020000
+
+
+          //TAV Air violation
+          10030100001101040000
+
+          //IED Explosion Activity
+          10034000001103000000
+
+
+          //Post
+          10032500001602060000
+
+          //Funnel
+          10032500211514070000
+
+          //BOP / Post Freehand Area Filled
+          10032500001602070000
+
+          //Bridge Area
+          10032500002711000000
+
+        
+      
+          -->
+
+
+      <!--
+            1. Start Line
+            2. Dispersal Area 10032500001502040000
+            3. Strat Assy Area 10032500001502050000
+            4. Arty Radar 10031500002203010000
+            5. Sound Ranging Radar 10031500002203020000
+            6. Replenishment pt 10032500001811010000
+            7. POL pt 10032500001811020000
+          -->
+
+      <!--
+          1. AD Radar 10031500002203030000
+
+          -->
+
+
+      <!-- Measurement Work in Progress .......  Fix 10032500003411000000 -->
+      <!-- Battle Pos 10032500211512000000 -->
+      <input type="text" id="sicText" value="10032500211512000000" />
+      <button id="createSymBtn">Create Symbol</button>
+      <input type="text" id="geoText" value="Geometry" />
+      <input type="text" id="ctrlPtsText" value="Control Points" />
+      <input type="text" id="baseLinePtsText" value="Baseline Points" />
+      <button id="createSymFromGeomBtn">Create Symbol From Geom</button>
+      <button id="ZoomBtn">Zoom</button>
+
+      <button id="openMeasureWdgt">Open</button>
+      <button id="closeMeasureWdgt">Close</button>
+      <button id="minMeasureWdgt">Minimize</button>
+      <button id="maxMeasureWdgt">Maximize</button>
+      <button id="destroyMeasureWdgt">Destroy</button>
+
+      <button id="drawPolyLineBtn">Polyline</button>
+      <button id="drawPolygonBtn">Polygon</button>
+
+
+
+    </div>
+
+
+
+
+
+
+
+
+
+
+    <div id="map" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'center'"></div>
+    <canvas id='canvas'></canvas>
+
+</body>
+
+</html>

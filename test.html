@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Interactive PictureMarker</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.28/esri/init.js"></script>
+    <style>
+        html, body, #mapViewDiv2D, #mapViewDiv3D {
+            padding: 0;
+            margin: 0;
+            height: 400px;
+            width: 400px;
+        }
+        #mapViewDiv3D{
+            margin-left: 410px;
+            margin-top: -400px;
+        }
+    </style>
+    <script type="module">
+        import MapView from "https://js.arcgis.com/4.28/esri/views/MapView.js";
+        import SceneView from "https://js.arcgis.com/4.28/esri/views/SceneView.js";
+        import Map from "https://js.arcgis.com/4.28/esri/Map.js";
+        import Graphic from "https://js.arcgis.com/4.28/esri/Graphic.js";
+        import Point from "https://js.arcgis.com/4.28/esri/geometry/Point.js";
+
+        async function createInteractivePictureMarker(view, imageUrl, width, height) {
+            let graphic = null;
+
+            view.on("click", function (event) {
+                if (graphic) {
+                    view.graphics.remove(graphic);
+                    graphic = null;
+                }
+
+                const point = {
+                    longitude: event.mapPoint.longitude,
+                    latitude: event.mapPoint.latitude,
+                    spatialReference: view.spatialReference,
+                };
+
+                const symbol = {
+                    type: "picture-marker",
+                    url: imageUrl,
+                    width: width,
+                    height: height,
+                };
+
+                graphic = {
+                    geometry: point,
+                    symbol: symbol,
+                };
+
+                view.graphics.add(graphic);
+            });
+
+            console.log("Click on the map to add a PictureMarkerSymbol.");
+        }
+
+        async function initializeMap(container, is3D, imageUrl, width, height) {
+            const map = {
+                basemap: "streets-vector",
+            };
+
+            let view;
+            if (is3D) {
+                view = new SceneView({
+                    container: container,
+                    map: map,
+                    center: [-118.244, 34.052], // Los Angeles
+                    zoom: 12,
+                });
+            } else {
+                view = new MapView({
+                    container: container,
+                    map: map,
+                    center: [-118.244, 34.052], // Los Angeles
+                    zoom: 12,
+                });
+            }
+
+            await view.when();
+            await createInteractivePictureMarker(view, imageUrl, width, height);
+        }
+
+        // Example usage:
+        const imageUrl = "https://developers.arcgis.com/javascript/latest/sample-code/sketch-3d/images/pin.png"; // Replace with your image URL
+        const width = 32;
+        const height = 32;
+
+        // 2D Example
+        initializeMap("mapViewDiv2D", false, imageUrl, width, height);
+
+        // 3D Example
+        initializeMap("mapViewDiv3D", true, imageUrl, width, height);
+
+    </script>
+</head>
+<body>
+<div id="mapViewDiv2D"></div>
+<div id="mapViewDiv3D"></div>
+</body>
+</html>

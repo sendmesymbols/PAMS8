@@ -1,0 +1,125 @@
+<!DOCTYPE html>  
+<html>  
+<head>  
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">  
+    <!--The viewport meta tag is used to improve the presentation and behavior of the samples  
+       on iOS devices-->  
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">  
+    <title>Map with WMS</title>  
+  
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+    <style>  
+        html, body, #map {  
+            height: 100%;  
+            width: 100%;  
+            margin: 0;  
+            padding: 0;  
+        }  
+        body {  
+            background-color: #FFF;  
+            overflow: hidden;  
+            font-family: "Trebuchet MS";  
+        }  
+    </style>  
+    <script src="http://arb-pc2:9632/3.15/init.js"></script>
+  
+    <script>  
+  var map;
+
+require(["esri/map", "esri/layers/WMSLayer", "esri/layers/WMTSLayer", "esri/config", "esri/layers/WMSLayerInfo", "esri/layers/WMTSLayerInfo", "esri/layers/TileInfo",
+    "esri/geometry/Extent", "esri/layers/FeatureLayer", "esri/layers/ArcGISTiledMapServiceLayer",
+    "esri/layers/ArcGISDynamicMapServiceLayer", "esri/basemaps", "esri/layers/WebTiledLayer", "esri/SpatialReference"],
+    function (Map, WMSLayer, WMTSLayer, esriConfig, WMSLayerInfo, WMTSLayerInfo, TileInfo, Extent, FeatureLayer,
+        ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer,
+        basemaps, WebTiledLayer, SpatialReference) {
+        esri.config.defaults.io.corsEnabledServers.push('20.60.201.241:9512')
+
+        var map = new Map("map");
+        
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+        //map.addLayer(tiled);
+        
+
+
+        var tileInfo1 = new TileInfo({
+            "dpi": 96,
+            "format": "image/png",
+            "compressionQuality": 0,
+            "spatialReference": new SpatialReference({
+                "wkid": 4326
+            }),
+            "rows": 256,
+            "cols": 256,
+            "origin": {
+                "x": 73.15582711242676,
+                "y": 33.47498797241222
+            },
+            "lods": [{
+                "level": "lvl3:0",
+                "scale":10000000,
+                "resolution":0.023794610058302804
+            }, {
+                "level": "lvl3:1",
+                "scale":9000000,
+                "resolution":0.02141514905247252
+            }, {
+                "level": "lvl3:2",
+                "scale":8000000,
+                "resolution":0.01903568804664224
+            }            
+            
+            ]
+        });
+
+        //var tileExtent1 = new Extent(15458931.4659706, 2701989.00905778, 15477712.7689042, 2711695.89036901, new SpatialReference({
+        // wkid: 3857
+        //}));
+        var tileExtent1 = new Extent(60.86630248996812,6.745553970439573,97.38053894041995,37.062591552558295, new SpatialReference({
+            wkid: 4326
+        }));
+
+        var layerInfo1 = new WMTSLayerInfo({
+            tileInfo: tileInfo1,
+            fullExtent: tileExtent1,
+            initialExtent: tileExtent1,
+            identifier: "cite:country",
+            tileMatrixSet: "lvl3",
+            style: "",
+            format: "png"
+        });
+
+
+        var resourceInfo = {
+            version: "1.0.0",
+            layerInfos: [layerInfo1],
+            copyright: "Tiled Service"
+        };
+
+        var options = {
+            serviceMode: "KVP",
+            resourceInfo: resourceInfo,
+            layerInfo: layerInfo1
+        };
+
+        wmtsLayer = new WMTSLayer("http://20.60.201.241:9512/geoserver/gwc/service/wmts", options);
+        map.addLayer(wmtsLayer);
+    });
+
+
+
+
+
+
+
+            
+  
+  
+    </script>  
+</head>  
+  
+<body>  
+<div id="map">  
+</div>  
+</body>  
+</html>  

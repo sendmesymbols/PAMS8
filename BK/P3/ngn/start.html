@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no">
+
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>Maps Toolbar</title>
+
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+    <style>
+        html,
+        body,
+        #mainWindow {
+            font-family: sans-serif;
+            height: 100%;
+            width: 100%;
+        }
+        
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        #header {
+            height: 80px;
+            overflow: auto;
+            padding: 0.5em;
+        }
+    </style>
+    <!--
+    <script>
+        var dojoConfig = {
+            parseOnLoad: false,
+            async: true,
+            tlmSiblingOfDojo: false,
+            packages: [{
+                name: "MilSymbologyMockExt",
+                location: location.pathname.replace(/\/[^/]+$/, '') + "MilitarySymbology/Extensions"
+            }]
+        };
+    </script>
+    -->
+    <script src="tween.js"></script>
+    <script type="text/javascript">
+        var dojoConfig = { 
+            paths: { MilSymbologyMockExt: location.origin + "/ngn/MilitarySymbology/Extensions/" }
+            };
+    </script>
+
+    <script src="http://arb-pc2:9632/3.15/init.js"></script>
+
+
+
+    <script>
+        var map, graphicsLayer, toolbar, symbol, geomTask, editToolbar, isDrawing , ctxMenuForGraphics, ctxMenuForMap;
+      var selected, currentLocation;
+
+      require([
+        "esri/map",
+        "esri/toolbars/draw",
+        "esri/graphic",
+        "esri/symbols/SimpleMarkerSymbol",
+        "esri/symbols/SimpleLineSymbol",
+        "esri/symbols/SimpleFillSymbol",
+        "esri/geometry/Circle",
+
+
+
+        "esri/toolbars/edit",
+        "esri/geometry/Point",
+        "esri/geometry/Polyline",
+        "esri/geometry/Polygon",
+        "esri/symbols/TextSymbol",
+        "dojo/parser",
+        "dijit/registry",
+        "dojo/_base/event",
+        "dojo/dom",
+        "dojo/dom-style",
+        "dijit/Menu",
+        "esri/layers/GraphicsLayer",
+        "esri/layers/ArcGISTiledMapServiceLayer",
+        "esri/symbols/PictureMarkerSymbol",
+        "esri/Color",
+        "MilSymbologyMockExt/Mock",
+
+
+
+
+        "dijit/layout/BorderContainer",
+        "dijit/layout/ContentPane",
+        "dijit/form/Button",
+         "dijit/WidgetSet",
+
+        "dijit/form/ToggleButton",
+        "dijit/form/DropDownButton",
+        "dijit/CheckedMenuItem",
+
+
+        "dojo/domReady!"
+      ], function(
+        Map, Draw, Graphic,
+        SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, Circle,
+        Edit, Point, Polyline, Polygon,
+        TextSymbol,   parser, registry,  event, dom, domStyle, Menu, GraphicsLayer, ArcGISTiledMapServiceLayer,
+        PictureMarkerSymbol, Color, Mock
+      ) {
+        parser.parse();
+        isDrawing = false;
+
+        map = new Map("map", {
+          logo: false,
+          showAttribution : false
+          //, basemap: "streets",
+          //center: [-15.469, 36.428],  zoom: 3
+        });
+
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.71/arcgis/rest/services/MapdataV3/MapServer");
+        var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/arcgis/rest/services/ESRI_StreetMap_World_2D/MapServer");
+        
+        map.addLayer(tiled);
+
+        map.on("load", createToolbar);
+
+        // loop through all dijits, connect onClick event
+        // listeners for buttons to activate drawing tools
+        registry.forEach(function(d) {
+          // d is a reference to a dijit
+          // could be a layout container or a button
+          if ( d.declaredClass === "dijit.form.Button" ) {
+            d.on("click", activateTool);
+          }
+
+
+         
+
+
+
+
+        });
+
+        function activateTool(graphic) {
+          var tool = this.label.toUpperCase().replace(/ /g, "_");
+          toolbar.activate(Draw[tool]);
+          map.hideZoomSlider();
+          isDrawing = true;
+
+
+        }
+
+
+        function activateEdit(graphic) {
+           var tool = 0;
+
+           if (registry.byId("tool_move").checked) {
+             tool = tool | Edit.MOVE;
+           }
+           if (registry.byId("tool_vertices").checked) {
+             tool = tool | Edit.EDIT_VERTICES;
+           }
+           if (registry.byId("tool_scale").checked) {
+             tool = tool | Edit.SCALE;
+           }
+           if (registry.byId("tool_rotate").checked) {
+             tool = tool | Edit.ROTATE;
+           }
+           // enable text editing if a graphic uses a text symbol
+           if ( graphic.symbol.declaredClass === "esri.symbol.TextSymbol" ) {
+             tool = tool | Edit.EDIT_TEXT;
+           }
+           //specify toolbar options
+           var options = {
+             allowAddVertices: registry.byId("vtx_ca").checked,
+             allowDeleteVertices: registry.byId("vtx_cd").checked,
+             uniformScaling: registry.byId("uniform_scaling").checked
+           };
+           editToolbar.activate(tool, graphic, options);
+         }
+
+        function createToolbar(theMap) {
+
+       
+        dojo.byId("drawCircleBtn").onclick =  drawCircle;
+        dojo.byId("drawIrrBtn").onclick =  drawIrr;
+        dojo.byId("drawPaperJSBtn").onclick =  drawPaperJS;
+        dojo.byId("drawPatternsBtn").onclick =  drawPattern;
+
+        
+
+        
+
+
+          toolbar = new Draw(map);
+          toolbar.on("draw-end", addToMap);
+
+
+          editToolbar = new Edit(map);
+
+          
+
+          //Activate the toolbar when you click on a graphic
+
+          
+
+          //deactivate the toolbar when you click outside a graphic
+          map.on("dbl-click", function(evt){
+
+            editToolbar.deactivate();
+
+          });
+
+          graphicsLayer = new GraphicsLayer();
+          map.addLayer(graphicsLayer);
+
+          graphicsLayer.on("dbl-click", function(evt) {
+            if(!isDrawing) {
+            event.stop(evt);
+            activateEdit(evt.graphic);
+          }
+          });
+
+          
+
+
+        
+        
+
+        }
+        
+        function drawCircle(e) {
+
+          var s = map.on("click", function(e) {
+         console.warn("DrawCircle Clicked");
+         
+        
+         
+         
+          s.remove();
+
+          });
+          
+        } 
+
+        
+         function drawIrr(e) {
+             console.warn("Draw Irr Clicked");
+        } 
+
+         function drawPattern(e) {
+
+            var s = map.on("click", function(e) {
+               console.warn("drawPattern Clicked");
+
+            s.remove();
+            });
+
+         }
+
+
+         function drawPaperJS(e) {
+
+       
+          var s = map.on("click", function(e) {
+               console.warn("drawPaperJS Clicked");
+
+         
+
+          s.remove();
+
+          }); 
+          
+        } 
+        
+
+
+         function addToMap(evt) {
+          var symbol;
+          toolbar.deactivate();
+          map.showZoomSlider();
+          switch (evt.geometry.type) {
+            case "point":
+            case "multipoint":
+              symbol = new SimpleMarkerSymbol();
+              break;
+            case "polyline":
+              symbol = new SimpleLineSymbol();
+              break;
+            default:
+              symbol = new SimpleFillSymbol();
+              break;
+          }
+          var graphic = new Graphic(evt.geometry, symbol);
+          map.graphics.add(graphic);
+          isDrawing = false;
+        }
+
+
+
+
+       });
+    </script>
+</head>
+
+<body class="nihilo">
+
+    <div id="mainWindow" data-dojo-type="dijit/layout/BorderContainer" data-dojo-props="design:'headline'">
+
+
+        <div id="header2" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'" style="text-align:left;font-weight:bold;font-size:14px;color:#400D12;">
+
+            <div id="tool_move" data-dojo-type="dijit/form/ToggleButton" data-dojo-props="checked:'true', iconClass:'dijitCheckBoxIcon'">Move</div>
+            <div id="tool_vertices" data-dojo-type="dijit/form/ToggleButton" data-dojo-props="checked:'true', iconClass:'dijitCheckBoxIcon'">Edit Vertices</div>
+            <div id="tool_scale" data-dojo-type="dijit/form/ToggleButton" data-dojo-props="checked:'true', iconClass:'dijitCheckBoxIcon'">Scale</div>
+            <div id="tool_rotate" data-dojo-type="dijit/form/ToggleButton" data-dojo-props="checked:'true', iconClass:'dijitCheckBoxIcon'">Rotate</div>
+            <button data-dojo-type="dijit/form/DropDownButton" id="options" data-dojo-props="value:'options'">
+                <span>Options</span>
+                <div data-dojo-type="dijit/Menu" id="optionsMenu">
+                    <div id="vtx_ca" data-dojo-type="dijit/CheckedMenuItem" data-dojo-props="checked:'true'">Allow Add Vertices</div>
+                    <div id="vtx_cd" data-dojo-type="dijit/CheckedMenuItem" data-dojo-props="checked:'true'">Allow Delete Vertices</div>
+                    <div id="uniform_scaling" data-dojo-type="dijit/CheckedMenuItem" data-dojo-props="checked:'true'">Uniform Scaling when Resizing</div>
+                </div>
+            </button>
+        </div>
+
+
+
+        <div id="header" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'">
+            <button data-dojo-type="dijit/form/Button">Point</button>
+            <button data-dojo-type="dijit/form/Button">Multi Point</button>
+            <button data-dojo-type="dijit/form/Button">Line</button>
+            <button data-dojo-type="dijit/form/Button">Polyline</button>
+            <button data-dojo-type="dijit/form/Button">Polygon</button>
+            <button data-dojo-type="dijit/form/Button">Freehand Polyline</button>
+            <button data-dojo-type="dijit/form/Button">Freehand Polygon</button>
+
+            <button data-dojo-type="dijit/form/Button">Arrow</button>
+            <button data-dojo-type="dijit/form/Button">Triangle</button>
+            <button data-dojo-type="dijit/form/Button">Circle</button>
+            <button data-dojo-type="dijit/form/Button">Ellipse</button>
+
+
+        </div>
+
+        <div id="header3" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'">
+
+            <button id="drawCircleBtn">Circle</button>
+            <button id="drawIrrBtn">Draw Irregular</button>
+            <button id="drawPaperJSBtn">Draw </button>
+            <button id="drawPatternsBtn">Draw Patterns </button>
+
+        </div>
+
+        <div id="map" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'center'"></div>
+    </div>
+    <canvas id="myCanvas"></canvas>
+</body>
+
+</html>

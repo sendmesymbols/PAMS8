@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title></title>
+    <link rel="stylesheet" href="//js.arcgis.com/3.9/js/esri/css/esri.css">
+    <style>
+      html, body, #map {
+        height: 100%; width: 100%; margin: 0; padding: 0; 
+      }
+    </style>
+
+    <!-- Label Layer Dropshadow -->
+    <svg height="0" xmlns="http://www.w3.org/2000/svg">
+      <filter id="drop-shadow">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+        <feOffset dx="0" dy="0" result="offsetblur"/>
+        <feFlood flood-color="rgba(10,10,10,1)"/>
+        <feComposite in2="offsetblur" operator="in"/>
+        <feMerge>
+          <feMergeNode/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </svg>
+
+    <style>
+      text {
+        filter: url(#drop-shadow);
+      }
+    </style>
+
+    <script src="//js.arcgis.com/3.9/"></script>
+    <script>
+      var map;
+    
+      require([
+        "esri/map", 
+        "esri/geometry/Extent",
+        "esri/layers/FeatureLayer",
+        "esri/symbols/SimpleMarkerSymbol",
+        "esri/symbols/SimpleLineSymbol",
+        "esri/symbols/SimpleFillSymbol",
+        "esri/symbols/TextSymbol",
+        "esri/renderers/SimpleRenderer",
+        "esri/layers/LabelLayer",
+        "esri/Color",
+        "esri/renderers/ScaleDependentRenderer",
+        "esri/symbols/Font",
+        "dojo/domReady!"
+      ], function(Map, Extent, FeatureLayer, SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, TextSymbol, SimpleRenderer,LabelLayer,Color,ScaleDependentRenderer, Font, domReady) {
+        // load the map centered on the United States
+        var bbox = new Extent({"xmin":-1940058,"ymin":-814715,"xmax":1683105,"ymax":1446096,"spatialReference":{"wkid":102003}});
+        map = new Map("map", {
+          extent: bbox
+        });
+
+        var color = new Color("#C7C7C7");
+        var labelSymbol = new TextSymbol().setColor(color);
+        labelSymbol.font.setSize("10pt");
+        labelSymbol.font.setFamily("arial");
+        mediumLabelRenderer = new SimpleRenderer(labelSymbol);
+
+        //Geometry Renderers
+        var line = new SimpleLineSymbol("solid", color, 1.5);
+        var sym = new SimpleFillSymbol("solid", line, null);
+        var polygonRenderer = new SimpleRenderer(sym);
+
+        // ==================================================
+        //State Label Renderer
+        // ==================================================
+        var statesUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/3";
+        var states = new FeatureLayer(statesUrl, {
+          id: "states",
+          outFields: ["STATE_NAME", "STATE_ABBR"],
+          minScale:180000000,
+          maxScale:5000000
+        });
+
+        states.setRenderer(polygonRenderer);
+        map.addLayer(states);
+
+        var labelLayer = new LabelLayer({ id: "stateLabels" });
+        labelLayer.addFeatureLayer(states, mediumLabelRenderer, "${STATE_NAME}");
+
+        // ==================================================
+        //County Label Renderer
+        // ==================================================
+        var countyUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/2";
+        var counties = new FeatureLayer(countyUrl, {
+          id: "counties",
+          outFields: ["NAME", "CNTY_FIPS"],
+          minScale:5000000,
+          maxScale:600000
+        });
+        counties.setRenderer(polygonRenderer);
+        map.addLayer(counties);
+
+        labelLayer.addFeatureLayer(counties, mediumLabelRenderer, "${NAME}");
+
+        // ==================================================
+        // Block Group Label Renderer
+        // ==================================================
+        var groupUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/1";
+        var groups = new FeatureLayer(groupUrl, {
+          id: "groups",
+          outFields: ["BLKGRP"],
+          minScale:500000,
+        });
+        groups.setRenderer(polygonRenderer);
+        map.addLayer(groups);
+
+        labelLayer.addFeatureLayer(groups, mediumLabelRenderer, "${BLKGRP}");
+
+        // ==================================================
+        // Block Label Renderer
+        // ==================================================
+        var sls = new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([100,100,100]), 2);
+        var markerSym = new SimpleMarkerSymbol();
+        markerSym.setColor(new Color("#336699"));
+        markerSym.setSize("6");
+        markerSym.setOutline(sls);
+        markerSym.setOutline(markerSym.outline.setColor(new Color([133,197,133,.75])));  
+        var pointRenderer = new SimpleRenderer(markerSym); 
+
+        var blockUrl = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/0";
+        var blocks = new FeatureLayer(blockUrl, {
+          id: "blocks",
+          outFields: ["BLOCK"],
+          minScale:100000
+        });
+        blocks.setRenderer(pointRenderer);
+        map.addLayer(blocks);
+
+        labelLayer.addFeatureLayer(blocks, mediumLabelRenderer, "${BLOCK}");
+
+        map.addLayer(labelLayer);
+      });
+    </script>
+  </head>
+  <body>
+    <div id="map"></div>
+  </body>
+</html>

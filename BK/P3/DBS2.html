@@ -1,0 +1,1556 @@
+
+<!DOCTYPE html>
+<!--Distance Buffer Symbology POC -->
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no">
+
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>P5</title>
+  <!--
+  <link rel="stylesheet" href="https://js.arcgis.com/3.17/esri/css/esri.css">
+  -->
+
+<link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+<link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+
+
+
+<link rel="stylesheet" href="animate.css">
+  
+
+    <style>
+        html,
+        body,
+        #mainWindow {
+            font-family: sans-serif;
+            height: 100%;
+            width: 100%;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #header {
+            height: 80px;
+            overflow: auto;
+            padding: 0.5em;
+        }
+
+
+        .map .logo-med {
+           display: inline-block;
+           vertical-align: bottom;
+           width: 255px;
+           height: 56px;
+           z-index: 30;
+           background-image: url("logo.png");
+           cursor: pointer;
+          
+          }
+    </style>
+   
+    <script src="http://arb-pc2:9632/MilitarySymbology/ThirdParty/tween.js"></script>
+    <script src="http://arb-pc2:9632/MilitarySymbology/ThirdParty/turf.min.js"></script>
+    <script src="http://arb-pc2:9632/MilitarySymbology/ThirdParty/milsymbol.js"></script>
+   
+    <!--
+    <script src="MilitarySymbology/ThirdParty/dms.js"></script>
+    <script src="MilitarySymbology/ThirdParty/latlon-spherical.js"></script>
+    -->
+
+    <script type="text/javascript">
+
+        
+        var dojoConfig = {
+            paths: {
+              MilSymbologyExt: location.origin + "/" + "MilitarySymbology/Extensions",
+              MilSymbologyComponents: location.origin + "/" + "MilitarySymbology/Components",
+              MilSymbologySymbols: location.origin + "/" + "MilitarySymbology/Symbols",
+              MilSymbologySymbolsEngine: location.origin + "/" + "MilitarySymbology/Engines",
+              MilSymbologySymbolsData: location.origin + "/" + "MilitarySymbology/Data",
+              MilSymbologySymbolsImages: location.origin + "/" + "MilitarySymbology/Images"
+              }
+            };
+
+
+     
+    </script>
+    <!--
+    <script src="https://js.arcgis.com/3.17/"></script>
+    -->
+    
+    <script src="http://arb-pc2:9632/3.15/init.js"></script>
+
+    
+
+
+
+    <script>
+
+    var extent; 
+      require([
+        "esri/map",
+        "esri/toolbars/draw",
+        "esri/graphic",
+        "esri/symbols/SimpleMarkerSymbol",
+        "esri/symbols/SimpleLineSymbol",
+        "esri/symbols/SimpleFillSymbol",
+        "esri/geometry/Circle",
+        "esri/symbols/Font",
+
+
+        
+        "esri/geometry/Point",
+        "esri/geometry/Polyline",
+        "esri/geometry/Polygon",
+        "esri/symbols/TextSymbol",
+
+        "dojo/parser",
+        "dijit/registry",
+        "dojo/_base/event",
+        "dojo/dom",
+        "dojo/dom-style",
+        "dijit/Menu",
+        "esri/layers/GraphicsLayer",
+        "esri/layers/ArcGISTiledMapServiceLayer",
+        
+
+        "esri/symbols/PictureMarkerSymbol",
+        "esri/Color",
+         "dojo/on",
+        "dijit/Menu",
+        "dijit/MenuItem",
+        "dijit/MenuSeparator",
+        "dojo/parser",
+        "dojox/gfx/matrix",
+        "dojo/_base/array",
+        "esri/geometry/jsonUtils",
+
+        "esri/layers/ArcGISDynamicMapServiceLayer",
+        "MilSymbologySymbolsEngine/SymbolEngine",
+        "MilSymbologySymbolsEngine/Amplifier",
+        "MilSymbologySymbolsEngine/EditEngine",
+        "MilSymbologySymbolsEngine/DrawEssentials",
+        "MilSymbologyExt/GeoTools",
+        
+        "esri/geometry/Extent",
+        "esri/SnappingManager",
+        "dojo/keys",
+        "esri/tasks/GeometryService",
+        "esri/tasks/BufferParameters",
+        "esri/tasks/OffsetParameters",
+        "esri/SpatialReference",
+        "esri/Color",
+        "esri/geometry/geometryEngine",
+        
+
+
+
+
+
+        "dijit/layout/BorderContainer",
+        "dijit/layout/ContentPane",
+        "dijit/form/Button",
+         "dijit/WidgetSet",
+
+        "dijit/form/ToggleButton",
+        "dijit/form/DropDownButton",
+        "dijit/CheckedMenuItem",
+        
+
+        "dojo/domReady!"
+      ], function(
+        Map, Draw, Graphic,
+        SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, Circle, Font,
+        Point, Polyline, Polygon,
+        TextSymbol,   parser, registry,  event, dom, domStyle, Menu, GraphicsLayer, ArcGISTiledMapServiceLayer, 
+        PictureMarkerSymbol, Color, on, Menu, MenuItem, MenuSeparator, parser, matrix, Array, 
+        geometryJsonUtils, ArcGISDynamicMapServiceLayer, SymbolEngine, Amplifier,
+        EditEngine, DrawEssentials, GeoTools,
+        Extent, SnappingManager, keys, GeometryService, BufferParameters, OffsetParameters, SpatialReference, Color,
+        geometryEngine 
+
+      ) {
+
+
+        
+
+     
+      parser.parse();
+      var map, graphicsLayer, textGraphicsLayer, toolbar, symbol, geomTask, editToolbar, isDrawing , ctxMenuForGraphics, ctxMenuForMap, endEvent;
+      var selected, currentLocation;
+
+      var distP1, distP2, geomSvc, geomParam, offsetParam;
+
+        var endEvent, editEngine, enddeactivateCpEvent;
+        map = new Map("map", {
+          logo: true,
+          showAttribution : false
+
+          //, basemap: "streets",
+          //center: [-15.469, 36.428],  zoom: 3
+        });
+
+        //map.getScale()
+
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.35.65:8399/arcgis/rest/services/MapVector/MapServer");
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+        
+        var dynamic = new ArcGISDynamicMapServiceLayer("http://20.60.50.63:6080/arcgis/rest/services/points/MapServer"); //Dynamic Dist Layer
+
+        geomSvc = new GeometryService('http://20.60.50.30:6080/arcgis/rest/services/Utilities/Geometry/GeometryServer');
+        
+
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.71/arcgis/rest/services/MapdataV3/MapServer");
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/arcgis/rest/services/ESRI_StreetMap_World_2D/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.35.65:8399/arcgis/rest/services/MapVector/MapServer"); //GCS
+        
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/"); //PCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.61:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.62:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.63:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.64:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.71/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/arcgis/rest/services/ESRI_StreetMap_World_2D/MapServer");
+        map.addLayer(tiled);
+
+        map.addLayer(dynamic);
+
+        esri.config.defaults.map.logoLink = 'http://nacsys.met.af';
+
+
+
+         map.on("load", function () {
+          
+          extent = new Extent();
+          distP1 = new Point(map.spatialReference);
+          distP2 = new Point(map.spatialReference);
+
+
+        geomParam = new BufferParameters();
+        
+        //geomParam.outSpatialReference = map.spatialReference;
+        geomParam.geodesic = true;
+        geomParam.unit = GeometryService["UNIT_METER"];
+
+ 		/*
+ 		geomParam.bufferSpatialReference = new SpatialReference(4326);
+        geomParam.inSpatialReference = new SpatialReference(4326);
+        geomParam.outSpatialReference = new SpatialReference(4326);
+        */
+        
+
+        
+        geomParam.bufferSpatialReference = map.spatialReference;
+        geomParam.inSpatialReference = map.spatialReference;
+        geomParam.outSpatialReference = map.spatialReference;
+        
+
+        offsetParam = new OffsetParameters();
+        
+        offsetParam.bevelRatio = 2;
+        offsetParam.offsetUnit = "9001";
+        offsetParam.offsetHow = "esriGeometryOffsetBevelled";
+        offsetParam.spatialReference = map.spatialReference;
+       
+
+ 
+          
+
+         
+
+         graphicsLayer = new GraphicsLayer();
+          map.addLayer(graphicsLayer);
+
+          textGraphicsLayer = new GraphicsLayer();
+          map.addLayer(textGraphicsLayer);
+
+          dojo.byId("createSymBtn").onclick = createSym;
+          dojo.byId("createSymFromGeomBtn").onclick = createSymFromGeom;
+          dojo.byId("ZoomBtn").onclick = zoomGeom;
+
+          dojo.byId("clacDistBtn").onclick = clacDist;
+          dojo.byId("clacAngleBtn").onclick = clacAngle;
+          dojo.byId("clacBngBtn").onclick = clacBng;
+
+
+          var btn = dojo.byId("ZoomBtn");
+          btn.onclick = dojo.partial(zoomGeom, map, graphicsLayer, textGraphicsLayer);
+
+          
+          
+          
+
+          editEngine = new EditEngine(map, graphicsLayer, textGraphicsLayer);
+
+          //debugger;
+          enddeactivateCpEvent = editEngine.on("changeInSymbol", deactivateCp);
+
+            createGraphicsMenu();
+
+
+             graphicsLayer.on("mouse-over", function(evt) {
+            // We'll use this "selected" graphic to enable editing tools
+            // on this graphic when the user click on one of the tools
+            // listed in the menu.
+            selected = evt.graphic;
+
+            console.log("MOUSE OVER");
+            
+
+
+
+            // Let's bind to the graphic underneath the mouse cursor
+            ctxMenuForGraphics.bindDomNode(evt.graphic.getDojoShape().getNode());
+            
+          });
+
+          graphicsLayer.on("mouse-out", function(evt) {
+            ctxMenuForGraphics.unBindDomNode(evt.graphic.getDojoShape().getNode());
+            
+          });
+
+
+          map.graphics.on("click", function(evt) {
+
+            if(!isDrawing) {
+              editEngine.activateEditText(evt.graphic);
+            
+            }
+          });
+
+
+            //deactivate the toolbar when you click outside a graphic
+          map.on("dbl-click", function(evt) {
+          
+            if(!isDrawing) {
+            editEngine.deactivateEdit();
+             
+           }
+
+          });
+
+
+
+          graphicsLayer.on("dbl-click", function(evt) {
+
+            if(!isDrawing) {
+            event.stop(evt);
+            editEngine.activateEdit(evt.graphic);
+          }
+          });
+
+
+
+
+
+
+         });
+
+
+       
+
+         
+
+        
+           
+           function createGraphicsMenu() {
+          // Creates right-click context menu for GRAPHICS
+          ctxMenuForGraphics = new Menu({});
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Edit",
+            onClick: function() {
+              if ( selected.geometry.type !== "point" ) {
+                if(!isDrawing) {
+                  debugger;
+                   editEngine.activateEdit(selected);
+               }
+                 
+              }
+            }
+          }));
+
+          
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Style",
+            onClick: function() {
+              alert("Not implemented");
+            }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+          
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Edit Control Points",
+            onClick: function() {
+              if(selected.geometry.type === "point") {
+                editEngine.activateEdit(selected);   
+              } else {
+                editEngine.activateEditPts(selected);   
+              }
+            
+            }
+          }));
+
+
+            
+           ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Disable Edit Control Points",
+            onClick: function() {
+            editEngine.deactivateEditPts(graphicsLayer);
+             }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+          
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Save",
+            onClick: function() {
+            console.info("Geometry");
+
+            if(selected.geometry.type ==="polyline") {
+              console.log(JSON.stringify(selected.geometry.paths));
+            }  else if(selected.geometry.type ==="polygon") {
+              console.log(JSON.stringify(selected.geometry.rings));
+            } else if(selected.geometry.type ==="point") {
+              console.log(JSON.stringify(selected.geometry));
+            }
+
+            
+
+
+            console.info("Control Points");
+            console.log(JSON.stringify(selected.drawEssentials.CTRL_PTS));
+
+
+            console.info("Baseline Points");
+            console.log(JSON.stringify(selected.drawEssentials.BASE_LN_PTS));
+
+            if(selected.geometry.type ==="polyline") {
+              dojo.byId("geoText").value = JSON.stringify(selected.geometry.paths);
+            }  else if(selected.geometry.type ==="polygon") {
+              dojo.byId("geoText").value = JSON.stringify(selected.geometry.rings);
+            } else if(selected.geometry.type ==="point") {
+              dojo.byId("geoText").value = JSON.stringify(selected.geometry);
+            }
+            
+            dojo.byId("ctrlPtsText").value = JSON.stringify(selected.drawEssentials.CTRL_PTS);
+            dojo.byId("baseLinePtsText").value = JSON.stringify(selected.drawEssentials.BASE_LN_PTS);
+
+
+
+
+
+
+            }
+          }));
+
+
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+          
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Save As PNG",
+            onClick: function() {
+            
+
+            if(selected.geometry.type ==="point") {
+              var image = new Image();
+              if(selected.drawEssentials.SYM_GEO_TYPE === 'FPoint') {
+                image.src = selected.symbol.url;
+              } else {
+                var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                svg.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns", "http://www.w3.org/2000/svg");
+                svg.setAttribute('width', '612');
+                svg.setAttribute('height', '792');
+                svg.setAttribute('stroke', 'rgb('+selected.symbol.outline.color.toRgb()+')');
+                svg.setAttribute('stroke-width', selected.symbol.outline.width);
+                if(selected.symbol.outline.style !== 'solid') svg.setAttribute('stroke-dasharray', "50, 20");
+               
+                var path = document.createElement('path');
+                path.setAttribute('d', selected.symbol.path);
+                svg.appendChild(path);
+                console.log(svg);
+                var xml = (new XMLSerializer).serializeToString(svg);
+                image.src = "data:image/svg+xml;base64," + btoa(xml);
+                console.log(image.src);
+               
+
+
+              }
+              
+              
+              var canvas = document.createElement('canvas'); //Place these Lines somewhere where creation of canvas is not called evry time a new symbol is created for performance purposes
+
+              image.onload = dojo.hitch(this, function() {
+              
+              canvas.width = image.width;
+              canvas.height = image.height;
+              var context = canvas.getContext('2d');
+              context.drawImage(image, 0, 0);
+              console.log(canvas.toDataURL('image/png'));
+             
+            });
+
+
+
+
+
+
+
+            }
+
+            
+
+            }
+          }));
+
+
+          ctxMenuForGraphics.startup();
+
+         
+        }
+
+
+       
+
+         function createSym(e) {
+          isDrawing = true;
+          
+         var amplifier = new Amplifier();
+         /*
+         amplifier.DTG = "DDHHMMSSZMONYYYY";
+         amplifier.EDTG = "DDHHMMSSZMONYYYY00";
+         */
+
+         //amplifier.UNIQUE_DESIG = "Tact";
+         amplifier.UNIQUE_DESIG = "UUU";
+         amplifier.HIGHER_FORM = "HHH";
+
+
+          var attr = {
+                plnOrdrOverlayId : 2000,
+                plnOrdrId : 300,
+                creatorId : 700,
+                symbolId : '500'
+            }
+
+
+          var r = new Point(68.99174366565728 , 27.709813703606667, map.spatialReference);
+
+
+        
+         var symEngine  = new SymbolEngine(dojo.byId("sicText").value, amplifier, map, graphicsLayer, textGraphicsLayer, attr);
+         //var symEngine  = new SymbolEngine(z.SIDC, z.AMPLIFIER, map, graphicsLayer, textGraphicsLayer, attr);
+         var drawEssentials = new DrawEssentials();
+         
+         drawEssentials.uniqueDesignation = "FORCE 123456";
+
+         
+         /*
+         drawEssentials.BK_LN_DIST_RATIO = 5;
+         drawEssentials.BK_LN_ANGL_RATIO = 5;
+         drawEssentials.FRNT_LN_ANGL_RATIO = 5;
+         drawEssentials.IS_LINE = false;
+         */
+         //drawEssentials.SIZE = 150;
+         //drawEssentials.ANGLE = 90;
+         
+         //drawEssentials.GEOM = new Point(68.99174366565728 , 27.709813703606667, map.spatialReference);
+           
+         //z.OPTIONS.GEOM = new Point(z.GEOM.x, z.GEOM.y, z.spatialReference);
+         
+         //drawEssentials.HEAD_RATIO = 0.17;
+         //drawEssentials.TAIL_FACTOR = 0.17;
+
+         drawEssentials.ECHELON = symEngine.getEchelon();
+         //drawEssentials.TEETH_SIZE = 2;
+         drawEssentials.DRAW_TYPE = 1;
+         //drawEssentials.FACE_GAP = 0;
+         //drawEssentials.TEETH_GAP = 5;
+         //drawEssentials.TEETH_SIZE = 2;
+
+
+         //drawEssentials.WIDTH = 150;
+         //drawEssentials.HEIGHT = 150;
+
+         //drawEssentials.uniqueDesignation = "JHHHH";
+         drawEssentials.size = "30";
+         drawEssentials.SIZE = 12;
+
+
+         //drawEssentials.GEOM = map.extent.getCenter();
+
+         /*
+         drawEssentials.TEETH_GAP = 30;
+         drawEssentials.TEETH_SIZE = 3;
+         drawEssentials.HEAD_RATIO = 10;
+         drawEssentials.TAIL_FACTOR = 10;
+         */
+
+
+
+         
+         endEvent = symEngine.on("symDrawEnd", symDrawEnd);
+         var extraSettings = {};
+         extraSettings.lineWidth = 2;
+         extraSettings.size = 30;
+         extraSettings.textSize = 12;
+         symEngine.initialize(drawEssentials, extraSettings);
+         //symEngine.initialize(z);
+         
+         }
+
+
+
+
+
+          function createSymFromGeom(e) {
+
+
+               var amplifier = new Amplifier();
+               amplifier.UNIQUE_DESIG = "Tango Alpha Golf";
+               amplifier.DTG = "DDHHMMSSZMONYYYY";
+               amplifier.EDTG = "DDHHMMSSZMONYYYY00";
+
+               var attr = {
+                plnOrdrOverlayId : 2000,
+                plnOrdrId : 300,
+                creatorId : 700,
+                symbolId : '500'
+            }
+
+
+               var symEngine  = new SymbolEngine(dojo.byId("sicText").value, amplifier, map, graphicsLayer, textGraphicsLayer, attr);
+               var drawEssentials = new DrawEssentials();
+               drawEssentials.BK_LN_DIST_RATIO = 5;
+               drawEssentials.BK_LN_ANGL_RATIO = 5;
+               drawEssentials.FRNT_LN_ANGL_RATIO = 5;
+               drawEssentials.IS_LINE = false;
+            
+               var geom = new Polyline(JSON.parse(dojo.byId("geoText").value));
+               geom.setSpatialReference(map.spatialReference);
+               
+               //debugger;
+               drawEssentials.CTRL_PTS = JSON.parse(dojo.byId("ctrlPtsText").value);
+               drawEssentials.BASE_LN_PTS = JSON.parse(dojo.byId("baseLinePtsText").value);
+
+               drawEssentials.DRAW_TYPE = 3;
+               drawEssentials.ECHELON = symEngine.getEchelon();
+
+               //drawEssentials.BASE_LN_PTS = { startPt: new Point(68.34848969518515, 25.409693445554794, map.spatialReference) , endPt: new Point(70.67784877007666 , 25.692335341671342, map.spatialReference) };
+
+               //drawEssentials.CTRL_PTS = [new Point(68.99174366565728 , 27.709813703606667, map.spatialReference)];
+               //drawEssentials.DISTANCE = 5;
+               
+               endEvent = symEngine.on("symDrawEnd", symDrawEnd);
+               symEngine.initialize(drawEssentials);
+
+
+
+           }
+
+
+
+          function zoomGeom(map, graphicsLayer, textGraphicsLayer, event) { 
+            if(graphicsLayer.graphics.length > 0) { 
+            var extent = new Extent();
+            extent.setSpatialReference(map.spatialReference);
+            extent = addIntoExtent(extent, graphicsLayer.graphics[0].geometry, true);
+            for (var i = graphicsLayer.graphics.length - 1; i >= 1; i--) {
+              extent = addIntoExtent(extent, graphicsLayer.graphics[i].geometry);
+            }
+
+           
+
+           map.setExtent(extent.expand(1.5));
+           
+
+
+
+            var SnappingManager = map.enableSnapping({
+              snapKey: has("mac") ? keys.META : keys.CTRL
+            });
+            
+         }
+           
+
+
+
+           }
+
+           function addIntoExtent(extent, geometry, isFirst) {
+            var resExtent = new Extent();
+
+            if(isFirst) {
+            if(geometry.type === 'point')  {
+              var p = new Polyline();
+              p.setSpatialReference(geometry.spatialReference);
+              p.addPath([geometry, geometry]);
+              resExtent = p.getExtent();
+              }
+            if(geometry.type === 'polygon' || geometry.type === 'polyline') resExtent = geometry.getExtent();
+            } else {
+              if(geometry.type === 'point') resExtent = extent.union({'xmin' : geometry.x, 'ymin': geometry.y, 'xmax' : geometry.x, 'ymax': geometry.y});
+            if(geometry.type === 'polygon' || geometry.type === 'polyline') resExtent = extent.union(geometry.getExtent());
+            }
+
+            console.log('Called');
+            return resExtent;
+           }
+
+
+          function symDrawEnd(event) {
+                  
+
+            
+            isDrawing = false;
+            endEvent.remove();
+
+            
+
+            
+            }
+
+
+            function deactivateCp(graphic) {
+              console.log('------------------');
+
+              //enddeactivateCpEvent.remove();
+            }
+
+
+         function displayPoint (pt) {
+            map.graphics.add(new Graphic(new Point(pt.x, pt.y, map.spatialReference), new SimpleMarkerSymbol(SimpleMarkerSymbol.STYLE_CROSS, 10, new SimpleLineSymbol())));
+        }
+
+
+        function displayPointRed(pt) {
+            map.graphics.add(new Graphic(new Point(pt.x, pt.y, map.spatialReference), new SimpleMarkerSymbol(SimpleMarkerSymbol.STYLE_CROSS, 10, new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([255,100,0,0.65]), 2), new Color([255,0,200,0.35]))));
+        }
+
+
+           function displayPointT(pt, text) {
+            map.graphics.add(new Graphic(new Point(pt.x, pt.y, map.spatialReference), new TextSymbol(text)));
+        }
+
+/*
+    var factors = {
+        miles: 3960,
+        nauticalmiles: 3441.145,
+        degrees: 57.2957795,
+        radians: 1,
+        inches: 1,
+        yards: 6969600,
+        meters: 6373000,
+        metres: 6373000,
+        centimeters: 6.373e+8,
+        centimetres: 6.373e+8,
+        kilometers: 6373,
+        kilometres: 6373,
+        feet: 20908792.65
+
+    }
+
+
+
+    function destination(origin, distance, bearing, options) {
+	    
+	    var units = (typeof options === 'object') ? options.units : options;
+	    var degrees2radians = Math.PI / 180;
+	    var radians2degrees = 180 / Math.PI;
+	    var longitude1 = degrees2radians * origin.x;
+	    var latitude1 = degrees2radians * origin.y;
+	    var bearing_rad = degrees2radians * bearing;
+		var radians = distanceToRadians(distance, units);
+	    var latitude2 = Math.asin(Math.sin(latitude1) * Math.cos(radians) +
+	        Math.cos(latitude1) * Math.sin(radians) * Math.cos(bearing_rad));
+	    var longitude2 = longitude1 + Math.atan2(Math.sin(bearing_rad) * Math.sin(radians) * Math.cos(latitude1),
+	        Math.cos(radians) - Math.sin(latitude1) * Math.sin(latitude2));
+
+	    return new Point(radians2degrees * longitude2, radians2degrees * latitude2);
+    }
+
+
+   
+    function distanceToRadians(distance, units) {
+        if(distance === undefined ||  distance === null) throw new Error('Distance is Required');
+        if(units && typeof units !== 'string') throw new Error('Units must be a string');
+        var factor = factors[units || 'kilometers'];
+        if(!factor) throw new Error(units+ 'units is invalid');
+        return distance / factor;
+    }
+*/
+
+
+
+
+
+
+        map.on("click", function(evt) {
+        	//map.graphics.add(new Graphic(evt.mapPoint, new SimpleMarkerSymbol(SimpleMarkerSymbol.STYLE_TARGET, 10)));
+        	map.graphics.add(new Graphic(evt.mapPoint, new SimpleMarkerSymbol(SimpleMarkerSymbol.STYLE_CROSS, 10, new SimpleLineSymbol())));
+
+        	if(distP1.x == 0) {
+        	 		distP1 = evt.mapPoint;
+        	} else {
+
+
+        		distP2 = evt.mapPoint;
+        		var p = new Polyline(map.spatialReference);
+              	p.addPath([distP1, distP2]);
+              	
+              	/*
+              	//Turf
+              	var point = turf.point([distP1.x, distP1.y]);
+              	var d = 2;
+              	var bearing = 360;
+              	var units = 'kilometers';
+              	var dest = turf.destination(point, d, bearing, units);
+              	console.log(dest.geometry.coordinates)
+              	var resPt = new Point(dest.geometry.coordinates[0], dest.geometry.coordinates[1])
+              	displayPointRed(resPt,'X')
+              	*/
+
+              	
+              	var d = 200;
+              	
+              	//var bearing = bng(distP1.x, distP1.y, distP2.x, distP2.y);
+              	//var bearing = bng(distP1.y, distP1.x, distP2.y, distP2.x);
+              	//var bearing = GeoTools.angleInDegrees(distP1, distP2);
+              	//var bearing = toDeg(GeoTools.twoPtsAngle(distP1, distP2));
+              	
+              	var bearing = toDeg(GeoTools.twoPtsAngle(distP1, distP2));
+              	
+
+
+              	bearing = 360 - bearing;
+              	console.log(bearing)
+              	
+              	var units = 'kilometers';
+              	var dest1 = GeoTools.destination(distP1, d, bearing, units);
+
+              	var dest2 = GeoTools.destination(distP2, d, bearing, units);
+              	              	
+              	displayPointRed(dest1,'X')
+              	displayPointRed(dest2,'X')
+
+
+              	var p = new Polyline(map.spatialReference);
+              	p.addPath([distP1, dest1, dest2, distP2, distP1]);
+
+     var sym = new SimpleFillSymbol(SimpleFillSymbol.STYLE_SOLID, new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([255,0,0,0.65]), 2), new Color([255,0,0,0.35]));
+
+              	map.graphics.add(new Graphic(p, sym));
+
+
+              	
+
+
+
+
+
+
+        		      
+        	}
+        	
+        	
+
+        });
+
+
+
+   function bearingFinal(start, end, options) {
+    // Backwards compatible with v4.0
+    /*
+    var final = (typeof options === 'object') ? options.final : options;
+    if (final === true) return calculateFinalBearing(start, end);
+    */
+
+    var degrees2radians = Math.PI / 180;
+    var radians2degrees = 180 / Math.PI;
+    
+    var lon1 = degrees2radians * start.x;
+    var lon2 = degrees2radians * end.x;
+    var lat1 = degrees2radians * start.y;
+    var lat2 = degrees2radians * end.y;
+    var a = Math.sin(lon2 - lon1) * Math.cos(lat2);
+    var b = Math.cos(lat1) * Math.sin(lat2) -
+        Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
+
+    var bear = radians2degrees * Math.atan2(a, b);
+
+    return bear;
+}
+
+
+
+
+        
+
+
+
+/**
+     * Calculate the bearing between two positions as a value from 0-360
+     *
+     * @param lat1 - The latitude of the first position
+     * @param lng1 - The longitude of the first position
+     * @param lat2 - The latitude of the second position
+     * @param lng2 - The longitude of the second position
+     *
+     * @return int - The bearing between 0 and 360
+     */
+      function bng(lat1,lng1,lat2,lng2) {
+        var dLon = (lng2-lng1);
+        var y = Math.sin(dLon) * Math.cos(lat2);
+        var x = Math.cos(lat1)*Math.sin(lat2) - Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLon);
+        var brng = _toDeg(Math.atan2(y, x));
+        return 360 - ((brng + 360) % 360);
+    }
+
+   /**
+     * Since not all browsers implement this we have our own utility that will
+     * convert from degrees into radians
+     *
+     * @param deg - The degrees to be converted into radians
+     * @return radians
+     */
+     function _toRad(deg) {
+         return deg * Math.PI / 180;
+    }
+
+    /**
+     * Since not all browsers implement this we have our own utility that will
+     * convert from radians into degrees
+     *
+     * @param rad - The radians to be converted into degrees
+     * @return degrees
+     */
+     function _toDeg(rad) {
+        return rad * 180 / Math.PI;
+    }
+
+    ///////////////////////////////////////
+
+////////////////////////////////////////////////////////////
+
+function toRad(n) {
+ return n * Math.PI / 180;
+}
+function toDeg(n) {
+ return n * 180 / Math.PI;
+}
+function destVincenty(lat1, lon1, brng, dist) {
+ var a = 6378137,
+     b = 6356752.3142,
+     f = 1 / 298.257223563, // WGS-84 ellipsiod
+     s = dist,
+     alpha1 = toRad(brng),
+     sinAlpha1 = Math.sin(alpha1),
+     cosAlpha1 = Math.cos(alpha1),
+     tanU1 = (1 - f) * Math.tan(toRad(lat1)),
+     cosU1 = 1 / Math.sqrt((1 + tanU1 * tanU1)), sinU1 = tanU1 * cosU1,
+     sigma1 = Math.atan2(tanU1, cosAlpha1),
+     sinAlpha = cosU1 * sinAlpha1,
+     cosSqAlpha = 1 - sinAlpha * sinAlpha,
+     uSq = cosSqAlpha * (a * a - b * b) / (b * b),
+     A = 1 + uSq / 16384 * (4096 + uSq * (-768 + uSq * (320 - 175 * uSq))),
+     B = uSq / 1024 * (256 + uSq * (-128 + uSq * (74 - 47 * uSq))),
+     sigma = s / (b * A),
+     sigmaP = 2 * Math.PI;
+ while (Math.abs(sigma - sigmaP) > 1e-12) {
+  var cos2SigmaM = Math.cos(2 * sigma1 + sigma),
+      sinSigma = Math.sin(sigma),
+      cosSigma = Math.cos(sigma),
+      deltaSigma = B * sinSigma * (cos2SigmaM + B / 4 * (cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM) - B / 6 * cos2SigmaM * (-3 + 4 * sinSigma * sinSigma) * (-3 + 4 * cos2SigmaM * cos2SigmaM)));
+  sigmaP = sigma;
+  sigma = s / (b * A) + deltaSigma;
+ };
+ var tmp = sinU1 * sinSigma - cosU1 * cosSigma * cosAlpha1,
+     lat2 = Math.atan2(sinU1 * cosSigma + cosU1 * sinSigma * cosAlpha1, (1 - f) * Math.sqrt(sinAlpha * sinAlpha + tmp * tmp)),
+     lambda = Math.atan2(sinSigma * sinAlpha1, cosU1 * cosSigma - sinU1 * sinSigma * cosAlpha1),
+     C = f / 16 * cosSqAlpha * (4 + f * (4 - 3 * cosSqAlpha)),
+     L = lambda - (1 - C) * f * sinAlpha * (sigma + C * sinSigma * (cos2SigmaM + C * cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM))),
+     revAz = Math.atan2(sinAlpha, -tmp); // final bearing
+ return new Point(toDeg(lat2), lon1 + toDeg(L));
+ 
+}
+///////////////////////////////////////////////////////////
+
+
+
+          function errorOffset(e) { 
+          	console.log(e);
+          }
+
+
+         function showOffset(offsetGeometries) {
+         	
+         	console.log("OFFSET");
+
+         	console.info(offsetGeometries);
+          	var sym = new SimpleFillSymbol(SimpleFillSymbol.STYLE_SOLID, new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([255,0,0,0.65]), 2), new Color([255,0,0,0.35]));
+
+
+               
+                 Array.forEach(offsetGeometries, function (geometry) {
+                        var graphic = new Graphic(geometry, sym);
+                        map.graphics.add(graphic);
+                        console.log(geometry.paths)
+                        
+                });
+
+         }
+
+
+          function showBuffer(bufferedGeometries) {
+          	console.info('Done');
+          	console.info('Drawing Result');
+          	var sym = new SimpleFillSymbol(SimpleFillSymbol.STYLE_SOLID, new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([255,0,0,0.65]), 2), new Color([255,0,0,0.35]));
+
+
+
+          	    /*
+          	    Array.forEach(bufferedGeometries, function (geometry) {
+                        var graphic = new Graphic(geometry, sym);
+                        map.graphics.add(graphic);
+                        
+                });
+                */
+                
+
+               
+                var graphic = new Graphic(bufferedGeometries[0], sym);
+                map.graphics.add(graphic);
+               
+                
+                /*
+                var p = new Polyline();
+                p.setSpatialReference(map.spatialReference);
+                p.addPath(bufferedGeometries[0].rings[0].slice(145, 146));
+                var graphic = new Graphic(p, sym);
+                map.graphics.add(graphic);
+                */
+
+                /* *?................*
+                   *.................*/
+
+                //displayPoint(new Point(bufferedGeometries[0].rings[0][145][0], bufferedGeometries[0].rings[0][145][1], map.spatialReference));
+
+                /* *................?*
+                   *.................*/
+
+                //displayPoint(new Point(bufferedGeometries[0].rings[0][0][0], bufferedGeometries[0].rings[0][0][1], map.spatialReference));
+
+                //debugger;
+                console.log(bufferedGeometries)
+                var p1 = new Point(map.spatialReference);
+                var p2 = new Point(map.spatialReference);
+                var dists = [];
+
+                for (var i = 0; i < bufferedGeometries[0].rings[0].length; i++) {
+                	p1.x = bufferedGeometries[0].rings[0][i][0];
+                	p1.y = bufferedGeometries[0].rings[0][i][1];
+
+                	if(bufferedGeometries[0].rings[0][i+1] != undefined) {
+                		p2.x = bufferedGeometries[0].rings[0][i+1][0];
+                		p2.y = bufferedGeometries[0].rings[0][i+1][1];                		
+              		} 
+
+              		
+                	//console.log(bufferedGeometries[0].rings[0][i][0] + ' ' +bufferedGeometries[0].rings[0][i][1] + ' --> '+             		Math.sqrt((pt1.x - pt2.x) * (pt1.x - pt2.x) + (pt1.y - pt2.y) * (pt1.y - pt2.y))               		)
+ 
+                dists.push({"dist":Math.sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y)), "pt1": p1, "pt2": p2});
+ 				var dist = Math.sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y));               
+
+
+
+                
+                if(dist > 1) {
+                console.log(dist)
+                displayPoint(p1, dist);
+            	displayPoint(p2, dist);	
+                }
+                
+            }
+            console.table(dists)
+
+                
+
+
+
+
+           }
+
+
+
+
+         function clacDist(e) {
+         distP1 = new Point(map.spatialReference);
+         distP2 = new Point(map.spatialReference);
+          
+         	console.log('clacDist');
+           }
+
+
+           function clacAngle(e) {
+
+          distP1 = new Point(map.spatialReference);
+          distP2 = new Point(map.spatialReference);
+          
+         	console.log('clacAngle')
+           }
+
+           function clacBng(e) {
+
+          distP1 = new Point(map.spatialReference);
+          distP2 = new Point(map.spatialReference);
+          
+         	console.log('clacBng')
+           }
+
+
+
+           
+
+
+
+
+
+
+
+       });
+    </script>
+</head>
+
+<body class="nihilo">
+
+    <div id="mainWindow" data-dojo-type="dijit/layout/BorderContainer" data-dojo-props="design:'headline'">
+        <div id="header3" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'">
+          <!-- 
+          Support By Fire
+          10002500001521000000 Pending
+          10012500001521000000 Unknown
+          10022500001521000000 Assumed Friend
+          10032500001521000000  Friend
+          10042500001521000000 Neutral
+          10052500001521000000 Suspect / Joker
+          10062500001521000000 Hostile / Faker
+          
+
+          Attack By Fire Position
+          10032500001520000000 Friend
+          10042500001520000000 Neutral
+          10062500001520000000 Hostile
+
+          //Clear 
+          10032500003405000000 Friend
+          10062500003405000000 Hostile
+          10042500003405000000 Neutral
+
+          //Block Obstacle Effect
+          10032500002705010000 Friend
+          10062500002705010000 Hostile
+          10042500002705010000 Neutral
+          
+          //Block
+          10032500003401000000 Friend
+          10062500003401000000 Hostile
+          10042500003401000000 Neutral
+
+          //Canalize
+          10032500003404000000 Friend
+          10062500003404000000 Hostile
+
+          //Breach
+          10032500003402000000 Friend
+          10062500003402000000 Hostile
+
+          //Bypass
+          10032500003403000000 Friend
+          10062500003403000000 Hostile
+
+          //Bypass Easy
+          10032500002706010000 Friend
+          10062500002706010000 Hostile
+
+
+          //Penetrate
+          10032500003418000000 Friend
+          10062500003418000000 Hostile
+          
+
+          //Disrupt
+          10032500003410000000 Friend
+          10062500003410000000 Hostile
+
+
+          //Disrupt Obstacle Effect
+          10032500002705020000 Friend
+
+
+          //Interdict
+          10032500003414000000 Friend
+          10062500003414000000 Hostile
+
+          //Neutralize
+          10032500003416000000 Friend
+          10062500003416000000 Hostile
+
+          //Destroy
+
+          10032500003409000000 Friend
+          10042500003409000000 Neutral
+
+          //Coordinating Point
+          10032500001306000000 Friend
+
+          //CAP Station
+          10032500001807000000
+
+          //Decision Point
+          10032500001307000000
+
+          //Supporting Attack
+          10032500001514040000
+
+          //Main Attack
+          10032500001514030000
+          10062500001514030000
+
+          //Axis of Advance Feint
+          10032500001514060000
+          10062500001514060000
+
+          //CounterAttack
+          10032500003406000000
+
+          //Boundary
+          10032500001101000000
+          10042500001101000000
+          10032500141101000000
+
+          //Screen  
+          10032500003422030000
+          10022500003422030000 //Assumed Friend
+
+          //Cover
+          10032500003422010000
+
+
+          //Secure
+          10032500003421000000
+
+          //Guard
+          10032500003422020000
+
+
+          //Occupy
+          10032500003417000000
+
+          //Isolate
+          10032500003415000000
+
+          //Battle Postion
+          10032500001512000000
+
+          10032500161512000000 Bde
+          10032500141512000000 Platoon
+          10032500211512000000 Div
+
+          //Withdraw
+          10032500003424000000
+
+          //Delay
+          10032500003408000000
+
+          //Ambush
+          10032500001417000000
+
+
+          //Contain
+          10032500001512040000
+
+          //Withdraw Under Pressure
+          10032500003425000000
+
+
+
+          //Radar 
+          Done
+          10031500002203000000
+
+
+          //Friendly Direction of Supporting Attack
+          10032500001406030000
+
+          //Friendly Direction of Main Attack
+          10032500001406020000
+
+          //Single Fence Wire
+          10032500002903020000
+
+          //Double Fence Wire
+          10032500002903030000
+
+
+          //Double Apron Fence
+          10032500002903040000
+
+          //Unspecified Wire
+          10032500002903010000
+
+          //Low Wire Fence
+          10032500002903050000
+
+          //High Wire Fence
+          10032500002903060000
+
+          //Triple Strand Concertina
+          10032500002903090000
+
+          //Double Strand Concertina
+          10032500002903080000
+
+          //Single Concertina
+          10032500002903070000
+
+          //Phase Line
+          10032500001403000000
+
+          //Forward Line of Troops
+          10032500001401010000
+
+          //Penetration Box
+          10032500001519000000
+
+          //Assembly Area
+          10032500001502000000
+
+          //Area of Operations
+          10032500001201000000
+
+          //Attack Position
+          10032500001516000000
+
+          //Named Area of Interest
+          10032500001202000000
+
+          //Zone of Responsibility
+          10032500002419010000
+
+          //Minefield - Antipersonnel Mine
+          10032500002707010000
+
+          //Minefield - Antipersonnel Mine with Directional Effects
+          10032500002707020000
+
+          //Minefield - Antitank Mine
+          10032500002707030000
+
+          //Minefield - Antitank Mine with Anti-handling Device
+          10032500002707040000
+
+
+          //Minefield - Wide Area Antitank Mine
+          10032500002707050000
+
+          //Minefield - Unspecified Mine  ERR
+          10032500002707060000
+
+
+
+          //Minefield - Antipersonnel Mine + Antitank
+          10032500002707070000
+
+          //Corps Line Of Denial
+          10032500001418000000
+
+          //Army Line Of Denial
+          10032500001418010000
+
+          //Div Line Of No Penetration
+
+          //Line Of No Penetration
+          10032500001419010000
+
+          //BHOL
+          10032500001419020000
+
+
+
+          //Forward Assembly Area
+          10032500001502010000
+
+          //Div Adm Area
+          10032500001502020000
+
+          //Bridgehead Line
+          10032500001414000000
+
+          //Fix
+          10032500003411000000
+
+          //Strong Point
+          10032500211512030000
+
+          //Infiltration Lane
+          10032500001408000000
+
+          //Moving Convoy
+          10032500003301000000
+
+           //Counter Attack Objectives
+          10032500001403010000
+
+           //FUP
+          10032500001403020000
+
+          //Unmanned Aircraft (UA) Route
+          10032500001707000000
+
+          //Freehand Line
+          10030000000000010000
+
+          //Freehand Area
+          10030000000000020000
+
+           //Freehand Line Dotted
+          10030000000000030000
+
+           //Freehand Double Line Arrow
+          10030000000000040000
+
+           //Freehand Dot
+          10030000000000050000
+
+          //Freehand Arrow
+          10030000000000060000
+
+          //Freehand Dotted Arrow
+          10030000000000070000
+
+          //Freehand Main Attack Like Arrow
+          10030000000000080000
+
+          //Freehand Supporting Attack Like Arrow
+          10030000000000090000
+
+          //Freehand Close Supporting Attack Like Arrow
+          10030000000000100000
+
+          //Freehand Area Filled
+          10030000000001200000
+
+           //Freehand Semi Circle
+          10030000000001300000
+
+          //Ditch Under Construction
+          10032500002902010000
+
+          //Ditch Filled
+          10032500002902020000
+
+          //Arc Of Fire
+          10042500001521000000
+
+          //Road Block Executed
+          10032500002712040000
+
+          //Aircraft Carrier (Missile Armed) SD
+          10032500002712060000
+
+          //Armed Merchant Cruiser
+          10032500002712100000
+
+
+          //Mayday
+          10032500002712140000
+
+          //SMCC
+          10032500002712200000
+
+
+
+          //OCC
+          10032500002712210000
+
+
+          //Bridge SD
+          10032500002714000000
+
+          //Land Mark SD
+          10032500002712310000
+
+          //H
+          //10032500002712400000
+          F
+          //10032500002712410000
+
+          Helo
+          //10032500002712500000
+
+          //Hazard
+          10032500002712510000
+
+          //Chaff Jamming
+          10032500002712600000
+
+
+          //Contact Lost
+          10032500002712610000
+
+          //Destroyer
+          10032500002712700000
+
+          //Destroyer Guided Missile
+          10032500002712710000
+
+          //Helipad
+          10032500002712800000
+
+          //Target Area of Interest
+          //10032500001202010000
+
+          //Slow Go
+          //10032500001202020000
+
+          //No Go
+          //10032500001202030000
+
+          //Avenue of Apchs
+          //10032500001202040000
+
+          //Mob Corridor
+          10032500141101010000
+
+
+
+
+          -->
+           <input type="text" id="sicText" value="10062500003402000000" /> 
+           <button id="createSymBtn">Create Sym</button>
+           <input type="text" id="geoText" value="Geometry" /> 
+           <input type="text" id="ctrlPtsText" value="Ctrl Pts" /> 
+           <input type="text" id="baseLinePtsText" value="Baseline Pts" /> 
+           <button id="createSymFromGeomBtn">Ctrl Sym From Geom</button>
+           <button id="ZoomBtn">Zoom</button>
+           <button id="clacDistBtn">Dist</button>
+           <button id="clacAngleBtn">Angle</button>
+           <button id="clacBngBtn">Bng</button>
+           
+        </div>
+        <div id="map" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'center'"></div>
+    </div>
+
+    <canvas id='canvas' style="display: none;"></canvas>
+    
+</body>
+
+</html>

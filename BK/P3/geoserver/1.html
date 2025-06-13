@@ -1,0 +1,225 @@
+<!DOCTYPE html>  
+<html>  
+<head>  
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">  
+    <!--The viewport meta tag is used to improve the presentation and behavior of the samples  
+       on iOS devices-->  
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">  
+    <title>Map with WMS</title>  
+  
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+    <style>  
+        html, body, #map {  
+            height: 100%;  
+            width: 100%;  
+            margin: 0;  
+            padding: 0;  
+        }  
+        body {  
+            background-color: #FFF;  
+            overflow: hidden;  
+            font-family: "Trebuchet MS";  
+        }  
+    </style>  
+    <script src="http://arb-pc2:9632/3.15/init.js"></script>
+  
+    <script>  
+        var map;  
+  
+        require(["esri/map", "esri/layers/WMSLayer", "esri/config","esri/layers/WMSLayerInfo",
+          "esri/geometry/Extent","esri/layers/FeatureLayer", "esri/layers/ArcGISTiledMapServiceLayer", 
+          "esri/layers/ArcGISDynamicMapServiceLayer", "esri/basemaps"],  
+                function(Map, WMSLayer, esriConfig, WMSLayerInfo,Extent,FeatureLayer,
+                  ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer, 
+                  basemaps) {  
+  
+                    /*
+                    map = new Map("map", {  
+                      extent: new Extent({xmin:-8.64846,ymin:49.8638,xmax:1.76767,ymax:60.8612,spatialReference:{wkid:4326}}),  
+                        zoom: 2,  
+                        // basemap: "streets"  
+                    });  
+                    */
+
+                    
+                    map = new Map("map");
+                    var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+
+                    
+                    map.addLayer(tiled);
+
+
+
+                    
+
+                    
+
+                    /*
+                     var dynamic = new ArcGISDynamicMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/SampleWorldCities/MapServer");
+                    map.addLayer(dynamic);
+                    */
+
+
+                    //AddA(WMSLayer,WMSLayerInfo,Extent);  
+                    //AddB(WMSLayer,WMSLayerInfo,Extent);  
+                    //AddC(WMSLayer,WMSLayerInfo,Extent);
+                    //AddD(WMSLayer,WMSLayerInfo,Extent); 
+                    //AddE(WMSLayer,WMSLayerInfo,Extent);
+                    //AddF(WMSLayer,WMSLayerInfo,Extent);  
+                    AddG(WMSLayer,WMSLayerInfo,Extent);  
+
+                     
+                });  
+  
+  
+  
+        function AddA(WMSLayer,WMSLayerInfo,Extent) {  
+            var layer10 = new WMSLayerInfo({name:"nurc:Img_Sample",title:"NO Quads"});           
+            var resourceInfo10 = {  
+                extent: new Extent(-130.85168,20.7052,-62.0054,54.1141,{wkid: 4326}),  
+                layerInfos: [layer10],  
+                version:"1.1.1"  
+            };  
+            var wmsLayer10 = new WMSLayer("http://arb-pc2:9512/geoserver/nurc/wms?service=WMS&version=1.1.0&request=GetCapabilities",  
+                    {resourceInfo: resourceInfo10,  
+                        visibleLayers: ["nurc:Img_Sample"]  
+                    }  
+            );  
+  
+           map.addLayers([wmsLayer10]);  
+   
+        }
+
+
+        function AddB(WMSLayer,WMSLayerInfo,Extent) {  
+            var layer10 = new WMSLayerInfo({name:"tasmania",title:"T"});           
+            var resourceInfo10 = {  
+                extent: new Extent(143.83482400000003,-43.648056,148.47914100000003,-39.573891,{wkid: 4326}),  
+                layerInfos: [layer10],  
+                version:"1.1.1"  
+            };  
+            var wmsLayer10 = new WMSLayer("http://arb-pc2:9512/geoserver/tasmania/wms?service=WMS&version=1.1.0&request=GetCapabilities",  
+                    {resourceInfo: resourceInfo10,  
+                        visibleLayers: ["tasmania"]  
+                    }  
+            );  
+  
+            map.addLayers([wmsLayer10]);  
+   
+        }  
+
+
+         function AddC(WMSLayer,WMSLayerInfo,Extent) {  
+            var layer10 = new WMSLayerInfo({name:"grid:GridLine",title:"Grid"});           
+            var resourceInfo10 = {  
+                extent: new Extent(58.24583239200001,28.000062399,83.99779971200002,28.999966826000048,{wkid: 4326}),  
+                layerInfos: [layer10],  
+                version:"1.1.1"  
+            };  
+            var wmsLayer10 = new WMSLayer("http://arb-pc2:9512/geoserver/grid/wms?service=WMS&version=1.1.0&request=GetCapabilities",  
+                    {resourceInfo: resourceInfo10,  
+                        visibleLayers: ["grid:GridLine"]  
+                    }  
+            );  
+  
+            map.addLayers([wmsLayer10]);
+            }
+
+            function AddD(WMSLayer,WMSLayerInfo,Extent) {  
+            var layer10 = new WMSLayerInfo({name:"rwp:google_rwp",title:"Google Rawalpindi"});           
+            var resourceInfo10 = {  
+                extent: new Extent(73.15582711242676,33.47498797241222,73.25043614990233,33.55349097930918,{wkid: 4326}),  
+                layerInfos: [layer10],  
+                version:"1.1.1"  
+            };  
+            
+
+
+            var wmsLayer10 = new WMSLayer("http://arb-pc2:9512/geoserver/rwp/wms?service=WMS&version=1.1.0&request=GetMap&layers=rwp:google_rwp",  
+                    {
+                      resourceInfo: resourceInfo10,  
+                        visibleLayers: ["rwp:google_rwp"]  
+                    }  
+            );           
+  
+            map.addLayers([wmsLayer10]);  
+   
+        }  
+
+
+         function AddE(WMSLayer,WMSLayerInfo,Extent) {  
+            var layer10 = new WMSLayerInfo({name:"rwp:google_rwp",title:"Google Rawalpindi"});           
+            var resourceInfo10 = {  
+                extent: new Extent(73.15582711242676,33.47498797241222,73.25043614990233,33.55349097930918,{wkid: 4326}),  
+                layerInfos: [layer10],  
+                version:"1.1.1"  
+            };  
+            
+
+
+            var wmsLayer10 = new WMSLayer("http://arb-pc2:9512/geoserver/rwp/wms?service=WMS&version=1.1.0&request=GetMap&layers=rwp:google_rwp",  
+                    {
+                      resourceInfo: resourceInfo10,  
+                        visibleLayers: ["rwp:google_rwp"]  
+                    }  
+            );           
+  
+            map.addLayers([wmsLayer10]);  
+   
+        }  
+
+         function AddF(WMSLayer,WMSLayerInfo,Extent) {  
+            var layer10 = new WMSLayerInfo({name:"GoogleImage:google4g",title:"Google Tab"});           
+            var resourceInfo10 = {  
+                extent: new Extent(73.4787591061246,32.7356991116206,73.77843734710967,33.03409398091095,{wkid: 4326}),  
+                layerInfos: [layer10],  
+                version:"1.1.1"  
+            };  
+            
+
+
+            var wmsLayer10 = new WMSLayer("http://arb-pc2:9512/geoserver/GoogleImage/wms?service=WMS&version=1.1.0&request=GetMap&layers=GoogleImage:google4g",  
+                    {
+                      resourceInfo: resourceInfo10,  
+                        visibleLayers: ["GoogleImage:google4g"]  
+                    }  
+            );           
+  
+            map.addLayers([wmsLayer10]);  
+   
+        }  
+
+
+         function AddG(WMSLayer,WMSLayerInfo,Extent) {  
+            var layer10 = new WMSLayerInfo({name:"mosWkSpc:ImageryGoogle",title:"Google Imagery"});           
+            var resourceInfo10 = {  
+                extent: new Extent(73.12812200944914,33.30977651996408,73.89674339166083,33.41560431353381,{wkid: 4326}),  
+                layerInfos: [layer10],  
+                version:"1.1.1"  
+            };  
+            
+
+
+            var wmsLayer10 = new WMSLayer("http://arb-pc2:9512/geoserver/mosWkSpc/wms?service=WMS&version=1.1.0&request=GetMap&layers=mosWkSpc:ImageryGoogle",  
+                    {
+                      resourceInfo: resourceInfo10,  
+                        visibleLayers: ["mosWkSpc:ImageryGoogle"]  
+                    }  
+            );           
+  
+            map.addLayers([wmsLayer10]);  
+   
+        }  
+
+         
+  
+  
+    </script>  
+</head>  
+  
+<body>  
+<div id="map">  
+</div>  
+</body>  
+</html>  

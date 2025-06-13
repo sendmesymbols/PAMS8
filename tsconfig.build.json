@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["MS/**/*"],
+  "exclude": ["src", "index.html"],
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false
+  }
+}

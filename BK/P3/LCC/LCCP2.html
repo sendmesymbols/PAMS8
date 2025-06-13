@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no">
+
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>LCC</title>
+
+
+    <link rel="stylesheet" href="http://devbox:9632/3.15/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://devbox:9632/3.15/esri/css/esri.css">
+
+
+
+    <style>
+        html,
+        body,
+        #mainWindow,
+        #map {
+            font-family: sans-serif;
+            height: 100%;
+            width: 100%;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #header {
+            height: 80px;
+            overflow: auto;
+            padding: 0.5em;
+        }
+    </style>
+
+
+
+    <script src="http://devbox:9632/3.15/init.js"></script>
+
+    <script>
+
+        var map;
+        require([
+            "esri/map",
+            "esri/toolbars/draw",
+            "esri/graphic",
+            "esri/symbols/SimpleMarkerSymbol",
+            "esri/symbols/SimpleLineSymbol",
+            "esri/symbols/SimpleFillSymbol",
+            "esri/geometry/Circle",
+            "esri/symbols/Font",
+
+
+
+            "esri/geometry/Point",
+            "esri/geometry/Polyline",
+            "esri/geometry/Polygon",
+            "esri/symbols/TextSymbol",
+
+            "dojo/parser",
+            "dijit/registry",
+            "dojo/_base/event",
+            "dojo/dom",
+            "dojo/dom-style",
+            "dijit/Menu",
+            "esri/layers/GraphicsLayer",
+            "esri/layers/ArcGISTiledMapServiceLayer",
+            "esri/symbols/PictureMarkerSymbol",
+            "esri/Color",
+            "dojo/on",
+            "dijit/Menu",
+            "dijit/MenuItem",
+            "dijit/MenuSeparator",
+            "dojo/parser",
+            "dojox/gfx/matrix",
+            "dojo/_base/array",
+            "esri/geometry/jsonUtils",
+            "esri/layers/ArcGISDynamicMapServiceLayer",
+            "esri/geometry/Extent",
+            "dijit/layout/BorderContainer",
+            "dijit/layout/ContentPane",
+            "dijit/form/Button",
+            "dijit/WidgetSet",
+            "dijit/form/ToggleButton",
+            "dijit/form/DropDownButton",
+            "dijit/CheckedMenuItem",
+            "dojo/domReady!"
+        ], function (
+            Map, Draw, Graphic,
+            SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, Circle, Font,
+            Point, Polyline, Polygon,
+            TextSymbol, parser, registry, event, dom, domStyle, Menu, GraphicsLayer, ArcGISTiledMapServiceLayer,
+            PictureMarkerSymbol, Color, on, Menu, MenuItem, MenuSeparator, parser, matrix, Array,
+            geometryJsonUtils, ArcGISDynamicMapServiceLayer,
+            Extent
+
+        ) {
+
+
+
+
+
+                parser.parse();
+
+                var lyr = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+                    lyr.id = "GCS";
+                    map = new Map("map");
+                    map.addLayer(lyr);
+                    addEvenet(map);
+
+
+
+                dojo.byId("GCSBtn").onclick = showGCS;
+                dojo.byId("LCC1Btn").onclick = showLCC1;
+                dojo.byId("LCC2Btn").onclick = showLCC2;
+
+                
+
+
+                function showLCC1(e) {
+                    map.destroy();
+                     var lyr = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/grid1/MapServer");
+                    lyr.id = "LCC1";
+                    map = new Map("map");
+                    map.addLayer(lyr);
+                    addEvenet(map);
+                   
+                    
+                }
+
+                function showLCC2(e) {
+                    map.destroy();
+                     var lyr = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/grid2/MapServer");
+                    lyr.id = "LCC2";
+                    map = new Map("map");
+                    map.addLayer(lyr);
+                    addEvenet(map);
+
+                    
+                }
+
+
+                function showGCS(e) {
+                    map.destroy();
+                     var lyr = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+                    lyr.id = "GCS";
+                    map = new Map("map");
+                    map.addLayer(lyr);
+                    addEvenet(map);
+                    
+                    
+                }
+
+                
+
+
+                function addEvenet(map) {
+                    map.on('zoom-end', function(e) {
+                        console.log(e)
+                    })
+
+                     map.on("mouse-move", function (evt) {
+                        var el = document.getElementById('latLonSpan');
+                        el.innerHTML = '<b>[ </b>' + evt.mapPoint.x + ' <b>]  [ </b>' + evt.mapPoint.y + '<b> ]</b>';
+                    });
+
+                }
+
+
+
+
+
+
+            });
+    </script>
+</head>
+
+<body class="nihilo">
+
+    <div id="mainWindow" data-dojo-type="dijit/layout/BorderContainer" data-dojo-props="design:'headline'">
+        <div id="header3" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'" style="text-align: center;">
+            <button id="GCSBtn">GCC</button>
+            <button id="LCC1Btn">LCC1</button>
+            <button id="LCC2Btn">LCC2</button>
+            <span id="latLonSpan" style="size: 10px;"></span>
+        </div>
+        <div id="map" stytle="width: 100%; height: 100%;"></div>
+
+    </div>
+
+
+
+</body>
+
+</html>

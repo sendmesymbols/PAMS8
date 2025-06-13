@@ -1,0 +1,22 @@
+{
+  "name": "PAMS8",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@arcgis/core": "latest"
+  },
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "@types/node": "^22.14.1",
+    "prettier": "^3.3.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.2.0",
+    "vite-plugin-dts": "^4.5.3"
+  }
+}

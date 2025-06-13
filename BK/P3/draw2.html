@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>Draw</title>
+    <link rel="stylesheet" href="http://devbox:9632/3.15/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://devbox:9632/3.15/esri/css/esri.css">
+
+    <style>
+      html,body {
+        height:100%;
+        width:100%;
+        margin:0;
+      }
+      body {
+        background-color:#FFF;
+        overflow:hidden;
+        font-family:"Trebuchet MS";
+      }
+      #map {
+        border:solid 2px #808775;
+        -moz-border-radius:4px;
+        -webkit-border-radius:4px;
+        border-radius:4px;
+        margin:5px;
+        padding:0px;
+      }
+      #titlePane{
+        width:280px;
+      }
+      </style>
+      <script src="http://devbox:9632/3.15/init.js"></script>
+    <script>
+    var map, draw;
+    var pts = [];
+    require([
+        "dojo/dom",
+        "esri/Color",
+        "dojo/keys",
+        "dojo/parser",
+
+        "esri/config",
+        "esri/sniff",
+        "esri/map",
+        "esri/SnappingManager",
+        "esri/dijit/Measurement",
+        "esri/layers/FeatureLayer",
+        "esri/renderers/SimpleRenderer",
+        "esri/tasks/GeometryService",
+        "esri/symbols/SimpleLineSymbol",
+        "esri/symbols/SimpleFillSymbol",
+        "esri/layers/ArcGISTiledMapServiceLayer",
+        "esri/toolbars/draw",
+        "esri/graphic",
+        "esri/symbols/SimpleLineSymbol",
+        "esri/geometry/geometryEngine",
+        "esri/geometry/Polyline",
+
+        "esri/dijit/Scalebar",
+        "dijit/layout/BorderContainer",
+        "dijit/layout/ContentPane",
+        "dijit/TitlePane",
+        "dijit/form/CheckBox",
+        "dojo/domReady!"
+      ], function(
+        dom, Color, keys, parser,
+        esriConfig, has, Map, SnappingManager, Measurement, FeatureLayer, SimpleRenderer, GeometryService, SimpleLineSymbol, SimpleFillSymbol,
+        ArcGISTiledMapServiceLayer, Draw, Graphic, SimpleLineSymbol, geometryEngine, Polyline
+      ) {
+        parser.parse();        
+        map = new Map("map");
+        
+
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.35.11:8399/arcgis/rest/services/MapData2019LatestV/MapServer");
+        map.addLayer(tiled);
+
+        draw = new Draw(map);
+
+        draw.on("draw-end", addToMap);
+
+
+        function addToMap(evt) {
+            var graphic = new Graphic(evt.geometry, new SimpleLineSymbol());
+            map.graphics.add(graphic);
+            draw.deactivate();
+            }
+
+
+        map.on("load", function (evt) {
+            draw.activate(Draw.FREEHAND_POLYLINE);
+            map.on("mouse-drag", mapMouseMove);
+            map.on("mouse-drag-end", mapMouseUp);
+            map.on("mouse-drag-start", mapMouseDown);
+            map.on("click", mapMouseClick);
+        });
+
+        function mapMouseUp(params) {
+            console.log("Up");            
+        }
+
+        function mapMouseDown(params) {
+            console.log("Down");            
+        }
+
+        function mapMouseMove(evt) {
+                console.log("------");
+                }
+
+        function mapMouseClick(evt) {                 
+            console.log("Click");
+
+        }
+
+      });
+    </script>
+  </head>
+
+  <body class="calcite">
+    <div id="mainWindow" data-dojo-type="dijit/layout/BorderContainer" data-dojo-props="design:'headline',gutters:false"
+    style="width:100%; height:100%;">
+      <div id="map" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'center'">
+        <div style="position:absolute; right:20px; top:10px; z-Index:999;">
+          <div id="titlePane" data-dojo-type="dijit/TitlePane" data-dojo-props="title:'Measurement', closable:false, open:false">
+            <div id="measurementDiv"></div>
+            <span style="font-size:smaller;padding:5px 5px;">Press <b>CTRL</b> to enable snapping.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

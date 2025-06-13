@@ -1,0 +1,619 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no">
+
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>Maps Toolbar</title>
+
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+    <style>
+        html,
+        body,
+        #mainWindow {
+            font-family: sans-serif;
+            height: 100%;
+            width: 100%;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #header {
+            height: 80px;
+            overflow: auto;
+            padding: 0.5em;
+        }
+    </style>
+    <!--
+    <script src="http://arb-pc2:9632/MilitarySymbology/ThirdParty/tween.js"></script>
+    <script src="http://arb-pc2:9632/MilitarySymbology/ThirdParty/turf.min.js"></script>
+    <script src="http://arb-pc2:9632/MilitarySymbology/ThirdParty/milsymbol.js"></script>
+    --->
+
+    <!--
+    <script src="MilitarySymbology/ThirdParty/dms.js"></script>
+    <script src="MilitarySymbology/ThirdParty/latlon-spherical.js"></script>
+    -->
+
+    <script type="text/javascript">
+
+    function loadJS(path) {
+              var imported = document.createElement('script');
+              imported.src = path;
+              document.head.appendChild(imported);
+
+
+      }
+
+     loadJS(location.origin + "/" + "MilitarySymbology/ThirdParty/tween.js");
+     loadJS(location.origin + "/" + "MilitarySymbology/ThirdParty/turf.min.js");
+     loadJS(location.origin + "/" + "MilitarySymbology/ThirdParty/milsymbol.js");
+
+
+
+     
+        var dojoConfig = {
+            paths: { 
+              MilSymbologyExt: location.origin + "/" + "MilitarySymbology/Extensions",
+              MilSymbologyComponents: location.origin + "/" + "MilitarySymbology/Components",
+              MilSymbologySymbols: location.origin + "/" + "MilitarySymbology/Symbols",
+              MilSymbologySymbolsEngine: location.origin + "/" + "MilitarySymbology/Engines",
+              MilSymbologySymbolsData: location.origin + "/" + "MilitarySymbology/Data",
+              }
+            };
+
+
+     
+    </script>
+
+    <script src="http://arb-pc2:9632/3.15/init.js"></script>
+
+
+
+    <script>
+      /*
+      var map, graphicsLayer, textGraphicsLayer, toolbar, symbol, geomTask, editToolbar, isDrawing , ctxMenuForGraphics, ctxMenuForMap, endEvent;
+      var selected, currentLocation, mock, mockEdit;
+      */
+
+      require([
+        "esri/map",
+        "esri/toolbars/draw",
+        "esri/graphic",
+        "esri/symbols/SimpleMarkerSymbol",
+        "esri/symbols/SimpleLineSymbol",
+        "esri/symbols/SimpleFillSymbol",
+        "esri/geometry/Circle",
+        "esri/symbols/Font",
+
+
+        
+        "esri/geometry/Point",
+        "esri/geometry/Polyline",
+        "esri/geometry/Polygon",
+        "esri/symbols/TextSymbol",
+
+        "dojo/parser",
+        "dijit/registry",
+        "dojo/_base/event",
+        "dojo/dom",
+        "dojo/dom-style",
+        "dijit/Menu",
+        "esri/layers/GraphicsLayer",
+        "esri/layers/ArcGISTiledMapServiceLayer",
+        "esri/symbols/PictureMarkerSymbol",
+        "esri/Color",
+         "dojo/on",
+        "dijit/Menu",
+        "dijit/MenuItem",
+        "dijit/MenuSeparator",
+        "dojo/parser",
+        "dojox/gfx/matrix",
+        "dojo/_base/array",
+        "esri/geometry/jsonUtils",
+        "esri/layers/ArcGISDynamicMapServiceLayer",
+        "MilSymbologySymbolsEngine/SymbolEngine.min",
+        "MilSymbologySymbolsEngine/Amplifier",
+        "MilSymbologySymbolsEngine/EditEngine",
+        "MilSymbologySymbolsEngine/DrawEssentials",
+
+
+
+        "dijit/layout/BorderContainer",
+        "dijit/layout/ContentPane",
+        "dijit/form/Button",
+         "dijit/WidgetSet",
+
+        "dijit/form/ToggleButton",
+        "dijit/form/DropDownButton",
+        "dijit/CheckedMenuItem",
+
+
+        "dojo/domReady!"
+      ], function(
+        Map, Draw, Graphic,
+        SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, Circle, Font,
+        Point, Polyline, Polygon,
+        TextSymbol,   parser, registry,  event, dom, domStyle, Menu, GraphicsLayer, ArcGISTiledMapServiceLayer,
+        PictureMarkerSymbol, Color, on, Menu, MenuItem, MenuSeparator, parser, matrix, Array, 
+        geometryJsonUtils, ArcGISDynamicMapServiceLayer, SymbolEngine, Amplifier,
+        EditEngine, DrawEssentials
+
+      ) {
+
+     
+      parser.parse();
+      var map, graphicsLayer, textGraphicsLayer, toolbar, symbol, geomTask, editToolbar, isDrawing , ctxMenuForGraphics, ctxMenuForMap, endEvent;
+      var selected, currentLocation;
+
+        var endEvent, editEngine;
+        map = new Map("map", {
+          logo: false,
+          showAttribution : false
+          //, basemap: "streets",
+          //center: [-15.469, 36.428],  zoom: 3
+        });
+
+        //map.getScale()
+
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.71/arcgis/rest/services/MapdataV3/MapServer");
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/arcgis/rest/services/ESRI_StreetMap_World_2D/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.35.65:8399/arcgis/rest/services/MapVector/MapServer"); //GCS
+        
+        var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/"); //PCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.61:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.62:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.63:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.64:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.71/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/arcgis/rest/services/ESRI_StreetMap_World_2D/MapServer");
+        map.addLayer(tiled);
+
+
+
+         map.on("load", function () {
+
+         
+
+         graphicsLayer = new GraphicsLayer();
+          map.addLayer(graphicsLayer);
+
+          textGraphicsLayer = new GraphicsLayer();
+          map.addLayer(textGraphicsLayer);
+
+          dojo.byId("createSymBtn").onclick = createSym;
+          dojo.byId("createSymFromGeomBtn").onclick = createSymFromGeom;
+
+
+          editEngine = new EditEngine(map, graphicsLayer, textGraphicsLayer);
+
+            createGraphicsMenu();
+
+
+             graphicsLayer.on("mouse-over", function(evt) {
+            // We'll use this "selected" graphic to enable editing tools
+            // on this graphic when the user click on one of the tools
+            // listed in the menu.
+            selected = evt.graphic;
+
+            console.log("MOUSE OVER");
+
+            // Let's bind to the graphic underneath the mouse cursor
+            ctxMenuForGraphics.bindDomNode(evt.graphic.getDojoShape().getNode());
+            
+          });
+
+          graphicsLayer.on("mouse-out", function(evt) {
+            ctxMenuForGraphics.unBindDomNode(evt.graphic.getDojoShape().getNode());
+            
+          });
+
+
+          map.graphics.on("click", function(evt) {
+            if(!isDrawing) {
+              console.log("map.graphics.on(click, function(evt) {");
+              editEngine.activateEditText(evt.graphic);
+            
+            }
+          });
+
+
+            //deactivate the toolbar when you click outside a graphic
+          map.on("dbl-click", function(evt) {
+            
+            if(!isDrawing) {
+            editEngine.deactivateEdit();
+             
+           }
+
+          });
+
+
+
+          graphicsLayer.on("dbl-click", function(evt) {
+
+            if(!isDrawing) {
+            event.stop(evt);
+            editEngine.activateEdit(evt.graphic);
+          }
+          });
+
+
+
+
+
+
+         });
+
+
+       
+
+         
+
+        
+           
+           function createGraphicsMenu() {
+          // Creates right-click context menu for GRAPHICS
+          ctxMenuForGraphics = new Menu({});
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Edit",
+            onClick: function() {
+              if ( selected.geometry.type !== "point" ) {
+                if(!isDrawing) {
+                   editEngine.activateEdit(selected);
+               }
+                 
+              }
+            }
+          }));
+
+          
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Style",
+            onClick: function() {
+              alert("Not implemented");
+            }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+          
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Edit Control Points",
+            onClick: function() {
+              if(selected.geometry.type === "point") {
+                editEngine.activateEdit(selected);   
+              } else {
+                editEngine.activateEditPts(selected);   
+              }
+            
+            }
+          }));
+
+
+            
+           ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Disable Edit Control Points",
+            onClick: function() {
+            editEngine.deactivateEditPts(graphicsLayer);
+             }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+          
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Save",
+            onClick: function() {
+            console.info("Geometry");
+
+            if(selected.geometry.type ==="polyline") {
+              console.log(JSON.stringify(selected.geometry.paths));
+            }  else if(selected.geometry.type ==="polygon") {
+              console.log(JSON.stringify(selected.geometry.rings));
+            } else if(selected.geometry.type ==="point") {
+              console.log(JSON.stringify(selected.geometry));
+            }
+
+            
+
+
+            console.info("Control Points");
+            console.log(JSON.stringify(selected.drawEssentials.CTRL_PTS));
+
+
+            console.info("Baseline Points");
+            console.log(JSON.stringify(selected.drawEssentials.BASE_LN_PTS));
+
+            if(selected.geometry.type ==="polyline") {
+              dojo.byId("geoText").value = JSON.stringify(selected.geometry.paths);
+            }  else if(selected.geometry.type ==="polygon") {
+              dojo.byId("geoText").value = JSON.stringify(selected.geometry.rings);
+            } else if(selected.geometry.type ==="point") {
+              dojo.byId("geoText").value = JSON.stringify(selected.geometry);
+            }
+            
+            dojo.byId("ctrlPtsText").value = JSON.stringify(selected.drawEssentials.CTRL_PTS);
+            dojo.byId("baseLinePtsText").value = JSON.stringify(selected.drawEssentials.BASE_LN_PTS);
+
+
+
+
+
+
+            }
+          }));
+
+
+          ctxMenuForGraphics.startup();
+
+         
+        }
+
+
+       
+
+         function createSym(e) {
+          isDrawing = true;
+          
+         var amplifier = new Amplifier();
+         amplifier.UNIQUE_DESIG = "Delta Zulu Victor";
+         amplifier.DTG = "DDHHMMSSZMONYYYY";
+         amplifier.EDTG = "DDHHMMSSZMONYYYY00";
+         var symEngine  = new SymbolEngine(dojo.byId("sicText").value, amplifier, map, graphicsLayer, textGraphicsLayer);
+         var drawEssentials = new DrawEssentials();
+         /*
+         drawEssentials.BK_LN_DIST_RATIO = 5;
+         drawEssentials.BK_LN_ANGL_RATIO = 5;
+         drawEssentials.FRNT_LN_ANGL_RATIO = 5;
+         drawEssentials.IS_LINE = false;
+         */
+         //drawEssentials.SIZE = 200;
+         //drawEssentials.ANGLE = 90;
+         //drawEssentials.GEOM = new Point(68.99174366565728 , 27.709813703606667, map.spatialReference);
+         //drawEssentials.HEAD_RATIO = 0.17;
+         //drawEssentials.TAIL_FACTOR = 0.4;
+
+         drawEssentials.ECHELON = symEngine.getEchelon();
+         //drawEssentials.TEETH_SIZE = 2;
+         drawEssentials.DRAW_TYPE = 3;
+         drawEssentials.FACE_GAP = 0;
+         drawEssentials.TEETH_GAP = 5;
+         drawEssentials.TEETH_SIZE = 2;
+         
+
+         endEvent = symEngine.on("symDrawEnd", symDrawEnd);
+         symEngine.initialize(drawEssentials);
+         }
+
+
+
+          function createSymFromGeom(e) {
+
+
+               var amplifier = new Amplifier();
+               amplifier.UNIQUE_DESIG = "Tango Alpha Golf";
+               amplifier.DTG = "DDHHMMSSZMONYYYY";
+               amplifier.EDTG = "DDHHMMSSZMONYYYY00";
+               var symEngine  = new SymbolEngine(dojo.byId("sicText").value, amplifier, map, graphicsLayer, textGraphicsLayer);
+               var drawEssentials = new DrawEssentials();
+               drawEssentials.BK_LN_DIST_RATIO = 5;
+               drawEssentials.BK_LN_ANGL_RATIO = 5;
+               drawEssentials.FRNT_LN_ANGL_RATIO = 5;
+               drawEssentials.IS_LINE = false;
+            
+               var geom = new Polyline(JSON.parse(dojo.byId("geoText").value));
+               geom.setSpatialReference(map.spatialReference);
+               // drawEssentials.GEOM = geom;
+
+               drawEssentials.CTRL_PTS = JSON.parse(dojo.byId("ctrlPtsText").value);
+               drawEssentials.BASE_LN_PTS = JSON.parse(dojo.byId("baseLinePtsText").value);
+
+               drawEssentials.DRAW_TYPE = 3;
+               drawEssentials.ECHELON = symEngine.getEchelon();
+
+               //drawEssentials.BASE_LN_PTS = { startPt: new Point(68.34848969518515, 25.409693445554794, map.spatialReference) , endPt: new Point(70.67784877007666 , 25.692335341671342, map.spatialReference) };
+
+               //drawEssentials.CTRL_PTS = [new Point(68.99174366565728 , 27.709813703606667, map.spatialReference)];
+               //drawEssentials.DISTANCE = 5;
+               
+               endEvent = symEngine.on("symDrawEnd", symDrawEnd);
+               symEngine.initialize(drawEssentials);
+
+
+
+           }
+
+
+          function symDrawEnd(event) {
+            isDrawing = false;
+            endEvent.remove();
+            
+
+            }
+
+
+         function displayPoint (pt) {
+            map.graphics.add(new Graphic(new Point(pt.x, pt.y, map.spatialReference), new SimpleMarkerSymbol()));
+        }
+
+
+
+
+
+
+       });
+    </script>
+</head>
+
+<body class="nihilo">
+
+    <div id="mainWindow" data-dojo-type="dijit/layout/BorderContainer" data-dojo-props="design:'headline'">
+        <div id="header3" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'">
+          <!-- 
+          Support By Fire
+          10002500001521000000 Pending
+          10012500001521000000 Unknown
+          10022500001521000000 Assumed Friend
+          10032500001521000000  Friend
+          10042500001521000000 Neutral
+          10052500001521000000 Suspect / Joker
+          10062500001521000000 Hostile / Faker
+          
+
+          Attack By Fire Position
+          10032500001520000000 Friend
+          10042500001520000000 Neutral
+          10062500001520000000 Hostile
+
+          //Clear 
+          10032500003405000000 Friend
+          10062500003405000000 Hostile
+          10042500003405000000 Neutral
+
+          //Block Obstacle Effect
+          10032500002705010000 Friend
+          10062500002705010000 Hostile
+          10042500002705010000 Neutral
+          
+          //Block
+          10032500003401000000 Friend
+          10062500003401000000 Hostile
+          10042500003401000000 Neutral
+
+          //Canalize
+          10032500003404000000 Friend
+          10062500003404000000 Hostile
+
+          //Breach
+          10032500003402000000 Friend
+          10062500003402000000 Hostile
+
+          //Bypass
+          10032500003403000000 Friend
+          10062500003403000000 Hostile
+
+          //Bypass Easy
+          10032500002706010000 Friend
+          10062500002706010000 Hostile
+
+
+          //Penetrate
+          10032500003418000000 Friend
+          10062500003418000000 Hostile
+          
+
+          //Disrupt
+          10032500003410000000 Friend
+          10062500003410000000 Hostile
+
+
+          //Disrupt Obstacle Effect
+          10032500002705020000 Friend
+
+
+          //Interdict
+          10032500003414000000 Friend
+          10062500003414000000 Hostile
+
+          //Neutralize
+          10032500003416000000 Friend
+          10062500003416000000 Hostile
+
+          //Destroy
+
+          10032500003409000000 Friend
+          10042500003409000000 Neutral
+
+          //Coordinating Point
+          10032500001306000000 Friend
+
+          //CAP Station
+          10032500001807000000
+
+          //Decision Point
+          10032500001307000000
+
+          //Supporting Attack
+          10032500001514040000
+
+          //Main Attack
+          10032500001514030000
+          10062500001514030000
+
+          //Axis of Advance Feint
+          10032500001514060000
+          10062500001514060000
+
+          //CounterAttack
+          10032500003406000000
+
+          //Boundary
+          10032500001101000000
+          10042500001101000000
+
+          //Screen
+          10032500003422030000
+          10022500003422030000 //Assumed Friend
+
+          //Cover
+          10032500003422010000
+
+
+          //Secure
+          10032500003421000000
+
+
+          //Occupy
+          10032500003417000000
+
+          //Isolate
+          10032500003415000000
+
+          //Battle Postion
+          10032500001512000000
+
+          10032500161512000000 Bde
+          10032500141512000000 Platoon
+          10032500211512000000 Div
+
+          //Withdraw
+          10032500003424000000
+
+          //Ambush
+          10032500001417000000
+
+
+          //Contain
+          10032500001512040000
+
+          //Withdraw Under Pressure
+          10032500003425000000
+          
+          
+
+          
+
+
+          
+
+          -->
+           <input type="text" id="sicText" value="10032500003425000000" /> 
+           <button id="createSymBtn">Create Symbol</button>
+           <input type="text" id="geoText" value="Geometry" /> 
+           <input type="text" id="ctrlPtsText" value="Control Points" /> 
+           <input type="text" id="baseLinePtsText" value="Baseline Points" /> 
+           <button id="createSymFromGeomBtn">Create Symbol From Geom</button>
+           
+        </div>
+        <div id="map" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'center'"></div>
+    </div>
+    
+</body>
+
+</html>

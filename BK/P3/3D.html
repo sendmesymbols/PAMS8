@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>3D map</title>
+    <style>
+        html,
+        body,
+        #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="http://20.60.201.241:9632/4.9/esri/css/main.css">    
+    <script src="http://20.60.201.241:9632/4.9/init.js"></script>
+   
+    <script src="jquery-3.3.1.min.js"></script>    
+    <script src="http://20.60.201.241:9632/MilitarySymbology/ThirdParty/milsymbol.js"></script>
+   
+    <script>
+        var map, dataJSON, sceneView;
+
+        require(["esri/Map",
+            "esri/views/MapView",
+            "esri/views/SceneView",
+            "esri/Basemap",
+            "esri/layers/Layer",
+            "esri/layers/TileLayer",
+            "esri/layers/MapImageLayer",
+            "esri/layers/ElevationLayer",
+            "esri/layers/VectorTileLayer",
+            "esri/layers/GraphicsLayer",
+            "esri/layers/FeatureLayer",
+            "esri/Graphic",
+            "esri/geometry/Extent",
+            "esri/geometry/SpatialReference",
+            "dojo/text!" + location.origin + "/" + "P3/3D/data.json",
+            "dojo/domReady!"
+        ], function (Map, MapView, SceneView, Basemap, Layer, TileLayer, MapImageLayer, ElevationLayer,
+            VectorTileLayer, GraphicsLayer, FeatureLayer, Graphic, Extent, SpatialReference,
+            data
+            ) {
+                map = new Map();
+                sceneView = new SceneView({
+                    container: "viewDiv",     // Reference to the scene div created in step 5
+                    map: map/*,                 // Reference to the map object created before the scene
+                    scale: 50000,          // Sets the initial scale to 1:50,000,000
+                    center: [73, 33]  // Sets the center point of view with lon/lat*/
+                });
+
+                initMapLayers();
+
+                var graphicsLayer = new GraphicsLayer({id: 'graphicsLayer'});
+                map.add(graphicsLayer);
+
+                dataJSON = JSON.parse(data);
+
+                console.log(dataJSON);
+
+                sceneView.on('click', function (evt) {
+                    console.log('clicked');
+                        var mapPoint = evt.mapPoint;
+                        debugger
+                        createFpoint('10031000161211000000', mapPoint, graphicsLayer)
+                    });
+
+
+                    
+                createFpoint('10031000161211000000', {
+                        type: 'point',
+                        latitude: 33,
+                        longitude: 71,
+                        z: 10
+                    }, graphicsLayer);
+                
+
+                function createFpoint(sidc, pt, layer) {
+                    var milSymbol = new MS.symbol(sidc);
+                    var pictureMarkerSymbol = {
+                        type: "picture-marker",
+                        url: milSymbol.getMarker().asImage(),
+                        width: 30,
+                        height: 30
+                    };
+                    var pointGraphic = new Graphic({
+                        geometry: pt,
+                        symbol: pictureMarkerSymbol
+                    });
+                    layer.add(pointGraphic);
+                    
+                }
+
+                function initMapLayers() {
+                    // add layer as tiled layer --------------------------------
+                    var tileLayer = new TileLayer({
+                        url: "http://20.60.201.233:6080/arcgis/rest/services/OSM_Map_GEOGCS/MapServer"
+                        //url: "http://20.60.201.233:6080/arcgis/rest/services/OSM_Map_WebMercator/MapServer"
+                        //url: "https://20.60.201.20:6443/arcgis/rest/services/GlobeBlueMarble/MapServer"
+
+                    });
+                    map.layers.add(tileLayer);
+
+
+
+                    // add layer as dynamic layer ------------------------------
+                    var dynamicLayer = new MapImageLayer({
+                        //url: "http://20.60.50.22:6080/arcgis/rest/services/OSM/MapServer"
+                        //url: "http://20.60.201.233:6080/arcgis/rest/services/SampleWorldCities/MapServer"
+                        url: "http://20.60.201.233:6080/arcgis/rest/services/Dem7FCanvas/MapServer"
+                    });
+                    //map.layers.add(dynamicLayer);
+
+
+
+                    // add layer as basemap ------------------------------------
+                    /*var baseMap = new Basemap({
+                     baseLayers: [tileLayer],
+                     title: 'OSM Tile',
+                     id: 'osm_tile'
+                     });*/
+                    //map.basemap = baseMap;
+
+
+
+                    // add layer as elevation / ground layer -------------------
+                    var elevLayer = new ElevationLayer({
+                        url: "http://20.60.201.233:6080/arcgis/rest/services/Dem7F/ImageServer"
+                    });
+                    map.ground.layers.add(elevLayer);
+
+                    var extent = new Extent({
+                        xmax: 79.36108679529033,
+                        xmin: 58.000000000000000,
+                        ymax: 38.500000000000000,
+                        ymin: 23.000000000000000,
+                        spatialReference: { 'wkid': 4326 }
+                    });
+                   
+                    elevLayer.when(function (layer) {
+                        sceneView.when(function () {
+                            sceneView.goTo(extent);
+                            //sceneView.goTo(layer.fullExtent);
+
+                            console.log('layer type: ' + layer.type + " spatialreference: " + layer.spatialReference.wkid);
+                        });
+                    }, function (e) {
+                        console.log(e);
+                    });
+                    
+
+
+                }
+            });
+    </script>
+</head>
+
+<body>
+    <div id="viewDiv"></div>
+</body>
+
+</html>

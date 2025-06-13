@@ -1,0 +1,1777 @@
+{
+    "00000001": {
+        "Class": "FreehandLine",
+        "Description": "",
+        "Name": "Freehand - Line",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Line) and 2 (Curve)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Line",
+                "description": "Use Line"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Curve",
+                "description": "Use Curve"
+            }
+        ],
+        "isFreeHand": "1",
+        "Cat": ["attk", "def"]
+    },
+    "00000002": {
+        "Class": "FreehandArea",
+        "Description": "",
+        "Name": "Freehand - Area",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon), 3 (Rectangle) and 4 (Circle or Ellipse)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Use Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            },
+            {
+                "DRAW_TYPE": "4",
+                "Name": "Circle or Ellipse",
+                "description": "Draw using Circle or Ellipse"
+            }
+        ],
+        "isFreeHand": "1"
+    },
+    "00000005": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Freehand - Dot",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Thumbnail": "",
+        "Tools": [],
+        "isFreeHand": "1",
+        "Cat": ["attk", "def"]
+    },
+    "00000006": {
+        "Class": "FreehandArrow",
+        "Description": "",
+        "Name": "Freehand - Arrow",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Line) and 2 (Curve)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Line",
+                "description": "Draw Using Line"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Curve",
+                "description": "Draw Using Curve"
+            }
+        ],
+        "isFreeHand": "1",
+        "Cat": ["attk"]
+    },
+    "00000007": {
+        "Class": "FreehandDottedArrow",
+        "Description": "",
+        "Name": "Freehand - Dotted Arrow",
+        "Parameters": [{
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Line) and 2 (Curve)",
+                "paramThumbnail": "",
+                "value": "DRAW_TYPE"
+            },
+            {
+                "Name": "Teeth Gap",
+                "default": "30",
+                "description": "Teeth Gap",
+                "paramThumbnail": "",
+                "value": "TEETH_GAP"
+            }
+        ],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Line",
+                "description": "Draw Using Line"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Curve",
+                "description": "Draw Using Curve"
+            }
+        ],
+        "isFreeHand": "1",
+        "Cat": ["attk"]
+    },
+    "00000008": {
+        "Class": "FreehandMainAttackArrow",
+        "Description": "",
+        "Name": "Freehand - Main Attk Like Arrow",
+        "Parameters": [{
+                "Name": "Arrowhead Ratio",
+                "default": "0.07",
+                "description": "Arrowhead Ratio",
+                "paramThumbnail": "",
+                "value": "HEAD_RATIO"
+            },
+            {
+                "Name": "Tail Ratio",
+                "default": "0.05",
+                "description": "Tail Ratio",
+                "paramThumbnail": "",
+                "value": "TAIL_FACTOR"
+            }
+        ],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "isFreeHand": "1",
+        "Cat": ["attk"]
+    },
+    "00000009": {
+        "Class": "FreehandSupportingAttack",
+        "Description": "",
+        "Name": "Freehand - Sp Attk Like Arrow",
+        "Parameters": [{
+                "Name": "Arrowhead Ratio",
+                "default": "0.07",
+                "description": "Arrowhead Ratio",
+                "paramThumbnail": "",
+                "value": "HEAD_RATIO"
+            },
+            {
+                "Name": "Tail Ratio",
+                "default": "0.05",
+                "description": "Tail Ratio",
+                "paramThumbnail": "",
+                "value": "TAIL_FACTOR"
+            }
+        ],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "isFreeHand": "1",
+        "Cat": ["attk"]
+    },
+    "00000010": {
+        "Class": "FreehandCloseSupportingAttack",
+        "Description": "",
+        "Name": "Freehand - Close Sp Attk Like Arrow",
+        "Parameters": [{
+                "Name": "Arrowhead Ratio",
+                "default": "0.07",
+                "description": "Arrowhead Ratio",
+                "paramThumbnail": "",
+                "value": "HEAD_RATIO"
+            },
+            {
+                "Name": "Tail Ratio",
+                "default": "0.05",
+                "description": "Tail Ratio",
+                "paramThumbnail": "",
+                "value": "TAIL_FACTOR"
+            }
+        ],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "isFreeHand": "1",
+        "Cat": ["attk"]
+    },
+    "00000110": {
+        "Class": "TacticalPointText",
+        "Description": "",
+        "Name": "Freehand - Text",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Thumbnail": "",
+        "Tools": [],
+        "isFreeHand": "1",
+        "Cat": ["attk", "def"]
+    },
+    "00000120": {
+        "Class": "FreehandAreaFilled",
+        "Description": "",
+        "Name": "Freehand - Area Filled",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Sharp Edged Polygon), 3 (Rectangle) and 4 (Circle or Ellipse)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            },
+            {
+                "DRAW_TYPE": "4",
+                "Name": "Circle or Ellipse",
+                "description": "Draw using Circle or Ellipse"
+            }
+        ],
+        "isFreeHand": "1"
+    },
+    "00000130": {
+        "Class": "FreehandSemiCircle",
+        "Description": "",
+        "Name": "Freehand - Semi Circle",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "isFreeHand": "1",
+        "Cat": ["attk", "def"]
+    },
+    "00000140": {
+        "Class": "FreehandSemiCircleFilled",
+        "Description": "",
+        "Name": "Freehand - Semi Circle Filled",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "isFreeHand": "1",
+        "Cat": ["attk", "def"]
+    },
+    "01110104": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Fixed-Wing - Fighter",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "01110200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Fixed-Wing - Rotary Wing",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "01110300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "UA/ UAV/ UAS/ RPV",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "01110301": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Quad-Copter",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110201": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Civil Gen Transport",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["log"]
+    },
+    "10110202": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Log",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["log"]
+    },
+    "10110203": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Eqpt - SATCOM",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110204": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Eqpt - PATCOM",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110205": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Eqpt - PASCOM",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110206": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Eqpt - DEFCOM",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110207": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Eqpt - Node Cen",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110208": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "National Guard",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110209": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Army Light Radio Group",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["comm"]
+    },
+    "10110210": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mujahid",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"]
+    },
+    "10110211": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Special Services Group",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110212": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Ordinance",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["log"]
+    },
+    "10110213": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Avn EME",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110214": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Army Medical Corps/ADS/FTC",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["log"]
+    },
+    "10110215": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Amb",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110216": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Loc Arty",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["arty"]
+    },
+    "10110217": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Multi-Barrel Rocket Launcher",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110218": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Multi Barrel Rocket Launcher (Self Propelled)",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110301": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Tashkeel",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+
+    "10150500": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Electronic Warfare (EW)",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["comm"]
+    },
+
+    "10150502": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "EW Direction Finding",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+     "10150200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "CI",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10150201": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "OSINT",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10150700": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Interrogation",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10120801": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Aviation Fixed Wing Reconnaissance",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+
+    "10120601": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Aviation Rotary Wing Reconnaissance",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10120700": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Composite Aviation (Fixed Wing and Rotary)",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110219": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Log Area ",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["log"]
+    },
+    "10110220": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Special Services Group Light Commnado",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110221": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "CID",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10110222": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Pakistan Rangers (Sind)",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["def"]
+    },
+    "10110223": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Eqpt - Data Cen",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10111000": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Sigs",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10111001": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Sig - Radio",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10111002": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Sig - Radio Relay",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10111003": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Sig - Teletype",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10111004": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Sig - Tactical Satellite",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10111300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Army Svc Corps",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10111200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Camera / Video Imagery",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10111201": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Ni Vision Camera",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "10111005": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Sig - Video Imagery (Combat Camera)",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "15150200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Train - Railcar",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "15190000": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Msl Sp",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "15200300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Booby Trap Eqpt",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "15200400": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "CBRN Eqpt",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "15210100": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Mine",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "15210200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Antipersonnel Land Mine (APL)",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["engr"]
+    },
+    "15210300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Anti Tank Mine",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "15210400": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "IED",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "15220300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Sensor Radar",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "15220301": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Arty Radar",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "25216600": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Antisubmarine Warfare (ASW) Unmanned Underwater Veh Surface Sta",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "25216700": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Mine Warfare Unmanned Underwater Veh Surface Sta",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "25217700": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Waypoint Route",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "25217800": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Clutter, Staary or Cease Reporting",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "25217900": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Tentative or Provisional Track",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "25218000": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Distressed Vessel",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "40180216": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "ASO",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    },
+    "40180217": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Curfew",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": []
+    }
+}

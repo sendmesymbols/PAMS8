@@ -1,0 +1,505 @@
+<!DOCTYPE html>  
+<html>  
+  <head>  
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">  
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">  
+    <title></title>  
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+    <style>  
+      html, body, #map {  
+        height: 100%; width: 100%; margin: 0; padding: 0;  
+      }  
+      #controls {  
+        background: #fff;  
+        box-shadow: 0 6px 6px -6px #999;  
+        color: #444;  
+        font-family: sans-serif;  
+        height: auto;  
+        left: 1em;  
+        padding: 1em;  
+        position: absolute;  
+        top: 1em;  
+        width: auto;  
+        z-index: 40;  
+      }  
+    </style>  
+      <script type="text/javascript">
+
+        
+        var dojoConfig = {
+            paths: { 
+              MilSymbologyExt: location.origin + "/" + "MilitarySymbology/Extensions",
+              MilSymbologyComponents: location.origin + "/" + "MilitarySymbology/Components",
+              MilSymbologySymbols: location.origin + "/" + "MilitarySymbology/Symbols",
+              MilSymbologySymbolsEngine: location.origin + "/" + "MilitarySymbology/Engines",
+              MilSymbologySymbolsData: location.origin + "/" + "MilitarySymbology/Data",
+              }
+            };
+
+
+     
+    </script>
+    
+    <script src="http://arb-pc2:9632/3.15/init.js"></script>
+    <script>  
+      var map;  
+  
+      require([  
+        "esri/map", "esri/geometry/Polyline", "esri/symbols/SimpleLineSymbol",  
+        "esri/layers/ArcGISTiledMapServiceLayer",
+        "esri/graphic", "esri/layers/GraphicsLayer",  
+        "dojo/dom", "dojo/dom-attr",   "esri/geometry/Point","esri/symbols/SimpleMarkerSymbol",
+         "MilSymbologyExt/GeoTools",
+        "dojo/domReady!"  
+      ], function(  
+        Map, Polyline, SimpleLineSymbol,  
+        ArcGISTiledMapServiceLayer, Graphic, GraphicsLayer,  
+        dom, domAttr, Point, SimpleMarkerSymbol, GeoTools  
+      ) {  
+        map = new Map("map");  
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.35.65:8399/arcgis/rest/services/MapVector/MapServer");
+         map.addLayer(tiled);
+
+        var symbol = new SimpleLineSymbol().setColor("blue");  
+        var gl = new GraphicsLayer({ id: "Polylines" });  
+        map.addLayer(gl); 
+
+         function displayPoint(map, pt) {
+          var _markerSymbol = new SimpleMarkerSymbol();
+          map.graphics.add(new Graphic(new Point(pt.x, pt.y, map.spatialReference), _markerSymbol));
+
+        } 
+
+       
+
+        map.on("click", function(e) {  
+          //var line = new Polyline([[[33, 70], [74, 33], [-130, 0]],[[-50, -2], [-120, -22], [-130, -2]]]);  
+          var line = new Polyline();  
+          var _markerSymbol = new SimpleMarkerSymbol();
+          line.addPath(createG(e.mapPoint.x, e.mapPoint.y, 2, map.spatialReference));
+          var graphic = new Graphic(line, symbol);  
+          gl.add(graphic);  
+
+          console.log('----');
+
+          //First Point 
+          var _markerSymbol = new SimpleMarkerSymbol();
+          gl.add(new Graphic(line.getPoint(0,0), _markerSymbol));
+
+
+          var _markerSymbol = new SimpleMarkerSymbol();
+
+          var lastIdx = line.paths[0].length - 1;  
+          var lastPnt = line.getPoint(0, lastIdx);
+
+          gl.add(new Graphic(lastPnt, _markerSymbol));
+
+
+
+
+          // GetMid Point
+        var path = [];
+        var result = new Polyline(map.spatialReference);
+        path = path.concat(line.getPoint(0,0), lastPnt);
+        result.addPath(path);
+        var mp = result.getExtent().getCenter();
+        //Display Mp
+        var _markerSymbol = new SimpleMarkerSymbol();
+        gl.add(new Graphic(mp, _markerSymbol));
+
+        var sp = map.spatialReference;
+        var dr = 2;
+
+        gl.add(new Graphic(new Point(mp.x-(dr*0.5), mp.y, sp), _markerSymbol));
+        //Create Dashes
+        var f = line.getPoint(0,0);
+        var l = lastPnt;
+
+
+        //console.log(createDash(f.x, f.y, l.x, l.y, [10 ,0.2] ));
+
+        var p = new Polyline(map.spatialReference);
+        var r = [];
+
+   
+
+
+        //r = createDash(f.x, f.y, l.x, l.y, [0.1 ,0.1] );
+        p.addPath(r);
+
+        var graphic = new Graphic(p, symbol);  
+        gl.add(graphic); 
+
+        for (var i = 0; i < r.length; i++) {
+          var _markerSymbol = new SimpleMarkerSymbol();
+          //gl.add(new Graphic(r[i] , _markerSymbol));
+
+        }
+
+        //End of Dashed
+
+        //Dash from polyline
+        /*
+         var p = new Polyline(map.spatialReference);
+         var toBeDashedPts = [f, l, new Point(mp.x-(dr*0.5), mp.y, sp), new Point(70, 33)];
+         p.addPath(toBeDashedPts);
+
+         var graphic = new Graphic(p, symbol);  
+         gl.add(graphic); 
+
+
+          
+
+         //Task
+          var p1, p2, r;
+          var p = new Polyline(map.spatialReference);
+          console.log(toBeDashedPts.length);
+
+          var result = new Polyline();
+          var result = getDashPts(toBeDashedPts, [0.1 ,0.1]);
+          var _markerSymbol = new SimpleMarkerSymbol();
+          for (var i = 0; i < result.length; i++) {
+          gl.add(new Graphic(result[i] , _markerSymbol));
+            
+          }
+          */
+
+
+
+         //Write PL
+         /*
+		var p1 = new Point(70, 34);
+		var p2 = new Point(74, 35);
+        gl.add(new Graphic(p1, _markerSymbol));
+        gl.add(new Graphic(p2, _markerSymbol));
+
+        var result = new Polyline();
+
+        var len = GeoTools._2PtLen(p1, p2) / 20;
+        var k = GeoTools.angleInRadians(p1, p2);
+        var pt1 = { x: -1 * len * Math.cos(k) + p1.x, y: -1 * len * Math.sin(k) + p1.y };
+        
+       	console.log(len);
+        
+        var paths = createPL(pt1.x, pt1.y, len / 2, map.spatialReference);
+        for (var i = 0; i < paths.length; i++) {
+        	result.addPath(paths[i]);
+        }
+
+        var graphic = new Graphic(result, symbol);  
+        gl.add(graphic);
+
+
+        //P2
+
+        var result = new Polyline();
+
+        
+        
+        var pt2 = { x: len * Math.cos(k) + p2.x, y: len * Math.sin(k) + p2.y };
+        
+       	var paths = createPL(pt2.x, pt2.y, len / 2, map.spatialReference);
+        for (var i = 0; i < paths.length; i++) {
+        	result.addPath(paths[i]);
+        }
+
+        var graphic = new Graphic(result, symbol);  
+        gl.add(graphic);
+        */
+
+        //End of PL
+
+        //FLOT
+
+
+
+        /*
+          var p = new Polyline(map.spatialReference);
+         var toBeDashedPts = [new Point(70, 30), new Point(72, 32), new Point(74, 34)];
+         p.addPath(toBeDashedPts);
+
+         var graphic = new Graphic(p, symbol);  
+         gl.add(graphic); 
+
+          
+
+         //Task
+          var p1, p2, r;
+          var p = new Polyline(map.spatialReference);
+          console.log(toBeDashedPts.length);
+
+          var result = new Polyline();
+          var result = getDashPts(toBeDashedPts, [0.1 ,0.1]);
+          var _markerSymbol = new SimpleMarkerSymbol();
+          for (var i = 0; i < result.length; i++) {
+          	var paths = GeoTools.createHalfCircle(result[i], 3, 80, 190, 30);
+          	p.addPath(paths);
+          	 //var graphic = new Graphic(p, symbol);  
+        	// gl.add(graphic); 
+          	
+            
+          }
+
+
+          var p1 = new Point(70, 30);
+          var p2 = new Point(72, 32);
+          var p3 = new Point(74, 34);
+
+           gl.add(new Graphic(p1 , _markerSymbol));
+           gl.add(new Graphic(p2 , _markerSymbol));
+           gl.add(new Graphic(p3 , _markerSymbol));
+
+          var p = new Polyline();
+          var paths = createHalfCircle(p1, 1.4);
+          p.addPath(paths);
+          var graphic = new Graphic(p, symbol);  
+          gl.add(graphic); 
+
+
+
+          var p = new Polyline();
+          var paths = createHalfCircle(p2, 1.4);
+          p.addPath(paths);
+          var graphic = new Graphic(p, symbol);  
+          gl.add(graphic); 
+
+
+
+
+        	function createHalfCircle(pt, radius) {
+         
+            var pts = [];
+            var steps = 30;
+            steps = 2 * Math.PI / steps;
+            var xh = pt.x; 
+            var yk = pt.y;
+            var r = radius;
+
+           for(var theta = GeoTools.toRad(135);  theta < GeoTools.toRad(320);  theta += steps)  { 
+              var x = xh + r * Math.cos(theta);
+              var y = yk - r * Math.sin(theta);    
+              pts.push(new Point(x,y, pt.spatialReference));
+            }
+           return pts;
+        }
+
+        */
+
+        //END OF FLOT
+
+
+        //FLOT 2
+        var p = new Polyline(map.spatialReference);
+        var paths = [];
+        
+        paths = createArc(line.getPoint(0,0), lastPnt, e.mapPoint, 5);
+
+        
+        p.addPath(paths);
+        gl.add(new Graphic(p, symbol));  
+         
+
+        //End of FLOT 2
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        function createArc (startPt, endPt, bPt, radius) {
+        	var pts  = [];
+        	var startX=startPt.x;
+			var startY=startPt.y;
+			 
+			var endX=endPt.x;
+			var endY=endPt.y;
+			 
+			var bezierX= bPt.x;
+			var bezierY= bPt.y;
+		/*
+			for(var t = 0.0; t <= 1; t += 0.1) {
+			    var x = ((1-t)*(1-t)*startX + 2 *(1-t)*t*bezierX+t*t*endX);
+				var y = ((1-t)*(1-t)*startY + 2 *(1-t)*t*bezierY+t*t*endY);
+			    pts.push(new Point(x, y, startPt.spatialReference));
+  			}
+		*/
+
+
+			var angle = Math.atan2(startPt.y, startPt.x) - Math.atan2(bPt.y, bPt.x);
+			angle = angle * 360 / (2*Math.PI);
+			if (angle < 0) {
+    		angle = angle + 360;
+			}
+
+
+			console.log(angle)
+
+
+
+
+
+
+			var deg_to_rads = 0.0174532925;
+			var degree;
+  			for(var  ctr=180;ctr<270;ctr++) {
+	      		 degree=ctr*deg_to_rads;
+	  			 pts.push(new Point(bPt.x+(radius*Math.sin(degree)), bPt.y-(radius*Math.cos(degree))));
+	  			}
+		
+  			return pts;
+        }
+
+      function createPL (dx, dy, dr, sp) {
+      var pts = [];
+      pts = createDD(dx,dy+(dr/2),dr/2,sp);
+      pts.push(new Point(dx-((dr/2)/3), dy, sp));
+      pts.push(new Point(dx-((dr/2)/3), dy-dr, sp));
+
+      
+      return [pts, createL(dx+(dr*0.7), dy, dr, sp)];
+    	}
+
+
+    function createL (dx, dy, dr, sp) {
+      var pts = [];
+      pts.push(new Point(dx, dy-dr, sp));     
+      pts.push(new Point(dx, dy+dr, sp));
+
+      pts.push(new Point(dx, dy-dr, sp));
+      pts.push(new Point(dx+dr, dy-dr, sp));
+
+      return pts;
+    }
+
+
+     function createDD(dx, dy, dr, sp) {
+      var pts = [];
+      var step = 2*Math.PI / 180;
+
+      
+      pts.push(new Point(dx-(dr/3), dy+dr, sp));
+      pts.push(new Point(dx, dy+dr, sp));     
+      
+      for(var dtheta = 270*Math.PI/180;  dtheta < 360*Math.PI/180;  dtheta+=step)  { 
+        var x = dx + dr*Math.cos(dtheta);
+        var y = dy - dr*Math.sin(dtheta);   
+        pts.push(new Point(x,y,sp));
+      }     
+      
+      for(var dtheta = 0*Math.PI/180;  dtheta < 91*Math.PI/180;  dtheta+=step)  { 
+        var x = dx + dr*Math.cos(dtheta);
+        var y = dy - dr*Math.sin(dtheta);    
+        pts.push(new Point(x,y,sp));
+      }
+      
+      
+      pts.push(new Point(dx-(dr/3), dy-dr, sp));
+      pts.push(new Point(dx, dy-dr, sp));
+          
+      
+      pts.push(new Point(dx-(dr/3), dy-dr, sp));
+      pts.push(new Point(dx-(dr/3), dy+dr, sp));
+      
+      return pts;
+    }
+  
+
+
+
+
+
+         //End of Write PL
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          console.log('----');
+
+          function getDashPts(pts,dashArray) {
+            var result = []; 
+
+            for (var j = 0; j < pts.length; j++) {
+                p1 = pts[j];
+              if(pts[j+1] != undefined) {
+                p2 = pts[j+1];
+                 result = result.concat(dashes(p1.x, p1.y, p2.x, p2.y, dashArray ));
+
+                }
+             }
+
+
+            return result;
+            
+          }
+
+            function dashes(x,y,x2,y2,dashArray) {
+            var x,y;
+            var points = [];
+
+              if (!dashArray) dashArray=[10,5];
+              if (dashLength===0) dashLength = 0.001; // Hack for Safari
+              var dashCount = dashArray.length;
+              points.push(new Point(x, y));
+              var dx = (x2-x), dy = (y2-y);
+              var slope = dx ? dy/dx : 1e15;
+              var distRemaining = Math.sqrt( dx*dx + dy*dy );
+              var dashIndex=0, draw=true;
+              while (distRemaining>=0.1){
+                var dashLength = dashArray[dashIndex++%dashCount];
+                if (dashLength > distRemaining) dashLength = distRemaining;
+                var xStep = Math.sqrt( dashLength*dashLength / (1 + slope*slope) );
+                if (dx<0) xStep = -xStep;
+                x += xStep;
+                y += slope*xStep;
+                points.push(new Point(x, y));
+                distRemaining -= dashLength;
+                draw = !draw;
+              }
+              return points;
+            }
+
+
+
+
+           function createG (dx, dy, dr, sp) {
+           var pts = [];
+          var step = 2*Math.PI / 180;
+           for(var dtheta = 65*Math.PI/180;  dtheta < 295*Math.PI/180;  dtheta+=step)  { 
+            var x = dx + dr*Math.cos(dtheta);
+            var y = dy - dr*Math.sin(dtheta);   
+            pts.push(new Point(x,y,sp));
+          }
+          return pts;    
+        }
+
+
+
+
+        });  
+      });  
+    </script>  
+  </head>  
+  <body>  
+    <div id="map"></div>  
+  </body>  
+</html> 

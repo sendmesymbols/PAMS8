@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title></title>
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+   <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+    <style>
+        html, body, #map {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #controls {
+            background: #fff;
+            box-shadow: 0 6px 6px -6px #999;
+            color: #444;
+            font-family: sans-serif;
+            height: auto;
+            left: 1em;
+            padding: 1em;
+            position: absolute;
+            top: 1em;
+            width: auto;
+            z-index: 40;
+        }
+    </style>
+
+    <script src="http://arb-pc2:9632/3.15/init.js"></script>
+    <script>
+
+      var map;
+
+      require([
+        "esri/map", "esri/geometry/Polyline", "esri/symbols/SimpleLineSymbol", "esri/geometry/Point",
+
+        "esri/graphic", "esri/layers/GraphicsLayer",  "esri/layers/ArcGISTiledMapServiceLayer",
+        "dojo/dom", "dojo/dom-attr", "dojo/domReady!"
+      ], function(
+        Map, Polyline, SimpleLineSymbol, Point,
+        Graphic, GraphicsLayer, ArcGISTiledMapServiceLayer,
+        dom, domAttr
+      ) {
+        map = new Map("map");
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.35.65:8399/arcgis/rest/services/MapVector/MapServer");
+         map.addLayer(tiled);
+
+
+        var gl = new GraphicsLayer({ id: "Polylines" });
+        map.addLayer(gl);
+
+        
+
+        
+         map.on("load", function () {
+
+          function createG(dx, dy, dr, sp) {
+           var pts = [];
+          var step = 2*Math.PI / 180;
+           for(var dtheta = 65*Math.PI/180;  dtheta < 295*Math.PI/180;  dtheta+=step)  { 
+            var x = dx + dr*Math.cos(dtheta);
+            var y = dy - dr*Math.sin(dtheta);   
+             pts.push(new Point(x,y,sp));
+          }
+          
+          
+          return pts;    
+        }
+
+
+          
+           var symbol = new SimpleLineSymbol().setColor("blue");
+        map.on("click", function(e) {
+          debugger;
+          var line = new Polyline([
+          [34.6643, 74], [32.6962, 73]
+
+           ]);
+          
+          var graphic = new Graphic(line, symbol);
+          gl.add(graphic);
+          var p = new Point(graphic.geometry.paths[0][0][0], graphic.geometry.paths[0][0][1], map.spatialReference);
+          
+
+        });
+
+
+         });
+
+
+       
+
+       
+      });
+    </script>
+</head>
+<body>
+    <div id="map"></div>
+</body>
+</html>

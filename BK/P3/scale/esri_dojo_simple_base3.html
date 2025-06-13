@@ -1,0 +1,52 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+  <title>Basemap Toggle</title>
+  <link rel="stylesheet" type="text/css" href="http://js.arcgis.com/3.9/js/esri/css/esri.css">
+  <style>
+    html, body, #map {
+      padding:0;
+      margin:0;
+      height:100%;
+    }
+    #BasemapToggle {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 50;
+    }
+  </style>
+  <script src="//js.arcgis.com/3.9/"></script>
+  <script>
+    require([
+      "esri/map", 
+      "dojo/domReady!"
+    ], function(
+      Map
+    )  {
+
+      var map = new Map("map", {
+        zoom: 5,
+        logo:false 
+      });
+
+      var basemap_tile_service = "http://gis.measuredhs.com/arcgis/rest/services/production/MeasureDHS_PlainBaseTiles/MapServer";
+      var tiles_layer = new esri.layers.ArcGISTiledMapServiceLayer(basemap_tile_service);
+                tiles_layer.setOpacity(0.4);
+                map.addLayer(tiles_layer);
+
+      var tiles_layer = new esri.layers.ArcGISTiledMapServiceLayer("http://services.arcgisonline.com/arcgis/rest/services/Reference/World_Boundaries_and_Places/MapServer");
+                tiles_layer.setOpacity(1);
+                map.addLayer(tiles_layer);
+
+    });
+  </script>
+</head>
+<body>
+  <div id="map" class="map">
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,460 @@
+/* ----------------------------------------------------
+
+  Esri JIVE / GeoNet Community                                                        
+
+  Updated on: 2/26/2015                   
+  Used on https://geonet.esri.com                
+  
+ --------------------------------------------------- */ 
+
+
+/*-------------------------------------------------- */
+/* Esri Mega Menu */
+/*-------------------------------------------------- */
+#buildMegaMenu { height:85px; }
+#buildMegaMenu button {padding:0px !important;
+	-moz-box-shadow: 0 0px 0px rgba(0,0,0,.0) !important;
+}
+#megamenu-search-form button  {
+	border:none !important;
+	box-shadow: 0 0 0 rgba(0,0,0,.0) !important;
+	margin: 0 0 0 0 !important;
+}
+#header-search #submit {
+	background-color: transparent !important;
+	background-image: url('https://webapps-cdn.esri.com/Apps/MegaMenu/img/mega-menu-search-btn.png') !important;
+	height: 15px !important;
+	width: 16px !important;
+	margin: 5px !important;
+}
+
+/* Fixes for Login */
+.dropdown-wrapper a.dropdown {
+  padding: 0 0 0 5px !important;
+  text-decoration: none !important;
+}
+.dropdown-wrapper .dropdown {
+  border: none !important;
+}
+.dropdown-wrapper .dropdown:after {
+  display: none !important;
+  /* top: 1.30em !important; */
+}
+
+
+#jive-nav-link-apps{ display: none; }
+
+
+/*-------------------------------------------------- */
+/* Jive Banner Help Icon */
+/*-------------------------------------------------- */
+.esri-help-icon {
+  color: #b9e0f7 !important;
+  display: block;
+  font-family: 'Helvetica', 'Arial', san-serif;
+  font-size: 14px;
+  text-indent: -9999px;
+	float: right;
+	line-height: 2;
+	position: relative;
+  top: 10px;	
+	text-decoration: none;
+	-webkit-font-smoothing: antialiased;
+	overflow: hidden;
+	width: 122px;
+}
+.esri-help-icon:hover {
+	text-decoration: none;
+	text-indent: 0;
+}
+.esri-help-icon span {
+  background: url('https://geonet.esri.com/resources/statics/1000/help_sprite.png');
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  display: block;
+	float: right;
+	/* margin-left: 8px; */
+	text-indent: -9999px;
+  height: 32px;
+  width: 32px;
+}
+.esri-help-icon:hover span {
+	background-position: -43px 0;
+	text-indent: 0;
+}
+
+
+/*-------------------------------------------------- */
+/* Jive Header */
+/*-------------------------------------------------- */
+#j-compact-header {
+	background: transparent !important;
+	z-index: 1 !important;
+}
+#j-globalNav-bg {
+	background: #FFF;
+	background: rgba(255, 255, 255, .0) !important;
+	margin: 0 auto !important;
+	position: relative !important;
+	top: -44px !important;
+	/*width: 940px !important;*/
+	width: 960px !important;
+}
+
+@media screen and (max-width: 640px) {
+  #j-globalNav-bg {
+    width: 100% !important;
+  }
+}
+
+/*-------------------------------------------------- */
+/* Jive Navigation */
+/*-------------------------------------------------- */
+#j-globalNav li.j-globalNav-li.active a,
+#j-globalNav li.j-globalNav-li.active a.j-globalNavLink:hover  {
+	color: #fff !important; /* Question */
+}
+li.j-globalNav-li {
+	height: 44px !important;
+}
+.j-globalNav li.j-globalNav-li {
+	background: transparent !important;
+	line-height: 28px !important;
+  /* height: 44px !important; */
+}
+li.j-globalNav-li.active {
+	background: #007ac2 !important;
+}
+.j-globalNavLink {}
+.j-globalNavLink:hover {
+	color: #007ac2 !important;
+}
+
+#j-globalNav li.j-globalNav-li:first-child {
+  margin: 0 !important;
+}
+
+ul.j-globalNav a:active, 
+ul.j-globalNav a.active,
+/* a.j-globalNavLink:hover, */
+a.j-globalNavLink:focus {
+	background:none !important;
+}
+
+.j-create-icon {
+	top: 8px !important;
+}
+
+#navCreate:active, #navCreate:focus, #j-satNav:active, #j-satNav:focus {
+	background: #DDD !important;
+	height: 44px !important;
+}
+ul .j-nav-create .j-globalNavLink:active span.nav-link, 
+ul .j-nav-create .j-globalNavLink.active span.nav-link {
+	background: none !important;
+}
+
+
+@media screen and (max-width: 640px) {
+  
+}
+
+
+/*-------------------------------------------------- */
+/* Jive Search  -  BIG SEARCH*/
+/*-------------------------------------------------- */
+@media screen and (min-width: 641px) {
+  .j-body-welcome #j-spotlight-search {
+    float: none;
+    display: inline-block;
+    position: absolute;
+    left: inherit;
+    top: 60px;
+    right: 0;
+    height: auto;
+    width: 960px;
+  }
+  
+  .j-body-welcome #j-spotlight-search input {
+    background-image: none;
+    border: 2px solid #CBCBCB;
+    color: #CBCBCB;
+    -webkit-border-radius: 3px;
+    -moz-border-radius: 3px;
+    -o-border-radius: 3px;
+    border-radius: 3px;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -o-box-sizing: border-box;
+    box-sizing: border-box;  
+    font-family: 'Avenir LT W01 35 Light', Arial, Helvetica, sans-serif;
+    font-size: 18px;
+    -webkit-font-smoothing
+    font-weight: normal;
+    padding: 7px 10px 5px 10px;
+    height: 38px;
+    width: 100%;
+  }
+  .j-body-welcome #j-spotlight-search input::-ms-clear {
+    display: none;
+  }
+  .j-body-welcome #j-spotlight-search input:hover {
+    border-color: #90CDF2;
+  }
+  .j-body-welcome #j-spotlight-search input:focus {
+    border-color: #007AC2;
+  }
+  
+  .j-body-welcome #j-spotlight-search.focused input {
+    /* background-position: -226px -2120px; */
+    color: #007AC2;
+  }
+  /*
+  .j-body-welcome #j-spotlight-search .jive-glyph-delete {
+    top: 16%;
+  }
+  */
+  .j-body-welcome #j-spotlight-search .jive-glyph-delete {
+    top: 33%;
+    right: 1%;
+  }
+  
+  .j-body-welcome .j-search-left {
+    position: absolute;
+    background-image: none;
+  }
+  .j-body-welcome .j-search-right {
+    /* background: none; */
+    background: url('Search_32_Gray.png');
+    background-size: contain;
+    color: #CBCBCB;
+    height: 25px;
+    width: 25px;
+    position: absolute;
+    top: 6px;
+    right: 25px;
+    z-index: 100;
+  }
+  .j-body-welcome #j-spotlight-search.focused .j-search-right,
+  .j-body-welcome .j-search-right:hover {
+    color: #007AC2;
+    background-image: url('Search_32_Blue.png');
+  }
+
+  .j-tileModal-search:after, 
+  #j-spotlight-search:not(.mobile-active):after {
+    content: '';
+  }
+  
+  #j-spotlight-search .j-pop {
+    top: 45px !important;
+  }
+  
+}
+
+/* Search RESET for Mobile */
+@media only screen and (max-width: 40em) {
+  
+/*
+  .j-body-welcome #j-spotlight-search {
+    display: none;
+    position: absolute;
+    z-index: 6;
+    float: none;
+    width: 100%;
+    padding: 0 10px;
+    top: 52px;
+    height: 52px;
+    background: white;
+    border-top: 1px rgba(0,0,0,0.15) solid;
+    left: 0;
+  }
+  .j-body-welcome #j-spotlight-search input {
+    display: block;
+    font-size: 14px;
+    background: #EEE;
+    padding: 6px 8px 6px 23px;
+    border-radius: 4px;
+    width: 70%;
+    line-height: normal;
+  }
+*/
+}
+
+
+
+/*-------------------------------------------------- */
+/* Space page design */
+/*-------------------------------------------------- */
+#jive-nav-link-help,
+#navLogin,
+.j-footer-nav,
+#j-pbj-act,
+.gutterButton.appButton {
+	display: none !important;
+}
+
+
+/*-------------------------------------------------- */
+/* Jive Body Content - Header */
+/*-------------------------------------------------- */
+#j-globalNav-bg, 
+#j-main, 
+.j-body-place #j-main #jive-alert, 
+.j-body-place #j-main .j-layout, 
+#j-footer-wrap { 
+  max-width: 980px;
+}
+.j-body-home .j-contained.j-home-welcome {
+  margin: 0;
+}
+.j-contained #jive-widget-container {
+  padding: 20px 0;
+}
+
+
+#j-main {
+  padding-top: 0;
+  z-index: 0; /* Fixing Jive Issue with menus and the body element */
+}
+
+.j-body-place #jive-body .j-page-header {
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover;
+  padding: 0 0 0 20px !important;
+}
+.j-placeHeaderWrap #jive-breadcrumb {
+  padding-top: 20px;
+}
+
+.j-page-header .j-placeHdImg {
+	display: none !important;
+}
+
+
+
+
+
+/*-------------------------------------------------- */
+/* Space page design */
+/*-------------------------------------------------- */
+#jive-widgetframe_2720 {
+	margin-bottom: 0px !important;
+}
+
+#jive-widgetframe-body_2720 {
+	padding-top: 0px !important;
+	padding-bottom: 0px !important;
+}
+
+.j-placeLinks a {
+	text-shadow: none !important;
+}
+
+.j-status-input-cancel, 
+.j-panel-hide-rte-link {
+	background: none !important; 
+	box-shadow: none !important; 
+	border: none !important; 
+}
+
+
+@media only screen and (max-width: 40em) {
+/*
+  #esri-header {
+    display: none !important;
+  }
+*/
+
+  #j-globalNav-bg {
+    background: #324251 !important;
+  }
+
+  #j-globalNav > li.active.j-globalNav-li.mobile-active a.j-globalNavLink {
+    /* background: #007ac2 !important; */
+    background: #324251 !important;
+  }
+  
+  .j-body-place #jive-body .j-page-header {
+    -webkit-background-size: none;
+    -moz-background-size: none;
+    -o-background-size: none;
+    background-size: none;
+  }
+  
+/*
+  .j-body-home #j-cust-head {
+    display: block !important;
+  }
+*/
+  .j-body-inbox #j-cust-head {
+    display: none !important;
+  }
+  
+  
+  #buildMegaMenu,
+  #mmHeader,
+  #mega-menu,
+  #j-cust-head #e-nav-background {
+    display: none !important;
+  }  
+  #esri-header,
+  #e-header {
+    background: none !important;
+    height: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  #j-globalNav-bg {
+    top: 0 !important;
+  }
+
+  ul.j-globalNav a:active, 
+  ul.j-globalNav a.active,
+  /* a.j-globalNavLink:hover, */
+  a.j-globalNavLink:focus {
+  	background: #FFF !important;
+  }
+
+  #j-globalNav #mobile-menu > a {
+    background: rgba(0,0,0,0.15) !important;
+  }
+
+  #e-header #esri-title {
+    position: absolute;
+    top: 90px;
+    left: 10px;
+    height: 0 !important;
+  }
+  #e-header #esri-sub-heading {
+    position: absolute;
+    top: 145px;
+    left: 10px;
+    height: 0 !important;
+  }
+  #e-header .esri-help-icon {
+    display: none;
+  }
+
+
+  .j-page-header .j-placeTitle {
+    bottom: auto !important;
+    top: 45px !important;
+  }
+  
+  /* Temporary Fix for Alerts */
+  .j-body-home .j-contained #jive-alert {
+    position: absolute;
+    top: 133px;
+  }
+  
+}
+
+
+@media screen and (max-width: 800px) {
+  .fatFooter {
+    display: none;
+  }
+}

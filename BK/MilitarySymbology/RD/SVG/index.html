@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width,user-scalable=no">
+
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+  <title>Plot SVG</title>
+
+  <link rel="stylesheet" href="http://devbox:9632/3.15/dijit/themes/nihilo/nihilo.css">
+  <link rel="stylesheet" href="http://devbox:9632/3.15/esri/css/esri.css">
+
+
+  <style>
+    html,
+    body,
+    html,
+    body,
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+
+  <script src="../../ThirdParty/turf.min.js"></script>
+  <script src="http://devbox:9632/3.15/init.js"></script>
+
+  <script>
+
+
+    require([
+      "esri/map",
+      "esri/toolbars/draw",
+      "esri/graphic",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/geometry/Circle",
+      "esri/symbols/Font",
+
+
+
+      "esri/geometry/Point",
+      "esri/geometry/Polyline",
+      "esri/geometry/Polygon",
+      "esri/symbols/TextSymbol",
+
+      "dojo/parser",
+      "dijit/registry",
+      "dojo/_base/event",
+      "dojo/dom",
+      "dojo/dom-style",
+      "dijit/Menu",
+      "esri/layers/GraphicsLayer",
+      "esri/layers/ArcGISTiledMapServiceLayer",
+
+      "esri/symbols/PictureMarkerSymbol",
+      "esri/Color",
+      "dojo/on",
+      "dijit/Menu",
+      "dijit/MenuItem",
+      "dijit/MenuSeparator",
+      "dojo/parser",
+      "dojox/gfx/matrix",
+      "dojo/_base/array",
+      "esri/geometry/jsonUtils",
+
+
+      "esri/layers/ArcGISDynamicMapServiceLayer",
+      'esri/geometry/geometryEngine',
+      "esri/layers/LabelClass",
+      "esri/layers/LabelLayer",
+      "esri/toolbars/draw",
+
+
+
+
+      "dojo/domReady!"
+    ], function (
+      Map, Draw, Graphic,
+      SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, Circle, Font,
+      Point, Polyline, Polygon,
+      TextSymbol, parser, registry, event, dom, domStyle, Menu, GraphicsLayer, ArcGISTiledMapServiceLayer,
+      PictureMarkerSymbol, Color, on, Menu, MenuItem, MenuSeparator, parser, matrix, Array,
+      geometryJsonUtils, ArcGISDynamicMapServiceLayer, geometryEngine, LabelClass, LabelLayer, Draw
+
+    ) {
+
+
+
+        var graphicsLayer, toolbar;
+
+
+        map = new Map("map");
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.24:6080/arcgis/rest/services/MapData/MapServer");
+        map.addLayer(tiled);
+        map.on("load", function () {
+          graphicsLayer = new GraphicsLayer();
+          map.addLayer(graphicsLayer);
+
+
+          //SVG Code
+
+
+              createSymbol("mosque", 10, symResult);
+              function symResult(rawData) {              
+                var pictSym = new PictureMarkerSymbol(rawData, 50, 50);
+                var graphic = new Graphic(new Point(73, 33), pictSym);
+                graphicsLayer.add(graphic);
+              }
+              
+          
+          //End of SVG Code
+
+
+
+
+
+
+
+
+
+          /*
+          drawRandomPoints(400, [30, 70, 30.5, 70.5]);
+          drawRandomPoints(400, [30.5, 70.5, 31, 71]);
+          drawRandomPoints(400, [31, 71, 31.5, 71.5]);
+          drawRandomPoints(400, [31.5, 71.5, 32, 72]);
+          */
+
+
+          var el = document.getElementById("activateId");
+          el.addEventListener("click", activateTool);
+
+
+
+
+        });
+
+        function activateTool(ev) {
+          toolbar = new Draw(map);
+          toolbar.activate(Draw.CIRCLE);
+          toolbar.on("draw-end", activateEnd);
+        }
+
+        function activateEnd(evt) {
+          var graphic = new Graphic(evt.geometry, new SimpleLineSymbol());
+          map.graphics.add(graphic);
+          toolbar.deactivate();
+
+          var selGraphics = [];
+          for (var i = 0; i < graphicsLayer.graphics.length; i++) {
+            if (geometryEngine.contains(evt.geometry, graphicsLayer.graphics[i].geometry)) {
+              graphicsLayer.graphics[i].symbol = new SimpleMarkerSymbol(SimpleMarkerSymbol.STYLE_DIAMOND);
+              selGraphics.push(graphicsLayer.graphics[i]);
+            }
+
+
+          }
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+        map.on("click", function () {
+
+        });
+        
+        function createSymbol(code, percentage, callback) {
+          var xht = new XMLHttpRequest();
+          xht.onreadystatechange = function (param) {
+            if (this.readyState == 4 && this.status == 200) {            
+                var clr = "#f0dd0d";
+               if(percentage <= 10) {
+                    clr = "#FF0000";
+                  console.log("Color Red");
+               } else if(percentage > 10 && percentage < 90) {
+                console.log("Yellow");
+                  clr = "#f0dd0d";
+               } else if(percentage >= 90 && percentage <= 100 ) {
+                clr = "#00FF00";
+                console.log("Green")
+               } else {
+                //console.log("Color is Orange")
+               }
+
+
+               var paths = this.responseXML.getElementsByTagName("path");
+               for(var i = 0; i < paths.length; i++) {
+                  paths[i].setAttribute("stroke", clr);
+                  paths[i].setAttribute("fill", clr);
+                }
+
+
+               //callback("data:image/svg+xml;base64," + btoa(this.response));             
+               callback("data:image/svg+xml;base64," + btoa(new XMLSerializer().serializeToString(this.responseXML)));
+            } else if(this.status === 404) {
+              return false;
+            }
+          }
+          xht.open("GET", window.location.href + code+".svg", true);
+          xht.setRequestHeader("Allow-Access-Origin", "*");
+          xht.setRequestHeader("Content-Type", "application/xml; charset=utf-8")
+          xht.setRequestHeader("Accept", "image/webp,image/apng,image/*,*/*;q=0.8");
+          xht.send();
+          
+        }
+
+
+
+        
+
+        
+
+
+      });
+  </script>
+</head>
+
+<body class="nihilo">
+  <input type="button" id="activateId" value="Activate">
+  <div id="map">
+
+  </div>
+</body>
+
+</html>

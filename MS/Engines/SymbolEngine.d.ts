@@ -1,0 +1,43 @@
+import Graphic from "@arcgis/core/Graphic";
+import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
+import PictureMarkerSymbol from "@arcgis/core/symbols/PictureMarkerSymbol";
+import View from "@arcgis/core/views/View";
+import MapView from "@arcgis/core/views/MapView";
+import SceneView from "@arcgis/core/views/SceneView";
+import GraphicsLayerManager from "../Managers/GraphicsLayerManager";
+import type { SymbolOptions } from '../ThirdParty/MilSymbols/UEITypes.ts';
+import { ParsedSIDC } from '../SIDC/SIDC';
+declare class SymbolEngine {
+    private _layerManager;
+    private symbolCache;
+    constructor(view: MapView | SceneView);
+    get layerManager(): GraphicsLayerManager;
+    set layerManager(value: GraphicsLayerManager);
+    createPointSymbol(color?: string, size?: number): SimpleMarkerSymbol;
+    enrichSymbolOptions(options: SymbolOptions): SymbolOptions & {
+        parsedSIDC?: ParsedSIDC;
+        label?: string;
+        text?: string;
+    };
+    createLineSymbol(color?: string, width?: number): SimpleLineSymbol;
+    createFillSymbol(color?: string, outlineColor?: string, outlineWidth?: number): SimpleFillSymbol;
+    createPictureMarkerSymbol(url: string, width: number, height: number): PictureMarkerSymbol;
+    addPointToLayer(geometry: __esri.Point): void;
+    addPictureMarkerAtCenter(url: string, width: number | undefined, height: number | undefined, view: MapView | SceneView): void;
+    drawMilSymbolInteractively(options: SymbolOptions, view: MapView | SceneView): void;
+    private addMilSymbolFor2D;
+    addMilSymbolAtPoint(point: __esri.Point, options: SymbolOptions): void;
+    addMilSymbolAtCenter(options: SymbolOptions, view: MapView | SceneView): void;
+    protected svgToDataURL(svg: string): string;
+    protected addMilSymbolFor3D(geometry: __esri.Point, options: SymbolOptions): void;
+    private addPictureMarkerFor2D;
+    private addPictureMarkerFor3D;
+    applySymbol(graphic: Graphic, symbol: SimpleMarkerSymbol | SimpleLineSymbol | SimpleFillSymbol): void;
+    static isView2D(view: View): boolean;
+    static isView3D(view: View): boolean;
+    ensureMsAvailable(): void;
+    generateForceSymbol(options: SymbolOptions, scaleFactor: number): PictureMarkerSymbol | undefined;
+}
+export default SymbolEngine;

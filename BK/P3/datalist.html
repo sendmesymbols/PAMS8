@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Data List</title>
+    <script type="text/javascript" src="jquery.min.js"></script>
+<script>
+function loadComplete() {
+	var v = document.getElementById('higherFormation3');	
+	var opt = new Option();
+	opt.setAttribute("for", "6");
+	opt.setAttribute("value", "Khaki");
+	v.appendChild(opt);
+	console.log(getHFDataListValue());
+	//$("#higherFormation3 option:selected").val();
+}
+
+
+	function getHFDataListValue() {
+		var value = document.querySelector('#higherFormation3').value;
+		if(!value) {
+			return [];
+		} else {
+			var text = document.querySelector('option[value="'+value+'"]');
+			if(!text) {
+				return [value];
+			} else {
+				text = text.getAttribute('for');
+				return [value, text];
+			}			
+		}		
+	}
+
+	function setHFDataListValue(id, fallback_value) {
+		var control = document.getElementById('higherFormation3');
+		var op = document.querySelector('#hfList').options;
+		var assigned = false;
+		for(var i=0; i < op.length; i++) {
+			if(op[i].getAttribute('for') === id) {
+				op[i].setAttribute("selected", "true");
+				control.value = op[i].getAttribute("value");
+				assigned = true;
+			}
+		}
+		if(assigned === false) control.value = fallback_value;
+	}
+
+
+
+</script>
+</head>
+<body onload="loadComplete()">
+    <form>
+		<input list="hfList" id="higherFormation3" name="hfList">
+		<datalist id="hfList">
+			<option for="1" value="Yellow"></option>
+			<option for="2" value="Red"></option>
+			<option for="3" value="Green"></option>
+			<option for="4" value="Pink"></option>
+			<option for="5" value="White"></option>
+		</datalist>
+
+    </form>
+</body>
+</html>

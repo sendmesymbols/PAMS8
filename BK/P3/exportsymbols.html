@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Export Symbols</title>
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+
+        #symbolTbl {
+            width: 100%;
+            height: 100%;
+            color: black;
+            border-spacing: 20px;
+            border-collapse: collapse;
+
+        }
+
+        #symbolTbl tbody tr {
+            border-bottom: 2px solid var(--main-light-color);
+        }
+
+
+        #symbolTbl tbody td:nth-child(1) {
+            width: 8%;
+            text-align: center;
+
+        }
+
+        #symbolTbl tbody td:nth-child(2) {
+            width: 35%;
+            /*text-align: center;*/
+        }
+
+        #symbolTbl tbody td:nth-child(3) {
+            width: 15%;
+            text-align: center;
+        }
+
+        #symbolTbl tbody td:nth-child(4) {
+            width: 50%;
+            text-align: center;
+        }
+
+        #symbolTbl tbody td:nth-child(4)>img {
+            background: white;
+            width: 100px;
+            height: 100px;
+
+        }
+    </style>
+
+    <script src="http://20.60.201.241:9632/MilitarySymbology/ThirdParty/milsymbol.js"></script>
+
+    <script>
+
+        var symbolData;
+
+        function getJSON(url, callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.responseType = 'json';
+            xhr.onload = function () {
+                var status = xhr.status;
+                if (status === 200) {
+                    callback(null, xhr.response)
+                } else {
+                    callback(status, xhr.response);
+                }
+            }
+            xhr.send();
+        }
+
+        function loadSymbols() {
+            var url = "http://devbox:9632/MilitarySymbology/Data/Symbols.json";
+
+
+            getJSON(url, function (err, symbolData) {
+                if (err !== null) {
+                    console.log(err)
+                } else {
+
+                 
+                    var mainTbl = document.getElementById('symbolTbl');
+                    mainTbl.innerHTML = '';
+                    var row = mainTbl.insertRow(0);
+                    var noCell = row.insertCell(0);
+                    noCell.id = 'noCell';
+                    var nameCell = row.insertCell(1);
+                    nameCell.id = 'nameCell';
+                    var typeCell = row.insertCell(2);
+                    typeCell.id = 'typeCell';
+                    
+                    var sidcCell = row.insertCell(3);
+                    sidcCell.id = 'sidcCell';
+
+                    var imgCell = row.insertCell(4);
+                    imgCell.id = 'imgCell';
+
+                    
+
+
+                    noCell.innerHTML = 'No.';
+                    nameCell.innerHTML = 'Symbol Name';
+                    typeCell.innerHTML = 'Type';
+                    sidcCell.innerHTML = "SIDC";
+                    imgCell.innerHTML = 'Image';
+                    
+                    
+
+                    for (var i = 0; i < Object.keys(symbolData).length; i++) {
+
+                        var row = mainTbl.insertRow(i + 1);
+                        noCell = row.insertCell(0);
+                        nameCell = row.insertCell(1);
+                        typeCell = row.insertCell(2);
+                        sidcCell = row.insertCell(3);
+                        imgCell = row.insertCell(4);
+                        
+
+                        noCell.innerHTML = (i + 1) + '.';
+                        nameCell.innerHTML = symbolData[Object.keys(symbolData)[i]].Name;
+                        sidc = '1003' + Object.keys(symbolData)[i].substr(0, 2) + '0000' + Object.keys(symbolData)[i].substr(2, 6) + '0000';
+                        sidcCell.innerHTML = sidc;
+                        if (Object.keys(symbolData)[i].substr(0, 2) === '10' || Object.keys(symbolData)[i].substr(0, 2) === '15' || Object.keys(symbolData)[i].substr(0, 2) === '40' || Object.keys(symbolData)[i].substr(0, 2) === '20' || Object.keys(symbolData)[i].substr(0, 2) === '01' || Object.keys(symbolData)[i].substr(0, 2) === '30') {
+                            typeCell.innerHTML = 'UE&I';
+                        } else if (Object.keys(symbolData)[i].substr(0, 2) === '25') {
+                            typeCell.innerHTML = 'Con Measures';
+                        } else if (Object.keys(symbolData)[i].substr(0, 2) === '00') {
+                            typeCell.innerHTML = 'Freehand';
+                        }                        
+                        if (symbolData[Object.keys(symbolData)[i]].SymGeoType === "FPoint") {
+                            var sym = new MS.symbol(sidc, {
+                                size: 68
+                            }).getMarker().XML;
+                            imgCell.innerHTML = sym;
+                        } else {
+                            img = document.createElement('img');
+                            img.setAttribute('height', '250');
+                            img.setAttribute('width', '250px');
+                            img.src = 'http://devbox:9632/MilitarySymbology/Preview/ControlMeasures/' + Object.keys(symbolData)[i].substr(0, 2) + Object.keys(symbolData)[i].substr(2, 6) + '.svg';
+                            imgCell.appendChild(img);
+
+                            
+
+
+                            /*
+
+                            var el = document.getElementById('btn');
+                            img.onload = function(e) {
+                            var canvas = document.createElement('canvas');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            var context = canvas.getContext('2d');
+                            context.drawImage(img, 0, 0);
+                            var image2 = document.createElement('img');
+                            image2.src = canvas.toDataURL('image/png');
+                            imgCell2.appendChild(image2)
+
+                            
+                        }
+                        */
+                            /*
+                            img.onload = function(e) {
+                                console.log("Loaded");
+                            
+                            var canvas = document.createElement('canvas');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            var context = canvas.getContext('2d');
+                            context.drawImage(img, 0, 0);
+                            var image2 = document.createElement('img');
+                            image2.src = canvas.toDataURL('image/png');
+                            imgCell2.appendChild(image2)
+                            
+                            }
+                            */
+
+                          
+
+
+                        }
+
+
+                        
+
+
+                    }
+
+
+
+
+
+
+
+
+
+                    //return data;
+
+                }
+
+            });
+
+
+
+        }
+
+
+
+    </script>
+</head>
+
+<body onload="loadSymbols()">
+    <table id="symbolTbl"></table>    
+
+</body>
+
+</html>

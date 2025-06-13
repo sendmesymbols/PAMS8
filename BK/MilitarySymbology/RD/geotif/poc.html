@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width,user-scalable=no">
+
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+  <title>Data Visualization</title>
+
+  <link rel="stylesheet" href="http://devbox:9632/3.15/dijit/themes/nihilo/nihilo.css">
+  <link rel="stylesheet" href="http://devbox:9632/3.15/esri/css/esri.css">
+
+
+  <style>
+    html,
+    body,
+    html,
+    body,
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+  <script src="geotiff.bundle.min.js"></script>
+  <script src="http://devbox:9632/3.15/init.js"></script>
+
+  <script>
+
+    var map, mi, layer;
+
+    require([
+      "esri/map", "esri/geometry/Point",
+      "esri/symbols/SimpleMarkerSymbol", "esri/graphic",
+      "dojo/_base/array", "dojo/dom-style",
+      "esri/layers/MapImageLayer", "esri/layers/MapImage",
+      "esri/layers/ArcGISTiledMapServiceLayer", "esri/layers/ArcGISDynamicMapServiceLayer",
+      "esri/geometry/Extent",
+      "dojo/domReady!"
+    ], function (
+      Map, Point,
+      SimpleMarkerSymbol, Graphic,
+      arrayUtils, domStyle, MapImageLayer, MapImage, ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer, Extent
+    ) {
+
+        map = new Map("map");
+
+        var tiled = new ArcGISDynamicMapServiceLayer("http://20.60.50.24:6080/arcgis/rest/services/SampleWorldCities/MapServer");
+
+        map.addLayer(tiled);
+
+
+        map.on("load", mapLoaded);
+
+        map.on("click", function (e) {
+
+
+
+
+
+
+
+
+        });
+
+
+        function readSingleFile(e) {
+          var file = e.target.files[0];
+          if (!file) {
+            return;
+          }
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            var contents = e.target.result;
+            displayContents(contents);
+          };
+          reader.readAsDataURL(file);
+        }
+
+        function displayContents(contents) {
+
+          var mi = new MapImage({
+            'href': contents,
+            'extent': map.extent
+
+          });
+
+
+
+
+          layer.addImage(mi);
+
+        }
+
+        document.getElementById('file-input')
+          .addEventListener('change', readSingleFile, false);
+        function mapLoaded() {
+          layer = new MapImageLayer({
+            'id': 'radar'
+          });
+
+          map.addLayer(layer);
+        }
+      });
+  </script>
+</head>
+
+<body class="claro">
+  <input type="file" id="file-input" />
+  <h3>Contents of the file:</h3>
+  <div id="map"></div>
+</body>
+
+</html>

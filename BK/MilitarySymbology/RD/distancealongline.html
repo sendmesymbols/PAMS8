@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width,user-scalable=no">
+
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+  <title>Find Distance</title>
+
+  <link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+  <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+
+
+  <style>
+    html,
+    body,
+    html,
+    body,
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+
+
+  <script src="http://arb-pc2:9632/3.15/init.js"></script>
+
+
+
+  <script>
+
+    var extent;
+
+    require([
+      "esri/map",
+      "esri/toolbars/draw",
+      "esri/graphic",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/geometry/Circle",
+      "esri/symbols/Font",
+
+
+
+      "esri/geometry/Point",
+      "esri/geometry/Polyline",
+      "esri/geometry/Polygon",
+      "esri/symbols/TextSymbol",
+
+      "dojo/parser",
+      "dijit/registry",
+      "dojo/_base/event",
+      "dojo/dom",
+      "dojo/dom-style",
+      "dijit/Menu",
+      "esri/layers/GraphicsLayer",
+      "esri/layers/ArcGISTiledMapServiceLayer",
+
+      "esri/symbols/PictureMarkerSymbol",
+      "esri/Color",
+      "dojo/on",
+      "dijit/Menu",
+      "dijit/MenuItem",
+      "dijit/MenuSeparator",
+      "dojo/parser",
+      "dojox/gfx/matrix",
+      "dojo/_base/array",
+      "esri/geometry/jsonUtils",
+
+      "esri/layers/ArcGISDynamicMapServiceLayer",
+
+
+
+      "dojo/domReady!"
+    ], function (
+      Map, Draw, Graphic,
+      SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, Circle, Font,
+      Point, Polyline, Polygon,
+      TextSymbol, parser, registry, event, dom, domStyle, Menu, GraphicsLayer, ArcGISTiledMapServiceLayer,
+      PictureMarkerSymbol, Color, on, Menu, MenuItem, MenuSeparator, parser, matrix, Array,
+      geometryJsonUtils, ArcGISDynamicMapServiceLayer
+
+
+
+    ) {
+
+
+        parser.parse();
+        var graphicsLayer, targetSym;
+
+
+
+
+
+        var endEvent, symDrawProgressEvent, symDrawClickEvent, editEngine, enddeactivateCpEvent;
+        map = new Map("map");
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+        map.addLayer(tiled);
+        map.on("load", function () {
+          var graphicsLayer = new GraphicsLayer();
+          map.add(graphicsLayer);
+        });
+
+        dojo.byId("goBtn").onclick = function (e) {
+
+        };
+
+
+        map.on("click", function () {
+
+
+        });
+
+
+
+
+
+
+
+      });
+  </script>
+</head>
+
+<body class="nihilo">
+  <button id="goBtn">go</button>
+  <div id="map"></div>
+</body>
+
+</html>

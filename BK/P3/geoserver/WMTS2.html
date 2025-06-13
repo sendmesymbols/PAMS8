@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>Add WMTS Layer</title>
+
+    <style>
+      html, body { height: 100%; width: 100%; margin: 0; padding: 0; } 
+      #map { padding:0; } 
+      #citationInfo { position:absolute; color:black; font-weight:bold; font-size:12pt; left:10px; bottom:10px; z-Index:999; }
+    </style>
+     <link rel="stylesheet" href="http://localhost:9632/3.15/dijit/themes/nihilo/nihilo.css">
+     <link rel="stylesheet" href="http://localhost:9632/3.15/esri/css/esri.css">
+
+    <script src="http://localhost:9632/3.15/init.js"></script>
+    <script>
+      var map, wmtsLayer;
+      require([
+        "esri/map", "esri/layers/WMTSLayer", "esri/layers/WMTSLayerInfo",
+        "esri/geometry/Extent", "esri/layers/TileInfo", "esri/SpatialReference",
+        "dojo/parser",
+        
+        "dijit/layout/BorderContainer", "dijit/layout/ContentPane", "dojo/domReady!"
+      ], function(
+        Map, WMTSLayer, WMTSLayerInfo,
+        Extent, TileInfo, SpatialReference,
+        parser
+      ) {
+        parser.parse();
+
+        var bounds = new Extent({
+          "xmin": 36.11161496900007, "ymin": 1.4601399430000583, "xmax": 111.22829375100008, "ymax": 44.22775845000007,
+          "spatialReference": { "wkid": 4326 }
+        });
+        map = new Map("map", {
+          extent: bounds
+        });
+
+        var tileInfo1 = new TileInfo({
+          "dpi": 96,
+          "format": "image/png",
+          "compressionQuality": 0,
+          "spatialReference": new SpatialReference({
+            "wkid": 4326
+          }),
+          "rows": 256,
+          "cols": 256,
+          "origin": {
+            "x": -400,
+            "y": 400
+          },
+          "lods": [{
+            "level": "EPSG:0_PakMap:13",
+            "scale": 25000,
+            "resolution": 5.9486525145756985E-5
+          }, {
+            "level": "EPSG:0_PakMap:12",
+            "scale": 50000,
+            "resolution": 1.1897305029151397E-4
+          }, {
+            "level": "EPSG:0_PakMap:11",
+            "scale": 100000,
+            "resolution": 2.3794610058302794E-4
+          }, {
+            "level": "EPSG:0_PakMap:10",
+            "scale": 250000,
+            "resolution": 5.948652514575699E-4
+          }, {
+            "level": "EPSG:0_PakMap:9",
+            "scale": 500000,
+            "resolution": 0.0011897305029151398
+          }, {
+            "level": "EPSG:0_PakMap:8",
+            "scale": 1000000,
+            "resolution": 0.0023794610058302797
+          }, 
+          {
+            "level": "EPSG:0_PakMap:7",
+            "scale": 2000000,
+            "resolution": 0.004758922011660559
+          },
+          {
+            "level": "EPSG:0_PakMap:6",
+            "scale": 4000000,
+            "resolution": 0.009517844023321119
+          },
+          {
+            "level": "EPSG:0_PakMap:5",
+            "scale": 5000000,
+            "resolution": 0.011897305029151397
+          },
+          {
+            "level": "EPSG:0_PakMap:4",
+            "scale": 6000000,
+            "resolution": 0.014276766034981677
+          },
+          {
+            "level": "EPSG:0_PakMap:3",
+            "scale": 7000000,
+            "resolution": 0.016656227040811957
+          },
+          {
+            "level": "EPSG:0_PakMap:2",
+            "scale": 8000000,
+            "resolution": 0.019035688046642237
+          },
+          {
+            "level": "EPSG:0_PakMap:1",
+            "scale": 9000000,
+            "resolution": 0.021415149052472514
+          },
+          {
+            "level": "EPSG:0_PakMap:0",
+            "scale": 10000000,
+            "resolution": 0.023794610058302794
+          }]
+        });
+        var tileExtent1 = bounds;
+
+        var layerInfo1 = new WMTSLayerInfo({
+          tileInfo: tileInfo1,
+          fullExtent: tileExtent1,
+          initialExtent: tileExtent1,
+          identifier: "PakMap",
+          tileMatrixSet: "EPSG:0_PakMap",
+          format: "png",
+          style: "_null"
+        });       
+
+        var resourceInfo = {
+          version: "1.1.0",
+          layerInfos: [layerInfo1],
+          copyright: "GWC"
+        };
+
+        var options = {
+          serviceMode: "KVP",
+          resourceInfo: resourceInfo,
+          layerInfo: layerInfo1
+        };
+
+        wmtsLayer = new WMTSLayer("http://20.60.201.20:8080/geoserver/gwc/service/wmts", options);
+        map.addLayer(wmtsLayer);
+      });
+
+    </script>
+  </head>
+  
+  <body>
+    <div data-dojo-type="dijit/layout/BorderContainer" 
+         data-dojo-props="design:'headline', gutters:false" 
+         style="width: 100%; height: 100%; margin: 0;">
+
+      <div id="map" 
+           data-dojo-type="dijit/layout/ContentPane" 
+           data-dojo-props="region:'center'">
+        <div id="citationInfo">
+         GWC        
+         
+        </div>
+      </div>
+
+    </div>
+  </body>
+</html>

@@ -1,0 +1,190 @@
+#j-basic-wrap, .j-body-place #j-main {max-width: 1480px;min-width: 1000px;}#j-globalNav-bg, #j-main, .j-breadcrumb-bar .j-wrap, .j-content-document .j-content-r2-wrap, .j-body-place #j-main #jive-alert, .j-body-place #j-main .j-layout, #j-footer-wrap, nav.j-news-menu.affix .j-homenav, .j2-pages-mitui-profile-banner .j2-width{box-sizing: border-box; max-width: 1440px;min-width: 960px;}.j-design-latest .j-guided-nav .j-navbar, .j-design-latest.jive-body-formpage.j-content-document:not(.j-fullscreen-view) .jive-content, .j-design-latest.jive-body-formpage.j-content-document .j-publishbar, .j-design-latest.jive-body-formpage.j-content-document .j-minor-edit, .j-design-latest.jive-body-formpage.j-content-document .j-compose-buttons, .j-design-latest.jive-body-formpage.j-content-document .jive-warn-box, .j-design-latest.jive-body-content.j-content-document:not(.j-fullscreen-view) .j-content, .j-design-latest.jive-body-content.j-content-document .j-content-comments-container .j-content-comments-display-section, .j-design-latest.j-content-document .j-content-r2-wrap {max-width: 1400px;}.j-support-section {margin-left: 20px; margin-right: 20px;}@media screen and (min-width: 0) {#j-basic-wrap, .j-body-place #j-main, .j-support #j-main {max-width: 1440px;}#j-globalNav-bg {max-width: 1440px;}.j-body-place #j-main .j-layout {margin: auto;}.j-body-place #j-main #jive-alert {margin: auto auto 20px;}.j-support-section {margin-left: auto; margin-right: auto;}}@media screen and (max-width: 1480px) {#j-basic-wrap, .j-body-place #j-main, .j-support #j-main{max-width: 1480px;}#j-globalNav-bg, .j-breadcrumb-bar .j-wrap, .j-content-document .j-content-r2-wrap {max-width: 1440px;}.j-body-place #j-main #jive-alert {margin: auto 20px 20px;}.j-body-place #j-main .j-layout {margin: auto 20px;}.j-support-section {margin-left: 20px; margin-right: 20px;}}/*-------------------------------------------------- */
+/* FOOTER LAYOUT */
+/*-------------------------------------------------- */
+.fatFooter {
+  	background:#fff;
+	border-top:1px solid #dedede;
+	margin-top:25px;
+	width:100%;
+}
+.fatFooter .clear {
+	clear: both;
+	display: block;
+	overflow: hidden;
+	visibility: hidden;
+	width: 0;
+	height: 0;
+}
+.footerBG1, .footerBG2 {
+	margin:0 auto;
+	padding-left:17px;
+	width:960px;
+}
+/*-------------------------------------------------- */
+/* FOOTER LINKS */
+/*-------------------------------------------------- */
+.fatFooter a {
+	color:#666;
+	text-decoration:none;
+}
+.fatFooter a:hover {
+	color:#000;
+	text-decoration:underline;
+}
+/*-------------------------------------------------- */
+/* FOOTER SMALL */
+/*-------------------------------------------------- */
+.footerSmall {
+	margin-top:0 !important;
+}
+/*-------------------------------------------------- */
+/* FOOTER HEAD */
+/*-------------------------------------------------- */
+#fatFooterHead {
+	padding:10px 0;
+	height:14px;
+	border-bottom:1px solid #dedede;
+	margin-left:10px;
+	margin-right:10px;
+	width:940px;
+}
+#fatFooterHead .asocial {
+	display:block;
+	float:left;
+	margin:0;
+	padding:0;
+	line-height:14px;
+	height:14px;
+	color:#666;
+	font-size:11px;
+}
+#fatFooterHead .asocial strong {
+	color:#666;
+}
+/*-------------------------------------------------- */
+/* FOLLOW US LINKS */
+/*-------------------------------------------------- */
+#fatFooterHead .socialLinks {
+	float:right;
+}
+#fatFooterHead .socialLinks strong {
+	color:#666;
+	float:left;
+	font-size:11px;
+	line-height:14px;
+	font-weight:bold;
+	margin:0 10px 0 0;
+}
+#fatFooterHead .socialLinks ul {
+	margin:0;
+	padding:0;
+	list-style:none;
+	float:left;
+	line-height:14px;
+	height:14px;
+}
+#fatFooterHead .socialLinks ul li {
+	margin:0;
+	padding:0;
+	list-style:none;
+	background:none;
+	float:left;
+	margin-left:8px;
+	line-height:14px;
+}
+#fatFooterHead .socialLinks a {
+	border:none;
+	display:inline-block;
+	margin:0;
+	padding:0;
+	width:14px;
+	height:14px;
+	opacity:0.6;
+	filter:alpha(opacity = 60);
+	-webkit-transition:opacity .1s ease-in-out;
+	-moz-transition:opacity .1s ease-in-out;
+	-o-transition:opacity .1s ease-in-out;
+	transition:opacity .1s ease-in-out;
+}
+#fatFooterHead .socialLinks a:hover {
+	opacity:1.0;
+	filter:alpha(opacity = 100);/* for IE */
+}
+#fatFooterHead .socialLinks a span {
+	display:none;
+}
+/*-------------------------------------------------- */
+/* Button Images */
+/*-------------------------------------------------- */
+.socialPlus {
+	background:url(https://www.esri.com/graphics/icons/socialmedia/plus_fat-footer_14.png) no-repeat 0 0;
+}
+.socialPinterest {
+	background:url(https://www.esri.com/graphics/icons/socialmedia/pinterest_fat-footer_14.png) no-repeat 0 0;
+}
+.socialEmail {
+	background:url(https://www.esri.com/graphics/icons/socialmedia/newsletter_fat-footer_14.png) no-repeat 0 0;
+}
+.socialTwitter {
+	background:url(https://www.esri.com/graphics/icons/socialmedia/twitter_fat-footer_14.png) no-repeat 0 0;
+}
+.socialFacebook {
+	background:url(https://www.esri.com/graphics/icons/socialmedia/facebook_fat-footer_14.png) no-repeat 0 0;
+}
+.socialLinkedIn {
+	background:url(https://www.esri.com/graphics/icons/socialmedia/linkedin_fat-footer_14.png) no-repeat 0 0;
+}
+.socialRss {
+	background:url(https://www.esri.com/graphics/icons/socialmedia/rss_fat-footer_14.png) no-repeat 0 0;
+}
+/*-------------------------------------------------- */
+/* FAT FOOTER LIST */
+/*-------------------------------------------------- */
+.fatFooterBody {
+	margin:0;
+	width:960px;
+	padding:0;
+	list-style:none;
+}
+.fatFooter .fatFooterBody .fatFooterList {
+	float:left;
+	font-size:11px;
+	line-height:19px;
+	margin:10px 0 20px 0;
+	width:20%;
+	padding:0;
+	background:none;
+	list-style:none;
+}
+.fatFooter .fatFooterBody .fatFooterList strong {
+	color:#666;
+	display:block;
+	font-weight:bold;
+}
+.fatFooter .fatFooterBody .fatFooterList ul {
+	margin:0;
+	padding:0;
+}
+.fatFooter .fatFooterBody .fatFooterList ul li {
+	background:transparent url(https://www.esri.com/graphics/greybullet-fatfooter.gif) no-repeat scroll 0px 2px !important;
+	line-height:16px;
+	margin:3px 0 3px -7px;
+}
+
+li
+{
+padding-left: 21px;
+
+}
+
+ul
+{
+list-style-type: none;
+}
+
+/*-------------------------------------------------- */
+/* END */
+/*-------------------------------------------------- */
+.j-globalNavLink {text-shadow: none;}body {background-color: #fff;color: #3d3d3d;font-family: arial, helvetica, "helvetica neue", verdana, sans-serif;margin: 0 auto;min-width: 1000px;}
+@media screen and (max-width: 1000px) {.j-header-mode-simple #j-header-wrap {position: absolute; min-width: 1000px;}}h1, h2, h3, h4, h5, h6, .mce-window-head .mce-title {}.font-color-normal, a.font-color-normal:link, a.font-color-normal:visited, .j-tabbar > li > a, .j-tabbar > li .inside, .mce-floatpanel.mce-window .mce-tabs .mce-tab, .j2-pages-mitui-profile-header .j2-profile-nav ul li a {color: #3d3d3d; fill: #3d3d3d;}a, a:visited, a:link, .j-impact-list .j-metric .j-count, .font-color-link, .j-tabbar li a:hover, .j-tabbar > li.active > a, .j-tabbar > li.j-active > a, .j-tabbar > li.j-tab-selected > a, .j-tabbar > li.active .inside, .mce-floatpanel.mce-window .mce-tabs .mce-tab:hover, .mce-floatpanel.mce-window .mce-tabs .mce-tab.mce-active, .j2-pages-mitui-profile-header .j2-profile-nav ul li a:hover, .j2-pages-mitui-profile-header .j2-profile-nav ul li a.active, .j2-pages-mitui-profile-fields .j2-edit-link, .j2-pages-mitui-profile-layout .j2-main-column section footer a, .j2-pages-mitui-profile-content .j2-location a:hover, .j2-base-components-global-tag-picker-popover-tag .j2-suggestion-header li.active button:hover, .j2-base-components-global-tag-picker-popover-tag .j2-list-tag li a, .j2-pages-mitui-profile-header .j2-profile-info .j2-presence li.j2-editable a:after, .j-page-customizable-message .j-box-dismiss-container button, .jive-widget-menu-btn .jive-widget-menu-btn-link {color: #287433; fill: #287433;}.j-impact-list .j-bar .j-bar-index {background-color: #287433;}.j-tabbar > li.active > a, .j-tabbar > li.j-active > a, .j-tabbar > li.j-tab-selected > a, .j-tabbar > li.active .inside, .mce-floatpanel.mce-window .mce-tabs .mce-tab.mce-active, .j2-pages-mitui-profile-header .j2-profile-nav ul li a.active, .j2-base-components-global-tag-picker-popover-tag .j2-suggestion-header li.active button {border-bottom: 3px solid #287433;}a:hover, .font-color-link:hover, .j-page-customizable-message .j-box-dismiss-container button:hover, .jive-widget-menu-btn .jive-widget-menu-btn-link {color: #000; fill: #000;}.font-color-meta, .j-main-mb-entry .jive-js-statusinput-default:focus {color: #8b8b8b; fill: #8b8b8b;}.font-color-meta a:link, .font-color-meta a:visited, .font-color-meta-light a:link, .font-color-meta-light a:visited, a.font-color-meta:link, a.font-color-meta:visited {color: #8ca9cd; fill: #8ca9cd;}.font-color-meta a:hover, .font-color-meta a:focus, .font-color-meta a:active, .font-color-meta-light a:hover, .font-color-meta-light a:focus, .font-color-meta-light a:active a.font-color-meta:hover, a.font-color-meta:focus, a.font-color-meta:active {color: #3778c7; fill: #3778c7;}.font-color-meta-light, a.font-color-meta-light:link, a.font-color-meta-light:visited, .jive-js-statusinput-default.jive-statusinput, .j-main-mb-entry .jive-js-statusinput-default {color: #a9a9a9; fill: #a9a9a9;}a.font-color-meta-light:hover, a.font-color-meta-light:active {color: #8b8b8b; fill: #8b8b8b;}.j-globalNavLink:link, .j-globalNavLink:visited, .j-globalNavLink:hover, .j-globalNavLink:active, .j-globalNav .j-globalNav-li.j-nav-create a.j-globalNavLink, #j-compact-header a .j-user-name, #j-compact-header a.login, #j-compact-header a.register {color: #333;}#j-globalNav #mobile-menu > a > span i {background: #333;}.j-globalNav > li.j-globalNav-li > a.j-globalNavLink:hover, .j-globalNav > li.j-globalNav-li > a.j-globalNavLink:focus, .j-globalNav li.j-globalNav-li.active .j-globalNavLink, #j-compact-header a:hover .j-user-name, #j-compact-header a:hover.login, #j-compact-header a:hover.register, #j-compact-header a:focus .j-user-name, #j-compact-header a:focus.login, #j-compact-header a:focus.register, #j-compact-header li.active .j-user-name, #j-compact-header li.active.login, #j-compact-header li.active.register {color: #ffffff;}#j-globalNav #mobile-menu > a:hover > span i, #j-globalNav #mobile-menu > a:focus > span i {background: #ffffff;}.j-navbadge-count, .j-nav-indicator-unread { background-color:#f36f20; }nav.j-news-menu.affix { background-color:#fff; }#j-globalNav-bg {background-color: #306090;background-image: none;border-style: solid;}@media screen and (max-width: 40em) {#j-globalNav-bg {}}.jive-avatar, .jive-profile-avatar-list li a img, #avatar-preview, #j-satNav-wrap a#j-satNav {border-radius: 0;}.jive-profile-avatar-list li > a {border-radius: 5px;}#j-header, #j-compact-header{background-color: #fff;background-image: none;}
+h1#jive-global-header-title a.j-header-logo {color: #fafafa;}#j-satNav-wrap .j-navLabel, #j-satNav-wrap .login, #j-satNav-wrap .register, #j-satNav-wrap li a.j-globalNavLink, #j-basic-wrap .j-header-logo { color: #ffffff; }#j-spotlight-search input { border-radius: 0; }button, input[type="button"], input[type="reset"], input[type="submit"], .j-btn-global, a.j-btn-global:link, a.j-btn-global:visited, a.j-btn-global:hover, a.j-btn-global:focus, a.j-btn-global:active, .j-btn-global-color, div .mce-btn-has-text[role="button"]:not([aria-haspopup]):not([aria-label]) button, .j2-pages-mitui-profile-skills .j2-tag-picker-controls a, .j2-pages-mitui-profile-skills .j2-tag-picker-controls button, .j2-base-components-global-modal-rewards .j2-modal-footer .j2-close-button {color: #3d3d3d;}a.j-btn-callout:link, a.j-btn-callout:visited, a.j-btn-callout:hover, a.j-btn-callout:focus, a.j-btn-callout:active, div .mce-primary[role="button"]:not([aria-haspopup]):not([aria-label]) button {color: #fff}.j-box.j-enhanced header, .jive-widget .jive-widget-header h4, .jive-widget .jive-widget-header .j-filters-showing, .j-box header h4, .j-tile header h4, .j-home-featured-places h4, .j-box header h3, .j-menu .font-color-meta, .j-pop h2, .jive-modal > header:first-child h2, .jive-modal header.j-modal-header h2, .jive-modal > div > header:first-child h2, div .mce-window-head .mce-title, .j2-pages-mitui-profile-layout .j2-sidebar section h2, .j2-pages-mitui-profile-layout .j2-main-column section h2 {color: #999999;}.j-box.j-enhanced, .j-tile, .jive-widget, .jive-widget-recentactivitywidget .j-stream{}.j-box.j-enhanced header, .jive-widget .jive-box-header {background-color: transparent;border-style: solid none;border-top-color: #eeeeee;border-top-width: 0px;border-bottom-color: #eeeeee;border-bottom-width: 0px;}.j-globalNav > li.j-globalNav-li.active, .j-globalNav > li.j-globalNav-li:hover, #appsQuickLaunchLink.active, #navCreate.active, #j-nav-search.active, #j-satNav.active, ul .j-nav-create .j-globalNavLink:hover span.nav-link, ul .j-nav-create .j-globalNavLink:focus span.nav-link, ul .j-nav-create .j-globalNavLink.active span.nav-link, .j-globalNav > li.j-globalNav-li .j-globalNavLink.active {background-position: 100% -766px;}.j-banner-img-main {max-width: 1440px;}.j-design-latest.j-content-document:not(.j-fullscreen-view) .defaultSkin table.mceLayout tr.mceFirst .mceToolbar.mceLeft.mceFirst.mceLast #wysiwygtext_toolbargroup.affix {max-width: calc(1440px - 42px) !important; width: calc(86% - 2px) !important;}.j-design-latest.j-content-document.j-fullscreen-view .defaultSkin table.mceLayout tr.mceFirst .mceToolbar.mceLeft.mceFirst.mceLast #wysiwygtext_toolbargroup.affix {max-width: none !important; width: 100% !important;}

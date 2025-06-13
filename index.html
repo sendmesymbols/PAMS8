@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+
+  <title>PAMS8</title>
+  <style>
+    html,
+    body,
+    #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+
+    #infoDiv {
+      position: absolute;
+      top: 15px;
+      left: 60px;
+      display: flex;          /* Aligns children in a row */
+      align-items: center;    /* Vertically centers the items */
+      gap: 10px;              /* Adds space between the items */
+    }
+
+    #infoDiv input {
+      border: none;
+      box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 2px;
+    }
+
+    #fabricCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+
+  </style>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.32/@arcgis/core/assets/esri/themes/light/main.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
+</head>
+<body>
+<div id="viewDiv"></div>
+<canvas id="fabricCanvas"></canvas>
+
+<div id="infoDiv">
+
+  <input
+          class="esri-component esri-widget esri-interactive"
+          type="text"
+          id="sidcText"
+          value="130610001411000010891000000000"
+  />
+
+  <input
+          class="esri-component esri-widget--button esri-widget esri-interactive"
+          type="button"
+          id="draw-btn"
+          value="Draw"
+  />
+
+  <input
+          class="esri-component esri-widget--button esri-widget esri-interactive"
+          type="button"
+          id="switch-btn"
+          value="2D"
+  />
+
+  <button id="drawArrowButton">Draw Arrow</button>
+  <button id="addTextButton">Add Text</button>
+  <button id="createButton">Create</button>
+
+
+</div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
+

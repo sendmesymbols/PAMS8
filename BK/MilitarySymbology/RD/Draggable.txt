@@ -1,0 +1,53 @@
+dojo.require("esri.map");  
+          dojo.require("dojox.gfx.move");  
+       
+          dojo.addOnLoad(init);  
+       
+          var map;  
+         
+        
+		  function init() {  
+			map = new esri.Map("map");  
+			dojo.connect(map, "onLoad", onMapLoad);  
+			  
+			var tiledMapServiceLayer = new esri.layers.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer");  
+			map.addLayer(tiledMapServiceLayer);  
+		  }  
+            
+          function onMapLoad() {  
+            var geometry = map.extent.getCenter().offset(0, 15);  
+            var symbol = new esri.symbol.SimpleMarkerSymbol().setColor("red");  
+            var graphic = new esri.Graphic(geometry, symbol);  
+			
+              
+            // Add a graphic  
+            map.graphics.add(graphic);  
+              
+            console.log(graphic);
+            console.log(graphic.getDojoShape());
+       
+            // Make the shape moveable  
+            var dojoShape = graphic.getDojoShape();  
+            var moveable = new dojox.gfx.Moveable(dojoShape);  
+              
+            // Update the geometry at the end of move  
+            var moveStopToken = dojo.connect(moveable, "onMoveStop", function(mover) {  
+              // Get the transformation that was applied to   
+              // the shape since the last move  
+              var tx = dojoShape.getTransform();  
+                
+              var startPoint = graphic.geometry;  
+              var endPoint = map.toMap(map.toScreen(startPoint).offset(tx.dx, tx.dy));  
+                
+              // clear out the transformation  
+              dojoShape.setTransform(null);  
+                
+              // update the graphic geometry  
+              graphic.setGeometry(endPoint);  
+                
+              // You can find quite a bit of information about  
+              // applying transformations to Dojo gfx shapes in this  
+              // document:  
+              // http://docs.dojocampus.org/dojox/gfx#coordinates-and-transformations  
+            });  
+          }  

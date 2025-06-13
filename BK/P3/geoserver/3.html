@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>OpenGeo WMTS Service</title>
+
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+    <style>
+      html, body, #map {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+   </style>
+    <script src="http://arb-pc2:9632/3.15/init.js"></script>
+    <script>
+      var map;
+      require([
+        "dojo/_base/declare",
+        "esri/map",
+        "esri/layers/WMTSLayer",
+        "esri/layers/TiledMapServiceLayer",
+        "esri/layers/ArcGISTiledMapServiceLayer",
+        "esri/geometry/Extent",
+        "esri/geometry/Point",
+        "esri/SpatialReference",
+        "esri/layers/TileInfo",
+        "dojo/domReady!"
+      ], function (declare, Map, WMTSLayer, TiledMapServiceLayer, ArcGISTiledMapServiceLayer, Extent, Point, SpatialReference, TileInfo){
+
+        // Create ogc.WMTSLayer custom layer
+        
+        var CustomWMTSLayer = declare([TiledMapServiceLayer], {
+          declaredClass: "ogc.WMTSLayer",
+          constructor: function (){
+            this.copyright = 'C<sup>4</sup>I Dte GHQ';
+            this.version = "1.1.1";
+            this.identifier = "rwp:google_rwp";
+            this.imageFormat = "image/png";
+            this.tileMatrixSet = "EPSG:4326";
+            this.spatialReference = new SpatialReference({"wkid": 4326});
+            this.initialExtent = new Extent(73.15582711242676,33.47498797241222,73.25043614990233,33.55349097930918, this.spatialReference);
+            this.fullExtent = new Extent(73.15582711242676,33.47498797241222,73.25043614990233,33.55349097930918, this.spatialReference);
+            //
+            this.tileInfo = new TileInfo({
+              "dpi": 90,
+              "format": "png8",
+              "compressionQuality": 0,
+              "spatialReference": {
+                "wkid": "4326"
+              },
+              "rows": 256,
+              "cols": 256,
+              "origin": {
+                "x": 33,
+                "y": 73
+              },
+
+
+              // Scales in DPI 96
+              "lods": [
+              {"level": 0}, 
+              {"level": 1},
+              {"level": 2},
+              {"level": 3},
+              {"level": 4}, 
+              {"level": 5},
+              {"level": 6},
+              {"level": 7},
+              {"level": 8}, 
+              {"level": 9},
+              {"level": 10},
+              {"level": 11},
+              {"level": 12}, 
+              {"level": 13},
+              {"level": 14},
+              {"level": 15},
+              {"level": 16}, 
+              {"level": 17},
+              {"level": 18},
+              {"level": 19},
+              {"level": 20}, 
+              {"level": 21}
+              ]
+            });
+            this.loaded = true;
+            this.onLoad(this);
+          },
+
+          getTileUrl: function (level, row, col){
+            var urlTemplate = "http://arb-pc2:9512/geoserver/gwc/service/wmts" +
+              "?SERVICE=WMTS&VERSION=" + this.version +
+              "&REQUEST=GetTile" +
+              "&LAYER=" + this.identifier +
+              "&FORMAT=" + this.imageFormat +
+              "&TILEMATRIXSET=" + this.tileMatrixSet +
+              "&TILEMATRIX=" + this.tileMatrixSet + ":" +
+              level + "&TILEROW=" + row + "&TILECOL=" + col;
+              debugger
+            return urlTemplate;
+          }
+        });
+
+        map = new Map("map");
+
+
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+        //map.addLayer(tiled);
+
+        // add WMTS layer http://v2.suite.opengeo.org/geoserver/gwc/service/wmts
+        var customWMTSLayer = new CustomWMTSLayer();
+        map.addLayer(customWMTSLayer);
+
+
+
+      });
+    </script>
+  </head>
+  <body class="claro">
+    <div id="map"></div>
+  </body>
+</html>
+ 

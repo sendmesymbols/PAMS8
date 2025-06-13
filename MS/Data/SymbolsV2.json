@@ -1,0 +1,182 @@
+{
+
+    "25152100": {
+        "Name": "Support by Fire Position",
+        "Class": "SupportByFirePosition",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Parameters": [
+            { "value": "BK_LN_DIST_RATIO", "Name": "Back Line Distance Ratio", "default": "5", "description": "Back Line Distance Ratio", "paramThumbnail": "" },
+            { "value": "BK_LN_ANGL_RATIO", "Name": "Back Line Angle Ratio", "default": "5", "description": "Back Line Angle Ratio", "paramThumbnail": "" },
+            { "value": "FRNT_LN_ANGL_RATIO", "Name": "Front Line Angle Ratio", "default": "5", "description": "Front Line Angle Ratio", "paramThumbnail": "" }
+        ],
+        "Tools": [
+            { "Line": "true" },
+            { "PolyLine": "false" }
+        ],
+        "template": "1,3,5,8"
+    },
+
+
+    "25152300": {
+        "Name": "Arc of Fire SD",
+        "Class": "ArcOfFireSD",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Parameters": [  ],
+        "Tools": [
+            { "Line": "true" },
+            { "PolyLine": "false" }
+        ],
+        "template": "5,8, 4, 10, 4"
+    },
+
+    
+    "25152000": {
+        "Name": "Attack by Fire Position",
+        "Class": "AttackByFirePosition",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Parameters": [
+            { "value": "BK_LN_DIST_RATIO", "Name": "Back Line Distance Ratio", "default": "5", "description": "Back Line Distance Ratio", "paramThumbnail": "" },
+            { "value": "BK_LN_ANGL_RATIO", "Name": "Back Line Angle Ratio", "default": "5", "description": "Back Line Angle Ratio", "paramThumbnail": "" }
+
+        ],
+        "Tools": [
+            { "Line": "true" },
+            { "PolyLine": "false" }
+        ],
+        "template": "11, 7, 8, 10"
+    },
+    "25340500": {
+        "Name": "Clear",
+        "Class": "Clear",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Parameters": [ ],
+        "Tools": [
+            { "Line": "true" },
+            { "PolyLine": "false" }
+        ],
+        "template": "5, 2, 4, 7, 9"
+    },
+    "25270501": {
+        "Name": "Block / Obstacle Effect",
+        "Class": "BlockObstacleEffect",
+        "Thumbnail": "",
+        "Description": "An obstacle effect that integrates fire planning and obstacle effort to stop an attacker along a specific avenue of approach or to prevent him from passing through an engagement area.",
+        "SymGeoType": "Area",
+        "isObstacle": "1",
+        "Parameters": [ ],
+        "Tools": [
+            { "Line": "true" },
+            { "PolyLine": "false" }
+        ],
+        "template": "9"
+    },
+    "25340100": {
+        "Name": "Block",
+        "Class": "Block",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "isObstacle": "1",
+        "Parameters": [ ],
+        "Tools": [
+            { "Line": "true" },
+            { "PolyLine": "false" }
+        ]
+    },
+    "25340400": {
+        "Name": "Canalize",
+        "Class": "Canalize",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Parameters": [ ],
+        "Tools": [
+            { "Line": "true" },
+            { "PolyLine": "false" }
+        ],
+        "template": "4,6, 2,5,7,8,9,11,10"
+    },
+    "25340200": {
+        "Name": "Breach",
+        "Class": "Breach",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Parameters": [ ],
+        "Tools": [
+            { "Line": "true" },
+            { "PolyLine": "false" }
+        ]
+    },
+    "25340300": {
+        "Name": "Bypass",
+        "Class": "Bypass",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Parameters": [ ],
+        "Tools": [
+            { "Line": "true" },
+            { "PolyLine": "false" }
+        ],
+         "template": "11, 5, 7, 3, 2, 6"
+    },
+    "25270601": {
+        "Name": "Obstacle Bypass Easy",
+        "Class": "ObstacleBypassEasy",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Parameters": [ ],
+        "Tools": [
+            { "Line": "true" },
+            { "PolyLine": "false" }
+        ],  
+        "template": "3, 4, 5, 6"
+    },
+    "25341800": {
+        "Name": "Penetrate",
+        "Class": "Penetrate",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Parameters": [ ],
+        "Tools": [
+            { "Line": "true" },
+            { "PolyLine": "false" }
+        ],
+         "template": "5,1,3,6"
+    },
+    "25341000": {
+        "Name": "Disrupt",
+        "Class": "Disrupt",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Parameters": [ ],
+        "Tools": [
+            { "Line": "true" },
+            { "PolyLine": "false" }
+        ]
+    }
+  
+
+
+
+
+
+
+
+
+
+
+
+}

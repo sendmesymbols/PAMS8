@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no">
+
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>Maps Toolbar</title>
+
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+    <style>
+        html,
+        body,
+        #mainWindow {
+            font-family: sans-serif;
+            height: 100%;
+            width: 100%;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #header {
+            height: 80px;
+            overflow: auto;
+            padding: 0.5em;
+        }
+    </style>
+    <!--
+    <script>
+        var dojoConfig = {
+            parseOnLoad: false,
+            async: true,
+            tlmSiblingOfDojo: false,
+            packages: [{
+                name: "MilSymbologyMockExt",
+                location: location.pathname.replace(/\/[^/]+$/, '') + "MilitarySymbology/Extensions"
+            }]
+        };
+    </script>
+    -->
+    <script src="MilitarySymbology/ThirdParty/tween.js"></script>
+    <script src="MilitarySymbology/ThirdParty/turf.min.js"></script>
+    <!--
+    <script src="MilitarySymbology/ThirdParty/dms.js"></script>
+    <script src="MilitarySymbology/ThirdParty/latlon-spherical.js"></script>
+    -->
+
+    <script type="text/javascript">
+        var dojoConfig = {
+            paths: { 
+              MilSymbologyMockExt: location.origin + "/P3/MilitarySymbology/Extensions",
+              MilSymbologyComponents: location.origin + "/P3/MilitarySymbology/Components",
+              MilSymbologyLineSymbols: location.origin + "/P3/MilitarySymbology/Symbols/LineSymbols",
+              }
+            };
+    </script>
+
+    <script src="http://arb-pc2:9632/3.15/init.js"></script>
+
+
+
+    <script>
+        var map, graphicsLayer, textGraphicsLayer, toolbar, symbol, geomTask, editToolbar, isDrawing , ctxMenuForGraphics, ctxMenuForMap;
+      var selected, currentLocation, mock, mockEdit;
+
+      require([
+        "esri/map",
+        "esri/toolbars/draw",
+        "esri/graphic",
+        "esri/symbols/SimpleMarkerSymbol",
+        "esri/symbols/SimpleLineSymbol",
+        "esri/symbols/SimpleFillSymbol",
+        "esri/geometry/Circle",
+        "esri/symbols/Font",
+
+
+        "esri/toolbars/edit",
+        "esri/geometry/Point",
+        "esri/geometry/Polyline",
+        "esri/geometry/Polygon",
+        "esri/symbols/TextSymbol",
+        "dojo/parser",
+        "dijit/registry",
+        "dojo/_base/event",
+        "dojo/dom",
+        "dojo/dom-style",
+        "dijit/Menu",
+        "esri/layers/GraphicsLayer",
+        "esri/layers/ArcGISTiledMapServiceLayer",
+        "esri/symbols/PictureMarkerSymbol",
+        "esri/Color",
+        "MilSymbologyMockExt/Mock",
+        "MilSymbologyMockExt/MockEdit",
+        "MilSymbologyMockExt/ControlPointsEditor",
+        
+        "dojo/on",
+        "dijit/Menu",
+        "dijit/MenuItem",
+        "dijit/MenuSeparator",
+        "dojo/parser",
+        "dojox/gfx/matrix",
+        "MilSymbologyLineSymbols/BOF",
+
+
+
+
+        "dijit/layout/BorderContainer",
+        "dijit/layout/ContentPane",
+        "dijit/form/Button",
+         "dijit/WidgetSet",
+
+        "dijit/form/ToggleButton",
+        "dijit/form/DropDownButton",
+        "dijit/CheckedMenuItem",
+
+
+        "dojo/domReady!"
+      ], function(
+        Map, Draw, Graphic,
+        SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, Circle,Font,
+        Edit, Point, Polyline, Polygon,
+        TextSymbol,   parser, registry,  event, dom, domStyle, Menu, GraphicsLayer, ArcGISTiledMapServiceLayer,
+        PictureMarkerSymbol, Color, Mock, MockEdit, ControlPointsEditor, on, Menu, MenuItem, MenuSeparator, parser, matrix, BOF
+      ) {
+
+
+
+
+
+
+
+        isDrawing = false;
+        parser.parse();
+        map = new Map("map", {
+          logo: false,
+          showAttribution : false
+          //, basemap: "streets",
+          //center: [-15.469, 36.428],  zoom: 3
+        });
+
+
+
+         //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.71/arcgis/rest/services/MapdataV3/MapServer");
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/arcgis/rest/services/ESRI_StreetMap_World_2D/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/"); //PCS
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.71/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+
+
+
+
+
+        map.addLayer(tiled);
+
+        map.on("load", createToolbar);
+
+
+        mock = new Mock(map);
+        
+
+
+
+
+        // loop through all dijits, connect onClick event
+        // listeners for buttons to activate drawing tools
+        registry.forEach(function(d) {
+          // d is a reference to a dijit
+          // could be a layout container or a button
+          if ( d.declaredClass === "dijit.form.Button" ) {
+            d.on("click", activateTool);
+          }
+
+
+        });
+
+        function activateTool(graphic) {
+          var tool = this.label.toUpperCase().replace(/ /g, "_");
+          toolbar.activate(Draw[tool]);
+          map.hideZoomSlider();
+          isDrawing = true;
+
+
+        }
+
+
+        function activateEdit(graphic) {
+           var tool = 0;
+
+           if (registry.byId("tool_move").checked) {
+             tool = tool | Edit.MOVE;
+           }
+           if (registry.byId("tool_vertices").checked) {
+             tool = tool | Edit.EDIT_VERTICES;
+           }
+           if (registry.byId("tool_scale").checked) {
+             tool = tool | Edit.SCALE;
+           }
+           if (registry.byId("tool_rotate").checked) {
+             tool = tool | Edit.ROTATE;
+           }
+           // enable text editing if a graphic uses a text symbol
+           if ( graphic.symbol.declaredClass === "esri.symbol.TextSymbol" ) {
+             tool = tool | Edit.EDIT_TEXT;
+           }
+           //specify toolbar options
+           var options = {
+             allowAddVertices: registry.byId("vtx_ca").checked,
+             allowDeleteVertices: registry.byId("vtx_cd").checked,
+             uniformScaling: registry.byId("uniform_scaling").checked
+           };
+           editToolbar.activate(tool, graphic, options);
+         }
+
+        function createToolbar(theMap) {
+
+
+        dojo.byId("drawArcBtn").onclick =  drawArc;
+        dojo.byId("drawBCurveBtn").onclick =  drawBCurve;
+
+        dojo.byId("drawBPolygonBtn").onclick =  drawBPolygon;
+        dojo.byId("drawFreehandArrBtn").onclick =  drawFreehandArr;
+        dojo.byId("drawPolyLineExBtn").onclick =  drawPolylineEx;
+
+        dojo.byId("drawArrowPolyLineBtn").onclick = drawArrowPolyLine;
+        dojo.byId("drawArrowSlimBtn").onclick = drawArrowSlim;
+        dojo.byId("drawArrowSimpleBtn").onclick = drawArrowSimple;
+        dojo.byId("drawArrowSimplePolyBtn").onclick = drawArrowSimplePoly;
+        dojo.byId("drawSpAttkBtn").onclick = drawSpAttk;
+        dojo.byId("BOFBtn").onclick = drawBOF;
+        dojo.byId("BOFBtn2").onclick = drawBOF2;
+        dojo.byId("BOFBtn3").onclick = drawBOF3;
+        
+        
+
+
+
+
+
+
+
+
+
+
+
+
+          toolbar = new Draw(map);
+          toolbar.on("draw-end", addToMap);
+
+
+          editToolbar = new Edit(map);
+
+          /*
+          editToolbar.on('graphic-move',function(evt){
+            console.log('Move');
+          });
+
+
+          editToolbar.on('graphic-first-move',function(evt){
+            console.log('graphic-first-move');
+          });
+
+
+           editToolbar.on('graphic-move-start',function(evt){
+            console.log('graphic-move-start');
+          });
+
+
+          editToolbar.on('graphic-move-stop',function(evt){
+            console.log('graphic-move-stop');
+          });
+
+             editToolbar.on('rotate',function(evt){
+            console.log('rotate');
+          });
+
+
+          editToolbar.on('rotate-first-move',function(evt){
+            console.log('rotate-first-move');
+          });
+
+
+           editToolbar.on('rotate-start',function(evt){
+            console.log('rotate-start');
+          });
+
+             editToolbar.on('rotate-stop',function(evt){
+            console.log('rotate-stop');
+          });
+
+
+          editToolbar.on('scale',function(evt){
+            console.log('scale');
+          });
+
+
+            editToolbar.on('scale-first-move',function(evt){
+            console.log('scale-first-move');
+          });
+
+             editToolbar.on('scale-start',function(evt){
+            console.log('scale-start');
+          });
+
+
+          editToolbar.on('scale-stop',function(evt){
+            console.log('scale-stop');
+          });
+          */
+
+          graphicsLayer = new GraphicsLayer();
+          map.addLayer(graphicsLayer);
+
+          textGraphicsLayer = new GraphicsLayer();
+          map.addLayer(textGraphicsLayer);
+
+
+
+          mockEdit = new MockEdit(map, graphicsLayer, editToolbar);
+          controlPtsEditor = new ControlPointsEditor(map, graphicsLayer, editToolbar);
+
+
+         
+
+
+          controlPtsEditor.on('cpMoved',function(evt){
+            /*
+            baseOfFire.createSymbol([this._baseLinePts.startPt, this._baseLinePts.endPt], this._points.concat(candidatePoint), backLineDist, backLineAngle, frontLineAgle);
+            */
+
+            //console.error(baseOfFire.getBaseLinePts());
+            
+
+            evt.graphic.setGeometry(baseOfFire.createSymbol([new Point(77,33, map.spatialReference), new Point(72,31, map.spatialReference)], evt.controlPoints, 5, 5, 5));
+            //evt.graphic.draw();
+
+
+
+            //console.info(evt);
+
+          });
+
+
+
+          ///*
+
+
+            editToolbar.on('vertex-move',function(evt){
+            console.log('vertex-move');
+            //console.info(evt);
+
+          });
+
+
+           editToolbar.on('activate',function(evt){
+            
+              mockEdit.deactivate(graphicsLayer);
+              controlPtsEditor.deactivate(graphicsLayer);
+          });
+
+        editToolbar.on('scale',function(evt){
+            console.log('scale');
+            //mockEdit._scaleRotateMove(evt);
+            controlPtsEditor._scaleRotateMove(evt);
+            
+
+
+          });
+
+         editToolbar.on('rotate',function(evt){
+            console.log('rotate');
+            //mockEdit._scaleRotateMove(evt);
+            controlPtsEditor._scaleRotateMove(evt);
+            
+          });
+
+
+          editToolbar.on('graphic-move',function(evt){
+            console.log('Move');
+            //mockEdit._scaleRotateMove(evt);
+            controlPtsEditor._scaleRotateMove(evt);
+
+            
+
+
+
+            //Label Move
+
+              /*
+              var graphic = evt.graphic;
+              var geometry = evt.graphic.geometry;
+              var spatialReference = geometry.spatialReference;
+              var graphicDojoShape = evt.graphic.getDojoShape();
+              var graphicTransform = graphicDojoShape.getTransform();
+              var layerTransform = evt.graphic.getLayer()._div.getTransform();
+              var newPt;
+
+               var geometryJson = geometry.toJson();
+
+                          for (var index in labels) {
+                              var geometry = labels[index];
+                              var wrapOffset = 0;
+                              var f = map.toScreen({x: geometry.x, y: geometry.y, spatialReference: spatialReference}, !0);
+                                f.x += wrapOffset;
+                                f = matrix.multiplyPoint([layerTransform, graphicTransform, matrix.invert(layerTransform)], f);
+                                f.x -= wrapOffset;
+                                f = map.toMap(f);
+
+
+                                map.graphics.add(f, new SimpleMarkerSymbol());
+                                console.info(f)
+
+
+
+                          }
+                          */
+
+
+              /*
+              this._updateSegments(geometryJson.paths || geometryJson.rings, graphicTransform, layerTransform, spatialReference);
+               graphicDojoShape.setTransform(null);
+               var transformGeometry = geometryJsonUtils.fromJson(geometryJson);
+               this._graphic.setGeometry(transformGeometry);
+
+               this._graphic.geometry.controlPoints = this._controlPoints;
+               this._graphic.geometry.drawExtendType = this._drawExtendType;
+               */
+
+
+            //End of lable Move
+
+          });
+
+
+          //Label Controls
+          var labels = [];
+          editToolbar.on('graphic-move-start',function(evt){
+            console.log('Move Start');
+
+             for (i = textGraphicsLayer.graphics.length - 1; i >= 0; i--) {
+                  if(textGraphicsLayer.graphics[i].parentId == evt.graphic.id) {
+                      labels.push(textGraphicsLayer.graphics[i]);
+                       textGraphicsLayer.remove(textGraphicsLayer.graphics[i]);
+                    }
+
+                }
+
+
+          });
+
+
+          editToolbar.on('graphic-move-stop',function(evt){
+            console.log('Move Stop');
+
+            //Add Labels
+
+            for (var i = 0; i < labels.length; i++) {
+             textGraphicsLayer.add(labels[i]);
+            };
+
+            //End of Add Labels
+
+            console.info(labels)
+          });
+
+
+
+          //End of Lable Controls
+
+
+
+
+          //
+          /*
+          editToolbar.on('scale-first-move',function(evt){
+            console.log('scale-first-move');
+            mockEdit._setUp(evt);
+
+          });
+
+         editToolbar.on('rotate-first-move',function(evt){
+            console.log('rotate-first-move');
+            mockEdit._setUp(evt);
+          });
+
+
+          editToolbar.on('graphic-first-move',function(evt){
+            console.log('graphic-first-move');
+            mockEdit._setUp(evt);
+          });
+          */
+
+        //*/
+
+
+
+
+
+
+
+
+          //Activate the toolbar when you click on a graphic
+
+
+
+          //deactivate the toolbar when you click outside a graphic
+          map.on("dbl-click", function(evt){
+
+            editToolbar.deactivate();
+
+
+             console.info("ISDRAWING ", isDrawing);
+
+          });
+
+
+
+          graphicsLayer.on("dbl-click", function(evt) {
+              console.info("ISDRAWING ", isDrawing);
+            if(!isDrawing) {
+            event.stop(evt);
+            activateEdit(evt.graphic);
+          }
+          });
+
+
+
+
+
+
+
+
+          graphicsLayer.enableMouseEvents();
+          createGraphicsMenu();
+
+
+        }
+
+
+
+
+        function drawArc(e) {
+
+         /*
+         var s = map.on("click", function(e) {
+         console.warn("drawArc Clicked");
+
+          s.remove();
+          });
+          */
+
+
+          mock.activate("CURVE");
+
+
+
+
+
+
+
+        }
+
+
+    function drawEnd(event) {
+
+      console.error("function drawEnd(event) {");
+
+          /*
+          var d = new Polyline();
+          d = event.geometry.addPath([[-122.68,45.53], [-122.58,45.55],  [-122.57,45.58],[-122.53,45.60]]);
+          var graphic = new Graphic(d, new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([255,0,0]), 10));
+          */
+          console.info("GEO TYPE ", event.geometry.type);
+          var symbol;
+          if(event.geometry.type == "polyline") {
+          symbol = new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([50,200,30]), 5);
+          } else {
+              symbol = new SimpleFillSymbol(SimpleFillSymbol.STYLE_SOLID,  new SimpleLineSymbol(SimpleLineSymbol.STYLE_DASHDOT, new Color([255,0,0]), 2),new Color([255,255,0,0.25]) );
+          }
+          var graphic = new Graphic(event.geometry, symbol);
+          var tempId = generateUUID();
+          graphic.id = tempId;
+          graphicsLayer.add(graphic);
+          isDrawing = false;
+          mock.deactivate();
+          console.info("mockDrawEnd on html", event.geographicGeometry);
+
+
+          //Add Labels
+
+          var textSymbol1 =  new TextSymbol("Alpha Tango Zulu").setColor(
+    new Color([128,0,0])).setAlign(Font.ALIGN_START).setFont(
+    new Font("12pt").setWeight(Font.WEIGHT_BOLD)) ;
+
+
+          var textSymbol2 =  new TextSymbol("Foxtrot Quebec Romeo").setColor(
+    new Color([128,0,0])).setAlign(Font.ALIGN_START).setFont(
+    new Font("12pt").setWeight(Font.WEIGHT_BOLD)) ;
+
+
+
+          var textSymbol3 =  new TextSymbol("Tango Whiskey Yankee").setColor(
+    new Color([128,0,0])).setAlign(Font.ALIGN_START).setFont(
+    new Font("12pt").setWeight(Font.WEIGHT_BOLD)) ;
+
+          if(graphic.geometry.type == "polyline") {
+          //textSymbol.setText("ALPHA TANGO ZULU");
+          var graphic = new Graphic(event.geometry.getExtent().getCenter(), textSymbol1);
+
+          graphic.parentId = tempId;
+          textGraphicsLayer.add(graphic);
+
+          //Text 2
+          //textSymbol.setText("Foxtrot Quebec Romeo");
+
+          var graphic = new Graphic(event.geometry.getPoint(0,0), textSymbol2);
+          graphic.parentId = tempId;
+          textGraphicsLayer.add(graphic);
+
+
+           //Text 3
+          //textSymbol.setText("Tango Whiskey Yankee");
+        //var lastPt = event.geometry.getPoint(event.geometry.paths.length -1, event.geometry.paths[event.geometry.paths.length -1].length-1);
+        //var lastPt = event.geometry.paths[event.geometry.paths.length -1][event.geometry.paths[event.geometry.paths.length -1].length -1];
+        var lastPt = event.geometry.controlPoints[event.geometry.controlPoints.length -1];
+        console.info(lastPt)
+        var a = mock._getPtAt(lastPt, 1, 5);
+        var graphic = new Graphic(a, textSymbol3);
+        graphic.parentId = tempId;
+        textGraphicsLayer.add(graphic);
+
+
+        }
+          //End of Add Labels
+
+
+
+          }
+
+
+
+             function drawSymEnd(event) {
+
+              console.log("function drawSymEnd(event)");
+
+
+          console.info("DRAW SYM END ", event.geometry.type);
+          var symbol;
+          if(event.geometry.type == "polyline") {
+          symbol = new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([50,200,30]), 5);
+          } else {
+              symbol = new SimpleFillSymbol(SimpleFillSymbol.STYLE_SOLID,  new SimpleLineSymbol(SimpleLineSymbol.STYLE_DASHDOT, new Color([255,0,0]), 2),new Color([255,255,0,0.25]) );
+          }
+          var graphic = new Graphic(event.geometry, symbol);
+          var tempId = generateUUID();
+          graphic.id = tempId;
+          graphicsLayer.add(graphic);
+          isDrawing = false;
+          
+          console.info("mockDrawEnd on html", event.geographicGeometry);
+
+
+          //Add Labels
+
+          var textSymbol1 =  new TextSymbol("Alpha Tango Zulu").setColor(
+    new Color([128,0,0])).setAlign(Font.ALIGN_START).setFont(
+    new Font("12pt").setWeight(Font.WEIGHT_BOLD)) ;
+
+
+          var textSymbol2 =  new TextSymbol("Foxtrot Quebec Romeo").setColor(
+    new Color([128,0,0])).setAlign(Font.ALIGN_START).setFont(
+    new Font("12pt").setWeight(Font.WEIGHT_BOLD)) ;
+
+
+
+          var textSymbol3 =  new TextSymbol("Tango Whiskey Yankee").setColor(
+    new Color([128,0,0])).setAlign(Font.ALIGN_START).setFont(
+    new Font("12pt").setWeight(Font.WEIGHT_BOLD)) ;
+
+          if(graphic.geometry.type == "polyline") {
+          //textSymbol.setText("ALPHA TANGO ZULU");
+          var graphic = new Graphic(event.geometry.getExtent().getCenter(), textSymbol1);
+
+          graphic.parentId = tempId;
+          textGraphicsLayer.add(graphic);
+
+          //Text 2
+          //textSymbol.setText("Foxtrot Quebec Romeo");
+
+          var graphic = new Graphic(event.geometry.getPoint(0,0), textSymbol2);
+          graphic.parentId = tempId;
+          textGraphicsLayer.add(graphic);
+
+
+           //Text 3
+          //textSymbol.setText("Tango Whiskey Yankee");
+        //var lastPt = event.geometry.getPoint(event.geometry.paths.length -1, event.geometry.paths[event.geometry.paths.length -1].length-1);
+        //var lastPt = event.geometry.paths[event.geometry.paths.length -1][event.geometry.paths[event.geometry.paths.length -1].length -1];
+        
+        /*
+        var lastPt = event.geometry.controlPoints[event.geometry.controlPoints.length -1];
+        console.info(lastPt)
+        var a = mock._getPtAt(lastPt, 1, 5);
+        var a = map.getCenter();
+        var graphic = new Graphic(a, textSymbol3);
+        graphic.parentId = tempId;
+        textGraphicsLayer.add(graphic);
+        */
+
+
+        }
+          //End of Add Labels
+
+
+          }
+
+
+         mock.on("mockDrawEnd", drawEnd);
+
+
+
+         function drawBCurve(e) {
+             console.warn("Draw B CURVE Clicked");
+              mock.activate("BEZIER_CURVE");
+
+        }
+
+         function drawFreehandArr(e) {
+             /*
+            var s = map.on("click", function(e) {
+               console.warn("drawPattern Clicked");
+
+            s.remove();
+            });
+            */
+            console.warn("Draw drawFreehandArrBtn");
+             mock.activate("FREEHAND_ARROW");
+
+
+         }
+
+
+         function drawBPolygon(e) {
+
+          console.log("Draw B poly");
+          mock.activate("BEZIER_POLYGON");
+
+
+          /*
+          var s = map.on("click", function(e) {
+               console.warn("drawPaperJS Clicked");
+          s.remove();
+          });
+          */
+
+        }
+
+         function drawPolylineEx(e) {
+
+          console.log("Draw drawPolylineEx");
+          mock.activate("POLYLINEEX");
+
+
+          /*
+          var s = map.on("click", function(e) {
+               console.warn("drawPaperJS Clicked");
+          s.remove();
+          });
+          */
+
+        }
+
+
+         function drawArrowPolyLine(e) {
+
+          console.log("drawArrowPolyLine");
+          mock.activate("ARROW_POLYLINE");
+
+
+          /*
+          var s = map.on("click", function(e) {
+               console.warn("drawPaperJS Clicked");
+          s.remove();
+          });
+          */
+
+         }
+
+         function drawArrowSlim(e) {
+
+             console.log("drawArrowSlim");
+             mock.activate("ARROW_SLIM");
+
+         }
+
+         function drawArrowSimple(e) {
+
+             console.log("drawArrowSimple");
+             mock.activate("ARROW_SIMPLE");
+
+         }
+
+         function drawArrowSimplePoly(e) {
+
+             console.log("drawArrowSimplePoly");
+             mock.activate("ARROW_SIMPLE_POLY");
+
+         }
+
+          function drawSpAttk(e) {
+
+             console.log("drawSpAttk");
+             mock.activate("SP_ATTK");
+
+         }
+
+
+         function drawBOF(e) {
+
+             console.log("BOF_SP_BY_FIRE");
+             mock.activate("BOF_SP_BY_FIRE");
+
+         }
+
+
+         function drawBOF2(e) {
+
+             console.log("BOF_SP_BY_FIRE2");
+              
+             
+             baseOfFire.on("onDrawEnd", drawSymEnd);
+             baseOfFire.init("BOF");
+
+         }
+
+
+
+          function drawBOF3(e) {
+
+            var nameOfTheClass = "BOF";
+            var sym = require("MilSymbologyLineSymbols/"+nameOfTheClass);
+            var bof = new sym(map, graphicsLayer, editToolbar);
+            bof.on("onDrawEnd", drawSymEnd);
+            bof.init("BOF");
+
+
+
+
+            /*
+            var nameOfTheClass = "BOF";
+            var sym = require("MilSymbologyLineSymbols/"+nameOfTheClass);
+            var bof = new sym(map, graphicsLayer, editToolbar);
+            bof.on("onDrawEnd", drawSymEnd);
+            bof.init("BOF");
+            */
+       
+
+         }
+
+
+ 
+
+
+
+
+
+          function generateUUID() {
+                var fin = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = Math.random() * 16 | 0,
+                        v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return r.toString(16);
+
+                });
+                return fin;
+            }
+
+         function addToMap(evt) {
+          var symbol;
+          toolbar.deactivate();
+          map.showZoomSlider();
+          switch (evt.geometry.type) {
+            case "point":
+            case "multipoint":
+              symbol = new SimpleMarkerSymbol();
+              symbol = textSymbol;
+              break;
+            case "polyline":
+              symbol = new SimpleLineSymbol();
+              break;
+            default:
+              symbol = new SimpleFillSymbol();
+              break;
+          }
+          var graphic = new Graphic(evt.geometry, symbol);
+          graphicsLayer.add(graphic);
+          isDrawing = false;
+        }
+
+
+         function createGraphicsMenu() {
+          // Creates right-click context menu for GRAPHICS
+          ctxMenuForGraphics = new Menu({});
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Edit",
+            onClick: function() {
+              if ( selected.geometry.type !== "point" ) {
+                editToolbar.activate(Edit.EDIT_VERTICES, selected);
+              } else {
+                alert("Not implemented");
+              }
+            }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Move",
+            onClick: function() {
+              editToolbar.activate(Edit.MOVE, selected);
+            }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Rotate/Scale",
+            onClick: function() {
+            if ( selected.geometry.type !== "point" ) {
+                editToolbar.activate(Edit.ROTATE | Edit.SCALE, selected);
+              } else {
+                alert("Not implemented");
+              }
+            }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Style",
+            onClick: function() {
+              alert("Not implemented");
+            }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Delete",
+            onClick: function() {
+              map.graphics.remove(selected);
+            }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Edit Control Points",
+            onClick: function() {
+             console.info(selected.geometry);
+             if(editToolbar.getCurrentState().tool == 0) mockEdit.activate(selected);
+
+            }
+          }));
+
+
+            ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Edit Control Points New",
+            onClick: function() {
+             console.info(selected.geometry);
+             if(editToolbar.getCurrentState().tool == 0) controlPtsEditor.activate(selected);
+
+            }
+          }));
+
+            ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Disable Edit Control Points New",
+            onClick: function() {
+             if(controlPtsEditor) {
+             controlPtsEditor.deactivate(graphicsLayer);
+             }
+
+
+            }
+          }));
+
+
+           ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Disable Edit Control Points",
+            onClick: function() {
+             if(mockEdit) {
+             mockEdit.deactivate(graphicsLayer);
+             }
+
+
+            }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+
+
+          ctxMenuForGraphics.startup();
+
+          graphicsLayer.on("mouse-over", function(evt) {
+            // We'll use this "selected" graphic to enable editing tools
+            // on this graphic when the user click on one of the tools
+            // listed in the menu.
+            selected = evt.graphic;
+
+            // Let's bind to the graphic underneath the mouse cursor
+            ctxMenuForGraphics.bindDomNode(evt.graphic.getDojoShape().getNode());
+          });
+
+          graphicsLayer.on("mouse-out", function(evt) {
+            ctxMenuForGraphics.unBindDomNode(evt.graphic.getDojoShape().getNode());
+          });
+        }
+
+
+
+
+       });
+    </script>
+</head>
+
+<body class="nihilo">
+
+    <div id="mainWindow" data-dojo-type="dijit/layout/BorderContainer" data-dojo-props="design:'headline'">
+
+
+        <div id="header2" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'" style="text-align:left;font-weight:bold;font-size:14px;color:#400D12;">
+
+            <div id="tool_move" data-dojo-type="dijit/form/ToggleButton" data-dojo-props="checked:'true', iconClass:'dijitCheckBoxIcon'">Move</div>
+            <div id="tool_vertices" data-dojo-type="dijit/form/ToggleButton" data-dojo-props="checked:'true', iconClass:'dijitCheckBoxIcon'">Edit Vertices</div>
+            <div id="tool_scale" data-dojo-type="dijit/form/ToggleButton" data-dojo-props="checked:'true', iconClass:'dijitCheckBoxIcon'">Scale</div>
+            <div id="tool_rotate" data-dojo-type="dijit/form/ToggleButton" data-dojo-props="checked:'true', iconClass:'dijitCheckBoxIcon'">Rotate</div>
+            <button data-dojo-type="dijit/form/DropDownButton" id="options" data-dojo-props="value:'options'">
+                <span>Options</span>
+                <div data-dojo-type="dijit/Menu" id="optionsMenu">
+                    <div id="vtx_ca" data-dojo-type="dijit/CheckedMenuItem" data-dojo-props="checked:'true'">Allow Add Vertices</div>
+                    <div id="vtx_cd" data-dojo-type="dijit/CheckedMenuItem" data-dojo-props="checked:'true'">Allow Delete Vertices</div>
+                    <div id="uniform_scaling" data-dojo-type="dijit/CheckedMenuItem" data-dojo-props="checked:'true'">Uniform Scaling when Resizing</div>
+                </div>
+            </button>
+        </div>
+
+
+
+        <div id="header" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'">
+            <button data-dojo-type="dijit/form/Button">Point</button>
+            <button data-dojo-type="dijit/form/Button">Multi Point</button>
+            <button data-dojo-type="dijit/form/Button">Line</button>
+            <button data-dojo-type="dijit/form/Button">Polyline</button>
+            <button data-dojo-type="dijit/form/Button">Polygon</button>
+            <button data-dojo-type="dijit/form/Button">Freehand Polyline</button>
+            <button data-dojo-type="dijit/form/Button">Freehand Polygon</button>
+
+            <button data-dojo-type="dijit/form/Button">Arrow</button>
+            <button data-dojo-type="dijit/form/Button">Triangle</button>
+            <button data-dojo-type="dijit/form/Button">Circle</button>
+            <button data-dojo-type="dijit/form/Button">Ellipse</button>
+
+
+        </div>
+
+        <div id="header3" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'">
+
+            <button id="drawArcBtn">Arc</button>
+            <button id="drawBCurveBtn">Bezier Curve</button>
+            <button id="drawBPolygonBtn">Bezier Polygon</button>
+            <button id="drawFreehandArrBtn">Freehand Arrow </button>
+            <button id="drawPolyLineExBtn">Polyline Extended </button>
+            <button id="drawArrowPolyLineBtn">Arrow Straight </button>
+            <button id="drawArrowSlimBtn">Arrow Slim </button>
+            <button id="drawArrowSimpleBtn">Arrow Simple</button>
+            <button id="drawArrowSimplePolyBtn">Arrow Poly Simple </button>
+            <button id="drawSpAttkBtn">Sp Aux Attk</button>
+            <button id="BOFBtn">BOF</button>
+            <button id="BOFBtn2">BOF2</button>
+             <button id="BOFBtn3">BOF SEQ</button>
+
+        </div>
+
+        <div id="map" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'center'"></div>
+    </div>
+    <canvas id="myCanvas"></canvas>
+<!--
+<script>document.write('<script src="http://' + (location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1"></' + 'script>')</script>
+-->
+</body>
+
+</html>

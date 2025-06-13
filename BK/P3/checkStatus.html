@@ -1,0 +1,36 @@
+<html>  
+<head>  
+<title></title>  
+<script type="text/javascript" src="jquery-3.0.0.min.js"></script>  
+</head>  
+<body>  
+<script type="application/javascript">  
+$(document).ready(function(){  
+  function stat() {  
+  $.ajax({  
+  type: "GET",  
+  url: 'http://20.60.50.25:6080/arcgis/rest/services/map/MapServer/healthcheck?f=json&callback=?',  
+  dataType: "jsonp",  
+  async: true,  
+  success: function(json) {  
+  if (json.currentVersion){  
+  doMapStuff();  
+  }  
+  },  
+  error: function(e) {  
+    console.log('ERROR')
+    console.log(e.message); 
+
+  }  
+  });  
+  }  
+  stat();  
+  function doMapStuff(){  
+  console.log('map stuff');  
+  }  
+});  
+</script>  
+<div id="msgid">  
+</div>  
+</body>  
+</html> 

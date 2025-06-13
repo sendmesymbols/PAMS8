@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>JS Bin</title>
+</head>
+<style>
+canvas {
+    border: 1px dashed rgb(200, 200, 200);
+}
+</style>
+<script>
+
+var pts = [];
+var canvas, context;
+
+window.onload = function(){
+canvas = document.getElementById("canvas");
+context = canvas.getContext("2d");
+
+document.getElementById('canvas').addEventListener('click', click, false);
+document.getElementById('stOvrBtn').addEventListener('click', resetEvents);
+ 
+};
+
+function click(evt) {
+  var p = getMousePos(canvas, evt);
+  point(p.x, p.y, context);	
+  
+  pts.push(p);
+  //if(pts.length == 1) pts.push(p);
+
+  document.getElementById('canvas').addEventListener('mousemove', mousemove, false);
+  document.getElementById('canvas').addEventListener('dblclick', dblclick, false);
+
+  
+  drawPts(context, pts);
+
+}
+
+function mousemove(evt) {
+	//pts.concat(getMousePos(canvas, evt));
+	
+	var newPts = pts.concat(getMousePos(canvas, evt));
+	drawPts(context, newPts);
+}
+
+function dblclick(evt) {
+  var p = getMousePos(canvas, evt);
+  pts.push(p);
+
+  resetEvents();
+}
+
+function resetEvents() {
+	pts = [];
+	document.getElementById('canvas').removeEventListener('dblclick', dblclick, false);
+	document.getElementById('canvas').removeEventListener('mousemove', mousemove, false);
+	document.getElementById('canvas').addEventListener('click', click, false);
+}
+
+function drawPts(context, pts) {
+	
+	context.clearRect(0, 0, 700, 700);
+	context.strokeStyle = '#0000FF';
+	context.beginPath();
+
+	var firstPoint = pts[0];
+	var midPt = firstPoint;
+	var lastPoint = pts[pts.length -1];
+	var leftArray =[], rightArray = [];
+
+	if(pts.length == 1) {
+     	lastPoint = firstPoint;
+     }
+
+    var angle = Math.atan((midPt.y - lastPoint.y) / (midPt.x - lastPoint.x));
+    var partialLen = 50;
+
+    var p1 = { x: partialLen * Math.cos(angle) + midPt.x, y: partialLen * Math.sin(angle) + midPt.y };
+	var p2 = { x: -1 * partialLen * Math.cos(angle) + midPt.x, y: -1 * partialLen * Math.sin(angle) + midPt.y };
+        	
+
+     point(p1.x, p1.y, context);   	
+     point(p2.x, p2.y, context);   
+
+
+     if(pts.length >= 1) {
+	   	leftArray.push(p1);
+        rightArray.push(p2);
+           		
+	  }	
+
+	for (var i = 0; i < pts.length-1; i++) {
+		
+		var angle = angleInRadians(midPt, pts[i]);
+		var length = _2PtLen(midPt, pts[i]);
+		var stPtCandidatePt = {"x": p1.x + length * Math.cos(angle), "y":  p1.y + length * Math.sin(angle)};
+		var endPtCandidatePt ={"x":  p2.x + length * Math.cos(angle), "y":  p2.y + length * Math.sin(angle)};
+
+        rightArray.push(endPtCandidatePt);  
+        leftArray.push(stPtCandidatePt);  
+		context.moveTo(pts[i].x, pts[i].y);
+    	context.lineTo(pts[i+1].x, pts[i+1].y, 6);
+    	 	
+
+	}
+
+
+	for (var i = 0; i < leftArray.length-1; i++) {
+		
+		
+		context.moveTo(leftArray[i].x, leftArray[i].y);
+    	context.lineTo(leftArray[i+1].x, leftArray[i+1].y, 6);
+    	 	
+
+	}
+
+
+	for (var i = 0; i < rightArray.length-1; i++) {
+		
+		
+		context.moveTo(rightArray[i].x, rightArray[i].y);
+    	context.lineTo(rightArray[i+1].x, rightArray[i+1].y, 6);
+    	 	
+
+	}
+	
+	
+		context.stroke();
+}
+
+function point(x, y, context){
+  context.beginPath();
+  context.arc(x, y, 1, 0, 2 * Math.PI, true);
+  context.stroke();
+}
+
+function getMousePos(canvas, evt) {
+    var rect = canvas.getBoundingClientRect();
+    return {
+      x: evt.clientX - rect.left,
+      y: evt.clientY - rect.top
+    };
+}
+
+
+function angleInRadians (pt1, pt2) {
+     return Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
+    }
+
+    function _2PtLen (pt1, pt2) {
+            return Math.sqrt((pt1.x - pt2.x) * (pt1.x - pt2.x) + (pt1.y - pt2.y) * (pt1.y - pt2.y));
+        }
+
+
+
+</script>
+
+<body>
+<input type="button" value="Start Over" id="stOvrBtn"> 	
+<canvas id="canvas" width="700" height="700" ></canvas>
+
+</body>
+</html>

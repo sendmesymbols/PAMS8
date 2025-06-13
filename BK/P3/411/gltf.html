@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>glTF 3D Models</title>
+
+    <link rel="stylesheet" href="http://20.60.201.241:9632/4.11/esri/themes/light/main.css" />
+    <script src="http://20.60.201.241:9632/4.11/init.js"></script>
+
+    <style>
+        html,
+        body,
+        #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+
+        #paneDiv {
+            padding: 10px;
+            max-width: 200px;
+            background-color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1em;
+        }
+
+        #credits {
+            font-size: 0.7em;
+            line-height: 1.1em;
+        }
+    </style>
+    <script>
+        require([
+            "esri/views/SceneView",
+            "esri/Map",
+            "esri/views/SceneView", "esri/layers/TileLayer",
+            "esri/layers/ElevationLayer",
+            "esri/layers/GraphicsLayer",
+            "esri/widgets/Sketch/SketchViewModel"
+        ], function (SceneView, Map, SceneView, TileLayer, ElevationLayer, GraphicsLayer, SketchViewModel) {
+            var map = new Map();
+
+            const sceneView = new SceneView({
+                container: "viewDiv",
+                map: map
+            });
+
+
+            var elLayer = new ElevationLayer({
+                        url: 'http://20.60.201.20:6080/arcgis/rest/services/Extract_tif1/ImageServer'
+                    });
+                    map.ground.layers.add(elLayer);
+
+
+
+            var layer = new TileLayer({
+                url: 'http://20.60.201.20:6080/arcgis/rest/services/GlobeBlueMarble/MapServer'
+            });
+            map.layers.add(layer);
+
+            var tLayer = new TileLayer({
+                url: 'http://20.60.201.20:6080/arcgis/rest/services/FdEx_1Corps/MapServer'
+            });
+            map.layers.add(tLayer);
+
+                tLayer.when(function (layer) {
+                sceneView.when(function () {
+                    //sceneView.goTo(extent);
+                    sceneView.goTo(layer.fullExtent);
+                    //Draw Extent
+                    /*
+                    const area = Polygon.fromExtent(layer.fullExtent);
+                    const graphic = new Graphic({
+                        geometry: area,
+                        symbol: { type: "simple-fill" }
+                    });
+                    //sceneView.graphics.add(graphic);
+                    */
+
+
+
+                    //End of Draw Extent
+                });
+            }, function (e) {
+                console.log(e);
+            });
+
+            const graphicsLayer = new GraphicsLayer();
+            map.add(graphicsLayer);
+
+            const tentBtn = document.getElementById("tent");
+            const canoeBtn = document.getElementById("canoe");
+            const towerBtn = document.getElementById("tower");
+
+            sceneView.when(function () {
+                    // This sample uses the SketchViewModel to add points to a
+                    // GraphicsLayer. The points have 3D glTF models as symbols.
+                    const sketchVM = new SketchViewModel({
+                        layer: graphicsLayer,
+                        view: sceneView
+                    });
+
+                    tentBtn.addEventListener("click", function () {
+                        // reference the relative path to the glTF model
+                        // in the resource of an ObjectSymbol3DLayer
+                        sketchVM.pointSymbol = {
+                            type: "point-3d",
+                            symbolLayers: [{
+                                type: "object",
+                                resource: {
+                                    href: "./tent.glb"
+                                }
+                            }]
+                        };
+                        sketchVM.create("point");
+                        deactivateButtons();
+                        this.classList.add("esri-button--secondary");
+                    });
+
+                    canoeBtn.addEventListener("click", function () {
+                        // reference the relative path to the glTF model
+                        // in the resource of an ObjectSymbol3DLayer
+                        sketchVM.pointSymbol = {
+                            type: "point-3d",
+                            symbolLayers: [{
+                                type: "object",
+                                resource: {
+                                    href: "./canoe.glb"
+                                }
+                            }]
+                        };
+                        deactivateButtons();
+                        sketchVM.create("point");
+                        this.classList.add("esri-button--secondary");
+                    });
+
+
+                     towerBtn.addEventListener("click", function () {
+                        sketchVM.pointSymbol = {
+                            type: "point-3d",
+                            symbolLayers: [{
+                                type: "object",
+                                resource: {
+                                    href: "./tower.glb"
+                                }
+                            }]
+                        };
+                        deactivateButtons();
+                        sketchVM.create("point");
+                        this.classList.add("esri-button--secondary");
+                    });
+
+                    sketchVM.on("create", function (event) {
+                        if (event.state === "complete") {
+                            sketchVM.update(event.graphic);
+                            deactivateButtons();
+                        }
+                    });
+                })
+                .catch(console.error);
+
+            function deactivateButtons() {
+                const elements = Array.prototype.slice.call(
+                    document.getElementsByClassName("esri-button")
+                );
+                elements.forEach(function (element) {
+                    element.classList.remove("esri-button--secondary");
+                });
+            }
+
+            sceneView.ui.add("paneDiv", "top-right");
+        });
+    </script>
+</head>
+
+<body>
+    <div id="viewDiv"></div>
+    <div id="paneDiv" class="esri-widget">
+        <p>Select a symbol and place it in the scene:</p>
+        <button id="tent" class="esri-button">Tent</button><br />
+        <button id="canoe" class="esri-button">Canoe</button><br />
+        <button id="tower" class="esri-button">Tower</button>
+        
+    </div>
+</body>
+
+</html>

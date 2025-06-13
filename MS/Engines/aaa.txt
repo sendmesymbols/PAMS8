@@ -1,0 +1,122 @@
+import Map from "esri/Map";
+import MapView from "esri/views/MapView";
+import SceneView from "esri/views/SceneView";
+import Graphic from "esri/Graphic";
+import PictureMarkerSymbol from "esri/symbols/PictureMarkerSymbol";
+import Point from "esri/geometry/Point";
+import GraphicsLayer from "esri/layers/GraphicsLayer";
+import * as reactiveUtils from "esri/core/reactiveUtils";
+
+// Initialize the map
+const map = new Map({
+  basemap: "topo-vector",
+  ground: "world-elevation" // Required for 3D SceneView
+});
+
+// Create a graphics layer with a PictureMarkerSymbol
+const graphicsLayer = new GraphicsLayer();
+map.add(graphicsLayer);
+
+const pictureMarkerSymbol = new PictureMarkerSymbol({
+  url: "https://static.arcgis.com/images/Symbols/Shapes/BlackStarLargeB.png",
+  width: "32px",
+  height: "32px"
+});
+
+const point = new Point({
+  longitude: -100,
+  latitude: 40
+});
+
+const graphic = new Graphic({
+  geometry: point,
+  symbol: pictureMarkerSymbol
+});
+graphicsLayer.add(graphic);
+
+// State to track the current view
+let activeView: MapView | SceneView | null = null;
+let is3DView = false;
+
+// Function to create a 2D MapView
+function create2DView(): MapView {
+  return new MapView({
+    container: "viewDiv",
+    map: map,
+    zoom: 10,
+    center: [-100, 40]
+  });
+}
+
+// Function to create a 3D SceneView
+function create3DView(): SceneView {
+  return new SceneView({
+    container: "viewDiv",
+    map: map,
+    zoom: 10,
+    center: [-100, 40]
+  });
+}
+
+// Function to switch views
+function switchView() {
+  const oldView = activeView;
+  const newView = is3DView ? create2DView() : create3DView();
+
+  // Update the active view
+  activeView = newView;
+  is3DView = !is3DView;
+
+  // Destroy the old view
+  if (oldView) {
+    oldView.container = null; // Detach from DOM
+    oldView.destroy();
+  }
+
+  // Wait for the new view to be ready
+  newView.when(() => {
+    console.log(`New ${newView.type.toUpperCase()} view is ready`);
+  });
+}
+
+// Function to handle view switch
+function onViewSwitch(newType: string, oldType: string | undefined) {
+  console.log(`View switched from ${oldType?.toUpperCase() || "NONE"} to ${newType.toUpperCase()}`);
+  // Add custom logic, e.g., adjust PictureMarkerSymbol for 3D
+  if (newType === "3d") {
+    // Optionally adjust symbol for 3D (e.g., size or type)
+    graphic.symbol = new PictureMarkerSymbol({
+      url: "https://static.arcgis.com/images/Symbols/Shapes/BlackStarLargeB.png",
+      width: "24px", // Smaller size for 3D if needed
+      height: "24px"
+    });
+  } else {
+    graphic.symbol = pictureMarkerSymbol; // Revert to original
+  }
+}
+
+// Initialize the first view (2D by default)
+activeView = create2DView();
+
+// Observe view type changes
+reactiveUtils.watch(
+  () => activeView?.type,
+  (newType, oldType) => {
+    if (newType && newType !== oldType) {
+      onViewSwitch(newType, oldType);
+    }
+  },
+  { initial: true }
+);
+
+// Set up the toggle button
+const toggleButton = document.getElementById("toggleButton") as HTMLButtonElement;
+toggleButton.addEventListener("click", switchView);
+
+// Clean up when the application unloads
+window.addEventListener("unload", () => {
+  if (activeView) {
+    activeView.container = null;
+    activeView.destroy();
+  }
+});

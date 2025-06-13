@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>DEWS</title>
+
+    <link rel="stylesheet" href="http://20.60.201.241:9632/3.15/dijit/themes/claro/claro.css">
+    <link rel="stylesheet" href="http://20.60.201.241:9632/3.15/esri/css/esri.css">
+    <style>
+        html,
+        body,
+        #map {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+    <script src="http://20.60.201.241:9632/3.15/init.js"></script>
+    <script>
+        require([
+            "dojo/_base/declare",
+            "esri/map",
+            "esri/layers/WMTSLayer", "esri/layers/ArcGISTiledMapServiceLayer",
+            "esri/layers/TiledMapServiceLayer",
+            "esri/geometry/Extent",
+            "esri/SpatialReference",
+            "esri/layers/TileInfo",
+            "esri/layers/CSVLayer",
+            "esri/Color",
+            "esri/symbols/SimpleMarkerSymbol",
+            "esri/symbols/PictureMarkerSymbol",
+            "esri/renderers/SimpleRenderer",
+            "esri/renderers/DotDensityRenderer",
+            "esri/renderers/ClassBreaksRenderer",
+            "esri/renderers/UniqueValueRenderer",
+            "esri/layers/GraphicsLayer",
+            "esri/graphic",
+            "esri/InfoTemplate",
+            "esri/config",
+            "dojo/domReady!"
+        ], function (declare, Map, WMTSLayer, ArcGISTiledMapServiceLayer, TiledMapServiceLayer, Extent, SpatialReference, TileInfo, CSVLayer, Color, SimpleMarkerSymbol, PictureMarkerSymbol, SimpleRenderer, 
+          DotDensityRenderer, ClassBreaksRenderer, UniqueValueRenderer, InfoTemplate, GraphicsLayer, graphic, esriConfig) {
+            var initialExtent = new esri.geometry.Extent({
+                "xmin": 62.06315296612839,
+                "ymin": 35.48496183917276,
+                "xmax": 66.55803634935674,
+                "ymax": 38.254917349283346,
+
+            });
+            map = new Map("map", {
+                slider: true,
+                zoom: 1,
+                logo: false,
+                center: [71.5, 31],
+                sliderStyle: "larger",
+                extent: initialExtent,
+            });
+
+
+            map.on("load", function () {
+                var towersBtn = document.getElementById("towerBtn");
+                towerBtn.addEventListener("click", loadCSV);
+
+            });
+
+            var getJSON = function (url, callback) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', url, true);
+                xhr.responseType = 'json';
+                xhr.onload = function () {
+                    var status = xhr.status;
+                    if (status === 200) {
+                        callback(null, xhr.response);
+                    } else {
+                        callback(status, xhr.response);
+                    }
+                };
+                xhr.send();
+            };
+
+
+            function loadCSV() {
+
+                
+                csv = new CSVLayer("airport-runway_799.csv", {
+                  copyright: "Pakistan"
+                });
+                var orangeRed = new Color([238, 69, 0, 0.5]); // hex is #ff4500
+                var marker = new SimpleMarkerSymbol("solid", 15, null, orangeRed);
+                var renderer = new SimpleRenderer(marker); 
+                var renderer = new UniqueValueRenderer();       
+                
+                /*
+                var renderer = new DotDensityRenderer({
+                  fields: [{
+                  name: "FID",
+                    color: new Color([52, 114, 53])
+                  }],
+                  dotValue: 4000,
+                  dotSize: 2
+                });
+                */
+                
+                /*
+                var renderer = new ClassBreaksRenderer(marker, function(feature){
+                  return feature.attributes.FID;
+                });
+                */
+                /*
+                renderer.setColorInfo({
+  field: "FID",
+      minDataValue: 0,
+      maxDataValue: 100,
+  colors: [
+    new Color([255, 0, 0]),
+    new Color([0, 255, 0])
+  ]
+});
+*/
+
+renderer.setSizeInfo({
+  "type": "sizeInfo",
+  "field": "FID",
+  "minDataValue": 0,
+  "maxDataValue": 33871648,
+  "valueUnit": "unknown",
+
+  "minSize": {
+    "type": "sizeInfo",
+    "expression": "view.scale",
+    "stops": [
+      { "value": 1128,      "size": 16 },
+      { "value": 288895,    "size": 16 },
+      { "value": 73957191,  "size": 9 },
+      { "value": 591657528, "size": 2 }
+    ]
+  },
+
+  "maxSize": {
+    "type": "sizeInfo",
+    "expression": "view.scale",
+    "stops": [
+      { "value": 1128,      "size": 80 },
+      { "value": 288895,    "size": 80 },
+      { "value": 73957191,  "size": 50 },
+      { "value": 591657528, "size": 25 }
+    ]
+  },
+});
+
+
+
+
+
+
+
+                csv.setRenderer(renderer);
+                var template = new InfoTemplate("${radio}", "${range}", "${area}");
+                csv.setInfoTemplate(template);
+                map.addLayer(csv);
+
+
+
+
+
+
+
+                /*
+                 graphicsLayer = new GraphicsLayer();
+                 map.addLayer(graphicsLayer);
+                 var orangeRed = new Color([238, 69, 0, 0.5]); // hex is #ff4500
+                 var marker = new SimpleMarkerSymbol("solid", 15, null, orangeRed);
+         
+                 fetch("airport-helipad_352.csv").then(res => res).then((out) => {
+                   console.log(out);
+                 }).catch(err=> {
+                   throw err;
+                 })
+                 */
+
+
+                 /*
+                getJSON('http://devbox:9632/P3/geoserver/airport-runway_799.csv',
+                    function (err, data) {
+                        if (err !== null) {
+                            alert('Something went wrong: ' + err);
+                        } else {
+                            //alert('Your query count: ' + data);
+                            console.log(data);
+                        }
+                    });
+                    */
+
+                /*
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', 'http://devbox:9632/P3/geoserver/airport-runway_799.csv', true);
+                xhr.responseType = 'json';
+                xhr.onload = function () {
+                    var status = xhr.status;
+                    if (status === 200) {
+                        callback(null, xhr.response);
+                    } else {
+                        callback(status, xhr.response);
+                    }
+                };
+                xhr.send();
+                */
+
+
+
+
+
+
+            }
+
+
+
+            var CustomWMTSLayer = declare([TiledMapServiceLayer], {
+                declaredClass: "ogc.WMTSLayer",
+                constructor: function () {
+                    this.copyright = 'Copyright @ NEWCAP Div C<sup>4</sup>I Dte GHQ';
+                    this.version = "1.1.0";
+                    this.identifier = "pak_osm";
+                    this.imageFormat = "image/jpeg";
+                    this.tileMatrixSet = "EPSG:4326_pak_osm";
+                    this.spatialReference = new SpatialReference({ wkid: 4326 });
+                    this.initialExtent = new Extent(53.613426268148544, 28.619299588076007, 85.85194805190412, 40.03710938648944, this.spatialReference);
+                    this.fullExtent = new Extent(36.11161496900007, 1.4862712700000316, 111.22829375100008, 43.82602261900007, this.spatialReference);
+                    //
+                    this.tileInfo = new TileInfo({
+                        "dpi": "96",
+                        "format": "MIXED",
+                        "compressionQuality": 75.0,
+                        "spatialReference": {
+                            "wkid": "4326"
+                        },
+                        "rows": 256,
+                        "cols": 256,
+                        "origin": {
+                            "x": -400.0,
+                            "y": 399.9999999999998
+                        },
+
+                        // Scales in DPI 96
+                        "lods": [{
+                            "level": "0",
+                            "scale": 10000000,
+                            "resolution": 0.023794610058302804
+                        }, {
+                            "level": "1",
+                            "scale": 9000000,
+                            "resolution": 0.02141514905247252
+                        }, {
+                            "level": "2",
+                            "scale": 8000000,
+                            "resolution": 0.01903568804664224
+                        }, {
+                            "level": "3",
+                            "scale": 7000000,
+                            "resolution": 0.01665622704081196
+                        }, {
+                            "level": "4",
+                            "scale": 6000000,
+                            "resolution": 0.014276766034981682
+                        }, {
+                            "level": "5",
+                            "scale": 5000000,
+                            "resolution": 0.011897305029151402
+                        }, {
+
+                            "level": "6",
+                            "scale": 4000000,
+                            "resolution": 0.00951784402332112
+                        }, {
+
+                            "level": "7",
+                            "scale": 3000000,
+                            "resolution": 0.007138383017490841
+                        }, {
+                            "level": "8",
+                            "scale": 2000000,
+                            "resolution": 0.00475892201166056
+                        }, {
+                            "level": "9",
+                            "scale": 1500000,
+                            "resolution": 0.0035691915087454206
+                        }, {
+                            "level": "10",
+                            "scale": 1000000,
+                            "resolution": 0.00237946100583028
+                        }, {
+                            "level": "11",
+                            "scale": 750000,
+                            "resolution": 0.0017845957543727103
+                        }, {
+                            "level": "12",
+                            "scale": 500000,
+                            "resolution": 0.00118973050291514
+                        }, {
+                            "level": "13",
+                            "scale": 300000,
+                            "resolution": 7.138383017490841E-4
+                        }, {
+                            "level": "14",
+                            "scale": 250000,
+                            "resolution": 5.9486525145757E-4
+                        }, {
+                            "level": "15",
+                            "scale": 200000,
+                            "resolution": 4.7589220116605604E-4
+                        }, {
+                            "level": "16",
+                            "scale": 150000,
+                            "resolution": 3.5691915087454206E-4
+                        }, {
+                            "level": "17",
+                            "scale": 100000,
+                            "resolution": 2.3794610058302802E-4
+                        }, {
+                            "level": "18",
+                            "scale": 75000,
+                            "resolution": 1.7845957543727103E-4
+                        }, {
+                            "level": "19",
+                            "scale": 50000,
+                            "resolution": 1.1897305029151401E-4
+                        }, {
+                            "level": "20",
+                            "scale": 25000,
+                            "resolution": 5.9486525145757005E-4
+                        }, {
+                            "level": "21",
+                            "scale": 16000,
+                            "resolution": 3.807137609328448E-5
+                        }]
+                    });
+                    this.loaded = true;
+                    this.onLoad(this);
+                },
+
+                getTileUrl: function (level, row, col) {
+                    var urlTemplate = "http://devbox:9632/geowebcache/service/wmts" +
+                        "?SERVICE=WMTS&VERSION=" + this.version +
+                        "&REQUEST=GetTile" +
+                        "&LAYER=" + this.identifier +
+                        "&STYLE=_null" +
+                        "&FORMAT=" + this.imageFormat +
+                        "&TILEMATRIXSET=" + this.tileMatrixSet +
+                        "&TILEMATRIX=" + this.tileMatrixSet + ":" +
+                        level + "&TILEROW=" + row + "&TILECOL=" + col;
+                    return urlTemplate;
+                }
+            });
+
+
+            var customWMTSLayer = new CustomWMTSLayer();
+            map.addLayer(customWMTSLayer);
+
+
+
+
+
+
+
+
+
+        });
+    </script>
+</head>
+
+<body class="claro">
+    <div id="map"></div>
+    <input type="button" value="Towers" name="Towers" id="towerBtn">
+
+</body>
+
+</html>

@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width,user-scalable=no">
+
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+  <title>Super Widget</title>
+
+  <link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+  <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+  <link rel="stylesheet" href="style.css">
+
+
+
+  <style>
+    html,
+        body,
+        #mainWindow {
+            font-family: sans-serif;
+            height: 100%;
+            width: 100%;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #header {
+            height: 80px;
+            overflow: auto;
+            padding: 0.5em;
+        }
+
+
+        .map .logo-med {
+           display: inline-block;
+           vertical-align: bottom;
+           width: 255px;
+           height: 56px;
+           z-index: 30;
+           background-image: url("logo.png");
+           cursor: pointer;
+          
+          }
+    </style>
+
+  <script src="http://arb-pc2:9632/MilitarySymbology/ThirdParty/tween.js"></script>
+  <script src="http://arb-pc2:9632/MilitarySymbology/ThirdParty/turf.min.js"></script>
+  <script src="http://arb-pc2:9632/MilitarySymbology/ThirdParty/milsymbol.js"></script>
+
+    <!--
+    <script src="MilitarySymbology/ThirdParty/dms.js"></script>
+    <script src="MilitarySymbology/ThirdParty/latlon-spherical.js"></script>
+    -->
+
+  <script type="text/javascript">
+
+
+    var dojoConfig = {
+      paths: {
+        MilSymbologyExt: location.origin + "/" + "MilitarySymbology/Extensions",
+        MilSymbologyComponents: location.origin + "/" + "MilitarySymbology/Components",
+        MilSymbologySymbols: location.origin + "/" + "MilitarySymbology/Symbols",
+        MilSymbologySymbolsEngine: location.origin + "/" + "MilitarySymbology/Engines",
+        MilSymbologySymbolsData: location.origin + "/" + "MilitarySymbology/Data",
+        MilSymbologyThirdParty: location.origin + "/" + "MilitarySymbology/ThirdParty",
+        MilSymbologySymbolsImages: location.origin + "/" + "MilitarySymbology/Images"
+      }
+    };
+
+
+
+  </script>
+  <!--
+    <script src="http://arb-pc2:9632/3.17/"></script>
+    -->
+  <script src="http://arb-pc2:9632/3.15/init.js"></script>
+  <script src="superMeasure.js"></script>
+
+  <!--
+    <script src="http://:arb-pc2:9632/3.15/init.js"></script> 
+    -->
+
+
+
+
+  <script>
+
+    var extent, map;
+    require([
+      "esri/map",
+      "esri/toolbars/draw",
+      "esri/graphic",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/geometry/Circle",
+      "esri/symbols/Font",
+
+
+
+      "esri/geometry/Point",
+      "esri/geometry/Polyline",
+      "esri/geometry/Polygon",
+      "esri/symbols/TextSymbol",
+
+      "dojo/parser",
+      "dijit/registry",
+      "dojo/_base/event",
+      "dojo/dom",
+      "dojo/dom-style",
+      "dijit/Menu",
+      "esri/layers/GraphicsLayer",
+      "esri/layers/ArcGISTiledMapServiceLayer",
+
+      "esri/symbols/PictureMarkerSymbol",
+      "esri/Color",
+      "dojo/on",
+      "dijit/Menu",
+      "dijit/MenuItem",
+      "dijit/MenuSeparator",
+      "dojo/parser",
+      "dojox/gfx/matrix",
+      "dojo/_base/array",
+      "esri/geometry/jsonUtils",
+
+      "esri/layers/ArcGISDynamicMapServiceLayer",
+      "MilSymbologySymbolsEngine/SymbolEngine",
+      "MilSymbologySymbolsEngine/Amplifier",
+      "MilSymbologySymbolsEngine/EditEngine",
+      "MilSymbologySymbolsEngine/DrawEssentials",
+      "MilSymbologyExt/GeoTools",
+
+      "esri/geometry/Extent",
+      "esri/SnappingManager",
+      "dojo/keys",
+
+
+
+
+
+
+      "dijit/layout/BorderContainer",
+      "dijit/layout/ContentPane",
+      "dijit/form/Button",
+      "dijit/WidgetSet",
+
+      "dijit/form/ToggleButton",
+      "dijit/form/DropDownButton",
+      "dijit/CheckedMenuItem",
+
+
+      "dojo/domReady!"
+    ], function (
+      Map, Draw, Graphic,
+      SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, Circle, Font,
+      Point, Polyline, Polygon,
+      TextSymbol, parser, registry, event, dom, domStyle, Menu, GraphicsLayer, ArcGISTiledMapServiceLayer,
+      PictureMarkerSymbol, Color, on, Menu, MenuItem, MenuSeparator, parser, matrix, Array,
+      geometryJsonUtils, ArcGISDynamicMapServiceLayer, SymbolEngine, Amplifier,
+      EditEngine, DrawEssentials, GeoTools,
+      Extent, SnappingManager, keys
+
+    ) {
+
+
+
+
+
+        parser.parse();
+        var graphicsLayer, textGraphicsLayer, toolbar, symbol, geomTask, editToolbar, isDrawing, ctxMenuForGraphics, ctxMenuForMap;
+        var selected, currentLocation;
+
+        var endEvent, symDrawProgressEvent, editEngine, enddeactivateCpEvent;
+        map = new Map("map", {
+          logo: true,
+          showAttribution: false
+
+          //, basemap: "streets",
+          //center: [-15.469, 36.428],  zoom: 3
+        });
+
+        //map.getScale()
+
+
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/grid2/MapServer");
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+        //var tiled = new ArcGISDynamicMapServiceLayer("http://20.60.201.20:6080/arcgis/rest/services/Punjab/MapServer");
+        
+
+
+
+
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.71/arcgis/rest/services/MapdataV3/MapServer");
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/arcgis/rest/services/ESRI_StreetMap_World_2D/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.35.65:8399/arcgis/rest/services/MapVector/MapServer"); //GCS
+
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/"); //PCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.61:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.62:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.63:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.64:6080/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.71/arcgis/rest/services/MapdataV3/MapServer"); //GCS
+        //var tiled = new ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/arcgis/rest/services/ESRI_StreetMap_World_2D/MapServer");
+        map.addLayer(tiled);
+
+        esri.config.defaults.map.logoLink = 'http://nacsys.met.af';
+
+
+
+        map.on("load", function () {
+
+
+          //Remove 
+
+
+          /*
+
+          var a = new Point(68.99174366565728, 27.709813703606667, map.spatialReference);
+          var b = new Point(71.38832676708246, 26.346257021638, map.spatialReference);
+          var c = new Point(71.99174366565728, 28.709813703606667, map.spatialReference);
+
+          var newCenter = new Point(68.99174366565728, 30.709813703606667, map.spatialReference);
+
+         
+          var centerExtent = new Extent();
+          centerExtent.setSpatialReference(map.spatialReference);
+
+          centerExtent = addIntoExtent(centerExtent, a, true);
+          centerExtent = addIntoExtent(centerExtent, b, false);
+          centerExtent = addIntoExtent(centerExtent, c, false);
+
+          
+
+
+
+          GeoTools.displayPointText(map, a, "A");
+          GeoTools.displayPointText(map, b, "B");
+          GeoTools.displayPointText(map, c, "C");
+
+          //Center Point Display
+
+          GeoTools.displayPointText(map, centerExtent.getExtent().getCenter(), "Center");
+          GeoTools.displayPointText(map, newCenter, "New Center");
+
+          //Translation
+          GeoTools.displayPointText(map, GeoTools.movePt(a, centerExtent.getExtent().getCenter(), newCenter), 'Translated A');
+          GeoTools.displayPointText(map, GeoTools.movePt(b, centerExtent.getExtent().getCenter(), newCenter), 'Translated B');
+          GeoTools.displayPointText(map, GeoTools.movePt(c, centerExtent.getExtent().getCenter(), newCenter), 'Translated C');
+
+
+            */ 
+
+      
+
+
+
+
+
+
+
+
+
+
+
+          //Remove
+
+
+
+
+
+
+
+
+          extent = new Extent();
+
+
+
+
+          graphicsLayer = new GraphicsLayer();
+          map.addLayer(graphicsLayer);
+
+          textGraphicsLayer = new GraphicsLayer();
+          map.addLayer(textGraphicsLayer);
+
+          dojo.byId("createSymBtn").onclick = createSym;
+          dojo.byId("createSymFromGeomBtn").onclick = createSymFromGeom;
+          dojo.byId("ZoomBtn").onclick = zoomGeom;
+          var btn = dojo.byId("ZoomBtn");
+          btn.onclick = dojo.partial(zoomGeom, map, graphicsLayer, textGraphicsLayer);
+
+
+
+
+
+          editEngine = new EditEngine(map, graphicsLayer, textGraphicsLayer);
+
+          //debugger;
+          enddeactivateCpEvent = editEngine.on("changeInSymbol", deactivateCp);
+
+          createGraphicsMenu();
+
+
+          graphicsLayer.on("mouse-over", function (evt) {
+            // We'll use this "selected" graphic to enable editing tools
+            // on this graphic when the user click on one of the tools
+            // listed in the menu.
+            selected = evt.graphic;
+
+            console.log("MOUSE OVER");
+
+
+
+
+
+
+
+
+
+            // Let's bind to the graphic underneath the mouse cursor
+            ctxMenuForGraphics.bindDomNode(evt.graphic.getDojoShape().getNode());
+
+          });
+
+          graphicsLayer.on("mouse-out", function (evt) {
+            ctxMenuForGraphics.unBindDomNode(evt.graphic.getDojoShape().getNode());
+
+
+
+
+
+          });
+
+
+          map.graphics.on("click", function (evt) {
+
+            if (!isDrawing) {
+              editEngine.activateEditText(evt.graphic);
+
+
+            }
+          });
+
+
+          //deactivate the toolbar when you click outside a graphic
+          map.on("dbl-click", function (evt) {
+
+            if (!isDrawing) {
+              event.stop(evt);
+              map.disableDoubleClickZoom();
+              editEngine.deactivateEdit();
+
+            }
+
+          });
+
+
+
+          map.on("mouse-move", function (evt) {
+            //console.log(evt.mapPoint);
+
+
+          });
+
+
+
+          graphicsLayer.on("dbl-click", function (evt) {
+
+            if (!isDrawing) {
+              event.stop(evt);
+              editEngine.activateEdit(evt.graphic);
+            }
+          });
+
+
+
+
+
+
+        });
+
+
+
+        function addIntoExtent(extent, geometry, isFirst) {
+
+          var resExtent = new Extent();
+          if (extent !== null || extent !== undefined) {
+            if (isFirst) {
+              if (geometry.type === 'point') {
+                var newExtent = new Extent();
+                newExtent.setSpatialReference(extent.spatialReference);
+
+                newExtent.xmin = geometry.x;
+                newExtent.xmax = geometry.x;
+
+                newExtent.ymin = geometry.y;
+                newExtent.ymax = geometry.y;
+
+                resExtent = newExtent;
+              }
+              if (geometry.type === 'polygon' || geometry.type === 'polyline') {
+                var t = geometry.getExtent();
+                if (t !== undefined) {
+                  resExtent = t;
+                }
+
+              }
+
+            } else {
+              if (geometry.type === 'point')
+                resExtent = extent.union({
+                  'xmin': geometry.x,
+                  'ymin': geometry.y,
+                  'xmax': geometry.x,
+                  'ymax': geometry.y
+                });
+              if (geometry.type === 'polygon' || geometry.type === 'polyline') {
+                var s = geometry.getExtent();
+                if (s !== undefined) {
+                  resExtent = extent.union(s);
+                }
+
+
+              }
+
+            }
+
+
+            return resExtent;
+          }
+        }
+
+
+
+
+
+
+
+
+        function createGraphicsMenu() {
+          // Creates right-click context menu for GRAPHICS
+          ctxMenuForGraphics = new Menu({});
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Edit",
+            onClick: function () {
+              if (selected.geometry.type !== "point") {
+                if (!isDrawing) {
+                  selected.getLayer()._map.enableDoubleClickZoom();
+                  editEngine.activateEdit(selected);
+                }
+
+              }
+            }
+          }));
+
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Style",
+            onClick: function () {
+              alert("Not implemented");
+            }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Edit Control Points",
+            onClick: function () {
+              if (selected.geometry.type === "point") {
+                editEngine.activateEdit(selected);
+              } else {
+                editEngine.activateEditPts(selected);
+              }
+
+            }
+          }));
+
+
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Disable Edit Control Points",
+            onClick: function () {
+              editEngine.deactivateEditPts(graphicsLayer);
+            }
+          }));
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Save",
+            onClick: function () {
+              console.info("Geometry");
+
+              if (selected.geometry.type === "polyline") {
+                console.log(JSON.stringify(selected.geometry.paths));
+              } else if (selected.geometry.type === "polygon") {
+                console.log(JSON.stringify(selected.geometry.rings));
+              } else if (selected.geometry.type === "point") {
+                console.log(JSON.stringify(selected.geometry));
+              }
+
+
+
+
+              console.info("Control Points");
+              console.log(JSON.stringify(selected.drawEssentials.CTRL_PTS));
+
+
+              console.info("Baseline Points");
+              console.log(JSON.stringify(selected.drawEssentials.BASE_LN_PTS));
+
+              if (selected.geometry.type === "polyline") {
+                dojo.byId("geoText").value = JSON.stringify(selected.geometry.paths);
+              } else if (selected.geometry.type === "polygon") {
+                dojo.byId("geoText").value = JSON.stringify(selected.geometry.rings);
+              } else if (selected.geometry.type === "point") {
+                dojo.byId("geoText").value = JSON.stringify(selected.geometry);
+              }
+
+              dojo.byId("ctrlPtsText").value = JSON.stringify(selected.drawEssentials.CTRL_PTS);
+              dojo.byId("baseLinePtsText").value = JSON.stringify(selected.drawEssentials.BASE_LN_PTS);
+
+
+
+
+
+
+            }
+          }));
+
+
+
+          ctxMenuForGraphics.addChild(new MenuSeparator());
+
+          ctxMenuForGraphics.addChild(new MenuItem({
+            label: "Save As PNG",
+            onClick: function () {
+
+
+              if (selected.geometry.type === "point") {
+                var image = new Image();
+                if (selected.drawEssentials.SYM_GEO_TYPE === 'FPoint') {
+                  image.src = selected.symbol.url;
+                } else {
+                  var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                  svg.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns", "http://www.w3.org/2000/svg");
+                  svg.setAttribute('width', '612');
+                  svg.setAttribute('height', '792');
+                  svg.setAttribute('stroke', 'rgb(' + selected.symbol.outline.color.toRgb() + ')');
+                  svg.setAttribute('stroke-width', selected.symbol.outline.width);
+                  if (selected.symbol.outline.style !== 'solid') svg.setAttribute('stroke-dasharray', "50, 20");
+
+                  var path = document.createElement('path');
+                  path.setAttribute('d', selected.symbol.path);
+                  svg.appendChild(path);
+                  console.log(svg);
+                  var xml = (new XMLSerializer).serializeToString(svg);
+                  image.src = "data:image/svg+xml;base64," + btoa(xml);
+                  console.log(image.src);
+
+
+
+                }
+
+
+                var canvas = document.createElement('canvas'); //Place these Lines somewhere where creation of canvas is not called evry time a new symbol is created for performance purposes
+
+                image.onload = dojo.hitch(this, function () {
+
+                  canvas.width = image.width;
+                  canvas.height = image.height;
+                  var context = canvas.getContext('2d');
+                  context.drawImage(image, 0, 0);
+                  console.log(canvas.toDataURL('image/png'));
+
+                });
+
+
+
+
+
+
+
+              }
+
+
+
+            }
+          }));
+
+
+          ctxMenuForGraphics.startup();
+
+
+        }
+
+
+
+
+        function createSym(e) {
+          isDrawing = true;
+
+          var amplifier = new Amplifier();
+          /*
+          amplifier.DTG = "DDHHMMSSZMONYYYY";
+          amplifier.EDTG = "DDHHMMSSZMONYYYY00";
+          */
+
+          //amplifier.UNIQUE_DESIG = "Tact";
+          amplifier.UNIQUE_DESIG = "Qta CMH";
+          amplifier.HIGHER_FORM = "HHH";
+          amplifier.SIZE = 60;
+
+
+
+          var attr = {
+            plnOrdrOverlayId: 2000,
+            plnOrdrId: 300,
+            creatorId: 700,
+            symbolId: '500'
+          }
+
+
+          var r = new Point(68.99174366565728, 27.709813703606667, map.spatialReference);
+
+
+
+          var symEngine = new SymbolEngine(dojo.byId("sicText").value, amplifier, map, graphicsLayer, textGraphicsLayer, attr);
+          
+          var drawEssentials = new DrawEssentials();
+
+          drawEssentials.uniqueDesignation = "FORCE 123456";
+
+
+
+          /*
+          drawEssentials.BK_LN_DIST_RATIO = 5;
+          drawEssentials.BK_LN_ANGL_RATIO = 5;
+          drawEssentials.FRNT_LN_ANGL_RATIO = 5;
+          drawEssentials.FRNT_LN_DIST_RATIO = 5;
+          drawEssentials.IS_LINE = false;
+          */
+          //drawEssentials.SIZE = 150;
+          //drawEssentials.ANGLE = 90;
+
+          //drawEssentials.GEOM = new Point(68.99174366565728 , 27.709813703606667, map.spatialReference);
+
+          //z.OPTIONS.GEOM = new Point(z.GEOM.x, z.GEOM.y, z.spatialReference);
+
+          //drawEssentials.HEAD_RATIO = 0.17;
+          //drawEssentials.TAIL_FACTOR = 0.17;
+
+          drawEssentials.ECHELON = symEngine.getEchelon();
+          //drawEssentials.TEETH_SIZE = 2;
+          drawEssentials.DRAW_TYPE = 1;
+          //drawEssentials.FACE_GAP = 0;
+          //drawEssentials.TEETH_GAP = 5;
+          //drawEssentials.TEETH_SIZE = 2;
+
+
+          //drawEssentials.WIDTH = 150;
+          //drawEssentials.HEIGHT = 150;
+
+          //drawEssentials.uniqueDesignation = "JHHHH";
+
+          //drawEssentials.size = "30";
+
+
+
+          //drawEssentials.GEOM = map.extent.getCenter();
+
+          /*
+          drawEssentials.TEETH_GAP = 30;
+          drawEssentials.TEETH_SIZE = 3;
+          drawEssentials.HEAD_RATIO = 10;
+          drawEssentials.TAIL_FACTOR = 10;
+          */
+
+
+          drawEssentials.BK_LN_DIST_RATIO = 5;
+          drawEssentials.BK_LN_ANGL_RATIO = 5;
+          drawEssentials.FRNT_LN_ANGL_RATIO = 0.8;
+          drawEssentials.FRNT_LN_DIST_RATIO = 1.5;
+          drawEssentials.FLAP_DIST_RATIO = 3;
+
+
+
+
+          endEvent = symEngine.on("symDrawEnd", symDrawEnd);
+          symDrawProgressEvent = symEngine.on("symDrawProgress", symDrawProgreseEventHandler)
+          var extraSettings = {};
+          extraSettings.lineWidth = 4;
+          extraSettings.size = 50;
+          extraSettings.textSize = 12;
+
+
+
+          var labelOptions = { 'haloColor': [255, 0, 0], 'haloColorSize': 5, 'color': [0, 255, 0], 'textSize': 20, 'bold': 1, 'italic': 0, 'uLine': 0, 'oLine': 0, 'tLine': 0 };
+          //var labelOptions = {'haloColor': [255,0,0], 'haloColorSize': 5, 'color': [0,255, 0]};
+          //symEngine.initialize(drawEssentials, extraSettings, labelOptions);
+          symEngine.initialize(drawEssentials, extraSettings);
+          //symEngine.initialize(z);
+
+        }
+
+
+
+
+
+        function createSymFromGeom(e) {
+
+
+          var amplifier = new Amplifier();
+          amplifier.UNIQUE_DESIG = "Tango Alpha Golf";
+          amplifier.DTG = "DDHHMMSSZMONYYYY";
+          amplifier.EDTG = "DDHHMMSSZMONYYYY00";
+
+          var attr = {
+            plnOrdrOverlayId: 2000,
+            plnOrdrId: 300,
+            creatorId: 700,
+            symbolId: '500'
+          }
+
+
+          var symEngine = new SymbolEngine(dojo.byId("sicText").value, amplifier, map, graphicsLayer, textGraphicsLayer, attr);
+          var drawEssentials = new DrawEssentials();
+          drawEssentials.BK_LN_DIST_RATIO = 5;
+          drawEssentials.BK_LN_ANGL_RATIO = 5;
+          drawEssentials.FRNT_LN_ANGL_RATIO = 0.8;
+          drawEssentials.FLAP_DIST_RATIO = 3;
+
+          drawEssentials.IS_LINE = false;
+
+          var geom = new Polyline(JSON.parse(dojo.byId("geoText").value));
+          geom.setSpatialReference(map.spatialReference);
+
+          //debugger;
+          drawEssentials.CTRL_PTS = JSON.parse(dojo.byId("ctrlPtsText").value);
+          drawEssentials.BASE_LN_PTS = JSON.parse(dojo.byId("baseLinePtsText").value);
+
+          drawEssentials.DRAW_TYPE = 3;
+          drawEssentials.ECHELON = symEngine.getEchelon();
+
+          //drawEssentials.BASE_LN_PTS = { startPt: new Point(68.34848969518515, 25.409693445554794, map.spatialReference) , endPt: new Point(70.67784877007666 , 25.692335341671342, map.spatialReference) };
+
+          //drawEssentials.CTRL_PTS = [new Point(68.99174366565728 , 27.709813703606667, map.spatialReference)];
+          //drawEssentials.DISTANCE = 5;
+
+          endEvent = symEngine.on("symDrawEnd", symDrawEnd);
+          symEngine.initialize(drawEssentials);
+
+
+
+        }
+
+
+
+        function zoomGeom(map, graphicsLayer, textGraphicsLayer, event) {
+          if (graphicsLayer.graphics.length > 0) {
+            var extent = new Extent();
+            extent.setSpatialReference(map.spatialReference);
+            extent = addIntoExtent(extent, graphicsLayer.graphics[0].geometry, true);
+            for (var i = graphicsLayer.graphics.length - 1; i >= 1; i--) {
+              extent = addIntoExtent(extent, graphicsLayer.graphics[i].geometry);
+            }
+
+
+
+            map.setExtent(extent.expand(1.5));
+
+
+
+
+            var SnappingManager = map.enableSnapping({
+              snapKey: has("mac") ? keys.META : keys.CTRL
+            });
+
+          }
+
+
+
+
+        }
+
+        function addIntoExtent(extent, geometry, isFirst) {
+          var resExtent = new Extent();
+
+          if (isFirst) {
+            if (geometry.type === 'point') {
+              var p = new Polyline();
+              p.setSpatialReference(geometry.spatialReference);
+              p.addPath([geometry, geometry]);
+              resExtent = p.getExtent();
+            }
+            if (geometry.type === 'polygon' || geometry.type === 'polyline') resExtent = geometry.getExtent();
+          } else {
+            if (geometry.type === 'point') resExtent = extent.union({ 'xmin': geometry.x, 'ymin': geometry.y, 'xmax': geometry.x, 'ymax': geometry.y });
+            if (geometry.type === 'polygon' || geometry.type === 'polyline') resExtent = extent.union(geometry.getExtent());
+          }
+
+          
+          return resExtent;
+        }
+
+
+        function symDrawEnd(event) {
+
+
+
+          isDrawing = false;
+          endEvent.remove();
+          symDrawProgressEvent.remove();
+
+        }
+
+
+        function symDrawProgreseEventHandler(event) {
+          console.log(event.currentDrawEssentials, event.currentGeometry, event.currentMarker)
+        }
+
+
+        function deactivateCp(graphic) {
+          console.log('------------------');
+
+          //enddeactivateCpEvent.remove();
+        }
+
+
+        function displayPoint(pt) {
+          map.graphics.add(new Graphic(new Point(pt.x, pt.y, map.spatialReference), new SimpleMarkerSymbol()));
+        }
+
+
+
+
+
+
+      });
+  </script>
+</head>
+
+<body class="nihilo">
+<div id="mainWindow" data-dojo-type="dijit/layout/BorderContainer" data-dojo-props="design:'headline',gutters:false"
+    style="width:100%; height:100%;">
+      <div id="map" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'center'">
+        <div style="position:absolute; right:20px; top:10px; z-Index:999;">
+          <div id="titlePane" data-dojo-type="dijit/TitlePane" data-dojo-props="title:'Measurement', closable:'false', open:'false'">
+            <div id="measurementDiv"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+</body>
+
+</html>

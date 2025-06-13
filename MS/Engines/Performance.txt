@@ -1,0 +1,105 @@
+// Types.ts
+interface SymbolEngineOptions {
+  view: MapView | SceneView;
+  defaultColors?: {
+    point?: string;
+    line?: string;
+    fill?: string;
+    outline?: string;
+  };
+}
+
+interface SymbolCache {
+  [key: string]: PictureMarkerSymbol;
+}
+
+// SymbolEngine.ts
+class SymbolEngine {
+    private readonly _layerManager: GraphicsLayerManager;
+    private readonly _symbolCache: SymbolCache = {};
+    private readonly _defaultColors = {
+        point: "#FF0000",
+        line: "#0000FF",
+        fill: "#00FF00",
+        outline: "#000000"
+    };
+
+    constructor(options: SymbolEngineOptions) {
+        this._layerManager = GraphicsLayerManager.getInstance(options.view);
+        this._layerManager.initializeLayers();
+        this._defaultColors = { ...this._defaultColors, ...options.defaultColors };
+        this.ensureMsAvailable();
+    }
+
+    // Add symbol caching
+    private getCachedSymbol(key: string): PictureMarkerSymbol | undefined {
+        return this._symbolCache[key];
+    }
+
+    private cacheSymbol(key: string, symbol: PictureMarkerSymbol): void {
+        this._symbolCache[key] = symbol;
+    }
+
+    generateForceSymbol(options: SymbolOptions, scaleFactor: number): PictureMarkerSymbol | undefined {
+        const cacheKey = JSON.stringify({ ...options, scaleFactor });
+        const cached = this.getCachedSymbol(cacheKey);
+        if (cached) return cached;
+
+        try {
+            options.outlineColor = "red";
+            options.outlineWidth = 2;
+
+            const symbol = new ms.Symbol(options);
+            const canvas = symbol.asCanvas(scaleFactor);
+            const url = canvas.toDataURL();
+            const { width, height } = symbol.getSize();
+            const anchor = symbol.getAnchor();
+
+            const xoffset = (width / 2) - anchor.x;
+            const yoffset = (height / 2) - anchor.y;
+
+            const pictureSymbol = new PictureMarkerSymbol({ 
+                url, 
+                width, 
+                height, 
+                xoffset, 
+                yoffset 
+            });
+
+            this.cacheSymbol(cacheKey, pictureSymbol);
+            return pictureSymbol;
+        } catch (error) {
+            this.handleError('Error generating force symbol', error);
+            return undefined;
+        }
+    }
+
+    // Better error handling
+    private handleError(message: string, error: unknown): void {
+        // Log error to your preferred logging system
+        console.error(`${message}:`, error);
+        
+        // You could also emit events, send to error tracking service, etc.
+        if (error instanceof Error) {
+            throw new Error(`${message}: ${error.message}`);
+        }
+        throw new Error(message);
+    }
+
+    // Batch operations
+    addMultipleGraphics(graphics: Graphic[], layerName: LAYER_NAMES): void {
+        const layer = this._layerManager.getOrCreateLayer(layerName);
+        layer.addMany(graphics);
+    }
+
+    // ... rest of the class implementation
+}
+
+// Usage example:
+const symbolEngine = new SymbolEngine({
+    view: mapView,
+    defaultColors: {
+        point: "#FF0000",
+        line: "#0000FF"
+    }
+});

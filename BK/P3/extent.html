@@ -1,0 +1,155 @@
+<!DOCTYPE html>  
+<html>  
+  <head>  
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">  
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">  
+    <title></title>  
+    <link rel="stylesheet" href="http://devbox:9632/3.15/dijit/themes/nihilo/nihilo.css">
+  <link rel="stylesheet" href="http://devbox:9632/3.15/esri/css/esri.css">
+    <style>  
+      html, body, #map {  
+        height: 100%; width: 100%; margin: 0; padding: 0;  
+      }  
+      #controls {  
+        background: #fff;  
+        box-shadow: 0 6px 6px -6px #999;  
+        color: #444;  
+        font-family: sans-serif;  
+        height: auto;  
+        left: 1em;  
+        padding: 1em;
+        position: absolute;  
+        top: 1em;  
+        width: auto;  
+        z-index: 40;  
+      }  
+    </style>  
+    <script>
+      
+      var dojoConfig = { paths: { extras: location.pathname.replace(/\/[^/]+$/, "") }};
+    </script>
+   <script src="http://devbox:9632/3.15/init.js"></script>
+   
+    <script>  
+     var map, tb, editor, sfs, sms;
+    var hashbucket = [];
+
+  
+  
+      require([  
+        "esri/map", "esri/geometry/Polyline", "esri/symbols/SimpleLineSymbol",  
+        "esri/graphic", "esri/layers/GraphicsLayer", "esri/layers/ArcGISTiledMapServiceLayer", 
+        "esri/geometry/Extent", "extras/ExtentEx",
+
+        "esri/symbols/SimpleFillSymbol", "esri/symbols/SimpleLineSymbol", "esri/Color", "esri/toolbars/draw","esri/toolbars/edit","esri/geometry/webMercatorUtils","esri/geometry/geometryEngine", "esri/geometry/Point", "esri/symbols/SimpleMarkerSymbol","esri/SpatialReference",
+
+
+        "dojo/dom", "dojo/dom-attr", "dojo/domReady!"  
+      ], function(  
+        Map, Polyline, SimpleLineSymbol,  
+        Graphic, GraphicsLayer,  ArcGISTiledMapServiceLayer, Extent, ExtentEx, 
+        SimpleFillSymbol, SimpleLineSymbol, Color, Draw, Edit, GeoUtils, geometryEngine, Point, SimpleMarkerSymbol, SpatialReference,
+        dom, domAttr  
+      ) {  
+        map = new Map("map", {
+          slider: false,  
+          zoom: 2  
+        });  
+
+
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.201.157:6080/arcgis/rest/services/Pak_OSM/MapServer");
+         map.addLayer(tiled);
+        
+      sfs = new SimpleFillSymbol(SimpleFillSymbol.STYLE_SOLID,
+                new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID,
+                new Color([50,50,50, 0.80]), 2),new Color([200,200,200,.5])
+              );
+    
+    map.on("extent-change", function(evt){
+      createKeyGeometries(evt.extent);
+    });
+
+    function getExtentQuadrants(extent) {
+      var extentEx = new ExtentEx(extent);
+      return extentEx.getQuardrants();
+    }
+    
+    function createKeyGeometries(extent) {
+      //map.graphics.clear();
+      var extentEx = new ExtentEx(extent);
+      var extents = extentEx.getQuardrants();
+      for (var property in extents) {
+          if (extents.hasOwnProperty(property)) {
+              var geom = extents[property];
+              var graphic = new Graphic(geom, sfs);
+          map.graphics.add(graphic);
+          }
+      }
+      //Dice up the top left extent envelope further
+      var topLeftExtent = extentEx.getTopLeftQuadrant();
+      var extentEx = new ExtentEx(topLeftExtent); //Passing in the top left extent envelope quadrant
+      var extents = extentEx.getQuardrants();
+      for (var property in extents) {
+          if (extents.hasOwnProperty(property)) {
+              var geom = extents[property];
+              var graphic = new Graphic(geom, sfs);
+          map.graphics.add(graphic);
+          }
+      }
+      //Dice up the lower right extent envelop further within the topLeftExent (created just before)
+      var bottomRightExtent = extentEx.getBottomRightQuadrant();
+      var extentEx = new ExtentEx(bottomRightExtent); //Passing in the top left extent envelope quadrant
+      var extents = extentEx.getQuardrants();
+      for (var property in extents) {
+          if (extents.hasOwnProperty(property)) {
+              var geom = extents[property];
+              var graphic = new Graphic(geom, sfs);
+          map.graphics.add(graphic);
+          }
+      }
+
+
+
+
+      var quads = getExtentQuadrants(extent);
+     for (var property in quads) {
+          if (quads.hasOwnProperty(property)) {
+              var geom = quads[property];
+              var area = geometryEngine.geodesicArea(geom, "square-miles");
+              if(area > 1842) {
+                createKeyGeometries(geom);                   
+              } else {
+
+                var graphic = new Graphic(geom, sfs);
+                map.graphics.add(graphic);  
+              }
+              
+          }
+      }
+
+
+
+      
+    }
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+    });
+
+    </script>  
+  </head>  
+  <body>  
+    <div id="map"></div>  
+  </body>  
+</html>  

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>Features</title>
+    <link rel="stylesheet" href="http://devbox:9632/3.15/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://devbox:9632/3.15/esri/css/esri.css">
+    
+    <style>
+      html, body, #mapDiv{
+        padding: 0;
+        margin: 0;
+        height: 100%;
+      }
+    </style>
+    
+    <script src="http://devbox:9632/3.15/init.js"></script>
+    <script>
+      var map, editor, graphic;
+
+      require([
+        "esri/map",
+        "esri/layers/ArcGISTiledMapServiceLayer",
+        "esri/layers/ArcGISDynamicMapServiceLayer",
+        "esri/layers/FeatureLayer",
+        "esri/toolbars/edit",
+         "dojo/domReady!"
+      ], function (
+        Map, ArcGISTiledMapServiceLayer, ArcGISDynamicMapServiceLayer,
+         FeatureLayer,
+         Edit) {
+
+        map = new Map("mapDiv", {
+          sliderOrientation : "horizontal"
+        });
+
+
+
+
+
+        
+
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+        map.addLayer(tiled);
+
+
+      
+        map.on("load", function () {
+        
+          var dynamic = new ArcGISDynamicMapServiceLayer("http://20.60.50.32:6080/arcgis/rest/services/QtrLand_FSvc/MapServer");
+          map.addLayer(dynamic);
+
+
+          var featureLyr = new FeatureLayer('http://20.60.50.32:6080/arcgis/rest/services/QtrLand_FSvc/FeatureServer/1', {outFields: ['*']});
+        map.addLayer(featureLyr);
+        
+
+        editor = new Edit(map);
+        /*
+        var dynamic = new ArcGISDynamicMapServiceLayer("http://20.60.50.32:6080/arcgis/rest/services/PolygonFeatureSvc/MapServer");
+          map.addLayer(dynamic);
+
+
+          var featureLyr = new FeatureLayer('http://20.60.50.32:6080/arcgis/rest/services/PolygonFeatureSvc/FeatureServer/0', {outFields: ['*']});
+        map.addLayer(featureLyr);
+        */
+
+
+        featureLyr.on('click', function(e) {
+          var data = e.graphic.attributes;
+          var mapPoint = e.mapPoint;
+          map.infoWindow.setTitle("House Info");
+          map.infoWindow.setContent("Hello");
+          map.infoWindow.show(mapPoint);
+
+
+          graphic = e.graphic;
+          editor.activate(Edit.SCALE, graphic);
+
+        });
+
+
+
+
+         
+         
+        
+
+        /*
+        editor = new Edit({'map': map,
+
+          layerInfos: [{
+    layer: featureLyr,
+    enabled: true, // default is true, set to false to disable editing functionality
+    addEnabled: true, // default is true, set to false to disable the ability to add a new feature
+    updateEnabled: false, // default is true, set to false to disable the ability to edit an existing feature
+    deleteEnabled: false // default is true, set to false to disable the ability to delete features
+  }]
+
+      });
+        editor.start();
+
+        */
+        
+
+        });
+
+
+        
+
+
+        
+
+       
+        
+        /*
+        var dynamicMapServiceLayer = new ArcGISDynamicMapServiceLayer("http://arb-pc3:6080/arcgis/rest/services/Symbols2/MapServer");
+        map.addLayer(dynamicMapServiceLayer);
+        */
+        
+      });
+    </script>
+  </head>
+  <body>
+    <div id="mapDiv"></div>
+  </body>
+</html>

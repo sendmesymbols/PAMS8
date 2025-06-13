@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 18.1.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Version_1.0" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px"
+	 y="0px" viewBox="0 0 400 400" enable-background="new 0 0 400 400" xml:space="preserve">
+<g id="main">
+	
+		<rect x="135.5" y="69.8" fill="none" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-miterlimit="8" width="128.2" height="171.3"/>
+	<text transform="matrix(0.9986 0 0 1 174.4487 125.8262)" font-family="'ArialMT'" font-size="36.0543">RP</text>
+	<polygon fill="none" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-miterlimit="8" points="199.6,327.9 
+		135.5,242.3 263.7,242.3 	"/>
+</g>
+<g id="template" display="none">
+	<g id="varW1" display="inline">
+		
+			<rect x="248.5" y="-105.9" fill="none" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-miterlimit="8" width="25.3" height="21.5"/>
+		<text transform="matrix(1 0 0 1 251.5596 -90.0561)" font-family="'ArialMT'" font-size="12.1212">W1</text>
+	</g>
+	<g id="varW" display="inline">
+		<text transform="matrix(1 0 0 1 266.2327 -111.5035)" font-family="'ArialMT'" font-size="11.945">-</text>
+		<polygon fill="none" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-miterlimit="8" points="248.5,-127.3 
+			248.5,-105.8 264.6,-106.1 265.1,-126.7 		"/>
+		<text transform="matrix(1 0 0 1 251.5596 -111.5035)" font-family="'ArialMT'" font-size="12.1212">W</text>
+	</g>
+	<g id="varT1" display="inline">
+		
+			<rect x="291.7" y="-80.1" fill="none" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-miterlimit="8" width="27.2" height="26.9"/>
+		<text transform="matrix(1 0 0 1 299.9149 -61.2538)" font-family="'ArialMT'" font-size="12.1212">T1</text>
+	</g>
+	<g id="varT" display="inline">
+		
+			<rect x="338.8" y="-126.8" fill="none" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-miterlimit="8" width="28.6" height="26.9"/>
+		<text transform="matrix(1 0 0 1 347.9729 -110.5581)" font-family="'ArialMT'" font-size="12.1212">T</text>
+	</g>
+	<g id="varH" display="inline">
+		<text transform="matrix(1 0 0 1 301.3498 -137.6913)" font-family="'ArialMT'" font-size="12.1212">H</text>
+		
+			<rect x="292.2" y="-154" fill="none" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-miterlimit="8" width="28.6" height="26.9"/>
+	</g>
+	<g id="points" display="inline">
+		<text transform="matrix(1 0 0 1 341.6649 15.1826)" font-family="'ArialMT'" font-size="11.945">POINT</text>
+		<text transform="matrix(1 0 0 1 341.6649 1.2223)" font-family="'ArialMT'" font-size="11.945">ANCHOR</text>
+		<path stroke="#000000" stroke-width="2" stroke-linejoin="bevel" stroke-miterlimit="10" d="M338.4,3.7h-18
+			c-0.4,0-0.6-0.3-0.6-0.6s0.3-0.6,0.6-0.6h18c0.4,0,0.6,0.3,0.6,0.6S338.7,3.7,338.4,3.7L338.4,3.7z M321.6,6.7l-12-3.6l12-3.6V6.7
+			z"/>
+	</g>
+</g>
+<g id="example" display="none">
+	<text id="varWe" transform="matrix(1 0 0 1 197.5194 -113.5238)" display="inline" font-family="'ArialMT'" font-size="9.0909">030200ZMAY08 - </text>
+	<text id="varW1e" transform="matrix(1 0 0 1 197.5194 -102.6148)" display="inline" font-family="'ArialMT'" font-size="9.0909">050700ZMAY08  </text>
+	<text id="varT1e" transform="matrix(1 0 0 1 283.337 -62.7684)" display="inline" font-family="'ArialMT'" font-size="15.1515">RC(C)</text>
+	<text id="varTe" transform="matrix(1 0 0 1 345.4483 -110.5581)" display="inline" font-family="'ArialMT'" font-size="12.1212">4</text>
+	
+		<text id="varHe_1_" transform="matrix(1 0 0 1 265.5012 -136.6811)" display="inline" font-family="'ArialMT'" font-size="12.1212">SMALL ARMS</text>
+</g>
+</svg>

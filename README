@@ -1,0 +1,135 @@
+fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
+fnm env --use-on-cd | Out-String | Invoke-Expression
+
+First, define the icon parts in the icons$1 function:
+// In the icons$1 function
+icn["TP.YOUR_NEW_POINT"] = [
+    // Basic shape/path
+    {
+        type: "path",  // Can be "path", "circle", "text" etc.
+        d: "M 100,100 L...",  // SVG path data
+        fill: false,  // or fillColor for filled shapes
+    },
+    // Additional elements
+    {
+        type: "text",
+        alignmentBaseline: "middle",
+        stroke: false,
+        textanchor: "middle",
+        x: 100,
+        y: 140,
+        fontsize: 40,
+        text: "YourText"
+    }
+];
+
+Define the label positions in the tacticalPoints function:
+
+// In the tacticalPoints function
+sidc["YOUR_SIDC"] = {
+    additionalInformation: {
+        stroke: false,
+        textanchor: "middle",
+        x: 100,
+        y: -70,
+        fontsize: 40
+    },
+    hostile: {
+        stroke: false,
+        textanchor: "start",
+        x: 150,
+        y: 45,
+        fontsize: 40
+    },
+    uniqueDesignation: {
+        stroke: false,
+        textanchor: "start",
+        x: 150,
+        y: -30,
+        fontsize: 40
+    },
+    dtg: {
+        stroke: false,
+        textanchor: "end",
+        x: 50,
+        y: -30,
+        fontsize: 40
+    }
+};
+
+3. Map the SIDC to the icon and define its bounding box in the tacticalpoints object:
+
+// In the tacticalpoints.icons function
+if (symbolSet == "25") {  // For tactical points
+    sidc["YOUR_SIDC"] = icn["TP.YOUR_NEW_POINT"];
+    bbox["YOUR_SIDC"] = {
+        x1: 60,  // Left boundary
+        x2: 140, // Right boundary
+        y1: -60, // Top boundary
+        y2: 140  // Bottom boundary
+    };
+}
+
+Example of adding a new tactical point:
+// 1. Define the icon parts
+icn["TP.NEW_CHECKPOINT"] = [
+    // Base circle
+    {
+        type: "circle",
+        fill: false,
+        cx: 100,
+        cy: 100,
+        r: 40
+    },
+    // Cross lines
+    {
+        type: "path",
+        d: "M 80,100 L 120,100 M 100,80 L 100,120",
+        fill: false
+    },
+    // Label
+    {
+        type: "text",
+        alignmentBaseline: "middle",
+        stroke: false,
+        textanchor: "middle",
+        x: 100,
+        y: 140,
+        fontsize: 40,
+        text: "CP"
+    }
+];
+
+// 2. Define label positions
+sidc["240100"] = {  // Your SIDC
+    additionalInformation: {
+        stroke: false,
+        textanchor: "middle",
+        x: 100,
+        y: -70,
+        fontsize: 40
+    },
+    uniqueDesignation: {
+        stroke: false,
+        textanchor: "start",
+        x: 150,
+        y: -30,
+        fontsize: 40
+    }
+};
+
+// 3. Map SIDC to icon
+if (symbolSet == "25") {
+    sidc["240100"] = icn["TP.NEW_CHECKPOINT"];
+    bbox["240100"] = { x1: 60, x2: 140, y1: -60, y2: 140 };
+}
+Key points to remember:
+Icons are built using SVG elements (paths, circles, text)
+Label positions are defined separately for flexibility
+Each symbol needs a unique SIDC mapping
+Bounding boxes help with symbol placement
+Follow the naming convention "TP." for tactical points
+Use the existing patterns for consistency (like actionPoint for common layouts)
+
+
+

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width,user-scalable=no">
+
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+  <title>Scale Dependant</title>
+
+  <link rel="stylesheet" href="http://arb-pc2:9632/3.15/dijit/themes/nihilo/nihilo.css">
+  <link rel="stylesheet" href="http://arb-pc2:9632/3.15/esri/css/esri.css">
+
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+
+
+  <!-- Label Layer Dropshadow -->
+  
+<!--
+  <svg height="0" xmlns="http://www.w3.org/2000/svg">
+    <filter id="drop-shadow">
+      <feOffset dx="1" dy="1" result="offsetblur" />
+      <feFlood flood-color="rgba(0,0,0,.7)" />
+      <feComposite in2="offsetblur" operator="in" />
+      <feMerge>
+        <feMergeNode />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </svg>
+  -->
+<!--
+  <svg height="0" xmlns="http://www.w3.org/2000/svg">
+    <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse" color-interpolation-filters="linearRGB">
+      <feMorphology operator="dilate" radius="3 3" in="SourceAlpha" result="morphology"/>
+      <feFlood flood-color="#30597E" flood-opacity="1" result="flood"/>
+      <feComposite in="flood" in2="morphology" operator="in" result="composite"/>
+      <feMerge result="merge">
+            <feMergeNode in="composite" result="mergeNode"/>
+        <feMergeNode in="SourceGraphic" result="mergeNode1"/>
+        </feMerge>
+    </filter>
+  </svg>
+
+
+
+  <style>
+    text {
+    filter: url(#drop-shadow);
+  }
+</style>
+-->
+
+
+
+
+  
+
+  <script type="text/javascript">
+
+
+    var dojoConfig = {
+      paths: {
+        MilSymbologyExt: location.origin + "/" + "MilitarySymbology/Extensions",
+        MilSymbologyComponents: location.origin + "/" + "MilitarySymbology/Components",
+        MilSymbologySymbols: location.origin + "/" + "MilitarySymbology/Symbols",
+        MilSymbologySymbolsEngine: location.origin + "/" + "MilitarySymbology/Engines",
+        MilSymbologySymbolsData: location.origin + "/" + "MilitarySymbology/Data",
+        MilSymbologyThirdParty: location.origin + "/" + "MilitarySymbology/ThirdParty",
+        MilSymbologySymbolsImages: location.origin + "/" + "MilitarySymbology/Images"
+
+      }
+    };
+
+
+
+  </script>
+
+  <script src="http://arb-pc2:9632/3.15/init.js"></script>
+
+  <script>
+
+    var map;
+
+    require([
+      "esri/map",
+      "esri/toolbars/draw",
+      "esri/graphic",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/geometry/Circle",
+      "esri/symbols/Font",
+
+
+
+      "esri/geometry/Point",
+      "esri/geometry/Polyline",
+      "esri/geometry/Polygon",
+      "esri/symbols/TextSymbol",
+
+      "dojo/parser",
+      "dijit/registry",
+      "dojo/_base/event",
+      "dojo/dom",
+      "dojo/dom-style",
+      "dijit/Menu",
+      "esri/layers/GraphicsLayer",
+      "esri/layers/ArcGISTiledMapServiceLayer",
+
+      "esri/symbols/PictureMarkerSymbol",
+      "esri/Color",
+      "dojo/on",
+      "dijit/Menu",
+      "dijit/MenuItem",
+      "dijit/MenuSeparator",
+      "dojo/parser",
+      "dojox/gfx/matrix",
+      "dojo/_base/array",
+      "esri/geometry/jsonUtils",
+
+      "esri/layers/ArcGISDynamicMapServiceLayer",
+
+
+      "esri/geometry/Extent",
+      "esri/SnappingManager",
+      "dojo/keys",
+      'esri/units',
+      'esri/geometry/geometryEngine',
+      'esri/geometry/Multipoint',
+      'esri/symbols/Font',
+      'esri/renderers/ScaleDependentRenderer',
+      'esri/renderers/SimpleRenderer',
+      "esri/layers/LabelLayer",
+      "MilSymbologyExt/GeoTools",
+
+
+
+      "dijit/layout/BorderContainer",
+      "dijit/layout/ContentPane",
+      "dijit/form/Button",
+      "dijit/WidgetSet",
+
+      "dijit/form/ToggleButton",
+      "dijit/form/DropDownButton",
+      "dijit/CheckedMenuItem",
+
+
+      "dojo/domReady!"
+    ], function (
+      Map, Draw, Graphic,
+      SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, Circle, Font,
+      Point, Polyline, Polygon,
+      TextSymbol, parser, registry, event, dom, domStyle, Menu, GraphicsLayer, ArcGISTiledMapServiceLayer,
+      PictureMarkerSymbol, Color, on, Menu, MenuItem, MenuSeparator, parser, matrix, Array,
+      geometryJsonUtils, ArcGISDynamicMapServiceLayer,
+      Extent, SnappingManager, keys, esriUnits, geometryEngine, Multipoint, Font,
+      ScaleDependentRenderer, SimpleRenderer, LabelLayer, GeoTools
+    ) {
+
+
+
+
+
+
+        var graphicsLayer, font, scaleDependentRenderer, simpleRenderer;
+
+
+
+
+        map = new Map("map", {
+          logo: true,
+          showAttribution: false
+        });
+
+        var tiled = new ArcGISTiledMapServiceLayer("http://20.60.50.22:6080/arcgis/rest/services/OSM_Tiled/MapServer");
+        map.addLayer(tiled);
+
+        map.on("load", function () {
+
+
+          //graphicsLayer = new GraphicsLayer({ 'maxScale': map.getMaxScale(), 'minScale': map.getMinScale() / 2 });
+          graphicsLayer = new GraphicsLayer();
+
+
+          map.addLayer(graphicsLayer);
+
+          font = new Font();
+          font.setSize('15pt');
+          font.setWeight(Font.WEIGHT_BOLD);
+
+
+
+
+
+
+          //Renderer
+
+
+          var countyTextColor = new Color("#FF0000");
+          var countySymbolSm = new TextSymbol();
+          countySymbolSm.font.setSize("6pt");
+          countySymbolSm.setColor(countyTextColor);
+          countySymbolSm.font.setFamily("arial");
+          var countySmRenderer = new SimpleRenderer(countySymbolSm);
+
+
+
+          var countySymbolMed = new TextSymbol();
+          countySymbolMed.font.setSize("11pt");
+          countySymbolMed.font.setFamily("arial");
+          countySymbolMed.setColor(countyTextColor);
+          var countyMedRenderer = new SimpleRenderer(countySymbolMed);
+
+
+          var countySymbolLg = new TextSymbol();
+          countySymbolLg.font.setSize("16pt");
+          countySymbolLg.font.setFamily("arial");
+          countySymbolLg.setColor(countyTextColor);
+          var countyLgRenderer = new SimpleRenderer(countySymbolLg);
+
+          var countyScaleDependent = new ScaleDependentRenderer({
+            rendererInfos: [{
+              renderer: countySmRenderer,
+              minZoom: 7,
+              maxZoom: 7
+            },
+            {
+              renderer: countyMedRenderer,
+              minZoom: 8,
+              maxZoom: 10
+            },
+            {
+              renderer: countyLgRenderer,
+              minZoom: 11,
+              maxZoom: 15
+            }]
+          });
+
+
+          //graphicsLayer.renderer = countyScaleDependent;
+
+
+          var countySymbolLg = new TextSymbol();
+          countySymbolLg.font.setSize("16pt");
+          countySymbolLg.font.setFamily("arial");
+          countySymbolLg.setColor(countyTextColor);
+          
+
+
+
+
+
+
+
+
+
+
+          //Renderer
+
+
+          //var pts = GeoTools.generateRandomPoints(new Point(70,30), 10000, 100);
+          //createTexts(pts, graphicsLayer);
+
+
+          var pts = GeoTools.generateRandomLocations(new Point(70, 30), 100000, 100, true);
+          createTexts(pts, graphicsLayer);
+
+
+
+
+
+
+
+
+        });
+
+
+        map.on('extent-change', function (evt) {
+          
+          var unreadable = 7;
+          var fontSize = map.getLevel() * 100 / map.getMaxZoom() / 6;
+          console.log(fontSize)
+          if(fontSize <= unreadable) {
+            fontSize = 0;
+          }
+          for (let index = 0; index < graphicsLayer.graphics.length; index++) {
+            graphicsLayer.graphics[index].symbol.setSize(fontSize);
+            
+          }
+
+
+          dom.byId('mapInfo').innerHTML = "lods: " + map.getLevel() + ", scale:" + map.getScale() + ", Font: "+fontSize;
+
+
+        });
+
+
+        function createTexts(pts, layer) {
+          var graphic, symbol;
+          for (var index = 0; index < pts.length; index++) {
+            var symbol = new TextSymbol(index + ': ' + pts[index].x.toFixed(6) + ', ' + pts[index].y.toFixed(6));
+            var textColor = new Color("#00" + index + 'AC');
+            symbol.setColor(textColor);
+            symbol.setSize('12pt');
+            graphic = new Graphic(pts[index], symbol);
+            layer.add(graphic);
+
+
+
+
+                      var countyLgRenderer = new SimpleRenderer(symbol);
+                    /*
+          countyLgRenderer.setVisualVariables([
+            {
+              "minSize": {
+                "type": "sizeInfo",
+                "expression": "map.scale",
+                "stops": [
+                  { "value": 1128, "size": 16 },
+                  { "value": 288895, "size": 16 },
+                  { "value": 73957191, "size": 9 },
+                  { "value": 591657528, "size": 2 }
+                ]
+              },
+
+              "maxSize": {
+                "type": "sizeInfo",
+                "expression": "map.scale",
+                "stops": [
+                  { "value": 1128, "size": 80 },
+                  { "value": 288895, "size": 80 },
+                  { "value": 73957191, "size": 50 },
+                  { "value": 591657528, "size": 25 }
+                ]
+              }
+            }]);
+            */
+
+          countyLgRenderer.setVisualVariables([{
+            type: 'sizeInfo',
+            field: 'size',
+            minSize: 1,
+            maxSize: 50,
+            minDataValue: 10,
+            maxDataValue: 5000 
+
+          }]);
+
+
+          layer.renderer = countyLgRenderer;
+
+
+
+
+
+
+
+          }
+
+
+          
+          layer.refresh();
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+        map.on('click', function (e) {
+
+          var symbol = new TextSymbol('This is Text');
+          /*
+          symbol.setFont(font);
+          symbol.setHaloColor(new Color([100, 10, 200, 0.5]));
+          symbol.setHaloSize(1);
+          */
+
+
+
+
+          //Renderer
+
+
+
+
+
+          //End of Renderer
+
+
+
+
+          var graphic = new Graphic(e.mapPoint, symbol);
+          graphicsLayer.add(graphic);
+
+
+        })
+
+
+
+
+
+      });
+  </script>
+</head>
+
+<body class="nihilo">
+  <div id="mapInfo"></div>
+  <div id="map"></div>
+
+
+</body>
+
+</html>

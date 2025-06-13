@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 18.1.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Version_1.0" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px"
+	 y="0px" viewBox="0 0 400 400" enable-background="new 0 0 400 400" xml:space="preserve">
+<g id="main">
+	<polygon fill="none" stroke="#000000" stroke-width="5" points="30,132 30,202 301.5,202 301.5,222 383,167 301.5,112 301.5,132 	
+		"/>
+</g>
+<g id="template" display="none">
+	<g id="varV" transform="scale(0.75 0.75) translate(96 66)" display="inline">
+		<rect x="28.5" y="128.9" fill="none" stroke="#000000" stroke-width="4.5184" width="49" height="50"/>
+		<text transform="matrix(1.3333 0 0 1.3333 41.499 166.8994)" font-family="'ArialMT'" font-size="28">V</text>
+	</g>
+	<g id="varA" transform="scale(0.75 0.75) translate(5 66)" display="inline">
+		<rect x="227.5" y="129" fill="none" stroke="#000000" stroke-width="5" width="50" height="50"/>
+		<text transform="matrix(1.3333 0 0 1.3333 240.4932 166.9008)" font-family="'ArialMT'" font-size="28">A</text>
+	</g>
+	<g id="varH" transform="scale(0.75 0.75) translate(-82 66)" display="inline">
+		<rect x="432.3" y="128.9" fill="none" stroke="#000000" stroke-width="5" width="50" height="50"/>
+		<text transform="matrix(1.3333 0 0 1.3333 444.3317 166.9008)" font-family="'ArialMT'" font-size="28">H</text>
+	</g>
+	<g id="varW1" transform="scale(0.75 0.75) translate(68 158)" display="inline">
+		<rect x="193.5" y="130.7" fill="#FFFFFF" stroke="#000000" stroke-width="5" width="80" height="50"/>
+		<text transform="matrix(1.3333 0 0 1.3333 209.514 168.6664)" font-family="'ArialMT'" font-size="28">W1</text>
+	</g>
+	<g id="varW" transform="scale(0.75 0.75) translate(-44 158)" display="inline">
+		<line fill="none" stroke="#000000" stroke-width="5" x1="261.5" y1="155.7" x2="291.5" y2="155.7"/>
+		<rect x="198" y="130.7" fill="none" stroke="#000000" stroke-width="5" width="50" height="50"/>
+		<text transform="matrix(1.3333 0 0 1.3333 205.9841 168.5544)" font-family="'ArialMT'" font-size="28">W</text>
+	</g>
+	<g id="points" display="inline">
+		<g>
+			<g transform="translate(-40 5)">
+				<polyline fill="none" stroke="#000000" stroke-width="3" points="424.5,164 424.5,239 404.5,259 				"/>
+				<polygon stroke="#000000" stroke-width="2" points="424.5,164 419.5,178 429.5,178 				"/>
+			</g>
+			<g transform="scale(0.75 0.75) translate(208 209.333)">
+				<text transform="matrix(1.3333 0 0 1.3333 223.4515 151.7032)" font-family="'ArialMT'" font-size="18">PT 1</text>
+			</g>
+		</g>
+		<g>
+			<g transform="translate(15 28)">
+				<polyline fill="none" stroke="#000000" stroke-width="3" points="29.5,158 10.5,173.2 10.5,217.5 				"/>
+				<polygon stroke="#000000" stroke-width="3" points="26.9,154.6 38.9,148.2 32.6,160.3 				"/>
+			</g>
+			<g transform="scale(0.75 0.75) translate(-104 210.667)">
+				<text transform="matrix(1.3333 0 0 1.3333 123.333 141.3327)" font-family="'ArialMT'" font-size="18">PT 2</text>
+			</g>
+		</g>
+	</g>
+</g>
+<g id="example" display="none">
+	<text id="varW1e" transform="matrix(1 0 0 1 85.1357 271.0001)" display="inline" font-family="'ArialMT'" font-size="28">060800ZJUN07</text>
+	<text id="varWe" transform="matrix(1 0 0 1 84.4883 237.9161)" display="inline" font-family="'ArialMT'" font-size="28">060500ZJUN07 -</text>
+	<g id="varAe" display="inline">
+		
+			<line fill="none" stroke="#000000" stroke-width="5" stroke-linejoin="round" stroke-miterlimit="8" x1="181.4" y1="140.2" x2="181.4" y2="188.5"/>
+		
+			<line fill="none" stroke="#000000" stroke-width="5" stroke-linejoin="round" stroke-miterlimit="8" x1="229.8" y1="140.2" x2="229.8" y2="188.5"/>
+		
+			<line fill="none" stroke="#000000" stroke-width="5" stroke-linejoin="round" stroke-miterlimit="8" x1="181.4" y1="148.2" x2="229.8" y2="148.2"/>
+		
+			<line fill="none" stroke="#000000" stroke-width="5" stroke-linejoin="round" stroke-miterlimit="8" x1="181.4" y1="180.4" x2="229.8" y2="180.4"/>
+	</g>
+	<text id="varHe" transform="matrix(1 0 0 1 271.749 174.6758)" display="inline" font-family="'ArialMT'" font-size="28">5</text>
+	<text id="varVe" transform="matrix(1 0 0 1 77.1245 174.6749)" display="inline" font-family="'ArialMT'" font-size="28">M1A2</text>
+</g>
+</svg>
