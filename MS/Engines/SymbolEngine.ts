@@ -105,6 +105,12 @@ class SymbolEngine {
 
 
 
+    onViewChanged(newView: MapView | SceneView) {
+        console.log("SymbolEngine: Detected view change:00000000000000000000000", newView?.type);
+        this._layerManager = GraphicsLayerManager.getInstance(newView);
+        this._layerManager.initializeLayers();
+        // Possibly clear or rebind events
+    }
 
     get view() {
         return this._getView();

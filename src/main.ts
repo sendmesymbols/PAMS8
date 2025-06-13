@@ -5,6 +5,8 @@ import PlotPoint from "../MS/PlotPoint.ts";
 import SymbolEngine from "../MS/Engines/SymbolEngine.ts";
 import type { SymbolOptions } from '../MS/ThirdParty/MilSymbols/UEITypes.ts'
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
+import { watch } from "@arcgis/core/core/reactiveUtils";
+
 
 //import SymbolEngine from "../dist/MS/Engines/SymbolEngine.min";
 //import type { SymbolOptions } from '../dist/MS/ThirdParty/MilSymbols/UEITypes'
@@ -15,13 +17,34 @@ const drawButton: HTMLElement | null = document.getElementById('draw-btn');
 const createButton: HTMLElement | null = document.getElementById('createButton');
 
 
+
 // Define app config
+let _activeView: MapView | SceneView = null;
+const appConfig = {
+  mapView: null,
+  sceneView: null,
+  get activeView() {
+    return _activeView;
+  },
+  set activeView(view: MapView | SceneView) {
+    const oldView = _activeView;
+    _activeView = view;
+    if (oldView !== view && onActiveViewChanged) {
+      onActiveViewChanged(view, oldView);
+    }
+  },
+  container: 'viewDiv'
+};
+
+let onActiveViewChanged: ((newView: MapView | SceneView, oldView: MapView | SceneView) => void) | null = null;
+/*
 const appConfig: { mapView: any; sceneView: any; activeView: any; container: any } = {
   mapView: null,
   sceneView: null,
   activeView: null,
   container: 'viewDiv' // Use same container for both views
 };
+*/
 
 // Initial view parameters for both 2D and 3D
 const initialViewParams: { zoom: number; center: [number, number]; container: string | null, map?: any } = {
@@ -56,6 +79,12 @@ appConfig.mapView = <MapView>createView(initialViewParams, '2d');
 
 const useInteractivePlacement = true;
 const symbolEngine = new SymbolEngine(() => appConfig.activeView);
+
+onActiveViewChanged = (newView, oldView) => {
+  console.log("View changed from", oldView?.type, "to", newView?.type);
+  symbolEngine.onViewChanged(newView); // Add this method in SymbolEngine
+};
+
 if (drawButton) {
   drawButton.addEventListener("click", () => {
 
@@ -197,3 +226,4 @@ function createView(params: any, type: '2d' | '3d'): MapView | SceneView {
       });
   return view;
 }
+
