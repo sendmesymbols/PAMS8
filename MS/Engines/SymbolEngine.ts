@@ -10,7 +10,6 @@ import View from "@arcgis/core/views/View";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
-import {watch}  from "@arcgis/core/core/reactiveUtils"
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
 
 //import  from "esri/core/reactiveUtils";
@@ -87,21 +86,9 @@ class SymbolEngine {
         //});
 
 
-        // Observe view type changes
-        watch(
-            () => this._getView.container?.type,
-            (newType, oldType) => {
-                // The initial call might have oldType as undefined
-                if (newType && newType !== oldType) {
-                    onViewSwitch(newType as "2d" | "3d", oldType as "2d" | "3d" | undefined);
-                } else if (newType && oldType === undefined) { // Handle initial load
-                    onViewSwitch(newType as "2d" | "3d", undefined);
-                }
-            },
-            { initial: true }
-        );
-
     }
+
+
 
 
 
@@ -136,6 +123,8 @@ class SymbolEngine {
      * Register context menu items for different graphic types
      */
     private registerContextMenuItems(): void {
+
+        console.log("Registered")
         // Register menu items for military symbols
         const milSymbolMenuItems: ContextMenuItem[] = [
             {
@@ -431,7 +420,10 @@ class SymbolEngine {
         const layer = this._layerManager.getOrCreateLayer("milSymbols");
         const symbol = this.generateForceSymbol(options, 3);
 
-        const graphic = new Graphic({ geometry, symbol });
+        const graphic = new Graphic({ geometry, symbol, attributes: {
+                type: "force"
+            }
+        });
         layer.add(graphic);
     }
 
@@ -439,7 +431,9 @@ class SymbolEngine {
         const layer = this._layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
         const symbol = new PictureMarkerSymbol({ url, width, height });
 
-        const graphic = new Graphic({ geometry, symbol });
+        const graphic = new Graphic({ geometry, symbol, attributes: {
+                type: "force"
+            } });
         layer.add(graphic);
     }
 

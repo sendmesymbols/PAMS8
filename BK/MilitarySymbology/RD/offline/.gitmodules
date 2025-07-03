@@ -1,3 +1,0 @@
-[submodule "vendor/jasmine.async"]
-	path = vendor/jasmine.async
-	url = https://github.com/derickbailey/jasmine.async.git

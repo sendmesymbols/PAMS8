@@ -350,17 +350,18 @@ class ContextMenuManager extends Evented {
         if (!this.view) return;
 
         // Prevent default context menu
-        if (this.view && this.view.container) {
-            this.view.container.addEventListener("contextmenu", (e) => {
-                e.preventDefault();
-
-            });
-        }
+        this.view.container.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+        });
 
         // Listen for pointer-down events (to catch right-clicks)
         this.view.on("pointer-down", (event) => {
             // Check if it's a right-click (button property is 2 for right clicks)
+            console.log("Click");
             if (event.button === 2) {
+
+                console.log("Right Click");
+
                 // Store original event
                 this.originalEvent = event.native;
 
@@ -372,31 +373,26 @@ class ContextMenuManager extends Evented {
 
                 // Hit test to see if a graphic was clicked
                 this.view!.hitTest(event).then((response) => {
+                    console.log("Hit test", response);
                     // Find first graphic that matches our target criteria
                     const graphicHit = response.results?.find(result => {
-                        // Check if this is a graphic hit
-                        if (!("graphic" in result)) return false;
+                        console.log("find")
+                        console.log(result.graphic)
+                        if (!result.graphic) return false;
 
-                        // Now TypeScript knows this result has a graphic property
-                        const graphicResult = result as __esri.GraphicHit;
-                        if (!graphicResult.graphic) return false;
-
-                        const graphic = graphicResult.graphic;
+                        console.log("Graphics Found")
+                        const graphic = result.graphic;
+                        console.log(graphic)
                         const layerId = graphic.layer?.id;
                         const graphicType = graphic.attributes?.graphicType || graphic.attributes?.type;
 
                         // Check layer filter if specified
                         if (this.options.targetLayerIds && this.options.targetLayerIds.length > 0) {
-                            /*
                             if (!layerId || !this.options.targetLayerIds.includes(layerId)) {
                                 return false;
                             }
-                            */
-
-                            if (!layerId) {
-                                return false;
-                            }
                         }
+
 
                         // Check graphic type filter if specified
                         if (this.options.targetGraphicTypes && this.options.targetGraphicTypes.length > 0) {
@@ -408,20 +404,16 @@ class ContextMenuManager extends Evented {
                         return true;
                     });
 
-                    if (graphicHit && "graphic" in graphicHit) {
-                        const graphicResult = graphicHit as __esri.GraphicHit;
-                        const graphic = graphicResult.graphic;
+                    console.log("graphicHit");
+                    console.log(graphicHit);
+                    if (graphicHit) {
+                        const graphic = graphicHit.graphic;
 
                         // Store the click point
-                        const mapPoint = this.view!.toMap({ x: event.x, y: event.y });
-                        if (mapPoint) {
-                            this.clickPoint = mapPoint;
+                        this.clickPoint = this.view!.toMap({ x: event.x, y: event.y });
 
-                            // Show menu at click location
-                            this.showMenuAt(event.x, event.y, graphic);
-                        } else {
-                            console.warn("Could not convert screen point to map point");
-                        }
+                        // Show menu at click location
+                        this.showMenuAt(event.x, event.y, graphic);
                     }
                 });
             }
