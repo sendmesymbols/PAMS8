@@ -123,9 +123,13 @@ if (drawButton) {
       location: "0900000.0E570306.0N"
     };
 
+
+
     appConfig.activeView.when(() => {
+      let amplifier = new Amplifier();
+      amplifier.SIDC = sidc;
       if (useInteractivePlacement) {
-        symbolEngine.drawMilSymbolInteractively(options);
+        symbolEngine.drawMilSymbolInteractively(new DrawEssentials(), amplifier, options);
       } else {
         symbolEngine.addMilSymbolAtCenter(options);
         appConfig.activeView.goTo(appConfig.activeView.center);

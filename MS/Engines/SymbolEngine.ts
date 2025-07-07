@@ -478,7 +478,7 @@ class SymbolEngine implements Evented {
         const layer = this._layerManager.getSymbolLayer();
         const symbol = this.generateForceSymbol(drawEssentials, amplifier, attr);
 
-        const graphic = new Graphic({ geometry, symbol });
+        const graphic = new Graphic({ geometry, symbol, attributes:attr });
         layer.add(graphic);
     }
 
