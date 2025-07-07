@@ -11,17 +11,125 @@ import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+import Point from "@arcgis/core/geometry/Point";
 
 //import  from "esri/core/reactiveUtils";
 
 import GraphicsLayerManager, {LAYER_NAMES } from "../Managers/GraphicsLayerManager";
+/*
 import ms from '../ThirdParty/MilSymbols/UEITypes.js';
 import type { SymbolOptions } from '../ThirdParty/MilSymbols/UEITypes.ts';
+*/
+
+// Import milsymbol types for the global MS object
+import '../ThirdParty/milsymbol.d.ts';
 import { parseSIDC, ParsedSIDC } from '../SIDC/SIDC';
 import ContextMenuManager, { ContextMenuItem, MenuItemEvent } from '../Managers/ContextMenuManager';
 
+import symData from "../Data/Symbols.json";
+import settingsData from "../Data/Settings.json";
 
-class SymbolEngine {
+interface Evented {
+    on(type: string, listener: Function): { remove(): void };
+    emit(type: string, event: any): boolean;
+}
+
+// Assume these are your migrated custom modules.
+// You'll need to define their interfaces/classes based on their actual logic.
+interface ISIDC {
+    _sidc: string;
+    validateSIDC(sidc: string): boolean;
+    getSID(): string;
+    getSIDC(): string;
+    getMarker(symGeometricType: string, isObstacle: boolean, fill?: boolean): SimpleMarkerSymbol | SimpleLineSymbol | null;
+    // Add other methods that SIDC class might have
+}
+
+interface IMapper {
+    getInstance(): any; // Should return an instance of a symbol class (e.g., MainAttackSymbol, AmbushSymbol)
+}
+
+interface IAnnotationEngine {
+    annotate(
+        textGraphicsLayer: GraphicsLayer,
+        geometry: Point | Polyline | Polygon,
+        amplifier: string,
+        drawEssentials: DrawEssentials,
+        graphicId: string,
+        textSize: number,
+        isFreeHand: number,
+        labelOptions: LabelOptions,
+        options: { opacity?: number }
+    ): void;
+}
+
+// Placeholder for custom symbol classes that Mapper would return
+interface ISymbolClass {
+    map: MapView | SceneView;
+    isLine: boolean;
+    amplifier: string;
+    symGeometricType: string;
+    isObstacle: boolean;
+    on(type: string, listener: Function): { remove(): void };
+    init(drawEssentials: DrawEssentials, marker: any, sid: string, name: string, offset: any, sidc: string): void;
+}
+
+
+// Interfaces for data loaded from JSON
+interface SymbolDefinition {
+    Class: string;
+    Name: string;
+    Offset: { x: number; y: number };
+    Fill: boolean;
+    SymGeoType: "Point" | "FPoint" | "Polyline" | "Polygon";
+}
+
+interface SymbolData {
+    [key: string]: SymbolDefinition;
+}
+
+interface Settings {
+    textSize: number;
+    defaultLineWidth: number;
+    defaultSymbolSize: number;
+    spatialReferences: {
+        WGS1SP?: number;
+        WGS2SP?: string; // WKT
+        LCC1SP?: number; // WKID or WKT
+        LCC2SP?: number; // WKID or WKT
+    };
+}
+
+interface DrawEssentials {
+    IS_LINE: boolean;
+    SID?: string;
+    GEOM?: Point | Polyline | Polygon;
+    OPTIONS?: {
+        GEOM?: Point | Polyline | Polygon;
+    };
+    CTRL_PTS?: Point[];
+    BASE_LN_PTS?: {
+        startPt?: Point;
+        midPt?: Point;
+        endPt?: Point;
+    };
+    SIZE?: number;
+    opacity?: number;
+    SIDC?: string;
+    AMPLIFIER?: string;
+    ISFHAND?: number;
+    labelOptions?: LabelOptions;
+    SYM_GEO_TYPE?: string; // Added for clarity based on usage in getOpacityValue
+}
+
+interface LabelOptions {
+    // Define properties for labelOptions if they exist
+    // e.g., position: string; font: string;
+}
+
+
+class SymbolEngine implements Evented {
     private _layerManager: GraphicsLayerManager;
     private _contextMenuManager: ContextMenuManager;
     private _getView: () => MapView | SceneView;
@@ -468,39 +576,92 @@ class SymbolEngine {
     }
 
     static isView3D(view: View): boolean {
-        return view instanceof SceneView;
+        return view instanceof SceneView ;
     }
 
     ensureMsAvailable(): void {
-        if (!ms?.Symbol || typeof ms.Symbol !== 'function') {
-            throw new Error("MS (milsymbol) library is not properly loaded or invalid.");
+        // Check for both UEITypes.js and milsymbol.js
+        if (typeof window.MS === 'undefined') {
+            throw new Error("MS (UEITypes) library is not properly loaded or invalid.");
         }
+        
+        console.log("MS (milsymbol.js) version:", window.MS.version);
+        console.log("MS (milsymbol.js) standard:", window.MS._STD2525 ? "2525" : "APP6");
+        console.log("MS (milsymbol.js) marker parts count:", window.MS.getMarkerParts().length);
     }
 
     generateForceSymbol(options: SymbolOptions, scaleFactor: number): PictureMarkerSymbol | undefined {
         try {
-            options.outlineColor = options.outlineColor ?? "red";
-            options.outlineWidth = options.outlineWidth ?? 2;
+            // Use milsymbol.js instead of UEITypes
+            const sidc = options.sidc;
+            if (!sidc) {
+                console.error("SIDC is required for symbol generation");
+                return undefined;
+            }
 
+            // Create milsymbol.js options
+            const msOptions = {
+                size: options.size || 35
+            };
 
-            const enrichedOptions = this.enrichSymbolOptions(options);
-            const symbol = new ms.Symbol(enrichedOptions);
-            const canvas = symbol.asCanvas(scaleFactor);
-            const url = canvas.toDataURL();
-            const { width, height } = symbol.getSize();
-            const anchor = symbol.getAnchor();
+            // Generate the symbol using milsymbol.js
+            const symbol = new window.MS.symbol(sidc, msOptions);
 
+            /*// Initialize the marker to generate drawInstructions
+            symbol.getMarker();
+            // Generate SVG
+            const svgString = symbol.asSVG();
+            console.log("Generated SVG from milsymbol.js:", svgString);
+            // Convert SVG to data URL
+            const dataUrl = "data:image/svg+xml;base64," + btoa(svgString);
+
+            // Get symbol dimensions
+            const width = symbol.width || 35;
+            const height = symbol.height || 35;
+
+            // Calculate offsets based on anchor point
+            const anchor = symbol.markerAnchor || { x: width / 2, y: height / 2 };
             const xoffset = (width / 2) - anchor.x;
             const yoffset = (height / 2) - anchor.y;
 
             const pictureMarkerSymbol = new PictureMarkerSymbol({
-                url, width, height, xoffset, yoffset
-            });
+                url: dataUrl,
+                width: width + "px",
+                height: height + "px",
+                xoffset,
+                yoffset
+            });*/
+            symbol.getMarker();
+            // Generate SVG
+            const canvas = symbol.asCanvas();
 
-            //this.symbolCache.set(cacheKey, pictureMarkerSymbol);
+            // Convert SVG to data URL
+            const dataUrl = canvas.toDataURL();
+
+            // Get symbol dimensions
+            const width = symbol.width || 35;
+            const height = symbol.height || 35;
+
+            // Calculate offsets based on anchor point
+            const anchor = symbol.markerAnchor || { x: width / 2, y: height / 2 };
+            const xoffset = (width / 2) - anchor.x;
+            const yoffset = (height / 2) - anchor.y;
+
+            const pictureMarkerSymbol = new PictureMarkerSymbol({
+                url: dataUrl,
+                width: width + "px",
+                height: height + "px",
+                xoffset,
+                yoffset
+            });
+            return pictureMarkerSymbol;
+
+
+
+
             return pictureMarkerSymbol;
         } catch (e) {
-            console.error("Error generating force symbol:", e);
+            console.error("Error generating force symbol with milsymbol.js:", e);
             return undefined;
         }
     }
@@ -522,6 +683,247 @@ class SymbolEngine {
 
         return JSON.stringify(relevantOptions);
     }
+
+    private drawSymEnd(event: {
+        geometry: Point | Polyline | Polygon,
+        marker: SimpleMarkerSymbol | SimpleLineSymbol,
+        drawEssentials: DrawEssentials
+    }): void {
+        const symbol = event.marker;
+        const graphic = new Graphic({
+            geometry: event.geometry,
+            symbol: symbol
+        });
+
+        const tempId = this.generateUUID();
+        event.drawEssentials.SIDC = this.SIDC.getSIDC(); // Ensure SIDC is passed
+        event.drawEssentials.AMPLIFIER = this.amplifier; // Ensure amplifier is passed
+        graphic.attributes = {
+            drawEssentials: event.drawEssentials,
+            id: ((this.attrs.hasOwnProperty('symbolId') === false) || (this.attrs.symbolId === undefined) || this.attrs.symbolId === null) ? tempId : this.attrs.symbolId,
+            ...this.attrs // Merge other attributes
+        };
+        graphic.set("drawEssentials", event.drawEssentials); // Set as a custom property
+        graphic.set("id", graphic.attributes.id); // Set as a custom property
+
+        this.graphicsLayer.add(graphic);
+
+        this._endEventHandle?.remove();
+        this._drawProgressEventHandle?.remove();
+        this._drawClickEventHandle?.remove();
+        this._drawBaseLineEndEventHandle?.remove();
+
+        const isFreeHand = graphic.attributes.drawEssentials.ISFHAND || 0;
+        event.drawEssentials.labelOptions = this.labelOptions;
+
+        const options = this.getOpacityValue(graphic);
+
+        AnnotationEngine.annotate(
+            this.textGraphicsLayer,
+            event.geometry,
+            event.drawEssentials.AMPLIFIER!, // Ensure AMPLIFIER is not undefined
+            event.drawEssentials,
+            graphic.attributes.id,
+            this.settings.textSize,
+            isFreeHand,
+            this.labelOptions!, // Ensure labelOptions is not undefined
+            options
+        );
+
+        if (event.drawEssentials.hasOwnProperty('opacity')) delete event.drawEssentials.opacity;
+
+        this.emit("symDrawEnd", {
+            'isDone': "done",
+            'drawEssentials': event.drawEssentials,
+            'id': graphic.attributes.id,
+            'graphic': graphic
+        });
+    }
+
+    private getOpacityValue(graphic: Graphic): { opacity?: number } {
+        const options: { opacity?: number } = {};
+        if (graphic.geometry.type === 'polyline' || graphic.geometry.type === 'polygon') {
+            const symbol = graphic.symbol as SimpleLineSymbol; // Or SimpleFillSymbol
+            if (symbol && symbol.color) {
+                options.opacity = symbol.color.a;
+            }
+        } else if (graphic.attributes?.drawEssentials?.SYM_GEO_TYPE === 'Point') {
+            const symbol = graphic.symbol as SimpleMarkerSymbol;
+            if (symbol && symbol.outline?.color) {
+                options.opacity = symbol.outline.color.a;
+            }
+        }
+        return options;
+    }
+
+    private symDrawProgress(event: { currentDrawEssentials: DrawEssentials, currentGeometry: any, currentMarker: any }): void {
+        this.emit("symDrawProgress", {
+            "currentDrawEssentials": event.currentDrawEssentials,
+            "currentGeometry": event.currentGeometry,
+            "currentMarker": event.currentMarker
+        });
+    }
+
+    private symDrawClick(event: { currentPts: Point[] }): void {
+        this.emit("symDrawClick", {
+            "currentPts": event.currentPts
+        });
+    }
+
+    private baseLineDrawEnd(event: { currentPts: Point[] }): void {
+        this.emit("baseLineDrawEnd", {
+            "currentPts": event.currentPts
+        });
+    }
+
+    private generateUUID(): string {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    /**
+     * Test method to demonstrate milsymbol.js integration
+     * This replicates the functionality from main.ts
+     */
+    public testMilSymbol(): void {
+        console.log("Testing milsymbol.js integration in SymbolEngine...");
+        
+        // Check if MS object is available
+        if (typeof window.MS === 'undefined') {
+            console.error("MS object not found. Make sure milsymbol.js is loaded.");
+            return;
+        }
+        
+        console.log("MS version:", window.MS.version);
+        console.log("MS standard:", window.MS._STD2525 ? "2525" : "APP6");
+        console.log("MS marker parts count:", window.MS.getMarkerParts().length);
+        console.log("MS color modes available:", Object.keys(window.MS._colorModes || {}));
+        
+        // Test creating a simple military symbol
+        //const sidc = "130310001412050000000000000000"; // User-provided SIDC
+        const sidc = "10121000001205000000"; // User-provided SIDC
+        //
+        const options = {
+            size: 60
+        };
+        
+        try {
+            // Generate the symbol using the correct API
+            const symbol = new window.MS.symbol(sidc, options);
+            console.log("Generated symbol:", symbol);
+            
+            // Check if symbol was created properly
+            if (!symbol) {
+                console.error("Failed to create symbol object");
+                return;
+            }
+            
+            // Get symbol properties
+            const properties = symbol.getProperties();
+            console.log("Symbol properties:", properties);
+            
+            // Initialize the marker to generate drawInstructions
+            symbol.getMarker();
+            console.log("Marker initialized, drawInstructions length:", symbol.drawInstructions?.length || 0);
+            console.log("DrawInstructions:", symbol.drawInstructions);
+            console.log("Symbol properties after getMarker:", symbol.properties);
+            console.log("Symbol colors after getMarker:", symbol.colors);
+            
+            // Test color modes
+            const lightColors = window.MS.getColorMode("Light");
+            console.log("Light color mode:", lightColors);
+            
+            // Test dash arrays
+            const dashArrays = window.MS.getDashArrays();
+            console.log("Dash arrays:", dashArrays);
+            
+            // Test setting a new standard
+            const standardSet = window.MS.setStandard("2525");
+            console.log("Standard set to 2525:", standardSet);
+            
+            // Create a test graphic on the map
+            const view = this.view;
+            if (view && symbol) {
+                // Create a graphics layer for test symbols
+                let testLayer = view.map.findLayerById("testSymbolLayer") as GraphicsLayer;
+                if (!testLayer) {
+                    testLayer = new GraphicsLayer({ id: "testSymbolLayer" });
+                    view.map.add(testLayer);
+                }
+                
+                // Get SVG string from the symbol
+                const svgString = symbol.asSVG();
+                console.log("Generated SVG:", svgString);
+                
+                // Convert SVG to data URL for PictureMarkerSymbol
+                const dataUrl = "data:image/svg+xml;base64," + btoa(svgString);
+                
+                // Create a point at the center of the view
+                const center = view.center;
+                const point = new Point({
+                    longitude: center.longitude,
+                    latitude: center.latitude,
+                    spatialReference: view.spatialReference
+                });
+                
+                // Create the symbol
+                const pictureSymbol = new PictureMarkerSymbol({
+                    url: dataUrl,
+                    width: "35px",
+                    height: "35px"
+                });
+                
+                // Create and add the graphic
+                const graphic = new Graphic({
+                    geometry: point,
+                    symbol: pictureSymbol,
+                    attributes: {
+                        type: "testSymbol",
+                        sidc: sidc,
+                        description: "Test military symbol created with milsymbol.js in SymbolEngine"
+                    }
+                });
+                
+                testLayer.add(graphic);
+                console.log("Test symbol added to map at center point from SymbolEngine");
+            }
+            
+        } catch (error) {
+            console.error("Error testing milsymbol.js in SymbolEngine:", error);
+        }
+    }
+
+    /**
+     * Getter function to expose symbol data
+     * @returns The complete symbol data object
+     */
+    public getSymbolData(): any {
+        return symData;
+    }
+
+    /**
+     * Get symbol data by key
+     * @param key The symbol key to retrieve
+     * @returns The symbol data for the specified key or null if not found
+     */
+    public getSymbolByKey(key: string): any {
+        return symData[key] || null;
+    }
+
+    /**
+     * Get all symbol names for autocomplete
+     * @returns Array of objects with key and name for autocomplete
+     */
+    public getSymbolNamesForAutocomplete(): Array<{key: string, name: string}> {
+        return Object.entries(symData).map(([key, data]: [string, any]) => ({
+            key: key,
+            name: data.Name || 'Unnamed Symbol'
+        }));
+    }
+
 
 
 }
