@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ArcGIS 2D Main Attack Symbol Drawing Tool</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/css/main.css">
+  <style>
+    html, body, #viewDiv {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    #toolbar {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .tool-button {
+      margin: 5px;
+      padding: 8px 12px;
+      background: #0079c1;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .tool-button:hover {
+      background: #005a87;
+    }
+
+    .tool-button.active {
+      background: #d32f2f;
+    }
+
+    #symbolInfo {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      max-width: 300px;
+      display: none;
+    }
+
+    .symbol-preview {
+      width: 60px;
+      height: 40px;
+      border: 2px solid #333;
+      margin: 5px 0;
+      display: inline-block;
+      position: relative;
+      background: rgba(255, 0, 0, 0.3);
+    }
+
+    .symbol-preview::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 100%;
+      height: 2px;
+      background: #d32f2f;
+      transform: translateY(-50%);
+    }
+
+    .symbol-preview::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 50%;
+      width: 0;
+      height: 0;
+      border-left: 10px solid #d32f2f;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+      transform: translateY(-50%);
+    }
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<div id="toolbar">
+  <button id="drawMainAttack" class="tool-button">Draw Main Attack</button>
+  <button id="clearGraphics" class="tool-button">Clear All</button>
+  <div style="margin-top: 10px; font-size: 12px;">
+    <strong>Instructions:</strong><br>
+    1. Click "Draw Main Attack"<br>
+    2. Draw polygon on map<br>
+    3. Double-click to finish
+  </div>
+</div>
+
+<div id="symbolInfo">
+  <h3>Main Attack Symbol Created</h3>
+  <div class="symbol-preview"></div>
+  <div id="symbolDetails"></div>
+</div>
+
+<script src="https://js.arcgis.com/4.29/"></script>
+<script>
+  require([
+    "esri/Map",                       // 1
+    "esri/views/MapView",             // 2
+    "esri/layers/GraphicsLayer",      // 3
+    "esri/Graphic",                   // 4
+    "esri/geometry/Polygon",          // 5
+    "esri/geometry/Polyline",         // 6
+    "esri/geometry/Point",            // 7
+    "esri/symbols/SimpleFillSymbol",  // 8
+    "esri/symbols/SimpleLineSymbol",  // 9
+    "esri/symbols/SimpleMarkerSymbol",// 10
+    "esri/symbols/TextSymbol",        // 11
+    "esri/Color",                     // 12
+    "esri/views/draw/Draw",           // 13
+    "esri/geometry/geometryEngine",   // 14
+    "esri/geometry/support/webMercatorUtils" // 15
+  ], function(
+          Map,                              // 1
+          MapView,                          // 2
+          GraphicsLayer,                    // 3
+          Graphic,                          // 4
+          Polygon,                          // 5
+          Polyline,                         // 6
+          Point,                            // 7
+          SimpleFillSymbol,                 // 8
+          SimpleLineSymbol,                 // 9
+          SimpleMarkerSymbol,               // 10
+          TextSymbol,                       // 11
+          Color,                            // 12
+          Draw,                             // 13
+          geometryEngine,                   // 14 <-- This should be geometryEngine
+          webMercatorUtils                  // 15 <-- This should be webMercatorUtils
+  ) {
+    const map = new Map({
+      basemap: "satellite"
+    });
+
+    const view = new MapView({
+      container: "viewDiv",
+      map: map,
+      center: [-118.244, 34.052],
+      zoom: 14
+    });
+
+    const graphicsLayer = new GraphicsLayer({
+      title: "Main Attack Symbols"
+    });
+
+    const feedbackGraphicsLayer = new GraphicsLayer({
+      title: "Drawing Feedback"
+    });
+
+    map.add(graphicsLayer);
+    map.add(feedbackGraphicsLayer);
+
+    const draw = new Draw({
+      view: view
+    });
+
+    let isDrawing = false;
+    let mainAttackCounter = 0;
+
+    const MAIN_ATTACK_SIDC = "GFGPOLAGS-----X";
+    const MAIN_ATTACK_CONFIG = {
+      name: "Main Attack",
+      sidc: MAIN_ATTACK_SIDC,
+      description: "Ground tactical graphic representing the primary direction of advance",
+      symbolCode: "25230100",
+      hierarchy: "BATTLE POSITION -> OFFENSIVE OPERATIONS -> MAIN ATTACK"
+    };
+
+    function createMainAttackSymbol() {
+      return {
+        fill: new SimpleFillSymbol({
+          color: new Color([255, 0, 0, 0.3]),
+          outline: new SimpleLineSymbol({
+            color: new Color([200, 0, 0, 0.8]),
+            width: 2,
+            style: "solid"
+          })
+        }),
+        arrow: new SimpleLineSymbol({
+          color: new Color([200, 0, 0, 1]),
+          width: 4,
+          style: "solid"
+        }),
+        arrowHead: new SimpleMarkerSymbol({
+          color: new Color([200, 0, 0, 1]),
+          size: 12,
+          style: "triangle",
+          angle: 0,
+          outline: null
+        }),
+        textSymbol: new TextSymbol({
+          color: new Color([0, 0, 0, 1]),
+          haloColor: new Color([255, 255, 255, 0.8]),
+          haloSize: 1,
+          text: "MAIN ATTACK",
+          xoffset: 0,
+          yoffset: 0,
+          font: {
+            size: 12,
+            family: "Arial",
+            weight: "bold"
+          }
+        })
+      };
+    }
+
+    function calculateCentroid(polygon) {
+      //return geometryEngine.centroid(polygon);
+      return polygon.centroid;
+    }
+
+    function calculateMainDirection(polygon) {
+      if (!polygon || !polygon.rings || polygon.rings[0].length < 3) {
+        console.warn("Polygon has fewer than 3 vertices. Cannot calculate main direction.");
+        return null;
+      }
+
+      const projectedPolygon = webMercatorUtils.geographicToWebMercator(polygon);
+      if (!projectedPolygon || !projectedPolygon.rings || projectedPolygon.rings[0].length < 3) {
+        console.error("Failed to project polygon or projected polygon has insufficient vertices for direction calculation.");
+        return null;
+      }
+
+      const rings = projectedPolygon.rings[0];
+      //const centroidProjected = geometryEngine.centroid(projectedPolygon);
+      const centroidProjected = projectedPolygon.centroid;
+
+      if (!centroidProjected) {
+        console.warn("Could not calculate centroid for projected polygon. Cannot determine main direction.");
+        return null;
+      }
+
+      let maxDistanceSquared = 0;
+      let p1Projected = null;
+      let p2Projected = null;
+
+      if (rings.length >= 2) {
+        for (let i = 0; i < rings.length; i++) {
+          for (let j = i + 1; j < rings.length; j++) {
+            const distSq =
+                    Math.pow(rings[j][0] - rings[i][0], 2) +
+                    Math.pow(rings[j][1] - rings[i][1], 2);
+
+            if (distSq > maxDistanceSquared) {
+              maxDistanceSquared = distSq;
+              p1Projected = new Point({
+                x: rings[i][0],
+                y: rings[i][1],
+                spatialReference: projectedPolygon.spatialReference
+              });
+              p2Projected = new Point({
+                x: rings[j][0],
+                y: rings[j][1],
+                spatialReference: projectedPolygon.spatialReference
+              });
+            }
+          }
+        }
+      }
+
+      if (!p1Projected || !p2Projected) {
+        console.warn("Could not find two distinct points for direction calculation after projection.");
+        return null;
+      }
+
+      const midXProjected = (p1Projected.x + p2Projected.x) / 2;
+      const midYProjected = (p1Projected.y + p2Projected.y) / 2;
+
+      const arrowStartProjected = new Point({
+        x: centroidProjected.x,
+        y: centroidProjected.y,
+        spatialReference: projectedPolygon.spatialReference
+      });
+
+      const polygonExtent = projectedPolygon.extent;
+      const polygonWidth = polygonExtent.width;
+      const polygonHeight = polygonExtent.height;
+      const avgDimension = Math.sqrt(polygonWidth * polygonWidth + polygonHeight * polygonHeight);
+
+      const minArrowLength = 50;
+      const arrowLength = Math.max(minArrowLength, avgDimension * 0.3);
+
+      const vecX = midXProjected - centroidProjected.x;
+      const vecY = midYProjected - centroidProjected.y;
+      const vecLength = Math.sqrt(vecX * vecX + vecY * vecY);
+
+      let endPointXProjected, endPointYProjected;
+      if (vecLength > 0) {
+        endPointXProjected = centroidProjected.x + (vecX / vecLength) * arrowLength;
+        endPointYProjected = centroidProjected.y + (vecY / vecLength) * arrowLength;
+      } else {
+        endPointXProjected = centroidProjected.x;
+        endPointYProjected = centroidProjected.y + arrowLength;
+      }
+
+      const arrowEndProjected = new Point({
+        x: endPointXProjected,
+        y: endPointYProjected,
+        spatialReference: projectedPolygon.spatialReference
+      });
+
+      const angle = Math.atan2(
+              arrowEndProjected.y - arrowStartProjected.y,
+              arrowEndProjected.x - arrowStartProjected.x
+      ) * 180 / Math.PI;
+
+      const startGeographic = webMercatorUtils.webMercatorToGeographic(arrowStartProjected);
+      const endGeographic = webMercatorUtils.webMercatorToGeographic(arrowEndProjected);
+
+      return {
+        start: startGeographic,
+        end: endGeographic,
+        angle: angle
+      };
+    }
+
+    function createMainAttackGraphic(polygon) {
+      const symbols = createMainAttackSymbol();
+      const centroid = calculateCentroid(polygon);
+      const direction = calculateMainDirection(polygon);
+
+      const graphics = [];
+
+      const polygonGraphic = new Graphic({
+        geometry: polygon,
+        symbol: symbols.fill,
+        attributes: {
+          type: "MainAttack",
+          sidc: MAIN_ATTACK_CONFIG.sidc,
+          name: MAIN_ATTACK_CONFIG.name,
+          id: ++mainAttackCounter
+        }
+      });
+      graphics.push(polygonGraphic);
+
+      if (direction) {
+        const arrowLine = new Polyline({
+          paths: [[
+            [direction.start.x, direction.start.y],
+            [direction.end.x, direction.end.y]
+          ]],
+          spatialReference: polygon.spatialReference
+        });
+
+        const arrowGraphic = new Graphic({
+          geometry: arrowLine,
+          symbol: symbols.arrow,
+          attributes: {
+            type: "MainAttackArrow",
+            parentId: mainAttackCounter
+          }
+        });
+        graphics.push(arrowGraphic);
+
+        const arrowHeadSymbol = symbols.arrowHead.clone();
+        arrowHeadSymbol.angle = direction.angle + 90;
+
+        const arrowHeadGraphic = new Graphic({
+          geometry: direction.end,
+          symbol: arrowHeadSymbol,
+          attributes: {
+            type: "MainAttackArrowHead",
+            parentId: mainAttackCounter
+          }
+        });
+        graphics.push(arrowHeadGraphic);
+      } else {
+        console.warn("Direction could not be calculated for the polygon. Arrow skipped.");
+      }
+
+      if (centroid) {
+        const textGraphic = new Graphic({
+          geometry: centroid,
+          symbol: symbols.textSymbol,
+          attributes: {
+            type: "MainAttackLabel",
+            parentId: mainAttackCounter
+          }
+        });
+        graphics.push(textGraphic);
+      } else {
+        console.warn("Centroid could not be calculated for the polygon. Label skipped.");
+      }
+
+      return graphics;
+    }
+
+    function showSymbolInfo(symbolId) {
+      const symbolInfo = document.getElementById("symbolInfo");
+      const symbolDetails = document.getElementById("symbolDetails");
+
+      symbolDetails.innerHTML = `
+                    <strong>Symbol ID:</strong> ${symbolId}<br>
+                    <strong>SIDC:</strong> ${MAIN_ATTACK_CONFIG.sidc}<br>
+                    <strong>Name:</strong> ${MAIN_ATTACK_CONFIG.name}<br>
+                    <strong>Type:</strong> Tactical Graphic<br>
+                    <strong>Standard:</strong> MIL-STD-2525C<br>
+                    <strong>Description:</strong> ${MAIN_ATTACK_CONFIG.description}
+                `;
+
+      symbolInfo.style.display = "block";
+
+      setTimeout(() => {
+        symbolInfo.style.display = "none";
+      }, 5000);
+    }
+
+    document.getElementById("drawMainAttack").addEventListener("click", function() {
+      if (isDrawing) return;
+
+      isDrawing = true;
+      this.classList.add("active");
+      this.textContent = "Drawing... (Double-click to finish)";
+
+      feedbackGraphicsLayer.removeAll();
+
+      const action = draw.create("polygon");
+
+      const lineSymbol = {
+        type: "simple-line",
+        color: [0, 0, 0, 0.7],
+        width: 2,
+        style: "dash"
+      };
+      const vertexSymbol = {
+        type: "simple-marker",
+        style: "circle",
+        size: 8,
+        color: [0, 0, 0, 1],
+        outline: {
+          color: [255, 255, 255, 0.8],
+          width: 1
+        }
+      };
+
+      // This is the SINGLE, unified event listener for the draw action
+      action.on(["vertex-add", "vertex-remove", "cursor-update", "draw-complete", "redo"], function(event) {
+        feedbackGraphicsLayer.removeAll(); // Clear existing feedback with each event
+
+        // Drawing feedback (lines and vertices)
+        const vertices = event.vertices;
+        if (vertices.length > 0) {
+          if (vertices.length > 1) {
+            for (let i = 0; i < vertices.length - 1; i++) {
+              const segment = new Polyline({
+                paths: [[vertices[i][0], vertices[i][1]], [vertices[i + 1][0], vertices[i + 1][1]]],
+                spatialReference: view.spatialReference
+              });
+              feedbackGraphicsLayer.add(new Graphic({
+                geometry: segment,
+                symbol: lineSymbol
+              }));
+            }
+          }
+          if (event.type === "cursor-update" && vertices.length > 0) {
+            const lastVertex = vertices[vertices.length - 1];
+            const currentPoint = [event.mapPoint.x, event.mapPoint.y];
+            const currentSegment = new Polyline({
+              paths: [[lastVertex[0], lastVertex[1]], currentPoint],
+              spatialReference: view.spatialReference
+            });
+            feedbackGraphicsLayer.add(new Graphic({
+              geometry: currentSegment,
+              symbol: lineSymbol
+            }));
+          }
+        }
+
+        vertices.forEach(vertex => {
+          const point = new Point({
+            x: vertex[0],
+            y: vertex[1],
+            spatialReference: view.spatialReference
+          });
+          feedbackGraphicsLayer.add(new Graphic({
+            geometry: point,
+            symbol: vertexSymbol
+          }));
+        });
+
+        // Handle the completion event
+        if (event.type === "draw-complete") {
+          console.log("Draw completed! Processing polygon...");
+
+          // The 'draw-complete' event provides the geometry in event.geometry
+          // BUT it seems your console log showed event.vertices.
+          // This means we should construct the polygon directly from vertices.
+          // The 'PolygonDrawAction' *should* give event.geometry for 'draw-complete'
+          // If not, we'll use event.vertices. Let's try event.geometry first as it's standard.
+          // If event.geometry is still undefined, use the fallback to event.vertices.
+          let polygonGeometry;
+
+          if (event.geometry && event.geometry.rings) {
+            polygonGeometry = event.geometry; // Ideal case
+          } else if (event.vertices && event.vertices.length >= 3) {
+            // Fallback: construct polygon from vertices if event.geometry is missing
+            polygonGeometry = new Polygon({
+              rings: [event.vertices.map(v => [v[0], v[1]])], // Ensure v is [x,y] array
+              spatialReference: view.spatialReference
+            });
+          } else {
+            console.warn("Drawing finished, but no valid geometry or insufficient vertices to create a polygon.");
+            isDrawing = false;
+            document.getElementById("drawMainAttack").classList.remove("active");
+            document.getElementById("drawMainAttack").textContent = "Draw Main Attack";
+            return; // Exit if no valid polygon can be formed
+          }
+
+          // Proceed only if a valid polygon geometry was obtained
+          if (polygonGeometry.rings[0].length >= 3) {
+            const mainAttackGraphics = createMainAttackGraphic(polygonGeometry);
+
+            mainAttackGraphics.forEach(graphic => {
+              graphicsLayer.add(graphic);
+            });
+
+            console.log("Polygon geometry:", polygonGeometry.toJSON());
+            showSymbolInfo(mainAttackCounter);
+          } else {
+            console.warn("Drawing finished, but polygon has less than 3 vertices. Skipping symbol creation.");
+          }
+
+          isDrawing = false;
+          document.getElementById("drawMainAttack").classList.remove("active");
+          document.getElementById("drawMainAttack").textContent = "Draw Main Attack";
+        }
+
+        // Handle draw cancellation
+        if (event.type === "redo") { // Redo fires on ESC key press
+          feedbackGraphicsLayer.removeAll();
+          isDrawing = false;
+          document.getElementById("drawMainAttack").classList.remove("active");
+          document.getElementById("drawMainAttack").textContent = "Draw Main Attack";
+        }
+      });
+    });
+
+    document.getElementById("clearGraphics").addEventListener("click", function() {
+      graphicsLayer.removeAll();
+      feedbackGraphicsLayer.removeAll();
+      mainAttackCounter = 0;
+      document.getElementById("symbolInfo").style.display = "none";
+      console.log("All graphics cleared");
+    });
+
+    view.on("click", function(event) {
+      view.hitTest(event).then(function(response) {
+        const graphic = response.results[0]?.graphic;
+        if (graphic && graphic.attributes && graphic.attributes.type === "MainAttack") {
+          showSymbolInfo(graphic.attributes.id);
+        }
+      });
+    });
+
+    console.log("ArcGIS 2D Main Attack Symbol Drawing Tool initialized");
+    console.log("Main Attack Configuration:", MAIN_ATTACK_CONFIG);
+  });
+</script>
+</body>
+</html>

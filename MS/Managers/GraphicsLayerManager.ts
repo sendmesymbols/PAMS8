@@ -42,10 +42,17 @@ class GraphicsLayerManager {
         this.getOrCreateLayer(LAYER_NAMES.TACT);
         this.getOrCreateLayer(LAYER_NAMES.TACT_PT);
         this.getOrCreateLayer(LAYER_NAMES.TACT);
+        this.getOrCreateLayer(LAYER_NAMES.FORCE);
 
         // Log layers to verify creation
         console.log("Available layers:", this.listLayers());
     }
+
+    public getSymbolLayer(): GraphicsLayer {
+        return this.getOrCreateLayer(LAYER_NAMES.FORCE);
+    }
+
+
 
     public getOrCreateLayer(layerName: string): GraphicsLayer {
         if (this.layers.has(layerName)) {

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ArcGIS 3D Main Attack Symbol Drawing Tool</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/css/main.css">
+    <style>
+        html, body, #viewDiv {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #toolbar {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .tool-button {
+            margin: 5px;
+            padding: 8px 12px;
+            background: #0079c1;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .tool-button:hover {
+            background: #005a87;
+        }
+
+        .tool-button.active {
+            background: #d32f2f;
+        }
+
+        #symbolInfo {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            max-width: 300px;
+            display: none;
+        }
+
+        .symbol-preview {
+            width: 60px;
+            height: 40px;
+            border: 2px solid #333;
+            margin: 5px 0;
+            display: inline-block;
+            position: relative;
+            background: rgba(255, 0, 0, 0.3);
+        }
+
+        .symbol-preview::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 2px;
+            background: #d32f2f;
+            transform: translateY(-50%);
+        }
+
+        .symbol-preview::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            width: 0;
+            height: 0;
+            border-left: 10px solid #d32f2f;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<div id="toolbar">
+    <button id="drawMainAttack" class="tool-button">Draw Main Attack</button>
+    <button id="clearGraphics" class="tool-button">Clear All</button>
+    <div style="margin-top: 10px; font-size: 12px;">
+        <strong>Instructions:</strong><br>
+        1. Click "Draw Main Attack"<br>
+        2. Draw polygon on map<br>
+        3. Double-click to finish
+    </div>
+</div>
+
+<div id="symbolInfo">
+    <h3>Main Attack Symbol Created</h3>
+    <div class="symbol-preview"></div>
+    <div id="symbolDetails"></div>
+</div>
+
+<script src="https://js.arcgis.com/4.29/"></script>
+<script>
+    require([
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/layers/GraphicsLayer",
+        "esri/Graphic",
+        "esri/geometry/Polygon",
+        "esri/geometry/Polyline",
+        "esri/geometry/Point",
+        "esri/symbols/SimpleFillSymbol",
+        "esri/symbols/SimpleLineSymbol",
+        "esri/symbols/SimpleMarkerSymbol",
+        "esri/symbols/TextSymbol",
+        "esri/Color",
+        "esri/views/draw/Draw",
+        "esri/geometry/geometryEngine",
+        "esri/geometry/support/webMercatorUtils" // Import for projection utilities
+    ], function(
+        Map, MapView, GraphicsLayer, Graphic, Polygon, Polyline, Point,
+        SimpleFillSymbol, SimpleLineSymbol, SimpleMarkerSymbol, TextSymbol,
+        Color, Draw, geometryEngine, webMercatorUtils // Add webMercatorUtils
+    ) {
+        // Create map and MapView
+        const map = new Map({
+            basemap: "satellite"
+        });
+
+        const view = new MapView({
+            container: "viewDiv",
+            map: map,
+            center: [-118.244, 34.052],
+            zoom: 14
+        });
+
+        // Create graphics layer for main attack symbols
+        const graphicsLayer = new GraphicsLayer({
+            title: "Main Attack Symbols"
+        });
+
+        // Add a temporary graphics layer for drawing feedback (vertices, segments)
+        const feedbackGraphicsLayer = new GraphicsLayer({
+            title: "Drawing Feedback"
+        });
+
+        map.add(graphicsLayer);
+        map.add(feedbackGraphicsLayer);
+
+        // Drawing tools
+        const draw = new Draw({
+            view: view
+        });
+
+        let isDrawing = false;
+        let mainAttackCounter = 0;
+
+        // Main Attack Symbol Configuration (MIL-STD-2525C)
+        const MAIN_ATTACK_SIDC = "GFGPOLAGS-----X"; // Main Attack SIDC
+        const MAIN_ATTACK_CONFIG = {
+            name: "Main Attack",
+            sidc: MAIN_ATTACK_SIDC,
+            description: "Ground tactical graphic representing the primary direction of advance",
+            symbolCode: "25230100",
+            hierarchy: "BATTLE POSITION -> OFFENSIVE OPERATIONS -> MAIN ATTACK"
+        };
+
+        // Create main attack symbol styling
+        function createMainAttackSymbol() {
+            return {
+                // Polygon fill with transparency
+                fill: new SimpleFillSymbol({
+                    color: new Color([255, 0, 0, 0.3]), // Red with transparency
+                    outline: new SimpleLineSymbol({
+                        color: new Color([200, 0, 0, 0.8]),
+                        width: 2,
+                        style: "solid"
+                    })
+                }),
+                // Arrow line for direction
+                arrow: new SimpleLineSymbol({
+                    color: new Color([200, 0, 0, 1]),
+                    width: 4,
+                    style: "solid"
+                }),
+                // Arrow head
+                arrowHead: new SimpleMarkerSymbol({
+                    color: new Color([200, 0, 0, 1]),
+                    size: 12,
+                    style: "triangle",
+                    angle: 0, // Will be set dynamically
+                    outline: null // No outline for the triangle
+                }),
+                // Text label
+                textSymbol: new TextSymbol({
+                    color: new Color([0, 0, 0, 1]),
+                    haloColor: new Color([255, 255, 255, 0.8]),
+                    haloSize: 1,
+                    text: "MAIN ATTACK",
+                    xoffset: 0,
+                    yoffset: 0,
+                    font: {
+                        size: 12,
+                        family: "Arial",
+                        weight: "bold"
+                    }
+                })
+            };
+        }
+
+        // Calculate polygon centroid for label placement
+        function calculateCentroid(polygon) {
+            return polygon.centroid;
+        }
+
+        // Calculate main direction arrow
+        // This version attempts to do calculations in Web Mercator for better accuracy
+        function calculateMainDirection(polygon) {
+            if (!polygon || !polygon.rings || polygon.rings[0].length < 2) return null;
+
+            // 1. Project the polygon to Web Mercator (WKID 3857) for accurate calculations
+            const projectedPolygon = webMercatorUtils.geographicToWebMercator(polygon);
+            if (!projectedPolygon) {
+                console.error("Failed to project polygon for direction calculation.");
+                return null;
+            }
+
+            const rings = projectedPolygon.rings[0];
+            const centroidProjected = projectedPolygon.centroid;
+
+            let maxDistanceSquared = 0; // Use squared distance to avoid Math.sqrt in loop
+            let p1Projected = null;
+            let p2Projected = null;
+
+            // Find the two furthest points in the projected polygon
+            for (let i = 0; i < rings.length; i++) {
+                for (let j = i + 1; j < rings.length; j++) {
+                    const distSq =
+                        Math.pow(rings[j][0] - rings[i][0], 2) +
+                        Math.pow(rings[j][1] - rings[i][1], 2);
+
+                    if (distSq > maxDistanceSquared) {
+                        maxDistanceSquared = distSq;
+                        p1Projected = new Point({
+                            x: rings[i][0],
+                            y: rings[i][1],
+                            spatialReference: projectedPolygon.spatialReference
+                        });
+                        p2Projected = new Point({
+                            x: rings[j][0],
+                            y: rings[j][1],
+                            spatialReference: projectedPolygon.spatialReference
+                        });
+                    }
+                }
+            }
+
+            if (!p1Projected || !p2Projected) return null;
+
+            // Calculate midpoint of the longest axis in projected coordinates
+            const midXProjected = (p1Projected.x + p2Projected.x) / 2;
+            const midYProjected = (p1Projected.y + p2Projected.y) / 2;
+
+            // Define arrow start and end points in projected coordinates
+            const arrowStartProjected = new Point({
+                x: centroidProjected.x,
+                y: centroidProjected.y,
+                spatialReference: projectedPolygon.spatialReference
+            });
+
+            // Determine a reasonable arrow length based on polygon's extent (in meters)
+            const polygonExtent = projectedPolygon.extent;
+            const polygonWidth = polygonExtent.width;
+            const polygonHeight = polygonExtent.height;
+            const avgDimension = Math.sqrt(polygonWidth * polygonWidth + polygonHeight * polygonHeight); // Diagonal as a proxy
+
+            // Adjust arrow length based on polygon size, minimum length to ensure visibility
+            const minArrowLength = 50; // meters (adjust as needed)
+            const arrowLength = Math.max(minArrowLength, avgDimension * 0.3); // Arrow length is 30% of avg diagonal, but at least minLength
+
+            // Calculate vector from centroid to midpoint of longest axis
+            const vecX = midXProjected - centroidProjected.x;
+            const vecY = midYProjected - centroidProjected.y;
+            const vecLength = Math.sqrt(vecX * vecX + vecY * vecY);
+
+            // Normalize vector and scale to desired arrowLength
+            let endPointXProjected, endPointYProjected;
+            if (vecLength > 0) {
+                endPointXProjected = centroidProjected.x + (vecX / vecLength) * arrowLength;
+                endPointYProjected = centroidProjected.y + (vecY / vecLength) * arrowLength;
+            } else {
+                // If centroid and midpoint are the same (e.g., a perfect circle),
+                // just extend North or some default direction.
+                endPointXProjected = centroidProjected.x;
+                endPointYProjected = centroidProjected.y + arrowLength; // Point North
+            }
+
+            const arrowEndProjected = new Point({
+                x: endPointXProjected,
+                y: endPointYProjected,
+                spatialReference: projectedPolygon.spatialReference
+            });
+
+            // Calculate the angle in degrees in projected space
+            const angle = Math.atan2(
+                arrowEndProjected.y - arrowStartProjected.y,
+                arrowEndProjected.x - arrowStartProjected.x
+            ) * 180 / Math.PI;
+
+            // 2. Convert the start and end points back to the map's spatial reference (WGS84)
+            const startGeographic = webMercatorUtils.webMercatorToGeographic(arrowStartProjected);
+            const endGeographic = webMercatorUtils.webMercatorToGeographic(arrowEndProjected);
+
+            return {
+                start: startGeographic,
+                end: endGeographic,
+                angle: angle
+            };
+        }
+
+        // Create complete main attack symbol
+        function createMainAttackGraphic(polygon) {
+            const symbols = createMainAttackSymbol();
+            const centroid = calculateCentroid(polygon); // Centroid in map's SR (WGS84)
+            const direction = calculateMainDirection(polygon); // Start/End points in WGS84, Angle from projected
+
+            const graphics = [];
+
+            // 1. Base polygon (fill and outline)
+            const polygonGraphic = new Graphic({
+                geometry: polygon,
+                symbol: symbols.fill,
+                attributes: {
+                    type: "MainAttack",
+                    sidc: MAIN_ATTACK_CONFIG.sidc,
+                    name: MAIN_ATTACK_CONFIG.name,
+                    id: ++mainAttackCounter
+                }
+            });
+            graphics.push(polygonGraphic);
+
+            // 2. Direction arrow (line and head)
+            if (direction) {
+                const arrowLine = new Polyline({
+                    paths: [[
+                        [direction.start.x, direction.start.y],
+                        [direction.end.x, direction.end.y]
+                    ]],
+                    spatialReference: polygon.spatialReference
+                });
+
+                const arrowGraphic = new Graphic({
+                    geometry: arrowLine,
+                    symbol: symbols.arrow,
+                    attributes: {
+                        type: "MainAttackArrow",
+                        parentId: mainAttackCounter
+                    }
+                });
+                graphics.push(arrowGraphic);
+
+                // 3. Arrow head
+                const arrowHeadSymbol = symbols.arrowHead.clone();
+                // Adjust angle: The triangle symbol usually points up (0 or 90 degrees depending on base/apex).
+                // atan2 gives angle from positive x-axis. Adjust as needed for your specific symbol.
+                // Assuming triangle points North at angle 0 in symbol definition, and you want it to point in calculated direction.
+                // If 0 degrees in your symbol means "pointing right (East)", then `angle` is correct.
+                // If 0 degrees in your symbol means "pointing up (North)", then `angle + 90` is correct.
+                // A good rule of thumb is to experiment with the `angle` until it looks right.
+                arrowHeadSymbol.angle = direction.angle + 90; // Common adjustment for triangle symbol pointing North by default
+
+
+                const arrowHeadGraphic = new Graphic({
+                    geometry: direction.end,
+                    symbol: arrowHeadSymbol,
+                    attributes: {
+                        type: "MainAttackArrowHead",
+                        parentId: mainAttackCounter
+                    }
+                });
+                graphics.push(arrowHeadGraphic);
+            }
+
+            // 4. Text label
+            if (centroid) {
+                const textGraphic = new Graphic({
+                    geometry: centroid,
+                    symbol: symbols.textSymbol,
+                    attributes: {
+                        type: "MainAttackLabel",
+                        parentId: mainAttackCounter
+                    }
+                });
+                graphics.push(textGraphic);
+            }
+
+            return graphics;
+        }
+
+        // Show symbol information
+        function showSymbolInfo(symbolId) {
+            const symbolInfo = document.getElementById("symbolInfo");
+            const symbolDetails = document.getElementById("symbolDetails");
+
+            symbolDetails.innerHTML = `
+                    <strong>Symbol ID:</strong> ${symbolId}<br>
+                    <strong>SIDC:</strong> ${MAIN_ATTACK_CONFIG.sidc}<br>
+                    <strong>Name:</strong> ${MAIN_ATTACK_CONFIG.name}<br>
+                    <strong>Type:</strong> Tactical Graphic<br>
+                    <strong>Standard:</strong> MIL-STD-2525C<br>
+                    <strong>Description:</strong> ${MAIN_ATTACK_CONFIG.description}
+                `;
+
+            symbolInfo.style.display = "block";
+
+            setTimeout(() => {
+                symbolInfo.style.display = "none";
+            }, 5000);
+        }
+
+        // Event handlers
+        document.getElementById("drawMainAttack").addEventListener("click", function() {
+            if (isDrawing) return;
+
+            isDrawing = true;
+            this.classList.add("active");
+            this.textContent = "Drawing... (Double-click to finish)";
+
+            feedbackGraphicsLayer.removeAll();
+
+            const action = draw.create("polygon");
+
+            const lineSymbol = {
+                type: "simple-line",
+                color: [0, 0, 0, 0.7],
+                width: 2,
+                style: "dash"
+            };
+            const vertexSymbol = {
+                type: "simple-marker",
+                style: "circle",
+                size: 8,
+                color: [0, 0, 0, 1],
+                outline: {
+                    color: [255, 255, 255, 0.8],
+                    width: 1
+                }
+            };
+
+            action.on(["vertex-add", "vertex-remove", "cursor-update"], function(event) {
+                feedbackGraphicsLayer.removeAll(); // Clear existing feedback
+
+                const vertices = event.vertices;
+                if (vertices.length > 1) {
+                    for (let i = 0; i < vertices.length - 1; i++) {
+                        const segment = new Polyline({
+                            paths: [[vertices[i], vertices[i + 1]]],
+                            spatialReference: view.spatialReference
+                        });
+                        feedbackGraphicsLayer.add(new Graphic({
+                            geometry: segment,
+                            symbol: lineSymbol
+                        }));
+                    }
+                    if (event.type === "cursor-update") {
+                        const lastVertex = vertices[vertices.length - 1];
+                        const currentPoint = [event.mapPoint.x, event.mapPoint.y];
+                        const currentSegment = new Polyline({
+                            paths: [[lastVertex, currentPoint]],
+                            spatialReference: view.spatialReference
+                        });
+                        feedbackGraphicsLayer.add(new Graphic({
+                            geometry: currentSegment,
+                            symbol: lineSymbol
+                        }));
+                    }
+                }
+
+                vertices.forEach(vertex => {
+                    const point = new Point({
+                        x: vertex[0],
+                        y: vertex[1],
+                        spatialReference: view.spatialReference
+                    });
+                    feedbackGraphicsLayer.add(new Graphic({
+                        geometry: point,
+                        symbol: vertexSymbol
+                    }));
+                });
+            });
+
+            action.on("draw-complete", function(event) {
+                feedbackGraphicsLayer.removeAll();
+
+                /*
+                const polygon = new Polygon({
+                    rings: event.geometry.rings,
+                    spatialReference: view.spatialReference
+                });
+
+                 */
+
+                let polygon;
+
+                // Fallback: construct polygon from vertices if event.geometry is missing
+                polygon = new Polygon({
+                    rings: [event.vertices.map(v => [v[0], v[1]])], // Ensure v is [x,y] array
+                    spatialReference: view.spatialReference
+                });
+
+                const mainAttackGraphics = createMainAttackGraphic(polygon);
+
+                mainAttackGraphics.forEach(graphic => {
+                    graphicsLayer.add(graphic);
+                });
+
+                console.log("Polygon geometry:", polygon.toJSON());
+
+                showSymbolInfo(mainAttackCounter);
+
+                isDrawing = false;
+                document.getElementById("drawMainAttack").classList.remove("active");
+                document.getElementById("drawMainAttack").textContent = "Draw Main Attack";
+
+                console.log("Main Attack Symbol Created:", {
+                    id: mainAttackCounter,
+                    sidc: MAIN_ATTACK_CONFIG.sidc,
+                    geometry: polygon,
+                    graphics: mainAttackGraphics.length
+                });
+            });
+
+            action.on("redo", function() {
+                feedbackGraphicsLayer.removeAll();
+                isDrawing = false;
+                document.getElementById("drawMainAttack").classList.remove("active");
+                document.getElementById("drawMainAttack").textContent = "Draw Main Attack";
+            });
+        });
+
+        document.getElementById("clearGraphics").addEventListener("click", function() {
+            graphicsLayer.removeAll();
+            feedbackGraphicsLayer.removeAll();
+            mainAttackCounter = 0;
+            document.getElementById("symbolInfo").style.display = "none";
+            console.log("All graphics cleared");
+        });
+
+        view.on("click", function(event) {
+            view.hitTest(event).then(function(response) {
+                const graphic = response.results[0]?.graphic;
+                if (graphic && graphic.attributes && graphic.attributes.type === "MainAttack") {
+                    showSymbolInfo(graphic.attributes.id);
+                }
+            });
+        });
+
+        console.log("ArcGIS 3D Main Attack Symbol Drawing Tool initialized");
+        console.log("Main Attack Configuration:", MAIN_ATTACK_CONFIG);
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>ArcGIS Military Symbology</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.30/"></script>
+  <style>
+    html,
+    body,
+    #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+    #drawingTools {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 10px;
+      background: white;
+      border-radius: 5px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+<div id="drawingTools">
+  <button id="drawMainAttackBtn">Draw Main Attack</button>
+  <button id="drawAmbushBtn">Draw Ambush</button>
+</div>
+
+<script>
+  require([
+    "esri/Map",
+    "esri/views/SceneView",
+    "esri/widgets/Sketch/SketchViewModel",
+    "esri/Graphic",
+    "esri/geometry/Polyline",
+    "esri/symbols/SimpleLineSymbol",
+    "esri/symbols/LineSymbol3D",
+    "esri/symbols/PathSymbol3DLayer",
+    "esri/geometry/support/webMercatorUtils", // For calculating angle for arrowhead
+    "esri/geometry/geometryEngine" // For geometry operations like densify
+  ], function (
+          Map,
+          SceneView,
+          SketchViewModel,
+          Graphic,
+          Polyline,
+          SimpleLineSymbol,
+          LineSymbol3D,
+          PathSymbol3DLayer,
+          webMercatorUtils,
+          geometryEngine
+  ) {
+    // Update to a recent stable API version, e.g., 4.30 or higher.
+    // Check https://developers.arcgis.com/javascript/latest/ for the current stable.
+    const API_VERSION = "4.30"; // Using 4.30 as of this update.
+
+    const map = new Map({
+      basemap: "streets-navigation-vector",
+      ground: "world-elevation"
+    });
+
+    const view = new SceneView({
+      container: "viewDiv",
+      map: map,
+      camera: {
+        position: [-74.0060, 40.7128, 5000], // Example: New York City
+        tilt: 65,
+        heading: 0
+      }
+    });
+
+    let sketchVM;
+    let currentDrawingType = null; // To track what type of symbol is being drawn
+
+    view.when(function () {
+      sketchVM = new SketchViewModel({
+        view: view,
+        layer: view.graphics
+      });
+
+      sketchVM.on("create", function (event) {
+        if (event.state === "complete") {
+          const drawnPolyline = event.graphic.geometry;
+          view.graphics.remove(event.graphic); // Remove the temporary drawn graphic
+
+          let newGraphic;
+          if (currentDrawingType === "mainAttack") {
+            newGraphic = createMainAttackGraphic(drawnPolyline);
+          } else if (currentDrawingType === "ambush") {
+            newGraphic = createAmbushGraphic(drawnPolyline);
+          }
+
+          if (newGraphic) {
+            view.graphics.add(newGraphic);
+          }
+
+          sketchVM.complete();
+          currentDrawingType = null;
+        }
+      });
+
+      document.getElementById("drawMainAttackBtn").addEventListener("click", function () {
+        if (sketchVM.activeTool) {
+          sketchVM.complete();
+        }
+        currentDrawingType = "mainAttack";
+        sketchVM.create("polyline");
+        console.log("Drawing main attack... Click to add vertices, double-click to finish.");
+      });
+
+      document.getElementById("drawAmbushBtn").addEventListener("click", function () {
+        if (sketchVM.activeTool) {
+          sketchVM.complete();
+        }
+        currentDrawingType = "ambush";
+        sketchVM.create("polyline");
+        console.log("Drawing ambush... Click to add vertices, double-click to finish.");
+      });
+    });
+
+    function createMainAttackGraphic(polyline) {
+      let angle = 0;
+      const paths = polyline.paths;
+      if (paths.length > 0) {
+        const lastPath = paths[paths.length - 1];
+        if (lastPath.length >= 2) {
+          const p1 = lastPath[lastPath.length - 2];
+          const p2 = lastPath[lastPath.length - 1];
+
+          const screenP1 = view.toScreen(p1);
+          const screenP2 = view.toScreen(p2);
+
+          if (screenP1 && screenP2) {
+            angle = (Math.atan2(screenP2.y - screenP1.y, screenP2.x - screenP1.x) * 180 / Math.PI) + 90;
+          }
+        }
+      }
+
+      const mainAttackLineSymbol = {
+        type: "simple-line",
+        color: [255, 0, 0, 0.8], // Red for hostile
+        width: 3,
+        style: "dash",
+        marker: {
+          placement: "end",
+          style: "arrow",
+          color: [255, 0, 0, 0.8],
+          size: 10,
+          angle: angle
+        }
+      };
+
+      return new Graphic({
+        geometry: polyline,
+        symbol: mainAttackLineSymbol
+      });
+    }
+
+    /**
+     * Creates an ArcGIS Graphic representing an Ambush symbol.
+     * This simulates ODINv2's conversion process for an ambush.
+     * An ambush symbol is typically a line with a sawtooth/zig-zag pattern.
+     * @param {Polyline} polyline The drawn polyline geometry.
+     * @returns {Graphic} The ambush graphic with appropriate styling.
+     */
+    function createAmbushGraphic(polyline) {
+      // To create the sawtooth/zig-zag pattern, we'll modify the polyline's geometry
+      // by adding intermediate points.
+
+      // This is a simplified approach. For true MIL-STD-2525, you'd likely use
+      // a dedicated symbol library or pre-generated SVG.
+
+      const densifiedPolyline = geometryEngine.densify(polyline, 20, "meters"); // Densify the line for more points
+
+      const zigzagOffset = 10; // Offset for the zig-zag in meters (adjust as needed)
+      const newPaths = [];
+
+      densifiedPolyline.paths.forEach(path => {
+        const newPath = [];
+        let offsetDirection = 1; // 1 for positive offset, -1 for negative
+
+        for (let i = 0; i < path.length; i++) {
+          newPath.push(path[i]); // Add the original point
+
+          // If not the last point, calculate a perpendicular offset for a zig-zag
+          if (i < path.length - 1) {
+            const p1 = path[i];
+            const p2 = path[i + 1];
+
+            // Calculate direction vector
+            const dx = p2[0] - p1[0];
+            const dy = p2[1] - p1[1];
+
+            // Calculate perpendicular vector
+            const perpDx = -dy;
+            const perpDy = dx;
+
+            // Normalize and apply offset
+            const length = Math.sqrt(perpDx * perpDx + perpDy * perpDy);
+            if (length > 0) {
+              const unitPerpDx = perpDx / length;
+              const unitPerpDy = perpDy / length;
+
+              // Add an intermediate point with an offset
+              newPath.push([
+                p1[0] + unitPerpDx * zigzagOffset * offsetDirection,
+                p1[1] + unitPerpDy * zigzagOffset * offsetDirection,
+                p1[2] // Preserve Z if it exists
+              ]);
+              offsetDirection *= -1; // Reverse direction for next zig-zag
+            }
+          }
+        }
+        newPaths.push(newPath);
+      });
+
+      const ambushGeometry = new Polyline({
+        paths: newPaths,
+        spatialReference: polyline.spatialReference
+      });
+
+      // Ambush line symbol (solid, typically green for neutral/obstacle or red for hostile)
+      // Using red here to match the hostile theme of main attack
+      const ambushLineSymbol = {
+        type: "simple-line",
+        color: [255, 0, 0, 0.8], // Red for hostile ambush
+        width: 3,
+        style: "solid" // The zig-zag is in the geometry, not the line style itself
+      };
+
+      // For 3D, if you want it to be a real "wall" or "fence" like object
+      // you would use PathSymbol3DLayer, potentially with a texture,
+      // or create multiple lines to represent the zig-zag.
+      // This geometric manipulation is a simpler way to represent the zig-zag visually.
+
+      return new Graphic({
+        geometry: ambushGeometry,
+        symbol: ambushLineSymbol
+      });
+    }
+  });
+</script>
+</body>
+</html>

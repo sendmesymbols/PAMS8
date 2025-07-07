@@ -15,6 +15,8 @@ import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import Polyline from "@arcgis/core/geometry/Polyline";
 import Point from "@arcgis/core/geometry/Point";
+import Amplifier from "../MS/Support/Amplifier.ts";
+import DrawEssentials from "../MS/Support/DrawEssentials.ts";
 
 //import SymbolEngine from "../dist/MS/Engines/SymbolEngine.min";
 //import type { SymbolOptions } from '../dist/MS/ThirdParty/MilSymbols/UEITypes'
@@ -745,10 +747,118 @@ function initializeAutocomplete() {
       location: "0900000.0E570306.0N"
     };
 
+
+    var amplifier = new Amplifier();
+    /*
+    amplifier.DTG = "DDHHMMSSZMONYYYY";
+    amplifier.EDTG = "DDHHMMSSZMONYYYY00";
+    */
+    //amplifier.UNIQUE_DESIG = "Tact";
+    amplifier.UNIQUE_DESIG = "Unique Designation";
+    amplifier.HIGHER_FORM = "Higher Formation";
+    amplifier.STAFF_COM = "Staff Comments";
+    amplifier.ADDL_INFO = "Additional Information";
+    amplifier.TARGET_DESIGNATOR = "Target Designator";
+    amplifier.SIDC = fullSIDC;
+
+    amplifier.SIZE = 60;
+    //amplifier.SIZE = 10;
+
+
+    var attr = {
+      plnOrdrOverlayId: 2000,
+      plnOrdrId: 300,
+      creatorId: 700,
+      symbolId: '500'
+    }
+
+
+    var drawEssentials = new DrawEssentials();
+
+    drawEssentials.uniqueDesignation = "FORCE 123456";
+    drawEssentials.infoFields = true;
+
+
+    /*
+    drawEssentials.BK_LN_DIST_RATIO = 5;
+    drawEssentials.BK_LN_ANGL_RATIO = 5;
+    drawEssentials.FRNT_LN_ANGL_RATIO = 5;
+    drawEssentials.FRNT_LN_DIST_RATIO = 5;
+    drawEssentials.IS_LINE = false;
+    */
+    //drawEssentials.SIZE = 150;
+    //drawEssentials.ANGLE = 90;
+
+    //drawEssentials.GEOM = new Point(68.99174366565728 , 27.709813703606667, map.spatialReference);
+
+    //z.OPTIONS.GEOM = new Point(z.GEOM.x, z.GEOM.y, z.spatialReference);
+
+    //drawEssentials.HEAD_RATIO = 0.17;
+    //drawEssentials.TAIL_FACTOR = 0.17;
+
+    drawEssentials.ECHELON = amplifier.getEchelon(fullSIDC);
+
+    //drawEssentials.TEETH_SIZE = 2;
+    drawEssentials.DRAW_TYPE = 1;
+    //drawEssentials.FACE_GAP = 0;
+    //drawEssentials.TEETH_GAP = 5;
+    //drawEssentials.TEETH_SIZE = 2;
+
+
+    //drawEssentials.WIDTH = 150;
+    //drawEssentials.HEIGHT = 150;
+
+    //drawEssentials.uniqueDesignation = "JHHHH";
+
+    //drawEssentials.size = "30";
+
+
+
+    //drawEssentials.GEOM = map.extent.getCenter();
+
+    /*
+    drawEssentials.TEETH_GAP = 30;
+    drawEssentials.TEETH_SIZE = 3;
+    drawEssentials.HEAD_RATIO = 10;
+    drawEssentials.TAIL_FACTOR = 10;
+    */
+
+
+
+    drawEssentials.FLAP_ANGLE = 45;
+
+
+    drawEssentials.BK_LN_DIST_RATIO = 5;
+    drawEssentials.BK_LN_ANGL_RATIO = 5;
+    drawEssentials.FRNT_LN_ANGL_RATIO = 0.8;
+    drawEssentials.FRNT_LN_DIST_RATIO = 1.5;
+    drawEssentials.FLAP_DIST_RATIO = 3;
+
+
+    drawEssentials.extraSettings = {
+      "lineWidth": 3,
+      "size": 20,
+      "textSize": 12,
+      "opacity": 1,
+    };
+
+    //Destroy Measurement Engine
+    /*
+    measurementEngine.destroy(map);
+    symDrawProgressEvent.remove();
+    symDrawClickEvent.remove();
+    */
+
+    drawEssentials.labelOptions = { 'haloColor': [255, 0, 0], 'haloColorSize': 5, 'color': [0, 255, 0], 'textSize': 20, 'bold': 1, 'italic': 0, 'uLine': 0, 'oLine': 0, 'tLine': 0 };
+    //var labelOptions = {'haloColor': [255,0,0], 'haloColorSize': 5, 'color': [0,255, 0]};
+    //symEngine.initialize(drawEssentials, extraSettings, labelOptions);
+
+
+
     if (useInteractivePlacement) {
-      symbolEngine.drawMilSymbolInteractively(options);
+      symbolEngine.drawMilSymbolInteractively(drawEssentials, amplifier, attr);
     } else {
-      symbolEngine.addMilSymbolAtCenter(options);
+      symbolEngine.addMilSymbolAtCenter(drawEssentials, amplifier, attr);
       appConfig.activeView.goTo(appConfig.activeView.center);
     }
 

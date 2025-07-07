@@ -29,6 +29,7 @@ import ContextMenuManager, { ContextMenuItem, MenuItemEvent } from '../Managers/
 
 import symData from "../Data/Symbols.json";
 import settingsData from "../Data/Settings.json";
+import Amplifier from "../Support/Amplifier.ts";
 
 interface Evented {
     on(type: string, listener: Function): { remove(): void };
@@ -453,13 +454,13 @@ class SymbolEngine implements Evented {
 
 
 
-    drawMilSymbolInteractively(options: SymbolOptions): void {
+    drawMilSymbolInteractively(drawEssentials: DrawEssentials, amplifier:Amplifier, attr:object): void {
         const sketchLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.SKETCH);
         const view = this.view;
         const sketchVM = new SketchViewModel({
             view,
             layer: sketchLayer,
-            pointSymbol: this.generateForceSymbol(options, 3),
+            pointSymbol: this.generateForceSymbol(drawEssentials, amplifier, attr),
         });
 
         sketchVM.create("point");
@@ -467,23 +468,23 @@ class SymbolEngine implements Evented {
         sketchVM.on("create", (event) => {
             if (event.state === "complete") {
                 const point = event.graphic.geometry as __esri.Point;
-                this.addMilSymbolAtPoint(point, options);
+                this.addMilSymbolAtPoint(point, drawEssentials, amplifier, attr);
                 sketchLayer.remove(event.graphic);
                 sketchVM.destroy();
             }
         });
     }
-    private addMilSymbolFor2D(geometry: __esri.Point, options: SymbolOptions): void {
-        const layer = this._layerManager.getOrCreateLayer("milSymbols");
-        const symbol = this.generateForceSymbol(options, 3);
+    private addMilSymbolFor2D(geometry: __esri.Point, drawEssentials: DrawEssentials, amplifier:Amplifier, attr:object): void {
+        const layer = this._layerManager.getSymbolLayer();
+        const symbol = this.generateForceSymbol(drawEssentials, amplifier, attr);
 
         const graphic = new Graphic({ geometry, symbol });
         layer.add(graphic);
     }
 
-    addMilSymbolAtPoint(point: __esri.Point, options: SymbolOptions): void {
+    addMilSymbolAtPoint(point: __esri.Point, drawEssentials: DrawEssentials, amplifier:Amplifier, attr:object): void {
         try {
-            this.addMilSymbolFor2D(point, options);
+            this.addMilSymbolFor2D(point, drawEssentials, amplifier, attr);
             /*
             if (SymbolEngine.isView2D(view)) {
                 this.addMilSymbolFor2D(point, options, dataUrl, width, height);
@@ -590,10 +591,10 @@ class SymbolEngine implements Evented {
         console.log("MS (milsymbol.js) marker parts count:", window.MS.getMarkerParts().length);
     }
 
-    generateForceSymbol(options: SymbolOptions, scaleFactor: number): PictureMarkerSymbol | undefined {
+    generateForceSymbol(drawEssentials: DrawEssentials, amplifier: Amplifier, attr:object): PictureMarkerSymbol | undefined {
         try {
             // Use milsymbol.js instead of UEITypes
-            const sidc = options.sidc;
+            const sidc = amplifier.SIDC;
             if (!sidc) {
                 console.error("SIDC is required for symbol generation");
                 return undefined;
@@ -601,7 +602,7 @@ class SymbolEngine implements Evented {
 
             // Create milsymbol.js options
             const msOptions = {
-                size: options.size || 35
+                size: drawEssentials.SIZE || 35
             };
 
             // Generate the symbol using milsymbol.js
@@ -656,10 +657,6 @@ class SymbolEngine implements Evented {
             });
             return pictureMarkerSymbol;
 
-
-
-
-            return pictureMarkerSymbol;
         } catch (e) {
             console.error("Error generating force symbol with milsymbol.js:", e);
             return undefined;

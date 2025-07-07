@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>ArcGIS Main Attack Drawing</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.2/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.30/"></script>
+  <style>
+    html,
+    body,
+    #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+    #drawingTools {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 10px;
+      background: white;
+      border-radius: 5px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+<div id="drawingTools">
+  <button id="drawMainAttackBtn">Draw Main Attack</button>
+</div>
+
+<script>
+  require([
+    "esri/Map",
+    "esri/views/SceneView",
+    "esri/widgets/Sketch/SketchViewModel",
+    "esri/Graphic",
+    "esri/geometry/Polyline",
+    "esri/symbols/SimpleLineSymbol",
+    "esri/symbols/LineSymbol3D",
+    "esri/symbols/PathSymbol3DLayer",
+    "esri/geometry/support/webMercatorUtils" // For calculating angle for arrowhead
+  ], function (
+          Map,
+          SceneView,
+          SketchViewModel,
+          Graphic,
+          Polyline,
+          SimpleLineSymbol,
+          LineSymbol3D,
+          PathSymbol3DLayer,
+          webMercatorUtils
+  ) {
+    const map = new Map({
+      basemap: "streets-navigation-vector", // Or "satellite" for a more tactical feel
+      ground: "world-elevation" // Enable elevation for 3D
+    });
+
+    const view = new SceneView({
+      container: "viewDiv",
+      map: map,
+      camera: {
+        position: [-74.0060, 40.7128, 5000], // Example: New York City
+        tilt: 65,
+        heading: 0
+      }
+    });
+
+    let sketchVM;
+    let mainAttackGraphic; // To hold the main attack graphic
+
+    view.when(function () {
+      // Create a SketchViewModel for drawing polylines
+      sketchVM = new SketchViewModel({
+        view: view,
+        layer: view.graphics // Use the view's graphics layer for drawing
+      });
+
+      // Event listener for when the drawing completes
+      sketchVM.on("create", function (event) {
+        if (event.state === "complete") {
+          const drawnPolyline = event.graphic.geometry;
+          view.graphics.remove(event.graphic); // Remove the temporary drawn graphic
+
+          // Convert the drawn polyline into a main attack symbol
+          mainAttackGraphic = createMainAttackGraphic(drawnPolyline);
+          view.graphics.add(mainAttackGraphic);
+
+          sketchVM.complete(); // Reset the sketch view model
+        }
+      });
+
+      // Attach click handler to the draw button
+      document.getElementById("drawMainAttackBtn").addEventListener("click", function () {
+        if (sketchVM.activeTool) {
+
+          sketchVM.complete(); // Stop current drawing if any
+        }
+        sketchVM.create("polyline");
+        console.log("Drawing main attack... Click to add vertices, double-click to finish.");
+      });
+    });
+
+    /**
+     * Creates an ArcGIS Graphic representing a Main Attack symbol.
+     * This simulates ODINv2's conversion process.
+     * @param {Polyline} polyline The drawn polyline geometry.
+     * @returns {Graphic} The main attack graphic with appropriate styling.
+     */
+    function createMainAttackGraphic(polyline) {
+      // Simulate ODINv2's main attack styling
+      // A main attack typically has a dashed line with an arrowhead at the end.
+      // We'll use a SimpleLineSymbol with an Arrow marker for simplicity,
+      // but for true MIL-STD-2525, you might need a more complex PathSymbol3DLayer
+      // or custom symbol generation.
+
+      // Calculate the angle for the arrowhead based on the last segment of the polyline
+      let angle = 0;
+      const paths = polyline.paths;
+      if (paths.length > 0) {
+        const lastPath = paths[paths.length - 1];
+        if (lastPath.length >= 2) {
+          const p1 = lastPath[lastPath.length - 2];
+          const p2 = lastPath[lastPath.length - 1];
+
+          // Convert to screen coordinates to calculate angle
+          const screenP1 = view.toScreen(p1);
+          const screenP2 = view.toScreen(p2);
+
+          if (screenP1 && screenP2) {
+            angle = (Math.atan2(screenP2.y - screenP1.y, screenP2.x - screenP1.x) * 180 / Math.PI) + 90; // +90 to point upwards
+          }
+        }
+      }
+
+      // Main attack line symbol (dashed red)
+      const mainAttackLineSymbol = {
+        type: "simple-line", // autocasts as SimpleLineSymbol
+        color: [255, 0, 0, 0.8], // Red, slightly transparent
+        width: 3,
+        style: "dash",
+        marker: {
+          placement: "end", // Arrowhead at the end
+          style: "arrow",
+          color: [255, 0, 0, 0.8], // Arrowhead color
+          size: 10,
+          angle: angle // Rotate the arrowhead
+        }
+      };
+
+      // For a more complex 3D symbol, consider using LineSymbol3D with PathSymbol3DLayer
+       const mainAttackLineSymbol3D = new LineSymbol3D({
+           symbolLayers: [
+               new PathSymbol3DLayer({
+                   profile: "quad",
+                   material: { color: [255, 0, 0, 0.8] },
+                   width: 5,
+                   height: 5,
+                   join: "round",
+                   cap: "square",
+                   anchor: "center",
+                   // You would need to create custom geometry for a MIL-STD-2525 arrowhead
+                   // and potentially render it as a Graphic with a custom symbol.
+               })
+           ]
+       });
+
+
+      return new Graphic({
+        geometry: polyline,
+        symbol: mainAttackLineSymbol // Use the 2D line symbol for now
+      });
+    }
+  });
+</script>
+</body>
+</html>
