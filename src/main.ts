@@ -858,6 +858,7 @@ function initializeAutocomplete() {
     //symEngine.initialize(drawEssentials, extraSettings, labelOptions);
 
 
+    symbolEngine.initialize(drawEssentials, amplifier, attr);
 
     if (useInteractivePlacement) {
       symbolEngine.drawMilSymbolInteractively(drawEssentials, amplifier, attr);

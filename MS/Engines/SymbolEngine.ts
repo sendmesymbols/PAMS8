@@ -27,54 +27,19 @@ import '../ThirdParty/milsymbol.d.ts';
 import { parseSIDC, ParsedSIDC } from '../SIDC/SIDC';
 import ContextMenuManager, { ContextMenuItem, MenuItemEvent } from '../Managers/ContextMenuManager';
 
-import symData from "../Data/Symbols.json";
+import symbolData from "../Data/Symbols.json";
 import settingsData from "../Data/Settings.json";
 import Amplifier from "../Support/Amplifier.ts";
+import SIDC from "../Support/SIDC.ts"
+import DrawEssentials from "../Support/DrawEssentials.ts";
 
 interface Evented {
     on(type: string, listener: Function): { remove(): void };
     emit(type: string, event: any): boolean;
 }
 
-// Assume these are your migrated custom modules.
-// You'll need to define their interfaces/classes based on their actual logic.
-interface ISIDC {
-    _sidc: string;
-    validateSIDC(sidc: string): boolean;
-    getSID(): string;
-    getSIDC(): string;
-    getMarker(symGeometricType: string, isObstacle: boolean, fill?: boolean): SimpleMarkerSymbol | SimpleLineSymbol | null;
-    // Add other methods that SIDC class might have
-}
 
-interface IMapper {
-    getInstance(): any; // Should return an instance of a symbol class (e.g., MainAttackSymbol, AmbushSymbol)
-}
 
-interface IAnnotationEngine {
-    annotate(
-        textGraphicsLayer: GraphicsLayer,
-        geometry: Point | Polyline | Polygon,
-        amplifier: string,
-        drawEssentials: DrawEssentials,
-        graphicId: string,
-        textSize: number,
-        isFreeHand: number,
-        labelOptions: LabelOptions,
-        options: { opacity?: number }
-    ): void;
-}
-
-// Placeholder for custom symbol classes that Mapper would return
-interface ISymbolClass {
-    map: MapView | SceneView;
-    isLine: boolean;
-    amplifier: string;
-    symGeometricType: string;
-    isObstacle: boolean;
-    on(type: string, listener: Function): { remove(): void };
-    init(drawEssentials: DrawEssentials, marker: any, sid: string, name: string, offset: any, sidc: string): void;
-}
 
 
 // Interfaces for data loaded from JSON
@@ -90,50 +55,16 @@ interface SymbolData {
     [key: string]: SymbolDefinition;
 }
 
-interface Settings {
-    textSize: number;
-    defaultLineWidth: number;
-    defaultSymbolSize: number;
-    spatialReferences: {
-        WGS1SP?: number;
-        WGS2SP?: string; // WKT
-        LCC1SP?: number; // WKID or WKT
-        LCC2SP?: number; // WKID or WKT
-    };
-}
 
-interface DrawEssentials {
-    IS_LINE: boolean;
-    SID?: string;
-    GEOM?: Point | Polyline | Polygon;
-    OPTIONS?: {
-        GEOM?: Point | Polyline | Polygon;
-    };
-    CTRL_PTS?: Point[];
-    BASE_LN_PTS?: {
-        startPt?: Point;
-        midPt?: Point;
-        endPt?: Point;
-    };
-    SIZE?: number;
-    opacity?: number;
-    SIDC?: string;
-    AMPLIFIER?: string;
-    ISFHAND?: number;
-    labelOptions?: LabelOptions;
-    SYM_GEO_TYPE?: string; // Added for clarity based on usage in getOpacityValue
-}
-
-interface LabelOptions {
-    // Define properties for labelOptions if they exist
-    // e.g., position: string; font: string;
-}
 
 
 class SymbolEngine implements Evented {
     private _layerManager: GraphicsLayerManager;
     private _contextMenuManager: ContextMenuManager;
     private _getView: () => MapView | SceneView;
+    private currentSymbol: any | undefined;
+    private sidc:any | undefined;
+    private amplifier: Amplifier | undefined;
 
     constructor(viewProvider: () => MapView | SceneView) {
         this._getView = viewProvider;
@@ -663,6 +594,167 @@ class SymbolEngine implements Evented {
         }
     }
 
+    public initialize(drawEssentials: DrawEssentials, amplifier: Amplifier, isPassive?: boolean): void {
+        try {
+            if (isPassive === undefined) {
+                isPassive = false;
+            }
+
+            // Moved initialization of symbolData to constructor to avoid re-parsing
+            // this.symbolData = JSON.parse(symData); // symData is already imported as JSON object
+
+            // Ensure SIDC and currentSymbol are properly set before proceeding
+            // This part assumes that SIDC and amplifier are already set up in a way that getSID/getSIDC return meaningful values
+            // Or, they need to be passed into initialize if they vary per call.
+            // For now, I'll use the dummy SIDC initialized in the constructor.
+            // If you have a concrete SIDC instance, use that here.
+            this.sidc  = new SIDC(amplifier.SIDC); // Assuming Amplifier has a SIDC property and SIDC class can be instantiated this way.
+            this.amplifier = amplifier; // Set the amplifier for later use
+
+            const reqSID = this.sidc.getSID();
+            const coSIDC = this.sidc.getSIDC();
+            const symSet = coSIDC.substring(4, 6); // Changed substr to substring for correctness in modern JS
+
+            // Find the current symbol definition
+            this.currentSymbol = symbolData[symSet + reqSID];
+
+            debugger;
+
+            if (this.currentSymbol) { // Wrap the rest of the logic in this check
+                const symbol = this.getSymbol(drawEssentials.IS_LINE);
+                symbol.amplifier = amplifier;
+
+                /*
+                // Set up event handlers
+                this.endEvent = symbol.on("onDrawEnd", (data: any) => this.drawSymEnd(data));
+                this.drawProgressEvent = symbol.on("onDrawProgress", (data: any) => this.symDrawProgress(data));
+                this.drawClickEvent = symbol.on("onDrawClick", (data: any) => this.symDrawClick(data));
+                this.drawBaseLineEndEvent = symbol.on("onBaseLineDrawEnd", (data: any) => this.baseLineDrawEnd(data));
+                */
+
+                let marker: any = null;
+
+                if (drawEssentials.extraSettings !== undefined) {
+                    if (drawEssentials.extraSettings.textSize !== undefined) {
+                        this.settings.textSize = drawEssentials.extraSettings.textSize;
+                    }
+                }
+
+                // Make sure labelOptions is defined; assuming it might be part of SymbolEngine's state or a parameter
+                // If labelOptions is not passed as a parameter to initialize, you need to decide how it's initialized.
+                // For now, I'll keep it as `this.labelOptions = labelOptions || {};` and assume `labelOptions` is an existing variable in this scope.
+                // If it's not, you'll need to pass it or define a default.
+                // For the purpose of this snippet, let's assume it comes from `drawEssentials` or is a class property.
+                this.labelOptions = drawEssentials.labelOptions || {};
+
+
+                if (this.currentSymbol.SymGeoType === "Point" || this.currentSymbol.SymGeoType === "FPoint") {
+                    marker = this.sidc.getMarker(symbol.symGeometricType, symbol.isObstacle, this.currentSymbol.Fill);
+
+                    /*
+                    extraSettings parameters is added to pass line width and force symbol size from interface, remove it and relevant conditions
+                    to let SIDC class read settings from settings.json
+                    */
+
+                    if (drawEssentials.extraSettings !== undefined) { // Changed 'extraSettings' to 'drawEssentials.extraSettings'
+                        if (this.currentSymbol.SymGeoType === "Point") {
+                            if (drawEssentials.extraSettings.hasOwnProperty('lineWidth')) {
+                                marker.outline.width = drawEssentials.extraSettings.lineWidth;
+                            }
+
+                            if (drawEssentials.extraSettings.hasOwnProperty('size')) {
+                                drawEssentials.SIZE = drawEssentials.extraSettings.size;
+                            }
+
+                            if (drawEssentials.extraSettings.hasOwnProperty('opacity')) {
+                                marker.outline.color.a = drawEssentials.extraSettings.opacity;
+                                if (drawEssentials.SID !== "000110") marker.color.a = drawEssentials.extraSettings.opacity;
+                                drawEssentials.opacity = drawEssentials.extraSettings.opacity;
+                            }
+
+                        }
+                        if (this.currentSymbol.SymGeoType === "FPoint") {
+                            if (drawEssentials.extraSettings.hasOwnProperty('size')) {
+                                drawEssentials.SIZE = drawEssentials.extraSettings.size; // Changed drawEssentials.size to drawEssentials.SIZE
+                            }
+
+                            if (drawEssentials.extraSettings.hasOwnProperty('opacity')) {
+                                drawEssentials.opacity = drawEssentials.extraSettings.opacity;
+                            }
+
+                        }
+
+                    }
+
+
+                    if (isPassive === true) {
+                        // Assuming this.reProject and this.map exist
+                        if (drawEssentials.hasOwnProperty('GEOM') && drawEssentials.GEOM) {
+                            drawEssentials.GEOM = this.reProject(drawEssentials.GEOM, this.view.spatialReference); // Changed this.map to this.view
+                        }
+                        if (drawEssentials.hasOwnProperty('OPTIONS') && drawEssentials.OPTIONS?.hasOwnProperty('GEOM') && drawEssentials.OPTIONS.GEOM) {
+                            drawEssentials.OPTIONS.GEOM = this.reProject(drawEssentials.OPTIONS.GEOM, this.view.spatialReference); // Changed this.map to this.view
+                        }
+
+                    }
+
+                    symbol.init(drawEssentials, marker, this.SIDC.getSID(),
+                        this.currentSymbol.Name, this.currentSymbol.Offset, this.SIDC._sidc);
+                } else {
+                    marker = this.SIDC.getMarker(symbol.symGeometricType, symbol.isObstacle);
+
+                    /*
+                    extraSettings parameters is added to pass line width and force symbol size from interface, remove it and relevant conditions
+                    to let SIDC class read settings from settings.json
+                    */
+                    if (drawEssentials.extraSettings !== undefined) { // Changed 'extraSettings' to 'drawEssentials.extraSettings'
+
+                        if (drawEssentials.extraSettings.hasOwnProperty('lineWidth')) {
+                            marker.width = drawEssentials.extraSettings.lineWidth;
+                        }
+
+                        if (drawEssentials.extraSettings.hasOwnProperty('opacity')) {
+                            marker.color.a = drawEssentials.extraSettings.opacity;
+                            drawEssentials.opacity = drawEssentials.extraSettings.opacity;
+                        }
+
+                    }
+
+                    if (isPassive === true) {
+
+                        if (drawEssentials.hasOwnProperty('CTRL_PTS') && drawEssentials.CTRL_PTS) {
+                            for (var j = 0; j < drawEssentials.CTRL_PTS.length; j++) {
+                                drawEssentials.CTRL_PTS[j] = this.reProject(drawEssentials.CTRL_PTS[j], this.view.spatialReference); // Changed this.map to this.view
+                            }
+                        }
+
+                        if (drawEssentials.hasOwnProperty('BASE_LN_PTS') && drawEssentials.BASE_LN_PTS) {
+                            if (drawEssentials.BASE_LN_PTS.hasOwnProperty('startPt') && drawEssentials.BASE_LN_PTS.startPt) drawEssentials.BASE_LN_PTS.startPt = this.reProject(drawEssentials.BASE_LN_PTS.startPt, this.view.spatialReference); // Changed this.map to this.view
+                            if (drawEssentials.BASE_LN_PTS.hasOwnProperty('midPt') && drawEssentials.BASE_LN_PTS.midPt) drawEssentials.BASE_LN_PTS.midPt = this.reProject(drawEssentials.BASE_LN_PTS.midPt, this.view.spatialReference); // Changed this.map to this.view
+                            if (drawEssentials.BASE_LN_PTS.hasOwnProperty('endPt') && drawEssentials.BASE_LN_PTS.endPt) drawEssentials.BASE_LN_PTS.endPt = this.reProject(drawEssentials.BASE_LN_PTS.endPt, this.view.spatialReference); // Changed this.map to this.view
+                        }
+                    }
+                    symbol.init(drawEssentials, marker);
+                }
+            } else {
+                console.warn(`Symbol data not found for SIDC part: ${symSet + reqSID}`);
+            }
+
+        } catch (e) {
+            console.error("Error parsing labels for symbol generation", e);
+        }
+    }
+
+    public getSymbol(isLine?: boolean): any {
+        if (this.currentSymbol !== undefined) {
+            this.mapper = new Mapper(this.currentSymbol.Class);
+            const SymbolClass = this.mapper.getInstance();
+            return new SymbolClass(this.view, isLine);
+        } else {
+            throw new Error("SIDC not found");
+        }
+    }
+
 
     createSymbolCacheKey(options: SymbolOptions, scaleFactor: number): string {
         const relevantOptions = {
@@ -898,7 +990,7 @@ class SymbolEngine implements Evented {
      * @returns The complete symbol data object
      */
     public getSymbolData(): any {
-        return symData;
+        return symbolData;
     }
 
     /**
@@ -907,7 +999,7 @@ class SymbolEngine implements Evented {
      * @returns The symbol data for the specified key or null if not found
      */
     public getSymbolByKey(key: string): any {
-        return symData[key] || null;
+        return symbolData[key] || null;
     }
 
     /**
@@ -915,7 +1007,7 @@ class SymbolEngine implements Evented {
      * @returns Array of objects with key and name for autocomplete
      */
     public getSymbolNamesForAutocomplete(): Array<{key: string, name: string}> {
-        return Object.entries(symData).map(([key, data]: [string, any]) => ({
+        return Object.entries(symbolData).map(([key, data]: [string, any]) => ({
             key: key,
             name: data.Name || 'Unnamed Symbol'
         }));
