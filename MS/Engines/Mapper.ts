@@ -108,14 +108,14 @@ import FreehandSemiCircleFilled from "./MilSymbologySymbols/FreehandSemiCircleFi
 import TacticalPoint from "./MilSymbologySymbols/TacticalPoint";
 import TacticalPointText from "./MilSymbologySymbols/TacticalPointText";*/
 
-import UEISymbol from "./MilSymbologySymbols/UEISymbol";
+import UEISymbol from "../Symbols/UEISymbol.ts";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 
 type ViewType = MapView | SceneView;
 
 interface ISymbolConstructor {
-    new (view: ViewType, isLine?: boolean): any;
+    new (view: ViewType, isLine?: boolean): UEISymbol;  // Update this to return UEISymbol (or a more specific class type)
 }
 
 export default class Mapper {

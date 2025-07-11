@@ -32,6 +32,7 @@ import settingsData from "../Data/Settings.json";
 import Amplifier from "../Support/Amplifier.ts";
 import SIDC from "../Support/SIDC.ts"
 import DrawEssentials from "../Support/DrawEssentials.ts";
+import Mapper from "../Engines/Mapper"
 
 interface Evented {
     on(type: string, listener: Function): { remove(): void };
@@ -65,6 +66,9 @@ class SymbolEngine implements Evented {
     private currentSymbol: any | undefined;
     private sidc:any | undefined;
     private amplifier: Amplifier | undefined;
+
+
+
 
     constructor(viewProvider: () => MapView | SceneView) {
         this._getView = viewProvider;
@@ -618,11 +622,13 @@ class SymbolEngine implements Evented {
             // Find the current symbol definition
             this.currentSymbol = symbolData[symSet + reqSID];
 
-            debugger;
+
 
             if (this.currentSymbol) { // Wrap the rest of the logic in this check
                 const symbol = this.getSymbol(drawEssentials.IS_LINE);
                 symbol.amplifier = amplifier;
+
+
 
                 /*
                 // Set up event handlers
@@ -636,7 +642,7 @@ class SymbolEngine implements Evented {
 
                 if (drawEssentials.extraSettings !== undefined) {
                     if (drawEssentials.extraSettings.textSize !== undefined) {
-                        this.settings.textSize = drawEssentials.extraSettings.textSize;
+                        settingsData.textSize = drawEssentials.extraSettings.textSize;
                     }
                 }
 
@@ -746,6 +752,7 @@ class SymbolEngine implements Evented {
     }
 
     public getSymbol(isLine?: boolean): any {
+        debugger;
         if (this.currentSymbol !== undefined) {
             this.mapper = new Mapper(this.currentSymbol.Class);
             const SymbolClass = this.mapper.getInstance();
