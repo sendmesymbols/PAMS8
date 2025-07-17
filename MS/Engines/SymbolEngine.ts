@@ -32,7 +32,7 @@ import settingsData from "../Data/Settings.json";
 import Amplifier from "../Support/Amplifier.ts";
 import SIDC from "../Support/SIDC.ts"
 import DrawEssentials from "../Support/DrawEssentials.ts";
-import Mapper from "../Engines/Mapper"
+import Mapper from "../Engines/Mapper.ts"
 
 interface Evented {
     on(type: string, listener: Function): { remove(): void };
@@ -704,10 +704,10 @@ class SymbolEngine implements Evented {
 
                     }
 
-                    symbol.init(drawEssentials, marker, this.SIDC.getSID(),
-                        this.currentSymbol.Name, this.currentSymbol.Offset, this.SIDC._sidc);
+                    symbol.init(drawEssentials, marker, this.sidc.getSID(),
+                        this.currentSymbol.Name, this.currentSymbol.Offset, this.sidc._sidc);
                 } else {
-                    marker = this.SIDC.getMarker(symbol.symGeometricType, symbol.isObstacle);
+                    marker = this.sidc.getMarker(symbol.symGeometricType, symbol.isObstacle);
 
                     /*
                     extraSettings parameters is added to pass line width and force symbol size from interface, remove it and relevant conditions
@@ -752,7 +752,6 @@ class SymbolEngine implements Evented {
     }
 
     public getSymbol(isLine?: boolean): any {
-        debugger;
         if (this.currentSymbol !== undefined) {
             this.mapper = new Mapper(this.currentSymbol.Class);
             const SymbolClass = this.mapper.getInstance();

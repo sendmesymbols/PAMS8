@@ -707,7 +707,7 @@ function initializeAutocomplete() {
 
 // Step 2: Define static/default values for remaining SIDC parts
     const codingScheme = "10";                  // positions 1–2 (Warfighting)
-    const standardIdentity = "12";              // positions 3–4 (Friendly)
+    const standardIdentity = "03";              // positions 3–4 (Friendly)
     const status = "0";                         // position 7 (Present)
     const hqModifier = "0";                     // position 8 (None)
     const amplifier1 = "00";                    // positions 9–10 (Default)
@@ -860,12 +860,14 @@ function initializeAutocomplete() {
 
     symbolEngine.initialize(drawEssentials, amplifier, attr);
 
+    /*
     if (useInteractivePlacement) {
       symbolEngine.drawMilSymbolInteractively(drawEssentials, amplifier, attr);
     } else {
       symbolEngine.addMilSymbolAtCenter(drawEssentials, amplifier, attr);
       appConfig.activeView.goTo(appConfig.activeView.center);
     }
+    */
 
     
     console.log('=== selectSymbol function completed ===');

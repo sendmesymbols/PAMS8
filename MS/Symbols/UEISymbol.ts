@@ -6,6 +6,7 @@ import Point from "@arcgis/core/geometry/Point";
 import DrawEssentials from "../Support/DrawEssentials"; // Assuming this is a custom module
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import '../ThirdParty/milsymbol.d.ts';
 
 interface UEISymbolOptions {
     ANGLE?: number;
@@ -41,7 +42,10 @@ class UEISymbol implements Evented {
     }
 
     init(options: UEISymbolOptions, marker: any, sic: string, symName: string, offset: string, sidc: string): void {
-        this._ueiData = new MS.symbol(sidc, options).getMarker();
+        //this._ueiData = new MS.symbol(sidc, options).getMarker();
+        this._ueiData = new window.MS.symbol(sidc, options).getMarker();
+        debugger;
+
         this._options = options;
 
         this.SIC = sic;
