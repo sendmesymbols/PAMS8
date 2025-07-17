@@ -1,166 +1,400 @@
 
-import PictureMarkerSymbol from "@arcgis/core/symbols/PictureMarkerSymbol";
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
-//import WebMercatorUtils from "@arcgis/core/geometry/support/WebMercatorUtils";
-import DrawEssentials from "../Support/DrawEssentials"; // Assuming this is a custom module
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import PictureMarkerSymbol from "@arcgis/core/symbols/PictureMarkerSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+import { watch } from "@arcgis/core/core/reactiveUtils";
+import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
+import DrawEssentials from "../Support/DrawEssentials";
+import Amplifier from "../Support/Amplifier";
+import { enrichSymbolOptions } from "../SIDC/SIDC";
 import '../ThirdParty/milsymbol.d.ts';
 
-interface UEISymbolOptions {
+// Import the milsymbol library for symbol generation
+declare const ms: any;
+
+export interface UEISymbolOptions {
+    SIDC?: string;
+    GEOM?: Point;
     ANGLE?: number;
-    GEOM?: any;  // Define more specific type if necessary
+    SIZE?: number;
+    AMPLIFIER?: Amplifier;
+    [key: string]: any;
 }
 
-interface Evented {
-    on(type: string, listener: Function): { remove(): void };
-    emit(type: string, event: any): boolean;
+export interface SymbolData {
+    asImage: () => string;
+    height: number;
+    width: number;
 }
 
-class UEISymbol implements Evented {
-    SIC: string = "000000";
-    symName: string = "UEISymbol";
-    symGeometricType: string = "FPoint";
+/**
+ * UEISymbol class for drawing military symbols on MapView or SceneView
+ * Supports both immediate placement (with GEOM) and interactive drawing (without GEOM)
+ */
+export class UEISymbol {
+    private view: MapView | SceneView;
+    private layerManager: GraphicsLayerManager;
+    private symbolLayer: GraphicsLayer;
+    
+    // Symbol properties
+    private SIC: string = "000000";
+    private symName: string = "UEISymbol";
+    private symGeometricType: string = "FPoint";
+    private _ueiData : any = null;
+    private _height:any = null;
+    private _width:any = null;
+    private _ptSymbol:any = null;
 
-    private _ptSymbol: PictureMarkerSymbol | null = null;
-    private _point: Point | null = null;
-    private _geometryType: any = null;
-    private size: any;
-    private _options: UEISymbolOptions = {};
-    private _ueiData: any = null;
-    private _height: number = 0;
-    private _width: number = 0;
-    private _tGraphic: Graphic = new Graphic();
-    private _onClk: any = null;
-    private _onMM: any = null;
-    private map: MapView | SceneView;
+    // Drawing state
+    private isDrawing: boolean = false;
+    private tempGraphic: Graphic | null = null;
+    private symbolData: SymbolData | null = null;
+    private pointSymbol: PictureMarkerSymbol | null = null;
+    private amplifier: Amplifier;
+    
+    // Event handlers
+    private mouseMoveHandler: any = null;
+    private clickHandler: any = null;
+    
+    // Event emitter
+    private eventListeners: Map<string, Function[]> = new Map();
 
-    constructor(map: MapView | SceneView) {
-        this.map = map;
-        this._tGraphic = new Graphic();  // Initialize the graphic
+    constructor(view: MapView | SceneView) {
+        this.view = view;
+        this.layerManager = GraphicsLayerManager.getInstance(view);
+        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+        this.amplifier = new Amplifier();
+        
+        // Initialize layers if not already done
+        this.layerManager.initializeLayers();
     }
 
-    init(options: UEISymbolOptions, marker: any, sic: string, symName: string, offset: string, sidc: string): void {
-        //this._ueiData = new MS.symbol(sidc, options).getMarker();
-        this._ueiData = new window.MS.symbol(sidc, options).getMarker();
+    /**
+     * Initialize the symbol with options
+     */
+    public init(options: any, marker?: any, sic?: string, symName?: string, offset?: string, sidc?: string): void {
+        // Update symbol properties
+        if (sic) this.SIC = sic;
+        if (symName) this.symName = symName;
+        
+        // Create symbol data using milsymbol library
+        //this.createSymbolData(options, sidc);
+        options.size = "35";
         debugger;
+        this._ueiData = new window.MS.symbol(sidc, options).getMarker();
+        this._height = this._ueiData.height || 35;
+        this._width = this._ueiData.width || 35;
 
-        this._options = options;
+        const canvas = this._ueiData.asCanvas();
 
-        this.SIC = sic;
-        this.symName = symName;
+        // Convert SVG to data URL
+        const dataUrl = canvas.toDataURL();
 
-        this._height = this._ueiData.height;
-        this._width = this._ueiData.width;
+        /*
+        const anchor = symbol.markerAnchor || { x: width / 2, y: height / 2 };
+        const xoffset = (width / 2) - anchor.x;
+        const yoffset = (height / 2) - anchor.y;
 
-        this._ptSymbol = new PictureMarkerSymbol(this._ueiData.asImage(), this._width, this._height);
+        const pictureMarkerSymbol = new PictureMarkerSymbol({
+            url: dataUrl,
+            width: width + "px",
+            height: height + "px",
+            xoffset,
+            yoffset
+        });
+         */
 
-        if (options.ANGLE) {
+
+        this._ptSymbol = new PictureMarkerSymbol({url: dataUrl, width: this._width + "px", height: this._height + "px"});
+
+        if (options.hasOwnProperty("ANGLE")) {
             this._ptSymbol.setAngle(options.ANGLE);
         }
 
-        const drawEssentials = new DrawEssentials();
+        var drawEssentials = new DrawEssentials();
 
+        
+        // Handle immediate placement or interactive drawing
         if (options.GEOM) {
-            this._point = options.GEOM;
-            const clonedGeom = { ...options.GEOM }; // Use object spread instead of lang.clone
-            drawEssentials = this.createDrawEssentials(clonedGeom, options);
-            this.__drawEnd(options.GEOM, this._ptSymbol, drawEssentials);
-            this._clear();
+            drawEssentials = this.createDrawEssentials(lang.clone(options.GEOM), options);
+            this.placeSymbolImmediately(options.GEOM, options);
         } else {
-            this._tGraphic = new Graphic({
-                geometry: this.map.extent.center, // You might want to adjust this for SceneView
-                symbol: this._ptSymbol
-            });
-            this.map.graphics.add(this._tGraphic);
-
-            this._onMM = this.map.on("mouse-move", (event) => this._onMMoveHdler(event));
-            this._onClk = this.map.on("click", (event) => this._onClckHdler(event));
+            this.startInteractiveDrawing(options);
         }
     }
 
-    createDrawEssentials(geom: any, options: UEISymbolOptions): DrawEssentials {
+    /**
+     * Create symbol data using the milsymbol library
+     */
+    private createSymbolData(options: UEISymbolOptions, sidc?: string): void {
+        try {
+            const symbolOptions = enrichSymbolOptions({
+                sidc: sidc || options.SIDC || this.SIC,
+                size: options.SIZE || 20,
+                ...options
+            });
+
+            // Use milsymbol to generate the symbol
+            this._ueiData = new MS.symbol(sidc, options).getMarker();
+            new window.MS.symbol(sidc, msOptions);
+            const symbol = ms.Symbol(symbolOptions.sidc, symbolOptions);
+            //const symbol = ms.Symbol(symbolOptions.sidc, symbolOptions);
+            this.symbolData = {
+                asImage: () => symbol.asCanvas().toDataURL(),
+                height: symbol.getSize().height,
+                width: symbol.getSize().width
+            };
+
+            // Create PictureMarkerSymbol
+            this.pointSymbol = new PictureMarkerSymbol({
+                url: this.symbolData.asImage(),
+                width: this.symbolData.width,
+                height: this.symbolData.height
+            });
+
+            // Apply angle if specified
+            if (options.ANGLE) {
+                // Note: PictureMarkerSymbol doesn't have setAngle method in 4.x
+                // Angle can be applied through rotation property or symbol modification
+                console.log("Angle specified but not implemented for PictureMarkerSymbol in 4.x");
+            }
+
+        } catch (error) {
+            console.error("Error creating symbol data:", error);
+            // Fallback to a simple symbol
+            this.createFallbackSymbol(options);
+        }
+    }
+
+    /**
+     * Create a fallback symbol if milsymbol fails
+     */
+    private createFallbackSymbol(options: UEISymbolOptions): void {
+        this.pointSymbol = new PictureMarkerSymbol({
+            url: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iOCIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjRkZGRkZGIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zdmc+",
+            width: 20,
+            height: 20
+        });
+    }
+
+    /**
+     * Place symbol immediately at the specified geometry
+     */
+    private placeSymbolImmediately(geometry: Point, options: UEISymbolOptions): void {
+        if (!this.pointSymbol) return;
+
+        const drawEssentials = this.createDrawEssentials(geometry, options);
+        this.drawEnd(geometry, this.pointSymbol, drawEssentials);
+    }
+
+    /**
+     * Start interactive drawing mode
+     */
+    private startInteractiveDrawing(options: any): void {
+
+        if (!this._ptSymbol) return;
+
+        this.isDrawing = true;
+
+        // Create temporary graphic at map center
+        const center = this.view.center;
+        if (center) {
+            this.tempGraphic = new Graphic({
+                geometry: center,
+                symbol: this._ptSymbol,
+            });
+            this.symbolLayer.add(this.tempGraphic);
+        }
+
+        // Set up event handlers
+        this.setupEventHandlers();
+        
+        // Disable navigation during drawing
+        // Note: Navigation API has changed in 4.x, using alternative approach
+        // this.view.navigation.enabled = false; // Commented out due to API changes
+    }
+
+    /**
+     * Set up mouse event handlers for interactive drawing
+     */
+    private setupEventHandlers(): void {
+        // Mouse move handler
+        this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
+            if (!this.isDrawing || !this.tempGraphic) return;
+            
+            const mapPoint = this.view.toMap(event);
+            
+            if (mapPoint) {
+                this.tempGraphic.geometry = mapPoint;
+                this.emit("onDrawProgress", {
+                    currentGeometry: mapPoint,
+                    currentDrawEssentials: null,
+                    currentMarker: this.pointSymbol
+                });
+            }
+        });
+
+        // Click handler
+        this.clickHandler = this.view.on("click", (event) => {
+            if (!this.isDrawing) return;
+            
+            const mapPoint = this.view.toMap(event);
+            
+            if (mapPoint) {
+                this.cleanUp();
+                this.placeSymbolAtPoint(mapPoint);
+            }
+        });
+    }
+
+    /**
+     * Place symbol at the specified point
+     */
+    private placeSymbolAtPoint(point: Point): void {
+        if (!this.pointSymbol) return;
+
+        const drawEssentials = this.createDrawEssentials(point, {});
+        this.drawEnd(point, this.pointSymbol, drawEssentials);
+    }
+
+    /**
+     * Create DrawEssentials for the symbol
+     */
+    private createDrawEssentials(geometry: Point, options: UEISymbolOptions): DrawEssentials {
         const drawEssentials = new DrawEssentials();
         drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
         drawEssentials.SID = this.SIC;
         drawEssentials.SYM_NAME = this.symName;
-        drawEssentials.OPTIONS = options;
-        drawEssentials.GEOM = geom;
-        drawEssentials.AMPLIFIER = this.amplifier;  // Define amplifier or remove if unnecessary
-        drawEssentials.UEI = "1";
+        drawEssentials.GEOM = geometry;
+        drawEssentials.AMPLIFIER = this.amplifier.toString();
+        // Note: OPTIONS and UEI properties don't exist in DrawEssentials, storing in extra properties
+        (drawEssentials as any).OPTIONS = options;
+        (drawEssentials as any).UEI = "1";
 
         return drawEssentials;
     }
 
-    private _onMMoveHdler(inputPoint: any): void {
-        if (this._tGraphic) {
-            this._tGraphic.geometry = inputPoint.mapPoint;
-            this.emit("onDrawProgress", {
-                currentGeometry: this._tGraphic.geometry,
-                currentDrawEssentials: null,
-                currentMarker: null
-            });
+    /**
+     * Handle the end of drawing
+     */
+    private drawEnd(geometry: Point, symbol: PictureMarkerSymbol, drawEssentials: DrawEssentials): void {
+        if (!geometry) return;
+
+        // Convert to geographic if needed
+        let geographicGeometry = geometry;
+        const spatialRef = this.view.spatialReference;
+        
+        if (spatialRef.isWebMercator) {
+            // Convert from Web Mercator to Geographic if needed
+            // This would require additional conversion logic
         }
+
+        this.onDrawEnd(geometry, symbol, drawEssentials);
     }
 
-    private _onClckHdler(clickPoint: any): void {
-        this._point = clickPoint.mapPoint.offset(0, 0);
-        this.cleanUp();
-    }
-
-    private cleanUp(): void {
-        const drawEss = this.createDrawEssentials({ ...this._point }, this._options);
-        this.__drawEnd(this._point, this._ptSymbol, drawEss);
-        this._clear();
-        this._removeEvents();
-    }
-
-    private __drawEnd(drawGeometry: any, symbol: any, drawEssentials: any): void {
-        if (drawGeometry) {
-            let geographicGeometry: any;
-            const spRef = this.map.spatialReference;
-
-            if (spRef && spRef.isWebMercator()) {
-                geographicGeometry = WebMercatorUtils.webMercatorToGeographic(drawGeometry);
-            } else if (spRef && spRef.wkid === 4326) {
-                geographicGeometry = jsonUtility.fromJson(drawGeometry.toJson());
-            }
-
-            this.__onDrawEnd(drawGeometry, symbol, drawEssentials);
-        }
-    }
-
-    private __onDrawEnd(geometry: any, symbol: any, drawEssParam: any): void {
+    /**
+     * Handle the end of drawing with geographic conversion
+     */
+    private onDrawEnd(geometry: Point, symbol: PictureMarkerSymbol, drawEssentials: DrawEssentials): void {
         this.emit("onDrawEnd", {
             geometry: geometry,
             marker: symbol,
-            drawEssentials: drawEssParam
+            drawEssentials: drawEssentials
         });
     }
 
-    private _clear(): void {
-        this._point = null;
-        if (this._tGraphic) {
-            this.map.graphics.remove(this._tGraphic);
+    /**
+     * Clean up drawing state
+     */
+    private cleanUp(): void {
+        this.isDrawing = false;
+        
+        // Remove temporary graphic
+        if (this.tempGraphic) {
+            this.symbolLayer.remove(this.tempGraphic);
+            this.tempGraphic = null;
+        }
+
+        // Remove event handlers
+        this.removeEventHandlers();
+        
+        // Re-enable navigation
+        // Note: Navigation API has changed in 4.x
+        // this.view.navigation.doubleClickZoomEnabled = true; // Commented out due to API changes
+    }
+
+    /**
+     * Remove event handlers
+     */
+    private removeEventHandlers(): void {
+        if (this.mouseMoveHandler) {
+            this.mouseMoveHandler.remove();
+            this.mouseMoveHandler = null;
+        }
+        
+        if (this.clickHandler) {
+            this.clickHandler.remove();
+            this.clickHandler = null;
         }
     }
 
-    private _removeEvents(): void {
-        if (this._onClk) this._onClk.remove();
-        if (this._onMM) this._onMM.remove();
-        this.map.enableDoubleClickZoom();
+    /**
+     * Deactivate the symbol drawing
+     */
+    public deactivate(): void {
+        this.cleanUp();
+        this.pointSymbol = null;
+        this.symbolData = null;
     }
 
-    deactivate(): void {
-        this._clear();
-        this._removeEvents();
-        this._geometryType = null;
+    /**
+     * Event emitter methods
+     */
+    private emit(eventName: string, data: any): void {
+        const listeners = this.eventListeners.get(eventName);
+        if (listeners) {
+            listeners.forEach(listener => listener(data));
+        }
     }
 
-    private _onDrawComplete(event: any): void {
-        // Handle draw complete event if necessary
+    public on(eventName: string, callback: Function): void {
+        if (!this.eventListeners.has(eventName)) {
+            this.eventListeners.set(eventName, []);
+        }
+        this.eventListeners.get(eventName)!.push(callback);
+    }
+
+    public off(eventName: string, callback?: Function): void {
+        if (!callback) {
+            this.eventListeners.delete(eventName);
+        } else {
+            const listeners = this.eventListeners.get(eventName);
+            if (listeners) {
+                const index = listeners.indexOf(callback);
+                if (index > -1) {
+                    listeners.splice(index, 1);
+                }
+            }
+        }
+    }
+
+    /**
+     * Get the current symbol layer
+     */
+    public getSymbolLayer(): GraphicsLayer {
+        return this.symbolLayer;
+    }
+
+    /**
+     * Clear all symbols from the layer
+     */
+    public clearSymbols(): void {
+        this.symbolLayer.removeAll();
     }
 }
 
 export default UEISymbol;
+
