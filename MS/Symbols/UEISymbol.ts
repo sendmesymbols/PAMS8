@@ -46,6 +46,7 @@ export class UEISymbol {
     private _height:any = null;
     private _width:any = null;
     private _ptSymbol:any = null;
+    private _options: any = null;
 
     // Drawing state
     private isDrawing: boolean = false;
@@ -81,6 +82,8 @@ export class UEISymbol {
         // Update symbol properties
         if (sic) this.SIC = sic;
         if (symName) this.symName = symName;
+
+        this._options = options;
         
         // Create symbol data using milsymbol library
         //this.createSymbolData(options, sidc);
@@ -280,9 +283,7 @@ export class UEISymbol {
      */
     private placeSymbolAtPoint(point: Point): void {
         if (!this.pointSymbol) return;
-
-        const drawEssentials = this.createDrawEssentials(point, {});
-        this.drawEnd(point, this.pointSymbol, drawEssentials);
+        this.drawEnd(point, this.pointSymbol, this._options);
     }
 
     /**
