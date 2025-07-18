@@ -5,7 +5,6 @@ import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import PictureMarkerSymbol from "@arcgis/core/symbols/PictureMarkerSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import { watch } from "@arcgis/core/core/reactiveUtils";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
@@ -70,6 +69,9 @@ export class UEISymbol {
         
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
+        
+        // Set up event handlers once in constructor
+        this.setupEventHandlers();
     }
 
     /**
@@ -82,9 +84,38 @@ export class UEISymbol {
         
         // Create symbol data using milsymbol library
         //this.createSymbolData(options, sidc);
-        options.size = "35";
-        debugger;
-        this._ueiData = new window.MS.symbol(sidc, options).getMarker();
+        const milsymbolOptions = {
+            size: Number(options.extraSettings?.size) || 35,
+            uniqueDesignation: options.uniqueDesignation || "",
+            // Add other field properties if they exist in your options
+            quantity: options.quantity || '',
+            reinforcedReduced: options.reinforcedReduced || '',
+            staffComments: options.staffComments || '',
+            additionalInformation: options.additionalInformation || '',
+            evaluationRating: options.evaluationRating || '',
+            combatEffectiveness: options.combatEffectiveness || '',
+            signatureEquipment: options.signatureEquipment || '',
+            higherFormation: options.higherFormation || '',
+            hostile: options.hostile || '',
+            iffSif: options.iffSif || '',
+            direction: options.direction || '',
+            sigint: options.sigint || '',
+            type: options.type || '',
+            dtg: options.dtg || '',
+            altitudeDepth: options.altitudeDepth || '',
+            location: options.location || '',
+            speed: options.speed || '',
+            specialHeadquarters: options.specialHeadquarters || '',
+            platformType: options.platformType || '',
+            equipmentTeardownTime: options.equipmentTeardownTime || '',
+            commonIdentifier: options.commonIdentifier || '',
+            auxiliaryEquipmentIndicator: options.auxiliaryEquipmentIndicator || ''
+        };
+
+        this._ueiData = new window.MS.symbol(sidc, milsymbolOptions).getMarker();
+
+        //this._ueiData = new window.MS.symbol(sidc,options).getMarker();
+
         this._height = this._ueiData.height || 35;
         this._width = this._ueiData.width || 35;
 
@@ -93,22 +124,22 @@ export class UEISymbol {
         // Convert SVG to data URL
         const dataUrl = canvas.toDataURL();
 
-        /*
-        const anchor = symbol.markerAnchor || { x: width / 2, y: height / 2 };
-        const xoffset = (width / 2) - anchor.x;
-        const yoffset = (height / 2) - anchor.y;
 
-        const pictureMarkerSymbol = new PictureMarkerSymbol({
+        const anchor = this._ueiData.markerAnchor || { x: this._width / 2, y: this._height / 2 };
+        const xoffset = (this._width / 2) - anchor.x;
+        const yoffset = (this._height / 2) - anchor.y;
+
+        this._ptSymbol =  new PictureMarkerSymbol({
             url: dataUrl,
-            width: width + "px",
-            height: height + "px",
+            width: this._width + "px",
+            height: this._height + "px",
             xoffset,
             yoffset
         });
-         */
 
 
-        this._ptSymbol = new PictureMarkerSymbol({url: dataUrl, width: this._width + "px", height: this._height + "px"});
+
+        //this._ptSymbol = new PictureMarkerSymbol({url: dataUrl, width: this._width + "px", height: this._height + "px"});
 
         if (options.hasOwnProperty("ANGLE")) {
             this._ptSymbol.setAngle(options.ANGLE);
@@ -119,7 +150,7 @@ export class UEISymbol {
         
         // Handle immediate placement or interactive drawing
         if (options.GEOM) {
-            drawEssentials = this.createDrawEssentials(lang.clone(options.GEOM), options);
+            drawEssentials = this.createDrawEssentials(options.GEOM.clone(), options);
             this.placeSymbolImmediately(options.GEOM, options);
         } else {
             this.startInteractiveDrawing(options);
@@ -138,14 +169,11 @@ export class UEISymbol {
             });
 
             // Use milsymbol to generate the symbol
-            this._ueiData = new MS.symbol(sidc, options).getMarker();
-            new window.MS.symbol(sidc, msOptions);
-            const symbol = ms.Symbol(symbolOptions.sidc, symbolOptions);
-            //const symbol = ms.Symbol(symbolOptions.sidc, symbolOptions);
+            this._ueiData = new ms.symbol(sidc, symbolOptions).getMarker();
             this.symbolData = {
-                asImage: () => symbol.asCanvas().toDataURL(),
-                height: symbol.getSize().height,
-                width: symbol.getSize().width
+                asImage: () => this._ueiData.asCanvas().toDataURL(),
+                height: this._ueiData.height || 35,
+                width: this._ueiData.width || 35
             };
 
             // Create PictureMarkerSymbol
@@ -194,7 +222,6 @@ export class UEISymbol {
      * Start interactive drawing mode
      */
     private startInteractiveDrawing(options: any): void {
-
         if (!this._ptSymbol) return;
 
         this.isDrawing = true;
@@ -208,17 +235,15 @@ export class UEISymbol {
             });
             this.symbolLayer.add(this.tempGraphic);
         }
-
-        // Set up event handlers
-        this.setupEventHandlers();
         
+        // Event handlers are already set up in constructor, just need to enable drawing state
         // Disable navigation during drawing
         // Note: Navigation API has changed in 4.x, using alternative approach
         // this.view.navigation.enabled = false; // Commented out due to API changes
     }
 
     /**
-     * Set up mouse event handlers for interactive drawing
+     * Set up mouse event handlers for interactive drawing (called once in constructor)
      */
     private setupEventHandlers(): void {
         // Mouse move handler
@@ -232,7 +257,7 @@ export class UEISymbol {
                 this.emit("onDrawProgress", {
                     currentGeometry: mapPoint,
                     currentDrawEssentials: null,
-                    currentMarker: this.pointSymbol
+                    currentMarker: this._ptSymbol
                 });
             }
         });
@@ -317,17 +342,15 @@ export class UEISymbol {
             this.symbolLayer.remove(this.tempGraphic);
             this.tempGraphic = null;
         }
-
-        // Remove event handlers
-        this.removeEventHandlers();
         
+        // Event handlers remain active but won't execute due to isDrawing = false
         // Re-enable navigation
         // Note: Navigation API has changed in 4.x
         // this.view.navigation.doubleClickZoomEnabled = true; // Commented out due to API changes
     }
 
     /**
-     * Remove event handlers
+     * Remove event handlers (only call when deactivating the entire symbol)
      */
     private removeEventHandlers(): void {
         if (this.mouseMoveHandler) {
