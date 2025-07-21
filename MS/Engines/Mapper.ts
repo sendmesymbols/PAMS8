@@ -109,6 +109,9 @@ import UEISymbol from "../Symbols/UEISymbol.ts";
 import TacticalPoint from "../Symbols/TacticalPoint.ts";
 import TacticalPointText from "../Symbols/TacticalPointText.ts";
 import FreehandLine from "../Symbols/FreehandLine.ts";
+import FreehandLineDotted from "../Symbols/FreehandLineDotted.ts";
+import FreehandArea from "../Symbols/FreehandArea.ts";
+
 import MainAttack from "../Symbols/MainAttack.ts";
 import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts";
 import Clear from "../Symbols/Clear.ts";
@@ -116,7 +119,6 @@ import BattlePosition from "../Symbols/BattlePosition.ts";
 import CounterAttack from "../Symbols/CounterAttack.ts";
 import CounterAttkObj from "../Symbols/CounterAttkObj.ts";
 import CpenPosition from "../Symbols/CpenPosition.ts";
-import FreehandLineDotted from "../Symbols/FreehandLineDotted.ts";
 import FreehandMainAttackArrow from "../Symbols/FreehandMainAttackArrow.ts";
 import FreehandSemiCircle from "../Symbols/FreehandSemiCircle.ts";
 import FreehandSemiCircleFilled from "../Symbols/FreehandSemiCircleFilled.ts";
@@ -268,11 +270,11 @@ export default class Mapper {
             "TacticalPointText": TacticalPointText,
             */
             "FreehandLine": FreehandLine,
+            "FreehandArea": FreehandArea,
            "TacticalPointText": TacticalPointText,
             "TacticalPoint": TacticalPoint,
             "UEISymbol": UEISymbol,
             "MainAttack": MainAttack,
-            //"FreehandLineDotted": FreehandLineDotted,
             "AttackByFirePosition": AttackByFirePosition,
             "Clear": Clear,
             "BattlePosition": BattlePosition,
