@@ -113,22 +113,24 @@ import FreehandLineDotted from "../Symbols/FreehandLineDotted.ts";
 import FreehandArea from "../Symbols/FreehandArea.ts";
 import FreehandAreaFilled from "../Symbols/FreehandAreaFilled.ts";
 import FreehandArrow from "../Symbols/FreehandArrow.ts";
-import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";
+
+import ALineOfDenial from "../Symbols/ALineOfDenial.ts"; //Minor Issue
+import CLineOfDenial from "../Symbols/CLineOfDenial.ts"; //Minor Issue
+import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";  //issue
 import FreehandDottedArrow from "../Symbols/FreehandDottedArrow.ts";
 import FreehandDoubleLineArrow from "../Symbols/FreehandDoubleLineArrow.ts";
-
-import MainAttack from "../Symbols/MainAttack.ts";
-import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts";
-import Clear from "../Symbols/Clear.ts";
-import BattlePosition from "../Symbols/BattlePosition.ts";
-import CounterAttack from "../Symbols/CounterAttack.ts";
-import CounterAttkObj from "../Symbols/CounterAttkObj.ts";
-import CpenPosition from "../Symbols/CpenPosition.ts";
-import FreehandMainAttackArrow from "../Symbols/FreehandMainAttackArrow.ts";
+import MainAttack from "../Symbols/MainAttack.ts";  //Issue
+import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts"; //Issue
+import Clear from "../Symbols/Clear.ts"; //Issue
+import BattlePosition from "../Symbols/BattlePosition.ts"; //Issue
+import CounterAttack from "../Symbols/CounterAttack.ts"; //Issue
+import CounterAttkObj from "../Symbols/CounterAttkObj.ts"; //Issue
+import CpenPosition from "../Symbols/CpenPosition.ts"; //Issue
+import FreehandMainAttackArrow from "../Symbols/FreehandMainAttackArrow.ts"; //Minor Issue
 import FreehandSemiCircle from "../Symbols/FreehandSemiCircle.ts";
 import FreehandSemiCircleFilled from "../Symbols/FreehandSemiCircleFilled.ts";
-import FreehandSupportingAttack from "../Symbols/FreehandSupportingAttack.ts";
-import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts";
+import FreehandSupportingAttack from "../Symbols/FreehandSupportingAttack.ts"; //Minor Issue
+import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts"; //Issue
 import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts";
 import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts";
 import StratAssyArea from "../Symbols/StratAssyArea.ts";
@@ -165,6 +167,8 @@ export default class Mapper {
 
     public getInstance(): ISymbolConstructor {
         const symbolMap: Record<string, ISymbolConstructor> = {
+            "CLineOfDenial": CLineOfDenial,
+            "ALineOfDenial": ALineOfDenial,
             "FreehandCloseSupportingAttack": FreehandCloseSupportingAttack,
             "FreehandDottedArrow": FreehandDottedArrow,
             "FreehandDoubleLineArrow": FreehandDoubleLineArrow,
