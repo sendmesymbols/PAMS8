@@ -130,6 +130,11 @@ import AssemblyArea from "../Symbols/AssemblyArea.ts"; //Minor Issue
 import AttackPosition from "../Symbols/AttackPosition.ts";
 import AvenueOfApchs from "../Symbols/AvenueOfApchs.ts";
 import AxisOfAdvanceFeint from "../Symbols/AxisOfAdvanceFeint.ts";
+import BdeAdmArea from "../Symbols/BdeAdmArea.ts";
+import Block from "../Symbols/Block.ts";
+import BlockObstacleEffect from "../Symbols/BlockObstacleEffect.ts";
+import BOPFreehand from "../Symbols/BOPFreehand.ts";
+import Boundary from "../Symbols/Boundary.ts";
 
 import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";  //issue
 
@@ -195,6 +200,11 @@ export default class Mapper {
             "AttackPosition": AttackPosition,
             "AvenueOfApchs": AvenueOfApchs,
             "AxisOfAdvanceFeint": AxisOfAdvanceFeint,
+            "BdeAdmArea": BdeAdmArea,
+            "Block": Block,
+            "BlockObstacleEffect": BlockObstacleEffect,
+            "BOPFreehand": BOPFreehand,
+            "Boundary": Boundary,
             "FreehandCloseSupportingAttack": FreehandCloseSupportingAttack,
             "FreehandDottedArrow": FreehandDottedArrow,
             "FreehandDoubleLineArrow": FreehandDoubleLineArrow,
