@@ -2,7 +2,10 @@ import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
 import PictureMarkerSymbol from "@arcgis/core/symbols/PictureMarkerSymbol";
+import PointSymbol3D from "@arcgis/core/symbols/PointSymbol3D";
+import IconSymbol3DLayer from "@arcgis/core/symbols/IconSymbol3DLayer";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
@@ -10,16 +13,6 @@ import Amplifier from "../Support/Amplifier";
 
 // Import tactical point symbols data
 import tacticalPointSymbols from "../Data/TacticalPointSymbols.json";
-
-export interface MarkerOptions {
-    color?: any;
-    size?: number;
-    angle?: number;
-    outline?: {
-        color?: any;
-        width?: number;
-    };
-}
 
 export interface TacticalPointOptions {
     GEOM?: Point;
@@ -42,7 +35,7 @@ export class TacticalPoint {
     private SIC: string = "000000";
     private symName: string = "TacticalPoint";
     private symGeometricType: string = "Point";
-    private _ptSymbol: PictureMarkerSymbol | null = null;
+    private _ptSymbol: SimpleMarkerSymbol | PictureMarkerSymbol | PointSymbol3D | null = null;
     private _point: Point | null = null;
     private _path: string = "";
     private _offset: string = "0";
@@ -79,7 +72,7 @@ export class TacticalPoint {
     /**
      * Initialize the tactical point symbol with options
      */
-    public init(options: TacticalPointOptions, marker?: MarkerOptions, sic?: string, symName?: string, offset?: string, sidc?: string): void {
+    public init(options: TacticalPointOptions, marker?: SimpleMarkerSymbol, sic?: string, symName?: string, offset?: string, sidc?: string): void {
         try {
             if (!sidc || !sic) {
                 throw new Error("SIDC and SIC are required for tactical point symbols");
@@ -132,7 +125,6 @@ export class TacticalPoint {
 
     /**
      * Create cross-compatible symbol for both 2D and 3D views
-     * Uses PictureMarkerSymbol with SVG data URL for consistent rendering
      */
     private createCrossCompatibleSymbol(
         path: string, 
@@ -140,92 +132,98 @@ export class TacticalPoint {
         size: number, 
         angle: number, 
         outline?: any
-    ): PictureMarkerSymbol {
+    ): SimpleMarkerSymbol | PictureMarkerSymbol | PointSymbol3D {
         
-        console.log(`Creating unified symbol for ${this.view.type} view with path:`, path);
+        console.log(`Creating symbol for ${this.view.type} view with path:`, path);
         
-        // Use PictureMarkerSymbol with SVG data URL for both 2D and 3D views
-        // This ensures seamless switching between view types
-        const svgDataUrl = this.pathToSvgDataUrl(path, color, size, outline);
-        console.log("Generated SVG data URL:", svgDataUrl);
-        
-        // Adjust size based on view type for optimal visibility
-        const adjustedSize = this.view.type === "3d" ? Math.max(size * 1.5, 30) : size;
-        
-        const symbol = new PictureMarkerSymbol({
-            url: svgDataUrl,
-            width: adjustedSize,
-            height: adjustedSize,
-            angle: angle
-        });
+        if (this.view.type === "2d") {
+            // For 2D views, use SimpleMarkerSymbol with path
+            const symbol = new SimpleMarkerSymbol({
+                style: "path",
+                path: path,
+                color: color,
+                size: size,
+                angle: angle,
+                outline: outline || {
+                    color: [255, 255, 255, 1],
+                    width: 1
+                }
+            });
 
-        // Set offset if specified (Center Bottom positioning)
-        if (this._offset === "1") {
-            symbol.yoffset = adjustedSize / 2;
+            // Set offset if specified (Center Bottom positioning)
+            if (this._offset === "1") {
+                symbol.yoffset = size / 2;
+            }
+
+            return symbol;
+        } else {
+            // For 3D views, use PictureMarkerSymbol with SVG data URL
+            // This is more reliable than PointSymbol3D for complex paths
+            const svg3DSize = Math.max(size * 4, 30);
+            const svgDataUrl = this.pathToSvgDataUrl(path, color, size);
+            console.log("Generated SVG data URL for 3D:", svgDataUrl);
+            
+            const symbol = new PictureMarkerSymbol({
+                url: svgDataUrl,
+                width: svg3DSize,
+                height: svg3DSize,
+                angle: angle
+            });
+
+            // Set offset if specified (use the 3D size for offset calculation)
+            if (this._offset === "1") {
+                symbol.yoffset = svg3DSize / 2;
+            }
+
+            return symbol;
         }
-        return symbol;
     }
 
     /**
-     * Convert SVG path to SVG data URL for both 2D and 3D compatibility
+     * Convert SVG path to SVG data URL for 3D compatibility
      */
-    private pathToSvgDataUrl(path: string, color: any, size: number, outline?: any): string {
+    private pathToSvgDataUrl(path: string, color: any, size: number): string {
         try {
             console.log("pathToSvgDataUrl input color:", color, "type:", typeof color);
             
             // Handle different color formats: ArcGIS Color object, array, or string
-            let fillColorStr = '#000000'; // Default fallback
-            let strokeColorStr = '#FFFFFF'; // Default white outline
-            let strokeWidth = '1'; // Default stroke width
+            let colorStr = '#000000'; // Default fallback
+            let strokeColorStr = '#000000';
             
             if (color && typeof color === 'object') {
                 if (color.hasOwnProperty('r') && color.hasOwnProperty('g') && color.hasOwnProperty('b')) {
                     // ArcGIS Color object format: {r, g, b, a}
                     const a = color.hasOwnProperty('a') ? color.a : 1;
-                    fillColorStr = `rgba(${color.r},${color.g},${color.b},${a})`;
-                    console.log("ArcGIS Color object detected:", color, "->", fillColorStr);
+                    colorStr = `rgba(${color.r},${color.g},${color.b},${a})`;
+                    // Create darker stroke for contrast
+                    strokeColorStr = `rgba(${Math.max(0, color.r - 50)},${Math.max(0, color.g - 50)},${Math.max(0, color.b - 50)},${a})`;
+                    console.log("ArcGIS Color object detected:", color, "->", colorStr);
                 } else if (Array.isArray(color)) {
                     // Array format: [r, g, b, a]
-                    fillColorStr = `rgba(${color[0]},${color[1]},${color[2]},${color[3] || 1})`;
-                    console.log("Array color detected:", color, "->", fillColorStr);
+                    colorStr = `rgba(${color[0]},${color[1]},${color[2]},${color[3] || 1})`;
+                    strokeColorStr = `rgba(${Math.max(0, color[0] - 50)},${Math.max(0, color[1] - 50)},${Math.max(0, color[2] - 50)},${color[3] || 1})`;
+                    console.log("Array color detected:", color, "->", colorStr);
                 }
             } else if (typeof color === 'string') {
                 // String format: hex or named color
-                fillColorStr = color;
+                colorStr = color;
+                strokeColorStr = color;
                 console.log("String color detected:", color);
             }
             
-            // Handle outline color and width
-            if (outline) {
-                if (outline.color) {
-                    if (Array.isArray(outline.color)) {
-                        strokeColorStr = `rgba(${outline.color[0]},${outline.color[1]},${outline.color[2]},${outline.color[3] || 1})`;
-                    } else if (typeof outline.color === 'string') {
-                        strokeColorStr = outline.color;
-                    } else if (outline.color.hasOwnProperty('r')) {
-                        const a = outline.color.a || 1;
-                        strokeColorStr = `rgba(${outline.color.r},${outline.color.g},${outline.color.b},${a})`;
-                    }
-                }
-                if (outline.width) {
-                    strokeWidth = outline.width.toString();
-                }
-            }
-            
-            console.log("Final colors - Fill:", fillColorStr, "Stroke:", strokeColorStr, "Width:", strokeWidth);
+            console.log("Final colors - Fill:", colorStr, "Stroke:", strokeColorStr);
                 
-            // Use consistent sizing approach for both 2D and 3D
-            // The SVG size should be large enough to maintain quality when scaled
-            const svgSize = Math.max(size * 2, 40); // Increased base size for better quality
+            // Use larger size for 3D view visibility - using the multiplier set above
+            const svg3DSize = Math.max(size * 4, 30);
                 
             // Use a standard viewBox that works well with most tactical symbol paths
             // Most tactical symbols are designed for a 0-500 coordinate system
-            const svgString = `<svg width="${svgSize}" height="${svgSize}" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
-                <path d="${path}" fill="${fillColorStr}" stroke="${strokeColorStr}" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round"/>
+            const svgString = `<svg width="${svg3DSize}" height="${svg3DSize}" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+                <path d="${path}" fill="${colorStr}" stroke="${strokeColorStr}" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
             </svg>`;
             
-            console.log("Generated SVG string (unified for 2D/3D):", svgString);
-            console.log("Original size:", size, "SVG size:", svgSize);
+            console.log("Generated SVG string for 3D (size multiplier applied):", svgString);
+            console.log("Original size:", size, "3D size:", svg3DSize);
             
             // Convert to data URL using base64 encoding (more reliable than encodeURIComponent)
             const base64SVG = btoa(svgString);
@@ -239,7 +237,7 @@ export class TacticalPoint {
             // Fallback to a simple circle if SVG generation fails
             const fallbackSize = Math.max(size * 1.5, 30);
             const fallbackSvg = `<svg width="${fallbackSize}" height="${fallbackSize}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="50" r="40" fill="#FF0000" stroke="#FFFFFF" stroke-width="2"/>
+                <circle cx="50" cy="50" r="40" fill="#FF0000" stroke="#800000" stroke-width="2"/>
             </svg>`;
             
             const base64Fallback = btoa(fallbackSvg);
@@ -248,17 +246,30 @@ export class TacticalPoint {
     }
 
     /**
-     * Get symbol size from PictureMarkerSymbol
+     * Get symbol size from different symbol types
      */
-    private getSymbolSize(symbol: PictureMarkerSymbol): number {
-        return typeof symbol.width === 'string' ? parseInt(symbol.width) : (symbol.width as number) || 20;
+    private getSymbolSize(symbol: SimpleMarkerSymbol | PictureMarkerSymbol | PointSymbol3D): number {
+        if (symbol instanceof SimpleMarkerSymbol) {
+            return symbol.size;
+        } else if (symbol instanceof PictureMarkerSymbol) {
+            return typeof symbol.width === 'string' ? parseInt(symbol.width) : (symbol.width as number) || 20;
+        } else if (symbol instanceof PointSymbol3D) {
+            return (symbol.symbolLayers.getItemAt(0) as IconSymbol3DLayer)?.size || 20;
+        }
+        return 20;
     }
 
     /**
-     * Get symbol angle from PictureMarkerSymbol
+     * Get symbol angle from different symbol types
      */
-    private getSymbolAngle(symbol: PictureMarkerSymbol): number {
-        return symbol.angle || 0;
+    private getSymbolAngle(symbol: SimpleMarkerSymbol | PictureMarkerSymbol | PointSymbol3D): number {
+        if (symbol instanceof SimpleMarkerSymbol) {
+            return symbol.angle || 0;
+        } else if (symbol instanceof PictureMarkerSymbol) {
+            return symbol.angle || 0;
+        }
+        // PointSymbol3D doesn't have angle property, return 0
+        return 0;
     }
 
     /**
@@ -371,7 +382,7 @@ export class TacticalPoint {
     /**
      * Handle the end of drawing with geographic conversion
      */
-    private drawEnd(geometry: Point, symbol: PictureMarkerSymbol, drawEssentials: DrawEssentials): void {
+    private drawEnd(geometry: Point, symbol: SimpleMarkerSymbol | PictureMarkerSymbol | PointSymbol3D, drawEssentials: DrawEssentials): void {
         if (!geometry) return;
 
         // Convert to geographic if needed
@@ -389,7 +400,7 @@ export class TacticalPoint {
     /**
      * Handle the end of drawing and emit events
      */
-    private onDrawEnd(geometry: Point, symbol: PictureMarkerSymbol, drawEssentials: DrawEssentials): void {
+    private onDrawEnd(geometry: Point, symbol: SimpleMarkerSymbol | PictureMarkerSymbol | PointSymbol3D, drawEssentials: DrawEssentials): void {
         console.log("TacticalPoint onDrawEnd called");
         
         this.emit("onDrawEnd", {
