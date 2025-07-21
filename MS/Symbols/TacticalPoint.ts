@@ -152,8 +152,8 @@ export class TacticalPoint {
         console.log("Generated SVG data URL:", svgDataUrl);
         
         // Adjust size based on view type for optimal visibility
-        // Increase base sizes to make symbols more visible
-        const adjustedSize = this.view.type === "3d" ? Math.max(size * 4, 48) : Math.max(size * 4, 48);
+        // Increase base sizes to make symbols more visible but not too large
+        const adjustedSize = this.view.type === "3d" ? Math.max(size * 3.5, 48) : Math.max(size * 3, 36);
         
         const symbol = new PictureMarkerSymbol({
             url: svgDataUrl,
@@ -163,20 +163,54 @@ export class TacticalPoint {
         });
 
         console.log("Adjusted Size ", adjustedSize);
+        
         // Set offset for proper positioning
+        // PictureMarkerSymbol uses center anchor point by default
         if (this._offset === "1") {
-            // Center Bottom positioning
+            // Center Bottom positioning - move symbol up by half its height
+            symbol.xoffset = 0;
             symbol.yoffset = adjustedSize / 2;
+            console.log("Applied bottom-center offset:", symbol.yoffset);
         } else {
-            // Default: Center the symbol on the cursor for interactive drawing
-            symbol.xoffset = adjustedSize / 2;
+            // Default: Center the symbol perfectly on the cursor
+            symbol.xoffset = 0;
             symbol.yoffset = 0;
+            console.log("Applied center offset: 0,0");
         }
         return symbol;
     }
 
     /**
+     * Calculate approximate bounds of an SVG path for centering
+     */
+    private calculatePathBounds(path: string): { minX: number, minY: number, maxX: number, maxY: number, centerX: number, centerY: number } {
+        // Extract numbers from path - this is a simplified approach
+        const numbers = path.match(/-?\d+\.?\d*/g);
+        if (!numbers || numbers.length < 2) {
+            // Fallback to default 500x500 bounds
+            return { minX: 0, minY: 0, maxX: 500, maxY: 500, centerX: 250, centerY: 250 };
+        }
+        
+        const coords = numbers.map(n => parseFloat(n));
+        let minX = Math.min(...coords.filter((_, i) => i % 2 === 0)); // x coordinates
+        let maxX = Math.max(...coords.filter((_, i) => i % 2 === 0));
+        let minY = Math.min(...coords.filter((_, i) => i % 2 === 1)); // y coordinates  
+        let maxY = Math.max(...coords.filter((_, i) => i % 2 === 1));
+        
+        // Ensure reasonable bounds
+        if (minX === maxX) { minX -= 50; maxX += 50; }
+        if (minY === maxY) { minY -= 50; maxY += 50; }
+        
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        
+        console.log("Path bounds:", { minX, minY, maxX, maxY, centerX, centerY });
+        return { minX, minY, maxX, maxY, centerX, centerY };
+    }
+
+    /**
      * Convert SVG path to SVG data URL for both 2D and 3D compatibility
+     * Centers the path within the viewBox for proper anchor point alignment
      */
     private pathToSvgDataUrl(path: string, color: any, size: number, outline?: any): string {
         try {
@@ -185,7 +219,7 @@ export class TacticalPoint {
             // Handle different color formats: ArcGIS Color object, array, or string
             let fillColorStr = '#000000'; // Default fallback
             let strokeColorStr = '#FFFFFF'; // Default white outline
-            let strokeWidth = '1'; // Default stroke width
+            let strokeWidth = '4'; // Increased default stroke width for better visibility
             
             if (color && typeof color === 'object') {
                 if (color.hasOwnProperty('r') && color.hasOwnProperty('g') && color.hasOwnProperty('b')) {
@@ -224,19 +258,27 @@ export class TacticalPoint {
             console.log("Final colors - Fill:", fillColorStr, "Stroke:", strokeColorStr, "Width:", strokeWidth);
                 
             // Use consistent sizing approach for both 2D and 3D
-            // The SVG size should be large enough to maintain quality when scaled
-            const svgSize = Math.max(size * 3, 64); // Significantly increased base size for better visibility
+            const svgSize = Math.max(size * 3, 64);
+            
+            // Calculate path bounds for proper centering
+            const bounds = this.calculatePathBounds(path);
+            
+            // Calculate transform to center the path in a 500x500 viewBox
+            const translateX = 250 - bounds.centerX;
+            const translateY = 250 - bounds.centerY;
                 
-            // Use a standard viewBox that works well with most tactical symbol paths
-            // Most tactical symbols are designed for a 0-500 coordinate system
+            // Create a properly centered SVG with the path positioned in the center
             const svgString = `<svg width="${svgSize}" height="${svgSize}" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
-                <path d="${path}" fill="${fillColorStr}" stroke="${strokeColorStr}" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round"/>
+                <g transform="translate(${translateX},${translateY})">
+                    <path d="${path}" fill="${fillColorStr}" stroke="${strokeColorStr}" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round"/>
+                </g>
             </svg>`;
             
-            console.log("Generated SVG string (unified for 2D/3D):", svgString);
+            console.log("Generated centered SVG with translation:", translateX, translateY);
+            console.log("SVG string:", svgString);
             console.log("Original size:", size, "SVG size:", svgSize);
             
-            // Convert to data URL using base64 encoding (more reliable than encodeURIComponent)
+            // Convert to data URL using base64 encoding
             const base64SVG = btoa(svgString);
             const dataUrl = `data:image/svg+xml;base64,${base64SVG}`;
             
@@ -320,6 +362,15 @@ export class TacticalPoint {
                 symbol: this._ptSymbol,
             });
             this.symbolLayer.add(this.tempGraphic);
+            
+            console.log("Created temp graphic with symbol:", {
+                symbolType: this._ptSymbol.type,
+                width: this._ptSymbol.width,
+                height: this._ptSymbol.height,
+                xoffset: this._ptSymbol.xoffset,
+                yoffset: this._ptSymbol.yoffset,
+                url: this._ptSymbol.url ? this._ptSymbol.url.substring(0, 100) + "..." : "none"
+            });
         }
 
         console.log("Started interactive drawing for TacticalPoint");
