@@ -100,7 +100,7 @@ import FreehandDottedArrow from "./MilSymbologySymbols/FreehandDottedArrow";
 import FreehandMainAttackArrow from "./MilSymbologySymbols/FreehandMainAttackArrow";
 import FreehandSupportingAttack from "./MilSymbologySymbols/FreehandSupportingAttack";
 import FreehandCloseSupportingAttack from "./MilSymbologySymbols/FreehandCloseSupportingAttack";
-import FreehandAreaFilled from "./MilSymbologySymbols/FreehandAreaFilled";
+
 import FreehandSemiCircle from "./MilSymbologySymbols/FreehandSemiCircle";
 import FreehandSemiCircleFilled from "./MilSymbologySymbols/FreehandSemiCircleFilled";
 */
@@ -111,6 +111,7 @@ import TacticalPointText from "../Symbols/TacticalPointText.ts";
 import FreehandLine from "../Symbols/FreehandLine.ts";
 import FreehandLineDotted from "../Symbols/FreehandLineDotted.ts";
 import FreehandArea from "../Symbols/FreehandArea.ts";
+import FreehandAreaFilled from "../Symbols/FreehandAreaFilled.ts";
 
 import MainAttack from "../Symbols/MainAttack.ts";
 import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts";
@@ -271,6 +272,7 @@ export default class Mapper {
             */
             "FreehandLine": FreehandLine,
             "FreehandArea": FreehandArea,
+            "FreehandAreaFilled": FreehandAreaFilled,
            "TacticalPointText": TacticalPointText,
             "TacticalPoint": TacticalPoint,
             "UEISymbol": UEISymbol,
