@@ -113,12 +113,16 @@ import FreehandLineDotted from "../Symbols/FreehandLineDotted.ts";
 import FreehandArea from "../Symbols/FreehandArea.ts";
 import FreehandAreaFilled from "../Symbols/FreehandAreaFilled.ts";
 import FreehandArrow from "../Symbols/FreehandArrow.ts";
+import FreehandDottedArrow from "../Symbols/FreehandDottedArrow.ts";
+import FreehandDoubleLineArrow from "../Symbols/FreehandDoubleLineArrow.ts";
+import ArcOfFireSD from "../Symbols/ArcOfFireSD.ts";
 
 import ALineOfDenial from "../Symbols/ALineOfDenial.ts"; //Minor Issue
 import CLineOfDenial from "../Symbols/CLineOfDenial.ts"; //Minor Issue
+import Ambush from "../Symbols/Ambush.ts"; //issue
+
 import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";  //issue
-import FreehandDottedArrow from "../Symbols/FreehandDottedArrow.ts";
-import FreehandDoubleLineArrow from "../Symbols/FreehandDoubleLineArrow.ts";
+
 import MainAttack from "../Symbols/MainAttack.ts";  //Issue
 import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts"; //Issue
 import Clear from "../Symbols/Clear.ts"; //Issue
@@ -169,6 +173,8 @@ export default class Mapper {
         const symbolMap: Record<string, ISymbolConstructor> = {
             "CLineOfDenial": CLineOfDenial,
             "ALineOfDenial": ALineOfDenial,
+            "Ambush": Ambush,
+            "ArcOfFireSD": ArcOfFireSD,
             "FreehandCloseSupportingAttack": FreehandCloseSupportingAttack,
             "FreehandDottedArrow": FreehandDottedArrow,
             "FreehandDoubleLineArrow": FreehandDoubleLineArrow,
