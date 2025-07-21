@@ -67,14 +67,13 @@ class AnnotationEngine {
         }
 
         // Skip UEI symbols (legacy check)
-        debugger;
         if (drawEssentials.hasOwnProperty("UEI")) {
             return;
         }
 
         // Create font for text symbols
         const font = new Font({
-            family: "Helvetica",
+            family: "Arial",
             size: textSize + "pt"
         });
 
@@ -379,7 +378,6 @@ class AnnotationEngine {
         // Special handling for Artillery Target Symbol (SIDC 160303)
         if (drawEssentials.SID === "160303") {
             drawEssentials.OFFSET = "0";
-            debugger;
             
             if (amplifier.hasOwnProperty("UNIQUE_DESIG")) {
                 this.createLabelFromProperty(textGraphicsLayer, geometry, "UNIQUE_DESIG", isFreeHand, parentId, amplifier, drawEssentials, font, opacity, labelOptions, "bottom", "right", -5, 0);

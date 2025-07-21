@@ -92,7 +92,7 @@ export class TacticalPoint {
             this.SIC = sic;
             this.symName = symName || this.symName;
             this._offset = offset || "0";
-            // Create cross-compatible symbol (2D/3D)
+
             this._ptSymbol = this.createCrossCompatibleSymbol(
                 this._path, 
                 marker?.color || [0, 0, 0, 1],
