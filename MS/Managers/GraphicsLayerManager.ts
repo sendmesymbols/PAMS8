@@ -63,10 +63,7 @@ class GraphicsLayerManager {
 
         const layer = new GraphicsLayer({
             id: layerName,
-            // Add elevation info for 3D views
-            elevationInfo: this.view.type === "3d"
-                ? { mode: "relative-to-ground", offset: 10 }
-                : undefined
+            elevationInfo: { mode: "on-the-ground"}
         });
 
         this.view.map.add(layer);

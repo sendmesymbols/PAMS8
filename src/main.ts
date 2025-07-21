@@ -710,7 +710,7 @@ function initializeAutocomplete() {
     const standardIdentity = "03";              // positions 3–4 (Friendly)
     const status = "0";                         // position 7 (Present)
     const hqModifier = "0";                     // position 8 (None)
-    const amplifier1 = "00";                    // positions 9–10 (Default)
+    const amplifier1 = "14";                    // positions 9–10 (Default)
     const modifiers = "0000";                   // positions 17–20 (sector modifiers or padding)
 
 // Step 3: Pad symbolId to 10 digits (entity + type + subtype + modifiers)

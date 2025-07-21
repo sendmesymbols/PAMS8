@@ -517,6 +517,8 @@ export class BattlePosition {
      */
     private createEchelon(echelonLevel: number, center: { x: number, y: number }, length: number, angle: number): number[][][] {
         const echelons: number[][][] = [];
+
+        console.log("echelonLevel: ", echelonLevel);
         
         if (echelonLevel <= 0) return echelons;
         
