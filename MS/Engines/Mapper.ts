@@ -125,6 +125,8 @@ import AntiPersonnelMine from "../Symbols/AntiPersonnelMine.ts";
 import AntiPersonnelMineDirEffct from "../Symbols/AntiPersonnelMineDirEffct.ts";
 import AntitankMine from "../Symbols/AntitankMine.ts";
 import AntiTankMineWAntiHandle from "../Symbols/AntiTankMineWAntiHandle.ts";
+import AreaOfOperations from "../Symbols/AreaOfOperations.ts"; //Minor Issue
+import AssemblyArea from "../Symbols/AssemblyArea.ts"; //Minor Issue
 
 import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";  //issue
 
@@ -185,6 +187,8 @@ export default class Mapper {
             "AntiPersonnelMineDirEffct": AntiPersonnelMineDirEffct,
             "AntitankMine": AntitankMine,
             "AntiTankMineWAntiHandle": AntiTankMineWAntiHandle,
+            "AreaOfOperations": AreaOfOperations,
+            "AssemblyArea": AssemblyArea,
             "FreehandCloseSupportingAttack": FreehandCloseSupportingAttack,
             "FreehandDottedArrow": FreehandDottedArrow,
             "FreehandDoubleLineArrow": FreehandDoubleLineArrow,
