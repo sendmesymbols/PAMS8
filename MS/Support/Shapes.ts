@@ -162,7 +162,7 @@ class Shapes {
         const angle1 = GeoTools.toDegrees(angle); // In Degrees
         angle -= 30;
         const angle2 = GeoTools.toDegrees(angle);
-        debugger;
+
         const rightWing = new Point({
             x: candidatePoint.x + length * Math.cos(GeoTools.toRad(angle1)),
             y: candidatePoint.y + length * Math.sin(GeoTools.toRad(angle1)),
