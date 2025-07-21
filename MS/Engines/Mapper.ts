@@ -94,9 +94,9 @@ import FlightZone from "./MilSymbologySymbols/FlightZone";
 import FreehandLine from "./MilSymbologySymbols/FreehandLine";
 import FreehandLineDotted from "./MilSymbologySymbols/FreehandLineDotted";
 import FreehandArea from "./MilSymbologySymbols/FreehandArea";
-import FreehandDoubleLineArrow from "./MilSymbologySymbols/FreehandDoubleLineArrow";
 
-import FreehandDottedArrow from "./MilSymbologySymbols/FreehandDottedArrow";
+
+
 import FreehandMainAttackArrow from "./MilSymbologySymbols/FreehandMainAttackArrow";
 import FreehandSupportingAttack from "./MilSymbologySymbols/FreehandSupportingAttack";
 import FreehandCloseSupportingAttack from "./MilSymbologySymbols/FreehandCloseSupportingAttack";
@@ -113,6 +113,9 @@ import FreehandLineDotted from "../Symbols/FreehandLineDotted.ts";
 import FreehandArea from "../Symbols/FreehandArea.ts";
 import FreehandAreaFilled from "../Symbols/FreehandAreaFilled.ts";
 import FreehandArrow from "../Symbols/FreehandArrow.ts";
+import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";
+import FreehandDottedArrow from "../Symbols/FreehandDottedArrow.ts";
+import FreehandDoubleLineArrow from "../Symbols/FreehandDoubleLineArrow.ts";
 
 import MainAttack from "../Symbols/MainAttack.ts";
 import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts";
@@ -162,6 +165,40 @@ export default class Mapper {
 
     public getInstance(): ISymbolConstructor {
         const symbolMap: Record<string, ISymbolConstructor> = {
+            "FreehandCloseSupportingAttack": FreehandCloseSupportingAttack,
+            "FreehandDottedArrow": FreehandDottedArrow,
+            "FreehandDoubleLineArrow": FreehandDoubleLineArrow,
+            "FreehandArrow": FreehandArrow,
+            "FreehandLine": FreehandLine,
+            "FreehandArea": FreehandArea,
+            "FreehandAreaFilled": FreehandAreaFilled,
+            "TacticalPointText": TacticalPointText,
+            "TacticalPoint": TacticalPoint,
+            "UEISymbol": UEISymbol,
+            "MainAttack": MainAttack,
+            "AttackByFirePosition": AttackByFirePosition,
+            "Clear": Clear,
+            "BattlePosition": BattlePosition,
+            "CounterAttack": CounterAttack,
+            "CounterAttkObj": CounterAttkObj,
+            "CpenPosition": CpenPosition,
+            "FreehandLineDotted": FreehandLineDotted,
+            "FreehandMainAttackArrow": FreehandMainAttackArrow,
+            "FreehandSemiCircle": FreehandSemiCircle,
+            "FreehandSemiCircleFilled": FreehandSemiCircleFilled,
+            "FreehandSupportingAttack": FreehandSupportingAttack,
+            "FriendlyDirOfMainAttk": FriendlyDirOfMainAttk,
+            "FriendlyDirOfSpAttk": FriendlyDirOfSpAttk,
+            "TargetAreaOfInterest": TargetAreaOfInterest,
+            "StratAssyArea": StratAssyArea,
+            "SingleConcertina": SingleConcertina,
+            "SingleFenceWire": SingleFenceWire,
+            "TripleStrandConcertina": TripleStrandConcertina,
+            "UARoute": UARoute,
+            "UnspecifiedMine": UnspecifiedMine,
+            "VitalArea": VitalArea,
+            "WideAreaAntiTankMine": WideAreaAntiTankMine,
+            "ZoneOfResponsibility": ZoneOfResponsibility
             /*
             "SupportByFirePosition": SupportByFirePosition,
             "AttackByFirePosition": AttackByFirePosition,
@@ -271,37 +308,7 @@ export default class Mapper {
             "FreehandSemiCircleFilled": FreehandSemiCircleFilled,
             "TacticalPointText": TacticalPointText,
             */
-            "FreehandArrow": FreehandArrow,
-            "FreehandLine": FreehandLine,
-            "FreehandArea": FreehandArea,
-            "FreehandAreaFilled": FreehandAreaFilled,
-           "TacticalPointText": TacticalPointText,
-            "TacticalPoint": TacticalPoint,
-            "UEISymbol": UEISymbol,
-            "MainAttack": MainAttack,
-            "AttackByFirePosition": AttackByFirePosition,
-            "Clear": Clear,
-            "BattlePosition": BattlePosition,
-            "CounterAttack": CounterAttack,
-            "CounterAttkObj": CounterAttkObj,
-            "CpenPosition": CpenPosition,
-            "FreehandLineDotted": FreehandLineDotted,
-            "FreehandMainAttackArrow": FreehandMainAttackArrow,
-            "FreehandSemiCircle": FreehandSemiCircle,
-            "FreehandSemiCircleFilled": FreehandSemiCircleFilled,
-            "FreehandSupportingAttack": FreehandSupportingAttack,
-            "FriendlyDirOfMainAttk": FriendlyDirOfMainAttk,
-            "FriendlyDirOfSpAttk": FriendlyDirOfSpAttk,
-            "TargetAreaOfInterest": TargetAreaOfInterest,
-            "StratAssyArea": StratAssyArea,
-            "SingleConcertina": SingleConcertina,
-            "SingleFenceWire": SingleFenceWire,
-            "TripleStrandConcertina": TripleStrandConcertina,
-            "UARoute": UARoute,
-            "UnspecifiedMine": UnspecifiedMine,
-            "VitalArea": VitalArea,
-            "WideAreaAntiTankMine": WideAreaAntiTankMine,
-            "ZoneOfResponsibility": ZoneOfResponsibility
+
         };
 
         const symbolClass = symbolMap[this.symName];
