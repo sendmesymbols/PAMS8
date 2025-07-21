@@ -1,3 +1,10 @@
+/**
+ * Class Representing Tactical Point Text.
+ *
+ * @class
+ * @author Abdul Razak
+ */
+
 define(["dojo/_base/declare", "dojo/_base/lang", "dojo/_base/array",
     "dojo/_base/connect", "dojo/_base/Color", "dojo/_base/window",
     "dojo/has", "dojo/keys", "dojo/dom-construct",

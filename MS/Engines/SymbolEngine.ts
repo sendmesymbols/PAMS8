@@ -33,10 +33,26 @@ import Amplifier from "../Support/Amplifier.ts";
 import SIDC from "../Support/SIDC.ts"
 import DrawEssentials from "../Support/DrawEssentials.ts";
 import Mapper from "../Engines/Mapper.ts"
+import AnnotationEngine from "./AnnotationEngine.ts";
+
 
 interface Evented {
     on(type: string, listener: Function): { remove(): void };
     emit(type: string, event: any): boolean;
+}
+
+interface SymbolOptions {
+    sidc?: string;
+    size?: number;
+    quantity?: string;
+    staffComments?: string;
+    additionalInformation?: string;
+    type?: string;
+    dtg?: string;
+    location?: string;
+    outlineColor?: string;
+    outlineWidth?: number;
+    [key: string]: any;
 }
 
 
@@ -66,6 +82,10 @@ class SymbolEngine implements Evented {
     private currentSymbol: any | undefined;
     private sidc:any | undefined;
     private amplifier: Amplifier | undefined;
+    private _registeredSymbols: Set<any> = new Set();
+    private eventListeners: Map<string, Function[]> = new Map();
+    private labelOptions: any = {};
+    private mapper: any;
 
 
 
@@ -120,6 +140,9 @@ class SymbolEngine implements Evented {
         // Listen for context menu events
         this._contextMenuManager.on("menu-item-click", this.handleContextMenuAction.bind(this));
 
+        // Set up global event listeners for drawing events
+        this.setupGlobalEventListener();
+
         // Initialize symbol engine
         console.log("Symbol Engine initialized");
 
@@ -130,6 +153,131 @@ class SymbolEngine implements Evented {
         //});
 
 
+    }
+
+    /**
+     * Implement Evented interface methods
+     */
+
+    /*
+    public on(type: string, listener: Function): { remove(): void } {
+        if (!this.eventListeners.has(type)) {
+            this.eventListeners.set(type, []);
+        }
+        this.eventListeners.get(type)!.push(listener);
+        
+        return {
+            remove: () => {
+                const listeners = this.eventListeners.get(type);
+                if (listeners) {
+                    const index = listeners.indexOf(listener);
+                    if (index > -1) {
+                        listeners.splice(index, 1);
+                    }
+                }
+            }
+        };
+    }
+    */
+
+    public emit(type: string, event: any): boolean {
+        const listeners = this.eventListeners.get(type);
+        if (listeners) {
+            listeners.forEach(listener => listener(event));
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Register any symbol instance to listen to its events
+     */
+    public registerSymbol(symbolInstance: any, symbolType: string = "Symbol"): void {
+        if (this._registeredSymbols.has(symbolInstance)) {
+            console.warn(`${symbolType} instance is already registered`);
+            return;
+        }
+
+        this._registeredSymbols.add(symbolInstance);
+
+        // Listen to the onDrawProgress event
+        if (symbolInstance.on && typeof symbolInstance.on === 'function') {
+            symbolInstance.on("onDrawProgress", (data: any) => {
+                console.log(`SymbolEngine caught onDrawProgress event from ${symbolType}:`);
+                console.log("  currentGeometry:", data.currentGeometry);
+                console.log("  currentDrawEssentials:", data.currentDrawEssentials);
+                console.log("  currentMarker:", data.currentMarker);
+                console.log("  Full event data:", data);
+                
+                // Emit a custom event that can be caught by the main application
+                this.emitEvent("onDrawProgress", {
+                    symbolType: symbolType,
+                    currentGeometry: data.currentGeometry,
+                    currentDrawEssentials: data.currentDrawEssentials,
+                    currentMarker: data.currentMarker,
+                    originalData: data
+                });
+            });
+
+            // Listen to other events as well
+            symbolInstance.on("onDrawEnd", (data: any) => {
+                console.log(`SymbolEngine caught onDrawEnd event from ${symbolType}:`);
+                console.log("  Full event data:", data);
+                
+                // Emit a custom event
+                this.emitEvent("onDrawEnd", {
+                    symbolType: symbolType,
+                    originalData: data
+                });
+            });
+
+            console.log(`${symbolType} registered with SymbolEngine and event listeners attached`);
+        } else {
+            console.warn(`${symbolType} instance does not support event listening (missing 'on' method)`);
+        }
+    }
+
+    /**
+     * Unregister any symbol instance
+     */
+    public unregisterSymbol(symbolInstance: any, symbolType: string = "Symbol"): void {
+        this._registeredSymbols.delete(symbolInstance);
+        console.log(`${symbolType} unregistered from SymbolEngine`);
+    }
+
+    /**
+     * Setup global event listener for onDrawProgress events
+     * This allows catching events from any symbol class without manual registration
+     */
+    public setupGlobalEventListener(): void {
+        // Listen to custom events on the document
+        document.addEventListener("onDrawProgress", (event: any) => {
+            console.log("SymbolEngine caught global onDrawProgress event:");
+            console.log("  Event detail:", event.detail);
+        });
+
+        document.addEventListener("onDrawEnd", (event: any) => {
+            console.log("SymbolEngine caught global onDrawEnd event:");
+            console.log("  Event detail:", event.detail);
+            
+            // Handle the draw end event by creating and adding a graphic
+            this.drawSymEnd(event.detail);
+        });
+
+        console.log("SymbolEngine global event listeners set up");
+    }
+
+
+
+    /**
+     * Generate a UUID for graphics
+     */
+    private generateUUID(): string {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
     }
 
 
@@ -517,13 +665,13 @@ class SymbolEngine implements Evented {
 
     ensureMsAvailable(): void {
         // Check for both UEITypes.js and milsymbol.js
-        if (typeof window.MS === 'undefined') {
+        if (typeof (window as any).MS === 'undefined') {
             throw new Error("MS (UEITypes) library is not properly loaded or invalid.");
         }
         
-        console.log("MS (milsymbol.js) version:", window.MS.version);
-        console.log("MS (milsymbol.js) standard:", window.MS._STD2525 ? "2525" : "APP6");
-        console.log("MS (milsymbol.js) marker parts count:", window.MS.getMarkerParts().length);
+        console.log("MS (milsymbol.js) version:", (window as any).MS.version);
+        console.log("MS (milsymbol.js) standard:", (window as any).MS._STD2525 ? "2525" : "APP6");
+        console.log("MS (milsymbol.js) marker parts count:", (window as any).MS.getMarkerParts().length);
     }
 
     generateForceSymbol(drawEssentials: DrawEssentials, amplifier: Amplifier, attr:object): PictureMarkerSymbol | undefined {
@@ -727,6 +875,7 @@ class SymbolEngine implements Evented {
                     }
 
                     if (isPassive === true) {
+                        debugger;
 
                         if (drawEssentials.hasOwnProperty('CTRL_PTS') && drawEssentials.CTRL_PTS) {
                             for (var j = 0; j < drawEssentials.CTRL_PTS.length; j++) {
@@ -779,60 +928,133 @@ class SymbolEngine implements Evented {
         return JSON.stringify(relevantOptions);
     }
 
-    private drawSymEnd(event: {
-        geometry: Point | Polyline | Polygon,
-        marker: SimpleMarkerSymbol | SimpleLineSymbol,
-        drawEssentials: DrawEssentials
-    }): void {
-        const symbol = event.marker;
-        const graphic = new Graphic({
-            geometry: event.geometry,
-            symbol: symbol
-        });
+    private drawSymEnd(event: any): void {
+        try {
+            // Handle both event types - extract common properties
+            const { geometry, marker, drawEssentials, symbolType } = event;
+            
+            // Validation from handleDrawEnd
+            if (!geometry || !marker) {
+                console.warn("Missing geometry or marker in draw end event");
+                return;
+            }
 
-        const tempId = this.generateUUID();
-        event.drawEssentials.SIDC = this.SIDC.getSIDC(); // Ensure SIDC is passed
-        event.drawEssentials.AMPLIFIER = this.amplifier; // Ensure amplifier is passed
-        graphic.attributes = {
-            drawEssentials: event.drawEssentials,
-            id: ((this.attrs.hasOwnProperty('symbolId') === false) || (this.attrs.symbolId === undefined) || this.attrs.symbolId === null) ? tempId : this.attrs.symbolId,
-            ...this.attrs // Merge other attributes
-        };
-        graphic.set("drawEssentials", event.drawEssentials); // Set as a custom property
-        graphic.set("id", graphic.attributes.id); // Set as a custom property
+            // Handle different geometry types
+            let symbol;
+            if (geometry.type === "point" || geometry.type === "polyline" || geometry.type === "polygon") {
+                symbol = marker;
+            } else {
+                console.error("Unhandled geometry type:", geometry.type);
+                return;
+            }
 
-        this.graphicsLayer.add(graphic);
+            // Create the graphic
+            const graphic = new Graphic({
+                geometry: geometry,
+                symbol: symbol
+            });
 
-        this._endEventHandle?.remove();
-        this._drawProgressEventHandle?.remove();
-        this._drawClickEventHandle?.remove();
-        this._drawBaseLineEndEventHandle?.remove();
+            // Generate a temporary ID
+            const tempId = this.generateUUID();
+            
+            // Set up drawEssentials and attributes
+            if (drawEssentials) {
+                // Set SIDC if we have it
+                if (this.sidc && this.sidc.getSIDC) {
+                    drawEssentials.SIDC = this.sidc.getSIDC();
+                }
+                
+                // Set AMPLIFIER if we have it
+                if (this.amplifier) {
+                    drawEssentials.AMPLIFIER = this.amplifier;
+                }
+                
+                graphic.set("drawEssentials", drawEssentials);
+            }
 
-        const isFreeHand = graphic.attributes.drawEssentials.ISFHAND || 0;
-        event.drawEssentials.labelOptions = this.labelOptions;
+            // Set up graphic attributes - handle both old style (this.attrs) and new style
+            const attrs: any = {
+                drawEssentials: drawEssentials,
+                type: symbolType || "symbol"
+            };
 
-        const options = this.getOpacityValue(graphic);
+            // Handle ID assignment - check for existing attrs or use temp ID
+            if (this.attrs && this.attrs.hasOwnProperty('symbolId') && this.attrs.symbolId !== undefined && this.attrs.symbolId !== null) {
+                attrs.id = this.attrs.symbolId;
+            } else {
+                attrs.id = tempId;
+            }
 
-        AnnotationEngine.annotate(
-            this.textGraphicsLayer,
-            event.geometry,
-            event.drawEssentials.AMPLIFIER!, // Ensure AMPLIFIER is not undefined
-            event.drawEssentials,
-            graphic.attributes.id,
-            this.settings.textSize,
-            isFreeHand,
-            this.labelOptions!, // Ensure labelOptions is not undefined
-            options
-        );
+            // Merge additional attributes if they exist
+            if (this.attrs) {
+                Object.assign(attrs, this.attrs);
+            }
 
-        if (event.drawEssentials.hasOwnProperty('opacity')) delete event.drawEssentials.opacity;
+            graphic.attributes = attrs;
+            graphic.set("id", attrs.id);
 
-        this.emit("symDrawEnd", {
-            'isDone': "done",
-            'drawEssentials': event.drawEssentials,
-            'id': graphic.attributes.id,
-            'graphic': graphic
-        });
+            // Get the appropriate layer from LayerManager
+            const graphicsLayer = this._layerManager.getSymbolLayer();
+            graphicsLayer.add(graphic);
+
+            // Clean up event handlers if they exist
+            this._endEventHandle?.remove();
+            this._drawProgressEventHandle?.remove();
+            this._drawClickEventHandle?.remove();
+            this._drawBaseLineEndEventHandle?.remove();
+
+            // Handle annotation if drawEssentials and amplifier are available
+            if (drawEssentials && drawEssentials.AMPLIFIER) {
+                const isFreeHand = drawEssentials.ISFHAND || 0;
+                drawEssentials.labelOptions = this.labelOptions;
+
+                const options = this.getOpacityValue(graphic);
+
+                // Get the annotation layer from LayerManager
+                const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
+                
+                AnnotationEngine.annotate(
+                    annotationLayer,
+                    geometry,
+                    drawEssentials.AMPLIFIER,
+                    drawEssentials,
+                    attrs.id,
+                    settingsData.textSize,
+                    isFreeHand,
+                    this.labelOptions || {},
+                    options
+                );
+            }
+
+            // Clean up opacity if it exists
+            if (drawEssentials && drawEssentials.hasOwnProperty('opacity')) {
+                delete drawEssentials.opacity;
+            }
+
+            console.log("Graphic added to layer:", {
+                id: attrs.id,
+                geometryType: geometry.type,
+                symbolType: symbolType || "unknown"
+            });
+
+            // Emit custom events for further processing
+            this.emit("symDrawEnd", {
+                'isDone': "done",
+                'drawEssentials': drawEssentials,
+                'id': attrs.id,
+                'graphic': graphic
+            });
+
+            this.emitEvent("symbolCreated", {
+                graphic: graphic,
+                id: attrs.id,
+                drawEssentials: drawEssentials,
+                isDone: "done"
+            });
+
+        } catch (error) {
+            console.error("Error in drawSymEnd:", error);
+        }
     }
 
     private getOpacityValue(graphic: Graphic): { opacity?: number } {

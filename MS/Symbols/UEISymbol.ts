@@ -115,7 +115,7 @@ export class UEISymbol {
             auxiliaryEquipmentIndicator: options.auxiliaryEquipmentIndicator || ''
         };
 
-        this._ueiData = new window.MS.symbol(sidc, milsymbolOptions).getMarker();
+        this._ueiData = new (window as any).MS.symbol(sidc, milsymbolOptions).getMarker();
 
         //this._ueiData = new window.MS.symbol(sidc,options).getMarker();
 
@@ -149,8 +149,6 @@ export class UEISymbol {
         }
 
         var drawEssentials = new DrawEssentials();
-
-        
         // Handle immediate placement or interactive drawing
         if (options.GEOM) {
             drawEssentials = this.createDrawEssentials(options.GEOM.clone(), options);
@@ -215,10 +213,10 @@ export class UEISymbol {
      * Place symbol immediately at the specified geometry
      */
     private placeSymbolImmediately(geometry: Point, options: UEISymbolOptions): void {
-        if (!this.pointSymbol) return;
+        if (!this._ptSymbol) return;
 
         const drawEssentials = this.createDrawEssentials(geometry, options);
-        this.drawEnd(geometry, this.pointSymbol, drawEssentials);
+        this.drawEnd(geometry, this._ptSymbol, drawEssentials);
     }
 
     /**
@@ -282,8 +280,13 @@ export class UEISymbol {
      * Place symbol at the specified point
      */
     private placeSymbolAtPoint(point: Point): void {
-        if (!this.pointSymbol) return;
-        this.drawEnd(point, this.pointSymbol, this._options);
+        if (!this._ptSymbol) return;
+        
+        // Create DrawEssentials for the final placement
+        //const drawEssentials = this.createDrawEssentials(point, this._options);
+        
+        // Fire the onDrawEnd event
+        this.onDrawEnd(point, this._ptSymbol, this._options);
     }
 
     /**
@@ -381,6 +384,31 @@ export class UEISymbol {
         const listeners = this.eventListeners.get(eventName);
         if (listeners) {
             listeners.forEach(listener => listener(data));
+        }
+        
+        // Also emit as a global document event for SymbolEngine to catch
+        this.emitGlobalEvent(eventName, data);
+    }
+
+    /**
+     * Emit global events that can be caught by SymbolEngine
+     */
+    private emitGlobalEvent(eventName: string, data: any): void {
+        const customEvent = new CustomEvent(eventName, {
+            detail: {
+                symbolType: "UEISymbol",
+                eventName: eventName,
+                ...data
+            },
+            bubbles: true,
+            cancelable: true
+        });
+
+        // Dispatch from the view container if available, otherwise from document
+        if (this.view && this.view.container) {
+            this.view.container.dispatchEvent(customEvent);
+        } else {
+            document.dispatchEvent(customEvent);
         }
     }
 

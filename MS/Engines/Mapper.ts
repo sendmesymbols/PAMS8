@@ -1,6 +1,5 @@
-/*import SupportByFirePosition from "./MilSymbologySymbols/SupportByFirePosition";
-import AttackByFirePosition from "./MilSymbologySymbols/AttackByFirePosition";
-import Clear from "./MilSymbologySymbols/Clear";
+/*
+import SupportByFirePosition from "./MilSymbologySymbols/SupportByFirePosition";
 import BlockObstacleEffect from "./MilSymbologySymbols/BlockObstacleEffect";
 import Block from "./MilSymbologySymbols/Block";
 import Canalize from "./MilSymbologySymbols/Canalize";
@@ -12,7 +11,6 @@ import DisruptObstacleEffect from "./MilSymbologySymbols/DisruptObstacleEffect";
 import ObstacleBypassEasy from "./MilSymbologySymbols/ObstacleBypassEasy";
 import Funnel from "./MilSymbologySymbols/Funnel";
 import SupportingAttack from "./MilSymbologySymbols/SupportingAttack";
-import MainAttack from "./MilSymbologySymbols/MainAttack";
 import AxisOfAdvanceFeint from "./MilSymbologySymbols/AxisOfAdvanceFeint";
 import CounterAttack from "./MilSymbologySymbols/CounterAttack";
 import Boundary from "./MilSymbologySymbols/Boundary";
@@ -22,7 +20,7 @@ import Secure from "./MilSymbologySymbols/Secure";
 import Guard from "./MilSymbologySymbols/Guard";
 import Occupy from "./MilSymbologySymbols/Occupy";
 import Isolate from "./MilSymbologySymbols/Isolate";
-import BattlePosition from "./MilSymbologySymbols/BattlePosition";
+
 import CpenPosition from "./MilSymbologySymbols/CpenPosition";
 import Withdraw from "./MilSymbologySymbols/Withdraw";
 import Ambush from "./MilSymbologySymbols/Ambush";
@@ -105,10 +103,37 @@ import FreehandCloseSupportingAttack from "./MilSymbologySymbols/FreehandCloseSu
 import FreehandAreaFilled from "./MilSymbologySymbols/FreehandAreaFilled";
 import FreehandSemiCircle from "./MilSymbologySymbols/FreehandSemiCircle";
 import FreehandSemiCircleFilled from "./MilSymbologySymbols/FreehandSemiCircleFilled";
-import TacticalPoint from "./MilSymbologySymbols/TacticalPoint";
-import TacticalPointText from "./MilSymbologySymbols/TacticalPointText";*/
+*/
 
 import UEISymbol from "../Symbols/UEISymbol.ts";
+import TacticalPoint from "../Symbols/TacticalPoint.ts";
+import TacticalPointText from "../Symbols/TacticalPointText.ts";
+import FreehandLine from "../Symbols/FreehandLine.ts";
+import MainAttack from "../Symbols/MainAttack.ts";
+import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts";
+import Clear from "../Symbols/Clear.ts";
+import BattlePosition from "../Symbols/BattlePosition.ts";
+import CounterAttack from "../Symbols/CounterAttack.ts";
+import CounterAttkObj from "../Symbols/CounterAttkObj.ts";
+import CpenPosition from "../Symbols/CpenPosition.ts";
+import FreehandLineDotted from "../Symbols/FreehandLineDotted.ts";
+import FreehandMainAttackArrow from "../Symbols/FreehandMainAttackArrow.ts";
+import FreehandSemiCircle from "../Symbols/FreehandSemiCircle.ts";
+import FreehandSemiCircleFilled from "../Symbols/FreehandSemiCircleFilled.ts";
+import FreehandSupportingAttack from "../Symbols/FreehandSupportingAttack.ts";
+import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts";
+import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts";
+import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts";
+import StratAssyArea from "../Symbols/StratAssyArea.ts";
+import SingleConcertina from "../Symbols/SingleConcertina.ts";
+import SingleFenceWire from "../Symbols/SingleFenceWire.ts";
+import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";
+import UARoute from "../Symbols/UARoute.ts";
+import UnspecifiedMine from "../Symbols/UnspecifiedMine.ts";
+import VitalArea from "../Symbols/VitalArea.ts";
+import WideAreaAntiTankMine from "../Symbols/WideAreaAntiTankMine.ts";
+import ZoneOfResponsibility from "../Symbols/ZoneOfResponsibility.ts";
+
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 
@@ -148,7 +173,6 @@ export default class Mapper {
             "ObstacleBypassEasy": ObstacleBypassEasy,
             "Funnel": Funnel,
             "SupportingAttack": SupportingAttack,
-            "MainAttack": MainAttack,
             "AxisOfAdvanceFeint": AxisOfAdvanceFeint,
             "CounterAttack": CounterAttack,
             "Boundary": Boundary,
@@ -241,10 +265,37 @@ export default class Mapper {
             "FreehandAreaFilled": FreehandAreaFilled,
             "FreehandSemiCircle": FreehandSemiCircle,
             "FreehandSemiCircleFilled": FreehandSemiCircleFilled,
-            "TacticalPoint": TacticalPoint,
             "TacticalPointText": TacticalPointText,
             */
+            "FreehandLine": FreehandLine,
+           "TacticalPointText": TacticalPointText,
+            "TacticalPoint": TacticalPoint,
             "UEISymbol": UEISymbol,
+            "MainAttack": MainAttack,
+            //"FreehandLineDotted": FreehandLineDotted,
+            "AttackByFirePosition": AttackByFirePosition,
+            "Clear": Clear,
+            "BattlePosition": BattlePosition,
+            "CounterAttack": CounterAttack,
+            "CounterAttkObj": CounterAttkObj,
+            "CpenPosition": CpenPosition,
+            "FreehandLineDotted": FreehandLineDotted,
+            "FreehandMainAttackArrow": FreehandMainAttackArrow,
+            "FreehandSemiCircle": FreehandSemiCircle,
+            "FreehandSemiCircleFilled": FreehandSemiCircleFilled,
+            "FreehandSupportingAttack": FreehandSupportingAttack,
+            "FriendlyDirOfMainAttk": FriendlyDirOfMainAttk,
+            "FriendlyDirOfSpAttk": FriendlyDirOfSpAttk,
+            "TargetAreaOfInterest": TargetAreaOfInterest,
+            "StratAssyArea": StratAssyArea,
+            "SingleConcertina": SingleConcertina,
+            "SingleFenceWire": SingleFenceWire,
+            "TripleStrandConcertina": TripleStrandConcertina,
+            "UARoute": UARoute,
+            "UnspecifiedMine": UnspecifiedMine,
+            "VitalArea": VitalArea,
+            "WideAreaAntiTankMine": WideAreaAntiTankMine,
+            "ZoneOfResponsibility": ZoneOfResponsibility
         };
 
         const symbolClass = symbolMap[this.symName];

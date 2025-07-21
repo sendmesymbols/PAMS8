@@ -16,12 +16,15 @@ export class DrawEssentials {
 
     // Control and scope properties
     public SCOPE: string = "";
+    /*
     public BASE_LN_PTS: {
         startPt?: Point;
         midPt?: Point;
         endPt?: Point;
     } = {};
-    public CTRL_PTS: Point[] = [];
+    */
+
+    //public CTRL_PTS: Point[] = [];
 
     // Symbol identification
     public SID: string = "";

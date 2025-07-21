@@ -7,7 +7,8 @@ export const LAYER_NAMES = {
     FORCE: "ForceSymbolsLayer",
     TACT_PT: "TacticalPointSymbolsLayer",
     TACT: "TacticalSymbolsLayer",
-    SKETCH: "SketchLayer"
+    SKETCH: "SketchLayer",
+    ANNOTATION_LAYER: "AnnotationLayer",
 };
 
 // Singleton pattern to ensure layers are created only once per view
@@ -43,6 +44,7 @@ class GraphicsLayerManager {
         this.getOrCreateLayer(LAYER_NAMES.TACT_PT);
         this.getOrCreateLayer(LAYER_NAMES.TACT);
         this.getOrCreateLayer(LAYER_NAMES.FORCE);
+        this.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
 
         // Log layers to verify creation
         console.log("Available layers:", this.listLayers());

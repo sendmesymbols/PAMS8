@@ -795,6 +795,15 @@ function initializeAutocomplete() {
 
     //drawEssentials.GEOM = new Point(68.99174366565728 , 27.709813703606667, map.spatialReference);
 
+    /* //Uncomment to test passive functionality
+
+    drawEssentials.GEOM = new Point({
+      longitude: appConfig.activeView.center.longitude,
+      latitude: appConfig.activeView.center.latitude,
+      spatialReference: appConfig.activeView.spatialReference
+    });
+     */
+
     //z.OPTIONS.GEOM = new Point(z.GEOM.x, z.GEOM.y, z.spatialReference);
 
     //drawEssentials.HEAD_RATIO = 0.17;
