@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no">
+
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>Simple Edit</title>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/3.16/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/3.16/esri/css/esri.css">
+    <style>
+        html, body, #mainWindow {
+            font-family: sans-serif;
+            height: 100%;
+            width: 100%;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+        #button-holder {
+            width: 20%;
+        }
+        #btn-draw-line, #btn-online, #btn-offline {
+            text-align: left;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        #header {
+            height: 80px;
+            overflow: auto;
+            padding: 0.5em;
+        }
+    </style>
+
+    <!-- Required for online/offline status detection -->
+    <script src="http://github.hubspot.com/offline/offline.min.js"></script>
+    <script src="https://js.arcgis.com/3.16/"></script>
+</head>
+<body class="nihilo">
+
+<div id="mainWindow" data-dojo-type="dijit/layout/BorderContainer" data-dojo-props="design:'headline'">
+    <div id="header" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'">
+        <div id="button-holder">
+            <button id="btn-offline">1. Go Offline</button><br>
+            <button id="btn-draw-line">2. Draw Polyline</button><br>
+            <button id="btn-online">3. Go Online</button>
+        </div>
+    </div>
+    <div id="map" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'center'"></div>
+</div>
+
+<script>
+    var map, toolbar, symbol, geomTask;
+
+    require([
+        "esri/map",
+        "esri/toolbars/draw",
+        "esri/graphic",
+        "esri/layers/FeatureLayer",
+
+        "esri/symbols/SimpleLineSymbol",
+
+        "dojo/parser",
+
+        "dijit/layout/BorderContainer", "dijit/layout/ContentPane", "dijit/form/Button",
+
+        "../dist/offline-edit-basic-src.js",
+        "dojo/domReady!"
+    ], function(
+            Map, Draw, Graphic, FeatureLayer,
+            SimpleLineSymbol,
+            parser
+    ) {
+        parser.parse();
+
+        var offlineEdit = new O.esri.Edit.OfflineEditBasic();
+
+        //
+        //
+        // Map and feature layer loading
+        //
+        //
+
+        map = new Map("map", {
+            basemap: "streets",
+            center: [-15.469, 36.428],
+            zoom: 3
+        });
+
+        var lineFeatureLayer = new FeatureLayer("https://services.arcgis.com/RkjCp6A0cLN4ubJm/arcgis/rest/services/line_edit_layer/FeatureServer/0", {
+            mode: FeatureLayer.MODE_SNAPSHOT,
+            outFields: ["*"],
+            id: "lineFeatureLayer"
+        });
+
+        var updateHandler = lineFeatureLayer.on("update-end", initEditing);
+
+        map.addLayers([lineFeatureLayer]);
+
+        var btnOffline = document.getElementById("btn-offline");
+        var btnOnline = document.getElementById("btn-online");
+
+        document.getElementById("btn-draw-line").onclick = function(){
+            activateDrawTool();
+        };
+
+        btnOnline.onclick = function(){
+            goOnline();
+            btnOffline.style.backgroundColor = "";
+            btnOffline.style.color = "black";
+            btnOnline.style.backgroundColor = "green";
+        };
+
+        btnOffline.onclick = function(){
+            goOffline();
+            btnOnline.style.backgroundColor = "";
+            btnOffline.style.backgroundColor = "red";
+            btnOffline.style.color = "white";
+        };
+
+        //
+        //
+        // Editing functionality
+        //
+        //
+
+        function initEditing() {
+
+            updateHandler.remove();
+            createDrawToolbar();
+
+            // Extend our feature layer for offline use
+            offlineEdit.extend(lineFeatureLayer,function(success,error){
+                if(success){
+                    console.log("TEST layer loaded and extended for offline use!");
+                }
+                else {
+                    console.warn("Unable to load FeatureLayer!");
+                }
+            });
+        }
+
+        function goOnline() {
+            offlineEdit.goOnline();
+        }
+
+        function goOffline() {
+            offlineEdit.goOffline();
+        }
+
+        //
+        //
+        // Drawing functionality
+        //
+        //
+
+        function activateDrawTool() {
+            toolbar.activate(Draw.POLYLINE);
+            map.hideZoomSlider();
+        }
+
+        function createDrawToolbar() {
+            toolbar = new Draw(map);
+            toolbar.on("draw-end", addPolylineToMap);
+        }
+
+        function addPolylineToMap(evt) {
+            var symbol;
+            toolbar.deactivate();
+            map.showZoomSlider();
+            switch (evt.geometry.type) {
+                case "polyline":
+                    symbol = new SimpleLineSymbol();
+                    symbol.width = 5; // make it wide enough to click on
+                    break;
+            }
+
+            var graphic = new Graphic(evt.geometry, symbol, {"name":"test2"});
+            map.graphics.add(graphic);
+
+            applyEdits(graphic);
+        }
+
+        function applyEdits(graphic) {
+            lineFeatureLayer.applyEdits([graphic], null, null,function(addResults)
+                    {
+                        console.log("addResults length: " + addResults.length);
+                    },
+                    function(error)
+                    {
+                        console.log("SetupFeatureService error: " + error.message);
+                    });
+        }
+    });
+</script>
+
+</body>
+</html>

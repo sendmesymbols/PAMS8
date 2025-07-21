@@ -1,0 +1,9 @@
+dev-electron-builder.yml
+dev-app-update.yml
+.DS_Store
+node_modules/
+binaries/
+coverage/
+dist/
+jsdoc/
+.vscode

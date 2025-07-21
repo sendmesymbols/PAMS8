@@ -1,0 +1,93 @@
+/* https://encycolorpedia.com */
+/* Isabelline: #f4f0ec - focus background-color*/
+/* CG Read: #e03c31 - tag */
+/* Inverted/CG Red: #1fc3ce - tag */
+/* #40a9ff - (antd) hover border-color */
+
+:root {
+  --color-blue-600: rgb(37, 99, 235);
+  --color-gray-100: #f3f4f6;
+  --color-gray-300: rgb(209, 213, 219);
+  --color-gray-400: rgb(156, 163, 175);
+  --color-gray-500: #6b7280;
+  --color-gray-600: rgb(75, 85, 99);
+  --color-gray-900: rgb(17, 24, 39);
+}
+
+/* ==> Tailwind CSS presets */
+
+* {
+  font-family: Roboto;
+}
+
+*:focus {
+  outline: 0;
+}
+
+*, ::before, ::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: currentColor;
+}
+
+html {
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+  font-family: Roboto;
+}
+
+body {
+  margin: 0;
+  line-height: inherit;
+  /* override antd 14px */
+  font-size: 100%;
+}
+
+button, select {
+  text-transform: none;
+}
+
+button, input, optgroup, select, textarea {
+  line-height: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+}
+
+/* <== Tailwind CSS presets */
+
+.ant-tabs {
+  /* override antd 14px */
+  font-size: 100%;
+}
+
+input {
+  border: 0;
+}
+
+/* Project-List / Card */
+
+.list-container {
+  height: 100%;
+  overflow: auto;
+}
+
+.focus {
+  background-color: #f4f0ec;
+}
+
+.card-text {
+  color: grey;
+}
+
+.placeholder {
+  font-size: 100%;
+  color: lightgrey;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+  text-align: center;
+}

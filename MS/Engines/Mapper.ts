@@ -127,6 +127,9 @@ import AntitankMine from "../Symbols/AntitankMine.ts";
 import AntiTankMineWAntiHandle from "../Symbols/AntiTankMineWAntiHandle.ts";
 import AreaOfOperations from "../Symbols/AreaOfOperations.ts"; //Minor Issue
 import AssemblyArea from "../Symbols/AssemblyArea.ts"; //Minor Issue
+import AttackPosition from "../Symbols/AttackPosition.ts";
+import AvenueOfApchs from "../Symbols/AvenueOfApchs.ts";
+import AxisOfAdvanceFeint from "../Symbols/AxisOfAdvanceFeint.ts";
 
 import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";  //issue
 
@@ -189,6 +192,9 @@ export default class Mapper {
             "AntiTankMineWAntiHandle": AntiTankMineWAntiHandle,
             "AreaOfOperations": AreaOfOperations,
             "AssemblyArea": AssemblyArea,
+            "AttackPosition": AttackPosition,
+            "AvenueOfApchs": AvenueOfApchs,
+            "AxisOfAdvanceFeint": AxisOfAdvanceFeint,
             "FreehandCloseSupportingAttack": FreehandCloseSupportingAttack,
             "FreehandDottedArrow": FreehandDottedArrow,
             "FreehandDoubleLineArrow": FreehandDoubleLineArrow,

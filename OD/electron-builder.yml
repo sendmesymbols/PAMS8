@@ -1,0 +1,40 @@
+directories:
+  output: binaries
+  buildResources: build
+appId: io.syncpoint.odin.v2
+productName: "ODINv2"
+copyright: ${author} https://syncpoint.io
+
+asarUnpack: "**/*.node"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: 'build/icon.ico'
+  certificateSha1 : '1a3e4e05664fb6620fea6845ca646601694c5b17'
+nsis:
+  perMachine: false
+  oneClick: false
+
+mac:
+  target: default
+  entitlements: 'build/entitlements.mac.plist'
+  entitlementsInherit: 'build/entitlements.mac.plist'
+  notarize:
+    teamId: 4KRG6BGC37
+
+linux:
+  target:
+    - target: AppImage
+  icon: 'build/icons'
+  category: 'Office'
+  files:
+    - 'dist'
+
+publish:
+  - provider: github
+    releaseType: release
+
+electronVersion: 31.2.1

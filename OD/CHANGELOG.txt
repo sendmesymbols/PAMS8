@@ -1,0 +1,101 @@
+2.5.0-alpha
+* New: Distance and area measurement
+* New: Layer Styles
+* New: Tile Layer - min/max zoom (#46)
+* Fix: Sidebar - Unwanted scrolling (#45, #48)
+* Fix: Sidebar - Preview for circular areas (#49)
+* Fix: Sidebar - Title editing (#50)
+* Fix: Rendering of Boundaries (#51)
+* Fix: Evaluation Rating (#52)
+
+2.4.0-alpha
+* Updated dependencies
+* New: Sidebar persists scope and filter
+* New: Sidebar scope switcher
+* Fix: Window position is more reliably restored (macOS)
+* Fix: Command alette entries can now also be clicked
+* New: Layout of sidebar and properties panel
+* New: Toolbar
+* New: Markers
+* New: Support different coordinate formats
+* New: WGS84 Graticule
+* New: (View Menu) Show Toolbar/Sidebar
+* Fix: Map click not longer deselects features and markers
+* New: Bookmarks and goto with double click in sidebar
+* New: Feature goto with double click in sidebar
+
+2.3.0-alpha
+* Updated dependencies
+* project database: improved schema and data organizaiton
+* improved FTS efficiency
+* lock layers and feature (prevents modification)
+* Fix: Support web links as documents
+
+2.1.0-alpha
+* Fix: Card: Layout issue for long names (#10)
+* Fix: Hostility Status is missing by Mobility/Survivability (#11)
+* Fix: Weapons Free Zone (WFZ) is displayed only as a normal area (#15)
+* Fix: Area symbols missing (#21)
+* New: Feature Bridgehead (Line) (#24)
+* New: Aligned labeling for Holding/Release Line with 2525D  (#24)
+* New: Support Circular Areas (#25)
+* New: Support Rectangular Areas (#26)
+* Fix: Phase Line labels (#22)
+* Fix: Improved highlighting (#19, #23)
+* New: Ambush (#17)
+* New: Support by Fire Position (#28)
+* New: Principal Direction of Fire (#27)
+* Fix: Decoy Mined Area (#12)
+* Fix: Decoy Mined Area (, Fenced) (#12)
+* Fix: Airfield Zone (#14)
+* Fix: Crash when cancelling clone feature (#9)
+
+0.0.2
+* Added some command to edit text modifiers to command palette.
+
+0.0.1
+* Removed snap interaction due to update issue.
+* Boundaries/Echelons are no displayed.
+* Fix: FTS issue with leading numbers in filter.
+* Highlight layers/features; Mouse down/up on scope tags. Supports multiselect.
+* Fix: Direction of Attack as Multi-point, n >= 2 (#7)
+* Updated dependencies
+  - @babel/eslint-parser @ 7.15.7
+  - electron @ 14.0.1
+  - eslint-plugin-react @ 7.25.2
+  - webpack @ 5.53.0
+  - webpack-dev-server @ 4.2.1
+
+0.0.0
+* Sidebar/list - Changed editing behavior:
+  - Removed mouse over/hover effect on option title
+  - Click on title no longer initiates title editing
+  - F2 key: initiate editing of option title
+  - Enter key: toggle edititng of option title; save title
+  - Escape key: cancel editing (if active); reset title
+  - Escape key: deselect options (if ongoing editing)
+  - On focus lost: stop editing; save title
+* Sidebar/list - Fixed possible endless loop on selection.
+* Sidebar/list - Avoid scrolling to focused option after SELECT/ALL.
+* Keep selection in sidebar when hiding layers/features.
+* Draw - Limit MINE CLUSTER to two points.
+* Hide/show features and layers; individual and selected.
+* Fix: Draw interaction for 2-point graphics (#3).
+* Delete - Layers/features/links from list.
+* Delete - Features from map.
+* Delete - Shortcuts. DELETE key and CMD/CTRL-BACKSPACE.
+* Fix: Resolved issue with duplicate entries in symbol palette.
+* Fix: Symbol "Breach" (area Tasks) is wrong displayed on the map (#5)
+* Transfer active/default layer from legacy projects.
+* Links (ex. references) - Drag'n drop for layers and features.
+* Fix: Tagging - Only support alphanumeric characters and '/' in tag names (#1)
+* Draw interaction - Drawing is initialized by double clicking symbol in palette.
+* Draw interaction - Shortscuts. Escape key cancels ongoing drawing.
+* Draw interaction - Features SEIZE and TURN are currently unsupported
+* Default Layer - Tag 'default' defines new default layer.
+* Default Layer - Layer is created implicitly when needed and none is defined.
+* Sidebar - Fixed issue with partially empty list.
+* Sidebar - Store/restore visibility and current scope (group).
+* Sidebar - Shortcuts. CMD/CTRL-B: toggle, CMD/CTRL-1: layers, CMD/CTRL-2: symbols.
+* Symbols - Removed echelon from all previews but UNIT and SO.
+* Performance - Externalized symbol image/url cache to file (FRIENDLY/PRESENT only).

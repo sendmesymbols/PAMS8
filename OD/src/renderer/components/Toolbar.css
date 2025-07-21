@@ -1,0 +1,56 @@
+.toolbar {
+  box-sizing: border-box;
+  display: flex;
+  background-color: #f0f0f0;
+  height: 40px;
+  border-bottom: 1px solid #d0d0d0;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.toolbar__items-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #68696B;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.toolbar__items--right {
+  margin-left: auto;
+}
+
+.toolbar__button {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px 4px 8px;
+  margin-left: 4px;
+  margin-right: 4px;
+  border-radius: 3px;
+}
+
+.toolbar__button:hover {
+  background-color: #e0e0e0;
+}
+
+.toolbar__button:active {
+  background-color: #d0d0d0;
+}
+
+.toolbar__button:disabled {
+  pointer-events: none;
+  color: lightgray;
+}
+
+.toolbar__button--checked {
+  background-color: #d0d0d0;
+}
+
+.toolbar__divider {
+  display: inline-block;
+  border-left: 1px solid #ccc;
+  margin: 0 4px;
+  height: 20px;
+}

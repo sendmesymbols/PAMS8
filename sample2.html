@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ODIN-Style Tactical Graphics Editor</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: #2b2b2b;
+      color: #ffffff;
+      overflow: hidden;
+    }
+
+    .odin-container {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* Map Palette (Left Sidebar) */
+    .map-palette {
+      width: 320px;
+      background: #3a3a3a;
+      border-right: 1px solid #555;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .palette-header {
+      background: #4a4a4a;
+      padding: 12px;
+      border-bottom: 1px solid #555;
+    }
+
+    .palette-search {
+      width: 100%;
+      padding: 8px;
+      background: #2b2b2b;
+      border: 1px solid #666;
+      color: #fff;
+      border-radius: 4px;
+    }
+
+    .symbol-categories {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .category {
+      margin-bottom: 15px;
+    }
+
+    .category-title {
+      color: #4CAF50;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .symbol-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .symbol-item {
+      background: #2b2b2b;
+      border: 1px solid #555;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 3px;
+      font-size: 11px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .symbol-item:hover {
+      background: #404040;
+      border-color: #4CAF50;
+    }
+
+    .symbol-item.selected {
+      background: #1976D2;
+      border-color: #2196F3;
+    }
+
+    .symbol-icon {
+      width: 20px;
+      height: 20px;
+      background: #666;
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    /* Map Container */
+    .map-container {
+      flex: 1;
+      position: relative;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    /* Properties Panel (Right Sidebar) */
+    .properties-panel {
+      width: 300px;
+      background: #3a3a3a;
+      border-left: 1px solid #555;
+      display: none;
+      flex-direction: column;
+    }
+
+    .properties-panel.active {
+      display: flex;
+    }
+
+    .properties-header {
+      background: #4a4a4a;
+      padding: 12px;
+      border-bottom: 1px solid #555;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .close-properties {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .properties-content {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+    }
+
+    .property-group {
+      margin-bottom: 20px;
+    }
+
+    .property-label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 12px;
+      color: #ccc;
+    }
+
+    .property-input {
+      width: 100%;
+      padding: 8px;
+      background: #2b2b2b;
+      border: 1px solid #666;
+      color: #fff;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .property-select {
+      width: 100%;
+      padding: 8px;
+      background: #2b2b2b;
+      border: 1px solid #666;
+      color: #fff;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(58, 58, 58, 0.95);
+      border-radius: 6px;
+      padding: 8px;
+      display: flex;
+      gap: 5px;
+    }
+
+    .tool-btn {
+      background: #4a4a4a;
+      border: 1px solid #666;
+      color: #fff;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 11px;
+      transition: all 0.2s ease;
+    }
+
+    .tool-btn:hover {
+      background: #555;
+    }
+
+    .tool-btn.active {
+      background: #1976D2;
+      border-color: #2196F3;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #4a4a4a;
+      padding: 8px 15px;
+      border-top: 1px solid #555;
+      font-size: 11px;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Drawing States */
+    .drawing-cursor {
+      cursor: crosshair !important;
+    }
+
+    .drawing-cursor * {
+      cursor: crosshair !important;
+    }
+
+    /* Editing Handles */
+    .edit-handle {
+      background: #ff4444;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      width: 8px;
+      height: 8px;
+      cursor: pointer;
+    }
+
+    .edit-handle:hover {
+      background: #ff6666;
+      transform: scale(1.2);
+    }
+
+    /* Layer Management */
+    .layer-control {
+      position: absolute;
+      top: 60px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(58, 58, 58, 0.95);
+      border-radius: 6px;
+      padding: 10px;
+      min-width: 200px;
+    }
+
+    .layer-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px;
+      font-size: 11px;
+      border-bottom: 1px solid #555;
+    }
+
+    .layer-item:last-child {
+      border-bottom: none;
+    }
+
+    .layer-checkbox {
+      margin-right: 5px;
+    }
+
+    .active-layer {
+      background: #1976D2;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+<div class="odin-container">
+  <!-- Map Palette -->
+  <div class="map-palette">
+    <div class="palette-header">
+      <input type="text" class="palette-search" placeholder="Search symbols... (e.g. 'Planning', 'Tool', 'Hub')" id="symbolSearch">
+    </div>
+    <div class="symbol-categories" id="symbolCategories">
+      <!-- Dynamic content -->
+    </div>
+  </div>
+
+  <!-- Map Container -->
+  <div class="map-container">
+    <div id="map"></div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button class="tool-btn active" id="selectTool">Select</button>
+      <button class="tool-btn" id="moveTool">Move</button>
+      <button class="tool-btn" id="deleteTool">Delete</button>
+      <button class="tool-btn" id="copyTool">Copy</button>
+    </div>
+
+    <!-- Layer Control -->
+    <div class="layer-control">
+      <div style="font-weight: bold; margin-bottom: 10px; font-size: 12px;">Layers</div>
+      <div id="layerList">
+        <div class="layer-item active-layer">
+          <input type="checkbox" class="layer-checkbox" checked>
+          <span>Default Layer</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span id="statusText">Ready - Select symbol from palette and click on map</span>
+      <span id="coordinatesText">Lat: 0.00000°, Lng: 0.00000°</span>
+    </div>
+  </div>
+
+  <!-- Properties Panel -->
+  <div class="properties-panel" id="propertiesPanel">
+    <div class="properties-header">
+      <h3 id="propertiesTitle">Object Properties</h3>
+      <button class="close-properties" id="closeProperties">&times;</button>
+    </div>
+    <div class="properties-content" id="propertiesContent">
+      <!-- Dynamic content based on selected object -->
+    </div>
+  </div>
+</div>
+
+<!-- External Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<script>
+  // ODIN-Style Application State
+  let map;
+  let selectedSymbolType = null;
+  let currentDrawingObject = null;
+  let editingObject = null;
+  let drawingMode = null; // 'point', 'line', 'area', 'corridor'
+  let activeLayer = 'default';
+  let layers = { 'default': [] };
+  let currentTool = 'select';
+
+  // MIL-STD-2525C Symbol Definitions (ODIN-style)
+  const tacticalsymbols = {
+    'Tactical Graphics - Point': [
+      { name: 'Assembly Area', code: 'GFGPGAA---', geometry: 'point', color: '#000000' },
+      { name: 'Checkpoint', code: 'GFGPGAC---', geometry: 'point', color: '#000000' },
+      { name: 'Contact Point', code: 'GFGPGACP--', geometry: 'point', color: '#000000' },
+      { name: 'Decision Point', code: 'GFGPGADP--', geometry: 'point', color: '#000000' },
+      { name: 'Link Up Point', code: 'GFGPGALP--', geometry: 'point', color: '#000000' },
+      { name: 'Passage Point', code: 'GFGPGAPP--', geometry: 'point', color: '#000000' },
+      { name: 'Rally Point', code: 'GFGPGARP--', geometry: 'point', color: '#000000' },
+      { name: 'Release Point', code: 'GFGPGARP--', geometry: 'point', color: '#000000' }
+    ],
+    'Tactical Graphics - Line': [
+      { name: 'Axis of Advance', code: 'GFGPLAV---', geometry: 'line', color: '#000000' },
+      { name: 'Direction of Attack', code: 'GFGPLDA---', geometry: 'line', color: '#000000' },
+      { name: 'Line of Departure', code: 'GFGPLLD---', geometry: 'line', color: '#000000' },
+      { name: 'Phase Line', code: 'GFGPLPL---', geometry: 'line', color: '#000000' },
+      { name: 'Boundary', code: 'GFGPLB----', geometry: 'line', color: '#000000' },
+      { name: 'Forward Edge Battle Area', code: 'GFGPLFEBA-', geometry: 'line', color: '#ff0000' },
+      { name: 'Forward Line Own Troops', code: 'GFGPLFLOT-', geometry: 'line', color: '#0000ff' },
+      { name: 'Coordinated Fire Line', code: 'GFGPLCFL--', geometry: 'line', color: '#ff0000' }
+    ],
+    'Tactical Graphics - Area': [
+      { name: 'Assembly Area', code: 'GFGPAA----', geometry: 'area', color: '#000000' },
+      { name: 'Engagement Area', code: 'GFGPAEA---', geometry: 'area', color: '#ff0000' },
+      { name: 'Landing Zone', code: 'GFGPALZ---', geometry: 'area', color: '#0000ff' },
+      { name: 'Drop Zone', code: 'GFGPADZ---', geometry: 'area', color: '#0000ff' },
+      { name: 'Objective Area', code: 'GFGPAOA---', geometry: 'area', color: '#000000' },
+      { name: 'No Fire Area', code: 'GFGPANFA--', geometry: 'area', color: '#ff0000' },
+      { name: 'Restricted Fire Area', code: 'GFGPARFA--', geometry: 'area', color: '#ffff00' },
+      { name: 'Free Fire Area', code: 'GFGPAFFA--', geometry: 'area', color: '#00ff00' }
+    ],
+    'Tactical Graphics - Corridor': [
+      { name: 'Route', code: 'GFGPCR----', geometry: 'corridor', color: '#000000' },
+      { name: 'Main Supply Route', code: 'GFGPCMSR--', geometry: 'corridor', color: '#000000' },
+      { name: 'Alternate Supply Route', code: 'GFGPCASR--', geometry: 'corridor', color: '#000000' },
+      { name: 'Infiltration Lane', code: 'GFGPCIL---', geometry: 'corridor', color: '#000000' },
+      { name: 'Approach Route', code: 'GFGPCAR---', geometry: 'corridor', color: '#000000' }
+    ],
+    'Planning Tools': [
+      { name: 'Hub', code: 'PLANNING-HUB', geometry: 'point', color: '#000000', isPlanning: true },
+      { name: 'Planning Area', code: 'PLANNING-AREA', geometry: 'area', color: '#800080', isPlanning: true }
+    ]
+  };
+
+  // Initialize Application
+  function initApp() {
+    initMap();
+    initSymbolPalette();
+    initEventHandlers();
+    updateStatus('ODIN-Style Editor Ready');
+  }
+
+  // Initialize Map (ODIN-style)
+  function initMap() {
+    map = L.map('map', {
+      center: [48.2082, 16.3738], // Vienna (like ODIN examples)
+      zoom: 10,
+      zoomControl: false
+    });
+
+    // Add OpenStreetMap base layer (ODIN default)
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Add zoom control to top left (ODIN position)
+    L.control.zoom({
+      position: 'topleft'
+    }).addTo(map);
+
+    // Mouse tracking
+    map.on('mousemove', updateCoordinates);
+    map.on('click', handleMapClick);
+  }
+
+  // Initialize Symbol Palette (ODIN-style)
+  function initSymbolPalette() {
+    const container = document.getElementById('symbolCategories');
+
+    Object.keys(tacticalsymbols).forEach(categoryName => {
+      const categoryDiv = document.createElement('div');
+      categoryDiv.className = 'category';
+
+      const titleDiv = document.createElement('div');
+      titleDiv.className = 'category-title';
+      titleDiv.textContent = categoryName;
+      categoryDiv.appendChild(titleDiv);
+
+      const listDiv = document.createElement('div');
+      listDiv.className = 'symbol-list';
+
+      tacticalsymbols[categoryName].forEach(symbol => {
+        const symbolDiv = document.createElement('div');
+        symbolDiv.className = 'symbol-item';
+        symbolDiv.dataset.code = symbol.code;
+        symbolDiv.dataset.geometry = symbol.geometry;
+        symbolDiv.dataset.color = symbol.color;
+
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'symbol-icon';
+        iconDiv.style.backgroundColor = symbol.color;
+        iconDiv.textContent = getGeometryIcon(symbol.geometry);
+
+        const textDiv = document.createElement('div');
+        textDiv.textContent = symbol.name;
+
+        symbolDiv.appendChild(iconDiv);
+        symbolDiv.appendChild(textDiv);
+        symbolDiv.addEventListener('click', () => selectSymbol(symbol));
+
+        listDiv.appendChild(symbolDiv);
+      });
+
+      categoryDiv.appendChild(listDiv);
+      container.appendChild(categoryDiv);
+    });
+  }
+
+  // Get geometry icon
+  function getGeometryIcon(geometry) {
+    switch(geometry) {
+      case 'point': return '●';
+      case 'line': return '─';
+      case 'area': return '▢';
+      case 'corridor': return '⟶';
+      default: return '?';
+    }
+  }
+
+  // Select Symbol (ODIN-style)
+  function selectSymbol(symbol) {
+    // Remove previous selection
+    document.querySelectorAll('.symbol-item').forEach(item => {
+      item.classList.remove('selected');
+    });
+
+    // Select new symbol
+    event.target.closest('.symbol-item').classList.add('selected');
+    selectedSymbolType = symbol;
+    drawingMode = symbol.geometry;
+
+    // Set drawing cursor
+    map.getContainer().classList.add('drawing-cursor');
+
+    updateStatus(`Selected: ${symbol.name} - Click on map to ${symbol.geometry === 'point' ? 'place' : 'start drawing'}`);
+  }
+
+  // Handle Map Click (ODIN creation procedure)
+  function handleMapClick(e) {
+    if (!selectedSymbolType || currentTool !== 'select') return;
+
+    switch(drawingMode) {
+      case 'point':
+        createPointObject(e.latlng);
+        break;
+      case 'line':
+        handleLineDrawing(e.latlng);
+        break;
+      case 'area':
+        handleAreaDrawing(e.latlng);
+        break;
+      case 'corridor':
+        handleCorridorDrawing(e.latlng);
+        break;
+    }
+  }
+
+  // Create Point Object (ODIN-style)
+  function createPointObject(latlng) {
+    const marker = L.circleMarker(latlng, {
+      radius: 8,
+      fillColor: selectedSymbolType.color,
+      color: '#fff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.8
+    }).addTo(map);
+
+    const objectData = {
+      id: 'obj_' + Date.now(),
+      type: 'point',
+      symbol: selectedSymbolType,
+      geometry: marker,
+      latlng: latlng,
+      properties: {
+        name: selectedSymbolType.name,
+        uniqueDesignation: '',
+        additionalInfo: '',
+        dtg: new Date().toISOString(),
+        hostility: 'friend',
+        echelon: 'team'
+      }
+    };
+
+    // Add to active layer
+    if (!layers[activeLayer]) layers[activeLayer] = [];
+    layers[activeLayer].push(objectData);
+
+    // Add click handler for editing
+    marker.on('click', (e) => {
+      e.originalEvent.stopPropagation();
+      editObject(objectData);
+    });
+
+    // Open properties window (ODIN behavior)
+    setTimeout(() => {
+      editObject(objectData);
+    }, 100);
+
+    updateStatus(`Created ${selectedSymbolType.name} at ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`);
+  }
+
+  // Handle Line Drawing (ODIN multi-click style)
+  function handleLineDrawing(latlng) {
+    if (!currentDrawingObject) {
+      // Start new line
+      currentDrawingObject = {
+        points: [latlng],
+        polyline: L.polyline([latlng], {
+          color: selectedSymbolType.color,
+          weight: 3,
+          opacity: 0.8
+        }).addTo(map)
+      };
+      updateStatus(`Drawing ${selectedSymbolType.name} - Click to add points, double-click to finish`);
+    } else {
+      // Add point to existing line
+      currentDrawingObject.points.push(latlng);
+      currentDrawingObject.polyline.addLatLng(latlng);
+    }
+  }
+
+  // Handle Area Drawing (ODIN multi-click style)
+  function handleAreaDrawing(latlng) {
+    if (!currentDrawingObject) {
+      // Start new area
+      currentDrawingObject = {
+        points: [latlng],
+        polygon: L.polygon([latlng], {
+          color: selectedSymbolType.color,
+          fillColor: selectedSymbolType.color,
+          weight: 2,
+          opacity: 0.8,
+          fillOpacity: 0.3
+        }).addTo(map)
+      };
+      updateStatus(`Drawing ${selectedSymbolType.name} - Click to add points, double-click to finish`);
+    } else {
+      // Add point to existing area
+      currentDrawingObject.points.push(latlng);
+      currentDrawingObject.polygon.addLatLng(latlng);
+    }
+  }
+
+  // Handle Corridor Drawing
+  function handleCorridorDrawing(latlng) {
+    if (!currentDrawingObject) {
+      // Start new corridor
+      currentDrawingObject = {
+        points: [latlng],
+        centerline: L.polyline([latlng], {
+          color: selectedSymbolType.color,
+          weight: 5,
+          opacity: 0.6
+        }).addTo(map),
+        width: 1000 // Default width in meters
+      };
+      updateStatus(`Drawing ${selectedSymbolType.name} - Click to add points, double-click to finish`);
+    } else {
+      // Add point to existing corridor
+      currentDrawingObject.points.push(latlng);
+      currentDrawingObject.centerline.addLatLng(latlng);
+    }
+  }
+
+  // Handle Double Click (Finish drawing)
+  map.on('dblclick', function(e) {
+    if (currentDrawingObject && (drawingMode === 'line' || drawingMode === 'area' || drawingMode === 'corridor')) {
+      finishDrawing();
+    }
+  });
+
+  // Finish Drawing (ODIN-style)
+  function finishDrawing() {
+    if (!currentDrawingObject) return;
+
+    const objectData = {
+      id: 'obj_' + Date.now(),
+      type: drawingMode,
+      symbol: selectedSymbolType,
+      geometry: drawingMode === 'line' ? currentDrawingObject.polyline :
+              drawingMode === 'area' ? currentDrawingObject.polygon :
+                      currentDrawingObject.centerline,
+      points: currentDrawingObject.points,
+      properties: {
+        name: selectedSymbolType.name,
+        uniqueDesignation: '',
+        additionalInfo: '',
+        dtg: new Date().toISOString(),
+        hostility: 'friend'
+      }
+    };
+
+    if (drawingMode === 'corridor') {
+      objectData.width = currentDrawingObject.width;
+    }
+
+    // Add to active layer
+    if (!layers[activeLayer]) layers[activeLayer] = [];
+    layers[activeLayer].push(objectData);
+
+    // Add click handler for editing
+    objectData.geometry.on('click', (e) => {
+      e.originalEvent.stopPropagation();
+      editObject(objectData);
+    });
+
+    currentDrawingObject = null;
+    map.getContainer().classList.remove('drawing-cursor');
+
+    // Open properties window (ODIN behavior)
+    setTimeout(() => {
+      editObject(objectData);
+    }, 100);
+
+    updateStatus(`Created ${selectedSymbolType.name} with ${objectData.points.length} points`);
+  }
+
+  // Edit Object (ODIN-style properties window)
+  function editObject(objectData) {
+    editingObject = objectData;
+    showPropertiesPanel(objectData);
+  }
+
+  // Show Properties Panel (ODIN-style)
+  function showPropertiesPanel(objectData) {
+    const panel = document.getElementById('propertiesPanel');
+    const title = document.getElementById('propertiesTitle');
+    const content = document.getElementById('propertiesContent');
+
+    title.textContent = `${objectData.symbol.name} Properties`;
+
+    content.innerHTML = `
+                <div class="property-group">
+                    <label class="property-label">Name (Display in Layer Management)</label>
+                    <input type="text" class="property-input" id="propName" value="${objectData.properties.name}">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Unique Designation</label>
+                    <input type="text" class="property-input" id="propDesignation" value="${objectData.properties.uniqueDesignation}">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Additional Information</label>
+                    <input type="text" class="property-input" id="propInfo" value="${objectData.properties.additionalInfo}">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Date-Time Group</label>
+                    <input type="text" class="property-input" id="propDTG" value="${objectData.properties.dtg}">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Hostility Status</label>
+                    <select class="property-select" id="propHostility">
+                        <option value="friend" ${objectData.properties.hostility === 'friend' ? 'selected' : ''}>Friend</option>
+                        <option value="hostile" ${objectData.properties.hostility === 'hostile' ? 'selected' : ''}>Hostile</option>
+                        <option value="neutral" ${objectData.properties.hostility === 'neutral' ? 'selected' : ''}>Neutral</option>
+                        <option value="unknown" ${objectData.properties.hostility === 'unknown' ? 'selected' : ''}>Unknown</option>
+                    </select>
+                </div>
+
+                ${objectData.type === 'point' ? `
+                <div class="property-group">
+                    <label class="property-label">Echelon</label>
+                    <select class="property-select" id="propEchelon">
+                        <option value="team" ${objectData.properties.echelon === 'team' ? 'selected' : ''}>Team</option>
+                        <option value="squad" ${objectData.properties.echelon === 'squad' ? 'selected' : ''}>Squad</option>
+                        <option value="section" ${objectData.properties.echelon === 'section' ? 'selected' : ''}>Section</option>
+                        <option value="platoon" ${objectData.properties.echelon === 'platoon' ? 'selected' : ''}>Platoon</option>
+                        <option value="company" ${objectData.properties.echelon
