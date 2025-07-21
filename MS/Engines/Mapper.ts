@@ -120,6 +120,11 @@ import ArcOfFireSD from "../Symbols/ArcOfFireSD.ts";
 import ALineOfDenial from "../Symbols/ALineOfDenial.ts"; //Minor Issue
 import CLineOfDenial from "../Symbols/CLineOfDenial.ts"; //Minor Issue
 import Ambush from "../Symbols/Ambush.ts"; //issue
+import AntiPersonnelAntiTankMine from "../Symbols/AntiPersonnelAntiTankMine.ts";
+import AntiPersonnelMine from "../Symbols/AntiPersonnelMine.ts";
+import AntiPersonnelMineDirEffct from "../Symbols/AntiPersonnelMineDirEffct.ts";
+import AntitankMine from "../Symbols/AntitankMine.ts";
+import AntiTankMineWAntiHandle from "../Symbols/AntiTankMineWAntiHandle.ts";
 
 import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";  //issue
 
@@ -175,6 +180,11 @@ export default class Mapper {
             "ALineOfDenial": ALineOfDenial,
             "Ambush": Ambush,
             "ArcOfFireSD": ArcOfFireSD,
+            "AntiPersonnelAntiTankMine": AntiPersonnelAntiTankMine,
+            "AntiPersonnelMine": AntiPersonnelMine,
+            "AntiPersonnelMineDirEffct": AntiPersonnelMineDirEffct,
+            "AntitankMine": AntitankMine,
+            "AntiTankMineWAntiHandle": AntiTankMineWAntiHandle,
             "FreehandCloseSupportingAttack": FreehandCloseSupportingAttack,
             "FreehandDottedArrow": FreehandDottedArrow,
             "FreehandDoubleLineArrow": FreehandDoubleLineArrow,
