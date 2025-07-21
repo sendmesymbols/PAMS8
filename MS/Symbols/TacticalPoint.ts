@@ -100,6 +100,8 @@ export class TacticalPoint {
             this.symName = symName || this.symName;
             this._offset = offset || "0";
 
+            console.log("offset is " + this._offset)
+
             this._ptSymbol = this.createCrossCompatibleSymbol(
                 this._path, 
                 marker?.color || [0, 0, 0, 1],
@@ -150,7 +152,8 @@ export class TacticalPoint {
         console.log("Generated SVG data URL:", svgDataUrl);
         
         // Adjust size based on view type for optimal visibility
-        const adjustedSize = this.view.type === "3d" ? Math.max(size * 1.5, 30) : size;
+        // Increase base sizes to make symbols more visible
+        const adjustedSize = this.view.type === "3d" ? Math.max(size * 4, 48) : Math.max(size * 4, 48);
         
         const symbol = new PictureMarkerSymbol({
             url: svgDataUrl,
@@ -159,9 +162,15 @@ export class TacticalPoint {
             angle: angle
         });
 
-        // Set offset if specified (Center Bottom positioning)
+        console.log("Adjusted Size ", adjustedSize);
+        // Set offset for proper positioning
         if (this._offset === "1") {
+            // Center Bottom positioning
             symbol.yoffset = adjustedSize / 2;
+        } else {
+            // Default: Center the symbol on the cursor for interactive drawing
+            symbol.xoffset = adjustedSize / 2;
+            symbol.yoffset = 0;
         }
         return symbol;
     }
@@ -216,7 +225,7 @@ export class TacticalPoint {
                 
             // Use consistent sizing approach for both 2D and 3D
             // The SVG size should be large enough to maintain quality when scaled
-            const svgSize = Math.max(size * 2, 40); // Increased base size for better quality
+            const svgSize = Math.max(size * 3, 64); // Significantly increased base size for better visibility
                 
             // Use a standard viewBox that works well with most tactical symbol paths
             // Most tactical symbols are designed for a 0-500 coordinate system
@@ -237,7 +246,7 @@ export class TacticalPoint {
             console.error("Error creating SVG data URL:", error);
             
             // Fallback to a simple circle if SVG generation fails
-            const fallbackSize = Math.max(size * 1.5, 30);
+            const fallbackSize = Math.max(size * 2.5, 48);
             const fallbackSvg = `<svg width="${fallbackSize}" height="${fallbackSize}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="50" cy="50" r="40" fill="#FF0000" stroke="#FFFFFF" stroke-width="2"/>
             </svg>`;
