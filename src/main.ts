@@ -707,7 +707,7 @@ function initializeAutocomplete() {
 
 // Step 2: Define static/default values for remaining SIDC parts
     const codingScheme = "10";                  // positions 1–2 (Warfighting)
-    const standardIdentity = "03";              // positions 3–4 (Friendly)
+    const standardIdentity = "06";              // positions 3–4 (Friendly)
     const status = "0";                         // position 7 (Present)
     const hqModifier = "0";                     // position 8 (None)
     const amplifier1 = "14";                    // positions 9–10 (Default)

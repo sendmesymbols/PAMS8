@@ -408,7 +408,7 @@ class ContextMenuManager extends Evented {
                     console.log(graphicHit);
                     if (graphicHit) {
                         const graphic = graphicHit.graphic;
-
+                        console.log("graphicHitTrue");
                         // Store the click point
                         this.clickPoint = this.view!.toMap({ x: event.x, y: event.y });
 

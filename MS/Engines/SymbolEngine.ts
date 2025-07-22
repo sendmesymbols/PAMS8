@@ -123,7 +123,7 @@ class SymbolEngine implements Evented {
         });
 
         reactiveUtils.watch(() => this._getView()?.zoom, (newType: Number) => {
-         console.log("SymbolEngine detected activeView type change:", newType);
+         //console.log("SymbolEngine detected activeView type change:", newType);
          // Potentially re-initialize or update SymbolEngine based on new view type
      });
 
