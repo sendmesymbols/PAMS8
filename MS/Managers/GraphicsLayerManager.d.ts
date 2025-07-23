@@ -6,6 +6,7 @@ export declare const LAYER_NAMES: {
     TACT_PT: string;
     TACT: string;
     SKETCH: string;
+    ANNOTATION_LAYER: string;
 };
 declare class GraphicsLayerManager {
     private static instances;
@@ -15,6 +16,7 @@ declare class GraphicsLayerManager {
     private constructor();
     static getInstance(view: MapView | SceneView): GraphicsLayerManager;
     initializeLayers(): void;
+    getSymbolLayer(): GraphicsLayer;
     getOrCreateLayer(layerName: string): GraphicsLayer;
     getLayer(layerName: string): GraphicsLayer | undefined;
     listLayers(): string[];
