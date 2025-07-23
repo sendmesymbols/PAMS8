@@ -131,6 +131,10 @@ import AttackPosition from "../Symbols/AttackPosition.ts";
 import AvenueOfApchs from "../Symbols/AvenueOfApchs.ts";
 import AxisOfAdvanceFeint from "../Symbols/AxisOfAdvanceFeint.ts";
 import BdeAdmArea from "../Symbols/BdeAdmArea.ts";
+import BridgeHeadLine from "../Symbols/BridgeHeadLine.ts";
+import Breach from "../Symbols/Breach.ts";
+import Bridge from "../Symbols/Bridge.ts";
+import BtleHndOvrLn from "../Symbols/BtleHndOvrLn.ts";
 import Block from "../Symbols/Block.ts";
 import BlockObstacleEffect from "../Symbols/BlockObstacleEffect.ts";
 import BOPFreehand from "../Symbols/BOPFreehand.ts";
@@ -168,7 +172,7 @@ import SceneView from "@arcgis/core/views/SceneView";
 type ViewType = MapView | SceneView;
 
 interface ISymbolConstructor {
-    new (view: ViewType, isLine?: boolean): UEISymbol;  // Update this to return UEISymbol (or a more specific class type)
+    new (view: ViewType, isLine?: boolean): any;  // Generic return type to support all symbol types
 }
 
 export default class Mapper {
@@ -201,6 +205,10 @@ export default class Mapper {
             "AvenueOfApchs": AvenueOfApchs,
             "AxisOfAdvanceFeint": AxisOfAdvanceFeint,
             "BdeAdmArea": BdeAdmArea,
+            "BridgeHeadLine": BridgeHeadLine,
+            "Breach": Breach,
+            "Bridge": Bridge,
+            "BtleHndOvrLn": BtleHndOvrLn,
             "Block": Block,
             "BlockObstacleEffect": BlockObstacleEffect,
             "BOPFreehand": BOPFreehand,
