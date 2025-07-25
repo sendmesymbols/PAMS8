@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ArcGIS WMTS + SymbolEngine</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: sans-serif;
+      }
+
+      #viewDiv {
+        height: 100%;
+        width: 100%;
+      }
+
+      #toggleViewBtn {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 10;
+        padding: 10px;
+        background-color: white;
+        border: 1px solid #ccc;
+        cursor: pointer;
+      }
+
+      .symbols-container {
+        position: absolute;
+        top: 60px;
+        left: 10px;
+        width: 160px;
+        max-height: 80%;
+        overflow-y: auto;
+        background-color: rgba(255, 255, 255, 0.95);
+        border: 1px solid #ccc;
+        padding: 8px;
+        z-index: 10;
+      }
+
+      .symbols-category-title {
+        font-size: 14px;
+        font-weight: bold;
+        margin: 10px 0 5px;
+      }
+
+      .symbols-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+
+      .symbol-item {
+        border: 1px solid #aaa;
+        padding: 3px;
+        cursor: pointer;
+      }
+
+      .symbol-item.selected {
+        outline: 2px solid blue;
+      }
+
+      .symbol-placeholder {
+        width: 60px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .symbol-loading {
+        font-size: 10px;
+        color: #999;
+      }
+
+      .esri-ui .esri-attribution {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="toggleViewBtn">Switch to 3D</button>
+    <div id="viewDiv" class="map-view"></div>
+    <div class="symbols-container" id="symbolsContainer"></div>
+
+    <script src="http://192.168.0.101:8082/arcgis-js/init.js"></script>
+
+    <script src="./dist/MS/Engines/SymbolEngine.min.js"></script>
+
+    <!-- Adjust path as needed -->
+
+    <script>
+      require([
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/views/SceneView",
+        "esri/layers/WMTSLayer",
+        "esri/geometry/SpatialReference",
+        "esri/layers/GraphicsLayer",
+        "esri/Graphic",
+      ], (
+        Map,
+        MapView,
+        SceneView,
+        WMTSLayer,
+        SpatialReference,
+        GraphicsLayer,
+        Graphic
+      ) => {
+        const spatialReference = new SpatialReference({ wkid: 4326 });
+
+        const createWMTSLayer = (layerId) => {
+          return new WMTSLayer({
+            url: "http://192.168.0.101:8080/geoserver/gwc/service/wmts",
+            serviceMode: "KVP",
+            activeLayer: { id: layerId },
+            layerId: layerId,
+            format: "image/png",
+            tileMatrixSet: "EPSG:4326",
+            spatialReference: spatialReference,
+            opacity: 1,
+            visible: layerId === "ne:pakosm",
+          });
+        };
+
+        const osmLayer = createWMTSLayer("ne:pakosm");
+        const graphicsLayer = new GraphicsLayer();
+
+        const map = new Map({
+          basemap: "streets",
+          layers: [osmLayer, graphicsLayer],
+        });
+
+        let view = new MapView({
+          container: "viewDiv",
+          map: map,
+          center: [70, 30],
+          zoom: 5,
+          spatialReference: spatialReference,
+          ui: { components: ["zoom"] },
+        });
+
+        let currentViewType = "2D";
+        const toggleBtn = document.getElementById("toggleViewBtn");
+
+        toggleBtn.addEventListener("click", () => {
+          view.container = null;
+
+          if (currentViewType === "2D") {
+            view = new SceneView({
+              container: "viewDiv",
+              map: map,
+              center: [70, 30],
+              zoom: 5,
+              spatialReference: spatialReference,
+              ui: { components: ["zoom"] },
+            });
+            currentViewType = "3D";
+            toggleBtn.innerText = "Switch to 2D";
+          } else {
+            view = new MapView({
+              container: "viewDiv",
+              map: map,
+              center: [70, 30],
+              zoom: 5,
+              spatialReference: spatialReference,
+              ui: { components: ["zoom"] },
+            });
+            currentViewType = "2D";
+            toggleBtn.innerText = "Switch to 3D";
+          }
+
+        });
+
+      });
+    </script>
+  </body>
+</html>

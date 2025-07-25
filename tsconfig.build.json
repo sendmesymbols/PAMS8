@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "include": ["MS/**/*"],
-  "exclude": ["src", "index.html"],
+  "exclude": ["src", "index.html", "MS/ThirdParty/milsymbol.js"],
   "compilerOptions": {
     "declaration": true,
     "emitDeclarationOnly": true,

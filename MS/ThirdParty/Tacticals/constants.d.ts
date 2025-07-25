@@ -1,0 +1,44 @@
+export declare const SIDC_POSITIONS: {
+    readonly SCHEMA: 0;
+    readonly IDENTITY: 1;
+    readonly BATTLE_DIMENSION: 2;
+    readonly STATUS: 3;
+    readonly FUNCTION_ID: 4;
+    readonly MODIFIER: 10;
+    readonly MOBILITY: 10;
+    readonly INSTALLATION: 10;
+    readonly ECHELON: 11;
+};
+export declare const MODIFIERS: {
+    readonly aa: "specialHeadquarters";
+    readonly ad: "platformType";
+    readonly ae: "equipmentTeardownTime";
+    readonly af: "commonIdentifier";
+    readonly ah: "headquartersElement";
+    readonly ao: "engagementBar";
+    readonly ap: "targetNumber";
+    readonly aq: "guardedUnit";
+    readonly ar: "specialDesignator";
+    readonly c: "quantity";
+    readonly f: "reinforcedReduced";
+    readonly j: "evaluationRating";
+    readonly k: "combatEffectiveness";
+    readonly g: "staffComments";
+    readonly h: "additionalInformation";
+    readonly m: "higherFormation";
+    readonly n: "hostile";
+    readonly p: "iffSif";
+    readonly q: "direction";
+    readonly r: "quantity";
+    readonly t: "uniqueDesignation";
+    readonly v: "type";
+    readonly x: "altitudeDepth";
+    readonly y: "location";
+    readonly z: "speed";
+    readonly w: "dtg";
+};
+export declare const LAYER_NAMES: {
+    readonly FORCE: "force-layer";
+    readonly MILSYMBOLS: "milsymbols-layer";
+    readonly TACTICAL: "tactical-layer";
+};

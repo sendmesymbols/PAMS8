@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Using the PAMS8 Library</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/latest/esri/themes/light/main.css" />
+
+  <style>
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<script type="importmap">
+  {
+    "imports": {
+      "@arcgis/core/": "https://js.arcgis.com/latest/@arcgis/core/"
+    }
+  }
+</script>
+
+
+<script type="module">
+  // Import the necessary modules with the .js extension
+  import Map from "@arcgis/core/Map.js";
+  import MapView from "@arcgis/core/views/MapView.js";
+
+  // Import your custom library from the dist folder
+  import SymbolEngine from './dist/MS/Engines/SymbolEngine.min.js';
+
+  // --- Your Application Code (no changes needed here) ---
+  const map = new Map({
+    basemap: "topo-vector"
+  });
+
+  const view = new MapView({
+    container: "viewDiv",
+    map: map,
+    center: [-118.244, 34.052],
+    zoom: 12
+  });
+
+  view.when(() => {
+    console.log("View is ready. Initializing SymbolEngine.");
+    const symbolEngine = new SymbolEngine(() => view);
+    console.log("SymbolEngine instance created:", symbolEngine);
+  });
+</script>
+</body>
+</html>

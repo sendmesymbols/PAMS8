@@ -40,6 +40,7 @@ export class DrawEssentials {
     public SIZE: number = 0;
     public ARROWHEAD_RATIO: number = 0;
     public ECHELON: string = "";
+    public OFFSET: string = "0";
 
     // Additional properties for compatibility
     public ISFHAND?: number;

@@ -1,0 +1,120 @@
+import Point from "@arcgis/core/geometry/Point";
+import Polyline from "@arcgis/core/geometry/Polyline";
+import MapView from "@arcgis/core/views/MapView";
+import SceneView from "@arcgis/core/views/SceneView";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+export interface BtleHndOvrLnOptions {
+    CTRL_PTS?: Point[];
+    GEOM?: Polyline;
+    opacity?: number;
+    [key: string]: any;
+}
+/**
+ * BtleHndOvrLn class for drawing Battle Handover Line (BHOL) symbols
+ * Creates a line with "BHOL" markers at both ends
+ * Supports opacity settings for display
+ */
+export declare class BtleHndOvrLn {
+    private view;
+    private layerManager;
+    private symbolLayer;
+    private isLine;
+    private SID;
+    private symName;
+    private symGeometricType;
+    private _lineSym;
+    private _points;
+    private _geometryType;
+    private amplifier;
+    private _opacity;
+    private isDrawing;
+    private tempGraphic;
+    private clickHandler;
+    private doubleClickHandler;
+    private mouseMoveHandler;
+    private eventListeners;
+    constructor(view: MapView | SceneView, isLine?: boolean);
+    /**
+     * Initialize the battle handover line drawing
+     */
+    init(options: BtleHndOvrLnOptions, marker: SimpleLineSymbol): void;
+    /**
+     * Start interactive drawing mode
+     */
+    private startInteractiveDrawing;
+    /**
+     * Set up mouse event handlers for interactive drawing
+     */
+    private setupEventHandlers;
+    /**
+     * Handle click events
+     */
+    private _onClickHandler;
+    /**
+     * Handle double click events
+     */
+    private _onDoubleClickHandler;
+    /**
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler;
+    /**
+     * Create DrawEssentials object
+     */
+    private createDrawEssentials;
+    /**
+     * Create symbol geometry from DrawEssentials
+     */
+    private createSymbol;
+    /**
+     * Add "BHOL" markers at both ends of the line
+     */
+    private addBHOLMarkers;
+    /**
+     * Create simple "BHOL" text as fallback
+     */
+    private createSimpleBHOL;
+    /**
+     * Utility method to calculate distance
+     */
+    private calculateDistance;
+    /**
+     * Utility method to calculate angle
+     */
+    private calculateAngle;
+    /**
+     * Clean up drawing state and finalize
+     */
+    private cleanUp;
+    /**
+     * Handle draw end
+     */
+    private __drawEnd;
+    /**
+     * Final draw end handler
+     */
+    private __onDrawEnd;
+    /**
+     * Clear graphics and state
+     */
+    private _clear;
+    /**
+     * Remove event handlers
+     */
+    private _removeEvents;
+    /**
+     * Deactivate the drawing tool
+     */
+    deactivate(): void;
+    /**
+     * Event emitter functionality
+     */
+    private emit;
+    private emitGlobalEvent;
+    on(eventName: string, callback: Function): void;
+    off(eventName: string, callback?: Function): void;
+    getSymbolLayer(): GraphicsLayer;
+    clearSymbols(): void;
+}
+export default BtleHndOvrLn;

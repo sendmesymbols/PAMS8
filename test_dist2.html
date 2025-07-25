@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test ArcGIS with PAMS8 Library</title>
+  <!-- Load ArcGIS API for JavaScript 4.3 CSS -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.3/esri/css/main.css" />
+  <!-- Load ArcGIS API for JavaScript 4.3 -->
+  <script src="https://js.arcgis.com/4.3/"></script>
+</head>
+<body>
+<div id="viewDiv" style="width: 100%; height: 100vh;"></div>
+
+<!-- Load your library as an ES module -->
+<script type="module">
+  import * as SymbolEngine from './dist/MS/Engines/SymbolEngine.min.js';
+  import * as UEITypes from './dist/MS/ThirdParty/MilSymbols/UEITypes.min.js';
+
+  // Use ArcGIS API with AMD require
+  require([
+    "esri/Map",
+    "esri/views/MapView"
+  ], function(Map, MapView) {
+    // Initialize the map
+    const map = new Map({
+      basemap: "topo-vector"
+    });
+
+    const view = new MapView({
+      container: "viewDiv",
+      map: map,
+      center: [-118.244, 34.052],
+      zoom: 12
+    });
+
+    // Example: Use your library
+    view.when(() => {
+      console.log("SymbolEngine:", SymbolEngine);
+      console.log("UEITypes:", UEITypes);
+
+      // Example usage of your library (adjust based on your library's API)
+      // e.g., SymbolEngine.someFunction();
+    });
+  });
+</script>
+</body>
+</html>
