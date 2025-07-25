@@ -165,6 +165,7 @@ import UnspecifiedMine from "../Symbols/UnspecifiedMine.ts";
 import VitalArea from "../Symbols/VitalArea.ts";
 import WideAreaAntiTankMine from "../Symbols/WideAreaAntiTankMine.ts";
 import ZoneOfResponsibility from "../Symbols/ZoneOfResponsibility.ts";
+import Canalize from "../Symbols/Canalize.ts";
 
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
@@ -246,7 +247,8 @@ export default class Mapper {
             "UnspecifiedMine": UnspecifiedMine,
             "VitalArea": VitalArea,
             "WideAreaAntiTankMine": WideAreaAntiTankMine,
-            "ZoneOfResponsibility": ZoneOfResponsibility
+            "ZoneOfResponsibility": ZoneOfResponsibility,
+            "Canalize": Canalize
             /*
             "SupportByFirePosition": SupportByFirePosition,
             "AttackByFirePosition": AttackByFirePosition,

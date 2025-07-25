@@ -2,7 +2,8 @@ import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import Map from '@arcgis/core/map';
 import PlotPoint from "../MS/PlotPoint.ts";
-import SymbolEngine from "../MS/Engines/SymbolEngine.ts";
+//import SymbolEngine from "../MS/Engines/SymbolEngine.ts";
+import SymbolEngine from "../dist/MS/Engines/SymbolEngine.min.js";
 import type { SymbolOptions } from '../MS/ThirdParty/MilSymbols/UEITypes.ts'
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
 import { watch } from "@arcgis/core/core/reactiveUtils";
