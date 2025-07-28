@@ -166,6 +166,31 @@ import VitalArea from "../Symbols/VitalArea.ts";
 import WideAreaAntiTankMine from "../Symbols/WideAreaAntiTankMine.ts";
 import ZoneOfResponsibility from "../Symbols/ZoneOfResponsibility.ts";
 import Canalize from "../Symbols/Canalize.ts";
+import Contain from "../Symbols/Contain.ts";
+import CorpsAdmArea from "../Symbols/CorpsAdmArea.ts";
+import Corridors from "../Symbols/Corridors.ts";
+import Cover from "../Symbols/Cover.ts";
+import Delay from "../Symbols/Delay.ts";
+import DispersalArea from "../Symbols/DispersalArea.ts";
+import Disrupt from "../Symbols/Disrupt.ts";
+import DisruptObstacleEffect from "../Symbols/DisruptObstacleEffect.ts";
+import DitchEmpty from "../Symbols/DitchEmpty.ts";
+import DitchFilledWithWater from "../Symbols/DitchFilledWithWater.ts";
+import DivAdmArea from "../Symbols/DivAdmArea.ts";
+import DivLineOfNoPen from "../Symbols/DivLineOfNoPen.ts";
+import DoubleApronFence from "../Symbols/DoubleApronFence.ts";
+import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";
+import DoubleStrandConcertina from "../Symbols/DoubleStrandConcertina.ts";
+import Fix from "../Symbols/Fix.ts";
+import FlightRoute from "../Symbols/FlightRoute.ts";
+import FlightZone from "../Symbols/FlightZone.ts";
+import FormingUpPoint from "../Symbols/FormingUpPoint.ts";
+import Funnel from "../Symbols/Funnel.ts";
+import FwdAssemblyArea from "../Symbols/FwdAssemblyArea.ts";
+import FwdLineOfTps from "../Symbols/FwdLineOfTps.ts";
+import Guard from "../Symbols/Guard.ts";
+import HighWireFence from "../Symbols/HighWireFence.ts";
+import InfiltrationLane from "../Symbols/InfiltrationLane.ts";
 
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
@@ -173,7 +198,7 @@ import SceneView from "@arcgis/core/views/SceneView";
 type ViewType = MapView | SceneView;
 
 interface ISymbolConstructor {
-    new (view: ViewType, isLine?: boolean): any;  // Generic return type to support all symbol types
+    new (view: ViewType, isLine: boolean): any;  // Generic return type to support all symbol types
 }
 
 export default class Mapper {
@@ -248,7 +273,33 @@ export default class Mapper {
             "VitalArea": VitalArea,
             "WideAreaAntiTankMine": WideAreaAntiTankMine,
             "ZoneOfResponsibility": ZoneOfResponsibility,
-            "Canalize": Canalize
+            "Canalize": Canalize,
+            "Contain": Contain,
+            "CorpsAdmArea": CorpsAdmArea,
+            "Corridors": Corridors,
+            "Cover": Cover,
+            "Delay": Delay,
+            "DispersalArea": DispersalArea,
+            "Disrupt": Disrupt,
+            "DisruptObstacleEffect": DisruptObstacleEffect,
+            "DitchEmpty": DitchEmpty,
+            "DitchFilledWithWater": DitchFilledWithWater,
+            "DivAdmArea": DivAdmArea,
+            "DivLineOfNoPen": DivLineOfNoPen,
+            "DoubleApronFence": DoubleApronFence,
+            "DoubleFenceWire": DoubleFenceWire,
+            "DoubleStrandConcertina": DoubleStrandConcertina,
+            "Fix": Fix,
+            "FlightRoute": FlightRoute,
+            "FlightZone": FlightZone,
+            "FormingUpPoint": FormingUpPoint,
+            "Funnel": Funnel,
+            "FwdAssemblyArea": FwdAssemblyArea,
+            "FwdLineOfTps": FwdLineOfTps,
+            "Guard": Guard,
+            "HighWireFence": HighWireFence,
+            "InfiltrationLane": InfiltrationLane,
+
             /*
             "SupportByFirePosition": SupportByFirePosition,
             "AttackByFirePosition": AttackByFirePosition,

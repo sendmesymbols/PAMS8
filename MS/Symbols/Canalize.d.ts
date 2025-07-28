@@ -26,3 +26,4 @@ export declare class Canalize {
 }
 
 export default Canalize;
+
