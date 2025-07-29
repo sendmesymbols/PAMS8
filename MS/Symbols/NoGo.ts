@@ -1,5 +1,5 @@
- /**
- * Class Representing Killing Zone.
+/**
+ * Class Representing No Go.
  * @class
  * @author Abdul Razak
  */
@@ -9,19 +9,17 @@ import SceneView from "@arcgis/core/views/SceneView";
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
+import Polyline from "@arcgis/core/geometry/Polyline";
 import * as webMercatorUtils from "@arcgis/core/geometry/support/webMercatorUtils";
 import * as jsonUtils from "@arcgis/core/geometry/support/jsonUtils";
+import Color from "@arcgis/core/Color";
+import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import Evented from "@arcgis/core/core/Evented";
 
 type ViewType = MapView | SceneView;
 
 // Temporary utility classes
-class GeoTools {
-  static _2PtLen(pt1: Point, pt2: Point): number {
-    return Math.sqrt(Math.pow(pt2.x - pt1.x, 2) + Math.pow(pt2.y - pt1.y, 2));
-  }
-}
-
 class DrawEssentials {
   SCOPE?: any;
   SYM_GEO_TYPE?: string;
@@ -33,47 +31,31 @@ class DrawEssentials {
 }
 
 class Shapes {
-  static createKZ(x: number, y: number, size: number, spatialRef: any): number[][][] {
-    // Create KZ (Killing Zone) shapes
-    const shapes: number[][][] = [];
+  static createEllipse(params: { center: any, longAxis: number, shortAxis: number, numberOfPoints: number, map: any }): number[][] {
+    const { center, longAxis, shortAxis, numberOfPoints } = params;
+    const path: number[][] = [];
     
-    // K shape
-    shapes.push([
-      [x - size, y - size],
-      [x - size, y + size],
-      [x - size, y],
-      [x + size/2, y + size],
-      [x - size, y],
-      [x + size/2, y - size]
-    ]);
+    for (let i = 0; i <= numberOfPoints; i++) {
+      const angle = (2 * Math.PI * i) / numberOfPoints;
+      const x = center.x + (longAxis / 2) * Math.cos(angle);
+      const y = center.y + (shortAxis / 2) * Math.sin(angle);
+      path.push([x, y]);
+    }
     
-    // Z shape
-    shapes.push([
-      [x + size/2, y + size],
-      [x + size, y + size],
-      [x + size/2, y - size],
-      [x + size, y - size]
-    ]);
-    
-    return shapes;
+    return path;
   }
 }
 
-// TweenMax placeholder
 class TweenMax {
   static to(target: any, duration: number, options: any): any {
+    // Simplified tween implementation
     return {
       time: (t: number) => {
-        if (options.bezier && Array.isArray(options.bezier)) {
-          const progress = t / duration;
-          const index = Math.floor(progress * (options.bezier.length - 1));
-          const nextIndex = Math.min(index + 1, options.bezier.length - 1);
-          const localProgress = (progress * (options.bezier.length - 1)) - index;
-          
-          if (index < options.bezier.length && nextIndex < options.bezier.length) {
-            target.x = options.bezier[index].x + (options.bezier[nextIndex].x - options.bezier[index].x) * localProgress;
-            target.y = options.bezier[index].y + (options.bezier[nextIndex].y - options.bezier[index].y) * localProgress;
-          }
+        if (options.bezier && options.bezier.length > 0) {
+          const index = Math.floor((t / duration) * (options.bezier.length - 1));
+          const point = options.bezier[Math.min(index, options.bezier.length - 1)];
+          target.x = point.x;
+          target.y = point.y;
         }
       }
     };
@@ -82,16 +64,16 @@ class TweenMax {
 
 const Linear = { easeNone: "linear" };
 
-interface KillingZoneOptions {
+interface NoGoOptions {
   CTRL_PTS?: Point[];
   GEOM?: Polygon;
   DRAW_TYPE?: number;
 }
 
-export default class KillingZone extends Evented {
-  public declaredClass: string = "MilitarySymbology.Symbols.KillingZone";
-  public SID: string = "242302";
-  public symName: string = "Killing Zone";
+export default class NoGo extends Evented {
+  public declaredClass: string = "MilitarySymbology.Symbols.NoGo";
+  public SID: string = "120203";
+  public symName: string = "No Go Area";
   public symGeometricType: string = "Area";
 
   private view: ViewType;
@@ -113,23 +95,34 @@ export default class KillingZone extends Evented {
     this._tGraphic = new Graphic();
   }
 
-  public init(options: KillingZoneOptions, marker: any): void {
+  public init(options: NoGoOptions, marker: any): void {
     this._lineSym = marker;
-    
-    // Disable map navigation during drawing
+
+    const c = new Color();
+    c.setColor(marker.color);
+    c.a = 0.50;
+    this._lineSym = new SimpleFillSymbol({
+      style: "cross",
+      outline: new SimpleLineSymbol({
+        style: marker.style,
+        color: marker.color,
+        width: marker.width
+      }),
+      color: c
+    });
+
     this.view.navigation.browserTouchPanEnabled = false;
-    
-    this._drawType = options.DRAW_TYPE || 1;
 
     const drawEssentials = new DrawEssentials();
+    this._drawType = options.DRAW_TYPE || 1;
 
     if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
       this._tGraphic.geometry = options.GEOM!;
-      const drawEss = this.createDrawEssentials([...options.CTRL_PTS!], options.DRAW_TYPE);
+      const drawEss = this.createDrawEssentials([...options.CTRL_PTS!], options.DRAW_TYPE!);
       this.__drawEnd(this._tGraphic.geometry as Polygon, drawEss);
       this._clear();
     } else if (options.hasOwnProperty("CTRL_PTS")) {
-      const drawEss = this.createDrawEssentials([...options.CTRL_PTS!], options.DRAW_TYPE);
+      const drawEss = this.createDrawEssentials([...options.CTRL_PTS!], options.DRAW_TYPE!);
       this._tGraphic.geometry = this.createSymbol(drawEss);
       this.__drawEnd(this._tGraphic.geometry as Polygon, drawEss);
       this._clear();
@@ -145,7 +138,7 @@ export default class KillingZone extends Evented {
     this._onDblClk = this.view.on("double-click", (event) => this._onDoubleClickHandler(event));
   }
 
-  private createDrawEssentials(ctrlPts: Point[], drawType?: number): DrawEssentials {
+  private createDrawEssentials(ctrlPts: Point[], drawType: number): DrawEssentials {
     const drawEssentials = new DrawEssentials();
     drawEssentials.SCOPE = this;
     drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
@@ -156,7 +149,7 @@ export default class KillingZone extends Evented {
     return drawEssentials;
   }
 
-  private createSymbol(drawEssentials: DrawEssentials): Polygon {
+  private createSymbol(drawEssentials: DrawEssentials): Polygon | Polyline {
     try {
       let pts: Point[];
 
@@ -166,25 +159,21 @@ export default class KillingZone extends Evented {
         throw new Error("controlPoints not found");
       }
 
-      const lastPoint = pts[pts.length - 1];  
+      const lastPoint = pts[pts.length - 1];
       const firstPoint = pts[0];
-      let result = new Polygon({
-        spatialReference: this.view.spatialReference
-      });
 
       switch (drawEssentials.DRAW_TYPE) {
         case 1:
-          result = this.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials, result);
-          break;
+          return this.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials);
         case 2:
-          result = this.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, result);
-          break;
+          return this.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials);
         case 3:
-          result = this.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials, result);
-          break;
+          return this.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials);
+        case 4:
+          return this.createSymbolByPerfectEllipse(pts, firstPoint, lastPoint, drawEssentials);
+        default:
+          throw new Error("Invalid draw type");
       }
-
-      return result;
     } catch (e) {
       console.log(this.declaredClass + ' Cannot create Symbol due to invalid geometry');
       throw e;
@@ -193,11 +182,10 @@ export default class KillingZone extends Evented {
 
   private _onMouseMoveHandler(event: any): void {
     const candidatePoint = event.mapPoint;
-    const drawEssentials = this.createDrawEssentials(
-      [...this._points, candidatePoint],
-      this._drawType
-    );
-
+    const drawEssentials = new DrawEssentials();
+    drawEssentials.CTRL_PTS = [...this._points, candidatePoint];
+    drawEssentials.DRAW_TYPE = this._drawType;
+    
     this._tGraphic.geometry = this.createSymbol(drawEssentials);
     this.emit("onDrawProgress", {
       currentGeometry: this._tGraphic.geometry,
@@ -219,7 +207,7 @@ export default class KillingZone extends Evented {
       this.cleanUp();
     }
 
-    if (this._drawType === 3 && this._points.length === 2) {
+    if ((this._drawType === 3 || this._drawType === 4) && this._points.length === 2) {
       this.cleanUp();
     }
   }
@@ -284,107 +272,110 @@ export default class KillingZone extends Evented {
   private CreateBezierPath(pointCollection: any[], numberOfPts: number): Polygon {
     const position = { x: pointCollection[0].x, y: pointCollection[0].y };
     
-    // Remove duplicate points
-    if (pointCollection.length > 1 && 
-        pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && 
+    if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && 
         pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
       pointCollection.pop();
     }
-    
-    if (pointCollection.length > 1 && 
-        pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && 
+    if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && 
         pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
       pointCollection.pop();
     }
 
     const tween = TweenMax.to(position, numberOfPts, { bezier: pointCollection, ease: Linear.easeNone });
-    const path: number[][] = [];
-
+    const path: any[] = [];
+    
     for (let i = 0; i <= numberOfPts; i++) {
       tween.time(i);
-      path.push([position.x, position.y]);
+      path.push({ x: position.x, y: position.y });
     }
 
     const result = new Polygon({
       spatialReference: this.view.spatialReference
     });
-    result.addRing(path);
+    result.addRing(path.map(pt => [pt.x, pt.y]));
     return result;
   }
 
-  private createInnerText(result: Polygon, firstPoint: Point, lastPoint: Point): Polygon {
-    try {
-      const extent = result.extent;
-      if (extent && extent.center) {
-        const midPt = extent.center;
-        const baseLineLen = GeoTools._2PtLen(firstPoint, lastPoint);
-        let cLenLimit = baseLineLen / 10;
-        if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-        
-        const kzShapes = Shapes.createKZ(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-        for (let j = 0; j <= kzShapes.length - 1; j++) {
-          result.addRing(kzShapes[j]);
-        }
-      }
-      return result;
-    } catch (e) {
-      console.log('Cannot create Inner Text');
-      return result;
-    }
-  }
-
-  private createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, result: Polygon): Polygon {
+  private createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
     const tempArray: any[] = [];
-    pts.forEach((e) => {
+    pts.forEach(e => {
       tempArray.push({ x: e.x, y: e.y });
     });
 
     tempArray.push({ x: firstPoint.x, y: firstPoint.y });
-    result = this.CreateBezierPath(tempArray, 130);
-    result = this.createInnerText(result, firstPoint, lastPoint);
+    return this.CreateBezierPath(tempArray, 130);
+  }
+
+  private createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
+    const result = new Polygon({
+      spatialReference: this.view.spatialReference
+    });
+    const tempArray: any[] = [];
+    
+    pts.forEach(e => {
+      tempArray.push({ x: e.x, y: e.y });
+    });
+
+    tempArray.push({ x: firstPoint.x, y: firstPoint.y });
+    result.addRing(tempArray.map(pt => [pt.x, pt.y]));
 
     return result;
   }
 
-  private createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, result: Polygon): Polygon {
-    const tempArray: number[][] = [];
-    pts.forEach((e) => {
-      tempArray.push([e.x, e.y]);
+  private createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
+    const result = new Polygon({
+      spatialReference: this.view.spatialReference
+    });
+    const tempArray: any[] = [];
+    
+    pts.forEach(e => {
+      tempArray.push({ x: e.x, y: e.y });
     });
 
-    tempArray.push([firstPoint.x, firstPoint.y]);
-
-    result.addRing(tempArray);
-    result = this.createInnerText(result, firstPoint, lastPoint);
-
-    return result;
-  }
-
-  private createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, result: Polygon): Polygon {
-    const tempArray: number[][] = [];
-    pts.forEach((e) => {
-      tempArray.push([e.x, e.y]);
-    });
-
-    result.addRing(tempArray);
+    result.addRing(tempArray.map(pt => [pt.x, pt.y]));
     const extent = result.extent;
     
-    if (extent) {
-      result = new Polygon({
-        spatialReference: this.view.spatialReference
-      });
-      
-      const rectArray: number[][] = [];
-      rectArray.push([firstPoint.x, firstPoint.y]);
-      rectArray.push([extent.xmin, extent.ymin]);
-      rectArray.push([lastPoint.x, lastPoint.y]);
-      rectArray.push([extent.xmax, extent.ymax]);
-      rectArray.push([firstPoint.x, firstPoint.y]);
+    const newResult = new Polygon({
+      spatialReference: this.view.spatialReference
+    });
+    const newTempArray: any[] = [];
+    newTempArray.push(firstPoint);
+    newTempArray.push(new Point({
+      x: extent.xmin,
+      y: extent.ymin,
+      spatialReference: this.view.spatialReference
+    }));
+    newTempArray.push(lastPoint);
+    newTempArray.push(new Point({
+      x: extent.xmax,
+      y: extent.ymax,
+      spatialReference: this.view.spatialReference
+    }));
+    newTempArray.push(firstPoint);
 
-      result.addRing(rectArray);
-      result = this.createInnerText(result, firstPoint, lastPoint);
-    }
+    newResult.addRing(newTempArray.map(pt => [pt.x, pt.y]));
+    return newResult;
+  }
 
+  private createSymbolByPerfectEllipse(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polyline {
+    const result = new Polyline({
+      spatialReference: this.view.spatialReference
+    });
+
+    const firstPtScreen = this.view.toScreen(firstPoint);
+    const lastPtScreen = this.view.toScreen(lastPoint);
+    const widthScreen = lastPtScreen.x - firstPtScreen.x;
+    const heightScreen = lastPtScreen.y - firstPtScreen.y;
+    
+    const paths = Shapes.createEllipse({
+      center: firstPtScreen,
+      longAxis: widthScreen,
+      shortAxis: heightScreen,
+      numberOfPoints: 60,
+      map: this.view
+    });
+    
+    result.addPath(paths);
     return result;
   }
 } 

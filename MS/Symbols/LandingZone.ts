@@ -1,5 +1,5 @@
- /**
- * Class Representing Killing Zone.
+/**
+ * Class Representing Landing Zone.
  * @class
  * @author Abdul Razak
  */
@@ -33,18 +33,15 @@ class DrawEssentials {
 }
 
 class Shapes {
-  static createKZ(x: number, y: number, size: number, spatialRef: any): number[][][] {
-    // Create KZ (Killing Zone) shapes
+  static createLZ(x: number, y: number, size: number, spatialRef: any): number[][][] {
+    // Create LZ (Landing Zone) shapes
     const shapes: number[][][] = [];
     
-    // K shape
+    // L shape
     shapes.push([
       [x - size, y - size],
       [x - size, y + size],
-      [x - size, y],
-      [x + size/2, y + size],
-      [x - size, y],
-      [x + size/2, y - size]
+      [x + size/2, y + size]
     ]);
     
     // Z shape
@@ -82,16 +79,16 @@ class TweenMax {
 
 const Linear = { easeNone: "linear" };
 
-interface KillingZoneOptions {
+interface LandingZoneOptions {
   CTRL_PTS?: Point[];
   GEOM?: Polygon;
   DRAW_TYPE?: number;
 }
 
-export default class KillingZone extends Evented {
-  public declaredClass: string = "MilitarySymbology.Symbols.KillingZone";
-  public SID: string = "242302";
-  public symName: string = "Killing Zone";
+export default class LandingZone extends Evented {
+  public declaredClass: string = "MilitarySymbology.Symbols.LandingZone";
+  public SID: string = "242304";
+  public symName: string = "Landing Zone";
   public symGeometricType: string = "Area";
 
   private view: ViewType;
@@ -113,7 +110,7 @@ export default class KillingZone extends Evented {
     this._tGraphic = new Graphic();
   }
 
-  public init(options: KillingZoneOptions, marker: any): void {
+  public init(options: LandingZoneOptions, marker: any): void {
     this._lineSym = marker;
     
     // Disable map navigation during drawing
@@ -166,7 +163,7 @@ export default class KillingZone extends Evented {
         throw new Error("controlPoints not found");
       }
 
-      const lastPoint = pts[pts.length - 1];  
+      const lastPoint = pts[pts.length - 1];
       const firstPoint = pts[0];
       let result = new Polygon({
         spatialReference: this.view.spatialReference
@@ -321,9 +318,9 @@ export default class KillingZone extends Evented {
         let cLenLimit = baseLineLen / 10;
         if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
         
-        const kzShapes = Shapes.createKZ(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-        for (let j = 0; j <= kzShapes.length - 1; j++) {
-          result.addRing(kzShapes[j]);
+        const lzShapes = Shapes.createLZ(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+        for (let j = 0; j <= lzShapes.length - 1; j++) {
+          result.addRing(lzShapes[j]);
         }
       }
       return result;

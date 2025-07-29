@@ -286,7 +286,7 @@ export class ALineOfDenial {
 
             return result;
         } catch (e) {
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            console.error(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
             return null;
         }
     }
@@ -300,7 +300,7 @@ export class ALineOfDenial {
             try {
                 return (Shapes as any).createALD(x, y, size, this.view.spatialReference);
             } catch (e) {
-                console.log('Error creating ALD with Shapes utility, using fallback');
+                console.error('Error creating ALD with Shapes utility, using fallback');
             }
         }
         
@@ -314,14 +314,14 @@ export class ALineOfDenial {
     private createSimpleALD(x: number, y: number, size: number): number[][][] {
         // Create a simple "A" shape for ALD marker
         const paths: number[][][] = [];
-        
+
         // Vertical line of "A"
         paths.push([
             [x - size, y + size],
             [x, y - size],
             [x + size, y + size]
         ]);
-        
+
         // Horizontal line of "A"
         paths.push([
             [x - size/2, y],

@@ -191,6 +191,14 @@ import FwdLineOfTps from "../Symbols/FwdLineOfTps.ts";
 import Guard from "../Symbols/Guard.ts";
 import HighWireFence from "../Symbols/HighWireFence.ts";
 import InfiltrationLane from "../Symbols/InfiltrationLane.ts";
+import Isolate from "../Symbols/Isolate.ts";
+import KillingGr from "../Symbols/KillingGr.ts";
+import KillingZone from "../Symbols/KillingZone.ts";
+import LandingZone from "../Symbols/LandingZone.ts";
+import LineOfNoPen from "../Symbols/LineOfNoPen.ts";
+import LowWireFence from "../Symbols/LowWireFence.ts";
+import MovingConvoy from "../Symbols/MovingConvoy.ts";
+import NoGo from "../Symbols/NoGo.ts";
 
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
@@ -299,6 +307,14 @@ export default class Mapper {
             "Guard": Guard,
             "HighWireFence": HighWireFence,
             "InfiltrationLane": InfiltrationLane,
+            "Isolate": Isolate,
+            "KillingGr": KillingGr,
+            "KillingZone": KillingZone,
+            "LandingZone": LandingZone,
+            "LineOfNoPen": LineOfNoPen,
+            "LowWireFence": LowWireFence,
+            "MovingConvoy": MovingConvoy,
+            "NoGo": NoGo,
 
             /*
             "SupportByFirePosition": SupportByFirePosition,
