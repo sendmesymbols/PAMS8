@@ -208,6 +208,11 @@ import PenetrationBox from "../Symbols/PenetrationBox.ts";
 import Screen from "../Symbols/Screen.ts";
 import Secure from "../Symbols/Secure.ts";
 import SlowGo from "../Symbols/SlowGo.ts";
+import StrongPoint from "../Symbols/StrongPoint.ts";
+import SupportingAttack from "../Symbols/SupportingAttack.ts";
+import UnspecifiedWire from "../Symbols/UnspecifiedWire.ts";
+import VitalGr from "../Symbols/VitalGr.ts";
+import Withdraw from "../Symbols/Withdraw.ts";
 
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
@@ -331,6 +336,11 @@ export default class Mapper {
             "Screen": Screen,
             "Secure": Secure,
             "SlowGo": SlowGo,
+            "StrongPoint": StrongPoint,
+            "SupportingAttack": SupportingAttack,
+            "UnspecifiedWire": UnspecifiedWire,
+            "VitalGr": VitalGr,
+            "Withdraw": Withdraw
 
             /*
             "SupportByFirePosition": SupportByFirePosition,

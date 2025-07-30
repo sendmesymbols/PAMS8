@@ -6,9 +6,8 @@ import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import DrawEssentials from "../Support/DrawEssentials";
-import GeoTools from "../Support/GeoTools";
-import Shapes from "../Support/Shapes";
-import BattlePosition from "./BattlePosition.ts";
+import GeoTools from "../Support/GeoTools.ts";
+import Shapes from "../Support/Shapes.ts";
 
 export interface SlowGoOptions {
     CTRL_PTS?: Point[];

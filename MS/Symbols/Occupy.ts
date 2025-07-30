@@ -6,8 +6,8 @@ import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import DrawEssentials from "../Support/DrawEssentials";
-import GeoTools from "../Support/GeoTools";
-import Shapes from "../Support/Shapes";
+import GeoTools from "../Support/GeoTools.ts";
+import Shapes from "../Support/Shapes.ts";
 import BattlePosition from "./BattlePosition.ts";
 
 export interface OccupyOptions {

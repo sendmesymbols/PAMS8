@@ -6,10 +6,10 @@ import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import DrawEssentials from "../Support/DrawEssentials";
-import GeoTools from "../Support/GeoTools";
-import Shapes from "../Support/Shapes";
-import BaseLine from "../Support/BaseLine";
-import BattlePosition from "./BattlePosition.ts";
+import GeoTools from "../Support/GeoTools.ts";
+import Shapes from "../Support/Shapes.ts";
+import BaseLine from "../Support/BaseLine.ts";
+
 
 export interface PenetrateOptions {
     CTRL_PTS?: Point[];
