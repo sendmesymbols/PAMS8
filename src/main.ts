@@ -711,7 +711,7 @@ function initializeAutocomplete() {
     const standardIdentity = "06";              // positions 3–4 (Friendly)
     const status = "0";                         // position 7 (Present)
     const hqModifier = "0";                     // position 8 (None)
-    const amplifier1 = "14";                    // positions 9–10 (Default)
+    const amplifier1 = "16";                    // positions 9–10 (Default)
     const modifiers = "0000";                   // positions 17–20 (sector modifiers or padding)
 
 // Step 3: Pad symbolId to 10 digits (entity + type + subtype + modifiers)
@@ -812,7 +812,7 @@ function initializeAutocomplete() {
     drawEssentials.ECHELON = amplifier.getEchelon(fullSIDC);
 
     //drawEssentials.TEETH_SIZE = 2;
-    drawEssentials.DRAW_TYPE = 3;
+    drawEssentials.DRAW_TYPE = 1;
     //drawEssentials.FACE_GAP = 0;
     //drawEssentials.TEETH_GAP = 5;
     //drawEssentials.TEETH_SIZE = 2;

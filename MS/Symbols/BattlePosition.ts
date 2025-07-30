@@ -345,10 +345,10 @@ export class BattlePosition {
             
             let cLenLimit = baseLineLen / 10;
             if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-            
-            const echelons = this.createEchelon(
+
+            const echelons = Shapes.createEchelon(
                 (drawEssentials as any).ECHELON || 0, 
-                { x: midPt.x, y: midPt.y }, 
+                midPt,
                 cLenLimit, 
                 GeoTools.twoPtsAngle(firstPoint, lastPoint)
             );
@@ -408,7 +408,7 @@ export class BattlePosition {
                 let cLenLimit = baseLineLen / 10;
                 if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
                 
-                const echelons = this.createEchelon(
+                const echelons = Shapes.createEchelon(
                     (drawEssentials as any).ECHELON || 0, 
                     midPt, 
                     cLenLimit, 
@@ -479,7 +479,7 @@ export class BattlePosition {
                 let cLenLimit = baseLineLen / 10;
                 if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
                 
-                const echelons = this.createEchelon(
+                const echelons = Shapes.createEchelon(
                     (drawEssentials as any).ECHELON || 0, 
                     midPt, 
                     cLenLimit, 
@@ -511,34 +511,6 @@ export class BattlePosition {
         
         return paths;
     }
-
-    /**
-     * Create echelon symbols
-     */
-    private createEchelon(echelonLevel: number, center: { x: number, y: number }, length: number, angle: number): number[][][] {
-        const echelons: number[][][] = [];
-
-        console.log("echelonLevel: ", echelonLevel);
-        
-        if (echelonLevel <= 0) return echelons;
-        
-        // Simple echelon representation - vertical lines
-        const perpAngle = angle + Math.PI / 2;
-        const spacing = length / (echelonLevel + 1);
-        
-        for (let i = 1; i <= echelonLevel; i++) {
-            const offset = (i - (echelonLevel + 1) / 2) * spacing;
-            const startX = center.x + offset * Math.cos(angle) - (length / 4) * Math.cos(perpAngle);
-            const startY = center.y + offset * Math.sin(angle) - (length / 4) * Math.sin(perpAngle);
-            const endX = center.x + offset * Math.cos(angle) + (length / 4) * Math.cos(perpAngle);
-            const endY = center.y + offset * Math.sin(angle) + (length / 4) * Math.sin(perpAngle);
-            
-            echelons.push([[startX, startY], [endX, endY]]);
-        }
-        
-        return echelons;
-    }
-
     /**
      * Get closest point on lines (for arrays of number arrays)
      */

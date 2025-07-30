@@ -1034,10 +1034,6 @@ define(["esri/geometry/Polyline", "esri/geometry/Point", "MilSymbologyExt/GeoToo
                     case "26":
                         result = Echelons.createComd(pt.x, pt.y, radius, pt.spatialReference);
                         break;
-
-
-
-
                 }
 
 
@@ -1045,19 +1041,11 @@ define(["esri/geometry/Polyline", "esri/geometry/Point", "MilSymbologyExt/GeoToo
                     var paths = [];
                     for (var r = 0; r < result.length; r++) {
                         paths.push(this.rotate(result[r], pt.x, pt.y, angle));
-
-
-
                     }
-
                     return paths;
                 } else {
                     return result;
                 }
-
-
-
-
             }
 
             //End of Echelons

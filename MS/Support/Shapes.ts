@@ -978,14 +978,11 @@ class Shapes {
     /**
      * Create echelon (Note: This requires the Echelons module)
      */
-    static createEchelon(ech: string, pt: Point, radius: number, angle?: number): Point[][] {
-        let result: Point[][] = [];
 
-        // Note: You'll need to implement or import the Echelons module
-        // This is a placeholder implementation
-        console.warn('createEchelon requires Echelons module implementation');
 
-        /*
+    static createEchelon(ech: string, pt: Point, radius: number, angle?: number): Point[] {
+
+        var result :any = [];
         switch (ech) {
             case "12":
                 result = Echelons.createSQUAD(pt.x, pt.y, radius, pt.spatialReference);
@@ -993,13 +990,41 @@ class Shapes {
             case "120":
                 result = Echelons.createHollowOval(pt.x, pt.y, radius, pt.spatialReference);
                 break;
-            // Add other cases...
+            case "13":
+                result = Echelons.createSECTION(pt.x, pt.y, radius, pt.spatialReference);
+                break;
+            case "14":
+                result = Echelons.createPLATOON(pt.x, pt.y, radius, pt.spatialReference);
+                break;
+            case "15":
+                result = Echelons.createCoy(pt.x, pt.y, radius, pt.spatialReference);
+                break;
+            case "16":
+                result = Echelons.createBn(pt.x, pt.y, radius, pt.spatialReference);
+                break;
+            case "17":
+                result = Echelons.createREGIMENT(pt.x, pt.y, radius, pt.spatialReference);
+                break;
+            case "18":
+                result = Echelons.createBRIGADE(pt.x, pt.y, radius, pt.spatialReference);
+                break;
+            case "21":
+                result = Echelons.createDIV(pt.x, pt.y, radius, pt.spatialReference);
+                break;
+            case "22":
+                result = Echelons.createCORPS(pt.x, pt.y, radius, pt.spatialReference);
+                break;
+            case "23":
+                //result = Echelons.createArmy(pt.x, pt.y, radius, pt.spatialReference);
+                break;
+            case "26":
+                result = Echelons.createComd(pt.x, pt.y, radius, pt.spatialReference);
+                break;
         }
-        */
 
         if (angle !== undefined) {
-            const paths: Point[][] = [];
-            for (let r = 0; r < result.length; r++) {
+            var paths = [];
+            for (var r = 0; r < result.length; r++) {
                 paths.push(this.rotate(result[r], pt.x, pt.y, angle));
             }
             return paths;
