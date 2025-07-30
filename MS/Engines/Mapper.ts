@@ -117,8 +117,8 @@ import FreehandDottedArrow from "../Symbols/FreehandDottedArrow.ts";
 import FreehandDoubleLineArrow from "../Symbols/FreehandDoubleLineArrow.ts";
 import ArcOfFireSD from "../Symbols/ArcOfFireSD.ts";
 
-import ALineOfDenial from "../Symbols/ALineOfDenial.ts"; //Minor Issue -- Corrected
-import CLineOfDenial from "../Symbols/CLineOfDenial.ts"; //Minor Issue -- Corrected
+import ALineOfDenial from "../Symbols/ALineOfDenial.ts"; //Minor Issue -- Fixed
+import CLineOfDenial from "../Symbols/CLineOfDenial.ts"; //Minor Issue -- Fixed
 import Ambush from "../Symbols/Ambush.ts"; //issue
 import AntiPersonnelAntiTankMine from "../Symbols/AntiPersonnelAntiTankMine.ts";
 import AntiPersonnelMine from "../Symbols/AntiPersonnelMine.ts";
@@ -145,7 +145,7 @@ import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAtt
 import MainAttack from "../Symbols/MainAttack.ts";  //Issue
 import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts"; //Issue
 import Clear from "../Symbols/Clear.ts"; //Issue
-import BattlePosition from "../Symbols/BattlePosition.ts"; //Issue
+import BattlePosition from "../Symbols/BattlePosition.ts"; //Issue --Fixed
 import CounterAttack from "../Symbols/CounterAttack.ts"; //Issue
 import CounterAttkObj from "../Symbols/CounterAttkObj.ts"; //Issue
 import CpenPosition from "../Symbols/CpenPosition.ts"; //Issue
