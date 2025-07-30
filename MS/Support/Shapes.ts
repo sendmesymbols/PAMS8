@@ -4,13 +4,18 @@ import SpatialReference from "@arcgis/core/geometry/SpatialReference";
 import GeoTools from './GeoTools.ts';
 import Echelons from './Echelons.ts';
 
+
+interface PointLike {
+    x: number;
+    y: number;
+}
 /**
  * Shapes utility class for creating various geometric shapes and paths
  * TypeScript version for ArcGIS API 4.x
  */
 class Shapes {
 
-    /**
+     /**
      * Create a C shape
      */
     static createC(pt: Point, radius: number, steps: number): Point[] {
