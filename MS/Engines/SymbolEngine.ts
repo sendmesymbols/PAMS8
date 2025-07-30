@@ -23,7 +23,7 @@ import type { SymbolOptions } from '../ThirdParty/MilSymbols/UEITypes.ts';
 */
 
 // Import milsymbol types for the global MS object
-import '../ThirdParty/milsymbol.d.ts';
+import '../ThirdParty/MilSymbols/milsymbol.d.ts';
 import { parseSIDC, ParsedSIDC } from '../SIDC/SIDC';
 import ContextMenuManager, { ContextMenuItem, MenuItemEvent } from '../Managers/ContextMenuManager';
 

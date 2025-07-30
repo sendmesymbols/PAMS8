@@ -10,8 +10,8 @@ import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerMana
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import BaseLine from "../Support/BaseLine.ts";
-import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
+import Utils from "../Support/Utils.ts";
 
 export interface CLineOfDenialOptions {
     CTRL_PTS?: Point[];
@@ -259,8 +259,8 @@ export class CLineOfDenial {
             const p1 = pts[0];
             const p2 = pts[pts.length - 1];
 
-            const len = this.calculateDistance(p1, p2) / 20;
-            const k = this.calculateAngle(p1, p2);
+            const len = Utils.calculateDistance(p1, p2) / 20;
+            const k = Utils.calculateAngle(p1, p2);
 
             // First CLD marker
             const pt1 = {
@@ -268,7 +268,7 @@ export class CLineOfDenial {
                 y: -1 * len * Math.sin(k) + p1.y
             };
 
-            const paths1 = this.createCLD(pt1.x, pt1.y, len / 2);
+            const paths1 = Shapes.createCLD(pt1.x, pt1.y, len / 2, this.view.spatialReference);
             paths1.forEach(path => {
                 result.addPath(path);
             });
@@ -279,77 +279,20 @@ export class CLineOfDenial {
                 y: len * Math.sin(k) + p2.y
             };
 
-            const paths2 = this.createCLD(pt2.x + (len / 1.5), pt2.y, len / 2);
+
+            const paths2 = Shapes.createCLD(pt2.x + len, pt2.y, len / 2, this.view.spatialReference);
             paths2.forEach(path => {
                 result.addPath(path);
             });
 
             return result;
         } catch (e) {
+            console.error(e);
             console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
             return null;
         }
     }
 
-    /**
-     * Create CLD marker paths
-     */
-    private createCLD(x: number, y: number, size: number): number[][][] {
-        // Use Shapes utility if available, otherwise create simple CLD marker
-        if (Shapes && (Shapes as any).createCLD) {
-            try {
-                return (Shapes as any).createCLD(x, y, size, this.view.spatialReference);
-            } catch (e) {
-                console.log('Error creating CLD with Shapes utility, using fallback');
-            }
-        }
-        
-        // Fallback CLD creation - simple representation
-        return this.createSimpleCLD(x, y, size);
-    }
-
-    /**
-     * Create simple CLD marker as fallback
-     */
-    private createSimpleCLD(x: number, y: number, size: number): number[][][] {
-        // Create a simple "C" shape for CLD marker
-        const paths: number[][][] = [];
-        
-        // Left vertical line
-        paths.push([
-            [x - size, y - size],
-            [x - size, y + size]
-        ]);
-        
-        // Top horizontal line
-        paths.push([
-            [x - size, y - size],
-            [x + size/2, y - size]
-        ]);
-        
-        // Bottom horizontal line
-        paths.push([
-            [x - size, y + size],
-            [x + size/2, y + size]
-        ]);
-
-        return paths;
-    }
-
-    /**
-     * Utility methods
-     */
-    private calculateDistance(pt1: Point, pt2: Point): number {
-        const dx = pt2.x - pt1.x;
-        const dy = pt2.y - pt1.y;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    private calculateAngle(fromPt: Point, toPt: Point): number {
-        const dx = toPt.x - fromPt.x;
-        const dy = toPt.y - fromPt.y;
-        return Math.atan2(dy, dx);
-    }
 
     /**
      * Clean up drawing state and finalize

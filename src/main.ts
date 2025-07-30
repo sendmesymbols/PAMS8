@@ -23,7 +23,7 @@ import DrawEssentials from "../MS/Support/DrawEssentials.ts";
 //import type { SymbolOptions } from '../dist/MS/ThirdParty/MilSymbols/UEITypes'
 
 // Import milsymbol types
-import '../MS/ThirdParty/milsymbol.d.ts';
+import '../MS/ThirdParty/MilSymbols/milsymbol.d.ts';
 
 // Define button to switch views
 const switchButton: HTMLElement | null = document.getElementById('switch-btn');
@@ -812,7 +812,7 @@ function initializeAutocomplete() {
     drawEssentials.ECHELON = amplifier.getEchelon(fullSIDC);
 
     //drawEssentials.TEETH_SIZE = 2;
-    drawEssentials.DRAW_TYPE = 1;
+    drawEssentials.DRAW_TYPE = 3;
     //drawEssentials.FACE_GAP = 0;
     //drawEssentials.TEETH_GAP = 5;
     //drawEssentials.TEETH_SIZE = 2;

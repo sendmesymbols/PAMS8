@@ -9,7 +9,7 @@ import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerMana
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import { enrichSymbolOptions } from "../SIDC/SIDC";
-import '../ThirdParty/milsymbol.d.ts';
+import '../ThirdParty/MilSymbols/milsymbol.d.ts';
 
 // Import the milsymbol library for symbol generation
 declare const ms: any;

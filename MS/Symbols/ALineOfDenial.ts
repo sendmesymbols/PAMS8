@@ -10,8 +10,9 @@ import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerMana
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import BaseLine from "../Support/BaseLine.ts";
-import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
+import Utils from "../Support/Utils.ts";
+
 
 export interface ALineOfDenialOptions {
     CTRL_PTS?: Point[];
@@ -259,92 +260,39 @@ export class ALineOfDenial {
             const p1 = pts[0];
             const p2 = pts[pts.length - 1];
 
-            const len = this.calculateDistance(p1, p2) / 20;
-            const k = this.calculateAngle(p1, p2);
+            const len = Utils.calculateDistance(p1, p2) / 20;
+            const lineAngle = Utils.calculateAngle(p1, p2);
 
-            // First ALD marker
+            // First ALD marker at start point
             const pt1 = {
-                x: -1 * len * Math.cos(k) + p1.x,
-                y: -1 * len * Math.sin(k) + p1.y
+                x: -1 * len * Math.cos(lineAngle) + p1.x,
+                y: -1 * len * Math.sin(lineAngle) + p1.y
             };
 
-            const paths1 = this.createALD(pt1.x, pt1.y, len / 2);
+            const paths1 = Shapes.createALD(pt1.x, pt1.y, len / 2, lineAngle);
             paths1.forEach(path => {
                 result.addPath(path);
             });
 
-            // Second ALD marker
+            // Second ALD marker at end point
             const pt2 = {
-                x: len * Math.cos(k) + p2.x,
-                y: len * Math.sin(k) + p2.y
+                x: len * Math.cos(lineAngle) + p2.x,
+                y: len * Math.sin(lineAngle) + p2.y
             };
 
-            const paths2 = this.createALD(pt2.x + (len / 1.5), pt2.y, len / 2);
+            const paths2 = Shapes.createALD(pt2.x + (len / 1.5), pt2.y, len / 2, lineAngle);
             paths2.forEach(path => {
                 result.addPath(path);
             });
 
             return result;
         } catch (e) {
+            console.error(e)
             console.error(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
             return null;
         }
     }
 
-    /**
-     * Create ALD marker paths
-     */
-    private createALD(x: number, y: number, size: number): number[][][] {
-        // Use Shapes utility if available, otherwise create simple ALD marker
-        if (Shapes && (Shapes as any).createALD) {
-            try {
-                return (Shapes as any).createALD(x, y, size, this.view.spatialReference);
-            } catch (e) {
-                console.error('Error creating ALD with Shapes utility, using fallback');
-            }
-        }
-        
-        // Fallback ALD creation - simple representation
-        return this.createSimpleALD(x, y, size);
-    }
-
-    /**
-     * Create simple ALD marker as fallback
-     */
-    private createSimpleALD(x: number, y: number, size: number): number[][][] {
-        // Create a simple "A" shape for ALD marker
-        const paths: number[][][] = [];
-
-        // Vertical line of "A"
-        paths.push([
-            [x - size, y + size],
-            [x, y - size],
-            [x + size, y + size]
-        ]);
-
-        // Horizontal line of "A"
-        paths.push([
-            [x - size/2, y],
-            [x + size/2, y]
-        ]);
-
-        return paths;
-    }
-
-    /**
-     * Utility methods
-     */
-    private calculateDistance(pt1: Point, pt2: Point): number {
-        const dx = pt2.x - pt1.x;
-        const dy = pt2.y - pt1.y;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    private calculateAngle(fromPt: Point, toPt: Point): number {
-        const dx = toPt.x - fromPt.x;
-        const dy = toPt.y - fromPt.y;
-        return Math.atan2(dy, dx);
-    }
 
     /**
      * Clean up drawing state and finalize

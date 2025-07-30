@@ -117,8 +117,8 @@ import FreehandDottedArrow from "../Symbols/FreehandDottedArrow.ts";
 import FreehandDoubleLineArrow from "../Symbols/FreehandDoubleLineArrow.ts";
 import ArcOfFireSD from "../Symbols/ArcOfFireSD.ts";
 
-import ALineOfDenial from "../Symbols/ALineOfDenial.ts"; //Minor Issue
-import CLineOfDenial from "../Symbols/CLineOfDenial.ts"; //Minor Issue
+import ALineOfDenial from "../Symbols/ALineOfDenial.ts"; //Minor Issue -- Corrected
+import CLineOfDenial from "../Symbols/CLineOfDenial.ts"; //Minor Issue -- Corrected
 import Ambush from "../Symbols/Ambush.ts"; //issue
 import AntiPersonnelAntiTankMine from "../Symbols/AntiPersonnelAntiTankMine.ts";
 import AntiPersonnelMine from "../Symbols/AntiPersonnelMine.ts";
