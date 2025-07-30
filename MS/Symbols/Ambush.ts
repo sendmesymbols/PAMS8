@@ -11,6 +11,7 @@ import Amplifier from "../Support/Amplifier";
 import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
+import {debug} from "node:util";
 
 export interface AmbushOptions {
     CTRL_PTS?: Point[];
@@ -288,6 +289,8 @@ export class Ambush {
                         60, 
                         this.view
                     );
+
+
                     
                     if (values && values.geometry && values.geometry.paths[0]) {
                         const paths = values.geometry.paths[0];
@@ -327,7 +330,7 @@ export class Ambush {
                         
                         // Add connection path through intermediate points
                         const connectionPath: number[][] = [];
-                        const centerPt = result.getExtent()?.getCenter();
+                        const centerPt = result.extent.center;
                         if (centerPt) {
                             connectionPath.push([centerPt.x, centerPt.y]);
                         }
@@ -365,7 +368,7 @@ export class Ambush {
      */
     private addTeeth(polyline: Polyline, drawEssentials: DrawEssentials): void {
         try {
-            const centerPt = polyline.getExtent()?.getCenter();
+            const centerPt = polyline.extent.center;
             if (!centerPt) return;
 
             // Get the first path for teeth calculation

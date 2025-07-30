@@ -200,6 +200,15 @@ import LowWireFence from "../Symbols/LowWireFence.ts";
 import MovingConvoy from "../Symbols/MovingConvoy.ts";
 import NoGo from "../Symbols/NoGo.ts";
 
+// Import the new TypeScript symbol classes
+import ObstacleBypassEasy from "../Symbols/ObstacleBypassEasy.ts";
+import Occupy from "../Symbols/Occupy.ts";
+import Penetrate from "../Symbols/Penetrate.ts";
+import PenetrationBox from "../Symbols/PenetrationBox.ts";
+import Screen from "../Symbols/Screen.ts";
+import Secure from "../Symbols/Secure.ts";
+import SlowGo from "../Symbols/SlowGo.ts";
+
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 
@@ -315,6 +324,13 @@ export default class Mapper {
             "LowWireFence": LowWireFence,
             "MovingConvoy": MovingConvoy,
             "NoGo": NoGo,
+            "ObstacleBypassEasy": ObstacleBypassEasy,
+            "Occupy": Occupy,
+            "Penetrate": Penetrate,
+            "PenetrationBox": PenetrationBox,
+            "Screen": Screen,
+            "Secure": Secure,
+            "SlowGo": SlowGo,
 
             /*
             "SupportByFirePosition": SupportByFirePosition,

@@ -1,0 +1,3 @@
+@ObstacleBypassEasy.js @Occupy.js @Penetrate.js @PenetrationBox.js  @Screen.js @Secure.js @SlowGo.js 
+Convert it into Modern TypeScript files and add them in mapper.ts
+@/Support All the custom imported files are already converted into Typescript and placed in this folder.
