@@ -111,6 +111,23 @@ export class GeoTools {
     }
 
     /**
+     * Display a Polyline on the map for debugging
+     */
+    static displayPolyline(view: MapView | SceneView, polyline: Polyline): void {
+        const lineSymbol = new SimpleLineSymbol({
+            color: [0, 0, 255, 0.8], // Blue, semi-transparent
+            width: 2
+        });
+
+        const graphic = new Graphic({
+            geometry: polyline,
+            symbol: lineSymbol
+        });
+
+        (view as any).graphics?.add(graphic);
+    }
+
+    /**
      * Display a point with text label
      */
     static displayPointText(view: MapView | SceneView, pt: Point, text: string): void {

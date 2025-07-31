@@ -1,3 +1,5 @@
+import Point from "@arcgis/core/geometry/Point";
+
 class Utils {
     static calculateDistance(pt1: Point, pt2: Point): number {
         const dx = pt2.x - pt1.x;

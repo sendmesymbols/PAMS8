@@ -24,6 +24,7 @@ import DrawEssentials from "../MS/Support/DrawEssentials.ts";
 
 // Import milsymbol types
 import '../MS/ThirdParty/MilSymbols/milsymbol.d.ts';
+import GeoTools from "../MS/Support/GeoTools.ts";
 
 // Define button to switch views
 const switchButton: HTMLElement | null = document.getElementById('switch-btn');
@@ -793,6 +794,54 @@ function initializeAutocomplete() {
     */
     //drawEssentials.SIZE = 150;
     //drawEssentials.ANGLE = 90;
+
+
+    /*
+    drawEssentials.GEOM = new Polyline(JSON.parse('[[[7459705.494615135,3528604.534230706],[8132962.839750933,3978054.26054752],[8272995.475569369,3706549.9360785875]]]'));
+    drawEssentials.CTRL_PTS = JSON.parse('[' +
+        '{"type":"point","x":7459705.494615135,"y":3528604.534230706,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},' +
+        '{"type":"point","x":8132962.839750933,"y":3978054.26054752,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},' +
+        '{"type":"point","x":8272995.475569369,"y":3706549.9360785875,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}}' +
+        ']');
+    */
+
+    // Step 1: Convert the hardcoded GEOM array into a proper Polyline
+    const rawPath = JSON.parse('[[[7459705.494615135,3528604.534230706],[8132962.839750933,3978054.26054752],[8272995.475569369,3706549.9360785875]]]');
+    drawEssentials.GEOM = rawPath;
+
+    /*
+    drawEssentials.GEOM = new Polyline({
+      paths: rawPath,
+      spatialReference: { wkid: 102100 }
+    });
+    */
+
+// Step 2: Keep CTRL_PTS as raw objects (or optionally convert to Point instances)
+
+    const rawPoly = JSON.parse(`[{
+    "type":"point",
+    "x":7459705.494615135,
+    "y":3528604.534230706,
+    "spatialReference":{"wkid":102100,"latestWkid":3857}
+},
+{
+    "type":"point",
+    "x":8132962.839750933,
+    "y":3978054.26054752,
+    "spatialReference":{"wkid":102100,"latestWkid":3857}
+},
+{
+    "type":"point",
+    "x":8272995.475569369,
+    "y":3706549.9360785875,
+    "spatialReference":{"wkid":102100,"latestWkid":3857}
+}]`);
+
+    //drawEssentials.CTRL_PTS = rawPoly.map(pt => new Point(pt));
+    drawEssentials.CTRL_PTS = rawPoly; //Working
+
+
+
 
     //drawEssentials.GEOM = new Point(68.99174366565728 , 27.709813703606667, map.spatialReference);
 

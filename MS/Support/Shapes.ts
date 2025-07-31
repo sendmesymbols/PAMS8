@@ -1033,6 +1033,49 @@ class Shapes {
         }
     }
 
+    /**
+     * Create Bezier path from points
+     * Note: This requires TweenMax library which may not be available in 4.x
+     */
+    static createBezierPath(points: { x: number; y: number }[], numberOfPts: number, sp: SpatialReference): Polyline {
+        if (!points || points.length < 2) {
+            throw new Error("At least two points are required to create a path.");
+        }
+
+        // Remove duplicate points at the end (up to 2 times)
+        const isDuplicate = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+            a.x === b.x && a.y === b.y;
+
+        while (
+            points.length > 2 &&
+            isDuplicate(points[points.length - 1], points[points.length - 2])
+            ) {
+            points.pop();
+        }
+
+        // Starting position for TweenMax
+        const position = { x: points[0].x, y: points[0].y };
+
+        // Create tween for bezier curve
+        const tween = window.TweenMax.to(position, numberOfPts, {
+            bezier: points,
+            ease: window.Linear.easeNone,
+        });
+
+        // Interpolate bezier points
+        const path: [number, number][] = [];
+        for (let i = 0; i <= numberOfPts; i++) {
+            tween.time(i);
+            path.push([position.x, position.y]);
+        }
+
+        // Construct polyline
+        const polyline = new Polyline({ spatialReference: sp });
+        polyline.addPath(path);
+
+        return polyline;
+    }
+
     // Utility helper methods (you may need to implement these or import from GeoTools)
     private static toDegrees(radians: number): number {
         return radians * (180 / Math.PI);

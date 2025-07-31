@@ -10,6 +10,9 @@ import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
+import Shapes from "../Support/Shapes.ts";
+import {forEach} from "../../MS2/RD/geotif/libs/utils";
+import {debug} from "node:util";
 
 export interface FreehandLineOptions {
     CTRL_PTS?: Point[];
@@ -74,25 +77,32 @@ export class FreehandLine {
 
         // Disable map navigation during drawing
         // Note: In ArcGIS 4.x, navigation is handled differently
-        // this.view.navigation.enabled = false;
+        //this.view.navigation.enabled = false;
 
         const drawEssentials = new DrawEssentials();
         const baseLine = new BaseLine(this.view, this._lineSym);
 
         this._drawType = GeoTools.setDefault(options, "DRAW_TYPE", this._drawType);
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")  && options.GEOM) {
+
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+
+                this.tempGraphic.geometry = new Polyline({
+                    paths: options.GEOM,
+                    spatialReference: this.view.spatialReference
+                });;
             }
-            
+
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType);
             if (this.tempGraphic && this.tempGraphic.geometry) {
                 this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
+                this._clear();
+                this._removeEvents();
             }
-            this._clear();
 
-        } else if (options.hasOwnProperty("CTRL_PTS")) {
+
+        } else if (options.hasOwnProperty("CTRL_PTS") && options.CTRL_PTS) {
             // Immediate placement with control points only
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType);
             const geometry = this.createSymbol(drawEss);
@@ -100,6 +110,7 @@ export class FreehandLine {
                 this.tempGraphic.geometry = geometry;
                 this.__drawEnd(geometry, drawEss);
                 this._clear();
+                this._removeEvents();
             }
 
         } else {
@@ -116,10 +127,7 @@ export class FreehandLine {
         this.isDrawing = true;
         this.tempGraphic = new Graphic({
             geometry: null,
-            symbol: this._lineSym,
-            elevationInfo: {
-                mode: "relative-to-ground" // or "absolute-height", depending on your use case
-            }
+            symbol: this._lineSym
         });
         this.symbolLayer.add(this.tempGraphic);
     }
@@ -227,7 +235,6 @@ export class FreehandLine {
         drawEssentials.SYM_NAME = this.symName;
         drawEssentials.GEOM = null;
         drawEssentials.AMPLIFIER = this.amplifier.toString();
-        
         // Store additional properties
         (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
@@ -243,7 +250,6 @@ export class FreehandLine {
     private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
         try {
             let pts: Point[];
-
             if ((drawEssentials as any).CTRL_PTS) {
                 pts = (drawEssentials as any).CTRL_PTS;
             } else {
@@ -264,6 +270,7 @@ export class FreehandLine {
             }
 
         } catch (e) {
+            console.log(e);
             console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
             return null;
         }
@@ -293,26 +300,14 @@ export class FreehandLine {
                 tempArray.push({ x: pt.x, y: pt.y });
             });
             
-            return this.CreateBezierPath(tempArray, 100);
+            return Shapes.createBezierPath(tempArray, 100, this.view.spatialReference);
+            //return Shapes.CreateBezierPathPCOnly(tempArray, 100);
         }
 
         return result;
     }
 
-    /**
-     * Create Bezier path from points
-     * Note: This requires TweenMax library which may not be available in 4.x
-     */
-    private CreateBezierPath(pointCollection: { x: number, y: number }[], numberOfPts: number): Polyline {
-        const result = new Polyline({ spatialReference: this.view.spatialReference });
-        
-        // Simplified implementation - for full Bezier curve support,
-        // you would need to implement proper Bezier interpolation or use a library
-        const path = pointCollection.map(pt => [pt.x, pt.y]);
-        result.addPath(path);
-        
-        return result;
-    }
+
 
     /**
      * Clean up drawing state and finalize
@@ -377,6 +372,8 @@ export class FreehandLine {
      * Remove event handlers
      */
     private _removeEvents(): void {
+        //this.view.navigation.enabled = false;
+
         if (this.clickHandler) {
             this.clickHandler.remove();
             this.clickHandler = null;

@@ -34,6 +34,7 @@ import SIDC from "../Support/SIDC.ts"
 import DrawEssentials from "../Support/DrawEssentials.ts";
 import Mapper from "../Engines/Mapper.ts"
 import AnnotationEngine from "./AnnotationEngine.ts";
+import GeoTools from "../Support/GeoTools.ts";
 
 
 interface Evented {
@@ -86,6 +87,7 @@ class SymbolEngine implements Evented {
     private eventListeners: Map<string, Function[]> = new Map();
     private labelOptions: any = {};
     private mapper: any;
+    private isDrawing = false;
 
 
 
@@ -842,12 +844,14 @@ class SymbolEngine implements Evented {
 
 
                     if (isPassive === true) {
+                        debugger;
                         // Assuming this.reProject and this.map exist
                         if (drawEssentials.hasOwnProperty('GEOM') && drawEssentials.GEOM) {
                             drawEssentials.GEOM = this.reProject(drawEssentials.GEOM, this.view.spatialReference); // Changed this.map to this.view
                         }
                         if (drawEssentials.hasOwnProperty('OPTIONS') && drawEssentials.OPTIONS?.hasOwnProperty('GEOM') && drawEssentials.OPTIONS.GEOM) {
                             drawEssentials.OPTIONS.GEOM = this.reProject(drawEssentials.OPTIONS.GEOM, this.view.spatialReference); // Changed this.map to this.view
+                            debugger;
                         }
 
                     }
@@ -884,6 +888,7 @@ class SymbolEngine implements Evented {
                         }
 
                         if (drawEssentials.hasOwnProperty('BASE_LN_PTS') && drawEssentials.BASE_LN_PTS) {
+                            debugger;
                             if (drawEssentials.BASE_LN_PTS.hasOwnProperty('startPt') && drawEssentials.BASE_LN_PTS.startPt) drawEssentials.BASE_LN_PTS.startPt = this.reProject(drawEssentials.BASE_LN_PTS.startPt, this.view.spatialReference); // Changed this.map to this.view
                             if (drawEssentials.BASE_LN_PTS.hasOwnProperty('midPt') && drawEssentials.BASE_LN_PTS.midPt) drawEssentials.BASE_LN_PTS.midPt = this.reProject(drawEssentials.BASE_LN_PTS.midPt, this.view.spatialReference); // Changed this.map to this.view
                             if (drawEssentials.BASE_LN_PTS.hasOwnProperty('endPt') && drawEssentials.BASE_LN_PTS.endPt) drawEssentials.BASE_LN_PTS.endPt = this.reProject(drawEssentials.BASE_LN_PTS.endPt, this.view.spatialReference); // Changed this.map to this.view
@@ -953,6 +958,7 @@ class SymbolEngine implements Evented {
                 geometry: geometry,
                 symbol: symbol
             });
+            this.isDrawing = false;
 
             // Generate a temporary ID
             const tempId = this.generateUUID();
@@ -996,6 +1002,9 @@ class SymbolEngine implements Evented {
             // Get the appropriate layer from LayerManager
             const graphicsLayer = this._layerManager.getSymbolLayer();
             graphicsLayer.add(graphic);
+            console.info("Symbol Added")
+
+
 
             // Clean up event handlers if they exist
             this._endEventHandle?.remove();
