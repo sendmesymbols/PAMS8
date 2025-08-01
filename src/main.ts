@@ -807,7 +807,7 @@ function initializeAutocomplete() {
 
     // Step 1: Convert the hardcoded GEOM array into a proper Polyline
     const rawPath = JSON.parse('[[[7459705.494615135,3528604.534230706],[8132962.839750933,3978054.26054752],[8272995.475569369,3706549.9360785875]]]');
-    drawEssentials.GEOM = rawPath; // <--Working
+    //drawEssentials.GEOM = rawPath; // <--Working
 
     /*
     drawEssentials.GEOM = new Polyline({
@@ -841,7 +841,7 @@ function initializeAutocomplete() {
 }]`);
 
     //drawEssentials.CTRL_PTS = rawPoly.map(pt => new Point(pt));  // <-- Not necessary
-    drawEssentials.CTRL_PTS = rawPoly; // <--Working
+   //drawEssentials.CTRL_PTS = rawPoly; // <--Working
 
 
 
@@ -864,7 +864,15 @@ function initializeAutocomplete() {
     drawEssentials.ECHELON = amplifier.getEchelon(fullSIDC);
 
     //drawEssentials.TEETH_SIZE = 2;
-    drawEssentials.DRAW_TYPE = 1;
+
+    // Set default draw type from Parameters if available
+    const drawTypesSelect = document.getElementById('drawTypesSelectPre') as HTMLSelectElement;
+    const selectedValue = parseInt(drawTypesSelect.value);
+    console.log("DRAW_TYPE updated to:", selectedValue);
+    drawEssentials.DRAW_TYPE = selectedValue;
+
+
+    //drawEssentials.DRAW_TYPE = 1;
     //drawEssentials.FACE_GAP = 0;
     //drawEssentials.TEETH_GAP = 5;
     //drawEssentials.TEETH_SIZE = 2;
@@ -958,9 +966,14 @@ function initializeAutocomplete() {
         ${data.Tools && data.Tools.length > 0 ? 
           `<p><span class="key">Tools:</span></p><ul>${data.Tools.map((tool: any) => 
             `<li>${tool.Name}: ${tool.description || 'N/A'}</li>`
-          ).join('')}</ul>` : ''
+          ).join('')}</ul> <select id="drawTypesSelect" class="drawTypesSelect">
+           ${data.Tools.map((tool: any) =>
+              `<option value="${tool.DRAW_TYPE}">${tool.Name}</option>`
+          ).join('')}
+         </select>\`` : ''
         }
       `;
+
       
       symbolDetails.style.display = 'block';
       console.log('Symbol details displayed successfully');
