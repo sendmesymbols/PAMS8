@@ -333,7 +333,7 @@ export default class MovingConvoy extends Evented {
       // leftArray is top arrow
       for (let i = 0; i < pts.length; i++) {
         const length = GeoTools._2PtLen(midPt, pts[i]);
-        const angle = GeoTools.angleInRadians(midPt, pts[i]);
+        let angle = GeoTools.angleInRadians(midPt, pts[i]);
 
         const stPtCandidatePt = new Point({
           x: p1.x + length * Math.cos(angle),

@@ -97,10 +97,6 @@ export declare class BattlePosition {
      */
     private createEllipse;
     /**
-     * Create echelon symbols
-     */
-    private createEchelon;
-    /**
      * Get closest point on lines (for arrays of number arrays)
      */
     private getClosestPointOnLines;

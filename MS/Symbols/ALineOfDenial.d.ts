@@ -67,19 +67,6 @@ export declare class ALineOfDenial {
      */
     private createSymbol;
     /**
-     * Create ALD marker paths
-     */
-    private createALD;
-    /**
-     * Create simple ALD marker as fallback
-     */
-    private createSimpleALD;
-    /**
-     * Utility methods
-     */
-    private calculateDistance;
-    private calculateAngle;
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp;

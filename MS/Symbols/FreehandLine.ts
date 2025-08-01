@@ -27,7 +27,7 @@ export class FreehandLine {
     private layerManager: GraphicsLayerManager;
     private symbolLayer: GraphicsLayer;
     private isLine: boolean;
-    
+
     // Symbol properties
     private SID: string = "000001";
     private symName: string = "Freehand - Line";
@@ -37,16 +37,16 @@ export class FreehandLine {
     private _drawType: number = 1;
     private _geometryType: string | null = null;
     private amplifier: Amplifier;
-    
+
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
-    
+
     // Event handlers
     private clickHandler: any = null;
     private doubleClickHandler: any = null;
     private mouseMoveHandler: any = null;
-    
+
     // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
 
@@ -56,10 +56,10 @@ export class FreehandLine {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
         this.amplifier = new Amplifier();
-        
+
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
-        
+
         // Initialize temporary graphic
         this.tempGraphic = new Graphic();
     }
@@ -166,7 +166,7 @@ export class FreehandLine {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
 
         if (this._points.length === 1) {
@@ -175,7 +175,7 @@ export class FreehandLine {
                 this._onMouseMoveHandler(event);
             });
         }
-        
+
         this.emit("onDrawClick", { currentPts: this._points });
 
         // For single line mode, finish after first click
@@ -197,7 +197,7 @@ export class FreehandLine {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
         this.cleanUp();
     }
@@ -298,7 +298,7 @@ export class FreehandLine {
      */
     private createSymbolByLine(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polyline {
         const result = new Polyline({ spatialReference: this.view.spatialReference });
-        
+
         if (pts.length === 2) {
             result.addPath([[lastPoint.x, lastPoint.y], [firstPoint.x, firstPoint.y]]);
         } else if (pts.length > 2) {
@@ -306,13 +306,9 @@ export class FreehandLine {
             pts.forEach(pt => {
                 tempArray.push({ x: pt.x, y: pt.y });
             });
-            
             return Shapes.createBezierPath(tempArray, 100, this.view.spatialReference);
-            //return Shapes.CreateBezierPathPCOnly(tempArray, 100);
         }
-
-        return result;
-    }
+        return result;    }
 
 
 
@@ -323,11 +319,11 @@ export class FreehandLine {
         if (this._points.length === 0) return;
 
         const drawEssentials = this.createDrawEssentials(this._points.slice(), this._drawType);
-        
+
         if (this.tempGraphic && this.tempGraphic.geometry) {
             this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
         }
-        
+
         this._clear();
         this._removeEvents();
     }
@@ -370,7 +366,7 @@ export class FreehandLine {
         if (this.tempGraphic && this.symbolLayer) {
             this.symbolLayer.remove(this.tempGraphic);
         }
-        
+
         this.tempGraphic = null;
         this._points = [];
     }
@@ -413,7 +409,7 @@ export class FreehandLine {
         if (listeners) {
             listeners.forEach(listener => listener(data));
         }
-        
+
         // Also emit as a global document event for SymbolEngine to catch
         this.emitGlobalEvent(eventName, data);
     }

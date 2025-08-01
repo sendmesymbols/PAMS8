@@ -75,11 +75,6 @@ export declare class FreehandLine {
      */
     private createSymbolByLine;
     /**
-     * Create Bezier path from points
-     * Note: This requires TweenMax library which may not be available in 4.x
-     */
-    private CreateBezierPath;
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp;

@@ -1,3 +1,4 @@
+import Polyline from "@arcgis/core/geometry/Polyline";
 import Point from "@arcgis/core/geometry/Point";
 import Extent from "@arcgis/core/geometry/Extent";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
@@ -57,6 +58,10 @@ export declare class GeoTools {
      * Display a point on the map for debugging
      */
     static displayPoint(view: MapView | SceneView, pt: Point): void;
+    /**
+     * Display a Polyline on the map for debugging
+     */
+    static displayPolyline(view: MapView | SceneView, polyline: Polyline): void;
     /**
      * Display a point with text label
      */

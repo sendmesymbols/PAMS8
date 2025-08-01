@@ -3,7 +3,7 @@ import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import Amplifier from "../Support/Amplifier";
-import '../ThirdParty/milsymbol.d.ts';
+import '../ThirdParty/MilSymbols/milsymbol.d.ts';
 export interface UEISymbolOptions {
     SIDC?: string;
     GEOM?: Point;

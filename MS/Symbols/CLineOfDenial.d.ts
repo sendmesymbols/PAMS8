@@ -67,19 +67,6 @@ export declare class CLineOfDenial {
      */
     private createSymbol;
     /**
-     * Create CLD marker paths
-     */
-    private createCLD;
-    /**
-     * Create simple CLD marker as fallback
-     */
-    private createSimpleCLD;
-    /**
-     * Utility methods
-     */
-    private calculateDistance;
-    private calculateAngle;
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp;

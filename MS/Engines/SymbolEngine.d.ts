@@ -7,7 +7,7 @@ import View from "@arcgis/core/views/View";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import GraphicsLayerManager from "../Managers/GraphicsLayerManager";
-import '../ThirdParty/milsymbol.d.ts';
+import '../ThirdParty/MilSymbols/milsymbol.d.ts';
 import { ParsedSIDC } from '../SIDC/SIDC';
 import Amplifier from "../Support/Amplifier.ts";
 import DrawEssentials from "../Support/DrawEssentials.ts";
@@ -41,6 +41,7 @@ declare class SymbolEngine implements Evented {
     private eventListeners;
     private labelOptions;
     private mapper;
+    private isDrawing;
     constructor(viewProvider: () => MapView | SceneView);
     /**
      * Implement Evented interface methods

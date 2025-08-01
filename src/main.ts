@@ -864,7 +864,7 @@ function initializeAutocomplete() {
     drawEssentials.ECHELON = amplifier.getEchelon(fullSIDC);
 
     //drawEssentials.TEETH_SIZE = 2;
-    drawEssentials.DRAW_TYPE = 2;
+    drawEssentials.DRAW_TYPE = 1;
     //drawEssentials.FACE_GAP = 0;
     //drawEssentials.TEETH_GAP = 5;
     //drawEssentials.TEETH_SIZE = 2;
