@@ -807,16 +807,19 @@ function initializeAutocomplete() {
 
     // Step 1: Convert the hardcoded GEOM array into a proper Polyline
     const rawPath = JSON.parse('[[[7459705.494615135,3528604.534230706],[8132962.839750933,3978054.26054752],[8272995.475569369,3706549.9360785875]]]');
-    drawEssentials.GEOM = rawPath;
+    drawEssentials.GEOM = rawPath; // <--Working
 
     /*
     drawEssentials.GEOM = new Polyline({
       paths: rawPath,
-      spatialReference: { wkid: 102100 }
+      spatialReference: appConfig.activeView.spatialReference
     });
     */
 
-// Step 2: Keep CTRL_PTS as raw objects (or optionally convert to Point instances)
+    //GeoTools.displayPolyline(appConfig.activeView, drawEssentials.GEOM)
+
+
+
 
     const rawPoly = JSON.parse(`[{
     "type":"point",
@@ -837,8 +840,8 @@ function initializeAutocomplete() {
     "spatialReference":{"wkid":102100,"latestWkid":3857}
 }]`);
 
-    //drawEssentials.CTRL_PTS = rawPoly.map(pt => new Point(pt));
-    drawEssentials.CTRL_PTS = rawPoly; //Working
+    //drawEssentials.CTRL_PTS = rawPoly.map(pt => new Point(pt));  // <-- Not necessary
+    drawEssentials.CTRL_PTS = rawPoly; // <--Working
 
 
 
@@ -861,7 +864,7 @@ function initializeAutocomplete() {
     drawEssentials.ECHELON = amplifier.getEchelon(fullSIDC);
 
     //drawEssentials.TEETH_SIZE = 2;
-    drawEssentials.DRAW_TYPE = 1;
+    drawEssentials.DRAW_TYPE = 2;
     //drawEssentials.FACE_GAP = 0;
     //drawEssentials.TEETH_GAP = 5;
     //drawEssentials.TEETH_SIZE = 2;

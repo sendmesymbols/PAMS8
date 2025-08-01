@@ -76,44 +76,53 @@ export class FreehandLineDotted {
         if (this._lineSym && 'style' in this._lineSym) {
             (this._lineSym as any).style = "dash";
         }
-        
-        // Set parameters from options
+
         this._drawType = GeoTools.setDefault(options, "DRAW_TYPE", this._drawType);
 
-        const drawEssentials = new DrawEssentials();
+        const hasCtrlPts = options.hasOwnProperty("CTRL_PTS") && Array.isArray(options.CTRL_PTS);
+        const hasGeom = options.hasOwnProperty("GEOM") && options.GEOM;
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
-            if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
-            }
-            
-            const drawEss = this.createDrawEssentials(
-                options.CTRL_PTS!.slice(), 
-                this._drawType
-            );
-            
-            if (this.tempGraphic && this.tempGraphic.geometry) {
-                this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
-            }
-            this._clear();
+        const drawEss = hasCtrlPts ? this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType) : null;
 
-        } else if (options.hasOwnProperty("CTRL_PTS")) {
-            // Immediate placement with control points only
-            const drawEss = this.createDrawEssentials(
-                options.CTRL_PTS!.slice(), 
-                this._drawType
-            );
-            
-            const geometry = this.createSymbol(drawEss);
+        if (this._drawType === 2 && hasCtrlPts) {
+            // For DRAW_TYPE 2, ignore GEOM even if provided
+            const geometry = this.createSymbol(drawEss!);
             if (geometry && this.tempGraphic) {
                 this.tempGraphic.geometry = geometry;
-                this.__drawEnd(geometry, drawEss);
+                this.__drawEnd(geometry, drawEss!);
                 this._clear();
+                this._removeEvents();
+            }
+
+        } else if (hasCtrlPts && hasGeom && this.tempGraphic) {
+            // For other draw types, use GEOM if provided
+            try {
+                this.tempGraphic.geometry = new Polyline({
+                    paths: options.GEOM,
+                    spatialReference: this.view.spatialReference
+                });
+            } catch (error) {
+                console.error(this.symName, "Failed to create Polyline geometry:", error);
+            }
+
+            if (this.tempGraphic.geometry) {
+                this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss!);
+                this._clear();
+                this._removeEvents();
+            }
+
+        } else if (hasCtrlPts) {
+            // Only CTRL_PTS provided
+            const geometry = this.createSymbol(drawEss!);
+            if (geometry && this.tempGraphic) {
+                this.tempGraphic.geometry = geometry;
+                this.__drawEnd(geometry, drawEss!);
+                this._clear();
+                this._removeEvents();
             }
 
         } else {
-            // Interactive drawing mode
+            // Fallback to interactive drawing mode
             this.startInteractiveDrawing();
         }
     }
