@@ -80,8 +80,13 @@ export class FreehandArea {
 
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
             // Immediate placement with both control points and geometry
-            if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+            try {
+                this.tempGraphic.geometry = new Polygon({
+                    rings: options.GEOM,
+                    spatialReference: this.view.spatialReference
+                });
+            } catch (error) {
+                console.error(this.symName, "Failed to create Polygon geometry:", error);
             }
             
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType);
@@ -268,6 +273,7 @@ export class FreehandArea {
             }
 
         } catch (e) {
+            console.log(e);
             console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
             return null;
         }
@@ -424,29 +430,25 @@ export class FreehandArea {
      * Note: This is a simplified implementation without TweenMax
      */
     private CreateBezierPath(pointCollection: { x: number, y: number }[], numberOfPts: number): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        
-        // Remove duplicate consecutive points
-        const cleanPoints = this.removeDuplicatePoints(pointCollection);
-        
-        if (cleanPoints.length < 3) {
-            // Not enough points for a curve, create simple polygon
-            const path = cleanPoints.map(pt => [pt.x, pt.y]);
-            result.addRing(path);
-            return result;
+
+        var position = { x: pointCollection[0].x, y: pointCollection[0].y };
+        if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
+            pointCollection.pop();
+        }
+        if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
+            pointCollection.pop();
+        }
+        //pointCollection.push(pt);
+        var tween = window.TweenMax.to(position, numberOfPts, { bezier: pointCollection, ease: window.Linear.easeNone });
+        //ease:Power1.easeInOut  ease: Linear.easeNone
+        var path = [];
+        var i;
+        for (i = 0; i <= numberOfPts; i++) {
+            tween.time(i);
+            path.push([position.x, position.y]);
         }
 
-        // Simplified Bezier curve implementation
-        // For a more accurate implementation, you would need a proper Bezier library
-        const path: number[][] = [];
-        const segments = Math.max(numberOfPts, cleanPoints.length * 10);
-
-        for (let i = 0; i <= segments; i++) {
-            const t = i / segments;
-            const point = this.calculateBezierPoint(cleanPoints, t);
-            path.push([point.x, point.y]);
-        }
-
+        var result = new Polygon({"spatialReference": this.view.spatialReference});
         result.addRing(path);
         return result;
     }
