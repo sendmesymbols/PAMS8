@@ -82,7 +82,14 @@ export class FreehandDottedArrow {
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    this.tempGraphic.geometry = new Polyline({
+                        paths: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polyline geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType, this._teethGap);
@@ -351,32 +358,55 @@ export class FreehandDottedArrow {
      * Create curved dotted line symbol
      */
     private createSymbolByCurve(pts: Point[], drawEssentials: DrawEssentials, result: Polyline): Polyline {
-        const newResult = new Polyline({ spatialReference: this.view.spatialReference });
-        const firstPoint = pts[0];
-        const lastPoint = pts[pts.length - 1];
+        var firstPoint = pts[0];
+        var lastPoint = pts[pts.length - 1];
+        var res = [];
+        var paths = [];
+        var dottedPaths = [];
+        var p1, p2;
+        var gapRatio;
+        var cLenLimit;
+        var baseLineLen;
 
+        var result = new Polyline({"spatialReference": this.view.spatialReference});
         if (pts.length === 2) {
-            newResult.addPath([[lastPoint.x, lastPoint.y], [firstPoint.x, firstPoint.y]]);
+            result.addPath([lastPoint, firstPoint]);
+
         } else if (pts.length > 2) {
-            const tempArray: { x: number, y: number }[] = [];
-            pts.forEach(pt => {
-                tempArray.push({ x: pt.x, y: pt.y });
+
+            var tempArray = [];
+            Array.forEach(pts, function (e) {
+                tempArray.push({ x: e.x, y: e.y });
             });
 
-            const bezierPath = this.CreateBezierPath(tempArray, 100);
-            const gapRatio = this.calculateDistance(bezierPath[0], bezierPath[bezierPath.length - 1]) / this._teethGap;
-            const dottedPaths = this.getDashPoints(bezierPath, [gapRatio, gapRatio]);
+            res = this.CreateBezierPath(tempArray, 100);
 
-            for (let i = 0; i < dottedPaths.length; i += 2) {
-                const p1 = dottedPaths[i];
-                const p2 = dottedPaths[i + 1];
-                if (p1 && p2) {
-                    newResult.addPath([[p1.x, p1.y], [p2.x, p2.y]]);
+
+            gapRatio = GeoTools._2PtLen(res[0], res[res.length - 1]);
+
+            gapRatio = gapRatio / this._teethGap;
+
+            baseLineLen = GeoTools._2PtLen(res[0], res[res.length - 1]) / 7;
+            cLenLimit = baseLineLen / 7;
+            if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+
+            dottedPaths = GeoTools.getDashPts(res, [gapRatio, gapRatio]);
+
+            for (var i = 0; i < dottedPaths.length; i += 2) {
+                p1 = dottedPaths[i];
+                if (dottedPaths[i + 1] != undefined) {
+                    p2 = dottedPaths[i + 1];
                 }
+                result.addPath([p1, p2]);
+
+
             }
+
+
+
         }
 
-        return newResult;
+        return result;
     }
 
     /**

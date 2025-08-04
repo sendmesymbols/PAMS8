@@ -10,6 +10,7 @@ import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
+import Utils from "../Support/Utils.ts";
 
 export interface FreehandArrowOptions {
     CTRL_PTS?: Point[];
@@ -79,7 +80,14 @@ export class FreehandArrow {
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    this.tempGraphic.geometry = new Polyline({
+                        paths: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polyline geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType);
@@ -367,82 +375,12 @@ export class FreehandArrow {
             pts.forEach(pt => {
                 tempArray.push({ x: pt.x, y: pt.y });
             });
-            result = this.CreateBezierPath(tempArray, 100);
+            result = Utils.createBezierPath(tempArray, 100, this.view.spatialReference, true);
         }
 
         return result;
     }
 
-    /**
-     * Create Bezier path from points
-     * Note: This is a simplified implementation without TweenMax
-     */
-    private CreateBezierPath(pointCollection: { x: number, y: number }[], numberOfPts: number): Polyline {
-        const result = new Polyline({ spatialReference: this.view.spatialReference });
-        
-        // Remove duplicate consecutive points
-        const cleanPoints = this.removeDuplicatePoints(pointCollection);
-        
-        if (cleanPoints.length < 2) {
-            // Not enough points for a curve, create simple line
-            const path = cleanPoints.map(pt => [pt.x, pt.y]);
-            result.addPath(path);
-            return result;
-        }
-
-        // Simplified Bezier curve implementation
-        // For a more accurate implementation, you would need a proper Bezier library
-        const path: number[][] = [];
-        const segments = Math.max(numberOfPts, cleanPoints.length * 10);
-
-        for (let i = 0; i <= segments; i++) {
-            const t = i / segments;
-            const point = this.calculateBezierPoint(cleanPoints, t);
-            path.push([point.x, point.y]);
-        }
-
-        result.addPath(path);
-        return result;
-    }
-
-    /**
-     * Remove duplicate consecutive points
-     */
-    private removeDuplicatePoints(points: { x: number, y: number }[]): { x: number, y: number }[] {
-        if (points.length <= 1) return points;
-
-        const result = [points[0]];
-        for (let i = 1; i < points.length; i++) {
-            const current = points[i];
-            const previous = points[i - 1];
-            if (current.x !== previous.x || current.y !== previous.y) {
-                result.push(current);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Calculate Bezier curve point at parameter t
-     * Simplified implementation for multiple control points
-     */
-    private calculateBezierPoint(points: { x: number, y: number }[], t: number): { x: number, y: number } {
-        if (points.length === 1) return points[0];
-        
-        // Use linear interpolation for simplicity
-        // For proper Bezier curves, implement De Casteljau's algorithm
-        const segmentLength = 1 / (points.length - 1);
-        const segmentIndex = Math.min(Math.floor(t / segmentLength), points.length - 2);
-        const localT = (t - segmentIndex * segmentLength) / segmentLength;
-        
-        const p1 = points[segmentIndex];
-        const p2 = points[segmentIndex + 1];
-        
-        return {
-            x: p1.x + (p2.x - p1.x) * localT,
-            y: p1.y + (p2.y - p1.y) * localT
-        };
-    }
 
     /**
      * Clean up drawing state and finalize

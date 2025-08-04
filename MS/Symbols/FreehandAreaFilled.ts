@@ -1,7 +1,6 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
-import Polyline from "@arcgis/core/geometry/Polyline";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
@@ -13,6 +12,8 @@ import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
+import Utils from "../Support/Utils.ts";
+
 
 export interface FreehandAreaFilledOptions {
     CTRL_PTS?: Point[];
@@ -309,7 +310,7 @@ export class FreehandAreaFilled {
         });
         tempArray.push({ x: firstPoint.x, y: firstPoint.y });
 
-        return this.CreateBezierPath(tempArray, 130);
+        return Utils.createBezierPath(tempArray, 130, this.view.spatialReference, false);
     }
 
     /**

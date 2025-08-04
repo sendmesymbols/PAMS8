@@ -1,7 +1,6 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
-import Polyline from "@arcgis/core/geometry/Polyline";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
@@ -12,6 +11,7 @@ import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
+import Utils from "../Support/Utils.ts";
 
 export interface FreehandAreaOptions {
     CTRL_PTS?: Point[];
@@ -289,7 +289,7 @@ export class FreehandArea {
         });
         tempArray.push({ x: firstPoint.x, y: firstPoint.y });
 
-        return this.CreateBezierPath(tempArray, 130);
+        return Utils.createBezierPath(tempArray, 130, this.view.spatialReference, false);
     }
 
     /**
@@ -425,72 +425,6 @@ export class FreehandArea {
         return result;
     }
 
-    /**
-     * Create Bezier path from points
-     * Note: This is a simplified implementation without TweenMax
-     */
-    private CreateBezierPath(pointCollection: { x: number, y: number }[], numberOfPts: number): Polygon {
-
-        var position = { x: pointCollection[0].x, y: pointCollection[0].y };
-        if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
-            pointCollection.pop();
-        }
-        if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
-            pointCollection.pop();
-        }
-        //pointCollection.push(pt);
-        var tween = window.TweenMax.to(position, numberOfPts, { bezier: pointCollection, ease: window.Linear.easeNone });
-        //ease:Power1.easeInOut  ease: Linear.easeNone
-        var path = [];
-        var i;
-        for (i = 0; i <= numberOfPts; i++) {
-            tween.time(i);
-            path.push([position.x, position.y]);
-        }
-
-        var result = new Polygon({"spatialReference": this.view.spatialReference});
-        result.addRing(path);
-        return result;
-    }
-
-    /**
-     * Remove duplicate consecutive points
-     */
-    private removeDuplicatePoints(points: { x: number, y: number }[]): { x: number, y: number }[] {
-        if (points.length <= 1) return points;
-
-        const result = [points[0]];
-        for (let i = 1; i < points.length; i++) {
-            const current = points[i];
-            const previous = points[i - 1];
-            if (current.x !== previous.x || current.y !== previous.y) {
-                result.push(current);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Calculate Bezier curve point at parameter t
-     * Simplified implementation for multiple control points
-     */
-    private calculateBezierPoint(points: { x: number, y: number }[], t: number): { x: number, y: number } {
-        if (points.length === 1) return points[0];
-        
-        // Use linear interpolation for simplicity
-        // For proper Bezier curves, implement De Casteljau's algorithm
-        const segmentLength = 1 / (points.length - 1);
-        const segmentIndex = Math.min(Math.floor(t / segmentLength), points.length - 2);
-        const localT = (t - segmentIndex * segmentLength) / segmentLength;
-        
-        const p1 = points[segmentIndex];
-        const p2 = points[segmentIndex + 1];
-        
-        return {
-            x: p1.x + (p2.x - p1.x) * localT,
-            y: p1.y + (p2.y - p1.y) * localT
-        };
-    }
 
     /**
      * Clean up drawing state and finalize
