@@ -278,6 +278,7 @@ export class FreehandDottedArrow {
 
             return result;
         } catch (e) {
+            console.error(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
             console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
             return null;
         }
@@ -375,8 +376,9 @@ export class FreehandDottedArrow {
         } else if (pts.length > 2) {
 
             var tempArray = [];
-            Array.forEach(pts, function (e) {
-                tempArray.push({ x: e.x, y: e.y });
+
+            pts.forEach((pt:Point) => {
+                tempArray.push({ x: pt.x, y: pt.y });
             });
 
             res = this.CreateBezierPath(tempArray, 100);
@@ -413,23 +415,31 @@ export class FreehandDottedArrow {
      * Create Bezier path from points (returns array of points instead of Polyline)
      */
     private CreateBezierPath(pointCollection: { x: number, y: number }[], numberOfPts: number): { x: number, y: number }[] {
-        // Remove duplicate consecutive points
-        const cleanPoints = this.removeDuplicatePoints(pointCollection);
-        
-        if (cleanPoints.length < 2) {
-            return cleanPoints;
+        var position = { x: pointCollection[0].x, y: pointCollection[0].y };
+        if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
+            pointCollection.pop();
+        }
+        if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
+            pointCollection.pop();
+        }
+        //pointCollection.push(pt);
+        var tween = window.TweenMax.to(position, numberOfPts, { bezier: pointCollection, ease: window.Linear.easeNone });
+        //ease:Power1.easeInOut  ease: Linear.easeNone
+        // Collect path points as Point instances
+        const path: Point[] = [];
+
+        for (let i = 0; i <= numberOfPts; i++) {
+            tween.time(i);
+            const pt = new Point({
+                x: position.x,
+                y: position.y,
+                spatialReference: this.view.spatialReference
+            });
+            path.push(pt);
         }
 
-        // Simplified Bezier curve implementation
-        const path: { x: number, y: number }[] = [];
-        const segments = Math.max(numberOfPts, cleanPoints.length * 10);
-
-        for (let i = 0; i <= segments; i++) {
-            const t = i / segments;
-            const point = this.calculateBezierPoint(cleanPoints, t);
-            path.push(point);
-        }
-
+        var result = new Polyline({"spatialReference": this.view.spatialReference});
+        result.addPath(path);
         return path;
     }
 
