@@ -80,7 +80,7 @@ export class FreehandDottedArrow {
         this._lineSym = marker;
         this._drawType = GeoTools.setDefault(options, "DRAW_TYPE", this._drawType);
         this._teethGap = GeoTools.setDefault(options, "TEETH_GAP", this._teethGap);
-        
+        this.updateTeethGap();
         // Set up event handlers
         this.setupEventHandlers();
 
