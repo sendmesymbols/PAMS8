@@ -236,17 +236,68 @@ export class GeoTools {
         return radians * factor;
     }
 
+        /**
+         * Calculate distance between two points
+         */
+        static distance(from: Point, to: Point, unit: string): number {
+            const dLat = this.degreesToRadians(to.y - from.y);
+            const dLon = this.degreesToRadians(to.x - from.x);
+            const lat1 = this.degreesToRadians(from.y);
+            const lat2 = this.degreesToRadians(to.y);
+            const a = Math.pow(Math.sin(dLat / 2), 2) + Math.pow(Math.sin(dLon / 2), 2) * Math.cos(lat1) * Math.cos(lat2);
+            return this.radiansToLength(2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)), unit);
+        }
+
     /**
-     * Calculate distance between two points
+     * Generate dashed points for a line
      */
-    static distance(from: Point, to: Point, unit: string): number {
-        const dLat = this.degreesToRadians(to.y - from.y);
-        const dLon = this.degreesToRadians(to.x - from.x);
-        const lat1 = this.degreesToRadians(from.y);
-        const lat2 = this.degreesToRadians(to.y);
-        const a = Math.pow(Math.sin(dLat / 2), 2) + Math.pow(Math.sin(dLon / 2), 2) * Math.cos(lat1) * Math.cos(lat2);
-        return this.radiansToLength(2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)), unit);
+    static getDashPts(pts: Point[], dashArray: number[]): Point[] {
+        const result: Point[] = [];
+
+        for (let j = 0; j < pts.length - 1; j++) {
+            const p1 = pts[j];
+            const p2 = pts[j + 1];
+            result.push(...this.dashes(p1.x, p1.y, p2.x, p2.y, dashArray, p1.spatialReference));
+        }
+
+        return result;
     }
+
+    /**
+     * Create dashed points between two coordinates
+     */
+    static dashes(x: number, y: number, x2: number, y2: number, dashArray: number[], spatialReference: SpatialReference): Point[] {
+        const points: Point[] = [];
+        const dashArrayFinal = dashArray.length ? dashArray : [10, 5];
+        const dashLength = dashArrayFinal[0] === 0 ? 0.001 : dashArrayFinal[0];
+
+        points.push(new Point({ x, y, spatialReference }));
+        const dx = x2 - x;
+        const dy = y2 - y;
+        const slope = dx ? dy / dx : 1e15;
+        let distRemaining = Math.sqrt(dx * dx + dy * dy);
+        let dashIndex = 0;
+        let draw = true;
+
+        let currentDashLength = dashArrayFinal[dashIndex++ % dashArrayFinal.length];
+
+        while (distRemaining > currentDashLength) {
+            if (currentDashLength > distRemaining) {
+                currentDashLength = distRemaining;
+            }
+            const xStep = Math.sqrt(currentDashLength * currentDashLength / (1 + slope * slope));
+            const xIncrement = dx < 0 ? -xStep : xStep;
+            x += xIncrement;
+            y += slope * xIncrement;
+            points.push(new Point({ x, y, spatialReference }));
+            distRemaining -= currentDashLength;
+            draw = !draw;
+            currentDashLength = dashArrayFinal[dashIndex++ % dashArrayFinal.length];
+        }
+
+        return points;
+    }
+
 
     /**
      * Calculate bearing between two points

@@ -10,8 +10,6 @@ import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
-import Utils from "../Support/Utils.ts";
-
 
 export interface FreehandDottedArrowOptions {
     CTRL_PTS?: Point[];
@@ -41,12 +39,7 @@ export class FreehandDottedArrow {
     private _teethGap: number = 30;
     private _geometryType: string | null = null;
     private amplifier: Amplifier;
-
-    // Dash properties
-    private dashLength: number = 10; // Length of each dash in map units
-    private gapLength: number = 5;  // Length of gap between dashes in map units
-
-
+    
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
@@ -132,116 +125,6 @@ export class FreehandDottedArrow {
             symbol: this._lineSym
         });
         this.symbolLayer.add(this.tempGraphic);
-    }
-
-    /**
-     * Create dashed curved line symbol
-     */
-    private createDashedSymbolByCurve(pts: Point[], drawEssentials: DrawEssentials, result: Polyline): Polyline {
-        if (pts.length < 2) {
-            return result;
-        }
-
-        const teethGap = (drawEssentials as any).TEETH_GAP || this._teethGap;
-        const dashArray = [teethGap, teethGap];
-
-        if (pts.length === 2) {
-            const dashedPoints = GeoTools.getDashPts(pts, dashArray);
-            for (let i = 0; i < dashedPoints.length - 1; i += 2) {
-                const p1 = dashedPoints[i];
-                const p2 = dashedPoints[i + 1];
-                if (p2) {
-                    result.addPath([[p1.x, p1.y], [p2.x, p2.y]]);
-                }
-            }
-        } else {
-            const tempArray: { x: number, y: number }[] = pts.map(pt => ({ x: pt.x, y: pt.y }));
-            const bezierPoints = Utils.createBezierPath(tempArray, 100, this.view.spatialReference, true) as Polyline;
-
-            bezierPoints.paths.forEach(path => {
-                const pathPoints = path.map(([x, y]) => new Point({ x, y, spatialReference: this.view.spatialReference }));
-                const dashedPoints = GeoTools.getDashPts(pathPoints, dashArray);
-                for (let i = 0; i < dashedPoints.length - 1; i += 2) {
-                    const p1 = dashedPoints[i];
-                    const p2 = dashedPoints[i + 1];
-                    if (p2) {
-                        result.addPath([[p1.x, p1.y], [p2.x, p2.y]]);
-                    }
-                }
-            });
-        }
-
-        return result;
-    }
-
-    /**
-     * Create dashed straight line symbol
-     */
-    private createDashedSymbolByLine(pts: Point[], drawEssentials: DrawEssentials, result: Polyline): Polyline {
-        if (pts.length < 2) {
-            return result;
-        }
-
-        const teethGap = (drawEssentials as any).TEETH_GAP || this._teethGap;
-        const dashArray = [teethGap, teethGap];
-        const dashedPoints = GeoTools.getDashPts(pts, dashArray);
-
-        for (let i = 0; i < dashedPoints.length - 1; i += 2) {
-            const p1 = dashedPoints[i];
-            const p2 = dashedPoints[i + 1];
-            if (p2) {
-                result.addPath([[p1.x, p1.y], [p2.x, p2.y]]);
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Create dashed segments between two points
-     */
-    private createDashedSegment(startPt: Point, endPt: Point): number[][][] {
-        const paths: number[][][] = [];
-
-        // Calculate total segment length
-        const totalLength = this.calculateDistance(startPt, endPt);
-        const dashGapLength = this.dashLength + this.gapLength;
-        const numDashes = Math.floor(totalLength / dashGapLength);
-
-        if (numDashes === 0) {
-            // If segment is too short, return a single dash
-            return [[[startPt.x, startPt.y], [endPt.x, endPt.y]]];
-        }
-
-        // Calculate direction vector
-        const dx = endPt.x - startPt.x;
-        const dy = endPt.y - startPt.y;
-        const segmentLength = Math.sqrt(dx * dx + dy * dy);
-        const unitX = dx / segmentLength;
-        const unitY = dy / segmentLength;
-
-        // Generate dash segments
-        for (let i = 0; i < numDashes; i++) {
-            const startT = i * dashGapLength;
-            const endT = Math.min(startT + this.dashLength, segmentLength);
-
-            const startX = startPt.x + unitX * startT;
-            const startY = startPt.y + unitY * startT;
-            const endX = startPt.x + unitX * endT;
-            const endY = startPt.y + unitY * endT;
-
-            paths.push([[startX, startY], [endX, endY]]);
-        }
-
-        // Add partial dash if there's remaining length
-        const lastDashEnd = numDashes * dashGapLength;
-        if (lastDashEnd < segmentLength) {
-            const startX = startPt.x + unitX * lastDashEnd;
-            const startY = startPt.y + unitY * lastDashEnd;
-            paths.push([[startX, startY], [endPt.x, endPt.y]]);
-        }
-
-        return paths;
     }
 
     /**
@@ -358,11 +241,10 @@ export class FreehandDottedArrow {
         return drawEssentials;
     }
 
-
     /**
-     * Override createSymbol to create dashed line geometry
+     * Create symbol geometry from DrawEssentials
      */
-    protected createSymbol(drawEssentials: DrawEssentials): Polyline | null {
+    private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
         try {
             let pts: Point[];
 
@@ -376,17 +258,17 @@ export class FreehandDottedArrow {
 
             switch ((drawEssentials as any).DRAW_TYPE) {
                 case 1:
-                    result = this.createDashedSymbolByLine(pts, drawEssentials, result);
+                    result = this.createSymbolByLine(pts, drawEssentials, result);
                     break;
                 case 2:
-                    result = this.createDashedSymbolByCurve(pts, drawEssentials, result);
+                    result = this.createSymbolByCurve(pts, drawEssentials, result);
                     break;
                 default:
-                    result = this.createDashedSymbolByLine(pts, drawEssentials, result);
+                    result = this.createSymbolByLine(pts, drawEssentials, result);
                     break;
             }
 
-            // Add Arrow Head (remains solid)
+            // Add Arrow Head
             if (pts.length >= 2) {
                 const arrowHeadPath = this.createArrowHead(pts);
                 if (arrowHeadPath && arrowHeadPath.length > 0) {
