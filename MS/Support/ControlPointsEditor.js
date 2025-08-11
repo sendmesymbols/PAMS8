@@ -156,7 +156,7 @@ define(["dojo/_base/declare", "dojo/_base/lang", "dojo/_base/array",
             _scaleStop: function (event, qthis) { },
 
             _move: function (evt) {
-
+                
                 var a = evt.graphic;
                 this._startTx = a.getDojoShape().getTransform();
                 var graphic = this._graphic;
@@ -172,8 +172,8 @@ define(["dojo/_base/declare", "dojo/_base/lang", "dojo/_base/array",
                         // I Commented var a = mock._updateControlPt(this._graphic.geometry, item, graphicTransform);
                         var a = this._updateControlPt(this._graphic.geometry, item, graphicTransform);
                         this._graphic.drawEssentials.controlPoints[index].update(a.x, a.y);
-                        console.log(this._graphic.drawEssentials.controlPoints[index]);
-                        GeoTools.displayPoint(evt.target._map, this._graphic.drawEssentials.controlPoints[index]);
+                        //console.log(this._graphic.drawEssentials.controlPoints[index]);
+                        //GeoTools.displayPoint(evt.target._map, this._graphic.drawEssentials.controlPoints[index]);
                         //this._graphic.geometry.controlPoints[index].update(a.x, a.y);
 
                     }, this);
@@ -330,14 +330,14 @@ define(["dojo/_base/declare", "dojo/_base/lang", "dojo/_base/array",
                 GeoTools.displayPoint(evt.target._map, f);
                 this._graphic.drawEssentials.CTRL_PTS[0].x = f.x;                
                 this._graphic.drawEssentials.CTRL_PTS[0].y = f.y;              
-                */
-
-
-
-
-
-                /*
+                */            
+              
+              
+              
               var geometry = this._graphic.geometry;
+              if(geometry.type === "point") {
+                        return;
+              }
               var spatialReference = geometry.spatialReference;
               var graphicDojoShape = this._graphic.getDojoShape();
               var graphicTransform = graphicDojoShape.getTransform();
@@ -350,8 +350,6 @@ define(["dojo/_base/declare", "dojo/_base/lang", "dojo/_base/array",
 
                var transformGeometry = geometryJsonUtils.fromJson(geometryJson);
                this._graphic.setGeometry(transformGeometry);
-              
-
 
 
                     for (var index in this._controlPoints) {
@@ -362,8 +360,6 @@ define(["dojo/_base/declare", "dojo/_base/lang", "dojo/_base/array",
                               
                                 f.x += wrapOffset;
                                 
-                                console.log("------")
-                                console.log(graphicTransform)                                
                                 
                                 f = matrix.multiplyPoint([layerTransform, graphicTransform, matrix.invert(layerTransform)], f);
 
@@ -376,7 +372,7 @@ define(["dojo/_base/declare", "dojo/_base/lang", "dojo/_base/array",
 
                                 //Point Where Ease of Move Problem Resides
                                 //console.log(wrapOffset)
-                                GeoTools.displayPoint(evt.target._map, f);
+                                //GeoTools.displayPoint(evt.target._map, f);
                                 
                                 
 
@@ -394,9 +390,7 @@ define(["dojo/_base/declare", "dojo/_base/lang", "dojo/_base/array",
                               var wrapOffset = this._wrapOffset || 0;
                               var f = evt.target._map.toScreen({x: geometry.x, y: geometry.y, spatialReference: spatialReference}, !0);
                                 f.x += wrapOffset;
-                                f = matrix.multiplyPoint([layerTransform, graphicTransform, matrix.invert(layerTransform)], f);
-
-                                console.info(layerTransform, graphicTransform)
+                                f = matrix.multiplyPoint([layerTransform, graphicTransform, matrix.invert(layerTransform)], f);                                
 
                                 f.x -= wrapOffset;
                                 f = evt.target._map.toMap(f);
@@ -412,14 +406,18 @@ define(["dojo/_base/declare", "dojo/_base/lang", "dojo/_base/array",
                           }
 
                            this._graphic.drawEssentials.BASE_LN_PTS = this._baseLinePts;
+                           this._graphic.attributes.tempBpoints = this._baseLinePts;
                          }
 
 
                      
                this._graphic.drawEssentials.CTRL_PTS = this._controlPoints;
                this._graphic.drawEssentials.DRAW_TYPE = this._drawExtendType;
-               */
-
+               
+               
+               
+                
+                /*
                 var f;
                 var tempCpoints = [];
                 for (var index in this._controlPoints) {
@@ -448,6 +446,7 @@ define(["dojo/_base/declare", "dojo/_base/lang", "dojo/_base/array",
                     this._graphic.attributes.tempBpoints = tempBpoints;
 
                 }
+                */
 
                 
 

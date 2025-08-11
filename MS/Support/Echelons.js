@@ -1,3 +1,8 @@
+/** @module Echelons
+* Common shapes
+*@author Abdul Razak
+*/
+
 define(["esri/geometry/Polyline", "esri/geometry/Point", "MilSymbologyExt/GeoTools"], function(Polyline, Point, GeoTools){
     
     return {
