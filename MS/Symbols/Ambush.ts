@@ -12,6 +12,7 @@ import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 import Utils from "../Support/Utils.ts";
+// import type SpatialReference from "@arcgis/core/geometry/SpatialReference";
 
 export interface AmbushOptions {
     CTRL_PTS?: Point[];
@@ -80,6 +81,26 @@ export class Ambush {
         
         // Initialize temporary graphic
         this.tempGraphic = new Graphic();
+    }
+
+    // Helper to convert a path (mixed of [x,y] tuples or Point-like objects) into a Point[] for ArcGIS 4.3 addPath API
+    private toPointPath(path: Array<number[] | Point | { x: number; y: number }>): Point[] {
+        return path.map((entry: any) => {
+            if (entry instanceof Point) {
+                return entry as Point;
+            }
+            // If it's an array-like [x, y]
+            if (Array.isArray(entry) && entry.length >= 2) {
+                const x = entry[0];
+                const y = entry[1];
+                return new Point({ x, y, spatialReference: this.view.spatialReference });
+            }
+            // If it's an object with x,y
+            if (entry && typeof entry === "object" && "x" in entry && "y" in entry) {
+                return new Point({ x: entry.x, y: entry.y, spatialReference: this.view.spatialReference });
+            }
+            throw new Error("Invalid path entry for toPointPath");
+        });
     }
 
     /**
@@ -275,8 +296,8 @@ export class Ambush {
             const endPt = pts[1];
 
             if (pts.length === 2) {
-                // Simple line case
-                result.addPath([[startingPt.x, startingPt.y], [endPt.x, endPt.y]]);
+                // Simple line case (use Point[] for ArcGIS 4.3 compatibility)
+                result.addPath([startingPt, endPt]);
                 
             } else if (pts.length === 3) {
                 // Curved section with teeth
@@ -301,10 +322,22 @@ export class Ambush {
                     
                     if (values && values.geometry && values.geometry.paths[0]) {
                         const paths = values.geometry.paths[0];
-                        result.addPath(paths.slice(0, 60));
-                        
-                        // Add teeth
-                        this.addTeeth(result, drawEssentials);
+                        const firstPath = paths.slice(0, 60);
+                        result.addPath(this.toPointPath(firstPath));
+
+                        // Compute fixed teeth params from arc-only geometry
+                        const midPt = new Point({ x: firstPath[30][0], y: firstPath[30][1], spatialReference: this.view.spatialReference });
+                        const extent = result.extent;
+                        const centerPt = extent ? extent.center : null;
+                        if (centerPt) {
+                        const length = Utils.calculateDistance(endPt, midPt) / 10;
+                            const teethSize = length * this.setDefault(drawEssentials, "TEETH_SIZE", this._teethSize);
+                        const angle = Utils.calculateAngle(centerPt, midPt);
+                            const teethGap = this.setDefault(drawEssentials, "TEETH_GAP", this._teethGap);
+
+                            // Add teeth with fixed angle/size (won’t follow mouse)
+                            this.addTeethFromArc(firstPath, angle, teethSize, teethGap, result);
+                        }
                     }
                 }
                 
@@ -333,30 +366,36 @@ export class Ambush {
                     
                     if (values && values.geometry && values.geometry.paths[0]) {
                         const paths = values.geometry.paths[0];
-                        result.addPath(paths.slice(0, 60));
-                        
-                        // Add connection path through intermediate points
+                        const firstPath = paths.slice(0, 60);
+                        result.addPath(this.toPointPath(firstPath));
+
+                        // Compute fixed teeth params from arc-only geometry
+                        const midPt = new Point({ x: firstPath[30][0], y: firstPath[30][1], spatialReference: this.view.spatialReference });
+                        const extent = result.extent;
+                        const centerPt = extent ? extent.center : null;
+                        const length = Utils.calculateDistance(endPt, midPt) / 10;
+                        const teethSize = length * this.setDefault(drawEssentials, "TEETH_SIZE", this._teethSize);
+                        const angle = centerPt ? Utils.calculateAngle(centerPt, midPt) : 0;
+                        const teethGap = this.setDefault(drawEssentials, "TEETH_GAP", this._teethGap);
+
+                        // Add connection path through intermediate points (start at mid point of arc)
                         const connectionPath: number[][] = [];
-                        const centerPt = result.extent.center;
-                        if (centerPt) {
-                            connectionPath.push([centerPt.x, centerPt.y]);
-                        }
-                        
-                        // Add intermediate points
+                        connectionPath.push([midPt.x, midPt.y]);
                         for (let i = 3; i < pts.length - 1; i++) {
                             connectionPath.push([pts[i].x, pts[i].y]);
                         }
                         connectionPath.push([lastPt.x, lastPt.y]);
-                        
-                        result.addPath(connectionPath);
-                        
-                        // Add teeth
-                        this.addTeeth(result, drawEssentials);
-                        
+                        result.addPath(this.toPointPath(connectionPath));
+
+                        // Add teeth with fixed angle/size (won’t follow mouse)
+                        if (centerPt) {
+                            this.addTeethFromArc(firstPath, angle, teethSize, teethGap, result);
+                        }
+
                         // Add arrow head
                         const arrowHead = this.createArrowHead(secLastPt, lastPt);
                         if (arrowHead && arrowHead.length > 0) {
-                            result.addPath(arrowHead);
+                            result.addPath(this.toPointPath(arrowHead));
                         }
                     }
                 }
@@ -365,6 +404,7 @@ export class Ambush {
             return result;
             
         } catch (e) {
+            console.error(e);
             console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
             return null;
         }
@@ -374,30 +414,39 @@ export class Ambush {
      * Add teeth to the curved section
      */
     private addTeeth(polyline: Polyline, drawEssentials: DrawEssentials): void {
+        // kept for compatibility; unused in updated flow
         try {
-            const centerPt = polyline.extent.center;
-            if (!centerPt) return;
-
-            // Get the first path for teeth calculation
             const firstPath = polyline.paths[0];
             if (!firstPath || firstPath.length < 30) return;
 
             const endPt = new Point({ x: firstPath[firstPath.length - 1][0], y: firstPath[firstPath.length - 1][1], spatialReference: this.view.spatialReference });
             const midPt = new Point({ x: firstPath[30][0], y: firstPath[30][1], spatialReference: this.view.spatialReference });
-            
-            const length = this.calculateDistance(endPt, midPt) / 10;
+            const extent = polyline.extent;
+            const centerPt = extent ? extent.center : null;
+            if (!centerPt) return;
+
+            const length = Utils.calculateDistance(endPt, midPt) / 10;
             const teethSize = length * this.setDefault(drawEssentials, "TEETH_SIZE", this._teethSize);
-            const angle = this.calculateAngle(centerPt, midPt);
+            const angle = Utils.calculateAngle(centerPt, midPt);
             const teethGap = this.setDefault(drawEssentials, "TEETH_GAP", this._teethGap);
-            
+
+            this.addTeethFromArc(firstPath, angle, teethSize, teethGap, polyline);
+        } catch (e) {
+            console.log('Error adding teeth:', e);
+        }
+    }
+
+    private addTeethFromArc(firstPath: number[][], angle: number, teethSize: number, teethGap: number, polyline: Polyline): void {
+        try {
+            if (!firstPath || firstPath.length < 30) return;
             for (let i = teethGap; i < 60; i += teethGap) {
                 if (firstPath[i]) {
                     const teethPath = this.createTeeth(
-                        new Point({ x: firstPath[i][0], y: firstPath[i][1], spatialReference: this.view.spatialReference }), 
-                        angle, 
+                        new Point({ x: firstPath[i][0], y: firstPath[i][1], spatialReference: this.view.spatialReference }),
+                        angle,
                         teethSize
                     );
-                    polyline.addPath(teethPath);
+                    polyline.addPath(this.toPointPath(teethPath));
                 }
             }
         } catch (e) {
@@ -413,10 +462,10 @@ export class Ambush {
             // Use Shapes utility if available
             if (Shapes && (Shapes as any).arrowHead) {
                 const flanksLen = this.calculateArrowFlanksLength(
-                    this.calculateDistance(secLastPt, lastPt),
-                    this.calculateDistance(secLastPt, lastPt)
+                    Utils.calculateDistance(secLastPt, lastPt),
+                    Utils.calculateDistance(secLastPt, lastPt)
                 );
-                const angle = this.calculateAngle(secLastPt, lastPt);
+                const angle = Utils.calculateAngle(secLastPt, lastPt);
                 return (Shapes as any).arrowHead(lastPt, flanksLen, angle);
             }
             
@@ -434,7 +483,7 @@ export class Ambush {
      */
     private createSimpleArrowHead(secLastPt: Point, lastPt: Point): number[][] {
         const length = this.calculateDistance(secLastPt, lastPt) * 0.3;
-        const angle = this.calculateAngle(secLastPt, lastPt);
+        const angle = Utils.calculateAngle(secLastPt, lastPt);
         const arrowAngle = Math.PI / 6; // 30 degrees
         
         const leftPoint = [
@@ -611,7 +660,7 @@ export class Ambush {
             }
 
             const result = new Polyline({ spatialReference: view.spatialReference });
-            result.addPath(path.map(pt => [pt.x, pt.y]));
+            result.addPath(path);
 
             return {
                 geometry: result,
@@ -629,15 +678,11 @@ export class Ambush {
      * Utility methods
      */
     private calculateDistance(pt1: Point, pt2: Point): number {
-        const dx = pt2.x - pt1.x;
-        const dy = pt2.y - pt1.y;
-        return Math.sqrt(dx * dx + dy * dy);
+        return Utils.calculateDistance(pt1, pt2);
     }
 
     private calculateAngle(fromPt: Point, toPt: Point): number {
-        const dx = toPt.x - fromPt.x;
-        const dy = toPt.y - fromPt.y;
-        return Math.atan2(dy, dx);
+        return Utils.calculateAngle(fromPt, toPt);
     }
 
     private calculateArrowFlanksLength(segmentLength: number, totalLength: number): number {
