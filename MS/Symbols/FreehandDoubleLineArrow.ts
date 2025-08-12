@@ -77,7 +77,6 @@ export class FreehandDoubleLineArrow {
         const baseLine = new BaseLine(this.view, this._lineSym);
 
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
-            debugger;
             // Immediate placement with all parameters
             if (options.GEOM && this.tempGraphic) {
                 try {
@@ -92,13 +91,8 @@ export class FreehandDoubleLineArrow {
                     console.error(this.symName, "Failed to create Polyline geometry:", error);
                 }
             }
-            /*
-            this._tGraphic.geometry = this.createSymbol(drawEssentials);
-            this.__drawEnd(this._tGraphic.geometry, drawEssentials);
-            this._clear();*/
 
         } else if (options.hasOwnProperty("CTRL_PTS")) {
-            debugger;
             if (options.hasOwnProperty("BASE_LN_PTS")) {
                 // Immediate placement with control points and baseline
                 const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
@@ -313,7 +307,7 @@ export class FreehandDoubleLineArrow {
 
             const stPt = baseLinePts.startPt;
             const endPt = baseLinePts.endPt;
-            const midPt = this.getMidPoint(stPt, endPt);
+            const midPt = Utils.getMidPoint(stPt, endPt);
             const firstPoint = pts[0];
             const lastPoint = pts.length >= 1 ? firstPoint : pts[pts.length - 1];
 
@@ -323,10 +317,10 @@ export class FreehandDoubleLineArrow {
             const middleArray: Point[] = [];
 
             // Base Line calculation
-            const len = this.calculateDistance(midPt, endPt);
+            const len = Utils.calculateDistance(midPt, endPt);
             let k = Math.atan((midPt.y - lastPoint.y) / (midPt.x - lastPoint.x));
 
-            switch (this.getTwoPointsRelationship(midPt, lastPoint)) {
+            switch (Utils.getTwoPointsRelationship(midPt, lastPoint)) {
                 case "ne":
                     k += Math.PI / 2;
                     break;
@@ -368,8 +362,8 @@ export class FreehandDoubleLineArrow {
             let shortenRightPt: Point = p2;
 
             for (let i = 0; i < pts.length; i++) {
-                const length = this.calculateDistance(midPt, pts[i]);
-                const angle = this.calculateAngle(midPt, pts[i]);
+                const length = Utils.calculateDistance(midPt, pts[i]);
+                const angle = Utils.calculateAngle(midPt, pts[i]);
 
                 const stPtCandidatePt = new Point({
                     x: p1.x + length * Math.cos(angle),
@@ -383,12 +377,12 @@ export class FreehandDoubleLineArrow {
                 });
 
                 let lineLen = length / 5;
-                const baseLineLen = this.calculateDistance(stPtCandidatePt, endPtCandidatePt);
+                const baseLineLen = Utils.calculateDistance(stPtCandidatePt, endPtCandidatePt);
                 const baseLineLenLimit = baseLineLen / 4;
                 if (lineLen > baseLineLenLimit) lineLen = baseLineLenLimit;
 
-                const lineAngle = this.calculateAngle(stPtCandidatePt, endPtCandidatePt);
-                k = this.calculateAngle(midPt, pts[i]);
+                const lineAngle = Utils.calculateAngle(stPtCandidatePt, endPtCandidatePt);
+                k = Utils.calculateAngle(midPt, pts[i]);
 
                 // Shorten points for arrow effect
                 shortenLeftPt = new Point({
@@ -444,14 +438,14 @@ export class FreehandDoubleLineArrow {
      * Get flank points for arrow head
      */
     private getFlankPts(firstPoint: Point, lastPoint: Point): { x: number, y: number }[] {
-        const baseLineLen = this.calculateDistance(firstPoint, lastPoint) / 4;
+        const baseLineLen = Utils.calculateDistance(firstPoint, lastPoint) / 4;
         let cLenLimit = baseLineLen / 4;
         if (cLenLimit > baseLineLen / 2) cLenLimit = baseLineLen / 2;
 
         const len = cLenLimit;
         let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
 
-        switch (this.getTwoPointsRelationship(firstPoint, lastPoint)) {
+        switch (Utils.getTwoPointsRelationship(firstPoint, lastPoint)) {
             case "ne":
                 k += Math.PI / 2;
                 break;
@@ -474,35 +468,6 @@ export class FreehandDoubleLineArrow {
         ];
     }
 
-    /**
-     * Utility methods
-     */
-    private getMidPoint(pt1: Point, pt2: Point): Point {
-        return new Point({
-            x: (pt1.x + pt2.x) / 2,
-            y: (pt1.y + pt2.y) / 2,
-            spatialReference: this.view.spatialReference
-        });
-    }
-
-    private calculateDistance(pt1: Point | { x: number, y: number }, pt2: Point | { x: number, y: number }): number {
-        const dx = pt2.x - pt1.x;
-        const dy = pt2.y - pt1.y;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    private calculateAngle(fromPt: Point | { x: number, y: number }, toPt: Point | { x: number, y: number }): number {
-        const dx = toPt.x - fromPt.x;
-        const dy = toPt.y - fromPt.y;
-        return Math.atan2(dy, dx);
-    }
-
-    private getTwoPointsRelationship(pt1: Point | { x: number, y: number }, pt2: Point | { x: number, y: number }): string {
-        if (pt2.x >= pt1.x && pt2.y >= pt1.y) return "ne";
-        if (pt2.x < pt1.x && pt2.y >= pt1.y) return "nw";
-        if (pt2.x < pt1.x && pt2.y < pt1.y) return "sw";
-        return "se";
-    }
 
     /**
      * Get baseline points
