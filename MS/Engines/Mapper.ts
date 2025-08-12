@@ -112,7 +112,7 @@ import FreehandLine from "../Symbols/FreehandLine.ts";
 import FreehandLineDotted from "../Symbols/FreehandLineDotted.ts";
 import FreehandArea from "../Symbols/FreehandArea.ts";
 import FreehandAreaFilled from "../Symbols/FreehandAreaFilled.ts";
-import FreehandArrow from "../Symbols/FreehandArrow.ts"; //Fixed Above
+import FreehandArrow from "../Symbols/FreehandArrow.ts";
 import FreehandDottedArrow from "../Symbols/FreehandDottedArrow.ts";
 import FreehandDoubleLineArrow from "../Symbols/FreehandDoubleLineArrow.ts";
 import ArcOfFireSD from "../Symbols/ArcOfFireSD.ts";
