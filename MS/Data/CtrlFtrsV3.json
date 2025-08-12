@@ -1,0 +1,6066 @@
+{
+    "00000002": {
+        "Name": "Sector",
+        "Class": "FreehandArea",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "SECTOR",
+        "NativeType": "CtrlFtr",
+         "defStdId": "-0",
+        "isFreeHand": "1",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Closed Curvy), 2 (Sharp Edge Polygon), 3 (Rectangle or Square) and 4 (Circle or Ellipse)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Closed Curve",
+                "description": "Draw using Closed Curve"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Rectangle",
+                "description": "Draw using Rectangle"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Circle or Ellipse",
+                "description": "Draw using Circle or Ellipse"
+            }
+
+        ],
+        "template": "312,4,5"
+    },
+    "25271224": {
+        "Name": "ADOC / Navigation Point SD",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "NAGTPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters":
+                [
+                    {
+                        "value": "SIZE",
+                        "Name": "Size",
+                        "default": "30",
+                        "description": "Size of the symbol",
+                        "paramThumbnail": ""
+                    },
+                    {
+                        "value": "ANGLE",
+                        "Name": "Angle",
+                        "default": "0",
+                        "description": "Angle of the symbol",
+                        "paramThumbnail": ""
+                    }
+                ],
+        "Tools":
+                [],
+        "template": "312,4,5"
+    },
+    "25180100": {
+        "Name": "Air Control Point",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "AIRCTP",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25320100": {
+        "Name": "Ambulance Exchange Point",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Offset": "1",
+        "Description": "A location where a patient is transferred from one ambulance to another en route to a medical treatment facility. This may be an established point in an ambulance shuttle system or it may be designated independently.",
+        "SymGeoType": "Point",
+        "Category": "AMBEXP",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters":
+                [
+                    {
+                        "value": "SIZE",
+                        "Name": "Size",
+                        "default": "30",
+                        "description": "Size of the symbol",
+                        "paramThumbnail": ""
+                    },
+                    {
+                        "value": "ANGLE",
+                        "Name": "Angle",
+                        "default": "0",
+                        "description": "Angle of the symbol",
+                        "paramThumbnail": ""
+                    }
+                ],
+        "Tools":
+                [],
+        "template": "312,4,5"
+    },
+    "25120100": {
+        "Name": "Area of Operations",
+        "Class": "AreaOfOperations",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "AOP",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Curvy Line), 2 (Sharp Edge Lines) and 3 (Rectangle)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Closed Curve",
+                "description": "Draw using Closed Curve"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Rectangle",
+                "description": "Draw using Rectangle"
+            }
+
+        ],
+        "template": "312,4,5"
+    },
+    "25150200": {
+        "Name": "Assembly Area",
+        "Class": "AssemblyArea",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "ASYGEN",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Curvy Line), 2 (Sharp Edge Lines) and 3 (Rectangle)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Closed Curve",
+                "description": "Draw using Closed Curve"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Rectangle",
+                "description": "Draw using Rectangle"
+            }
+
+        ],
+        "template": "312,4,5"
+    },
+    "25151600": {
+        "Name": "Attack Position",
+        "Class": "AttackPosition",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "ATTPOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Curvy Line), 2 (Sharp Edge Lines) and 3 (Rectangle)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Closed Curve",
+                "description": "Draw using Closed Curve"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Rectangle",
+                "description": "Draw using Rectangle"
+            }
+
+        ],
+        "template": "312,4,5"
+    },
+    "25151406": {
+        "Name": "Axis Of Advance For Feint",
+        "Class": "AxisOfAdvanceFeint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "AXIS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "HEAD_RATIO",
+                "Name": "Arrowhead Ratio",
+                "default": "0.07",
+                "description": "Arrowhead Ratio",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "TAIL_FACTOR",
+                "Name": "Tail Ratio",
+                "default": "0.05",
+                "description": "Tail Ratio",
+                "paramThumbnail": ""
+            }
+
+        ],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5"
+    },
+    "25151200": {
+        "Name": "Battle Position",
+        "Class": "BattlePosition",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "BATPOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "FACE_GAP",
+                "Name": "Face Gap",
+                "default": "5",
+                "description": "Gap of the face for symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Curvy Line), 2 (Close Line) and 3 (Ellipse or Circle)",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Line",
+                "description": "Draw using open ended polyline"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using open ended polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Ellipse",
+                "description": "Draw using perfect ellipse"
+            }
+
+        ],
+        "template": "312,4,5"
+    },
+    "25110100": {
+        "Name": "Boundary",
+        "Class": "Boundary",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "BDYOR",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5"
+    },
+    "25141400": {
+        "Name": "Bridgehead Line",
+        "Class": "BridgeHeadLine",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "BRDGH",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Straight Line) and 2 (Curvy Line)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5"
+    },
+    "25130300": {
+        "Name": "CheckPoint",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Offset": "1",
+        "Description": "Predetermined point on the surface of the earth used as a means of controlling movement, a registration target for fire adjustment, or reference for location",
+        "SymGeoType": "Point",
+        "Category": "CKPGEN",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25180200": {
+        "Name": "Comm Check Point",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "COMCKP",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25130500": {
+        "Name": "Contact Point / U (Surface Unknown) SD",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "In land warfare, a point on the terrain, easily identifiable, where two or more units are required to make contact.",
+        "SymGeoType": "Point",
+        "Category": "CNTPTL",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25130600": {
+        "Name": "Coordinating Point / Vessel of Unknow Type",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "Designated point at which, in all types of combat, adjacent units/formations must make contact for purposes of control and coordination.",
+        "SymGeoType": "Point",
+        "Category": "CRDPNT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25130700": {
+        "Name": "Decision Point",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "A point in space and time, identified during the planning process, where it is anticipated that the commander must make a decision concerning a specific course of action.",
+        "SymGeoType": "Point",
+        "Category": "DECPNT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25180300": {
+        "Name": "Downed Aircrew Pick-Up Pont",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Offset": "1",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "DNPKPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25210400": {
+        "Name": "Drop Point",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "DROPPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25280800": {
+        "Name": "Engineer Regulating Point",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Offset": "1",
+        "Description": "Checkpoint to ensure that vehicles do not exceed the capacity of the crossing means and to give drivers final instructions on site-specific procedures and information, such as speed and vehicle interval.",
+        "SymGeoType": "Point",
+        "Category": "ENGREG",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters":
+                [
+                    {
+                        "value": "SIZE",
+                        "Name": "Size",
+                        "default": "30",
+                        "description": "Size of the symbol",
+                        "paramThumbnail": ""
+                    },
+                    {
+                        "value": "ANGLE",
+                        "Name": "Angle",
+                        "default": "0",
+                        "description": "Angle of the symbol",
+                        "paramThumbnail": ""
+                    }
+                ],
+        "Tools":
+                [],
+        "template": "312,4,5"
+    },
+    "25210500": {
+        "Name": "Entry Point",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "ENTPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25140302": {
+        "Name": "FUP",
+        "Class": "FormingUpPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "FRUPPL",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Straight Line) and 2 (Curvy Line)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5"
+    },
+    "25140101": {
+        "Name": "Forward Line of Troops",
+        "Class": "FwdLineOfTps",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "FLT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5"
+    },
+    "25140602": {
+        "Name": "Friendly Direction of Main Attack",
+        "Class": "FriendlyDirOfMainAttk",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "DA",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5"
+    },
+    "25140603": {
+        "Name": "Friendly Direction of Supporting Attack, Dir Arrow",
+        "Class": "FriendlyDirOfSpAttk",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "DA",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Straight Line) and 2 (Curvy Line)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5"
+    },
+    "25271252": {
+        "Name": "Gen Sta / Gen Ref Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "REFCPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters":
+                [
+                    {
+                        "value": "SIZE",
+                        "Name": "Size",
+                        "default": "30",
+                        "description": "Size of the symbol",
+                        "paramThumbnail": ""
+                    },
+                    {
+                        "value": "ANGLE",
+                        "Name": "Angle",
+                        "default": "0",
+                        "description": "Angle of the symbol",
+                        "paramThumbnail": ""
+                    }
+                ],
+        "Tools":
+                [],
+        "template": "312,4,5"
+    },
+    "30181000": {
+        "Name": "Helicopter Landing Site SD",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "LA",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25250200": {
+        "Name": "Hide Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Offset": "1",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "HIDE",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters":
+                [
+                    {
+                        "value": "SIZE",
+                        "Name": "Size",
+                        "default": "30",
+                        "description": "Size of the symbol",
+                        "paramThumbnail": ""
+                    },
+                    {
+                        "value": "ANGLE",
+                        "Name": "Angle",
+                        "default": "0",
+                        "description": "Angle of the symbol",
+                        "paramThumbnail": ""
+                    }
+                ],
+        "Tools":
+                [],
+        "template": "312,4,5"
+    },
+    "25210800": {
+        "Name": "Impact Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "IMPTPT",
+        "Category": "IMPTPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25131100": {
+        "Name": "Linkup Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Offset": "1",
+        "Description": "A point where two infiltrating elements in the same or different infiltration lanes are scheduled to meet to consolidate before proceeding with their missions.",
+        "SymGeoType": "Point",
+        "Category": "LNKPPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25214400": {
+        "Name": "Marshall Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "MRSHGT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25211100": {
+        "Name": "Missile Detection Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Offset": "1",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "MSLDET",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25330100": {
+        "Name": "Moving Convoy / Approach",
+        "Class": "MovingConvoy",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "APPRDR",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5"
+    },
+    "25120200": {
+        "Name": "Named Area of Interest",
+        "Class": "NamedAreaOfInterest",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "NAMAIN",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Curvy Line), 2 (Sharp Edge Lines) and 3 (Rectangle)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Closed Curve",
+                "description": "Draw using Closed Curve"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Rectangle",
+                "description": "Draw using Rectangle"
+            }
+
+        ],
+        "template": "312,4,5"
+    },
+    "25213400": {
+        "Name": "Nav Ref Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "NAGTPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25120203": {
+        "Name": "No Go Area",
+        "Class": "NoGo",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "NGA",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Closed Curvy), 2 (Sharp Edge Polygon), 3 (Rectangle or Square) and 4 (Circle or Ellipse)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Closed Curve",
+                "description": "Draw using Closed Curve"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Rectangle",
+                "description": "Draw using Rectangle"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Circle or Ellipse",
+                "description": "Draw using Circle or Ellipse"
+            }
+
+        ],
+        "template": "312,4,5"
+    },
+    "25182200": {
+        "Name": "Orbit",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "ORBTPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25131200": {
+        "Name": "Passage Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Offset": "1",
+        "Description": "A specifically designated place where the passing units will pass through the stationary unit.",
+        "SymGeoType": "Point",
+        "Category": "PSSGPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25151900": {
+        "Name": "Pen Box",
+        "Class": "PenetrationBox",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "PNTRBX",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Curvy Line), 2 (Sharp Edge Lines) and 3 (Rectangle)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Closed Curve",
+                "description": "Draw using Closed Curve"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Rectangle",
+                "description": "Draw using Rectangle"
+            }
+
+        ],
+        "template": "312,4,5"
+    },
+    "25140300": {
+        "Name": "Phase Line",
+        "Class": "PhaseLine",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "PHLINE",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Straight Line) and 2 (Curvy Line)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5"
+    },
+    "25160400": {
+        "Name": "Pt of Departure",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "A specific place where a unit will cross the line of departure.",
+        "SymGeoType": "Point",
+        "Category": "PTDPRT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25131300": {
+        "Name": "Point of Interest",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Offset": "1",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "PTINT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25180400": {
+        "Name": "Pop-Up Pt (PUP)",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "The location at which aircraft quickly gain altitude for target acquisition and engagement.",
+        "SymGeoType": "Point",
+        "Category": "POPUPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25210900": {
+        "Name": "Predicted Impact Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "PRITPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25131400": {
+        "Name": "Rally Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Offset": "1",
+        "Description": "An easily identifiable point on the ground at which units can reassemble and reorganize if they become dispersed.",
+        "SymGeoType": "Point",
+        "Category": "RALYPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213600": {
+        "Name": "Reference Point",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "REFCPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25131500": {
+        "Name": "Release Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Offset": "1",
+        "Description": "In road movements, a well defined point on a route at which the elements composing a column return under the authority of their respective commanders, each one of these elements continuing its movement towards its own appropriate destination. ",
+        "SymGeoType": "Point",
+        "Category": "RELPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271234": {
+        "Name": "Restricted Area SD",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "RSTRAR",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters":
+                [
+                    {
+                        "value": "SIZE",
+                        "Name": "Size",
+                        "default": "30",
+                        "description": "Size of the symbol",
+                        "paramThumbnail": ""
+                    },
+                    {
+                        "value": "ANGLE",
+                        "Name": "Angle",
+                        "default": "0",
+                        "description": "Angle of the symbol",
+                        "paramThumbnail": ""
+                    }
+                ],
+        "Tools":
+                [],
+        "template": "312,4,5"
+    },
+    "25213200": {
+        "Name": "Search Area",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "SEREAR",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213300": {
+        "Name": "Search Cen",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "SRCHAR",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25120202": {
+        "Name": "Slow Go Area",
+        "Class": "SlowGo",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "SGA",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Closed Curvy), 2 (Sharp Edge Polygon), 3 (Rectangle or Square) and 4 (Circle or Ellipse)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Closed Curve",
+                "description": "Draw using Closed Curve"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Rectangle",
+                "description": "Draw using Rectangle"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Circle or Ellipse",
+                "description": "Draw using Circle or Ellipse"
+            }
+
+        ],
+        "template": "312,4,5"
+    },
+    "25131600": {
+        "Name": "Start Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Offset": "1",
+        "Description": "A well defined point on a route at which a movement of vehicles begins to be under the control of the commander of this movement. It is at this point that the column is formed by the successive passing, at an appointed time, of each of the elements composing the column. In addition to the principal start point of a column there may be secondary start points for its different elements. ",
+        "SymGeoType": "Point",
+        "Category": "STRTPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25181000": {
+        "Name": "Strike Initial Pt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "INITPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25151203": {
+        "Name": "Strong Pt",
+        "Class": "StrongPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "STPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "FACE_GAP",
+                "Name": "Face Gap",
+                "default": "5",
+                "description": "Gap of the face for symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Curvy Line), 2 (Close Line) and 3 (Ellipse or Circle)",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Line",
+                "description": "Draw using open ended polyline"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using open ended polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Ellipse",
+                "description": "Draw using perfect ellipse"
+            }
+
+        ],
+        "template": "312,4,5"
+    },
+    "25152100": {
+        "Name": "Support by Fire Position",
+        "Class": "SupportByFirePosition",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "SPTPOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "BK_LN_DIST_RATIO",
+                "Name": "Back Line Distance Ratio",
+                "default": "5",
+                "description": "Back Line Distance Ratio",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "BK_LN_ANGL_RATIO",
+                "Name": "Back Line Angle Ratio",
+                "default": "5",
+                "description": "Back Line Angle Ratio",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "FRNT_LN_ANGL_RATIO",
+                "Name": "Front Line Angle Ratio",
+                "default": "5",
+                "description": "Front Line Angle Ratio",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5"
+
+    },
+    "25180600": {
+        "Name": "TACAN",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "RTETYP",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25120201": {
+        "Name": "Tgt Area of Interest",
+        "Class": "TargetAreaOfInterest",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "TGTAOI",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Curvy Line), 2 (Sharp Edge Lines) and 3 (Rectangle)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Closed Curve",
+                "description": "Draw using Closed Curve"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Rectangle",
+                "description": "Draw using Rectangle"
+            }
+
+        ],
+        "template": "312,4,5"
+    },
+    "25160300": {
+        "Name": "Tgt Ref Pt /Ref Posn SD /Grid Origin SD",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "Target Reference Point / Reference Position SD / Grid Origin SD",
+        "SymGeoType": "Point",
+        "Category": "TGTRPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters":
+                [
+                    {
+                        "value": "SIZE",
+                        "Name": "Size",
+                        "default": "30",
+                        "description": "Size of the symbol",
+                        "paramThumbnail": ""
+                    },
+                    {
+                        "value": "ANGLE",
+                        "Name": "Angle",
+                        "default": "0",
+                        "description": "Angle of the symbol",
+                        "paramThumbnail": ""
+                    }
+                ],
+        "Tools":
+                [],
+        "template": "312,4,5"
+    },
+    "25160303": {
+        "Name": "Tgt",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "TGTRPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters":
+                [
+                    {
+                        "value": "SIZE",
+                        "Name": "Size",
+                        "default": "30",
+                        "description": "Size of the symbol",
+                        "paramThumbnail": ""
+                    },
+                    {
+                        "value": "ANGLE",
+                        "Name": "Angle",
+                        "default": "0",
+                        "description": "Angle of the symbol",
+                        "paramThumbnail": ""
+                    }
+                ],
+        "Tools":
+                [],
+        "template": "312,4,5,355"
+    },
+    "25170700": {
+        "Name": "Unmanned Aircraft (UA) Route",
+        "Class": "UARoute",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "RTETYP",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5"
+    },
+    "25217700": {
+        "Name": "Waypoint Route",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "WAYPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters":
+                [
+                    {
+                        "value": "SIZE",
+                        "Name": "Size",
+                        "default": "30",
+                        "description": "Size of the symbol",
+                        "paramThumbnail": ""
+                    },
+                    {
+                        "value": "ANGLE",
+                        "Name": "Angle",
+                        "default": "0",
+                        "description": "Angle of the symbol",
+                        "paramThumbnail": ""
+                    }
+                ],
+        "Tools":
+                [],
+        "template": "312,4,5"
+    },
+    "25241901": {
+        "Name": "Zone of Responsibility",
+        "Class": "ZoneOfResponsibility",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "AOR",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Curvy Line), 2 (Sharp Edge Lines) and 3 (Rectangle)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Closed Curve",
+                "description": "Draw using Closed Curve"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Rectangle",
+                "description": "Draw using Rectangle"
+            }
+
+        ],
+        "template": "312,4,5"
+    },
+    "25131900": {
+        "Name": "Airfield(AEGIS Only)",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "ARFLDZ",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5"
+    },
+     
+    "00000120": {
+        "Class": "FreehandAreaFilled", 
+        "Description": "", 
+        "Name": "Freehand - Area Filled", 
+        "Parameters": [
+            {
+                "Name": "Draw Type", 
+                "default": "1", 
+                "description": "Possible Values 1 (Closed Curvy), 2 (Sharp Edge Polygon), 3 (Rectangle or Square) and 4 (Circle or Ellipse)", 
+                "paramThumbnail": "", 
+                "value": "DRAW_TYPE"
+            }
+        ], 
+        "SymGeoType": "Area", 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "DRAW_TYPE": "1", 
+                "Name": "Draw Using Closed Curve", 
+                "description": "Draw using Closed Curve"
+            }, 
+            {
+                "DRAW_TYPE": "2", 
+                "Name": "Draw Using Polygon", 
+                "description": "Draw using Polygon"
+            }, 
+            {
+                "DRAW_TYPE": "3", 
+                "Name": "Draw Using Rectangle", 
+                "description": "Draw using Rectangle"
+            }, 
+            {
+                "DRAW_TYPE": "3", 
+                "Name": "Draw Using Circle or Ellipse", 
+                "description": "Draw using Circle or Ellipse"
+            }
+        ], 
+        "isFreeHand": "1",
+        "template": "312,4,5"
+    }, 
+     "00000006": {
+        "Class": "FreehandArrow", 
+        "Description": "", 
+        "Name": "Freehand - Arrow", 
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "Name": "Draw Type", 
+                "default": "1", 
+                "description": "Possible Values 1 (Sharp Edge Line) and 2 (Curvy Line)", 
+                "paramThumbnail": "", 
+                "value": "DRAW_TYPE"
+            }
+        ], 
+        "SymGeoType": "Line", 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "Line": "true"
+            }, 
+            {
+                "PolyLine": "false"
+            }
+        ], 
+        "isFreeHand": "1",
+        "template": "312,4,5"
+    }, 
+    "00000010": {
+        "Class": "FreehandCloseSupportingAttack", 
+        "Description": "", 
+        "Name": "Freehand - Close Sp Attk Like Arrow", 
+        "Parameters": [
+            {
+                "Name": "Arrowhead Ratio", 
+                "default": "0.07", 
+                "description": "Arrowhead Ratio", 
+                "paramThumbnail": "", 
+                "value": "HEAD_RATIO"
+            }, 
+            {
+                "Name": "Tail Ratio", 
+                "default": "0.05", 
+                "description": "Tail Ratio", 
+                "paramThumbnail": "", 
+                "value": "TAIL_FACTOR"
+            }
+        ], 
+        "SymGeoType": "Area", 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "Line": "true"
+            }, 
+            {
+                "PolyLine": "false"
+            }
+        ], 
+        "isFreeHand": "1",
+         "template": "312,4,5"
+    },
+     "00000005": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Freehand - Dot", 
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Category": "NOS",
+        "Thumbnail": "", 
+        "Tools": [], 
+        "isFreeHand": "1",
+         "template": "312,4,5"
+    }, 
+      "00000007": {
+        "Class": "FreehandDottedArrow", 
+        "Description": "", 
+        "Name": "Freehand - Dotted Arrow", 
+        "Parameters": [
+            {
+                "Name": "Draw Type", 
+                "default": "1", 
+                "description": "Possible Values 1 (Sharp Edge Line) and 2 (Curvy Line)", 
+                "paramThumbnail": "", 
+                "value": "DRAW_TYPE"
+            }, 
+            {
+                "Name": "Teeth Gap", 
+                "default": "30", 
+                "description": "Teeth Gap", 
+                "paramThumbnail": "", 
+                "value": "TEETH_GAP"
+            }
+        ], 
+        "SymGeoType": "Line", 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "Line": "true"
+            }, 
+            {
+                "PolyLine": "false"
+            }
+        ], 
+        "isFreeHand": "1",
+        "template": "312,4,5"
+    }, 
+       "00000004": {
+        "Class": "FreehandDoubleLineArrow", 
+        "Description": "", 
+        "Name": "Freehand - Double Line Arrow", 
+        "Parameters": [], 
+        "SymGeoType": "Line", 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "Line": "true"
+            }, 
+            {
+                "PolyLine": "false"
+            }
+        ], 
+        "isFreeHand": "1",
+        "template": "312,4,5"
+    }, 
+     "00000004": {
+        "Class": "FreehandDoubleLineArrow", 
+        "Description": "", 
+        "Name": "Freehand - Double Line Arrow", 
+        "Parameters": [], 
+        "SymGeoType": "Line", 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "Line": "true"
+            }, 
+            {
+                "PolyLine": "false"
+            }
+        ], 
+        "isFreeHand": "1",
+        "template": "312,4,5"
+    }, 
+    "00000001": {
+        "Class": "FreehandLine", 
+        "Description": "", 
+        "Name": "Freehand - Line", 
+        "Parameters": [
+            {
+                "Name": "Draw Type", 
+                "default": "1", 
+                "description": "Possible Values 1 (Sharp Edge Line) and 2 (Curvy Line)", 
+                "paramThumbnail": "", 
+                "value": "DRAW_TYPE"
+            }
+        ], 
+        "SymGeoType": "Line", 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "Line": "true"
+            }, 
+            {
+                "PolyLine": "false"
+            }
+        ], 
+        "isFreeHand": "1",
+        "template": "312,4,5"
+    },
+    "00000008": {
+        "Class": "FreehandMainAttackArrow", 
+        "Description": "", 
+        "Name": "Freehand - Main Attk Like Arrow", 
+        "Parameters": [
+            {
+                "Name": "Arrowhead Ratio", 
+                "default": "0.07", 
+                "description": "Arrowhead Ratio", 
+                "paramThumbnail": "", 
+                "value": "HEAD_RATIO"
+            }, 
+            {
+                "Name": "Tail Ratio", 
+                "default": "0.05", 
+                "description": "Tail Ratio", 
+                "paramThumbnail": "", 
+                "value": "TAIL_FACTOR"
+            }
+        ], 
+        "SymGeoType": "Area",
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "Line": "true"
+            }, 
+            {
+                "PolyLine": "false"
+            }
+        ], 
+        "isFreeHand": "1",
+        "template": "312,4,5"
+    }, 
+    "00000130": {
+        "Class": "FreehandSemiCircle", 
+        "Description": "", 
+        "Name": "Freehand - Semi Circle", 
+        "Parameters": [], 
+        "SymGeoType": "Area", 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "Line": "true"
+            }, 
+            {
+                "PolyLine": "false"
+            }
+        ], 
+        "isFreeHand": "1",
+        "template": "312,4,5"
+    }, 
+    "00000140": {
+        "Class": "FreehandSemiCircleFilled", 
+        "Description": "", 
+        "Name": "Freehand - Semi Circle Filled", 
+        "Parameters": [], 
+        "SymGeoType": "Area", 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "Line": "true"
+            }, 
+            {
+                "PolyLine": "false"
+            }
+        ], 
+        "isFreeHand": "1",
+        "template": "312,4,5"
+    },
+    "00000009": {
+        "Class": "FreehandSupportingAttack", 
+        "Description": "", 
+        "Name": "Freehand - Sp Attk Like Arrow", 
+        "Parameters": [
+            {
+                "Name": "Arrowhead Ratio", 
+                "default": "0.07", 
+                "description": "Arrowhead Ratio", 
+                "paramThumbnail": "", 
+                "value": "HEAD_RATIO"
+            }, 
+            {
+                "Name": "Tail Ratio", 
+                "default": "0.05", 
+                "description": "Tail Ratio", 
+                "paramThumbnail": "", 
+                "value": "TAIL_FACTOR"
+            }
+        ], 
+        "SymGeoType": "Area", 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "Line": "true"
+            }, 
+            {
+                "PolyLine": "false"
+            }
+        ], 
+        "isFreeHand": "1",
+         "template": "312,4,5"
+    },
+     "25152300": {
+        "Class": "ArcOfFireSD", 
+        "Description": "", 
+        "Name": "Arc of Fire", 
+        "Parameters": [], 
+        "SymGeoType": "Area", 
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Category": "ZFIRE",
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "Line": "true"
+            }, 
+            {
+                "PolyLine": "false"
+            }
+        ],
+         "template": "312,4,5"
+    },
+    
+       "00000110": {
+        "Class": "TacticalPointText", 
+        "Description": "", 
+        "Name": "Freehand - Text", 
+        "Parameters": [], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "isFreeHand": "1",
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+    
+    "00000111": {
+        "Class": "TacticalPointTextBox", 
+        "Description": "", 
+        "Name": "Freehand - TextBox", 
+        "Parameters": [], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "isFreeHand": "1",
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5,955"
+    },
+    
+    
+    
+    "25211200": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Acoustic Countermeasure(Decoy)", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+         "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF1",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25130100": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Action Pts(Gen)", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF2",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25200500": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Active Maneuver Area", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF3",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25321711": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Ammunition Point (All Types)", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF4",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25130200": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Amnesty Pt", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF5",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25141801": {
+        "Class": "ALineOfDenial", 
+        "Description": "", 
+        "Name": "Army Line of Denial", 
+        "Parameters": [], 
+        "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF6",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25152000": {
+        "Class": "AttackByFirePosition", 
+        "Description": "", 
+        "Name": "Attk by Fire Posn", 
+        "Parameters": [
+            {
+                "Name": "Back Line Distance Ratio", 
+                "default": "5", 
+                "description": "Back Line Distance Ratio", 
+                "paramThumbnail": "", 
+                "value": "BK_LN_DIST_RATIO"
+            }, 
+            {
+                "Name": "Back Line Angle Ratio", 
+                "default": "5", 
+                "description": "Back Line Angle Ratio", 
+                "paramThumbnail": "", 
+                "value": "BK_LN_ANGL_RATIO"
+            }
+        ], 
+        "SymGeoType": "Area", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF7",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+         "isFreeHand": "1",
+        "template": "312,4,5"
+    }, 
+     "25141902": {
+        "Class": "BtleHndOvrLn", 
+        "Description": "", 
+        "Name": "Battle Handover Line (BHOL)", 
+        "Parameters": [], 
+        "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF8",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25270501": {
+        "Class": "BlockObstacleEffect", 
+        "Description": "An obstacle effect that integrates fire planning and obstacle effort to stop an attacker along a specific avenue of approach or to prevent him from passing through an engagement area.", 
+        "Name": "Block / Obs Effect", 
+        "Parameters": [], 
+        "SymGeoType": "Area", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF9",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+       "25219100": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Bottom Return / Non MILCO, Wreck ,Dangerous", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF10",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25219200": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Bottom Return/ Non MILCO,Wreck,Non Dangerous", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF11",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+    "25218700": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Bottom Return/Non-Mine, Mine Like (NOMBO)", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+       "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF12",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25218800": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Bottom Return/Non-Mine, Mine Like/Instl/Manmade", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF13",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25211400": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Brief Contact", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF14",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25211600": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "BT Buoy Drop", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF15",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+     "25271222": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Bulls Eye", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF16",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25340400": {
+        "Class": "Canalize", 
+        "Description": "", 
+        "Name": "Canalize", 
+        "Parameters": [], 
+        "SymGeoType": "Area", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF17",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25320400": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Cannibalization Pt", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF18",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25130400": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Cen of Main Effort", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF19",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25271259": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Chaff Jamming", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+       "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF20",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+    "25217800": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Clutter, Staary or Cease Reporting", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF21",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+    "25271260": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Contact Faded", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF22",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25271261": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Contact Lost", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF23",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25141800": {
+        "Class": "CLineOfDenial", 
+        "Description": "", 
+        "Name": "Corps Line of Denial", 
+        "Parameters": [], 
+        "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF24",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25214200": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Corridor Tab Pt", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF25",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25140301": {
+        "Class": "CounterAttkObj", 
+        "Description": "", 
+        "Name": "Counter Attk Obj", 
+        "Parameters": [
+            {
+                "Name": "Draw Type", 
+                "default": "1", 
+                "description": "Possible Values 1 (Line) and 2 (Curve)",
+                "paramThumbnail": "", 
+                "value": "DRAW_TYPE"
+            }
+        ], 
+        "Tools": [
+             
+            {
+                "DRAW_TYPE": "2", 
+                "Name": "Curve", 
+                "description": "Use Curve"
+            },
+            {
+                "DRAW_TYPE": "1", 
+                "Name": "Line", 
+                "description": "Use Line"
+            }
+        ],
+        "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+       "25342201": {
+        "Class": "Cover", 
+        "Description": "", 
+        "Name": "Covering Tps", 
+        "Parameters": [], 
+         "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF26",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+    "25200600": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Cued Acquisition Doctrine", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF27",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+      "25213900": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Data Link Ref Pt", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF28",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25271258": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Decoy", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF29",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+       "25213000": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Dip Posn", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF30",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25150204": {
+        "Class": "DispersalArea", 
+        "Description": "", 
+        "Name": "Dispersal Area", 
+        "Parameters": [
+            {
+                "Name": "Draw Type", 
+                "default": "1", 
+                "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon) and 3 (Rectangle)", 
+                "paramThumbnail": "", 
+                "value": "DRAW_TYPE"
+            }
+        ], 
+        "SymGeoType": "Area", 
+        "Thumbnail": "", 
+        "Tools": [
+             {
+                "DRAW_TYPE": "1", 
+                "Name": "Smooth Polygon", 
+                "description": "Use Polygon"
+            }, 
+            {
+                "DRAW_TYPE": "2", 
+                "Name": "Polygon", 
+                "description": "Use Polygon"
+            }, 
+            {
+                "DRAW_TYPE": "3", 
+                "Name": "Rectangle", 
+                "description": "Using Rectangle"
+            }
+        ],
+        "Category": "CF31",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25270502": {
+        "Class": "DisruptObstacleEffect", 
+        "Description": "An obstacle effect that focuses fire planning and obstacle effort to cause the enemy to break up his formation and tempo, interrupt his timetable, commit breaching assets prematurely and attack in a piecemeal effort.", 
+        "Name": "Disrupt / Obs Effect", 
+        "Parameters": [], 
+         "SymGeoType": "Area", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF32",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25130800": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Distress Call", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF33",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25218000": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Distressed Vessel", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF34",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25150202": {
+        "Class": "DivAdmArea", 
+        "Description": "", 
+        "Name": "Div Adm Area", 
+        "Parameters": [
+            {
+                "Name": "Draw Type", 
+                "default": "1", 
+                 "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon) and 3 (Rectangle)", 
+                "paramThumbnail": "", 
+                "value": "DRAW_TYPE"
+            }
+        ], 
+        "SymGeoType": "Area", 
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "DRAW_TYPE": "1", 
+                "Name": "Smooth Polygon", 
+                "description": "Use Polygon"
+            }, 
+            {
+                "DRAW_TYPE": "2", 
+                "Name": "Polygon", 
+                "description": "Use Polygon"
+            }, 
+            {
+                "DRAW_TYPE": "3", 
+                "Name": "Rectangle", 
+                "description": "Using Rectangle"
+            }
+        ],
+        "Category": "CF35",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25141900": {
+        "Class": "DivLineOfNoPen", 
+        "Description": "", 
+        "Name": "Div Line Of No Pen", 
+        "Parameters": [], 
+         "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF36",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+     "25217200": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Diversion Route", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF37",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25212400": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "EM Fix", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF38",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "40131201": {
+        "Class": "UEISymbol", 
+        "Description": "", 
+        "Name": "Emergency Collection Evacuation Pt", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "28", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "size"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "FPoint", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF39",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+     "25214300": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "En Pt", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF40",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25130900": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Entry Con Pt", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF41",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25281802": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Eqpt Decontamination Pt/Site", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF42",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25214700": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Estimated Posn (EP)", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF43",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "40130800": {
+        "Class": "UEISymbol", 
+        "Description": "", 
+        "Name": "Exfiltration", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "28", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "size"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "FPoint", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF44",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25250100": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Firing Pt", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF45",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+     "25341100": {
+        "Class": "Fix", 
+        "Description": "", 
+        "Name": "Fixation", 
+        "Parameters": [
+            {
+                "Name": "Teeth Size", 
+                "default": "3", 
+                "description": "Teeth Size", 
+                "paramThumbnail": "", 
+                "value": "TEETH_SIZE"
+            }, 
+            {
+                "Name": "Teeth Gap", 
+                "default": "30", 
+                "description": "Teeth Gap", 
+                "paramThumbnail": "", 
+                "value": "TEETH_GAP"
+            }, 
+            {
+                "Name": "Head Line Ratio", 
+                "default": "10", 
+                "description": "Ratio Of Line Behind Arrow", 
+                "paramThumbnail": "", 
+                "value": "HEAD_RATIO"
+            }, 
+            {
+                "Name": "Tail Ratio", 
+                "default": "10", 
+                "description": "Tail Ratio", 
+                "paramThumbnail": "", 
+                "value": "TAIL_FACTOR"
+            }
+        ], 
+        "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF46",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25271213": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Flagship", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF47",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25131001": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Fly-To-Pt (Sonobuoy)", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF48",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25131003": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Fly-To-Pt(Normal)", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF49",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+     "25131002": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Fly-To-Pt(Wpn)", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF50",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25212700": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Formation", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF51",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "00000003": {
+        "Class": "FreehandLineDotted", 
+        "Description": "", 
+        "Name": "Freehand - Line Dotted", 
+        "Parameters": [
+            {
+                "Name": "Draw Type", 
+                "default": "1", 
+                "description": "Possible Values 1 (Line) and 2 (Curve)", 
+                "paramThumbnail": "", 
+                "value": "DRAW_TYPE"
+            }
+        ], 
+        "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [
+             {
+                "DRAW_TYPE": "1", 
+                "Name": "Line", 
+                "description": "Draw Using Line"
+            }, 
+            {
+                "DRAW_TYPE": "2", 
+                "Name": "Curve", 
+                "description": "Draw Using Curve"
+            }
+        ], 
+        "isFreeHand": "1",
+        "Category": "CF52",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25271267": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Frigate", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF53",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25271268": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Frigate (Guided Msl) (With Tail - TA)", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+       "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF54",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25151407": {
+        "Class": "Funnel", 
+        "Description": "", 
+        "Name": "Funnel", 
+         "Parameters": [            
+            {
+                "Name": "Front Line Angle Ratio", 
+                "default": "0.8", 
+                "description": "Front Line Angle Ratio", 
+                "paramThumbnail": "", 
+                "value": "FRNT_LN_ANGL_RATIO"
+            },
+            {
+                "Name": "Flaps Distance Ratio", 
+                "default": "3", 
+                "description": "Flaps Distance Ratio", 
+                "paramThumbnail": "", 
+                "value": "FLAP_DIST_RATIO"
+            },
+             {
+                "Name": "Front Line Distance Ratio", 
+                "default": "1.5", 
+                "description": "Front Line Distance Ratio", 
+                "paramThumbnail": "", 
+                "value": "FRNT_LN_DIST_RATIO"
+            }
+        ],
+         "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF55",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25140101": {
+        "Class": "FwdLineOfTps", 
+        "Description": "", 
+        "Name": "Fwd Line of Troops", 
+        "Parameters": [], 
+        "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25281808": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Fwd Troop Decontamination Pt/Site", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF56",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25281800": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Gen Decontamination Pt/Site", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF57",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25217100": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Gen Route", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF58",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25271250": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Helo", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF59",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25218300": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Iceberg", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF61",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25271231": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Land Mark", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF62",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25250300": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Launch Pt", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF63",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25141901": {
+        "Class": "LineOfNoPen", 
+        "Description": "", 
+        "Name": "Line Of No Pen", 
+        "Parameters": [], 
+         "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF64",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25211500": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Datum Lost Contact", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF65",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25218900": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Marine Life", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF66",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25271214": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Mayday / Ditched Aircraft", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF67",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25321100": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Medical Evacuation (MEDEVAC) Pick-up Pt", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF68",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+    "25321800": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Medical Sup Pt", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF69",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25271246": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "MHQ SU", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF70",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25271254": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "MIR", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF71",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25110101": {
+        "Class": "Corridors", 
+        "Description": "", 
+        "Name": "Mob Corridors", 
+        "Parameters": [
+            {
+                "Name": "Tail Ratio", 
+                "default": "0.17", 
+                "description": "Tail Ratio", 
+                "paramThumbnail": "", 
+                "value": "TAIL_FACTOR"
+            }
+        ], 
+         "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF72",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25330100": {
+        "Class": "MovingConvoy", 
+        "Description": "", 
+        "Name": "Moving Convoy / Approach", 
+        "Parameters": [], 
+         "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25211800": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Moving Haven", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF73",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+      "25271218": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "N (Surface Friend)", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF74",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25213800": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Nav Ref Pt-Ref Pts", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25270601": {
+        "Class": "ObstacleBypassEasy", 
+        "Description": "", 
+        "Name": "Obs Bypass Easy", 
+        "Parameters": [], 
+         "SymGeoType": "Area", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF75",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25271221": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "OCC", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+       "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF76",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+      "25281805": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Opal Decontamination Pt/Site", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF77",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25182300": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Orbit - Figure Eight", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF78",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25182400": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Orbit - Race Track", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF79",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25182500": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Orbit - Random Closed", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF80",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25271264": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Outboard (Initiation Pt)", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF81",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25218200": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Person In Water/Bailout", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF82",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25217400": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Picket Route", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF83",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+     "25181102": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "0", 
+        "Name": "POL Pt", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF84",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25217300": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Posn and Intended Movement (PIM) Route", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF85",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25214600": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Pre-Landfall Waypoint", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF87",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25131301": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Pt of Interest - Launch Event", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF88",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+       "25217500": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Pt R Route", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF89",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25200700": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Radar Search Doctrine", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF90",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25271219": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Radar Servicale / Unservicable", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF91",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25281701": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Radiological - Toxic Industrial Material", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF92",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25250400": {
+        "Class": "TacticalPoint", 
+        "Description": "An exact location at sea within a fire support area from which a fire support ship delivers fire.", 
+        "Name": "Reload Pt", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF94",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25217600": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Rendezvous Route", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF95",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25181101": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "0", 
+        "Name": "Replenishment Pt", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF96",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+    "25181900": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Rescue", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF97",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25216300": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Rescue Surface Sta", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF98",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25271204": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Roadblock Complete (Executed)", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF99",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25211900": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Screen Cen", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF100",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25219000": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Sea Anomaly(Wake, Current,Knuckle)", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF101",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25212100": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Sinker", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF102",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+      "25271220": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "SMCC", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF103",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25271248": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Special Msn", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF104",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25131700": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Special Pt", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF105",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25213700": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Special Pt-Ref Pts", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF106",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25140303": {
+        "Class": "StartLine", 
+        "Description": "", 
+        "Name": "Start Line", 
+        "Parameters": [
+            {
+                "Name": "Draw Type", 
+                "default": "1", 
+                "description": "Possible Values 1 (Line) and 2 (Curve)", 
+                "paramThumbnail": "", 
+                "value": "DRAW_TYPE"
+            }
+        ], 
+        "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [
+           {
+                "DRAW_TYPE": "1", 
+                "Name": "Line", 
+                "description": "Use Line"
+            }, 
+            {
+                "DRAW_TYPE": "2", 
+                "Name": "Curve", 
+                "description": "Use Curve"
+            }
+        ],
+        "Category": "CF107",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+     "25150205": {
+        "Class": "StratAssyArea", 
+        "Description": "", 
+        "Name": "Strat Assy Area", 
+        "Parameters": [
+            {
+                "Name": "Draw Type", 
+                "default": "1", 
+                 "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon) and 3 (Rectangle)", 
+                "paramThumbnail": "", 
+                "value": "DRAW_TYPE"
+            }
+        ], 
+        "SymGeoType": "Area", 
+        "Thumbnail": "", 
+        "Tools": [
+            {
+                "DRAW_TYPE": "1", 
+                "Name": "Smooth Polygon", 
+                "description": "Use Polygon"
+            }, 
+            {
+                "DRAW_TYPE": "2", 
+                "Name": "Polygon", 
+                "description": "Use Polygon"
+            }, 
+            {
+                "DRAW_TYPE": "3", 
+                "Name": "Rectangle", 
+                "description": "Using Rectangle"
+            }
+        ],
+        "Category": "CF108",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+    "25271239": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Strike Not Specified (Hostile / Friendly)", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF109",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25271245": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Strike Sp", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF110",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "10121807": {
+        "Class": "UEISymbol", 
+        "Description": "", 
+        "Name": "Sub Area", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "28", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "size"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "FPoint", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF111",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+        "25271279": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Surface Effect FPB", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF112",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25271266": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Surface Effects MCMV", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF113",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25250500": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Survey Con Pt", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF114",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25181200": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Tanking", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF115",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25217900": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Tentative or Provisional Track", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF116",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25240603": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Tgt-Recorded", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF117",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25281806": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Thorough Decontamination Pt/Site", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+       "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF118",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25181800": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Tomcat", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF119",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25321500": {
+        "Class": "TacticalPoint", 
+        "Description": "A location where trailers are transferred from one carrier to another while en route.", 
+        "Name": "Trailer Transfer Pt (TTP)", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF120",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+     "25212200": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "Trial Track", 
+        "Offset": "1", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF121",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25271223": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "TWCC", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF122",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+      "25271244": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "U (Air Unknow)", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF123",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25170700": {
+        "Class": "UARoute", 
+        "Description": "", 
+        "Name": "UAV Route", 
+        "Parameters": [], 
+         "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    },
+     "25214100": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Vital Area Cen", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF125",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+       "25271225": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Vital Pt", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF126",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25182100": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Fill": "1", 
+        "Name": "VTUA", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF127",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+    "25131800": {
+        "Class": "TacticalPoint", 
+        "Description": "Designated point or series of points loaded and stored in a global positioning system or other electronic navigational aid system to facilitate movement.", 
+        "Name": "Waypoint / Destructions of Brs, rds etc", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF128",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25214800": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Waypoint-Ref Pts", 
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+         "SymGeoType": "Point", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF129",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25214801": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Vuln Pt", 
+        "Thumbnail": "",
+        "SymGeoType": "Point",
+        "Category": "CF135",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "Tools": [], 
+        "template": "312,4,5"
+    },
+      "25214802": {
+        "Class": "VulnArea", 
+        "Description": "", 
+        "Name": "Vuln Area", 
+        "Parameters": [
+            {
+                "Name": "Draw Type", 
+                "default": "1", 
+                "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon) and 3 (Rectangle)", 
+                "paramThumbnail": "", 
+                "value": "DRAW_TYPE"
+            }
+        ], 
+        "SymGeoType": "Area", 
+        "Thumbnail": "", 
+        "Tools": [
+             {
+                "DRAW_TYPE": "1", 
+                "Name": "Smooth Polygon", 
+                "description": "Use Polygon"
+            }, 
+            {
+                "DRAW_TYPE": "2", 
+                "Name": "Polygon", 
+                "description": "Use Polygon"
+            }, 
+            {
+                "DRAW_TYPE": "3", 
+                "Name": "Rectangle", 
+                "description": "Using Rectangle"
+            }
+        ],
+        "Category": "CF136",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+     "25214803": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Fwd Area Arming and Refueling Pt (FAARP)", 
+        "Thumbnail": "",
+        "SymGeoType": "Point",
+        "Category": "CF137",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "Tools": [], 
+        "template": "312,4,5"
+    },
+     "25214804": {
+        "Class": "TacticalPoint", 
+        "Description": "", 
+        "Name": "Res", 
+        "Thumbnail": "",
+        "SymGeoType": "Point",
+        "Category": "CF138",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "Name": "Size", 
+                "default": "30", 
+                "description": "Size of the symbol", 
+                "paramThumbnail": "", 
+                "value": "SIZE"
+            }, 
+            {
+                "Name": "Angle", 
+                "default": "0", 
+                "description": "Angle of the symbol", 
+                "paramThumbnail": "", 
+                "value": "ANGLE"
+            }
+        ], 
+        "Tools": [], 
+        "template": "312,4,5"
+    } ,
+    "25150208": {
+        "Name": "Msn Area - ISR",
+        "Class": "ISRMsnArea",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "CF139",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "DRAW_TYPE",
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Curvy Line), 2 (Sharp Edge Lines) and 3 (Rectangle)",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Closed Curve",
+                "description": "Draw using Closed Curve"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Rectangle",
+                "description": "Draw using Rectangle"
+            }
+
+        ],
+        "template": "312,4,5"
+    }, 
+        "25150209": {
+        "Class": "Ethernet", 
+        "Description": "", 
+        "Name": "Ethernet", 
+        "Parameters": [], 
+        "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF140",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25150210": {
+        "Class": "PASCOMS", 
+        "Description": "", 
+        "Name": "PASCOMS", 
+        "Parameters": [], 
+        "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF141",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25150211": {
+        "Class": "OFC", 
+        "Description": "", 
+        "Name": "OFC", 
+        "Parameters": [], 
+        "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF142",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    }, 
+        "25150212": {
+        "Class": "Wrls", 
+        "Description": "", 
+        "Name": "Wrls", 
+        "Parameters": [], 
+        "SymGeoType": "Line", 
+        "Thumbnail": "", 
+        "Tools": [], 
+        "Category": "CF143",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "template": "312,4,5"
+    } 
+       
+}

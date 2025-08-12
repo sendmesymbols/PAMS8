@@ -1,0 +1,20 @@
+  {
+      "1": {
+        "Name": "PERSON",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "CFVIO",
+        "NativeType": "Organization",
+        "defStdId": "-0",
+        "Parameters": [
+            { "value": "size", "Name": "Size", "default": "28", "description": "Size of the symbol", "paramThumbnail": "" },
+            { "value": "ANGLE", "Name": "Angle", "default": "0", "description": "Angle of the symbol", "paramThumbnail": "" }
+        ],
+        "Tools": [ ],
+        "template": "4,5,312"
+    }
+
+  }
+  

@@ -1,0 +1,530 @@
+{
+    "2": {
+        "Name": "Reporting Unit",
+        "ID": "rptdOrg",
+        "type": "combo",
+        "data": "getReprtUnit",
+        "Description": "RPTD ORG"
+    },
+    "3": {
+        "Name": "Associated Org",
+        "ID": "associatedOrg",
+        "type": "combo",
+        "data": "getAssociatedOrgUnit",
+        "Description": "RPTD ORG"
+    },
+    "4": {
+        "Name": "RPTD Credibility Code",
+        "ID": "credibilityCode",
+        "type": "combo",
+        "data": "getCrCode",
+        "Description": "RPTD Credibility Code"
+    },
+    "5": {
+        "Name": "RPTD Accuracy Code",
+        "ID": "accuracyCode",
+        "type": "combo",
+        "data": "getAccurcyCode",
+        "Description": "RPTD Acc Code (Cfm/ Uncfm)"
+    },
+    "6": {
+        "Name": "Province as Obj",
+        "ID": "PrvncBox",
+        "type": "combo",
+        "data": "getProvinceData",
+        "Description": ""
+    },
+    "7": {
+        "Name": "AOR as Obj",
+        "ID": "AORBox",
+        "type": "combo",
+        "data": "getAORData",
+        "Description": ""
+    },
+    "8": {
+        "Name": "Org as Obj",
+        "ID": "OrgBox",
+        "type": "combo",
+        "data": "getOrgActObjData",
+        "Description": ""
+    },
+    "9": {
+        "Name": "Effected Org",
+        "ID": "EffectedOrgBox",
+        "type": "combo",
+        "data": "getEffectedOrgData",
+        "Description": ""
+    },
+    "101": {
+        "Name": "Enemy Post",
+        "ID": "enPostBox",
+        "type": "multi",
+        "data": "getEnPostData",
+        "Description": ""
+    },
+    "102": {
+        "Name": "Own Post",
+        "ID": "ownPostBox",
+        "type": "multi",
+        "data": "getOwnPostData",
+        "Description": ""
+    },
+    "103": {
+        "Name": "Weapon Damage",
+        "ID": "wpnDamageBox",
+        "type": "row",
+        "data": "wpnDamageBoxData",
+        "Description": ""
+    },
+    "104": {
+        "Name": "Veh Damage",
+        "ID": "vehDamageBox",
+        "type": "row",
+        "data": "vehDamageBoxData",
+        "Description": ""
+    },
+    
+    "105": {
+        "Name": "Per Damage",
+        "ID": "perDamageBox",
+        "type": "row",
+        "data": "perDamageBoxData",
+        "Description": ""
+    },
+    "106": {
+        "Name": "Per Damage",
+        "ID": "PETypeBox",
+        "type": "row",
+        "data": "getPerItemBoxData",
+        "Description": ""
+    },
+    "108": {
+        "Name": "Electronics Damage",
+        "ID": "electrnicsBox",
+        "type": "row",
+        "data": "getElectrnicsBoxData",
+        "Description": ""
+    },
+    "201": {
+        "Name": "Enemy Post as Res",
+        "ID": "enPostBoxRes",
+        "type": "multi",
+        "data": "getEnPostResData",
+        "Description": ""
+    },
+    "202": {
+        "Name": "Own Post as Res",
+        "ID": "ownPostBoxRes",
+        "type": "multi",
+        "data": "getOwnPostResData",
+        "Description": ""
+    },
+    "203": {
+        "Name": "Weapon As Resource",
+        "ID": "wpnResBox",
+        "type": "row",
+        "data": "getWpnResBoxData",
+        "Description": ""
+    },
+    "204": {
+        "Name": "Ammo As Resource",
+        "ID": "ammoResBox",
+        "type": "row",
+        "data": "getAmmoResBoxData",
+        "Description": ""
+    },
+    "205": {
+        "Name": "Electronics As Resource",
+        "ID": "elctrncsResBox",
+        "type": "row",
+        "data": "getElctrncsResBoxData",
+        "Description": ""
+    },
+    "206": {
+        "Name": "Per As Resource",
+        "ID": "perResBox",
+        "type": "row",
+        "data": "getPerResBoxData",
+        "Description": ""
+    },
+    "207": {
+        "Name": "Luggage As Resource",
+        "ID": "conMatResBox",
+        "type": "row",
+        "data": "getConMatBoxData",
+        "Description": ""
+    },
+    "209": {
+        "Name": "Intecepted Obs By",
+        "ID": "interceptedBox",
+        "type": "multi",
+        "data": "getInterceptedBoxData",
+        "Description": ""
+    },
+    "211": {
+        "Name": "Ts as Res",
+        "ID": "tsBoxRes",
+        "type": "multi",
+        "data": "getTsBoxResData",
+        "Description": ""
+    },
+    "212": {
+        "Name": "Agency as Res",
+        "ID": "agencyBoxRes",
+        "type": "multi",
+        "data": "getAgencyBoxResData",
+        "Description": ""
+    },
+    "214": {
+        "Name": "Aircraft As Resource",
+        "ID": "acResBox",
+        "type": "row",
+        "data": "getAcResBoxData",
+        "Description": ""
+    },
+    "303": {
+        "Name": "Route",
+        "ID": "RouteTxt",
+        "type": "text",
+        "Description": "Route Text Indl"
+    },
+    "304": {
+        "Name": "Move From To",
+        "ID": "MoveTxt",
+        "type": "text",
+        "Description": "Move From / To Text Indl"
+    },
+    "307": {
+        "Name": "Detail",
+        "ID": "DetailTxt",
+        "type": "text",
+        "Description": "Detail Text Indl"
+    },
+    "308": {
+        "Name": "Reason",
+        "ID": "ReasonTxt",
+        "type": "text",
+        "Description": "Reason Text Indl"
+    },
+    "310": {
+        "Name": "Dist/Ht From Loc",
+        "ID": "DistTxt",
+        "type": "text",
+        "Description": "Dist / Ht From Loc Text Indl"
+    },
+    "311": {
+        "Name": "Person Holding",
+        "ID": "persHoldingBox",
+        "type": "row",
+        "data": "getPerResBoxData",
+        "Description": ""
+    },
+    "312": {
+        "Name": "Associated Org",
+        "ID": "associatedOrgCtrl",
+        "type": "combo",
+        "data": "getAssociatedOrgUnit",
+        "Description": "RPTD ORG"
+    },
+    "313": {
+        "Name": "Ammo As Effect",
+        "ID": "ammoEffBox",
+        "type": "row",
+        "data": "getAmmoResBoxData",
+        "Description": ""
+    },
+    "314": {
+        "Name": "En Fire Ammo As Res",
+        "ID": "enAmmoResBox",
+        "type": "row",
+        "data": "getEnAmmoResBoxData",
+        "Description": ""
+    },
+    "315": {
+        "Name": "Own Fire Ammo As Res",
+        "ID": "ownAmmoResBox",
+        "type": "row",
+        "data": "getOwnAmmoResBoxData",
+        "Description": ""
+    },
+    "316": {
+        "Name": "Ammo As Resource",
+        "ID": "postAmmoResBox",
+        "type": "row",
+        "data": "getAmmoResBoxData",
+        "Description": ""
+    },
+    "317": {
+        "Name": "Ammo As Resource",
+        "ID": "postWpnDamageBox",
+        "type": "row",
+        "data": "postWpnDamageBoxData",
+        "Description": ""
+    },
+    "318": {
+        "Name": "Summary",
+        "ID": "SummaryTxt",
+        "type": "text",
+        "Description": "Summary Text Indl"
+    },
+    "319": {
+        "Name": "Country Obj",
+        "ID": "CntryBox",
+        "type": "combo",
+        "data": "getCountryData",
+        "Description": ""
+    },
+    "320": {
+        "Name": "Dist Obj",
+        "ID": "DistBox",
+        "type": "combo",
+        "data": "getProvinceDistrictData",
+        "Description": ""
+    },
+    "321": {
+        "Name": "Loc From Obj",
+        "ID": "LocFrmTxt",
+        "type": "text",
+        "Description": "Summary Text Indl"
+    },
+    "322": {
+        "Name": "Loc To Obj",
+        "ID": "LocToTxt",
+        "type": "text",
+        "Description": "Summary Text Indl"
+    },
+    "323": {
+        "Name": "Facility Description Remarks",
+        "ID": "facIsDescrRemarks",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank"
+    },
+    "324": {
+        "Name": "Facility Registration Status",
+        "ID": "facIsRegistered",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank"
+    },
+    "325": {
+        "Name": "Facility Hate Suspicion Status",
+        "ID": "facIsPrchTerrSuscp",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank"
+    },
+    "326": {
+        "Name": "Facility Conns Mil Org and Annual Expense",
+        "ID": "facIsConnsMilOrgAnnualExpns",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank"
+    },
+    "327": {
+        "Name": "Facility Total Rooms and Campuses",
+        "ID": "facIsRoomsCampuses",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank"
+    },
+    "328": {
+        "Name": "Facility IS Params Box Border",
+        "ID": "facISAttrsBox",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank"
+    },
+    "329": {
+        "Name": "Facility IS Political and Wafaq Affls",
+        "ID": "facIsPoltclWafaqAffl",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank",
+        "data": "getFacIsPoltclWafaqAfflData"
+    },
+    "330": {
+        "Name": "Facility IS Religious and Finance Affls",
+        "ID": "facIsRelFinanceAffl",
+        "type": "",
+        "Description": "",
+        "data": "getFacIsRelFinanceAfflData",
+        "displayStyle": "blank"
+    },
+    "331": {
+        "Name": "Facility IS Persons Data",
+        "ID": "facIsPersBox",
+        "type": "",
+        "Description": "",
+        "data": "facIsPersProcess",
+        "displayStyle": "blank"
+    },
+    "332": {
+        "Name": "Facility IS Capacity Verif CCTv",
+        "ID": "facIsCapacityVerifCCTvBox",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank"
+    },
+    "333": {
+        "Name": "Facility IS Weekly and Monthly Income",
+        "ID": "facIsWkMnthIncome",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank"
+    },
+    "334": {
+        "Name": "Facility IS Total Area Activities",
+        "ID": "facIsAreaActivity",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank",
+        "data": "getFacIsAntiSocialActivitiesData"
+    },
+    "335": {
+        "Name": "Facility IS Rents",
+        "ID": "facIsRents",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank"
+    },
+    "336": {
+        "Name": "Facility IS MediaType",
+        "ID": "facIsMediaType",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank"
+    },
+    "337": {
+        "Name": "Facility Address",
+        "ID": "facAddressBox",
+        "type": "",
+        "data": "getFacIsAddressBoxData",
+        "Description": "",
+        "displayStyle": "blank"
+    },
+    "338": {
+        "Name": "Facility IS Categorys",
+        "ID": "facIsCat",
+        "type": "",
+        "Description": "",
+        "displayStyle": "blank"
+    },
+    "339": {
+        "Name": "Tehsil Obj",
+        "ID": "TehsilBox",
+        "type": "combo",
+        "data": "getTehsilData",
+        "Description": ""
+    },
+    "340": {
+        "Name": "Facility Flood Medical Camp",
+        "ID": "medCampAttribs",
+        "type": "",
+        "Description": ""
+    },
+    "341": {
+        "Name": "Ration Distributed As Relief",
+        "ID": "reliefItems",
+        "type": "",
+        "Description": ""
+    },
+    "342": {
+        "Name": "Item as Resource",
+        "ID": "miscEqResBox",
+        "type": "row",
+        "Description": "",
+        "data": "itemsHoldingBoxData"
+    },
+    "343": {
+        "Name": "Infra as Effect",
+        "ID": "infraDamageBox",
+        "type": "row",
+        "Description": "",
+        "data": "infraDamageBoxData"
+    },
+    "344": {
+        "Name": "Item as Effect",
+        "ID": "itemDamageBox",
+        "type": "row",
+        "Description": "",
+        "data": "itemDamageBoxData"
+    },
+    "345": {
+        "Name": "Location for flood fac and events",
+        "ID": "floodLocation",
+        "type": "",
+        "Description": "",
+        "data": "getFloodLoc"
+    },
+     "346": {
+        "Name": "Veh As Resource",
+        "ID": "vehResEventsBox",
+        "type": "row",
+        "data": "vehDamageBoxData",
+        "Description": ""
+    },
+    "347": {
+        "Name": "Veh As Fac Resource",
+        "ID": "vehResBox",
+        "type": "row",
+        "data": "vehDamageBoxData",
+        "Description": ""
+    },
+    "348": {
+        "Name": "Fire Type as Obj",
+        "ID": "FireTypeBox",
+        "data":"fireTypeData",
+        "type": "",
+        "Description": ""
+    },
+     "349": {
+        "Name": "Obs Loc Lat",
+        "ID": "obsLocLat",
+        "type": "text",
+        "Description": "Obs Loc Lat"
+    },
+     "350": {
+        "Name": "Obs Loc Lon",
+        "ID": "obsLocLon",
+        "type": "text",
+        "Description": "Obs Loc Lon"
+    },
+    "351": {
+        "Name": "Bg Text",
+        "ID": "BgTxt",
+        "type": "text",
+        "Description": "Bg Text"
+    },
+    "352": {
+        "Name": "Time Flash",
+        "ID": "TimeFlashTxt",
+        "type": "text",
+        "Description": "Time Flash"
+    },
+    "353": {
+        "Name": "Call Sign",
+        "ID": "CallSignTxt",
+        "type": "text",
+        "Description": "Call Sign"
+    },
+    "354": {
+        "Name": "Fence Obj",
+        "ID": "FenceBox",
+        "type": "combo",
+        "data": "getFenceData",
+        "Description": ""
+    },
+    "355": {
+        "Name": "Staff Comments",
+        "ID": "StaffCommentsT",
+        "type": "text",
+        "Description": "Staff Comments"
+    },
+    "955": {
+        "Name": "Label Text",
+        "ID": "MultiLineLabelTxt",
+        "type": "text",
+        "Description": "Text Box Label"
+    }
+}

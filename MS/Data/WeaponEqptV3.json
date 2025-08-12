@@ -1,0 +1,6828 @@
+{
+    "15110500": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Gun",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "RCG 35 mm",
+                "range": "4000",
+                "subCatCode": "AD1"
+            },
+            {
+                "name": "Lt AD 14.5 mm",
+                "range": "2300",
+                "subCatCode": "AD2"
+            },
+            {
+                "name": "Lt AD 37mm",
+                "range": "3500",
+                "subCatCode": "AD3"
+            },
+            {
+                "name": "Med AD 57 mm",
+                "range": "6000",
+                "subCatCode": "AD4"
+            },
+            {
+                "name": "AD Gun",
+                "range": "0",
+                "subCatCode": "ADGUN"
+            }
+
+        ],
+        "variantsEn": [
+            {
+                "name": "ZV-3-2 Schilka",
+                "range": "7000",
+                "subCatCode": "AD18"
+            },
+            {
+                "name": "ZSU-23-4 Schilka",
+                "range": "7000",
+                "subCatCode": "AD19"
+            },
+            {
+                "name": "40 mm L-60 Boros",
+                "range": "4750",
+                "subCatCode": "AD20"
+            },
+            {
+                "name": "Tunguska",
+                "range": "2000",
+                "subCatCode": "AD21"
+            },
+            {
+                "name": "Oerlikon Twin 20mm",
+                "range": "2000",
+                "subCatCode": "AD22"
+            },
+            {
+                "name": "Twin 30 mm 256 SP",
+                "range": "10000",
+                "subCatCode": "AD23"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "ADGUN",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15120202": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Tank - Med",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "TANK",
+        "Sub_Category": "BTNKME",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110100": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Rifle",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "75 mm",
+                "range": "600",
+                "subCatCode": "SARM1"
+            },
+            {
+                "name": "G-3",
+                "range": "274",
+                "subCatCode": "SARM2"
+            },
+            {
+                "name": "MP5A2",
+                "range": "75",
+                "subCatCode": "SARM3"
+            },
+            {
+                "name": "MG1A3",
+                "range": "457",
+                "subCatCode": "SARM4"
+            },
+            {
+                "name": "12.7 mm",
+                "range": "800",
+                "subCatCode": "SARM5"
+            },
+            {
+                "name": "Rifle",
+                "range": "0",
+                "subCatCode": "RIFLE"
+            }
+        ],
+        "variantsEn": [
+            {
+                "name": "7.62 mm LMG",
+                "range": "457",
+                "subCatCode": "SARM6"
+            },
+            {
+                "name": "7.62 mm LZA1",
+                "range": "274",
+                "subCatCode": "SARM7"
+            },
+            {
+                "name": "7.62 mm L1A1",
+                "range": "274",
+                "subCatCode": "SARM8"
+            },
+            {
+                "name": "AK 47",
+                "range": "500",
+                "subCatCode": "SARM9"
+            },
+            {
+                "name": "8.6 mm Sniper",
+                "range": "1200",
+                "subCatCode": "SARM10"
+            },
+            {
+                "name": "Barret Sniper",
+                "range": "1800",
+                "subCatCode": "SARM11"
+            },
+            {
+                "name": "Amr 14.5 mm",
+                "range": "1750",
+                "subCatCode": "SARM12"
+            },
+            {
+                "name": "AGS-17",
+                "range": "1700",
+                "subCatCode": "SARM13"
+            },
+            {
+                "name": "AGS-30",
+                "range": "1700",
+                "subCatCode": "SARM14"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "SMARMS",
+        "Sub_Category": "RIFLE",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15120201": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Tank - Light",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "TANK",
+        "Sub_Category": "BTNKLI",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15120203": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Tank - Hy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "TANK",
+        "Sub_Category": "BTNKHE",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110800": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Recoilless Gun",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "CANNON",
+        "Sub_Category": "RECGUN",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111602": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Multiple Rocket Launcher - Med",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "RCKART",
+        "Sub_Category": "MLRSMD",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10110217": {
+        "Class": "UEISymbol",
+        "Description": "MLRS",
+        "Name": "Multiple Launch Rocket System (MLRS)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "A100-311",
+                "range": "120000",
+                "subCatCode": "RCKA8"
+            },
+            {
+                "name": "A100-111",
+                "range": "80000",
+                "subCatCode": "RCKA9"
+            },
+            {
+                "name": "FATAH-1",
+                "range": "18000",
+                "subCatCode": "RCKA99"
+            },
+            {
+                "name": "Multiple Launch Rocket System",
+                "range": "0",
+                "subCatCode": "MLRS"
+
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "RCKART",
+        "Sub_Category": "MLRS",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111601": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Multiple Rocket Launcher - Light",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "RCKART",
+        "Sub_Category": "MLRSLT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111603": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Multiple Rocket Launcher - Hy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "RCKART",
+        "Sub_Category": "MLRSHV",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110900": {
+        "Name": "Howitzer",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Category": "ARTY",
+        "Sub_Category": "HOWIT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110901": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Howitzer - Med",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "CANNON",
+        "Sub_Category": "HOWTMD",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110900": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Howitzer - Light",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "CANNON",
+        "Sub_Category": "HOWTLT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Grenade Launcher",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "GLHMG",
+                "range": "600",
+                "subCatCode": "NOS1"
+            },
+            {
+                "name": "Energa Grenade",
+                "range": "330",
+                "subCatCode": "NOS2"
+            },
+            {
+                "name": "Grenade Launcher",
+                "range": "0",
+                "subCatCode": "GRENLN"
+            }
+        ],
+        "variantsEn": [
+            {
+                "name": "UBGL",
+                "range": "400",
+                "subCatCode": "NOS3"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "NOS",
+        "Sub_Category": "GRENLN",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111702": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Anti Tank Rocket Launcher - Med",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AT",
+        "Sub_Category": "ATRLMD",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111701": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Anti Tank Rocket Launcher - Light",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AT",
+        "Sub_Category": "ATRLLT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111703": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Antitank Rocket Launcher - Hy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AT",
+        "Sub_Category": "ATRLHV",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111700": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Anti Tank Rocket Launcher",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "RPG-7",
+                "range": "500",
+                "subCatCode": "RCKA1"
+            },
+            {
+                "name": "3.5 RL",
+                "range": "274",
+                "subCatCode": "RCKA2"
+            },
+            {
+                "name": "Antitank Rocket Launcher",
+                "range": "0",
+                "subCatCode": "ATROC"
+            }
+        ],
+        "variantsEn": [
+            {
+                "name": "3.5 RL IND",
+                "range": "137",
+                "subCatCode": "RCKA4"
+            },
+            {
+                "name": "84 mm RL",
+                "range": "1000",
+                "subCatCode": "RCKA3"
+            },
+            {
+                "name": "M777 ULH",
+                "range": "2400",
+                "subCatCode": "RCKA5"
+            },
+            {
+                "name": "214 mm Pinaka MLRS",
+                "range": "3700",
+                "subCatCode": "RCKA7"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "RCKART",
+        "Sub_Category": "ATROC",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Antitank Msl Launcher",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "TOW",
+                "range": "3000",
+                "subCatCode": "AT1"
+            },
+            {
+                "name": "Green Arrow",
+                "range": "3000",
+                "subCatCode": "AT2"
+            },
+            {
+                "name": "Baktar Shikan",
+                "range": "3000",
+                "subCatCode": "AT3"
+            },
+            {
+                "name": "106 mm",
+                "range": "1300",
+                "subCatCode": "AT16"
+            },
+            {
+                "name": "Antitank Msl Launcher",
+                "range": "0",
+                "subCatCode": "ATMIS"
+            }
+        ],
+        "variantsEn": [
+            {
+                "name": "NAG",
+                "range": "7000",
+                "subCatCode": "AT4"
+            },
+            {
+                "name": "Spike",
+                "range": "8000",
+                "subCatCode": "AT5"
+            },
+            {
+                "name": "KorNet",
+                "range": "5580",
+                "subCatCode": "AT6"
+            },
+            {
+                "name": "INVAR",
+                "range": "5000",
+                "subCatCode": "AT7"
+            },
+            {
+                "name": "KONKURS",
+                "range": "4000",
+                "subCatCode": "AT8"
+            },
+            {
+                "name": "FAGot",
+                "range": "2000",
+                "subCatCode": "AT9"
+            },
+            {
+                "name": "SAGGER",
+                "range": "3000",
+                "subCatCode": "AT10"
+            },
+            {
+                "name": "Malvika",
+                "range": "3000",
+                "subCatCode": "AT11"
+            },
+            {
+                "name": "Milan-1",
+                "range": "2000",
+                "subCatCode": "AT12"
+            },
+            {
+                "name": "Milan-2",
+                "range": "2000",
+                "subCatCode": "AT13"
+            },
+            {
+                "name": "57 mm",
+                "range": "4297",
+                "subCatCode": "AT14"
+            },
+            {
+                "name": "106 mm",
+                "range": "1400",
+                "subCatCode": "AT17"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AT",
+        "Sub_Category": "ATMIS",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110602": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Antitank Gun - Med",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AT",
+        "Sub_Category": "ATGNMD",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110601": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Antitank Gun - Light",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AT",
+        "Sub_Category": "ATGNLT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110603": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Antitank Gun - Hy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AT",
+        "Sub_Category": "ATGNHV",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110600": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Antitank Gun",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AT",
+        "Sub_Category": "ATGUN",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111104": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Msl Launcher - Med",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "ADMLMR",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111101": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Msl Launcher - Light",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "ADMLSR",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111107": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Msl Launcher - Hy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "ADMLLR",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111100": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Msl Launcher",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "ADMIS",
+        "NativeType": "WeaponEqpt",
+        "vesselType": "",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110502": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Gun - Med",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "ADMED",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110501": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Gun - Light",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "ADLGT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110503": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Gun - Hy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "ADHEV",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271277": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Landing Ship",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "LS",
+        "Sub_Category": "",
+        "vesselType": "Surface",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VESSEL",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10110201": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Civil Gen Transport",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "TRANSG",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15120302": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "ARV - Med",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "BTMDRE",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15120301": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "ARV - Light",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "BTLTRE",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15120303": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "ARV - Hy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "BTHVRE",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15230100": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Eqpt - Amb",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AMBUL",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25120204": {
+        "Class": "AvenueOfApchs",
+        "Description": "Avenue of Approaches",
+        "Name": "Avenue of Apchs",
+        "Parameters": [
+            {
+                "Name": "Arrowhead Ratio",
+                "default": "0.07",
+                "description": "Arrowhead Ratio",
+                "paramThumbnail": "",
+                "value": "HEAD_RATIO"
+            },
+            {
+                "Name": "Tail Ratio",
+                "default": "0.05",
+                "description": "Tail Ratio",
+                "paramThumbnail": "",
+                "value": "TAIL_FACTOR"
+            }
+        ],
+        "SymGeoType": "Area",
+        "Category": "APC",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5"
+    },
+    "25271278": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Fast Power Boat",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "PBF",
+        "Sub_Category": "",
+        "vesselType": "Surface",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VESSEL",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271205": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Aircraft Carrier",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "CV",
+        "Sub_Category": "",
+        "vesselType": "Surface",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VESSEL",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271206": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Aircraft Carrier (Msl Armed)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "CVG",
+        "Sub_Category": "",
+        "vesselType": "Surface",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VESSEL",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15150200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Train - Railcar",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "TRAIN",
+        "Sub_Category": "NOS",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "RAIL",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15150100": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Train - Locomotive",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "LCMTVE",
+        "Sub_Category": "NOS",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "RAIL",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15220300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Sensor Radar",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "RADAR",
+        "Sub_Category": "RDRGRS",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15200400": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "CBRN Eqpt",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "NOS",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "CBRNEQ",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "01110200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Fixed-Wing - Rotary Wing",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AIRRW",
+        "Sub_Category": "AIRRW",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "AIRCFT",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "01110104": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Fixed-Wing - Fighter",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "F 16",
+                "range": "0",
+                "subCatCode": "F16SD"
+            },
+            {
+                "name": "JF 17",
+                "range": "0",
+                "subCatCode": "JF17SD"
+            },
+            {
+                "name": "F 7",
+                "range": "0",
+                "subCatCode": "F7SD"
+            },
+            {
+                "name": "Fixed-Wing",
+                "range": "0",
+                "subCatCode": "FIXWNG"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FIXWNG",
+        "Sub_Category": "FIXWNG",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "AIRCFT",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "01110300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "UA/ UAV/ UAS/ RPV",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FIXWNG",
+        "Sub_Category": "UNMRP",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "AIRCFT",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271253": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "JF 17",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FIXWNG",
+        "Sub_Category": "JF17SD",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "AIRCFT",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271241": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "F (Air Friend)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FIXWNG",
+        "Sub_Category": "FAFSD",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "AIRCFT",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271256": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "F 16",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FIXWNG",
+        "Sub_Category": "F16SD",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "AIRCFT",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271255": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "F 7",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FIXWNG",
+        "Sub_Category": "F7SD",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "AIRCFT",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110200": {
+        "Name": "Machine Gun",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Category": "SMARMS",
+        "Sub_Category": "MACGUN",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110201": {
+        "Name": "Machine Gun - Light",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Category": "SMARMS",
+        "Sub_Category": "MACGLT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110203": {
+        "Name": "Machine Gun - Heavy",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Category": "SMARMS",
+        "Sub_Category": "MACGHV",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111401": {
+        "Name": "Mortar Light - Land Equipment",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "60 mm",
+                "range": "1614",
+                "subCatCode": "MRTR1"
+            },
+            {
+                "name": "81 mm",
+                "range": "4100",
+                "subCatCode": "MRTR2"
+            },
+            {
+                "name": "120 mm",
+                "range": "6747",
+                "subCatCode": "MRTR3"
+            },
+            {
+                "name": "3 in",
+                "range": "3900",
+                "subCatCode": "MRTR4"
+            },
+            {
+                "name": "Mortar Light - Land Equipment",
+                "range": "0",
+                "subCatCode": "MRTLGT"
+            }
+        ],
+        "variantsEn": [
+            {
+                "name": "60 mm",
+                "range": "1280",
+                "subCatCode": "MRTR5"
+            },
+            {
+                "name": "81 mm",
+                "range": "4200",
+                "subCatCode": "MRTR6"
+            },
+            {
+                "name": "120 mm",
+                "range": "20400",
+                "subCatCode": "MRTR7"
+            },
+            {
+                "name": "130 mm",
+                "range": "30689",
+                "subCatCode": "MRTR8"
+            },
+            {
+                "name": "2 in",
+                "range": "182",
+                "subCatCode": "MRTR9"
+            },
+            {
+                "name": "3 in",
+                "range": "3560",
+                "subCatCode": "MRTR10"
+            }
+        ],
+        "Category": "MORTAR",
+        "Sub_Category": "MRTLGT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111402": {
+        "Name": "Mortar Med - Land Equipment",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Category": "MORTAR",
+        "Sub_Category": "MRTMED",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111403": {
+        "Name": "Mortar Hy - Land Equipment",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Category": "MORTAR",
+        "Sub_Category": "MRTHEV",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110904": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Arty Gun - Light",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "105 mm Pack How",
+                "range": "10000",
+                "subCatCode": "ARTY1"
+            },
+            {
+                "name": "105 mm How",
+                "range": "11000",
+                "subCatCode": "ARTY2"
+            },
+            {
+                "name": "122 mm How",
+                "range": "11800",
+                "subCatCode": "ARTY3"
+            },
+            {
+                "name": "122 mm How D-30",
+                "range": "15300",
+                "subCatCode": "ARTY20"
+            },
+            {
+                "name": "Arty Gun - Light",
+                "range": "0",
+                "subCatCode": "ARTLGT"
+            }
+        ],
+        "variantsEn": [
+            {
+                "name": "75/24 mm",
+                "range": "11014",
+                "subCatCode": "ARTY9"
+            },
+            {
+                "name": "76 mm",
+                "range": "8600",
+                "subCatCode": "ARTY10"
+            },
+            {
+                "name": "105 mm IFG/LFG",
+                "range": "17200",
+                "subCatCode": "ARTY11"
+            },
+            {
+                "name": "105 mm",
+                "range": "17365",
+                "subCatCode": "ARTY12"
+            },
+            {
+                "name": "122 mm",
+                "range": "15300",
+                "subCatCode": "ARTY13"
+            },
+            {
+                "name": "122 mm SP",
+                "range": "29100",
+                "subCatCode": "ARTY14"
+            },
+            {
+                "name": "7.2 in HOW",
+                "range": "17195",
+                "subCatCode": "ARTY18"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ARTY",
+        "Sub_Category": "ARTLGT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110905": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Arty Gun - Med",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "SH-15 TMG",
+                "range": "53400",
+                "subCatCode": "ARTY19",
+                "ammoType": [
+                    {
+                        "name": "",
+                        "range": "53400"
+                    },
+                    {
+                        "name": "HE",
+                        "range": "18100"
+                    },
+                    
+                    {
+                        "name": "HE BT",
+                        "range": "30000"
+                    },
+                    {
+                        "name": "HE BB",
+                        "range": "40000"
+                    },
+                    {
+                        "name": "HE BBRA",
+                        "range": "53800"
+                    },
+                    {
+                        "name": "Smk WP",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "Smk BE",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "ILL",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "AP",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "DPICM",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "RAP",
+                        "range": "30100"
+                    }
+                ]
+            },
+            {
+                "name": "155 mm How",
+                "range": "14600",
+                "subCatCode": "ARTY4"
+            },
+            {
+                "name": "155 mm (SP)",
+                "range": "16550",
+                "subCatCode": "ARTY5"
+            },
+            {
+                "name": "155 mm How M-109A2",
+                "range": "18100",
+                "subCatCode": "ARTY21",
+                "ammoType": [
+                    {
+                        "name": "",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "HE",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "Smk WP",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "Smk BE",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "ILL",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "AP",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "DPICM",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "RAP",
+                        "range": "30100"
+                    }
+                ]
+            },
+            {
+                "name": "155 mm How M198",
+                "range": "18100",
+                "subCatCode": "ARTY22"
+            },
+            {
+                "name": "155 mm Gun",
+                "range": "23205",
+                "subCatCode": "ARTY23"
+            },
+            {
+                "name": "Arty Gun - Med",
+                "range": "0",
+                "subCatCode": "ARTMED"
+            }
+
+        ],
+        "variantsEn": [
+            {
+                "name": "130 mm SP CATAPULT",
+                "range": "30000",
+                "subCatCode": "ARTY15"
+            },
+            {
+                "name": "155 mm FH 77 BOFOROS",
+                "range": "24000",
+                "subCatCode": "ARTY16"
+            },
+            {
+                "name": "155 mm 45 CA HOW",
+                "range": "38000",
+                "subCatCode": "ARTY17"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ARTY",
+        "Sub_Category": "ARTMED",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110906": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Arty Gun - Heavy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "130 mm",
+                "range": "27150",
+                "subCatCode": "ARTY6",
+                "ammoType": [
+                    {
+                        "name": "",
+                        "range": "27150"
+                    },
+                    {
+                        "name": "HE",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "ILL",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "AP",
+                        "range": "18100"
+                    }
+                ]
+            },
+            {
+                "name": "8 in How",
+                "range": "16925",
+                "subCatCode": "ARTY7"
+            },
+            {
+                "name": "8 in (SP)",
+                "range": "20940",
+                "subCatCode": "ARTY8"
+            },
+            {
+                "name": "8 in How M110A2",
+                "range": "22900",
+                "subCatCode": "ARTY24"
+            },
+            {
+                "name": "Arty Gun - Heavy",
+                "range": "0",
+                "subCatCode": "ARTHEV"
+            }
+        ],
+        "variantsEn": [
+            {
+                "name": "130 mm SP CATAPULT",
+                "range": "30000",
+                "subCatCode": "ARTY15"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ARTY",
+        "Sub_Category": "ARTHEV",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10130101": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD - Main Gun",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT1",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10130102": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD - Msl",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "RBS -70",
+                "range": "3000",
+                "subCatCode": "AD5",
+                "ammoType": [
+                    {
+                        "name": "",
+                        "range": "3000"
+                    },
+                    {
+                        "name": "HE",
+                        "range": "18100"
+                    },
+                    {
+                        "name": "DPICM",
+                        "range": "18100"
+                    }
+                ]
+            },
+            {
+                "name": "Stinger",
+                "range": "4000",
+                "subCatCode": "AD6"
+            },
+            {
+                "name": "HN-5",
+                "range": "4200",
+                "subCatCode": "AD7"
+            },
+            {
+                "name": "Redeye",
+                "range": "3000",
+                "subCatCode": "AD8"
+            },
+            {
+                "name": "SA-7",
+                "range": "4200",
+                "subCatCode": "AD9"
+            },
+            {
+                "name": "AD - Msl",
+                "range": "0",
+                "subCatCode": "WPT2"
+            }
+        ],
+        "variantsEn": [
+            {
+                "name": "SA-6 KYA DRAT",
+                "range": "24000",
+                "subCatCode": "AD24"
+            },
+            {
+                "name": "SA-7 STR & LLA",
+                "range": "3600",
+                "subCatCode": "AD25"
+            },
+            {
+                "name": "SA-8 OSAAK",
+                "range": "9000",
+                "subCatCode": "AD26"
+            },
+            {
+                "name": "SA-9 GASKIN",
+                "range": "4200",
+                "subCatCode": "AD27"
+            },
+            {
+                "name": "SA-13 ITRELA",
+                "range": "5000",
+                "subCatCode": "AD28"
+            },
+            {
+                "name": "SA-14 IGLA",
+                "range": "5000",
+                "subCatCode": "AD29"
+            },
+            {
+                "name": "Tiger CAT",
+                "range": "5000",
+                "subCatCode": "AD30"
+            },
+            {
+                "name": "AKASH",
+                "range": "25000",
+                "subCatCode": "AD31"
+            },
+            {
+                "name": "S-300 V",
+                "range": "300000",
+                "subCatCode": "AD32"
+            },
+            {
+                "name": "S-400",
+                "range": "400000",
+                "subCatCode": "AD33"
+            },
+            {
+                "name": "Spyder (QR-SAM)",
+                "range": "15000",
+                "subCatCode": "AD34"
+            },
+            {
+                "name": "MR-SAM Barak-8",
+                "range": "70000",
+                "subCatCode": "AD35"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT2",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111109": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Msl Launcher - Hy(TELAR)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT3",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111108": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Msl Launcher - Hy(TLAR)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT4",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111103": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Msl Launcher - Light(TELAR)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT5",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111102": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Msl Launcher - Light(TLAR)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT6",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111106": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Msl Launcher - Med(TELAR)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT7",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111105": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Msl Launcher - Med(TLAR)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT8",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10120400": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Antitank - Antiarmor - Armr",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT15",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10120402": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Antitank - Antiarmor - Motorized",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT16",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15210300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Antitank Mine",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT17",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15220301": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Arty Radar",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT19",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110303": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Grenade Launcher (Heavy)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT35",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110301": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Grenade Launcher (Light)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT36",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110302": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Grenade Launcher (Medium)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT37",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271209": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Helicopter",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "Bell 206",
+                "range": "0",
+                "subCatCode": "HEL10"
+            },
+            {
+                "name": "SA-315B LAMA",
+                "range": "0",
+                "subCatCode": "HEL14"
+            },
+            {
+                "name": "SA-330L PUMA",
+                "range": "0",
+                "subCatCode": "HEL15"
+            },
+            {
+                "name": "MI-17",
+                "range": "0",
+                "subCatCode": "HEL17"
+            },
+            {
+                "name": "Bell 412",
+                "range": "0",
+                "subCatCode": "HEL18"
+            },
+            {
+                "name": "Cobra",
+                "range": "0",
+                "subCatCode": "HEL19"
+            },
+            {
+                "name": "Helicopter",
+                "range": "0",
+                "subCatCode": "WPT"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "HEL",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "30181000": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Helicopter Landing Site",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110202": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "MG - Med",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT41",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111000": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Missile Launcher",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT42",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Missile Launcher Surface to Surface Missile (SSM)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT43",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25181600": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "MIW - Fixed Wing",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT44",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25181700": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "MIW - Rotary Wing",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT45",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10110218": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Multi Barrel Rocket Launcher (Self Propelled)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT46",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111600": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Multi Barrel Rocket Launcher (MBRL)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "Multi Barrel Rocket Launcher (MBRL)",
+                "range": "20000",
+                "subCatCode": "WPT47",
+                "ammoType": [
+                    {
+                        "name": "",
+                        "range": "20000"
+                    },
+                    {
+                        "name": "Korean",
+                        "range": "20000"
+                    },
+                    {
+                        "name": "Chinese",
+                        "range": "20000"
+                    }
+                ]
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT47",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10111001": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Sig - Radio",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "RADAR",
+        "Sub_Category": "RDRGRS",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110803": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Recoilless Gun - Hy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT50",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110801": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Recoilless Gun - Light",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT51",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15110802": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Recoilless Gun - Med",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT52",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111302": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "SSM Launcher (Intermediate / Medium Range)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT56",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111303": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "SSM Launcher (Long Range)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT57",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15111301": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "SSM Launcher (Short range)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT58",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15120200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Tank",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsEn": [
+            {
+                "name": "T-72",
+                "range": "1601",
+                "subCatCode": "TANK1"
+            },
+            {
+                "name": "T-90S",
+                "range": "1601",
+                "subCatCode": "TANK2"
+            },
+            {
+                "name": "T-90MS",
+                "range": "1601",
+                "subCatCode": "TANK3"
+            },
+            {
+                "name": "Arjunt",
+                "range": "1610",
+                "subCatCode": "TANK4"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "TANK",
+        "Sub_Category": "WPT61",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15120300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Tank Rec Veh",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25280600": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Unspecified Mine",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT65",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25280500": {
+        "Class": "TacticalPoint",
+        "Description": "An antitank mine that detects and acquires Tgts then launches subammunitio n that attacks the top of the Tgts",
+        "Fill": "1",
+        "Name": "Wide Area Antitank Mine",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT67",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271272": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Cruiser",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT23",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15220303": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD Radar",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "501–B",
+                "range": "200000",
+                "subCatCode": "AD10"
+            },
+            {
+                "name": "Type 513",
+                "range": "400000",
+                "subCatCode": "AD11"
+            },
+            {
+                "name": "Type 514",
+                "range": "470000",
+                "subCatCode": "AD12"
+            },
+            {
+                "name": "LAADS",
+                "range": "4000",
+                "subCatCode": "AD13"
+            },
+            {
+                "name": "GIROFFE",
+                "range": "40000",
+                "subCatCode": "AD14"
+            },
+            {
+                "name": "Sky Guard",
+                "range": "20000",
+                "subCatCode": "AD15"
+            },
+            {
+                "name": "FCR Type-5",
+                "range": "80000",
+                "subCatCode": "AD16"
+            },
+            {
+                "name": "TPS 43",
+                "range": "24000",
+                "subCatCode": "AD17"
+            },
+            {
+                "name": "AD Radar",
+                "range": "0",
+                "subCatCode": "WPT9"
+            }
+        ],
+        "variantsEn": [
+            {
+                "name": "EL/M–2140",
+                "range": "15000",
+                "subCatCode": "AD36"
+            },
+            {
+                "name": "PJT–531B (SRBFSR)",
+                "range": "10000",
+                "subCatCode": "AD37"
+            },
+            {
+                "name": "Stentos",
+                "range": "10000",
+                "subCatCode": "AD38"
+            },
+            {
+                "name": "French",
+                "range": "60000",
+                "subCatCode": "AD39"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT9",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271236": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Air Msl (Unknow / Hostile / Friendly)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT10",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271207": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Aircraft Carrier Force",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10110215": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Amb",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213501": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Ambient Noise Sonobuoy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT11",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15210200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Antipersonnel Land Mine (APL)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT12",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25280200": {
+        "Class": "TacticalPoint",
+        "Description": "In land mine warfare, a mine designed to be exploded by the presence, proximity or contact of a person and that will incapacitate,  wound or kill one or more persons. ",
+        "Fill": "1",
+        "Name": "Antipersonnel Mine",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT13",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25280201": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Antipersonnel Mine with Directional Effects",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT14",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15120103": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "APC",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271210": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Armed Merchant Cruiser",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT18",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10120801": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Aviation Fixed Wing Reconnaissance",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "C-1",
+                "range": "0",
+                "subCatCode": "AVN1"
+            }, {
+                "name": "SSAB",
+                "range": "0",
+                "subCatCode": "AVN2"
+
+            }, {
+                "name": "Cessna 421",
+                "range": "0",
+                "subCatCode": "AVN3"
+            }, {
+                "name": "Gulf Stream B40C",
+                "range": "0",
+                "subCatCode": "AVN4"
+            }, {
+                "name": "F-27",
+                "range": "0",
+                "subCatCode": "AVN5"
+            }, {
+                "name": "Aviation Fixed Wing Reconnaissance",
+                "range": "0",
+                "subCatCode": "AVN6"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AVN",
+        "Sub_Category": "AVN6",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10120601": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Aviation Rotary Wing Reconnaissance",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15200300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Booby Trap Eqpt",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT20",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213505": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Comd Active Multi-Beam Sonobuoy (CAMBS)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT21",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213506": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Comd Active Sonobuoy Directional Comd Active Sonobuoy Sys (CASS)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT22",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271273": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Cruiser (Guided Msl)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT24",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271274": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Cruiser Force",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT25",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271270": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Destroyer",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT26",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271271": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Destroyer (Guided Msl)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT27",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213508": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Directional Comd Active Sonobuoy Sys (DICASS)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT28",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15131100": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Engineer Vehicle Dozer",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT29",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15130100": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Engr Bridge",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213509": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Expendable Reliable Acoustic Path Sonobuoy(ERAPS)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT30",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271217": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Expired Buoy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT31",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213510": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Expired Sonobuoy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT32",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271212": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Fishing Vessel / AG",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT33",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25281901": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Fixed and Prefabricated Tetrahedron",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT34",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15210100": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Mine",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT38",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25211000": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Launched Torpedo",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT39",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213512": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Low Frequency Analyzing and Recording Sonobuoy (LOFAR)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT40",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15131001": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mechanical Mine Layer/ MML",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15130901": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mine Clearing Vehicle (Trailer mounted)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15130902": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mine Clearing Vehicle (Troll Anti Mine)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271208": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "MineLayer",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271265": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Minesweeper",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271243": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Own ERIEYE Aircraft",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213513": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Pattern Cen Sonobuoy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT48",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25210100": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Plan Ship / Merchant Ship",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213514": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Range Only Sonobuoy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT49",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25218600": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Sea Mine-Like",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT53",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271227": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Ship Friendly / Hostile",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213500": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Sonobuoy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT54",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213511": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Sonobuoy, Kingpin",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT55",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15220302": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Sound Ranging Radar",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271242": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "SU ASRT (Radar)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT59",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25271211": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Submarine Subsurfaced / Submerged / Sonrting",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT60",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25181400": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "SUCAP - Fixed Wing",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25181500": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "SUCAP - Rotary Wing",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25281902": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Tetrahedrons, Dragons Teeth - Movable",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT62",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25281903": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Tetrahedrons, Dragons Teeth - Movable and Prefabricated",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT63",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25182000": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Unmanned Aerial Sys (UAS/UA)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT64",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15140600": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Utility Vehicle Semi (Tractor Trailer)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "WPT",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25213515": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Vertical Line Array Directional Frequency Analysis and Recording (DIFAR) Sonobuoy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AD",
+        "Sub_Category": "WPT66",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25290304": {
+        "Class": "DoubleApronFence",
+        "Description": "",
+        "Name": "Wire Obs - Double Apron Fence",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Category": "AD",
+        "Sub_Category": "WPT68",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5",
+        "isObstacle": "1"
+
+    },
+    "25290303": {
+        "Class": "DoubleFenceWire",
+        "Description": "",
+        "Name": "Wire Obs - Double Fence Wire",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Category": "AD",
+        "Sub_Category": "WPT69",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5",
+        "isObstacle": "1"
+    },
+    "25290308": {
+        "Class": "DoubleStrandConcertina",
+        "Description": "",
+        "Name": "Wire Obs - Double Strand Concertina",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Category": "AD",
+        "Sub_Category": "WPT70",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5",
+        "isObstacle": "1"
+    },
+    "25290306": {
+        "Class": "HighWireFence",
+        "Description": "",
+        "Name": "Wire Obs - High Wire Fence",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Category": "AD",
+        "Sub_Category": "WPT71",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5",
+        "isObstacle": "1"
+    },
+    "25290305": {
+        "Class": "LowWireFence",
+        "Description": "",
+        "Name": "Wire Obs - Low Wire Fence",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Category": "AD",
+        "Sub_Category": "WPT72",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5",
+        "isObstacle": "1"
+    },
+    "25290307": {
+        "Class": "SingleConcertina",
+        "Description": "",
+        "Name": "Wire Obs - Single Concertina",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Category": "AD",
+        "Sub_Category": "WPT73",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5",
+        "isObstacle": "1"
+    },
+    "25290302": {
+        "Class": "SingleFenceWire",
+        "Description": "",
+        "Name": "Wire Obs - Single Fence Wire",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Category": "AD",
+        "Sub_Category": "WPT74",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5",
+        "isObstacle": "1"
+    },
+    "25290309": {
+        "Class": "TripleStrandConcertina",
+        "Description": "",
+        "Name": "Wire Obs - Triple Strand Concertina",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Category": "AD",
+        "Sub_Category": "WPT75",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5",
+        "isObstacle": "1"
+    },
+    "25290301": {
+        "Class": "UnspecifiedWire",
+        "Description": "",
+        "Name": "Wire Obs - Unspecified Wire",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Category": "AD",
+        "Sub_Category": "WPT76",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5",
+        "isObstacle": "1"
+    },
+    "02110000": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Air Msl",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "variantsOwn": [
+            {
+                "name": "Air Msl",
+                "range": "0",
+                "subCatCode": "AMISSL"
+            },
+            {
+                "name": "Hatf-I",
+                "range": "70000",
+                "subCatCode": "MSYS3"
+            },
+            {
+                "name": "Hatf-IA",
+                "range": "100000",
+                "subCatCode": "MSYS4"
+            },
+            {
+                "name": "Hatf-IB",
+                "range": "100000",
+                "subCatCode": "MSYS5"
+            },
+            {
+                "name": "Nasr",
+                "range": "90000",
+                "subCatCode": "MSYS6"
+            },
+            {
+                "name": "Abdali",
+                "range": "200000",
+                "subCatCode": "MSYS7"
+            },
+            {
+                "name": "M-11",
+                "range": "350000",
+                "subCatCode": "MSYS8"
+            },
+            {
+                "name": "Ghaznavi",
+                "range": "320000",
+                "subCatCode": "MSYS9"
+            },
+            {
+                "name": "Shaheen",
+                "range": "750000",
+                "subCatCode": "MSYS10"
+            },
+            {
+                "name": "Shaheen-I",
+                "range": "900000",
+                "subCatCode": "MSYS11"
+            },
+            {
+                "name": "Shaheen-IA",
+                "range": "1000000",
+                "subCatCode": "MSYS12"
+            },
+            {
+                "name": "Ghauri-I",
+                "range": "1500000",
+                "subCatCode": "MSYS13"
+            },
+            {
+                "name": "Ghauri-II",
+                "range": "2000000",
+                "subCatCode": "MSYS14"
+            },
+            {
+                "name": "Ababeel",
+                "range": "2200000",
+                "subCatCode": "MSYS15"
+            },
+            {
+                "name": "Shaheen-II",
+                "range": "2500000",
+                "subCatCode": "MSYS16"
+            },
+            {
+                "name": "Shaheen-III",
+                "range": "2750000",
+                "subCatCode": "MSYS17"
+            },
+            {
+                "name": "Zarb",
+                "range": "320000",
+                "subCatCode": "MSYS18"
+            },
+            {
+                "name": "Babur-I",
+                "range": "700000",
+                "subCatCode": "MSYS19"
+            },
+            {
+                "name": "Babur-II",
+                "range": "750000",
+                "subCatCode": "MSYS20"
+            },
+            {
+                "name": "Harbah",
+                "range": "750000",
+                "subCatCode": "MSYS21"
+            }
+        ],
+        "variantsEn": [
+            {
+                "name": "300 mm BM30",
+                "range": "90000",
+                "subCatCode": "MSYS1"
+            },
+            {
+                "name": "Brahmos",
+                "range": "290000",
+                "subCatCode": "MSYS2"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MISSYS",
+        "Sub_Category": "AMISSL",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15230302": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Surv Radar",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "RADAR",
+        "Sub_Category": "RDRGRS",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10201400": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "C&IT - HF",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "COM",
+        "Sub_Category": "CITHF",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10201401": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "C&IT - UHF",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "COM",
+        "Sub_Category": "CITUHF",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10201402": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "C&IT - VHF",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "COM",
+        "Sub_Category": "CITVHF",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10201403": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "ICT Node",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "COM",
+        "Sub_Category": "ICTNDE",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10201404": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "ICT - FCN",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "COM",
+        "Sub_Category": "ICTFCN",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10201405": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "ICT - NC",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "COM",
+        "Sub_Category": "ICTNC",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15230303": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Fire Con Radar",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FRC",
+        "Sub_Category": "RDRFC",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "25214812": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Armour Tank Recovery",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+       
+        "SymGeoType": "Point",
+        "Category": "TNKREV",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "15140700": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Limited Cross-Country Truck",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        
+        "SymGeoType": "FPoint",
+        "Category": "TRANSG",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+        
+    },
+     "10130112": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "FAADC",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        
+        "SymGeoType": "FPoint",
+        "Category": "TRANSG",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+     },
+     
+        "25214806": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Wheeled (Limited Cross Country)",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        
+       "SymGeoType": "Point",
+        "Category": "TRANSG",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+        
+    },
+    
+     "25214807": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Wheeled (Cross Country)",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        
+        "SymGeoType": "Point",
+        "Category": "TRANSG",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+      "25214808": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Tracked",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "TRANSG",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+       "25214809": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Towed",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+       "SymGeoType": "Point",
+        "Category": "TRANSG",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+     "25214810": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Railway",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "TRANSG",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+      "25214811": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Pack Animals",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+       "SymGeoType": "Point",
+        "Category": "TRANSG",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+     "10130103": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD - Light Msl Unit",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+       "SymGeoType": "FPoint",
+        "Category": "TRANSG",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10130104": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD - Med Msl Unit",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "TRANSG",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10130105": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AD - Heavy Msl Unit",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "TRANSG",
+        "Sub_Category": "",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "VEHCLE",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    }, 
+    "10150521": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "EW - Manpack PR-100",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "EW",
+        "Sub_Category": "EWMPKP",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10150522": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "EW - Static EW Sys",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "EW",
+        "Sub_Category": "EWSTEW",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10150523": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "EW - Mob EW Sys",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "EW",
+        "Sub_Category": "EWMBEW",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10150524": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "EW - Manpack EW Sys",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "EW",
+        "Sub_Category": "EWMPEW",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    "10150525": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "EW - Ae EW Sys",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "EW",
+        "Sub_Category": "EWAEEW",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "ELCTRN",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    }
+    ,
+    "10130113": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "HIMAD",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "AD51",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    }
+    ,
+    "10130114": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "LOMAD",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "AD52",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    }
+    ,
+    "10130115": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "ESHORAD",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "AD53",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+    },
+    
+     "10130107": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "AADOC",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "AD53",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"
+     },
+     "10130108": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "DOC",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AD",
+        "Sub_Category": "AD53",
+        "vesselType": "",
+        "NativeType": "WeaponEqpt",
+        "defStdId": "-0",
+        "EQPT_TYPE": "WEPTYP",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5"     
+    }
+}

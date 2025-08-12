@@ -1,0 +1,183 @@
+{
+    "25140101": {
+        "Name": "FLOT",
+        "Class": "FwdLineOfTps",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "FLT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "312,4,5",
+        "isAirReqTgt": "NoTgt"
+    },
+    "00000001": {
+        "Class": "FreehandLine",
+        "Description": "",
+        "Name": "Path",
+        "Parameters": [
+            {
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Sharp Edge Line) and 2 (Curvy Line)",
+                "paramThumbnail": "",
+                "value": "DRAW_TYPE"
+            }
+        ],
+        "SymGeoType": "Line",
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "isFreeHand": "1",
+        "template": "312,4,5"
+    },
+    "00000002": {
+        "Class": "FreehandAreaFilled",
+        "Description": "",
+        "Name": "Extents",
+        "Parameters": [
+            {
+                "Name": "Draw Type",
+                "default": "3",
+                "description": "Possible Values 1 (Closed Curvy), 2 (Sharp Edge Polygon), 3 (Rectangle or Square) and 4 (Circle or Ellipse)",
+                "paramThumbnail": "",
+                "value": "DRAW_TYPE"
+            }
+        ],
+        "SymGeoType": "Area",
+        "Category": "NOS",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Draw Using Closed Curve",
+                "description": "Draw using Closed Curve"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Draw Using Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Rectangle",
+                "description": "Draw using Rectangle"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Draw Using Circle or Ellipse",
+                "description": "Draw using Circle or Ellipse"
+            }
+        ],
+        "isFreeHand": "1",
+        "template": "312,4,5"
+    },
+    "25160301": {
+        "Name": "CP",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "CTRLPT",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "312,4,5",
+        "isAirReqTgt": "NoTgt"
+
+    },
+    "25160302": {
+        "Name": "FAC",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "FWDAC",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5",
+        "isAirReqTgt": "NoTgt"
+    },
+      "00000005": {
+        "Name": "POI",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "FWDAC",
+        "NativeType": "CtrlFtr",
+        "defStdId": "-0",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "15",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "Tools": [],
+        "template": "312,4,5",
+         "isFreeHand": "1",
+        "isAirReqTgt": "NoTgt"
+    }
+       
+}

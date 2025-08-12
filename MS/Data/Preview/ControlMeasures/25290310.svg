@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 22.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Version_1.0" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px"
+	 y="0px" viewBox="0 0 400 400" style="enable-background:new 0 0 400 400;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:none;stroke:#000000;stroke-width:5;}
+	.st1{display:none;}
+	.st2{display:inline;}
+	.st3{font-family:'ArialMT';}
+	.st4{font-size:30px;}
+	.st5{fill:none;stroke:#000000;stroke-width:2;}
+	.st6{stroke:#000000;stroke-width:0.5;}
+	.st7{display:inline;fill:none;stroke:#00FF00;stroke-width:5;}
+	.st8{display:inline;fill:#00FF00;}
+	.st9{font-size:48px;}
+	.st10{fill:none;stroke:#000000;stroke-width:4;stroke-miterlimit:10;}
+</style>
+<g id="main">
+	<line class="st0" x1="16" y1="164.5" x2="357" y2="164.5"/>
+</g>
+<g id="template" class="st1">
+	<g class="st2">
+		<text transform="matrix(1 0 0 1 86.9995 223.499)" class="st3 st4">PT 2</text>
+		<line class="st5" x1="36.5" y1="177.4" x2="77" y2="208.5"/>
+		<line class="st5" x1="37" y1="146" x2="37" y2="178.5"/>
+		<polygon class="st6" points="37,133.5 52,161 22,161 		"/>
+	</g>
+	<g class="st2">
+		<text transform="matrix(1 0 0 1 258.5 218.999)" class="st3 st4">PT 1</text>
+		<line class="st5" x1="357" y1="145" x2="357" y2="180"/>
+		<line class="st5" x1="357.5" y1="178.2" x2="327" y2="202.5"/>
+		<polygon class="st6" points="357,130 372,157.5 342,157.5 		"/>
+	</g>
+</g>
+<g id="example" class="st1">
+	<polyline class="st7" points="31.5,177.4 134.5,122.5 261.5,122.5 372,70.5 	"/>
+	<text transform="matrix(0.925 -0.3799 0.3799 0.925 321.8731 111.8365)" class="st8 st3 st9">X</text>
+	<text transform="matrix(0.925 -0.3799 0.3799 0.925 293.7539 123.6554)" class="st8 st3 st9">X</text>
+	<text transform="matrix(1 0 0 1 196.9995 139.499)" class="st8 st3 st9">X</text>
+	<text transform="matrix(1 0 0 1 163.4995 139.75)" class="st8 st3 st9">X</text>
+	<text transform="matrix(0.87 -0.493 0.493 0.87 82.2455 170.5614)" class="st8 st3 st9">X</text>
+	<text transform="matrix(0.87 -0.493 0.493 0.87 56.0043 185.1434)" class="st8 st3 st9">X</text>
+</g>
+<path class="st10" d="M315.2,144.5c0,11.1-8.4,20-18.8,20"/>
+<path class="st10" d="M314.7,141.5c0,12.2,6,22,13.5,22"/>
+<path class="st10" d="M314.2,185.5c0-11.1,8.4-20,18.8-20"/>
+<path class="st10" d="M313.7,186.5c0-12.2-6.4-22-14.3-22"/>
+<path class="st10" d="M254.5,145.5c0,11.1-8.4,20-18.8,20"/>
+<path class="st10" d="M254,141.5c0,12.2,6,22,13.5,22"/>
+<path class="st10" d="M253.6,185.5c0-11.1,8.4-20,18.8-20"/>
+<path class="st10" d="M253,186.5c0-12.2-6.4-22-14.3-22"/>
+<path class="st10" d="M188.4,144.5c0,11.1-8.4,20-18.8,20"/>
+<path class="st10" d="M188.9,141.5c0,12.2,6,22,13.5,22"/>
+<path class="st10" d="M187.4,185.5c0-11.1,8.4-20,18.8-20"/>
+<path class="st10" d="M186.9,186.5c0-12.2-6.4-22-14.3-22"/>
+<path class="st10" d="M125.4,144.5c0,11.1-8.4,20-18.8,20"/>
+<path class="st10" d="M125.8,142.5c0,12.2,6,22,13.5,22"/>
+<path class="st10" d="M123.4,185.5c0-11.1,8.4-20,18.8-20"/>
+<path class="st10" d="M123.9,186.5c0-12.2-6.4-22-14.3-22"/>
+<path class="st10" d="M60.6,145c0,11.1-8.4,20-18.8,20"/>
+<path class="st10" d="M60.1,142c0,12.2,6,22,13.5,22"/>
+<path class="st10" d="M58.7,185c0-11.1,8.4-20,18.8-20"/>
+<path class="st10" d="M59.1,186c0-12.2-6.4-22-14.3-22"/>
+<path class="st10" d="M366.4,145c0,11.1-8.4,20-18.8,20"/>
+<path class="st10" d="M365.1,181.9c0-9.9-6.4-17.9-14.3-17.9"/>
+<path class="st10" d="M6.6,183.9c0-11.1,8.4-20,18.8-20"/>
+<path class="st10" d="M7.9,147c0,9.9,6.4,17.9,14.3,17.9"/>
+</svg>

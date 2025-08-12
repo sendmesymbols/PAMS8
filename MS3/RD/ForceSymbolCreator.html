@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Force Symbol Creator</title>
+</head>
+<body>
+    <script type="text/javascript" src="../ThirdParty/milsymbol.js"></script>.
+    <script type="text/javascript">
+       
+        var symSet = "10";
+        var status = "0";
+        var baseSym = "111001";
+        var baseEch = "00";
+        var sidc = "1003"+symSet+status+"0"+baseEch+baseSym+"0000";
+        
+        document.write(new MS.symbol(set(sidc, '0')).getMarker().XML);
+        document.write(new MS.symbol(set(sidc, '1')).getMarker().XML);
+        document.write(new MS.symbol(set(sidc, '2')).getMarker().XML);
+        document.write(new MS.symbol(set(sidc, '3')).getMarker().XML);
+        document.write(new MS.symbol(set(sidc, '4')).getMarker().XML);
+        document.write(new MS.symbol(set(sidc, '5')).getMarker().XML);
+        document.write(new MS.symbol(set(sidc, '6')).getMarker().XML);
+
+        function set(sidc, number) {
+            sidc = sidc.toString();
+            console.log(Number(sidc.substr(0, 3) + number + sidc.substr(3 + 1)));
+            return Number(sidc.substr(0, 3) + number+ sidc.substr(3 + 1));
+        }
+    </script>
+    <div class="page">
+        <div class="heading">
+            <div class="content">
+                
+            </div>
+        </div>
+        
+    </div>
+</body>
+</html>

@@ -1,0 +1,4722 @@
+{
+    "25160201": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Post / BOP",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "15",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "CBTPST",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25281200": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Fort",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FORT",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "20111700": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Safe House",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "SAFHSE",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25160204": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Sensor Outpost/Listening Post",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "SENPST",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25281000": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Above Ground Shelter",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "SHLSUR",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25281100": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Below Ground Shelter",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "SHLUND",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25280900": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Shelter",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "SHLSUR",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25281801": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Alternate Decontamination Pt/Site",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "ALTDCN",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25320200": {
+        "Class": "TacticalPoint",
+        "Description": "An area designated to receive, store, reconfigure and issue Class V material.",
+        "Name": "Ammo Sup Pt",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "ASP",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25320300": {
+        "Class": "TacticalPoint",
+        "Description": "A designated temporary site from which Class V material is transferred to unit vehicles.",
+        "Name": "Ammo Transfer Pt",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "ATP",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "20110500": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Black List Loc",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "BLKLST",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25160203": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "NBC Obsn Outpost",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "CBRNPS",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25271287": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Comm Cen",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "COB",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "20121203": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Telecomm Tower",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "COT",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25320500": {
+        "Class": "TacticalPoint",
+        "Description": "A specific location where casualties are assembled to be transported to a medical treatment facility, for example, a company aid post.",
+        "Name": "Cas Collection Pt",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "CSCLPT",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25320600": {
+        "Class": "TacticalPoint",
+        "Description": "A specific location where civilians are assembled to be transported to another location.",
+        "Name": "Civilian Collection Pt",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "CVCLPT",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25281804": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Eqpt / Troop Decontamination Pt/Site",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "DECONP",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25281807": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Main Eqpt Decontamination Pt/Site",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "DECONP",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25281803": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Troop Decontamination Pt/Site",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "DECONP",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25210300": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Defended Asset",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "DEFAST",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25320700": {
+        "Class": "TacticalPoint",
+        "Description": "A specific location where detainee are assembled to be transported to another location.",
+        "Name": "Detainee Collection Pt",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "DTCLPT",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "40131304": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Emergency Medical Op - Morgue",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "EMTSTA",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25271238": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Air Base (Hostile / SU)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FACAIR",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25271230": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Air Base Operable Friendly / Hostile",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FACAIR",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "20120802": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mil Infra - Mil Base",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FACMIL",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25240900": {
+        "Class": "TacticalPoint",
+        "Description": "An exact location at sea within a fire support area from which a fire support ship delivers fire.",
+        "Fill": "1",
+        "Name": "Fire Sp Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FIRSP",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25271283": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Gas Fds",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "GASFD",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25214900": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Gen Subsurface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "GENSS",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25215600": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Gen Surface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "GENSU",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "20111000": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Gray List Loc",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "GLLOC",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25271284": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Industrial Cen",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "INDINS",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25320900": {
+        "Class": "TacticalPoint",
+        "Description": "A specific location where enemy prisoners of war are assembled to be transported to another location.",
+        "Name": "Log Release Pt (LRP)",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "LGRLPT",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25321000": {
+        "Class": "TacticalPoint",
+        "Description": "A point established to collect equipment awaiting repair, controlled exchange, cannibalization, or evacuation. It may be operated by the user or by the direct support maintenance units.",
+        "Name": "Maint Collection Pt (MCP)",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "MNTCPT",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25321600": {
+        "Class": "TacticalPoint",
+        "Description": "A location or series of locations, operated by a battalion maintenance platoon, that is the nearest point to the combat unit to which equipment can be recovered and where limited parts are available and some repairs can be performed.",
+        "Name": "Unit Maint Collection Pt (UMCP)",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "MNTCPT",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25160200": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Obsn Post/Outpost(Specified)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "OBSP",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25160100": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Obsn Post/Outpost(Unspecified)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "OBSP",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25271285": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Oil Fds",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "OILFDS",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25320800": {
+        "Class": "TacticalPoint",
+        "Description": "A specific location where enemy prisoners of war are assembled to be transported to another location.",
+        "Name": "En Prisoner of War (EPW) Collection Pt",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "POWCPT",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25321300": {
+        "Class": "TacticalPoint",
+        "Description": "An area established to ensure that fuel tanks on combat and fuel servicing vehicles are full before they arrive in the unit\u2019s tactical assembly area",
+        "Name": "Refuel On the Move (ROM) Pt",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "ROMPT",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25321200": {
+        "Class": "TacticalPoint",
+        "Description": "A designated point through which a unit passes where it receives fuel, ammunition and other necessary supplies to continue operations.",
+        "Name": "Rearm, Refuel and Resupply Pt (R3P)",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "RRRSPT",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25321700": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Gen Sup Pt",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "SUPPT",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25321400": {
+        "Class": "TacticalPoint",
+        "Description": "Manned post used to preclude interruption of traffic flow or movement along designated routes.",
+        "Name": "Traffic Con Post (TCP)",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "TRFPST",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "20121410": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Water Sup Infra - Water",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "WATSPL",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "20111800": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "White List Loc",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "WLLOC",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25180700": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "CAP Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "CAPS",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25180800": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "AEW Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AEWS",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "11111006": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Developmental Projects / WHAMs",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "DEVPRJ",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "25271232": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "ADCP",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA1",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25210200": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Aim Pt / Convoy Navy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA2",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25213502": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Air Transportable Comm (ATAC)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA3",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25271262": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Airfield",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA4",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25160300": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Arty DF/Grid Origin",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA6",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121301": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Airport / Airbase",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA5",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25214000": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Arty Obsn Post",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA7",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25180900": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "ASW (Helo and F/W) Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA8",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25213503": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Barra",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA9",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25213504": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Bathythermograph Transmitting Sonobuoy (BT)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA10",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25281401": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Biological - Toxic Industrial Material",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA11",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "30180001": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "CBG",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA12",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25281301": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Chemical - Toxic Industrial Material",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA13",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25150203": {
+        "Class": "CorpsAdmArea",
+        "Description": "",
+        "Name": "Corps Adm Area",
+        "Parameters": [
+            {
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon) and 3 (Rectangle)",
+                "paramThumbnail": "",
+                "value": "DRAW_TYPE"
+            }
+        ],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Use Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Using Rectangle"
+            }
+        ],
+        "Category": "FA14",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "template": "3,4,5,311,316,317"
+    },
+    "25211500": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Datum Lost Contact",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA15",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25271286": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "DP",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA16",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25211300": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Electronic Countermeasures (ECM) Decoy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA17",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25212500": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "EM-Magnetic Anomaly Detection (MAD)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA18",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "40131301": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "EMT Sta Loc",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA19",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25160202": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Fwd Observer Outpost/Posn",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA20",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121404": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Ground Water Well",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA21",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25210700": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Ground Zero",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA22",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25271280": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Helipad",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA23",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "10110206": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Eqpt - DEFCOM",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA24",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "10110205": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Eqpt - PASCOM",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA25",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "10110204": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Eqpt - PATCOM",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA26",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "10110203": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Eqpt - SATCOM",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA27",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25271215": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Master Jezbuoy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA28",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "10110214": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Army Medical Corps/ADS/FTC/AMSD",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA29",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25215800": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Mine Warfare Surface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA30",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25215400": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Mine Warfare Unmanned Underwater Veh Subsurface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA31",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25216700": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Mine Warfare Unmanned Underwater Veh Surface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA32",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25215900": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Non-Combatant Surface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA34",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25218500": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Oil Rig",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA35",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20120504": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Petroleum Facility",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA36",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25216000": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Picket Surface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA37",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25217300": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Posn and Intended Movement (PIM) Route",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA38",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25131300": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Pt of Interest",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA39",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25160206": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Recce Outpost",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA40",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25271216": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Refined Kingpin",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA41",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25216800": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Remote Multi Msn Veh Unmanned Underwater Veh Surface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA42",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25216100": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Rendezvous Surface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA43",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25216200": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Replenishment at Sea Surface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA44",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25181100": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Replenishment Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA45",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25211700": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Reported Bottomed Sub",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA46",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25271234": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Restricted Area",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA47",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25271237": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "SAM Site (En / SU)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA48",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25271229": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "SAM Site Avn / Not Avn",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA49",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25217000": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Shore Con Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA50",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25215100": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Submarine Antisubmarine Warfare Subsurface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA51",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25215000": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Submarine Subsurface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA52",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25216400": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Surface Warfare Surface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA53",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25215500": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Surface Warfare Unmanned Underwater Veh Subsurface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA54",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25216900": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Surface Warfare Unmanned Underwater Veh Surface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA55",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25215200": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Unmanned Underwater Veh Subsurface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA56",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25216500": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Fill": "1",
+        "Name": "Unmanned Underwater Veh Surface Sta",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA57",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25281809": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Wounded Personnel Decontamination Site",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA58",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121415": {
+        "Name": "Project Site",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "PRJSTE",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121417": {
+        "Name": "Adm Camp",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ADMCMP",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121416": {
+        "Name": "Work Site",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "WRKSTE",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121419": {
+        "Name": "Barrage",
+        "Class": "TacticalPoint",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "GNGSTN",
+        "FacCategory": "GNGSTN",
+        "GSCategory": "BARRAG",
+        "NativeType": "Facility",
+        "FloodAttrib": "Yes",
+        "ISFAC": "Yes",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,345"
+    },
+    "20110701": {
+        "Name": "Bridge",
+        "Class": "TacticalPoint",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "GSCategory": "BRIDGE",
+        "Category": "GNGSTN",
+        "NativeType": "Facility",
+        "FloodAttrib": "Yes",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,345"
+    },
+    "20121402": {
+        "Name": "Dam",
+        "Class": "TacticalPoint",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "FacCategory": "GNGSTN",
+        "Category": "GNGSTN",
+        "GSCategory": "DAM",
+        "NativeType": "Facility",
+        "FloodAttrib": "Yes",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,345"
+    },
+    "20121418": {
+        "Name": "Syphon",
+        "Class": "TacticalPoint",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "GNGSTN",
+        "FacCategory": "GNGSTN",
+        "GSCategory": "SYPHON",
+        "NativeType": "Facility",
+        "FloodAttrib": "Yes",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,345"
+    },
+    "20121420": {
+        "Name": "HW",
+        "Class": "TacticalPoint",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "GNGSTN",
+        "FacCategory": "GNGSTN",
+        "GSCategory": "HDWKS",
+        "NativeType": "Facility",
+        "FloodAttrib": "Yes",
+        "ISFAC": "Yes",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,345"
+    },
+    "20120402": {
+        "Class": "UEISymbol",
+        "Description": "School / College / University",
+        "Name": "Educational Institute",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "SCHOOL",
+        "facCatCode": "EdnIns",
+        "facStatCatCode": "IS",
+        "facTypeCatCodeTxt": "School",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,328,311,337,338,323"
+    },
+    "20121413": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Madrassa",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "RELFAC",
+        "facCatCode": "Madrsa",
+        "facStatCatCode": "IS",
+        "facTypeCatCodeTxt": "Madrassa",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,328,337,338,323,324,325,326,327,329,330,331"
+    },
+    "20121421": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Hotel",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "NOS",
+        "facCatCode": "Hotel",
+        "facStatCatCode": "IS",
+        "facTypeCatCodeTxt": "Hotel",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,328,337,323,331,332"
+    },
+    "20121425": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Vulnerable Place",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "NOS",
+        "facCatCode": "VlnPlc",
+        "facStatCatCode": "IS",
+        "facTypeCatCodeTxt": "Vulnerable Place",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,328,337,323,331"
+    },
+    "20121424": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Shrine",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "NOS",
+        "facCatCode": "Shrine",
+        "facStatCatCode": "IS",
+        "facTypeCatCodeTxt": "Shrine",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,328,337,323,331,333,334"
+    },
+    "20121423": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Rented House",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "HOUSE",
+        "facCatCode": "RentHs",
+        "facStatCatCode": "IS",
+        "facTypeCatCodeTxt": "Rented House",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,328,337,323,331,335"
+    },
+    "20111600": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Printing Press / Printed Media",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FACPRO",
+        "facCatCode": "PrtPrs",
+        "facStatCatCode": "IS",
+        "facTypeCatCodeTxt": "Printing Press",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,328,337,323,331,336"
+    },
+    "20121203": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Network Radio",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "FloodAttrib": "No",
+        "Category": "NETWRK",
+        "facCatCode": "NETWRK",
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "defStdId": "-0",
+        "NativeType": "Facility",
+        "template": "3,4,5",
+        "Tools": []
+    },
+    "20112200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Relief Camp",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "FloodAttrib": "No",
+        "facStatCatCode": "FLOOD",
+        "Category": "RELCMP",
+        "facCatCode": "RELCMP",
+        "Thumbnail": "",
+        "defStdId": "-0",
+        "NativeType": "Facility",
+        "template": "3,4,5,311,316,317,341,342,345,347",
+        "Tools": []
+    },
+    "20112203": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Med Relief Camp",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "FloodAttrib": "No",
+        "facStatCatCode": "FLOOD",
+        "Category": "MEDCMP",
+        "facCatCode": "MEDCMP",
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "defStdId": "-0",
+        "NativeType": "Facility",
+        "template": "3,4,5,345,340,347",
+        "Tools": []
+    },
+    "20121426": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Protection Bund",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "BRCHSC",
+        "facCatCode": "BRCHSC",
+        "facStatCatCode": "FLOOD",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,342,345"
+    },
+    "20121427": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Flood Con Centre",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FDCNCR",
+        "facCatCode": "FDCNCR",
+        "facStatCatCode": "FLOOD",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,342,345"
+    },
+    "20121429": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Disaster Mgmt Hub",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "DSMGHB",
+        "facCatCode": "DSMGHB",
+        "facStatCatCode": "FLOOD",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,342,345"
+    },
+    "25160304": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Quarantine Cen",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "QTNCTR",
+        "facCatCode": "QTNCTR",
+        "facStatCatCode": "CORONA",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,342,345"
+    },
+    "25160305": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Testing Cen",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "QTNCTR",
+        "facCatCode": "QTNCTR",
+        "facStatCatCode": "CORONA",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,342,345"
+    },
+    "25160306": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Isolation Cen",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "QTNCTR",
+        "facCatCode": "QTNCTR",
+        "facStatCatCode": "CORONA",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,342,345"
+    },
+    "20121428": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Flood Rel Hub",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FDRLHB",
+        "facCatCode": "FDRLHB",
+        "facStatCatCode": "FLOOD",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,342,345"
+    },
+    "20112000": {
+        "Name": "Warehouse/ Storage Facility",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "STOREF",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "10111200": {
+        "Name": "Camera / Video Imagery",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "CAMERA",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Comm Infra",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "COMINF",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121203": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Telecomm Tower",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "TELTWR",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "10111005": {
+        "Name": "Sig - Video Imagery (Combat Camera)",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "SIGVID",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "10111201": {
+        "Name": "Ni Vision Camera",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "NIVISC",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "25290303": {
+        "Name": "Fence",
+        "Class": "DoubleFenceWire",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Category": "FENCE",
+        "FacCategory": "MILOBS",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121442": {
+        "Name": "COD",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA60",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121443": {
+        "Name": "CAD",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA61",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121444": {
+        "Name": "FAD",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA62",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121445": {
+        "Name": "EME Spares Dep",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA63",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121447": {
+        "Name": "EME Recovery Post",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA65",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "20121446": {
+        "Name": "OCP/BLP/Store Coy/TDR",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA64",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+    "10230301": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "CRCP",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA66",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "10130116": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "ASCC",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "FA67",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311"
+    },
+    "10150506": {
+        "Name": "EW - IWBRS HF Site",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA68",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150507": {
+        "Name": "EW - Fixed NB ROC",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA69",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150508": {
+        "Name": "EW - Manpack Interception/ DF/ Jammer Sta",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA70",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150509": {
+        "Name": "EW - Mob Interception/ DF/ Jammer Sta",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA71",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150510": {
+        "Name": "EW - Static Interception/ DF/ Jammer Sta",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA72",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150511": {
+        "Name": "EW Unit",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA73",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150512": {
+        "Name": "EWOC",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA74",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150513": {
+        "Name": "EW - SAF",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA75",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150514": {
+        "Name": "EW - TA Cell",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA76",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150515": {
+        "Name": "EW - Static Interception/ Jammer Sta",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA77",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150516": {
+        "Name": "EW - Static Jammer Sta",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA78",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150517": {
+        "Name": "EW - Static Interception/ DF Sta",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA79",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150518": {
+        "Name": "EW - Static DF Sta",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA80",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150519": {
+        "Name": "EW - Static Interception Sta",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA81",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    }
+    ,
+    "10150520": {
+        "Name": "EW - AGILE Sys ELINT Sta",
+        "Class": "UEISymbol",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FA82",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+    },
+     "20120305": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Hazardous Material Facility",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        
+        "SymGeoType": "FPoint",
+        "Category": "FA82",
+        "NativeType": "Facility",
+        "FloodAttrib": "No",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "3,4,5,311,316,317"
+        
+    }
+}

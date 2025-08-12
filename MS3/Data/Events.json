@@ -1,0 +1,6176 @@
+{
+    "40130300": {
+        "Name": "Foraging Searching",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "SRCHNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,212,204,103,104,105,108,307,318"
+    },
+    "40130301": {
+        "Name": "Combing",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "COMB",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,212,204,103,104,105,108,307,318"
+    },
+    "40130302": {
+        "Name": "IBO",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "IBOPS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,212,204,103,104,105,108,307,318"
+    },
+    "40180207": {
+        "Name": "Protest/Procession",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "PROTST",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40180208": {
+        "Name": "Rally",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "CIVDMI",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40180209": {
+        "Name": "Sectarian Clash",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "SECT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40180210": {
+        "Name": "Blocking of Rd",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "BLOCK",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40110301": {
+        "Name": "IED Explosion",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "IEDEXP",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,9,211,105,106,307,318"
+    },
+    "40110600": {
+        "Name": "Explosion",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "EXPLOS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,211,105,106,307,318"
+    },
+    "40140001": {
+        "Name": "CFV/X Bdr Fire",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "CFVIO",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,102,103,104,201,204,105,313,307,318"
+
+
+    },
+    "40110304": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Suicide Bomber",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "IEDSB",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,104,105,106,307,318"
+    },
+    "40110202": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Threat",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "THREAT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,307,318"
+    },
+    "40170104": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Geologic - Landslide",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "LNDSLD",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,104,105,106,307,318"
+    },
+    "40160400": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Tpt Incident - Mov",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MOV",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,104,106,307,318"
+    },
+    "40131300": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Heli Cas Msn",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MEDEVC",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,201,202,307,318"
+    },
+    "10120612": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Avn - Casevac",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AVNCAS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,201,202,307,318"
+    },
+    "10120613": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Avn - Medevac",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "AMEDEV",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,201,202,307,318"
+    },
+    "10120614": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Avn - Parajump",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MEDEVC",
+        "NativeType": "Event",
+        "Sub_Category": "AVNPAR",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,201,202,307,318"
+    },
+    "40131307": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Adm Heli Sorties",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ADMHLI",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,201,202,203,307,318"
+    },
+    "40130403": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Ft Mov (Sldrs)",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FTMSLR",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,104,206,307,318,321,322"
+    },
+    "40130404": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "UNFS Team Visit",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "UNFSTV",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40131009": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Veh Border Xing/Trk Xing",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "BCNVEH",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,104,307,318"
+    }, 
+    "40140003": {
+        "Name": "En Speculative Fire",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "SFIRE",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,201,204,307,314,318"
+    },
+    "40140006": {
+        "Name": "Own Speculative Fire",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "SFIRE",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "03",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,202,204,307,315,318"
+    },
+    "40140004": {
+        "Name": "En Practice Fire",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "PFIRE",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,102,201,204,307,314,318"
+    },
+    "40140005": {
+        "Name": "Own Practice Fire",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "PFIRE",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "03",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,101,202,204,307,315,318"
+    },
+    "40160400": {
+        "Name": "Tpt Incident - En Veh Mov",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "MILMOB",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,201,207,307,318,321,322"
+    },
+    "40160401": {
+        "Name": "Tpt Incident - Own Veh Mov",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "MILMOB",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "03",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,202,206,207,307,318,321,322"
+    },
+    "40170102": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Geologic - Avalanche Snow Slide",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ], 
+        "SymGeoType": "FPoint",
+        "Category": "AVLNCH",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,104,106,307,318"
+    }, 
+    "40170103": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Geologic - Earthquake",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ERTHQK",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,104,106,307,318"
+    },
+    "40131000": {
+        "Name": "Own HLC",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "MEETNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "03",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,310,307,318"
+    },
+    "40131004": {
+        "Name": "En HLM",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "MEETNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,310,307,318"
+    },
+    "40180211": {
+        "Name": "En Raised Red Flag",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "REDFLG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,201,202,307,318"
+    },
+    "40180212": {
+        "Name": "Own Raised Red Flag",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "REDFLG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "03",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,201,202,307,318"
+    },
+    "40110403": {
+        "Name": "En Tr Maint",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "TRMNT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,201,206,307,318"
+    },
+    "40110408": {
+        "Name": "Own Tr Maint",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "TRMNT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "03",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,202,206,307,318"
+    },
+    "40110600": {
+        "Name": "Explosion / Sound of Blast",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "SNDBLT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "04",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,201,307,318"
+    },
+    "40110404": {
+        "Name": "En Intercept",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "INTCEP",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,201,209,307,318"
+    },
+    "40110401": {
+        "Name": "En Sniping",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "SNPATK",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,102,201,204,105,307,318"
+    },
+    "40110402": {
+        "Name": "En Sniping Response",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "SNPATK",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "03",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,201,102,204,105,307,318"
+    },
+    "40110405": {
+        "Name": "En Dumping Activity",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "DUMPNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,201,307,318"
+    },
+    "40110407": {
+        "Name": "Own Dumping Activity",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "DUMPNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "03",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,202,307,318"
+    },
+    "01110104": {
+        "Name": "TAV / Air Violation",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "AIRVIO",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,201,202,214,307,318"
+    },
+    "01110300": {
+        "Name": "RPV",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "RPVIO",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,214,307,310,318"
+    },
+    "40131005": {
+        "Name": "Border Xing/Border Xing From Indian Side",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "BCILGL",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,105,106,206,307,318"
+    },
+    "40131008": {
+        "Name": "Passengers Xing",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "BCSRVL",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,105,106,206,307,318"
+    },
+    "40110406": {
+        "Name": "Def Const",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "CONSTN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,201,202,307,318"
+    },
+    "40130100": {
+        "Name": "Patrolling",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "PTRLNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40150115": {
+        "Name": "UXO Found",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "UXODSC",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,105,106,307,310,313,318"
+    },
+    "25212300": {
+        "Name": "Acoustic Fix",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "FIXACO",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25141700": {
+        "Name": "Ambush",
+        "Class": "Ambush",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "AMBUSH",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "TEETH_SIZE",
+                "Name": "Teeth Size",
+                "default": "2",
+                "description": "Teeth Size",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "TEETH_GAP",
+                "Name": "Teeth Gap",
+                "default": "5",
+                "description": "Teeth Gap",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40110101": {
+        "Name": "Arrest",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "ARRLGL",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40110102": {
+        "Name": "Arson",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "ARSON",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25340100": {
+        "Name": "Block",
+        "Class": "Block",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "isObstacle": "1",
+        "Category": "BLOCKN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40110200": {
+        "Name": "Bomb",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "BOMBNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,103,105,106,108,201,202,203,204,307,318,346,348,349,350,351,352,353"
+    },
+    "40110203": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Shelling",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "SHELNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,103,104,105,106,108,201,202,203,204,307,318,348,349,350,351,352,353"
+    }, 
+    "25280700": {
+        "Name": "Booby Trap",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "A device designed, constructed or adapted to kill or injure, which functions when a person disturbs or approaches an apparently harmless object or performs an apparently safe act. ",
+        "SymGeoType": "Point",
+        "Category": "BBYTRD",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters":
+                [
+                    {
+                        "value": "SIZE",
+                        "Name": "Size",
+                        "default": "30",
+                        "description": "Size of the symbol",
+                        "paramThumbnail": ""
+                    },
+                    {
+                        "value": "ANGLE",
+                        "Name": "Angle",
+                        "default": "0",
+                        "description": "Angle of the symbol",
+                        "paramThumbnail": ""
+                    }
+                ],
+        "Tools":
+                [],
+        "template": "2,4,5,6,8,105,307,318"
+    },
+    "25340200": {
+        "Name": "Breach",
+        "Class": "Breach",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "BREACH",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25340300": {
+        "Name": "Bypass",
+        "Class": "Bypass",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "BYPASS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25340500": {
+        "Name": "Clear",
+        "Class": "Clear",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "CLRLND",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25151204": {
+        "Name": "Contain",
+        "Class": "Contain",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "CONTAN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "TEETH_SIZE",
+                "Name": "Teeth Size",
+                "default": "2",
+                "description": "Teeth Size",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "TEETH_GAP",
+                "Name": "Teeth Gap",
+                "default": "5",
+                "description": "Teeth Gap",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25340600": {
+        "Name": "Counter Attack",
+        "Class": "CounterAttack",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "CTRATK",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "HEAD_RATIO",
+                "Name": "Arrowhead Ratio",
+                "default": "0.07",
+                "description": "Arrowhead Ratio",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "TAIL_FACTOR",
+                "Name": "Tail Ratio",
+                "default": "0.05",
+                "description": "Tail Ratio",
+                "paramThumbnail": ""
+            }
+
+        ],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25342201": {
+        "Name": "Cover",
+        "Class": "Cover",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "COVERN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25342400": {
+        "Name": "Delay",
+        "Class": "Delay",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "DELAYN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40120100": {
+        "Name": "Demonstration",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "DMNSTR",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25340900": {
+        "Name": "Destroy",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "DSTRYN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25341000": {
+        "Name": "Disrupt",
+        "Class": "Disrupt",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "DSRPTN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25270502": {
+        "Name": "Disrupt / Obstacle Effect",
+        "Class": "DisruptObstacleEffect",
+        "Thumbnail": "",
+        "Description": "An obstacle effect that focuses fire planning and obstacle effort to cause the enemy to break up his formation and tempo, interrupt his timetable, commit breaching assets prematurely and attack in a piecemeal effort.",
+        "SymGeoType": "Area",
+        "Category": "DSRPTN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "isObstacle": "1",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25218100": {
+        "Name": "Ditched Aircraft/Downed Aircraft",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "AIRCRS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters":
+                [
+                    {
+                        "value": "SIZE",
+                        "Name": "Size",
+                        "default": "30",
+                        "description": "Size of the symbol",
+                        "paramThumbnail": ""
+                    },
+                    {
+                        "value": "ANGLE",
+                        "Name": "Angle",
+                        "default": "0",
+                        "description": "Angle of the symbol",
+                        "paramThumbnail": ""
+                    }
+                ],
+        "Tools":
+                [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25212400": {
+        "Name": "Electromagnetic Fix",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "FIXELM",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "10150503": {
+        "Name": "Intercept/Electronic Warfare - Intercept",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "COMINT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "10150504": {
+        "Name": "Jamming/Electronic Warfare - Jamming",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "Category": "JAMMNG",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,103,105,106,108,201,202,203,204,307,318,346"
+    },
+    "40110600": {
+        "Name": "Explosion",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "EXPLOS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,103,105,108,307,318"
+    },
+    "40110606": {
+        "Name": "Explosion - Bomb",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "BMBDLB",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,103,105,108,307,318"
+    },
+    "40110106": {
+        "Name": "Extortion",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "EXTORT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40140000": {
+        "Name": "Fire Event",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "FIRE",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,103,105,108,307,318"
+    },
+    "25341100": {
+        "Name": "Fix",
+        "Class": "Fix",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "FIX",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "TEETH_SIZE",
+                "Name": "Teeth Size",
+                "default": "3",
+                "description": "Teeth Size",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "TEETH_GAP",
+                "Name": "Teeth Gap",
+                "default": "30",
+                "description": "Teeth Gap",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "HEAD_RATIO",
+                "Name": "Head Line Ratio",
+                "default": "10",
+                "description": "Ratio Of Line Behind Arrow",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "TAIL_FACTOR",
+                "Name": "Tail Ratio",
+                "default": "10",
+                "description": "Tail Ratio",
+                "paramThumbnail": ""
+            }
+
+        ],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25342202": {
+        "Name": "Guard",
+        "Class": "Guard",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "GUARDN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40110300": {
+        "Name": "IED Event",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "IEDDSC",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40130900": {
+        "Name": "Infiltration",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "INFLTN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,8,307,318"
+    },
+    "25140800": {
+        "Name": "Infiltration Lane",
+        "Class": "InfiltrationLane",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "INFLTNLN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25341400": {
+        "Name": "Interdict",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "INTDCT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25341500": {
+        "Name": "Isolate",
+        "Class": "Isolate",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "INTDCT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [{
+                "value": "TEETH_SIZE",
+                "Name": "Teeth Size",
+                "default": "2",
+                "description": "Teeth Size",
+                "paramThumbnail": ""
+            }],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25151403": {
+        "Name": "Main Attack",
+        "Class": "MainAttack",
+        "Thumbnail": "",
+        "Description": "The principal attack or effort into which the commander throws the full weight of the offensive power at his disposal.",
+        "SymGeoType": "Area",
+        "Category": "ATTMN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "HEAD_RATIO",
+                "Name": "Arrowhead Ratio",
+                "default": "0.07",
+                "description": "Arrowhead Ratio",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "TAIL_FACTOR",
+                "Name": "Tail Ratio",
+                "default": "0.05",
+                "description": "Tail Ratio",
+                "paramThumbnail": ""
+            }
+
+        ],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40131000": {
+        "Name": "Meeting/Own HLM",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "MEETNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,201,202,307,318"
+    },
+    "25341600": {
+        "Name": "Neutralize",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "MEETNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "25341700": {
+        "Name": "Occupy",
+        "Class": "Occupy",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "OCCPNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25212600": {
+        "Name": "Optical Fix",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "FIXELO",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25341800": {
+        "Name": "Penetrate",
+        "Class": "Penetrate",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Area",
+        "Category": "PENTRT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40110109": {
+        "Name": "Poisoning",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "POISON",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40180206": {
+        "Name": "Recce",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "RECCE",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25342203": {
+        "Name": "Screen",
+        "Class": "Screen",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "SCRNNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25213100": {
+        "Name": "Search",
+        "Class": "TacticalPoint",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Point",
+        "Category": "SRCHNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Fill": "1",
+        "Parameters": [
+            {
+                "value": "SIZE",
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25342100": {
+        "Name": "Secure",
+        "Class": "Secure",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "SECRNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40110400": {
+        "Name": "Shooting",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "SHOTNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40130600": {
+        "Name": "Spy",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "SPYING",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25151404": {
+        "Name": "Supporting Attack",
+        "Class": "SupportingAttack",
+        "Thumbnail": "",
+        "Description": "An offensive operation carried out in conjunction with a main attack and designed to achieve one or more of the following: a. deceive the enemy; b. destroy or pin down enemy forces which could interfere with the main attack; c. control ground whose occupation by the enemy will hinder the main attack; or d. force the enemy to commit reserves prematurely or in an indecisive area.",
+        "SymGeoType": "Area",
+        "Category": "ATTSPT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "HEAD_RATIO",
+                "Name": "Arrowhead Ratio",
+                "default": "0.07",
+                "description": "Arrowhead Ratio",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "TAIL_FACTOR",
+                "Name": "Tail Ratio",
+                "default": "0.05",
+                "description": "Tail Ratio",
+                "paramThumbnail": ""
+            }
+
+        ],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40160000": {
+        "Name": "Transportation Incident",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "ACCDNT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40160100": {
+        "Name": "Tpt Incident - Air",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "ACCAIR",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318,321,322"
+    },
+    "40160300": {
+        "Name": "Tpt Incident - Rail",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "ACCDNT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318,321,322"
+    },
+    "40160500": {
+        "Name": "Transportation Incident - Vehicle",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "ACCTRF",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,8,105,106,307,318"
+    },
+    "25340800": {
+        "Name": "Withdraw",
+        "Class": "Withdraw",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "WITDRL",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "25342500": {
+        "Name": "Withdraw Under Pressure",
+        "Class": "WithdrawUnderPressure",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "Line",
+        "Category": "WDRPRS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [],
+        "Tools": [
+            {
+                "Line": "true"
+            },
+            {
+                "PolyLine": "false"
+            }
+        ],
+        "template": "2,4,5,8,307,318"
+    },
+    "20110600": {
+        "Name": "Chemical-Biological-Radiological and Nuclear (CBRN)",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "CBRN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40131308": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Hel Msn",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "HELMSN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,102,307,318"
+    },
+    "40131309": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Weather Events",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "WETHR",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40131310": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Visits",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "VISIT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "03",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40131200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Cas Evac",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MEDEVC",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,102,105,106,307,310,318"
+    },
+    "40140800": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Jungle Fire",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "JFIRE",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "04",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,102,307,318"
+    },
+    "40110603": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mine Expl",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MINEXP",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,102,103,104,105,106,307,318"
+    },
+    "40110104": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Suspicious Mov",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "SPCACT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,102,307,318"
+    },
+    "40110108": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Tgt of Civ/Murder of Key Figure/Killing",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MURDER",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+    "40130500": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mine Laying / Mine Recharging",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MINLAY",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,102,201,307,318"
+    },
+    "10140800": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Bomb Disposal",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "BMBDSP",
+        "defStdId": "-0",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,103,104,105,307,318"
+    },
+    "40170000": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Lightening",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "LGTNNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40110103": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Phy Attk",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ATTPHY",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "03",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40110308": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Abduction / Kidnapping",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ABDCTN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40110400": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Shooting / Attk on Civ LEAs",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ATTCLE",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40110305": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "IED REC",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "IEDREC",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "03",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,103,104,105,108,307,318"
+    },
+    "40110306": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "B on B",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "BLOBL",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "03",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,104,105,106,307,318"
+    },
+    "40110309": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Electrocution",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ELCCTN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40140007": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Accidental Fire",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ACCFR",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,204,307,318"
+    },
+    "40110110": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mob Attk/Scuffle/Quarrel",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ATTMOB",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,104,105,106,307,318"
+    },
+    "40110307": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Adm Cas",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ADMCAS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40160402": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Trk Svc/Retro Cargo",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "TRCKSV",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,104,108,207,307,318"
+    },
+    "40110603": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mine Expl / APM Blast",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "APBLST",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,104,108,207,307,318"
+    }, 
+    "40160104": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Fire Raid",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FIRRAD",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,104,108,207,307,318"
+    },
+    "40160105": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Physical Raid",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "PHYRAD",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,8,104,108,207,307,318"
+    },
+    "40110607": {
+        "Name": "UXO Blast",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "UXBLST",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,7,8,105,106,307,310,313,318"
+    },
+    "25210600": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Air Detonation",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "AIRDET",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,105,307,310,318"
+    },
+    "25281400": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Biological Event",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "BIOENT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,104,105,106,307,310,318"
+    },
+    "40110201": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Bomb Threat",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "BMBTHR",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,104,105,106,307,310,318"
+    },
+    "25281300": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Chemical Event",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "CMLEVT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,105,106,307,310,318"
+    },
+    "40110601": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Explosion - Grenade/Lobbing of Hand Grenade",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "EXPGRD",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,104,105,106,307,310,318"
+    },
+    "40110605": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Explosion - Rocket",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "EXPRKT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,104,105,106,307,310,318"
+    },
+    "40180201": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Incidents - Digging",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "INCDIG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,105,106,307,310,318"
+    },
+    "40180205": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Incidents - Hy Wpn Fire - Hy",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "INCHFR",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,104,105,106,307,310,318"
+    },
+    "40180203": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Incidents - Hy Wpn Fire - Light",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "INCLFR",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,104,105,106,307,310,318"
+    },
+    "40180204": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Incidents - Hy Wpn Fire - Med",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "INCMFR",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,104,105,106,307,310,318"
+    },
+    "40110604": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Incidents - Mor Fire Explosion",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "INCMOF",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,8,103,105,106,108,201,202,203,204,307,318,346,348,349,350,351,352,353"
+    },
+    "40131006": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Jirga",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "JIRGA",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,105,106,307,310,318"
+    },
+    "25281500": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Nuclear Event",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "NCLEVT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,104,105,106,307,310,318"
+    },
+    "25281600": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Nuclear Fallout Producing Event",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "NCLFLT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,104,105,106,307,310,318"
+    },
+    "25271282": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Para Drops",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "PARDRP",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,105,106,307,310,318"
+    },
+    "40131507": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Police",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "POLICE",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,105,106,307,310,318"
+    },
+    "25281700": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Radiological Event",
+        "Offset": "1",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Category": "RADEVT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,104,105,106,307,310,318"
+    },
+    "40131007": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Shoora",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "SHOORA",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,105,106,307,310,318"
+    },
+    "40110409": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Suicidal Attk",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "SUCATK",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,104,105,106,307,310,318"
+    },
+    "20110500": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Pol Dev",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "POLDEV",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "NSTCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,307,319,320"
+    },
+    "20121203": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mil Dev",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MILDEV",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "NSTCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,307,319,320"
+    },
+    "40131304": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "IOK Update",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "IOKUPD",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "NSTCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,307,319,320"
+    },
+    "20120802": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Gen Sit",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "GENSIT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "NSTCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,307,319,320"
+    },
+    "20111000": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Intl News",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "INTNWS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "NSTCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,307,319,320"
+    },
+    "20121410": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "National News",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "NATNWS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "NSTCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,307,319,320"
+    },
+    "20111800": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Articles/Spec Reports",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "SPCREP",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "NSTCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,307,319,320"
+    },
+    "40130405": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Unit Move",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "UNTMOV",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,318,346"
+    },
+    "40130406": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mjdn Move",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MJDMOV",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,318,346"
+    },
+    "40130408": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mjdn Conc",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MJDCON",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40130412": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Fd Ex",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FDEXCS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40130409": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Adm Activities",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "ADMACT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40130411": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Sports Competition",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "SPTCOM",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40130410": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Firing Competition",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FIRCOM",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40130413": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Surgical Strike",
+        "Parameters": [
+            {
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "SUGSTK",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,102,103,104,201,204,105,313,307,318"
+    },
+    "40130407": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Chinese Mov",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Category": "CHIMOV",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "template": "2,4,5,6,7,8,206,307,318,321,322,346"
+    },
+     "40130414": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Chinese Violation",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Category": "CHIVLN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "template": "2,4,5,6,7,8,206,307,318,321,322"
+    },
+    "40130303": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Snap Checking",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Category": "SNPCHK",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40130304": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Cordon and Search",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Category": "CDNSCH",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "template": "2,4,5,6,7,8,206,307,318,321,322"
+    },
+    "40131514": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Anti-Narco Trg Activities",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Category": "ANTACT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40131515": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Anti-Narco Visits of Foreign Delegations",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Category": "ANVOFD",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40131516": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Recovery of Narcotics",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Category": "RECNCT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40131500": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "LEA Ops",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Category": "LEAOPS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40131517": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Imp Ctgy Rehs",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Category": "IMCTRH",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "template": "2,4,5,6,7,8,206,307,318,321"
+    },
+    "40131518": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Estb Army Image Bldg Activity",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Category": "EAIMBA",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "25130301": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Joint Check Post",
+        "Offset": "1",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "30",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "SIZE"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "Point",
+        "Thumbnail": "",
+        "Category": "JCKPST",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type":"STCRD",
+        "defStdId": "-0",
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+
+    "40170202": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Flood",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "Category": "FLOOD",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,103,104,105,108,307,313,318,339,343"
+    },
+    "40131209": {
+        "Class": "TacticalPoint",
+        "Description": "",
+        "Name": "Rescue",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "Category": "RESOPS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,105,344,339"
+    },
+      "40180213": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Press Conf",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "Category": "PRESCF",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,105,307,318,344,339"
+    },
+     "40180214": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Sanitization Op",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "Category": "STZNOP",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,212,204,103,104,105,108,307,318"
+    },
+     "40180215": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "RSO",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "Category": "RSOPS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,212,204,103,104,105,108,307,318"
+    },
+    "40180216": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "ASO",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "Category": "ASOPS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,212,204,103,104,105,108,307,318"
+    },
+     "40150114": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Toxic Incident",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "TOXINC",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+         "template": "2,4,5,6,8,103,105,106,108,201,202,203,204,307,318,346,348,349,350,351,352,353"
+    },
+    
+    
+   
+    
+     "40131519": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Mil Comds Visit",
+       "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MCOMDV",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+         "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40131520": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Pol Ldrship Visit",
+         "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "PLDRSV",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+         "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40131521": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Media Visit",
+          "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "MEDIAV",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+         "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40131522": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Diplomat / Foreign Dignitaries Visit",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "DIPVST",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+         "template": "2,4,5,6,7,8,206,307,318"
+    },
+    
+   
+   
+    "40130415": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Trg Ex",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Category": "TRGEXE",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "template": "2,4,5,6,7,8,206,307,318"
+    },
+    "40110310": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Beheading",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "BEHDNG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+    "10121301": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Land Unit - Recce and Surv",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "SURVEL",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+    "40131010": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Conf",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "CONFRN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+    "11110400": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Group/ Mob",
+       "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "GRPMOB",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+    "15111704": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Fence Lt",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FENCLT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+    
+     "40180217": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Curfew",
+          "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "CURFEW",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+     "40130201": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Propaganda",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "PRPGND",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+     "10150201": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "OSINT",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "OSINTL",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+    
+     "01110301": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Quad-Copter",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "QUADCP",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+     "40140008": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Lt On",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "LGHTON",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+    "40140009": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Lt Off",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "LGHTOF",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+    "40110311": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Change of Comd",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "CHNGEC",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,106,307,318"
+    },
+      "40110608": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Fence Damage",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "FNCDMG",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,202,307,318,344,354"
+    },
+      "40130416": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Tests / Trials",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "TSTTRL",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,316,318,346"
+    },
+    "40110403": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Tr Maint / Tr Construction",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "SymGeoType": "FPoint",
+        "Category": "TRCNST",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,206,307,316,318,346"
+    },
+    "40180221": {
+        "Name": "Murder",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "MURDR",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40180222": {
+        "Name": "Execution",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "EXECTN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40180223": {
+        "Name": "Assassination",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "ASSNTN",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40180224": {
+        "Name": "Refugees",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "REFUGE",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40180225": {
+        "Name": "Terrorist",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "TERRST",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+    "40180226": {
+        "Name": "Foreign Fighters",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "FRNFGT",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,307,318"
+    },
+    "40180227": {
+        "Name": "Veh Hijacking",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "VEHHJK",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "06",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,201,207,307,318,321,322"
+    },
+    "40130401": {
+        "Name": "Willing Recruit",
+        "Class": "UEISymbol",
+        "Thumbnail": "",
+        "Description": "",
+        "SymGeoType": "FPoint",
+        "Category": "WILREC",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "Parameters": [
+            {
+                "value": "size",
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": ""
+            },
+            {
+                "value": "ANGLE",
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": ""
+            }
+        ],
+        "Tools": [],
+        "template": "2,4,5,6,8,105,106,307,318"
+    },
+     "40130200": {
+        "Class": "UEISymbol",
+        "Description": "",
+        "Name": "Psy Ops",
+        "Parameters": [{
+                "Name": "Size",
+                "default": "28",
+                "description": "Size of the symbol",
+                "paramThumbnail": "",
+                "value": "size"
+            },
+            {
+                "Name": "Angle",
+                "default": "0",
+                "description": "Angle of the symbol",
+                "paramThumbnail": "",
+                "value": "ANGLE"
+            }
+        ],
+        "Category": "PHYOPS",
+        "NativeType": "Event",
+        "Sub_Category": "ALL",
+        "BASIC_Type": "STCRD",
+        "defStdId": "-0",
+        "SymGeoType": "FPoint",
+        "Thumbnail": "",
+        "Tools": [],
+        "template": "2,4,5,6,7,8,212,204,103,104,105,108,307,318"
+    }
+}
