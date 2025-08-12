@@ -10,7 +10,7 @@ import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
-
+import Utils from "../Support/Utils";
 export interface FreehandDoubleLineArrowOptions {
     CTRL_PTS?: Point[];
     BASE_LN_PTS?: { startPt: Point, endPt: Point };
@@ -27,7 +27,7 @@ export class FreehandDoubleLineArrow {
     private layerManager: GraphicsLayerManager;
     private symbolLayer: GraphicsLayer;
     private isLine: boolean;
-    
+
     // Symbol properties
     private SID: string = "000004";
     private symName: string = "Freehand - Double Line Arrow";
@@ -37,11 +37,11 @@ export class FreehandDoubleLineArrow {
     private _baseLinePts: { startPt: Point, endPt: Point } | null = null;
     private _geometryType: string | null = null;
     private amplifier: Amplifier;
-    
+
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
-    
+
     // Event handlers
     private clickHandler: any = null;
     private doubleClickHandler: any = null;
@@ -49,7 +49,7 @@ export class FreehandDoubleLineArrow {
     private baseLineEndHandler: any = null;
     private baseLineProgressHandler: any = null;
     private baseLineClickHandler: any = null;
-    
+
     // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
 
@@ -59,10 +59,10 @@ export class FreehandDoubleLineArrow {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
         this.amplifier = new Amplifier();
-        
+
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
-        
+
         // Initialize temporary graphic
         this.tempGraphic = new Graphic();
     }
@@ -72,16 +72,23 @@ export class FreehandDoubleLineArrow {
      */
     public init(options: FreehandDoubleLineArrowOptions, marker: SimpleLineSymbol): void {
         this._lineSym = marker;
-        
+
         const drawEssentials = new DrawEssentials();
         const baseLine = new BaseLine(this.view, this._lineSym);
 
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM")) {
             // Immediate placement with all parameters
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    this.tempGraphic.geometry = new Polyline({
+                        paths: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polyline geometry:", error);
+                }
             }
-            
+
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
             if (this.tempGraphic && this.tempGraphic.geometry) {
                 this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
@@ -116,11 +123,11 @@ export class FreehandDoubleLineArrow {
         this.baseLineEndHandler = baseLine.on("drawEnd", (evt: any) => {
             this.baseLineDrawEnd(evt);
         });
-        
+
         this.baseLineClickHandler = baseLine.on("onBaseLineClick", (evt: any) => {
             this.baseLineClick(evt);
         });
-        
+
         this.baseLineProgressHandler = baseLine.on("onBaseLineProgress", (evt: any) => {
             this.baseLineDrawProgress(evt);
         });
@@ -133,18 +140,18 @@ export class FreehandDoubleLineArrow {
         if (this.baseLineEndHandler) {
             this.baseLineEndHandler.remove();
         }
-        
+
         this.tempGraphic = new Graphic({
             geometry: evt.geometry,
             symbol: this._lineSym
         });
         this.symbolLayer.add(this.tempGraphic);
-        
+
         this._baseLinePts = (evt.geometry as any)._baseLine;
-        
+
         // Set up interactive drawing handlers
         this.setupEventHandlers();
-        
+
         this.emit("onBaseLineDrawEnd", { currentPts: (evt.geometry as any).controlPoints });
     }
 
@@ -154,15 +161,15 @@ export class FreehandDoubleLineArrow {
     private baseLineDrawProgress(evt: any): void {
         const localDrawEssentials: any = {};
         localDrawEssentials.CTRL_PTS = evt.currentGeometry;
-        
+
         const pl = new Polyline({ spatialReference: this.view.spatialReference });
         pl.addPath(evt.currentGeometry.map((pt: Point) => [pt.x, pt.y]));
-        
-        this.emit("onDrawProgress", { 
-            currentGeometry: pl, 
-            currentDrawEssentials: localDrawEssentials, 
-            currentMarker: evt.currentMarker, 
-            isBaseLine: true 
+
+        this.emit("onDrawProgress", {
+            currentGeometry: pl,
+            currentDrawEssentials: localDrawEssentials,
+            currentMarker: evt.currentMarker,
+            isBaseLine: true
         });
     }
 
@@ -205,7 +212,7 @@ export class FreehandDoubleLineArrow {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
         this.emit("onDrawClick", { currentPts: this._points });
 
@@ -228,7 +235,7 @@ export class FreehandDoubleLineArrow {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
         this.cleanUp();
     }
@@ -273,7 +280,7 @@ export class FreehandDoubleLineArrow {
         drawEssentials.SYM_NAME = this.symName;
         drawEssentials.GEOM = null;
         drawEssentials.AMPLIFIER = this.amplifier.toString();
-        
+
         // Store additional properties
         (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
@@ -332,13 +339,13 @@ export class FreehandDoubleLineArrow {
             }
 
             const partialLen = len;
-            const p1 = new Point({ 
-                x: partialLen * Math.cos(k) + midPt.x, 
+            const p1 = new Point({
+                x: partialLen * Math.cos(k) + midPt.x,
                 y: partialLen * Math.sin(k) + midPt.y,
                 spatialReference: this.view.spatialReference
             });
-            const p2 = new Point({ 
-                x: -1 * partialLen * Math.cos(k) + midPt.x, 
+            const p2 = new Point({
+                x: -1 * partialLen * Math.cos(k) + midPt.x,
                 y: -1 * partialLen * Math.sin(k) + midPt.y,
                 spatialReference: this.view.spatialReference
             });
@@ -362,12 +369,12 @@ export class FreehandDoubleLineArrow {
                 const angle = this.calculateAngle(midPt, pts[i]);
 
                 const stPtCandidatePt = new Point({
-                    x: p1.x + length * Math.cos(angle), 
+                    x: p1.x + length * Math.cos(angle),
                     y: p1.y + length * Math.sin(angle),
                     spatialReference: this.view.spatialReference
                 });
                 const endPtCandidatePt = new Point({
-                    x: p2.x + length * Math.cos(angle), 
+                    x: p2.x + length * Math.cos(angle),
                     y: p2.y + length * Math.sin(angle),
                     spatialReference: this.view.spatialReference
                 });
@@ -411,7 +418,7 @@ export class FreehandDoubleLineArrow {
             if (pts.length > 0) {
                 const leftFlankPt = this.getFlankPts(shortenLeftPt, leftArray[0]);
                 const rightFlankPt = this.getFlankPts(shortenRightPt, rightArray[0]);
-                
+
                 const arrowHeadPath = [
                     [shortenLeftPt.x, shortenLeftPt.y],
                     [leftFlankPt[1].x, leftFlankPt[1].y],
@@ -508,11 +515,11 @@ export class FreehandDoubleLineArrow {
         if (this._points.length === 0 || !this._baseLinePts) return;
 
         const drawEssentials = this.createDrawEssentials(this._points.slice(), this._baseLinePts);
-        
+
         if (this.tempGraphic && this.tempGraphic.geometry) {
             this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
         }
-        
+
         this._clear();
         this._removeEvents();
     }
@@ -554,7 +561,7 @@ export class FreehandDoubleLineArrow {
         if (this.tempGraphic && this.symbolLayer) {
             this.symbolLayer.remove(this.tempGraphic);
         }
-        
+
         this.tempGraphic = null;
         this._points = [];
         this._baseLinePts = null;
@@ -600,7 +607,7 @@ export class FreehandDoubleLineArrow {
         if (listeners) {
             listeners.forEach(listener => listener(data));
         }
-        
+
         // Also emit as a global document event for SymbolEngine to catch
         this.emitGlobalEvent(eventName, data);
     }

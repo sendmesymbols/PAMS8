@@ -4,6 +4,7 @@ import Polyline from "@arcgis/core/geometry/Polyline";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
 
 class Utils {
+    /*
     static calculateDistance(pt1: Point, pt2: Point): number {
         const dx = pt2.x - pt1.x;
         const dy = pt2.y - pt1.y;
@@ -15,6 +16,35 @@ class Utils {
         const dy = toPt.y - fromPt.y;
         return Math.atan2(dy, dx);
     }
+    */
+
+    static getMidPoint(pt1: Point, pt2: Point, spatialReference: SpatialReference): Point {
+        return new Point({
+            x: (pt1.x + pt2.x) / 2,
+            y: (pt1.y + pt2.y) / 2,
+            spatialReference: spatialReference
+        });
+    }
+
+    static calculateDistance(pt1: Point | { x: number, y: number }, pt2: Point | { x: number, y: number }): number {
+        const dx = pt2.x - pt1.x;
+        const dy = pt2.y - pt1.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    static calculateAngle(fromPt: Point | { x: number, y: number }, toPt: Point | { x: number, y: number }): number {
+        const dx = toPt.x - fromPt.x;
+        const dy = toPt.y - fromPt.y;
+        return Math.atan2(dy, dx);
+    }
+
+    static getTwoPointsRelationship(pt1: Point | { x: number, y: number }, pt2: Point | { x: number, y: number }): string {
+        if (pt2.x >= pt1.x && pt2.y >= pt1.y) return "ne";
+        if (pt2.x < pt1.x && pt2.y >= pt1.y) return "nw";
+        if (pt2.x < pt1.x && pt2.y < pt1.y) return "sw";
+        return "se";
+    }
+
 
     /**
      * Create Bezier path from points
