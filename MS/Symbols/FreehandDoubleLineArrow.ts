@@ -73,10 +73,11 @@ export class FreehandDoubleLineArrow {
     public init(options: FreehandDoubleLineArrowOptions, marker: SimpleLineSymbol): void {
         this._lineSym = marker;
 
-        const drawEssentials = new DrawEssentials();
+        let drawEssentials = new DrawEssentials();
         const baseLine = new BaseLine(this.view, this._lineSym);
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM")) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            debugger;
             // Immediate placement with all parameters
             if (options.GEOM && this.tempGraphic) {
                 try {
@@ -84,18 +85,20 @@ export class FreehandDoubleLineArrow {
                         paths: options.GEOM,
                         spatialReference: this.view.spatialReference
                     });
+                    drawEssentials = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
+                    this.__drawEnd(this.tempGraphic.geometry, drawEssentials);
+                    this._clear();
                 } catch (error) {
                     console.error(this.symName, "Failed to create Polyline geometry:", error);
                 }
             }
-
-            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
-            if (this.tempGraphic && this.tempGraphic.geometry) {
-                this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
-            }
-            this._clear();
+            /*
+            this._tGraphic.geometry = this.createSymbol(drawEssentials);
+            this.__drawEnd(this._tGraphic.geometry, drawEssentials);
+            this._clear();*/
 
         } else if (options.hasOwnProperty("CTRL_PTS")) {
+            debugger;
             if (options.hasOwnProperty("BASE_LN_PTS")) {
                 // Immediate placement with control points and baseline
                 const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
@@ -273,7 +276,7 @@ export class FreehandDoubleLineArrow {
     /**
      * Create DrawEssentials object
      */
-    private createDrawEssentials(ctrlPts: Point[], baseLinePts: { startPt: Point, endPt: Point }): DrawEssentials {
+    private createDrawEssentials(ctrlPts: Point[], baseLinePts: any): DrawEssentials {
         const drawEssentials = new DrawEssentials();
         drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
         drawEssentials.SID = this.SID;
