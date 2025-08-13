@@ -413,46 +413,63 @@ class Shapes {
      * Create letter S as separate strokes to avoid auto-closing
      */
     static createSStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const step = 2 * Math.PI / 180;
+        const step = 2 * Math.PI / 36; // Smaller steps for smoother curves
         const ddr = dr / 2;
-        
+        const strokes: Point[][] = [];
+
+        // Create S as small line segments to avoid auto-closing issues
         // Top horizontal line
-        const topLine = [
+        strokes.push([
             new Point({ x: dx + (dr * 0.3), y: dy + dr, spatialReference: sp }),
             new Point({ x: dx, y: dy + dr, spatialReference: sp })
-        ];
-        
-        // Top curve
-        const topCurve: Point[] = [];
+        ]);
+
+        // Top curve - break into small segments
+        let prevPoint: Point | null = null;
         for (let dtheta = 90 * Math.PI / 180; dtheta < 270 * Math.PI / 180; dtheta += step) {
             const x = dx + ddr * Math.cos(dtheta);
             const y = (dy + ddr) + ddr * Math.sin(dtheta);
-            topCurve.push(new Point({ x, y, spatialReference: sp }));
+            const currentPoint = new Point({ x, y, spatialReference: sp });
+
+            if (prevPoint) {
+                strokes.push([prevPoint, currentPoint]);
+            }
+            prevPoint = currentPoint;
         }
-        
-        // Middle curve
-        const middleCurve: Point[] = [];
+
+        // Middle transition - break into small segments
+        prevPoint = null;
         for (let dtheta = 90 * Math.PI / 180; dtheta > 0 * Math.PI / 180; dtheta -= step) {
             const x = dx + ddr * Math.cos(dtheta);
             const y = (dy - ddr) + ddr * Math.sin(dtheta);
-            middleCurve.push(new Point({ x, y, spatialReference: sp }));
+            const currentPoint = new Point({ x, y, spatialReference: sp });
+
+            if (prevPoint) {
+                strokes.push([prevPoint, currentPoint]);
+            }
+            prevPoint = currentPoint;
         }
-        
-        // Bottom curve
-        const bottomCurve: Point[] = [];
+
+        // Bottom curve - break into small segments
+        prevPoint = null;
         for (let dtheta = 360 * Math.PI / 180; dtheta > 270 * Math.PI / 180; dtheta -= step) {
             const x = dx + ddr * Math.cos(dtheta);
             const y = (dy - ddr) + ddr * Math.sin(dtheta);
-            bottomCurve.push(new Point({ x, y, spatialReference: sp }));
+            const currentPoint = new Point({ x, y, spatialReference: sp });
+
+            if (prevPoint) {
+                strokes.push([prevPoint, currentPoint]);
+            }
+            prevPoint = currentPoint;
         }
-        
+
         // Bottom horizontal line
-        const bottomLine = [
+        strokes.push([
             new Point({ x: dx, y: dy - dr, spatialReference: sp }),
             new Point({ x: dx - (dr * 0.3), y: dy - dr, spatialReference: sp })
-        ];
+        ]);
         
-        return [topLine, topCurve, middleCurve, bottomCurve, bottomLine];
+        return strokes;
     }
 
     /**
