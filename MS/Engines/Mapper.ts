@@ -127,6 +127,9 @@ import AntitankMine from "../Symbols/AntitankMine.ts"; //Fixed 2D Only
 import AntiTankMineWAntiHandle from "../Symbols/AntiTankMineWAntiHandle.ts"; //Fixed 2D Only
 import AreaOfOperations from "../Symbols/AreaOfOperations.ts"; //Fixed
 import AssemblyArea from "../Symbols/AssemblyArea.ts"; //Fixed
+import FwdAssemblyArea from "../Symbols/FwdAssemblyArea.ts";
+import StratAssyArea from "../Symbols/StratAssyArea.ts";
+
 
 import AttackPosition from "../Symbols/AttackPosition.ts";
 import AvenueOfApchs from "../Symbols/AvenueOfApchs.ts";
@@ -157,7 +160,7 @@ import FreehandSupportingAttack from "../Symbols/FreehandSupportingAttack.ts"; /
 import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts"; //Issue
 import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts";
 import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts";
-import StratAssyArea from "../Symbols/StratAssyArea.ts";
+
 import SingleConcertina from "../Symbols/SingleConcertina.ts";
 import SingleFenceWire from "../Symbols/SingleFenceWire.ts";
 import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";
@@ -187,7 +190,7 @@ import FlightRoute from "../Symbols/FlightRoute.ts";
 import FlightZone from "../Symbols/FlightZone.ts";
 import FormingUpPoint from "../Symbols/FormingUpPoint.ts";
 import Funnel from "../Symbols/Funnel.ts";
-import FwdAssemblyArea from "../Symbols/FwdAssemblyArea.ts";
+
 import FwdLineOfTps from "../Symbols/FwdLineOfTps.ts";
 import Guard from "../Symbols/Guard.ts";
 import HighWireFence from "../Symbols/HighWireFence.ts";

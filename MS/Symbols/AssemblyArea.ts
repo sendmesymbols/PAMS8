@@ -8,8 +8,6 @@ import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
-import BaseLine from "../Support/BaseLine.ts";
-import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
 export interface AssemblyAreaOptions {
@@ -36,7 +34,7 @@ export class AssemblyArea {
     private symGeometricType: string = "Area";
     private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
-    private _geometryType: string | null = null;
+
     private _drawType: number = 1;
     private amplifier: Amplifier;
     
@@ -76,10 +74,7 @@ export class AssemblyArea {
         // Set up event handlers
         this.setupEventHandlers();
 
-        const drawEssentials = new DrawEssentials();
-
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
-            // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
                 try {
                     this.tempGraphic.geometry = new Polygon({
@@ -461,7 +456,6 @@ export class AssemblyArea {
     public deactivate(): void {
         this._clear();
         this._removeEvents();
-        this._geometryType = null;
         this.isDrawing = false;
     }
 
