@@ -311,10 +311,8 @@ export class StratAssyArea {
                     const saaRings = Shapes.createSAA(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
                     if (saaRings && Array.isArray(saaRings)) {
                         for (let j = 0; j <= saaRings.length - 1; j++) {
-                            if (saaRings[j] && Array.isArray(saaRings[j])) {
-                                // Convert Point array to coordinate array
-                                const coords = saaRings[j].map(pt => [pt.x, pt.y]);
-                                result.addRing(coords);
+                            if (saaRings[j]) {
+                                result.addRing(saaRings[j]);
                             }
                         }
                     }

@@ -311,10 +311,8 @@ export class FwdAssemblyArea {
                     const faaRings = Shapes.createFAA(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
                     if (faaRings && Array.isArray(faaRings)) {
                         for (let j = 0; j <= faaRings.length - 1; j++) {
-                            if (faaRings[j] && Array.isArray(faaRings[j])) {
-                                // Convert Point array to coordinate array
-                                const coords = faaRings[j].map(pt => [pt.x, pt.y]);
-                                result.addRing(coords);
+                            if (faaRings[j]) {
+                                result.addRing(faaRings[j]);
                             }
                         }
                     }
