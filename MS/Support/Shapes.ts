@@ -3,6 +3,9 @@ import Point from "@arcgis/core/geometry/Point";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
 import GeoTools from './GeoTools.ts';
 import Echelons from './Echelons.ts';
+import Utils from "./Utils.ts";
+import DrawEssentials from "./DrawEssentials.ts";
+import Polygon from "@arcgis/core/geometry/Polygon";
 
 
 interface PointLike {
@@ -1090,6 +1093,155 @@ class Shapes {
         const dy = toPt.y - fromPt.y;
         return Math.atan2(dy, dx);
     }
+
+
+    /**
+     * Create Bezier curve symbol
+     */
+    static createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialRefence:SpatialReference): Polygon {
+        const tempArray: { x: number, y: number }[] = [];
+        pts.forEach(pt => {
+            tempArray.push({ x: pt.x, y: pt.y });
+        });
+        tempArray.push({ x: firstPoint.x, y: firstPoint.y });
+
+        return Utils.createBezierPath(tempArray, 130, spatialRefence, false);
+    }
+
+    /**
+     * Create polygon symbol
+     */
+    static createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialRefence:SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference: spatialRefence });
+        const tempArray: number[][] = [];
+
+        pts.forEach(pt => {
+            tempArray.push([pt.x, pt.y]);
+        });
+        tempArray.push([firstPoint.x, firstPoint.y]);
+
+        result.addRing(tempArray);
+        return result;
+    }
+
+    /**
+     * Create rectangle symbol
+     */
+    static createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialRefence:SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference: spatialRefence });
+        const tempArray: number[][] = [];
+
+        pts.forEach(pt => {
+            tempArray.push([pt.x, pt.y]);
+        });
+
+        // Create temporary polygon to get extent
+        const tempPolygon = new Polygon({ spatialReference: spatialReference });
+        tempPolygon.addRing(tempArray);
+        const extent = tempPolygon.extent;
+
+        if (!extent) {
+            // Fallback to simple rectangle using first and last points
+            const rectArray: number[][] = [
+                [firstPoint.x, firstPoint.y],
+                [firstPoint.x, lastPoint.y],
+                [lastPoint.x, lastPoint.y],
+                [lastPoint.x, firstPoint.y],
+                [firstPoint.x, firstPoint.y]
+            ];
+            result.addRing(rectArray);
+            return result;
+        }
+
+        // Create rectangle from extent
+        const rectArray: number[][] = [
+            [extent.xmin, extent.ymin],
+            [extent.xmin, extent.ymax],
+            [extent.xmax, extent.ymax],
+            [extent.xmax, extent.ymin],
+            [extent.xmin, extent.ymin]
+        ];
+
+        result.addRing(rectArray);
+        return result;
+    }
+
+    /**
+     * Create perfect ellipse symbol
+     */
+    static createSymbolByPerfectEllipse(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, view:any): Polygon {
+        const result = new Polygon({ spatialReference: view.spatialReference });
+
+        // Convert points to screen coordinates for ellipse calculation
+        const firstPtScreen = view.toScreen(firstPoint);
+        const lastPtScreen = view.toScreen(lastPoint);
+
+        if (!firstPtScreen || !lastPtScreen) {
+            // Fallback to simple ellipse if screen conversion fails
+            return this.createSimpleEllipse(firstPoint, lastPoint);
+        }
+
+        const widthScreen = Math.abs(lastPtScreen.x - firstPtScreen.x);
+        const heightScreen = Math.abs(lastPtScreen.y - firstPtScreen.y);
+
+        // Create ellipse using Shapes utility (assuming it exists and is compatible)
+        if (Shapes && (Shapes as any).createEllipse) {
+            try {
+                const paths = (Shapes as any).createEllipse({
+                    center: firstPtScreen,
+                    longAxis: widthScreen,
+                    shortAxis: heightScreen,
+                    numberOfPoints: 60,
+                    view: view
+                });
+
+                // Convert screen coordinates back to map coordinates
+                const mapPath: number[][] = [];
+                paths.forEach((screenPt: any) => {
+                    const mapPt = view.toMap(screenPt);
+                    if (mapPt) {
+                        mapPath.push([mapPt.x, mapPt.y]);
+                    }
+                });
+
+                result.addRing(mapPath);
+            } catch (e) {
+                // Fallback to simple circle if Shapes utility fails
+                return this.createSimpleEllipse(firstPoint, lastPoint);
+            }
+        } else {
+            // Fallback to simple circle
+            return this.createSimpleEllipse(firstPoint, lastPoint);
+        }
+
+        return result;
+    }
+
+    /**
+     * Create simple ellipse as fallback
+     */
+    static createSimpleEllipse(centerPoint: Point, radiusPoint: Point, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference: spatialReference });
+        const centerX = centerPoint.x;
+        const centerY = centerPoint.y;
+        const radiusX = Math.abs(radiusPoint.x - centerX);
+        const radiusY = Math.abs(radiusPoint.y - centerY);
+
+        const points: number[][] = [];
+        const numberOfPoints = 60;
+
+        for (let i = 0; i <= numberOfPoints; i++) {
+            const angle = (2 * Math.PI * i) / numberOfPoints;
+            const x = centerX + radiusX * Math.cos(angle);
+            const y = centerY + radiusY * Math.sin(angle);
+            points.push([x, y]);
+        }
+
+        result.addRing(points);
+        return result;
+    }
 }
 
-export default Shapes; 
+
+
+export default Shapes;

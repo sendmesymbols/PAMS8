@@ -85,8 +85,8 @@ export class AntiPersonnelMineDirEffct {
             this._lineSym = new PictureFillSymbol({
                 url: imagePath,
                 outline: marker,
-                width: 40,
-                height: 40
+                width: 100,
+                height: 50
             });
             
             if (this._lineSym.color) {
@@ -108,7 +108,7 @@ export class AntiPersonnelMineDirEffct {
 
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
             if (options.GEOM && this.tempGraphic) {
                 this.tempGraphic.geometry = options.GEOM;
             }

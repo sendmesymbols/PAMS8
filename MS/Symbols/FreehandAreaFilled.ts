@@ -13,6 +13,7 @@ import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 import Utils from "../Support/Utils.ts";
+import shapes from "../Support/Shapes.ts";
 
 
 export interface FreehandAreaFilledOptions {
@@ -100,7 +101,7 @@ export class FreehandAreaFilled {
         const drawEssentials = new DrawEssentials();
         this._drawType = GeoTools.setDefault(options, "DRAW_TYPE", this._drawType);
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {// Immediate placement with both control points and geometry
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {// Immediate placement with both control points and geometry
             try {
                 this.tempGraphic.geometry = new Polygon({
                     rings: options.GEOM,
@@ -283,13 +284,13 @@ export class FreehandAreaFilled {
 
             switch ((drawEssentials as any).DRAW_TYPE) {
                 case 1:
-                    return this.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials);
+                    return Shapes.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                 case 2:
-                    return this.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials);
+                    return Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                 case 3:
-                    return this.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials);
+                    return Shapes.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                 case 4:
-                    return this.createSymbolByPerfectEllipse(pts, firstPoint, lastPoint, drawEssentials);
+                    return Shapes.createSymbolByPerfectEllipse(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                 default:
                     return new Polygon({ spatialReference: this.view.spatialReference });
             }
@@ -300,217 +301,6 @@ export class FreehandAreaFilled {
         }
     }
 
-    /**
-     * Create Bezier curve symbol
-     */
-    private createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        const tempArray: { x: number, y: number }[] = [];
-        pts.forEach(pt => {
-            tempArray.push({ x: pt.x, y: pt.y });
-        });
-        tempArray.push({ x: firstPoint.x, y: firstPoint.y });
-
-        return Utils.createBezierPath(tempArray, 130, this.view.spatialReference, false);
-    }
-
-    /**
-     * Create polygon symbol
-     */
-    private createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray: number[][] = [];
-        
-        pts.forEach(pt => {
-            tempArray.push([pt.x, pt.y]);
-        });
-        tempArray.push([firstPoint.x, firstPoint.y]);
-
-        result.addRing(tempArray);
-        return result;
-    }
-
-    /**
-     * Create rectangle symbol
-     */
-    private createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray: number[][] = [];
-        
-        pts.forEach(pt => {
-            tempArray.push([pt.x, pt.y]);
-        });
-
-        // Create temporary polygon to get extent
-        const tempPolygon = new Polygon({ spatialReference: this.view.spatialReference });
-        tempPolygon.addRing(tempArray);
-        const extent = tempPolygon.extent;
-
-        if (!extent) {
-            // Fallback to simple rectangle using first and last points
-            const rectArray: number[][] = [
-                [firstPoint.x, firstPoint.y],
-                [firstPoint.x, lastPoint.y],
-                [lastPoint.x, lastPoint.y],
-                [lastPoint.x, firstPoint.y],
-                [firstPoint.x, firstPoint.y]
-            ];
-            result.addRing(rectArray);
-            return result;
-        }
-
-        // Create rectangle from extent
-        const rectArray: number[][] = [
-            [extent.xmin, extent.ymin],
-            [extent.xmin, extent.ymax],
-            [extent.xmax, extent.ymax],
-            [extent.xmax, extent.ymin],
-            [extent.xmin, extent.ymin]
-        ];
-
-        result.addRing(rectArray);
-        return result;
-    }
-
-    /**
-     * Create perfect ellipse symbol
-     */
-    private createSymbolByPerfectEllipse(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-
-        // Convert points to screen coordinates for ellipse calculation
-        const firstPtScreen = this.view.toScreen(firstPoint);
-        const lastPtScreen = this.view.toScreen(lastPoint);
-        
-        if (!firstPtScreen || !lastPtScreen) {
-            // Fallback to simple ellipse if screen conversion fails
-            return this.createSimpleEllipse(firstPoint, lastPoint);
-        }
-        
-        const widthScreen = Math.abs(lastPtScreen.x - firstPtScreen.x);
-        const heightScreen = Math.abs(lastPtScreen.y - firstPtScreen.y);
-
-        // Create ellipse using Shapes utility (assuming it exists and is compatible)
-        if (Shapes && (Shapes as any).createEllipse) {
-            try {
-                const paths = (Shapes as any).createEllipse({
-                    center: firstPtScreen,
-                    longAxis: widthScreen,
-                    shortAxis: heightScreen,
-                    numberOfPoints: 60,
-                    view: this.view
-                });
-
-                // Convert screen coordinates back to map coordinates
-                const mapPath: number[][] = [];
-                paths.forEach((screenPt: any) => {
-                    const mapPt = this.view.toMap(screenPt);
-                    if (mapPt) {
-                        mapPath.push([mapPt.x, mapPt.y]);
-                    }
-                });
-
-                result.addRing(mapPath);
-            } catch (e) {
-                // Fallback to simple circle if Shapes utility fails
-                return this.createSimpleEllipse(firstPoint, lastPoint);
-            }
-        } else {
-            // Fallback to simple circle
-            return this.createSimpleEllipse(firstPoint, lastPoint);
-        }
-
-        return result;
-    }
-
-    /**
-     * Create simple ellipse as fallback
-     */
-    private createSimpleEllipse(centerPoint: Point, radiusPoint: Point): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const centerX = centerPoint.x;
-        const centerY = centerPoint.y;
-        const radiusX = Math.abs(radiusPoint.x - centerX);
-        const radiusY = Math.abs(radiusPoint.y - centerY);
-
-        const points: number[][] = [];
-        const numberOfPoints = 60;
-
-        for (let i = 0; i <= numberOfPoints; i++) {
-            const angle = (2 * Math.PI * i) / numberOfPoints;
-            const x = centerX + radiusX * Math.cos(angle);
-            const y = centerY + radiusY * Math.sin(angle);
-            points.push([x, y]);
-        }
-
-        result.addRing(points);
-        return result;
-    }
-
-    /**
-     * Create Bezier path from points
-     * Note: This is a simplified implementation without TweenMax
-     */
-    private CreateBezierPath(pointCollection: { x: number, y: number }[], numberOfPts: number): Polygon {
-        var position = { x: pointCollection[0].x, y: pointCollection[0].y };
-        if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
-            pointCollection.pop();
-        }
-        if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
-            pointCollection.pop();
-        }
-        //pointCollection.push(pt);
-        var tween = window.TweenMax.to(position, numberOfPts, { bezier: pointCollection, ease: window.Linear.easeNone });
-        //ease:Power1.easeInOut  ease: Linear.easeNone
-        var path = [];
-        var i;
-        for (i = 0; i <= numberOfPts; i++) {
-            tween.time(i);
-            path.push([position.x, position.y]);
-        }
-
-        var result = new Polygon({"spatialReference": this.view.spatialReference});
-        result.addRing(path);
-        return result;
-    }
-
-    /**
-     * Remove duplicate consecutive points
-     */
-    private removeDuplicatePoints(points: { x: number, y: number }[]): { x: number, y: number }[] {
-        if (points.length <= 1) return points;
-
-        const result = [points[0]];
-        for (let i = 1; i < points.length; i++) {
-            const current = points[i];
-            const previous = points[i - 1];
-            if (current.x !== previous.x || current.y !== previous.y) {
-                result.push(current);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Calculate Bezier curve point at parameter t
-     * Simplified implementation for multiple control points
-     */
-    private calculateBezierPoint(points: { x: number, y: number }[], t: number): { x: number, y: number } {
-        if (points.length === 1) return points[0];
-        
-        // Use linear interpolation for simplicity
-        // For proper Bezier curves, implement De Casteljau's algorithm
-        const segmentLength = 1 / (points.length - 1);
-        const segmentIndex = Math.min(Math.floor(t / segmentLength), points.length - 2);
-        const localT = (t - segmentIndex * segmentLength) / segmentLength;
-        
-        const p1 = points[segmentIndex];
-        const p2 = points[segmentIndex + 1];
-        
-        return {
-            x: p1.x + (p2.x - p1.x) * localT,
-            y: p1.y + (p2.y - p1.y) * localT
-        };
-    }
 
     /**
      * Clean up drawing state and finalize

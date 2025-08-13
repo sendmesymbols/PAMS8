@@ -13,6 +13,7 @@ import Amplifier from "../Support/Amplifier";
 import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
+import Utils from "../Support/Utils.ts";
 
 export interface AntiPersonnelAntiTankMineOptions {
     CTRL_PTS?: Point[];
@@ -86,8 +87,8 @@ export class AntiPersonnelAntiTankMine {
             this._lineSym = new PictureFillSymbol({
                 url: imagePath,
                 outline: marker,
-                width: 40,
-                height: 40
+                width: 150,
+                height: 80
             });
             
             if (this._lineSym.color) {
@@ -309,16 +310,16 @@ export class AntiPersonnelAntiTankMine {
 
             switch (drawType) {
                 case 1:
-                    result = this.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials);
+                    result = Shapes.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                     break;
                 case 2:
-                    result = this.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials);
+                    result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                     break;
                 case 3:
-                    result = this.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials);
+                    result = Shapes.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                     break;
                 default:
-                    result = this.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials);
+                    result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
             }
 
             return result;
@@ -329,107 +330,7 @@ export class AntiPersonnelAntiTankMine {
         }
     }
 
-    /**
-     * Create symbol using Bezier curve
-     */
-    private createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(e => ({ x: e.x, y: e.y }));
-        tempArray.push({ x: firstPoint.x, y: firstPoint.y });
-        
-        const bezierResult = this.CreateBezierPath(tempArray, 130, this.view);
-        return bezierResult;
-    }
 
-    /**
-     * Create symbol using polygon
-     */
-    private createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(e => ({ x: e.x, y: e.y }));
-        tempArray.push({ x: firstPoint.x, y: firstPoint.y });
-        
-        result.addRing(tempArray.map(pt => [pt.x, pt.y]));
-        return result;
-    }
-
-    /**
-     * Create symbol using rectangle
-     */
-    private createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        let result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(e => [e.x, e.y]);
-        
-        result.addRing(tempArray);
-        const extent = result.extent;
-        
-        if (!extent) {
-            // Fallback if extent is not available
-            return this.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials);
-        }
-
-        result = new Polygon({ spatialReference: this.view.spatialReference });
-        const rectRing = [
-            [firstPoint.x, firstPoint.y],
-            [extent.xmin, extent.ymin],
-            [lastPoint.x, lastPoint.y],
-            [extent.xmax, extent.ymax],
-            [firstPoint.x, firstPoint.y]
-        ];
-        
-        result.addRing(rectRing);
-        return result;
-    }
-
-    /**
-     * Create Bezier path (fallback without TweenMax)
-     */
-    private CreateBezierPath(pointCollection: any[], numberOfPts: number, view: MapView | SceneView): Polygon {
-        // Since TweenMax is not available in ArcGIS 4.x context, we'll create a simplified curve
-        const result = new Polygon({ spatialReference: view.spatialReference });
-        
-        if (pointCollection.length < 2) {
-            return result;
-        }
-
-        // Remove duplicate points
-        while (pointCollection.length > 1 && 
-               pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && 
-               pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
-            pointCollection.pop();
-        }
-
-        // Create a smooth path using linear interpolation as fallback
-        const path: number[][] = [];
-        
-        if (pointCollection.length === 2) {
-            // Simple line case
-            for (let i = 0; i <= numberOfPts; i++) {
-                const t = i / numberOfPts;
-                const x = pointCollection[0].x + t * (pointCollection[1].x - pointCollection[0].x);
-                const y = pointCollection[0].y + t * (pointCollection[1].y - pointCollection[0].y);
-                path.push([x, y]);
-            }
-        } else {
-            // Multi-point interpolation
-            for (let i = 0; i <= numberOfPts; i++) {
-                const t = i / numberOfPts;
-                const segmentLength = 1 / (pointCollection.length - 1);
-                const segmentIndex = Math.floor(t / segmentLength);
-                const localT = (t - segmentIndex * segmentLength) / segmentLength;
-                
-                const startIdx = Math.min(segmentIndex, pointCollection.length - 2);
-                const endIdx = startIdx + 1;
-                
-                const x = pointCollection[startIdx].x + localT * (pointCollection[endIdx].x - pointCollection[startIdx].x);
-                const y = pointCollection[startIdx].y + localT * (pointCollection[endIdx].y - pointCollection[startIdx].y);
-                path.push([x, y]);
-            }
-        }
-        
-        result.addRing(path);
-        return result;
-    }
 
     /**
      * Clean up drawing state and finalize
