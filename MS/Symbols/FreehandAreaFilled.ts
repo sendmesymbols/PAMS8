@@ -101,14 +101,17 @@ export class FreehandAreaFilled {
         const drawEssentials = new DrawEssentials();
         this._drawType = GeoTools.setDefault(options, "DRAW_TYPE", this._drawType);
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {// Immediate placement with both control points and geometry
-            try {
-                this.tempGraphic.geometry = new Polygon({
-                    rings: options.GEOM,
-                    spatialReference: this.view.spatialReference
-                });
-            } catch (error) {
-                console.error(this.symName, "Failed to create Polygon geometry:", error);
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
+            if (options.GEOM && this.tempGraphic) {
+                try {
+                    this.tempGraphic.geometry = new Polygon({
+                        rings: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType, this._opacity);

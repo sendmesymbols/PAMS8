@@ -85,8 +85,8 @@ export class AntiPersonnelMine {
             this._lineSym = new PictureFillSymbol({
                 url: imagePath,
                 outline: marker,
-                width: 150,
-                height: 80
+                width: 100,
+                height: 50
             });
             
             if (this._lineSym.color) {

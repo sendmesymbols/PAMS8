@@ -122,8 +122,8 @@ import CLineOfDenial from "../Symbols/CLineOfDenial.ts";
 import Ambush from "../Symbols/Ambush.ts"; //Fixed --
 import AntiPersonnelAntiTankMine from "../Symbols/AntiPersonnelAntiTankMine.ts"; //Fixed 2D Only
 import AntiPersonnelMine from "../Symbols/AntiPersonnelMine.ts"; //Fixed 2D Only
-import AntiPersonnelMineDirEffct from "../Symbols/AntiPersonnelMineDirEffct.ts";
-import AntitankMine from "../Symbols/AntitankMine.ts";
+import AntiPersonnelMineDirEffct from "../Symbols/AntiPersonnelMineDirEffct.ts"; //Fixed 2D Only
+import AntitankMine from "../Symbols/AntitankMine.ts"; //Fixed 2D Only
 import AntiTankMineWAntiHandle from "../Symbols/AntiTankMineWAntiHandle.ts";
 import AreaOfOperations from "../Symbols/AreaOfOperations.ts"; //Minor Issue
 import AssemblyArea from "../Symbols/AssemblyArea.ts"; //Minor Issue
