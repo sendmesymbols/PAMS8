@@ -119,14 +119,15 @@ import ArcOfFireSD from "../Symbols/ArcOfFireSD.ts";
 
 import ALineOfDenial from "../Symbols/ALineOfDenial.ts";
 import CLineOfDenial from "../Symbols/CLineOfDenial.ts";
-import Ambush from "../Symbols/Ambush.ts"; //Fixed --
+import Ambush from "../Symbols/Ambush.ts";
 import AntiPersonnelAntiTankMine from "../Symbols/AntiPersonnelAntiTankMine.ts"; //Fixed 2D Only
 import AntiPersonnelMine from "../Symbols/AntiPersonnelMine.ts"; //Fixed 2D Only
 import AntiPersonnelMineDirEffct from "../Symbols/AntiPersonnelMineDirEffct.ts"; //Fixed 2D Only
 import AntitankMine from "../Symbols/AntitankMine.ts"; //Fixed 2D Only
 import AntiTankMineWAntiHandle from "../Symbols/AntiTankMineWAntiHandle.ts"; //Fixed 2D Only
-import AreaOfOperations from "../Symbols/AreaOfOperations.ts"; //Minor Issue
-import AssemblyArea from "../Symbols/AssemblyArea.ts"; //Minor Issue
+import AreaOfOperations from "../Symbols/AreaOfOperations.ts"; //Fixed
+import AssemblyArea from "../Symbols/AssemblyArea.ts"; //Fixed
+
 import AttackPosition from "../Symbols/AttackPosition.ts";
 import AvenueOfApchs from "../Symbols/AvenueOfApchs.ts";
 import AxisOfAdvanceFeint from "../Symbols/AxisOfAdvanceFeint.ts";
