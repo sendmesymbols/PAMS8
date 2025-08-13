@@ -36,6 +36,7 @@ export declare class Ambush {
     private mouseMoveHandler;
     private eventListeners;
     constructor(view: MapView | SceneView, isLine?: boolean);
+    private toPointPath;
     /**
      * Initialize the ambush drawing
      */
@@ -72,6 +73,7 @@ export declare class Ambush {
      * Add teeth to the curved section
      */
     private addTeeth;
+    private addTeethFromArc;
     /**
      * Create arrow head geometry
      */

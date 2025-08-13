@@ -110,10 +110,18 @@ export class AntiPersonnelAntiTankMine {
 
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                // Immediate placement with both control points and geometry
+                try {
+                    this.tempGraphic.geometry = new Polygon({
+                        rings: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE || 1, this._opacity);
@@ -143,7 +151,7 @@ export class AntiPersonnelAntiTankMine {
      */
     private getImagePath(): string {
         // Try different possible image paths for ArcGIS 4.x
-        const basePath = './MS2/Images/'; // Adjust based on your setup
+        const basePath = './MS/Images/'; // Adjust based on your setup
         const imageName = 'AntiPersonnelAntiTankMine.png';
         return basePath + imageName;
     }

@@ -78,7 +78,7 @@ export class FreehandArea {
         const drawEssentials = new DrawEssentials();
         this._drawType = GeoTools.setDefault(options, "DRAW_TYPE", this._drawType);
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
             // Immediate placement with both control points and geometry
             try {
                 this.tempGraphic.geometry = new Polygon({

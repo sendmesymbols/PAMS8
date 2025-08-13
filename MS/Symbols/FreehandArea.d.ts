@@ -88,20 +88,6 @@ export declare class FreehandArea {
      */
     private createSimpleEllipse;
     /**
-     * Create Bezier path from points
-     * Note: This is a simplified implementation without TweenMax
-     */
-    private CreateBezierPath;
-    /**
-     * Remove duplicate consecutive points
-     */
-    private removeDuplicatePoints;
-    /**
-     * Calculate Bezier curve point at parameter t
-     * Simplified implementation for multiple control points
-     */
-    private calculateBezierPoint;
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp;

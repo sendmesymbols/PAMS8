@@ -89,13 +89,6 @@ export declare class FreehandDoubleLineArrow {
      */
     private getFlankPts;
     /**
-     * Utility methods
-     */
-    private getMidPoint;
-    private calculateDistance;
-    private calculateAngle;
-    private getTwoPointsRelationship;
-    /**
      * Get baseline points
      */
     getBaseLinePts(): {

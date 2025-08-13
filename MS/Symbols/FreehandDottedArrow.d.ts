@@ -4,6 +4,7 @@ import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+import DrawEssentials from "../Support/DrawEssentials";
 export interface FreehandDottedArrowOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polyline;
@@ -29,6 +30,8 @@ export declare class FreehandDottedArrow {
     private _teethGap;
     private _geometryType;
     private amplifier;
+    private dashLength;
+    private gapLength;
     private isDrawing;
     private tempGraphic;
     private clickHandler;
@@ -44,6 +47,18 @@ export declare class FreehandDottedArrow {
      * Start interactive drawing mode
      */
     private startInteractiveDrawing;
+    /**
+     * Create dashed curved line symbol
+     */
+    private createDashedSymbolByCurve;
+    /**
+     * Create dashed straight line symbol
+     */
+    private createDashedSymbolByLine;
+    /**
+     * Create dashed segments between two points
+     */
+    private createDashedSegment;
     /**
      * Set up mouse event handlers for interactive drawing
      */
@@ -65,9 +80,9 @@ export declare class FreehandDottedArrow {
      */
     private createDrawEssentials;
     /**
-     * Create symbol geometry from DrawEssentials
+     * Override createSymbol to create dashed line geometry
      */
-    private createSymbol;
+    protected createSymbol(drawEssentials: DrawEssentials): Polyline | null;
     /**
      * Create arrow head geometry
      */

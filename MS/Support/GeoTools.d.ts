@@ -95,6 +95,14 @@ export declare class GeoTools {
      */
     static distance(from: Point, to: Point, unit: string): number;
     /**
+     * Generate dashed points for a line
+     */
+    static getDashPts(pts: Point[], dashArray: number[]): Point[];
+    /**
+     * Create dashed points between two coordinates
+     */
+    static dashes(x: number, y: number, x2: number, y2: number, dashArray: number[], spatialReference: SpatialReference): Point[];
+    /**
      * Calculate bearing between two points
      */
     static bearing(start: Point, end: Point, final?: boolean): number;

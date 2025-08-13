@@ -119,7 +119,7 @@ import ArcOfFireSD from "../Symbols/ArcOfFireSD.ts";
 
 import ALineOfDenial from "../Symbols/ALineOfDenial.ts";
 import CLineOfDenial from "../Symbols/CLineOfDenial.ts";
-import Ambush from "../Symbols/Ambush.ts"; //issue
+import Ambush from "../Symbols/Ambush.ts"; //Fixed --
 import AntiPersonnelAntiTankMine from "../Symbols/AntiPersonnelAntiTankMine.ts";
 import AntiPersonnelMine from "../Symbols/AntiPersonnelMine.ts";
 import AntiPersonnelMineDirEffct from "../Symbols/AntiPersonnelMineDirEffct.ts";
