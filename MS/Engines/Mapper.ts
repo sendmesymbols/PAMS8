@@ -124,7 +124,7 @@ import AntiPersonnelAntiTankMine from "../Symbols/AntiPersonnelAntiTankMine.ts";
 import AntiPersonnelMine from "../Symbols/AntiPersonnelMine.ts"; //Fixed 2D Only
 import AntiPersonnelMineDirEffct from "../Symbols/AntiPersonnelMineDirEffct.ts"; //Fixed 2D Only
 import AntitankMine from "../Symbols/AntitankMine.ts"; //Fixed 2D Only
-import AntiTankMineWAntiHandle from "../Symbols/AntiTankMineWAntiHandle.ts";
+import AntiTankMineWAntiHandle from "../Symbols/AntiTankMineWAntiHandle.ts"; //Fixed 2D Only
 import AreaOfOperations from "../Symbols/AreaOfOperations.ts"; //Minor Issue
 import AssemblyArea from "../Symbols/AssemblyArea.ts"; //Minor Issue
 import AttackPosition from "../Symbols/AttackPosition.ts";

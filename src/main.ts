@@ -872,7 +872,7 @@ function initializeAutocomplete() {
     //drawEssentials.GEOM = rawPolygon;  //Working for Area
 
     const rawPts = JSON.parse('[{"type":"point","x":7443405.995866349,"y":3488487.2451935397,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},{"type":"point","x":7160894.739324412,"y":3250003.716943853,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},{"type":"point","x":7494771.678873974,"y":2976053.407569854,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},{"type":"point","x":7831094.60332866,"y":3388201.864083415,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}}]');
-    drawEssentials.CTRL_PTS = rawPts;  //Working for Area
+    //drawEssentials.CTRL_PTS = rawPts;  //Working for Area
 
 
     //Ambush
