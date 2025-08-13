@@ -265,122 +265,27 @@ export class AreaOfOperations {
 
             switch (drawType) {
                 case 1:
-                    result = this.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials);
+                    result = Shapes.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                     break;
                 case 2:
-                    result = this.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials);
+                    result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                     break;
                 case 3:
-                    result = this.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials);
+                    result = Shapes.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                     break;
                 default:
-                    result = this.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials);
+                    result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
             }
 
-            return result;
+            return result ? this.createInnerText(result, firstPoint, lastPoint) : result;
             
         } catch (e) {
+            console.error(e);
             console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
             return null;
         }
     }
 
-    /**
-     * Create symbol using Bezier curve
-     */
-    private createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        const tempArray = pts.map(e => ({ x: e.x, y: e.y }));
-        tempArray.push({ x: firstPoint.x, y: firstPoint.y });
-        
-        let result = this.CreateBezierPath(tempArray, 130, this.view);
-        result = this.createInnerText(result, firstPoint, lastPoint);
-        return result;
-    }
-
-    /**
-     * Create symbol using polygon
-     */
-    private createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(e => ({ x: e.x, y: e.y }));
-        tempArray.push({ x: firstPoint.x, y: firstPoint.y });
-        
-        result.addRing(tempArray.map(pt => [pt.x, pt.y]));
-        return this.createInnerText(result, firstPoint, lastPoint);
-    }
-
-    /**
-     * Create symbol using rectangle
-     */
-    private createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        let result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(e => [e.x, e.y]);
-        
-        result.addRing(tempArray);
-        const extent = result.extent;
-        
-        if (!extent) {
-            return this.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials);
-        }
-
-        result = new Polygon({ spatialReference: this.view.spatialReference });
-        const rectRing = [
-            [firstPoint.x, firstPoint.y],
-            [extent.xmin, extent.ymin],
-            [lastPoint.x, lastPoint.y],
-            [extent.xmax, extent.ymax],
-            [firstPoint.x, firstPoint.y]
-        ];
-        
-        result.addRing(rectRing);
-        return this.createInnerText(result, firstPoint, lastPoint);
-    }
-
-    /**
-     * Create Bezier path (fallback without TweenMax)
-     */
-    private CreateBezierPath(pointCollection: any[], numberOfPts: number, view: MapView | SceneView): Polygon {
-        const result = new Polygon({ spatialReference: view.spatialReference });
-        
-        if (pointCollection.length < 2) {
-            return result;
-        }
-
-        // Remove duplicate points
-        while (pointCollection.length > 1 && 
-               pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && 
-               pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
-            pointCollection.pop();
-        }
-
-        const path: number[][] = [];
-        
-        if (pointCollection.length === 2) {
-            for (let i = 0; i <= numberOfPts; i++) {
-                const t = i / numberOfPts;
-                const x = pointCollection[0].x + t * (pointCollection[1].x - pointCollection[0].x);
-                const y = pointCollection[0].y + t * (pointCollection[1].y - pointCollection[0].y);
-                path.push([x, y]);
-            }
-        } else {
-            for (let i = 0; i <= numberOfPts; i++) {
-                const t = i / numberOfPts;
-                const segmentLength = 1 / (pointCollection.length - 1);
-                const segmentIndex = Math.floor(t / segmentLength);
-                const localT = (t - segmentIndex * segmentLength) / segmentLength;
-                
-                const startIdx = Math.min(segmentIndex, pointCollection.length - 2);
-                const endIdx = startIdx + 1;
-                
-                const x = pointCollection[startIdx].x + localT * (pointCollection[endIdx].x - pointCollection[startIdx].x);
-                const y = pointCollection[startIdx].y + localT * (pointCollection[endIdx].y - pointCollection[startIdx].y);
-                path.push([x, y]);
-            }
-        }
-        
-        result.addRing(path);
-        return result;
-    }
 
     /**
      * Create inner text markers for Area of Operations

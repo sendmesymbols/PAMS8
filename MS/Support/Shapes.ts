@@ -1098,21 +1098,21 @@ class Shapes {
     /**
      * Create Bezier curve symbol
      */
-    static createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialRefence:SpatialReference): Polygon {
+    static createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference:SpatialReference): Polygon {
         const tempArray: { x: number, y: number }[] = [];
         pts.forEach(pt => {
             tempArray.push({ x: pt.x, y: pt.y });
         });
         tempArray.push({ x: firstPoint.x, y: firstPoint.y });
 
-        return Utils.createBezierPath(tempArray, 130, spatialRefence, false);
+        return Utils.createBezierPath(tempArray, 130, spatialReference, false);
     }
 
     /**
      * Create polygon symbol
      */
-    static createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialRefence:SpatialReference): Polygon {
-        const result = new Polygon({ spatialReference: spatialRefence });
+    static createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference:SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference: spatialReference });
         const tempArray: number[][] = [];
 
         pts.forEach(pt => {
@@ -1127,8 +1127,8 @@ class Shapes {
     /**
      * Create rectangle symbol
      */
-    static createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialRefence:SpatialReference): Polygon {
-        const result = new Polygon({ spatialReference: spatialRefence });
+    static createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference:SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference: spatialReference });
         const tempArray: number[][] = [];
 
         pts.forEach(pt => {
