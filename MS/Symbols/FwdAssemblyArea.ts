@@ -9,6 +9,7 @@ import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerMana
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import Shapes from "../Support/Shapes.ts";
+import Utils from "../Support/Utils.ts";
 
 export interface FwdAssemblyAreaOptions {
     CTRL_PTS?: Point[];
@@ -299,7 +300,7 @@ export class FwdAssemblyArea {
                 return result;
             }
 
-            const baseLineLen = this.calculateDistance(firstPoint, lastPoint);
+            const baseLineLen = Utils.calculateDistance(firstPoint, lastPoint);
             let cLenLimit = baseLineLen / 10;
             if (cLenLimit > baseLineLen / 3.6) {
                 cLenLimit = baseLineLen / 3.6;
@@ -312,17 +313,15 @@ export class FwdAssemblyArea {
                     if (faaRings && Array.isArray(faaRings)) {
                         for (let j = 0; j <= faaRings.length - 1; j++) {
                             if (faaRings[j]) {
-                                result.addRing(faaRings[j]);
+                                // Convert Point array to coordinate array for addRing
+                                const coords = faaRings[j].map(pt => [pt.x, pt.y]);
+                                result.addRing(coords);
                             }
                         }
                     }
                 } catch (e) {
                     console.log('Error creating FAA inner text with Shapes utility, using fallback');
-                    this.createSimpleFAA(result, midPt, cLenLimit);
                 }
-            } else {
-                // Fallback FAA creation
-                this.createSimpleFAA(result, midPt, cLenLimit);
             }
 
             return result;
@@ -330,71 +329,6 @@ export class FwdAssemblyArea {
             console.log('Cannot create Inner Text');
             return result;
         }
-    }
-
-    /**
-     * Create simple FAA text as fallback
-     */
-    private createSimpleFAA(result: Polygon, midPt: Point, size: number): void {
-        // Create simple "FAA" text representation using Shapes utility methods
-        const letterHeight = size;
-        const letterSpacing = size * 0.4;
-
-        try {
-            // Create F, A, A letters using Shapes utility
-            const fPoints = Shapes.createF(midPt.x - letterSpacing * 1.5, midPt.y, letterHeight, midPt.spatialReference);
-            const a1Points = Shapes.createA(midPt.x, midPt.y, letterHeight, midPt.spatialReference);
-            const a2Points = Shapes.createA(midPt.x + letterSpacing * 1.5, midPt.y, letterHeight, midPt.spatialReference);
-
-            // Convert points to coordinate arrays and add as rings
-            const fCoords = fPoints.map(pt => [pt.x, pt.y]);
-            const a1Coords = a1Points.map(pt => [pt.x, pt.y]);
-            const a2Coords = a2Points.map(pt => [pt.x, pt.y]);
-
-            result.addRing(fCoords);
-            result.addRing(a1Coords);
-            result.addRing(a2Coords);
-        } catch (e) {
-            console.log('Error creating FAA letters, using simple fallback');
-            // Simple fallback - just add some basic shapes
-            const letterWidth = size * 0.6;
-            const spacing = size * 0.3;
-
-            // Simple F shape
-            const fShape = [
-                [midPt.x - letterWidth - spacing, midPt.y - letterHeight/2],
-                [midPt.x - letterWidth - spacing, midPt.y + letterHeight/2],
-                [midPt.x - spacing, midPt.y + letterHeight/2],
-                [midPt.x - spacing, midPt.y],
-                [midPt.x - letterWidth/2 - spacing, midPt.y]
-            ];
-
-            // Simple A shapes
-            const a1Shape = [
-                [midPt.x - letterWidth/2, midPt.y + letterHeight/2],
-                [midPt.x, midPt.y - letterHeight/2],
-                [midPt.x + letterWidth/2, midPt.y + letterHeight/2]
-            ];
-
-            const a2Shape = [
-                [midPt.x + spacing, midPt.y + letterHeight/2],
-                [midPt.x + spacing + letterWidth/2, midPt.y - letterHeight/2],
-                [midPt.x + spacing + letterWidth, midPt.y + letterHeight/2]
-            ];
-
-            result.addRing(fShape);
-            result.addRing(a1Shape);
-            result.addRing(a2Shape);
-        }
-    }
-
-    /**
-     * Utility method to calculate distance
-     */
-    private calculateDistance(pt1: Point, pt2: Point): number {
-        const dx = pt2.x - pt1.x;
-        const dy = pt2.y - pt1.y;
-        return Math.sqrt(dx * dx + dy * dy);
     }
 
     /**

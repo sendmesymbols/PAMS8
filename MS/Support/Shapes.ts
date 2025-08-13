@@ -183,6 +183,29 @@ class Shapes {
     }
 
     /**
+     * Create letter A as separate strokes to avoid auto-closing
+     */
+    static createAStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            // Left diagonal line
+            [
+                new Point({ x: dx - (dr / 1.75), y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx, y: dy + dr, spatialReference: sp })
+            ],
+            // Right diagonal line
+            [
+                new Point({ x: dx, y: dy + dr, spatialReference: sp }),
+                new Point({ x: dx + (dr / 1.75), y: dy - dr, spatialReference: sp })
+            ],
+            // Horizontal crossbar
+            [
+                new Point({ x: ((dx - (dr / 1.75)) + (dx)) / 2, y: ((dy - dr) + (dy + dr)) / 2, spatialReference: sp }),
+                new Point({ x: ((dx) + (dx + (dr / 1.75))) / 2, y: ((dy + dr) + (dy - dr)) / 2, spatialReference: sp })
+            ]
+        ];
+    }
+
+    /**
      * Create letter L
      */
     static createL(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
@@ -387,6 +410,52 @@ class Shapes {
     }
 
     /**
+     * Create letter S as separate strokes to avoid auto-closing
+     */
+    static createSStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const step = 2 * Math.PI / 180;
+        const ddr = dr / 2;
+        
+        // Top horizontal line
+        const topLine = [
+            new Point({ x: dx + (dr * 0.3), y: dy + dr, spatialReference: sp }),
+            new Point({ x: dx, y: dy + dr, spatialReference: sp })
+        ];
+        
+        // Top curve
+        const topCurve: Point[] = [];
+        for (let dtheta = 90 * Math.PI / 180; dtheta < 270 * Math.PI / 180; dtheta += step) {
+            const x = dx + ddr * Math.cos(dtheta);
+            const y = (dy + ddr) + ddr * Math.sin(dtheta);
+            topCurve.push(new Point({ x, y, spatialReference: sp }));
+        }
+        
+        // Middle curve
+        const middleCurve: Point[] = [];
+        for (let dtheta = 90 * Math.PI / 180; dtheta > 0 * Math.PI / 180; dtheta -= step) {
+            const x = dx + ddr * Math.cos(dtheta);
+            const y = (dy - ddr) + ddr * Math.sin(dtheta);
+            middleCurve.push(new Point({ x, y, spatialReference: sp }));
+        }
+        
+        // Bottom curve
+        const bottomCurve: Point[] = [];
+        for (let dtheta = 360 * Math.PI / 180; dtheta > 270 * Math.PI / 180; dtheta -= step) {
+            const x = dx + ddr * Math.cos(dtheta);
+            const y = (dy - ddr) + ddr * Math.sin(dtheta);
+            bottomCurve.push(new Point({ x, y, spatialReference: sp }));
+        }
+        
+        // Bottom horizontal line
+        const bottomLine = [
+            new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+            new Point({ x: dx - (dr * 0.3), y: dy - dr, spatialReference: sp })
+        ];
+        
+        return [topLine, topCurve, middleCurve, bottomCurve, bottomLine];
+    }
+
+    /**
      * Create letter O
      */
     static createO(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
@@ -506,6 +575,29 @@ class Shapes {
         pts.push(new Point({ x: dx + (dr * 0.8), y: dy, spatialReference: sp }));
 
         return pts;
+    }
+
+    /**
+     * Create letter F as separate strokes to avoid auto-closing
+     */
+    static createFStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            // Vertical line
+            [
+                new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx, y: dy + dr, spatialReference: sp })
+            ],
+            // Top horizontal line
+            [
+                new Point({ x: dx, y: dy + dr, spatialReference: sp }),
+                new Point({ x: dx + dr, y: dy + dr, spatialReference: sp })
+            ],
+            // Middle horizontal line
+            [
+                new Point({ x: dx, y: dy, spatialReference: sp }),
+                new Point({ x: dx + (dr * 0.8), y: dy, spatialReference: sp })
+            ]
+        ];
     }
 
     /**
@@ -630,10 +722,13 @@ class Shapes {
     }
 
     static createFAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts1 = this.createF(dx - (dr * 1.8), dy, dr, sp);
-        const pts2 = this.createA(dx, dy, dr, sp);
-        const pts3 = this.createA(dx + (dr * 1.2), dy, dr, sp);
-        return [pts1, pts2, pts3];
+        // Create F as separate strokes to avoid auto-closing
+        const fStrokes = this.createFStrokes(dx - (dr * 1.8), dy, dr, sp);
+        const a1Strokes = this.createAStrokes(dx, dy, dr, sp);
+        const a2Strokes = this.createAStrokes(dx + (dr * 1.2), dy, dr, sp);
+        
+        // Combine all strokes
+        return [...fStrokes, ...a1Strokes, ...a2Strokes];
     }
 
     static createFUP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
@@ -658,10 +753,13 @@ class Shapes {
     }
 
     static createSAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts1 = this.createS(dx - (dr * 1.6), dy, dr, sp);
-        const pts2 = this.createA(dx, dy, dr, sp);
-        const pts3 = this.createA(dx + (dr * 1.6), dy, dr, sp);
-        return [pts1, pts2, pts3];
+        // Create S as separate strokes to avoid auto-closing
+        const sStrokes = this.createSStrokes(dx - (dr * 1.6), dy, dr, sp);
+        const a1Strokes = this.createAStrokes(dx, dy, dr, sp);
+        const a2Strokes = this.createAStrokes(dx + (dr * 1.6), dy, dr, sp);
+        
+        // Combine all strokes
+        return [...sStrokes, ...a1Strokes, ...a2Strokes];
     }
 
     static createDA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
