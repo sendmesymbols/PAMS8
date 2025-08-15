@@ -103,12 +103,9 @@ export class AvenueOfApchs {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
                 try {
-                    this.tempGraphic.geometry = new Polygon({
-                        rings: options.GEOM,
-                        spatialReference: this.view.spatialReference
-                    });
+                    this.tempGraphic.geometry = options.GEOM;
                 } catch (error) {
-                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                    console.error(this.symName, "Failed to set Polygon geometry:", error);
                 }
             }
 
@@ -464,31 +461,7 @@ export class AvenueOfApchs {
     /**
      * Create Bezier path for point collection only (fallback)
      */
-    private CreateBezierPathPCOnly(pointCollection: any[], numberOfPts: number): any[] {
-        if (pointCollection.length < 2) {
-            return pointCollection;
-        }
-
-        const path: any[] = [];
-
-        for (let i = 0; i <= numberOfPts; i++) {
-            const t = i / numberOfPts;
-            const segmentLength = 1 / (pointCollection.length - 1);
-            const segmentIndex = Math.floor(t / segmentLength);
-            const localT = (t - segmentIndex * segmentLength) / segmentLength;
-
-            const startIdx = Math.min(segmentIndex, pointCollection.length - 2);
-            const endIdx = startIdx + 1;
-
-            if (pointCollection[startIdx] && pointCollection[endIdx]) {
-                const x = pointCollection[startIdx].x + localT * (pointCollection[endIdx].x - pointCollection[startIdx].x);
-                const y = pointCollection[startIdx].y + localT * (pointCollection[endIdx].y - pointCollection[startIdx].y);
-                path.push({ x, y });
-            }
-        }
-
-        return path;
-    }
+    // Removed unused fallback CreateBezierPathPCOnly (Shapes.CreateBezierPathPCOnly is used)
 
     /**
      * Calculate angle between two points relative to a candidate point

@@ -272,10 +272,14 @@ export class AxisOfAdvanceFeint {
                 throw new Error("controlPoints not found");
             }
 
+            const result = new Polygon({
+                spatialReference: this.view.spatialReference
+            });
+
             if (pts.length <= 2) {
-                return this.createSimpleFeintArrow(pts);
+                return this.createSimpleFeintArrow(pts, result);
             } else {
-                return this.createComplexFeintArrow(pts);
+                return this.createComplexFeintArrow(pts, result);
             }
             
         } catch (e) {
@@ -287,7 +291,7 @@ export class AxisOfAdvanceFeint {
     /**
      * Create simple feint arrow for 2 or fewer points
      */
-    private createSimpleFeintArrow(pts: Point[]): Polygon {
+    private createSimpleFeintArrow(pts: Point[], result: Polygon): Polygon {
         const firstPoint = pts[0];
         const lastPoint = pts[pts.length - 1];
 
@@ -314,7 +318,6 @@ export class AxisOfAdvanceFeint {
             y: -1 * this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
         };
 
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
         let ring: number[][] = [];
         
         ring.push([pt1.x, pt1.y]);
@@ -324,6 +327,8 @@ export class AxisOfAdvanceFeint {
         ring = ring.concat(values.rings.map((pt: any) => [pt.x, pt.y]));
         
         ring.push([p2.x, p2.y]);
+        // Close back of the arrow
+        ring.push([pt1.x, pt1.y]);
         result.addRing(ring);
 
         // Add feint lines in front of arrow
@@ -335,8 +340,7 @@ export class AxisOfAdvanceFeint {
     /**
      * Create complex feint arrow for more than 2 points
      */
-    private createComplexFeintArrow(pts: Point[]): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
+    private createComplexFeintArrow(pts: Point[], result: Polygon): Polygon {
         const lastPoint = pts[pts.length - 1];
         const tempArray = pts.map(e => ({ x: e.x, y: e.y }));
 
@@ -367,9 +371,9 @@ export class AxisOfAdvanceFeint {
         leftArray.push({ x: lastPoint.x, y: lastPoint.y });
         rightArray.push({ x: lastPoint.x, y: lastPoint.y });
 
-        // Create smooth paths using Bezier (fallback to linear interpolation)
-        let leftBezier = this.CreateBezierPathPCOnly(leftArray, 70);
-        let rightBezier = this.CreateBezierPathPCOnly(rightArray, 70);
+        // Create smooth paths using Bezier (reuse Shapes)
+        let leftBezier = Shapes.CreateBezierPathPCOnly(leftArray, 70);
+        let rightBezier = Shapes.CreateBezierPathPCOnly(rightArray, 70);
 
         // Splice for arrow head
         leftBezier.splice(Math.floor((1 - this._headPercentage) * 70), Number.MAX_VALUE);
@@ -384,12 +388,14 @@ export class AxisOfAdvanceFeint {
             15
         );
 
-        // Combine all paths
-        let ring: number[][] = [];
-        ring = ring.concat(leftBezier.map(pt => [pt.x, pt.y]));
-        ring = ring.concat(values.rings.map((pt: any) => [pt.x, pt.y]));
-        ring = ring.concat(rightBezier.reverse().map(pt => [pt.x, pt.y]));
-
+        // Combine all paths and close the back of the arrow
+        const ring: number[][] = [];
+        leftBezier.forEach(pt => ring.push([pt.x, pt.y]));
+        values.rings.forEach((pt: any) => ring.push([pt.x, pt.y]));
+        rightBezier.reverse().forEach(pt => ring.push([pt.x, pt.y]));
+        if (leftBezier.length > 0) {
+            ring.push([leftBezier[0].x, leftBezier[0].y]);
+        }
         result.addRing(ring);
 
         // Add feint lines
