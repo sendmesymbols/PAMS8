@@ -313,20 +313,23 @@ export class AttackPosition {
                 try {
                     const catkRings = (Shapes as any).CATK(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
                     if (catkRings && Array.isArray(catkRings)) {
-                        // Original JS starts from index 1 (skips index 0)
                         for (let j = 1; j <= catkRings.length - 1; j++) {
                             if (catkRings[j]) {
-                                result.addRing(catkRings[j]);
+                                const coords = catkRings[j].map(pt => [pt.x, pt.y]);
+                                if (coords.length === 2) {
+                                    coords.push([coords[1][0] + 1e-6, coords[1][1] + 1e-6]);
+                                }
+                                // Close the ring
+                                coords.push(coords[0]);
+
+                                result.addRing(coords);
                             }
                         }
                     }
+
                 } catch (e) {
-                    console.log('Error creating CATK inner text with Shapes utility, using fallback');
-                    this.createSimpleCATK(result, midPt, cLenLimit);
+                    console.log('Error creating CATK inner text with Shapes utility');
                 }
-            } else {
-                // Fallback CATK creation
-                this.createSimpleCATK(result, midPt, cLenLimit);
             }
 
             return result;
@@ -336,54 +339,6 @@ export class AttackPosition {
         }
     }
 
-    /**
-     * Create simple CATK text as fallback
-     */
-    private createSimpleCATK(result: Polygon, midPt: Point, size: number): void {
-        // Create simple "ATK" text representation
-        const letterHeight = size;
-        const letterWidth = size * 0.5;
-        const spacing = size * 0.15;
-
-        // Create "A" shape
-        const aPoints = [
-            [midPt.x - letterWidth*1.5 - spacing, midPt.y + letterHeight/2],
-            [midPt.x - letterWidth - spacing, midPt.y - letterHeight/2],
-            [midPt.x - letterWidth/2 - spacing, midPt.y + letterHeight/2]
-        ];
-        
-        // Create "T" shape
-        const tHorizontal = [
-            [midPt.x - letterWidth/2, midPt.y - letterHeight/2],
-            [midPt.x + letterWidth/2, midPt.y - letterHeight/2]
-        ];
-        const tVertical = [
-            [midPt.x, midPt.y - letterHeight/2],
-            [midPt.x, midPt.y + letterHeight/2]
-        ];
-        
-        // Create "K" shape
-        const kVertical = [
-            [midPt.x + letterWidth/2 + spacing, midPt.y - letterHeight/2],
-            [midPt.x + letterWidth/2 + spacing, midPt.y + letterHeight/2]
-        ];
-        const kDiagonal1 = [
-            [midPt.x + letterWidth/2 + spacing, midPt.y],
-            [midPt.x + letterWidth + spacing, midPt.y - letterHeight/2]
-        ];
-        const kDiagonal2 = [
-            [midPt.x + letterWidth/2 + spacing, midPt.y],
-            [midPt.x + letterWidth + spacing, midPt.y + letterHeight/2]
-        ];
-
-        // Add as separate rings (inner text)
-        result.addRing(aPoints);
-        result.addRing(tHorizontal);
-        result.addRing(tVertical);
-        result.addRing(kVertical);
-        result.addRing(kDiagonal1);
-        result.addRing(kDiagonal2);
-    }
 
     /**
      * Utility method to calculate distance

@@ -748,6 +748,49 @@ class Shapes {
         return [...fStrokes, ...a1Strokes, ...a2Strokes];
     }
 
+    static createTStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            // Vertical stroke
+            [
+                new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx, y: dy + dr, spatialReference: sp })
+            ],
+            // Left horizontal arm
+            [
+                new Point({ x: dx - (dr * 0.7), y: dy + dr, spatialReference: sp }),
+                new Point({ x: dx, y: dy + dr, spatialReference: sp })
+            ],
+            // Right horizontal arm
+            [
+                new Point({ x: dx, y: dy + dr, spatialReference: sp }),
+                new Point({ x: dx + (dr * 0.7), y: dy + dr, spatialReference: sp })
+            ]
+        ];
+    }
+
+
+    static createKStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            // Vertical spine
+            [
+                new Point({ x: dx, y: dy + dr, spatialReference: sp }),
+                new Point({ x: dx, y: dy - dr, spatialReference: sp })
+            ],
+            // Upper diagonal
+            [
+                new Point({ x: dx, y: dy, spatialReference: sp }),
+                new Point({ x: dx + (dr * 0.8), y: dy + dr, spatialReference: sp })
+            ],
+            // Lower diagonal
+            [
+                new Point({ x: dx, y: dy, spatialReference: sp }),
+                new Point({ x: dx + (dr * 0.8), y: dy - dr, spatialReference: sp })
+            ]
+        ];
+    }
+
+
+
     static createFUP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const pts1 = this.createF(dx - (dr * 2.5), dy, dr, sp);
         const pts2 = this.createU(dx, dy, dr, sp);
@@ -902,10 +945,10 @@ class Shapes {
 
     static CATK(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const c = this.createCC(dx - (dr * 1.67), dy, dr, sp);
-        const a = this.createA(dx - (dr * 0.5), dy, dr, sp);
-        const t = this.createT(dx + (dr * 0.83), dy, dr, sp);
-        const k = this.createK(dx + (dr * 1.83), dy, dr, sp);
-        return [c, a, t, k];
+        const a = this.createAStrokes(dx - (dr * 0.5), dy, dr, sp);
+        const t = this.createTStrokes(dx + (dr * 0.83), dy, dr, sp);
+        const k = this.createKStrokes(dx + (dr * 1.83), dy, dr, sp);
+        return [c, ...a, ...t, ...k];
     }
 
     // Utility methods for creating shapes and arrows

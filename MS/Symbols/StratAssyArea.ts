@@ -315,6 +315,11 @@ export class StratAssyArea {
                             if (saaRings[j]) {
                                 // Convert Point array to coordinate array for addRing
                                 const coords = saaRings[j].map(pt => [pt.x, pt.y]);
+                                if (coords.length === 2) {
+                                    coords.push([coords[1][0] + 1e-6, coords[1][1] + 1e-6]);
+                                }
+                                // Close the ring
+                                coords.push(coords[0]);
                                 result.addRing(coords);
                             }
                         }
