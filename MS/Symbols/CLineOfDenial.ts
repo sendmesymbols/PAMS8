@@ -17,6 +17,7 @@ export interface CLineOfDenialOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polyline;
     opacity?: number;
+    DRAW_TYPE?: number;
     [key: string]: any;
 }
 
@@ -37,6 +38,7 @@ export class CLineOfDenial {
     private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
     private _geometryType: string | null = null;
+    private _drawType: number = 1;
     private _opacity: number = 1;
     private amplifier: Amplifier;
     
@@ -80,6 +82,9 @@ export class CLineOfDenial {
         const blackColor = new Color('#000000');
         this._lineSym.color = blackColor;
         this._lineSym.color.a = this._opacity;
+
+        // Draw type (1: straight, 2: bezier)
+        this._drawType = (options as any).DRAW_TYPE || 1;
         
         // Set up event handlers
         this.setupEventHandlers();
@@ -215,6 +220,7 @@ export class CLineOfDenial {
 
         const drawEssentials = new DrawEssentials();
         (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
+        (drawEssentials as any).DRAW_TYPE = this._drawType;
 
         const geometry = this.createSymbol(drawEssentials);
         if (geometry) {
@@ -259,13 +265,65 @@ export class CLineOfDenial {
                 throw new Error("controlPoints not found");
             }
 
-            const result = new Polyline({ spatialReference: this.view.spatialReference });
-            result.addPath(pts.map(pt => [pt.x, pt.y]));
-
-            // Add CLD markers
+            let result: Polyline;
             const p1 = pts[0];
             const p2 = pts[pts.length - 1];
 
+            const drawType = (drawEssentials as any).DRAW_TYPE || this._drawType || 1;
+
+            switch (drawType) {
+                case 1:
+                    result = this.createSymbolByStraightLine(pts);
+                    break;
+                case 2:
+                    result = this.createSymbolByLine(pts, p1, p2);
+                    break;
+                default:
+                    result = this.createSymbolByStraightLine(pts);
+            }
+
+            // Add CLD markers
+            this.addCLDMarkers(result, p1, p2);
+
+            return result;
+        } catch (e) {
+            console.error(e);
+            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            return null;
+        }
+    }
+
+    /**
+     * Create symbol by straight line (draw type 1)
+     */
+    private createSymbolByStraightLine(pts: Point[]): Polyline {
+        const result = new Polyline({ spatialReference: this.view.spatialReference });
+        const path = pts.map(pt => [pt.x, pt.y]);
+        result.addPath(path);
+        return result;
+    }
+
+    /**
+     * Create symbol by bezier line (draw type 2)
+     */
+    private createSymbolByLine(pts: Point[], firstPoint: Point, lastPoint: Point): Polyline {
+        const result = new Polyline({ spatialReference: this.view.spatialReference });
+        if (pts.length === 2) {
+            result.addPath([[firstPoint.x, firstPoint.y], [lastPoint.x, lastPoint.y]]);
+        } else if (pts.length > 2) {
+            const tempArray = pts.map(pt => ({ x: pt.x, y: pt.y }));
+            const bezierPoints = Shapes.CreateBezierPathPCOnly(tempArray, 100);
+            const bezierPath = bezierPoints.map((pt: any) => [pt.x, pt.y]);
+            result.addPath(bezierPath);
+        }
+        return result;
+    }
+
+    /**
+     * Add CLD markers at both ends of the line
+     */
+    private addCLDMarkers(result: Polyline, p1: Point, p2: Point): void {
+        try {
             const len = Utils.calculateDistance(p1, p2) / 20;
             const k = Utils.calculateAngle(p1, p2);
 
@@ -286,17 +344,12 @@ export class CLineOfDenial {
                 y: len * Math.sin(k) + p2.y
             };
 
-
             const paths2 = Shapes.createCLD(pt2.x + len, pt2.y, len / 2, this.view.spatialReference);
             paths2.forEach(path => {
                 result.addPath(path);
             });
-
-            return result;
         } catch (e) {
-            console.error(e);
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
-            return null;
+            console.log('Error adding CLD markers');
         }
     }
 

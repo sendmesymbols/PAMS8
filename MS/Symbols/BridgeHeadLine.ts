@@ -251,18 +251,20 @@ export class BridgeHeadLine {
                 throw new Error("controlPoints not found");
             }
 
-            const result = new Polyline({ spatialReference: this.view.spatialReference });
+            let result: Polyline;
             const p1 = pts[0];
             const p2 = pts[pts.length - 1];
-            const drawType = (drawEssentials as any).DRAW_TYPE || 1;
+            const drawType = (drawEssentials as any).DRAW_TYPE || this._drawType || 1;
 
             switch (drawType) {
                 case 1:
-                    result.addPath([[p1.x, p1.y], [p2.x, p2.y]]);
+                    result = this.createSymbolByStraightLine(pts);
                     break;
                 case 2:
-                    this.createSymbolByLine(pts, p1, p2, drawEssentials, result);
+                    result = this.createSymbolByLine(pts, p1, p2);
                     break;
+                default:
+                    result = this.createSymbolByStraightLine(pts);
             }
 
             // Add BL markers at both ends
@@ -279,63 +281,32 @@ export class BridgeHeadLine {
     /**
      * Create symbol using curved line
      */
-    private createSymbolByLine(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, result: Polyline): void {
+    private createSymbolByLine(pts: Point[], firstPoint: Point, lastPoint: Point): Polyline {
+        const result = new Polyline({ spatialReference: this.view.spatialReference });
         if (pts.length === 2) {
-            result.addPath([[lastPoint.x, lastPoint.y], [firstPoint.x, firstPoint.y]]);
+            result.addPath([[firstPoint.x, firstPoint.y], [lastPoint.x, lastPoint.y]]);
         } else if (pts.length > 2) {
             const tempArray = pts.map(e => ({ x: e.x, y: e.y }));
-            const bezierResult = this.CreateBezierPath(tempArray, 100, this.view);
-            if (bezierResult && bezierResult.paths && bezierResult.paths.length > 0) {
-                bezierResult.paths.forEach(path => result.addPath(path));
+            const bezierPoints = (Shapes as any).CreateBezierPathPCOnly(tempArray, 100);
+            if (Array.isArray(bezierPoints) && bezierPoints.length > 0) {
+                const bezierPath = bezierPoints.map((pt: any) => [pt.x, pt.y]);
+                result.addPath(bezierPath);
             }
         }
+        return result;
+    }
+
+    private createSymbolByStraightLine(pts: Point[]): Polyline {
+        const result = new Polyline({ spatialReference: this.view.spatialReference });
+        const path = pts.map(pt => [pt.x, pt.y]);
+        result.addPath(path);
+        return result;
     }
 
     /**
      * Create Bezier path (fallback without TweenMax)
      */
-    private CreateBezierPath(pointCollection: any[], numberOfPts: number, view: MapView | SceneView): Polyline {
-        const result = new Polyline({ spatialReference: view.spatialReference });
-        
-        if (pointCollection.length < 2) {
-            return result;
-        }
-
-        // Remove duplicate points
-        while (pointCollection.length > 1 && 
-               pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && 
-               pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
-            pointCollection.pop();
-        }
-
-        const path: number[][] = [];
-        
-        if (pointCollection.length === 2) {
-            for (let i = 0; i <= numberOfPts; i++) {
-                const t = i / numberOfPts;
-                const x = pointCollection[0].x + t * (pointCollection[1].x - pointCollection[0].x);
-                const y = pointCollection[0].y + t * (pointCollection[1].y - pointCollection[0].y);
-                path.push([x, y]);
-            }
-        } else {
-            for (let i = 0; i <= numberOfPts; i++) {
-                const t = i / numberOfPts;
-                const segmentLength = 1 / (pointCollection.length - 1);
-                const segmentIndex = Math.floor(t / segmentLength);
-                const localT = (t - segmentIndex * segmentLength) / segmentLength;
-                
-                const startIdx = Math.min(segmentIndex, pointCollection.length - 2);
-                const endIdx = startIdx + 1;
-                
-                const x = pointCollection[startIdx].x + localT * (pointCollection[endIdx].x - pointCollection[startIdx].x);
-                const y = pointCollection[startIdx].y + localT * (pointCollection[endIdx].y - pointCollection[startIdx].y);
-                path.push([x, y]);
-            }
-        }
-        
-        result.addPath(path);
-        return result;
-    }
+    // Removed local CreateBezierPath in favor of Shapes.CreateBezierPathPCOnly
 
     /**
      * Add "BL" markers at both ends of the line

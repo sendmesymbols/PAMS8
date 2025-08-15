@@ -272,16 +272,30 @@ export class PhaseLine {
             }
 
             // Add PL text markers at both ends
+            this.addPLMarkers(result, p1, p2);
+
+            return result;
+
+        } catch (e) {
+            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            return null;
+        }
+    }
+
+    /**
+     * Add PL markers at both ends of the line
+     */
+    private addPLMarkers(result: Polyline, p1: Point, p2: Point): void {
+        try {
             const len = GeoTools._2PtLen(p1, p2) / 20;
             const k = GeoTools.angleInRadians(p1, p2);
-            
+
             // PL marker at start point
             const pt1 = {
                 x: -1 * len * Math.cos(k) + p1.x,
                 y: -1 * len * Math.sin(k) + p1.y
             };
 
-            // Create PL text markers (when Shapes.createPL is available)
             if ('createPL' in Shapes && typeof (Shapes as any).createPL === 'function') {
                 const plPaths1 = (Shapes as any).createPL(pt1.x, pt1.y, len / 2, this.view.spatialReference);
                 if (plPaths1 && Array.isArray(plPaths1)) {
@@ -307,12 +321,8 @@ export class PhaseLine {
                     });
                 }
             }
-
-            return result;
-
         } catch (e) {
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
-            return null;
+            console.log('Error adding PL markers');
         }
     }
 

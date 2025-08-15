@@ -8706,20 +8706,52 @@
         "Class": "CLineOfDenial",
         "Description": "",
         "Name": "Corps Line of Denial",
-        "Parameters": [],
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Line) and 2 (Curve)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
         "SymGeoType": "Line",
         "Thumbnail": "",
-        "Tools": [],
+        "Tools": [{
+            "DRAW_TYPE": "1",
+            "Name": "Line",
+            "description": "Use Line"
+        },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Curve",
+                "description": "Use Curve"
+            }
+        ],
         "Cat": ["def"]
     },
     "25141801": {
         "Class": "ALineOfDenial",
         "Description": "",
         "Name": "Army Line of Denial",
-        "Parameters": [],
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Line) and 2 (Curve)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
         "SymGeoType": "Line",
         "Thumbnail": "",
-        "Tools": [],
+        "Tools": [{
+            "DRAW_TYPE": "1",
+            "Name": "Line",
+            "description": "Use Line"
+        },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Curve",
+                "description": "Use Curve"
+            }
+        ],
         "Cat": ["def"]
     },
     "25141900": {
@@ -8746,10 +8778,26 @@
         "Class": "BtleHndOvrLn",
         "Description": "",
         "Name": "Battle Handover Line (BHOL)",
-        "Parameters": [],
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Line) and 2 (Curve)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
         "SymGeoType": "Line",
         "Thumbnail": "",
-        "Tools": [],
+        "Tools": [{
+            "DRAW_TYPE": "1",
+            "Name": "Line",
+            "description": "Use Line"
+        },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Curve",
+                "description": "Use Curve"
+            }
+        ],
         "Cat": ["sz"]
     },
     "25150200": {
