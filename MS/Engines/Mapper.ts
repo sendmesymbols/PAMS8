@@ -128,7 +128,7 @@ import AntiTankMineWAntiHandle from "../Symbols/AntiTankMineWAntiHandle.ts"; //F
 import AreaOfOperations from "../Symbols/AreaOfOperations.ts"; //Fixed
 import AssemblyArea from "../Symbols/AssemblyArea.ts"; //Fixed
 import FwdAssemblyArea from "../Symbols/FwdAssemblyArea.ts";
-import StratAssyArea from "../Symbols/StratAssyArea.ts";
+import StratAssyArea from "../Symbols/StratAssyArea.ts"; //Fixed
 
 
 import AttackPosition from "../Symbols/AttackPosition.ts";
