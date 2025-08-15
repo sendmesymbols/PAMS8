@@ -5,7 +5,7 @@ import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
+import GraphicsLayerManager, {LAYER_NAMES} from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import Shapes from "../Support/Shapes.ts";
@@ -15,6 +15,7 @@ export interface StratAssyAreaOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polygon;
     DRAW_TYPE?: number;
+
     [key: string]: any;
 }
 
@@ -28,7 +29,7 @@ export class StratAssyArea {
     private layerManager: GraphicsLayerManager;
     private symbolLayer: GraphicsLayer;
     private isLine: boolean;
-    
+
     // Symbol properties
     private SID: string = "150205";
     private symName: string = "Strat Assy Area";
@@ -38,16 +39,16 @@ export class StratAssyArea {
     private _geometryType: string | null = null;
     private _drawType: number = 1;
     private amplifier: Amplifier;
-    
+
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
-    
+
     // Event handlers
     private clickHandler: any = null;
     private doubleClickHandler: any = null;
     private mouseMoveHandler: any = null;
-    
+
     // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
 
@@ -57,10 +58,10 @@ export class StratAssyArea {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
         this.amplifier = new Amplifier();
-        
+
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
-        
+
         // Initialize temporary graphic
         this.tempGraphic = new Graphic();
     }
@@ -71,7 +72,7 @@ export class StratAssyArea {
     public init(options: StratAssyAreaOptions, marker: SimpleLineSymbol): void {
         this._lineSym = marker.clone();
         this._drawType = options.DRAW_TYPE || 1;
-        
+
         // Set up event handlers
         this.setupEventHandlers();
 
@@ -89,7 +90,7 @@ export class StratAssyArea {
                     console.error(this.symName, "Failed to create Polygon geometry:", error);
                 }
             }
-            
+
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE || 1);
             if (this.tempGraphic && this.tempGraphic.geometry) {
                 this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
@@ -152,7 +153,7 @@ export class StratAssyArea {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
 
         if (this._points.length === 1) {
@@ -161,18 +162,18 @@ export class StratAssyArea {
                 this._onMouseMoveHandler(event);
             });
         }
-        
-        this.emit("onDrawClick", { currentPts: this._points });
+
+        this.emit("onDrawClick", {currentPts: this._points});
 
         // For single line mode, finish after first click
         if (this.isLine === true && this._points.length === 1) {
-            this.emit("onDrawClick", { currentPts: this._points });
+            this.emit("onDrawClick", {currentPts: this._points});
             this.cleanUp();
         }
 
         // For rectangle draw type, finish after 2 points
         if (this._drawType === 3 && this._points.length === 2) {
-            this.emit("onDrawClick", { currentPts: this._points });
+            this.emit("onDrawClick", {currentPts: this._points});
             this.cleanUp();
         }
     }
@@ -189,7 +190,7 @@ export class StratAssyArea {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
         this.cleanUp();
     }
@@ -234,7 +235,7 @@ export class StratAssyArea {
         drawEssentials.SYM_NAME = this.symName;
         drawEssentials.GEOM = null;
         drawEssentials.AMPLIFIER = this.amplifier.toString();
-        
+
         // Store additional properties
         (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
@@ -277,7 +278,7 @@ export class StratAssyArea {
             }
 
             return result ? this.createInnerText(result, firstPoint, lastPoint) : result;
-            
+
         } catch (e) {
             console.error(e);
             console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
@@ -343,11 +344,11 @@ export class StratAssyArea {
         if (this._points.length === 0) return;
 
         const drawEssentials = this.createDrawEssentials(this._points.slice(), this._drawType);
-        
+
         if (this.tempGraphic && this.tempGraphic.geometry) {
             this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEssentials);
         }
-        
+
         this._clear();
         this._removeEvents();
     }
@@ -389,7 +390,7 @@ export class StratAssyArea {
         if (this.tempGraphic && this.symbolLayer) {
             this.symbolLayer.remove(this.tempGraphic);
         }
-        
+
         this.tempGraphic = null;
         this._points = [];
     }
@@ -430,7 +431,7 @@ export class StratAssyArea {
         if (listeners) {
             listeners.forEach(listener => listener(data));
         }
-        
+
         this.emitGlobalEvent(eventName, data);
     }
 
