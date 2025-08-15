@@ -103,9 +103,12 @@ export class AvenueOfApchs {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
                 try {
-                    this.tempGraphic.geometry = options.GEOM;
+                    this.tempGraphic.geometry = new Polygon({
+                        rings: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
                 } catch (error) {
-                    console.error(this.symName, "Failed to set Polygon geometry:", error);
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
                 }
             }
 
