@@ -32,7 +32,7 @@ export class AvenueOfApchs {
     private layerManager: GraphicsLayerManager;
     private symbolLayer: GraphicsLayer;
     private isLine: boolean;
-
+    
     // Symbol properties
     private SID: string = "120204";
     private symName: string = "Avenue of Approaches";
@@ -41,21 +41,21 @@ export class AvenueOfApchs {
     private _points: Point[] = [];
     private _geometryType: string | null = null;
     private amplifier: Amplifier;
-
+    
     // Arrow parameters
     private _tailFactor: number = 0.05;
     private _headPercentage: number = 0.07;
-
+    
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
     private _baseLinePts: Point[] = [];
-
+    
     // Event handlers
     private clickHandler: any = null;
     private doubleClickHandler: any = null;
     private mouseMoveHandler: any = null;
-
+    
     // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
 
@@ -65,10 +65,10 @@ export class AvenueOfApchs {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
         this.amplifier = new Amplifier();
-
+        
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
-
+        
         // Initialize temporary graphic
         this.tempGraphic = new Graphic();
     }
@@ -80,7 +80,7 @@ export class AvenueOfApchs {
         // Create SimpleFillSymbol with 50% transparency
         const fillColor = new Color(marker.color);
         fillColor.a = 0.50; // 50% transparency
-
+        
         this._lineSym = new SimpleFillSymbol({
             style: "solid",
             color: fillColor,
@@ -94,7 +94,7 @@ export class AvenueOfApchs {
         // Set arrow parameters with defaults
         this._headPercentage = this.setDefault(options, "HEAD_RATIO", 0.07);
         this._tailFactor = this.setDefault(options, "TAIL_FACTOR", 0.05);
-
+        
         // Set up event handlers
         this.setupEventHandlers();
 
@@ -112,7 +112,7 @@ export class AvenueOfApchs {
                     console.error(this.symName, "Failed to create Polygon geometry:", error);
                 }
             }
-
+            
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._headPercentage, this._tailFactor);
             if (this.tempGraphic && this.tempGraphic.geometry) {
                 this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
@@ -164,7 +164,7 @@ export class AvenueOfApchs {
             this._onClickHandler(event);
         });
 
-        // Double click handler
+        // Double click handler  
         this.doubleClickHandler = this.view.on("double-click", (event) => {
             this._onDoubleClickHandler(event);
         });
@@ -182,7 +182,7 @@ export class AvenueOfApchs {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-
+        
         this._points.push(point);
 
         if (this._points.length === 1) {
@@ -210,7 +210,7 @@ export class AvenueOfApchs {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-
+        
         this._points.push(point);
         this.cleanUp();
     }
@@ -255,7 +255,7 @@ export class AvenueOfApchs {
         drawEssentials.SYM_NAME = this.symName;
         drawEssentials.GEOM = null;
         drawEssentials.AMPLIFIER = this.amplifier.toString();
-
+        
         // Store additional properties
         (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
@@ -285,7 +285,7 @@ export class AvenueOfApchs {
             } else {
                 return this.createComplexArrow(pts);
             }
-
+            
         } catch (e) {
             console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
             return null;
@@ -324,13 +324,13 @@ export class AvenueOfApchs {
 
         const result = new Polygon({ spatialReference: this.view.spatialReference });
         let ring: number[][] = [];
-
+        
         ring.push([pt1.x, pt1.y]);
-
+        
         // Add arrow head path
         const headPath = this.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
         ring = ring.concat(headPath.map(pt => [pt.x, pt.y]));
-
+        
         ring.push([p2.x, p2.y]);
         ring.push([pt1.x, pt1.y]);
         ring.push([pt2.x, pt2.y]);
@@ -350,7 +350,7 @@ export class AvenueOfApchs {
         // Calculate vertex angles and create left/right arrays
         const angleArray = this.calculateVertexAngles(tempArray);
         const totalL = this.calculatePathLength(tempArray, 0);
-
+        
         const leftArray: any[] = [];
         const rightArray: any[] = [];
 
@@ -409,7 +409,7 @@ export class AvenueOfApchs {
         const headSizeBaseRatio = 1.07;
         const headBaseLen = totalLen * headPercentage;
         const headSideLen = headBaseLen * headSizeBaseRatio;
-
+        
         const angle1 = this.twoPtsAngle(candidatePt, pt1);
         const angle2 = this.twoPtsAngle(candidatePt, pt2);
 
@@ -419,34 +419,34 @@ export class AvenueOfApchs {
         }
 
         const len = Math.sqrt(
-            headBaseLen * headBaseLen +
-            headSideLen * headSideLen -
+            headBaseLen * headBaseLen + 
+            headSideLen * headSideLen - 
             2 * headSideLen * headBaseLen * Math.cos(midAngle + (headAngle / 180) * Math.PI)
         );
-
+        
         const upAngle = Math.asin(headBaseLen * Math.sin(midAngle + (headAngle / 180) * Math.PI) / len);
         const centAngle = upAngle + (headAngle / 180) * Math.PI;
-
-        const result = (straight === false || straight === undefined) ?
+        
+        const result = (straight === false || straight === undefined) ? 
             (headBaseLen * Math.sin(Math.PI - centAngle - midAngle) / Math.sin(centAngle)) : 0;
 
         const path = [];
-        path.push({
-            x: candidatePt.x + result * Math.cos(angle1),
-            y: candidatePt.y + result * Math.sin(angle1)
+        path.push({ 
+            x: candidatePt.x + result * Math.cos(angle1), 
+            y: candidatePt.y + result * Math.sin(angle1) 
         });
-        path.push({
-            x: candidatePt.x + headSideLen * Math.cos(angle1 - (headAngle / 180) * Math.PI),
-            y: candidatePt.y + headSideLen * Math.sin(angle1 - (headAngle / 180) * Math.PI)
+        path.push({ 
+            x: candidatePt.x + headSideLen * Math.cos(angle1 - (headAngle / 180) * Math.PI), 
+            y: candidatePt.y + headSideLen * Math.sin(angle1 - (headAngle / 180) * Math.PI) 
         });
         path.push(candidatePt);
-        path.push({
-            x: candidatePt.x + headSideLen * Math.cos(angle2 + (headAngle / 180) * Math.PI),
-            y: candidatePt.y + headSideLen * Math.sin(angle2 + (headAngle / 180) * Math.PI)
+        path.push({ 
+            x: candidatePt.x + headSideLen * Math.cos(angle2 + (headAngle / 180) * Math.PI), 
+            y: candidatePt.y + headSideLen * Math.sin(angle2 + (headAngle / 180) * Math.PI) 
         });
-        path.push({
-            x: candidatePt.x + result * Math.cos(angle2),
-            y: candidatePt.y + result * Math.sin(angle2)
+        path.push({ 
+            x: candidatePt.x + result * Math.cos(angle2), 
+            y: candidatePt.y + result * Math.sin(angle2) 
         });
 
         return path;
@@ -461,23 +461,23 @@ export class AvenueOfApchs {
         }
 
         const path: any[] = [];
-
+        
         for (let i = 0; i <= numberOfPts; i++) {
             const t = i / numberOfPts;
             const segmentLength = 1 / (pointCollection.length - 1);
             const segmentIndex = Math.floor(t / segmentLength);
             const localT = (t - segmentIndex * segmentLength) / segmentLength;
-
+            
             const startIdx = Math.min(segmentIndex, pointCollection.length - 2);
             const endIdx = startIdx + 1;
-
+            
             if (pointCollection[startIdx] && pointCollection[endIdx]) {
                 const x = pointCollection[startIdx].x + localT * (pointCollection[endIdx].x - pointCollection[startIdx].x);
                 const y = pointCollection[startIdx].y + localT * (pointCollection[endIdx].y - pointCollection[startIdx].y);
                 path.push({ x, y });
             }
         }
-
+        
         return path;
     }
 
@@ -502,7 +502,7 @@ export class AvenueOfApchs {
      */
     private calculateAngle(firstPoint: Point, lastPoint: Point): number {
         let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
-
+        
         const relationship = this.twoPtsRelationship(firstPoint, lastPoint);
         switch (relationship) {
             case "ne":
@@ -518,7 +518,7 @@ export class AvenueOfApchs {
                 k += Math.PI / 2;
                 break;
         }
-
+        
         return k;
     }
 
@@ -576,11 +576,11 @@ export class AvenueOfApchs {
         if (this._points.length === 0) return;
 
         const drawEssentials = this.createDrawEssentials(this._points.slice(), this._headPercentage, this._tailFactor);
-
+        
         if (this.tempGraphic && this.tempGraphic.geometry) {
             this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEssentials);
         }
-
+        
         this._clear();
         this._removeEvents();
     }
@@ -622,7 +622,7 @@ export class AvenueOfApchs {
         if (this.tempGraphic && this.symbolLayer) {
             this.symbolLayer.remove(this.tempGraphic);
         }
-
+        
         this.tempGraphic = null;
         this._points = [];
         this._baseLinePts = [];
@@ -664,7 +664,7 @@ export class AvenueOfApchs {
         if (listeners) {
             listeners.forEach(listener => listener(data));
         }
-
+        
         this.emitGlobalEvent(eventName, data);
     }
 
@@ -716,4 +716,4 @@ export class AvenueOfApchs {
     }
 }
 
-export default AvenueOfApchs;
+export default AvenueOfApchs; 

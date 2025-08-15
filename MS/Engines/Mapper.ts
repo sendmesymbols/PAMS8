@@ -131,7 +131,7 @@ import FwdAssemblyArea from "../Symbols/FwdAssemblyArea.ts";
 import StratAssyArea from "../Symbols/StratAssyArea.ts"; //Fixed
 
 
-import AttackPosition from "../Symbols/AttackPosition.ts";
+import AttackPosition from "../Symbols/AttackPosition.ts"; //Fixed
 import AvenueOfApchs from "../Symbols/AvenueOfApchs.ts";
 import AxisOfAdvanceFeint from "../Symbols/AxisOfAdvanceFeint.ts";
 import BdeAdmArea from "../Symbols/BdeAdmArea.ts";
