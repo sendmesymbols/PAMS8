@@ -129,14 +129,15 @@ import AreaOfOperations from "../Symbols/AreaOfOperations.ts"; //Fixed
 import AssemblyArea from "../Symbols/AssemblyArea.ts"; //Fixed
 import FwdAssemblyArea from "../Symbols/FwdAssemblyArea.ts"; //    -- Segments
 import StratAssyArea from "../Symbols/StratAssyArea.ts"; //Fixed    -- Segments
-
-
 import AttackPosition from "../Symbols/AttackPosition.ts"; //Fixed   -- Segments
 import AvenueOfApchs from "../Symbols/AvenueOfApchs.ts"; //Fixed
 import AxisOfAdvanceFeint from "../Symbols/AxisOfAdvanceFeint.ts"; //Fixed
 import BdeAdmArea from "../Symbols/BdeAdmArea.ts"; //Fixed
-import DivAdmArea from "../Symbols/DivAdmArea.ts";
-import BridgeHeadLine from "../Symbols/BridgeHeadLine.ts";
+import DivAdmArea from "../Symbols/DivAdmArea.ts"; //Fixed
+import BridgeHeadLine from "../Symbols/BridgeHeadLine.ts"; //Fixed
+import PhaseLine from "../Symbols/PhaseLine.ts";
+
+
 import Breach from "../Symbols/Breach.ts";
 import Bridge from "../Symbols/Bridge.ts";
 import BtleHndOvrLn from "../Symbols/BtleHndOvrLn.ts";
@@ -245,6 +246,7 @@ export default class Mapper {
         const symbolMap: Record<string, ISymbolConstructor> = {
             "CLineOfDenial": CLineOfDenial,
             "ALineOfDenial": ALineOfDenial,
+            "PhaseLine": PhaseLine,
             "Ambush": Ambush,
             "ArcOfFireSD": ArcOfFireSD,
             "AntiPersonnelAntiTankMine": AntiPersonnelAntiTankMine,

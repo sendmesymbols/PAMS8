@@ -812,14 +812,14 @@ function initializeAutocomplete() {
 
     //LINE GEOM AND CTRL PTS -------------------------------------------------------------------------------------------------------------------------------------------
 
-    /*
+  /*
     drawEssentials.GEOM = new Polyline(JSON.parse('[[[7459705.494615135,3528604.534230706],[8132962.839750933,3978054.26054752],[8272995.475569369,3706549.9360785875]]]'));
     drawEssentials.CTRL_PTS = JSON.parse('[' +
         '{"type":"point","x":7459705.494615135,"y":3528604.534230706,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},' +
         '{"type":"point","x":8132962.839750933,"y":3978054.26054752,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},' +
         '{"type":"point","x":8272995.475569369,"y":3706549.9360785875,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}}' +
         ']');
-    */
+*/
 
     // Step 1: Convert the hardcoded GEOM array into a proper Polyline
     const rawPath = JSON.parse('[[[7459705.494615135,3528604.534230706],[8132962.839750933,3978054.26054752],[8272995.475569369,3706549.9360785875]]]');

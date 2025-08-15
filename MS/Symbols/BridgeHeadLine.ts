@@ -78,10 +78,17 @@ export class BridgeHeadLine {
 
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    this.tempGraphic.geometry = new Polyline({
+                        paths: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polyline geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType);
@@ -337,55 +344,34 @@ export class BridgeHeadLine {
         try {
             const len = this.calculateDistance(p1, p2) / 20;
             const k = this.calculateAngle(p1, p2);
-            
-            // Add BL marker at start point
-            const pt1 = {
+
+            // Start marker
+            const startCenter = {
                 x: -1 * len * Math.cos(k) + p1.x,
                 y: -1 * len * Math.sin(k) + p1.y
             };
-
-            if (Shapes && (Shapes as any).createBL) {
-                try {
-                    const paths1 = (Shapes as any).createBL(pt1.x, pt1.y, len / 2, this.view.spatialReference);
-                    if (paths1 && Array.isArray(paths1)) {
-                        for (let i = 0; i < paths1.length; i++) {
-                            if (paths1[i]) {
-                                result.addPath(paths1[i]);
-                            }
-                        }
+            const paths1 = (Shapes as any).createBL(startCenter.x, startCenter.y, len / 2, this.view.spatialReference);
+            if (paths1 && Array.isArray(paths1)) {
+                for (let i = 0; i < paths1.length; i++) {
+                    if (paths1[i]) {
+                        result.addPath(paths1[i]);
                     }
-                } catch (e) {
-                    console.log('Error creating BL marker at start point, using fallback');
-                    this.createSimpleBL(result, pt1, len / 2);
                 }
-            } else {
-                this.createSimpleBL(result, pt1, len / 2);
             }
 
-            // Add BL marker at end point
-            const pt2 = {
+            // End marker
+            const endCenter = {
                 x: len * Math.cos(k) + p2.x,
                 y: len * Math.sin(k) + p2.y
             };
-
-            if (Shapes && (Shapes as any).createBL) {
-                try {
-                    const paths2 = (Shapes as any).createBL(pt2.x + (len / 0.5), pt2.y, len / 2, this.view.spatialReference);
-                    if (paths2 && Array.isArray(paths2)) {
-                        for (let i = 0; i < paths2.length; i++) {
-                            if (paths2[i]) {
-                                result.addPath(paths2[i]);
-                            }
-                        }
+            const paths2 = (Shapes as any).createBL(endCenter.x + (len / 1.5), endCenter.y, len / 2, this.view.spatialReference);
+            if (paths2 && Array.isArray(paths2)) {
+                for (let i = 0; i < paths2.length; i++) {
+                    if (paths2[i]) {
+                        result.addPath(paths2[i]);
                     }
-                } catch (e) {
-                    console.log('Error creating BL marker at end point, using fallback');
-                    this.createSimpleBL(result, pt2, len / 2);
                 }
-            } else {
-                this.createSimpleBL(result, pt2, len / 2);
             }
-
         } catch (e) {
             console.log('Error adding BL markers');
         }
@@ -394,29 +380,7 @@ export class BridgeHeadLine {
     /**
      * Create simple "BL" text as fallback
      */
-    private createSimpleBL(result: Polyline, center: any, size: number): void {
-        const letterHeight = size;
-        const letterWidth = size * 0.5;
-        const spacing = size * 0.1;
-
-        // Create "B" shape
-        const b_vertical = [[center.x - letterWidth - spacing, center.y - letterHeight/2], [center.x - letterWidth - spacing, center.y + letterHeight/2]];
-        const b_top = [[center.x - letterWidth - spacing, center.y - letterHeight/2], [center.x - spacing, center.y - letterHeight/2]];
-        const b_middle = [[center.x - letterWidth - spacing, center.y], [center.x - spacing, center.y]];
-        const b_bottom = [[center.x - letterWidth - spacing, center.y + letterHeight/2], [center.x - spacing, center.y + letterHeight/2]];
-
-        // Create "L" shape
-        const l_vertical = [[center.x + spacing, center.y - letterHeight/2], [center.x + spacing, center.y + letterHeight/2]];
-        const l_horizontal = [[center.x + spacing, center.y + letterHeight/2], [center.x + letterWidth + spacing, center.y + letterHeight/2]];
-
-        // Add as separate paths
-        result.addPath(b_vertical);
-        result.addPath(b_top);
-        result.addPath(b_middle);
-        result.addPath(b_bottom);
-        result.addPath(l_vertical);
-        result.addPath(l_horizontal);
-    }
+    // Removed createSimpleBL in favor of Shapes.createBL
 
     /**
      * Utility method to calculate distance
