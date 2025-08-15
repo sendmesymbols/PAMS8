@@ -10,9 +10,8 @@ import Color from "@arcgis/core/Color";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
-import BaseLine from "../Support/BaseLine.ts";
-import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
+// Removed unused imports from translation
 
 export interface AvenueOfApchsOptions {
     CTRL_PTS?: Point[];
@@ -39,7 +38,7 @@ export class AvenueOfApchs {
     private symGeometricType: string = "Area";
     private _lineSym: SimpleFillSymbol | null = null;
     private _points: Point[] = [];
-    private _geometryType: string | null = null;
+    // private _geometryType: string | null = null;
     private amplifier: Amplifier;
 
     // Arrow parameters
@@ -98,18 +97,15 @@ export class AvenueOfApchs {
         // Set up event handlers
         this.setupEventHandlers();
 
-        const drawEssentials = new DrawEssentials();
+        // removed unused variable from translation
 
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
                 try {
-                    this.tempGraphic.geometry = new Polygon({
-                        rings: options.GEOM,
-                        spatialReference: this.view.spatialReference
-                    });
+                    this.tempGraphic.geometry = options.GEOM;
                 } catch (error) {
-                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                    console.error(this.symName, "Failed to set Polygon geometry:", error);
                 }
             }
 
@@ -278,12 +274,14 @@ export class AvenueOfApchs {
                 throw new Error("controlPoints not found");
             }
 
-            const arrowHeadRatio = this.setDefault(drawEssentials, "HEAD_RATIO", 5);
+            const result = new Polygon({
+                spatialReference: this.view.spatialReference
+            });
 
             if (pts.length <= 2) {
-                return this.createSimpleArrow(pts, arrowHeadRatio);
+                return this.createSimpleArrow(pts, result);
             } else {
-                return this.createComplexArrow(pts);
+                return this.createComplexArrow(pts, result);
             }
 
         } catch (e) {
@@ -295,7 +293,7 @@ export class AvenueOfApchs {
     /**
      * Create simple arrow for 2 or fewer points
      */
-    private createSimpleArrow(pts: Point[], arrowHeadRatio: number): Polygon {
+    private createSimpleArrow(pts: Point[], result: Polygon): Polygon {
         const firstPoint = pts[0];
         const lastPoint = pts[pts.length - 1];
 
@@ -322,7 +320,6 @@ export class AvenueOfApchs {
             y: -1 * this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
         };
 
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
         let ring: number[][] = [];
 
         ring.push([pt1.x, pt1.y]);
@@ -342,8 +339,7 @@ export class AvenueOfApchs {
     /**
      * Create complex arrow for more than 2 points
      */
-    private createComplexArrow(pts: Point[]): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
+    private createComplexArrow(pts: Point[], result: Polygon): Polygon {
         const lastPoint = pts[pts.length - 1];
         const tempArray = pts.map(e => ({ x: e.x, y: e.y }));
 
@@ -375,8 +371,8 @@ export class AvenueOfApchs {
         rightArray.push({ x: lastPoint.x, y: lastPoint.y });
 
         // Create smooth paths using Bezier (fallback to linear interpolation)
-        let leftBezier = this.CreateBezierPathPCOnly(leftArray, 70);
-        let rightBezier = this.CreateBezierPathPCOnly(rightArray, 70);
+        let leftBezier = Shapes.CreateBezierPathPCOnly(leftArray, 70);
+        let rightBezier = Shapes.CreateBezierPathPCOnly(rightArray, 70);
 
         // Splice for arrow head
         leftBezier.splice(Math.floor((1 - this._headPercentage) * 70), Number.MAX_VALUE);
@@ -652,7 +648,7 @@ export class AvenueOfApchs {
     public deactivate(): void {
         this._clear();
         this._removeEvents();
-        this._geometryType = null;
+        // this._geometryType = null;
         this.isDrawing = false;
     }
 
