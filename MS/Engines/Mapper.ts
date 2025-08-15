@@ -133,8 +133,9 @@ import StratAssyArea from "../Symbols/StratAssyArea.ts"; //Fixed    -- Segments
 
 import AttackPosition from "../Symbols/AttackPosition.ts"; //Fixed   -- Segments
 import AvenueOfApchs from "../Symbols/AvenueOfApchs.ts"; //Fixed
-import AxisOfAdvanceFeint from "../Symbols/AxisOfAdvanceFeint.ts";
-import BdeAdmArea from "../Symbols/BdeAdmArea.ts";
+import AxisOfAdvanceFeint from "../Symbols/AxisOfAdvanceFeint.ts"; //Fixed
+import BdeAdmArea from "../Symbols/BdeAdmArea.ts"; //Fixed
+import DivAdmArea from "../Symbols/DivAdmArea.ts";
 import BridgeHeadLine from "../Symbols/BridgeHeadLine.ts";
 import Breach from "../Symbols/Breach.ts";
 import Bridge from "../Symbols/Bridge.ts";
@@ -180,7 +181,7 @@ import Disrupt from "../Symbols/Disrupt.ts";
 import DisruptObstacleEffect from "../Symbols/DisruptObstacleEffect.ts";
 import DitchEmpty from "../Symbols/DitchEmpty.ts";
 import DitchFilledWithWater from "../Symbols/DitchFilledWithWater.ts";
-import DivAdmArea from "../Symbols/DivAdmArea.ts";
+
 import DivLineOfNoPen from "../Symbols/DivLineOfNoPen.ts";
 import DoubleApronFence from "../Symbols/DoubleApronFence.ts";
 import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";
