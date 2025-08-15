@@ -387,12 +387,22 @@ export class AvenueOfApchs {
             15
         );
 
-        // Combine all paths
-        let ring: number[][] = [];
-        ring.push([leftArray[0].x, leftArray[0].y], [rightArray[0].x, rightArray[0].y]);
-        ring = ring.concat(leftBezier.map(pt => [pt.x, pt.y]));
-        ring = ring.concat(headPath.map(pt => [pt.x, pt.y]));
-        ring = ring.concat(rightBezier.reverse().map(pt => [pt.x, pt.y]));
+        // Combine all paths and explicitly close the back
+        const ring: number[][] = [];
+
+        // Add left bezier path
+        leftBezier.forEach(pt => ring.push([pt.x, pt.y]));
+
+        // Add arrow head
+        headPath.forEach(pt => ring.push([pt.x, pt.y]));
+
+        // Add reversed right bezier path
+        rightBezier.reverse().forEach(pt => ring.push([pt.x, pt.y]));
+
+        // Close the ring at the back of the arrow
+        if (leftBezier.length > 0) {
+            ring.push([leftBezier[0].x, leftBezier[0].y]);
+        }
 
         result.addRing(ring);
         return result;
