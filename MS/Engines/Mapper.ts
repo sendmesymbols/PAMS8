@@ -146,9 +146,9 @@ import BlockObstacleEffect from "../Symbols/BlockObstacleEffect.ts"; //Fixed
 import BOPFreehand from "../Symbols/BOPFreehand.ts"; //Fixed
 import Boundary from "../Symbols/Boundary.ts"; //Fixed
 
-import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";  //issue
+import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";  //Fixed
 
-import MainAttack from "../Symbols/MainAttack.ts";  //Issue
+import MainAttack from "../Symbols/MainAttack.ts";  //Fixed
 import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts"; //Issue
 import Clear from "../Symbols/Clear.ts"; //Issue
 import BattlePosition from "../Symbols/BattlePosition.ts"; //Issue --Fixed

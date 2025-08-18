@@ -94,10 +94,21 @@ export class MainAttack {
         const drawEssentials = new DrawEssentials();
         const baseLine = new BaseLine(this.view, this._lineSym as SimpleLineSymbol);
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    if (options.GEOM instanceof Polygon) {
+                        this.tempGraphic.geometry = options.GEOM;
+                    } else {
+                        this.tempGraphic.geometry = new Polygon({
+                            rings: options.GEOM as number[][][],
+                            spatialReference: this.view.spatialReference
+                        });
+                    }
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._headPercentage, this._tailFactor);

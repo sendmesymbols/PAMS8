@@ -1076,6 +1076,33 @@ class Shapes {
         return path;
     }
 
+    /**
+     * Create arrow head for attack by fire positions
+     */
+    static arrowHead(candidatePoint: Point, length: number, angle: number): Point[] {
+        const path: Point[] = [];
+
+        angle += 15;
+        const angle1 = GeoTools.toDegrees(angle);
+        angle -= 30;
+        const angle2 = GeoTools.toDegrees(angle);
+
+        const rightWing = new Point({
+            x: candidatePoint.x + length * Math.cos(GeoTools.toRad(angle1)),
+            y: candidatePoint.y + length * Math.sin(GeoTools.toRad(angle1)),
+            spatialReference: candidatePoint.spatialReference
+        });
+
+        const leftWing = new Point({
+            x: candidatePoint.x + length * Math.cos(GeoTools.toRad(angle2)),
+            y: candidatePoint.y + length * Math.sin(GeoTools.toRad(angle2)),
+            spatialReference: candidatePoint.spatialReference
+        });
+
+        path.push(rightWing, candidatePoint, leftWing);
+        return path;
+    }
+
     static CreateBezierPathPCOnly(pointCollection: Point[], numberOfPts: number): Point[] {
         // Initial position set to the first point in the collection
         let position: Point = {

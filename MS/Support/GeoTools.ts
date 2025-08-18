@@ -680,6 +680,13 @@ export class GeoTools {
         }
         return len;
     }
+
+    /**
+     * Calculate arrow flanks length for attack by fire position
+     */
+    static ArrowFlanksLen(mainLength: number, baseLength: number): number {
+        return Math.min(mainLength / 10, baseLength / 4);
+    }
 }
 
 export default GeoTools; 

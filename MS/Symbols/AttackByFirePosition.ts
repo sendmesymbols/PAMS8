@@ -9,9 +9,10 @@ import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
-import Amplifier from "../Support/Amplifier";
+import Amplifier from "../Support/Amplifier.ts";
 import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
+import Shapes from "../Support/Shapes.ts";
 
 export interface AttackByFirePositionOptions {
     CTRL_PTS?: Point[];
@@ -38,8 +39,7 @@ export class AttackByFirePosition {
     private symGeometricType: string = "Area";
     private _lineSym: SimpleLineSymbol | SimpleFillSymbol | null = null;
     private _points: Point[] = [];
-    private _baseLinePts: Point[] = [];
-    private _geometryType: string | null = null;
+    private _baseLinePts: any = null;
     private amplifier: Amplifier;
     
     // Symbol parameters
@@ -47,7 +47,6 @@ export class AttackByFirePosition {
     private backLineAngle: number = 5;
     
     // Drawing state
-    private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
     
     // Event handlers
@@ -82,13 +81,23 @@ export class AttackByFirePosition {
         this.backLineDist = GeoTools.setDefault(options, "BK_LN_DIST_RATIO", 5);
         this.backLineAngle = GeoTools.setDefault(options, "BK_LN_ANGL_RATIO", 5);
 
-        const drawEssentials = new DrawEssentials();
         const baseLine = new BaseLine(this.view, this._lineSym as SimpleLineSymbol);
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    if (options.GEOM instanceof Polygon) {
+                        this.tempGraphic.geometry = options.GEOM;
+                    } else {
+                        this.tempGraphic.geometry = new Polygon({
+                            rings: options.GEOM as number[][][],
+                            spatialReference: this.view.spatialReference
+                        });
+                    }
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(
@@ -98,8 +107,10 @@ export class AttackByFirePosition {
                 this.backLineAngle
             );
             
-            if (this.tempGraphic && this.tempGraphic.geometry) {
-                this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
+            const geometry = this.createSymbol(drawEss);
+            if (geometry && this.tempGraphic) {
+                this.tempGraphic.geometry = geometry;
+                this.__drawEnd(geometry, drawEss);
             }
             this._clear();
 
@@ -260,7 +271,7 @@ export class AttackByFirePosition {
      * Handle mouse move events
      */
     private _onMouseMoveHandler(inputEvent: any): void {
-        if (!this.tempGraphic || this._points.length === 0) return;
+        if (!this.tempGraphic || !this._baseLinePts) return;
 
         const mapPoint = this.view.toMap(inputEvent);
         if (!mapPoint) return;
@@ -271,10 +282,11 @@ export class AttackByFirePosition {
             spatialReference: this.view.spatialReference
         });
 
-        const currentPoints = this._points.concat([candidatePoint]);
+        // If no points clicked yet, use just the candidate point, otherwise add it to existing points
+        const currentPoints = this._points.length === 0 ? [candidatePoint] : this._points.concat([candidatePoint]);
         const drawEssentials = this.createDrawEssentials(
             currentPoints,
-            { startPt: this._baseLinePts[0], endPt: this._baseLinePts[this._baseLinePts.length - 1] },
+            this._baseLinePts,
             this.backLineDist,
             this.backLineAngle
         );
@@ -295,7 +307,7 @@ export class AttackByFirePosition {
      */
     private createDrawEssentials(
         ctrlPts: Point[], 
-        baseLinePts: { startPt: Point, endPt: Point },
+        baseLinePts: any,
         backLineDistRatio: number, 
         backLineAngleRatio: number
     ): DrawEssentials {
@@ -318,7 +330,7 @@ export class AttackByFirePosition {
     /**
      * Create symbol geometry from DrawEssentials
      */
-    private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
+    private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
         try {
             let pts: Point[];
             let backLineDist: number;
@@ -330,64 +342,119 @@ export class AttackByFirePosition {
                 throw new Error("controlPoints not found");
             }
 
-            if ((drawEssentials as any).BK_LN_DIST_RATIO) {
-                backLineDist = (drawEssentials as any).BK_LN_DIST_RATIO;
-            } else {
-                backLineDist = this.backLineDist;
-            }
-
-            if ((drawEssentials as any).BK_LN_ANGL_RATIO) {
-                backLineAngle = (drawEssentials as any).BK_LN_ANGL_RATIO;
-            } else {
-                backLineAngle = this.backLineAngle;
-            }
+            backLineDist = GeoTools.setDefault(drawEssentials as any, "BK_LN_DIST_RATIO", 5);
+            backLineAngle = GeoTools.setDefault(drawEssentials as any, "BK_LN_ANGL_RATIO", 5);
 
             const baseLinePts = (drawEssentials as any).BASE_LN_PTS;
             if (!baseLinePts || !baseLinePts.startPt || !baseLinePts.endPt) {
                 throw new Error("baseline points not found");
             }
 
-            // Create the attack by fire position geometry
-            const result = new Polygon({ 
-                spatialReference: this.view.spatialReference 
+            const stPt = baseLinePts.startPt;
+            const endPt = baseLinePts.endPt;
+            const firstPoint = pts[0];
+            let lastPoint = pts[pts.length - 1];
+            const leftArray: Point[] = [];
+            let paths: Point[];
+
+            if (stPt === undefined || endPt === undefined) {
+                throw new Error("First Parameter of the Function is an Array with Start and End Point");
+            }
+
+            const midPt = GeoTools.getMidPoint(stPt, endPt);
+            const result = new Polyline({ spatialReference: this.view.spatialReference });
+
+            // Base Line
+            if (pts.length >= 1) {
+                lastPoint = firstPoint;
+            }
+
+            const len = GeoTools._2PtLen(midPt, endPt);
+            let k = Math.atan((midPt.y - lastPoint.y) / (midPt.x - lastPoint.x));
+
+            switch (GeoTools.twoPtsRelationShip(midPt, lastPoint)) {
+                case "ne":
+                    k += Math.PI / 2;
+                    break;
+                case "nw":
+                    k += Math.PI * 3 / 2;
+                    break;
+                case "sw":
+                    k += Math.PI * 3 / 2;
+                    break;
+                case "se":
+                    k += Math.PI / 2;
+                    break;
+            }
+
+            const partialLen = len;
+            const p1 = { x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y };
+            const p2 = { x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y };
+
+            paths = [];
+            paths = paths.concat([new Point({ x: p1.x, y: p1.y, spatialReference: this.view.spatialReference }), 
+                                 new Point({ x: p2.x, y: p2.y, spatialReference: this.view.spatialReference })]);
+            result.addPath(paths.map(pt => [pt.x, pt.y]));
+
+            // Front
+            if (pts.length >= 1) {
+                leftArray.push(midPt);
+            }
+
+            for (let i = 0; i < pts.length; i++) {
+                leftArray.push(pts[i]);
+            }
+
+            result.addPath(leftArray.map(pt => [pt.x, pt.y]));
+
+            // Arrow - only draw if we have enough points
+            if (pts.length >= 1 && leftArray.length >= 2) {
+                const arrowLength = GeoTools.ArrowFlanksLen(
+                    GeoTools._2PtLen(midPt, pts[pts.length - 1]), 
+                    GeoTools._2PtLen(new Point({ x: p1.x, y: p1.y }), new Point({ x: p2.x, y: p2.y }))
+                );
+                const arrowAngle = GeoTools.angleInRadians(leftArray[leftArray.length - 2], pts[pts.length - 1]);
+                const arrowHead = Shapes.arrowHead(pts[pts.length - 1], arrowLength, arrowAngle);
+                result.addPath(arrowHead.map(pt => [pt.x, pt.y]));
+            }
+
+            // Back
+            let length = GeoTools._2PtLen(midPt, lastPoint);
+            let angle = GeoTools.angleInRadians(midPt, lastPoint);
+            length = length / backLineDist;
+
+            const stPtBackPt = new Point({
+                x: p1.x - length * Math.cos(angle),
+                y: p1.y - length * Math.sin(angle),
+                spatialReference: this.view.spatialReference
+            });
+            const endPtBackPt = new Point({
+                x: p2.x - length * Math.cos(angle),
+                y: p2.y - length * Math.sin(angle),
+                spatialReference: this.view.spatialReference
             });
 
-            // Calculate the baseline length and angle
-            const baseLineLength = GeoTools._2PtLen(baseLinePts.startPt, baseLinePts.endPt);
-            const baseLineAngleRad = GeoTools.twoPtsAngle(baseLinePts.startPt, baseLinePts.endPt);
-            
-            // Calculate back line distance
-            const backLineDistance = baseLineLength * backLineDist / 100;
-            
-            // Calculate back angle
-            const backAngle = baseLineAngleRad + Math.PI;
-            
-            // Calculate back line points
-            const backLeftPt = {
-                x: baseLinePts.startPt.x + backLineDistance * Math.cos(backAngle + (backLineAngle * Math.PI / 180)),
-                y: baseLinePts.startPt.y + backLineDistance * Math.sin(backAngle + (backLineAngle * Math.PI / 180))
-            };
-            
-            const backRightPt = {
-                x: baseLinePts.endPt.x + backLineDistance * Math.cos(backAngle - (backLineAngle * Math.PI / 180)),
-                y: baseLinePts.endPt.y + backLineDistance * Math.sin(backAngle - (backLineAngle * Math.PI / 180))
-            };
+            const backLen = length / backLineAngle;
+            const backAngle = GeoTools.angleInRadians(stPtBackPt, endPtBackPt);
 
-            // Create the main ring for the attack by fire position
-            const ring: number[][] = [];
-            
-            // Add baseline points
-            ring.push([baseLinePts.startPt.x, baseLinePts.startPt.y]);
-            ring.push([baseLinePts.endPt.x, baseLinePts.endPt.y]);
-            
-            // Add back line points
-            ring.push([backRightPt.x, backRightPt.y]);
-            ring.push([backLeftPt.x, backLeftPt.y]);
-            
-            // Close the ring
-            ring.push([baseLinePts.startPt.x, baseLinePts.startPt.y]);
+            const backPt1 = new Point({
+                x: -1 * backLen * Math.cos(backAngle) + stPtBackPt.x,
+                y: -1 * backLen * Math.sin(backAngle) + stPtBackPt.y,
+                spatialReference: this.view.spatialReference
+            });
+            const backPt2 = new Point({
+                x: backLen * Math.cos(backAngle) + endPtBackPt.x,
+                y: backLen * Math.sin(backAngle) + endPtBackPt.y,
+                spatialReference: this.view.spatialReference
+            });
 
-            result.addRing(ring);
+            paths = [];
+            paths = paths.concat([new Point({ x: p1.x, y: p1.y, spatialReference: this.view.spatialReference }), backPt1]);
+            result.addPath(paths.map(pt => [pt.x, pt.y]));
+
+            paths = [];
+            paths = paths.concat([new Point({ x: p2.x, y: p2.y, spatialReference: this.view.spatialReference }), backPt2]);
+            result.addPath(paths.map(pt => [pt.x, pt.y]));
 
             return result;
 
@@ -401,17 +468,17 @@ export class AttackByFirePosition {
      * Clean up drawing state and finalize
      */
     private cleanUp(): void {
-        if (this._points.length === 0 && this._baseLinePts.length === 0) return;
+        if (this._points.length === 0 && !this._baseLinePts) return;
 
         const drawEssentials = this.createDrawEssentials(
             this._points.slice(),
-            { startPt: this._baseLinePts[0], endPt: this._baseLinePts[this._baseLinePts.length - 1] },
+            this._baseLinePts,
             this.backLineDist,
             this.backLineAngle
         );
         
         if (this.tempGraphic && this.tempGraphic.geometry) {
-            this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEssentials);
+            this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
         }
         
         this._clear();
@@ -421,7 +488,7 @@ export class AttackByFirePosition {
     /**
      * Handle draw end
      */
-    private __drawEnd(drawGeometry: Polygon, drawEssentials: DrawEssentials): void {
+    private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
         if (drawGeometry) {
             const spatialRef = this.view.spatialReference;
             let geographicGeometry = drawGeometry;
@@ -440,7 +507,7 @@ export class AttackByFirePosition {
     /**
      * Final draw end handler
      */
-    private __onDrawEnd(geometry: Polygon, geoGeometry: Polygon, drawEssParam: DrawEssentials): void {
+    private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
         this.emit("onDrawEnd", {
             geometry: geometry,
             geographicGeometry: geoGeometry,
@@ -459,7 +526,7 @@ export class AttackByFirePosition {
         
         this.tempGraphic = null;
         this._points = [];
-        this._baseLinePts = [];
+        this._baseLinePts = null;
     }
 
     /**
@@ -486,8 +553,7 @@ export class AttackByFirePosition {
     public deactivate(): void {
         this._clear();
         this._removeEvents();
-        this._geometryType = null;
-        this.isDrawing = false;
+        // Deactivation complete
     }
 
     /**
