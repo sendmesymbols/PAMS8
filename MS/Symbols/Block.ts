@@ -82,10 +82,10 @@ export class Block {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
                 try {
-                    this.tempGraphic.geometry = new Polyline({
-                        paths: options.GEOM,
-                        spatialReference: this.view.spatialReference
-                    });
+                    // If GEOM is already a Polyline, use it directly; otherwise, build from paths
+                    this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
+                        ? options.GEOM
+                        : new Polyline({ paths: (options.GEOM as any), spatialReference: this.view.spatialReference });
                 } catch (error) {
                     console.error(this.symName, "Failed to create Polyline geometry:", error);
                 }
@@ -357,8 +357,8 @@ export class Block {
 
             // Fracture along middleArray and add B markers at midpoints
             const values = this.fracture(middleArray, 10);
-            if (values && values.geometry && values.geometry.paths) {
-                values.geometry.paths.forEach((path: number[][]) => result.addPath(path));
+            if (values && values.geometry && (values.geometry as Polyline).paths) {
+                (values.geometry as Polyline).paths.forEach((path: number[][]) => result.addPath(path));
 
                 const baseLineLen = GeoTools._2PtLen(p1, p2);
                 if (values.midPoints && Array.isArray(values.midPoints)) {
@@ -428,39 +428,6 @@ export class Block {
         }
     }
 
-    /**
-     * Create "B" markers
-     */
-    private createB(midPt: Point, cLenLimit: number, segments: number): any[] | null {
-        try {
-            if (Shapes && (Shapes as any).createB) {
-                return (Shapes as any).createB(midPt, cLenLimit, segments);
-            }
-
-            // Fallback "B" marker creation
-            const size = cLenLimit;
-            const bPoints: any[] = [];
-
-            // Simple "B" shape
-            bPoints.push({ x: midPt.x - size/2, y: midPt.y - size/2 });
-            bPoints.push({ x: midPt.x - size/2, y: midPt.y + size/2 });
-            bPoints.push({ x: midPt.x + size/2, y: midPt.y - size/4 });
-            bPoints.push({ x: midPt.x - size/2, y: midPt.y });
-            bPoints.push({ x: midPt.x + size/2, y: midPt.y + size/4 });
-
-            return bPoints;
-        } catch (e) {
-            console.log('Error creating B marker:', e);
-            return null;
-        }
-    }
-
-    /**
-     * Calculate angle in radians
-     */
-    private angleInRadians(pt1: Point, pt2: Point): number {
-        return Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
-    }
 
     /**
      * Calculate distance between two points
@@ -471,51 +438,6 @@ export class Block {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    /**
-     * Calculate angle for two points relationship
-     */
-    private calculateAngle(midPt: any, lastPoint: Point): number {
-        let k = Math.atan((midPt.y - lastPoint.y) / (midPt.x - lastPoint.x));
-        
-        const relationship = this.twoPtsRelationship(midPt, lastPoint);
-        switch (relationship) {
-            case "ne":
-                k += Math.PI / 2;
-                break;
-            case "nw":
-                k += Math.PI * 3 / 2;
-                break;
-            case "sw":
-                k += Math.PI * 3 / 2;
-                break;
-            case "se":
-                k += Math.PI / 2;
-                break;
-        }
-        
-        return k;
-    }
-
-    /**
-     * Determine relationship between two points
-     */
-    private twoPtsRelationship(pt1: any, pt2: Point): string {
-        if (pt2.x >= pt1.x && pt2.y >= pt1.y) return "ne";
-        if (pt2.x < pt1.x && pt2.y >= pt1.y) return "nw";
-        if (pt2.x < pt1.x && pt2.y < pt1.y) return "sw";
-        return "se";
-    }
-
-    /**
-     * Get midpoint between two points
-     */
-    private getMidPoint(pt1: Point, pt2: Point): Point {
-        return new Point({
-            x: (pt1.x + pt2.x) / 2,
-            y: (pt1.y + pt2.y) / 2,
-            spatialReference: this.view.spatialReference
-        });
-    }
 
     /**
      * Get baseline points

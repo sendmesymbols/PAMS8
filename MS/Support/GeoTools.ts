@@ -541,6 +541,37 @@ export class GeoTools {
     }
 
     /**
+     * Fracture consecutive segments defined by points with given gap length
+     * Returns a polyline containing fractured paths and an array of midPoints info
+     */
+    static _fracture(points: Point[], gapLen: number, spatialReference: SpatialReference): { geometry: Polyline, midPoints: Array<{ midPt: Point, len: number }> } {
+        const result = new Polyline({ spatialReference });
+        const midPts: Array<{ midPt: Point, len: number }> = [];
+
+        if (!points || points.length <= 1) {
+            throw new Error("points.length <= 1");
+        }
+
+        for (let i = 0; i < points.length - 1; i++) {
+            const p1 = points[i];
+            const p2 = points[i + 1];
+            const values = this._fracturePts(p1, p2, gapLen, spatialReference);
+            const innerPaths = values.geometry.paths as number[][][];
+
+            midPts.push({ midPt: values.midPoint, len: values.len });
+
+            for (let j = 0; j < innerPaths.length; j++) {
+                result.addPath(innerPaths[j]);
+            }
+        }
+
+        return {
+            geometry: result,
+            midPoints: midPts
+        };
+    }
+
+    /**
      * Get centroid of points
      */
     static getCenteroid(pts: Point[], option: number): Point {
