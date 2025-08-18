@@ -6,9 +6,8 @@ import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
-import DrawEssentials from "../Support/DrawEssentials";
-import Amplifier from "../Support/Amplifier";
-import BaseLine from "../Support/BaseLine.ts";
+import DrawEssentials from "../Support/DrawEssentials.ts";
+import Amplifier from "../Support/Amplifier.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
@@ -36,7 +35,6 @@ export class FreehandCloseSupportingAttack {
     private symGeometricType: string = "Area";
     private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
-    private _geometryType: string | null = null;
     private _tailFactor: number = 0.05;
     private _headPercentage: number = 0.07;
     private amplifier: Amplifier;
@@ -79,13 +77,23 @@ export class FreehandCloseSupportingAttack {
         // Set up event handlers
         this.setupEventHandlers();
 
-        const drawEssentials = new DrawEssentials();
-        const baseLine = new BaseLine(this.view, this._lineSym);
+        // Initialize drawing essentials if needed
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    if (options.GEOM instanceof Polygon) {
+                        this.tempGraphic.geometry = options.GEOM;
+                    } else {
+                        this.tempGraphic.geometry = new Polygon({
+                            rings: options.GEOM as number[][][],
+                            spatialReference: this.view.spatialReference
+                        });
+                    }
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._headPercentage, this._tailFactor);
@@ -249,12 +257,12 @@ export class FreehandCloseSupportingAttack {
                 throw new Error("controlPoints not found");
             }
 
-            const arrowHeadRatio = GeoTools.setDefault(drawEssentials as any, "HEAD_RATIO", 5);
+            const arrowHeadRatio = GeoTools.setDefault(drawEssentials, "HEAD_RATIO", 5);
 
             if (pts.length <= 2) {
-                return this.createSimpleArrow(pts);
+                return this.createSimpleArrow(pts, arrowHeadRatio);
             } else {
-                return this.createComplexArrow(pts);
+                return this.createComplexArrow(pts, drawEssentials);
             }
 
         } catch (e) {
@@ -266,15 +274,14 @@ export class FreehandCloseSupportingAttack {
     /**
      * Create simple arrow for 2 points or less
      */
-    private createSimpleArrow(pts: Point[]): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
+    private createSimpleArrow(pts: Point[], arrowHeadRatio: number): Polygon {
         const firstPoint = pts[0];
         const lastPoint = pts[pts.length - 1];
 
-        const len = this.calculateDistance(firstPoint, lastPoint);
+        const len = GeoTools._2PtLen(firstPoint, lastPoint);
         let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
-        
-        switch (this.getTwoPointsRelationship(firstPoint, lastPoint)) {
+
+        switch (GeoTools.twoPtsRelationShip(firstPoint, lastPoint)) {
             case "ne":
                 k += Math.PI / 2;
                 break;
@@ -290,71 +297,68 @@ export class FreehandCloseSupportingAttack {
         }
 
         // Tail two points
-        const pt1 = { 
-            x: this._tailFactor * len * Math.cos(k) + firstPoint.x, 
-            y: this._tailFactor * len * Math.sin(k) + firstPoint.y 
+        const pt1 = {
+            x: this._tailFactor * len * Math.cos(k) + firstPoint.x,
+            y: this._tailFactor * len * Math.sin(k) + firstPoint.y
         };
-        const pt2 = { 
-            x: -1 * this._tailFactor * len * Math.cos(k) + firstPoint.x, 
-            y: -1 * this._tailFactor * len * Math.sin(k) + firstPoint.y 
+        const pt2 = {
+            x: -1 * this._tailFactor * len * Math.cos(k) + firstPoint.x,
+            y: -1 * this._tailFactor * len * Math.sin(k) + firstPoint.y
         };
-        
+
         const partialLen = (1 - this._headPercentage) * len;
-        const p1 = { 
-            x: this._tailFactor * partialLen * Math.cos(k) + firstPoint.x, 
-            y: this._tailFactor * partialLen * Math.sin(k) + firstPoint.y 
+        const p1 = {
+            x: this._tailFactor * partialLen * Math.cos(k) + firstPoint.x,
+            y: this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
         };
-        const p2 = { 
-            x: -1 * this._tailFactor * partialLen * Math.cos(k) + firstPoint.x, 
-            y: -1 * this._tailFactor * partialLen * Math.sin(k) + firstPoint.y 
+        const p2 = {
+            x: -1 * this._tailFactor * partialLen * Math.cos(k) + firstPoint.x,
+            y: -1 * this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
         };
 
-        const ring: number[][] = [];
+        const result = new Polygon({ spatialReference: this.view.spatialReference });
+
+        // Create main arrow ring
+        let ring: number[][] = [];
         ring.push([pt1.x, pt1.y]);
-        ring.push([p1.x, p1.y]);
 
-        // Add arrow head
-        const headPath = this.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
-        headPath.forEach(pt => {
-            ring.push([pt.x, pt.y]);
-        });
+        const values = Shapes.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
+        values.forEach(pt => ring.push([pt.x, pt.y]));
 
         ring.push([p2.x, p2.y]);
-        ring.push([pt2.x, pt2.y]);
-        ring.push([pt1.x, pt1.y]); // Close the ring
 
         result.addRing(ring);
+
         return result;
     }
 
     /**
      * Create complex arrow for multiple points
      */
-    private createComplexArrow(pts: Point[]): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
+    private createComplexArrow(pts: Point[], drawEssentials: DrawEssentials): Polygon {
         const leftArray: { x: number, y: number }[] = [];
         const rightArray: { x: number, y: number }[] = [];
         const lastPoint = pts[pts.length - 1];
-        
+
         const tempArray: { x: number, y: number }[] = [];
         pts.forEach(pt => {
             tempArray.push({ x: pt.x, y: pt.y });
         });
 
-        const angleArray = this.calculateVertexAngles(tempArray);
-        const totalL = this.calculatePathLength(tempArray, 0);
+        const angleArray = GeoTools._vertexAngle(tempArray);
+        const totalL = GeoTools._ptCollectionLen(tempArray, 0);
 
         for (let i = 0, len = tempArray.length - 1; i < len; i++) {
-            let partialLen = this.calculatePathLength(tempArray, i);
+            let partialLen = GeoTools._ptCollectionLen(tempArray, i);
             partialLen += totalL / 2.4;
 
-            const pt1 = { 
-                x: (this._tailFactor) * partialLen * Math.cos(angleArray[i]) + tempArray[i].x, 
-                y: (this._tailFactor) * partialLen * Math.sin(angleArray[i]) + tempArray[i].y 
+            const pt1 = {
+                x: this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
+                y: this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
             };
-            const pt2 = { 
-                x: -1 * (this._tailFactor) * partialLen * Math.cos(angleArray[i]) + tempArray[i].x, 
-                y: -1 * (this._tailFactor) * partialLen * Math.sin(angleArray[i]) + tempArray[i].y 
+            const pt2 = {
+                x: -1 * this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
+                y: -1 * this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
             };
 
             leftArray.push(pt1);
@@ -364,144 +368,43 @@ export class FreehandCloseSupportingAttack {
         leftArray.push({ x: lastPoint.x, y: lastPoint.y });
         rightArray.push({ x: lastPoint.x, y: lastPoint.y });
 
-        // Simplify Bezier path creation
-        const leftSmooth = this.createSmoothPath(leftArray, 70);
-        const rightSmooth = this.createSmoothPath(rightArray, 70);
-        
-        // Truncate for head
-        const cutPoint = Math.floor((1 - this._headPercentage) * 70);
-        leftSmooth.splice(cutPoint, Number.MAX_VALUE);
-        rightSmooth.splice(cutPoint, Number.MAX_VALUE);
+        // Create Bezier paths
+        let leftBezier = Shapes.CreateBezierPathPCOnly(leftArray, 70);
+        leftBezier.splice(Math.floor((1 - this._headPercentage) * 70), Number.MAX_VALUE);
 
-        const headPath = this.CreateArrowHeadPathEx(
-            leftSmooth[leftSmooth.length - 1], 
-            lastPoint, 
-            rightSmooth[rightSmooth.length - 1], 
-            this.calculatePathLength(tempArray, 0), 
-            this._headPercentage, 
+        let rightBezier = Shapes.CreateBezierPathPCOnly(rightArray, 70);
+        rightBezier.splice(Math.floor((1 - this._headPercentage) * 70), Number.MAX_VALUE);
+
+        const headPath = Shapes.CreateArrowHeadPathEx(
+            leftBezier[leftBezier.length - 1],
+            lastPoint,
+            rightBezier[rightBezier.length - 1],
+            GeoTools._ptCollectionLen(tempArray, 0),
+            this._headPercentage,
             15
         );
 
+        const result = new Polygon({ spatialReference: this.view.spatialReference });
+
+        // Combine all paths
         const ring: number[][] = [];
-        
-        // Add left side
-        leftSmooth.forEach(pt => ring.push([pt.x, pt.y]));
-        
-        // Add head
+
+        // Add left bezier path
+        leftBezier.forEach(pt => ring.push([pt.x, pt.y]));
+
+        // Add arrow head
         headPath.forEach(pt => ring.push([pt.x, pt.y]));
-        
-        // Add right side (reversed)
-        rightSmooth.reverse().forEach(pt => ring.push([pt.x, pt.y]));
-        
-        // Close ring
-        ring.push([leftSmooth[0].x, leftSmooth[0].y]);
+
+        // Add reversed right bezier path
+        rightBezier.reverse().forEach(pt => ring.push([pt.x, pt.y]));
 
         result.addRing(ring);
+
         return result;
     }
 
-    /**
-     * Create arrow head path
-     */
-    private CreateArrowHeadPathEx(pt1: { x: number, y: number }, candidatePt: Point, pt2: { x: number, y: number }, 
-                                totalLen: number, headPercentage: number, headAngle: number): { x: number, y: number }[] {
-        const headSizeBaseRatio = 1.1;
-        const headBaseLen = totalLen * headPercentage;
-        const headSideLen = headBaseLen * headSizeBaseRatio;
-        
-        const angle1 = this.calculateAngle(candidatePt, new Point({ x: pt1.x, y: pt1.y }));
-        const angle2 = this.calculateAngle(candidatePt, new Point({ x: pt2.x, y: pt2.y }));
-        
-        let midAngle = (Math.abs(angle1 - angle2)) / 2;
-        if (Math.abs(angle1 - angle2) > Math.PI * 1.88) midAngle += Math.PI;
-        
-        const len = Math.sqrt(headBaseLen * headBaseLen + headSideLen * headSideLen - 
-                             2 * headSideLen * headBaseLen * Math.cos(midAngle + headAngle / 180 * Math.PI));
-        const upAngle = Math.asin(headBaseLen * Math.sin(midAngle + headAngle / 180 * Math.PI) / len);
-        const centAngle = upAngle + headAngle / 180 * Math.PI;
-        
-        const result = headBaseLen * Math.sin(Math.PI - centAngle - midAngle) / Math.sin(centAngle);
-        
-        const path: { x: number, y: number }[] = [];
-        path.push({ x: candidatePt.x + result * Math.cos(angle1), y: candidatePt.y + result * Math.sin(angle1) });
-        path.push({ x: candidatePt.x + headSideLen * Math.cos(angle1 - headAngle / 180 * Math.PI), 
-                   y: candidatePt.y + headSideLen * Math.sin(angle1 - headAngle / 180 * Math.PI) });
-        path.push({ x: candidatePt.x, y: candidatePt.y });
-        path.push({ x: candidatePt.x + headSideLen * Math.cos(angle2 + headAngle / 180 * Math.PI), 
-                   y: candidatePt.y + headSideLen * Math.sin(angle2 + headAngle / 180 * Math.PI) });
-        path.push({ x: candidatePt.x + result * Math.cos(angle2), y: candidatePt.y + result * Math.sin(angle2) });
-        
-        return path;
-    }
 
-    /**
-     * Utility methods
-     */
-    private calculateDistance(pt1: Point, pt2: Point): number {
-        const dx = pt2.x - pt1.x;
-        const dy = pt2.y - pt1.y;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
 
-    private calculateAngle(fromPt: Point | { x: number, y: number }, toPt: Point | { x: number, y: number }): number {
-        const dx = toPt.x - fromPt.x;
-        const dy = toPt.y - fromPt.y;
-        return Math.atan2(dy, dx);
-    }
-
-    private getTwoPointsRelationship(pt1: Point, pt2: Point): string {
-        if (pt2.x >= pt1.x && pt2.y >= pt1.y) return "ne";
-        if (pt2.x < pt1.x && pt2.y >= pt1.y) return "nw";
-        if (pt2.x < pt1.x && pt2.y < pt1.y) return "sw";
-        return "se";
-    }
-
-    private calculateVertexAngles(points: { x: number, y: number }[]): number[] {
-        const angles: number[] = [];
-        for (let i = 0; i < points.length - 1; i++) {
-            const angle = Math.atan2(points[i + 1].y - points[i].y, points[i + 1].x - points[i].x);
-            angles.push(angle);
-        }
-        return angles;
-    }
-
-    private calculatePathLength(points: { x: number, y: number }[], startIndex: number): number {
-        let length = 0;
-        for (let i = startIndex; i < points.length - 1; i++) {
-            const dx = points[i + 1].x - points[i].x;
-            const dy = points[i + 1].y - points[i].y;
-            length += Math.sqrt(dx * dx + dy * dy);
-        }
-        return length;
-    }
-
-    private createSmoothPath(points: { x: number, y: number }[], segments: number): { x: number, y: number }[] {
-        if (points.length < 2) return points;
-        
-        const result: { x: number, y: number }[] = [];
-        for (let i = 0; i <= segments; i++) {
-            const t = i / segments;
-            const point = this.interpolatePoints(points, t);
-            result.push(point);
-        }
-        return result;
-    }
-
-    private interpolatePoints(points: { x: number, y: number }[], t: number): { x: number, y: number } {
-        if (points.length === 1) return points[0];
-        
-        const segmentLength = 1 / (points.length - 1);
-        const segmentIndex = Math.min(Math.floor(t / segmentLength), points.length - 2);
-        const localT = (t - segmentIndex * segmentLength) / segmentLength;
-        
-        const p1 = points[segmentIndex];
-        const p2 = points[segmentIndex + 1];
-        
-        return {
-            x: p1.x + (p2.x - p1.x) * localT,
-            y: p1.y + (p2.y - p1.y) * localT
-        };
-    }
 
     /**
      * Clean up drawing state and finalize
@@ -585,7 +488,7 @@ export class FreehandCloseSupportingAttack {
     public deactivate(): void {
         this._clear();
         this._removeEvents();
-        this._geometryType = null;
+        // Geometry type cleared
         this.isDrawing = false;
     }
 

@@ -590,6 +590,46 @@ export class GeoTools {
         return result.extent?.center || new Point({ x: 0, y: 0, spatialReference: pts[0].spatialReference });
     }
 
+        /**
+         * Create arrow head path
+         */
+        static CreateArrowHeadPathEx(pt1: { x: number, y: number }, candidatePt: Point, pt2: { x: number, y: number }, 
+            totalLen: number, headPercentage: number, headAngle: number): { x: number, y: number }[] {
+            const headSizeBaseRatio = 1.1;
+            const headBaseLen = totalLen * headPercentage;
+            const headSideLen = headBaseLen * headSizeBaseRatio;
+
+            const angle1 = this.calculateAngle(candidatePt, new Point({ x: pt1.x, y: pt1.y }));
+            const angle2 = this.calculateAngle(candidatePt, new Point({ x: pt2.x, y: pt2.y }));
+
+            let midAngle = (Math.abs(angle1 - angle2)) / 2;
+            if (Math.abs(angle1 - angle2) > Math.PI * 1.88) midAngle += Math.PI;
+
+            const len = Math.sqrt(headBaseLen * headBaseLen + headSideLen * headSideLen - 
+                2 * headSideLen * headBaseLen * Math.cos(midAngle + headAngle / 180 * Math.PI));
+            const upAngle = Math.asin(headBaseLen * Math.sin(midAngle + headAngle / 180 * Math.PI) / len);
+            const centAngle = upAngle + headAngle / 180 * Math.PI;
+
+            const result = headBaseLen * Math.sin(Math.PI - centAngle - midAngle) / Math.sin(centAngle);
+
+            const path: { x: number, y: number }[] = [];
+            path.push({ x: candidatePt.x + result * Math.cos(angle1), y: candidatePt.y + result * Math.sin(angle1) });
+            path.push({ x: candidatePt.x + headSideLen * Math.cos(angle1 - headAngle / 180 * Math.PI), 
+            y: candidatePt.y + headSideLen * Math.sin(angle1 - headAngle / 180 * Math.PI) });
+            path.push({ x: candidatePt.x, y: candidatePt.y });
+            path.push({ x: candidatePt.x + headSideLen * Math.cos(angle2 + headAngle / 180 * Math.PI), 
+            y: candidatePt.y + headSideLen * Math.sin(angle2 + headAngle / 180 * Math.PI) });
+            path.push({ x: candidatePt.x + result * Math.cos(angle2), y: candidatePt.y + result * Math.sin(angle2) });
+
+            return path;
+    }
+
+    static calculateAngle(fromPt: Point | { x: number, y: number }, toPt: Point | { x: number, y: number }): number {
+        const dx = toPt.x - fromPt.x;
+        const dy = toPt.y - fromPt.y;
+        return Math.atan2(dy, dx);
+    }
+
     /**
      * Calculate vertex angles for a point collection
      */

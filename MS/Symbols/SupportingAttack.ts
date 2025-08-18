@@ -91,8 +91,6 @@ class SupportingAttack {
 
     public init(options: SupportingAttackOptions, marker: any): void {
         this._lineSym = marker;
-        (this.view as any).navigation.setImmediateClick(false);
-        (this.view as any).disableDoubleClickZoom();
 
         this._headPercentage = GeoTools.setDefault(options, "HEAD_RATIO", 0.07);
         this._tailFactor = GeoTools.setDefault(options, "TAIL_FACTOR", 0.05);

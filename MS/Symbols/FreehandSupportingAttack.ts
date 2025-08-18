@@ -332,7 +332,7 @@ export class FreehandSupportingAttack {
         let ring: number[][] = [];
         ring.push([pt1.x, pt1.y]);
         
-        const values = this.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
+        const values = Shapes.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
         values.forEach(pt => ring.push([pt.x, pt.y]));
         
         ring.push([p2.x, p2.y]);
@@ -385,7 +385,7 @@ export class FreehandSupportingAttack {
         let rightBezier = Shapes.CreateBezierPathPCOnly(rightArray, 70);
         rightBezier.splice(Math.floor((1 - this._headPercentage) * 70), Number.MAX_VALUE);
 
-        const headPath = this.CreateArrowHeadPathEx(
+        const headPath = Shapes.CreateArrowHeadPathEx(
             leftBezier[leftBezier.length - 1], 
             lastPoint, 
             rightBezier[rightBezier.length - 1], 
@@ -413,45 +413,7 @@ export class FreehandSupportingAttack {
         return result;
     }
 
-    /**
-     * Create arrow head path
-     */
-    private CreateArrowHeadPathEx(
-        pt1: { x: number, y: number }, 
-        candidatePt: { x: number, y: number }, 
-        pt2: { x: number, y: number }, 
-        totalLen: number, 
-        headPercentage: number, 
-        headAngle: number, 
-        straight?: boolean
-    ): Array<{ x: number, y: number }> {
-        const headSizeBaseRatio = 1.07;
-        const headBaseLen = totalLen * headPercentage;
-        const headSideLen = headBaseLen * headSizeBaseRatio;
-        
-        const angle1 = GeoTools.twoPtsAngle(candidatePt, pt1);
-        const angle2 = GeoTools.twoPtsAngle(candidatePt, pt2);
 
-        let midAngle = (Math.abs(angle1 - angle2)) / 2;
-        if (Math.abs(angle1 - angle2) > Math.PI * 1.88) midAngle += Math.PI;
-        
-        const len = Math.sqrt(headBaseLen * headBaseLen + headSideLen * headSideLen - 2 * headSideLen * headBaseLen * Math.cos(midAngle + headAngle / 180 * Math.PI));
-        const upAngle = Math.asin(headBaseLen * Math.sin(midAngle + headAngle / 180 * Math.PI) / len);
-        const centAngle = upAngle + headAngle / 180 * Math.PI;
-        
-        const result = (straight === false || straight === undefined) ? 
-            (headBaseLen * Math.sin(Math.PI - centAngle - midAngle) / Math.sin(centAngle)) : 0;
-
-        const path = [
-            { x: candidatePt.x + result * Math.cos(angle1), y: candidatePt.y + result * Math.sin(angle1) },
-            { x: candidatePt.x + headSideLen * Math.cos(angle1 - headAngle / 180 * Math.PI), y: candidatePt.y + headSideLen * Math.sin(angle1 - headAngle / 180 * Math.PI) },
-            candidatePt,
-            { x: candidatePt.x + headSideLen * Math.cos(angle2 + headAngle / 180 * Math.PI), y: candidatePt.y + headSideLen * Math.sin(angle2 + headAngle / 180 * Math.PI) },
-            { x: candidatePt.x + result * Math.cos(angle2), y: candidatePt.y + result * Math.sin(angle2) }
-        ];
-
-        return path;
-    }
 
     /**
      * Clean up drawing state and finalize

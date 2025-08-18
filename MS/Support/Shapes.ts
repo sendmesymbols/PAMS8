@@ -3,8 +3,8 @@ import Point from "@arcgis/core/geometry/Point";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
 import GeoTools from './GeoTools.ts';
 import Echelons from './Echelons.ts';
-import Utils from "./Utils.ts";
-import DrawEssentials from "./DrawEssentials.ts";
+import Utils from "./Utils";
+import DrawEssentials from "./DrawEssentials";
 import Polygon from "@arcgis/core/geometry/Polygon";
 
 
@@ -1024,9 +1024,9 @@ class Shapes {
      * Create extended arrow head path
      */
     static CreateArrowHeadPathEx(
-        pt1: Point,
+        pt1: Point | PointLike,
         candidatePt: Point,
-        pt2: Point,
+        pt2: Point | PointLike,
         totalLen: number,
         headPercentage: number,
         headAngle: number,
@@ -1036,22 +1036,22 @@ class Shapes {
         const headBaseLen = totalLen * headPercentage;
         const headSideLen = headBaseLen * headSizeBaseRatio;
 
-        const angle1 = this.twoPtsAngle(candidatePt, pt1);
-        const angle2 = this.twoPtsAngle(candidatePt, pt2);
+        const angle1 = GeoTools.twoPtsAngle(candidatePt, new Point({ x: pt1.x, y: pt1.y }));
+        const angle2 = GeoTools.twoPtsAngle(candidatePt, new Point({ x: pt2.x, y: pt2.y }));
 
-        const midAngle = (Math.abs(angle1 - angle2)) / 2;
-        const adjustedMidAngle = Math.abs(angle1 - angle2) > Math.PI * 1.88 ? midAngle + Math.PI : midAngle;
+        let midAngle = (Math.abs(angle1 - angle2)) / 2;
+        if (Math.abs(angle1 - angle2) > Math.PI * 1.88) midAngle += Math.PI;
 
         const len = Math.sqrt(
             headBaseLen * headBaseLen + headSideLen * headSideLen -
-            2 * headSideLen * headBaseLen * Math.cos(adjustedMidAngle + headAngle / 180 * Math.PI)
+            2 * headSideLen * headBaseLen * Math.cos(midAngle + headAngle / 180 * Math.PI)
         );
 
-        const upAngle = Math.asin(headBaseLen * Math.sin(adjustedMidAngle + headAngle / 180 * Math.PI) / len);
+        const upAngle = Math.asin(headBaseLen * Math.sin(midAngle + headAngle / 180 * Math.PI) / len);
         const centAngle = upAngle + headAngle / 180 * Math.PI;
 
         const result = (straight === false || straight === undefined) ?
-            (headBaseLen * Math.sin(Math.PI - centAngle - adjustedMidAngle) / Math.sin(centAngle)) : 0;
+            (headBaseLen * Math.sin(Math.PI - centAngle - midAngle) / Math.sin(centAngle)) : 0;
 
         const path: PointLike[] = [];
 
@@ -1063,7 +1063,7 @@ class Shapes {
             x: candidatePt.x + headSideLen * Math.cos(angle1 - headAngle / 180 * Math.PI),
             y: candidatePt.y + headSideLen * Math.sin(angle1 - headAngle / 180 * Math.PI)
         });
-        path.push(candidatePt);
+        path.push({ x: candidatePt.x, y: candidatePt.y });
         path.push({
             x: candidatePt.x + headSideLen * Math.cos(angle2 + headAngle / 180 * Math.PI),
             y: candidatePt.y + headSideLen * Math.sin(angle2 + headAngle / 180 * Math.PI)
