@@ -142,7 +142,7 @@ import Breach from "../Symbols/Breach.ts"; //Fixed
 import Bridge from "../Symbols/Bridge.ts"; //Fixed
 import BtleHndOvrLn from "../Symbols/BtleHndOvrLn.ts"; //Fixed
 import Block from "../Symbols/Block.ts"; //Fixed
-import BlockObstacleEffect from "../Symbols/BlockObstacleEffect.ts";
+import BlockObstacleEffect from "../Symbols/BlockObstacleEffect.ts"; //Fixed
 import BOPFreehand from "../Symbols/BOPFreehand.ts";
 import Boundary from "../Symbols/Boundary.ts";
 
