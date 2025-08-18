@@ -293,7 +293,7 @@ export class FreehandAreaFilled {
                 case 3:
                     return Shapes.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                 case 4:
-                    return Shapes.createSymbolByPerfectEllipse(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
+                    return Shapes.createSymbolByPerfectEllipse(pts, firstPoint, lastPoint, drawEssentials, this.view);
                 default:
                     return new Polygon({ spatialReference: this.view.spatialReference });
             }
