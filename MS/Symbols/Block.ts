@@ -78,10 +78,17 @@ export class Block {
         
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    this.tempGraphic.geometry = new Polyline({
+                        paths: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polyline geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
@@ -300,104 +307,73 @@ export class Block {
      */
     private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
         try {
-            let pts: Point[];
-
-            if ((drawEssentials as any).CTRL_PTS) {
-                pts = (drawEssentials as any).CTRL_PTS;
-            } else {
+            // Extract control points
+            const pts: Point[] = (drawEssentials as any).CTRL_PTS;
+            if (!pts || pts.length === 0) {
                 throw new Error("controlPoints not found");
             }
 
-            const stPt = (drawEssentials as any).BASE_LN_PTS.startPt;
-            const endPt = (drawEssentials as any).BASE_LN_PTS.endPt;
-
+            // Extract baseline points
+            const stPt: Point = (drawEssentials as any).BASE_LN_PTS?.startPt;
+            const endPt: Point = (drawEssentials as any).BASE_LN_PTS?.endPt;
             if (!stPt || !endPt) {
                 throw new Error("First Parameter of the Function is an Array with Start and End Point");
             }
 
+            const spatialReference = this.view.spatialReference;
+            const result = new Polyline({ spatialReference });
+
             const firstPoint = pts[0];
-            let lastPoint = pts[pts.length - 1];
-            const midPt = this.getMidPoint(stPt, endPt);
+            const midPt = GeoTools.getMidPoint(stPt, endPt);
 
-            const result = new Polyline({ spatialReference: this.view.spatialReference });
-
-            // Base Line
-            if (pts.length >= 1) {
-                lastPoint = firstPoint;
+            // Base Line angle and endpoints
+            let k = Math.atan((midPt.y - firstPoint.y) / (midPt.x - firstPoint.x));
+            switch (GeoTools.twoPtsRelationShip(midPt, firstPoint)) {
+                case "ne":
+                    k += Math.PI / 2; break;
+                case "nw":
+                    k += Math.PI * 3 / 2; break;
+                case "sw":
+                    k += Math.PI * 3 / 2; break;
+                case "se":
+                    k += Math.PI / 2; break;
             }
 
-            const len = this.calculateDistance(midPt, endPt);
-            const k = this.calculateAngle(midPt, lastPoint);
-            const partialLen = len;
+            const partialLen = GeoTools._2PtLen(midPt, endPt);
+            const p1 = new Point({ x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y, spatialReference });
+            const p2 = new Point({ x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y, spatialReference });
 
-            const p1 = {
-                x: partialLen * Math.cos(k) + midPt.x,
-                y: partialLen * Math.sin(k) + midPt.y
-            };
-            const p2 = {
-                x: -1 * partialLen * Math.cos(k) + midPt.x,
-                y: -1 * partialLen * Math.sin(k) + midPt.y
-            };
+            // Add baseline path between p1 and p2
+            result.addPath([[p1.x, p1.y], [p2.x, p2.y]]);
 
-            let paths: number[][] = [];
-            paths.push([p1.x, p1.y], [p2.x, p2.y]);
-            result.addPath(paths);
-
-            // Front section with fracture and "B" markers
+            // Build middle array for fracture
             const middleArray: Point[] = [];
-            
             if (pts.length >= 1) {
                 middleArray.push(midPt);
             }
-
             for (let i = 0; i < pts.length; i++) {
-                // Find distance between candidate point and mid point
-                const length = this.calculateDistance(midPt, pts[i]);
-                const angle = this.angleInRadians(midPt, pts[i]);
-
-                const stPtCandidatePt = new Point({
-                    x: p1.x + length * Math.cos(angle),
-                    y: p1.y + length * Math.sin(angle),
-                    spatialReference: this.view.spatialReference
-                });
-                
-                const endPtCandidatePt = new Point({
-                    x: p2.x + length * Math.cos(angle),
-                    y: p2.y + length * Math.sin(angle),
-                    spatialReference: this.view.spatialReference
-                });
-
-                const baseLineLen = this.calculateDistance(stPtCandidatePt, endPtCandidatePt);
                 middleArray.push(pts[i]);
             }
 
-            // Create fracture with "B" markers
+            // Fracture along middleArray and add B markers at midpoints
             const values = this.fracture(middleArray, 10);
             if (values && values.geometry && values.geometry.paths) {
-                result.paths = result.paths.concat(values.geometry.paths);
+                values.geometry.paths.forEach((path: number[][]) => result.addPath(path));
 
-                // Add "B" markers at midpoints
+                const baseLineLen = GeoTools._2PtLen(p1, p2);
                 if (values.midPoints && Array.isArray(values.midPoints)) {
                     for (let i = 0; i < values.midPoints.length; i++) {
-                        const midPoint = values.midPoints[i];
-                        let cLenLimit = midPoint.len / 2;
-                        const baseLineLen = this.calculateDistance(p1, p2);
-                        if (cLenLimit > baseLineLen / 3.6) {
-                            cLenLimit = baseLineLen / 3.6;
-                        }
-
-                        const bMarkers = this.createB(midPoint.midPt, cLenLimit, 40);
-                        if (bMarkers && Array.isArray(bMarkers)) {
-                            result.addPath(bMarkers.map(pt => [pt.x, pt.y]));
-                        }
+                        let cLenLimit = values.midPoints[i].len / 2;
+                        if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+                        const bPath = Shapes.createB(values.midPoints[i].midPt, cLenLimit, 40);
+                        result.addPath(bPath.map(pt => [pt.x, pt.y]));
                     }
                 }
             }
 
             return result;
-            
         } catch (e) {
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
             return null;
         }
     }
