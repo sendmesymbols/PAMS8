@@ -141,7 +141,7 @@ import PhaseLine from "../Symbols/PhaseLine.ts"; //Fixed
 import Breach from "../Symbols/Breach.ts"; //Fixed
 import Bridge from "../Symbols/Bridge.ts"; //Fixed
 import BtleHndOvrLn from "../Symbols/BtleHndOvrLn.ts"; //Fixed
-import Block from "../Symbols/Block.ts";
+import Block from "../Symbols/Block.ts"; //Fixed
 import BlockObstacleEffect from "../Symbols/BlockObstacleEffect.ts";
 import BOPFreehand from "../Symbols/BOPFreehand.ts";
 import Boundary from "../Symbols/Boundary.ts";
