@@ -796,8 +796,8 @@ function initializeAutocomplete() {
     //drawEssentials.ANGLE = 90;
 
     ///// Arrow Baseline Points Solution
-    //drawEssentials.CTRL_PTS = JSON.parse('[{"type":"point","x":8819915.220430773,"y":3581686.454192736,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}}]');
-    //drawEssentials.BASE_LN_PTS = JSON.parse('{"startPt":{"type":"point","x":7794436.048956899,"y":3664238.4447407224,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},"endPt":{"type":"point","x":7787098.094241522,"y":3622656.7013535886,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},"midPt":{"type":"point","x":7790767.071599211,"y":3643447.5730471555,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}}}');
+    drawEssentials.CTRL_PTS = JSON.parse('[{"type":"point","x":8819915.220430773,"y":3581686.454192736,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}}]');
+    drawEssentials.BASE_LN_PTS = JSON.parse('{"startPt":{"type":"point","x":7794436.048956899,"y":3664238.4447407224,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},"endPt":{"type":"point","x":7787098.094241522,"y":3622656.7013535886,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},"midPt":{"type":"point","x":7790767.071599211,"y":3643447.5730471555,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}}}');
     //drawEssentials.GEOM = JSON.parse('[[[7792031.774549957,3664521.7816224727],[7789502.368648464,3622373.3644718383]],[[7792031.774549957,3664521.7816224727],[8718265.108498363,3615112.886538937]],[[7789502.368648464,3622373.3644718383],[8715735.70259687,3572964.469388303]],[[8718265.108498363,3615112.886538937],[8721353.164441084,3673002.4699107124],[8819915.220430773,3581686.454192736],[8712647.646654148,3515074.8860165277],[8715735.70259687,3572964.469388303]]]');
 
 
@@ -812,14 +812,15 @@ function initializeAutocomplete() {
 
     //LINE GEOM AND CTRL PTS -------------------------------------------------------------------------------------------------------------------------------------------
 
-  /*
+    /*
     drawEssentials.GEOM = new Polyline(JSON.parse('[[[7459705.494615135,3528604.534230706],[8132962.839750933,3978054.26054752],[8272995.475569369,3706549.9360785875]]]'));
     drawEssentials.CTRL_PTS = JSON.parse('[' +
         '{"type":"point","x":7459705.494615135,"y":3528604.534230706,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},' +
         '{"type":"point","x":8132962.839750933,"y":3978054.26054752,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}},' +
         '{"type":"point","x":8272995.475569369,"y":3706549.9360785875,"spatialReference":{"wkid":102100,"latestWkid":3857,"xyTolerance":0.001,"zTolerance":0.001,"mTolerance":0.001,"falseX":-20037700,"falseY":-30241100,"xyUnits":10000,"falseZ":-100000,"zUnits":10000,"falseM":-100000,"mUnits":10000}}' +
         ']');
-*/
+
+     */
 
     // Step 1: Convert the hardcoded GEOM array into a proper Polyline
     const rawPath = JSON.parse('[[[7459705.494615135,3528604.534230706],[8132962.839750933,3978054.26054752],[8272995.475569369,3706549.9360785875]]]');

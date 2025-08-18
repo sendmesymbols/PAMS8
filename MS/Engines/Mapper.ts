@@ -135,12 +135,12 @@ import AxisOfAdvanceFeint from "../Symbols/AxisOfAdvanceFeint.ts"; //Fixed
 import BdeAdmArea from "../Symbols/BdeAdmArea.ts"; //Fixed
 import DivAdmArea from "../Symbols/DivAdmArea.ts"; //Fixed
 import BridgeHeadLine from "../Symbols/BridgeHeadLine.ts"; //Fixed
-import PhaseLine from "../Symbols/PhaseLine.ts";
+import PhaseLine from "../Symbols/PhaseLine.ts"; //Fixed
 
 
-import Breach from "../Symbols/Breach.ts";
-import Bridge from "../Symbols/Bridge.ts";
-import BtleHndOvrLn from "../Symbols/BtleHndOvrLn.ts";
+import Breach from "../Symbols/Breach.ts"; //Fixed
+import Bridge from "../Symbols/Bridge.ts"; //Fixed
+import BtleHndOvrLn from "../Symbols/BtleHndOvrLn.ts"; //Fixed
 import Block from "../Symbols/Block.ts";
 import BlockObstacleEffect from "../Symbols/BlockObstacleEffect.ts";
 import BOPFreehand from "../Symbols/BOPFreehand.ts";

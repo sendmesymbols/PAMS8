@@ -76,9 +76,9 @@ export class Breach {
     public init(options: BreachOptions, marker: SimpleLineSymbol): void {
         this._lineSym = marker.clone();
         
-        const drawEssentials = new DrawEssentials();
+        // const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM")) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
             // Immediate placement with all data
             if (options.GEOM && this.tempGraphic) {
                 this.tempGraphic.geometry = options.GEOM;
@@ -288,42 +288,30 @@ export class Breach {
      */
     private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
         try {
-            let pts: Point[];
-
-            if ((drawEssentials as any).CTRL_PTS) {
-                pts = (drawEssentials as any).CTRL_PTS;
-            } else {
+            // Extract control points
+            const ctrlPts: Point[] = (drawEssentials as any).CTRL_PTS;
+            if (!ctrlPts || ctrlPts.length === 0) {
                 throw new Error("controlPoints not found");
             }
 
+            // Extract baseline points
             const baseLinePts = (drawEssentials as any).BASE_LN_PTS;
-            const stPt = baseLinePts.startPt;
-            const endPt = baseLinePts.endPt;
-
+            const stPt: Point = baseLinePts?.startPt;
+            const endPt: Point = baseLinePts?.endPt;
             if (!stPt || !endPt) {
                 throw new Error("Start and End Point required for baseline");
             }
 
-            const firstPoint = pts[0];
-            const lastPoint = pts[pts.length - 1];
-            const leftArray: Point[] = [];
-            const rightArray: Point[] = [];
+            const spatialReference = this.view.spatialReference;
+            const firstPoint = ctrlPts[0];
 
-            const midPt = this.getMidPoint(stPt, endPt);
-            const result = new Polyline({ spatialReference: this.view.spatialReference });
+            const result = new Polyline({ spatialReference });
 
-            // Determine direction based on first control point
-            let currentLastPoint = firstPoint;
-            if (pts.length >= 1) {
-                currentLastPoint = firstPoint;
-            }
+            // Midpoint and base direction
+            const midPt = GeoTools.getMidPoint(stPt, endPt);
+            let k = Math.atan((midPt.y - firstPoint.y) / (midPt.x - firstPoint.x));
 
-            const len = this.calculateDistance(midPt, endPt);
-            let k = Math.atan((midPt.y - currentLastPoint.y) / (midPt.x - currentLastPoint.x));
-
-            // Adjust angle based on relationship
-            const relationship = this.twoPtsRelationShip(midPt, currentLastPoint);
-            switch (relationship) {
+            switch (GeoTools.twoPtsRelationShip(midPt, firstPoint)) {
                 case "ne":
                     k += Math.PI / 2;
                     break;
@@ -338,66 +326,82 @@ export class Breach {
                     break;
             }
 
-            const partialLen = len;
-            const p1 = { x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y };
-            const p2 = { x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y };
+            const partialLen = GeoTools._2PtLen(midPt, endPt);
+            const p1 = new Point({ x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y, spatialReference });
+            const p2 = new Point({ x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y, spatialReference });
 
-            // Create fracture baseline
-            const fractureResult = this.createFractureBaseline(p1, p2);
-            fractureResult.paths.forEach(path => result.addPath(path));
+            // Fracture baseline using GeoTools and add "B" marker using Shapes
+            const fracture = GeoTools._fracturePts(p1, p2, 10, spatialReference);
+            fracture.geometry.paths.forEach((path: number[][]) => result.addPath(path));
 
-            // Add breach lines
-            if (pts.length >= 1) {
-                leftArray.push(new Point({ x: p1.x, y: p1.y, spatialReference: this.view.spatialReference }));
-                rightArray.push(new Point({ x: p2.x, y: p2.y, spatialReference: this.view.spatialReference }));
+            const baseLineLen = GeoTools._2PtLen(p1, p2);
+            let cLenLimit = fracture.len / 2;
+            if (cLenLimit > baseLineLen / 3.6) {
+                cLenLimit = baseLineLen / 3.6;
+            }
+            const bPts = Shapes.createB(fracture.midPoint, cLenLimit, 40);
+            result.addPath(bPts.map(pt => [pt.x, pt.y]));
+
+            // Front projection lines
+            const leftArray: Point[] = [];
+            const rightArray: Point[] = [];
+            if (ctrlPts.length >= 1) {
+                leftArray.push(p1);
+                rightArray.push(p2);
             }
 
-            // Create breach projection lines
-            for (let i = 0; i < pts.length; i++) {
-                const length = this.calculateDistance(midPt, pts[i]);
-                const angle = this.calculateAngle(midPt, pts[i]);
+            let stPtCandidatePt: Point | null = null;
+            let endPtCandidatePt: Point | null = null;
 
-                const stPtCandidatePt = new Point({
+            for (let i = 0; i < ctrlPts.length; i++) {
+                const length = GeoTools._2PtLen(midPt, ctrlPts[i]);
+                const angle = GeoTools.angleInRadians(midPt, ctrlPts[i]);
+
+                stPtCandidatePt = new Point({
                     x: p1.x + length * Math.cos(angle),
                     y: p1.y + length * Math.sin(angle),
-                    spatialReference: this.view.spatialReference
+                    spatialReference
                 });
-                
-                const endPtCandidatePt = new Point({
+
+                endPtCandidatePt = new Point({
                     x: p2.x + length * Math.cos(angle),
                     y: p2.y + length * Math.sin(angle),
-                    spatialReference: this.view.spatialReference
+                    spatialReference
                 });
 
                 leftArray.push(stPtCandidatePt);
                 rightArray.push(endPtCandidatePt);
             }
 
-            // Add paths for left and right sides
             result.addPath(leftArray.map(pt => [pt.x, pt.y]));
             result.addPath(rightArray.map(pt => [pt.x, pt.y]));
 
-            // Add arrow flaps at the end
-            if (leftArray.length > 1 && rightArray.length > 1) {
+            // Arrow flaps at the end
+            if (leftArray.length > 1 && rightArray.length > 1 && stPtCandidatePt && endPtCandidatePt) {
                 const leftEndPt = leftArray[leftArray.length - 1];
                 const rightEndPt = rightArray[rightArray.length - 1];
                 const leftPrevPt = leftArray[leftArray.length - 2];
                 const rightPrevPt = rightArray[rightArray.length - 2];
 
-                const arrowLength = this.calculateArrowLength(midPt, pts[pts.length - 1], leftEndPt, rightEndPt);
-                
-                const leftFlap = this.createArrowFlap(
-                    leftEndPt, 
-                    arrowLength,
-                    this.calculateAngle(leftPrevPt, leftEndPt),
-                    0 // left side
+                const arrowLength = this.calculateArrowLength(
+                    midPt,
+                    ctrlPts[ctrlPts.length - 1],
+                    stPtCandidatePt,
+                    endPtCandidatePt
                 );
-                
+
+                const leftFlap = this.createArrowFlap(
+                    leftEndPt,
+                    arrowLength,
+                    GeoTools.angleInRadians(leftPrevPt, leftEndPt),
+                    0
+                );
+
                 const rightFlap = this.createArrowFlap(
                     rightEndPt,
                     arrowLength,
-                    this.calculateAngle(rightPrevPt, rightEndPt),
-                    1 // right side
+                    GeoTools.angleInRadians(rightPrevPt, rightEndPt),
+                    1
                 );
 
                 result.addPath(leftFlap);
@@ -405,101 +409,13 @@ export class Breach {
             }
 
             return result;
-            
         } catch (e) {
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
             return null;
         }
     }
 
-    /**
-     * Create fracture baseline pattern
-     */
-    private createFractureBaseline(p1: any, p2: any): Polyline {
-        const result = new Polyline({ spatialReference: this.view.spatialReference });
-        
-        // Create fractured baseline with "B" marker
-        const fracturedPts = this.fracturePts(p1, p2, 10);
-        result.addPath(fracturedPts.geometry);
-        
-        // Add "B" marker at midpoint
-        const midPoint = fracturedPts.midPoint;
-        const baseLineLen = this.calculateDistance(p1, p2);
-        let cLenLimit = fracturedPts.len / 2;
-        if (cLenLimit > baseLineLen / 3.6) {
-            cLenLimit = baseLineLen / 3.6;
-        }
-
-        const bMarker = this.createBMarker(midPoint, cLenLimit);
-        result.addPath(bMarker);
-
-        return result;
-    }
-
-    /**
-     * Create fracture points pattern
-     */
-    private fracturePts(p1: any, p2: any, numFractures: number): { geometry: number[][], midPoint: any, len: number } {
-        const path: number[][] = [];
-        const totalLen = this.calculateDistance(p1, p2);
-        const segmentLen = totalLen / numFractures;
-        
-        let currentX = p1.x;
-        let currentY = p1.y;
-        const deltaX = (p2.x - p1.x) / numFractures;
-        const deltaY = (p2.y - p1.y) / numFractures;
-        
-        path.push([currentX, currentY]);
-        
-        for (let i = 0; i < numFractures; i++) {
-            const nextX = currentX + deltaX;
-            const nextY = currentY + deltaY;
-            
-            // Add fracture pattern
-            const midX = currentX + deltaX / 2;
-            const midY = currentY + deltaY / 2;
-            const perpX = -(deltaY) / numFractures * 0.3;
-            const perpY = deltaX / numFractures * 0.3;
-            
-            path.push([midX + perpX, midY + perpY]);
-            path.push([midX - perpX, midY - perpY]);
-            path.push([nextX, nextY]);
-            
-            currentX = nextX;
-            currentY = nextY;
-        }
-        
-        const midPoint = {
-            x: (p1.x + p2.x) / 2,
-            y: (p1.y + p2.y) / 2
-        };
-        
-        return {
-            geometry: path,
-            midPoint: midPoint,
-            len: totalLen
-        };
-    }
-
-    /**
-     * Create "B" marker
-     */
-    private createBMarker(center: any, size: number): number[][] {
-        const letterHeight = size;
-        const letterWidth = size * 0.5;
-        
-        // Simple "B" shape
-        return [
-            [center.x - letterWidth/2, center.y - letterHeight/2],
-            [center.x - letterWidth/2, center.y + letterHeight/2],
-            [center.x + letterWidth/2, center.y + letterHeight/2],
-            [center.x + letterWidth/2, center.y],
-            [center.x - letterWidth/2, center.y],
-            [center.x + letterWidth/2, center.y],
-            [center.x + letterWidth/2, center.y - letterHeight/2],
-            [center.x - letterWidth/2, center.y - letterHeight/2]
-        ];
-    }
+    
 
     /**
      * Create arrow flap
@@ -559,13 +475,6 @@ export class Breach {
     /**
      * Utility methods
      */
-    private getMidPoint(pt1: Point, pt2: Point): Point {
-        return new Point({
-            x: (pt1.x + pt2.x) / 2,
-            y: (pt1.y + pt2.y) / 2,
-            spatialReference: this.view.spatialReference
-        });
-    }
 
     private calculateDistance(pt1: Point | any, pt2: Point | any): number {
         const dx = pt2.x - pt1.x;
@@ -573,16 +482,7 @@ export class Breach {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    private calculateAngle(pt1: Point | any, pt2: Point | any): number {
-        return Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
-    }
 
-    private twoPtsRelationShip(pt1: Point, pt2: Point): string {
-        if (pt2.x >= pt1.x && pt2.y >= pt1.y) return "ne";
-        if (pt2.x < pt1.x && pt2.y >= pt1.y) return "nw";
-        if (pt2.x < pt1.x && pt2.y < pt1.y) return "sw";
-        return "se";
-    }
 
     /**
      * Get baseline points
