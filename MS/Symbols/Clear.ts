@@ -9,15 +9,15 @@ import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
-import Amplifier from "../Support/Amplifier";
+import Amplifier from "../Support/Amplifier.ts";
 import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
 export interface ClearOptions {
     CTRL_PTS?: Point[];
-    BASE_LN_PTS?: { startPt: Point, endPt: Point };
-    GEOM?: Polygon;
+    BASE_LN_PTS?: { startPt: Point, endPt: Point } | any;
+    GEOM?: Polyline | Polygon | number[][][];
     [key: string]: any;
 }
 
@@ -37,7 +37,7 @@ export class Clear {
     private symGeometricType: string = "Area";
     private _lineSym: SimpleLineSymbol | SimpleFillSymbol | null = null;
     private _points: Point[] = [];
-    private _baseLinePts: Point[] = [];
+    private _baseLinePts: any = null;
     private _geometryType: string | null = null;
     private amplifier: Amplifier;
     
@@ -72,14 +72,22 @@ export class Clear {
      */
     public init(options: ClearOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void {
         this._lineSym = marker;
-
-        const drawEssentials = new DrawEssentials();
         const baseLine = new BaseLine(this.view, this._lineSym as SimpleLineSymbol);
-        debugger;
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    if (options.GEOM instanceof Polygon) {
+                        this.tempGraphic.geometry = options.GEOM;
+                    } else {
+                        this.tempGraphic.geometry = new Polygon({
+                            rings: options.GEOM as number[][][],
+                            spatialReference: this.view.spatialReference
+                        });
+                    }
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(
@@ -87,8 +95,10 @@ export class Clear {
                 options.BASE_LN_PTS!
             );
             
-            if (this.tempGraphic && this.tempGraphic.geometry) {
-                this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
+            const geometry = this.createSymbol(drawEss);
+            if (geometry && this.tempGraphic) {
+                this.tempGraphic.geometry = geometry;
+                this.__drawEnd(geometry, drawEss);
             }
             this._clear();
 
@@ -148,7 +158,7 @@ export class Clear {
         });
         this.symbolLayer.add(this.tempGraphic);
         
-        this._baseLinePts = (evt.geometry as any)._baseLine || [];
+        this._baseLinePts = (evt.geometry as any)._baseLine || null;
         
         // Set up main drawing event handlers
         this.setupEventHandlers();
@@ -249,7 +259,7 @@ export class Clear {
      * Handle mouse move events
      */
     private _onMouseMoveHandler(inputEvent: any): void {
-        if (!this.tempGraphic || this._points.length === 0) return;
+        if (!this.tempGraphic || !this._baseLinePts) return;
 
         const mapPoint = this.view.toMap(inputEvent);
         if (!mapPoint) return;
@@ -260,10 +270,10 @@ export class Clear {
             spatialReference: this.view.spatialReference
         });
 
-        const currentPoints = this._points.concat([candidatePoint]);
+        const currentPoints = this._points.length === 0 ? [candidatePoint] : this._points.concat([candidatePoint]);
         const drawEssentials = this.createDrawEssentials(
             currentPoints,
-            { startPt: this._baseLinePts[0], endPt: this._baseLinePts[this._baseLinePts.length - 1] }
+            this._baseLinePts
         );
         
         const geometry = this.createSymbol(drawEssentials);
@@ -282,7 +292,7 @@ export class Clear {
      */
     private createDrawEssentials(
         ctrlPts: Point[], 
-        baseLinePts: { startPt: Point, endPt: Point }
+        baseLinePts: { startPt: Point, endPt: Point } | any
     ): DrawEssentials {
         const drawEssentials = new DrawEssentials();
         drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
@@ -301,7 +311,7 @@ export class Clear {
     /**
      * Create symbol geometry from DrawEssentials
      */
-    private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
+    private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
         try {
             let pts: Point[];
 
@@ -316,54 +326,134 @@ export class Clear {
                 throw new Error("baseline points not found");
             }
 
-            // Create the clear symbol geometry
-            const result = new Polygon({ 
-                spatialReference: this.view.spatialReference 
-            });
+            const stPt: Point = baseLinePts.startPt;
+            const endPt: Point = baseLinePts.endPt;
+            const firstPoint = pts[0];
+            let lastPoint = pts[pts.length - 1];
 
-            // Calculate the baseline length and angle
-            const baseLineLength = GeoTools._2PtLen(baseLinePts.startPt, baseLinePts.endPt);
-            const baseLineAngle = GeoTools.twoPtsAngle(baseLinePts.startPt, baseLinePts.endPt);
-            
-            // Calculate perpendicular distance for clear symbol
-            const perpDistance = baseLineLength * 0.3; // 30% of baseline length
-            
-            // Calculate perpendicular angle
-            const perpAngle = baseLineAngle + Math.PI / 2;
-            
-            // Calculate the extended points for the clear symbol
-            const leftExtendPt = {
-                x: baseLinePts.startPt.x + perpDistance * Math.cos(perpAngle),
-                y: baseLinePts.startPt.y + perpDistance * Math.sin(perpAngle)
-            };
-            
-            const rightExtendPt = {
-                x: baseLinePts.endPt.x + perpDistance * Math.cos(perpAngle),
-                y: baseLinePts.endPt.y + perpDistance * Math.sin(perpAngle)
-            };
+            if (stPt === undefined || endPt === undefined) {
+                throw new Error("First Parameter of the Function is an Array with Start and End Point");
+            }
 
-            const leftBackPt = {
-                x: baseLinePts.startPt.x - perpDistance * Math.cos(perpAngle),
-                y: baseLinePts.startPt.y - perpDistance * Math.sin(perpAngle)
-            };
+            const midPt: Point = GeoTools.getMidPoint(stPt, endPt);
+            const result = new Polyline({ spatialReference: this.view.spatialReference });
 
-            const rightBackPt = {
-                x: baseLinePts.endPt.x - perpDistance * Math.cos(perpAngle),
-                y: baseLinePts.endPt.y - perpDistance * Math.sin(perpAngle)
-            };
+            // Base Line build
+            if (pts.length >= 1) {
+                lastPoint = firstPoint;
+            }
 
-            // Create the main ring for the clear symbol (rectangular area)
-            const ring: number[][] = [];
-            
-            ring.push([leftExtendPt.x, leftExtendPt.y]);
-            ring.push([rightExtendPt.x, rightExtendPt.y]);
-            ring.push([rightBackPt.x, rightBackPt.y]);
-            ring.push([leftBackPt.x, leftBackPt.y]);
-            
-            // Close the ring
-            ring.push([leftExtendPt.x, leftExtendPt.y]);
+            const len = GeoTools._2PtLen(midPt, endPt);
+            let k = Math.atan((midPt.y - lastPoint.y) / (midPt.x - lastPoint.x));
 
-            result.addRing(ring);
+            switch (GeoTools.twoPtsRelationShip(midPt, lastPoint)) {
+                case "ne":
+                    k += Math.PI / 2;
+                    break;
+                case "nw":
+                    k += Math.PI * 3 / 2;
+                    break;
+                case "sw":
+                    k += Math.PI * 3 / 2;
+                    break;
+                case "se":
+                    k += Math.PI / 2;
+                    break;
+            }
+
+            const partialLen = len;
+            const p1 = { x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y };
+            const p2 = { x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y };
+
+            // Front arrays
+            const leftArray: Point[] = [];
+            const rightArray: Point[] = [];
+            const middleArray: Point[] = [];
+
+            if (pts.length >= 1) {
+                leftArray.push(new Point({ x: p1.x, y: p1.y, spatialReference: this.view.spatialReference }));
+                rightArray.push(new Point({ x: p2.x, y: p2.y, spatialReference: this.view.spatialReference }));
+                middleArray.push(midPt);
+            }
+
+            let stPtCandidatePt: Point = new Point({ x: p1.x, y: p1.y, spatialReference: this.view.spatialReference });
+            let endPtCandidatePt: Point = new Point({ x: p2.x, y: p2.y, spatialReference: this.view.spatialReference });
+            for (let i = 0; i < pts.length; i++) {
+                const lengthToCandidate = GeoTools._2PtLen(midPt, pts[i]);
+                let angle = GeoTools.angleInRadians(midPt, pts[i]);
+
+                stPtCandidatePt = new Point({
+                    x: p1.x + lengthToCandidate * Math.cos(angle),
+                    y: p1.y + lengthToCandidate * Math.sin(angle),
+                    spatialReference: this.view.spatialReference
+                });
+                endPtCandidatePt = new Point({
+                    x: p2.x + lengthToCandidate * Math.cos(angle),
+                    y: p2.y + lengthToCandidate * Math.sin(angle),
+                    spatialReference: this.view.spatialReference
+                });
+
+                leftArray.push(stPtCandidatePt);
+                rightArray.push(endPtCandidatePt);
+                middleArray.push(pts[i]);
+            }
+
+            // Add left and right paths
+            if (leftArray.length > 1) result.addPath(leftArray.map(pt => [pt.x, pt.y]));
+            if (rightArray.length > 1) result.addPath(rightArray.map(pt => [pt.x, pt.y]));
+
+            // Fracture the middle line and add CC arcs
+            if (middleArray.length > 1) {
+                const values = GeoTools._fracture(middleArray, 10, this.view.spatialReference);
+                (values.geometry.paths as number[][][]).forEach(path => result.addPath(path));
+
+                const baseLineLen = GeoTools._2PtLen(new Point({ x: p1.x, y: p1.y }), new Point({ x: p2.x, y: p2.y }));
+                for (let i = 0; i < values.midPoints.length; i++) {
+                    let cLenLimit = values.midPoints[i].len / 2;
+                    if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+                    const cPath = Shapes.createCC(values.midPoints[i].midPt.x, values.midPoints[i].midPt.y, cLenLimit, this.view.spatialReference);
+                    result.addPath(cPath.map(pt => [pt.x, pt.y]));
+                }
+            }
+
+            // Arrowheads at ends of left, right, and middle
+            if (leftArray.length >= 2) {
+                const baseLineLen = GeoTools._2PtLen(new Point({ x: p1.x, y: p1.y }), new Point({ x: p2.x, y: p2.y }));
+                const arrowLen = GeoTools.ArrowFlanksLen(GeoTools._2PtLen(midPt, middleArray[middleArray.length - 1]), baseLineLen);
+                let arrowAngle = GeoTools.angleInRadians(leftArray[leftArray.length - 2], leftArray[leftArray.length - 1]);
+                const leftArrow = Shapes.arrowHead(leftArray[leftArray.length - 1], arrowLen, arrowAngle);
+                result.addPath(leftArrow.map(pt => [pt.x, pt.y]));
+
+                arrowAngle = GeoTools.angleInRadians(rightArray[rightArray.length - 2], rightArray[rightArray.length - 1]);
+                const rightArrow = Shapes.arrowHead(rightArray[rightArray.length - 1], arrowLen, arrowAngle);
+                result.addPath(rightArrow.map(pt => [pt.x, pt.y]));
+
+                arrowAngle = GeoTools.angleInRadians(middleArray[middleArray.length - 2], middleArray[middleArray.length - 1]);
+                const midArrow = Shapes.arrowHead(middleArray[middleArray.length - 1], arrowLen, arrowAngle);
+                result.addPath(midArrow.map(pt => [pt.x, pt.y]));
+            }
+
+            // Front line (short bar across the front at the last candidate)
+            if (middleArray.length >= 1) {
+                let lengthToFront = GeoTools._2PtLen(midPt, middleArray[middleArray.length - 1]);
+                let lenFront = lengthToFront / 5;
+                const baseLenNow = GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt);
+                const baseLineLenLimit = baseLenNow / 4;
+                if (lenFront > baseLineLenLimit) lenFront = baseLineLenLimit;
+                const angleNow = GeoTools.angleInRadians(stPtCandidatePt, endPtCandidatePt);
+
+                const pt1Front = new Point({
+                    x: -1 * lenFront * Math.cos(angleNow) + stPtCandidatePt.x,
+                    y: -1 * lenFront * Math.sin(angleNow) + stPtCandidatePt.y,
+                    spatialReference: this.view.spatialReference
+                });
+                const pt2Front = new Point({
+                    x: lenFront * Math.cos(angleNow) + endPtCandidatePt.x,
+                    y: lenFront * Math.sin(angleNow) + endPtCandidatePt.y,
+                    spatialReference: this.view.spatialReference
+                });
+                result.addPath([[pt1Front.x, pt1Front.y], [pt2Front.x, pt2Front.y]]);
+            }
 
             return result;
 
@@ -377,15 +467,15 @@ export class Clear {
      * Clean up drawing state and finalize
      */
     private cleanUp(): void {
-        if (this._points.length === 0 && this._baseLinePts.length === 0) return;
+        if (this._points.length === 0 && !this._baseLinePts) return;
 
         const drawEssentials = this.createDrawEssentials(
             this._points.slice(),
-            { startPt: this._baseLinePts[0], endPt: this._baseLinePts[this._baseLinePts.length - 1] }
+            this._baseLinePts
         );
         
         if (this.tempGraphic && this.tempGraphic.geometry) {
-            this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEssentials);
+            this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
         }
         
         this._clear();
@@ -395,7 +485,7 @@ export class Clear {
     /**
      * Handle draw end
      */
-    private __drawEnd(drawGeometry: Polygon, drawEssentials: DrawEssentials): void {
+    private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
         if (drawGeometry) {
             const spatialRef = this.view.spatialReference;
             let geographicGeometry = drawGeometry;
@@ -414,7 +504,7 @@ export class Clear {
     /**
      * Final draw end handler
      */
-    private __onDrawEnd(geometry: Polygon, geoGeometry: Polygon, drawEssParam: DrawEssentials): void {
+    private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
         this.emit("onDrawEnd", {
             geometry: geometry,
             geographicGeometry: geoGeometry,
@@ -433,7 +523,7 @@ export class Clear {
         
         this.tempGraphic = null;
         this._points = [];
-        this._baseLinePts = [];
+        this._baseLinePts = null;
     }
 
     /**

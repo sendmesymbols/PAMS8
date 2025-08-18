@@ -149,8 +149,8 @@ import Boundary from "../Symbols/Boundary.ts"; //Fixed
 import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";  //Fixed
 
 import MainAttack from "../Symbols/MainAttack.ts";  //Fixed
-import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts"; //Issue
-import Clear from "../Symbols/Clear.ts"; //Issue
+import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts"; //Fixed
+import Clear from "../Symbols/Clear.ts"; //Fixed
 import BattlePosition from "../Symbols/BattlePosition.ts"; //Issue --Fixed
 import CounterAttack from "../Symbols/CounterAttack.ts"; //Issue
 import CounterAttkObj from "../Symbols/CounterAttkObj.ts"; //Issue
