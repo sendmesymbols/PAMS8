@@ -1,15 +1,13 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
-import Polyline from "@arcgis/core/geometry/Polyline";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
-import DrawEssentials from "../Support/DrawEssentials";
-import Amplifier from "../Support/Amplifier";
+import DrawEssentials from "../Support/DrawEssentials.ts";
+import Amplifier from "../Support/Amplifier.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
@@ -21,12 +19,8 @@ export interface CounterAttackOptions {
     [key: string]: any;
 }
 
-export interface ArrowHeadResult {
-    rings: Array<{ x: number, y: number }>;
-}
-
 /**
- * CounterAttack class for drawing Counter Attack symbols on MapView or SceneView
+ * CounterAttack class for drawing supporting attack arrow symbols on MapView or SceneView
  * Supports both immediate placement and interactive drawing modes
  */
 export class CounterAttack {
@@ -34,7 +28,7 @@ export class CounterAttack {
     private layerManager: GraphicsLayerManager;
     private symbolLayer: GraphicsLayer;
     private isLine: boolean;
-    
+
     // Symbol properties
     private SID: string = "340600";
     private symName: string = "Counter Attk";
@@ -43,20 +37,20 @@ export class CounterAttack {
     private _points: Point[] = [];
     private _geometryType: string | null = null;
     private amplifier: Amplifier;
-    
+
     // Symbol parameters
     private _tailFactor: number = 0.05;
     private _headPercentage: number = 0.07;
-    
+
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
-    
+
     // Event handlers
     private clickHandler: any = null;
     private doubleClickHandler: any = null;
     private mouseMoveHandler: any = null;
-    
+
     // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
 
@@ -66,43 +60,51 @@ export class CounterAttack {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
         this.amplifier = new Amplifier();
-        
+
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
-        
+
         // Initialize temporary graphic
         this.tempGraphic = new Graphic();
     }
 
     /**
-     * Initialize the counter attack drawing
+     * Initialize the freehand close supporting attack drawing
      */
-    public init(options: CounterAttackOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void {
+    public init(options: CounterAttackOptions, marker: SimpleLineSymbol): void {
         this._lineSym = marker;
-        
+
         // Set dashed line style for counter attack
         if (this._lineSym && 'style' in this._lineSym) {
             (this._lineSym as any).style = "dash";
         }
-        
-        // Set parameters from options
+
         this._headPercentage = GeoTools.setDefault(options, "HEAD_RATIO", 0.07);
         this._tailFactor = GeoTools.setDefault(options, "TAIL_FACTOR", 0.05);
 
-        const drawEssentials = new DrawEssentials();
+        // Set up event handlers
+        this.setupEventHandlers();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
+        // Initialize drawing essentials if needed
+
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    if (options.GEOM instanceof Polygon) {
+                        this.tempGraphic.geometry = options.GEOM;
+                    } else {
+                        this.tempGraphic.geometry = new Polygon({
+                            rings: options.GEOM as number[][][],
+                            spatialReference: this.view.spatialReference
+                        });
+                    }
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                }
             }
-            
-            const drawEss = this.createDrawEssentials(
-                options.CTRL_PTS!.slice(), 
-                this._headPercentage, 
-                this._tailFactor
-            );
-            
+
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._headPercentage, this._tailFactor);
             if (this.tempGraphic && this.tempGraphic.geometry) {
                 this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
             }
@@ -110,12 +112,7 @@ export class CounterAttack {
 
         } else if (options.hasOwnProperty("CTRL_PTS")) {
             // Immediate placement with control points only
-            const drawEss = this.createDrawEssentials(
-                options.CTRL_PTS!.slice(), 
-                this._headPercentage, 
-                this._tailFactor
-            );
-            
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._headPercentage, this._tailFactor);
             const geometry = this.createSymbol(drawEss);
             if (geometry && this.tempGraphic) {
                 this.tempGraphic.geometry = geometry;
@@ -134,16 +131,12 @@ export class CounterAttack {
      */
     private startInteractiveDrawing(): void {
         if (!this._lineSym) return;
-        
         this.isDrawing = true;
         this.tempGraphic = new Graphic({
             geometry: null,
             symbol: this._lineSym
         });
         this.symbolLayer.add(this.tempGraphic);
-        
-        // Set up event handlers
-        this.setupEventHandlers();
     }
 
     /**
@@ -155,7 +148,7 @@ export class CounterAttack {
             this._onClickHandler(event);
         });
 
-        // Double click handler  
+        // Double click handler
         this.doubleClickHandler = this.view.on("double-click", (event) => {
             this._onDoubleClickHandler(event);
         });
@@ -173,20 +166,21 @@ export class CounterAttack {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
-        
+
         if (this._points.length === 1) {
             // First click - set up mouse move handler
             this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
                 this._onMouseMoveHandler(event);
             });
         }
-        
+
         this.emit("onDrawClick", { currentPts: this._points });
 
         // For single line mode, finish after first click
         if (this.isLine === true && this._points.length === 1) {
+            this.emit("onDrawClick", { currentPts: this._points });
             this.cleanUp();
         }
     }
@@ -203,7 +197,7 @@ export class CounterAttack {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
         this.cleanUp();
     }
@@ -225,9 +219,7 @@ export class CounterAttack {
 
         const drawEssentials = new DrawEssentials();
         (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
-        (drawEssentials as any).HEAD_RATIO = this._headPercentage;
-        (drawEssentials as any).TAIL_FACTOR = this._tailFactor;
-        
+
         const geometry = this.createSymbol(drawEssentials);
         if (geometry) {
             this.tempGraphic.geometry = geometry;
@@ -242,22 +234,20 @@ export class CounterAttack {
     /**
      * Create DrawEssentials object
      */
-    private createDrawEssentials(
-        ctrlPts: Point[], 
-        arrowHeadRatio: number, 
-        tailFactor: number
-    ): DrawEssentials {
+    private createDrawEssentials(ctrlPts: Point[], arrowHeadRatio: number, tailFactor: number): DrawEssentials {
         const drawEssentials = new DrawEssentials();
         drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
         drawEssentials.SID = this.SID;
         drawEssentials.SYM_NAME = this.symName;
+        drawEssentials.GEOM = null;
         drawEssentials.AMPLIFIER = this.amplifier.toString();
-        
+
         // Store additional properties
         (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
         (drawEssentials as any).HEAD_RATIO = arrowHeadRatio;
         (drawEssentials as any).TAIL_FACTOR = tailFactor;
+        (drawEssentials as any).ISFHAND = 1;
 
         return drawEssentials;
     }
@@ -298,7 +288,7 @@ export class CounterAttack {
 
         const len = GeoTools._2PtLen(firstPoint, lastPoint);
         let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
-        
+
         switch (GeoTools.twoPtsRelationShip(firstPoint, lastPoint)) {
             case "ne":
                 k += Math.PI / 2;
@@ -315,52 +305,37 @@ export class CounterAttack {
         }
 
         // Tail two points
-        const pt1 = { 
-            x: this._tailFactor * len * Math.cos(k) + firstPoint.x, 
-            y: this._tailFactor * len * Math.sin(k) + firstPoint.y 
+        const pt1 = {
+            x: this._tailFactor * len * Math.cos(k) + firstPoint.x,
+            y: this._tailFactor * len * Math.sin(k) + firstPoint.y
         };
-        const pt2 = { 
-            x: -1 * this._tailFactor * len * Math.cos(k) + firstPoint.x, 
-            y: -1 * this._tailFactor * len * Math.sin(k) + firstPoint.y 
+        const pt2 = {
+            x: -1 * this._tailFactor * len * Math.cos(k) + firstPoint.x,
+            y: -1 * this._tailFactor * len * Math.sin(k) + firstPoint.y
         };
-        
+
         const partialLen = (1 - this._headPercentage) * len;
-        const p1 = { 
-            x: this._tailFactor * partialLen * Math.cos(k) + firstPoint.x, 
-            y: this._tailFactor * partialLen * Math.sin(k) + firstPoint.y 
+        const p1 = {
+            x: this._tailFactor * partialLen * Math.cos(k) + firstPoint.x,
+            y: this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
         };
-        const p2 = { 
-            x: -1 * this._tailFactor * partialLen * Math.cos(k) + firstPoint.x, 
-            y: -1 * this._tailFactor * partialLen * Math.sin(k) + firstPoint.y 
+        const p2 = {
+            x: -1 * this._tailFactor * partialLen * Math.cos(k) + firstPoint.x,
+            y: -1 * this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
         };
 
         const result = new Polygon({ spatialReference: this.view.spatialReference });
-        
+
         // Create main arrow ring
         let ring: number[][] = [];
         ring.push([pt1.x, pt1.y]);
-        
-        const values = this.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
-        values.rings.forEach(pt => ring.push([pt.x, pt.y]));
-        
+
+        const values = Shapes.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
+        values.forEach(pt => ring.push([pt.x, pt.y]));
+
         ring.push([p2.x, p2.y]);
 
         result.addRing(ring);
-
-        // Add counter attack "C" symbol
-        const midPt = GeoTools.getMidPoint(firstPoint, lastPoint);
-        const baseLineLen = GeoTools._2PtLen(
-            new Point({ x: p1.x, y: p1.y, spatialReference: this.view.spatialReference }),
-            new Point({ x: p2.x, y: p2.y, spatialReference: this.view.spatialReference })
-        );
-        
-        let cLenLimit = baseLineLen / 2;
-        if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-        
-        const cShapes = this.createCATKShapes(midPt, cLenLimit);
-        for (const cShape of cShapes) {
-            result.addRing(cShape);
-        }
 
         return result;
     }
@@ -372,7 +347,7 @@ export class CounterAttack {
         const leftArray: { x: number, y: number }[] = [];
         const rightArray: { x: number, y: number }[] = [];
         const lastPoint = pts[pts.length - 1];
-        
+
         const tempArray: { x: number, y: number }[] = [];
         pts.forEach(pt => {
             tempArray.push({ x: pt.x, y: pt.y });
@@ -380,18 +355,18 @@ export class CounterAttack {
 
         const angleArray = GeoTools._vertexAngle(tempArray);
         const totalL = GeoTools._ptCollectionLen(tempArray, 0);
-        
+
         for (let i = 0, len = tempArray.length - 1; i < len; i++) {
             let partialLen = GeoTools._ptCollectionLen(tempArray, i);
             partialLen += totalL / 2.4;
 
-            const pt1 = { 
-                x: this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x, 
-                y: this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y 
+            const pt1 = {
+                x: this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
+                y: this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
             };
-            const pt2 = { 
-                x: -1 * this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x, 
-                y: -1 * this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y 
+            const pt2 = {
+                x: -1 * this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
+                y: -1 * this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
             };
 
             leftArray.push(pt1);
@@ -408,138 +383,36 @@ export class CounterAttack {
         let rightBezier = Shapes.CreateBezierPathPCOnly(rightArray, 70);
         rightBezier.splice(Math.floor((1 - this._headPercentage) * 70), Number.MAX_VALUE);
 
-        const values = this.CreateArrowHeadPathEx(
-            leftBezier[leftBezier.length - 1], 
-            lastPoint, 
-            rightBezier[rightBezier.length - 1], 
-            GeoTools._ptCollectionLen(tempArray, 0), 
-            this._headPercentage, 
+        const headPath = Shapes.CreateArrowHeadPathEx(
+            leftBezier[leftBezier.length - 1],
+            lastPoint,
+            rightBezier[rightBezier.length - 1],
+            GeoTools._ptCollectionLen(tempArray, 0),
+            this._headPercentage,
             15
         );
-        
-        const headPath = values.rings;
 
         const result = new Polygon({ spatialReference: this.view.spatialReference });
-        
+
         // Combine all paths
         const ring: number[][] = [];
-        
+
         // Add left bezier path
         leftBezier.forEach(pt => ring.push([pt.x, pt.y]));
-        
+
         // Add arrow head
         headPath.forEach(pt => ring.push([pt.x, pt.y]));
-        
+
         // Add reversed right bezier path
         rightBezier.reverse().forEach(pt => ring.push([pt.x, pt.y]));
 
         result.addRing(ring);
 
-        // Add counter attack "C" symbol
-        const midPt = GeoTools.getMidPoint(pts[pts.length - 2], lastPoint);
-        const indexL = Math.round(leftArray.length / pts.length);
-        const indexR = Math.round(rightArray.length / pts.length);
-
-        const baseLineLen = GeoTools._2PtLen(
-            new Point({ x: leftArray[indexL].x, y: leftArray[indexL].y, spatialReference: this.view.spatialReference }),
-            new Point({ x: rightArray[indexR].x, y: rightArray[indexR].y, spatialReference: this.view.spatialReference })
-        ) / pts.length;
-
-        let cLenLimit = baseLineLen / 2;
-        if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-        
-        const cShapes = this.createCATKShapes(midPt, cLenLimit);
-        for (const cShape of cShapes) {
-            result.addRing(cShape);
-        }
-
         return result;
     }
 
-    /**
-     * Create arrow head path
-     */
-    private CreateArrowHeadPathEx(
-        pt1: { x: number, y: number }, 
-        candidatePt: { x: number, y: number }, 
-        pt2: { x: number, y: number }, 
-        totalLen: number, 
-        headPercentage: number, 
-        headAngle: number, 
-        straight?: boolean
-    ): ArrowHeadResult {
-        const headSizeBaseRatio = 1.07;
-        const headBaseLen = totalLen * headPercentage;
-        const headSideLen = headBaseLen * headSizeBaseRatio;
-        
-        const angle1 = GeoTools.twoPtsAngle(candidatePt, pt1);
-        const angle2 = GeoTools.twoPtsAngle(candidatePt, pt2);
 
-        let midAngle = (Math.abs(angle1 - angle2)) / 2;
-        if (Math.abs(angle1 - angle2) > Math.PI * 1.88) midAngle += Math.PI;
-        
-        const len = Math.sqrt(headBaseLen * headBaseLen + headSideLen * headSideLen - 2 * headSideLen * headBaseLen * Math.cos(midAngle + headAngle / 180 * Math.PI));
-        const upAngle = Math.asin(headBaseLen * Math.sin(midAngle + headAngle / 180 * Math.PI) / len);
-        const centAngle = upAngle + headAngle / 180 * Math.PI;
-        
-        const result = (straight === false || straight === undefined) ? 
-            (headBaseLen * Math.sin(Math.PI - centAngle - midAngle) / Math.sin(centAngle)) : 0;
 
-        const leftInnerPt = { 
-            x: candidatePt.x + result * Math.cos(angle1), 
-            y: candidatePt.y + result * Math.sin(angle1) 
-        };
-        const leftOuterPt = { 
-            x: candidatePt.x + headSideLen * Math.cos(angle1 - headAngle / 180 * Math.PI), 
-            y: candidatePt.y + headSideLen * Math.sin(angle1 - headAngle / 180 * Math.PI) 
-        };
-
-        const rightInnerPt = { 
-            x: candidatePt.x + result * Math.cos(angle2), 
-            y: candidatePt.y + result * Math.sin(angle2) 
-        };
-        const rightOuterPt = { 
-            x: candidatePt.x + headSideLen * Math.cos(angle2 + headAngle / 180 * Math.PI), 
-            y: candidatePt.y + headSideLen * Math.sin(angle2 + headAngle / 180 * Math.PI) 
-        };
-
-        const ring = [leftInnerPt, leftOuterPt, candidatePt, rightOuterPt, rightInnerPt];
-
-        return { rings: ring };
-    }
-
-    /**
-     * Create CATK (Counter Attack) "C" shapes
-     */
-    private createCATKShapes(midPt: Point, cLenLimit: number): number[][][] {
-        // Simple "C" shape approximation
-        // This would call Shapes.CATK in the original, but we'll create a simple C shape
-        const shapes: number[][][] = [];
-        
-        // Create a simple C-shaped arc
-        const radius = cLenLimit;
-        const centerX = midPt.x;
-        const centerY = midPt.y;
-        
-        const cShape: number[][] = [];
-        
-        // Create C arc (3/4 circle)
-        const startAngle = -Math.PI / 4;
-        const endAngle = Math.PI * 5 / 4;
-        const steps = 20;
-        const angleStep = (endAngle - startAngle) / steps;
-        
-        for (let i = 0; i <= steps; i++) {
-            const angle = startAngle + (i * angleStep);
-            const x = centerX + radius * Math.cos(angle);
-            const y = centerY + radius * Math.sin(angle);
-            cShape.push([x, y]);
-        }
-        
-        shapes.push(cShape);
-        
-        return shapes;
-    }
 
     /**
      * Clean up drawing state and finalize
@@ -547,16 +420,12 @@ export class CounterAttack {
     private cleanUp(): void {
         if (this._points.length === 0) return;
 
-        const drawEss = this.createDrawEssentials(
-            this._points.slice(),
-            this._headPercentage,
-            this._tailFactor
-        );
-        
+        const drawEssentials = this.createDrawEssentials(this._points.slice(), this._headPercentage, this._tailFactor);
+
         if (this.tempGraphic && this.tempGraphic.geometry) {
-            this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
+            this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEssentials);
         }
-        
+
         this._clear();
         this._removeEvents();
     }
@@ -571,7 +440,6 @@ export class CounterAttack {
 
             if (spatialRef && spatialRef.isWebMercator) {
                 // Geographic conversion would go here if needed
-                // geographicGeometry = webMercatorUtils.webMercatorToGeographic(drawGeometry);
             } else if (spatialRef && spatialRef.wkid === 4326) {
                 geographicGeometry = drawGeometry.clone();
             }
@@ -599,7 +467,7 @@ export class CounterAttack {
         if (this.tempGraphic && this.symbolLayer) {
             this.symbolLayer.remove(this.tempGraphic);
         }
-        
+
         this.tempGraphic = null;
         this._points = [];
     }
@@ -628,7 +496,7 @@ export class CounterAttack {
     public deactivate(): void {
         this._clear();
         this._removeEvents();
-        this._geometryType = null;
+        // Geometry type cleared
         this.isDrawing = false;
     }
 
@@ -640,7 +508,7 @@ export class CounterAttack {
         if (listeners) {
             listeners.forEach(listener => listener(data));
         }
-        
+
         // Also emit as a global document event for SymbolEngine to catch
         this.emitGlobalEvent(eventName, data);
     }
@@ -703,4 +571,4 @@ export class CounterAttack {
     }
 }
 
-export default CounterAttack; 
+export default CounterAttack;
