@@ -345,15 +345,20 @@ export class CounterAttack {
             if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
             const catkRings = Shapes.CATK(midPt.x, midPt.y, cLenLimit, this.view.spatialReference);
             if (catkRings && Array.isArray(catkRings)) {
+                const eps = 1e-6;
                 for (let j = 0; j <= catkRings.length - 1; j++) {
                     const stroke = catkRings[j];
-                    if (stroke && Array.isArray(stroke) && stroke.length > 0) {
-                        const coords: number[][] = stroke.map((pt: any) => [pt.x, pt.y]);
-                        if (coords.length === 2) {
-                            coords.push([coords[1][0] + 1e-6, coords[1][1] + 1e-6]);
+                    if (stroke && Array.isArray(stroke) && stroke.length > 1) {
+                        for (let i = 0; i < stroke.length - 1; i++) {
+                            const a = stroke[i];
+                            const b = stroke[i + 1];
+                            const ringSeg: number[][] = [];
+                            ringSeg.push([a.x, a.y]);
+                            ringSeg.push([b.x, b.y]);
+                            ringSeg.push([b.x + eps, b.y + eps]);
+                            ringSeg.push([a.x, a.y]); // close ring
+                            result.addRing(ringSeg);
                         }
-                        coords.push(coords[0]);
-                        result.addRing(coords);
                     }
                 }
             }
@@ -449,15 +454,20 @@ export class CounterAttack {
             if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
             const catkRings = Shapes.CATK(midPt.x, midPt.y, cLenLimit, spatialReference);
             if (catkRings && Array.isArray(catkRings)) {
+                const eps = 1e-6;
                 for (let j = 0; j <= catkRings.length - 1; j++) {
                     const stroke = catkRings[j];
-                    if (stroke && Array.isArray(stroke) && stroke.length > 0) {
-                        const coords: number[][] = stroke.map((pt: any) => [pt.x, pt.y]);
-                        if (coords.length === 2) {
-                            coords.push([coords[1][0] + 1e-6, coords[1][1] + 1e-6]);
+                    if (stroke && Array.isArray(stroke) && stroke.length > 1) {
+                        for (let i = 0; i < stroke.length - 1; i++) {
+                            const a = stroke[i];
+                            const b = stroke[i + 1];
+                            const ringSeg: number[][] = [];
+                            ringSeg.push([a.x, a.y]);
+                            ringSeg.push([b.x, b.y]);
+                            ringSeg.push([b.x + eps, b.y + eps]);
+                            ringSeg.push([a.x, a.y]); // close ring
+                            result.addRing(ringSeg);
                         }
-                        coords.push(coords[0]);
-                        result.addRing(coords);
                     }
                 }
             }
