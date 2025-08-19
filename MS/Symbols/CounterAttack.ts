@@ -4,7 +4,6 @@ import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials.ts";
@@ -77,7 +76,7 @@ export class CounterAttack {
 
         // Set dashed line style for counter attack
         if (this._lineSym && 'style' in this._lineSym) {
-            //(this._lineSym as any).style = "dash";
+            (this._lineSym as any).style = "dash";
         }
 
         this._headPercentage = GeoTools.setDefault(options, "HEAD_RATIO", 0.07);
@@ -335,37 +334,8 @@ export class CounterAttack {
         values.forEach(pt => ring.push([pt.x, pt.y]));
 
         ring.push([p2.x, p2.y]);
+
         result.addRing(ring);
-
-        // Add CATK lettering with 2D-safe rings (epsilon split and closed ring)
-        try {
-            const midPt = GeoTools.getMidPoint(firstPoint, lastPoint);
-            const baseLineLen = GeoTools._2PtLen(new Point({ x: p1.x, y: p1.y, spatialReference: this.view.spatialReference }), new Point({ x: p2.x, y: p2.y, spatialReference: this.view.spatialReference }));
-            let cLenLimit = baseLineLen / 2;
-            if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-            const catkRings = Shapes.CATK(midPt.x, midPt.y, cLenLimit, this.view.spatialReference);
-            if (catkRings && Array.isArray(catkRings)) {
-                const eps = 1e-6;
-                for (let j = 0; j <= catkRings.length - 1; j++) {
-                    const stroke = catkRings[j];
-                    if (stroke && Array.isArray(stroke) && stroke.length > 1) {
-                        for (let i = 0; i < stroke.length - 1; i++) {
-                            const a = stroke[i];
-                            const b = stroke[i + 1];
-                            const ringSeg: number[][] = [];
-                            ringSeg.push([a.x, a.y]);
-                            ringSeg.push([b.x, b.y]);
-                            ringSeg.push([b.x + eps, b.y + eps]);
-                            ringSeg.push([a.x, a.y]); // close ring
-                            result.addRing(ringSeg);
-                        }
-                    }
-                }
-            }
-        } catch {
-            // ignore CATK failures
-        }
-
 
         return result;
     }
@@ -374,8 +344,8 @@ export class CounterAttack {
      * Create complex arrow for multiple points
      */
     private createComplexArrow(pts: Point[], drawEssentials: DrawEssentials): Polygon {
-        const leftArray: Point[] = [];
-        const rightArray: Point[] = [];
+        const leftArray: { x: number, y: number }[] = [];
+        const rightArray: { x: number, y: number }[] = [];
         const lastPoint = pts[pts.length - 1];
 
         const tempArray: { x: number, y: number }[] = [];
@@ -390,23 +360,21 @@ export class CounterAttack {
             let partialLen = GeoTools._ptCollectionLen(tempArray, i);
             partialLen += totalL / 2.4;
 
-            const pt1 = new Point({
+            const pt1 = {
                 x: this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
-                y: this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y,
-                spatialReference: this.view.spatialReference
-            });
-            const pt2 = new Point({
+                y: this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
+            };
+            const pt2 = {
                 x: -1 * this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
-                y: -1 * this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y,
-                spatialReference: this.view.spatialReference
-            });
+                y: -1 * this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
+            };
 
             leftArray.push(pt1);
             rightArray.push(pt2);
         }
 
-        leftArray.push(new Point({ x: lastPoint.x, y: lastPoint.y, spatialReference: this.view.spatialReference }));
-        rightArray.push(new Point({ x: lastPoint.x, y: lastPoint.y, spatialReference: this.view.spatialReference }));
+        leftArray.push({ x: lastPoint.x, y: lastPoint.y });
+        rightArray.push({ x: lastPoint.x, y: lastPoint.y });
 
         // Create Bezier paths
         let leftBezier = Shapes.CreateBezierPathPCOnly(leftArray, 70);
@@ -440,44 +408,54 @@ export class CounterAttack {
 
         result.addRing(ring);
 
-        // Add CATK lettering near the arrow head with 2D-safe rings
+
+        // Add CATK lettering near the arrow head via helper
+
+        var midPt = GeoTools.getMidPoint(pts[pts.length - 2], lastPoint);
+        var indexL = Math.round(leftArray.length / pts.length);
+        var indexR = Math.round(rightArray.length / pts.length);
+        var cLenLimit;
+
+        var baseLineLen = GeoTools._2PtLen(leftArray[indexL], rightArray[indexR]) / pts.length;
+        cLenLimit = baseLineLen / 2;
+        if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+        this.addCatkSafeRings(result, midPt, baseLineLen);
+
+
+
+        return result;
+    }
+
+
+    /**
+     * Add CATK lettering using many tiny 2D-safe rings to avoid auto-closing artifacts
+     */
+    private addCatkSafeRings(target: Polygon, center: Point, baseLineLen: number): void {
         try {
             const spatialReference = this.view.spatialReference;
-            const midPt = GeoTools.getMidPoint(pts[Math.max(0, pts.length - 2)], lastPoint);
-            const indexL = Math.max(0, Math.round(leftBezier.length / Math.max(1, pts.length)) - 1);
-            const indexR = Math.max(0, Math.round(rightBezier.length / Math.max(1, pts.length)) - 1);
-            const baseLineLen = GeoTools._2PtLen(
-                new Point({ x: leftBezier[indexL].x, y: leftBezier[indexL].y, spatialReference }),
-                new Point({ x: rightBezier[indexR].x, y: rightBezier[indexR].y, spatialReference })
-            ) / Math.max(1, pts.length);
             let cLenLimit = baseLineLen / 2;
             if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-            const catkRings = Shapes.CATK(midPt.x, midPt.y, cLenLimit, spatialReference);
-            if (catkRings && Array.isArray(catkRings)) {
-                const eps = 1e-6;
-                for (let j = 0; j <= catkRings.length - 1; j++) {
-                    const stroke = catkRings[j];
-                    if (stroke && Array.isArray(stroke) && stroke.length > 1) {
-                        for (let i = 0; i < stroke.length - 1; i++) {
-                            const a = stroke[i];
-                            const b = stroke[i + 1];
-                            const ringSeg: number[][] = [];
-                            ringSeg.push([a.x, a.y]);
-                            ringSeg.push([b.x, b.y]);
-                            ringSeg.push([b.x + eps, b.y + eps]);
-                            ringSeg.push([a.x, a.y]); // close ring
-                            result.addRing(ringSeg);
-                        }
-                    }
+            const catkRings = Shapes.CATK(center.x, center.y, cLenLimit, spatialReference);
+            if (!catkRings || !Array.isArray(catkRings)) return;
+            const eps = 1e-6;
+            for (let s = 0; s < catkRings.length; s++) {
+                const stroke = catkRings[s];
+                if (!stroke || !Array.isArray(stroke) || stroke.length <= 1) continue;
+                for (let i = 0; i < stroke.length - 1; i++) {
+                    const a = stroke[i];
+                    const b = stroke[i + 1];
+                    const ringSeg: number[][] = [];
+                    ringSeg.push([a.x, a.y]);
+                    ringSeg.push([b.x, b.y]);
+                    ringSeg.push([b.x + eps, b.y + eps]);
+                    ringSeg.push([a.x, a.y]);
+                    target.addRing(ringSeg);
                 }
             }
         } catch {
             // ignore CATK failures
         }
-
-        return result;
     }
-
 
 
 
