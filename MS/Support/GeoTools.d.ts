@@ -155,9 +155,40 @@ export declare class GeoTools {
      */
     static _fracturePts(startPt: Point, endPoint: Point, gapLen: number, spatialReference: SpatialReference): any;
     /**
+     * Fracture consecutive segments defined by points with given gap length
+     * Returns a polyline containing fractured paths and an array of midPoints info
+     */
+    static _fracture(points: Point[], gapLen: number, spatialReference: SpatialReference): {
+        geometry: Polyline;
+        midPoints: Array<{
+            midPt: Point;
+            len: number;
+        }>;
+    };
+    /**
      * Get centroid of points
      */
     static getCenteroid(pts: Point[], option: number): Point;
+    /**
+     * Create arrow head path
+     */
+    static CreateArrowHeadPathEx(pt1: {
+        x: number;
+        y: number;
+    }, candidatePt: Point, pt2: {
+        x: number;
+        y: number;
+    }, totalLen: number, headPercentage: number, headAngle: number): {
+        x: number;
+        y: number;
+    }[];
+    static calculateAngle(fromPt: Point | {
+        x: number;
+        y: number;
+    }, toPt: Point | {
+        x: number;
+        y: number;
+    }): number;
     /**
      * Calculate vertex angles for a point collection
      */
@@ -172,5 +203,9 @@ export declare class GeoTools {
         x: number;
         y: number;
     }>, startIndex: number): number;
+    /**
+     * Calculate arrow flanks length for attack by fire position
+     */
+    static ArrowFlanksLen(mainLength: number, baseLength: number): number;
 }
 export default GeoTools;

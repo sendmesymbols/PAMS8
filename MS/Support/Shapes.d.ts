@@ -1,6 +1,8 @@
 import Polyline from "@arcgis/core/geometry/Polyline";
 import Point from "@arcgis/core/geometry/Point";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
+import DrawEssentials from "./DrawEssentials";
+import Polygon from "@arcgis/core/geometry/Polygon";
 interface PointLike {
     x: number;
     y: number;
@@ -49,6 +51,10 @@ declare class Shapes {
      */
     static createA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[];
     /**
+     * Create letter A as separate strokes to avoid auto-closing
+     */
+    static createAStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    /**
      * Create letter L
      */
     static createL(dx: number, dy: number, dr: number, sp: SpatialReference): Point[];
@@ -89,6 +95,10 @@ declare class Shapes {
      */
     static createS(dx: number, dy: number, dr: number, sp: SpatialReference): Point[];
     /**
+     * Create letter S as separate strokes to avoid auto-closing
+     */
+    static createSStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    /**
      * Create letter O
      */
     static createO(dx: number, dy: number, dr: number, sp: SpatialReference): Point[];
@@ -121,6 +131,10 @@ declare class Shapes {
      */
     static createF(dx: number, dy: number, dr: number, sp: SpatialReference): Point[];
     /**
+     * Create letter F as separate strokes to avoid auto-closing
+     */
+    static createFStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    /**
      * Create letter N
      */
     static createN(dx: number, dy: number, dr: number, sp: SpatialReference): Point[];
@@ -147,6 +161,8 @@ declare class Shapes {
     static createTAI(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createZOR(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createFAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createTStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createKStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createFUP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createDAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createOBJ(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
@@ -172,17 +188,13 @@ declare class Shapes {
     static CATK(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createDash(dx: number, dy: number, dr: number, sp: SpatialReference): Point[];
     /**
-     * Create arrow head
-     */
-    static arrowHead(candidatePoint: Point, length: number, angle: number): Point[];
-    /**
      * Create backward arrow head
      */
     static arrowHeadBackward(candidatePoint: Point, length: number, angle: number): Point[];
     /**
      * Create extended arrow head path
      */
-    static CreateArrowHeadPathEx(pt1: Point, candidatePt: Point, pt2: Point, totalLen: number, headPercentage: number, headAngle: number, straight?: boolean): PointLike[];
+    static CreateArrowHeadPathEx(pt1: Point | PointLike, candidatePt: Point, pt2: Point | PointLike, totalLen: number, headPercentage: number, headAngle: number, straight?: boolean): PointLike[];
     static CreateBezierPathPCOnly(pointCollection: Point[], numberOfPts: number): Point[];
     /**
      * Rotation utility methods
@@ -204,5 +216,25 @@ declare class Shapes {
     private static toDegrees;
     private static toRad;
     private static twoPtsAngle;
+    /**
+     * Create Bezier curve symbol
+     */
+    static createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference): Polygon;
+    /**
+     * Create polygon symbol
+     */
+    static createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference): Polygon;
+    /**
+     * Create rectangle symbol
+     */
+    static createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference): Polygon;
+    /**
+     * Create perfect ellipse symbol
+     */
+    static createSymbolByPerfectEllipse(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, view: any): Polygon;
+    /**
+     * Create simple ellipse as fallback
+     */
+    static createSimpleEllipse(centerPoint: Point, radiusPoint: Point, spatialReference: SpatialReference): Polygon;
 }
 export default Shapes;

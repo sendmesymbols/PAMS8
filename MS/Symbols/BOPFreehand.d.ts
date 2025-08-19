@@ -68,30 +68,6 @@ export declare class BOPFreehand {
      */
     private createSymbol;
     /**
-     * Create symbol using Bezier curve
-     */
-    private createSymbolByBCurve;
-    /**
-     * Create symbol using polygon
-     */
-    private createSymbolByPolygon;
-    /**
-     * Create symbol using rectangle
-     */
-    private createSymbolByRect;
-    /**
-     * Create symbol using perfect ellipse
-     */
-    private createSymbolByPerfectEllipse;
-    /**
-     * Create fallback ellipse when Shapes utility is not available
-     */
-    private createFallbackEllipse;
-    /**
-     * Create Bezier path (fallback without TweenMax)
-     */
-    private CreateBezierPath;
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp;

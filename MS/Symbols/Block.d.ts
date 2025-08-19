@@ -91,29 +91,9 @@ export declare class Block {
      */
     private fracture;
     /**
-     * Create "B" markers
-     */
-    private createB;
-    /**
-     * Calculate angle in radians
-     */
-    private angleInRadians;
-    /**
      * Calculate distance between two points
      */
     private calculateDistance;
-    /**
-     * Calculate angle for two points relationship
-     */
-    private calculateAngle;
-    /**
-     * Determine relationship between two points
-     */
-    private twoPtsRelationship;
-    /**
-     * Get midpoint between two points
-     */
-    private getMidPoint;
     /**
      * Get baseline points
      */

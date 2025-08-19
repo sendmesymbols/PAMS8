@@ -8,6 +8,7 @@ export interface BtleHndOvrLnOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polyline;
     opacity?: number;
+    DRAW_TYPE?: number;
     [key: string]: any;
 }
 /**
@@ -26,6 +27,7 @@ export declare class BtleHndOvrLn {
     private _lineSym;
     private _points;
     private _geometryType;
+    private _drawType;
     private amplifier;
     private _opacity;
     private isDrawing;
@@ -67,6 +69,14 @@ export declare class BtleHndOvrLn {
      * Create symbol geometry from DrawEssentials
      */
     private createSymbol;
+    /**
+     * Create symbol by straight line (draw type 1)
+     */
+    private createSymbolByStraightLine;
+    /**
+     * Create symbol by bezier line (draw type 2)
+     */
+    private createSymbolByLine;
     /**
      * Add "BHOL" markers at both ends of the line
      */

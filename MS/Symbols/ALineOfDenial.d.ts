@@ -8,6 +8,7 @@ export interface ALineOfDenialOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polyline;
     opacity?: number;
+    DRAW_TYPE?: number;
     [key: string]: any;
 }
 /**
@@ -25,6 +26,7 @@ export declare class ALineOfDenial {
     private _lineSym;
     private _points;
     private _geometryType;
+    private _drawType;
     private _opacity;
     private amplifier;
     private isDrawing;
@@ -66,6 +68,18 @@ export declare class ALineOfDenial {
      * Create symbol geometry from DrawEssentials
      */
     private createSymbol;
+    /**
+     * Create symbol by straight line (draw type 1)
+     */
+    private createSymbolByStraightLine;
+    /**
+     * Create symbol by bezier line (draw type 2)
+     */
+    private createSymbolByLine;
+    /**
+     * Add ALD markers at both ends of the line
+     */
+    private addALDMarkers;
     /**
      * Clean up drawing state and finalize
      */

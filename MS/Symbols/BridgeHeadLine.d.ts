@@ -71,10 +71,10 @@ export declare class BridgeHeadLine {
      * Create symbol using curved line
      */
     private createSymbolByLine;
+    private createSymbolByStraightLine;
     /**
      * Create Bezier path (fallback without TweenMax)
      */
-    private CreateBezierPath;
     /**
      * Add "BL" markers at both ends of the line
      */
@@ -82,7 +82,6 @@ export declare class BridgeHeadLine {
     /**
      * Create simple "BL" text as fallback
      */
-    private createSimpleBL;
     /**
      * Utility method to calculate distance
      */

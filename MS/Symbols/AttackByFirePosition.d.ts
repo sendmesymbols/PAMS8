@@ -31,11 +31,9 @@ export declare class AttackByFirePosition {
     private _lineSym;
     private _points;
     private _baseLinePts;
-    private _geometryType;
     private amplifier;
     private backLineDist;
     private backLineAngle;
-    private isDrawing;
     private tempGraphic;
     private clickHandler;
     private doubleClickHandler;

@@ -78,10 +78,6 @@ export declare class FreehandSupportingAttack {
      */
     private createComplexArrow;
     /**
-     * Create arrow head path
-     */
-    private CreateArrowHeadPathEx;
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp;

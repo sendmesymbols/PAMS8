@@ -69,40 +69,6 @@ export declare class FreehandAreaFilled {
      */
     private createSymbol;
     /**
-     * Create Bezier curve symbol
-     */
-    private createSymbolByBCurve;
-    /**
-     * Create polygon symbol
-     */
-    private createSymbolByPolygon;
-    /**
-     * Create rectangle symbol
-     */
-    private createSymbolByRect;
-    /**
-     * Create perfect ellipse symbol
-     */
-    private createSymbolByPerfectEllipse;
-    /**
-     * Create simple ellipse as fallback
-     */
-    private createSimpleEllipse;
-    /**
-     * Create Bezier path from points
-     * Note: This is a simplified implementation without TweenMax
-     */
-    private CreateBezierPath;
-    /**
-     * Remove duplicate consecutive points
-     */
-    private removeDuplicatePoints;
-    /**
-     * Calculate Bezier curve point at parameter t
-     * Simplified implementation for multiple control points
-     */
-    private calculateBezierPoint;
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp;

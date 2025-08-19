@@ -26,7 +26,6 @@ export declare class AvenueOfApchs {
     private symGeometricType;
     private _lineSym;
     private _points;
-    private _geometryType;
     private amplifier;
     private _tailFactor;
     private _headPercentage;
@@ -89,7 +88,6 @@ export declare class AvenueOfApchs {
     /**
      * Create Bezier path for point collection only (fallback)
      */
-    private CreateBezierPathPCOnly;
     /**
      * Calculate angle between two points relative to a candidate point
      */

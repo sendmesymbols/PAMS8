@@ -49,10 +49,6 @@ export declare class AntiPersonnelMineDirEffct {
     private _onMouseMoveHandler;
     private createDrawEssentials;
     private createSymbol;
-    private createSymbolByBCurve;
-    private createSymbolByPolygon;
-    private createSymbolByRect;
-    private CreateBezierPath;
     private cleanUp;
     private __drawEnd;
     private __onDrawEnd;

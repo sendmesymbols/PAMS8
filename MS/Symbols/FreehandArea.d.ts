@@ -68,26 +68,6 @@ export declare class FreehandArea {
      */
     private createSymbol;
     /**
-     * Create Bezier curve symbol
-     */
-    private createSymbolByBCurve;
-    /**
-     * Create polygon symbol
-     */
-    private createSymbolByPolygon;
-    /**
-     * Create rectangle symbol
-     */
-    private createSymbolByRect;
-    /**
-     * Create perfect ellipse symbol
-     */
-    private createSymbolByPerfectEllipse;
-    /**
-     * Create simple ellipse as fallback
-     */
-    private createSimpleEllipse;
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp;

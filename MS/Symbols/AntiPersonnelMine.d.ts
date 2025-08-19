@@ -74,22 +74,6 @@ export declare class AntiPersonnelMine {
      */
     private createSymbol;
     /**
-     * Create symbol using Bezier curve
-     */
-    private createSymbolByBCurve;
-    /**
-     * Create symbol using polygon
-     */
-    private createSymbolByPolygon;
-    /**
-     * Create symbol using rectangle
-     */
-    private createSymbolByRect;
-    /**
-     * Create Bezier path (fallback without TweenMax)
-     */
-    private CreateBezierPath;
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp;

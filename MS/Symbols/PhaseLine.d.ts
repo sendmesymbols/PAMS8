@@ -68,6 +68,10 @@ export declare class PhaseLine {
      */
     private createSymbol;
     /**
+     * Add PL markers at both ends of the line
+     */
+    private addPLMarkers;
+    /**
      * Create symbol by straight line (draw type 1)
      */
     private createSymbolByStraightLine;

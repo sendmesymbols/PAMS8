@@ -68,29 +68,9 @@ export declare class BdeAdmArea {
      */
     private createSymbol;
     /**
-     * Create symbol using Bezier curve
-     */
-    private createSymbolByBCurve;
-    /**
-     * Create symbol using polygon
-     */
-    private createSymbolByPolygon;
-    /**
-     * Create symbol using rectangle
-     */
-    private createSymbolByRect;
-    /**
-     * Create Bezier path (fallback without TweenMax)
-     */
-    private CreateBezierPath;
-    /**
      * Create inner text markers for Brigade Administrative Area using createBAA
      */
     private createInnerText;
-    /**
-     * Create simple BAA text as fallback
-     */
-    private createSimpleBAA;
     /**
      * Utility method to calculate distance
      */

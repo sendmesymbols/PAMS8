@@ -83,18 +83,6 @@ export declare class Breach {
      */
     private createSymbol;
     /**
-     * Create fracture baseline pattern
-     */
-    private createFractureBaseline;
-    /**
-     * Create fracture points pattern
-     */
-    private fracturePts;
-    /**
-     * Create "B" marker
-     */
-    private createBMarker;
-    /**
      * Create arrow flap
      */
     private createArrowFlap;
@@ -105,10 +93,7 @@ export declare class Breach {
     /**
      * Utility methods
      */
-    private getMidPoint;
     private calculateDistance;
-    private calculateAngle;
-    private twoPtsRelationShip;
     /**
      * Get baseline points
      */

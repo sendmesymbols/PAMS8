@@ -68,29 +68,9 @@ export declare class AttackPosition {
      */
     private createSymbol;
     /**
-     * Create symbol using Bezier curve
-     */
-    private createSymbolByBCurve;
-    /**
-     * Create symbol using polygon
-     */
-    private createSymbolByPolygon;
-    /**
-     * Create symbol using rectangle
-     */
-    private createSymbolByRect;
-    /**
-     * Create Bezier path (fallback without TweenMax)
-     */
-    private CreateBezierPath;
-    /**
      * Create inner text markers for Attack Position using CATK
      */
     private createInnerText;
-    /**
-     * Create simple CATK text as fallback
-     */
-    private createSimpleCATK;
     /**
      * Utility method to calculate distance
      */

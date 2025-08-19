@@ -25,7 +25,6 @@ export declare class FreehandCloseSupportingAttack {
     private symGeometricType;
     private _lineSym;
     private _points;
-    private _geometryType;
     private _tailFactor;
     private _headPercentage;
     private amplifier;
@@ -76,20 +75,6 @@ export declare class FreehandCloseSupportingAttack {
      * Create complex arrow for multiple points
      */
     private createComplexArrow;
-    /**
-     * Create arrow head path
-     */
-    private CreateArrowHeadPathEx;
-    /**
-     * Utility methods
-     */
-    private calculateDistance;
-    private calculateAngle;
-    private getTwoPointsRelationship;
-    private calculateVertexAngles;
-    private calculatePathLength;
-    private createSmoothPath;
-    private interpolatePoints;
     /**
      * Clean up drawing state and finalize
      */

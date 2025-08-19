@@ -1,4 +1,5 @@
 import Point from "@arcgis/core/geometry/Point";
+import Polyline from "@arcgis/core/geometry/Polyline";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
@@ -10,8 +11,8 @@ export interface ClearOptions {
     BASE_LN_PTS?: {
         startPt: Point;
         endPt: Point;
-    };
-    GEOM?: Polygon;
+    } | any;
+    GEOM?: Polyline | Polygon | number[][][];
     [key: string]: any;
 }
 /**
