@@ -1076,36 +1076,11 @@ class Shapes {
         return path;
     }
 
-    /**
-     * Create arrow head for attack by fire positions
-     */
-    static arrowHead(candidatePoint: Point, length: number, angle: number): Point[] {
-        const path: Point[] = [];
+    // (Removed duplicate arrowHead implementation that used GeoTools.toDegrees/toRad)
 
-        angle += 15;
-        const angle1 = GeoTools.toDegrees(angle);
-        angle -= 30;
-        const angle2 = GeoTools.toDegrees(angle);
-
-        const rightWing = new Point({
-            x: candidatePoint.x + length * Math.cos(GeoTools.toRad(angle1)),
-            y: candidatePoint.y + length * Math.sin(GeoTools.toRad(angle1)),
-            spatialReference: candidatePoint.spatialReference
-        });
-
-        const leftWing = new Point({
-            x: candidatePoint.x + length * Math.cos(GeoTools.toRad(angle2)),
-            y: candidatePoint.y + length * Math.sin(GeoTools.toRad(angle2)),
-            spatialReference: candidatePoint.spatialReference
-        });
-
-        path.push(rightWing, candidatePoint, leftWing);
-        return path;
-    }
-
-    static CreateBezierPathPCOnly(pointCollection: Point[], numberOfPts: number): Point[] {
+    static CreateBezierPathPCOnly(pointCollection: { x: number; y: number }[], numberOfPts: number): { x: number; y: number }[] {
         // Initial position set to the first point in the collection
-        let position: Point = {
+        const position: { x: number; y: number } = {
             x: pointCollection[0].x,
             y: pointCollection[0].y
         };
@@ -1115,25 +1090,146 @@ class Shapes {
             while (
                 pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x &&
                 pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y
-                ) {
+            ) {
                 pointCollection.pop();
             }
         }
 
         // Tween the position based on the pointCollection
-        const tween = window.TweenMax.to(position, numberOfPts, {
+        const tween = (window as any).TweenMax.to(position, numberOfPts, {
             bezier: pointCollection,
-            ease: window.Linear.easeNone
+            ease: (window as any).Linear.easeNone
         });
 
         // Store the computed path
-        const path: Point[] = [];
+        const path: { x: number; y: number }[] = [];
         for (let i = 0; i <= numberOfPts; i++) {
             tween.time(i);
             path.push({ x: position.x, y: position.y });
         }
 
         return path;
+    }
+
+    // Shared helpers moved from symbol classes
+    static createEllipsePath(center: { x: number; y: number }, width: number, height: number, numberOfPoints: number): number[][] {
+        const paths: number[][] = [];
+        const angleStep = (2 * Math.PI) / numberOfPoints;
+        for (let i = 0; i <= numberOfPoints; i++) {
+            const angle = i * angleStep;
+            const x = center.x + (width / 2) * Math.cos(angle);
+            const y = center.y + (height / 2) * Math.sin(angle);
+            paths.push([x, y]);
+        }
+        return paths;
+    }
+
+    static getClosestPointOnLinesFromPairs(pXy: { x: number; y: number }, aXys: number[][]): { x: number; y: number; index: number; fTo: number; fFrom: number } {
+        let minDist: number | null = null;
+        let fTo = 0;
+        let fFrom = 0;
+        let x = 0;
+        let y = 0;
+        let bestIndex = 0;
+
+        if (aXys.length > 1) {
+            for (let n = 1; n < aXys.length; n++) {
+                let dist: number;
+                if (aXys[n][0] !== aXys[n - 1][0]) {
+                    const a = (aXys[n][1] - aXys[n - 1][1]) / (aXys[n][0] - aXys[n - 1][0]);
+                    const b = aXys[n][1] - a * aXys[n][0];
+                    dist = Math.abs(a * pXy.x + b - pXy.y) / Math.sqrt(a * a + 1);
+                } else {
+                    dist = Math.abs(pXy.x - aXys[n][0]);
+                }
+
+                const rl2 = Math.pow(aXys[n][1] - aXys[n - 1][1], 2) + Math.pow(aXys[n][0] - aXys[n - 1][0], 2);
+                const ln2 = Math.pow(aXys[n][1] - pXy.y, 2) + Math.pow(aXys[n][0] - pXy.x, 2);
+                const lnm12 = Math.pow(aXys[n - 1][1] - pXy.y, 2) + Math.pow(aXys[n - 1][0] - pXy.x, 2);
+                const dist2 = Math.pow(dist, 2);
+                const calcrl2 = ln2 - dist2 + lnm12 - dist2;
+
+                if (calcrl2 > rl2) {
+                    dist = Math.sqrt(Math.min(ln2, lnm12));
+                }
+
+                if (minDist === null || minDist > dist) {
+                    if (calcrl2 > rl2) {
+                        if (lnm12 < ln2) {
+                            fTo = 0; fFrom = 1;
+                        } else {
+                            fFrom = 0; fTo = 1;
+                        }
+                    } else {
+                        fTo = Math.sqrt(lnm12 - dist2) / Math.sqrt(rl2);
+                        fFrom = Math.sqrt(ln2 - dist2) / Math.sqrt(rl2);
+                    }
+                    minDist = dist;
+                    bestIndex = n;
+                }
+            }
+
+            const dx = aXys[bestIndex - 1][0] - aXys[bestIndex][0];
+            const dy = aXys[bestIndex - 1][1] - aXys[bestIndex][1];
+            x = aXys[bestIndex - 1][0] - (dx * fTo);
+            y = aXys[bestIndex - 1][1] - (dy * fTo);
+        }
+
+        return { x, y, index: bestIndex, fTo, fFrom };
+    }
+
+    static getClosestPointOnLinesFromPoints(pXy: { x: number; y: number }, aXys: { x: number; y: number }[]): { x: number; y: number; index: number; fTo: number; fFrom: number } {
+        let minDist: number | null = null;
+        let fTo = 0;
+        let fFrom = 0;
+        let x = 0;
+        let y = 0;
+        let bestIndex = 0;
+
+        if (aXys.length > 1) {
+            for (let n = 1; n < aXys.length; n++) {
+                let dist: number;
+                if (aXys[n].x !== aXys[n - 1].x) {
+                    const a = (aXys[n].y - aXys[n - 1].y) / (aXys[n].x - aXys[n - 1].x);
+                    const b = aXys[n].y - a * aXys[n].x;
+                    dist = Math.abs(a * pXy.x + b - pXy.y) / Math.sqrt(a * a + 1);
+                } else {
+                    dist = Math.abs(pXy.x - aXys[n].x);
+                }
+
+                const rl2 = Math.pow(aXys[n].y - aXys[n - 1].y, 2) + Math.pow(aXys[n].x - aXys[n - 1].x, 2);
+                const ln2 = Math.pow(aXys[n].y - pXy.y, 2) + Math.pow(aXys[n].x - pXy.x, 2);
+                const lnm12 = Math.pow(aXys[n - 1].y - pXy.y, 2) + Math.pow(aXys[n - 1].x - pXy.x, 2);
+                const dist2 = Math.pow(dist, 2);
+                const calcrl2 = ln2 - dist2 + lnm12 - dist2;
+
+                if (calcrl2 > rl2) {
+                    dist = Math.sqrt(Math.min(ln2, lnm12));
+                }
+
+                if (minDist === null || minDist > dist) {
+                    if (calcrl2 > rl2) {
+                        if (lnm12 < ln2) {
+                            fTo = 0; fFrom = 1;
+                        } else {
+                            fFrom = 0; fTo = 1;
+                        }
+                    } else {
+                        fTo = Math.sqrt(lnm12 - dist2) / Math.sqrt(rl2);
+                        fFrom = Math.sqrt(ln2 - dist2) / Math.sqrt(rl2);
+                    }
+                    minDist = dist;
+                    bestIndex = n;
+                }
+            }
+
+            const dx = aXys[bestIndex - 1].x - aXys[bestIndex].x;
+            const dy = aXys[bestIndex - 1].y - aXys[bestIndex].y;
+            x = aXys[bestIndex - 1].x - (dx * fTo);
+            y = aXys[bestIndex - 1].y - (dy * fTo);
+        }
+
+        return { x, y, index: bestIndex, fTo, fFrom };
     }
 
     /**
@@ -1168,7 +1264,7 @@ class Shapes {
      */
 
 
-    static createEchelon(ech: string, pt: Point, radius: number, angle?: number): Point[] {
+    static createEchelon(ech: string, pt: Point, radius: number, angle?: number): Point[] | Point[][] {
 
         var result :any = [];
         switch (ech) {
@@ -1211,7 +1307,7 @@ class Shapes {
         }
 
         if (angle !== undefined) {
-            var paths = [];
+            var paths: Point[][] = [];
             for (var r = 0; r < result.length; r++) {
                 paths.push(this.rotate(result[r], pt.x, pt.y, angle));
             }
@@ -1245,9 +1341,9 @@ class Shapes {
         const position = { x: points[0].x, y: points[0].y };
 
         // Create tween for bezier curve
-        const tween = window.TweenMax.to(position, numberOfPts, {
+        const tween = (window as any).TweenMax.to(position, numberOfPts, {
             bezier: points,
-            ease: window.Linear.easeNone,
+            ease: (window as any).Linear.easeNone,
         });
 
         // Interpolate bezier points
@@ -1283,7 +1379,7 @@ class Shapes {
     /**
      * Create Bezier curve symbol
      */
-    static createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference:SpatialReference): Polygon {
+    static createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference:SpatialReference): Polyline | Polygon {
         const tempArray: { x: number, y: number }[] = [];
         pts.forEach(pt => {
             tempArray.push({ x: pt.x, y: pt.y });
@@ -1363,7 +1459,7 @@ class Shapes {
 
         if (!firstPtScreen || !lastPtScreen) {
             // Fallback to simple ellipse if screen conversion fails
-            return this.createSimpleEllipse(firstPoint, lastPoint);
+            return this.createSimpleEllipse(firstPoint, lastPoint, firstPoint.spatialReference);
         }
 
         const widthScreen = Math.abs(lastPtScreen.x - firstPtScreen.x);
@@ -1392,11 +1488,11 @@ class Shapes {
                 result.addRing(mapPath);
             } catch (e) {
                 // Fallback to simple circle if Shapes utility fails
-                return this.createSimpleEllipse(firstPoint, lastPoint);
+                return this.createSimpleEllipse(firstPoint, lastPoint, firstPoint.spatialReference);
             }
         } else {
             // Fallback to simple circle
-            return this.createSimpleEllipse(firstPoint, lastPoint);
+            return this.createSimpleEllipse(firstPoint, lastPoint, firstPoint.spatialReference);
         }
 
         return result;
@@ -1423,6 +1519,166 @@ class Shapes {
         }
 
         result.addRing(points);
+        return result;
+    }
+
+    // Polyline symbol creators moved from symbol classes
+    static createPolylineByLine(
+        pts: Point[],
+        firstPoint: Point,
+        lastPoint: Point,
+        drawEssentials: DrawEssentials,
+        spatialReference: SpatialReference
+    ): Polyline {
+        const result = new Polyline({ spatialReference });
+        if (pts.length === 2) {
+            result.addPath([[lastPoint.x, lastPoint.y], [firstPoint.x, firstPoint.y]]);
+        } else if (pts.length > 2) {
+            const tempArray = pts.map(pt => ({ x: pt.x, y: pt.y }));
+            const bezierPoints = Shapes.CreateBezierPathPCOnly(tempArray, 100);
+            const bezierPath = bezierPoints.map(pt => [pt.x, pt.y]);
+            result.addPath(bezierPath);
+
+            const lastPt = bezierPath[bezierPath.length - 1];
+            const firstPt = bezierPath[0];
+            const midPt = GeoTools.getMidPoint(
+                new Point({ x: lastPt[0], y: lastPt[1], spatialReference }),
+                new Point({ x: firstPt[0], y: firstPt[1], spatialReference })
+            );
+            const baseLineLen = GeoTools._2PtLen(
+                new Point({ x: lastPt[0], y: lastPt[1], spatialReference }),
+                new Point({ x: firstPt[0], y: firstPt[1], spatialReference })
+            );
+            let cLenLimit = baseLineLen / 10;
+            if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+
+            const echelons = Shapes.createEchelon(
+                (drawEssentials as any).ECHELON || 0,
+                midPt,
+                cLenLimit,
+                GeoTools.twoPtsAngle(firstPoint, lastPoint)
+            );
+
+            const echelonPaths = Array.isArray((echelons as any)[0]) ? (echelons as any) : [echelons as any];
+            for (const path of echelonPaths) {
+                const pathPairs = (path as Point[]).map(p => [p.x, p.y]);
+                result.addPath(pathPairs);
+            }
+        }
+        return result;
+    }
+
+    static createPolylineByCloseLine(
+        pts: Point[],
+        firstPoint: Point,
+        lastPoint: Point,
+        drawEssentials: DrawEssentials,
+        spatialReference: SpatialReference,
+        faceGapConst: number
+    ): Polyline {
+        const result = new Polyline({ spatialReference });
+        if (pts.length === 2) {
+            result.addPath([[lastPoint.x, lastPoint.y], [firstPoint.x, firstPoint.y]]);
+        } else if (pts.length > 2) {
+            const tempArray = pts.map(pt => ({ x: pt.x, y: pt.y }));
+            tempArray.push({ x: firstPoint.x, y: firstPoint.y });
+            const bezierPoints = Shapes.CreateBezierPathPCOnly(tempArray, 100);
+            const paths = bezierPoints.map(pt => [pt.x, pt.y]);
+            const midPt = Shapes.getClosestPointOnLinesFromPairs({ x: lastPoint.x, y: lastPoint.y }, paths);
+
+            const faceGap = GeoTools.setDefault(drawEssentials, "FACE_GAP", faceGapConst);
+            const frstEndPIndx = Math.max(0, midPt.index - faceGapConst - Math.floor(faceGap / 2));
+            const secStartPIndx = Math.min(100, midPt.index + faceGapConst + Math.floor(faceGap / 2));
+
+            if (frstEndPIndx > 0) {
+                result.addPath(paths.slice(0, frstEndPIndx));
+            }
+            if (secStartPIndx < paths.length) {
+                result.addPath(paths.slice(secStartPIndx));
+            }
+
+            if (frstEndPIndx < paths.length && secStartPIndx < paths.length) {
+                const p1 = new Point({ x: paths[frstEndPIndx][0], y: paths[frstEndPIndx][1], spatialReference });
+                const p2 = new Point({ x: paths[secStartPIndx][0], y: paths[secStartPIndx][1], spatialReference });
+                const baseLineLen = GeoTools._2PtLen(p1, p2);
+                let cLenLimit = baseLineLen / 10;
+                if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+
+                const midPointAsPoint = new Point({ x: midPt.x, y: midPt.y, spatialReference });
+                const echelons = Shapes.createEchelon(
+                    (drawEssentials as any).ECHELON || 0,
+                    midPointAsPoint,
+                    cLenLimit,
+                    GeoTools.twoPtsAngle(p1, p2)
+                );
+
+                const echelonPaths = Array.isArray((echelons as any)[0]) ? (echelons as any) : [echelons as any];
+                for (const path of echelonPaths) {
+                    const pathPairs = (path as Point[]).map(p => [p.x, p.y]);
+                    result.addPath(pathPairs);
+                }
+            }
+        }
+        return result;
+    }
+
+    static createPolylineByPerfectEllipse(
+        pts: Point[],
+        firstPoint: Point,
+        lastPoint: Point,
+        drawEssentials: DrawEssentials,
+        spatialReference: SpatialReference,
+        faceGapConstEllipse: number
+    ): Polyline {
+        const result = new Polyline({ spatialReference });
+        if (pts.length === 2) {
+            const center = { x: firstPoint.x, y: firstPoint.y };
+            const widthMap = Math.abs(lastPoint.x - firstPoint.x);
+            const heightMap = Math.abs(lastPoint.y - firstPoint.y);
+            const paths = Shapes.createEllipsePath(center, widthMap, heightMap, 60);
+            result.addPath(paths);
+        } else if (pts.length > 2) {
+            const secondPt = pts[1];
+            const center = { x: firstPoint.x, y: firstPoint.y };
+            const widthMap = Math.abs(secondPt.x - firstPoint.x);
+            const heightMap = Math.abs(secondPt.y - firstPoint.y);
+            const paths = Shapes.createEllipsePath(center, widthMap, heightMap, 60);
+            const ellipsePoints = paths.map(pt => ({ x: pt[0], y: pt[1] }));
+            const midPt = Shapes.getClosestPointOnLinesFromPoints({ x: lastPoint.x, y: lastPoint.y }, ellipsePoints);
+
+            const faceGap = GeoTools.setDefault(drawEssentials, "FACE_GAP", faceGapConstEllipse);
+            const frstEndPIndx = Math.max(0, midPt.index - faceGapConstEllipse - Math.floor(faceGap / 2));
+            const secStartPIndx = Math.min(60, midPt.index + faceGapConstEllipse + Math.floor(faceGap / 2));
+
+            if (frstEndPIndx > 0) {
+                result.addPath(paths.slice(0, frstEndPIndx));
+            }
+            if (secStartPIndx < paths.length) {
+                result.addPath(paths.slice(secStartPIndx));
+            }
+
+            if (frstEndPIndx < paths.length && secStartPIndx < paths.length) {
+                const p1 = new Point({ x: paths[frstEndPIndx][0], y: paths[frstEndPIndx][1], spatialReference });
+                const p2 = new Point({ x: paths[secStartPIndx][0], y: paths[secStartPIndx][1], spatialReference });
+                const baseLineLen = GeoTools._2PtLen(p1, p2);
+                let cLenLimit = baseLineLen / 10;
+                if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+
+                const midPointAsPoint = new Point({ x: midPt.x, y: midPt.y, spatialReference });
+                const echelons = Shapes.createEchelon(
+                    (drawEssentials as any).ECHELON || 0,
+                    midPointAsPoint,
+                    cLenLimit,
+                    GeoTools.twoPtsAngle(firstPoint, lastPoint)
+                );
+
+                const echelonPaths = Array.isArray((echelons as any)[0]) ? (echelons as any) : [echelons as any];
+                for (const path of echelonPaths) {
+                    const pathPairs = (path as Point[]).map(p => [p.x, p.y]);
+                    result.addPath(pathPairs);
+                }
+            }
+        }
         return result;
     }
 }

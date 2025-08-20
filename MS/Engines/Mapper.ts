@@ -152,7 +152,7 @@ import MainAttack from "../Symbols/MainAttack.ts";  //Fixed
 import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts"; //Fixed
 import Clear from "../Symbols/Clear.ts"; //Fixed
 import BattlePosition from "../Symbols/BattlePosition.ts"; //Fixed
-import CounterAttack from "../Symbols/CounterAttack.ts"; //Issue
+import CounterAttack from "../Symbols/CounterAttack.ts"; //Fixed
 import CounterAttkObj from "../Symbols/CounterAttkObj.ts"; //Fixed
 import CpenPosition from "../Symbols/CpenPosition.ts"; //Issue
 import FreehandMainAttackArrow from "../Symbols/FreehandMainAttackArrow.ts"; //Minor Issue
