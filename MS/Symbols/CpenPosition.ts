@@ -104,9 +104,12 @@ export class CpenPosition {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
                 try {
-                    this.tempGraphic.geometry = options.GEOM.clone();
+                    this.tempGraphic.geometry = new Polyline({
+                        paths: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
                 } catch (error) {
-                    console.error(this.symName, "Failed to assign Polyline geometry:", error);
+                    console.error(this.symName, "Failed to create Polyline geometry:", error);
                 }
             }
             
