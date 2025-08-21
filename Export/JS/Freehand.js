@@ -1,15 +1,4 @@
 $(document).ready(function () {
-    // Mapping of Standard Identity codes to descriptions
-    const standardIdentities = {
-        0: 'Pending',
-        1: 'Unknown',
-        2: 'Assumed Friend',
-        3: 'Friend',
-        4: 'Neutral',
-        5: 'Suspect/Joker',
-        6: 'Hostile/Faker'
-    };
-
     function buildSIDC(baseCode, identityIndex) {
         const symbolSet = baseCode.slice(0, 2);      // positions 5–6
         const symbolId = baseCode.slice(2);          // becomes positions 11–20 (padded)
@@ -28,13 +17,13 @@ $(document).ready(function () {
             + paddedEntityCode;                      // positions 11–20
     }
 
-    function renderSymbolImage(sidc) {
-        try {
-            var dataUrl = new MS.symbol(sidc).getMarker().asImage();
-            return $('<img>').attr('src', dataUrl).addClass('img-fluid').css({ maxHeight: '100px' });
-        } catch (e) {
-            return $('<span>').addClass('text-muted').text('N/A');
-        }
+    function renderControlMeasureSvg(symbolCode) {
+        var src = '../MS/Data/Preview/ControlMeasures/' + symbolCode + '.svg';
+        var $img = $('<img>').attr('src', src).addClass('img-fluid').css({ maxHeight: '200px' });
+        $img.on('error', function () {
+            $(this).replaceWith($('<span>').addClass('text-muted').text('N/A'));
+        });
+        return $img;
     }
 
     $.getJSON('../MS/Data/Symbols.json')
@@ -42,7 +31,8 @@ $(document).ready(function () {
             var $tbody = $('#symbols-tbody');
             var rowNumber = 1;
             Object.entries(symbolDefinitions).forEach(function ([symbolCode, symbolDef]) {
-                if (symbolDef && symbolDef.Class === 'TacticalPoint') {
+                if (symbolDef && symbolCode.startsWith("00")) {
+                    
                     var $tr = $('<tr>');
                     $('<td>').text(rowNumber++ +'.').appendTo($tr);
                     $('<td>').text(symbolDef.Name || '').appendTo($tr);
@@ -52,13 +42,10 @@ $(document).ready(function () {
                     // Function Code column = symbolId portion of the 8-char code
                     var functionCode = symbolCode.slice(2);
                     $('<td>').text(functionCode).appendTo($tr);
-                    for (let i = 0; i <= 6; i++) {
-                        var fullSIDC = buildSIDC(symbolCode, i);
-                        var $td = $('<td>').addClass('text-center');
-                        var $img = renderSymbolImage(fullSIDC);
-                        $td.append($img);
-                        $tr.append($td);
-                    }
+                    // Depiction column: load matching SVG from ControlMeasures
+                    var $depictionTd = $('<td>').addClass('text-center');
+                    $depictionTd.append(renderControlMeasureSvg(symbolCode));
+                    $tr.append($depictionTd);
                     $tbody.append($tr);
                 }
             });

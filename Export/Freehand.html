@@ -2,11 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Export Symbols - Tactical Point</title>
+    <title>Export Symbols - Freehand</title>
     <link href="CSS/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <style>
         #symbols-table td.col-name, #symbols-table th.col-name {
-            max-width: 200px;
+            max-width: 140px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Also constrain Name column by index to cover tbody cells without class */
+        #symbols-table th:nth-child(2),
+        #symbols-table td:nth-child(2) {
+            max-width: 140px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -16,14 +25,29 @@
             font-size: larger;
             font-weight: 600;
         }
+
+        /* Make the SVG/Depiction column wide */
+        #symbols-table th:nth-child(5),
+        #symbols-table td:nth-child(5) {
+            min-width: 520px;
+            width: 50%;
+        }
+
+        /* Ensure SVG images scale within the wider depiction column */
+        #symbols-table td:nth-child(5) img,
+        #symbols-table td:nth-child(5) svg {
+            max-width: 100%;
+            height: 800px;
+        }
     </style>
   <script src="JS/jquery.min.js"></script>
-  <script src="JS/TactPoint.js"></script>
+  <script src="JS/Freehand.js"></script>
 </head>
 <body>
     <div class="container-fluid py-4">
-        <h1 class="display-5 fw-semibold text-center mb-4">Tactical Point Symbols</h1>
-        <h6 class="text-center center mb-4 link-underline">Refer MIL Std 2525D for further rules including Color, Labeling, Modifiers and Amplifiers</h6>
+        <h1 class="display-5 fw-semibold text-center mb-4">Freehand Graphic Symbols</h1>
+        <h6 class="text-center center mb-4 link-underline">Static Depiction Only</h6>
+        <h6 class="text-center center mb-4 link-underline">Not in MIL Std 2525D</h6>
 
         <div class="table-responsive">
             <table class="table table-striped table-hover align-middle" id="symbols-table">
@@ -33,17 +57,8 @@
                         <th scope="col" rowspan="2" class="text-nowrap col-name">Name</th>
                         <th scope="col" rowspan="2" class="text-nowrap">SIDC</th>
                         <th scope="col" rowspan="2" class="text-nowrap">Function Code</th>
-                        <th scope="col" colspan="7" class="text-center">Symbol Depiction</th>
-                    </tr>
-                    <tr>
-                        <th class="text-nowrap">Pending</th>
-                        <th class="text-nowrap">Unknown</th>
-                        <th class="text-nowrap">Assumed Friend</th>
-                        <th class="text-nowrap">Friend</th>
-                        <th class="text-nowrap">Neutral</th>
-                        <th class="text-nowrap">Suspect/Joker</th>
-                        <th class="text-nowrap">Hostile/Faker</th>
-                    </tr>
+                        <th scope="col" colspan="1" class="text-center">Symbol Depiction</th>
+                    </tr>                    
                 </thead>
                 <tbody id="symbols-tbody">
                     <!-- Populated by JS -->
