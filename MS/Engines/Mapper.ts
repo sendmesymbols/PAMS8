@@ -154,7 +154,9 @@ import Clear from "../Symbols/Clear.ts"; //Fixed
 import BattlePosition from "../Symbols/BattlePosition.ts"; //Fixed
 import CounterAttack from "../Symbols/CounterAttack.ts"; //Fixed
 import CounterAttkObj from "../Symbols/CounterAttkObj.ts"; //Fixed
-import CpenPosition from "../Symbols/CpenPosition.ts"; //Issue
+import CpenPosition from "../Symbols/CpenPosition.ts"; //Fixed
+
+
 import FreehandMainAttackArrow from "../Symbols/FreehandMainAttackArrow.ts"; //Minor Issue
 import FreehandSemiCircle from "../Symbols/FreehandSemiCircle.ts";
 import FreehandSemiCircleFilled from "../Symbols/FreehandSemiCircleFilled.ts";
