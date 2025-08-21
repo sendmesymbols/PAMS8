@@ -44,7 +44,7 @@ $(document).ready(function () {
             Object.entries(symbolDefinitions).forEach(function ([symbolCode, symbolDef]) {
                 if (symbolDef && symbolDef.SymGeoType === 'FPoint') {
                     var $tr = $('<tr>');
-                    $('<td>').text(rowNumber++).appendTo($tr);
+                    $('<td>').text(rowNumber++ +'.').appendTo($tr);
                     $('<td>').text(symbolDef.Name || '').appendTo($tr);
                     // Default SIDC shown: use Friend (index 3)
                     var defaultSIDC = buildSIDC(symbolCode, 3);
