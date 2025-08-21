@@ -19,7 +19,7 @@ $(document).ready(function () {
 
     function renderControlMeasureSvg(symbolCode) {
         var src = '../MS/Data/Preview/ControlMeasures/' + symbolCode + '.svg';
-        var $img = $('<img>').attr('src', src).addClass('img-fluid').css({ maxHeight: '100px' });
+        var $img = $('<img>').attr('src', src).addClass('img-fluid').css({ maxHeight: '200px' });
         $img.on('error', function () {
             $(this).replaceWith($('<span>').addClass('text-muted').text('N/A'));
         });

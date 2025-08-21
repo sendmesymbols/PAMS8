@@ -695,7 +695,7 @@
     "10110212": {
         "Class": "UEISymbol",
         "Description": "",
-        "Name": "Ordinance",
+        "Name": "Ordnance",
         "Parameters": [{
                 "Name": "Size",
                 "default": "28",
@@ -19991,7 +19991,7 @@
     "40150115": {
         "Class": "UEISymbol",
         "Description": "",
-        "Name": "Hazard Materials Incident - Unexploded Ordinance",
+        "Name": "Hazard Materials Incident - Unexploded Ordnance",
         "Parameters": [{
                 "Name": "Size",
                 "default": "28",

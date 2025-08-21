@@ -6,7 +6,16 @@
     <link href="CSS/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <style>
         #symbols-table td.col-name, #symbols-table th.col-name {
-            max-width: 200px;
+            max-width: 140px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Also constrain Name column by index to cover tbody cells without class */
+        #symbols-table th:nth-child(2),
+        #symbols-table td:nth-child(2) {
+            max-width: 140px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -16,6 +25,20 @@
             font-size: larger;
             font-weight: 600;
         }
+
+        /* Make the SVG/Depiction column wide */
+        #symbols-table th:nth-child(5),
+        #symbols-table td:nth-child(5) {
+            min-width: 520px;
+            width: 50%;
+        }
+
+        /* Ensure SVG images scale within the wider depiction column */
+        #symbols-table td:nth-child(5) img,
+        #symbols-table td:nth-child(5) svg {
+            max-width: 100%;
+            height: 800px;
+        }
     </style>
   <script src="JS/jquery.min.js"></script>
   <script src="JS/TacticalGraphics.js"></script>
@@ -24,7 +47,7 @@
     <div class="container-fluid py-4">
         <h1 class="display-5 fw-semibold text-center mb-4">Tactical Graphic Symbols</h1>
         <h6 class="text-center center mb-4 link-underline">Static Depiction Only</h6>
-        <h6 class="text-center center mb-4 link-underline">Refer MIL Std - 2525 D for further rules including Color, Labeling Rules Modifiers and Amplifiers</h6>
+        <h6 class="text-center center mb-4 link-underline">Refer MIL Std 2525D for further rules including Color, Labeling Rules Modifiers and Amplifiers</h6>
 
         <div class="table-responsive">
             <table class="table table-striped table-hover align-middle" id="symbols-table">
