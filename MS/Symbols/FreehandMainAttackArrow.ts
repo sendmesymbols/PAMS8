@@ -89,10 +89,21 @@ export class FreehandMainAttackArrow {
 
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    if (options.GEOM instanceof Polygon) {
+                        this.tempGraphic.geometry = options.GEOM;
+                    } else {
+                        this.tempGraphic.geometry = new Polygon({
+                            rings: options.GEOM as number[][][],
+                            spatialReference: this.view.spatialReference
+                        });
+                    }
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(
@@ -289,13 +300,13 @@ export class FreehandMainAttackArrow {
     /**
      * Create simple arrow for 2 points or less
      */
-    private createSimpleArrow(pts: Point[]): Polygon {
+    private createSimpleArrow(pts: Point[], result: Polygon): Polygon {
         const firstPoint = pts[0];
         const lastPoint = pts[pts.length - 1];
 
         const len = GeoTools._2PtLen(firstPoint, lastPoint);
         let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
-        
+
         switch (GeoTools.twoPtsRelationShip(firstPoint, lastPoint)) {
             case "ne":
                 k += Math.PI / 2;
@@ -312,35 +323,37 @@ export class FreehandMainAttackArrow {
         }
 
         // Tail two points
-        const pt1 = { 
-            x: this._tailFactor * len * Math.cos(k) + firstPoint.x, 
-            y: this._tailFactor * len * Math.sin(k) + firstPoint.y 
+        const pt1 = {
+            x: this._tailFactor * len * Math.cos(k) + firstPoint.x,
+            y: this._tailFactor * len * Math.sin(k) + firstPoint.y
         };
-        const pt2 = { 
-            x: -1 * this._tailFactor * len * Math.cos(k) + firstPoint.x, 
-            y: -1 * this._tailFactor * len * Math.sin(k) + firstPoint.y 
-        };
-        
-        const partialLen = (1 - this._headPercentage) * len;
-        const p1 = { 
-            x: this._tailFactor * partialLen * Math.cos(k) + firstPoint.x, 
-            y: this._tailFactor * partialLen * Math.sin(k) + firstPoint.y 
-        };
-        const p2 = { 
-            x: -1 * this._tailFactor * partialLen * Math.cos(k) + firstPoint.x, 
-            y: -1 * this._tailFactor * partialLen * Math.sin(k) + firstPoint.y 
+        const pt2 = {
+            x: -1 * this._tailFactor * len * Math.cos(k) + firstPoint.x,
+            y: -1 * this._tailFactor * len * Math.sin(k) + firstPoint.y
         };
 
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        
+        const partialLen = (1 - this._headPercentage) * len;
+        const p1 = {
+            x: this._tailFactor * partialLen * Math.cos(k) + firstPoint.x,
+            y: this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
+        };
+        const p2 = {
+            x: -1 * this._tailFactor * partialLen * Math.cos(k) + firstPoint.x,
+            y: -1 * this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
+        };
+
         // Create main arrow ring
-        let ring: number[][] = [];
+        const ring: number[][] = [];
         ring.push([pt1.x, pt1.y]);
-        
+
         const values = this.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
-        values.rings.forEach(pt => ring.push([pt.x, pt.y]));
-        
+        const arrowHeadRing = values.rings.map(pt => [pt.x, pt.y]);
+        ring.push(...arrowHeadRing);
+
         ring.push([p2.x, p2.y]);
+
+        // Close the ring
+        ring.push([pt1.x, pt1.y]);
 
         result.addRing(ring);
 
@@ -352,15 +365,18 @@ export class FreehandMainAttackArrow {
         const angle = GeoTools.twoPtsAngle(midPt, lastPoint);
         const headBaseLen = len * this._headPercentage / 1.3;
 
-        const newCandidatePt = { 
-            x: midPt.x + headBaseLen * Math.cos(angle), 
-            y: midPt.y + headBaseLen * Math.sin(angle) 
+        const newCandidatePt = {
+            x: midPt.x + headBaseLen * Math.cos(angle),
+            y: midPt.y + headBaseLen * Math.sin(angle)
         };
 
-        const innerRing: number[][] = [];
-        innerRing.push([values.midPtLeft.x, values.midPtLeft.y]);
-        innerRing.push([newCandidatePt.x, newCandidatePt.y]);
-        innerRing.push([values.midPtRight.x, values.midPtRight.y]);
+        const innerRing: number[][] = [
+            [values.midPtLeft.x, values.midPtLeft.y],
+            [newCandidatePt.x, newCandidatePt.y],
+            [values.midPtRight.x, values.midPtRight.y],
+            [values.midPtLeft.x, values.midPtLeft.y] // Close ring
+        ];
+
         result.addRing(innerRing);
 
         return result;
@@ -369,11 +385,11 @@ export class FreehandMainAttackArrow {
     /**
      * Create complex arrow for multiple points
      */
-    private createComplexArrow(pts: Point[], drawEssentials: DrawEssentials): Polygon {
+    private createComplexArrow(pts: Point[], result: Polygon): Polygon {
         const leftArray: { x: number, y: number }[] = [];
         const rightArray: { x: number, y: number }[] = [];
         const lastPoint = pts[pts.length - 1];
-        
+
         const tempArray: { x: number, y: number }[] = [];
         pts.forEach(pt => {
             tempArray.push({ x: pt.x, y: pt.y });
@@ -381,18 +397,18 @@ export class FreehandMainAttackArrow {
 
         const angleArray = GeoTools._vertexAngle(tempArray);
         const totalL = GeoTools._ptCollectionLen(tempArray, 0);
-        
+
         for (let i = 0, len = tempArray.length - 1; i < len; i++) {
             let partialLen = GeoTools._ptCollectionLen(tempArray, i);
             partialLen += totalL / 2.4;
 
-            const pt1 = { 
-                x: this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x, 
-                y: this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y 
+            const pt1 = {
+                x: (this._tailFactor) * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
+                y: (this._tailFactor) * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
             };
-            const pt2 = { 
-                x: -1 * this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x, 
-                y: -1 * this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y 
+            const pt2 = {
+                x: -1 * (this._tailFactor) * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
+                y: -1 * (this._tailFactor) * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
             };
 
             leftArray.push(pt1);
@@ -410,37 +426,43 @@ export class FreehandMainAttackArrow {
         rightBezier.splice(Math.floor((1 - this._headPercentage) * 70), Number.MAX_VALUE);
 
         const values = this.CreateArrowHeadPathEx(
-            leftBezier[leftBezier.length - 1], 
-            lastPoint, 
-            rightBezier[rightBezier.length - 1], 
-            GeoTools._ptCollectionLen(tempArray, 0), 
-            this._headPercentage, 
+            leftBezier[leftBezier.length - 1],
+            lastPoint,
+            rightBezier[rightBezier.length - 1],
+            GeoTools._ptCollectionLen(tempArray, 0),
+            this._headPercentage,
             15
         );
-        
+
         const headPath = values.rings;
 
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        
         // Combine all paths
         const ring: number[][] = [];
-        
+
         // Add left bezier path
         leftBezier.forEach(pt => ring.push([pt.x, pt.y]));
-        
+
         // Add arrow head
         headPath.forEach(pt => ring.push([pt.x, pt.y]));
-        
+
         // Add reversed right bezier path
         rightBezier.reverse().forEach(pt => ring.push([pt.x, pt.y]));
+
+        // Close the ring
+        if (leftBezier.length > 0) {
+            ring.push([leftBezier[0].x, leftBezier[0].y]);
+        }
 
         result.addRing(ring);
 
         // Inner line in Arrow
-        const innerRing: number[][] = [];
-        innerRing.push([values.midPtLeft.x, values.midPtLeft.y]);
-        innerRing.push([values.newCandiadatePt.x, values.newCandiadatePt.y]);
-        innerRing.push([values.midPtRight.x, values.midPtRight.y]);
+        const innerRing: number[][] = [
+            [values.midPtLeft.x, values.midPtLeft.y],
+            [values.newCandiadatePt.x, values.newCandiadatePt.y],
+            [values.midPtRight.x, values.midPtRight.y],
+            [values.midPtLeft.x, values.midPtLeft.y] // Close ring
+        ];
+
         result.addRing(innerRing);
 
         return result;
