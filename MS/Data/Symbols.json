@@ -9200,7 +9200,7 @@
                 "value": "TAIL_FACTOR"
             }
         ],
-        "SymGeoType": "Area",
+        "SymGeoType": "Line",
         "Thumbnail": "",
         "Tools": [],
         "Cat": ["attk"]

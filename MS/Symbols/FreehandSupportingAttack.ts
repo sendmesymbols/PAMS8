@@ -92,7 +92,7 @@ export class FreehandSupportingAttack {
                         });
                     }
                 } catch (error) {
-                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                    console.error(this.symName, "Failed to create Polyline geometry:", error);
                 }
             }
             
