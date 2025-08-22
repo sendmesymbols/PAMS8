@@ -300,7 +300,7 @@ export class FreehandMainAttackArrow {
     /**
      * Create simple arrow for 2 points or less
      */
-    private createSimpleArrow(pts: Point[], result: Polygon): Polygon {
+    private createSimpleArrow(pts: Point[]): Polygon {
         const firstPoint = pts[0];
         const lastPoint = pts[pts.length - 1];
 
@@ -342,18 +342,16 @@ export class FreehandMainAttackArrow {
             y: -1 * this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
         };
 
+        const result = new Polygon({ spatialReference: this.view.spatialReference });
+
         // Create main arrow ring
-        const ring: number[][] = [];
+        let ring: number[][] = [];
         ring.push([pt1.x, pt1.y]);
 
         const values = this.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
-        const arrowHeadRing = values.rings.map(pt => [pt.x, pt.y]);
-        ring.push(...arrowHeadRing);
+        values.rings.forEach(pt => ring.push([pt.x, pt.y]));
 
         ring.push([p2.x, p2.y]);
-
-        // Close the ring
-        ring.push([pt1.x, pt1.y]);
 
         result.addRing(ring);
 
@@ -370,13 +368,10 @@ export class FreehandMainAttackArrow {
             y: midPt.y + headBaseLen * Math.sin(angle)
         };
 
-        const innerRing: number[][] = [
-            [values.midPtLeft.x, values.midPtLeft.y],
-            [newCandidatePt.x, newCandidatePt.y],
-            [values.midPtRight.x, values.midPtRight.y],
-            [values.midPtLeft.x, values.midPtLeft.y] // Close ring
-        ];
-
+        const innerRing: number[][] = [];
+        innerRing.push([values.midPtLeft.x, values.midPtLeft.y]);
+        innerRing.push([newCandidatePt.x, newCandidatePt.y]);
+        innerRing.push([values.midPtRight.x, values.midPtRight.y]);
         result.addRing(innerRing);
 
         return result;
@@ -385,7 +380,7 @@ export class FreehandMainAttackArrow {
     /**
      * Create complex arrow for multiple points
      */
-    private createComplexArrow(pts: Point[], result: Polygon): Polygon {
+    private createComplexArrow(pts: Point[], drawEssentials: DrawEssentials): Polygon {
         const leftArray: { x: number, y: number }[] = [];
         const rightArray: { x: number, y: number }[] = [];
         const lastPoint = pts[pts.length - 1];
@@ -403,12 +398,12 @@ export class FreehandMainAttackArrow {
             partialLen += totalL / 2.4;
 
             const pt1 = {
-                x: (this._tailFactor) * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
-                y: (this._tailFactor) * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
+                x: this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
+                y: this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
             };
             const pt2 = {
-                x: -1 * (this._tailFactor) * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
-                y: -1 * (this._tailFactor) * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
+                x: -1 * this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
+                y: -1 * this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
             };
 
             leftArray.push(pt1);
@@ -436,6 +431,8 @@ export class FreehandMainAttackArrow {
 
         const headPath = values.rings;
 
+        const result = new Polygon({ spatialReference: this.view.spatialReference });
+
         // Combine all paths
         const ring: number[][] = [];
 
@@ -448,21 +445,13 @@ export class FreehandMainAttackArrow {
         // Add reversed right bezier path
         rightBezier.reverse().forEach(pt => ring.push([pt.x, pt.y]));
 
-        // Close the ring
-        if (leftBezier.length > 0) {
-            ring.push([leftBezier[0].x, leftBezier[0].y]);
-        }
-
         result.addRing(ring);
 
         // Inner line in Arrow
-        const innerRing: number[][] = [
-            [values.midPtLeft.x, values.midPtLeft.y],
-            [values.newCandiadatePt.x, values.newCandiadatePt.y],
-            [values.midPtRight.x, values.midPtRight.y],
-            [values.midPtLeft.x, values.midPtLeft.y] // Close ring
-        ];
-
+        const innerRing: number[][] = [];
+        innerRing.push([values.midPtLeft.x, values.midPtLeft.y]);
+        innerRing.push([values.newCandiadatePt.x, values.newCandiadatePt.y]);
+        innerRing.push([values.midPtRight.x, values.midPtRight.y]);
         result.addRing(innerRing);
 
         return result;
