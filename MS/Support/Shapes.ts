@@ -6,6 +6,8 @@ import Echelons from './Echelons.ts';
 import Utils from "./Utils";
 import DrawEssentials from "./DrawEssentials";
 import Polygon from "@arcgis/core/geometry/Polygon";
+import MapView from "@arcgis/core/views/MapView";
+import SceneView from "@arcgis/core/views/SceneView";
 
 
 interface PointLike {
@@ -64,6 +66,66 @@ class Shapes {
 
         paths.push(paths[0]); // Close the ellipse
         return paths;
+    }
+
+    /**
+     * Create circle segment polygon from three points using a precomputed circle (screen-space) and convert back to map-space
+     */
+    static createCircleSegmentFromThreePoints(
+        view: MapView | SceneView,
+        circle: { radius: number; center: { x: number; y: number } },
+        pt1: any,
+        pt2: any,
+        pt3: any,
+        numberOfPts: number
+    ): { geometry: Polygon; lastPoint: Point; backPoint: Point } {
+        const center = circle.center;
+        const radius = circle.radius;
+        const path: Point[] = [];
+
+        // Normalize points relative to center
+        pt1.x -= center.x; pt1.y -= center.y;
+        pt2.x -= center.x; pt2.y -= center.y;
+        pt3.x -= center.x; pt3.y -= center.y;
+
+        // Calculate angles
+        let anglePt1 = Math.atan2(pt1.y, pt1.x);
+        let anglePt2 = Math.atan2(pt2.y, pt2.x);
+        let anglePt3 = Math.atan2(pt3.y, pt3.x);
+
+        // Normalize [0, 2PI]
+        anglePt1 = anglePt1 < 0 ? 2 * Math.PI + anglePt1 : anglePt1;
+        anglePt2 = anglePt2 < 0 ? 2 * Math.PI + anglePt2 : anglePt2;
+        anglePt3 = anglePt3 < 0 ? 2 * Math.PI + anglePt3 : anglePt3;
+
+        const startAngle = Math.min(anglePt1, anglePt2);
+        const endAngle = Math.max(anglePt1, anglePt2);
+        let swipeAngle = endAngle - startAngle;
+        if (anglePt3 < startAngle || anglePt3 > endAngle) {
+            swipeAngle -= (2 * Math.PI);
+        }
+
+        const angle = swipeAngle / numberOfPts;
+        for (let i = 0; i <= numberOfPts; i++) {
+            const screenPt = {
+                x: radius * Math.cos(startAngle + i * angle) + center.x,
+                y: radius * Math.sin(startAngle + i * angle) + center.y
+            };
+            const mapPt = (view as any).toMap(screenPt);
+            if (mapPt) {
+                path.push(new Point({ x: mapPt.x, y: mapPt.y, spatialReference: view.spatialReference }));
+            }
+        }
+
+        const result = new Polygon({ spatialReference: view.spatialReference });
+        const pathCoords = path.map(p => [p.x, p.y]);
+        result.addRing(pathCoords);
+
+        return {
+            geometry: result,
+            lastPoint: path[numberOfPts] || path[path.length - 1],
+            backPoint: path[Math.max(0, numberOfPts - 5)] || path[0]
+        };
     }
 
     /**

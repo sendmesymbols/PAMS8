@@ -82,10 +82,21 @@ export class FreehandSemiCircle {
 
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    if (options.GEOM instanceof Polygon) {
+                        this.tempGraphic.geometry = options.GEOM;
+                    } else {
+                        this.tempGraphic.geometry = new Polygon({
+                            rings: options.GEOM as number[][][],
+                            spatialReference: this.view.spatialReference
+                        });
+                    }
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice());
@@ -243,53 +254,64 @@ export class FreehandSemiCircle {
      */
     private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
         try {
-            let pts: Point[];
+            let controlPoints: Point[];
 
             if ((drawEssentials as any).CTRL_PTS) {
-                pts = (drawEssentials as any).CTRL_PTS;
+                controlPoints = (drawEssentials as any).CTRL_PTS as Point[];
             } else {
                 throw new Error("controlPoints not found");
             }
 
-            const result = new Polygon({ spatialReference: this.view.spatialReference });
+            // Always create a polygon geometry (temp preview will still render with line symbol)
+            const polygon = new Polygon({ spatialReference: this.view.spatialReference });
 
-            const startingPt = pts[0];
-            const endPt = pts[1];
-
-            if (pts.length === 2) {
-                result.addRing([[startingPt.x, startingPt.y], [endPt.x, endPt.y]]);
-            } else if (pts.length === 3) {
-                const candidatePoint = pts[2];
-                
-                // Convert to screen coordinates for circle calculation
-                const startScreen = this.view.toScreen(startingPt);
-                const endScreen = this.view.toScreen(endPt);
-                const candidateScreen = this.view.toScreen(candidatePoint);
-                
-                const circle = this._circleDrawEx(startScreen, endScreen, candidateScreen);
-                if (circle.radius > 0) {
-                    const values = this.CreateCircleSegmentFromThreePoints(
-                        circle, 
-                        startScreen, 
-                        endScreen, 
-                        candidateScreen, 
-                        60
-                    );
-                    const paths = values.geometry.rings[0];
-                    if (paths && paths.length > 0) {
-                        // Convert points back to map coordinates
-                        const mapPath = paths.slice(0, 60).map(pt => [pt.x, pt.y]);
-                        result.addRing(mapPath);
-                        
-                        // Add the connecting line
-                        if (paths.length > 59) {
-                            result.addRing([[paths[1].x, paths[1].y], [paths[59].x, paths[59].y]]);
-                        }
-                    }
-                }
+            if (controlPoints.length < 2) {
+                return polygon; // empty polygon for insufficient points
             }
 
-            return result;
+            const startingPt = controlPoints[0];
+            const endPt = controlPoints[1];
+
+            // For two points, return a minimally closed ring so 4.x accepts the polygon
+            if (controlPoints.length === 2) {
+                polygon.addRing([
+                    [startingPt.x, startingPt.y],
+                    [endPt.x, endPt.y],
+                    [startingPt.x, startingPt.y]
+                ]);
+                return polygon;
+            }
+
+            // For three or more points, compute the semicircle through the three points
+            const candidatePoint = controlPoints[2];
+
+            const startScreen = this.view.toScreen(startingPt);
+            const endScreen = this.view.toScreen(endPt);
+            const candidateScreen = this.view.toScreen(candidatePoint);
+
+            const circle = this._circleDrawEx(startScreen, endScreen, candidateScreen);
+            if (circle.radius <= 0) {
+                // Fallback: just make a thin triangle from the three points to avoid crash
+                polygon.addRing([
+                    [startingPt.x, startingPt.y],
+                    [endPt.x, endPt.y],
+                    [candidatePoint.x, candidatePoint.y],
+                    [startingPt.x, startingPt.y]
+                ]);
+                return polygon;
+            }
+
+            const values = this.CreateCircleSegmentFromThreePoints(
+                circle,
+                startScreen,
+                endScreen,
+                candidateScreen,
+                60
+            );
+
+            // values.geometry already contains a polygon ring with map coordinates
+            // Use it directly to avoid misinterpreting ring coordinate structures
+            return values.geometry;
 
         } catch (e) {
             console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');

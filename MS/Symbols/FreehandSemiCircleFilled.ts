@@ -12,6 +12,7 @@ import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerMana
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
+import Shapes from "../Support/Shapes.ts";
 
 export interface FreehandSemiCircleFilledOptions {
     CTRL_PTS?: Point[];
@@ -107,10 +108,21 @@ export class FreehandSemiCircleFilled {
 
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    if (options.GEOM instanceof Polygon) {
+                        this.tempGraphic.geometry = options.GEOM;
+                    } else {
+                        this.tempGraphic.geometry = new Polygon({
+                            rings: options.GEOM as number[][][],
+                            spatialReference: this.view.spatialReference
+                        });
+                    }
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice());
@@ -276,45 +288,54 @@ export class FreehandSemiCircleFilled {
                 throw new Error("controlPoints not found");
             }
 
-            const result = new Polygon({ spatialReference: this.view.spatialReference });
+            const polygon = new Polygon({ spatialReference: this.view.spatialReference });
+
+            if (pts.length < 2) {
+                return polygon;
+            }
 
             const startingPt = pts[0];
             const endPt = pts[1];
 
+            // For two points, return a minimally closed ring so 4.x accepts the polygon
             if (pts.length === 2) {
-                result.addRing([[startingPt.x, startingPt.y], [endPt.x, endPt.y]]);
-            } else if (pts.length === 3) {
-                const candidatePoint = pts[2];
-                
-                // Convert to screen coordinates for circle calculation
-                const startScreen = this.view.toScreen(startingPt);
-                const endScreen = this.view.toScreen(endPt);
-                const candidateScreen = this.view.toScreen(candidatePoint);
-                
-                const circle = this._circleDrawEx(startScreen, endScreen, candidateScreen);
-                if (circle.radius > 0) {
-                    const values = this.CreateCircleSegmentFromThreePoints(
-                        circle, 
-                        startScreen, 
-                        endScreen, 
-                        candidateScreen, 
-                        60
-                    );
-                    const paths = values.geometry.rings[0];
-                    if (paths && paths.length > 0) {
-                        // Convert points back to map coordinates
-                        const mapPath = paths.slice(0, 60).map(pt => [pt.x, pt.y]);
-                        result.addRing(mapPath);
-                        
-                        // Add the connecting line
-                        if (paths.length > 59) {
-                            result.addRing([[paths[1].x, paths[1].y], [paths[59].x, paths[59].y]]);
-                        }
-                    }
-                }
+                polygon.addRing([
+                    [startingPt.x, startingPt.y],
+                    [endPt.x, endPt.y],
+                    [startingPt.x, startingPt.y]
+                ]);
+                return polygon;
             }
 
-            return result;
+            // For three or more points, compute the semicircle through the three points
+            const candidatePoint = pts[2];
+
+            const startScreen = this.view.toScreen(startingPt);
+            const endScreen = this.view.toScreen(endPt);
+            const candidateScreen = this.view.toScreen(candidatePoint);
+
+            const circle = this._circleDrawEx(startScreen, endScreen, candidateScreen);
+            if (circle.radius <= 0) {
+                // Fallback: thin triangle for invalid circle
+                polygon.addRing([
+                    [startingPt.x, startingPt.y],
+                    [endPt.x, endPt.y],
+                    [candidatePoint.x, candidatePoint.y],
+                    [startingPt.x, startingPt.y]
+                ]);
+                return polygon;
+            }
+
+            const values = Shapes.createCircleSegmentFromThreePoints(
+                this.view,
+                circle,
+                startScreen,
+                endScreen,
+                candidateScreen,
+                60
+            );
+
+            return values.geometry;
 
         } catch (e) {
             console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
@@ -412,74 +433,7 @@ export class FreehandSemiCircleFilled {
         return d;
     }
 
-    /**
-     * Create circle segment from three points (same as FreehandSemiCircle)
-     */
-    private CreateCircleSegmentFromThreePoints(
-        circle: CircleResult, 
-        pt1: any, 
-        pt2: any, 
-        pt3: any, 
-        numberOfPts: number
-    ): CircleSegmentResult {
-        const center = circle.center;
-        const radius = circle.radius;
-        const path: Point[] = [];
-
-        // Normalize points relative to center
-        pt1.x -= center.x;
-        pt1.y -= center.y;
-        pt2.x -= center.x;
-        pt2.y -= center.y;
-        pt3.x -= center.x;
-        pt3.y -= center.y;
-
-        // Calculate angles
-        let anglePt1 = Math.atan2(pt1.y, pt1.x);
-        let anglePt2 = Math.atan2(pt2.y, pt2.x);
-        let anglePt3 = Math.atan2(pt3.y, pt3.x);
-
-        // Normalize angles to [0, 2*PI]
-        anglePt1 = anglePt1 < 0 ? 2 * Math.PI + anglePt1 : anglePt1;
-        anglePt2 = anglePt2 < 0 ? 2 * Math.PI + anglePt2 : anglePt2;
-        anglePt3 = anglePt3 < 0 ? 2 * Math.PI + anglePt3 : anglePt3;
-
-        const startAngle = Math.min(anglePt1, anglePt2);
-        const endAngle = Math.max(anglePt1, anglePt2);
-        let swipeAngle = endAngle - startAngle;
-
-        if (anglePt3 < startAngle || anglePt3 > endAngle) {
-            swipeAngle -= (2 * Math.PI);
-        }
-
-        const angle = swipeAngle / numberOfPts;
-
-        for (let i = 0; i <= numberOfPts; i++) {
-            const screenPt = {
-                x: radius * Math.cos(startAngle + i * angle) + center.x,
-                y: radius * Math.sin(startAngle + i * angle) + center.y
-            };
-            
-            const mapPt = this.view.toMap(screenPt);
-            if (mapPt) {
-                path.push(new Point({
-                    x: mapPt.x,
-                    y: mapPt.y,
-                    spatialReference: this.view.spatialReference
-                }));
-            }
-        }
-
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const pathCoords = path.map(pt => [pt.x, pt.y]);
-        result.addRing(pathCoords);
-
-        return { 
-            geometry: result, 
-            lastPoint: path[numberOfPts] || path[path.length - 1], 
-            backPoint: path[Math.max(0, numberOfPts - 5)] || path[0] 
-        };
-    }
+    
 
     /**
      * Clean up drawing state and finalize
