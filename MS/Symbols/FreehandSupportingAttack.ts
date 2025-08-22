@@ -1,7 +1,7 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import Polygon from "@arcgis/core/geometry/Polygon";
+// Removed Polygon import since geometry is now Polyline
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
@@ -15,7 +15,7 @@ import Shapes from "../Support/Shapes.ts";
 
 export interface FreehandSupportingAttackOptions {
     CTRL_PTS?: Point[];
-    GEOM?: Polygon;
+    GEOM?: Polyline;
     HEAD_RATIO?: number;
     TAIL_FACTOR?: number;
     [key: string]: any;
@@ -34,10 +34,9 @@ export class FreehandSupportingAttack {
     // Symbol properties
     private SID: string = "000009";
     private symName: string = "Freehand - Sp Attk Like Arrow";
-    private symGeometricType: string = "Area";
+    private symGeometricType: string = "Line";
     private _lineSym: SimpleLineSymbol | SimpleFillSymbol | null = null;
     private _points: Point[] = [];
-    private _geometryType: string | null = null;
     private amplifier: Amplifier;
     
     // Symbol parameters
@@ -80,17 +79,15 @@ export class FreehandSupportingAttack {
         this._headPercentage = GeoTools.setDefault(options, "HEAD_RATIO", 0.07);
         this._tailFactor = GeoTools.setDefault(options, "TAIL_FACTOR", 0.05);
 
-        const drawEssentials = new DrawEssentials();
-
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
                 try {
-                    if (options.GEOM instanceof Polygon) {
+                    if (options.GEOM instanceof Polyline) {
                         this.tempGraphic.geometry = options.GEOM;
                     } else {
-                        this.tempGraphic.geometry = new Polygon({
-                            rings: options.GEOM as number[][][],
+                        this.tempGraphic.geometry = new Polyline({
+                            paths: options.GEOM as number[][][],
                             spatialReference: this.view.spatialReference
                         });
                     }
@@ -106,7 +103,7 @@ export class FreehandSupportingAttack {
             );
             
             if (this.tempGraphic && this.tempGraphic.geometry) {
-                this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
+                this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
             }
             this._clear();
 
@@ -268,7 +265,7 @@ export class FreehandSupportingAttack {
     /**
      * Create symbol geometry from DrawEssentials
      */
-    private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
+    private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
         try {
             let pts: Point[];
 
@@ -278,12 +275,10 @@ export class FreehandSupportingAttack {
                 throw new Error("controlPoints not found");
             }
 
-            const arrowHeadRatio = GeoTools.setDefault(drawEssentials, "HEAD_RATIO", 5);
-
             if (pts.length <= 2) {
-                return this.createSimpleArrow(pts, arrowHeadRatio);
+                return this.createSimpleArrow(pts);
             } else {
-                return this.createComplexArrow(pts, drawEssentials);
+                return this.createComplexArrow(pts);
             }
 
         } catch (e) {
@@ -295,7 +290,7 @@ export class FreehandSupportingAttack {
     /**
      * Create simple arrow for 2 points or less
      */
-    private createSimpleArrow(pts: Point[], arrowHeadRatio: number): Polygon {
+    private createSimpleArrow(pts: Point[]): Polyline {
         const firstPoint = pts[0];
         const lastPoint = pts[pts.length - 1];
 
@@ -322,10 +317,6 @@ export class FreehandSupportingAttack {
             x: this._tailFactor * len * Math.cos(k) + firstPoint.x, 
             y: this._tailFactor * len * Math.sin(k) + firstPoint.y 
         };
-        const pt2 = { 
-            x: -1 * this._tailFactor * len * Math.cos(k) + firstPoint.x, 
-            y: -1 * this._tailFactor * len * Math.sin(k) + firstPoint.y 
-        };
         
         const partialLen = (1 - this._headPercentage) * len;
         const p1 = { 
@@ -337,26 +328,22 @@ export class FreehandSupportingAttack {
             y: -1 * this._tailFactor * partialLen * Math.sin(k) + firstPoint.y 
         };
 
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        
-        // Create main arrow ring
-        let ring: number[][] = [];
-        ring.push([pt1.x, pt1.y]);
+        // Create main arrow path (open at the tail)
+        let path: number[][] = [];
+        path.push([pt1.x, pt1.y]);
         
         const values = Shapes.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
-        values.forEach(pt => ring.push([pt.x, pt.y]));
+        values.forEach(pt => path.push([pt.x, pt.y]));
         
-        ring.push([p2.x, p2.y]);
+        path.push([p2.x, p2.y]);
 
-        result.addRing(ring);
-
-        return result;
+        return new Polyline({ spatialReference: this.view.spatialReference, paths: [path] });
     }
 
     /**
      * Create complex arrow for multiple points
      */
-    private createComplexArrow(pts: Point[], drawEssentials: DrawEssentials): Polygon {
+    private createComplexArrow(pts: Point[]): Polyline {
         const leftArray: { x: number, y: number }[] = [];
         const rightArray: { x: number, y: number }[] = [];
         const lastPoint = pts[pts.length - 1];
@@ -405,23 +392,19 @@ export class FreehandSupportingAttack {
             15
         );
 
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        
-        // Combine all paths
-        const ring: number[][] = [];
+        // Combine all paths into a single open path (not closed at the tail)
+        const path: number[][] = [];
         
         // Add left bezier path
-        leftBezier.forEach(pt => ring.push([pt.x, pt.y]));
+        leftBezier.forEach(pt => path.push([pt.x, pt.y]));
         
         // Add arrow head
-        headPath.forEach(pt => ring.push([pt.x, pt.y]));
+        headPath.forEach(pt => path.push([pt.x, pt.y]));
         
         // Add reversed right bezier path
-        rightBezier.reverse().forEach(pt => ring.push([pt.x, pt.y]));
+        rightBezier.reverse().forEach(pt => path.push([pt.x, pt.y]));
 
-        result.addRing(ring);
-
-        return result;
+        return new Polyline({ spatialReference: this.view.spatialReference, paths: [path] });
     }
 
 
@@ -439,7 +422,7 @@ export class FreehandSupportingAttack {
         );
         
         if (this.tempGraphic && this.tempGraphic.geometry) {
-            this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
+            this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
         }
         
         this._clear();
@@ -449,7 +432,7 @@ export class FreehandSupportingAttack {
     /**
      * Handle draw end
      */
-    private __drawEnd(drawGeometry: Polygon, drawEssentials: DrawEssentials): void {
+    private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
         if (drawGeometry) {
             const spatialRef = this.view.spatialReference;
             let geographicGeometry = drawGeometry;
@@ -468,7 +451,7 @@ export class FreehandSupportingAttack {
     /**
      * Final draw end handler
      */
-    private __onDrawEnd(geometry: Polygon, geoGeometry: Polygon, drawEssParam: DrawEssentials): void {
+    private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
         this.emit("onDrawEnd", {
             geometry: geometry,
             geographicGeometry: geoGeometry,
@@ -513,7 +496,6 @@ export class FreehandSupportingAttack {
     public deactivate(): void {
         this._clear();
         this._removeEvents();
-        this._geometryType = null;
         this.isDrawing = false;
     }
 
