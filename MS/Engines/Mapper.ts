@@ -158,8 +158,8 @@ import CpenPosition from "../Symbols/CpenPosition.ts"; //Fixed
 
 
 import FreehandMainAttackArrow from "../Symbols/FreehandMainAttackArrow.ts"; //Fixed
-import FreehandSemiCircle from "../Symbols/FreehandSemiCircle.ts";
-import FreehandSemiCircleFilled from "../Symbols/FreehandSemiCircleFilled.ts";
+import FreehandSemiCircle from "../Symbols/FreehandSemiCircle.ts"; //Fixed
+import FreehandSemiCircleFilled from "../Symbols/FreehandSemiCircleFilled.ts"; //Fixed
 import FreehandSupportingAttack from "../Symbols/FreehandSupportingAttack.ts"; //Minor Issue
 import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts"; //Issue
 import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts";
