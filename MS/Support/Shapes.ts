@@ -852,6 +852,21 @@ class Shapes {
     }
 
 
+    static createIStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [[
+            new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+            new Point({ x: dx, y: dy + dr, spatialReference: sp })
+        ]];
+    }
+
+
+    static createTAIStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const tStrokes = this.createTStrokes(dx - (dr * 1.3), dy, dr, sp);
+        const aStrokes = this.createAStrokes(dx, dy, dr, sp);
+        const iStrokes = this.createIStrokes(dx + (dr * 0.8), dy, dr, sp);
+        return [...tStrokes, ...aStrokes, ...iStrokes];
+    }
+
 
     static createFUP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const pts1 = this.createF(dx - (dr * 2.5), dy, dr, sp);

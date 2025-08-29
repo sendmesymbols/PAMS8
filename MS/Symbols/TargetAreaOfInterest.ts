@@ -1,6 +1,7 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
+import Polyline from "@arcgis/core/geometry/Polyline";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
@@ -299,35 +300,43 @@ export class TargetAreaOfInterest {
                 return result;
             }
 
-            const midPt = extent.center;
+            const midPt = extent.center as Point;
             if (!midPt) {
                 return result;
             }
 
-            const baseLineLen = this.calculateDistance(firstPoint, lastPoint);
+            const baseLineLen = (GeoTools as any)._2PtLen
+                ? (GeoTools as any)._2PtLen(firstPoint, lastPoint)
+                : Math.hypot(lastPoint.x - firstPoint.x, lastPoint.y - firstPoint.y);
+
             let cLenLimit = baseLineLen / 10;
             if (cLenLimit > baseLineLen / 3.6) {
                 cLenLimit = baseLineLen / 3.6;
             }
 
-            // Try to use Shapes.createAO if available
-            if (Shapes && (Shapes as any).createAO) {
-                try {
-                    const aoRings = (Shapes as any).createAO(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-                    if (aoRings && Array.isArray(aoRings)) {
-                        for (let j = 0; j <= aoRings.length - 1; j++) {
-                            if (aoRings[j]) {
-                                result.addRing(aoRings[j]);
-                            }
-                        }
+            // Instead of rings (auto-closing in 4.x), render strokes as polylines for crisp letters
+            const strokes = (Shapes as any).createTAIStrokes
+                ? (Shapes as any).createTAIStrokes(midPt.x, midPt.y, cLenLimit, midPt.spatialReference)
+                : (Shapes as any).createTAI(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+
+            if (strokes && Array.isArray(strokes)) {
+                const poly = new (Polyline as any)({ spatialReference: this.view.spatialReference });
+                for (let s = 0; s < strokes.length; s++) {
+                    const segment = strokes[s];
+                    if (segment && Array.isArray(segment) && segment.length > 0) {
+                        const path: number[][] = (segment as Point[]).map(p => [p.x, p.y]);
+                        poly.addPath(path);
                     }
-                } catch (e) {
-                    console.log('Error creating AO inner text with Shapes utility, using fallback');
-                    this.createSimpleAO(result, midPt, cLenLimit);
                 }
-            } else {
-                // Fallback AO creation
-                this.createSimpleAO(result, midPt, cLenLimit);
+
+                // Add the stroke polyline to the symbol layer as an overlay
+                if (this.symbolLayer) {
+                    const strokeGraphic = new Graphic({
+                        geometry: poly,
+                        symbol: this._lineSym
+                    });
+                    this.symbolLayer.add(strokeGraphic);
+                }
             }
 
             return result;
