@@ -909,6 +909,46 @@ class Shapes {
         return paths;
     }
 
+    static createVStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            [
+                new Point({ x: dx - (dr * 0.7), y: dy + dr, spatialReference: sp }),
+                new Point({ x: dx, y: dy - (dr * 0.9), spatialReference: sp })
+            ],
+            [
+                new Point({ x: dx, y: dy - (dr * 0.9), spatialReference: sp }),
+                new Point({ x: dx + (dr * 0.7), y: dy + dr, spatialReference: sp })
+            ]
+        ];
+    }
+
+    static createVAStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const vStrokes = this.createVStrokes(dx - (dr * 0.6), dy, dr, sp);
+        const aStrokes = this.createAStrokes(dx + (dr * 0.6), dy, dr, sp);
+        return [...vStrokes, ...aStrokes];
+    }
+
+    static createVARings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        // Return single-stroke line paths (not rectangles)
+        const paths: number[][][] = [];
+        const strokes = this.createVAStrokes(dx, dy, dr, sp);
+        for (let i = 0; i < strokes.length; i++) {
+            const seg = strokes[i];
+            if (seg && seg.length >= 2) {
+                const p1 = seg[0];
+                const p2 = seg[1];
+                paths.push([[p1.x, p1.y], [p2.x, p2.y]]);
+            }
+        }
+        return paths;
+    }
+
+    static createVA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const vPoints = this.createV(dx - (dr * 0.6), dy, dr, sp);
+        const aPoints = this.createA(dx + (dr * 0.6), dy, dr, sp);
+        return [vPoints, aPoints];
+    }
+
     /**
      * Convert a line segment to a thin rectangle ring (closed) of given stroke width
      */

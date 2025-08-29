@@ -481,7 +481,7 @@ export class AreaOfOperations {
     private emitGlobalEvent(eventName: string, data: any): void {
         const customEvent = new CustomEvent(eventName, {
             detail: {
-                symbolType: "AreaOfOperations",
+                symbolType: this.constructor.name,
                 eventName: eventName,
                 ...data
             },

@@ -72,7 +72,7 @@ export class NamedAreaOfInterest {
     /**
      * Initialize the area of operations drawing
      */
-    public init(options: NamedAreaOfInterest, marker: SimpleLineSymbol): void {
+    public init(options: NamedAreaOfInterestOptions, marker: SimpleLineSymbol): void {
         this._lineSym = marker.clone();
         this._drawType = options.DRAW_TYPE || 1;
 
@@ -459,7 +459,7 @@ export class NamedAreaOfInterest {
     private emitGlobalEvent(eventName: string, data: any): void {
         const customEvent = new CustomEvent(eventName, {
             detail: {
-                symbolType: "NamedAreaOfInterest",
+                symbolType: this.constructor.name,
                 eventName: eventName,
                 ...data
             },

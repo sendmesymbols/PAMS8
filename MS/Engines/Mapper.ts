@@ -157,9 +157,21 @@ import FreehandSemiCircleFilled from "../Symbols/FreehandSemiCircleFilled.ts"; /
 import FreehandSupportingAttack from "../Symbols/FreehandSupportingAttack.ts"; //Fixed
 import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts"; //Fixed
 import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts"; //Fixed
-
 import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts"; //Fixed
 import NamedAreaOfInterest from "../Symbols/NamedAreaOfInterest.ts"; //Fixed
+
+import VitalArea from "../Symbols/VitalArea.ts";
+import CorpsAdmArea from "../Symbols/CorpsAdmArea.ts";
+import ZoneOfResponsibility from "../Symbols/ZoneOfResponsibility.ts";
+import KillingGr from "../Symbols/KillingGr.ts";
+import KillingZone from "../Symbols/KillingZone.ts";
+import LandingZone from "../Symbols/LandingZone.ts";
+import VitalGr from "../Symbols/VitalGr.ts";
+import NoGo from "../Symbols/NoGo.ts";
+import FlightZone from "../Symbols/FlightZone.ts";
+import PenetrationBox from "../Symbols/PenetrationBox.ts";
+import DitchEmpty from "../Symbols/DitchEmpty.ts";
+import DitchFilledWithWater from "../Symbols/DitchFilledWithWater.ts";
 
 
 import SingleConcertina from "../Symbols/SingleConcertina.ts";
@@ -167,20 +179,19 @@ import SingleFenceWire from "../Symbols/SingleFenceWire.ts";
 import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";
 import UARoute from "../Symbols/UARoute.ts";
 import UnspecifiedMine from "../Symbols/UnspecifiedMine.ts";
-import VitalArea from "../Symbols/VitalArea.ts";
+
+
 import WideAreaAntiTankMine from "../Symbols/WideAreaAntiTankMine.ts";
-import ZoneOfResponsibility from "../Symbols/ZoneOfResponsibility.ts";
+
 import Canalize from "../Symbols/Canalize.ts";
 import Contain from "../Symbols/Contain.ts";
-import CorpsAdmArea from "../Symbols/CorpsAdmArea.ts";
 import Corridors from "../Symbols/Corridors.ts";
 import Cover from "../Symbols/Cover.ts";
 import Delay from "../Symbols/Delay.ts";
 import DispersalArea from "../Symbols/DispersalArea.ts";
 import Disrupt from "../Symbols/Disrupt.ts";
 import DisruptObstacleEffect from "../Symbols/DisruptObstacleEffect.ts";
-import DitchEmpty from "../Symbols/DitchEmpty.ts";
-import DitchFilledWithWater from "../Symbols/DitchFilledWithWater.ts";
+
 
 import DivLineOfNoPen from "../Symbols/DivLineOfNoPen.ts";
 import DoubleApronFence from "../Symbols/DoubleApronFence.ts";
@@ -188,7 +199,7 @@ import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";
 import DoubleStrandConcertina from "../Symbols/DoubleStrandConcertina.ts";
 import Fix from "../Symbols/Fix.ts";
 import FlightRoute from "../Symbols/FlightRoute.ts";
-import FlightZone from "../Symbols/FlightZone.ts";
+
 import FormingUpPoint from "../Symbols/FormingUpPoint.ts";
 import Funnel from "../Symbols/Funnel.ts";
 
@@ -197,26 +208,23 @@ import Guard from "../Symbols/Guard.ts";
 import HighWireFence from "../Symbols/HighWireFence.ts";
 import InfiltrationLane from "../Symbols/InfiltrationLane.ts";
 import Isolate from "../Symbols/Isolate.ts";
-import KillingGr from "../Symbols/KillingGr.ts";
-import KillingZone from "../Symbols/KillingZone.ts";
-import LandingZone from "../Symbols/LandingZone.ts";
 import LineOfNoPen from "../Symbols/LineOfNoPen.ts";
 import LowWireFence from "../Symbols/LowWireFence.ts";
 import MovingConvoy from "../Symbols/MovingConvoy.ts";
-import NoGo from "../Symbols/NoGo.ts";
+
 
 // Import the new TypeScript symbol classes
 import ObstacleBypassEasy from "../Symbols/ObstacleBypassEasy.ts";
 import Occupy from "../Symbols/Occupy.ts";
 import Penetrate from "../Symbols/Penetrate.ts";
-import PenetrationBox from "../Symbols/PenetrationBox.ts";
+
 import Screen from "../Symbols/Screen.ts";
 import Secure from "../Symbols/Secure.ts";
 import SlowGo from "../Symbols/SlowGo.ts";
 import StrongPoint from "../Symbols/StrongPoint.ts";
 import SupportingAttack from "../Symbols/SupportingAttack.ts";
 import UnspecifiedWire from "../Symbols/UnspecifiedWire.ts";
-import VitalGr from "../Symbols/VitalGr.ts";
+
 import Withdraw from "../Symbols/Withdraw.ts";
 
 import MapView from "@arcgis/core/views/MapView";
