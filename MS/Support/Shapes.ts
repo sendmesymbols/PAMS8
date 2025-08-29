@@ -1251,6 +1251,72 @@ class Shapes {
         return [pts1, temp[0], temp[1]];
     }
 
+    static createKGStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const kStrokes = this.createKStrokes(dx - dr, dy, dr, sp);
+        const gStrokes = this.createGStrokes(dx + (dr * 1.5), dy, dr, sp);
+        return [...kStrokes, ...gStrokes];
+    }
+
+    static createGStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        // Create G as separate arc segments to avoid auto-closing
+        const step = 2 * Math.PI / 36; // Smaller steps for smoother curve
+        const strokes: Point[][] = [];
+        
+        // Create the C part of G (main arc)
+        let prevPoint: Point | null = null;
+        for (let dtheta = 65 * Math.PI / 180; dtheta < 295 * Math.PI / 180; dtheta += step) {
+            const x = dx + dr * Math.cos(dtheta);
+            const y = dy - dr * Math.sin(dtheta);
+            const currentPoint = new Point({ x, y, spatialReference: sp });
+
+            if (prevPoint) {
+                strokes.push([prevPoint, currentPoint]);
+            }
+            prevPoint = currentPoint;
+        }
+
+        // Add the horizontal bar and vertical leg of G
+        if (prevPoint) {
+            const firstPt = new Point({ 
+                x: dx + dr * Math.cos(65 * Math.PI / 180), 
+                y: dy - dr * Math.sin(65 * Math.PI / 180), 
+                spatialReference: sp 
+            });
+            const lastPt = prevPoint;
+            
+            // Calculate midpoint for the horizontal bar
+            const midPt = new Point({
+                x: (firstPt.x + lastPt.x) / 2,
+                y: (firstPt.y + lastPt.y) / 2,
+                spatialReference: sp
+            });
+
+            // Horizontal bar from first point to midpoint
+            strokes.push([firstPt, midPt]);
+            
+            // Vertical leg from midpoint downward
+            const leg = new Point({ x: midPt.x - (dr * 0.5), y: midPt.y, spatialReference: sp });
+            strokes.push([midPt, leg]);
+        }
+        
+        return strokes;
+    }
+
+    static createKGRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        // Return single-stroke line paths (not rectangles)
+        const paths: number[][][] = [];
+        const strokes = this.createKGStrokes(dx, dy, dr, sp);
+        for (let i = 0; i < strokes.length; i++) {
+            const seg = strokes[i];
+            if (seg && seg.length >= 2) {
+                const p1 = seg[0];
+                const p2 = seg[1];
+                paths.push([[p1.x, p1.y], [p2.x, p2.y]]);
+            }
+        }
+        return paths;
+    }
+
     static createKZ(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const pts1 = this.createK(dx - (dr * 1.2), dy, dr, sp);
         const pts2 = this.createZ(dx, dy, dr, sp);

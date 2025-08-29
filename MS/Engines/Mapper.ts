@@ -162,8 +162,8 @@ import NamedAreaOfInterest from "../Symbols/NamedAreaOfInterest.ts"; //Fixed
 
 import VitalArea from "../Symbols/VitalArea.ts"; //Fixed
 import CorpsAdmArea from "../Symbols/CorpsAdmArea.ts"; //Fixed
-
 import ZoneOfResponsibility from "../Symbols/ZoneOfResponsibility.ts";
+
 import KillingGr from "../Symbols/KillingGr.ts";
 import KillingZone from "../Symbols/KillingZone.ts";
 import LandingZone from "../Symbols/LandingZone.ts";
