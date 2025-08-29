@@ -159,13 +159,12 @@ import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts"; //Fixed
 import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts"; //Fixed
 import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts"; //Fixed
 import NamedAreaOfInterest from "../Symbols/NamedAreaOfInterest.ts"; //Fixed
-
 import VitalArea from "../Symbols/VitalArea.ts"; //Fixed
 import CorpsAdmArea from "../Symbols/CorpsAdmArea.ts"; //Fixed
-import ZoneOfResponsibility from "../Symbols/ZoneOfResponsibility.ts";
+import ZoneOfResponsibility from "../Symbols/ZoneOfResponsibility.ts"; //Fixed
+import KillingGr from "../Symbols/KillingGr.ts"; //Fixed
+import KillingZone from "../Symbols/KillingZone.ts"; //Fixed
 
-import KillingGr from "../Symbols/KillingGr.ts";
-import KillingZone from "../Symbols/KillingZone.ts";
 import LandingZone from "../Symbols/LandingZone.ts";
 import VitalGr from "../Symbols/VitalGr.ts";
 import NoGo from "../Symbols/NoGo.ts";

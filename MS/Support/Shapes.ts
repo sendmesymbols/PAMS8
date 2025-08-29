@@ -1350,6 +1350,42 @@ class Shapes {
         return [pts1, pts2];
     }
 
+    static createLStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            // Vertical line
+            [
+                new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx, y: dy + dr, spatialReference: sp })
+            ],
+            // Horizontal line
+            [
+                new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx + dr, y: dy - dr, spatialReference: sp })
+            ]
+        ];
+    }
+
+    static createLZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const lStrokes = this.createLStrokes(dx - (dr * 1.2), dy, dr, sp);
+        const zStrokes = this.createZStrokes(dx, dy, dr, sp);
+        return [...lStrokes, ...zStrokes];
+    }
+
+    static createLZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        // Return single-stroke line paths (not rectangles)
+        const paths: number[][][] = [];
+        const strokes = this.createLZStrokes(dx, dy, dr, sp);
+        for (let i = 0; i < strokes.length; i++) {
+            const seg = strokes[i];
+            if (seg && seg.length >= 2) {
+                const p1 = seg[0];
+                const p2 = seg[1];
+                paths.push([[p1.x, p1.y], [p2.x, p2.y]]);
+            }
+        }
+        return paths;
+    }
+
     static createVG(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const pts1 = this.createV(dx - dr, dy, dr, sp);
         const temp = this.createG(dx + (dr * 1.2), dy, dr, sp);
