@@ -899,7 +899,7 @@ function initializeAutocomplete() {
 
 
 
-    //Clea Symbol
+    //Clear Symbol
 
 
 

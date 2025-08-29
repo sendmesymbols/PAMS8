@@ -13,6 +13,7 @@ import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
+
 export interface FriendlyDirOfSpAttkOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polyline;
@@ -77,10 +78,17 @@ export class FriendlyDirOfSpAttk {
 
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    this.tempGraphic.geometry = new Polyline({
+                        paths: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polyline geometry:", error);
+                }
             }
             
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType);
@@ -95,8 +103,9 @@ export class FriendlyDirOfSpAttk {
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType);
             
             const geometry = this.createSymbol(drawEss);
-            if (geometry && this.tempGraphic) {
-                this.tempGraphic.geometry = geometry;
+
+            if (geometry) {
+                if (this.tempGraphic) this.tempGraphic.geometry = geometry;
                 this.__drawEnd(geometry, drawEss);
                 this._clear();
             }
@@ -262,18 +271,13 @@ export class FriendlyDirOfSpAttk {
                     result = this.createSymbolByLine(pts);
             }
 
-            // Add arrow head
+            // Add Arrow Head
             if (pts.length >= 2) {
-                const arrowFlankLen = GeoTools.ArrowFlanksLen(
-                    GeoTools._2PtLen(pts[0], pts[pts.length - 1]), 
-                    GeoTools._2PtLen(pts[0], pts[pts.length - 1])
-                );
-                const angle = GeoTools.angleInRadians(pts[pts.length - 2], pts[pts.length - 1]);
-                
-                const arrowHead = this.createArrowHead(pts[pts.length - 1], arrowFlankLen, angle);
-                result.addPath(arrowHead);
+                const arrowHeadPath = Shapes.createArrowHead(pts);
+                if (arrowHeadPath && arrowHeadPath.length > 0) {
+                    result.addPath(arrowHeadPath);
+                }
             }
-
             return result;
 
         } catch (e) {
@@ -315,13 +319,8 @@ export class FriendlyDirOfSpAttk {
         return result;
     }
 
-    /**
-     * Create arrow head
-     */
-    private createArrowHead(point: Point, flanksLen: number, angle: number): number[][] {
-        const arrowHead = Shapes.arrowHead(point, flanksLen, angle);
-        return arrowHead || [];
-    }
+
+
 
     /**
      * Clean up drawing state and finalize

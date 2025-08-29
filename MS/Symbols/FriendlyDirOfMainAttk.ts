@@ -1,7 +1,6 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
@@ -13,40 +12,43 @@ import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
+
 export interface FriendlyDirOfMainAttkOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polyline;
+    DRAW_TYPE?: number;
     [key: string]: any;
 }
 
 /**
  * FriendlyDirOfMainAttk class for drawing Friendly Direction of Main Attack symbols on MapView or SceneView
- * Creates directional arrows with double arrow heads
+ * Supports line and curve draw types with arrow head
  */
 export class FriendlyDirOfMainAttk {
     private view: MapView | SceneView;
     private layerManager: GraphicsLayerManager;
     private symbolLayer: GraphicsLayer;
     private isLine: boolean;
-    
+
     // Symbol properties
     private SID: string = "140602";
     private symName: string = "Friendly Direction of Main Attk";
     private symGeometricType: string = "Line";
     private _lineSym: SimpleLineSymbol | SimpleFillSymbol | null = null;
     private _points: Point[] = [];
+    private _drawType: number = 1;
     private _geometryType: string | null = null;
     private amplifier: Amplifier;
-    
+
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
-    
+
     // Event handlers
     private clickHandler: any = null;
     private doubleClickHandler: any = null;
     private mouseMoveHandler: any = null;
-    
+
     // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
 
@@ -56,30 +58,40 @@ export class FriendlyDirOfMainAttk {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
         this.amplifier = new Amplifier();
-        
+
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
-        
+
         // Initialize temporary graphic
         this.tempGraphic = new Graphic();
     }
 
     /**
-     * Initialize the friendly direction of main attack drawing
+     * Initialize the friendly direction of supporting attack drawing
      */
     public init(options: FriendlyDirOfMainAttkOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void {
         this._lineSym = marker;
 
+        // Set parameters from options
+        this._drawType = GeoTools.setDefault(options, "DRAW_TYPE", this._drawType);
+
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    this.tempGraphic.geometry = new Polyline({
+                        paths: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polyline geometry:", error);
+                }
             }
-            
-            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice());
-            
+
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType);
+
             if (this.tempGraphic && this.tempGraphic.geometry) {
                 this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
             }
@@ -87,11 +99,12 @@ export class FriendlyDirOfMainAttk {
 
         } else if (options.hasOwnProperty("CTRL_PTS")) {
             // Immediate placement with control points only
-            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice());
-            
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType);
+
             const geometry = this.createSymbol(drawEss);
-            if (geometry && this.tempGraphic) {
-                this.tempGraphic.geometry = geometry;
+
+            if (geometry) {
+                if (this.tempGraphic) this.tempGraphic.geometry = geometry;
                 this.__drawEnd(geometry, drawEss);
                 this._clear();
             }
@@ -107,14 +120,14 @@ export class FriendlyDirOfMainAttk {
      */
     private startInteractiveDrawing(): void {
         if (!this._lineSym) return;
-        
+
         this.isDrawing = true;
         this.tempGraphic = new Graphic({
             geometry: null,
             symbol: this._lineSym
         });
         this.symbolLayer.add(this.tempGraphic);
-        
+
         // Set up event handlers
         this.setupEventHandlers();
     }
@@ -128,7 +141,7 @@ export class FriendlyDirOfMainAttk {
             this._onClickHandler(event);
         });
 
-        // Double click handler  
+        // Double click handler
         this.doubleClickHandler = this.view.on("double-click", (event) => {
             this._onDoubleClickHandler(event);
         });
@@ -146,16 +159,16 @@ export class FriendlyDirOfMainAttk {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
-        
+
         if (this._points.length === 1) {
             // First click - set up mouse move handler
             this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
                 this._onMouseMoveHandler(event);
             });
         }
-        
+
         this.emit("onDrawClick", { currentPts: this._points });
 
         // For single line mode, finish after first click
@@ -176,7 +189,7 @@ export class FriendlyDirOfMainAttk {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
         this.cleanUp();
     }
@@ -198,7 +211,8 @@ export class FriendlyDirOfMainAttk {
 
         const drawEssentials = new DrawEssentials();
         (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
-        
+        (drawEssentials as any).DRAW_TYPE = this._drawType;
+
         const geometry = this.createSymbol(drawEssentials);
         if (geometry) {
             this.tempGraphic.geometry = geometry;
@@ -213,16 +227,17 @@ export class FriendlyDirOfMainAttk {
     /**
      * Create DrawEssentials object
      */
-    private createDrawEssentials(ctrlPts: Point[]): DrawEssentials {
+    private createDrawEssentials(ctrlPts: Point[], drawType: number): DrawEssentials {
         const drawEssentials = new DrawEssentials();
         drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
         drawEssentials.SID = this.SID;
         drawEssentials.SYM_NAME = this.symName;
         drawEssentials.AMPLIFIER = this.amplifier.toString();
-        
+
         // Store additional properties
         (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
+        (drawEssentials as any).DRAW_TYPE = drawType;
 
         return drawEssentials;
     }
@@ -240,44 +255,28 @@ export class FriendlyDirOfMainAttk {
                 throw new Error("controlPoints not found");
             }
 
-            const result = new Polyline({ spatialReference: this.view.spatialReference });
-            
-            // Add main path
-            const path = pts.map(pt => [pt.x, pt.y]);
-            result.addPath(path);
+            let result = new Polyline({ spatialReference: this.view.spatialReference });
 
-            if (pts.length >= 2) {
-                // Calculate extension point
-                const len = GeoTools._2PtLen(pts[0], pts[pts.length - 1]);
-                const k = GeoTools.angleInRadians(pts[pts.length - 2], pts[pts.length - 1]);
-                const lenExtension = len / 40;
-                const newMp = { 
-                    x: lenExtension * Math.cos(k) + pts[pts.length - 1].x, 
-                    y: lenExtension * Math.sin(k) + pts[pts.length - 1].y 
-                };
+            const drawType = (drawEssentials as any).DRAW_TYPE || 1;
 
-                // Create arrow heads
-                const arrowFlankLen = GeoTools.ArrowFlanksLen(
-                    GeoTools._2PtLen(pts[pts.length - 2], pts[pts.length - 1]), 
-                    GeoTools._2PtLen(pts[pts.length - 2], pts[pts.length - 1])
-                );
-                const angle = GeoTools.angleInRadians(pts[pts.length - 2], pts[pts.length - 1]);
-
-                // Arrow head 1 (extended point)
-                const arrow1 = this.createArrowHead(newMp, arrowFlankLen, angle);
-                result.addPath(arrow1);
-
-                // Arrow head 2 (last point)
-                const arrow2 = this.createArrowHead(pts[pts.length - 1], arrowFlankLen, angle);
-                result.addPath(arrow2);
-
-                // Connect the arrow heads
-                if (arrow1.length > 0 && arrow2.length > 0) {
-                    result.addPath([arrow1[0], arrow2[0]]);
-                    result.addPath([arrow1[arrow1.length - 1], arrow2[arrow2.length - 1]]);
-                }
+            switch (drawType) {
+                case 1:
+                    result = this.createSymbolByLine(pts);
+                    break;
+                case 2:
+                    result = this.createSymbolByCurve(pts);
+                    break;
+                default:
+                    result = this.createSymbolByLine(pts);
             }
 
+            // Add Arrow Head
+            if (pts.length >= 2) {
+                const arrowHeadPath = Shapes.createArrowHead(pts);
+                if (arrowHeadPath && arrowHeadPath.length > 0) {
+                    result.addPath(arrowHeadPath);
+                }
+            }
             return result;
 
         } catch (e) {
@@ -287,12 +286,40 @@ export class FriendlyDirOfMainAttk {
     }
 
     /**
-     * Create arrow head
+     * Create symbol by line (draw type 1)
      */
-    private createArrowHead(point: Point | { x: number, y: number }, flanksLen: number, angle: number): number[][] {
-        const arrowHead = Shapes.arrowHead(point, flanksLen, angle);
-        return arrowHead || [];
+    private createSymbolByLine(pts: Point[]): Polyline {
+        const result = new Polyline({ spatialReference: this.view.spatialReference });
+        const path = pts.map(pt => [pt.x, pt.y]);
+        result.addPath(path);
+        return result;
     }
+
+    /**
+     * Create symbol by curve (draw type 2)
+     */
+    private createSymbolByCurve(pts: Point[]): Polyline {
+        const firstPoint = pts[0];
+        const lastPoint = pts[pts.length - 1];
+        const result = new Polyline({ spatialReference: this.view.spatialReference });
+
+        if (pts.length === 2) {
+            result.addPath([[lastPoint.x, lastPoint.y], [firstPoint.x, firstPoint.y]]);
+        } else if (pts.length > 2) {
+            // Convert points to simple objects for Bezier path
+            const tempArray = pts.map(pt => ({ x: pt.x, y: pt.y }));
+
+            // Create Bezier path using our Shapes utility
+            const bezierPoints = Shapes.CreateBezierPathPCOnly(tempArray, 100);
+            const bezierPath = bezierPoints.map(pt => [pt.x, pt.y]);
+            result.addPath(bezierPath);
+        }
+
+        return result;
+    }
+
+
+
 
     /**
      * Clean up drawing state and finalize
@@ -300,12 +327,12 @@ export class FriendlyDirOfMainAttk {
     private cleanUp(): void {
         if (this._points.length === 0) return;
 
-        const drawEss = this.createDrawEssentials(this._points.slice());
-        
+        const drawEss = this.createDrawEssentials(this._points.slice(), this._drawType);
+
         if (this.tempGraphic && this.tempGraphic.geometry) {
             this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
         }
-        
+
         this._clear();
         this._removeEvents();
     }
@@ -348,7 +375,7 @@ export class FriendlyDirOfMainAttk {
         if (this.tempGraphic && this.symbolLayer) {
             this.symbolLayer.remove(this.tempGraphic);
         }
-        
+
         this.tempGraphic = null;
         this._points = [];
     }
@@ -389,7 +416,7 @@ export class FriendlyDirOfMainAttk {
         if (listeners) {
             listeners.forEach(listener => listener(data));
         }
-        
+
         // Also emit as a global document event for SymbolEngine to catch
         this.emitGlobalEvent(eventName, data);
     }
@@ -452,4 +479,4 @@ export class FriendlyDirOfMainAttk {
     }
 }
 
-export default FriendlyDirOfMainAttk; 
+export default FriendlyDirOfMainAttk;

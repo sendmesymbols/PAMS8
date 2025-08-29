@@ -267,7 +267,7 @@ export class FreehandArrow {
 
             // Add Arrow Head
             if (pts.length >= 2) {
-                const arrowHeadPath = this.createArrowHead(pts);
+                const arrowHeadPath = Shapes.createArrowHead(pts);
                 if (arrowHeadPath && arrowHeadPath.length > 0) {
                     result.addPath(arrowHeadPath);
                 }
@@ -280,59 +280,7 @@ export class FreehandArrow {
         }
     }
 
-    /**
-     * Create arrow head geometry
-     */
-    private createArrowHead(pts: Point[]): number[][] | null {
-        if (pts.length < 2) return null;
 
-        try {
-            const lastPoint = pts[pts.length - 1];
-            const secondLastPoint = pts[pts.length - 2];
-            
-            // Calculate arrow dimensions
-            const lineLength = GeoTools._2PtLen ? GeoTools._2PtLen(pts[0], lastPoint) : this.calculateDistance(pts[0], lastPoint);
-            const arrowLength = (GeoTools as any).ArrowFlanksLen ? (GeoTools as any).ArrowFlanksLen(lineLength, lineLength) : lineLength * 0.1;
-            const angle = GeoTools.angleInRadians ? GeoTools.angleInRadians(secondLastPoint, lastPoint) : this.calculateAngle(secondLastPoint, lastPoint);
-
-            // Use Shapes utility to create arrow head
-            if (Shapes && (Shapes as any).arrowHead) {
-                return (Shapes as any).arrowHead(lastPoint, arrowLength, angle);
-            } else {
-                // Fallback arrow head creation
-                return this.createSimpleArrowHead(lastPoint, secondLastPoint, arrowLength);
-            }
-        } catch (e) {
-            console.log('Error creating arrow head:', e);
-            return null;
-        }
-    }
-
-    /**
-     * Create simple arrow head as fallback
-     */
-    private createSimpleArrowHead(tip: Point, base: Point, arrowLength: number): number[][] {
-        // Calculate the angle from base to tip
-        const dx = tip.x - base.x;
-        const dy = tip.y - base.y;
-        const angle = Math.atan2(dy, dx);
-        
-        // Arrow head angle (30 degrees on each side)
-        const arrowAngle = Math.PI / 6;
-        
-        // Calculate arrow head points
-        const leftX = tip.x - arrowLength * Math.cos(angle - arrowAngle);
-        const leftY = tip.y - arrowLength * Math.sin(angle - arrowAngle);
-        const rightX = tip.x - arrowLength * Math.cos(angle + arrowAngle);
-        const rightY = tip.y - arrowLength * Math.sin(angle + arrowAngle);
-
-        // Return arrow head path
-        return [
-            [leftX, leftY],
-            [tip.x, tip.y],
-            [rightX, rightY]
-        ];
-    }
 
     /**
      * Calculate distance between two points as fallback

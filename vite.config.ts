@@ -65,6 +65,9 @@ export default defineConfig({
         },
         minify: false, // handled by terser plugin instead
     },
+    server: {
+        port: 3000
+    },
     plugins: [
         dts({
             entryRoot: 'MS',

@@ -136,8 +136,6 @@ import BdeAdmArea from "../Symbols/BdeAdmArea.ts"; //Fixed
 import DivAdmArea from "../Symbols/DivAdmArea.ts"; //Fixed
 import BridgeHeadLine from "../Symbols/BridgeHeadLine.ts"; //Fixed
 import PhaseLine from "../Symbols/PhaseLine.ts"; //Fixed
-
-
 import Breach from "../Symbols/Breach.ts"; //Fixed
 import Bridge from "../Symbols/Bridge.ts"; //Fixed
 import BtleHndOvrLn from "../Symbols/BtleHndOvrLn.ts"; //Fixed
@@ -145,9 +143,7 @@ import Block from "../Symbols/Block.ts"; //Fixed
 import BlockObstacleEffect from "../Symbols/BlockObstacleEffect.ts"; //Fixed
 import BOPFreehand from "../Symbols/BOPFreehand.ts"; //Fixed
 import Boundary from "../Symbols/Boundary.ts"; //Fixed
-
 import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";  //Fixed
-
 import MainAttack from "../Symbols/MainAttack.ts";  //Fixed
 import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts"; //Fixed
 import Clear from "../Symbols/Clear.ts"; //Fixed
@@ -164,7 +160,6 @@ import FreehandSupportingAttack from "../Symbols/FreehandSupportingAttack.ts"; /
 import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts"; //Issue
 import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts";
 import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts";
-
 import SingleConcertina from "../Symbols/SingleConcertina.ts";
 import SingleFenceWire from "../Symbols/SingleFenceWire.ts";
 import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";
