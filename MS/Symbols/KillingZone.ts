@@ -26,7 +26,7 @@ export interface KillingZoneOptions {
  * Supports multiple drawing types: Bezier curve (1), Polygon (2), Rectangle (3)
  * Includes inner text markers
  */
-export class KillingGr {
+export class KillingZone {
   private view: MapView | SceneView;
   private layerManager: GraphicsLayerManager;
   private symbolLayer: GraphicsLayer;
@@ -71,7 +71,7 @@ export class KillingGr {
   }
 
   /**
-   * Initialize theKilling Gr drawing
+   * Initialize the Killing Zone drawing
    */
   public init(options: KillingZoneOptions, marker: SimpleLineSymbol): void {
     this._lineSym = marker.clone();
@@ -290,7 +290,7 @@ export class KillingGr {
 
 
   /**
-   * Create inner text markers for Killing Ground
+   * Create inner text markers for Killing Zone
    */
   private createInnerText(result: Polygon, firstPoint: Point, lastPoint: Point): Polygon {
     try {
@@ -314,8 +314,8 @@ export class KillingGr {
       }
 
       // Create closed rings per stroke so inner text is part of the polygon geometry (no extra graphics)
-      const rings = (Shapes as any).createKGRings
-          ? (Shapes as any).createKGRings(midPt.x, midPt.y, cLenLimit, midPt.spatialReference)
+      const rings = (Shapes as any).createKZRings
+          ? (Shapes as any).createKZRings(midPt.x, midPt.y, cLenLimit, midPt.spatialReference)
           : null;
 
       if (rings && Array.isArray(rings)) {
@@ -330,12 +330,12 @@ export class KillingGr {
           }
         }
       } else {
-        // Fallback to legacy createKG from the source JS
-        const kgTxt = (Shapes as any).createKG(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-        if (kgTxt && Array.isArray(kgTxt)) {
-          for (let j = 0; j <= kgTxt.length - 1; j++) {
-            if (kgTxt[j]) {
-              result.addRing(kgTxt[j]);
+        // Fallback to legacy createKZ from the source JS
+        const kzTxt = (Shapes as any).createKZ(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+        if (kzTxt && Array.isArray(kzTxt)) {
+          for (let j = 0; j <= kzTxt.length - 1; j++) {
+            if (kzTxt[j]) {
+              result.addRing(kzTxt[j]);
             }
           }
         }
