@@ -1040,9 +1040,9 @@ class Shapes {
             const secondLastPoint = pts[pts.length - 2];
 
             // Calculate arrow dimensions
-            const lineLength = GeoTools._2PtLen ? GeoTools._2PtLen(pts[0], lastPoint) : this.calculateDistance(pts[0], lastPoint);
+            const lineLength = GeoTools._2PtLen ? GeoTools._2PtLen(pts[0], lastPoint) : Math.hypot(lastPoint.x - pts[0].x, lastPoint.y - pts[0].y);
             const arrowLength = (GeoTools as any).ArrowFlanksLen ? (GeoTools as any).ArrowFlanksLen(lineLength, lineLength) : lineLength * 0.1;
-            const angle = GeoTools.angleInRadians ? GeoTools.angleInRadians(secondLastPoint, lastPoint) : this.calculateAngle(secondLastPoint, lastPoint);
+            const angle = GeoTools.angleInRadians ? GeoTools.angleInRadians(secondLastPoint, lastPoint) : Math.atan2(lastPoint.y - secondLastPoint.y, lastPoint.x - secondLastPoint.x);
 
             // Use Shapes utility to create arrow head
             if (Shapes && (Shapes as any).arrowHead) {

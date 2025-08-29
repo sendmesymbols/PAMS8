@@ -270,11 +270,55 @@ export class FriendlyDirOfMainAttk {
                     result = this.createSymbolByLine(pts);
             }
 
-            // Add Arrow Head
+            // Add Double Arrow Head
             if (pts.length >= 2) {
-                const arrowHeadPath = Shapes.createArrowHead(pts);
-                if (arrowHeadPath && arrowHeadPath.length > 0) {
-                    result.addPath(arrowHeadPath);
+                const lastPoint = pts[pts.length - 1];
+                const secondLastPoint = pts[pts.length - 2];
+
+                // Base length between last two points
+                const baseLen = (GeoTools as any)._2PtLen
+                    ? (GeoTools as any)._2PtLen(secondLastPoint, lastPoint)
+                    : Math.hypot(lastPoint.x - secondLastPoint.x, lastPoint.y - secondLastPoint.y);
+
+                // Arrow flank length using GeoTools if available, fallback otherwise
+                const arrowLength = (GeoTools as any).ArrowFlanksLen
+                    ? (GeoTools as any).ArrowFlanksLen(baseLen, baseLen)
+                    : baseLen * 0.1;
+
+                // Direction angle from secondLast to last
+                const angle = (GeoTools as any).angleInRadians
+                    ? (GeoTools as any).angleInRadians(secondLastPoint, lastPoint)
+                    : Math.atan2(lastPoint.y - secondLastPoint.y, lastPoint.x - secondLastPoint.x);
+
+                //Create a forward-shifted tip beyond the last point (len = baseLen / 40)
+                const forwardLen = baseLen / 40;
+                const newTip = new Point({
+                    x: forwardLen * Math.cos(angle) + lastPoint.x,
+                    y: forwardLen * Math.sin(angle) + lastPoint.y,
+                    spatialReference: this.view.spatialReference
+                });
+
+                // Build two arrow heads: one at the shifted tip, one at the actual tip
+                const arrow1Path = Shapes.createSimpleArrowHead(newTip, lastPoint, arrowLength);
+                const arrow2Path = Shapes.createSimpleArrowHead(lastPoint, secondLastPoint, arrowLength);
+
+                if (arrow1Path && arrow1Path.length > 0) {
+                    result.addPath(arrow1Path);
+                }
+                if (arrow2Path && arrow2Path.length > 0) {
+                    result.addPath(arrow2Path);
+                }
+
+                // Connect the corresponding flank points between the two arrow heads
+                if (arrow1Path && arrow2Path && arrow1Path.length > 0 && arrow2Path.length > 0) {
+                    const connectStart: number[][] = [arrow1Path[0], arrow2Path[0]];
+                    result.addPath(connectStart);
+
+                    const connectEnd: number[][] = [
+                        arrow1Path[arrow1Path.length - 1],
+                        arrow2Path[arrow2Path.length - 1]
+                    ];
+                    result.addPath(connectEnd);
                 }
             }
             return result;
