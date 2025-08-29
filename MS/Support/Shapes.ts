@@ -871,18 +871,18 @@ class Shapes {
         return [
             // Left vertical
             [
-                new Point({ x: leftX, y: dy - dr, spatialReference: sp }),
-                new Point({ x: leftX, y: dy + dr, spatialReference: sp })
+                new Point({ x: leftX, y: dy + dr, spatialReference: sp }),
+                new Point({ x: leftX, y: dy - dr, spatialReference: sp })
             ],
-            // Diagonal
+            // Diagonal (from left bottom to right top)
             [
-                new Point({ x: leftX, y: dy - dr, spatialReference: sp }),
-                new Point({ x: rightX, y: dy + dr, spatialReference: sp })
+                new Point({ x: leftX, y: dy + dr, spatialReference: sp }),
+                new Point({ x: rightX, y: dy - dr, spatialReference: sp })
             ],
             // Right vertical
             [
-                new Point({ x: rightX, y: dy - dr, spatialReference: sp }),
-                new Point({ x: rightX, y: dy + dr, spatialReference: sp })
+                new Point({ x: rightX, y: dy + dr, spatialReference: sp }),
+                new Point({ x: rightX, y: dy - dr, spatialReference: sp })
             ]
         ];
     }
