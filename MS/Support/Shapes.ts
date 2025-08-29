@@ -862,6 +862,50 @@ class Shapes {
         return [...tStrokes, ...aStrokes, ...iStrokes];
     }
 
+    static createNStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const leftX = dx - (dr * 0.5);
+        const rightX = dx + (dr * 0.5);
+        return [
+            // Left vertical
+            [
+                new Point({ x: leftX, y: dy - dr, spatialReference: sp }),
+                new Point({ x: leftX, y: dy + dr, spatialReference: sp })
+            ],
+            // Diagonal
+            [
+                new Point({ x: leftX, y: dy - dr, spatialReference: sp }),
+                new Point({ x: rightX, y: dy + dr, spatialReference: sp })
+            ],
+            // Right vertical
+            [
+                new Point({ x: rightX, y: dy - dr, spatialReference: sp }),
+                new Point({ x: rightX, y: dy + dr, spatialReference: sp })
+            ]
+        ];
+    }
+
+    static createNAIStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const nStrokes = this.createNStrokes(dx - (dr * 1.3), dy, dr, sp);
+        const aStrokes = this.createAStrokes(dx, dy, dr, sp);
+        const iStrokes = this.createIStrokes(dx + (dr * 0.8), dy, dr, sp);
+        return [...nStrokes, ...aStrokes, ...iStrokes];
+    }
+
+    static createNAIRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        // Return single-stroke line paths (not rectangles)
+        const paths: number[][][] = [];
+        const strokes = this.createNAIStrokes(dx, dy, dr, sp);
+        for (let i = 0; i < strokes.length; i++) {
+            const seg = strokes[i];
+            if (seg && seg.length >= 2) {
+                const p1 = seg[0];
+                const p2 = seg[1];
+                paths.push([[p1.x, p1.y], [p2.x, p2.y]]);
+            }
+        }
+        return paths;
+    }
+
     /**
      * Convert a line segment to a thin rectangle ring (closed) of given stroke width
      */

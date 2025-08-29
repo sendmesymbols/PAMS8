@@ -315,8 +315,8 @@ export class NamedAreaOfInterest {
             }
 
             // Create closed rings per stroke so inner text is part of the polygon geometry (no extra graphics)
-            const rings = (Shapes as any).createTAIRings
-                ? (Shapes as any).createTAIRings(midPt.x, midPt.y, cLenLimit, midPt.spatialReference)
+            const rings = (Shapes as any).createNAIRings
+                ? (Shapes as any).createNAIRings(midPt.x, midPt.y, cLenLimit, midPt.spatialReference)
                 : null;
 
             if (rings && Array.isArray(rings)) {
@@ -324,15 +324,19 @@ export class NamedAreaOfInterest {
                     const ring = rings[r];
                     if (ring && ring.length >= 4) {
                         result.addRing(ring);
+                    } else if (ring && ring.length === 2) {
+                        // Close a 2-point stroke minimally to keep it as a single stroked segment in polygon outline
+                        const closed = [ring[0], ring[1], ring[0]];
+                        result.addRing(closed);
                     }
                 }
             } else {
-                // Fallback to legacy createTAI (already closed sequences)
-                const tiaTxt = (Shapes as any).createTAI(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-                if (tiaTxt && Array.isArray(tiaTxt)) {
-                    for (let j = 0; j <= tiaTxt.length - 1; j++) {
-                        if (tiaTxt[j]) {
-                            result.addRing(tiaTxt[j]);
+                // Fallback to legacy createNAI from the source JS
+                const naiTxt = (Shapes as any).createNAI(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+                if (naiTxt && Array.isArray(naiTxt)) {
+                    for (let j = 0; j <= naiTxt.length - 1; j++) {
+                        if (naiTxt[j]) {
+                            result.addRing(naiTxt[j]);
                         }
                     }
                 }
