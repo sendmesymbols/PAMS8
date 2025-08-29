@@ -314,28 +314,27 @@ export class TargetAreaOfInterest {
                 cLenLimit = baseLineLen / 3.6;
             }
 
-            // Instead of rings (auto-closing in 4.x), render strokes as polylines for crisp letters
-            const strokes = (Shapes as any).createTAIStrokes
-                ? (Shapes as any).createTAIStrokes(midPt.x, midPt.y, cLenLimit, midPt.spatialReference)
-                : (Shapes as any).createTAI(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+            // Create closed rings per stroke so inner text is part of the polygon geometry (no extra graphics)
+            const rings = (Shapes as any).createTAIRings
+                ? (Shapes as any).createTAIRings(midPt.x, midPt.y, cLenLimit, midPt.spatialReference)
+                : null;
 
-            if (strokes && Array.isArray(strokes)) {
-                const poly = new (Polyline as any)({ spatialReference: this.view.spatialReference });
-                for (let s = 0; s < strokes.length; s++) {
-                    const segment = strokes[s];
-                    if (segment && Array.isArray(segment) && segment.length > 0) {
-                        const path: number[][] = (segment as Point[]).map(p => [p.x, p.y]);
-                        poly.addPath(path);
+            if (rings && Array.isArray(rings)) {
+                for (let r = 0; r < rings.length; r++) {
+                    const ring = rings[r];
+                    if (ring && ring.length >= 4) {
+                        result.addRing(ring);
                     }
                 }
-
-                // Add the stroke polyline to the symbol layer as an overlay
-                if (this.symbolLayer) {
-                    const strokeGraphic = new Graphic({
-                        geometry: poly,
-                        symbol: this._lineSym
-                    });
-                    this.symbolLayer.add(strokeGraphic);
+            } else {
+                // Fallback to legacy createTAI (already closed sequences)
+                const tiaTxt = (Shapes as any).createTAI(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+                if (tiaTxt && Array.isArray(tiaTxt)) {
+                    for (let j = 0; j <= tiaTxt.length - 1; j++) {
+                        if (tiaTxt[j]) {
+                            result.addRing(tiaTxt[j]);
+                        }
+                    }
                 }
             }
 
@@ -344,42 +343,6 @@ export class TargetAreaOfInterest {
             console.log('Cannot create Inner Text');
             return result;
         }
-    }
-
-    /**
-     * Create simple AO text as fallback
-     */
-    private createSimpleAO(result: Polygon, midPt: Point, size: number): void {
-        // Create simple "AO" text representation
-        const letterHeight = size;
-        const letterWidth = size * 0.6;
-        const spacing = size * 0.2;
-
-        // Create "A" shape
-        const aPoints = [
-            [midPt.x - letterWidth - spacing / 2, midPt.y + letterHeight / 2],
-            [midPt.x - letterWidth / 2 - spacing / 2, midPt.y - letterHeight / 2],
-            [midPt.x - spacing / 2, midPt.y + letterHeight / 2],
-            [midPt.x - letterWidth * 0.75 - spacing / 2, midPt.y],
-            [midPt.x - letterWidth * 0.25 - spacing / 2, midPt.y]
-        ];
-
-        // Create "O" shape (circle)
-        const oCenter = {x: midPt.x + letterWidth / 2 + spacing / 2, y: midPt.y};
-        const oPoints: number[][] = [];
-        const segments = 16;
-        for (let i = 0; i <= segments; i++) {
-            const angle = (i / segments) * 2 * Math.PI;
-            oPoints.push([
-                oCenter.x + (letterWidth / 2) * Math.cos(angle),
-                oCenter.y + (letterHeight / 2) * Math.sin(angle)
-            ]);
-        }
-
-        // Add as separate rings (inner text)
-        result.addRing([aPoints[0], aPoints[1], aPoints[2]]);
-        result.addRing([aPoints[3], aPoints[4]]);
-        result.addRing(oPoints);
     }
 
     /**

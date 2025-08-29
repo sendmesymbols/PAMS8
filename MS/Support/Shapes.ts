@@ -867,6 +867,45 @@ class Shapes {
         return [...tStrokes, ...aStrokes, ...iStrokes];
     }
 
+    /**
+     * Convert a line segment to a thin rectangle ring (closed) of given stroke width
+     */
+    static createStrokedRectRing(p1: Point, p2: Point, strokeWidth: number): number[][] {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const ux = dx / len;
+        const uy = dy / len;
+        const px = -uy;
+        const py = ux;
+        const hw = strokeWidth / 2;
+
+        const p1l = [p1.x + px * hw, p1.y + py * hw];
+        const p1r = [p1.x - px * hw, p1.y - py * hw];
+        const p2r = [p2.x - px * hw, p2.y - py * hw];
+        const p2l = [p2.x + px * hw, p2.y + py * hw];
+
+        return [p1l, p2l, p2r, p1r, p1l];
+    }
+
+    /**
+     * Create closed polygon rings for TAI text using thin rectangles per stroke
+     */
+    static createTAIRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        const rings: number[][][] = [];
+        const strokes = this.createTAIStrokes(dx, dy, dr, sp);
+        const strokeWidth = dr / 10;
+        for (let i = 0; i < strokes.length; i++) {
+            const seg = strokes[i];
+            if (seg && seg.length >= 2) {
+                const p1 = seg[0];
+                const p2 = seg[1];
+                rings.push(this.createStrokedRectRing(p1, p2, strokeWidth));
+            }
+        }
+        return rings;
+    }
+
 
     static createFUP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const pts1 = this.createF(dx - (dr * 2.5), dy, dr, sp);
