@@ -158,7 +158,10 @@ import FreehandSupportingAttack from "../Symbols/FreehandSupportingAttack.ts"; /
 import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts"; //Fixed
 import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts"; //Fixed
 
-import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts";
+import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts"; //Fixed
+import NamedAreaOfInterest from "../Symbols/NamedAreaOfInterest.ts"; //Fixed
+
+
 import SingleConcertina from "../Symbols/SingleConcertina.ts";
 import SingleFenceWire from "../Symbols/SingleFenceWire.ts";
 import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";
@@ -289,6 +292,7 @@ export default class Mapper {
             "FriendlyDirOfMainAttk": FriendlyDirOfMainAttk,
             "FriendlyDirOfSpAttk": FriendlyDirOfSpAttk,
             "TargetAreaOfInterest": TargetAreaOfInterest,
+            "NamedAreaOfInterest" : NamedAreaOfInterest,
             "StratAssyArea": StratAssyArea,
             "SingleConcertina": SingleConcertina,
             "SingleFenceWire": SingleFenceWire,

@@ -817,14 +817,9 @@ class Shapes {
                 new Point({ x: dx, y: dy - dr, spatialReference: sp }),
                 new Point({ x: dx, y: dy + dr, spatialReference: sp })
             ],
-            // Left horizontal arm
+            // Single horizontal arm (avoid overlap at center)
             [
                 new Point({ x: dx - (dr * 0.7), y: dy + dr, spatialReference: sp }),
-                new Point({ x: dx, y: dy + dr, spatialReference: sp })
-            ],
-            // Right horizontal arm
-            [
-                new Point({ x: dx, y: dy + dr, spatialReference: sp }),
                 new Point({ x: dx + (dr * 0.7), y: dy + dr, spatialReference: sp })
             ]
         ];
@@ -894,7 +889,7 @@ class Shapes {
     static createTAIRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
         const rings: number[][][] = [];
         const strokes = this.createTAIStrokes(dx, dy, dr, sp);
-        const strokeWidth = dr / 10;
+        const strokeWidth = Math.max(dr / 80, 0.000001);
         for (let i = 0; i < strokes.length; i++) {
             const seg = strokes[i];
             if (seg && seg.length >= 2) {

@@ -1,15 +1,15 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
-import Polyline from "@arcgis/core/geometry/Polyline";
 import Polygon from "@arcgis/core/geometry/Polygon";
+import Polyline from "@arcgis/core/geometry/Polyline";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
+import GraphicsLayerManager, {LAYER_NAMES} from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
+import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
@@ -17,38 +17,41 @@ export interface NamedAreaOfInterestOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polygon;
     DRAW_TYPE?: number;
+
     [key: string]: any;
 }
 
 /**
- * NamedAreaOfInterest class for drawing Named Area of Interest symbols on MapView or SceneView
- * Creates area symbols with 3 draw types: Bezier curve, polygon, and rectangle with inner "NAI" text
+ * NamedAreaOfInterest class for Target Named Area of Interest symbol
+ * Supports multiple drawing types: Bezier curve (1), Polygon (2), Rectangle (3)
+ * Includes inner text markers
  */
 export class NamedAreaOfInterest {
     private view: MapView | SceneView;
     private layerManager: GraphicsLayerManager;
     private symbolLayer: GraphicsLayer;
     private isLine: boolean;
-    
+
     // Symbol properties
+    public declaredClass = "MilitarySymbology.Symbols.NamedAreaOfInterest";
     private SID: string = "120200";
     private symName: string = "Named Area of Interest";
     private symGeometricType: string = "Area";
-    private _lineSym: SimpleLineSymbol | SimpleFillSymbol | null = null;
+    private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
-    private _drawType: number = 1;
     private _geometryType: string | null = null;
+    private _drawType: number = 1;
     private amplifier: Amplifier;
-    
+
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
-    
+
     // Event handlers
     private clickHandler: any = null;
     private doubleClickHandler: any = null;
     private mouseMoveHandler: any = null;
-    
+
     // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
 
@@ -58,31 +61,40 @@ export class NamedAreaOfInterest {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
         this.amplifier = new Amplifier();
-        
+
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
-        
+
         // Initialize temporary graphic
         this.tempGraphic = new Graphic();
     }
 
     /**
-     * Initialize the named area of interest drawing
+     * Initialize the area of operations drawing
      */
-    public init(options: NamedAreaOfInterestOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void {
-        this._lineSym = marker;
-        this._drawType = options.DRAW_TYPE || this._drawType;
+    public init(options: NamedAreaOfInterest, marker: SimpleLineSymbol): void {
+        this._lineSym = marker.clone();
+        this._drawType = options.DRAW_TYPE || 1;
+
+        // Set up event handlers
+        this.setupEventHandlers();
 
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    this.tempGraphic.geometry = new Polygon({
+                        rings: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
+                }
             }
-            
-            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE!);
-            
+
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE || 1);
             if (this.tempGraphic && this.tempGraphic.geometry) {
                 this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
             }
@@ -90,8 +102,7 @@ export class NamedAreaOfInterest {
 
         } else if (options.hasOwnProperty("CTRL_PTS")) {
             // Immediate placement with control points only
-            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE!);
-            
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE || 1);
             const geometry = this.createSymbol(drawEss);
             if (geometry && this.tempGraphic) {
                 this.tempGraphic.geometry = geometry;
@@ -110,16 +121,12 @@ export class NamedAreaOfInterest {
      */
     private startInteractiveDrawing(): void {
         if (!this._lineSym) return;
-        
         this.isDrawing = true;
         this.tempGraphic = new Graphic({
             geometry: null,
             symbol: this._lineSym
         });
         this.symbolLayer.add(this.tempGraphic);
-        
-        // Set up event handlers
-        this.setupEventHandlers();
     }
 
     /**
@@ -131,7 +138,7 @@ export class NamedAreaOfInterest {
             this._onClickHandler(event);
         });
 
-        // Double click handler  
+        // Double click handler
         this.doubleClickHandler = this.view.on("double-click", (event) => {
             this._onDoubleClickHandler(event);
         });
@@ -149,25 +156,27 @@ export class NamedAreaOfInterest {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
-        
+
         if (this._points.length === 1) {
             // First click - set up mouse move handler
             this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
                 this._onMouseMoveHandler(event);
             });
         }
-        
-        this.emit("onDrawClick", { currentPts: this._points });
+
+        this.emit("onDrawClick", {currentPts: this._points});
 
         // For single line mode, finish after first click
         if (this.isLine === true && this._points.length === 1) {
+            this.emit("onDrawClick", {currentPts: this._points});
             this.cleanUp();
         }
 
         // For rectangle draw type, finish after 2 points
         if (this._drawType === 3 && this._points.length === 2) {
+            this.emit("onDrawClick", {currentPts: this._points});
             this.cleanUp();
         }
     }
@@ -184,7 +193,7 @@ export class NamedAreaOfInterest {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
         this.cleanUp();
     }
@@ -207,7 +216,7 @@ export class NamedAreaOfInterest {
         const drawEssentials = new DrawEssentials();
         (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
         (drawEssentials as any).DRAW_TYPE = this._drawType;
-        
+
         const geometry = this.createSymbol(drawEssentials);
         if (geometry) {
             this.tempGraphic.geometry = geometry;
@@ -227,8 +236,9 @@ export class NamedAreaOfInterest {
         drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
         drawEssentials.SID = this.SID;
         drawEssentials.SYM_NAME = this.symName;
+        drawEssentials.GEOM = null;
         drawEssentials.AMPLIFIER = this.amplifier.toString();
-        
+
         // Store additional properties
         (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
@@ -252,122 +262,82 @@ export class NamedAreaOfInterest {
 
             const lastPoint = pts[pts.length - 1];
             const firstPoint = pts[0];
-            let result = new Polygon({ spatialReference: this.view.spatialReference });
-
             const drawType = (drawEssentials as any).DRAW_TYPE || 1;
+
+            let result: Polygon | null = null;
 
             switch (drawType) {
                 case 1:
-                    result = this.createSymbolByBCurve(pts, firstPoint, lastPoint);
+                    result = Shapes.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                     break;
                 case 2:
-                    result = this.createSymbolByPolygon(pts, firstPoint, lastPoint);
+                    result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                     break;
                 case 3:
-                    result = this.createSymbolByRect(pts, firstPoint, lastPoint);
+                    result = Shapes.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                     break;
                 default:
-                    result = this.createSymbolByBCurve(pts, firstPoint, lastPoint);
+                    result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
             }
 
-            return result;
+            return result ? this.createInnerText(result, firstPoint, lastPoint) : result;
 
         } catch (e) {
+            console.error(e);
             console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
             return null;
         }
     }
 
-    /**
-     * Create symbol by Bezier curve (draw type 1)
-     */
-    private createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(pt => ({ x: pt.x, y: pt.y }));
-        
-        // Close the path
-        tempArray.push({ x: firstPoint.x, y: firstPoint.y });
-        
-        // Create Bezier path
-        const bezierPoints = Shapes.CreateBezierPathPCOnly(tempArray, 130);
-        const bezierPath = bezierPoints.map(pt => [pt.x, pt.y]);
-        result.addRing(bezierPath);
-        
-        // Add inner text
-        return this.createInnerText(result, firstPoint, lastPoint);
-    }
 
     /**
-     * Create symbol by polygon (draw type 2)
-     */
-    private createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(pt => [pt.x, pt.y]);
-        
-        // Close the path
-        tempArray.push([firstPoint.x, firstPoint.y]);
-        
-        result.addRing(tempArray);
-        
-        // Add inner text
-        return this.createInnerText(result, firstPoint, lastPoint);
-    }
-
-    /**
-     * Create symbol by rectangle (draw type 3)
-     */
-    private createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
-        let result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(pt => [pt.x, pt.y]);
-        
-        result.addRing(tempArray);
-        const extent = result.extent;
-        
-        // Create rectangle from extent
-        result = new Polygon({ spatialReference: this.view.spatialReference });
-        if (extent) {
-            const rectPath = [
-                [firstPoint.x, firstPoint.y],
-                [extent.xmin, extent.ymin],
-                [lastPoint.x, lastPoint.y],
-                [extent.xmax, extent.ymax],
-                [firstPoint.x, firstPoint.y]
-            ];
-            result.addRing(rectPath);
-        }
-        
-        // Add inner text
-        return this.createInnerText(result, firstPoint, lastPoint);
-    }
-
-    /**
-     * Create inner "NAI" text
+     * Create inner text markers for Area of Operations
      */
     private createInnerText(result: Polygon, firstPoint: Point, lastPoint: Point): Polygon {
         try {
-            if (!result.extent) {
+            const extent = result.extent;
+            if (!extent) {
                 return result;
             }
-            const midPt = result.extent.center;
-            const baseLineLen = GeoTools._2PtLen(firstPoint, lastPoint);
+
+            const midPt = extent.center as Point;
+            if (!midPt) {
+                return result;
+            }
+
+            const baseLineLen = (GeoTools as any)._2PtLen
+                ? (GeoTools as any)._2PtLen(firstPoint, lastPoint)
+                : Math.hypot(lastPoint.x - firstPoint.x, lastPoint.y - firstPoint.y);
+
             let cLenLimit = baseLineLen / 10;
-            
             if (cLenLimit > baseLineLen / 3.6) {
                 cLenLimit = baseLineLen / 3.6;
             }
 
-            // Create NAI text (when Shapes.createNAI is available)
-            if ('createNAI' in Shapes && typeof (Shapes as any).createNAI === 'function') {
-                const naiPaths = (Shapes as any).createNAI(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-                if (naiPaths && Array.isArray(naiPaths)) {
-                    naiPaths.forEach((path: any) => {
-                        if (path && Array.isArray(path)) {
-                            result.addRing(path);
+            // Create closed rings per stroke so inner text is part of the polygon geometry (no extra graphics)
+            const rings = (Shapes as any).createTAIRings
+                ? (Shapes as any).createTAIRings(midPt.x, midPt.y, cLenLimit, midPt.spatialReference)
+                : null;
+
+            if (rings && Array.isArray(rings)) {
+                for (let r = 0; r < rings.length; r++) {
+                    const ring = rings[r];
+                    if (ring && ring.length >= 4) {
+                        result.addRing(ring);
+                    }
+                }
+            } else {
+                // Fallback to legacy createTAI (already closed sequences)
+                const tiaTxt = (Shapes as any).createTAI(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+                if (tiaTxt && Array.isArray(tiaTxt)) {
+                    for (let j = 0; j <= tiaTxt.length - 1; j++) {
+                        if (tiaTxt[j]) {
+                            result.addRing(tiaTxt[j]);
                         }
-                    });
+                    }
                 }
             }
-            
+
             return result;
         } catch (e) {
             console.log('Cannot create Inner Text');
@@ -376,17 +346,26 @@ export class NamedAreaOfInterest {
     }
 
     /**
+     * Utility method to calculate distance
+     */
+    private calculateDistance(pt1: Point, pt2: Point): number {
+        const dx = pt2.x - pt1.x;
+        const dy = pt2.y - pt1.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /**
      * Clean up drawing state and finalize
      */
     private cleanUp(): void {
         if (this._points.length === 0) return;
 
-        const drawEss = this.createDrawEssentials(this._points.slice(), this._drawType);
-        
+        const drawEssentials = this.createDrawEssentials(this._points.slice(), this._drawType);
+
         if (this.tempGraphic && this.tempGraphic.geometry) {
-            this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
+            this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEssentials);
         }
-        
+
         this._clear();
         this._removeEvents();
     }
@@ -401,7 +380,6 @@ export class NamedAreaOfInterest {
 
             if (spatialRef && spatialRef.isWebMercator) {
                 // Geographic conversion would go here if needed
-                // geographicGeometry = webMercatorUtils.webMercatorToGeographic(drawGeometry);
             } else if (spatialRef && spatialRef.wkid === 4326) {
                 geographicGeometry = drawGeometry.clone();
             }
@@ -429,7 +407,7 @@ export class NamedAreaOfInterest {
         if (this.tempGraphic && this.symbolLayer) {
             this.symbolLayer.remove(this.tempGraphic);
         }
-        
+
         this.tempGraphic = null;
         this._points = [];
     }
@@ -470,14 +448,10 @@ export class NamedAreaOfInterest {
         if (listeners) {
             listeners.forEach(listener => listener(data));
         }
-        
-        // Also emit as a global document event for SymbolEngine to catch
+
         this.emitGlobalEvent(eventName, data);
     }
 
-    /**
-     * Emit global events that can be caught by SymbolEngine
-     */
     private emitGlobalEvent(eventName: string, data: any): void {
         const customEvent = new CustomEvent(eventName, {
             detail: {
@@ -489,7 +463,6 @@ export class NamedAreaOfInterest {
             cancelable: true
         });
 
-        // Dispatch from the view container if available, otherwise from document
         if (this.view && this.view.container) {
             this.view.container.dispatchEvent(customEvent);
         } else {
@@ -518,19 +491,13 @@ export class NamedAreaOfInterest {
         }
     }
 
-    /**
-     * Get the current symbol layer
-     */
     public getSymbolLayer(): GraphicsLayer {
         return this.symbolLayer;
     }
 
-    /**
-     * Clear all symbols from the layer
-     */
     public clearSymbols(): void {
         this.symbolLayer.removeAll();
     }
 }
 
-export default NamedAreaOfInterest; 
+export default NamedAreaOfInterest;
