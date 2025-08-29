@@ -164,9 +164,9 @@ import CorpsAdmArea from "../Symbols/CorpsAdmArea.ts"; //Fixed
 import ZoneOfResponsibility from "../Symbols/ZoneOfResponsibility.ts"; //Fixed
 import KillingGr from "../Symbols/KillingGr.ts"; //Fixed
 import KillingZone from "../Symbols/KillingZone.ts"; //Fixed
+import LandingZone from "../Symbols/LandingZone.ts"; //Fixed
+import VitalGr from "../Symbols/VitalGr.ts";  //Fixed
 
-import LandingZone from "../Symbols/LandingZone.ts";
-import VitalGr from "../Symbols/VitalGr.ts";
 import NoGo from "../Symbols/NoGo.ts";
 import FlightZone from "../Symbols/FlightZone.ts";
 import PenetrationBox from "../Symbols/PenetrationBox.ts";
@@ -179,10 +179,7 @@ import SingleFenceWire from "../Symbols/SingleFenceWire.ts";
 import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";
 import UARoute from "../Symbols/UARoute.ts";
 import UnspecifiedMine from "../Symbols/UnspecifiedMine.ts";
-
-
 import WideAreaAntiTankMine from "../Symbols/WideAreaAntiTankMine.ts";
-
 import Canalize from "../Symbols/Canalize.ts";
 import Contain from "../Symbols/Contain.ts";
 import Corridors from "../Symbols/Corridors.ts";

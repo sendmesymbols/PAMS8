@@ -1392,6 +1392,27 @@ class Shapes {
         return [pts1, temp[0], temp[1]];
     }
 
+    static createVGStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const vStrokes = this.createVStrokes(dx - dr, dy, dr, sp);
+        const gStrokes = this.createGStrokes(dx + (dr * 1.2), dy, dr, sp);
+        return [...vStrokes, ...gStrokes];
+    }
+
+    static createVGRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        // Return single-stroke line paths (not rectangles)
+        const paths: number[][][] = [];
+        const strokes = this.createVGStrokes(dx, dy, dr, sp);
+        for (let i = 0; i < strokes.length; i++) {
+            const seg = strokes[i];
+            if (seg && seg.length >= 2) {
+                const p1 = seg[0];
+                const p2 = seg[1];
+                paths.push([[p1.x, p1.y], [p2.x, p2.y]]);
+            }
+        }
+        return paths;
+    }
+
 
 
     static createBL(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {

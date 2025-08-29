@@ -13194,7 +13194,7 @@
     "25242301": {
         "Class": "VitalGr",
         "Description": "",
-        "Name": "Vital",
+        "Name": "Vital Gr",
         "Parameters": [{
             "Name": "Draw Type",
             "default": "1",
