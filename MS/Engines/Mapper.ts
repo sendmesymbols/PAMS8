@@ -155,10 +155,9 @@ import FreehandMainAttackArrow from "../Symbols/FreehandMainAttackArrow.ts"; //F
 import FreehandSemiCircle from "../Symbols/FreehandSemiCircle.ts"; //Fixed
 import FreehandSemiCircleFilled from "../Symbols/FreehandSemiCircleFilled.ts"; //Fixed
 import FreehandSupportingAttack from "../Symbols/FreehandSupportingAttack.ts"; //Fixed
+import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts"; //Fixed
+import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts"; //Fixed
 
-
-import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts"; //Issue
-import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts";
 import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts";
 import SingleConcertina from "../Symbols/SingleConcertina.ts";
 import SingleFenceWire from "../Symbols/SingleFenceWire.ts";
