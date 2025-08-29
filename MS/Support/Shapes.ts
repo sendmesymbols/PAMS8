@@ -685,10 +685,13 @@ class Shapes {
     static createN(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
         const pts: Point[] = [];
 
-        pts.push(new Point({ x: dx - (dr * 0.5), y: dy - dr, spatialReference: sp }));
-        pts.push(new Point({ x: dx - (dr * 0.5), y: dy + dr, spatialReference: sp }));
-        pts.push(new Point({ x: dx + (dr * 0.5), y: dy - dr, spatialReference: sp }));
-        pts.push(new Point({ x: dx + (dr * 0.5), y: dy + dr, spatialReference: sp }));
+        const leftX = dx - (dr * 0.5);
+        const rightX = dx + (dr * 0.5);
+        // Match 3.x source ordering: left top→bottom, right top→bottom
+        pts.push(new Point({ x: leftX, y: dy - dr, spatialReference: sp }));
+        pts.push(new Point({ x: leftX, y: dy + dr, spatialReference: sp }));
+        pts.push(new Point({ x: rightX, y: dy - dr, spatialReference: sp }));
+        pts.push(new Point({ x: rightX, y: dy + dr, spatialReference: sp }));
 
         return pts;
     }
