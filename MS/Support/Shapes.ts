@@ -931,18 +931,18 @@ class Shapes {
      * Create closed polygon rings for TAI text using thin rectangles per stroke
      */
     static createTAIRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
-        const rings: number[][][] = [];
+        // Return single-stroke line paths (no rectangles)
+        const paths: number[][][] = [];
         const strokes = this.createTAIStrokes(dx, dy, dr, sp);
-        const strokeWidth = Math.max(dr / 80, 0.000001);
         for (let i = 0; i < strokes.length; i++) {
             const seg = strokes[i];
             if (seg && seg.length >= 2) {
                 const p1 = seg[0];
                 const p2 = seg[1];
-                rings.push(this.createStrokedRectRing(p1, p2, strokeWidth));
+                paths.push([[p1.x, p1.y], [p2.x, p2.y]]);
             }
         }
-        return rings;
+        return paths;
     }
 
 

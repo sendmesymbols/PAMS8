@@ -324,6 +324,10 @@ export class TargetAreaOfInterest {
                     const ring = rings[r];
                     if (ring && ring.length >= 4) {
                         result.addRing(ring);
+                    } else if (ring && ring.length === 2) {
+                        // Close a 2-point stroke minimally to keep it as a single stroked segment in polygon outline
+                        const closed = [ring[0], ring[1], ring[0]];
+                        result.addRing(closed);
                     }
                 }
             } else {
