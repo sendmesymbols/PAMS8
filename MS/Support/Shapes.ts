@@ -803,6 +803,143 @@ class Shapes {
         return [pts1, pts2, pts3];
     }
 
+    static createZORStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const zStrokes = this.createZStrokes(dx - (dr * 1.8), dy, dr, sp);
+        const oStrokes = this.createOStrokes(dx, dy, dr, sp);
+        const rStrokes = this.createRStrokes(dx + (dr * 1.2), dy, dr, sp);
+        return [...zStrokes, ...oStrokes, ...rStrokes];
+    }
+
+    static createZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            // Top horizontal line
+            [
+                new Point({ x: dx, y: dy + dr, spatialReference: sp }),
+                new Point({ x: dx + dr, y: dy + dr, spatialReference: sp })
+            ],
+            // Diagonal line
+            [
+                new Point({ x: dx + dr, y: dy + dr, spatialReference: sp }),
+                new Point({ x: dx, y: dy - dr, spatialReference: sp })
+            ],
+            // Bottom horizontal line
+            [
+                new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx + dr, y: dy - dr, spatialReference: sp })
+            ]
+        ];
+    }
+
+    static createOStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        // Create O as separate arc segments to avoid auto-closing
+        const step = 2 * Math.PI / 36; // Smaller steps for smoother curve
+        const strokes: Point[][] = [];
+        
+        // Break O into small line segments to avoid auto-closing issues
+        let prevPoint: Point | null = null;
+        for (let dtheta = 0; dtheta < 360 * Math.PI / 180; dtheta += step) {
+            const x = dx + 0.5 * dr * Math.cos(dtheta);
+            const y = dy - dr * Math.sin(dtheta);
+            const currentPoint = new Point({ x, y, spatialReference: sp });
+
+            if (prevPoint) {
+                strokes.push([prevPoint, currentPoint]);
+            }
+            prevPoint = currentPoint;
+        }
+        
+        // Close the circle
+        if (prevPoint && strokes.length > 0) {
+            const firstPoint = new Point({ 
+                x: dx + 0.5 * dr * Math.cos(0), 
+                y: dy - dr * Math.sin(0), 
+                spatialReference: sp 
+            });
+            strokes.push([prevPoint, firstPoint]);
+        }
+        
+        return strokes;
+    }
+
+    static createRStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        // Create R as separate strokes - similar to createR but broken into segments
+        const dStrokes = this.createDStrokes(dx, dy + (dr / 2), dr / 2, sp);
+        const additionalStrokes = [
+            // Vertical line
+            [
+                new Point({ x: dx - ((dr / 2) / 3), y: dy, spatialReference: sp }),
+                new Point({ x: dx - ((dr / 2) / 3), y: dy - dr, spatialReference: sp })
+            ],
+            // Diagonal leg
+            [
+                new Point({ x: dx - ((dr / 2) / 3), y: dy, spatialReference: sp }),
+                new Point({ x: dx + (dr / 2), y: dy - dr, spatialReference: sp })
+            ]
+        ];
+        return [...dStrokes, ...additionalStrokes];
+    }
+
+    static createDStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        // Create D as separate arc segments to avoid auto-closing
+        const step = 2 * Math.PI / 36;
+        const strokes: Point[][] = [];
+        
+        // Create the curved part of D
+        let prevPoint: Point | null = null;
+        for (let dtheta = 270 * Math.PI / 180; dtheta < 360 * Math.PI / 180; dtheta += step) {
+            const x = dx + dr * Math.cos(dtheta);
+            const y = dy - dr * Math.sin(dtheta);
+            const currentPoint = new Point({ x, y, spatialReference: sp });
+
+            if (prevPoint) {
+                strokes.push([prevPoint, currentPoint]);
+            }
+            prevPoint = currentPoint;
+        }
+
+        for (let dtheta = 0 * Math.PI / 180; dtheta < 91 * Math.PI / 180; dtheta += step) {
+            const x = dx + dr * Math.cos(dtheta);
+            const y = dy - dr * Math.sin(dtheta);
+            const currentPoint = new Point({ x, y, spatialReference: sp });
+
+            if (prevPoint) {
+                strokes.push([prevPoint, currentPoint]);
+            }
+            prevPoint = currentPoint;
+        }
+
+        // Add the vertical lines
+        strokes.push([
+            new Point({ x: dx - (dr / 3), y: dy + dr, spatialReference: sp }),
+            new Point({ x: dx, y: dy + dr, spatialReference: sp })
+        ]);
+        strokes.push([
+            new Point({ x: dx - (dr / 3), y: dy - dr, spatialReference: sp }),
+            new Point({ x: dx, y: dy - dr, spatialReference: sp })
+        ]);
+        strokes.push([
+            new Point({ x: dx - (dr / 3), y: dy - dr, spatialReference: sp }),
+            new Point({ x: dx - (dr / 3), y: dy + dr, spatialReference: sp })
+        ]);
+
+        return strokes;
+    }
+
+    static createZORRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        // Return single-stroke line paths (not rectangles)
+        const paths: number[][][] = [];
+        const strokes = this.createZORStrokes(dx, dy, dr, sp);
+        for (let i = 0; i < strokes.length; i++) {
+            const seg = strokes[i];
+            if (seg && seg.length >= 2) {
+                const p1 = seg[0];
+                const p2 = seg[1];
+                paths.push([[p1.x, p1.y], [p2.x, p2.y]]);
+            }
+        }
+        return paths;
+    }
+
     static createFAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         // Create F as separate strokes to avoid auto-closing
         const fStrokes = this.createFStrokes(dx - (dr * 1.8), dy, dr, sp);
@@ -1132,11 +1269,7 @@ class Shapes {
         return [pts1, temp[0], temp[1]];
     }
 
-    static createVA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts1 = this.createV(dx, dy, dr, sp);
-        const pts2 = this.createA(dx + (dr * 1.2), dy, dr, sp);
-        return [pts1, pts2];
-    }
+
 
     static createBL(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const pts1 = this.createB(new Point({ x: dx, y: dy, spatialReference: sp }), dr, 60);
