@@ -1033,6 +1033,52 @@ class Shapes {
         return [pts1, pts2, pts3];
     }
 
+    static createCStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        // Create C as separate arc segments to avoid auto-closing
+        const step = 2 * Math.PI / 36; // Smaller steps for smoother curve
+        const strokes: Point[][] = [];
+        
+        // Break C into small line segments to avoid auto-closing issues
+        let prevPoint: Point | null = null;
+        for (let dtheta = 65 * Math.PI / 180; dtheta < 295 * Math.PI / 180; dtheta += step) {
+            const x = dx + dr * Math.cos(dtheta);
+            const y = dy - dr * Math.sin(dtheta);
+            const currentPoint = new Point({ x, y, spatialReference: sp });
+
+            if (prevPoint) {
+                strokes.push([prevPoint, currentPoint]);
+            }
+            prevPoint = currentPoint;
+        }
+        
+        return strokes;
+    }
+
+    static createCAAStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        // Create C as separate strokes to avoid auto-closing
+        const cStrokes = this.createCStrokes(dx - (dr * 1.2), dy, dr, sp);
+        const a1Strokes = this.createAStrokes(dx, dy, dr, sp);
+        const a2Strokes = this.createAStrokes(dx + (dr * 1.2), dy, dr, sp);
+        
+        // Combine all strokes
+        return [...cStrokes, ...a1Strokes, ...a2Strokes];
+    }
+
+    static createCAARings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        // Return single-stroke line paths (not rectangles)
+        const paths: number[][][] = [];
+        const strokes = this.createCAAStrokes(dx, dy, dr, sp);
+        for (let i = 0; i < strokes.length; i++) {
+            const seg = strokes[i];
+            if (seg && seg.length >= 2) {
+                const p1 = seg[0];
+                const p2 = seg[1];
+                paths.push([[p1.x, p1.y], [p2.x, p2.y]]);
+            }
+        }
+        return paths;
+    }
+
     static createBAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const pts1 = this.createB(new Point({ x: dx - dr, y: dy, spatialReference: sp }), dr, 60);
         const pts2 = this.createA(dx, dy, dr, sp);
