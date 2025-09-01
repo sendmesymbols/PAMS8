@@ -299,10 +299,16 @@ export class TripleStrandConcertina {
         result.addPath(path);
       }
 
-      // Base line path similar to legacy rightArray
+      // Add center line that passes through circle centers (original control path)
+      const centerLinePath = pts.map(p => [p.x, p.y]);
+      if (centerLinePath.length > 1) {
+        result.addPath(centerLinePath);
+      }
+
+      // Base (bottom) and top tangent lines (offset by radius)
       const firstPoint = pts[0];
       const lastPoint = pts[pts.length - 1];
-      // Offset equals circle radius so the base line is tangent to circles
+      // Offset equals circle radius so lines are tangent to circles
       let len = radius;
       let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
       switch (GeoTools.twoPtsRelationShip(firstPoint, lastPoint)) {
@@ -312,21 +318,41 @@ export class TripleStrandConcertina {
         case "se": k += Math.PI / 2; break;
       }
 
+      const p1 = { x: len * Math.cos(k) + firstPoint.x, y: len * Math.sin(k) + firstPoint.y };
       const p2 = { x: -1 * len * Math.cos(k) + firstPoint.x, y: -1 * len * Math.sin(k) + firstPoint.y };
-      const rightArray: number[][] = [];
-      rightArray.push([p2.x, p2.y]);
+
+      // Bottom line (legacy rightArray along p2 side)
+      const bottomArray: number[][] = [];
+      bottomArray.push([p2.x, p2.y]);
       for (let i = 0; i < pts.length; i++) {
         const length = GeoTools._2PtLen(firstPoint, pts[i]);
         const angle = GeoTools.angleInRadians(firstPoint, pts[i]);
-        const endPtCandidatePt = new Point({
+        const pt = new Point({
           x: p2.x + length * Math.cos(angle),
           y: p2.y + length * Math.sin(angle),
           spatialReference: this.view.spatialReference
         });
-        rightArray.push([endPtCandidatePt.x, endPtCandidatePt.y]);
+        bottomArray.push([pt.x, pt.y]);
       }
-      if (rightArray.length > 1) {
-        result.addPath(rightArray);
+      if (bottomArray.length > 1) {
+        result.addPath(bottomArray);
+      }
+
+      // Top line (along p1 side)
+      const topArray: number[][] = [];
+      topArray.push([p1.x, p1.y]);
+      for (let i = 0; i < pts.length; i++) {
+        const length = GeoTools._2PtLen(firstPoint, pts[i]);
+        const angle = GeoTools.angleInRadians(firstPoint, pts[i]);
+        const pt = new Point({
+          x: p1.x + length * Math.cos(angle),
+          y: p1.y + length * Math.sin(angle),
+          spatialReference: this.view.spatialReference
+        });
+        topArray.push([pt.x, pt.y]);
+      }
+      if (topArray.length > 1) {
+        result.addPath(topArray);
       }
 
       return result;

@@ -299,7 +299,11 @@ export class DoubleStrandConcertina {
         result.addPath(path);
       }
 
-      
+      // Add center line that passes through circle centers (original control path)
+      const centerLinePath = pts.map(p => [p.x, p.y]);
+      if (centerLinePath.length > 1) {
+        result.addPath(centerLinePath);
+      }
 
       // Base line path similar to legacy rightArray
       const firstPoint = pts[0];
