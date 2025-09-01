@@ -1,184 +1,290 @@
-/**
- * Class Representing Ditch Filled With Water.
- * @class
- * @author Abdul Razak
- */
-
-import MapView from "@arcgis/core/views/MapView";
-import SceneView from "@arcgis/core/views/SceneView";
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
+import MapView from "@arcgis/core/views/MapView";
+import SceneView from "@arcgis/core/views/SceneView";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import Color from "@arcgis/core/Color";
 import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import * as webMercatorUtils from "@arcgis/core/geometry/support/webMercatorUtils";
-import * as jsonUtils from "@arcgis/core/geometry/support/jsonUtils";
-import Evented from "@arcgis/core/core/Evented";
+import GraphicsLayerManager, {LAYER_NAMES} from "../Managers/GraphicsLayerManager";
+import DrawEssentials from "../Support/DrawEssentials";
+import Amplifier from "../Support/Amplifier";
+import GeoTools from "../Support/GeoTools.ts";
+import Shapes from "../Support/Shapes.ts";
 
-type ViewType = MapView | SceneView;
 
-// Temporary utility classes
-class GeoTools {
-  static _2PtLen(pt1: Point, pt2: Point): number {
-    return Math.sqrt(Math.pow(pt2.x - pt1.x, 2) + Math.pow(pt2.y - pt1.y, 2));
-  }
-  
-  static setDefault(options: any, key: string, defaultValue: any): any {
-    return options.hasOwnProperty(key) ? options[key] : defaultValue;
-  }
-  
-  static angleInRadians(pt1: Point, pt2: Point): number {
-    return Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
-  }
-  
-  static twoPtsRelationShip(pt1: Point, pt2: Point): string {
-    if (pt2.x >= pt1.x && pt2.y >= pt1.y) return "ne";
-    if (pt2.x <= pt1.x && pt2.y >= pt1.y) return "nw";
-    if (pt2.x <= pt1.x && pt2.y <= pt1.y) return "sw";    
-    return "se";
-  }
-  
-  static getDashPts(points: Point[], gapArray: number[]): Point[] {
-    // Simplified dash points generation
-    const result: Point[] = [];
-    const totalLen = this._2PtLen(points[0], points[points.length - 1]);
-    const gapSize = gapArray[0] || 10;
-    const numberOfSegments = Math.floor(totalLen / gapSize);
-    
-    for (let i = 0; i <= numberOfSegments; i++) {
-      const ratio = i / numberOfSegments;
-      const index = Math.floor(ratio * (points.length - 1));
-      const nextIndex = Math.min(index + 1, points.length - 1);
-      const localRatio = (ratio * (points.length - 1)) - index;
-      
-      if (index < points.length && nextIndex < points.length) {
-        const x = points[index].x + (points[nextIndex].x - points[index].x) * localRatio;
-        const y = points[index].y + (points[nextIndex].y - points[index].y) * localRatio;
-        result.push(new Point({ x, y, spatialReference: points[0].spatialReference }));
-      }
-    }
-    
-    return result;
-  }
-}
-
-class DrawEssentials {
-  SCOPE?: any;
-  SYM_GEO_TYPE?: string;
-  SID?: string;
-  SYM_NAME?: string;
-  CTRL_PTS?: Point[];
-  AMPLIFIER?: any;
-  IS_OBS?: string;
-  TEETH_SIZE?: number;
-  TEETH_GAP?: number;
-  opacity?: number;
-}
-
-interface DitchFilledWithWaterOptions {
+export interface DitchFilledWithWaterOptions {
   CTRL_PTS?: Point[];
   GEOM?: Polygon;
-  TEETH_SIZE?: number;
-  TEETH_GAP?: number;
-  opacity?: number;
+  DRAW_TYPE?: number;
+
+  [key: string]: any;
 }
 
-export default class DitchFilledWithWater extends Evented {
+/**
+ * DitchFilledWithWater class for Ditch Filled symbol
+ */
+export class DitchFilledWithWater {
+  private view: MapView | SceneView;
+  private layerManager: GraphicsLayerManager;
+  private symbolLayer: GraphicsLayer;
+  private isLine: boolean;
+
+  // Symbol properties
   public declaredClass: string = "MilitarySymbology.Symbols.DitchFilledWithWater";
   public SID: string = "290202";
   public symName: string = "DCB - Filled With Water";
   public symGeometricType: string = "Line";
   public isObstacle: string = "1";
 
-  private view: ViewType;
-  private isLine: boolean;
-  private _lineSym: any;
+  private _lineSym: SimpleLineSymbol | null = null;
   private _points: Point[] = [];
-  private _geometryType: any = null;
   private _teethSize: number = 3;
   private _teethGap: number = 20;
-  private _headRatio: number = 10;
-  private _tailRatio: number = 10;
-  private _opacity: number = 1;
-  private _tGraphic: Graphic;
+  private _geometryType: string | null = null;
+  private _drawType: number = 1;
+  private amplifier: Amplifier;
+  private _opacity: number = 0.50;
 
-  private _onClk: any;
-  private _onDblClk: any;
-  private _onMM: any;
+  // Drawing state
+  private isDrawing: boolean = false;
+  private tempGraphic: Graphic | null = null;
 
-  constructor(view: ViewType, isLine: boolean) {
-    super();
+  // Event handlers
+  private clickHandler: any = null;
+  private doubleClickHandler: any = null;
+  private mouseMoveHandler: any = null;
+
+  // Event emitter
+  private eventListeners: Map<string, Function[]> = new Map();
+
+  constructor(view: MapView | SceneView, isLine: boolean = false) {
     this.view = view;
     this.isLine = isLine;
-    this._tGraphic = new Graphic();
+    this.layerManager = GraphicsLayerManager.getInstance(view);
+    this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+    this.amplifier = new Amplifier();
+
+    // Initialize layers if not already done
+    this.layerManager.initializeLayers();
+
+    // Initialize temporary graphic
+    this.tempGraphic = new Graphic();
   }
 
-  public init(options: DitchFilledWithWaterOptions, marker: any): void {
-    this._opacity = options.hasOwnProperty('opacity') ? options.opacity! : 1;
+  /**
+   * Initialize the DCB Filled drawing
+   */
+  public init(options: DitchFilledWithWaterOptions, marker: SimpleLineSymbol): void {
+    // Set opacity
+    if (options.hasOwnProperty('opacity')) {
+      this._opacity = options.opacity!;
+    }
+    // Create filled symbol from line marker
+    const fillColor = new Color([0, 0, 255, this._opacity]);
 
-    // Create blue filled symbol with water
     this._lineSym = new SimpleFillSymbol({
       style: "solid",
+      color: fillColor,
       outline: new SimpleLineSymbol({
-        style: "solid",
-        color: new Color([0, 0, 0, this._opacity]),
-        width: marker.width || 2
-      }),
-      color: new Color([0, 0, 255, this._opacity])
+        color: "black",
+        width: marker.width,
+      })
     });
-    
-    // Disable map navigation during drawing
-    this.view.navigation.browserTouchPanEnabled = false;
+
+    this._drawType = options.DRAW_TYPE || 1;
+
+    // Set up event handlers
+    this.setupEventHandlers();
 
     const drawEssentials = new DrawEssentials();
+
+    // Set default values from options
     this._teethSize = GeoTools.setDefault(options, "TEETH_SIZE", this._teethSize);
     this._teethGap = GeoTools.setDefault(options, "TEETH_GAP", this._teethGap);
 
-    if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-      this._tGraphic.geometry = options.GEOM!;
-      const drawEss = this.createDrawEssentials([...options.CTRL_PTS!], this._teethSize, this._teethGap, this._opacity);
-      this.__drawEnd(this._tGraphic.geometry as Polygon, drawEss);
+    if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+      // Immediate placement with both control points and geometry
+      if (options.GEOM && this.tempGraphic) {
+        try {
+          // If a Polygon geometry is provided, assign it directly
+          this.tempGraphic.geometry = options.GEOM;
+        } catch (error) {
+          console.error(this.symName, "Failed to set Polygon geometry:", error);
+        }
+      }
+
+      const drawEss = this.createDrawEssentials(options.CTRL_PTS!, this._teethSize, this._teethGap);
+      if (this.tempGraphic && this.tempGraphic.geometry) {
+        this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
+      }
       this._clear();
+
     } else if (options.hasOwnProperty("CTRL_PTS")) {
-      const drawEss = this.createDrawEssentials([...options.CTRL_PTS!], this._teethSize, this._teethGap, this._opacity);
-      this._tGraphic.geometry = this.createSymbol(drawEss);
-      this.__drawEnd(this._tGraphic.geometry as Polygon, drawEss);
-      this._clear();
+      // Immediate placement with control points only
+      const drawEss = this.createDrawEssentials(options.CTRL_PTS!, this._teethSize, this._teethGap);
+      const geometry = this.createSymbol(drawEss);
+      if (geometry && this.tempGraphic) {
+        this.tempGraphic.geometry = geometry;
+        this.__drawEnd(geometry, drawEss);
+        this._clear();
+      }
+
     } else {
-      this._tGraphic = new Graphic({ geometry: null, symbol: this._lineSym });
-      this.view.graphics.add(this._tGraphic);
-      this._setupEventHandlers();
+      // Interactive drawing mode
+      this.startInteractiveDrawing();
     }
   }
 
-  private _setupEventHandlers(): void {
-    this._onClk = this.view.on("click", (event) => this._onClickHandler(event));
-    this._onDblClk = this.view.on("double-click", (event) => this._onDoubleClickHandler(event));
+  /**
+   * Start interactive drawing mode
+   */
+  private startInteractiveDrawing(): void {
+    if (!this._lineSym) return;
+    this.isDrawing = true;
+    this.tempGraphic = new Graphic({
+      geometry: null,
+      symbol: this._lineSym,
+    });
+    this.symbolLayer.add(this.tempGraphic);
   }
 
-  private createDrawEssentials(ctrlPts: Point[], teethSize: number, teethGap: number, opacity: number): DrawEssentials {
+  /**
+   * Set up mouse event handlers for interactive drawing
+   */
+  private setupEventHandlers(): void {
+    // Click handler
+    this.clickHandler = this.view.on("click", (event) => {
+      this._onClickHandler(event);
+    });
+
+    // Double click handler
+    this.doubleClickHandler = this.view.on("double-click", (event) => {
+      this._onDoubleClickHandler(event);
+    });
+  }
+
+  /**
+   * Handle click events
+   */
+  private _onClickHandler(clickEvent: any): void {
+    const mapPoint = this.view.toMap(clickEvent);
+    if (!mapPoint) return;
+
+    const point = new Point({
+      x: mapPoint.x,
+      y: mapPoint.y,
+      spatialReference: this.view.spatialReference
+    });
+
+    this._points.push(point);
+
+    if (this._points.length === 1) {
+      // First click - set up mouse move handler
+      this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
+        this._onMouseMoveHandler(event);
+      });
+    }
+
+    this.emit("onDrawClick", {currentPts: this._points});
+
+    // For single line mode, finish after first click
+    if (this.isLine === true && this._points.length === 1) {
+      this.emit("onDrawClick", {currentPts: this._points});
+      this.cleanUp();
+    }
+
+    // For rectangle draw type, finish after 2 points
+    if (this._drawType === 3 && this._points.length === 2) {
+      this.emit("onDrawClick", {currentPts: this._points});
+      this.cleanUp();
+    }
+  }
+
+  /**
+   * Handle double click events
+   */
+  private _onDoubleClickHandler(clickEvent: any): void {
+    const mapPoint = this.view.toMap(clickEvent);
+    if (!mapPoint) return;
+
+    const point = new Point({
+      x: mapPoint.x,
+      y: mapPoint.y,
+      spatialReference: this.view.spatialReference
+    });
+
+    this._points.push(point);
+    this.cleanUp();
+  }
+
+  /**
+   * Handle mouse move events
+   */
+  private _onMouseMoveHandler(inputEvent: any): void {
+    if (!this.isDrawing || !this.tempGraphic) return;
+
+    const mapPoint = this.view.toMap(inputEvent);
+    if (!mapPoint) return;
+
+    const candidatePoint = new Point({
+      x: mapPoint.x,
+      y: mapPoint.y,
+      spatialReference: this.view.spatialReference
+    });
+
+
+    const drawEssentials = this.createDrawEssentials(
+        [...this._points, candidatePoint],
+        this._teethSize,
+        this._teethGap
+    );
+
+    (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
+    (drawEssentials as any).DRAW_TYPE = this._drawType;
+
+    const geometry = this.createSymbol(drawEssentials);
+    if (geometry) {
+      this.tempGraphic.geometry = geometry;
+      this.emit("onDrawProgress", {
+        currentGeometry: geometry,
+        currentDrawEssentials: drawEssentials,
+        currentMarker: this._lineSym
+      });
+    }
+  }
+
+  /**
+   * Create DrawEssentials object with symbol parameters
+   */
+  private createDrawEssentials(ctrlPts: Point[], teethSize: number, teethGap: number): DrawEssentials {
     const drawEssentials = new DrawEssentials();
-    drawEssentials.SCOPE = this;
     drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
     drawEssentials.SID = this.SID;
     drawEssentials.SYM_NAME = this.symName;
-    drawEssentials.CTRL_PTS = ctrlPts;
-    drawEssentials.IS_OBS = this.isObstacle;
-    drawEssentials.TEETH_SIZE = teethSize;
-    drawEssentials.TEETH_GAP = teethGap;
-    drawEssentials.opacity = opacity;
+    (drawEssentials as any).SCOPE = this;
+    (drawEssentials as any).CTRL_PTS = ctrlPts;
+    (drawEssentials as any).AMPLIFIER = this.amplifier.toString();
+    (drawEssentials as any).IS_OBS = this.isObstacle;
+    (drawEssentials as any).TEETH_SIZE = teethSize;
+    (drawEssentials as any).TEETH_GAP = teethGap;
+
     return drawEssentials;
   }
 
-  private createSymbol(drawEssentials: DrawEssentials): Polygon {
+  /**
+   * Create the ditch empty symbol geometry
+   */
+  private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
     try {
-      let pts: Point[];
+      if (!(drawEssentials as any).CTRL_PTS) {
+        throw new Error("Control points not found");
+      }
 
-      if (drawEssentials.hasOwnProperty("CTRL_PTS") && drawEssentials.CTRL_PTS) {
-        pts = drawEssentials.CTRL_PTS;
-      } else {
-        throw new Error("controlPoints not found");
+      const pts = (drawEssentials as any).CTRL_PTS as Point[];
+      if (pts.length < 2) {
+        return null;
       }
 
       const result = new Polygon({
@@ -187,155 +293,123 @@ export default class DitchFilledWithWater extends Evented {
 
       const firstPoint = pts[0];
       const lastPoint = pts[pts.length - 1];
-      
-      // Shorten Pts according to head and tail ratio
       const baseLineLen = GeoTools._2PtLen(firstPoint, lastPoint);
-      const chopPts = pts;
+      // Use original points for processing (center line)
+      const middleArray = pts;
 
-      // Create Double Line
-      const firstChopPt = chopPts[0];
-      const lastChopPt = chopPts[chopPts.length - 1];
-      const leftArray: any[] = [];
-      const rightArray: any[] = [];
-      const middleArray: any[] = [];
+      // Determine sampling gap based on desired teeth gap
+      const gapRatio = GeoTools._2PtLen(middleArray[0], middleArray[middleArray.length - 1]) / this._teethGap;
+      const midSamples = GeoTools.getDashPts(middleArray, [gapRatio, gapRatio]);
 
-      let len = baseLineLen / 5 / this._teethSize;
-      let k = Math.atan((firstChopPt.y - lastChopPt.y) / (firstChopPt.x - lastChopPt.x));
+      // If sampling failed, fallback to control points
+      const samples = midSamples && midSamples.length > 1 ? midSamples : middleArray;
 
-      switch (GeoTools.twoPtsRelationShip(firstChopPt, lastChopPt)) {
-        case "ne":
-          k += Math.PI / 2;
-          break;
-        case "nw":
-          k += Math.PI * 3 / 2;
-          break;
-        case "sw":
-          k += Math.PI * 3 / 2;
-          break;
-        case "se":
-          k += Math.PI / 2;
-          break;
-      }
+      // Build contiguous filled triangles on the same side without gaps between bases
+      let previousBaseEnd: { x: number; y: number } | null = null;
+      for (let i = 1; i < samples.length; i++) {
+        const p0 = samples[i - 1];
+        const p1 = samples[i];
 
-      const partialLen = len;
-      const p1 = { x: partialLen * Math.cos(k) + firstChopPt.x, y: partialLen * Math.sin(k) + firstChopPt.y };
-      const p2 = { x: -1 * partialLen * Math.cos(k) + firstChopPt.x, y: -1 * partialLen * Math.sin(k) + firstChopPt.y };
+        const dx = p1.x - p0.x;
+        const dy = p1.y - p0.y;
+        const segLen = Math.sqrt(dx * dx + dy * dy);
+        if (segLen === 0) continue;
 
-      if (chopPts.length >= 1) {
-        leftArray.push(p1);
-        rightArray.push(p2);
-        middleArray.push(firstChopPt);
-      }
+        // Unit tangent and normal
+        const ux = dx / segLen;
+        const uy = dy / segLen;
+        const nx = -uy;
+        const ny = ux;
 
-      for (let i = 0; i < chopPts.length; i++) {
-        // Find distance between candidatePoint and Mid Point
-        const length = GeoTools._2PtLen(firstChopPt, chopPts[i]);
-        const angle = GeoTools.angleInRadians(firstChopPt, chopPts[i]);
+        // Triangle dimensions
+        const baseLen = segLen; // full segment as base to avoid gaps
+        const height = Math.max(segLen / Math.max(2, this._teethSize), baseLineLen / 40);
 
-        const stPtCandidatePt = new Point({
-          x: p1.x + length * Math.cos(angle),
-          y: p1.y + length * Math.sin(angle),
-          spatialReference: this.view.spatialReference
-        });
+        // Always draw on the same side (left of path)
+        const side = 1;
 
-        const endPtCandidatePt = new Point({
-          x: p2.x + length * Math.cos(angle),
-          y: p2.y + length * Math.sin(angle),
-          spatialReference: this.view.spatialReference
-        });
+        // Apex from center of segment towards normal
+        const midX = (p0.x + p1.x) / 2;
+        const midY = (p0.y + p1.y) / 2;
+        const apexX = midX + nx * height * side;
+        const apexY = midY + ny * height * side;
 
-        leftArray.push(stPtCandidatePt);
-        rightArray.push(endPtCandidatePt);
-        middleArray.push(chopPts[i]);
-      }
+        // Base endpoints are p0 and p1
+        let base1X = p0.x;
+        let base1Y = p0.y;
+        const base2X = p1.x;
+        const base2Y = p1.y;
 
-      result.addRing(middleArray.map(p => Array.isArray(p) ? p : [p.x, p.y]));
-
-      // Create MidPts of Left and Right Array
-      let gapRatio = GeoTools._2PtLen(chopPts[0], chopPts[chopPts.length - 1]);
-      gapRatio = gapRatio / this._teethGap;
-
-      const rightResPts = GeoTools.getDashPts(rightArray, [gapRatio, gapRatio]);
-      const leftResPts = GeoTools.getDashPts(leftArray, [gapRatio, gapRatio]);
-      const middleResPts = GeoTools.getDashPts(middleArray, [gapRatio, gapRatio]);
-
-      const paths: any[] = [];
-      for (let i = 1; i < middleResPts.length; i++) {
-        if (i % 2 === 0) {
-          paths.push(leftResPts[i]);
-        } else {
-          paths.push(middleResPts[i]);
+        // Ensure no gap between consecutive bases by snapping start to previous end
+        if (previousBaseEnd) {
+          base1X = previousBaseEnd.x;
+          base1Y = previousBaseEnd.y;
         }
-      }
 
-      result.addRing(paths.map(p => Array.isArray(p) ? p : [p.x, p.y]));
+        // Add triangle ring (closed)
+        result.addRing([
+          [base1X, base1Y],
+          [apexX, apexY],
+          [base2X, base2Y],
+          [base1X, base1Y]
+        ]);
+
+        previousBaseEnd = { x: base2X, y: base2Y };
+      }
 
       return result;
-    } catch (e) {
-      console.log(this.declaredClass + ' Cannot create Symbol due to invalid geometry');
-      throw e;
+
+    } catch (error) {
+      console.error(this.declaredClass + ' Cannot create symbol due to invalid geometry:', error);
+      return null;
     }
   }
 
-  private _onMouseMoveHandler(event: any): void {
-    const candidatePoint = event.mapPoint;
+  /**
+   * Complete the drawing process
+   */
+  private cleanUp(): void {
+    if (this._points.length < 2) return;
+
     const drawEssentials = this.createDrawEssentials(
-      [...this._points, candidatePoint],
-      this._teethSize,
-      this._teethGap,
-      this._opacity
+        [...this._points],
+        this._teethSize,
+        this._teethGap
     );
 
-    this._tGraphic.geometry = this.createSymbol(drawEssentials);
-    this.emit("onDrawProgress", {
-      currentGeometry: this._tGraphic.geometry,
-      currentDrawEssentials: drawEssentials,
-      currentMarker: this._lineSym
-    });
-  }
-
-  private _onClickHandler(event: any): void {
-    this._points.push(event.mapPoint.clone());
-    
-    if (this._points.length === 1) {
-      this._onMM = this.view.on("pointer-move", (event) => this._onMouseMoveHandler(event));
+    const geometry = this.createSymbol(drawEssentials);
+    if (geometry) {
+      this.__drawEnd(geometry, drawEssentials);
     }
-    
-    this.emit("onDrawClick", { currentPts: this._points });
-    
-    if (this.isLine === true && this._points.length === 1) {
-      this.cleanUp();
-    }
-  }
 
-  private _onDoubleClickHandler(event: any): void {
-    this._points.push(event.mapPoint.clone());
-    this.cleanUp();
-  }
-
-  private cleanUp(): void {
-    const drawEss = this.createDrawEssentials([...this._points], this._teethSize, this._teethGap, this._opacity);
-    this.__drawEnd(this._tGraphic.geometry as Polygon, drawEss);
     this._clear();
     this._removeEvents();
   }
 
+
+
+  /**
+   * Handle draw end
+   */
   private __drawEnd(drawGeometry: Polygon, drawEssentials: DrawEssentials): void {
     if (drawGeometry) {
-      const spRef = this.view.spatialReference;
-      let geographicGeometry: Polygon | undefined;
+      const spatialRef = this.view.spatialReference;
+      let geographicGeometry = drawGeometry;
 
-      if (spRef && webMercatorUtils.canProject(spRef, { wkid: 4326 })) {
-        geographicGeometry = webMercatorUtils.webMercatorToGeographic(drawGeometry) as Polygon;
-      } else if (spRef.wkid === 4326) {
-        geographicGeometry = jsonUtils.fromJSON(drawGeometry.toJSON()) as Polygon;
+      if (spatialRef && spatialRef.isWebMercator) {
+        // Geographic conversion would go here if needed
+      } else if (spatialRef && spatialRef.wkid === 4326) {
+        geographicGeometry = drawGeometry.clone();
       }
 
       this.__onDrawEnd(drawGeometry, geographicGeometry, drawEssentials);
     }
   }
 
-  private __onDrawEnd(geometry: Polygon, geoGeometry: Polygon | undefined, drawEssParam: DrawEssentials): void {
+  /**
+   * Final draw end handler
+   */
+  private __onDrawEnd(geometry: Polygon, geoGeometry: Polygon, drawEssParam: DrawEssentials): void {
     this.emit("onDrawEnd", {
       geometry: geometry,
       geographicGeometry: geoGeometry,
@@ -344,24 +418,104 @@ export default class DitchFilledWithWater extends Evented {
     });
   }
 
+  /**
+   * Clear graphics and state
+   */
   private _clear(): void {
-    if (this._tGraphic) {
-      this.view.graphics.remove(this._tGraphic);
+    if (this.tempGraphic && this.symbolLayer) {
+      this.symbolLayer.remove(this.tempGraphic);
     }
-    this._tGraphic = new Graphic();
+
+    this.tempGraphic = null;
     this._points = [];
   }
 
+  /**
+   * Remove event handlers
+   */
   private _removeEvents(): void {
-    if (this._onClk) this._onClk.remove();
-    if (this._onDblClk) this._onDblClk.remove();
-    if (this._onMM) this._onMM.remove();
-    this.view.navigation.browserTouchPanEnabled = true;
+    if (this.clickHandler) {
+      this.clickHandler.remove();
+      this.clickHandler = null;
+    }
+    if (this.doubleClickHandler) {
+      this.doubleClickHandler.remove();
+      this.doubleClickHandler = null;
+    }
+    if (this.mouseMoveHandler) {
+      this.mouseMoveHandler.remove();
+      this.mouseMoveHandler = null;
+    }
   }
 
+  /**
+   * Deactivate the drawing tool
+   */
   public deactivate(): void {
     this._clear();
     this._removeEvents();
     this._geometryType = null;
+    this.isDrawing = false;
   }
-} 
+
+  /**
+   * Event emitter functionality
+   */
+  private emit(eventName: string, data: any): void {
+    const listeners = this.eventListeners.get(eventName);
+    if (listeners) {
+      listeners.forEach(listener => listener(data));
+    }
+
+    this.emitGlobalEvent(eventName, data);
+  }
+
+  private emitGlobalEvent(eventName: string, data: any): void {
+    const customEvent = new CustomEvent(eventName, {
+      detail: {
+        symbolType: this.constructor.name,
+        eventName: eventName,
+        ...data
+      },
+      bubbles: true,
+      cancelable: true
+    });
+
+    if (this.view && this.view.container) {
+      this.view.container.dispatchEvent(customEvent);
+    } else {
+      document.dispatchEvent(customEvent);
+    }
+  }
+
+  public on(eventName: string, callback: Function): void {
+    if (!this.eventListeners.has(eventName)) {
+      this.eventListeners.set(eventName, []);
+    }
+    this.eventListeners.get(eventName)!.push(callback);
+  }
+
+  public off(eventName: string, callback?: Function): void {
+    if (!callback) {
+      this.eventListeners.delete(eventName);
+    } else {
+      const listeners = this.eventListeners.get(eventName);
+      if (listeners) {
+        const index = listeners.indexOf(callback);
+        if (index > -1) {
+          listeners.splice(index, 1);
+        }
+      }
+    }
+  }
+
+  public getSymbolLayer(): GraphicsLayer {
+    return this.symbolLayer;
+  }
+
+  public clearSymbols(): void {
+    this.symbolLayer.removeAll();
+  }
+}
+
+export default DitchFilledWithWater;

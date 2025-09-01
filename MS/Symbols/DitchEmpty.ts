@@ -85,16 +85,10 @@ export class DitchEmpty {
         if (options.hasOwnProperty('opacity')) {
             this._opacity = options.opacity!;
         }
-        // Create filled symbol from line marker
-        const fillColor = new Color([0, 0, 255, this._opacity]);
 
-        this._lineSym = new SimpleFillSymbol({
-            style: "solid",
-            color: fillColor,
-            outline: new SimpleLineSymbol({
-                color: "black",
-                width: marker.width,
-            })
+        this._lineSym = new SimpleLineSymbol({
+            color: "black",
+            width: marker.width,
         });
 
         this._drawType = options.DRAW_TYPE || 1;
