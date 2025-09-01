@@ -49,6 +49,7 @@ export class DitchEmpty {
     private _geometryType: string | null = null;
     private _drawType: number = 1;
     private amplifier: Amplifier;
+    private _opacity: number = 0.50;
 
     // Drawing state
     private isDrawing: boolean = false;
@@ -80,11 +81,21 @@ export class DitchEmpty {
      * Initialize the Vital Ground drawing
      */
     public init(options: DitchEmptyOptions, marker: SimpleLineSymbol): void {
-        this._lineSym = marker.clone();
-        // Set line symbol color
-        if (this._lineSym) {
-            this._lineSym.color = new Color([0, 0, 0, 1]);
+        // Set opacity
+        if (options.hasOwnProperty('opacity')) {
+            this._opacity = options.opacity!;
         }
+        // Create filled symbol from line marker
+        const fillColor = new Color([0, 0, 255, this._opacity]);
+
+        this._lineSym = new SimpleFillSymbol({
+            style: "solid",
+            color: fillColor,
+            outline: new SimpleLineSymbol({
+                color: "black",
+                width: marker.width,
+            })
+        });
 
         this._drawType = options.DRAW_TYPE || 1;
 
@@ -136,13 +147,9 @@ export class DitchEmpty {
     private startInteractiveDrawing(): void {
         if (!this._lineSym) return;
         this.isDrawing = true;
-        const fillSym = new SimpleFillSymbol({
-            color: new Color([0, 0, 0, 0.2]),
-            outline: this._lineSym
-        });
         this.tempGraphic = new Graphic({
             geometry: null,
-            symbol: fillSym
+            symbol: this._lineSym,
         });
         this.symbolLayer.add(this.tempGraphic);
     }
@@ -301,7 +308,8 @@ export class DitchEmpty {
             // If sampling failed, fallback to control points
             const samples = midSamples && midSamples.length > 1 ? midSamples : middleArray;
 
-            // Build filled triangles alternating on both sides of the path
+            // Build contiguous filled triangles on the same side without gaps between bases
+            let previousBaseEnd: { x: number; y: number } | null = null;
             for (let i = 1; i < samples.length; i++) {
                 const p0 = samples[i - 1];
                 const p1 = samples[i];
@@ -318,22 +326,29 @@ export class DitchEmpty {
                 const ny = ux;
 
                 // Triangle dimensions
-                const baseLen = segLen * 0.9; // slightly smaller than segment length
-                const height = Math.max(segLen / Math.max(2, this._teethSize), baseLineLen / 80);
+                const baseLen = segLen; // full segment as base to avoid gaps
+                const height = Math.max(segLen / Math.max(2, this._teethSize), baseLineLen / 40);
 
-                // Alternate sides: even on left, odd on right
-                const side = (i % 2 === 0) ? 1 : -1;
+                // Always draw on the same side (left of path)
+                const side = 1;
 
-                // Apex offset from p1 along the normal
-                const apexX = p1.x + nx * height * side;
-                const apexY = p1.y + ny * height * side;
+                // Apex from center of segment towards normal
+                const midX = (p0.x + p1.x) / 2;
+                const midY = (p0.y + p1.y) / 2;
+                const apexX = midX + nx * height * side;
+                const apexY = midY + ny * height * side;
 
-                // Base endpoints centered at p1 along the tangent
-                const halfBase = baseLen / 2;
-                const base1X = p1.x - ux * halfBase;
-                const base1Y = p1.y - uy * halfBase;
-                const base2X = p1.x + ux * halfBase;
-                const base2Y = p1.y + uy * halfBase;
+                // Base endpoints are p0 and p1
+                let base1X = p0.x;
+                let base1Y = p0.y;
+                const base2X = p1.x;
+                const base2Y = p1.y;
+
+                // Ensure no gap between consecutive bases by snapping start to previous end
+                if (previousBaseEnd) {
+                    base1X = previousBaseEnd.x;
+                    base1Y = previousBaseEnd.y;
+                }
 
                 // Add triangle ring (closed)
                 result.addRing([
@@ -342,6 +357,8 @@ export class DitchEmpty {
                     [base2X, base2Y],
                     [base1X, base1Y]
                 ]);
+
+                previousBaseEnd = { x: base2X, y: base2Y };
             }
 
             return result;
