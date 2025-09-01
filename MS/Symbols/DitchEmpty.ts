@@ -78,7 +78,7 @@ export class DitchEmpty {
     }
 
     /**
-     * Initialize the Vital Ground drawing
+     * Initialize the DCB drawing
      */
     public init(options: DitchEmptyOptions, marker: SimpleLineSymbol): void {
         // Set opacity
