@@ -75,7 +75,7 @@ export class SingleConcertina {
     public init(options: SingleConcertinaOptions, marker: SimpleLineSymbol): void {
 
         this._lineSym = new SimpleLineSymbol({
-            color: "black",
+            color: "green",
             width: marker.width,
         });
 
@@ -267,43 +267,42 @@ export class SingleConcertina {
 
             const result = new Polyline({ spatialReference: this.view.spatialReference });
 
-            // Sample points along the line to place ovals
+            // Sample points along the line to place circles (efficient)
             const totalLen = GeoTools._2PtLen(pts[0], pts[pts.length - 1]);
-            const gap = totalLen / 20; // spacing between ovals
-            const samples = GeoTools.getDashPts(pts, [gap, gap]);
+            const gap = Math.max(totalLen / 40, 0.0001); // aim ~40 circles along full length
+            const allSamples = GeoTools.getDashPts(pts, [gap, gap]);
 
-            // Overall tangent/normal for consistent offset side
-            const firstPoint = pts[0];
-            const lastPoint = pts[pts.length - 1];
-            const tdx = lastPoint.x - firstPoint.x;
-            const tdy = lastPoint.y - firstPoint.y;
-            const tlen = Math.hypot(tdx, tdy) || 1;
-            const nxGlob = -tdy / tlen;
-            const nyGlob = tdx / tlen;
+            // Downsample to a bounded count for performance (max ~60)
+            const desiredCount = Math.min(60, Math.max(20, allSamples.length));
+            const stepIdx = Math.max(1, Math.floor(allSamples.length / Math.max(1, desiredCount)));
 
-            // Oval size scales with overall length
+            // Circle size proportional to spacing so they don't overlap
             const baseLenDiv = Math.max(totalLen, 1);
-            const radius = Math.max(baseLenDiv / 60, 0.0001);
-            // Offset distance to create visible gap from the line (opposite side of base line)
-            let len = Math.max(radius * 2, totalLen / 50);
+            const radius = Math.max(gap * 0.3, 0.0001);
+            const circleSteps = 20; // low segment count for performance
+            const unitCircle: Array<[number, number]> = [];
+            for (let a = 0; a < circleSteps; a++) {
+                const theta = (a / circleSteps) * 2 * Math.PI;
+                unitCircle.push([Math.cos(theta), Math.sin(theta)]);
+            }
 
-            for (let i = 0; i < samples.length; i++) {
-                const center = samples[i];
-                const offsetCenter = new Point({
-                    x: center.x + nxGlob * len,
-                    y: center.y + nyGlob * len,
-                    spatialReference: this.view.spatialReference
-                });
-                const ech = Shapes.createEchelon("120", offsetCenter, radius) as any;
-                const ovalPaths: Point[][] = Array.isArray(ech[0]) ? (ech as Point[][]) : [ech as Point[]];
-                for (let r = 0; r < ovalPaths.length; r++) {
-                    const pth = ovalPaths[r].map(p => [p.x, p.y]);
-                    result.addPath(pth);
+            for (let i = 0; i < allSamples.length; i += stepIdx) {
+                const c = allSamples[i];
+                const path: number[][] = [];
+                for (let a = 0; a < circleSteps; a++) {
+                    const dx = unitCircle[a][0] * radius;
+                    const dy = unitCircle[a][1] * radius;
+                    path.push([c.x + dx, c.y + dy]);
                 }
+                // Close path
+                if (path.length) path.push([path[0][0], path[0][1]]);
+                result.addPath(path);
             }
 
             // Base line path similar to legacy rightArray
-            // Reuse len (offset magnitude)
+            const firstPoint = pts[0];
+            const lastPoint = pts[pts.length - 1];
+            let len = Math.max(radius * 2, totalLen / 50);
             let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
             switch (GeoTools.twoPtsRelationShip(firstPoint, lastPoint)) {
                 case "ne": k += Math.PI / 2; break;
