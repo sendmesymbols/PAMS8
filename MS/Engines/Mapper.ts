@@ -179,6 +179,7 @@ import DoubleStrandConcertina from "../Symbols/DoubleStrandConcertina.ts";
 import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";
 
 import SingleFenceWire from "../Symbols/SingleFenceWire.ts";
+import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";
 
 import UARoute from "../Symbols/UARoute.ts";
 import UnspecifiedMine from "../Symbols/UnspecifiedMine.ts";
@@ -195,7 +196,7 @@ import DisruptObstacleEffect from "../Symbols/DisruptObstacleEffect.ts";
 
 import DivLineOfNoPen from "../Symbols/DivLineOfNoPen.ts";
 import DoubleApronFence from "../Symbols/DoubleApronFence.ts";
-import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";
+
 
 import Fix from "../Symbols/Fix.ts";
 import FlightRoute from "../Symbols/FlightRoute.ts";

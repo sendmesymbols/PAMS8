@@ -278,7 +278,7 @@ export class TripleStrandConcertina {
 
       // Circle size proportional to spacing so they don't overlap
       const baseLenDiv = Math.max(totalLen, 1);
-      const radius = Math.max(gap * 0.3, 0.0001);
+      const radius = Math.max(gap * 0.7, 0.0001);
       const circleSteps = 20; // low segment count for performance
       const unitCircle: Array<[number, number]> = [];
       for (let a = 0; a < circleSteps; a++) {
@@ -305,51 +305,31 @@ export class TripleStrandConcertina {
         result.addPath(centerLinePath);
       }
 
-      // Base (bottom) and top tangent lines (offset by radius)
-      const firstPoint = pts[0];
-      const lastPoint = pts[pts.length - 1];
-      // Offset equals circle radius so lines are tangent to circles
-      let len = radius;
-      let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
-      switch (GeoTools.twoPtsRelationShip(firstPoint, lastPoint)) {
-        case "ne": k += Math.PI / 2; break;
-        case "nw": k += (Math.PI * 3) / 2; break;
-        case "sw": k += (Math.PI * 3) / 2; break;
-        case "se": k += Math.PI / 2; break;
-      }
-
-      const p1 = { x: len * Math.cos(k) + firstPoint.x, y: len * Math.sin(k) + firstPoint.y };
-      const p2 = { x: -1 * len * Math.cos(k) + firstPoint.x, y: -1 * len * Math.sin(k) + firstPoint.y };
-
-      // Bottom line (legacy rightArray along p2 side)
+      // Base (bottom) and top tangent lines using local normals so they just touch circles
       const bottomArray: number[][] = [];
-      bottomArray.push([p2.x, p2.y]);
+      const topArray: number[][] = [];
+
       for (let i = 0; i < pts.length; i++) {
-        const length = GeoTools._2PtLen(firstPoint, pts[i]);
-        const angle = GeoTools.angleInRadians(firstPoint, pts[i]);
-        const pt = new Point({
-          x: p2.x + length * Math.cos(angle),
-          y: p2.y + length * Math.sin(angle),
-          spatialReference: this.view.spatialReference
-        });
-        bottomArray.push([pt.x, pt.y]);
+        const prev = i > 0 ? pts[i - 1] : pts[i];
+        const next = i < pts.length - 1 ? pts[i + 1] : pts[i];
+        const tx = next.x - prev.x;
+        const ty = next.y - prev.y;
+        const tlen = Math.hypot(tx, ty) || 1;
+        const ux = tx / tlen;
+        const uy = ty / tlen;
+        // Left-hand normal
+        const nx = -uy;
+        const ny = ux;
+
+        const cx = pts[i].x;
+        const cy = pts[i].y;
+        // Top = +normal*radius, Bottom = -normal*radius (consistent side definitions)
+        topArray.push([cx + nx * radius, cy + ny * radius]);
+        bottomArray.push([cx - nx * radius, cy - ny * radius]);
       }
+
       if (bottomArray.length > 1) {
         result.addPath(bottomArray);
-      }
-
-      // Top line (along p1 side)
-      const topArray: number[][] = [];
-      topArray.push([p1.x, p1.y]);
-      for (let i = 0; i < pts.length; i++) {
-        const length = GeoTools._2PtLen(firstPoint, pts[i]);
-        const angle = GeoTools.angleInRadians(firstPoint, pts[i]);
-        const pt = new Point({
-          x: p1.x + length * Math.cos(angle),
-          y: p1.y + length * Math.sin(angle),
-          spatialReference: this.view.spatialReference
-        });
-        topArray.push([pt.x, pt.y]);
       }
       if (topArray.length > 1) {
         result.addPath(topArray);
