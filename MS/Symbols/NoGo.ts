@@ -3,14 +3,13 @@ import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
-import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import Color from "@arcgis/core/Color";
-import GraphicsLayerManager, {LAYER_NAMES} from "../Managers/GraphicsLayerManager";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
-import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
@@ -19,14 +18,13 @@ export interface NoGoOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polygon;
     DRAW_TYPE?: number;
-
+    opacity?: number;
     [key: string]: any;
 }
 
 /**
- * NoGo class for No Go symbol
- * Supports multiple drawing types: Bezier curve (1), Polygon (2), Rectangle (3)
- * Includes inner text markers
+ * NoGo class for drawing No Go area symbols on MapView or SceneView
+ * Supports both immediate placement and interactive drawing modes with opacity control
  */
 export class NoGo {
     private view: MapView | SceneView;
@@ -42,8 +40,9 @@ export class NoGo {
 
     private _lineSym: SimpleFillSymbol | null = null;
     private _points: Point[] = [];
-    private _geometryType: string | null = null;
     private _drawType: number = 1;
+    private _geometryType: string | null = null;
+    private _opacity: number = 0.50;
     private amplifier: Amplifier;
 
     // Drawing state
@@ -73,48 +72,49 @@ export class NoGo {
     }
 
     /**
-     * Initialize the Vital Ground drawing
+     * Initialize the freehand area filled drawing
      */
     public init(options: NoGoOptions, marker: SimpleLineSymbol): void {
-      // Set opacity
-      this._opacity = 0.50;
-      if (options.hasOwnProperty('opacity')) {
-        this._opacity = options.opacity!;
-      }
+        // Set opacity
+        this._opacity = 0.50;
+        if (options.hasOwnProperty('opacity')) {
+            this._opacity = options.opacity!;
+        }
 
-      // Create filled symbol from line marker
-      const fillColor = new Color(marker.color);
-      fillColor.a = this._opacity;
+        // Create filled symbol from line marker
+        const fillColor = new Color([marker.color.r, marker.color.g, marker.color.b, this._opacity]);
+        //const fillColor = new Color(marker.color);
 
-      this._lineSym = new SimpleFillSymbol({
-        style: "solid",
-        color: fillColor,
-        outline: new SimpleLineSymbol({
-          style: marker.style,
-          color: marker.color,
-          width: marker.width
-        })
-      });
-
-        this._drawType = options.DRAW_TYPE || 1;
+        this._lineSym = new SimpleFillSymbol({
+            style: "diagonal-cross",
+            color: fillColor,
+            outline: new SimpleLineSymbol({
+                style: marker.style,
+                color: marker.color,
+                width: marker.width,
+            })
+        });
 
         // Set up event handlers
         this.setupEventHandlers();
 
         const drawEssentials = new DrawEssentials();
+        this._drawType = GeoTools.setDefault(options, "DRAW_TYPE", this._drawType);
 
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
                 try {
-                    // If a Polygon geometry is provided, assign it directly
-                    this.tempGraphic.geometry = options.GEOM;
+                    this.tempGraphic.geometry = new Polygon({
+                        rings: options.GEOM,
+                        spatialReference: this.view.spatialReference
+                    });
                 } catch (error) {
-                    console.error(this.symName, "Failed to set Polygon geometry:", error);
+                    console.error(this.symName, "Failed to create Polygon geometry:", error);
                 }
             }
 
-            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE || 1);
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType, this._opacity);
             if (this.tempGraphic && this.tempGraphic.geometry) {
                 this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
             }
@@ -122,7 +122,7 @@ export class NoGo {
 
         } else if (options.hasOwnProperty("CTRL_PTS")) {
             // Immediate placement with control points only
-            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE || 1);
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType, this._opacity);
             const geometry = this.createSymbol(drawEss);
             if (geometry && this.tempGraphic) {
                 this.tempGraphic.geometry = geometry;
@@ -186,17 +186,17 @@ export class NoGo {
             });
         }
 
-        this.emit("onDrawClick", {currentPts: this._points});
+        this.emit("onDrawClick", { currentPts: this._points });
 
         // For single line mode, finish after first click
         if (this.isLine === true && this._points.length === 1) {
-            this.emit("onDrawClick", {currentPts: this._points});
+            this.emit("onDrawClick", { currentPts: this._points });
             this.cleanUp();
         }
 
-        // For rectangle draw type, finish after 2 points
-        if (this._drawType === 3 && this._points.length === 2) {
-            this.emit("onDrawClick", {currentPts: this._points});
+        // For rectangle or ellipse, finish after second click
+        if ((this._drawType === 3 || this._drawType === 4) && this._points.length === 2) {
+            this.emit("onDrawClick", { currentPts: this._points });
             this.cleanUp();
         }
     }
@@ -251,7 +251,7 @@ export class NoGo {
     /**
      * Create DrawEssentials object
      */
-    private createDrawEssentials(ctrlPts: Point[], drawType: number): DrawEssentials {
+    private createDrawEssentials(ctrlPts: Point[], drawType: number, opacity: number): DrawEssentials {
         const drawEssentials = new DrawEssentials();
         drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
         drawEssentials.SID = this.SID;
@@ -263,6 +263,7 @@ export class NoGo {
         (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
         (drawEssentials as any).DRAW_TYPE = drawType;
+        (drawEssentials as any).opacity = opacity;
 
         return drawEssentials;
     }
@@ -280,30 +281,23 @@ export class NoGo {
                 throw new Error("controlPoints not found");
             }
 
-            const lastPoint = pts[pts.length - 1];
             const firstPoint = pts[0];
-            const drawType = (drawEssentials as any).DRAW_TYPE || 1;
+            const lastPoint = pts[pts.length - 1];
 
-            let result: Polygon | null = null;
-
-            switch (drawType) {
+            switch ((drawEssentials as any).DRAW_TYPE) {
                 case 1:
-                    result = Shapes.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference) as Polygon;
-                    break;
+                    return Shapes.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                 case 2:
-                    result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
-                    break;
+                    return Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
                 case 3:
-                    result = Shapes.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
-                    break;
+                    return Shapes.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
+                case 4:
+                    return Shapes.createSymbolByPerfectEllipse(pts, firstPoint, lastPoint, drawEssentials, this.view);
                 default:
-                    result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
+                    return new Polygon({ spatialReference: this.view.spatialReference });
             }
 
-            return result ? this.createInnerText(result, firstPoint, lastPoint) : result;
-
         } catch (e) {
-            console.error(e);
             console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
             return null;
         }
@@ -311,80 +305,12 @@ export class NoGo {
 
 
     /**
-     * Create inner text markers for Vital Ground
-     */
-    private createInnerText(result: Polygon, firstPoint: Point, lastPoint: Point): Polygon {
-        try {
-            const extent = result.extent;
-            if (!extent) {
-                return result;
-            }
-
-            const midPt = extent.center as Point;
-            if (!midPt) {
-                return result;
-            }
-
-            const baseLineLen = (GeoTools as any)._2PtLen
-                ? (GeoTools as any)._2PtLen(firstPoint, lastPoint)
-                : Math.hypot(lastPoint.x - firstPoint.x, lastPoint.y - firstPoint.y);
-
-            let cLenLimit = baseLineLen / 10;
-            if (cLenLimit > baseLineLen / 3.6) {
-                cLenLimit = baseLineLen / 3.6;
-            }
-
-            // Create closed rings per stroke so inner text is part of the polygon geometry (no extra graphics)
-            const rings = (Shapes as any).createVGRings
-                ? (Shapes as any).createVGRings(midPt.x, midPt.y, cLenLimit, midPt.spatialReference)
-                : null;
-
-            if (rings && Array.isArray(rings)) {
-                for (let r = 0; r < rings.length; r++) {
-                    const ring = rings[r];
-                    if (ring && ring.length >= 4) {
-                        result.addRing(ring);
-                    } else if (ring && ring.length === 2) {
-                        // Close a 2-point stroke minimally to keep it as a single stroked segment in polygon outline
-                        const closed = [ring[0], ring[1], ring[0]];
-                        result.addRing(closed);
-                    }
-                }
-            } else {
-                // Fallback to legacy createVG from the source JS
-                const vgTxt = (Shapes as any).createVG(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-                if (vgTxt && Array.isArray(vgTxt)) {
-                    for (let j = 0; j <= vgTxt.length - 1; j++) {
-                        if (vgTxt[j]) {
-                            result.addRing(vgTxt[j]);
-                        }
-                    }
-                }
-            }
-
-            return result;
-        } catch (e) {
-            console.log('Cannot create Inner Text');
-            return result;
-        }
-    }
-
-    /**
-     * Utility method to calculate distance
-     */
-    private calculateDistance(pt1: Point, pt2: Point): number {
-        const dx = pt2.x - pt1.x;
-        const dy = pt2.y - pt1.y;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp(): void {
         if (this._points.length === 0) return;
 
-        const drawEssentials = this.createDrawEssentials(this._points.slice(), this._drawType);
+        const drawEssentials = this.createDrawEssentials(this._points.slice(), this._drawType, this._opacity);
 
         if (this.tempGraphic && this.tempGraphic.geometry) {
             this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEssentials);
@@ -404,6 +330,7 @@ export class NoGo {
 
             if (spatialRef && spatialRef.isWebMercator) {
                 // Geographic conversion would go here if needed
+                // geographicGeometry = webMercatorUtils.webMercatorToGeographic(drawGeometry);
             } else if (spatialRef && spatialRef.wkid === 4326) {
                 geographicGeometry = drawGeometry.clone();
             }
@@ -473,9 +400,13 @@ export class NoGo {
             listeners.forEach(listener => listener(data));
         }
 
+        // Also emit as a global document event for SymbolEngine to catch
         this.emitGlobalEvent(eventName, data);
     }
 
+    /**
+     * Emit global events that can be caught by SymbolEngine
+     */
     private emitGlobalEvent(eventName: string, data: any): void {
         const customEvent = new CustomEvent(eventName, {
             detail: {
@@ -487,6 +418,7 @@ export class NoGo {
             cancelable: true
         });
 
+        // Dispatch from the view container if available, otherwise from document
         if (this.view && this.view.container) {
             this.view.container.dispatchEvent(customEvent);
         } else {
@@ -515,10 +447,16 @@ export class NoGo {
         }
     }
 
+    /**
+     * Get the current symbol layer
+     */
     public getSymbolLayer(): GraphicsLayer {
         return this.symbolLayer;
     }
 
+    /**
+     * Clear all symbols from the layer
+     */
     public clearSymbols(): void {
         this.symbolLayer.removeAll();
     }

@@ -12,8 +12,6 @@ import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
-import Utils from "../Support/Utils.ts";
-import shapes from "../Support/Shapes.ts";
 
 
 export interface FreehandAreaFilledOptions {
@@ -82,16 +80,16 @@ export class FreehandAreaFilled {
         }
 
         // Create filled symbol from line marker
-        const fillColor = new Color(marker.color);
-        fillColor.a = this._opacity;
-        
+        const fillColor = new Color([marker.color.r, marker.color.g, marker.color.b, this._opacity]);
+        //const fillColor = new Color(marker.color);
+
         this._lineSym = new SimpleFillSymbol({
             style: "solid",
             color: fillColor,
             outline: new SimpleLineSymbol({
                 style: marker.style,
                 color: marker.color,
-                width: marker.width
+                width: marker.width,
             })
         });
         
