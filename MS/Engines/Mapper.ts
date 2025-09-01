@@ -166,20 +166,16 @@ import KillingGr from "../Symbols/KillingGr.ts"; //Fixed
 import KillingZone from "../Symbols/KillingZone.ts"; //Fixed
 import LandingZone from "../Symbols/LandingZone.ts"; //Fixed
 import VitalGr from "../Symbols/VitalGr.ts";  //Fixed
-
-import NoGo from "../Symbols/NoGo.ts";
-import FlightZone from "../Symbols/FlightZone.ts";
-import PenetrationBox from "../Symbols/PenetrationBox.ts";
-import DitchEmpty from "../Symbols/DitchEmpty.ts";
-import DitchFilledWithWater from "../Symbols/DitchFilledWithWater.ts";
-
-
-import SingleConcertina from "../Symbols/SingleConcertina.ts";
-import DoubleStrandConcertina from "../Symbols/DoubleStrandConcertina.ts";
-import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";
-
-import SingleFenceWire from "../Symbols/SingleFenceWire.ts";
-import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";
+import NoGo from "../Symbols/NoGo.ts";  //Fixed
+import FlightZone from "../Symbols/FlightZone.ts";  //Fixed
+import PenetrationBox from "../Symbols/PenetrationBox.ts";  //Fixed
+import DitchEmpty from "../Symbols/DitchEmpty.ts";  //Fixed
+import DitchFilledWithWater from "../Symbols/DitchFilledWithWater.ts";  //Fixed
+import SingleConcertina from "../Symbols/SingleConcertina.ts";  //Fixed
+import DoubleStrandConcertina from "../Symbols/DoubleStrandConcertina.ts";  //Fixed
+import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";  //Fixed
+import SingleFenceWire from "../Symbols/SingleFenceWire.ts";  //Fixed
+import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";  //Fixed
 
 import UARoute from "../Symbols/UARoute.ts";
 import UnspecifiedMine from "../Symbols/UnspecifiedMine.ts";
