@@ -1,12 +1,11 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
-import Polygon from "@arcgis/core/geometry/Polygon";
+import Polyline from "@arcgis/core/geometry/Polyline";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import Color from "@arcgis/core/Color";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
+ 
 import GraphicsLayerManager, {LAYER_NAMES} from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
@@ -16,7 +15,7 @@ import Shapes from "../Support/Shapes.ts";
 
 export interface SingleConcertinaOptions {
     CTRL_PTS?: Point[];
-    GEOM?: Polygon;
+    GEOM?: Polyline;
     DRAW_TYPE?: number;
 
     [key: string]: any;
@@ -91,16 +90,16 @@ export class SingleConcertina {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
                 try {
-                    // If a Polygon geometry is provided, assign it directly
+                    // Assign provided polyline geometry directly
                     this.tempGraphic.geometry = options.GEOM;
                 } catch (error) {
-                    console.error(this.symName, "Failed to set Polygon geometry:", error);
+                    console.error(this.symName, "Failed to set Polyline geometry:", error);
                 }
             }
 
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!);
             if (this.tempGraphic && this.tempGraphic.geometry) {
-                this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
+                this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
             }
             this._clear();
 
@@ -253,9 +252,9 @@ export class SingleConcertina {
     }
 
     /**
-     * Create ovals (hollow) along the line by sampling points and adding oval rings
+     * Create a polyline containing oval paths + a base line path (legacy-like rightArray)
      */
-    private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
+    private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
         try {
             if (!(drawEssentials as any).CTRL_PTS) {
                 throw new Error("Control points not found");
@@ -266,36 +265,68 @@ export class SingleConcertina {
                 return null;
             }
 
-            const result = new Polygon({
-                spatialReference: this.view.spatialReference
-            });
+            const result = new Polyline({ spatialReference: this.view.spatialReference });
 
             // Sample points along the line to place ovals
             const totalLen = GeoTools._2PtLen(pts[0], pts[pts.length - 1]);
             const gap = totalLen / 20; // spacing between ovals
             const samples = GeoTools.getDashPts(pts, [gap, gap]);
 
+            // Overall tangent/normal for consistent offset side
+            const firstPoint = pts[0];
+            const lastPoint = pts[pts.length - 1];
+            const tdx = lastPoint.x - firstPoint.x;
+            const tdy = lastPoint.y - firstPoint.y;
+            const tlen = Math.hypot(tdx, tdy) || 1;
+            const nxGlob = -tdy / tlen;
+            const nyGlob = tdx / tlen;
+
             // Oval size scales with overall length
             const baseLenDiv = Math.max(totalLen, 1);
             const radius = Math.max(baseLenDiv / 60, 0.0001);
+            // Offset distance to create visible gap from the line (opposite side of base line)
+            let len = Math.max(radius * 2, totalLen / 50);
 
             for (let i = 0; i < samples.length; i++) {
                 const center = samples[i];
-                const ech = Shapes.createEchelon("120", center, radius) as any;
-                const rings: Point[][] = Array.isArray(ech[0]) ? (ech as Point[][]) : [ech as Point[]];
-
-                for (let r = 0; r < rings.length; r++) {
-                    const ringPts = rings[r];
-                    if (!ringPts || ringPts.length < 2) continue;
-                    const path: number[][] = ringPts.map(p => [p.x, p.y]);
-                    // ensure closed
-                    const first = path[0];
-                    const last = path[path.length - 1];
-                    if (first[0] !== last[0] || first[1] !== last[1]) {
-                        path.push([first[0], first[1]]);
-                    }
-                    result.addRing(path);
+                const offsetCenter = new Point({
+                    x: center.x + nxGlob * len,
+                    y: center.y + nyGlob * len,
+                    spatialReference: this.view.spatialReference
+                });
+                const ech = Shapes.createEchelon("120", offsetCenter, radius) as any;
+                const ovalPaths: Point[][] = Array.isArray(ech[0]) ? (ech as Point[][]) : [ech as Point[]];
+                for (let r = 0; r < ovalPaths.length; r++) {
+                    const pth = ovalPaths[r].map(p => [p.x, p.y]);
+                    result.addPath(pth);
                 }
+            }
+
+            // Base line path similar to legacy rightArray
+            // Reuse len (offset magnitude)
+            let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
+            switch (GeoTools.twoPtsRelationShip(firstPoint, lastPoint)) {
+                case "ne": k += Math.PI / 2; break;
+                case "nw": k += (Math.PI * 3) / 2; break;
+                case "sw": k += (Math.PI * 3) / 2; break;
+                case "se": k += Math.PI / 2; break;
+            }
+
+            const p2 = { x: -1 * len * Math.cos(k) + firstPoint.x, y: -1 * len * Math.sin(k) + firstPoint.y };
+            const rightArray: number[][] = [];
+            rightArray.push([p2.x, p2.y]);
+            for (let i = 0; i < pts.length; i++) {
+                const length = GeoTools._2PtLen(firstPoint, pts[i]);
+                const angle = GeoTools.angleInRadians(firstPoint, pts[i]);
+                const endPtCandidatePt = new Point({
+                    x: p2.x + length * Math.cos(angle),
+                    y: p2.y + length * Math.sin(angle),
+                    spatialReference: this.view.spatialReference
+                });
+                rightArray.push([endPtCandidatePt.x, endPtCandidatePt.y]);
+            }
+            if (rightArray.length > 1) {
+                result.addPath(rightArray);
             }
 
             return result;
@@ -330,7 +361,7 @@ export class SingleConcertina {
     /**
      * Handle draw end
      */
-    private __drawEnd(drawGeometry: Polygon, drawEssentials: DrawEssentials): void {
+    private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
         if (drawGeometry) {
             const spatialRef = this.view.spatialReference;
             let geographicGeometry = drawGeometry;
@@ -348,7 +379,7 @@ export class SingleConcertina {
     /**
      * Final draw end handler
      */
-    private __onDrawEnd(geometry: Polygon, geoGeometry: Polygon, drawEssParam: DrawEssentials): void {
+    private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
         this.emit("onDrawEnd", {
             geometry: geometry,
             geographicGeometry: geoGeometry,
