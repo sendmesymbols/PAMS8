@@ -1,184 +1,178 @@
-import Point from "@arcgis/core/geometry/Point";
-import Polyline from "@arcgis/core/geometry/Polyline";
-import Polygon from "@arcgis/core/geometry/Polygon";
 import Graphic from "@arcgis/core/Graphic";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import Point from "@arcgis/core/geometry/Point";
+import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+import GraphicsLayerManager, {LAYER_NAMES} from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
-import GeoTools from "../Support/GeoTools";
-import Shapes from "../Support/Shapes";
-import BattlePosition from "./BattlePosition.ts";
+import Amplifier from "../Support/Amplifier";
+import Shapes from "../Support/Shapes.ts";
 
 export interface PenetrationBoxOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polygon;
     DRAW_TYPE?: number;
+
     [key: string]: any;
 }
 
 /**
- * Class Representing Penetration Box.
- * @class
- * @author Abdul Razak
+ * PenetrationBox class for Pen Box symbol
+ * Supports multiple drawing types: Bezier curve (1), Polygon (2), Rectangle (3)
+ * Includes inner text markers
  */
-class PenetrationBox {
+export class PenetrationBox {
+    private view: MapView | SceneView;
+    private layerManager: GraphicsLayerManager;
+    private symbolLayer: GraphicsLayer;
+    private isLine: boolean;
+
+    // Symbol properties
     public declaredClass: string = "MilitarySymbology.Symbols.PenetrationBox";
     public SID: string = "151900";
     public symName: string = "Pen Box";
     public symGeometricType: string = "Area";
 
-    private view: MapView | SceneView;
-    private isLine: boolean;
-    private _lineSymbol: SimpleLineSymbol | null = null;
+    private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
     private _geometryType: string | null = null;
     private _drawType: number = 1;
-    private _tGraphic: Graphic | null = null;
+    private amplifier: Amplifier;
+
+    // Drawing state
+    private isDrawing: boolean = false;
+    private tempGraphic: Graphic | null = null;
 
     // Event handlers
-    private _onClick: any = null;
-    private _onDblClick: any = null;
-    private _onMouseMove: any = null;
+    private clickHandler: any = null;
+    private doubleClickHandler: any = null;
+    private mouseMoveHandler: any = null;
 
     // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
 
-    constructor(view: MapView | SceneView, isLine: boolean) {
+    constructor(view: MapView | SceneView, isLine: boolean = false) {
         this.view = view;
         this.isLine = isLine;
+        this.layerManager = GraphicsLayerManager.getInstance(view);
+        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+        this.amplifier = new Amplifier();
+
+        // Initialize layers if not already done
+        this.layerManager.initializeLayers();
+
+        // Initialize temporary graphic
+        this.tempGraphic = new Graphic();
     }
 
     /**
-     * Initialize the symbol drawing
+     * Initialize the Pen Box drawing
      */
     public init(options: PenetrationBoxOptions, marker: SimpleLineSymbol): void {
-        this._lineSymbol = marker;
-        this.view.navigation.setImmediateClick(false);
-        this.view.disableDoubleClickZoom();
-
-        const drawEssentials = new DrawEssentials();
+        this._lineSym = marker.clone();
         this._drawType = options.DRAW_TYPE || 1;
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-            this._tGraphic = new Graphic({ geometry: options.GEOM });
-            drawEssentials.CTRL_PTS = [...(options.CTRL_PTS || [])];
-            drawEssentials.DRAW_TYPE = this._drawType;
-            this.__drawEnd(this._tGraphic.geometry as Polygon, drawEssentials);
+        // Set up event handlers
+        this.setupEventHandlers();
+
+        const drawEssentials = new DrawEssentials();
+
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
+            if (options.GEOM && this.tempGraphic) {
+                try {
+                    // If a Polygon geometry is provided, assign it directly
+                    this.tempGraphic.geometry = options.GEOM;
+                } catch (error) {
+                    console.error(this.symName, "Failed to set Polygon geometry:", error);
+                }
+            }
+
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE || 1);
+            if (this.tempGraphic && this.tempGraphic.geometry) {
+                this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
+            }
             this._clear();
+
         } else if (options.hasOwnProperty("CTRL_PTS")) {
-            drawEssentials.CTRL_PTS = [...(options.CTRL_PTS || [])];
-            drawEssentials.DRAW_TYPE = this._drawType;
-            this._tGraphic = new Graphic({ 
-                geometry: this.createSymbol(drawEssentials),
-                symbol: this._lineSymbol 
-            });
-            this.__drawEnd(this._tGraphic.geometry as Polygon, drawEssentials);
-            this._clear();
+            // Immediate placement with control points only
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE || 1);
+            const geometry = this.createSymbol(drawEss);
+            if (geometry && this.tempGraphic) {
+                this.tempGraphic.geometry = geometry;
+                this.__drawEnd(geometry, drawEss);
+                this._clear();
+            }
+
         } else {
-            this._tGraphic = new Graphic({ symbol: this._lineSymbol });
-            if ((this.view as any).graphics) {
-                (this.view as any).graphics.add(this._tGraphic);
-            }
-
-            this._onClick = this.view.on("click", this._onClickHandler.bind(this));
-            this._onDblClick = this.view.on("double-click", this._onDblClickHandler.bind(this));
+            // Interactive drawing mode
+            this.startInteractiveDrawing();
         }
     }
 
     /**
-     * Create draw essentials object
+     * Start interactive drawing mode
      */
-    private createDrawEssentials(ctrlPts: Point[], drawType: number): DrawEssentials {
-        const drawEssentials = new DrawEssentials();
-        drawEssentials.SCOPE = this.declaredClass;
-        drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
-        drawEssentials.SID = this.SID;
-        drawEssentials.SYM_NAME = this.symName;
-        drawEssentials.CTRL_PTS = ctrlPts;
-        drawEssentials.AMPLIFIER = (this as any).amplifier;
-        drawEssentials.DRAW_TYPE = drawType;
-        return drawEssentials;
+    private startInteractiveDrawing(): void {
+        if (!this._lineSym) return;
+        this.isDrawing = true;
+        this.tempGraphic = new Graphic({
+            geometry: null,
+            symbol: this._lineSym
+        });
+        this.symbolLayer.add(this.tempGraphic);
     }
 
     /**
-     * Create the symbol geometry
+     * Set up mouse event handlers for interactive drawing
      */
-    private createSymbol(drawEssentials: DrawEssentials): Polygon {
-        try {
-            const pts = drawEssentials.CTRL_PTS;
-            if (!pts || pts.length === 0) {
-                throw new Error("controlPoints not found");
-            }
+    private setupEventHandlers(): void {
+        // Click handler
+        this.clickHandler = this.view.on("click", (event) => {
+            this._onClickHandler(event);
+        });
 
-            const lastPoint = pts[pts.length - 1];
-            const firstPoint = pts[0];
-            const result = new Polygon({ spatialReference: this.view.spatialReference });
-
-            switch (drawEssentials.DRAW_TYPE) {
-                case 1:
-                    return this.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials);
-                case 2:
-                    return this.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials);
-                case 3:
-                    return this.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials);
-                default:
-                    throw new Error("Invalid draw type");
-            }
-        } catch (e) {
-            console.log(this.declaredClass + ' Can not create Symbol due to invalid geometry');
-            throw e;
-        }
-    }
-
-    /**
-     * Handle mouse move events
-     */
-    private _onMouseMoveHandler(inputPoint: any): void {
-        const candidatePoint = this.view.toMap(inputPoint);
-        if (!candidatePoint) return;
-
-        const drawEssentials = new DrawEssentials();
-        drawEssentials.CTRL_PTS = [...this._points, candidatePoint];
-        drawEssentials.DRAW_TYPE = this._drawType;
-
-        if (this._tGraphic) {
-            this._tGraphic.geometry = this.createSymbol(drawEssentials);
-        }
-
-        this.emit("onDrawProgress", { 
-            currentGeometry: this._tGraphic?.geometry, 
-            currentDrawEssentials: drawEssentials, 
-            currentMarker: this._lineSymbol 
+        // Double click handler
+        this.doubleClickHandler = this.view.on("double-click", (event) => {
+            this._onDoubleClickHandler(event);
         });
     }
 
     /**
      * Handle click events
      */
-    private _onClickHandler(clickPoint: any): void {
-        const mapPoint = this.view.toMap(clickPoint);
+    private _onClickHandler(clickEvent: any): void {
+        const mapPoint = this.view.toMap(clickEvent);
         if (!mapPoint) return;
 
-        this._points.push(new Point({
+        const point = new Point({
             x: mapPoint.x,
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
-        }));
+        });
+
+        this._points.push(point);
 
         if (this._points.length === 1) {
-            this._onMouseMove = this.view.on("pointer-move", this._onMouseMoveHandler.bind(this));
+            // First click - set up mouse move handler
+            this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
+                this._onMouseMoveHandler(event);
+            });
         }
 
-        this.emit("onDrawClick", { currentPts: this._points });
+        this.emit("onDrawClick", {currentPts: this._points});
 
-        if (this.isLine && this._points.length === 1) {
-            this.emit("onDrawClick", { currentPts: this._points });
+        // For single line mode, finish after first click
+        if (this.isLine === true && this._points.length === 1) {
+            this.emit("onDrawClick", {currentPts: this._points});
             this.cleanUp();
         }
 
+        // For rectangle draw type, finish after 2 points
         if (this._drawType === 3 && this._points.length === 2) {
-            this.emit("onDrawClick", { currentPts: this._points });
+            this.emit("onDrawClick", {currentPts: this._points});
             this.cleanUp();
         }
     }
@@ -186,25 +180,124 @@ class PenetrationBox {
     /**
      * Handle double click events
      */
-    private _onDblClickHandler(clickPoint: any): void {
-        const mapPoint = this.view.toMap(clickPoint);
+    private _onDoubleClickHandler(clickEvent: any): void {
+        const mapPoint = this.view.toMap(clickEvent);
         if (!mapPoint) return;
 
-        this._points.push(new Point({
+        const point = new Point({
             x: mapPoint.x,
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
-        }));
+        });
 
+        this._points.push(point);
         this.cleanUp();
     }
 
     /**
-     * Clean up drawing state
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler(inputEvent: any): void {
+        if (!this.isDrawing || !this.tempGraphic) return;
+
+        const mapPoint = this.view.toMap(inputEvent);
+        if (!mapPoint) return;
+
+        const candidatePoint = new Point({
+            x: mapPoint.x,
+            y: mapPoint.y,
+            spatialReference: this.view.spatialReference
+        });
+
+        const drawEssentials = new DrawEssentials();
+        (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
+        (drawEssentials as any).DRAW_TYPE = this._drawType;
+
+        const geometry = this.createSymbol(drawEssentials);
+        if (geometry) {
+            this.tempGraphic.geometry = geometry;
+            this.emit("onDrawProgress", {
+                currentGeometry: geometry,
+                currentDrawEssentials: drawEssentials,
+                currentMarker: this._lineSym
+            });
+        }
+    }
+
+    /**
+     * Create DrawEssentials object
+     */
+    private createDrawEssentials(ctrlPts: Point[], drawType: number): DrawEssentials {
+        const drawEssentials = new DrawEssentials();
+        drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
+        drawEssentials.SID = this.SID;
+        drawEssentials.SYM_NAME = this.symName;
+        drawEssentials.GEOM = null;
+        drawEssentials.AMPLIFIER = this.amplifier.toString();
+
+        // Store additional properties
+        (drawEssentials as any).SCOPE = this;
+        (drawEssentials as any).CTRL_PTS = ctrlPts;
+        (drawEssentials as any).DRAW_TYPE = drawType;
+
+        return drawEssentials;
+    }
+
+    /**
+     * Create symbol geometry from DrawEssentials
+     */
+    private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
+        try {
+            let pts: Point[];
+
+            if ((drawEssentials as any).CTRL_PTS) {
+                pts = (drawEssentials as any).CTRL_PTS;
+            } else {
+                throw new Error("controlPoints not found");
+            }
+
+            const lastPoint = pts[pts.length - 1];
+            const firstPoint = pts[0];
+            const drawType = (drawEssentials as any).DRAW_TYPE || 1;
+
+            let result: Polygon | null = null;
+
+            switch (drawType) {
+                case 1:
+                    result = Shapes.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference) as Polygon;
+                    break;
+                case 2:
+                    result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
+                    break;
+                case 3:
+                    result = Shapes.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
+                    break;
+                default:
+                    result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
+            }
+
+            return result;
+
+        } catch (e) {
+            console.error(e);
+            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            return null;
+        }
+    }
+
+
+    /**
+     * Clean up drawing state and finalize
      */
     private cleanUp(): void {
-        const drawEss = this.createDrawEssentials([...this._points], this._drawType);
-        this.__drawEnd(this._tGraphic?.geometry as Polygon, drawEss);
+        if (this._points.length === 0) return;
+
+        const drawEssentials = this.createDrawEssentials(this._points.slice(), this._drawType);
+
+        if (this.tempGraphic && this.tempGraphic.geometry) {
+            this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEssentials);
+        }
+
         this._clear();
         this._removeEvents();
     }
@@ -214,13 +307,13 @@ class PenetrationBox {
      */
     private __drawEnd(drawGeometry: Polygon, drawEssentials: DrawEssentials): void {
         if (drawGeometry) {
-            let geographicGeometry: Polygon | null = null;
-            const spRef = this.view.spatialReference;
+            const spatialRef = this.view.spatialReference;
+            let geographicGeometry = drawGeometry;
 
-            if (spRef.isWebMercator) {
-                geographicGeometry = drawGeometry.clone() as Polygon;
-            } else if (spRef.wkid === 4326) {
-                geographicGeometry = drawGeometry.clone() as Polygon;
+            if (spatialRef && spatialRef.isWebMercator) {
+                // Geographic conversion would go here if needed
+            } else if (spatialRef && spatialRef.wkid === 4326) {
+                geographicGeometry = drawGeometry.clone();
             }
 
             this.__onDrawEnd(drawGeometry, geographicGeometry, drawEssentials);
@@ -228,148 +321,87 @@ class PenetrationBox {
     }
 
     /**
-     * Emit draw end event
+     * Final draw end handler
      */
-    private __onDrawEnd(geometry: Polygon, geoGeometry: Polygon | null, drawEssParam: DrawEssentials): void {
-        this.emit("onDrawEnd", { 
-            geometry: geometry, 
-            geographicGeometry: geoGeometry, 
-            drawEssentials: drawEssParam, 
-            marker: this._lineSymbol 
+    private __onDrawEnd(geometry: Polygon, geoGeometry: Polygon, drawEssParam: DrawEssentials): void {
+        this.emit("onDrawEnd", {
+            geometry: geometry,
+            geographicGeometry: geoGeometry,
+            drawEssentials: drawEssParam,
+            marker: this._lineSym
         });
     }
 
     /**
-     * Clear drawing state
+     * Clear graphics and state
      */
     private _clear(): void {
-        if (this._tGraphic && (this.view as any).graphics) {
-            (this.view as any).graphics.remove(this._tGraphic);
+        if (this.tempGraphic && this.symbolLayer) {
+            this.symbolLayer.remove(this.tempGraphic);
         }
 
-        this._tGraphic = null;
+        this.tempGraphic = null;
         this._points = [];
     }
 
     /**
-     * Remove event listeners
+     * Remove event handlers
      */
     private _removeEvents(): void {
-        if (this._onClick) this._onClick.remove();
-        if (this._onDblClick) this._onDblClick.remove();
-        if (this._onMouseMove) this._onMouseMove.remove();
-        this.view.enableDoubleClickZoom();
+        if (this.clickHandler) {
+            this.clickHandler.remove();
+            this.clickHandler = null;
+        }
+        if (this.doubleClickHandler) {
+            this.doubleClickHandler.remove();
+            this.doubleClickHandler = null;
+        }
+        if (this.mouseMoveHandler) {
+            this.mouseMoveHandler.remove();
+            this.mouseMoveHandler = null;
+        }
     }
 
     /**
-     * Deactivate the symbol
+     * Deactivate the drawing tool
      */
     public deactivate(): void {
         this._clear();
         this._removeEvents();
         this._geometryType = null;
+        this.isDrawing = false;
     }
 
     /**
-     * Create Bezier path
-     */
-    private CreateBezierPath(pointCollection: Point[], numberOfPts: number, view: MapView | SceneView): Polygon {
-        const position = { x: pointCollection[0].x, y: pointCollection[0].y };
-        
-        if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && 
-            pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
-            pointCollection.pop();
-        }
-        
-        if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && 
-            pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
-            pointCollection.pop();
-        }
-
-        // Note: This would need TweenMax library for bezier curve calculation
-        // For now, we'll create a simple polygon
-        const path: Point[] = [];
-        for (let i = 0; i <= numberOfPts; i++) {
-            const t = i / numberOfPts;
-            // Simple linear interpolation for now
-            const x = pointCollection[0].x + t * (pointCollection[pointCollection.length - 1].x - pointCollection[0].x);
-            const y = pointCollection[0].y + t * (pointCollection[pointCollection.length - 1].y - pointCollection[0].y);
-            path.push(new Point({ x, y, spatialReference: view.spatialReference }));
-        }
-
-        const result = new Polygon({ spatialReference: view.spatialReference });
-        result.addRing(path);
-        return result;
-    }
-
-    /**
-     * Create symbol by B-curve
-     */
-    private createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        const tempArray: Point[] = [];
-        pts.forEach(e => {
-            tempArray.push(new Point({ x: e.x, y: e.y, spatialReference: this.view.spatialReference }));
-        });
-
-        tempArray.push(new Point({ x: firstPoint.x, y: firstPoint.y, spatialReference: this.view.spatialReference }));
-        return this.CreateBezierPath(tempArray, 130, this.view);
-    }
-
-    /**
-     * Create symbol by polygon
-     */
-    private createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray: Point[] = [];
-        
-        pts.forEach(e => {
-            tempArray.push(new Point({ x: e.x, y: e.y, spatialReference: this.view.spatialReference }));
-        });
-
-        tempArray.push(new Point({ x: firstPoint.x, y: firstPoint.y, spatialReference: this.view.spatialReference }));
-        result.addRing(tempArray);
-        return result;
-    }
-
-    /**
-     * Create symbol by rectangle
-     */
-    private createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray: Point[] = [];
-        
-        pts.forEach(e => {
-            tempArray.push(new Point({ x: e.x, y: e.y, spatialReference: this.view.spatialReference }));
-        });
-
-        result.addRing(tempArray);
-        const extent = result.extent;
-        
-        const newResult = new Polygon({ spatialReference: this.view.spatialReference });
-        const newTempArray: Point[] = [];
-        newTempArray.push(firstPoint);
-        newTempArray.push(new Point({ x: extent.xmin, y: extent.ymin, spatialReference: this.view.spatialReference }));
-        newTempArray.push(lastPoint);
-        newTempArray.push(new Point({ x: extent.xmax, y: extent.ymax, spatialReference: this.view.spatialReference }));
-        newTempArray.push(firstPoint);
-
-        newResult.addRing(newTempArray);
-        return newResult;
-    }
-
-    /**
-     * Emit events
+     * Event emitter functionality
      */
     private emit(eventName: string, data: any): void {
         const listeners = this.eventListeners.get(eventName);
         if (listeners) {
-            listeners.forEach(callback => callback(data));
+            listeners.forEach(listener => listener(data));
+        }
+
+        this.emitGlobalEvent(eventName, data);
+    }
+
+    private emitGlobalEvent(eventName: string, data: any): void {
+        const customEvent = new CustomEvent(eventName, {
+            detail: {
+                symbolType: this.constructor.name,
+                eventName: eventName,
+                ...data
+            },
+            bubbles: true,
+            cancelable: true
+        });
+
+        if (this.view && this.view.container) {
+            this.view.container.dispatchEvent(customEvent);
+        } else {
+            document.dispatchEvent(customEvent);
         }
     }
 
-    /**
-     * Add event listener
-     */
     public on(eventName: string, callback: Function): void {
         if (!this.eventListeners.has(eventName)) {
             this.eventListeners.set(eventName, []);
@@ -377,9 +409,6 @@ class PenetrationBox {
         this.eventListeners.get(eventName)!.push(callback);
     }
 
-    /**
-     * Remove event listener
-     */
     public off(eventName: string, callback?: Function): void {
         if (!callback) {
             this.eventListeners.delete(eventName);
@@ -392,6 +421,14 @@ class PenetrationBox {
                 }
             }
         }
+    }
+
+    public getSymbolLayer(): GraphicsLayer {
+        return this.symbolLayer;
+    }
+
+    public clearSymbols(): void {
+        this.symbolLayer.removeAll();
     }
 }
 

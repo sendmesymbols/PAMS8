@@ -86,7 +86,7 @@ export class NoGo {
         //const fillColor = new Color(marker.color);
 
         this._lineSym = new SimpleFillSymbol({
-            style: "diagonal-cross",
+            style: "cross",
             color: fillColor,
             outline: new SimpleLineSymbol({
                 style: marker.style,
