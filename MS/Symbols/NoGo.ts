@@ -72,7 +72,7 @@ export class NoGo {
     }
 
     /**
-     * Initialize the freehand area filled drawing
+     * Initialize the No Go area filled drawing
      */
     public init(options: NoGoOptions, marker: SimpleLineSymbol): void {
         // Set opacity
