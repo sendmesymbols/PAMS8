@@ -6,6 +6,7 @@ import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import Color from "@arcgis/core/Color";
+import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayerManager, {LAYER_NAMES} from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
@@ -135,9 +136,13 @@ export class DitchEmpty {
     private startInteractiveDrawing(): void {
         if (!this._lineSym) return;
         this.isDrawing = true;
+        const fillSym = new SimpleFillSymbol({
+            color: new Color([0, 0, 0, 0.2]),
+            outline: this._lineSym
+        });
         this.tempGraphic = new Graphic({
             geometry: null,
-            symbol: this._lineSym
+            symbol: fillSym
         });
         this.symbolLayer.add(this.tempGraphic);
     }
@@ -252,15 +257,15 @@ export class DitchEmpty {
      */
     private createDrawEssentials(ctrlPts: Point[], teethSize: number, teethGap: number): DrawEssentials {
         const drawEssentials = new DrawEssentials();
-        drawEssentials.SCOPE = this;
         drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
         drawEssentials.SID = this.SID;
         drawEssentials.SYM_NAME = this.symName;
-        drawEssentials.CTRL_PTS = ctrlPts;
-        drawEssentials.AMPLIFIER = this.amplifier;
-        drawEssentials.IS_OBS = this.isObstacle;
-        drawEssentials.TEETH_SIZE = teethSize;
-        drawEssentials.TEETH_GAP = teethGap;
+        (drawEssentials as any).SCOPE = this;
+        (drawEssentials as any).CTRL_PTS = ctrlPts;
+        (drawEssentials as any).AMPLIFIER = this.amplifier.toString();
+        (drawEssentials as any).IS_OBS = this.isObstacle;
+        (drawEssentials as any).TEETH_SIZE = teethSize;
+        (drawEssentials as any).TEETH_GAP = teethGap;
 
         return drawEssentials;
     }
@@ -270,11 +275,11 @@ export class DitchEmpty {
      */
     private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
         try {
-            if (!drawEssentials.hasOwnProperty("CTRL_PTS") || !drawEssentials.CTRL_PTS) {
+            if (!(drawEssentials as any).CTRL_PTS) {
                 throw new Error("Control points not found");
             }
 
-            const pts = drawEssentials.CTRL_PTS;
+            const pts = (drawEssentials as any).CTRL_PTS as Point[];
             if (pts.length < 2) {
                 return null;
             }
@@ -286,103 +291,57 @@ export class DitchEmpty {
             const firstPoint = pts[0];
             const lastPoint = pts[pts.length - 1];
             const baseLineLen = GeoTools._2PtLen(firstPoint, lastPoint);
+            // Use original points for processing (center line)
+            const middleArray = pts;
 
-            // Use original points for processing
-            const chopPts = pts;
+            // Determine sampling gap based on desired teeth gap
+            const gapRatio = GeoTools._2PtLen(middleArray[0], middleArray[middleArray.length - 1]) / this._teethGap;
+            const midSamples = GeoTools.getDashPts(middleArray, [gapRatio, gapRatio]);
 
-            // Create the main line structure
-            const firstChopPt = chopPts[0];
-            const lastChopPt = chopPts[chopPts.length - 1];
-            const leftArray: Point[] = [];
-            const rightArray: Point[] = [];
-            const middleArray: Point[] = [];
+            // If sampling failed, fallback to control points
+            const samples = midSamples && midSamples.length > 1 ? midSamples : middleArray;
 
-            const len = baseLineLen / 5 / this._teethSize;
-            let k = Math.atan((firstChopPt.y - lastChopPt.y) / (firstChopPt.x - lastChopPt.x));
+            // Build filled triangles alternating on both sides of the path
+            for (let i = 1; i < samples.length; i++) {
+                const p0 = samples[i - 1];
+                const p1 = samples[i];
 
-            // Adjust angle based on point relationship
-            switch (GeoTools.twoPtsRelationShip(firstChopPt, lastChopPt)) {
-                case "ne":
-                    k += Math.PI / 2;
-                    break;
-                case "nw":
-                    k += Math.PI * 3 / 2;
-                    break;
-                case "sw":
-                    k += Math.PI * 3 / 2;
-                    break;
-                case "se":
-                    k += Math.PI / 2;
-                    break;
-            }
+                const dx = p1.x - p0.x;
+                const dy = p1.y - p0.y;
+                const segLen = Math.sqrt(dx * dx + dy * dy);
+                if (segLen === 0) continue;
 
-            const partialLen = len;
-            const p1 = new Point({
-                x: partialLen * Math.cos(k) + firstChopPt.x,
-                y: partialLen * Math.sin(k) + firstChopPt.y,
-                spatialReference: this.view.spatialReference
-            });
-            const p2 = new Point({
-                x: -1 * partialLen * Math.cos(k) + firstChopPt.x,
-                y: -1 * partialLen * Math.sin(k) + firstChopPt.y,
-                spatialReference: this.view.spatialReference
-            });
+                // Unit tangent and normal
+                const ux = dx / segLen;
+                const uy = dy / segLen;
+                const nx = -uy;
+                const ny = ux;
 
-            if (chopPts.length >= 1) {
-                leftArray.push(p1);
-                rightArray.push(p2);
-                middleArray.push(firstChopPt);
-            }
+                // Triangle dimensions
+                const baseLen = segLen * 0.9; // slightly smaller than segment length
+                const height = Math.max(segLen / Math.max(2, this._teethSize), baseLineLen / 80);
 
-            // Process all control points
-            for (let i = 0; i < chopPts.length; i++) {
-                const length = GeoTools._2PtLen(firstChopPt, chopPts[i]);
-                const angle = GeoTools.angleInRadians(firstChopPt, chopPts[i]);
+                // Alternate sides: even on left, odd on right
+                const side = (i % 2 === 0) ? 1 : -1;
 
-                const stPtCandidatePt = new Point({
-                    x: p1.x + length * Math.cos(angle),
-                    y: p1.y + length * Math.sin(angle),
-                    spatialReference: this.view.spatialReference
-                });
-                const endPtCandidatePt = new Point({
-                    x: p2.x + length * Math.cos(angle),
-                    y: p2.y + length * Math.sin(angle),
-                    spatialReference: this.view.spatialReference
-                });
+                // Apex offset from p1 along the normal
+                const apexX = p1.x + nx * height * side;
+                const apexY = p1.y + ny * height * side;
 
-                let adjustedLen = length / 5;
-                const baseLineLenLimit = GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt) / 4;
-                if (adjustedLen > baseLineLenLimit) {
-                    adjustedLen = baseLineLenLimit;
-                }
+                // Base endpoints centered at p1 along the tangent
+                const halfBase = baseLen / 2;
+                const base1X = p1.x - ux * halfBase;
+                const base1Y = p1.y - uy * halfBase;
+                const base2X = p1.x + ux * halfBase;
+                const base2Y = p1.y + uy * halfBase;
 
-                leftArray.push(stPtCandidatePt);
-                rightArray.push(endPtCandidatePt);
-                middleArray.push(chopPts[i]);
-            }
-
-            // Add middle array as main ring
-            const middleRing: number[][] = middleArray.map(pt => [pt.x, pt.y]);
-            result.addRing(middleRing);
-
-            // Create teeth pattern
-            const gapRatio = GeoTools._2PtLen(chopPts[0], chopPts[chopPts.length - 1]) / this._teethGap;
-            const rightResPts = GeoTools.getDashPts(rightArray, [gapRatio, gapRatio]);
-            const leftResPts = GeoTools.getDashPts(leftArray, [gapRatio, gapRatio]);
-            const middleResPts = GeoTools.getDashPts(middleArray, [gapRatio, gapRatio]);
-
-            // Create alternating teeth pattern
-            const teethPath: number[][] = [];
-            for (let i = 1; i < middleResPts.length; i++) {
-                if (i % 2 === 0) {
-                    teethPath.push([leftResPts[i].x, leftResPts[i].y]);
-                } else {
-                    teethPath.push([middleResPts[i].x, middleResPts[i].y]);
-                }
-            }
-
-            if (teethPath.length > 0) {
-                result.addRing(teethPath);
+                // Add triangle ring (closed)
+                result.addRing([
+                    [base1X, base1Y],
+                    [apexX, apexY],
+                    [base2X, base2Y],
+                    [base1X, base1Y]
+                ]);
             }
 
             return result;
