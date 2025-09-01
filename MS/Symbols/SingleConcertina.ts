@@ -302,7 +302,8 @@ export class SingleConcertina {
             // Base line path similar to legacy rightArray
             const firstPoint = pts[0];
             const lastPoint = pts[pts.length - 1];
-            let len = Math.max(radius * 2, totalLen / 50);
+            // Offset equals circle radius so the base line is tangent to circles
+            let len = radius;
             let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
             switch (GeoTools.twoPtsRelationShip(firstPoint, lastPoint)) {
                 case "ne": k += Math.PI / 2; break;

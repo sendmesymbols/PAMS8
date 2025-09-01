@@ -1,329 +1,387 @@
-/**
- * Class Representing Double Strand Concertina.
- * @class
- * @author Abdul Razak
- */
-
-import MapView from "@arcgis/core/views/MapView";
-import SceneView from "@arcgis/core/views/SceneView";
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import * as webMercatorUtils from "@arcgis/core/geometry/support/webMercatorUtils";
-import * as jsonUtils from "@arcgis/core/geometry/support/jsonUtils";
-import Evented from "@arcgis/core/core/Evented";
+import MapView from "@arcgis/core/views/MapView";
+import SceneView from "@arcgis/core/views/SceneView";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 
-type ViewType = MapView | SceneView;
+import GraphicsLayerManager, {LAYER_NAMES} from "../Managers/GraphicsLayerManager";
+import DrawEssentials from "../Support/DrawEssentials";
+import Amplifier from "../Support/Amplifier";
+import GeoTools from "../Support/GeoTools.ts";
+import Shapes from "../Support/Shapes.ts";
 
-// Temporary utility classes
-class GeoTools {
-  static _2PtLen(pt1: Point, pt2: Point): number {
-    return Math.sqrt(Math.pow(pt2.x - pt1.x, 2) + Math.pow(pt2.y - pt1.y, 2));
-  }
-  
-  static angleInRadians(pt1: Point, pt2: Point): number {
-    return Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
-  }
-  
-  static twoPtsRelationShip(pt1: Point, pt2: Point): string {
-    if (pt2.x >= pt1.x && pt2.y >= pt1.y) return "ne";
-    if (pt2.x <= pt1.x && pt2.y >= pt1.y) return "nw";
-    if (pt2.x <= pt1.x && pt2.y <= pt1.y) return "sw";    
-    return "se";
-  }
-  
-  static getDashPts(points: Point[], gapArray: number[]): Point[] {
-    // Simplified dash points generation
-    const result: Point[] = [];
-    const totalLen = this._2PtLen(points[0], points[points.length - 1]);
-    const gapSize = gapArray[0] || 10;
-    const numberOfSegments = Math.floor(totalLen / gapSize);
-    
-    for (let i = 0; i <= numberOfSegments; i++) {
-      const ratio = i / numberOfSegments;
-      const index = Math.floor(ratio * (points.length - 1));
-      const nextIndex = Math.min(index + 1, points.length - 1);
-      const localRatio = (ratio * (points.length - 1)) - index;
-      
-      if (index < points.length && nextIndex < points.length) {
-        const x = points[index].x + (points[nextIndex].x - points[index].x) * localRatio;
-        const y = points[index].y + (points[nextIndex].y - points[index].y) * localRatio;
-        result.push(new Point({ x, y, spatialReference: points[0].spatialReference }));
-      }
-    }
-    
-    return result;
-  }
-}
 
-class DrawEssentials {
-  SCOPE?: any;
-  SYM_GEO_TYPE?: string;
-  SID?: string;
-  SYM_NAME?: string;
-  CTRL_PTS?: Point[];
-  AMPLIFIER?: any;
-  IS_OBS?: string;
-}
-
-class Shapes {
-  static createEchelon(type: string, point: Point, size: number): number[][][] {
-    // Create echelon shape based on type
-    const paths: number[][][] = [];
-    
-    switch (type) {
-      case '120':
-        // Double strand concertina pattern - circular/spiral design
-        const numSegments = 8;
-        const angleStep = (2 * Math.PI) / numSegments;
-        
-        for (let i = 0; i < numSegments; i++) {
-          const angle1 = i * angleStep;
-          const angle2 = (i + 1) * angleStep;
-          const radius = size * 0.8;
-          
-          paths.push([
-            [point.x + radius * Math.cos(angle1), point.y + radius * Math.sin(angle1)],
-            [point.x + radius * Math.cos(angle2), point.y + radius * Math.sin(angle2)]
-          ]);
-        }
-        break;
-      default:
-        // Default cross pattern
-        paths.push([
-          [point.x - size, point.y - size],
-          [point.x + size, point.y + size]
-        ]);
-        paths.push([
-          [point.x - size, point.y + size],
-          [point.x + size, point.y - size]
-        ]);
-        break;
-    }
-    
-    return paths;
-  }
-}
-
-interface DoubleStrandConcertinaOptions {
+export interface DoubleStrandConcertinaOptions {
   CTRL_PTS?: Point[];
   GEOM?: Polyline;
+  DRAW_TYPE?: number;
+
+  [key: string]: any;
 }
 
-export default class DoubleStrandConcertina extends Evented {
+/**
+ * DoubleStrandConcertina class for Double Concertina symbol
+ */
+export class DoubleStrandConcertina {
+  private view: MapView | SceneView;
+  private layerManager: GraphicsLayerManager;
+  private symbolLayer: GraphicsLayer;
+  private isLine: boolean;
+
+  // Symbol metadata
   public declaredClass: string = "MilitarySymbology.Symbols.DoubleStrandConcertina";
   public SID: string = "290308";
   public symName: string = "Wire Obs - Double Strand Concertina";
   public symGeometricType: string = "Line";
   public isObstacle: string = "1";
 
-  private view: ViewType;
-  private isLine: boolean;
-  private _lineSym: any;
+  private _lineSym: SimpleLineSymbol | null = null;
   private _points: Point[] = [];
-  private _geometryType: any = null;
-  private _tGraphic: Graphic;
+  private _geometryType: string | null = null;
+  private _drawType: number = 1;
+  private amplifier: Amplifier;
 
-  private _onClk: any;
-  private _onDblClk: any;
-  private _onMM: any;
+  // Drawing state
+  private isDrawing: boolean = false;
+  private tempGraphic: Graphic | null = null;
 
-  constructor(view: ViewType, isLine: boolean) {
-    super();
+  // Event handlers
+  private clickHandler: any = null;
+  private doubleClickHandler: any = null;
+  private mouseMoveHandler: any = null;
+
+  // Event emitter
+  private eventListeners: Map<string, Function[]> = new Map();
+
+  constructor(view: MapView | SceneView, isLine: boolean = false) {
     this.view = view;
     this.isLine = isLine;
-    this._tGraphic = new Graphic();
+    this.layerManager = GraphicsLayerManager.getInstance(view);
+    this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+    this.amplifier = new Amplifier();
+
+    // Initialize layers if not already done
+    this.layerManager.initializeLayers();
+
+    // Initialize temporary graphic
+    this.tempGraphic = new Graphic();
   }
 
-  public init(options: DoubleStrandConcertinaOptions, marker: any): void {
-    this._lineSym = marker;
-    
-    // Disable map navigation during drawing
-    this.view.navigation.browserTouchPanEnabled = false;
+  /**
+   * Initialize the Single Conc drawing
+   */
+  public init(options: DoubleStrandConcertinaOptions, marker: SimpleLineSymbol): void {
+
+    this._lineSym = new SimpleLineSymbol({
+      color: "green",
+      width: marker.width,
+    });
+
+    this._drawType = options.DRAW_TYPE || 1;
+
+    // Set up event handlers
+    this.setupEventHandlers();
 
     const drawEssentials = new DrawEssentials();
 
-    if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-      this._tGraphic.geometry = options.GEOM!;
-      const drawEss = this.createDrawEssentials([...options.CTRL_PTS!]);
-      this.__drawEnd(this._tGraphic.geometry as Polyline, drawEss);
-      this._clear();
-    } else if (options.hasOwnProperty("CTRL_PTS")) {
-      const drawEss = this.createDrawEssentials([...options.CTRL_PTS!]);
-      this._tGraphic.geometry = this.createSymbol(drawEss);
-      this.__drawEnd(this._tGraphic.geometry as Polyline, drawEss);
-      this._clear();
-    } else {
-      this._tGraphic = new Graphic({ geometry: null, symbol: this._lineSym });
-      this.view.graphics.add(this._tGraphic);
-      this._setupEventHandlers();
-    }
-  }
-
-  private _setupEventHandlers(): void {
-    this._onClk = this.view.on("click", (event) => this._onClickHandler(event));
-    this._onDblClk = this.view.on("double-click", (event) => this._onDoubleClickHandler(event));
-  }
-
-  private createDrawEssentials(ctrlPts: Point[]): DrawEssentials {
-    const drawEssentials = new DrawEssentials();
-    drawEssentials.SCOPE = this;
-    drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
-    drawEssentials.SID = this.SID;
-    drawEssentials.SYM_NAME = this.symName;
-    drawEssentials.CTRL_PTS = ctrlPts;
-    drawEssentials.IS_OBS = this.isObstacle;
-    return drawEssentials;
-  }
-
-  private createSymbol(drawEssentials: DrawEssentials): Polyline {
-    try {
-      let pts: Point[];
-
-      if (drawEssentials.hasOwnProperty("CTRL_PTS") && drawEssentials.CTRL_PTS) {
-        pts = drawEssentials.CTRL_PTS;
-      } else {
-        throw new Error("controlPoints not found");
-      }
-
-      const result = new Polyline({
-        spatialReference: this.view.spatialReference
-      });
-
-      result.addPath(pts.map(p => [p.x, p.y]));
-
-      // Add Crosses
-      let gapRatio = GeoTools._2PtLen(pts[0], pts[pts.length - 1]);
-      gapRatio = gapRatio / 20;
-
-      const baseLineLen = GeoTools._2PtLen(pts[0], pts[pts.length - 1]) / 7;
-      let cLenLimit = baseLineLen / 7;
-      if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-
-      const resPts = GeoTools.getDashPts(pts, [gapRatio, gapRatio]);
-      for (let i = 0; i < resPts.length; i++) {
-        const echelons = Shapes.createEchelon('120', resPts[i], cLenLimit);
-        for (let j = 0; j <= echelons.length - 1; j++) {
-          result.addPath(echelons[j]);
+    if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+      // Immediate placement with both control points and geometry
+      if (options.GEOM && this.tempGraphic) {
+        try {
+          // Assign provided polyline geometry directly
+          this.tempGraphic.geometry = options.GEOM;
+        } catch (error) {
+          console.error(this.symName, "Failed to set Polyline geometry:", error);
         }
       }
 
-      // Create Line
+      const drawEss = this.createDrawEssentials(options.CTRL_PTS!);
+      if (this.tempGraphic && this.tempGraphic.geometry) {
+        this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
+      }
+      this._clear();
+
+    } else if (options.hasOwnProperty("CTRL_PTS")) {
+      // Immediate placement with control points only
+      const drawEss = this.createDrawEssentials(options.CTRL_PTS!);
+      const geometry = this.createSymbol(drawEss);
+      if (geometry && this.tempGraphic) {
+        this.tempGraphic.geometry = geometry;
+        this.__drawEnd(geometry, drawEss);
+        this._clear();
+      }
+
+    } else {
+      // Interactive drawing mode
+      this.startInteractiveDrawing();
+    }
+  }
+
+  /**
+   * Start interactive drawing mode
+   */
+  private startInteractiveDrawing(): void {
+    if (!this._lineSym) return;
+    this.isDrawing = true;
+    this.tempGraphic = new Graphic({
+      geometry: null,
+      symbol: this._lineSym,
+    });
+    this.symbolLayer.add(this.tempGraphic);
+  }
+
+  /**
+   * Set up mouse event handlers for interactive drawing
+   */
+  private setupEventHandlers(): void {
+    // Click handler
+    this.clickHandler = this.view.on("click", (event) => {
+      this._onClickHandler(event);
+    });
+
+    // Double click handler
+    this.doubleClickHandler = this.view.on("double-click", (event) => {
+      this._onDoubleClickHandler(event);
+    });
+  }
+
+  /**
+   * Handle click events
+   */
+  private _onClickHandler(clickEvent: any): void {
+    const mapPoint = this.view.toMap(clickEvent);
+    if (!mapPoint) return;
+
+    const point = new Point({
+      x: mapPoint.x,
+      y: mapPoint.y,
+      spatialReference: this.view.spatialReference
+    });
+
+    this._points.push(point);
+
+    if (this._points.length === 1) {
+      // First click - set up mouse move handler
+      this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
+        this._onMouseMoveHandler(event);
+      });
+    }
+
+    this.emit("onDrawClick", {currentPts: this._points});
+
+    // For single line mode, finish after first click
+    if (this.isLine === true && this._points.length === 1) {
+      this.emit("onDrawClick", {currentPts: this._points});
+      this.cleanUp();
+    }
+
+    // For rectangle draw type, finish after 2 points
+    if (this._drawType === 3 && this._points.length === 2) {
+      this.emit("onDrawClick", {currentPts: this._points});
+      this.cleanUp();
+    }
+  }
+
+  /**
+   * Handle double click events
+   */
+  private _onDoubleClickHandler(clickEvent: any): void {
+    const mapPoint = this.view.toMap(clickEvent);
+    if (!mapPoint) return;
+
+    const point = new Point({
+      x: mapPoint.x,
+      y: mapPoint.y,
+      spatialReference: this.view.spatialReference
+    });
+
+    this._points.push(point);
+    this.cleanUp();
+  }
+
+  /**
+   * Handle mouse move events
+   */
+  private _onMouseMoveHandler(inputEvent: any): void {
+    if (!this.isDrawing || !this.tempGraphic) return;
+
+    const mapPoint = this.view.toMap(inputEvent);
+    if (!mapPoint) return;
+
+    const candidatePoint = new Point({
+      x: mapPoint.x,
+      y: mapPoint.y,
+      spatialReference: this.view.spatialReference
+    });
+
+
+    const drawEssentials = this.createDrawEssentials(
+        [...this._points, candidatePoint]
+    );
+
+    (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
+    (drawEssentials as any).DRAW_TYPE = this._drawType;
+
+    const geometry = this.createSymbol(drawEssentials);
+    if (geometry) {
+      this.tempGraphic.geometry = geometry;
+      this.emit("onDrawProgress", {
+        currentGeometry: geometry,
+        currentDrawEssentials: drawEssentials,
+        currentMarker: this._lineSym
+      });
+    }
+  }
+
+  /**
+   * Create DrawEssentials object with symbol parameters
+   */
+  private createDrawEssentials(ctrlPts: Point[]): DrawEssentials {
+    const drawEssentials = new DrawEssentials();
+    drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
+    drawEssentials.SID = this.SID;
+    drawEssentials.SYM_NAME = this.symName;
+    (drawEssentials as any).SCOPE = this;
+    (drawEssentials as any).CTRL_PTS = ctrlPts;
+    (drawEssentials as any).AMPLIFIER = this.amplifier.toString();
+    (drawEssentials as any).IS_OBS = this.isObstacle;
+
+    return drawEssentials;
+  }
+
+  /**
+   * Create a polyline containing oval paths + a base line path (legacy-like rightArray)
+   */
+  private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
+    try {
+      if (!(drawEssentials as any).CTRL_PTS) {
+        throw new Error("Control points not found");
+      }
+
+      const pts = (drawEssentials as any).CTRL_PTS as Point[];
+      if (pts.length < 2) {
+        return null;
+      }
+
+      const result = new Polyline({ spatialReference: this.view.spatialReference });
+
+      // Sample points along the line to place circles (efficient)
+      const totalLen = GeoTools._2PtLen(pts[0], pts[pts.length - 1]);
+      const gap = Math.max(totalLen / 40, 0.0001); // aim ~40 circles along full length
+      const allSamples = GeoTools.getDashPts(pts, [gap, gap]);
+
+      // Downsample to a bounded count for performance (max ~60)
+      const desiredCount = Math.min(60, Math.max(20, allSamples.length));
+      const stepIdx = Math.max(1, Math.floor(allSamples.length / Math.max(1, desiredCount)));
+
+      // Circle size proportional to spacing so they don't overlap
+      const baseLenDiv = Math.max(totalLen, 1);
+      const radius = Math.max(gap * 0.3, 0.0001);
+      const circleSteps = 20; // low segment count for performance
+      const unitCircle: Array<[number, number]> = [];
+      for (let a = 0; a < circleSteps; a++) {
+        const theta = (a / circleSteps) * 2 * Math.PI;
+        unitCircle.push([Math.cos(theta), Math.sin(theta)]);
+      }
+
+      for (let i = 0; i < allSamples.length; i += stepIdx) {
+        const c = allSamples[i];
+        const path: number[][] = [];
+        for (let a = 0; a < circleSteps; a++) {
+          const dx = unitCircle[a][0] * radius;
+          const dy = unitCircle[a][1] * radius;
+          path.push([c.x + dx, c.y + dy]);
+        }
+        // Close path
+        if (path.length) path.push([path[0][0], path[0][1]]);
+        result.addPath(path);
+      }
+
+      
+
+      // Base line path similar to legacy rightArray
       const firstPoint = pts[0];
       const lastPoint = pts[pts.length - 1];
-      const rightArray: any[] = [];
-
-      let len = cLenLimit;
+      // Offset equals circle radius so the base line is tangent to circles
+      let len = radius;
       let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
-
       switch (GeoTools.twoPtsRelationShip(firstPoint, lastPoint)) {
-        case "ne":
-          k += Math.PI / 2;
-          break;
-        case "nw":
-          k += Math.PI * 3 / 2;
-          break;
-        case "sw":
-          k += Math.PI * 3 / 2;
-          break;
-        case "se":
-          k += Math.PI / 2;
-          break;
+        case "ne": k += Math.PI / 2; break;
+        case "nw": k += (Math.PI * 3) / 2; break;
+        case "sw": k += (Math.PI * 3) / 2; break;
+        case "se": k += Math.PI / 2; break;
       }
 
-      const partialLen = len;
-      const p1 = { x: partialLen * Math.cos(k) + firstPoint.x, y: partialLen * Math.sin(k) + firstPoint.y };
-      const p2 = { x: -1 * partialLen * Math.cos(k) + firstPoint.x, y: -1 * partialLen * Math.sin(k) + firstPoint.y };
-
-      if (pts.length >= 1) {
-        rightArray.push(p2);
-      }
-
+      const p2 = { x: -1 * len * Math.cos(k) + firstPoint.x, y: -1 * len * Math.sin(k) + firstPoint.y };
+      const rightArray: number[][] = [];
+      rightArray.push([p2.x, p2.y]);
       for (let i = 0; i < pts.length; i++) {
-        // Find distance between candidatePoint and Mid Point
         const length = GeoTools._2PtLen(firstPoint, pts[i]);
         const angle = GeoTools.angleInRadians(firstPoint, pts[i]);
-
-        const stPtCandidatePt = new Point({
-          x: p1.x + length * Math.cos(angle),
-          y: p1.y + length * Math.sin(angle),
-          spatialReference: this.view.spatialReference
-        });
-
         const endPtCandidatePt = new Point({
           x: p2.x + length * Math.cos(angle),
           y: p2.y + length * Math.sin(angle),
           spatialReference: this.view.spatialReference
         });
-
-        rightArray.push(endPtCandidatePt);
+        rightArray.push([endPtCandidatePt.x, endPtCandidatePt.y]);
+      }
+      if (rightArray.length > 1) {
+        result.addPath(rightArray);
       }
 
-      result.addPath(rightArray.map(p => Array.isArray(p) ? p : [p.x, p.y]));
-
       return result;
-    } catch (e) {
-      console.log(this.declaredClass + ' Cannot create Symbol due to invalid geometry');
-      throw e;
+
+    } catch (error) {
+      console.error(this.declaredClass + ' Cannot create symbol due to invalid geometry:', error);
+      return null;
     }
   }
 
-  private _onMouseMoveHandler(event: any): void {
-    const candidatePoint = event.mapPoint;
+  /**
+   * Complete the drawing process
+   */
+  private cleanUp(): void {
+    if (this._points.length < 2) return;
+
     const drawEssentials = this.createDrawEssentials(
-      [...this._points, candidatePoint]
+        [...this._points]
     );
 
-    this._tGraphic.geometry = this.createSymbol(drawEssentials);
-    this.emit("onDrawProgress", {
-      currentGeometry: this._tGraphic.geometry,
-      currentDrawEssentials: drawEssentials,
-      currentMarker: this._lineSym
-    });
-  }
-
-  private _onClickHandler(event: any): void {
-    this._points.push(event.mapPoint.clone());
-    
-    if (this._points.length === 1) {
-      this._onMM = this.view.on("pointer-move", (event) => this._onMouseMoveHandler(event));
+    const geometry = this.createSymbol(drawEssentials);
+    if (geometry) {
+      this.__drawEnd(geometry, drawEssentials);
     }
-    
-    this.emit("onDrawClick", { currentPts: this._points });
-    
-    if (this.isLine === true && this._points.length === 1) {
-      this.cleanUp();
-    }
-  }
 
-  private _onDoubleClickHandler(event: any): void {
-    this._points.push(event.mapPoint.clone());
-    this.cleanUp();
-  }
-
-  private cleanUp(): void {
-    const drawEss = this.createDrawEssentials([...this._points]);
-    this.__drawEnd(this._tGraphic.geometry as Polyline, drawEss);
     this._clear();
     this._removeEvents();
   }
 
+
+
+  /**
+   * Handle draw end
+   */
   private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
     if (drawGeometry) {
-      const spRef = this.view.spatialReference;
-      let geographicGeometry: Polyline | undefined;
+      const spatialRef = this.view.spatialReference;
+      let geographicGeometry = drawGeometry;
 
-      if (spRef && webMercatorUtils.canProject(spRef, { wkid: 4326 })) {
-        geographicGeometry = webMercatorUtils.webMercatorToGeographic(drawGeometry) as Polyline;
-      } else if (spRef.wkid === 4326) {
-        geographicGeometry = jsonUtils.fromJSON(drawGeometry.toJSON()) as Polyline;
+      if (spatialRef && spatialRef.isWebMercator) {
+        // Geographic conversion would go here if needed
+      } else if (spatialRef && spatialRef.wkid === 4326) {
+        geographicGeometry = drawGeometry.clone();
       }
 
       this.__onDrawEnd(drawGeometry, geographicGeometry, drawEssentials);
     }
   }
 
-  private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline | undefined, drawEssParam: DrawEssentials): void {
+  /**
+   * Final draw end handler
+   */
+  private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
     this.emit("onDrawEnd", {
       geometry: geometry,
       geographicGeometry: geoGeometry,
@@ -332,24 +390,104 @@ export default class DoubleStrandConcertina extends Evented {
     });
   }
 
+  /**
+   * Clear graphics and state
+   */
   private _clear(): void {
-    if (this._tGraphic) {
-      this.view.graphics.remove(this._tGraphic);
+    if (this.tempGraphic && this.symbolLayer) {
+      this.symbolLayer.remove(this.tempGraphic);
     }
-    this._tGraphic = new Graphic();
+
+    this.tempGraphic = null;
     this._points = [];
   }
 
+  /**
+   * Remove event handlers
+   */
   private _removeEvents(): void {
-    if (this._onClk) this._onClk.remove();
-    if (this._onDblClk) this._onDblClk.remove();
-    if (this._onMM) this._onMM.remove();
-    this.view.navigation.browserTouchPanEnabled = true;
+    if (this.clickHandler) {
+      this.clickHandler.remove();
+      this.clickHandler = null;
+    }
+    if (this.doubleClickHandler) {
+      this.doubleClickHandler.remove();
+      this.doubleClickHandler = null;
+    }
+    if (this.mouseMoveHandler) {
+      this.mouseMoveHandler.remove();
+      this.mouseMoveHandler = null;
+    }
   }
 
+  /**
+   * Deactivate the drawing tool
+   */
   public deactivate(): void {
     this._clear();
     this._removeEvents();
     this._geometryType = null;
+    this.isDrawing = false;
   }
-} 
+
+  /**
+   * Event emitter functionality
+   */
+  private emit(eventName: string, data: any): void {
+    const listeners = this.eventListeners.get(eventName);
+    if (listeners) {
+      listeners.forEach(listener => listener(data));
+    }
+
+    this.emitGlobalEvent(eventName, data);
+  }
+
+  private emitGlobalEvent(eventName: string, data: any): void {
+    const customEvent = new CustomEvent(eventName, {
+      detail: {
+        symbolType: this.constructor.name,
+        eventName: eventName,
+        ...data
+      },
+      bubbles: true,
+      cancelable: true
+    });
+
+    if (this.view && this.view.container) {
+      this.view.container.dispatchEvent(customEvent);
+    } else {
+      document.dispatchEvent(customEvent);
+    }
+  }
+
+  public on(eventName: string, callback: Function): void {
+    if (!this.eventListeners.has(eventName)) {
+      this.eventListeners.set(eventName, []);
+    }
+    this.eventListeners.get(eventName)!.push(callback);
+  }
+
+  public off(eventName: string, callback?: Function): void {
+    if (!callback) {
+      this.eventListeners.delete(eventName);
+    } else {
+      const listeners = this.eventListeners.get(eventName);
+      if (listeners) {
+        const index = listeners.indexOf(callback);
+        if (index > -1) {
+          listeners.splice(index, 1);
+        }
+      }
+    }
+  }
+
+  public getSymbolLayer(): GraphicsLayer {
+    return this.symbolLayer;
+  }
+
+  public clearSymbols(): void {
+    this.symbolLayer.removeAll();
+  }
+}
+
+export default DoubleStrandConcertina;

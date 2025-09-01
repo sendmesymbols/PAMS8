@@ -175,8 +175,11 @@ import DitchFilledWithWater from "../Symbols/DitchFilledWithWater.ts";
 
 
 import SingleConcertina from "../Symbols/SingleConcertina.ts";
-import SingleFenceWire from "../Symbols/SingleFenceWire.ts";
+import DoubleStrandConcertina from "../Symbols/DoubleStrandConcertina.ts";
 import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";
+
+import SingleFenceWire from "../Symbols/SingleFenceWire.ts";
+
 import UARoute from "../Symbols/UARoute.ts";
 import UnspecifiedMine from "../Symbols/UnspecifiedMine.ts";
 import WideAreaAntiTankMine from "../Symbols/WideAreaAntiTankMine.ts";
@@ -193,7 +196,7 @@ import DisruptObstacleEffect from "../Symbols/DisruptObstacleEffect.ts";
 import DivLineOfNoPen from "../Symbols/DivLineOfNoPen.ts";
 import DoubleApronFence from "../Symbols/DoubleApronFence.ts";
 import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";
-import DoubleStrandConcertina from "../Symbols/DoubleStrandConcertina.ts";
+
 import Fix from "../Symbols/Fix.ts";
 import FlightRoute from "../Symbols/FlightRoute.ts";
 
