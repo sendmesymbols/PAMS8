@@ -430,7 +430,8 @@ export class Canalize {
     private flaps(candidatePoint: Point, length: number, angleRad: number, side: number): number[][] {
         try {
             const delta = (15 * Math.PI) / 180; // 15 degrees in radians
-            const adj = side === 1 ? (angleRad - delta) : (angleRad + delta);
+            // Adjust to angle wings inward toward the corridor center
+            const adj = side === 1 ? (angleRad + delta) : (angleRad - delta);
             const dx = Math.cos(adj);
             const dy = Math.sin(adj);
 
