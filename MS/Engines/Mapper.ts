@@ -125,6 +125,8 @@ import AntiPersonnelMine from "../Symbols/AntiPersonnelMine.ts"; //Fixed 2D Only
 import AntiPersonnelMineDirEffct from "../Symbols/AntiPersonnelMineDirEffct.ts"; //Fixed 2D Only
 import AntitankMine from "../Symbols/AntitankMine.ts"; //Fixed 2D Only
 import AntiTankMineWAntiHandle from "../Symbols/AntiTankMineWAntiHandle.ts"; //Fixed 2D Only
+import UnspecifiedMine from "../Symbols/UnspecifiedMine.ts"; //Fixed 2D Only
+import WideAreaAntiTankMine from "../Symbols/WideAreaAntiTankMine.ts"; //Fixed 2D Only
 import AreaOfOperations from "../Symbols/AreaOfOperations.ts"; //Fixed
 import AssemblyArea from "../Symbols/AssemblyArea.ts"; //Fixed
 import FwdAssemblyArea from "../Symbols/FwdAssemblyArea.ts"; //    -- Segments
@@ -176,10 +178,9 @@ import DoubleStrandConcertina from "../Symbols/DoubleStrandConcertina.ts";  //Fi
 import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";  //Fixed
 import SingleFenceWire from "../Symbols/SingleFenceWire.ts";  //Fixed
 import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";  //Fixed
+import UARoute from "../Symbols/UARoute.ts";  //Fixed
 
-import UARoute from "../Symbols/UARoute.ts";
-import UnspecifiedMine from "../Symbols/UnspecifiedMine.ts";
-import WideAreaAntiTankMine from "../Symbols/WideAreaAntiTankMine.ts";
+
 import Canalize from "../Symbols/Canalize.ts";
 import Contain from "../Symbols/Contain.ts";
 import Corridors from "../Symbols/Corridors.ts";
