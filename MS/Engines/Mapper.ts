@@ -179,9 +179,9 @@ import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";  //Fi
 import SingleFenceWire from "../Symbols/SingleFenceWire.ts";  //Fixed
 import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";  //Fixed
 import UARoute from "../Symbols/UARoute.ts";  //Fixed
+import Canalize from "../Symbols/Canalize.ts";  //Fixed
 
 
-import Canalize from "../Symbols/Canalize.ts";
 import Contain from "../Symbols/Contain.ts";
 import Corridors from "../Symbols/Corridors.ts";
 import Cover from "../Symbols/Cover.ts";
@@ -189,18 +189,12 @@ import Delay from "../Symbols/Delay.ts";
 import DispersalArea from "../Symbols/DispersalArea.ts";
 import Disrupt from "../Symbols/Disrupt.ts";
 import DisruptObstacleEffect from "../Symbols/DisruptObstacleEffect.ts";
-
-
 import DivLineOfNoPen from "../Symbols/DivLineOfNoPen.ts";
 import DoubleApronFence from "../Symbols/DoubleApronFence.ts";
-
-
 import Fix from "../Symbols/Fix.ts";
 import FlightRoute from "../Symbols/FlightRoute.ts";
-
 import FormingUpPoint from "../Symbols/FormingUpPoint.ts";
 import Funnel from "../Symbols/Funnel.ts";
-
 import FwdLineOfTps from "../Symbols/FwdLineOfTps.ts";
 import Guard from "../Symbols/Guard.ts";
 import HighWireFence from "../Symbols/HighWireFence.ts";

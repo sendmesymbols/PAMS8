@@ -484,66 +484,6 @@ export class UARoute {
         }
     }
 
-    /**
-     * Create fracture lines
-     */
-    private fracture(middleArray: Point[], segments: number): any {
-        try {
-            if (GeoTools && (GeoTools as any)._fracture) {
-                return (GeoTools as any)._fracture(middleArray, segments, this.view.spatialReference);
-            }
-
-            // Fallback fracture implementation
-            const result = new Polyline({ spatialReference: this.view.spatialReference });
-            const midPoints: any[] = [];
-
-            for (let i = 0; i < middleArray.length - 1; i++) {
-                const start = middleArray[i];
-                const end = middleArray[i + 1];
-                const path: number[][] = [];
-
-                for (let j = 0; j <= segments; j++) {
-                    const t = j / segments;
-                    const x = start.x + t * (end.x - start.x);
-                    const y = start.y + t * (end.y - start.y);
-                    path.push([x, y]);
-                }
-
-                result.addPath(path);
-
-                // Add midpoint info
-                const midPt = new Point({
-                    x: (start.x + end.x) / 2,
-                    y: (start.y + end.y) / 2,
-                    spatialReference: this.view.spatialReference
-                });
-
-                midPoints.push({
-                    midPt: midPt,
-                    len: this.calculateDistance(start, end)
-                });
-            }
-
-            return {
-                geometry: result,
-                midPoints: midPoints
-            };
-        } catch (e) {
-            console.log('Error creating fracture:', e);
-            return null;
-        }
-    }
-
-
-    /**
-     * Calculate distance between two points
-     */
-    private calculateDistance(pt1: any, pt2: any): number {
-        const dx = pt2.x - pt1.x;
-        const dy = pt2.y - pt1.y;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
 
     /**
      * Get baseline points

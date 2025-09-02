@@ -142,9 +142,6 @@ define(["dojo/_base/declare", "dojo/_base/lang", "dojo/_base/array",
 
       createSymbol: function (drawEssentials) {
         try {
-
-
-
           var pts, arrowHeadRatio;
 
           if (drawEssentials.hasOwnProperty("CTRL_PTS")) {
