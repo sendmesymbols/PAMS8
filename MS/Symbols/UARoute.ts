@@ -1,338 +1,715 @@
-/**
- * Class Representing Unmanned Aircraft (UA) Route.
- * @class
- * @author Abdul Razak
- */
-
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
+import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
 export interface UARouteOptions {
     CTRL_PTS?: Point[];
-    BASE_LN_PTS?: any;
+    BASE_LN_PTS?: {startPt: Point, endPt: Point};
     GEOM?: Polyline;
     [key: string]: any;
 }
 
-class UARoute {
+/**
+ * UARoute class for drawing UARoute tactical symbols
+ * Uses baseline + control points
+ * Returns Polyline geometry despite being classified as an Area symbol
+ */
+export class UARoute {
+    private view: MapView | SceneView;
+    private layerManager: GraphicsLayerManager;
+    private symbolLayer: GraphicsLayer;
+    private isLine: boolean;
+
+    // Symbol properties
     public SID = "170700";
     public symName = "UAV Route";
     public symGeometricType = "Line";
 
-    private map: MapView | SceneView;
-    private isLine: boolean;
-    private _tGraphic: Graphic | null = null;
-    private _lineSym: SimpleLineSymbol | SimpleFillSymbol;
+    private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
-    private _baseLinePts: Point[] = [];
+    private _baseLinePts: any = {};
     private _geometryType: string | null = null;
+    private amplifier: Amplifier;
 
-    // Event handler properties
-    private _onClickHandler: any;
-    private _onDoubleClickHandler: any;
-    private _onPointerMoveHandler: any;
-    private _onBaseLineEndHandler: any;
-    private _onBaseLineProgressHandler: any;
-    private _onBaseLineClickHandler: any;
+    // Drawing state
+    private isDrawing: boolean = false;
+    private tempGraphic: Graphic | null = null;
+    private baseLineComplete: boolean = false;
 
-    constructor(map: MapView | SceneView, isLine: boolean) {
-        this.map = map;
+    // Event handlers
+    private clickHandler: any = null;
+    private doubleClickHandler: any = null;
+    private mouseMoveHandler: any = null;
+    private baseLineEndHandler: any = null;
+    private baseLineProgressHandler: any = null;
+    private baseLineClickHandler: any = null;
+
+    // Event emitter
+    private eventListeners: Map<string, Function[]> = new Map();
+
+    constructor(view: MapView | SceneView, isLine: boolean = false) {
+        this.view = view;
         this.isLine = isLine;
-        this._tGraphic = new Graphic();
+        this.layerManager = GraphicsLayerManager.getInstance(view);
+        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+        this.amplifier = new Amplifier();
+
+        // Initialize layers if not already done
+        this.layerManager.initializeLayers();
+
+        // Initialize temporary graphic
+        this.tempGraphic = new Graphic();
     }
 
-    public init(options: UARouteOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void {
-        this._lineSym = marker;
-
-        // Disable map navigation for drawing
-        if ('disableDoubleClickZoom' in this.map) {
-            (this.map as any).disableDoubleClickZoom();
-        }
+    /**
+     * Initialize the UARoute drawing
+     */
+    public init(options: UARouteOptions, marker: SimpleLineSymbol): void {
+        this._lineSym = marker.clone();
 
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM")) {
-            this._tGraphic!.geometry = options.GEOM;
-            const essentials = this.createDrawEssentials(this._cloneArray(options.CTRL_PTS!), this._cloneArray(options.BASE_LN_PTS));
-            this.__drawEnd(this._tGraphic!.geometry, essentials);
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
+            if (options.GEOM && this.tempGraphic) {
+                try {
+                    // If GEOM is already a Polyline, use it directly; otherwise, build from paths
+                    this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
+                        ? options.GEOM
+                        : new Polyline({ paths: (options.GEOM as any), spatialReference: this.view.spatialReference });
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polyline geometry:", error);
+                }
+            }
+
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
+            if (this.tempGraphic && this.tempGraphic.geometry) {
+                this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
+            }
             this._clear();
+
         } else if (options.hasOwnProperty("CTRL_PTS")) {
             if (options.hasOwnProperty("BASE_LN_PTS")) {
-                const essentials = this.createDrawEssentials(this._cloneArray(options.CTRL_PTS!), this._cloneArray(options.BASE_LN_PTS));
-                this._tGraphic!.geometry = this.createSymbol(essentials);
-                this.__drawEnd(this._tGraphic!.geometry, essentials);
-                this._clear();
+                // Immediate placement with control points and baseline
+                const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
+                const geometry = this.createSymbol(drawEss);
+                if (geometry && this.tempGraphic) {
+                    this.tempGraphic.geometry = geometry;
+                    this.__drawEnd(geometry, drawEss);
+                    this._clear();
+                }
             } else {
-                throw "Control Points and Baseline or Distance is required to create symbol non-interactively";
+                throw new Error("Control Points and Baseline or Distance is required to create symbol non-interactively");
             }
+
         } else {
-            // Interactive drawing mode - would need BaseLine implementation
-            // For now, set up basic event handlers
-            this._tGraphic = new Graphic({ symbol: this._lineSym });
-            this.map.graphics.add(this._tGraphic);
-            this._setupEventHandlers();
+            // Interactive drawing mode - start with baseline
+            this.startBaseLineDrawing();
         }
     }
 
-    public createDrawEssentials(ctrlPts: Point[], baseLinePts: any): DrawEssentials {
+    /**
+     * Start baseline drawing
+     */
+    private startBaseLineDrawing(): void {
+        const baseLine = new BaseLine(this.view, this._lineSym!);
+
+        this.baseLineClickHandler = baseLine.on("onBaseLineClick", (evt: any) => {
+            this.baseLineClick(evt);
+        });
+
+        this.baseLineProgressHandler = baseLine.on("onBaseLineProgress", (evt: any) => {
+            this.baseLineDrawProgress(evt);
+        });
+
+        this.baseLineEndHandler = baseLine.on("drawEnd", (evt: any) => {
+            this.baseLineDrawEnd(evt);
+        });
+
+        baseLine.init();
+    }
+
+    /**
+     * Handle baseline click events
+     */
+    private baseLineClick(evt: any): void {
+        this.emit("onDrawClick", {
+            currentPts: evt.currentGeometry,
+            isBaseLine: true
+        });
+    }
+
+    /**
+     * Handle baseline draw progress
+     */
+    private baseLineDrawProgress(evt: any): void {
+        const localDrawEssentials: any = {};
+        localDrawEssentials.CTRL_PTS = evt.currentGeometry;
+
+        const pl = new Polyline({ spatialReference: this.view.spatialReference });
+        pl.addPath(evt.currentGeometry);
+
+        this.emit("onDrawProgress", {
+            currentGeometry: pl,
+            currentDrawEssentials: localDrawEssentials,
+            currentMarker: evt.currentMarker,
+            isBaseLine: true
+        });
+    }
+
+    /**
+     * Handle baseline draw end
+     */
+    private baseLineDrawEnd(evt: any): void {
+        if (this.baseLineEndHandler) {
+            this.baseLineEndHandler.remove();
+            this.baseLineEndHandler = null;
+        }
+
+        this.tempGraphic = new Graphic({
+            geometry: evt.geometry,
+            symbol: this._lineSym
+        });
+        this.symbolLayer.add(this.tempGraphic);
+
+        this._baseLinePts = (evt.geometry as any)._baseLine;
+        this.baseLineComplete = true;
+
+        // Start control point drawing
+        this.setupControlPointHandlers();
+
+        this.emit("onBaseLineDrawEnd", {
+            currentPts: (evt.geometry as any).controlPoints
+        });
+    }
+
+    /**
+     * Set up control point drawing handlers
+     */
+    private setupControlPointHandlers(): void {
+        // Mouse move handler
+        this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
+            this._onMouseMoveHandler(event);
+        });
+
+        // Click handler
+        this.clickHandler = this.view.on("click", (event) => {
+            this._onClickHandler(event);
+        });
+
+        // Double click handler
+        this.doubleClickHandler = this.view.on("double-click", (event) => {
+            this._onDoubleClickHandler(event);
+        });
+    }
+
+    /**
+     * Handle click events for control points
+     */
+    private _onClickHandler(clickEvent: any): void {
+        const mapPoint = this.view.toMap(clickEvent);
+        if (!mapPoint) return;
+
+        const point = new Point({
+            x: mapPoint.x,
+            y: mapPoint.y,
+            spatialReference: this.view.spatialReference
+        });
+
+        this._points.push(point);
+
+        this.emit("onDrawClick", { currentPts: this._points });
+
+        // For single line mode, finish after first click
+        if (this.isLine === true && this._points.length === 1) {
+            this.emit("onDrawClick", { currentPts: this._points });
+            this.cleanUp();
+        }
+    }
+
+    /**
+     * Handle double click events
+     */
+    private _onDoubleClickHandler(clickEvent: any): void {
+        const mapPoint = this.view.toMap(clickEvent);
+        if (!mapPoint) return;
+
+        const point = new Point({
+            x: mapPoint.x,
+            y: mapPoint.y,
+            spatialReference: this.view.spatialReference
+        });
+
+        this._points.push(point);
+        this.cleanUp();
+    }
+
+    /**
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler(inputEvent: any): void {
+        if (!this.baseLineComplete || !this.tempGraphic) return;
+
+        const mapPoint = this.view.toMap(inputEvent);
+        if (!mapPoint) return;
+
+        const candidatePoint = new Point({
+            x: mapPoint.x,
+            y: mapPoint.y,
+            spatialReference: this.view.spatialReference
+        });
+
         const drawEssentials = new DrawEssentials();
-        drawEssentials.SCOPE = this;
+        (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
+        (drawEssentials as any).BASE_LN_PTS = this._baseLinePts;
+
+        const geometry = this.createSymbol(drawEssentials);
+        if (geometry) {
+            this.tempGraphic.geometry = geometry;
+            this.emit("onDrawProgress", {
+                currentGeometry: geometry,
+                currentDrawEssentials: drawEssentials,
+                currentMarker: this._lineSym
+            });
+        }
+    }
+
+    /**
+     * Create DrawEssentials object
+     */
+    private createDrawEssentials(ctrlPts: Point[], baseLinePts: any): DrawEssentials {
+        const drawEssentials = new DrawEssentials();
         drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
         drawEssentials.SID = this.SID;
         drawEssentials.SYM_NAME = this.symName;
+        drawEssentials.GEOM = null;
+        drawEssentials.AMPLIFIER = this.amplifier.toString();
+
+        // Store additional properties
+        (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
         (drawEssentials as any).BASE_LN_PTS = baseLinePts;
+
         return drawEssentials;
     }
 
-    public createSymbol(drawEssentials: DrawEssentials): Polyline | null {
+    /**
+     * Create symbol geometry from DrawEssentials
+     */
+    private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
         try {
-            let pts: Point[];
-
-            if ((drawEssentials as any).hasOwnProperty("CTRL_PTS")) {
-                pts = (drawEssentials as any).CTRL_PTS;
-            } else {
-                throw "controlPoints not found";
+            // Extract control points
+            const pts: Point[] = (drawEssentials as any).CTRL_PTS;
+            if (!pts || pts.length === 0) {
+                throw new Error("controlPoints not found");
             }
 
-            const stPt = (drawEssentials as any).BASE_LN_PTS.startPt;
-            const endPt = (drawEssentials as any).BASE_LN_PTS.endPt;
-
-            if (stPt === undefined || endPt === undefined) {
-                throw "First Parameter of the Function is an Array with Start and End Point";
+            // Extract baseline points
+            const stPt: Point = (drawEssentials as any).BASE_LN_PTS?.startPt;
+            const endPt: Point = (drawEssentials as any).BASE_LN_PTS?.endPt;
+            if (!stPt || !endPt) {
+                throw new Error("First Parameter of the Function is an Array with Start and End Point");
             }
 
+            const spatialReference = this.view.spatialReference;
+            const result = new Polyline({ spatialReference });
+
+            // Midpoint of baseline
             const midPt = GeoTools.getMidPoint(stPt, endPt);
-            const result = new Polyline({ spatialReference: this.map.spatialReference });
 
+            // Orientation for corridor sides based on first control point
             const firstPoint = pts[0];
-            const leftArray: number[][] = [];
-            const rightArray: number[][] = [];
-            const middleArray: number[][] = [];
-
-            let len = GeoTools._2PtLen(midPt, endPt);
             let k = Math.atan((midPt.y - firstPoint.y) / (midPt.x - firstPoint.x));
-
             switch (GeoTools.twoPtsRelationShip(midPt, firstPoint)) {
                 case "ne":
-                    k += Math.PI / 2;
-                    break;
+                    k += Math.PI / 2; break;
                 case "nw":
-                    k += Math.PI * 3 / 2;
-                    break;
+                    k += Math.PI * 3 / 2; break;
                 case "sw":
-                    k += Math.PI * 3 / 2;
-                    break;
+                    k += Math.PI * 3 / 2; break;
                 case "se":
-                    k += Math.PI / 2;
-                    break;
+                    k += Math.PI / 2; break;
             }
 
-            const partialLen = len;
+            const partialLen = GeoTools._2PtLen(midPt, endPt);
             const p1 = { x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y };
             const p2 = { x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y };
+
+            // Build left/right corridor paths and middle track
+            const leftArray: number[][] = [];
+            const rightArray: number[][] = [];
+            const middleArray: Point[] = [];
 
             if (pts.length >= 1) {
                 leftArray.push([p1.x, p1.y]);
                 rightArray.push([p2.x, p2.y]);
-                middleArray.push([midPt.x, midPt.y]);
+                middleArray.push(midPt);
             }
 
             const gapLen = GeoTools._2PtLen(endPt, stPt);
 
             for (let i = 0; i < pts.length; i++) {
-                // Find distance between candidatePoint and Mid Point
-                const length = GeoTools._2PtLen(midPt, pts[i]);
-                const angle = GeoTools.angleInRadians(midPt, pts[i]);
+                const candidate = pts[i];
+                const length = GeoTools._2PtLen(midPt, candidate);
+                const angle = GeoTools.angleInRadians(midPt, candidate);
 
                 const stPtCandidatePt = new Point({
                     x: p1.x + length * Math.cos(angle),
                     y: p1.y + length * Math.sin(angle),
-                    spatialReference: this.map.spatialReference
+                    spatialReference
                 });
                 const endPtCandidatePt = new Point({
                     x: p2.x + length * Math.cos(angle),
                     y: p2.y + length * Math.sin(angle),
-                    spatialReference: this.map.spatialReference
+                    spatialReference
                 });
 
-                len = length / 5;
+                // Clamp short offsets relative to instantaneous baseline
+                let lenCand = length / 5;
                 const baseLineLen = GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt);
                 const baseLineLenLimit = baseLineLen / 4;
-                if (len > baseLineLenLimit) len = baseLineLenLimit;
+                if (lenCand > baseLineLenLimit) lenCand = baseLineLenLimit;
+
+                // Angle between instantaneous baseline endpoints (not used further but preserved for parity)
+                const angle2 = GeoTools.angleInRadians(stPtCandidatePt, endPtCandidatePt);
+                const _pt1 = new Point({
+                    x: -1 * lenCand * Math.cos(angle2) + stPtCandidatePt.x,
+                    y: -1 * lenCand * Math.sin(angle2) + stPtCandidatePt.y,
+                    spatialReference
+                });
+                const _pt2 = new Point({
+                    x: lenCand * Math.cos(angle2) + endPtCandidatePt.x,
+                    y: lenCand * Math.sin(angle2) + endPtCandidatePt.y,
+                    spatialReference
+                });
+                void(_pt1); void(_pt2);
 
                 leftArray.push([stPtCandidatePt.x, stPtCandidatePt.y]);
                 rightArray.push([endPtCandidatePt.x, endPtCandidatePt.y]);
-                middleArray.push([pts[i].x, pts[i].y]);
+                middleArray.push(candidate);
 
-                // Create Circles
-                const circlePath = this.createACP(pts[i], gapLen / 2);
-                result.addPath(circlePath);
+                // Circles at each candidate
+                result.addPath(this.createACP(candidate, gapLen / 2));
 
-                // Add text if available
-                if (Shapes && typeof Shapes.createACP === 'function') {
-                    try {
-                        const text = Shapes.createACP(pts[i].x, pts[i].y, gapLen / 10, pts[i].spatialReference);
-                        for (let j = 0; j <= text.length - 1; j++) {
-                            result.addPath(text[j]);
+                // "ACP" letters near the candidate
+                const acpStrokes = (Shapes as any).createACP
+                    ? (Shapes as any).createACP(candidate.x, candidate.y, gapLen / 10, spatialReference)
+                    : [];
+                if (Array.isArray(acpStrokes)) {
+                    for (let j = 0; j <= acpStrokes.length - 1; j++) {
+                        const seg = acpStrokes[j] as Point[];
+                        if (seg && seg.length) {
+                            result.addPath(seg.map(p => [p.x, p.y]));
                         }
-                    } catch (e) {
-                        console.log('Cannot create ACP text');
                     }
                 }
             }
 
-            result.addPath(leftArray);
-            result.addPath(rightArray);
+            // Add corridor side paths
+            if (leftArray.length >= 2) result.addPath(leftArray);
+            if (rightArray.length >= 2) result.addPath(rightArray);
 
-            // Add circle for middle point
-            result.addPath(this.createACP(middleArray[0] as any, gapLen / 2));
+            // Central ACP at the baseline midpoint
+            if (middleArray.length > 0) {
+                result.addPath(this.createACP(middleArray[0], gapLen / 2));
 
-            // Add UA text along the path
-            const values = GeoTools._fracture(middleArray, 10, this.map.spatialReference);
-            let cLenLimit: number;
-            for (let i = 0; i < values.midPoints.length; i++) {
-                cLenLimit = values.midPoints[i].len / 2;
-                const baseLineLen = GeoTools._2PtLen(stPt, endPt);
-                if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-
-                if (Shapes && typeof Shapes.createUA === 'function') {
-                    try {
-                        const text = Shapes.createUA(values.midPoints[i].midPt.x, values.midPoints[i].midPt.y, cLenLimit, values.midPoints[i].midPt.spatialReference);
-                        for (let j = 0; j <= text.length - 1; j++) {
-                            result.addPath(text[j]);
+                const midAcpStrokes = (Shapes as any).createACP
+                    ? (Shapes as any).createACP(middleArray[0].x, middleArray[0].y, gapLen / 10, spatialReference)
+                    : [];
+                if (Array.isArray(midAcpStrokes)) {
+                    for (let j = 0; j <= midAcpStrokes.length - 1; j++) {
+                        const seg = midAcpStrokes[j] as Point[];
+                        if (seg && seg.length) {
+                            result.addPath(seg.map(p => [p.x, p.y]));
                         }
-                    } catch (e) {
-                        console.log('Cannot create UA text');
+                    }
+                }
+            }
+
+            // Fracture middle path only to get midpoints; do not add fracture geometry
+            const values = (GeoTools as any)._fracture
+                ? (GeoTools as any)._fracture(middleArray, 10, spatialReference)
+                : null;
+
+            const corridorBaseLen = GeoTools._2PtLen(new Point({ x: p1.x, y: p1.y, spatialReference }), new Point({ x: p2.x, y: p2.y, spatialReference }));
+            if (values && values.midPoints && Array.isArray(values.midPoints)) {
+                for (let i = 0; i < values.midPoints.length; i++) {
+                    let cLenLimit = values.midPoints[i].len / 2;
+                    if (cLenLimit > corridorBaseLen / 3.6) cLenLimit = corridorBaseLen / 3.6;
+                    const uaStrokes = (Shapes as any).createUA
+                        ? (Shapes as any).createUA(values.midPoints[i].midPt.x, values.midPoints[i].midPt.y, cLenLimit, values.midPoints[i].midPt.spatialReference)
+                        : [];
+                    if (Array.isArray(uaStrokes)) {
+                        for (let j = 0; j <= uaStrokes.length - 1; j++) {
+                            const seg = uaStrokes[j] as Point[];
+                            if (seg && seg.length) {
+                                result.addPath(seg.map(p => [p.x, p.y]));
+                            }
+                        }
                     }
                 }
             }
 
             return result;
         } catch (e) {
-            console.log('Cannot create Symbol due to invalid geometry');
+            console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
             return null;
         }
     }
 
-    public createACP(pt: Point, radius: number): number[][] {
-        // Create circle points
-        if (Shapes && typeof Shapes.createCircle === 'function') {
-            try {
-                return Shapes.createCircle(pt, radius, 60);
-            } catch (e) {
-                console.log('Cannot create circle');
+    /**
+     * Create circle path at point with radius (used as ACP circle)
+     */
+    private createACP(pt: Point, radius: number): number[][] {
+        try {
+            const circlePts: Point[] = (Shapes as any).createCircle
+                ? (Shapes as any).createCircle(pt, radius, 60)
+                : [];
+            if (Array.isArray(circlePts) && circlePts.length > 0) {
+                return circlePts.map(p => [p.x, p.y]);
             }
+            return [];
+        } catch (e) {
+            return [];
         }
-        // Fallback: simple circle approximation
-        const path: number[][] = [];
-        for (let i = 0; i <= 60; i++) {
-            const angle = (i / 60) * 2 * Math.PI;
-            path.push([pt.x + radius * Math.cos(angle), pt.y + radius * Math.sin(angle)]);
-        }
-        return path;
     }
 
-    public getBaseLinePts(): Point[] {
+    /**
+     * Create fracture lines
+     */
+    private fracture(middleArray: Point[], segments: number): any {
+        try {
+            if (GeoTools && (GeoTools as any)._fracture) {
+                return (GeoTools as any)._fracture(middleArray, segments, this.view.spatialReference);
+            }
+
+            // Fallback fracture implementation
+            const result = new Polyline({ spatialReference: this.view.spatialReference });
+            const midPoints: any[] = [];
+
+            for (let i = 0; i < middleArray.length - 1; i++) {
+                const start = middleArray[i];
+                const end = middleArray[i + 1];
+                const path: number[][] = [];
+
+                for (let j = 0; j <= segments; j++) {
+                    const t = j / segments;
+                    const x = start.x + t * (end.x - start.x);
+                    const y = start.y + t * (end.y - start.y);
+                    path.push([x, y]);
+                }
+
+                result.addPath(path);
+
+                // Add midpoint info
+                const midPt = new Point({
+                    x: (start.x + end.x) / 2,
+                    y: (start.y + end.y) / 2,
+                    spatialReference: this.view.spatialReference
+                });
+
+                midPoints.push({
+                    midPt: midPt,
+                    len: this.calculateDistance(start, end)
+                });
+            }
+
+            return {
+                geometry: result,
+                midPoints: midPoints
+            };
+        } catch (e) {
+            console.log('Error creating fracture:', e);
+            return null;
+        }
+    }
+
+
+    /**
+     * Calculate distance between two points
+     */
+    private calculateDistance(pt1: any, pt2: any): number {
+        const dx = pt2.x - pt1.x;
+        const dy = pt2.y - pt1.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+
+    /**
+     * Get baseline points
+     */
+    public getBaseLinePts(): any {
         return this._baseLinePts;
     }
 
-    private _setupEventHandlers(): void {
-        this._onClickHandler = this.map.on("click", (event) => this._onClickHdler(event));
-        this._onDoubleClickHandler = this.map.on("double-click", (event) => this._onDoubleClickHdler(event));
-    }
-
-    private _onClickHdler(clickPoint: any): void {
-        this._points.push(clickPoint.mapPoint.clone());
-        this.emit("onDrawClick", { 'currentPts': this._points });
-        
-        if (this.isLine && this._points.length === 1) {
-            this.cleanUp();
-        }
-    }
-
-    private _onDoubleClickHdler(clickPoint: any): void {
-        this._points.push(clickPoint.mapPoint);
-        this.cleanUp();
-    }
-
+    /**
+     * Clean up drawing state and finalize
+     */
     private cleanUp(): void {
-        const drawEss = this.createDrawEssentials(this._cloneArray(this._points), this._cloneArray(this._baseLinePts));
-        this.__drawEnd(this._tGraphic?.geometry, drawEss);
+        if (this._points.length === 0) return;
+
+        const drawEssentials = this.createDrawEssentials(this._points.slice(), this._baseLinePts);
+
+        if (this.tempGraphic && this.tempGraphic.geometry) {
+            this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
+        }
+
         this._clear();
         this._removeEvents();
     }
 
-    private __drawEnd(drawGeometry: any, drawEssentials: DrawEssentials): void {
+    /**
+     * Handle draw end
+     */
+    private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
         if (drawGeometry) {
-            let geographicGeometry: any;
-            const spRef = this.map.spatialReference;
-            
-            if (spRef && (spRef as any).isWebMercator) {
-                // Handle web mercator conversion if needed
-                geographicGeometry = drawGeometry;
-            } else if (spRef.wkid === 4326) {
-                geographicGeometry = JSON.parse(JSON.stringify(drawGeometry.toJSON()));
+            const spatialRef = this.view.spatialReference;
+            let geographicGeometry = drawGeometry;
+
+            if (spatialRef && spatialRef.isWebMercator) {
+                // Geographic conversion would go here if needed
+            } else if (spatialRef && spatialRef.wkid === 4326) {
+                geographicGeometry = drawGeometry.clone();
             }
 
             this.__onDrawEnd(drawGeometry, geographicGeometry, drawEssentials);
         }
     }
 
-    private __onDrawEnd(geometry: any, geoGeometry: any, drawEssParam: DrawEssentials): void {
+    /**
+     * Final draw end handler
+     */
+    private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
         this.emit("onDrawEnd", {
-            'geometry': geometry,
-            'geographicGeometry': geoGeometry,
-            'drawEssentials': drawEssParam,
-            'marker': this._lineSym
+            geometry: geometry,
+            geographicGeometry: geoGeometry,
+            drawEssentials: drawEssParam,
+            marker: this._lineSym
         });
     }
 
+    /**
+     * Clear graphics and state
+     */
     private _clear(): void {
-        if (this._tGraphic) {
-            this.map.graphics.remove(this._tGraphic);
-            this._tGraphic = null;
+        if (this.tempGraphic && this.symbolLayer) {
+            this.symbolLayer.remove(this.tempGraphic);
         }
+
+        this.tempGraphic = null;
         this._points = [];
-        this._baseLinePts = [];
+        this._baseLinePts = {};
     }
 
+    /**
+     * Remove event handlers
+     */
     private _removeEvents(): void {
-        if (this._onClickHandler) this._onClickHandler.remove();
-        if (this._onDoubleClickHandler) this._onDoubleClickHandler.remove();
-        if (this._onPointerMoveHandler) this._onPointerMoveHandler.remove();
-        
-        if ('enableDoubleClickZoom' in this.map) {
-            (this.map as any).enableDoubleClickZoom();
+        if (this.clickHandler) {
+            this.clickHandler.remove();
+            this.clickHandler = null;
+        }
+        if (this.doubleClickHandler) {
+            this.doubleClickHandler.remove();
+            this.doubleClickHandler = null;
+        }
+        if (this.mouseMoveHandler) {
+            this.mouseMoveHandler.remove();
+            this.mouseMoveHandler = null;
+        }
+        if (this.baseLineEndHandler) {
+            this.baseLineEndHandler.remove();
+            this.baseLineEndHandler = null;
+        }
+        if (this.baseLineProgressHandler) {
+            this.baseLineProgressHandler.remove();
+            this.baseLineProgressHandler = null;
+        }
+        if (this.baseLineClickHandler) {
+            this.baseLineClickHandler.remove();
+            this.baseLineClickHandler = null;
         }
     }
 
+    /**
+     * Deactivate the drawing tool
+     */
     public deactivate(): void {
         this._clear();
         this._removeEvents();
         this._geometryType = null;
+        this.isDrawing = false;
+        this.baseLineComplete = false;
     }
 
-    private _cloneArray(arr: any[]): any[] {
-        return arr ? arr.map(item => item.clone ? item.clone() : { ...item }) : [];
-    }
-
+    /**
+     * Event emitter functionality
+     */
     private emit(eventName: string, data: any): void {
-        // Event emission implementation
-        console.log(`Event: ${eventName}`, data);
+        const listeners = this.eventListeners.get(eventName);
+        if (listeners) {
+            listeners.forEach(listener => listener(data));
+        }
+
+        this.emitGlobalEvent(eventName, data);
+    }
+
+    private emitGlobalEvent(eventName: string, data: any): void {
+        const customEvent = new CustomEvent(eventName, {
+            detail: {
+                symbolType: this.constructor.name,
+                eventName: eventName,
+                ...data
+            },
+            bubbles: true,
+            cancelable: true
+        });
+
+        if (this.view && this.view.container) {
+            this.view.container.dispatchEvent(customEvent);
+        } else {
+            document.dispatchEvent(customEvent);
+        }
+    }
+
+    public on(eventName: string, callback: Function): void {
+        if (!this.eventListeners.has(eventName)) {
+            this.eventListeners.set(eventName, []);
+        }
+        this.eventListeners.get(eventName)!.push(callback);
+    }
+
+    public off(eventName: string, callback?: Function): void {
+        if (!callback) {
+            this.eventListeners.delete(eventName);
+        } else {
+            const listeners = this.eventListeners.get(eventName);
+            if (listeners) {
+                const index = listeners.indexOf(callback);
+                if (index > -1) {
+                    listeners.splice(index, 1);
+                }
+            }
+        }
+    }
+
+    public getSymbolLayer(): GraphicsLayer {
+        return this.symbolLayer;
+    }
+
+    public clearSymbols(): void {
+        this.symbolLayer.removeAll();
     }
 }
 
-export default UARoute; 
+export default UARoute;
