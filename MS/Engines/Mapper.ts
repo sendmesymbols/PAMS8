@@ -180,12 +180,11 @@ import SingleFenceWire from "../Symbols/SingleFenceWire.ts";  //Fixed
 import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";  //Fixed
 import UARoute from "../Symbols/UARoute.ts";  //Fixed
 import Canalize from "../Symbols/Canalize.ts";  //Fixed
+import Contain from "../Symbols/Contain.ts"; //Fixed
+import Corridors from "../Symbols/Corridors.ts"; //Fixed
+import Cover from "../Symbols/Cover.ts"; //Fixed
+import Delay from "../Symbols/Delay.ts"; //Fixed
 
-
-import Contain from "../Symbols/Contain.ts";
-import Corridors from "../Symbols/Corridors.ts";
-import Cover from "../Symbols/Cover.ts";
-import Delay from "../Symbols/Delay.ts";
 import DispersalArea from "../Symbols/DispersalArea.ts";
 import Disrupt from "../Symbols/Disrupt.ts";
 import DisruptObstacleEffect from "../Symbols/DisruptObstacleEffect.ts";
