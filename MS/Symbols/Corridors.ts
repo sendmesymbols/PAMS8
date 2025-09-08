@@ -12,7 +12,7 @@ import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
-import {debug} from "node:util";
+
 
 export interface CorridorsOptions {
     CTRL_PTS?: Point[];
@@ -108,7 +108,7 @@ export class Corridors {
             this._clear();
 
         } else if (options.hasOwnProperty("CTRL_PTS")) {
-          debugger
+
             // Immediate placement with control points only
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.ECHELON, this._tailFactor);
 
