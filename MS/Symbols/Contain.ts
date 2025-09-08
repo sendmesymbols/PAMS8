@@ -317,113 +317,115 @@ export class Contain {
    */
   private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
     try {
-      // Extract control points
+      const spatialReference = this.view.spatialReference;
       const pts: Point[] = (drawEssentials as any).CTRL_PTS;
-      if (!pts || pts.length === 0) {
-        throw new Error("controlPoints not found");
-      }
+      if (!pts || pts.length === 0) throw new Error("controlPoints not found");
 
-      // Extract baseline points
+      // Baseline start/end are the first two inputs in legacy; in 4.x they come from BASE_LN_PTS
       const stPt: Point = (drawEssentials as any).BASE_LN_PTS?.startPt;
       const endPt: Point = (drawEssentials as any).BASE_LN_PTS?.endPt;
-      if (!stPt || !endPt) {
-        throw new Error("First Parameter of the Function is an Array with Start and End Point");
-      }
+      if (!stPt || !endPt) throw new Error("First Parameter of the Function is an Array with Start and End Point");
 
-      const spatialReference = this.view.spatialReference;
+      // Candidate point defines arc side (legacy used pts[2]); here we use the first control point
+      const candidate: Point = pts[0];
+
       const result = new Polyline({ spatialReference });
 
-      // Midpoint of baseline
-      const midPt = GeoTools.getMidPoint(stPt, endPt);
+      // Build circle from three points in screen space and sample arc back to map
+      const stScr = (this.view as any).toScreen(stPt);
+      const endScr = (this.view as any).toScreen(endPt);
+      const candScr = (this.view as any).toScreen(candidate);
+      if (!stScr || !endScr || !candScr) return null;
 
-      // Orientation for corridor sides based on first control point
-      const firstPoint = pts[0];
-      let k = Math.atan((midPt.y - firstPoint.y) / (midPt.x - firstPoint.x));
-      switch (GeoTools.twoPtsRelationShip(midPt, firstPoint)) {
-        case "ne":
-          k += Math.PI / 2; break;
-        case "nw":
-          k += Math.PI * 3 / 2; break;
-        case "sw":
-          k += Math.PI * 3 / 2; break;
-        case "se":
-          k += Math.PI / 2; break;
+      const circle = GeoTools.circleFromThreeScreenPoints(stScr, endScr, candScr);
+      if (!circle || circle.radius <= 0) {
+        // Fallback to simple baseline
+        result.addPath([[stPt.x, stPt.y], [endPt.x, endPt.y]]);
+        return result;
       }
 
-      const partialLen = GeoTools._2PtLen(midPt, endPt);
-      const p1 = { x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y };
-      const p2 = { x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y };
+      const circleSeg = Shapes.createCircleSegmentFromThreePoints(this.view as any, circle, stScr, endScr, candScr, 60);
+      const ring = (circleSeg.geometry as any).rings?.[0] as number[][];
+      if (!ring || ring.length === 0) return null;
 
-      // Fracture baseline (gap) and add CC at midpoint of the gap
-      const p1Pt = new Point({ x: p1.x, y: p1.y, spatialReference });
-      const p2Pt = new Point({ x: p2.x, y: p2.y, spatialReference });
-      const values = (GeoTools as any)._fracturePts
-          ? (GeoTools as any)._fracturePts(p1Pt, p2Pt, 10, spatialReference)
-          : null;
-      if (values && values.geometry && (values.geometry as Polyline).paths) {
-        (values.geometry as Polyline).paths.forEach((path: number[][]) => result.addPath(path));
-        const baseLineLen = GeoTools._2PtLen(p1Pt, p2Pt);
-        let cLenLimit = values.len / 2;
+      // Split the arc into two paths leaving a gap
+      const firstArc = ring.slice(0, 28);
+      const secondArc = ring.slice(32, 60);
+      if (firstArc.length >= 2) result.addPath(firstArc);
+      if (secondArc.length >= 2) result.addPath(secondArc);
+
+      // Add C at middle of the gap
+      if (ring[30]) {
+        const cPoint = new Point({ x: ring[30][0], y: ring[30][1], spatialReference });
+        const firstPoint = new Point({ x: ring[28][0], y: ring[28][1], spatialReference });
+        const secondPoint = new Point({ x: ring[32][0], y: ring[32][1], spatialReference });
+        const baseLineLen = GeoTools._2PtLen(firstPoint, secondPoint);
+        let cLenLimit = baseLineLen / 5;
         if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-        const ccPts: Point[] = (Shapes as any).createCC
-            ? (Shapes as any).createCC(values.midPoint.x, values.midPoint.y, cLenLimit, spatialReference)
-            : [];
-        if (ccPts && ccPts.length) {
-          result.addPath(ccPts.map(p => [p.x, p.y]));
+        const cPts: Point[] = (Shapes as any).createCC(cPoint.x, cPoint.y, cLenLimit, spatialReference) || [];
+        if (cPts.length) result.addPath(cPts.map(p => [p.x, p.y]));
+      }
+
+      // Teeth along both arcs toward center
+      const ext = result.extent;
+      const centerPt = ext?.center;
+      if (centerPt) {
+        const center = new Point({ x: centerPt.x, y: centerPt.y, spatialReference });
+        const length = GeoTools._2PtLen(endPt, center) / 10;
+        const teethSize = length * GeoTools.setDefault(drawEssentials as any, "TEETH_SIZE", this._teethSize);
+        const teethGap = GeoTools.setDefault(drawEssentials as any, "TEETH_GAP", this._teethGap);
+
+        for (let i = teethGap; i < 28 && i < firstArc.length; i += teethGap) {
+          const p = new Point({ x: firstArc[i][0], y: firstArc[i][1], spatialReference });
+          const ang = GeoTools.angleInRadians(center, p);
+          result.addPath(this.createTeeth(p, ang, teethSize));
+        }
+        for (let i = teethGap; i < 28 && i < secondArc.length; i += teethGap) {
+          const p = new Point({ x: secondArc[i][0], y: secondArc[i][1], spatialReference });
+          const ang = GeoTools.angleInRadians(center, p);
+          result.addPath(this.createTeeth(p, ang, teethSize));
         }
       }
 
-      // Build left/right corridor paths
-      const leftArray: number[][] = [];
-      const rightArray: number[][] = [];
-      if (pts.length >= 1) {
-        leftArray.push([p1.x, p1.y]);
-        rightArray.push([p2.x, p2.y]);
-      }
+      // Handle additional control points (fracture lines and ENY + arrow head)
+      if (pts.length > 1) {
+        const lastPt = pts[pts.length - 1];
+        const secLastPt = pts[pts.length - 2];
 
-      for (let i = 0; i < pts.length; i++) {
-        const candidate = pts[i];
-        const length = GeoTools._2PtLen(midPt, candidate);
-        const angle = GeoTools.angleInRadians(midPt, candidate);
+        if (ext?.center) {
+          const center = new Point({ x: ext.center.x, y: ext.center.y, spatialReference });
+          // Build path: center -> pts[1..n-1] -> lastPt
+          const fracturePoints: Point[] = [center];
+          for (let i = 1; i < pts.length - 1; i++) fracturePoints.push(pts[i]);
+          fracturePoints.push(lastPt);
 
-        const stPtCandidatePt = new Point({
-          x: p1.x + length * Math.cos(angle),
-          y: p1.y + length * Math.sin(angle),
-          spatialReference
-        });
-        const endPtCandidatePt = new Point({
-          x: p2.x + length * Math.cos(angle),
-          y: p2.y + length * Math.sin(angle),
-          spatialReference
-        });
+          const values = (GeoTools as any)._fracture(fracturePoints, 10, spatialReference);
+          if (values && values.geometry) {
+            const gPaths = (values.geometry as Polyline).paths as number[][][];
+            gPaths.forEach(p => result.addPath(p));
 
-        leftArray.push([stPtCandidatePt.x, stPtCandidatePt.y]);
-        rightArray.push([endPtCandidatePt.x, endPtCandidatePt.y]);
-      }
+            const baseLineLen = GeoTools._2PtLen(stPt, lastPt);
+            for (let i = 0; i < values.midPoints.length; i++) {
+              let cLenLimit = values.midPoints[i].len / 2;
+              if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+              const enyPaths = (Shapes as any).createENY(values.midPoints[i].midPt.x, values.midPoints[i].midPt.y, cLenLimit, spatialReference) || [];
+              for (let j = 0; j < enyPaths.length; j++) {
+                result.addPath(enyPaths[j].map((p: Point) => [p.x, p.y]));
+              }
+            }
+          }
 
-      if (leftArray.length >= 2) result.addPath(leftArray);
-      if (rightArray.length >= 2) result.addPath(rightArray);
-
-      // Flaps at the corridor ends
-      if (leftArray.length >= 2 && rightArray.length >= 2) {
-        const leftLast = new Point({ x: leftArray[leftArray.length - 1][0], y: leftArray[leftArray.length - 1][1], spatialReference });
-        const leftPrev = new Point({ x: leftArray[leftArray.length - 2][0], y: leftArray[leftArray.length - 2][1], spatialReference });
-        const rightLast = new Point({ x: rightArray[rightArray.length - 1][0], y: rightArray[rightArray.length - 1][1], spatialReference });
-        const rightPrev = new Point({ x: rightArray[rightArray.length - 2][0], y: rightArray[rightArray.length - 2][1], spatialReference });
-
-        const lastCandidate = pts[pts.length - 1];
-        const mainLen = GeoTools._2PtLen(midPt, lastCandidate);
-        const baseLen = GeoTools._2PtLen(leftLast, rightLast);
-        const flapLen = (GeoTools as any).ArrowFlanksLen ? (GeoTools as any).ArrowFlanksLen(mainLen, baseLen) : Math.min(mainLen / 10, baseLen / 4);
-
-        const leftAngle = GeoTools.angleInRadians(leftPrev, leftLast);
-        const rightAngle = GeoTools.angleInRadians(rightPrev, rightLast);
-
-        const leftFlap = this.flaps(leftLast, flapLen, leftAngle, 1);
-        const rightFlap = this.flaps(rightLast, flapLen, rightAngle, 0);
-
-        if (leftFlap.length) result.addPath(leftFlap);
-        if (rightFlap.length) result.addPath(rightFlap);
+          // Backward arrow head from center towards next control (pts[1])
+          const toward = pts[1] || lastPt;
+          const mainLen = GeoTools._2PtLen(center, toward);
+          const baseLen = GeoTools._2PtLen(lastPt, secLastPt);
+          const arrowLen = (GeoTools as any).ArrowFlanksLen(mainLen, baseLen);
+          const angle = GeoTools.angleInRadians(center, toward);
+          const arrow = (Shapes as any).arrowHeadBackward(center, arrowLen, angle) as Point[];
+          if (arrow && arrow.length) {
+            result.addPath(arrow.map(p => [p.x, p.y]));
+          }
+        }
       }
 
       return result;
@@ -450,6 +452,14 @@ export class Contain {
     } catch (e) {
       return [];
     }
+  }
+
+  private createTeeth(startPt: Point, angle: number, teethSize: number): number[][] {
+    const midPtTwrdsCntr = [
+      startPt.x - teethSize * Math.cos(angle),
+      startPt.y - teethSize * Math.sin(angle)
+    ];
+    return [[startPt.x, startPt.y], midPtTwrdsCntr];
   }
 
 

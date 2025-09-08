@@ -687,6 +687,93 @@ export class GeoTools {
     static ArrowFlanksLen(mainLength: number, baseLength: number): number {
         return Math.min(mainLength / 10, baseLength / 4);
     }
+
+    /**
+     * Compute circle parameters (center, radius) from three points in screen space
+     * Ported from legacy 3.x _circleDrawEx; inputs are plain {x,y} objects
+     */
+    static circleFromThreeScreenPoints(
+        pt1: { x: number, y: number },
+        pt2: { x: number, y: number },
+        pt3: { x: number, y: number }
+    ): { radius: number, center: { x: number, y: number } } {
+        // Helper to compute determinant
+        const determinant = (a: number[][], n: number): number => {
+            if (n === 2) {
+                return a[0][0] * a[1][1] - a[1][0] * a[0][1];
+            }
+            let d = 0;
+            const m: number[][] = [
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0]
+            ];
+            for (let j1 = 0; j1 < n; j1++) {
+                for (let i = 1; i < n; i++) {
+                    let j2 = 0;
+                    for (let j = 0; j < n; j++) {
+                        if (j === j1) continue;
+                        m[i - 1][j2] = a[i][j];
+                        j2++;
+                    }
+                }
+                d = d + Math.pow(-1.0, j1) * a[0][j1] * determinant(m, n - 1);
+            }
+            return d;
+        };
+
+        const P = [
+            [pt1.x, pt1.y],
+            [pt2.x, pt2.y],
+            [pt3.x, pt3.y]
+        ];
+        let a = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ];
+
+        // m11
+        for (let i = 0; i < 3; i++) {
+            a[i][0] = P[i][0];
+            a[i][1] = P[i][1];
+            a[i][2] = 1;
+        }
+        const m11 = determinant(a, 3);
+
+        // m12
+        for (let i = 0; i < 3; i++) {
+            a[i][0] = P[i][0] * P[i][0] + P[i][1] * P[i][1];
+            a[i][1] = P[i][1];
+            a[i][2] = 1;
+        }
+        const m12 = determinant(a, 3);
+
+        // m13
+        for (let i = 0; i < 3; i++) {
+            a[i][0] = P[i][0] * P[i][0] + P[i][1] * P[i][1];
+            a[i][1] = P[i][0];
+            a[i][2] = 1;
+        }
+        const m13 = determinant(a, 3);
+
+        // m14
+        for (let i = 0; i < 3; i++) {
+            a[i][0] = P[i][0] * P[i][0] + P[i][1] * P[i][1];
+            a[i][1] = P[i][0];
+            a[i][2] = P[i][1];
+        }
+        const m14 = determinant(a, 3);
+
+        if (m11 === 0) {
+            return { radius: 0, center: { x: 0, y: 0 } };
+        } else {
+            const Xo = 0.5 * m12 / m11;
+            const Yo = -0.5 * m13 / m11;
+            const r = Math.sqrt(Xo * Xo + Yo * Yo + m14 / m11);
+            return { radius: r, center: { x: Xo, y: Yo } };
+        }
+    }
 }
 
 export default GeoTools; 
