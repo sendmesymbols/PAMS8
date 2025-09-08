@@ -1572,15 +1572,16 @@ class Shapes {
      * Create forward arrow head
      */
     static arrowHead(candidatePoint: Point, length: number, angle: number): Point[] {
+        // Build wings BEHIND the tip so the arrow points in 'angle' direction (-->), not inverted
         const headAngleRad = Math.PI / 6; // 30 degrees
         const rightWing = new Point({
-            x: candidatePoint.x + length * Math.cos(angle - headAngleRad),
-            y: candidatePoint.y + length * Math.sin(angle - headAngleRad),
+            x: candidatePoint.x - length * Math.cos(angle - headAngleRad),
+            y: candidatePoint.y - length * Math.sin(angle - headAngleRad),
             spatialReference: candidatePoint.spatialReference
         });
         const leftWing = new Point({
-            x: candidatePoint.x + length * Math.cos(angle + headAngleRad),
-            y: candidatePoint.y + length * Math.sin(angle + headAngleRad),
+            x: candidatePoint.x - length * Math.cos(angle + headAngleRad),
+            y: candidatePoint.y - length * Math.sin(angle + headAngleRad),
             spatialReference: candidatePoint.spatialReference
         });
         return [rightWing, candidatePoint, leftWing];
