@@ -184,8 +184,8 @@ import Contain from "../Symbols/Contain.ts"; //Fixed
 import Corridors from "../Symbols/Corridors.ts"; //Fixed
 import Cover from "../Symbols/Cover.ts"; //Fixed
 import Delay from "../Symbols/Delay.ts"; //Fixed
+import DispersalArea from "../Symbols/DispersalArea.ts";  //Fixed
 
-import DispersalArea from "../Symbols/DispersalArea.ts";
 import Disrupt from "../Symbols/Disrupt.ts";
 import DisruptObstacleEffect from "../Symbols/DisruptObstacleEffect.ts";
 import DivLineOfNoPen from "../Symbols/DivLineOfNoPen.ts";

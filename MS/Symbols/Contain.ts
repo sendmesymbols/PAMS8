@@ -321,7 +321,7 @@ export class Contain {
 
       const result = new Polyline({ spatialReference });
 
-      // Legacy logic: pts[0] = startingPt, pts[1] = endPt
+      // pts[0] = startingPt, pts[1] = endPt
       const startingPt = pts[0];
       const endPt = pts[1];
 
