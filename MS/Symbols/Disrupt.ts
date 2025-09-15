@@ -389,19 +389,6 @@ export class Disrupt {
         // Angle between the endpoints for local baseline
         const angleBetweenCandidates = GeoTools.angleInRadians(stPtCandidatePt, endPtCandidatePt);
 
-        // These were used in legacy but the computed pt1/pt2 were not added as separate paths for Disrupt
-        // Keep computations for parity; no direct use in path building
-        /* const pt1 = new Point({
-          x: -1 * len2 * Math.cos(angleBetweenCandidates) + stPtCandidatePt.x,
-          y: -1 * len2 * Math.sin(angleBetweenCandidates) + stPtCandidatePt.y,
-          spatialReference
-        });
-        const pt2 = new Point({
-          x: len2 * Math.cos(angleBetweenCandidates) + endPtCandidatePt.x,
-          y: len2 * Math.sin(angleBetweenCandidates) + endPtCandidatePt.y,
-          spatialReference
-        }); */
-
         // Shorten left and middle points towards the mid point as per legacy
         const kLocal = GeoTools.angleInRadians(midPt, pts[i]);
         const shortenLeftPt = {
@@ -500,28 +487,6 @@ export class Disrupt {
       return null;
     }
   }
-
-  /**
-   * Create flap (arrow wings) path at the end point
-   */
-  private flaps(candidatePoint: Point, length: number, angleRad: number, side: number): number[][] {
-    try {
-      const delta = (15 * Math.PI) / 180; // 15 degrees in radians
-      // Adjust to angle wings inward toward the corridor center
-      const adj = side === 1 ? (angleRad + delta) : (angleRad - delta);
-      const dx = Math.cos(adj);
-      const dy = Math.sin(adj);
-
-      const wing1 = [candidatePoint.x + length * dx, candidatePoint.y + length * dy];
-      const wing2 = [candidatePoint.x - length * dx, candidatePoint.y - length * dy];
-      return [wing1, [candidatePoint.x, candidatePoint.y], wing2];
-    } catch (e) {
-      return [];
-    }
-  }
-
-
-
 
   /**
    * Get baseline points

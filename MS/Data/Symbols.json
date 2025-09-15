@@ -8758,20 +8758,52 @@
         "Class": "DivLineOfNoPen",
         "Description": "",
         "Name": "Div Line Of No Pen",
-        "Parameters": [],
+      "Parameters": [{
+        "Name": "Draw Type",
+        "default": "1",
+        "description": "Possible Values 1 (Line) and 2 (Curve)",
+        "paramThumbnail": "",
+        "value": "DRAW_TYPE"
+      }],
         "SymGeoType": "Line",
         "Thumbnail": "",
-        "Tools": [],
+      "Tools": [{
+        "DRAW_TYPE": "1",
+        "Name": "Line",
+        "description": "Use Line"
+      },
+        {
+          "DRAW_TYPE": "2",
+          "Name": "Curve",
+          "description": "Use Curve"
+        }
+      ],
         "Cat": ["def"]
     },
     "25141901": {
         "Class": "LineOfNoPen",
         "Description": "",
         "Name": "Line Of No Pen",
-        "Parameters": [],
+      "Parameters": [{
+        "Name": "Draw Type",
+        "default": "1",
+        "description": "Possible Values 1 (Line) and 2 (Curve)",
+        "paramThumbnail": "",
+        "value": "DRAW_TYPE"
+      }],
         "SymGeoType": "Line",
         "Thumbnail": "",
-        "Tools": [],
+      "Tools": [{
+        "DRAW_TYPE": "1",
+        "Name": "Line",
+        "description": "Use Line"
+      },
+        {
+          "DRAW_TYPE": "2",
+          "Name": "Curve",
+          "description": "Use Curve"
+        }
+      ],
         "Cat": ["def"]
     },
     "25141902": {

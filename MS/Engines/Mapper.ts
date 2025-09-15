@@ -189,6 +189,9 @@ import DispersalArea from "../Symbols/DispersalArea.ts";  //Fixed
 import Disrupt from "../Symbols/Disrupt.ts";
 import DisruptObstacleEffect from "../Symbols/DisruptObstacleEffect.ts";
 import DivLineOfNoPen from "../Symbols/DivLineOfNoPen.ts";
+import LineOfNoPen from "../Symbols/LineOfNoPen.ts";
+
+
 import DoubleApronFence from "../Symbols/DoubleApronFence.ts";
 import Fix from "../Symbols/Fix.ts";
 import FlightRoute from "../Symbols/FlightRoute.ts";
@@ -199,7 +202,7 @@ import Guard from "../Symbols/Guard.ts";
 import HighWireFence from "../Symbols/HighWireFence.ts";
 import InfiltrationLane from "../Symbols/InfiltrationLane.ts";
 import Isolate from "../Symbols/Isolate.ts";
-import LineOfNoPen from "../Symbols/LineOfNoPen.ts";
+
 import LowWireFence from "../Symbols/LowWireFence.ts";
 import MovingConvoy from "../Symbols/MovingConvoy.ts";
 
