@@ -184,26 +184,27 @@ import Contain from "../Symbols/Contain.ts"; //Fixed
 import Corridors from "../Symbols/Corridors.ts"; //Fixed
 import Cover from "../Symbols/Cover.ts"; //Fixed
 import Delay from "../Symbols/Delay.ts"; //Fixed
-import DispersalArea from "../Symbols/DispersalArea.ts";  //Fixed
+import DispersalArea from "../Symbols/DispersalArea.ts"; //Fixed
+import Disrupt from "../Symbols/Disrupt.ts"; //Fixed
+import DisruptObstacleEffect from "../Symbols/DisruptObstacleEffect.ts"; //Fixed
+import DivLineOfNoPen from "../Symbols/DivLineOfNoPen.ts"; //Fixed
+import LineOfNoPen from "../Symbols/LineOfNoPen.ts"; //Fixed
 
-import Disrupt from "../Symbols/Disrupt.ts";
-import DisruptObstacleEffect from "../Symbols/DisruptObstacleEffect.ts";
-import DivLineOfNoPen from "../Symbols/DivLineOfNoPen.ts";
-import LineOfNoPen from "../Symbols/LineOfNoPen.ts";
+import DoubleApronFence from "../Symbols/DoubleApronFence.ts"; //Fixed
+import HighWireFence from "../Symbols/HighWireFence.ts";
+import LowWireFence from "../Symbols/LowWireFence.ts";
 
-
-import DoubleApronFence from "../Symbols/DoubleApronFence.ts";
 import Fix from "../Symbols/Fix.ts";
 import FlightRoute from "../Symbols/FlightRoute.ts";
 import FormingUpPoint from "../Symbols/FormingUpPoint.ts";
 import Funnel from "../Symbols/Funnel.ts";
 import FwdLineOfTps from "../Symbols/FwdLineOfTps.ts";
 import Guard from "../Symbols/Guard.ts";
-import HighWireFence from "../Symbols/HighWireFence.ts";
+
 import InfiltrationLane from "../Symbols/InfiltrationLane.ts";
 import Isolate from "../Symbols/Isolate.ts";
 
-import LowWireFence from "../Symbols/LowWireFence.ts";
+
 import MovingConvoy from "../Symbols/MovingConvoy.ts";
 
 
