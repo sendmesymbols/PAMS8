@@ -191,8 +191,8 @@ import DivLineOfNoPen from "../Symbols/DivLineOfNoPen.ts"; //Fixed
 import LineOfNoPen from "../Symbols/LineOfNoPen.ts"; //Fixed
 
 import DoubleApronFence from "../Symbols/DoubleApronFence.ts"; //Fixed
-import HighWireFence from "../Symbols/HighWireFence.ts";
-import LowWireFence from "../Symbols/LowWireFence.ts";
+import HighWireFence from "../Symbols/HighWireFence.ts"; //Fixed
+import LowWireFence from "../Symbols/LowWireFence.ts"; //Fixed
 
 import Fix from "../Symbols/Fix.ts";
 import FlightRoute from "../Symbols/FlightRoute.ts";
