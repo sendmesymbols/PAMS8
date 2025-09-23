@@ -79,10 +79,8 @@ export class FormingUpPoint {
     if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
       if (options.GEOM && this.tempGraphic) {
         try {
-          this.tempGraphic.geometry = new Polygon({
-            rings: options.GEOM,
-            spatialReference: this.view.spatialReference
-          });
+          // options.GEOM is already a Polygon, just use it directly
+          this.tempGraphic.geometry = options.GEOM.clone();
         } catch (error) {
           console.error(this.symName, "Failed to create Polygon geometry:", error);
         }
@@ -260,9 +258,10 @@ export class FormingUpPoint {
 
       let result: Polygon | null = null;
 
+      // For FormingUpPoint, we use PerfectEllipse creation like in the source
       switch (drawType) {
         case 1:
-          result = Shapes.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
+          result = Shapes.createSymbolByPerfectEllipse(pts, firstPoint, lastPoint, drawEssentials, this.view);
           break;
         case 2:
           result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
@@ -271,7 +270,7 @@ export class FormingUpPoint {
           result = Shapes.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
           break;
         default:
-          result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
+          result = Shapes.createSymbolByPerfectEllipse(pts, firstPoint, lastPoint, drawEssentials, this.view);
       }
 
       return result ? this.createInnerText(result, firstPoint, lastPoint) : result;
@@ -286,7 +285,7 @@ export class FormingUpPoint {
 
 
   /**
-   * Create inner text markers for Assembly Area
+   * Create inner text markers for FormingUpPoint (FUP)
    */
   private createInnerText(result: Polygon, firstPoint: Point, lastPoint: Point): Polygon {
     try {
@@ -306,66 +305,39 @@ export class FormingUpPoint {
         cLenLimit = baseLineLen / 3.6;
       }
 
-      // Try to use Shapes.createAA if available
-      if (Shapes && (Shapes as any).createAA) {
+      // Use Shapes.createFUPStrokes to create the FUP text markers (ArcGIS API 4.33+ compatible)
+      if (Shapes && (Shapes as any).createFUPStrokes) {
         try {
-          const aaRings = (Shapes as any).createAA(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-          if (aaRings && Array.isArray(aaRings)) {
-            for (let j = 0; j <= aaRings.length - 1; j++) {
-              if (aaRings[j]) {
-                result.addRing(aaRings[j]);
+          const fupStrokes = (Shapes as any).createFUPStrokes(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+          if (fupStrokes && Array.isArray(fupStrokes)) {
+            for (let j = 0; j < fupStrokes.length; j++) {
+              if (fupStrokes[j] && Array.isArray(fupStrokes[j]) && fupStrokes[j].length >= 2) {
+                // Convert stroke (2-point line) to coordinate array for addRing
+                const stroke: number[][] = [];
+                for (const pt of fupStrokes[j]) {
+                  if (pt && typeof pt.x === 'number' && typeof pt.y === 'number') {
+                    stroke.push([pt.x, pt.y]);
+                  }
+                }
+                if (stroke.length >= 2) {
+                  result.addRing(stroke);
+                }
               }
             }
           }
         } catch (e) {
-          console.log('Error creating AA inner text with Shapes utility, using fallback');
-          this.createSimpleAA(result, midPt, cLenLimit);
+          console.log('Error creating FUP inner text with Shapes utility, using fallback');
+
         }
-      } else {
-        // Fallback AA creation
-        this.createSimpleAA(result, midPt, cLenLimit);
       }
 
       return result;
     } catch (e) {
-      console.log('Cannot create Inner Text');
+      console.log('Cannot create Inner Text for FUP');
       return result;
     }
   }
 
-  /**
-   * Create simple AA text as fallback
-   */
-  private createSimpleAA(result: Polygon, midPt: Point, size: number): void {
-    // Create simple "AA" text representation
-    const letterHeight = size;
-    const letterWidth = size * 0.6;
-    const spacing = size * 0.2;
-
-    // Create first "A" shape
-    const a1Points = [
-      [midPt.x - letterWidth - spacing, midPt.y + letterHeight/2],
-      [midPt.x - letterWidth/2 - spacing, midPt.y - letterHeight/2],
-      [midPt.x - spacing, midPt.y + letterHeight/2],
-      [midPt.x - letterWidth*0.75 - spacing, midPt.y],
-      [midPt.x - letterWidth*0.25 - spacing, midPt.y]
-    ];
-
-    // Create second "A" shape
-    const a2Points = [
-      [midPt.x, midPt.y + letterHeight/2],
-      [midPt.x + letterWidth/2, midPt.y - letterHeight/2],
-      [midPt.x + letterWidth + spacing, midPt.y + letterHeight/2],
-      [midPt.x + letterWidth*0.25 + spacing/2, midPt.y],
-      [midPt.x + letterWidth*0.75 + spacing/2, midPt.y]
-    ];
-
-    // Add as separate rings (inner text)
-    result.addRing([a1Points[0], a1Points[1], a1Points[2]]);
-    result.addRing([a1Points[3], a1Points[4]]);
-    result.addRing([a2Points[0], a2Points[1], a2Points[2]]);
-    result.addRing([a2Points[3], a2Points[4]]);
-  }
 
   /**
    * Utility method to calculate distance

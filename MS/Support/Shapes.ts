@@ -720,6 +720,64 @@ class Shapes {
     }
 
     /**
+     * Create letter U as separate strokes to avoid auto-closing
+     */
+    static createUStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const strokes: Point[][] = [];
+        
+        // Left vertical line
+        strokes.push([
+            new Point({ x: dx - dr, y: dy + dr / 0.97, spatialReference: sp }),
+            new Point({ x: dx - dr, y: dy, spatialReference: sp })
+        ]);
+        
+        // Bottom curve (broken into segments to avoid auto-closing)
+        const halfCirclePts = this.createHalfCircle(
+            new Point({ x: dx, y: dy, spatialReference: sp }),
+            dr,
+            2 * Math.PI, // 360 degrees in radians
+            Math.PI,     // 180 degrees in radians
+            20 // fewer points for stroke segments
+        );
+        
+        // Break the half circle into small stroke segments
+        for (let i = 0; i < halfCirclePts.length - 1; i++) {
+            strokes.push([halfCirclePts[i], halfCirclePts[i + 1]]);
+        }
+        
+        // Right vertical line
+        strokes.push([
+            new Point({ x: dx + dr / 0.97, y: dy, spatialReference: sp }),
+            new Point({ x: dx + dr / 0.97, y: dy + dr, spatialReference: sp })
+        ]);
+        
+        return strokes;
+    }
+
+    /**
+     * Create letter P as separate strokes to avoid auto-closing
+     */
+    static createPStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const strokes: Point[][] = [];
+        
+        // Vertical line
+        strokes.push([
+            new Point({ x: dx - ((dr / 2) / 3), y: dy - dr, spatialReference: sp }),
+            new Point({ x: dx - ((dr / 2) / 3), y: dy + dr, spatialReference: sp })
+        ]);
+        
+        // Get the D-shape strokes for the upper part and break them into separate strokes
+        const dPts = this.createDD(dx, dy + (dr / 2), dr / 2, sp);
+        
+        // Break the D shape into stroke segments to avoid auto-closing
+        for (let i = 0; i < dPts.length - 1; i++) {
+            strokes.push([dPts[i], dPts[i + 1]]);
+        }
+        
+        return strokes;
+    }
+
+    /**
      * Create letter Y
      */
     static createY(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
@@ -1131,6 +1189,18 @@ class Shapes {
         const pts2 = this.createU(dx, dy, dr, sp);
         const pts3 = this.createPP(dx + (dr * 1.7), dy, dr, sp);
         return [pts1, pts2, pts3];
+    }
+
+    /**
+     * Create FUP text using stroke-based approach to avoid auto-closing in ArcGIS API 4.33+
+     */
+    static createFUPStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const fStrokes = this.createFStrokes(dx - (dr * 2.5), dy, dr, sp);
+        const uStrokes = this.createUStrokes(dx, dy, dr, sp);
+        const pStrokes = this.createPStrokes(dx + (dr * 1.7), dy, dr, sp);
+        
+        // Combine all strokes
+        return [...fStrokes, ...uStrokes, ...pStrokes];
     }
 
     static createDAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
