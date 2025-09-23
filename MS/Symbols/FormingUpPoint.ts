@@ -312,15 +312,38 @@ export class FormingUpPoint {
           if (fupStrokes && Array.isArray(fupStrokes)) {
             for (let j = 0; j < fupStrokes.length; j++) {
               if (fupStrokes[j] && Array.isArray(fupStrokes[j]) && fupStrokes[j].length >= 2) {
-                // Convert stroke (2-point line) to coordinate array for addRing
-                const stroke: number[][] = [];
-                for (const pt of fupStrokes[j]) {
-                  if (pt && typeof pt.x === 'number' && typeof pt.y === 'number') {
-                    stroke.push([pt.x, pt.y]);
+                // Convert stroke (2-point line) to a small rectangular shape for polygon ring visibility
+                const strokePoints = fupStrokes[j];
+                if (strokePoints.length >= 2) {
+                  const p1 = strokePoints[0];
+                  const p2 = strokePoints[strokePoints.length - 1];
+                  
+                  // Create a small rectangular shape for the stroke (visible as a thin line)
+                  const strokeThickness = cLenLimit * 0.02; // Very thin stroke
+                  const dx = p2.x - p1.x;
+                  const dy = p2.y - p1.y;
+                  const length = Math.sqrt(dx * dx + dy * dy);
+                  
+                  if (length > 0) {
+                    // Normalize direction vector
+                    const nx = dx / length;
+                    const ny = dy / length;
+                    
+                    // Perpendicular vector for thickness
+                    const px = -ny * strokeThickness / 2;
+                    const py = nx * strokeThickness / 2;
+                    
+                    // Create rectangle points (closed ring)
+                    const strokeRing: number[][] = [
+                      [p1.x + px, p1.y + py],
+                      [p1.x - px, p1.y - py],
+                      [p2.x - px, p2.y - py],
+                      [p2.x + px, p2.y + py],
+                      [p1.x + px, p1.y + py] // Close the ring
+                    ];
+                    
+                    result.addRing(strokeRing);
                   }
-                }
-                if (stroke.length >= 2) {
-                  result.addRing(stroke);
                 }
               }
             }
