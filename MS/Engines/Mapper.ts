@@ -195,8 +195,8 @@ import HighWireFence from "../Symbols/HighWireFence.ts"; //Fixed
 import LowWireFence from "../Symbols/LowWireFence.ts"; //Fixed
 import Fix from "../Symbols/Fix.ts"; //Fixed
 import FlightRoute from "../Symbols/FlightRoute.ts"; //Fixed
+import FormingUpPoint from "../Symbols/FormingUpPoint.ts"; //Fixed
 
-import FormingUpPoint from "../Symbols/FormingUpPoint.ts";
 import Funnel from "../Symbols/Funnel.ts";
 import FwdLineOfTps from "../Symbols/FwdLineOfTps.ts";
 import Guard from "../Symbols/Guard.ts";

@@ -11,6 +11,7 @@ import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerMana
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import Shapes from "../Support/Shapes.ts";
+import Polyline from '@arcgis/core/geometry/Polyline';
 // Removed unused imports from translation
 
 export interface AvenueOfApchsOptions {
@@ -100,14 +101,17 @@ export class AvenueOfApchs {
         // removed unused variable from translation
 
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
-            // Immediate placement with both control points and geometry
-            if (options.GEOM && this.tempGraphic) {
-                try {
-                    this.tempGraphic.geometry = options.GEOM;
-                } catch (error) {
-                    console.error(this.symName, "Failed to set Polygon geometry:", error);
-                }
+          // Immediate placement with both control points and geometry
+          if (options.GEOM && this.tempGraphic) {
+            try {
+              // If GEOM is already a Polyline, use it directly; otherwise, build from paths
+              this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
+                ? options.GEOM
+                : new Polyline({ paths: (options.GEOM as any), spatialReference: this.view.spatialReference });
+            } catch (error) {
+              console.error(this.symName, "Failed to create Polyline geometry:", error);
             }
+          }
 
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._headPercentage, this._tailFactor);
             if (this.tempGraphic && this.tempGraphic.geometry) {
