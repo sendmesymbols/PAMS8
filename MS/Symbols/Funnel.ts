@@ -237,6 +237,20 @@ export class Funnel {
 
     this.emit("onDrawClick", { currentPts: this._points });
 
+    // Immediately render symbol using current points without requiring mouse move
+    const drawEssentials = new DrawEssentials();
+    (drawEssentials as any).CTRL_PTS = this._points.slice();
+    (drawEssentials as any).BASE_LN_PTS = this._baseLinePts;
+    const geometry = this.createSymbol(drawEssentials);
+    if (geometry && this.tempGraphic) {
+      this.tempGraphic.geometry = geometry;
+      this.emit("onDrawProgress", {
+        currentGeometry: geometry,
+        currentDrawEssentials: drawEssentials,
+        currentMarker: this._lineSym
+      });
+    }
+
     // For single line mode, finish after first click
     if (this.isLine === true && this._points.length === 1) {
       this.emit("onDrawClick", { currentPts: this._points });
@@ -453,60 +467,6 @@ export class Funnel {
     }
   }
 
-  /**
-   * Create flap (arrow wings) path at the end point
-   */
-  private flaps(candidatePoint: Point, length: number, angleRad: number, side: number): number[][] {
-    try {
-      const delta = (15 * Math.PI) / 180; // 15 degrees in radians
-      // Adjust to angle wings inward toward the corridor center
-      const adj = side === 1 ? (angleRad + delta) : (angleRad - delta);
-      const dx = Math.cos(adj);
-      const dy = Math.sin(adj);
-
-      const wing1 = [candidatePoint.x + length * dx, candidatePoint.y + length * dy];
-      const wing2 = [candidatePoint.x - length * dx, candidatePoint.y - length * dy];
-      return [wing1, [candidatePoint.x, candidatePoint.y], wing2];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  /**
-   * Create circle path at point with radius (used as ACP circle)
-   */
-  private createACP(pt: Point, radius: number): number[][] {
-    try {
-      const circlePts: Point[] = (Shapes as any).createCircle
-        ? (Shapes as any).createCircle(pt, radius, 60)
-        : [];
-      if (Array.isArray(circlePts) && circlePts.length > 0) {
-        return circlePts.map(p => [p.x, p.y]);
-      }
-      return [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-
-
-  /**
-   * Calculate distance between two points
-   */
-  private calculateDistance(pt1: any, pt2: any): number {
-    const dx = pt2.x - pt1.x;
-    const dy = pt2.y - pt1.y;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-
-  /**
-   * Get baseline points
-   */
-  public getBaseLinePts(): any {
-    return this._baseLinePts;
-  }
 
   /**
    * Clean up drawing state and finalize
