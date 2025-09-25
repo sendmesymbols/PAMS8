@@ -196,31 +196,25 @@ import LowWireFence from "../Symbols/LowWireFence.ts"; //Fixed
 import Fix from "../Symbols/Fix.ts"; //Fixed
 import FlightRoute from "../Symbols/FlightRoute.ts"; //Fixed
 import FormingUpPoint from "../Symbols/FormingUpPoint.ts"; //Fixed
+import Funnel from "../Symbols/Funnel.ts"; //Fixed
+import FwdLineOfTps from "../Symbols/FwdLineOfTps.ts";  //Fixed
 
-import Funnel from "../Symbols/Funnel.ts";
-import FwdLineOfTps from "../Symbols/FwdLineOfTps.ts";
 import Guard from "../Symbols/Guard.ts";
-
 import InfiltrationLane from "../Symbols/InfiltrationLane.ts";
 import Isolate from "../Symbols/Isolate.ts";
-
-
 import MovingConvoy from "../Symbols/MovingConvoy.ts";
-
-
 // Import the new TypeScript symbol classes
 import ObstacleBypassEasy from "../Symbols/ObstacleBypassEasy.ts";
 import Occupy from "../Symbols/Occupy.ts";
 import Penetrate from "../Symbols/Penetrate.ts";
-
 import Screen from "../Symbols/Screen.ts";
 import Secure from "../Symbols/Secure.ts";
 import SlowGo from "../Symbols/SlowGo.ts";
 import StrongPoint from "../Symbols/StrongPoint.ts";
 import SupportingAttack from "../Symbols/SupportingAttack.ts";
 import UnspecifiedWire from "../Symbols/UnspecifiedWire.ts";
-
 import Withdraw from "../Symbols/Withdraw.ts";
+
 
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
