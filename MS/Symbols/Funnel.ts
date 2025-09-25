@@ -54,6 +54,9 @@ export class Funnel {
   private baseLineEndHandler: any = null;
   private baseLineProgressHandler: any = null;
   private baseLineClickHandler: any = null;
+  private frontLineAgle;
+  private frontLineDist;
+  private flapDist;
 
   // Event emitter
   private eventListeners: Map<string, Function[]> = new Map();
@@ -77,6 +80,9 @@ export class Funnel {
    */
   public init(options: FunnelOptions, marker: SimpleLineSymbol): void {
     this._lineSym = marker.clone();
+    this.frontLineAgle = GeoTools.setDefault(options, "FRNT_LN_ANGL_RATIO", 0.8);
+    this.frontLineDist = GeoTools.setDefault(options, "FRNT_LN_DIST_RATIO", 1.5);
+    this.flapDist = GeoTools.setDefault(options, "FLAP_DIST_RATIO", 3);
 
     const drawEssentials = new DrawEssentials();
 
@@ -93,7 +99,7 @@ export class Funnel {
         }
       }
 
-      const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
+      const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!, this.frontLineAgle, this.frontLineDist, this.flapDist);
       if (this.tempGraphic && this.tempGraphic.geometry) {
         this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
       }
@@ -102,7 +108,7 @@ export class Funnel {
     } else if (options.hasOwnProperty("CTRL_PTS")) {
       if (options.hasOwnProperty("BASE_LN_PTS")) {
         // Immediate placement with control points and baseline
-        const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
+        const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!, this.frontLineAgle, this.frontLineDist, this.flapDist);
         const geometry = this.createSymbol(drawEss);
         if (geometry && this.tempGraphic) {
           this.tempGraphic.geometry = geometry;
@@ -288,7 +294,7 @@ export class Funnel {
   /**
    * Create DrawEssentials object
    */
-  private createDrawEssentials(ctrlPts: Point[], baseLinePts: any): DrawEssentials {
+  private createDrawEssentials(ctrlPts: Point[], baseLinePts: any, frontLineAngleRatio:any, frontLineDistRatio:any, flapDistRatio:any): DrawEssentials {
     const drawEssentials = new DrawEssentials();
     drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
     drawEssentials.SID = this.SID;
@@ -300,6 +306,10 @@ export class Funnel {
     (drawEssentials as any).SCOPE = this;
     (drawEssentials as any).CTRL_PTS = ctrlPts;
     (drawEssentials as any).BASE_LN_PTS = baseLinePts;
+
+    drawEssentials.FRNT_LN_ANGL_RATIO = frontLineAngleRatio;
+    drawEssentials.FRNT_LN_DIST_RATIO = frontLineDistRatio;
+    drawEssentials.FLAP_DIST_RATIO = flapDistRatio;
 
     return drawEssentials;
   }
