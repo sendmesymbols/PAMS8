@@ -54,9 +54,9 @@ export class Funnel {
   private baseLineEndHandler: any = null;
   private baseLineProgressHandler: any = null;
   private baseLineClickHandler: any = null;
-  private frontLineAgle;
-  private frontLineDist;
-  private flapDist;
+  private frontLineAgle: number = 0;
+  private frontLineDist: number = 0;
+  private flapDist: number = 0;
 
   // Event emitter
   private eventListeners: Map<string, Function[]> = new Map();
@@ -84,7 +84,7 @@ export class Funnel {
     this.frontLineDist = GeoTools.setDefault(options, "FRNT_LN_DIST_RATIO", 1.5);
     this.flapDist = GeoTools.setDefault(options, "FLAP_DIST_RATIO", 3);
 
-    const drawEssentials = new DrawEssentials();
+    // no-op
 
     if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
       // Immediate placement with both control points and geometry
@@ -325,6 +325,11 @@ export class Funnel {
         throw new Error("controlPoints not found");
       }
 
+      // Extract ratios
+      const frontLineAgle: number = GeoTools.setDefault(drawEssentials as any, "FRNT_LN_ANGL_RATIO", 0.8);
+      const frontLineDist: number = GeoTools.setDefault(drawEssentials as any, "FRNT_LN_DIST_RATIO", 1.5);
+      const flapDistRatio: number = GeoTools.setDefault(drawEssentials as any, "FLAP_DIST_RATIO", 3);
+
       // Extract baseline points
       const stPt: Point = (drawEssentials as any).BASE_LN_PTS?.startPt;
       const endPt: Point = (drawEssentials as any).BASE_LN_PTS?.endPt;
@@ -335,58 +340,42 @@ export class Funnel {
       const spatialReference = this.view.spatialReference;
       const result = new Polyline({ spatialReference });
 
-      // Midpoint of baseline
+      // Compute midpoint on baseline
       const midPt = GeoTools.getMidPoint(stPt, endPt);
 
-      // Orientation for corridor sides based on first control point
+      // Determine baseline orientation using first control point (as in 3.x)
       const firstPoint = pts[0];
-      let k = Math.atan((midPt.y - firstPoint.y) / (midPt.x - firstPoint.x));
-      switch (GeoTools.twoPtsRelationShip(midPt, firstPoint)) {
-        case "ne":
-          k += Math.PI / 2; break;
-        case "nw":
-          k += Math.PI * 3 / 2; break;
-        case "sw":
-          k += Math.PI * 3 / 2; break;
-        case "se":
-          k += Math.PI / 2; break;
+      let lastPoint = pts[pts.length - 1];
+      if (pts.length >= 1) {
+        lastPoint = firstPoint;
       }
 
+      let k = Math.atan((midPt.y - lastPoint.y) / (midPt.x - lastPoint.x));
+      switch (GeoTools.twoPtsRelationShip(midPt, lastPoint)) {
+        case "ne": k += Math.PI / 2; break;
+        case "nw": k += Math.PI * 3 / 2; break;
+        case "sw": k += Math.PI * 3 / 2; break;
+        case "se": k += Math.PI / 2; break;
+      }
+
+      // Base line endpoints from midpoint along angle k
       const partialLen = GeoTools._2PtLen(midPt, endPt);
       const p1 = { x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y };
       const p2 = { x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y };
 
-      // Fracture baseline (gap) and add CC at midpoint of the gap
-      const p1Pt = new Point({ x: p1.x, y: p1.y, spatialReference });
-      const p2Pt = new Point({ x: p2.x, y: p2.y, spatialReference });
-      const values = (GeoTools as any)._fracturePts
-        ? (GeoTools as any)._fracturePts(p1Pt, p2Pt, 10, spatialReference)
-        : null;
-      if (values && values.geometry && (values.geometry as Polyline).paths) {
-        (values.geometry as Polyline).paths.forEach((path: number[][]) => result.addPath(path));
-        const baseLineLen = GeoTools._2PtLen(p1Pt, p2Pt);
-        let cLenLimit = values.len / 2;
-        if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-        const ccPts: Point[] = (Shapes as any).createCC
-          ? (Shapes as any).createCC(values.midPoint.x, values.midPoint.y, cLenLimit, spatialReference)
-          : [];
-        if (ccPts && ccPts.length) {
-          result.addPath(ccPts.map(p => [p.x, p.y]));
-        }
-      }
+      // Add baseline path
+      result.addPath([[p1.x, p1.y], [p2.x, p2.y]]);
 
-      // Build left/right corridor paths
+      // Front (corridor) points from first control point
       const leftArray: number[][] = [];
       const rightArray: number[][] = [];
       if (pts.length >= 1) {
         leftArray.push([p1.x, p1.y]);
         rightArray.push([p2.x, p2.y]);
-      }
 
-      for (let i = 0; i < pts.length; i++) {
-        const candidate = pts[i];
-        const length = GeoTools._2PtLen(midPt, candidate);
-        const angle = GeoTools.angleInRadians(midPt, candidate);
+        // Extend towards first control point using ratios
+        const length = GeoTools._2PtLen(midPt, pts[0]) / frontLineDist;
+        const angle = GeoTools.angleInRadians(midPt, pts[0]);
 
         const stPtCandidatePt = new Point({
           x: p1.x + length * Math.cos(angle),
@@ -401,36 +390,65 @@ export class Funnel {
 
         leftArray.push([stPtCandidatePt.x, stPtCandidatePt.y]);
         rightArray.push([endPtCandidatePt.x, endPtCandidatePt.y]);
+
+        // Flaps
+        const flapLen = length / flapDistRatio + GeoTools._2PtLen(pts[0], pts[pts.length - 1]);
+        let flapAngle = GeoTools.angleInRadians(stPtCandidatePt, endPtCandidatePt) - frontLineAgle;
+        const ptLeft = new Point({
+          x: -1 * flapLen * Math.cos(flapAngle) + stPtCandidatePt.x,
+          y: -1 * flapLen * Math.sin(flapAngle) + stPtCandidatePt.y,
+          spatialReference
+        });
+        flapAngle = GeoTools.angleInRadians(stPtCandidatePt, endPtCandidatePt) + frontLineAgle;
+        const ptRight = new Point({
+          x: flapLen * Math.cos(flapAngle) + endPtCandidatePt.x,
+          y: flapLen * Math.sin(flapAngle) + endPtCandidatePt.y,
+          spatialReference
+        });
+
+        leftArray.push([ptLeft.x, ptLeft.y]);
+        rightArray.push([ptRight.x, ptRight.y]);
+
+        // Funnel head (arc) through ptLeft, ptRight and last control point
+        const candidatePoint = pts[pts.length - 1];
+        const ptLeftScreen: any = (this.view as any).toScreen(ptLeft);
+        const ptRightScreen: any = (this.view as any).toScreen(ptRight);
+        const candScreen: any = (this.view as any).toScreen(candidatePoint);
+
+        if (ptLeftScreen && ptRightScreen && candScreen) {
+          const circle = GeoTools.circleFromThreeScreenPoints(
+            { x: ptLeftScreen.x, y: ptLeftScreen.y },
+            { x: ptRightScreen.x, y: ptRightScreen.y },
+            { x: candScreen.x, y: candScreen.y }
+          );
+          if (circle && circle.radius > 0) {
+            const arcVals = Shapes.createCircleSegmentFromThreePoints(
+              this.view as any,
+              circle,
+              { x: ptLeftScreen.x, y: ptLeftScreen.y },
+              { x: ptRightScreen.x, y: ptRightScreen.y },
+              { x: candScreen.x, y: candScreen.y },
+              60
+            );
+            if (arcVals && arcVals.geometry) {
+              const ring = (arcVals.geometry as any).rings?.[0] as number[][];
+              if (ring && ring.length) {
+                // As in 3.x, use 61 points (0..60) if available
+                const arcPath = ring.slice(0, 61);
+                result.addPath(arcPath);
+              }
+            }
+          }
+        }
       }
 
-      if (leftArray.length >= 2) result.addPath(leftArray);
-      if (rightArray.length >= 2) result.addPath(rightArray);
-
-      // Flaps at the corridor ends
-      if (leftArray.length >= 2 && rightArray.length >= 2) {
-        const leftLast = new Point({ x: leftArray[leftArray.length - 1][0], y: leftArray[leftArray.length - 1][1], spatialReference });
-        const leftPrev = new Point({ x: leftArray[leftArray.length - 2][0], y: leftArray[leftArray.length - 2][1], spatialReference });
-        const rightLast = new Point({ x: rightArray[rightArray.length - 1][0], y: rightArray[rightArray.length - 1][1], spatialReference });
-        const rightPrev = new Point({ x: rightArray[rightArray.length - 2][0], y: rightArray[rightArray.length - 2][1], spatialReference });
-
-        const lastCandidate = pts[pts.length - 1];
-        const mainLen = GeoTools._2PtLen(midPt, lastCandidate);
-        const baseLen = GeoTools._2PtLen(leftLast, rightLast);
-        const flapLen = (GeoTools as any).ArrowFlanksLen ? (GeoTools as any).ArrowFlanksLen(mainLen, baseLen) : Math.min(mainLen / 10, baseLen / 4);
-
-        const leftAngle = GeoTools.angleInRadians(leftPrev, leftLast);
-        const rightAngle = GeoTools.angleInRadians(rightPrev, rightLast);
-
-        const leftFlap = this.flaps(leftLast, flapLen, leftAngle, 1);
-        const rightFlap = this.flaps(rightLast, flapLen, rightAngle, 0);
-
-        if (leftFlap.length) result.addPath(leftFlap);
-        if (rightFlap.length) result.addPath(rightFlap);
-      }
+      // Add the left and right paths
+      if (leftArray.length) result.addPath(leftArray);
+      if (rightArray.length) result.addPath(rightArray);
 
       return result;
     } catch (e) {
-      console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
+      console.log(this.declaredClass + ' Can not create Symbol due to invalid geometry');
       return null;
     }
   }
@@ -449,23 +467,6 @@ export class Funnel {
       const wing1 = [candidatePoint.x + length * dx, candidatePoint.y + length * dy];
       const wing2 = [candidatePoint.x - length * dx, candidatePoint.y - length * dy];
       return [wing1, [candidatePoint.x, candidatePoint.y], wing2];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  /**
-   * Create circle path at point with radius (unused in Funnel; kept if needed)
-   */
-  private createACP(pt: Point, radius: number): number[][] {
-    try {
-      const circlePts: Point[] = (Shapes as any).createCircle
-        ? (Shapes as any).createCircle(pt, radius, 60)
-        : [];
-      if (Array.isArray(circlePts) && circlePts.length > 0) {
-        return circlePts.map(p => [p.x, p.y]);
-      }
-      return [];
     } catch (e) {
       return [];
     }
@@ -513,7 +514,13 @@ export class Funnel {
   private cleanUp(): void {
     if (this._points.length === 0) return;
 
-    const drawEssentials = this.createDrawEssentials(this._points.slice(), this._baseLinePts);
+    const drawEssentials = this.createDrawEssentials(
+      this._points.slice(),
+      this._baseLinePts,
+      this.frontLineAgle,
+      this.frontLineDist,
+      this.flapDist
+    );
 
     if (this.tempGraphic && this.tempGraphic.geometry) {
       this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
