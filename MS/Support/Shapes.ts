@@ -389,35 +389,60 @@ class Shapes {
     }
 
     /**
+     * Create letter GG (GG version)
+     */
+    static createGG(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
+      const pts: Point[] = [];
+      const step = 2 * Math.PI / 180;
+
+      for (let dtheta = 65 * Math.PI / 180; dtheta < 295 * Math.PI / 180; dtheta += step) {
+        const x = dx + dr * Math.cos(dtheta);
+        const y = dy - dr * Math.sin(dtheta);
+        pts.push(new Point({ x, y, spatialReference: sp }));
+      }
+
+      return pts;
+    }
+
+    /**
      * Create letter G
      */
-    static createG(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts: Point[] = [];
-        const pts2: Point[] = [];
-        const step = 2 * Math.PI / 180;
+    static createG(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
+      const allPoints: Point[] = [];
+      const step = 2 * Math.PI / 180;
 
-        for (let dtheta = 65 * Math.PI / 180; dtheta < 295 * Math.PI / 180; dtheta += step) {
-            const x = dx + dr * Math.cos(dtheta);
-            const y = dy - dr * Math.sin(dtheta);
-            pts.push(new Point({ x, y, spatialReference: sp }));
-        }
+      // Create the main arc (C-shaped curve) - vertically flipped
+      for (let dtheta = 65 * Math.PI / 180; dtheta < 295 * Math.PI / 180; dtheta += step) {
+        const x = dx + dr * Math.cos(dtheta);
+        const y = dy + dr * Math.sin(dtheta); // Changed from - to + for vertical flip
+        allPoints.push(new Point({ x, y, spatialReference: sp }));
+      }
 
-        const firstPt = pts[0];
-        const lastPt = pts[pts.length - 1];
-        // Note: You'll need to implement getMidPoint in your GeoTools
-        // const midPt = GeoTools.getMidPoint(firstPt, lastPt);
-        const midPt = new Point({
-            x: (firstPt.x + lastPt.x) / 2,
-            y: (firstPt.y + lastPt.y) / 2,
-            spatialReference: sp
-        });
+      // Get the first and last points of the arc to create the horizontal line
+      const firstPt = allPoints[0];
+      const lastPt = allPoints[allPoints.length - 1];
 
-        const leg = new Point({ x: midPt.x - (dr * 0.5), y: midPt.y, spatialReference: sp });
-        pts2.push(firstPt);
-        pts2.push(midPt);
-        pts2.push(leg);
+      // Calculate midpoint between first and last arc points
+      const midPt = new Point({
+        x: (firstPt.x + lastPt.x) / 2,
+        y: (firstPt.y + lastPt.y) / 2,
+        spatialReference: sp
+      });
 
-        return [pts, pts2];
+      // Create the horizontal leg (what makes it a G instead of C)
+      const leg = new Point({
+        x: midPt.x - (dr * 0.5), // Back to original direction
+        y: midPt.y,
+        spatialReference: sp
+      });
+
+      // Add the horizontal line points to complete the G
+      // Add a small gap, then the horizontal line
+      allPoints.push(new Point({ x: lastPt.x, y: lastPt.y, spatialReference: sp })); // Connection point
+      allPoints.push(midPt);
+      allPoints.push(leg);
+
+      return allPoints;
     }
 
     /**

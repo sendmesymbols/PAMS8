@@ -359,7 +359,7 @@ export class Guard {
           spatialReference
         });
 
-        const cPts2 = (Shapes as any).createCC(cPt2.x, cPt2.y, cLenLimit2, spatialReference) as Point[];
+        const cPts2 = (Shapes as any).createG(cPt2.x, cPt2.y, cLenLimit2, spatialReference) as Point[];
         if (cPts2 && cPts2.length) {
           result.addPath(cPts2.map(p => [p.x, p.y]));
         }
