@@ -258,7 +258,7 @@ export class Cover {
   }
 
   /**
-   * Create symbol geometry from DrawEssentials (matches legacy Cover behavior)
+   * Create symbol geometry from DrawEssentials
    */
   private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
     try {
@@ -289,8 +289,8 @@ export class Cover {
       const angle = this.toRad(16); // 16 degrees
 
       const rightWing = new Point({
-        x: midPt.x + length * Math.cos(angle),
-        y: midPt.y + length * Math.sin(angle),
+        x: midPt.x - length * Math.cos(angle),
+        y: midPt.y - length * Math.sin(angle),
         spatialReference
       });
 
@@ -300,6 +300,7 @@ export class Cover {
         y: rightWing.y + length * 2 * Math.sin(wingAngle),
         spatialReference
       });
+
 
       // Create C symbol
       const baseLineLen = GeoTools._2PtLen(firstPoint, secondPoint);
@@ -316,6 +317,7 @@ export class Cover {
       if (cPts && cPts.length) {
         result.addPath(cPts.map(p => [p.x, p.y]));
       }
+
 
       // Add first wing path
       result.addPath([
