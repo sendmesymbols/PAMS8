@@ -388,21 +388,6 @@ class Shapes {
         return pts;
     }
 
-    /**
-     * Create letter GG (GG version)
-     */
-    static createGG(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
-      const pts: Point[] = [];
-      const step = 2 * Math.PI / 180;
-
-      for (let dtheta = 65 * Math.PI / 180; dtheta < 295 * Math.PI / 180; dtheta += step) {
-        const x = dx + dr * Math.cos(dtheta);
-        const y = dy - dr * Math.sin(dtheta);
-        pts.push(new Point({ x, y, spatialReference: sp }));
-      }
-
-      return pts;
-    }
 
     /**
      * Create letter G
