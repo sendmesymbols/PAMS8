@@ -359,12 +359,10 @@ export class InfiltrationLane {
 
       // Get first and last points for calculations
       const firstPoint = pts[0];
-      const lastPoint = pts[pts.length - 1];
 
       // Arrays to store the three main lines
       const leftArray: Array<{ x: number; y: number }> = [];
       const rightArray: Array<{ x: number; y: number }> = [];
-      const middleArray: Array<{ x: number; y: number }> = [];
 
       // Calculate midpoint of baseline
       const midPt = GeoTools.getMidPoint(stPt, endPt);
@@ -407,17 +405,11 @@ export class InfiltrationLane {
         y: -1 * partialLen * Math.sin(k) + midPt.y,
       };
 
-      // Add base line path
-      result.addPath([
-        [p1.x, p1.y],
-        [p2.x, p2.y],
-      ]);
 
       // Initialize arrays with starting points
       if (pts.length >= 1) {
         leftArray.push(p1);
         rightArray.push(p2);
-        middleArray.push({ x: midPt.x, y: midPt.y });
       }
 
       // Variables to track last candidate points for arrow calculations
@@ -450,31 +442,10 @@ export class InfiltrationLane {
           len2 = baseLineLenLimit;
         }
 
-        // Calculate angle between candidate points
-        const angleBetween = GeoTools.angleInRadians(
-          stPtCandidatePt,
-          endPtCandidatePt,
-        );
-
-        // Calculate adjustment angle from midpoint to control point
-        const kLocal = GeoTools.angleInRadians(midPt, pts[i]);
-
-        // Shorten right array point (moving toward midpoint)
-        const shortenRightPt = {
-          x: -1 * (length / 5) * Math.cos(kLocal) + endPtCandidatePt.x,
-          y: -1 * (length / 5) * Math.sin(kLocal) + endPtCandidatePt.y,
-        };
-        rightArray.push(shortenRightPt);
-
-        // Shorten middle array point (moving toward midpoint)
-        const shortenMiddlePt = {
-          x: -1 * (length / 10) * Math.cos(kLocal) + pts[i].x,
-          y: -1 * (length / 10) * Math.sin(kLocal) + pts[i].y,
-        };
-        middleArray.push(shortenMiddlePt);
 
         // Left array gets the full candidate point
         leftArray.push({ x: stPtCandidatePt.x, y: stPtCandidatePt.y });
+        rightArray.push({ x: endPtCandidatePt.x, y: endPtCandidatePt.y });
       }
 
       // Add the three main arrays as paths
@@ -484,115 +455,6 @@ export class InfiltrationLane {
       if (rightArray.length >= 2) {
         result.addPath(rightArray.map((p) => [p.x, p.y]));
       }
-
-      // Add middle array as a single path
-      if (middleArray.length >= 2) {
-        result.addPath(middleArray.map((p) => [p.x, p.y]));
-      }
-
-      // Add arrow heads to the tips of all three arrays
-      if (
-        leftArray.length >= 2 &&
-        rightArray.length >= 2 &&
-        middleArray.length >= 2 &&
-        stPtCandidatePt &&
-        endPtCandidatePt
-      ) {
-        const mainLen = GeoTools._2PtLen(midPt, pts[pts.length - 1]);
-        const baseLen = GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt);
-        const arrowLen = GeoTools.ArrowFlanksLen
-          ? GeoTools.ArrowFlanksLen(mainLen, baseLen)
-          : Math.min(mainLen / 10, baseLen / 4);
-
-        // Create arrow heads for each array
-        const leftLastPt = new Point({
-          x: leftArray[leftArray.length - 1].x,
-          y: leftArray[leftArray.length - 1].y,
-          spatialReference,
-        });
-        const leftPrevPt = new Point({
-          x: leftArray[leftArray.length - 2].x,
-          y: leftArray[leftArray.length - 2].y,
-          spatialReference,
-        });
-
-        const rightLastPt = new Point({
-          x: rightArray[rightArray.length - 1].x,
-          y: rightArray[rightArray.length - 1].y,
-          spatialReference,
-        });
-        const rightPrevPt = new Point({
-          x: rightArray[rightArray.length - 2].x,
-          y: rightArray[rightArray.length - 2].y,
-          spatialReference,
-        });
-
-        const middleLastPt = new Point({
-          x: middleArray[middleArray.length - 1].x,
-          y: middleArray[middleArray.length - 1].y,
-          spatialReference,
-        });
-        const middlePrevPt = new Point({
-          x: middleArray[middleArray.length - 2].x,
-          y: middleArray[middleArray.length - 2].y,
-          spatialReference,
-        });
-
-        // Generate arrow head paths
-        const leftArrow = (Shapes as any).arrowHead
-          ? (Shapes as any).arrowHead(
-              leftLastPt,
-              arrowLen,
-              GeoTools.angleInRadians(leftPrevPt, leftLastPt),
-            )
-          : [];
-        const rightArrow = (Shapes as any).arrowHead
-          ? (Shapes as any).arrowHead(
-              rightLastPt,
-              arrowLen,
-              GeoTools.angleInRadians(rightPrevPt, rightLastPt),
-            )
-          : [];
-        const middleArrow = (Shapes as any).arrowHead
-          ? (Shapes as any).arrowHead(
-              middleLastPt,
-              arrowLen,
-              GeoTools.angleInRadians(middlePrevPt, middleLastPt),
-            )
-          : [];
-
-        // Add arrow paths to result
-        if (leftArrow && leftArrow.length > 0) {
-          result.addPath(
-            leftArrow.map((p: any) => (Array.isArray(p) ? p : [p.x, p.y])),
-          );
-        }
-        if (rightArrow && rightArrow.length > 0) {
-          result.addPath(
-            rightArrow.map((p: any) => (Array.isArray(p) ? p : [p.x, p.y])),
-          );
-        }
-        if (middleArrow && middleArrow.length > 0) {
-          result.addPath(
-            middleArrow.map((p: any) => (Array.isArray(p) ? p : [p.x, p.y])),
-          );
-        }
-      }
-
-      // Add back line - elongate middle point behind midpoint toward midpoint
-      if (pts.length > 0) {
-        const backAngle = GeoTools.angleInRadians(midPt, pts[0]);
-        const backLen = GeoTools._2PtLen(midPt, pts[0]) / 10;
-        const elongateMiddlePt = {
-          x: -1 * backLen * Math.cos(backAngle) + midPt.x,
-          y: -1 * backLen * Math.sin(backAngle) + midPt.y,
-        };
-        result.addPath([
-          [elongateMiddlePt.x, elongateMiddlePt.y],
-          [midPt.x, midPt.y],
-        ]);
-      }
-
       return result;
     } catch (e) {
       console.log(
