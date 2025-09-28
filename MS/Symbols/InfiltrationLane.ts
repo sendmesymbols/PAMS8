@@ -99,9 +99,9 @@ export class InfiltrationLane {
             options.GEOM instanceof Polyline
               ? options.GEOM
               : new Polyline({
-                  paths: options.GEOM as any,
-                  spatialReference: this.view.spatialReference,
-                });
+                paths: options.GEOM as any,
+                spatialReference: this.view.spatialReference,
+              });
         } catch (error) {
           console.error(
             this.symName,
