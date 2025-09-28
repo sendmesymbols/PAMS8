@@ -199,9 +199,7 @@ import FormingUpPoint from "../Symbols/FormingUpPoint.ts"; //Fixed
 import Funnel from "../Symbols/Funnel.ts"; //Fixed
 import FwdLineOfTps from "../Symbols/FwdLineOfTps.ts";  //Fixed
 import Guard from "../Symbols/Guard.ts";  //Fixed
-
-
-import InfiltrationLane from "../Symbols/InfiltrationLane.ts";
+import InfiltrationLane from "../Symbols/InfiltrationLane.ts"; //Fixed
 import Isolate from "../Symbols/Isolate.ts";
 import MovingConvoy from "../Symbols/MovingConvoy.ts";
 // Import the new TypeScript symbol classes
