@@ -1,26 +1,30 @@
-import Graphic from "@arcgis/core/Graphic";
-import Point from "@arcgis/core/geometry/Point";
-import Polyline from "@arcgis/core/geometry/Polyline";
-import MapView from "@arcgis/core/views/MapView";
-import SceneView from "@arcgis/core/views/SceneView";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
-import DrawEssentials from "../Support/DrawEssentials";
-import Amplifier from "../Support/Amplifier";
-import GeoTools from "../Support/GeoTools.ts";
-import Shapes from "../Support/Shapes.ts";
+import Graphic from '@arcgis/core/Graphic';
+import Point from '@arcgis/core/geometry/Point';
+import Polyline from '@arcgis/core/geometry/Polyline';
+import MapView from '@arcgis/core/views/MapView';
+import SceneView from '@arcgis/core/views/SceneView';
+import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
+import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
+import GraphicsLayerManager, {
+  LAYER_NAMES,
+} from '../Managers/GraphicsLayerManager';
+import DrawEssentials from '../Support/DrawEssentials';
+import Amplifier from '../Support/Amplifier';
+import BaseLine from '../Support/BaseLine.ts';
+import GeoTools from '../Support/GeoTools.ts';
+import Shapes from '../Support/Shapes.ts';
 
 export interface InfiltrationLaneOptions {
   CTRL_PTS?: Point[];
+  BASE_LN_PTS?: { startPt: Point; endPt: Point };
   GEOM?: Polyline;
-  DRAW_TYPE?: number;
   [key: string]: any;
 }
 
 /**
- * InfiltrationLane class for drawing InfiltrationLane line symbols on MapView or SceneView
- * Supports both immediate placement and interactive drawing modes
+ * InfiltrationLane class for drawing InfiltrationLane tactical symbols
+ * Uses baseline + control points
+ * Returns Polyline geometry despite being classified as an Area symbol
  */
 export class InfiltrationLane {
   private view: MapView | SceneView;
@@ -29,25 +33,29 @@ export class InfiltrationLane {
   private isLine: boolean;
 
   // Symbol properties
-  public declaredClass: string = "MilitarySymbology.Symbols.InfiltrationLane";
-  public SID: string = "140800";
-  public symName: string = "Infiltration Lane";
-  public symGeometricType: string = "Area";
+  public declaredClass: string = 'MilitarySymbology.Symbols.InfiltrationLane';
+  public SID: string = '140800';
+  public symName: string = 'Infiltration Lane';
+  public symGeometricType: string = 'Area';
 
   private _lineSym: SimpleLineSymbol | null = null;
   private _points: Point[] = [];
-  private _drawType: number = 1;
+  private _baseLinePts: any = {};
   private _geometryType: string | null = null;
   private amplifier: Amplifier;
 
   // Drawing state
   private isDrawing: boolean = false;
   private tempGraphic: Graphic | null = null;
+  private baseLineComplete: boolean = false;
 
   // Event handlers
   private clickHandler: any = null;
   private doubleClickHandler: any = null;
   private mouseMoveHandler: any = null;
+  private baseLineEndHandler: any = null;
+  private baseLineProgressHandler: any = null;
+  private baseLineClickHandler: any = null;
 
   // Event emitter
   private eventListeners: Map<string, Function[]> = new Map();
@@ -67,97 +75,174 @@ export class InfiltrationLane {
   }
 
   /**
-   * Initialize the freehand line drawing
+   * Initialize the InfiltrationLane drawing
    */
-  public init(options: InfiltrationLaneOptions, marker: SimpleLineSymbol): void {
-    this._lineSym = marker;
-    // Set up event handlers
-    this.setupEventHandlers();
+  public init(
+    options: InfiltrationLaneOptions,
+    marker: SimpleLineSymbol,
+  ): void {
+    this._lineSym = marker.clone();
 
-    // Disable map navigation during drawing
-    // Note: In ArcGIS 4.x, navigation is handled differently
-    //this.view.navigation.enabled = false;
+    const drawEssentials = new DrawEssentials();
 
-    this._drawType = GeoTools.setDefault(options, "DRAW_TYPE", this._drawType);
-
-    const hasCtrlPts = options.hasOwnProperty("CTRL_PTS") && Array.isArray(options.CTRL_PTS);
-    const hasGeom = options.hasOwnProperty("GEOM") && options.GEOM;
-
-    const drawEss = hasCtrlPts ? this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType) : null;
-
-    if (this._drawType === 2 && hasCtrlPts) {
-      // For DRAW_TYPE 2, ignore GEOM even if provided
-      const geometry = this.createSymbol(drawEss!);
-      if (geometry && this.tempGraphic) {
-        this.tempGraphic.geometry = geometry;
-        this.__drawEnd(geometry, drawEss!);
-        this._clear();
-        this._removeEvents();
+    if (
+      options.hasOwnProperty('CTRL_PTS') &&
+      options.hasOwnProperty('BASE_LN_PTS') &&
+      options.hasOwnProperty('GEOM') &&
+      options.GEOM !== null
+    ) {
+      // Immediate placement with both control points and geometry
+      if (options.GEOM && this.tempGraphic) {
+        try {
+          // If GEOM is already a Polyline, use it directly; otherwise, build from paths
+          this.tempGraphic.geometry =
+            options.GEOM instanceof Polyline
+              ? options.GEOM
+              : new Polyline({
+                  paths: options.GEOM as any,
+                  spatialReference: this.view.spatialReference,
+                });
+        } catch (error) {
+          console.error(
+            this.symName,
+            'Failed to create Polyline geometry:',
+            error,
+          );
+        }
       }
 
-    } else if (hasCtrlPts && hasGeom && this.tempGraphic) {
-      // For other draw types, use GEOM if provided
-      try {
-        this.tempGraphic.geometry = new Polyline({
-          paths: options.GEOM,
-          spatialReference: this.view.spatialReference
-        });
-      } catch (error) {
-        console.error(this.symName, "Failed to create Polyline geometry:", error);
+      const drawEss = this.createDrawEssentials(
+        options.CTRL_PTS!.slice(),
+        options.BASE_LN_PTS!,
+      );
+      if (this.tempGraphic && this.tempGraphic.geometry) {
+        this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
       }
-
-      if (this.tempGraphic.geometry) {
-        this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss!);
-        this._clear();
-        this._removeEvents();
+      this._clear();
+    } else if (options.hasOwnProperty('CTRL_PTS')) {
+      if (options.hasOwnProperty('BASE_LN_PTS')) {
+        // Immediate placement with control points and baseline
+        const drawEss = this.createDrawEssentials(
+          options.CTRL_PTS!.slice(),
+          options.BASE_LN_PTS!,
+        );
+        const geometry = this.createSymbol(drawEss);
+        if (geometry && this.tempGraphic) {
+          this.tempGraphic.geometry = geometry;
+          this.__drawEnd(geometry, drawEss);
+          this._clear();
+        }
+      } else {
+        throw new Error(
+          'Control Points and Baseline or Distance is required to create symbol non-interactively',
+        );
       }
-
-    } else if (hasCtrlPts) {
-      // Only CTRL_PTS provided
-      const geometry = this.createSymbol(drawEss!);
-      if (geometry && this.tempGraphic) {
-        this.tempGraphic.geometry = geometry;
-        this.__drawEnd(geometry, drawEss!);
-        this._clear();
-        this._removeEvents();
-      }
-
     } else {
-      // Fallback to interactive drawing mode
-      this.startInteractiveDrawing();
+      // Interactive drawing mode - start with baseline
+      this.startBaseLineDrawing();
     }
   }
 
   /**
-   * Start interactive drawing mode
+   * Start baseline drawing
    */
-  private startInteractiveDrawing(): void {
-    if (!this._lineSym) return;
-    this.isDrawing = true;
-    this.tempGraphic = new Graphic({
-      geometry: null,
-      symbol: this._lineSym
+  private startBaseLineDrawing(): void {
+    const baseLine = new BaseLine(this.view, this._lineSym!);
+
+    this.baseLineClickHandler = baseLine.on('onBaseLineClick', (evt: any) => {
+      this.baseLineClick(evt);
     });
-    this.symbolLayer.add(this.tempGraphic);
+
+    this.baseLineProgressHandler = baseLine.on(
+      'onBaseLineProgress',
+      (evt: any) => {
+        this.baseLineDrawProgress(evt);
+      },
+    );
+
+    this.baseLineEndHandler = baseLine.on('drawEnd', (evt: any) => {
+      this.baseLineDrawEnd(evt);
+    });
+
+    baseLine.init();
   }
 
   /**
-   * Set up mouse event handlers for interactive drawing
+   * Handle baseline click events
    */
-  private setupEventHandlers(): void {
+  private baseLineClick(evt: any): void {
+    this.emit('onDrawClick', {
+      currentPts: evt.currentGeometry,
+      isBaseLine: true,
+    });
+  }
+
+  /**
+   * Handle baseline draw progress
+   */
+  private baseLineDrawProgress(evt: any): void {
+    const localDrawEssentials: any = {};
+    localDrawEssentials.CTRL_PTS = evt.currentGeometry;
+
+    const pl = new Polyline({ spatialReference: this.view.spatialReference });
+    pl.addPath(evt.currentGeometry);
+
+    this.emit('onDrawProgress', {
+      currentGeometry: pl,
+      currentDrawEssentials: localDrawEssentials,
+      currentMarker: evt.currentMarker,
+      isBaseLine: true,
+    });
+  }
+
+  /**
+   * Handle baseline draw end
+   */
+  private baseLineDrawEnd(evt: any): void {
+    if (this.baseLineEndHandler) {
+      this.baseLineEndHandler.remove();
+      this.baseLineEndHandler = null;
+    }
+
+    this.tempGraphic = new Graphic({
+      geometry: evt.geometry,
+      symbol: this._lineSym,
+    });
+    this.symbolLayer.add(this.tempGraphic);
+
+    this._baseLinePts = (evt.geometry as any)._baseLine;
+    this.baseLineComplete = true;
+
+    // Start control point drawing
+    this.setupControlPointHandlers();
+
+    this.emit('onBaseLineDrawEnd', {
+      currentPts: (evt.geometry as any).controlPoints,
+    });
+  }
+
+  /**
+   * Set up control point drawing handlers
+   */
+  private setupControlPointHandlers(): void {
+    // Mouse move handler
+    this.mouseMoveHandler = this.view.on('pointer-move', (event) => {
+      this._onMouseMoveHandler(event);
+    });
+
     // Click handler
-    this.clickHandler = this.view.on("click", (event) => {
+    this.clickHandler = this.view.on('click', (event) => {
       this._onClickHandler(event);
     });
 
     // Double click handler
-    this.doubleClickHandler = this.view.on("double-click", (event) => {
+    this.doubleClickHandler = this.view.on('double-click', (event) => {
       this._onDoubleClickHandler(event);
     });
   }
 
   /**
-   * Handle click events
+   * Handle click events for control points
    */
   private _onClickHandler(clickEvent: any): void {
     const mapPoint = this.view.toMap(clickEvent);
@@ -166,23 +251,16 @@ export class InfiltrationLane {
     const point = new Point({
       x: mapPoint.x,
       y: mapPoint.y,
-      spatialReference: this.view.spatialReference
+      spatialReference: this.view.spatialReference,
     });
 
     this._points.push(point);
 
-    if (this._points.length === 1) {
-      // First click - set up mouse move handler
-      this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
-        this._onMouseMoveHandler(event);
-      });
-    }
-
-    this.emit("onDrawClick", { currentPts: this._points });
+    this.emit('onDrawClick', { currentPts: this._points });
 
     // For single line mode, finish after first click
     if (this.isLine === true && this._points.length === 1) {
-      this.emit("onDrawClick", { currentPts: this._points });
+      this.emit('onDrawClick', { currentPts: this._points });
       this.cleanUp();
     }
   }
@@ -197,7 +275,7 @@ export class InfiltrationLane {
     const point = new Point({
       x: mapPoint.x,
       y: mapPoint.y,
-      spatialReference: this.view.spatialReference
+      spatialReference: this.view.spatialReference,
     });
 
     this._points.push(point);
@@ -208,7 +286,7 @@ export class InfiltrationLane {
    * Handle mouse move events
    */
   private _onMouseMoveHandler(inputEvent: any): void {
-    if (!this.isDrawing || !this.tempGraphic) return;
+    if (!this.baseLineComplete || !this.tempGraphic) return;
 
     const mapPoint = this.view.toMap(inputEvent);
     if (!mapPoint) return;
@@ -216,20 +294,20 @@ export class InfiltrationLane {
     const candidatePoint = new Point({
       x: mapPoint.x,
       y: mapPoint.y,
-      spatialReference: this.view.spatialReference
+      spatialReference: this.view.spatialReference,
     });
 
     const drawEssentials = new DrawEssentials();
-    drawEssentials.CTRL_PTS = this._points.concat([candidatePoint]);
-    drawEssentials.DRAW_TYPE = this._drawType;
+    (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
+    (drawEssentials as any).BASE_LN_PTS = this._baseLinePts;
 
     const geometry = this.createSymbol(drawEssentials);
     if (geometry) {
       this.tempGraphic.geometry = geometry;
-      this.emit("onDrawProgress", {
+      this.emit('onDrawProgress', {
         currentGeometry: geometry,
         currentDrawEssentials: drawEssentials,
-        currentMarker: this._lineSym
+        currentMarker: this._lineSym,
       });
     }
   }
@@ -237,18 +315,21 @@ export class InfiltrationLane {
   /**
    * Create DrawEssentials object
    */
-  private createDrawEssentials(ctrlPts: Point[], drawType: number): DrawEssentials {
+  private createDrawEssentials(
+    ctrlPts: Point[],
+    baseLinePts: any,
+  ): DrawEssentials {
     const drawEssentials = new DrawEssentials();
     drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
     drawEssentials.SID = this.SID;
     drawEssentials.SYM_NAME = this.symName;
     drawEssentials.GEOM = null;
     drawEssentials.AMPLIFIER = this.amplifier.toString();
+
     // Store additional properties
     (drawEssentials as any).SCOPE = this;
     (drawEssentials as any).CTRL_PTS = ctrlPts;
-    (drawEssentials as any).DRAW_TYPE = drawType;
-    (drawEssentials as any).ISFHAND = 1;
+    (drawEssentials as any).BASE_LN_PTS = baseLinePts;
 
     return drawEssentials;
   }
@@ -258,61 +339,275 @@ export class InfiltrationLane {
    */
   private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
     try {
-      let pts: Point[];
-      if ((drawEssentials as any).CTRL_PTS) {
-        pts = (drawEssentials as any).CTRL_PTS;
-      } else {
-        throw new Error("controlPoints not found");
+      // Extract control points
+      const pts: Point[] = (drawEssentials as any).CTRL_PTS;
+      if (!pts || pts.length === 0) {
+        throw new Error('controlPoints not found');
       }
 
-      const result = new Polyline({ spatialReference: this.view.spatialReference });
-      const p1 = pts[0];
-      const p2 = pts[pts.length - 1];
-
-      switch ((drawEssentials as any).DRAW_TYPE) {
-        case 1:
-          return this.createSymbolByStraightLine(pts);
-        case 2:
-          return this.createSymbolByLine(pts, p1, p2, drawEssentials);
-        default:
-          return result;
+      // Extract baseline points
+      const stPt: Point = (drawEssentials as any).BASE_LN_PTS?.startPt;
+      const endPt: Point = (drawEssentials as any).BASE_LN_PTS?.endPt;
+      if (!stPt || !endPt) {
+        throw new Error(
+          'First Parameter of the Function is an Array with Start and End Point',
+        );
       }
 
+      const spatialReference = this.view.spatialReference;
+      const result = new Polyline({ spatialReference });
+
+      // Get first and last points for calculations
+      const firstPoint = pts[0];
+      const lastPoint = pts[pts.length - 1];
+
+      // Arrays to store the three main lines
+      const leftArray: Array<{ x: number; y: number }> = [];
+      const rightArray: Array<{ x: number; y: number }> = [];
+      const middleArray: Array<{ x: number; y: number }> = [];
+
+      // Calculate midpoint of baseline
+      const midPt = GeoTools.getMidPoint(stPt, endPt);
+
+      // Base Line calculation - create perpendicular line through midpoint
+      // Use first point for orientation if we have at least one control point
+      let referencePoint = firstPoint;
+      if (pts.length >= 1) {
+        referencePoint = firstPoint;
+      }
+
+      const len = GeoTools._2PtLen(midPt, endPt);
+      let k = Math.atan(
+        (midPt.y - referencePoint.y) / (midPt.x - referencePoint.x),
+      );
+
+      // Adjust angle based on quadrant relationship
+      switch (GeoTools.twoPtsRelationShip(midPt, referencePoint)) {
+        case 'ne':
+          k += Math.PI / 2;
+          break;
+        case 'nw':
+          k += (Math.PI * 3) / 2;
+          break;
+        case 'sw':
+          k += (Math.PI * 3) / 2;
+          break;
+        case 'se':
+          k += Math.PI / 2;
+          break;
+      }
+
+      const partialLen = len;
+      const p1 = {
+        x: partialLen * Math.cos(k) + midPt.x,
+        y: partialLen * Math.sin(k) + midPt.y,
+      };
+      const p2 = {
+        x: -1 * partialLen * Math.cos(k) + midPt.x,
+        y: -1 * partialLen * Math.sin(k) + midPt.y,
+      };
+
+      // Add base line path
+      result.addPath([
+        [p1.x, p1.y],
+        [p2.x, p2.y],
+      ]);
+
+      // Initialize arrays with starting points
+      if (pts.length >= 1) {
+        leftArray.push(p1);
+        rightArray.push(p2);
+        middleArray.push({ x: midPt.x, y: midPt.y });
+      }
+
+      // Variables to track last candidate points for arrow calculations
+      let stPtCandidatePt: Point | null = null;
+      let endPtCandidatePt: Point | null = null;
+
+      // Process each control point to build the arrays
+      for (let i = 0; i < pts.length; i++) {
+        // Find distance between candidate point and mid point
+        const length = GeoTools._2PtLen(midPt, pts[i]);
+        const angle = GeoTools.angleInRadians(midPt, pts[i]);
+
+        // Calculate candidate points on the extended baseline
+        stPtCandidatePt = new Point({
+          x: p1.x + length * Math.cos(angle),
+          y: p1.y + length * Math.sin(angle),
+          spatialReference,
+        });
+        endPtCandidatePt = new Point({
+          x: p2.x + length * Math.cos(angle),
+          y: p2.y + length * Math.sin(angle),
+          spatialReference,
+        });
+
+        // Calculate length constraint based on local baseline
+        let len2 = length / 5;
+        const baseLineLen = GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt);
+        const baseLineLenLimit = baseLineLen / 4;
+        if (len2 > baseLineLenLimit) {
+          len2 = baseLineLenLimit;
+        }
+
+        // Calculate angle between candidate points
+        const angleBetween = GeoTools.angleInRadians(
+          stPtCandidatePt,
+          endPtCandidatePt,
+        );
+
+        // Calculate adjustment angle from midpoint to control point
+        const kLocal = GeoTools.angleInRadians(midPt, pts[i]);
+
+        // Shorten right array point (moving toward midpoint)
+        const shortenRightPt = {
+          x: -1 * (length / 5) * Math.cos(kLocal) + endPtCandidatePt.x,
+          y: -1 * (length / 5) * Math.sin(kLocal) + endPtCandidatePt.y,
+        };
+        rightArray.push(shortenRightPt);
+
+        // Shorten middle array point (moving toward midpoint)
+        const shortenMiddlePt = {
+          x: -1 * (length / 10) * Math.cos(kLocal) + pts[i].x,
+          y: -1 * (length / 10) * Math.sin(kLocal) + pts[i].y,
+        };
+        middleArray.push(shortenMiddlePt);
+
+        // Left array gets the full candidate point
+        leftArray.push({ x: stPtCandidatePt.x, y: stPtCandidatePt.y });
+      }
+
+      // Add the three main arrays as paths
+      if (leftArray.length >= 2) {
+        result.addPath(leftArray.map((p) => [p.x, p.y]));
+      }
+      if (rightArray.length >= 2) {
+        result.addPath(rightArray.map((p) => [p.x, p.y]));
+      }
+
+      // Add middle array as a single path
+      if (middleArray.length >= 2) {
+        result.addPath(middleArray.map((p) => [p.x, p.y]));
+      }
+
+      // Add arrow heads to the tips of all three arrays
+      if (
+        leftArray.length >= 2 &&
+        rightArray.length >= 2 &&
+        middleArray.length >= 2 &&
+        stPtCandidatePt &&
+        endPtCandidatePt
+      ) {
+        const mainLen = GeoTools._2PtLen(midPt, pts[pts.length - 1]);
+        const baseLen = GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt);
+        const arrowLen = GeoTools.ArrowFlanksLen
+          ? GeoTools.ArrowFlanksLen(mainLen, baseLen)
+          : Math.min(mainLen / 10, baseLen / 4);
+
+        // Create arrow heads for each array
+        const leftLastPt = new Point({
+          x: leftArray[leftArray.length - 1].x,
+          y: leftArray[leftArray.length - 1].y,
+          spatialReference,
+        });
+        const leftPrevPt = new Point({
+          x: leftArray[leftArray.length - 2].x,
+          y: leftArray[leftArray.length - 2].y,
+          spatialReference,
+        });
+
+        const rightLastPt = new Point({
+          x: rightArray[rightArray.length - 1].x,
+          y: rightArray[rightArray.length - 1].y,
+          spatialReference,
+        });
+        const rightPrevPt = new Point({
+          x: rightArray[rightArray.length - 2].x,
+          y: rightArray[rightArray.length - 2].y,
+          spatialReference,
+        });
+
+        const middleLastPt = new Point({
+          x: middleArray[middleArray.length - 1].x,
+          y: middleArray[middleArray.length - 1].y,
+          spatialReference,
+        });
+        const middlePrevPt = new Point({
+          x: middleArray[middleArray.length - 2].x,
+          y: middleArray[middleArray.length - 2].y,
+          spatialReference,
+        });
+
+        // Generate arrow head paths
+        const leftArrow = (Shapes as any).arrowHead
+          ? (Shapes as any).arrowHead(
+              leftLastPt,
+              arrowLen,
+              GeoTools.angleInRadians(leftPrevPt, leftLastPt),
+            )
+          : [];
+        const rightArrow = (Shapes as any).arrowHead
+          ? (Shapes as any).arrowHead(
+              rightLastPt,
+              arrowLen,
+              GeoTools.angleInRadians(rightPrevPt, rightLastPt),
+            )
+          : [];
+        const middleArrow = (Shapes as any).arrowHead
+          ? (Shapes as any).arrowHead(
+              middleLastPt,
+              arrowLen,
+              GeoTools.angleInRadians(middlePrevPt, middleLastPt),
+            )
+          : [];
+
+        // Add arrow paths to result
+        if (leftArrow && leftArrow.length > 0) {
+          result.addPath(
+            leftArrow.map((p: any) => (Array.isArray(p) ? p : [p.x, p.y])),
+          );
+        }
+        if (rightArrow && rightArrow.length > 0) {
+          result.addPath(
+            rightArrow.map((p: any) => (Array.isArray(p) ? p : [p.x, p.y])),
+          );
+        }
+        if (middleArrow && middleArrow.length > 0) {
+          result.addPath(
+            middleArrow.map((p: any) => (Array.isArray(p) ? p : [p.x, p.y])),
+          );
+        }
+      }
+
+      // Add back line - elongate middle point behind midpoint toward midpoint
+      if (pts.length > 0) {
+        const backAngle = GeoTools.angleInRadians(midPt, pts[0]);
+        const backLen = GeoTools._2PtLen(midPt, pts[0]) / 10;
+        const elongateMiddlePt = {
+          x: -1 * backLen * Math.cos(backAngle) + midPt.x,
+          y: -1 * backLen * Math.sin(backAngle) + midPt.y,
+        };
+        result.addPath([
+          [elongateMiddlePt.x, elongateMiddlePt.y],
+          [midPt.x, midPt.y],
+        ]);
+      }
+
+      return result;
     } catch (e) {
-      console.log(e);
-      console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+      console.log(
+        this.constructor.name + ' Cannot create Symbol due to invalid geometry',
+      );
       return null;
     }
   }
 
   /**
-   * Create straight line symbol
+   * Get baseline points
    */
-  private createSymbolByStraightLine(pts: Point[]): Polyline {
-    const result = new Polyline({ spatialReference: this.view.spatialReference });
-    const path = pts.map(pt => [pt.x, pt.y]);
-    result.addPath(path);
-    return result;
+  public getBaseLinePts(): any {
+    return this._baseLinePts;
   }
-
-  /**
-   * Create curved line symbol
-   */
-  private createSymbolByLine(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials): Polyline {
-    const result = new Polyline({ spatialReference: this.view.spatialReference });
-
-    if (pts.length === 2) {
-      result.addPath([[lastPoint.x, lastPoint.y], [firstPoint.x, firstPoint.y]]);
-    } else if (pts.length > 2) {
-      const tempArray: { x: number, y: number }[] = [];
-      pts.forEach(pt => {
-        tempArray.push({ x: pt.x, y: pt.y });
-      });
-      return Shapes.createBezierPath(tempArray, 100, this.view.spatialReference);
-    }
-    return result;    }
-
-
 
   /**
    * Clean up drawing state and finalize
@@ -320,7 +615,10 @@ export class InfiltrationLane {
   private cleanUp(): void {
     if (this._points.length === 0) return;
 
-    const drawEssentials = this.createDrawEssentials(this._points.slice(), this._drawType);
+    const drawEssentials = this.createDrawEssentials(
+      this._points.slice(),
+      this._baseLinePts,
+    );
 
     if (this.tempGraphic && this.tempGraphic.geometry) {
       this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
@@ -333,14 +631,16 @@ export class InfiltrationLane {
   /**
    * Handle draw end
    */
-  private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
+  private __drawEnd(
+    drawGeometry: Polyline,
+    drawEssentials: DrawEssentials,
+  ): void {
     if (drawGeometry) {
       const spatialRef = this.view.spatialReference;
       let geographicGeometry = drawGeometry;
 
       if (spatialRef && spatialRef.isWebMercator) {
         // Geographic conversion would go here if needed
-        // geographicGeometry = webMercatorUtils.webMercatorToGeographic(drawGeometry);
       } else if (spatialRef && spatialRef.wkid === 4326) {
         geographicGeometry = drawGeometry.clone();
       }
@@ -352,12 +652,16 @@ export class InfiltrationLane {
   /**
    * Final draw end handler
    */
-  private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
-    this.emit("onDrawEnd", {
+  private __onDrawEnd(
+    geometry: Polyline,
+    geoGeometry: Polyline,
+    drawEssParam: DrawEssentials,
+  ): void {
+    this.emit('onDrawEnd', {
       geometry: geometry,
       geographicGeometry: geoGeometry,
       drawEssentials: drawEssParam,
-      marker: this._lineSym
+      marker: this._lineSym,
     });
   }
 
@@ -371,14 +675,13 @@ export class InfiltrationLane {
 
     this.tempGraphic = null;
     this._points = [];
+    this._baseLinePts = {};
   }
 
   /**
    * Remove event handlers
    */
   private _removeEvents(): void {
-    //this.view.navigation.enabled = false;
-
     if (this.clickHandler) {
       this.clickHandler.remove();
       this.clickHandler = null;
@@ -391,6 +694,18 @@ export class InfiltrationLane {
       this.mouseMoveHandler.remove();
       this.mouseMoveHandler = null;
     }
+    if (this.baseLineEndHandler) {
+      this.baseLineEndHandler.remove();
+      this.baseLineEndHandler = null;
+    }
+    if (this.baseLineProgressHandler) {
+      this.baseLineProgressHandler.remove();
+      this.baseLineProgressHandler = null;
+    }
+    if (this.baseLineClickHandler) {
+      this.baseLineClickHandler.remove();
+      this.baseLineClickHandler = null;
+    }
   }
 
   /**
@@ -401,6 +716,7 @@ export class InfiltrationLane {
     this._removeEvents();
     this._geometryType = null;
     this.isDrawing = false;
+    this.baseLineComplete = false;
   }
 
   /**
@@ -409,28 +725,23 @@ export class InfiltrationLane {
   private emit(eventName: string, data: any): void {
     const listeners = this.eventListeners.get(eventName);
     if (listeners) {
-      listeners.forEach(listener => listener(data));
+      listeners.forEach((listener) => listener(data));
     }
 
-    // Also emit as a global document event for SymbolEngine to catch
     this.emitGlobalEvent(eventName, data);
   }
 
-  /**
-   * Emit global events that can be caught by SymbolEngine
-   */
   private emitGlobalEvent(eventName: string, data: any): void {
     const customEvent = new CustomEvent(eventName, {
       detail: {
         symbolType: this.constructor.name,
         eventName: eventName,
-        ...data
+        ...data,
       },
       bubbles: true,
-      cancelable: true
+      cancelable: true,
     });
 
-    // Dispatch from the view container if available, otherwise from document
     if (this.view && this.view.container) {
       this.view.container.dispatchEvent(customEvent);
     } else {
@@ -459,16 +770,10 @@ export class InfiltrationLane {
     }
   }
 
-  /**
-   * Get the current symbol layer
-   */
   public getSymbolLayer(): GraphicsLayer {
     return this.symbolLayer;
   }
 
-  /**
-   * Clear all symbols from the layer
-   */
   public clearSymbols(): void {
     this.symbolLayer.removeAll();
   }
