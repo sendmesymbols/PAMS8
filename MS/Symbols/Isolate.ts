@@ -336,15 +336,6 @@ export class Isolate {
 
       const result = new Polyline({ spatialReference });
 
-      if (pts.length === 2 && startingPt && endPt) {
-        // Only two points: draw straight line
-        //result.addPath([[startingPt.x, startingPt.y], [endPt.x, endPt.y]]);
-        this.__drawEnd(result, drawEssentials)
-        return result;
-      }
-
-      console.log("+++++> "+pts.length);
-
       // Candidate point defines arc side
       const candidatePoint: Point = pts[pts.length - 1];
 

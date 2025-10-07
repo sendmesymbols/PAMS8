@@ -10,6 +10,7 @@ import Color from "@arcgis/core/Color";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
+import Shapes from "../Support/Shapes.ts";
 import Polyline from '@arcgis/core/geometry/Polyline';
 // Removed unused imports from translation
 
@@ -271,165 +272,243 @@ export class MovingConvoy {
    */
   private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
     try {
-      // Extract control points
-      const ctrlPts: Point[] | undefined = (drawEssentials as any).CTRL_PTS;
-      if (!ctrlPts || ctrlPts.length === 0) {
+      let pts: Point[];
+
+      if ((drawEssentials as any).CTRL_PTS) {
+        pts = (drawEssentials as any).CTRL_PTS;
+      } else {
         throw new Error("controlPoints not found");
       }
 
-      // Extract base line points (required by legacy algorithm)
-      const baseLine = (drawEssentials as any).BASE_LN_PTS as { startPt: Point; endPt: Point } | undefined;
-      if (!baseLine || !baseLine.startPt || !baseLine.endPt) {
-        throw new Error("BASE_LN_PTS with startPt and endPt is required");
+      const result = new Polygon({
+        spatialReference: this.view.spatialReference
+      });
+
+      if (pts.length <= 2) {
+        return this.createSimpleArrow(pts, result);
+      } else {
+        return this.createComplexArrow(pts, result);
       }
 
-      // Local helpers to mirror legacy math without external deps
-      const distance = (a: { x: number; y: number }, b: { x: number; y: number }) => {
-        const dx = b.x - a.x; const dy = b.y - a.y; return Math.sqrt(dx * dx + dy * dy);
-      };
-      const angleBetween = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.atan2(b.y - a.y, b.x - a.x);
-      const midPoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-      const toPair = (p: { x: number; y: number }): [number, number] => [p.x, p.y];
-
-      // Flank points helper (translated from source getFlankPts)
-      const getFlankPts = (firstPoint: { x: number; y: number }, lastPoint: { x: number; y: number }) => {
-        const baseLineLen = distance(firstPoint, lastPoint) / 4;
-        let cLenLimit = baseLineLen / 4;
-        if (cLenLimit > baseLineLen / 2) cLenLimit = baseLineLen / 2;
-        const len = cLenLimit;
-
-        let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
-        const relation = this.twoPtsRelationship(firstPoint as any, lastPoint as any);
-        switch (relation) {
-          case "ne": k += Math.PI / 2; break;
-          case "nw": k += Math.PI * 3 / 2; break;
-          case "sw": k += Math.PI * 3 / 2; break;
-          case "se": k += Math.PI / 2; break;
-        }
-        const partialLen = len;
-        return [
-          { x: partialLen * Math.cos(k) + firstPoint.x, y: partialLen * Math.sin(k) + firstPoint.y },
-          { x: -1 * partialLen * Math.cos(k) + firstPoint.x, y: -1 * partialLen * Math.sin(k) + firstPoint.y }
-        ];
-      };
-
-      const sr = this.view.spatialReference;
-      const polygon = new Polygon({ spatialReference: sr });
-
-      const firstPoint = ctrlPts[0];
-      let lastPoint = ctrlPts[ctrlPts.length - 1];
-
-      // In legacy, when any point exists, lastPoint is reset to firstPoint for baseline angle
-      if (ctrlPts.length >= 1) {
-        lastPoint = firstPoint;
-      }
-
-      const stPt = baseLine.startPt; const endPt = baseLine.endPt;
-      const midPt = midPoint(stPt, endPt);
-
-      // Base line direction (perpendicular adjustment based on quadrant)
-      const lenMidToEnd = distance(midPt, endPt);
-      let k = Math.atan((midPt.y - lastPoint.y) / (midPt.x - lastPoint.x));
-      switch (this.twoPtsRelationship(midPt as any, lastPoint as any)) {
-        case "ne": k += Math.PI / 2; break;
-        case "nw": k += Math.PI * 3 / 2; break;
-        case "sw": k += Math.PI * 3 / 2; break;
-        case "se": k += Math.PI / 2; break;
-      }
-
-      const p1 = { x: lenMidToEnd * Math.cos(k) + midPt.x, y: lenMidToEnd * Math.sin(k) + midPt.y };
-      const p2 = { x: -1 * lenMidToEnd * Math.cos(k) + midPt.x, y: -1 * lenMidToEnd * Math.sin(k) + midPt.y };
-
-      // Prepare arrays
-      const leftArray: [number, number][] = [];
-      const rightArray: [number, number][] = [];
-
-      if (ctrlPts.length >= 1) {
-        leftArray.push(toPair(p1));
-        rightArray.push(toPair(p2));
-      }
-
-      // Variables to hold the last shortened points for arrow head construction
-      let shortenLeftPt: { x: number; y: number } = toPair(p1) as any;
-      let shortenRightPt: { x: number; y: number } = toPair(p2) as any;
-
-      // Build left/right/middle arrays per control point
-      for (let i = 0; i < ctrlPts.length; i++) {
-        const candidate = ctrlPts[i];
-
-        // Distance and angle from mid to candidate
-        const lenToCandidate = distance(midPt, candidate);
-        let ang = angleBetween(midPt, candidate);
-
-        // Candidate points projected outwards from p1 and p2
-        const stPtCandidate = { x: p1.x + lenToCandidate * Math.cos(ang), y: p1.y + lenToCandidate * Math.sin(ang) };
-        const endPtCandidate = { x: p2.x + lenToCandidate * Math.cos(ang), y: p2.y + lenToCandidate * Math.sin(ang) };
-
-        // Segment len control (len = length / 5, bounded by baseline/4)
-        let segLen = lenToCandidate / 5;
-        const baseLineLen = distance(stPtCandidate, endPtCandidate);
-        const baseLineLenLimit = baseLineLen / 4;
-        if (segLen > baseLineLenLimit) segLen = baseLineLenLimit;
-
-        ang = angleBetween(stPtCandidate, endPtCandidate);
-
-        // pt1/pt2 along the baseline perpendicular at each projected candidate (computed but not used downstream in legacy)
-        // Kept logic in place but avoid unused variables
-        /*
-        const pt1x = -1 * segLen * Math.cos(ang) + stPtCandidate.x;
-        const pt1y = -1 * segLen * Math.sin(ang) + stPtCandidate.y;
-        const pt2x = segLen * Math.cos(ang) + endPtCandidate.x;
-        const pt2y = segLen * Math.sin(ang) + endPtCandidate.y;
-        */
-
-        // Shorten points towards candidate direction (left/right/middle)
-        k = angleBetween(midPt, candidate);
-        shortenLeftPt = { x: -1 * lenToCandidate / 10 * Math.cos(k) + stPtCandidate.x, y: -1 * lenToCandidate / 5 * Math.sin(k) + stPtCandidate.y };
-        shortenRightPt = { x: -1 * lenToCandidate / 10 * Math.cos(k) + endPtCandidate.x, y: -1 * lenToCandidate / 5 * Math.sin(k) + endPtCandidate.y };
-
-        leftArray.push(toPair(shortenLeftPt));
-        rightArray.push(toPair(shortenRightPt));
-      }
-
-      // Arrow head path using flank points (local inline, not using class's CreateArrowHeadPathEx)
-      const leftFirst = { x: leftArray[0][0], y: leftArray[0][1] };
-      const rightFirst = { x: rightArray[0][0], y: rightArray[0][1] };
-      const leftFlank = getFlankPts(shortenLeftPt, leftFirst);
-      const rightFlank = getFlankPts(shortenRightPt, rightFirst);
-
-      // Build a single closed ring: leftArray -> arrow head -> reversed rightArray -> close
-      const ring: number[][] = [];
-      leftArray.forEach(p => ring.push(p));
-      ring.push(toPair(leftFlank[1]));
-      ring.push([ctrlPts[ctrlPts.length - 1].x, ctrlPts[ctrlPts.length - 1].y]);
-      ring.push(toPair(rightFlank[0]));
-      rightArray.slice().reverse().forEach(p => ring.push(p));
-      if (leftArray.length > 0) {
-        ring.push(leftArray[0]);
-      }
-
-      polygon.addRing(ring);
-      return polygon;
     } catch (e) {
       console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
       return null;
     }
   }
 
-  // Removed legacy simple/complex arrow builders in favor of source-accurate algorithm above
+  /**
+   * Create simple arrow for 2 or fewer points
+   */
+  private createSimpleArrow(pts: Point[], result: Polygon): Polygon {
+    const firstPoint = pts[0];
+    const lastPoint = pts[pts.length - 1];
 
-  // (unused) legacy arrow head kept removed to avoid lints
+    const len = this.calculateDistance(firstPoint, lastPoint);
+    const k = this.calculateAngle(firstPoint, lastPoint);
+
+    // Tail two points
+    const pt1 = {
+      x: this._tailFactor * len * Math.cos(k) + firstPoint.x,
+      y: this._tailFactor * len * Math.sin(k) + firstPoint.y
+    };
+    const pt2 = {
+      x: -1 * this._tailFactor * len * Math.cos(k) + firstPoint.x,
+      y: -1 * this._tailFactor * len * Math.sin(k) + firstPoint.y
+    };
+
+    const partialLen = (1 - this._headPercentage) * len;
+    const p1 = {
+      x: this._tailFactor * partialLen * Math.cos(k) + firstPoint.x,
+      y: this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
+    };
+    const p2 = {
+      x: -1 * this._tailFactor * partialLen * Math.cos(k) + firstPoint.x,
+      y: -1 * this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
+    };
+
+    let ring: number[][] = [];
+
+    ring.push([pt1.x, pt1.y]);
+
+    // Add arrow head path
+    const headPath = this.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
+    ring = ring.concat(headPath.map(pt => [pt.x, pt.y]));
+
+    ring.push([p2.x, p2.y]);
+    ring.push([pt1.x, pt1.y]);
+    ring.push([pt2.x, pt2.y]);
+
+    result.addRing(ring);
+    return result;
+  }
+
+  /**
+   * Create complex arrow for more than 2 points
+   */
+  private createComplexArrow(pts: Point[], result: Polygon): Polygon {
+    const lastPoint = pts[pts.length - 1];
+    const tempArray = pts.map(e => ({ x: e.x, y: e.y }));
+
+    // Calculate vertex angles and create left/right arrays
+    const angleArray = this.calculateVertexAngles(tempArray);
+    const totalL = this.calculatePathLength(tempArray, 0);
+
+    const leftArray: any[] = [];
+    const rightArray: any[] = [];
+
+    for (let i = 0; i < tempArray.length - 1; i++) {
+      let partialLen = this.calculatePathLength(tempArray, i);
+      partialLen += totalL / 2.4;
+
+      const pt1 = {
+        x: this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
+        y: this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
+      };
+      const pt2 = {
+        x: -1 * this._tailFactor * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
+        y: -1 * this._tailFactor * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
+      };
+
+      leftArray.push(pt1);
+      rightArray.push(pt2);
+    }
+
+    leftArray.push({ x: lastPoint.x, y: lastPoint.y });
+    rightArray.push({ x: lastPoint.x, y: lastPoint.y });
+
+    // Create smooth paths using Bezier (fallback to linear interpolation)
+    let leftBezier = Shapes.CreateBezierPathPCOnly(leftArray, 70);
+    let rightBezier = Shapes.CreateBezierPathPCOnly(rightArray, 70);
+
+    // Splice for arrow head
+    leftBezier.splice(Math.floor((1 - this._headPercentage) * 70), Number.MAX_VALUE);
+    rightBezier.splice(Math.floor((1 - this._headPercentage) * 70), Number.MAX_VALUE);
+
+    const headPath = this.CreateArrowHeadPathEx(
+      leftBezier[leftBezier.length - 1],
+      lastPoint,
+      rightBezier[rightBezier.length - 1],
+      totalL,
+      this._headPercentage,
+      15
+    );
+
+    // Combine all paths and explicitly close the back
+    const ring: number[][] = [];
+
+    // Add left bezier path
+    leftBezier.forEach(pt => ring.push([pt.x, pt.y]));
+
+    // Add arrow head
+    headPath.forEach(pt => ring.push([pt.x, pt.y]));
+
+    // Add reversed right bezier path
+    rightBezier.reverse().forEach(pt => ring.push([pt.x, pt.y]));
+
+    // Close the ring at the back of the arrow
+    if (leftBezier.length > 0) {
+      ring.push([leftBezier[0].x, leftBezier[0].y]);
+    }
+
+    result.addRing(ring);
+    return result;
+  }
+
+  /**
+   * Create arrow head path
+   */
+  private CreateArrowHeadPathEx(pt1: any, candidatePt: Point, pt2: any, totalLen: number, headPercentage: number, headAngle: number, straight?: boolean): any[] {
+    const headSizeBaseRatio = 1.07;
+    const headBaseLen = totalLen * headPercentage;
+    const headSideLen = headBaseLen * headSizeBaseRatio;
+
+    const angle1 = this.twoPtsAngle(candidatePt, pt1);
+    const angle2 = this.twoPtsAngle(candidatePt, pt2);
+
+    let midAngle = Math.abs(angle1 - angle2) / 2;
+    if (Math.abs(angle1 - angle2) > Math.PI * 1.88) {
+      midAngle += Math.PI;
+    }
+
+    const len = Math.sqrt(
+      headBaseLen * headBaseLen +
+      headSideLen * headSideLen -
+      2 * headSideLen * headBaseLen * Math.cos(midAngle + (headAngle / 180) * Math.PI)
+    );
+
+    const upAngle = Math.asin(headBaseLen * Math.sin(midAngle + (headAngle / 180) * Math.PI) / len);
+    const centAngle = upAngle + (headAngle / 180) * Math.PI;
+
+    const result = (straight === false || straight === undefined) ?
+      (headBaseLen * Math.sin(Math.PI - centAngle - midAngle) / Math.sin(centAngle)) : 0;
+
+    const path = [];
+    path.push({
+      x: candidatePt.x + result * Math.cos(angle1),
+      y: candidatePt.y + result * Math.sin(angle1)
+    });
+    path.push({
+      x: candidatePt.x + headSideLen * Math.cos(angle1 - (headAngle / 180) * Math.PI),
+      y: candidatePt.y + headSideLen * Math.sin(angle1 - (headAngle / 180) * Math.PI)
+    });
+    path.push(candidatePt);
+    path.push({
+      x: candidatePt.x + headSideLen * Math.cos(angle2 + (headAngle / 180) * Math.PI),
+      y: candidatePt.y + headSideLen * Math.sin(angle2 + (headAngle / 180) * Math.PI)
+    });
+    path.push({
+      x: candidatePt.x + result * Math.cos(angle2),
+      y: candidatePt.y + result * Math.sin(angle2)
+    });
+
+    return path;
+  }
 
   /**
    * Create Bezier path for point collection only (fallback)
    */
   // Removed unused fallback CreateBezierPathPCOnly (Shapes.CreateBezierPathPCOnly is used)
 
-  // (unused) twoPtsAngle removed; using inline angleBetween helpers
+  /**
+   * Calculate angle between two points relative to a candidate point
+   */
+  private twoPtsAngle(candidatePt: Point, pt: any): number {
+    return Math.atan2(pt.y - candidatePt.y, pt.x - candidatePt.x);
+  }
 
-  // (unused) distance helper removed to avoid lints; using local inline funcs instead
+  /**
+   * Calculate distance between two points
+   */
+  private calculateDistance(pt1: Point, pt2: Point): number {
+    const dx = pt2.x - pt1.x;
+    const dy = pt2.y - pt1.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
 
-  // (unused) angle helper removed to avoid lints; using local inline logic in createSymbol
+  /**
+   * Calculate angle for two points relationship
+   */
+  private calculateAngle(firstPoint: Point, lastPoint: Point): number {
+    let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
+
+    const relationship = this.twoPtsRelationship(firstPoint, lastPoint);
+    switch (relationship) {
+      case "ne":
+        k += Math.PI / 2;
+        break;
+      case "nw":
+        k += Math.PI * 3 / 2;
+        break;
+      case "sw":
+        k += Math.PI * 3 / 2;
+        break;
+      case "se":
+        k += Math.PI / 2;
+        break;
+    }
+
+    return k;
+  }
 
   /**
    * Determine relationship between two points
@@ -441,9 +520,35 @@ export class MovingConvoy {
     return "se";
   }
 
-  // (unused) calculateVertexAngles removed
+  /**
+   * Calculate vertex angles for point array
+   */
+  private calculateVertexAngles(tempArray: any[]): number[] {
+    const angles: number[] = [];
+    for (let i = 0; i < tempArray.length - 1; i++) {
+      if (i + 1 < tempArray.length) {
+        const angle = Math.atan2(
+          tempArray[i + 1].y - tempArray[i].y,
+          tempArray[i + 1].x - tempArray[i].x
+        ) + Math.PI / 2; // Perpendicular angle
+        angles.push(angle);
+      }
+    }
+    return angles;
+  }
 
-  // (unused) calculatePathLength removed
+  /**
+   * Calculate path length
+   */
+  private calculatePathLength(tempArray: any[], startIndex: number): number {
+    let length = 0;
+    for (let i = startIndex; i < tempArray.length - 1; i++) {
+      const dx = tempArray[i + 1].x - tempArray[i].x;
+      const dy = tempArray[i + 1].y - tempArray[i].y;
+      length += Math.sqrt(dx * dx + dy * dy);
+    }
+    return length;
+  }
 
   /**
    * Get baseline points

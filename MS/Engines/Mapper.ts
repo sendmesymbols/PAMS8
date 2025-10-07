@@ -198,18 +198,22 @@ import FlightRoute from "../Symbols/FlightRoute.ts"; //Fixed
 import FormingUpPoint from "../Symbols/FormingUpPoint.ts"; //Fixed
 import Funnel from "../Symbols/Funnel.ts"; //Fixed
 import FwdLineOfTps from "../Symbols/FwdLineOfTps.ts";  //Fixed
-import Guard from "../Symbols/Guard.ts";  //Fixed
+import Guard from "../Symbols/Guard.ts"; //Fixed
+import Secure from "../Symbols/Secure.ts"; //Fixed
+
 import InfiltrationLane from "../Symbols/InfiltrationLane.ts"; //Fixed
-
-
 import Isolate from "../Symbols/Isolate.ts";
+
+import Screen from "../Symbols/Screen.ts";
+
+
 import MovingConvoy from "../Symbols/MovingConvoy.ts";
 // Import the new TypeScript symbol classes
 import ObstacleBypassEasy from "../Symbols/ObstacleBypassEasy.ts";
 import Occupy from "../Symbols/Occupy.ts";
 import Penetrate from "../Symbols/Penetrate.ts";
-import Screen from "../Symbols/Screen.ts";
-import Secure from "../Symbols/Secure.ts";
+
+
 import SlowGo from "../Symbols/SlowGo.ts";
 import StrongPoint from "../Symbols/StrongPoint.ts";
 import SupportingAttack from "../Symbols/SupportingAttack.ts";
