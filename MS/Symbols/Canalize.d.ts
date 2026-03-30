@@ -15,7 +15,7 @@ export interface CanalizeOptions {
 }
 /**
  * Canalize class for drawing Canalize tactical symbols
- * Uses baseline + control points pattern with fracture lines and arrow flaps
+ * Uses baseline + control points
  * Returns Polyline geometry despite being classified as an Area symbol
  */
 export declare class Canalize {
@@ -43,23 +43,27 @@ export declare class Canalize {
     private eventListeners;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
-     * Initialize the canalize drawing
+     * Initialize the Canalize drawing
      */
     init(options: CanalizeOptions, marker: SimpleLineSymbol): void;
     /**
-     * Handle baseline drawing completion
+     * Start baseline drawing
      */
-    private baseLineDrawEnd;
-    /**
-     * Handle baseline drawing progress
-     */
-    private baseLineDrawProgress;
+    private startBaseLineDrawing;
     /**
      * Handle baseline click events
      */
     private baseLineClick;
     /**
-     * Set up control point event handlers
+     * Handle baseline draw progress
+     */
+    private baseLineDrawProgress;
+    /**
+     * Handle baseline draw end
+     */
+    private baseLineDrawEnd;
+    /**
+     * Set up control point drawing handlers
      */
     private setupControlPointHandlers;
     /**
@@ -67,7 +71,7 @@ export declare class Canalize {
      */
     private _onClickHandler;
     /**
-     * Handle double-click events
+     * Handle double click events
      */
     private _onDoubleClickHandler;
     /**
@@ -75,23 +79,31 @@ export declare class Canalize {
      */
     private _onMouseMoveHandler;
     /**
-     * Create draw essentials object
+     * Create DrawEssentials object
      */
     private createDrawEssentials;
     /**
-     * Create the canalize symbol geometry
+     * Create symbol geometry from DrawEssentials
      */
     private createSymbol;
     /**
-     * Create arrow flaps
+     * Create flap (arrow wings) path at the end point
      */
-    private _flaps;
+    private flaps;
+    /**
+     * Create circle path at point with radius (unused in Canalize; kept if needed)
+     */
+    private createACP;
+    /**
+     * Calculate distance between two points
+     */
+    private calculateDistance;
     /**
      * Get baseline points
      */
     getBaseLinePts(): any;
     /**
-     * Clean up drawing state
+     * Clean up drawing state and finalize
      */
     private cleanUp;
     /**
@@ -99,11 +111,11 @@ export declare class Canalize {
      */
     private __drawEnd;
     /**
-     * Emit draw end event
+     * Final draw end handler
      */
     private __onDrawEnd;
     /**
-     * Clear drawing state
+     * Clear graphics and state
      */
     private _clear;
     /**
@@ -111,36 +123,17 @@ export declare class Canalize {
      */
     private _removeEvents;
     /**
-     * Deactivate the symbol drawing
+     * Deactivate the drawing tool
      */
     deactivate(): void;
     /**
-     * Emit events to listeners
+     * Event emitter functionality
      */
     private emit;
-    /**
-     * Add event listener
-     */
+    private emitGlobalEvent;
     on(eventName: string, callback: Function): void;
-    /**
-     * Remove event listener
-     */
     off(eventName: string, callback?: Function): void;
-    /**
-     * Get the symbol layer
-     */
     getSymbolLayer(): GraphicsLayer;
-    /**
-     * Clear all symbols from the layer
-     */
     clearSymbols(): void;
-    /**
-     * Calculate arrow flanks length
-     */
-    private calculateArrowFlanksLen;
-    /**
-     * Create CC shape (simplified circle)
-     */
-    private createCCShape;
 }
 export default Canalize;

@@ -8,11 +8,12 @@ import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 export interface FriendlyDirOfMainAttkOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polyline;
+    DRAW_TYPE?: number;
     [key: string]: any;
 }
 /**
  * FriendlyDirOfMainAttk class for drawing Friendly Direction of Main Attack symbols on MapView or SceneView
- * Creates directional arrows with double arrow heads
+ * Supports line and curve draw types with arrow head
  */
 export declare class FriendlyDirOfMainAttk {
     private view;
@@ -24,6 +25,7 @@ export declare class FriendlyDirOfMainAttk {
     private symGeometricType;
     private _lineSym;
     private _points;
+    private _drawType;
     private _geometryType;
     private amplifier;
     private isDrawing;
@@ -34,7 +36,7 @@ export declare class FriendlyDirOfMainAttk {
     private eventListeners;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
-     * Initialize the friendly direction of main attack drawing
+     * Initialize the friendly direction of supporting attack drawing
      */
     init(options: FriendlyDirOfMainAttkOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void;
     /**
@@ -66,9 +68,13 @@ export declare class FriendlyDirOfMainAttk {
      */
     private createSymbol;
     /**
-     * Create arrow head
+     * Create symbol by line (draw type 1)
      */
-    private createArrowHead;
+    private createSymbolByLine;
+    /**
+     * Create symbol by curve (draw type 2)
+     */
+    private createSymbolByCurve;
     /**
      * Clean up drawing state and finalize
      */

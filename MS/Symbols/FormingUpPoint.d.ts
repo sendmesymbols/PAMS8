@@ -1,46 +1,112 @@
-/**
- * Class Representing Forming Up Point.
- * @class
- * @author Abdul Razak
- */
+import Point from "@arcgis/core/geometry/Point";
+import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
-import Point from "@arcgis/core/geometry/Point";
-import Polyline from "@arcgis/core/geometry/Polyline";
-import Evented from "@arcgis/core/core/Evented";
-type ViewType = MapView | SceneView;
-interface FormingUpPointOptions {
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+export interface FormingUpPointOptions {
     CTRL_PTS?: Point[];
-    GEOM?: Polyline;
+    GEOM?: Polygon;
+    DRAW_TYPE?: number;
+    [key: string]: any;
 }
-export default class FormingUpPoint extends Evented {
+/**
+ * FormingUpPoint class for drawing Assembly Area symbols
+ * Supports multiple drawing types: Bezier curve (1), Polygon (2), Rectangle (3)
+ * Includes inner text markers using createAA method
+ */
+export declare class FormingUpPoint {
+    private view;
+    private layerManager;
+    private symbolLayer;
+    private isLine;
     declaredClass: string;
     SID: string;
     symName: string;
     symGeometricType: string;
-    private view;
-    private isLine;
     private _lineSym;
     private _points;
-    private _geometryType;
-    private _tGraphic;
-    private _onClk;
-    private _onDblClk;
-    private _onMM;
-    constructor(view: ViewType, isLine: boolean);
-    init(options: FormingUpPointOptions, marker: any): void;
-    private _setupEventHandlers;
-    private createDrawEssentials;
-    private createSymbol;
-    private _onMouseMoveHandler;
+    private _drawType;
+    private amplifier;
+    private isDrawing;
+    private tempGraphic;
+    private clickHandler;
+    private doubleClickHandler;
+    private mouseMoveHandler;
+    private eventListeners;
+    constructor(view: MapView | SceneView, isLine?: boolean);
+    /**
+     * Initialize the assembly area drawing
+     */
+    init(options: FormingUpPointOptions, marker: SimpleLineSymbol): void;
+    /**
+     * Start interactive drawing mode
+     */
+    private startInteractiveDrawing;
+    /**
+     * Set up mouse event handlers for interactive drawing
+     */
+    private setupEventHandlers;
+    /**
+     * Handle click events
+     */
     private _onClickHandler;
+    /**
+     * Handle double click events
+     */
     private _onDoubleClickHandler;
+    /**
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler;
+    /**
+     * Create DrawEssentials object
+     */
+    private createDrawEssentials;
+    /**
+     * Create symbol geometry from DrawEssentials
+     */
+    private createSymbol;
+    /**
+     * Create inner text markers for FormingUpPoint (FUP)
+     */
+    private createInnerText;
+    /**
+     * Utility method to calculate distance
+     */
+    private calculateDistance;
+    /**
+     * Clean up drawing state and finalize
+     */
     private cleanUp;
+    /**
+     * Handle draw end
+     */
     private __drawEnd;
+    /**
+     * Final draw end handler
+     */
     private __onDrawEnd;
+    /**
+     * Clear graphics and state
+     */
     private _clear;
+    /**
+     * Remove event handlers
+     */
     private _removeEvents;
+    /**
+     * Deactivate the drawing tool
+     */
     deactivate(): void;
-    private createSymbolByPerfectEllipse;
+    /**
+     * Event emitter functionality
+     */
+    private emit;
+    private emitGlobalEvent;
+    on(eventName: string, callback: Function): void;
+    off(eventName: string, callback?: Function): void;
+    getSymbolLayer(): GraphicsLayer;
+    clearSymbols(): void;
 }
-export {};
+export default FormingUpPoint;

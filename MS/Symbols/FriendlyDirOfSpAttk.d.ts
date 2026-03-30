@@ -76,10 +76,6 @@ export declare class FriendlyDirOfSpAttk {
      */
     private createSymbolByCurve;
     /**
-     * Create arrow head
-     */
-    private createArrowHead;
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp;

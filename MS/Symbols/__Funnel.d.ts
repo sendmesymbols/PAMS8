@@ -1,45 +1,73 @@
 import Point from "@arcgis/core/geometry/Point";
-import Polyline from "@arcgis/core/geometry/Polyline";
+import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-export interface FreehandArrowOptions {
+export interface FunnelOptions {
     CTRL_PTS?: Point[];
-    GEOM?: Polyline;
-    DRAW_TYPE?: number;
+    GEOM?: Polygon;
+    BASE_LN_PTS?: {
+        startPt: Point;
+        endPt: Point;
+    };
+    HEAD_RATIO?: number;
+    TAIL_FACTOR?: number;
+    FRNT_LN_ANGL_RATIO?: number;
+    FRNT_LN_DIST_RATIO?: number;
+    FLAP_DIST_RATIO?: number;
     [key: string]: any;
 }
 /**
- * FreehandArrow class for drawing freehand arrow symbols on MapView or SceneView
- * Supports both immediate placement and interactive drawing modes
+ * Funnel class for drawing Avenue of Approaches arrows
+ * Creates complex arrow shapes with configurable head and tail parameters
+ * Supports both simple (<=2 points) and complex (>2 points) arrow creation
  */
-export declare class FreehandArrow {
+export declare class Funnel {
     private view;
     private layerManager;
     private symbolLayer;
     private isLine;
-    private SID;
-    private symName;
-    private symGeometricType;
+    declaredClass: string;
+    SID: string;
+    symName: string;
+    symGeometricType: string;
     private _lineSym;
     private _points;
-    private _drawType;
-    private _geometryType;
     private amplifier;
+    private frontLineAngle;
+    private frontLineDist;
+    private flapDist;
     private isDrawing;
     private tempGraphic;
+    private _baseLinePts;
     private clickHandler;
     private doubleClickHandler;
     private mouseMoveHandler;
     private eventListeners;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
-     * Initialize the freehand arrow drawing
+     * Initialize the avenue of approaches drawing
      */
-    init(options: FreehandArrowOptions, marker: SimpleLineSymbol): void;
+    init(options: FunnelOptions, marker: SimpleLineSymbol): void;
     /**
-     * Start interactive drawing mode
+     * Start baseline drawing phase
+     */
+    private startBaselineDrawing;
+    /**
+     * Handle baseline drawing completion
+     */
+    private baseLineDrawEnd;
+    /**
+     * Handle baseline drawing progress
+     */
+    private baseLineDrawProgress;
+    /**
+     * Handle baseline click events
+     */
+    private baseLineClick;
+    /**
+     * Start interactive drawing mode for funnel points
      */
     private startInteractiveDrawing;
     /**
@@ -66,22 +94,6 @@ export declare class FreehandArrow {
      * Create symbol geometry from DrawEssentials
      */
     private createSymbol;
-    /**
-     * Calculate distance between two points as fallback
-     */
-    private calculateDistance;
-    /**
-     * Calculate angle in radians between two points as fallback
-     */
-    private calculateAngle;
-    /**
-     * Create straight line symbol
-     */
-    private createSymbolByLine;
-    /**
-     * Create curved line symbol
-     */
-    private createSymbolByCurve;
     /**
      * Clean up drawing state and finalize
      */
@@ -110,19 +122,10 @@ export declare class FreehandArrow {
      * Event emitter functionality
      */
     private emit;
-    /**
-     * Emit global events that can be caught by SymbolEngine
-     */
     private emitGlobalEvent;
     on(eventName: string, callback: Function): void;
     off(eventName: string, callback?: Function): void;
-    /**
-     * Get the current symbol layer
-     */
     getSymbolLayer(): GraphicsLayer;
-    /**
-     * Clear all symbols from the layer
-     */
     clearSymbols(): void;
 }
-export default FreehandArrow;
+export default Funnel;

@@ -88,10 +88,6 @@ export declare class FreehandSemiCircleFilled {
      */
     private _determinantDrawEx;
     /**
-     * Create circle segment from three points (same as FreehandSemiCircle)
-     */
-    private CreateCircleSegmentFromThreePoints;
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp;

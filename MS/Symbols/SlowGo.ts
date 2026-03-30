@@ -1,13 +1,15 @@
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import Polygon from "@arcgis/core/geometry/Polygon";
+// Removed unused Polygon import
 import Graphic from "@arcgis/core/Graphic";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import DrawEssentials from "../Support/DrawEssentials";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
+import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 
 export interface SlowGoOptions {
     CTRL_PTS?: Point[];
@@ -28,6 +30,8 @@ class SlowGo {
 
     private view: MapView | SceneView;
     private isLine: boolean;
+    private layerManager: GraphicsLayerManager;
+    private symbolLayer: GraphicsLayer;
     private _lineSymbol: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
     private _geometryType: string | null = null;
@@ -44,6 +48,9 @@ class SlowGo {
     constructor(view: MapView | SceneView, isLine: boolean) {
         this.view = view;
         this.isLine = isLine;
+        this.layerManager = GraphicsLayerManager.getInstance(view);
+        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+        this.layerManager.initializeLayers();
     }
 
     /**
@@ -71,9 +78,7 @@ class SlowGo {
             this._clear();
         } else {
             this._tGraphic = new Graphic({ symbol: this._lineSymbol });
-            if ((this.view as any).graphics) {
-                (this.view as any).graphics.add(this._tGraphic);
-            }
+            this.symbolLayer.add(this._tGraphic);
 
             this._onClick = this.view.on("click", this._onClickHandler.bind(this));
             this._onDblClick = this.view.on("double-click", this._onDblClickHandler.bind(this));
@@ -236,8 +241,8 @@ class SlowGo {
      * Clear drawing state
      */
     private _clear(): void {
-        if (this._tGraphic && (this.view as any).graphics) {
-            (this.view as any).graphics.remove(this._tGraphic);
+        if (this._tGraphic) {
+            this.symbolLayer.remove(this._tGraphic);
         }
 
         this._tGraphic = null;
@@ -270,6 +275,16 @@ class SlowGo {
         const listeners = this.eventListeners.get(eventName);
         if (listeners) {
             listeners.forEach(callback => callback(data));
+        }
+        const customEvent = new CustomEvent(eventName, {
+            detail: { symbolType: "SlowGo", eventName, ...data },
+            bubbles: true,
+            cancelable: true
+        });
+        if (this.view && this.view.container) {
+            this.view.container.dispatchEvent(customEvent);
+        } else {
+            document.dispatchEvent(customEvent);
         }
     }
 

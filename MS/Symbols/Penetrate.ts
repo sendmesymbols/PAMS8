@@ -1,14 +1,16 @@
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import Polygon from "@arcgis/core/geometry/Polygon";
+// Removed unused Polygon import
 import Graphic from "@arcgis/core/Graphic";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import DrawEssentials from "../Support/DrawEssentials";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 import BaseLine from "../Support/BaseLine.ts";
+import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 
 
 export interface PenetrateOptions {
@@ -34,6 +36,8 @@ class Penetrate {
 
     private view: MapView | SceneView;
     private isLine: boolean;
+    private layerManager: GraphicsLayerManager;
+    private symbolLayer: GraphicsLayer;
     private _lineSymbol: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
     private _baseLinePts: any = null;
@@ -54,6 +58,9 @@ class Penetrate {
     constructor(view: MapView | SceneView, isLine: boolean) {
         this.view = view;
         this.isLine = isLine;
+        this.layerManager = GraphicsLayerManager.getInstance(view);
+        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+        this.layerManager.initializeLayers();
     }
 
     /**
@@ -123,8 +130,8 @@ class Penetrate {
             symbol: this._lineSymbol 
         });
         
-        if ((this.view as any).graphics) {
-            (this.view as any).graphics.add(this._tGraphic);
+        if (this._tGraphic) {
+            this.symbolLayer.add(this._tGraphic);
         }
         
         this._baseLinePts = evt.geometry._baseLine;
@@ -227,22 +234,24 @@ class Penetrate {
                 middleArray.push(midPt);
             }
 
+            let stPtCandidatePt: Point | null = null;
+            let endPtCandidatePt: Point | null = null;
             for (let i = 0; i < pts.length; i++) {
                 const length = GeoTools._2PtLen(midPt, pts[i]);
                 const angle = GeoTools.angleInRadians(midPt, pts[i]);
 
-                const stPtCandidatePt = new Point({
+                stPtCandidatePt = new Point({
                     x: p1.x + length * Math.cos(angle),
                     y: p1.y + length * Math.sin(angle),
                     spatialReference: this.view.spatialReference
                 });
-                const endPtCandidatePt = new Point({
+                endPtCandidatePt = new Point({
                     x: p2.x + length * Math.cos(angle),
                     y: p2.y + length * Math.sin(angle),
                     spatialReference: this.view.spatialReference
                 });
 
-                const len = length / 5;
+                const segLen = length / 5;
                 const baseLineLen = GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt);
                 const baseLineLenLimit = baseLineLen / 4;
 
@@ -250,14 +259,16 @@ class Penetrate {
             }
 
             // Arrow Head
-            result.addPath(Shapes.arrowHeadBackward(
-                midPt,
-                GeoTools.ArrowFlanksLen(
-                    GeoTools._2PtLen(midPt, pts[pts.length - 1]),
-                    GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt)
-                ),
-                GeoTools.angleInRadians(midPt, middleArray[1])
-            ));
+            if (stPtCandidatePt && endPtCandidatePt && middleArray.length >= 2) {
+                result.addPath(Shapes.arrowHeadBackward(
+                    midPt,
+                    GeoTools.ArrowFlanksLen(
+                        GeoTools._2PtLen(midPt, pts[pts.length - 1]),
+                        GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt)
+                    ),
+                    GeoTools.angleInRadians(midPt, middleArray[1])
+                ));
+            }
 
             const values = GeoTools._fracture(middleArray, 10, this.view.spatialReference);
             result.paths = result.paths.concat(values.geometry.paths);
@@ -386,8 +397,8 @@ class Penetrate {
      * Clear drawing state
      */
     private _clear(): void {
-        if (this._tGraphic && (this.view as any).graphics) {
-            (this.view as any).graphics.remove(this._tGraphic);
+        if (this._tGraphic) {
+            this.symbolLayer.remove(this._tGraphic);
         }
         
         this._tGraphic = null;
@@ -449,6 +460,24 @@ class Penetrate {
         const listeners = this.eventListeners.get(eventName);
         if (listeners) {
             listeners.forEach(callback => callback(data));
+        }
+        this.emitGlobalEvent(eventName, data);
+    }
+
+    private emitGlobalEvent(eventName: string, data: any): void {
+        const customEvent = new CustomEvent(eventName, {
+            detail: {
+                symbolType: "Penetrate",
+                eventName,
+                ...data
+            },
+            bubbles: true,
+            cancelable: true
+        });
+        if (this.view && this.view.container) {
+            this.view.container.dispatchEvent(customEvent);
+        } else {
+            document.dispatchEvent(customEvent);
         }
     }
 

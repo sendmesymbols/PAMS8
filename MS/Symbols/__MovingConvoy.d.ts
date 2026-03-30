@@ -1,43 +1,51 @@
 import Point from "@arcgis/core/geometry/Point";
-import Polyline from "@arcgis/core/geometry/Polyline";
+import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-export interface FreehandArrowOptions {
+export interface MovingConvoyOptions {
     CTRL_PTS?: Point[];
-    GEOM?: Polyline;
-    DRAW_TYPE?: number;
+    GEOM?: Polygon;
+    HEAD_RATIO?: number;
+    TAIL_FACTOR?: number;
     [key: string]: any;
 }
 /**
- * FreehandArrow class for drawing freehand arrow symbols on MapView or SceneView
- * Supports both immediate placement and interactive drawing modes
+ * MovingConvoy class for drawing Avenue of Approaches arrows
+ * Creates complex arrow shapes with configurable head and tail parameters
+ * Supports both simple (<=2 points) and complex (>2 points) arrow creation
  */
-export declare class FreehandArrow {
+export declare class MovingConvoy {
     private view;
     private layerManager;
     private symbolLayer;
     private isLine;
-    private SID;
-    private symName;
-    private symGeometricType;
+    declaredClass: string;
+    SID: string;
+    symName: string;
+    symGeometricType: string;
     private _lineSym;
     private _points;
-    private _drawType;
-    private _geometryType;
     private amplifier;
+    private _tailFactor;
+    private _headPercentage;
     private isDrawing;
     private tempGraphic;
+    private _baseLinePts;
     private clickHandler;
     private doubleClickHandler;
     private mouseMoveHandler;
     private eventListeners;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
-     * Initialize the freehand arrow drawing
+     * Initialize the avenue of approaches drawing
      */
-    init(options: FreehandArrowOptions, marker: SimpleLineSymbol): void;
+    init(options: MovingConvoyOptions, marker: SimpleLineSymbol): void;
+    /**
+     * Utility method to set default values (mimics GeoTools.setDefault)
+     */
+    private setDefault;
     /**
      * Start interactive drawing mode
      */
@@ -67,21 +75,48 @@ export declare class FreehandArrow {
      */
     private createSymbol;
     /**
-     * Calculate distance between two points as fallback
+     * Create simple arrow for 2 or fewer points
+     */
+    private createSimpleArrow;
+    /**
+     * Create complex arrow for more than 2 points
+     */
+    private createComplexArrow;
+    /**
+     * Create arrow head path
+     */
+    private CreateArrowHeadPathEx;
+    /**
+     * Create Bezier path for point collection only (fallback)
+     */
+    /**
+     * Calculate angle between two points relative to a candidate point
+     */
+    private twoPtsAngle;
+    /**
+     * Calculate distance between two points
      */
     private calculateDistance;
     /**
-     * Calculate angle in radians between two points as fallback
+     * Calculate angle for two points relationship
      */
     private calculateAngle;
     /**
-     * Create straight line symbol
+     * Determine relationship between two points
      */
-    private createSymbolByLine;
+    private twoPtsRelationship;
     /**
-     * Create curved line symbol
+     * Calculate vertex angles for point array
      */
-    private createSymbolByCurve;
+    private calculateVertexAngles;
+    /**
+     * Calculate path length
+     */
+    private calculatePathLength;
+    /**
+     * Get baseline points
+     */
+    getBaseLinePts(): Point[];
     /**
      * Clean up drawing state and finalize
      */
@@ -110,19 +145,10 @@ export declare class FreehandArrow {
      * Event emitter functionality
      */
     private emit;
-    /**
-     * Emit global events that can be caught by SymbolEngine
-     */
     private emitGlobalEvent;
     on(eventName: string, callback: Function): void;
     off(eventName: string, callback?: Function): void;
-    /**
-     * Get the current symbol layer
-     */
     getSymbolLayer(): GraphicsLayer;
-    /**
-     * Clear all symbols from the layer
-     */
     clearSymbols(): void;
 }
-export default FreehandArrow;
+export default MovingConvoy;

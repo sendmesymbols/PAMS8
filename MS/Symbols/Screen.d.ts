@@ -1,62 +1,101 @@
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
-export interface ScreenOptions {
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+export interface ContainOptions {
     CTRL_PTS?: Point[];
+    BASE_LN_PTS?: {
+        startPt: Point;
+        endPt: Point;
+    };
     GEOM?: Polyline;
-    ECHLON?: number;
     [key: string]: any;
 }
 /**
- * Class Representing Screen.
- * @class
- * @author Abdul Razak
+ * Contain class for drawing Contain tactical symbols
+ * Uses baseline + control points
+ * Returns Polyline geometry despite being classified as an Area symbol
  */
-declare class Screen {
+export declare class Screen {
+    private view;
+    private layerManager;
+    private symbolLayer;
+    private isLine;
     declaredClass: string;
     SID: string;
     symName: string;
     symGeometricType: string;
-    private view;
-    private isLine;
-    private _lineSymbol;
+    private _lineSym;
     private _points;
+    private _baseLinePts;
     private _geometryType;
-    private _echlon;
-    private _tGraphic;
-    private _onClick;
-    private _onDblClick;
-    private _onMouseMove;
+    private amplifier;
+    private _teethSize;
+    private _teethGap;
+    private isDrawing;
+    private tempGraphic;
+    private baseLineComplete;
+    private clickHandler;
+    private doubleClickHandler;
+    private mouseMoveHandler;
+    private baseLineEndHandler;
+    private baseLineProgressHandler;
+    private baseLineClickHandler;
     private eventListeners;
-    constructor(view: MapView | SceneView, isLine: boolean);
+    constructor(view: MapView | SceneView, isLine?: boolean);
     /**
-     * Initialize the symbol drawing
+     * Initialize the Screen drawing
      */
-    init(options: ScreenOptions, marker: SimpleLineSymbol): void;
+    init(options: ContainOptions, marker: SimpleLineSymbol): void;
     /**
-     * Create draw essentials object
+     * Start baseline drawing
      */
-    private createDrawEssentials;
+    private startBaseLineDrawing;
     /**
-     * Create the symbol geometry
+     * Handle baseline click events
      */
-    private createSymbol;
+    private baseLineClick;
     /**
-     * Handle mouse move events
+     * Handle baseline draw progress
      */
-    private _onMouseMoveHandler;
+    private baseLineDrawProgress;
     /**
-     * Handle click events
+     * Handle baseline draw end
+     */
+    private baseLineDrawEnd;
+    /**
+     * Set up control point drawing handlers
+     */
+    private setupControlPointHandlers;
+    /**
+     * Handle click events for control points
      */
     private _onClickHandler;
     /**
      * Handle double click events
      */
-    private _onDblClickHandler;
+    private _onDoubleClickHandler;
     /**
-     * Clean up drawing state
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler;
+    /**
+     * Create DrawEssentials object
+     */
+    private createDrawEssentials;
+    /**
+     * Create symbol geometry from DrawEssentials
+     */
+    private createSymbol;
+    private createTeeth3;
+    /**
+     * Get baseline points
+     */
+    getBaseLinePts(): any;
+    /**
+     * Clean up drawing state and finalize
      */
     private cleanUp;
     /**
@@ -64,48 +103,29 @@ declare class Screen {
      */
     private __drawEnd;
     /**
-     * Emit draw end event
+     * Final draw end handler
      */
     private __onDrawEnd;
     /**
-     * Clear drawing state
+     * Clear graphics and state
      */
     private _clear;
     /**
-     * Remove event listeners
+     * Remove event handlers
      */
     private _removeEvents;
     /**
-     * Deactivate the symbol
+     * Deactivate the drawing tool
      */
     deactivate(): void;
     /**
-     * Create arrow head
-     */
-    private _arrowHead;
-    /**
-     * Convert radians to degrees
-     */
-    private toDegrres;
-    /**
-     * Convert degrees to radians
-     */
-    private toRad;
-    /**
-     * Calculate angle in radians between two points
-     */
-    private angleRadians;
-    /**
-     * Emit events
+     * Event emitter functionality
      */
     private emit;
-    /**
-     * Add event listener
-     */
+    private emitGlobalEvent;
     on(eventName: string, callback: Function): void;
-    /**
-     * Remove event listener
-     */
     off(eventName: string, callback?: Function): void;
+    getSymbolLayer(): GraphicsLayer;
+    clearSymbols(): void;
 }
 export default Screen;

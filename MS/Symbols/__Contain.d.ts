@@ -4,50 +4,48 @@ import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-export interface FreehandArrowOptions {
+export interface ContainOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polyline;
-    DRAW_TYPE?: number;
     [key: string]: any;
 }
 /**
- * FreehandArrow class for drawing freehand arrow symbols on MapView or SceneView
- * Supports both immediate placement and interactive drawing modes
+ * Contain class for drawing Contain tactical symbols
+ * Uses direct click handling for control points
+ * Returns Polyline geometry despite being classified as an Area symbol
  */
-export declare class FreehandArrow {
+export declare class Contain {
     private view;
     private layerManager;
     private symbolLayer;
-    private isLine;
     private SID;
     private symName;
     private symGeometricType;
     private _lineSym;
     private _points;
-    private _drawType;
-    private _geometryType;
     private amplifier;
-    private isDrawing;
+    private _teethSize;
+    private _teethGap;
     private tempGraphic;
     private clickHandler;
     private doubleClickHandler;
     private mouseMoveHandler;
     private eventListeners;
-    constructor(view: MapView | SceneView, isLine?: boolean);
+    constructor(view: MapView | SceneView);
     /**
-     * Initialize the freehand arrow drawing
+     * Initialize the Contain drawing
      */
-    init(options: FreehandArrowOptions, marker: SimpleLineSymbol): void;
+    init(options: ContainOptions, marker: SimpleLineSymbol): void;
     /**
-     * Start interactive drawing mode
+     * Start interactive drawing (direct click handling like source)
      */
     private startInteractiveDrawing;
     /**
-     * Set up mouse event handlers for interactive drawing
+     * Set up control point drawing handlers
      */
-    private setupEventHandlers;
+    private setupControlPointHandlers;
     /**
-     * Handle click events
+     * Handle click events for control points
      */
     private _onClickHandler;
     /**
@@ -66,22 +64,11 @@ export declare class FreehandArrow {
      * Create symbol geometry from DrawEssentials
      */
     private createSymbol;
+    private createTeeth;
     /**
-     * Calculate distance between two points as fallback
+     * Create circle segment from three points (ported from legacy)
      */
-    private calculateDistance;
-    /**
-     * Calculate angle in radians between two points as fallback
-     */
-    private calculateAngle;
-    /**
-     * Create straight line symbol
-     */
-    private createSymbolByLine;
-    /**
-     * Create curved line symbol
-     */
-    private createSymbolByCurve;
+    private CreateCircleSegmentFromThreePoints;
     /**
      * Clean up drawing state and finalize
      */
@@ -110,19 +97,10 @@ export declare class FreehandArrow {
      * Event emitter functionality
      */
     private emit;
-    /**
-     * Emit global events that can be caught by SymbolEngine
-     */
     private emitGlobalEvent;
     on(eventName: string, callback: Function): void;
     off(eventName: string, callback?: Function): void;
-    /**
-     * Get the current symbol layer
-     */
     getSymbolLayer(): GraphicsLayer;
-    /**
-     * Clear all symbols from the layer
-     */
     clearSymbols(): void;
 }
-export default FreehandArrow;
+export default Contain;

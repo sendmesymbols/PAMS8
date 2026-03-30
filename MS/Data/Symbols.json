@@ -22368,6 +22368,583 @@
         "Tools": [],
         "Grp": [ "Land Installation","EME - SRT" ]
     },
+  "20121451": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "AFV RG",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121452": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Arty RG",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121453": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Cl Rg/ SA Rg",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121454": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Short Rg",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121455": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Miniature Rg",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121456": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Sub Cal Rg",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121457": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Up/ Down Hill Rg",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121458": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Bullet Arrester Rg",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121459": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Ditch Cumb Bund (DCB) Facility",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121460": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Gren Throwing Rg",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121461": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "NBCW/ CBRN Complex",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121462": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Trg Shed",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121463": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Close Quarter Battle CQB Rg",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121464": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Aslt Course Facility",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121465": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Counter Terrorism Complex (CTC)",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121466": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Quick Reaction Course (QRC)",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121467": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Infantry Reaction Course IRC",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121468": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Integrated Crew Reaction Course CRC/ICRC",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121469": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Stress Course Fire",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121470": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Pl Post",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121471": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Cine Tgt System/ CTTS",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121472": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Misc Facilities",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
+  "20121473": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "Sports Facilities",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+
+  },
+  "20121474": {
+    "Class": "UEISymbol",
+    "Description": "",
+    "Name": "FFR",
+    "Parameters": [
+      {
+        "Name": "Size",
+        "default": "28",
+        "description": "Size of the symbol",
+        "paramThumbnail": "",
+        "value": "size"
+      },
+      {
+        "Name": "Angle",
+        "default": "0",
+        "description": "Angle of the symbol",
+        "paramThumbnail": "",
+        "value": "ANGLE"
+      }
+    ],
+    "SymGeoType": "FPoint",
+    "Thumbnail": "",
+    "Tools": []
+  },
     "20121450": {
         "Class": "TacticalPoint",
         "Description": "",

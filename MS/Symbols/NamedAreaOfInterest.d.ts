@@ -3,7 +3,6 @@ import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 export interface NamedAreaOfInterestOptions {
     CTRL_PTS?: Point[];
@@ -12,21 +11,23 @@ export interface NamedAreaOfInterestOptions {
     [key: string]: any;
 }
 /**
- * NamedAreaOfInterest class for drawing Named Area of Interest symbols on MapView or SceneView
- * Creates area symbols with 3 draw types: Bezier curve, polygon, and rectangle with inner "NAI" text
+ * NamedAreaOfInterest class for Target Named Area of Interest symbol
+ * Supports multiple drawing types: Bezier curve (1), Polygon (2), Rectangle (3)
+ * Includes inner text markers
  */
 export declare class NamedAreaOfInterest {
     private view;
     private layerManager;
     private symbolLayer;
     private isLine;
+    declaredClass: string;
     private SID;
     private symName;
     private symGeometricType;
     private _lineSym;
     private _points;
-    private _drawType;
     private _geometryType;
+    private _drawType;
     private amplifier;
     private isDrawing;
     private tempGraphic;
@@ -36,9 +37,9 @@ export declare class NamedAreaOfInterest {
     private eventListeners;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
-     * Initialize the named area of interest drawing
+     * Initialize the area of operations drawing
      */
-    init(options: NamedAreaOfInterestOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void;
+    init(options: NamedAreaOfInterestOptions, marker: SimpleLineSymbol): void;
     /**
      * Start interactive drawing mode
      */
@@ -68,21 +69,13 @@ export declare class NamedAreaOfInterest {
      */
     private createSymbol;
     /**
-     * Create symbol by Bezier curve (draw type 1)
-     */
-    private createSymbolByBCurve;
-    /**
-     * Create symbol by polygon (draw type 2)
-     */
-    private createSymbolByPolygon;
-    /**
-     * Create symbol by rectangle (draw type 3)
-     */
-    private createSymbolByRect;
-    /**
-     * Create inner "NAI" text
+     * Create inner text markers for Area of Operations
      */
     private createInnerText;
+    /**
+     * Utility method to calculate distance
+     */
+    private calculateDistance;
     /**
      * Clean up drawing state and finalize
      */
@@ -111,19 +104,10 @@ export declare class NamedAreaOfInterest {
      * Event emitter functionality
      */
     private emit;
-    /**
-     * Emit global events that can be caught by SymbolEngine
-     */
     private emitGlobalEvent;
     on(eventName: string, callback: Function): void;
     off(eventName: string, callback?: Function): void;
-    /**
-     * Get the current symbol layer
-     */
     getSymbolLayer(): GraphicsLayer;
-    /**
-     * Clear all symbols from the layer
-     */
     clearSymbols(): void;
 }
 export default NamedAreaOfInterest;

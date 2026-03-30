@@ -21,6 +21,8 @@ declare class Occupy {
     symGeometricType: string;
     private view;
     private isLine;
+    private layerManager;
+    private symbolLayer;
     private _lineSymbol;
     private _points;
     private _geometryType;
@@ -104,6 +106,7 @@ declare class Occupy {
      * Emit events
      */
     private emit;
+    private emitGlobalEvent;
     /**
      * Add event listener
      */

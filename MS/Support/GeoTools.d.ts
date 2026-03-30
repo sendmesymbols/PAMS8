@@ -207,5 +207,25 @@ export declare class GeoTools {
      * Calculate arrow flanks length for attack by fire position
      */
     static ArrowFlanksLen(mainLength: number, baseLength: number): number;
+    /**
+     * Compute circle parameters (center, radius) from three points in screen space
+     * Ported from legacy 3.x _circleDrawEx; inputs are plain {x,y} objects
+     */
+    static circleFromThreeScreenPoints(pt1: {
+        x: number;
+        y: number;
+    }, pt2: {
+        x: number;
+        y: number;
+    }, pt3: {
+        x: number;
+        y: number;
+    }): {
+        radius: number;
+        center: {
+            x: number;
+            y: number;
+        };
+    };
 }
 export default GeoTools;

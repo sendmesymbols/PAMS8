@@ -81,30 +81,6 @@ export declare class BattlePosition {
      */
     private createSymbol;
     /**
-     * Create symbol by line (draw type 1)
-     */
-    private createSymbolByLine;
-    /**
-     * Create symbol by close line (draw type 2)
-     */
-    private createSymbolByCloseLine;
-    /**
-     * Create symbol by perfect ellipse (draw type 3)
-     */
-    private createSymbolByPerfectEllipse;
-    /**
-     * Create ellipse path
-     */
-    private createEllipse;
-    /**
-     * Get closest point on lines (for arrays of number arrays)
-     */
-    private getClosestPointOnLines;
-    /**
-     * Get closest point on lines (for point objects)
-     */
-    private getClosestPointOnLines2;
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp;

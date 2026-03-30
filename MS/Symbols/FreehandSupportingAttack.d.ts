@@ -1,5 +1,5 @@
 import Point from "@arcgis/core/geometry/Point";
-import Polygon from "@arcgis/core/geometry/Polygon";
+import Polyline from "@arcgis/core/geometry/Polyline";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
@@ -7,7 +7,7 @@ import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 export interface FreehandSupportingAttackOptions {
     CTRL_PTS?: Point[];
-    GEOM?: Polygon;
+    GEOM?: Polyline;
     HEAD_RATIO?: number;
     TAIL_FACTOR?: number;
     [key: string]: any;
@@ -26,7 +26,6 @@ export declare class FreehandSupportingAttack {
     private symGeometricType;
     private _lineSym;
     private _points;
-    private _geometryType;
     private amplifier;
     private _tailFactor;
     private _headPercentage;

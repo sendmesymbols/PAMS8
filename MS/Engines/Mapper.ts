@@ -205,15 +205,12 @@ import InfiltrationLane from "../Symbols/InfiltrationLane.ts"; //Fixed
 import Isolate from "../Symbols/Isolate.ts";
 
 import Screen from "../Symbols/Screen.ts";
-
-
 import MovingConvoy from "../Symbols/MovingConvoy.ts";
 // Import the new TypeScript symbol classes
+
 import ObstacleBypassEasy from "../Symbols/ObstacleBypassEasy.ts";
 import Occupy from "../Symbols/Occupy.ts";
 import Penetrate from "../Symbols/Penetrate.ts";
-
-
 import SlowGo from "../Symbols/SlowGo.ts";
 import StrongPoint from "../Symbols/StrongPoint.ts";
 import SupportingAttack from "../Symbols/SupportingAttack.ts";

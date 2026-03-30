@@ -1,55 +1,113 @@
-/**
- * Class Representing Vital Area.
- * @class
- * @author Abdul Razak
- */
 import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
-import DrawEssentials from "../Support/DrawEssentials";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 export interface VitalAreaOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polygon;
     DRAW_TYPE?: number;
     [key: string]: any;
 }
-declare class VitalArea {
+/**
+ * VitalArea class for Vital Area symbol
+ * Supports multiple drawing types: Bezier curve (1), Polygon (2), Rectangle (3)
+ * Includes inner text markers
+ */
+export declare class VitalArea {
+    private view;
+    private layerManager;
+    private symbolLayer;
+    private isLine;
+    declaredClass: string;
     SID: string;
     symName: string;
     symGeometricType: string;
-    private map;
-    private isLine;
-    private _tGraphic;
     private _lineSym;
     private _points;
     private _geometryType;
     private _drawType;
+    private amplifier;
+    private isDrawing;
+    private tempGraphic;
+    private clickHandler;
+    private doubleClickHandler;
+    private mouseMoveHandler;
+    private eventListeners;
+    constructor(view: MapView | SceneView, isLine?: boolean);
+    /**
+     * Initialize the area of operations drawing
+     */
+    init(options: VitalAreaOptions, marker: SimpleLineSymbol): void;
+    /**
+     * Start interactive drawing mode
+     */
+    private startInteractiveDrawing;
+    /**
+     * Set up mouse event handlers for interactive drawing
+     */
+    private setupEventHandlers;
+    /**
+     * Handle click events
+     */
     private _onClickHandler;
+    /**
+     * Handle double click events
+     */
     private _onDoubleClickHandler;
-    private _onPointerMoveHandler;
-    constructor(map: MapView | SceneView, isLine: boolean);
-    init(options: VitalAreaOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void;
-    createDrawEssentials(ctrlPts: Point[], drawType: number): DrawEssentials;
-    createSymbol(drawEssentials: DrawEssentials): Polygon | null;
-    private CreateBezierPath;
+    /**
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler;
+    /**
+     * Create DrawEssentials object
+     */
+    private createDrawEssentials;
+    /**
+     * Create symbol geometry from DrawEssentials
+     */
+    private createSymbol;
+    /**
+     * Create inner text markers for Area of Operations
+     */
     private createInnerText;
-    private createSymbolByBCurve;
-    private createSymbolByPolygon;
-    private createSymbolByRect;
-    private _setupEventHandlers;
-    private _onPointerMoveHdler;
-    private _onClickHdler;
-    private _onDoubleClickHdler;
+    /**
+     * Utility method to calculate distance
+     */
+    private calculateDistance;
+    /**
+     * Clean up drawing state and finalize
+     */
     private cleanUp;
+    /**
+     * Handle draw end
+     */
     private __drawEnd;
+    /**
+     * Final draw end handler
+     */
     private __onDrawEnd;
+    /**
+     * Clear graphics and state
+     */
     private _clear;
+    /**
+     * Remove event handlers
+     */
     private _removeEvents;
+    /**
+     * Deactivate the drawing tool
+     */
     deactivate(): void;
-    private _cloneArray;
+    /**
+     * Event emitter functionality
+     */
     private emit;
+    private emitGlobalEvent;
+    on(eventName: string, callback: Function): void;
+    off(eventName: string, callback?: Function): void;
+    getSymbolLayer(): GraphicsLayer;
+    clearSymbols(): void;
 }
 export default VitalArea;

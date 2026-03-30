@@ -3,6 +3,8 @@ import Point from "@arcgis/core/geometry/Point";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
 import DrawEssentials from "./DrawEssentials";
 import Polygon from "@arcgis/core/geometry/Polygon";
+import MapView from "@arcgis/core/views/MapView";
+import SceneView from "@arcgis/core/views/SceneView";
 interface PointLike {
     x: number;
     y: number;
@@ -26,6 +28,20 @@ declare class Shapes {
         numberOfPoints: number;
         spatialReference: SpatialReference;
     }): Point[];
+    /**
+     * Create circle segment polygon from three points using a precomputed circle (screen-space) and convert back to map-space
+     */
+    static createCircleSegmentFromThreePoints(view: MapView | SceneView, circle: {
+        radius: number;
+        center: {
+            x: number;
+            y: number;
+        };
+    }, pt1: any, pt2: any, pt3: any, numberOfPts: number): {
+        geometry: Polygon;
+        lastPoint: Point;
+        backPoint: Point;
+    };
     /**
      * Create circle
      */
@@ -85,7 +101,7 @@ declare class Shapes {
     /**
      * Create letter G
      */
-    static createG(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createG(dx: number, dy: number, dr: number, sp: SpatialReference): Point[];
     /**
      * Create letter K
      */
@@ -143,6 +159,14 @@ declare class Shapes {
      */
     static createU(dx: number, dy: number, dr: number, sp: SpatialReference): Point[];
     /**
+     * Create letter U as separate strokes to avoid auto-closing
+     */
+    static createUStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    /**
+     * Create letter P as separate strokes to avoid auto-closing
+     */
+    static createPStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    /**
      * Create letter Y
      */
     static createY(dx: number, dy: number, dr: number, sp: SpatialReference): Point[];
@@ -160,24 +184,63 @@ declare class Shapes {
     static createNAI(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createTAI(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createZOR(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createZORStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createOStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createRStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createDStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createZORRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][];
     static createFAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createTStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createKStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createIStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createTAIStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createNStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createNAIStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createNAIRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][];
+    static createVStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createVAStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createVARings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][];
+    static createVA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    /**
+     * Convert a line segment to a thin rectangle ring (closed) of given stroke width
+     */
+    static createStrokedRectRing(p1: Point, p2: Point, strokeWidth: number): number[][];
+    /**
+     * Create closed polygon rings for TAI text using thin rectangles per stroke
+     */
+    static createTAIRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][];
     static createFUP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    /**
+     * Create FUP text using stroke-based approach to avoid auto-closing in ArcGIS API 4.33+
+     */
+    static createFUPStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createDAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createOBJ(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createSAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createDA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createCAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createCStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createCAAStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createCAARings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][];
     static createBAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createACP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createPL(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createSL(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createKG(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createKGStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createGStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createKGRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][];
     static createKZ(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createKZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createKZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][];
     static createLZ(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createLStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createLZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createLZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][];
     static createVG(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
-    static createVA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createVGStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
+    static createVGRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][];
     static createBL(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createDLNP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createLNP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
@@ -188,14 +251,59 @@ declare class Shapes {
     static CATK(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     static createDash(dx: number, dy: number, dr: number, sp: SpatialReference): Point[];
     /**
+     * Create arrow head geometry
+     */
+    static createArrowHead(pts: Point[]): number[][] | null;
+    /**
+     * Create simple arrow head as fallback
+     */
+    static createSimpleArrowHead(tip: Point, base: Point, arrowLength: number): number[][];
+    /**
      * Create backward arrow head
      */
     static arrowHeadBackward(candidatePoint: Point, length: number, angle: number): Point[];
     /**
+     * Create forward arrow head
+     */
+    static arrowHead(candidatePoint: Point, length: number, angle: number): Point[];
+    /**
      * Create extended arrow head path
      */
     static CreateArrowHeadPathEx(pt1: Point | PointLike, candidatePt: Point, pt2: Point | PointLike, totalLen: number, headPercentage: number, headAngle: number, straight?: boolean): PointLike[];
-    static CreateBezierPathPCOnly(pointCollection: Point[], numberOfPts: number): Point[];
+    static CreateBezierPathPCOnly(pointCollection: {
+        x: number;
+        y: number;
+    }[], numberOfPts: number): {
+        x: number;
+        y: number;
+    }[];
+    static createEllipsePath(center: {
+        x: number;
+        y: number;
+    }, width: number, height: number, numberOfPoints: number): number[][];
+    static getClosestPointOnLinesFromPairs(pXy: {
+        x: number;
+        y: number;
+    }, aXys: number[][]): {
+        x: number;
+        y: number;
+        index: number;
+        fTo: number;
+        fFrom: number;
+    };
+    static getClosestPointOnLinesFromPoints(pXy: {
+        x: number;
+        y: number;
+    }, aXys: {
+        x: number;
+        y: number;
+    }[]): {
+        x: number;
+        y: number;
+        index: number;
+        fTo: number;
+        fFrom: number;
+    };
     /**
      * Rotation utility methods
      */
@@ -204,7 +312,7 @@ declare class Shapes {
     /**
      * Create echelon (Note: This requires the Echelons module)
      */
-    static createEchelon(ech: string, pt: Point, radius: number, angle?: number): Point[];
+    static createEchelon(ech: string, pt: Point, radius: number, angle?: number): Point[] | Point[][];
     /**
      * Create Bezier path from points
      * Note: This requires TweenMax library which may not be available in 4.x
@@ -219,7 +327,7 @@ declare class Shapes {
     /**
      * Create Bezier curve symbol
      */
-    static createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference): Polygon;
+    static createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference): Polyline | Polygon;
     /**
      * Create polygon symbol
      */
@@ -236,5 +344,8 @@ declare class Shapes {
      * Create simple ellipse as fallback
      */
     static createSimpleEllipse(centerPoint: Point, radiusPoint: Point, spatialReference: SpatialReference): Polygon;
+    static createPolylineByLine(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference): Polyline;
+    static createPolylineByCloseLine(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference, faceGapConst: number): Polyline;
+    static createPolylineByPerfectEllipse(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference, faceGapConstEllipse: number): Polyline;
 }
 export default Shapes;

@@ -24,6 +24,8 @@ declare class Penetrate {
     symGeometricType: string;
     private view;
     private isLine;
+    private layerManager;
+    private symbolLayer;
     private _lineSymbol;
     private _points;
     private _baseLinePts;
@@ -109,6 +111,7 @@ declare class Penetrate {
      * Emit events
      */
     private emit;
+    private emitGlobalEvent;
     /**
      * Add event listener
      */

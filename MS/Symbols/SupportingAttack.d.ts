@@ -1,61 +1,123 @@
-/**
- * Class Representing Supporting Attack.
- *
- * @class
- * @author Abdul Razak
- */
+import Point from "@arcgis/core/geometry/Point";
+import Polyline from "@arcgis/core/geometry/Polyline";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
-import Point from "@arcgis/core/geometry/Point";
-import Polygon from "@arcgis/core/geometry/Polygon";
-import DrawEssentials from "../Support/DrawEssentials";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 export interface SupportingAttackOptions {
+    CTRL_PTS?: Point[];
+    GEOM?: Polyline;
     HEAD_RATIO?: number;
     TAIL_FACTOR?: number;
-    CTRL_PTS?: Point[];
-    GEOM?: any;
+    [key: string]: any;
 }
 /**
- * Class Representing Supporting Attack.
- * @class
- * @author Abdul Razak
+ * Supporting Attack class for drawing Supporting Attack Like Arrow symbols on MapView or SceneView
+ * Supports both immediate placement and interactive drawing modes
  */
-declare class SupportingAttack {
+export declare class SupportingAttack {
+    private view;
+    private layerManager;
+    private symbolLayer;
+    private isLine;
     declaredClass: string;
     SID: string;
     symName: string;
     symGeometricType: string;
-    private view;
-    private isLine;
     private _lineSym;
     private _points;
-    private _geometryType;
-    private _arrowHeadRatio;
-    private _onClk;
-    private _onDblClk;
-    private _onMM;
-    private _tGraphic;
+    private amplifier;
     private _tailFactor;
     private _headPercentage;
+    private isDrawing;
+    private tempGraphic;
+    private clickHandler;
+    private doubleClickHandler;
+    private mouseMoveHandler;
     private eventListeners;
-    constructor(view: MapView | SceneView, isLine: boolean);
-    emit(event: string, data: any): void;
-    on(event: string, callback: Function): void;
-    off(event: string, callback?: Function): void;
-    init(options: SupportingAttackOptions, marker: any): void;
+    constructor(view: MapView | SceneView, isLine?: boolean);
+    /**
+     * Initialize the freehand supporting attack drawing
+     */
+    init(options: FreehandSupportingAttackOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void;
+    /**
+     * Start interactive drawing mode
+     */
+    private startInteractiveDrawing;
+    /**
+     * Set up mouse event handlers for interactive drawing
+     */
+    private setupEventHandlers;
+    /**
+     * Handle click events
+     */
+    private _onClickHandler;
+    /**
+     * Handle double click events
+     */
+    private _onDoubleClickHandler;
+    /**
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler;
+    /**
+     * Create DrawEssentials object
+     */
     private createDrawEssentials;
-    createSymbol(drawEssentials: DrawEssentials): Polygon;
-    getBaseLinePts(): any;
-    private _onMMoveHdler;
-    private _onClckHdler;
-    private _onDblClkHandler;
+    /**
+     * Create symbol geometry from DrawEssentials
+     */
+    private createSymbol;
+    /**
+     * Create simple arrow for 2 points or less
+     */
+    private createSimpleArrow;
+    /**
+     * Create complex arrow for multiple points
+     */
+    private createComplexArrow;
+    /**
+     * Clean up drawing state and finalize
+     */
     private cleanUp;
+    /**
+     * Handle draw end
+     */
     private __drawEnd;
+    /**
+     * Final draw end handler
+     */
     private __onDrawEnd;
+    /**
+     * Clear graphics and state
+     */
     private _clear;
+    /**
+     * Remove event handlers
+     */
     private _removeEvents;
+    /**
+     * Deactivate the drawing tool
+     */
     deactivate(): void;
-    private _onDrawComplete;
-    private CreateArrowHeadPathEx;
+    /**
+     * Event emitter functionality
+     */
+    private emit;
+    /**
+     * Emit global events that can be caught by SymbolEngine
+     */
+    private emitGlobalEvent;
+    on(eventName: string, callback: Function): void;
+    off(eventName: string, callback?: Function): void;
+    /**
+     * Get the current symbol layer
+     */
+    getSymbolLayer(): GraphicsLayer;
+    /**
+     * Clear all symbols from the layer
+     */
+    clearSymbols(): void;
 }
 export default SupportingAttack;

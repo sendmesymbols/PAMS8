@@ -3,7 +3,6 @@ import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 export interface CounterAttackOptions {
     CTRL_PTS?: Point[];
@@ -12,14 +11,8 @@ export interface CounterAttackOptions {
     TAIL_FACTOR?: number;
     [key: string]: any;
 }
-export interface ArrowHeadResult {
-    rings: Array<{
-        x: number;
-        y: number;
-    }>;
-}
 /**
- * CounterAttack class for drawing Counter Attack symbols on MapView or SceneView
+ * CounterAttack class for drawing supporting attack arrow symbols on MapView or SceneView
  * Supports both immediate placement and interactive drawing modes
  */
 export declare class CounterAttack {
@@ -44,9 +37,9 @@ export declare class CounterAttack {
     private eventListeners;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
-     * Initialize the counter attack drawing
+     * Initialize the freehand close supporting attack drawing
      */
-    init(options: CounterAttackOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void;
+    init(options: CounterAttackOptions, marker: SimpleLineSymbol): void;
     /**
      * Start interactive drawing mode
      */
@@ -84,13 +77,9 @@ export declare class CounterAttack {
      */
     private createComplexArrow;
     /**
-     * Create arrow head path
+     * Add CATK lettering using many tiny 2D-safe rings to avoid auto-closing artifacts
      */
-    private CreateArrowHeadPathEx;
-    /**
-     * Create CATK (Counter Attack) "C" shapes
-     */
-    private createCATKShapes;
+    private addCatkSafeRings;
     /**
      * Clean up drawing state and finalize
      */

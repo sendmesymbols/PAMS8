@@ -1,42 +1,104 @@
+import Point from "@arcgis/core/geometry/Point";
+import Polyline from "@arcgis/core/geometry/Polyline";
+import MapView from "@arcgis/core/views/MapView";
+import SceneView from "@arcgis/core/views/SceneView";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+export interface SingleConcertinaOptions {
+    CTRL_PTS?: Point[];
+    GEOM?: Polyline;
+    DRAW_TYPE?: number;
+    [key: string]: any;
+}
 /**
- * Class Representing Single Concertina.
- * @class
- * @author Abdul Razak
+ * SingleConcertina class for Single Concertina symbol
  */
-import Point from '@arcgis/core/geometry/Point';
-import Polyline from '@arcgis/core/geometry/Polyline';
-import MapView from '@arcgis/core/views/MapView';
-import SceneView from '@arcgis/core/views/SceneView';
-import DrawEssentials from "../Support/DrawEssentials";
-declare class SingleConcertina {
+export declare class SingleConcertina {
+    private view;
+    private layerManager;
+    private symbolLayer;
+    private isLine;
     declaredClass: string;
     SID: string;
     symName: string;
     symGeometricType: string;
     isObstacle: string;
-    private map;
-    private isLine;
     private _lineSym;
     private _points;
     private _geometryType;
-    private _tGraphic;
-    private _onClk;
-    private _onDblClk;
-    private _onMM;
-    constructor(map: MapView | SceneView, isLine: boolean);
-    init(options: any, marker: any): void;
-    createDrawEssentials(ctrlPts: Point[]): DrawEssentials;
-    createSymbol(drawEssentials: DrawEssentials): Polyline | null;
-    private _onMMoveHdler;
-    private _onClckHdler;
-    private _onDblClkHandler;
+    private _drawType;
+    private amplifier;
+    private isDrawing;
+    private tempGraphic;
+    private clickHandler;
+    private doubleClickHandler;
+    private mouseMoveHandler;
+    private eventListeners;
+    constructor(view: MapView | SceneView, isLine?: boolean);
+    /**
+     * Initialize the Single Conc drawing
+     */
+    init(options: SingleConcertinaOptions, marker: SimpleLineSymbol): void;
+    /**
+     * Start interactive drawing mode
+     */
+    private startInteractiveDrawing;
+    /**
+     * Set up mouse event handlers for interactive drawing
+     */
+    private setupEventHandlers;
+    /**
+     * Handle click events
+     */
+    private _onClickHandler;
+    /**
+     * Handle double click events
+     */
+    private _onDoubleClickHandler;
+    /**
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler;
+    /**
+     * Create DrawEssentials object with symbol parameters
+     */
+    private createDrawEssentials;
+    /**
+     * Create a polyline containing oval paths + a base line path (legacy-like rightArray)
+     */
+    private createSymbol;
+    /**
+     * Complete the drawing process
+     */
     private cleanUp;
+    /**
+     * Handle draw end
+     */
     private __drawEnd;
+    /**
+     * Final draw end handler
+     */
     private __onDrawEnd;
+    /**
+     * Clear graphics and state
+     */
     private _clear;
+    /**
+     * Remove event handlers
+     */
     private _removeEvents;
+    /**
+     * Deactivate the drawing tool
+     */
     deactivate(): void;
-    private cloneArray;
+    /**
+     * Event emitter functionality
+     */
     private emit;
+    private emitGlobalEvent;
+    on(eventName: string, callback: Function): void;
+    off(eventName: string, callback?: Function): void;
+    getSymbolLayer(): GraphicsLayer;
+    clearSymbols(): void;
 }
 export default SingleConcertina;

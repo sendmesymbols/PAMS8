@@ -1,52 +1,115 @@
-/**
- * Class Representing No Go.
- * @class
- * @author Abdul Razak
- */
-import MapView from "@arcgis/core/views/MapView";
-import SceneView from "@arcgis/core/views/SceneView";
 import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
-import Evented from "@arcgis/core/core/Evented";
-type ViewType = MapView | SceneView;
-interface NoGoOptions {
+import MapView from "@arcgis/core/views/MapView";
+import SceneView from "@arcgis/core/views/SceneView";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+export interface NoGoOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polygon;
     DRAW_TYPE?: number;
+    opacity?: number;
+    [key: string]: any;
 }
-export default class NoGo extends Evented {
+/**
+ * NoGo class for drawing No Go area symbols on MapView or SceneView
+ * Supports both immediate placement and interactive drawing modes with opacity control
+ */
+export declare class NoGo {
+    private view;
+    private layerManager;
+    private symbolLayer;
+    private isLine;
     declaredClass: string;
     SID: string;
     symName: string;
     symGeometricType: string;
-    private view;
-    private isLine;
     private _lineSym;
     private _points;
-    private _geometryType;
     private _drawType;
-    private _tGraphic;
-    private _onClk;
-    private _onDblClk;
-    private _onMM;
-    constructor(view: ViewType, isLine: boolean);
-    init(options: NoGoOptions, marker: any): void;
-    private _setupEventHandlers;
-    private createDrawEssentials;
-    private createSymbol;
-    private _onMouseMoveHandler;
+    private _geometryType;
+    private _opacity;
+    private amplifier;
+    private isDrawing;
+    private tempGraphic;
+    private clickHandler;
+    private doubleClickHandler;
+    private mouseMoveHandler;
+    private eventListeners;
+    constructor(view: MapView | SceneView, isLine?: boolean);
+    /**
+     * Initialize the No Go area filled drawing
+     */
+    init(options: NoGoOptions, marker: SimpleLineSymbol): void;
+    /**
+     * Start interactive drawing mode
+     */
+    private startInteractiveDrawing;
+    /**
+     * Set up mouse event handlers for interactive drawing
+     */
+    private setupEventHandlers;
+    /**
+     * Handle click events
+     */
     private _onClickHandler;
+    /**
+     * Handle double click events
+     */
     private _onDoubleClickHandler;
+    /**
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler;
+    /**
+     * Create DrawEssentials object
+     */
+    private createDrawEssentials;
+    /**
+     * Create symbol geometry from DrawEssentials
+     */
+    private createSymbol;
+    /**
+     * Clean up drawing state and finalize
+     */
     private cleanUp;
+    /**
+     * Handle draw end
+     */
     private __drawEnd;
+    /**
+     * Final draw end handler
+     */
     private __onDrawEnd;
+    /**
+     * Clear graphics and state
+     */
     private _clear;
+    /**
+     * Remove event handlers
+     */
     private _removeEvents;
+    /**
+     * Deactivate the drawing tool
+     */
     deactivate(): void;
-    private CreateBezierPath;
-    private createSymbolByBCurve;
-    private createSymbolByPolygon;
-    private createSymbolByRect;
-    private createSymbolByPerfectEllipse;
+    /**
+     * Event emitter functionality
+     */
+    private emit;
+    /**
+     * Emit global events that can be caught by SymbolEngine
+     */
+    private emitGlobalEvent;
+    on(eventName: string, callback: Function): void;
+    off(eventName: string, callback?: Function): void;
+    /**
+     * Get the current symbol layer
+     */
+    getSymbolLayer(): GraphicsLayer;
+    /**
+     * Clear all symbols from the layer
+     */
+    clearSymbols(): void;
 }
-export {};
+export default NoGo;

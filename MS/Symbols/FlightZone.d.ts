@@ -1,52 +1,105 @@
-/**
- * Class Representing Flight Zone.
- * @class
- * @author Abdul Razak
- */
-import MapView from "@arcgis/core/views/MapView";
-import SceneView from "@arcgis/core/views/SceneView";
 import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
-import Evented from "@arcgis/core/core/Evented";
-type ViewType = MapView | SceneView;
-interface FlightZoneOptions {
+import MapView from "@arcgis/core/views/MapView";
+import SceneView from "@arcgis/core/views/SceneView";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+export interface FlightZoneOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polygon;
     DRAW_TYPE?: number;
+    [key: string]: any;
 }
-export default class FlightZone extends Evented {
+/**
+ * FlightZone class for Flight Zone symbol
+ * Supports multiple drawing types: Bezier curve (1), Polygon (2), Rectangle (3)
+ * Includes inner text markers
+ */
+export declare class FlightZone {
+    private view;
+    private layerManager;
+    private symbolLayer;
+    private isLine;
     declaredClass: string;
     SID: string;
     symName: string;
     symGeometricType: string;
-    private view;
-    private isLine;
     private _lineSym;
     private _points;
     private _geometryType;
     private _drawType;
-    private _tGraphic;
-    private _onClk;
-    private _onDblClk;
-    private _onMM;
-    constructor(view: ViewType, isLine: boolean);
-    init(options: FlightZoneOptions, marker: any): void;
-    private _setupEventHandlers;
-    private createDrawEssentials;
-    private createSymbol;
-    private _onMouseMoveHandler;
+    private amplifier;
+    private isDrawing;
+    private tempGraphic;
+    private clickHandler;
+    private doubleClickHandler;
+    private mouseMoveHandler;
+    private eventListeners;
+    constructor(view: MapView | SceneView, isLine?: boolean);
+    /**
+     * Initialize the Landing Zone drawing
+     */
+    init(options: FlightZoneOptions, marker: SimpleLineSymbol): void;
+    /**
+     * Start interactive drawing mode
+     */
+    private startInteractiveDrawing;
+    /**
+     * Set up mouse event handlers for interactive drawing
+     */
+    private setupEventHandlers;
+    /**
+     * Handle click events
+     */
     private _onClickHandler;
+    /**
+     * Handle double click events
+     */
     private _onDoubleClickHandler;
+    /**
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler;
+    /**
+     * Create DrawEssentials object
+     */
+    private createDrawEssentials;
+    /**
+     * Create symbol geometry from DrawEssentials
+     */
+    private createSymbol;
+    /**
+     * Clean up drawing state and finalize
+     */
     private cleanUp;
+    /**
+     * Handle draw end
+     */
     private __drawEnd;
+    /**
+     * Final draw end handler
+     */
     private __onDrawEnd;
+    /**
+     * Clear graphics and state
+     */
     private _clear;
+    /**
+     * Remove event handlers
+     */
     private _removeEvents;
+    /**
+     * Deactivate the drawing tool
+     */
     deactivate(): void;
-    private CreateBezierPath;
-    private createInnerText;
-    private createSymbolByBCurve;
-    private createSymbolByPolygon;
-    private createSymbolByRect;
+    /**
+     * Event emitter functionality
+     */
+    private emit;
+    private emitGlobalEvent;
+    on(eventName: string, callback: Function): void;
+    off(eventName: string, callback?: Function): void;
+    getSymbolLayer(): GraphicsLayer;
+    clearSymbols(): void;
 }
-export {};
+export default FlightZone;

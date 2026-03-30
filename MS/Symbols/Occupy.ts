@@ -1,14 +1,14 @@
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import Polygon from "@arcgis/core/geometry/Polygon";
 import Graphic from "@arcgis/core/Graphic";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import DrawEssentials from "../Support/DrawEssentials";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
-import BattlePosition from "./BattlePosition.ts";
+import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 
 export interface OccupyOptions {
     CTRL_PTS?: Point[];
@@ -30,6 +30,8 @@ class Occupy {
 
     private view: MapView | SceneView;
     private isLine: boolean;
+    private layerManager: GraphicsLayerManager;
+    private symbolLayer: GraphicsLayer;
     private _lineSymbol: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
     private _geometryType: string | null = null;
@@ -48,6 +50,9 @@ class Occupy {
     constructor(view: MapView | SceneView, isLine: boolean) {
         this.view = view;
         this.isLine = isLine;
+        this.layerManager = GraphicsLayerManager.getInstance(view);
+        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+        this.layerManager.initializeLayers();
     }
 
     /**
@@ -64,12 +69,12 @@ class Occupy {
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
             this._tGraphic = new Graphic({ geometry: options.GEOM });
             drawEssentials.CTRL_PTS = [...(options.CTRL_PTS || [])];
-            drawEssentials.ECHLON = this._echlon;
+            (drawEssentials as any).ECHELON = this._echlon.toString();
             this.__drawEnd(this._tGraphic.geometry as Polyline, drawEssentials);
             this._clear();
         } else if (options.hasOwnProperty("CTRL_PTS")) {
             drawEssentials.CTRL_PTS = [...(options.CTRL_PTS || [])];
-            drawEssentials.ECHLON = this._echlon;
+            (drawEssentials as any).ECHELON = this._echlon.toString();
             this._tGraphic = new Graphic({ 
                 geometry: this.createSymbol(drawEssentials),
                 symbol: this._lineSymbol 
@@ -78,9 +83,7 @@ class Occupy {
             this._clear();
         } else {
             this._tGraphic = new Graphic({ symbol: this._lineSymbol });
-            if ((this.view as any).graphics) {
-                (this.view as any).graphics.add(this._tGraphic);
-            }
+            this.symbolLayer.add(this._tGraphic);
 
             this._onClick = this.view.on("click", this._onClickHandler.bind(this));
             this._onDblClick = this.view.on("double-click", this._onDblClickHandler.bind(this));
@@ -117,7 +120,7 @@ class Occupy {
         drawEssentials.SYM_NAME = this.symName;
         drawEssentials.CTRL_PTS = ctrlPts;
         drawEssentials.AMPLIFIER = (this as any).amplifier;
-        drawEssentials.ECHELON = echlon.toString();
+        (drawEssentials as any).ECHELON = echlon.toString();
         return drawEssentials;
     }
 
@@ -247,7 +250,7 @@ class Occupy {
 
         const drawEssentials = new DrawEssentials();
         drawEssentials.CTRL_PTS = [...this._points, candidatePoint];
-        drawEssentials.ECHELON = this._echlon.toString();
+        (drawEssentials as any).ECHELON = this._echlon.toString();
 
         if (this._tGraphic) {
             this._tGraphic.geometry = this.createSymbol(drawEssentials);
@@ -345,8 +348,8 @@ class Occupy {
      * Clear drawing state
      */
     private _clear(): void {
-        if (this._tGraphic && (this.view as any).graphics) {
-            (this.view as any).graphics.remove(this._tGraphic);
+        if (this._tGraphic) {
+            this.symbolLayer.remove(this._tGraphic);
         }
 
         this._tGraphic = null;
@@ -377,6 +380,7 @@ class Occupy {
      */
     private _circleDrawEx(pt1: any, pt2: any, pt3: any): { radius: number; center: { x: number; y: number } } {
         let r, m11, m12, m13, m14;
+        let Xo = 0, Yo = 0;
         const a = [
             [0, 0, 0],
             [0, 0, 0],
@@ -419,8 +423,8 @@ class Occupy {
         if (m11 === 0) {
             r = 0;
         } else {
-            const Xo = 0.5 * m12 / m11;
-            const Yo = -0.5 * m13 / m11;
+            Xo = 0.5 * m12 / m11;
+            Yo = -0.5 * m13 / m11;
             r = Math.sqrt(Xo * Xo + Yo * Yo + m14 / m11);
         }
 
@@ -516,6 +520,24 @@ class Occupy {
         const listeners = this.eventListeners.get(eventName);
         if (listeners) {
             listeners.forEach(callback => callback(data));
+        }
+        this.emitGlobalEvent(eventName, data);
+    }
+
+    private emitGlobalEvent(eventName: string, data: any): void {
+        const customEvent = new CustomEvent(eventName, {
+            detail: {
+                symbolType: "Occupy",
+                eventName,
+                ...data
+            },
+            bubbles: true,
+            cancelable: true
+        });
+        if (this.view && this.view.container) {
+            this.view.container.dispatchEvent(customEvent);
+        } else {
+            document.dispatchEvent(customEvent);
         }
     }
 

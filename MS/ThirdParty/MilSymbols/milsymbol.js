@@ -5557,6 +5557,33 @@ MS._getNumberSIDCicn = function (symbolSet, icn, _STD2525) {
 		sId['150513'] = [icn['GR.IC.EW SAF']];
 		sId['150514'] = [icn['GR.IC.EW TA CELL']];
 
+    //Symbols from MT Trg Facilities
+
+    sId['121451'] = [icn['GR.TRG.FAC.AFV RG']];
+    sId['121452'] = [icn['GR.TRG.FAC.ARTY RG']];
+    sId['121453'] = [icn['GR.TRG.FAC.CL RG']];
+    sId['121454'] = [icn['GR.TRG.FAC.SHORT RG']];
+    sId['121455'] = [icn['GR.TRG.FAC.MINI RG']];
+    sId['121456'] = [icn['GR.TRG.FAC.SUB CAL RG']];
+    sId['121457'] = [icn['GR.TRG.FAC.UP DN HILL RG']];
+    sId['121458'] = [icn['GR.TRG.FAC.BULT ARREST RG']];
+    sId['121459'] = [icn['GR.TRG.FAC.DCB RG']];
+    sId['121460'] = [icn['GR.TRG.FAC.GREN RG']];
+    sId['121461'] = [icn['GR.TRG.FAC.CBRN CMPLX']];
+    sId['121462'] = [icn['GR.TRG.FAC.TRG SHED']];
+    sId['121463'] = [icn['GR.TRG.FAC.CQB RG']];
+    sId['121464'] = [icn['GR.TRG.FAC.ASLT CRSE']];
+    sId['121465'] = [icn['GR.TRG.FAC.CTC']];
+    sId['121466'] = [icn['GR.TRG.FAC.QRC']];
+    sId['121467'] = [icn['GR.TRG.FAC.IRC']];
+    sId['121468'] = [icn['GR.TRG.FAC.ICRC']];
+    sId['121469'] = [icn['GR.TRG.FAC.SCF']];
+    sId['121470'] = [icn['GR.TRG.FAC.PL POST']];
+    sId['121471'] = [icn['GR.TRG.FAC.CTTS']];
+    sId['121472'] = [icn['GR.TRG.FAC.MISC']];
+    sId['121473'] = [icn['GR.TRG.FAC.SPORTS']];
+    sId['121474'] = [icn['GR.TRG.FAC.FFR']];
+
 		sIdm1['01'] = [icn['GR.M1.AIRMOBILE/AIR ASSAULT']];
 		sIdm1['02'] = [icn['GR.M1.AREA']];
 		sIdm1['03'] = [icn['GR.M1.ATTACK']];
