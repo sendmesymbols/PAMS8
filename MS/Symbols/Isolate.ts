@@ -1,40 +1,38 @@
-import Graphic from "@arcgis/core/Graphic";
-import Point from "@arcgis/core/geometry/Point";
-import Polyline from "@arcgis/core/geometry/Polyline";
-import MapView from "@arcgis/core/views/MapView";
-import SceneView from "@arcgis/core/views/SceneView";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
-import DrawEssentials from "../Support/DrawEssentials";
-import Amplifier from "../Support/Amplifier";
-import BaseLine from "../Support/BaseLine.ts";
-import GeoTools from "../Support/GeoTools.ts";
-import Shapes from "../Support/Shapes.ts";
+import Graphic from '@arcgis/core/Graphic';
+import Point from '@arcgis/core/geometry/Point';
+import Polyline from '@arcgis/core/geometry/Polyline';
+import MapView from '@arcgis/core/views/MapView';
+import SceneView from '@arcgis/core/views/SceneView';
+import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
+import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
+import GraphicsLayerManager, {
+  LAYER_NAMES,
+} from '../Managers/GraphicsLayerManager';
+import DrawEssentials from '../Support/DrawEssentials';
+import Amplifier from '../Support/Amplifier';
+import BaseLine from '../Support/BaseLine.ts';
+import GeoTools from '../Support/GeoTools.ts';
+import Shapes from '../Support/Shapes.ts';
 
 export interface ContainOptions {
   CTRL_PTS?: Point[];
-  BASE_LN_PTS?: {startPt: Point, endPt: Point};
+  BASE_LN_PTS?: { startPt: Point; endPt: Point };
   GEOM?: Polyline;
+  TEETH_SIZE?: number;
+  TEETH_GAP?: number;
   [key: string]: any;
 }
 
-/**
- * Contain class for drawing Contain tactical symbols
- * Uses baseline + control points
- * Returns Polyline geometry despite being classified as an Area symbol
- */
 export class Isolate {
   private view: MapView | SceneView;
   private layerManager: GraphicsLayerManager;
   private symbolLayer: GraphicsLayer;
   private isLine: boolean;
 
-  // Symbol properties
-  public declaredClass: string = "MilitarySymbology.Symbols.Isolate";
-  public SID: string = "341500";
-  public symName: string = "Isolate";
-  public symGeometricType: string = "Area";
+  public declaredClass: string = 'MilitarySymbology.Symbols.Isolate';
+  public SID: string = '341500';
+  public symName: string = 'Isolate';
+  public symGeometricType: string = 'Area';
 
   private _lineSym: SimpleLineSymbol | null = null;
   private _points: Point[] = [];
@@ -42,15 +40,13 @@ export class Isolate {
   private _geometryType: string | null = null;
   private amplifier: Amplifier;
 
-  private _teethSize:number = 2;
-  private _teethGap:number = 5;
+  private _teethSize: number = 2;
+  private _teethGap: number = 5;
 
-  // Drawing state
   private isDrawing: boolean = false;
   private tempGraphic: Graphic | null = null;
   private baseLineComplete: boolean = false;
 
-  // Event handlers
   private clickHandler: any = null;
   private doubleClickHandler: any = null;
   private mouseMoveHandler: any = null;
@@ -58,7 +54,6 @@ export class Isolate {
   private baseLineProgressHandler: any = null;
   private baseLineClickHandler: any = null;
 
-  // Event emitter
   private eventListeners: Map<string, Function[]> = new Map();
 
   constructor(view: MapView | SceneView, isLine: boolean = false) {
@@ -67,51 +62,54 @@ export class Isolate {
     this.layerManager = GraphicsLayerManager.getInstance(view);
     this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
     this.amplifier = new Amplifier();
-
-    // Initialize layers if not already done
     this.layerManager.initializeLayers();
-
-    // Initialize temporary graphic
     this.tempGraphic = new Graphic();
   }
 
-  /**
-   * Initialize the Isolate drawing
-   */
   public init(options: ContainOptions, marker: SimpleLineSymbol): void {
     this._lineSym = marker.clone();
+    this._teethSize = GeoTools.setDefault(options, 'TEETH_SIZE', 2);
+    this._teethGap = GeoTools.setDefault(options, 'TEETH_GAP', 5);
 
-    this._teethSize = 2;
-    this._teethGap = 5;
-
-
-    const drawEssentials = new DrawEssentials();
-
-    this._teethSize = GeoTools.setDefault(options, "TEETH_SIZE", this._teethSize);
-    this._teethGap = GeoTools.setDefault(options, "TEETH_GAP", this._teethGap);
-    if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
-      // Immediate placement with both control points and geometry
+    if (
+      options.hasOwnProperty('CTRL_PTS') &&
+      options.hasOwnProperty('BASE_LN_PTS') &&
+      options.hasOwnProperty('GEOM') &&
+      options.GEOM !== null
+    ) {
       if (options.GEOM && this.tempGraphic) {
         try {
-          // If GEOM is already a Polyline, use it directly; otherwise, build from paths
-          this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
-            ? options.GEOM
-            : new Polyline({ paths: (options.GEOM as any), spatialReference: this.view.spatialReference });
+          this.tempGraphic.geometry =
+            options.GEOM instanceof Polyline
+              ? options.GEOM
+              : new Polyline({
+                  paths: options.GEOM as any,
+                  spatialReference: this.view.spatialReference,
+                });
         } catch (error) {
-          console.error(this.symName, "Failed to create Polyline geometry:", error);
+          console.error(
+            this.symName,
+            'Failed to create Polyline geometry:',
+            error,
+          );
         }
       }
-
-      const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
+      const drawEss = this.createDrawEssentials(
+        options.CTRL_PTS!.slice(),
+        options.BASE_LN_PTS!,
+        this._teethSize,
+      );
       if (this.tempGraphic && this.tempGraphic.geometry) {
         this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
       }
       this._clear();
-
-    } else if (options.hasOwnProperty("CTRL_PTS")) {
-      if (options.hasOwnProperty("BASE_LN_PTS")) {
-        // Immediate placement with control points and baseline
-        const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
+    } else if (options.hasOwnProperty('CTRL_PTS')) {
+      if (options.hasOwnProperty('BASE_LN_PTS')) {
+        const drawEss = this.createDrawEssentials(
+          options.CTRL_PTS!.slice(),
+          options.BASE_LN_PTS!,
+          this._teethSize,
+        );
         const geometry = this.createSymbol(drawEss);
         if (geometry && this.tempGraphic) {
           this.tempGraphic.geometry = geometry;
@@ -119,67 +117,56 @@ export class Isolate {
           this._clear();
         }
       } else {
-        throw new Error("Control Points and Baseline or Distance is required to create symbol non-interactively");
+        throw new Error(
+          'Control Points and Baseline or Distance is required to create symbol non-interactively',
+        );
       }
-
     } else {
-      // Interactive drawing mode - start with baseline
       this.startBaseLineDrawing();
     }
   }
 
-  /**
-   * Start baseline drawing
-   */
   private startBaseLineDrawing(): void {
     const baseLine = new BaseLine(this.view, this._lineSym!);
 
-    this.baseLineClickHandler = baseLine.on("onBaseLineClick", (evt: any) => {
+    this.baseLineClickHandler = baseLine.on('onBaseLineClick', (evt: any) => {
       this.baseLineClick(evt);
     });
 
-    this.baseLineProgressHandler = baseLine.on("onBaseLineProgress", (evt: any) => {
-      this.baseLineDrawProgress(evt);
-    });
+    this.baseLineProgressHandler = baseLine.on(
+      'onBaseLineProgress',
+      (evt: any) => {
+        this.baseLineDrawProgress(evt);
+      },
+    );
 
-    this.baseLineEndHandler = baseLine.on("drawEnd", (evt: any) => {
+    this.baseLineEndHandler = baseLine.on('drawEnd', (evt: any) => {
       this.baseLineDrawEnd(evt);
     });
 
     baseLine.init();
   }
 
-  /**
-   * Handle baseline click events
-   */
   private baseLineClick(evt: any): void {
-    this.emit("onDrawClick", {
+    this.emit('onDrawClick', {
       currentPts: evt.currentGeometry,
-      isBaseLine: true
+      isBaseLine: true,
     });
   }
 
-  /**
-   * Handle baseline draw progress
-   */
   private baseLineDrawProgress(evt: any): void {
     const localDrawEssentials: any = {};
     localDrawEssentials.CTRL_PTS = evt.currentGeometry;
-
     const pl = new Polyline({ spatialReference: this.view.spatialReference });
     pl.addPath(evt.currentGeometry);
-
-    this.emit("onDrawProgress", {
+    this.emit('onDrawProgress', {
       currentGeometry: pl,
       currentDrawEssentials: localDrawEssentials,
       currentMarker: evt.currentMarker,
-      isBaseLine: true
+      isBaseLine: true,
     });
   }
 
-  /**
-   * Handle baseline draw end
-   */
   private baseLineDrawEnd(evt: any): void {
     if (this.baseLineEndHandler) {
       this.baseLineEndHandler.remove();
@@ -188,44 +175,31 @@ export class Isolate {
 
     this.tempGraphic = new Graphic({
       geometry: evt.geometry,
-      symbol: this._lineSym
+      symbol: this._lineSym,
     });
     this.symbolLayer.add(this.tempGraphic);
 
     this._baseLinePts = (evt.geometry as any)._baseLine;
     this.baseLineComplete = true;
-
-    // Start control point drawing
     this.setupControlPointHandlers();
 
-    this.emit("onBaseLineDrawEnd", {
-      currentPts: (evt.geometry as any).controlPoints
+    this.emit('onBaseLineDrawEnd', {
+      currentPts: (evt.geometry as any).controlPoints,
     });
   }
 
-  /**
-   * Set up control point drawing handlers
-   */
   private setupControlPointHandlers(): void {
-    // Mouse move handler
-    this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
+    this.mouseMoveHandler = this.view.on('pointer-move', (event) => {
       this._onMouseMoveHandler(event);
     });
-
-    // Click handler
-    this.clickHandler = this.view.on("click", (event) => {
+    this.clickHandler = this.view.on('click', (event) => {
       this._onClickHandler(event);
     });
-
-    // Double click handler
-    this.doubleClickHandler = this.view.on("double-click", (event) => {
+    this.doubleClickHandler = this.view.on('double-click', (event) => {
       this._onDoubleClickHandler(event);
     });
   }
 
-  /**
-   * Handle click events for control points
-   */
   private _onClickHandler(clickEvent: any): void {
     const mapPoint = this.view.toMap(clickEvent);
     if (!mapPoint) return;
@@ -233,23 +207,17 @@ export class Isolate {
     const point = new Point({
       x: mapPoint.x,
       y: mapPoint.y,
-      spatialReference: this.view.spatialReference
+      spatialReference: this.view.spatialReference,
     });
-
     this._points.push(point);
+    this.emit('onDrawClick', { currentPts: this._points });
 
-    this.emit("onDrawClick", { currentPts: this._points });
-
-    // For single line mode, finish after first click
     if (this.isLine === true && this._points.length === 1) {
-      this.emit("onDrawClick", { currentPts: this._points });
+      this.emit('onDrawClick', { currentPts: this._points });
       this.cleanUp();
     }
   }
 
-  /**
-   * Handle double click events
-   */
   private _onDoubleClickHandler(clickEvent: any): void {
     const mapPoint = this.view.toMap(clickEvent);
     if (!mapPoint) return;
@@ -257,16 +225,12 @@ export class Isolate {
     const point = new Point({
       x: mapPoint.x,
       y: mapPoint.y,
-      spatialReference: this.view.spatialReference
+      spatialReference: this.view.spatialReference,
     });
-
     this._points.push(point);
     this.cleanUp();
   }
 
-  /**
-   * Handle mouse move events
-   */
   private _onMouseMoveHandler(inputEvent: any): void {
     if (!this.baseLineComplete || !this.tempGraphic) return;
 
@@ -276,145 +240,277 @@ export class Isolate {
     const candidatePoint = new Point({
       x: mapPoint.x,
       y: mapPoint.y,
-      spatialReference: this.view.spatialReference
+      spatialReference: this.view.spatialReference,
     });
-
-    const drawEssentials = new DrawEssentials();
-    (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
-    (drawEssentials as any).BASE_LN_PTS = this._baseLinePts;
-
+    const drawEssentials = this.createDrawEssentials(
+      this._points.concat([candidatePoint]),
+      this._baseLinePts,
+      this._teethSize,
+    );
     const geometry = this.createSymbol(drawEssentials);
+
     if (geometry) {
       this.tempGraphic.geometry = geometry;
-      this.emit("onDrawProgress", {
+      this.emit('onDrawProgress', {
         currentGeometry: geometry,
         currentDrawEssentials: drawEssentials,
-        currentMarker: this._lineSym
+        currentMarker: this._lineSym,
       });
     }
   }
 
-  /**
-   * Create DrawEssentials object
-   */
-  private createDrawEssentials(ctrlPts: Point[], baseLinePts: any): DrawEssentials {
+  private createDrawEssentials(
+    ctrlPts: Point[],
+    baseLinePts: any,
+    teethSize: number,
+  ): DrawEssentials {
     const drawEssentials = new DrawEssentials();
     drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
     drawEssentials.SID = this.SID;
     drawEssentials.SYM_NAME = this.symName;
     drawEssentials.GEOM = null;
     drawEssentials.AMPLIFIER = this.amplifier.toString();
-
-    // Store additional properties
     (drawEssentials as any).SCOPE = this;
     (drawEssentials as any).CTRL_PTS = ctrlPts;
     (drawEssentials as any).BASE_LN_PTS = baseLinePts;
-
+    (drawEssentials as any).TEETH_SIZE = teethSize;
     return drawEssentials;
   }
 
-  /**
-   * Create symbol geometry from DrawEssentials
-   */
+  private CreateCircleSegmentFromThreePoints(
+    circle: { radius: number; center: { x: number; y: number } },
+    pt1: any,
+    pt2: any,
+    pt3: any,
+    numberOfPts: number,
+    view: any,
+  ): { geometry: Polyline; lastPoint: Point; backPoint: Point } {
+    const center = circle.center;
+    const radius = circle.radius;
+    const path: Point[] = [];
+
+    pt1.x -= center.x;
+    pt1.y -= center.y;
+    pt2.x -= center.x;
+    pt2.y -= center.y;
+    pt3.x -= center.x;
+    pt3.y -= center.y;
+
+    let anglePt1 = Math.atan2(pt1.y, pt1.x);
+    let anglePt2 = Math.atan2(pt2.y, pt2.x);
+    let anglePt3 = Math.atan2(pt3.y, pt3.x);
+
+    anglePt1 = anglePt1 < 0 ? 2 * Math.PI + anglePt1 : anglePt1;
+    anglePt2 = anglePt2 < 0 ? 2 * Math.PI + anglePt2 : anglePt2;
+    anglePt3 = anglePt3 < 0 ? 2 * Math.PI + anglePt3 : anglePt3;
+
+    const startAngle = Math.min(anglePt1, anglePt2);
+    const endAngle = Math.max(anglePt1, anglePt2);
+    let swipeAngle = endAngle - startAngle;
+
+    if (anglePt3 < startAngle || anglePt3 > endAngle) {
+      swipeAngle -= 2 * Math.PI;
+    }
+
+    const angle = swipeAngle / numberOfPts;
+
+    for (let i = 0; i <= numberOfPts; i++) {
+      const screenPt = {
+        x: radius * Math.cos(startAngle + i * angle) + center.x,
+        y: radius * Math.sin(startAngle + i * angle) + center.y,
+      };
+      const mapPt = view.toMap(screenPt);
+      path.push(mapPt);
+    }
+
+    const result = new Polyline({ spatialReference: view.spatialReference });
+    result.addPath(path.map((p) => [p.x, p.y]));
+
+    return {
+      geometry: result,
+      lastPoint: path[numberOfPts],
+      backPoint: path[numberOfPts - 5],
+    };
+  }
+
   private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
     try {
       const spatialReference = this.view.spatialReference;
       const pts: Point[] = (drawEssentials as any).CTRL_PTS;
-      if (!pts || pts.length === 0) throw new Error("controlPoints not found");
+      if (!pts || pts.length === 0) throw new Error('controlPoints not found');
 
-      // Determine baseline start/end and candidate point (legacy: pts[0], pts[1], pts[2])
-      let startingPt: Point | null = (drawEssentials as any).BASE_LN_PTS?.startPt || null;
-      let endPt: Point | null = (drawEssentials as any).BASE_LN_PTS?.endPt || null;
+      let startingPt: Point | null =
+        (drawEssentials as any).BASE_LN_PTS?.startPt || null;
+      let endPt: Point | null =
+        (drawEssentials as any).BASE_LN_PTS?.endPt || null;
+
       if (!startingPt || !endPt) {
         if (pts.length >= 2) {
           startingPt = pts[0];
           endPt = pts[1];
         } else {
-          throw new Error("First Parameter of the Function is an Array with Start and End Point");
+          throw new Error(
+            'First Parameter of the Function is an Array with Start and End Point',
+          );
         }
       }
 
       const result = new Polyline({ spatialReference });
+      const candidatePoint: Point =
+        pts.length > 2 ? pts[pts.length - 1] : endPt;
 
-      // Candidate point defines arc side
-      const candidatePoint: Point = pts[pts.length - 1];
-
-      // Build circle from three points in screen space
       const stScr = (this.view as any).toScreen(startingPt);
       const endScr = (this.view as any).toScreen(endPt);
       const candScr = (this.view as any).toScreen(candidatePoint);
       if (!stScr || !endScr || !candScr) return null;
 
-      const circle = GeoTools.circleFromThreeScreenPoints(stScr, endScr, candScr);
+      const circle = GeoTools.circleFromThreeScreenPoints(
+        stScr,
+        endScr,
+        candScr,
+      );
+
       if (!circle || circle.radius <= 0) {
-        result.addPath([[startingPt.x, startingPt.y], [endPt.x, endPt.y]]);
+        result.addPath([
+          [startingPt.x, startingPt.y],
+          [endPt.x, endPt.y],
+        ]);
         return result;
       }
 
-      const circleSeg = Shapes.createCircleSegmentFromThreePoints(this.view as any, circle, stScr, endScr, candScr, 60);
-      const ring = (circleSeg.geometry as any).rings?.[0] as number[][];
-      if (!ring || ring.length === 0) return null;
+      const circleSeg = this.CreateCircleSegmentFromThreePoints(
+        circle,
+        stScr,
+        endScr,
+        candScr,
+        60,
+        this.view,
+      );
+      const paths = circleSeg.geometry.paths?.[0] as number[][];
+      if (!paths || paths.length === 0) return null;
 
-      // Split arc with a gap (mirror legacy indices)
-      const firstArc = ring.slice(0, 25);
-      const secondArc = ring.slice(35, 60);
+      const firstArc = paths.slice(0, 25);
+      const secondArc = paths.slice(35, 60);
       if (firstArc.length >= 2) result.addPath(firstArc);
       if (secondArc.length >= 2) result.addPath(secondArc);
 
-      // Create central 'I' at the gap
-      if (ring[30] && ring[25] && ring[35]) {
-        const cPoint = new Point({ x: ring[30][0], y: ring[30][1], spatialReference });
-        const firstPoint = new Point({ x: ring[25][0], y: ring[25][1], spatialReference });
-        const secondPoint = new Point({ x: ring[35][0], y: ring[35][1], spatialReference });
+      if (paths[30] && paths[25] && paths[35]) {
+        const cPoint = new Point({
+          x: paths[30][0],
+          y: paths[30][1],
+          spatialReference,
+        });
+        const firstPoint = new Point({
+          x: paths[25][0],
+          y: paths[25][1],
+          spatialReference,
+        });
+        const secondPoint = new Point({
+          x: paths[35][0],
+          y: paths[35][1],
+          spatialReference,
+        });
         const baseLineLen = GeoTools._2PtLen(firstPoint, secondPoint);
         let cLenLimit = baseLineLen / 5;
         if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-        const iPts: Point[] = (Shapes as any).createI(cPoint.x, cPoint.y, cLenLimit, spatialReference) || [];
-        if (iPts.length) result.addPath(iPts.map(p => [p.x, p.y]));
+        const iPts: Point[] =
+          (Shapes as any).createI(
+            cPoint.x,
+            cPoint.y,
+            cLenLimit,
+            spatialReference,
+          ) || [];
+        if (iPts.length) result.addPath(iPts.map((p) => [p.x, p.y]));
       }
 
-      // Create wings from end point using adjusted angles
       if (endPt && circleSeg.lastPoint && circleSeg.backPoint) {
-        const cPoint = new Point({ x: ring[30][0], y: ring[30][1], spatialReference });
+        const cPoint = new Point({
+          x: paths[30][0],
+          y: paths[30][1],
+          spatialReference,
+        });
         const length = GeoTools._2PtLen(endPt, cPoint) / 10;
-        let angle = GeoTools.twoPtsAngle(circleSeg.backPoint, circleSeg.lastPoint);
-        // Inner wing
-        if (angle < Math.PI) angle += 2.35619; else angle -= 2.35619; // +/- 135 deg
-        const innerWing = [endPt.x + length * Math.cos(angle), endPt.y + length * Math.sin(angle)];
+        let angle = GeoTools.twoPtsAngle(
+          circleSeg.backPoint,
+          circleSeg.lastPoint,
+        );
+
+        let innerAngle = angle < Math.PI ? angle + 2.35619 : angle - 2.35619;
+        const innerWing = [
+          endPt.x + length * Math.cos(innerAngle),
+          endPt.y + length * Math.sin(innerAngle),
+        ];
         result.addPath([innerWing, [endPt.x, endPt.y]]);
 
-        // Outer wing
         angle = GeoTools.twoPtsAngle(circleSeg.backPoint, circleSeg.lastPoint);
-        if (angle > Math.PI) angle += 2.35619; else angle -= 2.35619;
-        const outerWing = [endPt.x + length * Math.cos(angle), endPt.y + length * Math.sin(angle)];
+        let outerAngle = angle > Math.PI ? angle + 2.35619 : angle - 2.35619;
+        const outerWing = [
+          endPt.x + length * Math.cos(outerAngle),
+          endPt.y + length * Math.sin(outerAngle),
+        ];
         result.addPath([outerWing, [endPt.x, endPt.y]]);
       }
 
-      // Inner teeth towards center using fixed index pairs
       const ext = result.extent;
       const centerPt = ext?.center;
       if (centerPt) {
-        const center = new Point({ x: centerPt.x, y: centerPt.y, spatialReference });
-        const cPoint = new Point({ x: ring[30][0], y: ring[30][1], spatialReference });
+        const center = new Point({
+          x: centerPt.x,
+          y: centerPt.y,
+          spatialReference,
+        });
+        const cPoint = new Point({
+          x: paths[30][0],
+          y: paths[30][1],
+          spatialReference,
+        });
         const length = GeoTools._2PtLen(endPt!, cPoint) / 10;
-        const teethSize = length * GeoTools.setDefault(drawEssentials as any, "TEETH_SIZE", this._teethSize);
+        const teethSize =
+          length *
+          GeoTools.setDefault(
+            drawEssentials as any,
+            'TEETH_SIZE',
+            this._teethSize,
+          );
 
-        // From first arc path (index 0)
-        const firstPairs = [[1, 7], [9, 15], [17, 23]];
+        const firstPairs = [
+          [1, 7],
+          [9, 15],
+          [17, 23],
+        ];
         for (const [a, b] of firstPairs) {
           if (firstArc[a] && firstArc[b]) {
-            const s = new Point({ x: firstArc[a][0], y: firstArc[a][1], spatialReference });
-            const e = new Point({ x: firstArc[b][0], y: firstArc[b][1], spatialReference });
+            const s = new Point({
+              x: firstArc[a][0],
+              y: firstArc[a][1],
+              spatialReference,
+            });
+            const e = new Point({
+              x: firstArc[b][0],
+              y: firstArc[b][1],
+              spatialReference,
+            });
             result.addPath(this.createTeeth3(s, e, center, teethSize));
           }
         }
 
-        // From second arc path (index 1)
-        const secondPairs = [[1, 7], [9, 15], [17, 23]];
+        const secondPairs = [
+          [1, 7],
+          [9, 15],
+          [17, 23],
+        ];
         for (const [a, b] of secondPairs) {
           if (secondArc[a] && secondArc[b]) {
-            const s = new Point({ x: secondArc[a][0], y: secondArc[a][1], spatialReference });
-            const e = new Point({ x: secondArc[b][0], y: secondArc[b][1], spatialReference });
+            const s = new Point({
+              x: secondArc[a][0],
+              y: secondArc[a][1],
+              spatialReference,
+            });
+            const e = new Point({
+              x: secondArc[b][0],
+              y: secondArc[b][1],
+              spatialReference,
+            });
             result.addPath(this.createTeeth3(s, e, center, teethSize));
           }
         }
@@ -422,37 +518,40 @@ export class Isolate {
 
       return result;
     } catch (e) {
-      console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
+      console.log(
+        this.constructor.name + ' Cannot create Symbol due to invalid geometry',
+      );
       return null;
     }
   }
 
-
-  private createTeeth3(startPt: Point, endPt: Point, centerPt: Point, teethSize: number): number[][] {
+  private createTeeth3(
+    startPt: Point,
+    endPt: Point,
+    centerPt: Point,
+    teethSize: number,
+  ): number[][] {
     const mid = GeoTools.getMidPoint(startPt, endPt);
     const angle = GeoTools.twoPtsAngle(centerPt, mid);
     const midTowardCenter: [number, number] = [
       -1 * teethSize * Math.cos(angle) + mid.x,
-      -1 * teethSize * Math.sin(angle) + mid.y
+      -1 * teethSize * Math.sin(angle) + mid.y,
     ];
     return [[startPt.x, startPt.y], midTowardCenter, [endPt.x, endPt.y]];
   }
 
-
-  /**
-   * Get baseline points
-   */
   public getBaseLinePts(): any {
     return this._baseLinePts;
   }
 
-  /**
-   * Clean up drawing state and finalize
-   */
   private cleanUp(): void {
     if (this._points.length === 0) return;
 
-    const drawEssentials = this.createDrawEssentials(this._points.slice(), this._baseLinePts);
+    const drawEssentials = this.createDrawEssentials(
+      this._points.slice(),
+      this._baseLinePts,
+      this._teethSize,
+    );
 
     if (this.tempGraphic && this.tempGraphic.geometry) {
       this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
@@ -462,16 +561,16 @@ export class Isolate {
     this._removeEvents();
   }
 
-  /**
-   * Handle draw end
-   */
-  private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
+  private __drawEnd(
+    drawGeometry: Polyline,
+    drawEssentials: DrawEssentials,
+  ): void {
     if (drawGeometry) {
       const spatialRef = this.view.spatialReference;
       let geographicGeometry = drawGeometry;
 
       if (spatialRef && spatialRef.isWebMercator) {
-        // Geographic conversion would go here if needed
+        // Geographic conversion
       } else if (spatialRef && spatialRef.wkid === 4326) {
         geographicGeometry = drawGeometry.clone();
       }
@@ -480,34 +579,28 @@ export class Isolate {
     }
   }
 
-  /**
-   * Final draw end handler
-   */
-  private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
-    this.emit("onDrawEnd", {
+  private __onDrawEnd(
+    geometry: Polyline,
+    geoGeometry: Polyline,
+    drawEssParam: DrawEssentials,
+  ): void {
+    this.emit('onDrawEnd', {
       geometry: geometry,
       geographicGeometry: geoGeometry,
       drawEssentials: drawEssParam,
-      marker: this._lineSym
+      marker: this._lineSym,
     });
   }
 
-  /**
-   * Clear graphics and state
-   */
   private _clear(): void {
     if (this.tempGraphic && this.symbolLayer) {
       this.symbolLayer.remove(this.tempGraphic);
     }
-
     this.tempGraphic = null;
     this._points = [];
     this._baseLinePts = {};
   }
 
-  /**
-   * Remove event handlers
-   */
   private _removeEvents(): void {
     if (this.clickHandler) {
       this.clickHandler.remove();
@@ -535,9 +628,6 @@ export class Isolate {
     }
   }
 
-  /**
-   * Deactivate the drawing tool
-   */
   public deactivate(): void {
     this._clear();
     this._removeEvents();
@@ -546,15 +636,11 @@ export class Isolate {
     this.baseLineComplete = false;
   }
 
-  /**
-   * Event emitter functionality
-   */
   private emit(eventName: string, data: any): void {
     const listeners = this.eventListeners.get(eventName);
     if (listeners) {
-      listeners.forEach(listener => listener(data));
+      listeners.forEach((listener) => listener(data));
     }
-
     this.emitGlobalEvent(eventName, data);
   }
 
@@ -563,10 +649,10 @@ export class Isolate {
       detail: {
         symbolType: this.constructor.name,
         eventName: eventName,
-        ...data
+        ...data,
       },
       bubbles: true,
-      cancelable: true
+      cancelable: true,
     });
 
     if (this.view && this.view.container) {
