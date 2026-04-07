@@ -58,7 +58,7 @@ export class MovingConvoy {
     this.view = view;
     this.isLine = isLine;
     this.layerManager = GraphicsLayerManager.getInstance(view);
-    this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+    this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
     this.amplifier = new Amplifier();
 
     // Initialize layers if not already done
