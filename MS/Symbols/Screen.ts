@@ -8,20 +8,19 @@ import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
-import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
-export interface ContainOptions {
+export interface ScreenOptions {
   CTRL_PTS?: Point[];
-  BASE_LN_PTS?: {startPt: Point, endPt: Point};
   GEOM?: Polyline;
+  ECHLON?: number;
   [key: string]: any;
 }
 
 /**
- * Contain class for drawing Contain tactical symbols
- * Uses baseline + control points
+ * Screen class for drawing Screen tactical symbols
+ * Uses direct click drawing (up to 3 points) with arrow heads and S-curves
  * Returns Polyline geometry despite being classified as an Area symbol
  */
 export class Screen {
@@ -38,25 +37,18 @@ export class Screen {
 
   private _lineSym: SimpleLineSymbol | null = null;
   private _points: Point[] = [];
-  private _baseLinePts: any = {};
   private _geometryType: string | null = null;
+  private _echlon: number = 0;
   private amplifier: Amplifier;
-
-  private _teethSize:number = 2;
-  private _teethGap:number = 5;
 
   // Drawing state
   private isDrawing: boolean = false;
   private tempGraphic: Graphic | null = null;
-  private baseLineComplete: boolean = false;
 
   // Event handlers
   private clickHandler: any = null;
   private doubleClickHandler: any = null;
   private mouseMoveHandler: any = null;
-  private baseLineEndHandler: any = null;
-  private baseLineProgressHandler: any = null;
-  private baseLineClickHandler: any = null;
 
   // Event emitter
   private eventListeners: Map<string, Function[]> = new Map();
@@ -78,22 +70,15 @@ export class Screen {
   /**
    * Initialize the Screen drawing
    */
-  public init(options: ContainOptions, marker: SimpleLineSymbol): void {
-    this._lineSym = marker.clone();
+  public init(options: ScreenOptions, marker: SimpleLineSymbol): void {
+    this._lineSym = marker;
 
-    this._teethSize = 2;
-    this._teethGap = 5;
+    this._echlon = options.ECHLON || 0;
 
-
-    const drawEssentials = new DrawEssentials();
-
-    this._teethSize = GeoTools.setDefault(options, "TEETH_SIZE", this._teethSize);
-    this._teethGap = GeoTools.setDefault(options, "TEETH_GAP", this._teethGap);
-    if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+    if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
       // Immediate placement with both control points and geometry
       if (options.GEOM && this.tempGraphic) {
         try {
-          // If GEOM is already a Polyline, use it directly; otherwise, build from paths
           this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
             ? options.GEOM
             : new Polyline({ paths: (options.GEOM as any), spatialReference: this.view.spatialReference });
@@ -102,129 +87,54 @@ export class Screen {
         }
       }
 
-      const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
+      const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.ECHLON || 0);
       if (this.tempGraphic && this.tempGraphic.geometry) {
         this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
       }
       this._clear();
 
     } else if (options.hasOwnProperty("CTRL_PTS")) {
-      if (options.hasOwnProperty("BASE_LN_PTS")) {
-        // Immediate placement with control points and baseline
-        const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
-        const geometry = this.createSymbol(drawEss);
-        if (geometry && this.tempGraphic) {
-          this.tempGraphic.geometry = geometry;
-          this.__drawEnd(geometry, drawEss);
-          this._clear();
-        }
-      } else {
-        throw new Error("Control Points and Baseline or Distance is required to create symbol non-interactively");
+      // Immediate placement with control points only
+      const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.ECHLON || 0);
+      const geometry = this.createSymbol(drawEss);
+      if (geometry && this.tempGraphic) {
+        this.tempGraphic.geometry = geometry;
+        this.__drawEnd(geometry, drawEss);
+        this._clear();
       }
 
     } else {
-      // Interactive drawing mode - start with baseline
-      this.startBaseLineDrawing();
+      // Interactive drawing mode
+      this.startInteractiveDrawing();
     }
   }
 
   /**
-   * Start baseline drawing
+   * Start interactive drawing mode
    */
-  private startBaseLineDrawing(): void {
-    const baseLine = new BaseLine(this.view, this._lineSym!);
+  private startInteractiveDrawing(): void {
+    if (!this._lineSym) return;
 
-    this.baseLineClickHandler = baseLine.on("onBaseLineClick", (evt: any) => {
-      this.baseLineClick(evt);
-    });
-
-    this.baseLineProgressHandler = baseLine.on("onBaseLineProgress", (evt: any) => {
-      this.baseLineDrawProgress(evt);
-    });
-
-    this.baseLineEndHandler = baseLine.on("drawEnd", (evt: any) => {
-      this.baseLineDrawEnd(evt);
-    });
-
-    baseLine.init();
-  }
-
-  /**
-   * Handle baseline click events
-   */
-  private baseLineClick(evt: any): void {
-    this.emit("onDrawClick", {
-      currentPts: evt.currentGeometry,
-      isBaseLine: true
-    });
-  }
-
-  /**
-   * Handle baseline draw progress
-   */
-  private baseLineDrawProgress(evt: any): void {
-    const localDrawEssentials: any = {};
-    localDrawEssentials.CTRL_PTS = evt.currentGeometry;
-
-    const pl = new Polyline({ spatialReference: this.view.spatialReference });
-    pl.addPath(evt.currentGeometry);
-
-    this.emit("onDrawProgress", {
-      currentGeometry: pl,
-      currentDrawEssentials: localDrawEssentials,
-      currentMarker: evt.currentMarker,
-      isBaseLine: true
-    });
-  }
-
-  /**
-   * Handle baseline draw end
-   */
-  private baseLineDrawEnd(evt: any): void {
-    if (this.baseLineEndHandler) {
-      this.baseLineEndHandler.remove();
-      this.baseLineEndHandler = null;
-    }
-
+    this.isDrawing = true;
     this.tempGraphic = new Graphic({
-      geometry: evt.geometry,
+      geometry: null,
       symbol: this._lineSym
     });
     this.symbolLayer.add(this.tempGraphic);
 
-    this._baseLinePts = (evt.geometry as any)._baseLine;
-    this.baseLineComplete = true;
-
-    // Start control point drawing
-    this.setupControlPointHandlers();
-
-    this.emit("onBaseLineDrawEnd", {
-      currentPts: (evt.geometry as any).controlPoints
-    });
-  }
-
-  /**
-   * Set up control point drawing handlers
-   */
-  private setupControlPointHandlers(): void {
-    // Mouse move handler
-    this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
-      this._onMouseMoveHandler(event);
-    });
-
-    // Click handler
+    // Set up click handler
     this.clickHandler = this.view.on("click", (event) => {
       this._onClickHandler(event);
     });
 
-    // Double click handler
+    // Set up double click handler
     this.doubleClickHandler = this.view.on("double-click", (event) => {
       this._onDoubleClickHandler(event);
     });
   }
 
   /**
-   * Handle click events for control points
+   * Handle click events
    */
   private _onClickHandler(clickEvent: any): void {
     const mapPoint = this.view.toMap(clickEvent);
@@ -238,10 +148,17 @@ export class Screen {
 
     this._points.push(point);
 
+    // Start mouse move after first click
+    if (this._points.length === 1) {
+      this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
+        this._onMouseMoveHandler(event);
+      });
+    }
+
     this.emit("onDrawClick", { currentPts: this._points });
 
-    // For single line mode, finish after first click
-    if (this.isLine === true && this._points.length === 1) {
+    // Auto-complete after 3 clicks
+    if (this._points.length === 3) {
       this.emit("onDrawClick", { currentPts: this._points });
       this.cleanUp();
     }
@@ -268,7 +185,7 @@ export class Screen {
    * Handle mouse move events
    */
   private _onMouseMoveHandler(inputEvent: any): void {
-    if (!this.baseLineComplete || !this.tempGraphic) return;
+    if (!this.tempGraphic) return;
 
     const mapPoint = this.view.toMap(inputEvent);
     if (!mapPoint) return;
@@ -281,7 +198,7 @@ export class Screen {
 
     const drawEssentials = new DrawEssentials();
     (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
-    (drawEssentials as any).BASE_LN_PTS = this._baseLinePts;
+    (drawEssentials as any).ECHLON = this._echlon;
 
     const geometry = this.createSymbol(drawEssentials);
     if (geometry) {
@@ -297,18 +214,17 @@ export class Screen {
   /**
    * Create DrawEssentials object
    */
-  private createDrawEssentials(ctrlPts: Point[], baseLinePts: any): DrawEssentials {
+  private createDrawEssentials(ctrlPts: Point[], echlon: number): DrawEssentials {
     const drawEssentials = new DrawEssentials();
     drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
     drawEssentials.SID = this.SID;
     drawEssentials.SYM_NAME = this.symName;
-    drawEssentials.GEOM = null;
     drawEssentials.AMPLIFIER = this.amplifier.toString();
 
     // Store additional properties
     (drawEssentials as any).SCOPE = this;
     (drawEssentials as any).CTRL_PTS = ctrlPts;
-    (drawEssentials as any).BASE_LN_PTS = baseLinePts;
+    (drawEssentials as any).ECHLON = echlon;
 
     return drawEssentials;
   }
@@ -322,7 +238,6 @@ export class Screen {
       const pts: Point[] = (drawEssentials as any).CTRL_PTS;
       if (!pts || pts.length === 0) throw new Error("controlPoints not found");
 
-      // Expect first and second points at minimum
       const firstPoint = pts[0];
       const secondPoint = pts[1];
       if (!firstPoint || !secondPoint) throw new Error("Start and end points are required");
@@ -344,11 +259,11 @@ export class Screen {
       // Midpoint and right wing construction
       let midPt = GeoTools.getMidPoint(firstPoint, secondPoint);
       let length = GeoTools._2PtLen(firstPoint, midPt) / 3;
-      let angleRad = GeoTools.toRad(16); // 16 degrees
+      let angleVal = GeoTools.toDegrees(16); // In Degrees (legacy: GeoTools.toDegrees(16))
 
       const rightWing = new Point({
-        x: midPt.x + length * Math.cos(angleRad),
-        y: midPt.y + length * Math.sin(angleRad),
+        x: midPt.x + length * Math.cos(this.toRad(angleVal)),
+        y: midPt.y + length * Math.sin(this.toRad(angleVal)),
         spatialReference
       });
 
@@ -360,17 +275,20 @@ export class Screen {
       });
 
       // Create S near the gap
-      let cLenLimit = baseLen12 / 25;
-      if (cLenLimit > baseLen12 / 3.6) cLenLimit = baseLen12 / 3.6;
-      const cPt = new Point({
+      let baseLineLen = GeoTools._2PtLen(firstPoint, secondPoint);
+      let cLenLimit = baseLineLen / 25;
+      if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+
+      let cPt = new Point({
         x: gapPt.x + cLenLimit * 1.5 * Math.cos(angle),
         y: gapPt.y + cLenLimit * 1.5 * Math.sin(angle),
         spatialReference
       });
+
       const sPts1: Point[] = (Shapes as any).createS(cPt.x, cPt.y, cLenLimit, spatialReference) || [];
       if (sPts1.length) result.addPath(sPts1.map(p => [p.x, p.y]));
 
-      // Stem from first point to gap
+      // Stem from first point through midpoint to gap
       result.addPath([
         [firstPoint.x, firstPoint.y],
         [midPt.x, midPt.y],
@@ -384,11 +302,11 @@ export class Screen {
 
         midPt = GeoTools.getMidPoint(thirdPt, secondPoint);
         length = GeoTools._2PtLen(thirdPt, midPt) / 3;
-        angleRad = GeoTools.toRad(-32); // -32 degrees
+        angleVal = GeoTools.toDegrees(-32); // In Degrees
 
         const leftWing = new Point({
-          x: midPt.x + length * Math.cos(angleRad),
-          y: midPt.y + length * Math.sin(angleRad),
+          x: midPt.x + length * Math.cos(GeoTools.toRad(angleVal)),
+          y: midPt.y + length * Math.sin(GeoTools.toRad(angleVal)),
           spatialReference
         });
 
@@ -399,17 +317,21 @@ export class Screen {
           spatialReference
         });
 
-        const baseLen32 = GeoTools._2PtLen(thirdPt, secondPoint);
-        cLenLimit = baseLen32 / 25;
-        if (cLenLimit > baseLen32 / 3.6) cLenLimit = baseLen32 / 3.6;
-        const cPt2 = new Point({
+        // Create S
+        baseLineLen = GeoTools._2PtLen(thirdPt, secondPoint);
+        cLenLimit = baseLineLen / 25;
+        if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+
+        cPt = new Point({
           x: gapPt.x + cLenLimit * 1.5 * Math.cos(angle),
           y: gapPt.y + cLenLimit * 1.5 * Math.sin(angle),
           spatialReference
         });
-        const sPts2: Point[] = (Shapes as any).createS(cPt2.x, cPt2.y, cLenLimit, spatialReference) || [];
+
+        const sPts2: Point[] = (Shapes as any).createS(cPt.x, cPt.y, cLenLimit, spatialReference) || [];
         if (sPts2.length) result.addPath(sPts2.map(p => [p.x, p.y]));
 
+        // Stem from third point through midpoint to gap
         result.addPath([
           [thirdPt.x, thirdPt.y],
           [midPt.x, midPt.y],
@@ -417,7 +339,11 @@ export class Screen {
           [gapPt.x, gapPt.y]
         ]);
 
-        const ahLen2 = GeoTools.ArrowFlanksLen(GeoTools._2PtLen(secondPoint, thirdPt), GeoTools._2PtLen(secondPoint, thirdPt));
+        // Arrow head at the third point (forward)
+        const ahLen2 = GeoTools.ArrowFlanksLen(
+          GeoTools._2PtLen(secondPoint, thirdPt),
+          GeoTools._2PtLen(secondPoint, thirdPt)
+        );
         const ah2 = (Shapes as any).arrowHead(
           thirdPt,
           ahLen2,
@@ -430,28 +356,16 @@ export class Screen {
 
       return result;
     } catch (e) {
-      console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
+      console.log(this.declaredClass + ' Cannot create Symbol due to invalid geometry');
       return null;
     }
   }
 
-
-  private createTeeth3(startPt: Point, endPt: Point, centerPt: Point, teethSize: number): number[][] {
-    const mid = GeoTools.getMidPoint(startPt, endPt);
-    const angle = GeoTools.twoPtsAngle(centerPt, mid);
-    const midTowardCenter: [number, number] = [
-      -1 * teethSize * Math.cos(angle) + mid.x,
-      -1 * teethSize * Math.sin(angle) + mid.y
-    ];
-    return [[startPt.x, startPt.y], midTowardCenter, [endPt.x, endPt.y]];
-  }
-
-
   /**
-   * Get baseline points
+   * Convert degrees to radians (legacy helper matching JS source)
    */
-  public getBaseLinePts(): any {
-    return this._baseLinePts;
+  private toRad(deg: number): number {
+    return deg * (Math.PI / 180);
   }
 
   /**
@@ -460,7 +374,7 @@ export class Screen {
   private cleanUp(): void {
     if (this._points.length === 0) return;
 
-    const drawEssentials = this.createDrawEssentials(this._points.slice(), this._baseLinePts);
+    const drawEssentials = this.createDrawEssentials(this._points.slice(), this._echlon);
 
     if (this.tempGraphic && this.tempGraphic.geometry) {
       this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
@@ -510,7 +424,6 @@ export class Screen {
 
     this.tempGraphic = null;
     this._points = [];
-    this._baseLinePts = {};
   }
 
   /**
@@ -529,18 +442,6 @@ export class Screen {
       this.mouseMoveHandler.remove();
       this.mouseMoveHandler = null;
     }
-    if (this.baseLineEndHandler) {
-      this.baseLineEndHandler.remove();
-      this.baseLineEndHandler = null;
-    }
-    if (this.baseLineProgressHandler) {
-      this.baseLineProgressHandler.remove();
-      this.baseLineProgressHandler = null;
-    }
-    if (this.baseLineClickHandler) {
-      this.baseLineClickHandler.remove();
-      this.baseLineClickHandler = null;
-    }
   }
 
   /**
@@ -551,7 +452,6 @@ export class Screen {
     this._removeEvents();
     this._geometryType = null;
     this.isDrawing = false;
-    this.baseLineComplete = false;
   }
 
   /**
