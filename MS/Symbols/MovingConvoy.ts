@@ -1,30 +1,25 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
-import Polygon from "@arcgis/core/geometry/Polygon";
+import Polyline from "@arcgis/core/geometry/Polyline";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import Color from "@arcgis/core/Color";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
-import Amplifier from "../Support/Amplifier";
-import Polyline from '@arcgis/core/geometry/Polyline';
-// Removed unused imports from translation
+import Amplifier from "../Support/Amplifier.ts";
+import BaseLine from "../Support/BaseLine.ts";
+import GeoTools from "../Support/GeoTools.ts";
 
 export interface MovingConvoyOptions {
   CTRL_PTS?: Point[];
-  GEOM?: Polygon;
-  HEAD_RATIO?: number;
-  TAIL_FACTOR?: number;
+  BASE_LN_PTS?: {startPt: Point, endPt: Point};
+  GEOM?: Polyline;
   [key: string]: any;
 }
 
 /**
- * MovingConvoy class for drawing Avenue of Approaches arrows
- * Creates complex arrow shapes with configurable head and tail parameters
- * Supports both simple (<=2 points) and complex (>2 points) arrow creation
+ * MovingConvoy class for drawing Moving Convoy / Approach tactical symbols
  */
 export class MovingConvoy {
   private view: MapView | SceneView;
@@ -38,24 +33,23 @@ export class MovingConvoy {
   public symName: string = "Moving Convoy / Approach";
   public symGeometricType: string = "Area";
 
-  private _lineSym: SimpleFillSymbol | null = null;
+  private _lineSym: SimpleLineSymbol | null = null;
   private _points: Point[] = [];
-  // private _geometryType: string | null = null;
+  private _baseLinePts: any = null;
+  private _geometryType: string | null = null;
   private amplifier: Amplifier;
-
-  // Arrow parameters
-  private _tailFactor: number = 0.05;
-  private _headPercentage: number = 0.07;
 
   // Drawing state
   private isDrawing: boolean = false;
   private tempGraphic: Graphic | null = null;
-  private _baseLinePts: Point[] = [];
 
   // Event handlers
   private clickHandler: any = null;
   private doubleClickHandler: any = null;
   private mouseMoveHandler: any = null;
+  private baseLineEndHandler: any = null;
+  private baseLineProgressHandler: any = null;
+  private baseLineClickHandler: any = null;
 
   // Event emitter
   private eventListeners: Map<string, Function[]> = new Map();
@@ -75,37 +69,16 @@ export class MovingConvoy {
   }
 
   /**
-   * Initialize the avenue of approaches drawing
+   * Initialize the Moving Convoy drawing
    */
   public init(options: MovingConvoyOptions, marker: SimpleLineSymbol): void {
-    // Create SimpleFillSymbol with 50% transparency
-    const fillColor = new Color(marker.color);
-    fillColor.a = 0.50; // 50% transparency
+    this._lineSym = marker.clone();
 
-    this._lineSym = new SimpleFillSymbol({
-      style: "solid",
-      color: fillColor,
-      outline: new SimpleLineSymbol({
-        style: marker.style,
-        color: marker.color,
-        width: marker.width
-      })
-    });
+    const drawEssentials = new DrawEssentials();
 
-    // Set arrow parameters with defaults
-    this._headPercentage = this.setDefault(options, "HEAD_RATIO", 0.07);
-    this._tailFactor = this.setDefault(options, "TAIL_FACTOR", 0.05);
-
-    // Set up event handlers
-    this.setupEventHandlers();
-
-    // removed unused variable from translation
-
-    if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
-      // Immediate placement with both control points and geometry
+    if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
       if (options.GEOM && this.tempGraphic) {
         try {
-          // If GEOM is already a Polyline, use it directly; otherwise, build from paths
           this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
             ? options.GEOM
             : new Polyline({ paths: (options.GEOM as any), spatialReference: this.view.spatialReference });
@@ -114,66 +87,108 @@ export class MovingConvoy {
         }
       }
 
-      const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._headPercentage, this._tailFactor);
+      const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
       if (this.tempGraphic && this.tempGraphic.geometry) {
-        this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
+        this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
       }
       this._clear();
 
     } else if (options.hasOwnProperty("CTRL_PTS")) {
-      // Immediate placement with control points only
-      const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._headPercentage, this._tailFactor);
-      const geometry = this.createSymbol(drawEss);
-      if (geometry && this.tempGraphic) {
-        this.tempGraphic.geometry = geometry;
-        this.__drawEnd(geometry, drawEss);
-        this._clear();
+      if (options.hasOwnProperty("BASE_LN_PTS")) {
+        const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
+        const geometry = this.createSymbol(drawEss);
+        if (geometry && this.tempGraphic) {
+          this.tempGraphic.geometry = geometry;
+          this.__drawEnd(geometry, drawEss);
+          this._clear();
+        }
+      } else {
+        throw new Error("Control Points and Baseline or Distance is required to create symbol non-interactively");
       }
 
     } else {
-      // Interactive drawing mode
-      this.startInteractiveDrawing();
+      // Interactive drawing mode - start with baseline
+      this.startBaseLineDrawing();
     }
   }
 
-  /**
-   * Utility method to set default values (mimics GeoTools.setDefault)
-   */
-  private setDefault(options: any, key: string, defaultValue: number): number {
-    return options && options.hasOwnProperty(key) ? options[key] : defaultValue;
+  private startBaseLineDrawing(): void {
+    const baseLine = new BaseLine(this.view, this._lineSym!);
+
+    this.baseLineClickHandler = baseLine.on("onBaseLineClick", (evt: any) => {
+      this.baseLineClick(evt);
+    });
+
+    this.baseLineProgressHandler = baseLine.on("onBaseLineProgress", (evt: any) => {
+      this.baseLineDrawProgress(evt);
+    });
+
+    this.baseLineEndHandler = baseLine.on("drawEnd", (evt: any) => {
+      this.baseLineDrawEnd(evt);
+    });
+
+    baseLine.init();
   }
 
-  /**
-   * Start interactive drawing mode
-   */
-  private startInteractiveDrawing(): void {
-    if (!this._lineSym) return;
-    this.isDrawing = true;
+  private baseLineClick(evt: any): void {
+    this.emit("onDrawClick", {
+      currentPts: evt.currentGeometry,
+      isBaseLine: true
+    });
+  }
+
+  private baseLineDrawProgress(evt: any): void {
+    const localDrawEssentials: any = {};
+    localDrawEssentials.CTRL_PTS = evt.currentGeometry;
+
+    const pl = new Polyline({ spatialReference: this.view.spatialReference });
+    pl.addPath(evt.currentGeometry);
+
+    this.emit("onDrawProgress", {
+      currentGeometry: pl,
+      currentDrawEssentials: localDrawEssentials,
+      currentMarker: evt.currentMarker,
+      isBaseLine: true
+    });
+  }
+
+  private baseLineDrawEnd(evt: any): void {
+    if (this.baseLineEndHandler) {
+      this.baseLineEndHandler.remove();
+      this.baseLineEndHandler = null;
+    }
+
     this.tempGraphic = new Graphic({
-      geometry: null,
+      geometry: evt.geometry,
       symbol: this._lineSym
     });
     this.symbolLayer.add(this.tempGraphic);
+
+    this._baseLinePts = (evt.geometry as any)._baseLine;
+    this.isDrawing = true;
+
+    // Start control point drawing
+    this.setupControlPointHandlers();
+
+    this.emit("onBaseLineDrawEnd", {
+      currentPts: (evt.geometry as any).controlPoints
+    });
   }
 
-  /**
-   * Set up mouse event handlers for interactive drawing
-   */
-  private setupEventHandlers(): void {
-    // Click handler
+  private setupControlPointHandlers(): void {
+    this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
+      this._onMouseMoveHandler(event);
+    });
+
     this.clickHandler = this.view.on("click", (event) => {
       this._onClickHandler(event);
     });
 
-    // Double click handler
     this.doubleClickHandler = this.view.on("double-click", (event) => {
       this._onDoubleClickHandler(event);
     });
   }
 
-  /**
-   * Handle click events
-   */
   private _onClickHandler(clickEvent: any): void {
     const mapPoint = this.view.toMap(clickEvent);
     if (!mapPoint) return;
@@ -186,22 +201,14 @@ export class MovingConvoy {
 
     this._points.push(point);
 
-    if (this._points.length === 1) {
-      // First click - set up mouse move handler
-      this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
-        this._onMouseMoveHandler(event);
-      });
-    }
+    this.emit("onDrawClick", { currentPts: this._points });
 
-    // For single line mode, finish after first click
     if (this.isLine === true && this._points.length === 1) {
+      this.emit("onDrawClick", { currentPts: this._points });
       this.cleanUp();
     }
   }
 
-  /**
-   * Handle double click events
-   */
   private _onDoubleClickHandler(clickEvent: any): void {
     const mapPoint = this.view.toMap(clickEvent);
     if (!mapPoint) return;
@@ -216,9 +223,6 @@ export class MovingConvoy {
     this.cleanUp();
   }
 
-  /**
-   * Handle mouse move events
-   */
   private _onMouseMoveHandler(inputEvent: any): void {
     if (!this.isDrawing || !this.tempGraphic) return;
 
@@ -246,10 +250,7 @@ export class MovingConvoy {
     }
   }
 
-  /**
-   * Create DrawEssentials object
-   */
-  private createDrawEssentials(ctrlPts: Point[], arrowHeadRatio: number, tailFactor: number): DrawEssentials {
+  private createDrawEssentials(ctrlPts: Point[], baseLinePts: any): DrawEssentials {
     const drawEssentials = new DrawEssentials();
     drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
     drawEssentials.SID = this.SID;
@@ -257,221 +258,198 @@ export class MovingConvoy {
     drawEssentials.GEOM = null;
     drawEssentials.AMPLIFIER = this.amplifier.toString();
 
-    // Store additional properties
     (drawEssentials as any).SCOPE = this;
     (drawEssentials as any).CTRL_PTS = ctrlPts;
-    (drawEssentials as any).HEAD_RATIO = arrowHeadRatio;
-    (drawEssentials as any).TAIL_FACTOR = tailFactor;
+    (drawEssentials as any).BASE_LN_PTS = baseLinePts;
 
     return drawEssentials;
   }
 
-  /**
-   * Create symbol geometry from DrawEssentials
-   */
-  private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
+  private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
     try {
-      // Extract control points
-      const ctrlPts: Point[] | undefined = (drawEssentials as any).CTRL_PTS;
-      if (!ctrlPts || ctrlPts.length === 0) {
+      const pts: Point[] = (drawEssentials as any).CTRL_PTS;
+      if (!pts || pts.length === 0) {
         throw new Error("controlPoints not found");
       }
 
-      // Extract base line points (required by legacy algorithm)
-      const baseLine = (drawEssentials as any).BASE_LN_PTS as { startPt: Point; endPt: Point } | undefined;
-      if (!baseLine || !baseLine.startPt || !baseLine.endPt) {
-        throw new Error("BASE_LN_PTS with startPt and endPt is required");
+      const baseLinePts = (drawEssentials as any).BASE_LN_PTS;
+      if (!baseLinePts || baseLinePts.startPt === undefined || baseLinePts.endPt === undefined) {
+        throw new Error("First Parameter of the Function is an Array with Start and End Point");
       }
 
-      // Local helpers to mirror legacy math without external deps
-      const distance = (a: { x: number; y: number }, b: { x: number; y: number }) => {
-        const dx = b.x - a.x; const dy = b.y - a.y; return Math.sqrt(dx * dx + dy * dy);
-      };
-      const angleBetween = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.atan2(b.y - a.y, b.x - a.x);
-      const midPoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-      const toPair = (p: { x: number; y: number }): [number, number] => [p.x, p.y];
+      const stPt = baseLinePts.startPt as Point;
+      const endPt = baseLinePts.endPt as Point;
 
-      // Flank points helper (translated from source getFlankPts)
-      const getFlankPts = (firstPoint: { x: number; y: number }, lastPoint: { x: number; y: number }) => {
-        const baseLineLen = distance(firstPoint, lastPoint) / 4;
-        let cLenLimit = baseLineLen / 4;
-        if (cLenLimit > baseLineLen / 2) cLenLimit = baseLineLen / 2;
-        const len = cLenLimit;
+      const firstPoint = pts[0];
+      let lastPoint = pts[pts.length - 1];
+      const leftArray: Point[] = [];
+      const rightArray: Point[] = [];
+      const middleArray: Point[] = [];
 
-        let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
-        const relation = this.twoPtsRelationship(firstPoint as any, lastPoint as any);
-        switch (relation) {
-          case "ne": k += Math.PI / 2; break;
-          case "nw": k += Math.PI * 3 / 2; break;
-          case "sw": k += Math.PI * 3 / 2; break;
-          case "se": k += Math.PI / 2; break;
-        }
-        const partialLen = len;
-        return [
-          { x: partialLen * Math.cos(k) + firstPoint.x, y: partialLen * Math.sin(k) + firstPoint.y },
-          { x: -1 * partialLen * Math.cos(k) + firstPoint.x, y: -1 * partialLen * Math.sin(k) + firstPoint.y }
-        ];
-      };
+      const midPt = GeoTools.getMidPoint(stPt, endPt);
+      const spatialReference = this.view.spatialReference;
+      const result = new Polyline({ spatialReference });
 
-      const sr = this.view.spatialReference;
-      const polygon = new Polygon({ spatialReference: sr });
-
-      const firstPoint = ctrlPts[0];
-      let lastPoint = ctrlPts[ctrlPts.length - 1];
-
-      // In legacy, when any point exists, lastPoint is reset to firstPoint for baseline angle
-      if (ctrlPts.length >= 1) {
+      // Base Line
+      if (pts.length >= 1) {
         lastPoint = firstPoint;
       }
 
-      const stPt = baseLine.startPt; const endPt = baseLine.endPt;
-      const midPt = midPoint(stPt, endPt);
-
-      // Base line direction (perpendicular adjustment based on quadrant)
-      const lenMidToEnd = distance(midPt, endPt);
+      const len = GeoTools._2PtLen(midPt, endPt);
       let k = Math.atan((midPt.y - lastPoint.y) / (midPt.x - lastPoint.x));
-      switch (this.twoPtsRelationship(midPt as any, lastPoint as any)) {
-        case "ne": k += Math.PI / 2; break;
-        case "nw": k += Math.PI * 3 / 2; break;
-        case "sw": k += Math.PI * 3 / 2; break;
-        case "se": k += Math.PI / 2; break;
+
+      switch (GeoTools.twoPtsRelationShip(midPt, lastPoint)) {
+        case "ne":
+          k += Math.PI / 2;
+          break;
+        case "nw":
+          k += Math.PI * 3 / 2;
+          break;
+        case "sw":
+          k += Math.PI * 3 / 2;
+          break;
+        case "se":
+          k += Math.PI / 2;
+          break;
       }
 
-      const p1 = { x: lenMidToEnd * Math.cos(k) + midPt.x, y: lenMidToEnd * Math.sin(k) + midPt.y };
-      const p2 = { x: -1 * lenMidToEnd * Math.cos(k) + midPt.x, y: -1 * lenMidToEnd * Math.sin(k) + midPt.y };
+      const partialLen = len;
 
-      // Prepare arrays
-      const leftArray: [number, number][] = [];
-      const rightArray: [number, number][] = [];
+      const p1 = new Point({ x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y, spatialReference });
+      const p2 = new Point({ x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y, spatialReference });
 
-      if (ctrlPts.length >= 1) {
-        leftArray.push(toPair(p1));
-        rightArray.push(toPair(p2));
+      result.addPath([[p1.x, p1.y], [p2.x, p2.y]]);
+      // End of Base Line
+
+      // Front
+      if (pts.length >= 1) {
+        leftArray.push(p1);
+        rightArray.push(p2);
+        middleArray.push(midPt);
       }
 
-      // Variables to hold the last shortened points for arrow head construction
-      let shortenLeftPt: { x: number; y: number } = toPair(p1) as any;
-      let shortenRightPt: { x: number; y: number } = toPair(p2) as any;
+      let shortenLeftPt: Point = p1;
+      let shortenRightPt: Point = p2;
 
-      // Build left/right/middle arrays per control point
-      for (let i = 0; i < ctrlPts.length; i++) {
-        const candidate = ctrlPts[i];
+      for (let i = 0; i < pts.length; i++) {
+        const length = GeoTools._2PtLen(midPt, pts[i]);
+        let angle = GeoTools.angleInRadians(midPt, pts[i]);
 
-        // Distance and angle from mid to candidate
-        const lenToCandidate = distance(midPt, candidate);
-        let ang = angleBetween(midPt, candidate);
+        const stPtCandidatePt = new Point({
+          x: p1.x + length * Math.cos(angle),
+          y: p1.y + length * Math.sin(angle),
+          spatialReference
+        });
+        const endPtCandidatePt = new Point({
+          x: p2.x + length * Math.cos(angle),
+          y: p2.y + length * Math.sin(angle),
+          spatialReference
+        });
 
-        // Candidate points projected outwards from p1 and p2
-        const stPtCandidate = { x: p1.x + lenToCandidate * Math.cos(ang), y: p1.y + lenToCandidate * Math.sin(ang) };
-        const endPtCandidate = { x: p2.x + lenToCandidate * Math.cos(ang), y: p2.y + lenToCandidate * Math.sin(ang) };
-
-        // Segment len control (len = length / 5, bounded by baseline/4)
-        let segLen = lenToCandidate / 5;
-        const baseLineLen = distance(stPtCandidate, endPtCandidate);
+        let currentLen = length / 5;
+        const baseLineLen = GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt);
         const baseLineLenLimit = baseLineLen / 4;
-        if (segLen > baseLineLenLimit) segLen = baseLineLenLimit;
+        if (currentLen > baseLineLenLimit) currentLen = baseLineLenLimit;
 
-        ang = angleBetween(stPtCandidate, endPtCandidate);
+        angle = GeoTools.angleInRadians(stPtCandidatePt, endPtCandidatePt);
 
-        // pt1/pt2 along the baseline perpendicular at each projected candidate (computed but not used downstream in legacy)
-        // Kept logic in place but avoid unused variables
-        /*
-        const pt1x = -1 * segLen * Math.cos(ang) + stPtCandidate.x;
-        const pt1y = -1 * segLen * Math.sin(ang) + stPtCandidate.y;
-        const pt2x = segLen * Math.cos(ang) + endPtCandidate.x;
-        const pt2y = segLen * Math.sin(ang) + endPtCandidate.y;
-        */
+        // Calculate shortened points
+        k = GeoTools.angleInRadians(midPt, pts[i]);
 
-        // Shorten points towards candidate direction (left/right/middle)
-        k = angleBetween(midPt, candidate);
-        shortenLeftPt = { x: -1 * lenToCandidate / 10 * Math.cos(k) + stPtCandidate.x, y: -1 * lenToCandidate / 5 * Math.sin(k) + stPtCandidate.y };
-        shortenRightPt = { x: -1 * lenToCandidate / 10 * Math.cos(k) + endPtCandidate.x, y: -1 * lenToCandidate / 5 * Math.sin(k) + endPtCandidate.y };
+        shortenLeftPt = new Point({
+          x: -1 * length / 10 * Math.cos(k) + stPtCandidatePt.x,
+          y: -1 * length / 5 * Math.sin(k) + stPtCandidatePt.y,
+          spatialReference
+        });
+        leftArray.push(shortenLeftPt);
 
-        leftArray.push(toPair(shortenLeftPt));
-        rightArray.push(toPair(shortenRightPt));
+        shortenRightPt = new Point({
+          x: -1 * length / 10 * Math.cos(k) + endPtCandidatePt.x,
+          y: -1 * length / 5 * Math.sin(k) + endPtCandidatePt.y,
+          spatialReference
+        });
+        rightArray.push(shortenRightPt);
+
+        const shortenMiddlePt = new Point({
+          x: -1 * length / 10 * Math.cos(k) + pts[i].x,
+          y: -1 * length / 10 * Math.sin(k) + pts[i].y,
+          spatialReference
+        });
+        middleArray.push(shortenMiddlePt);
       }
 
-      // Arrow head path using flank points (local inline, not using class's CreateArrowHeadPathEx)
-      const leftFirst = { x: leftArray[0][0], y: leftArray[0][1] };
-      const rightFirst = { x: rightArray[0][0], y: rightArray[0][1] };
-      const leftFlank = getFlankPts(shortenLeftPt, leftFirst);
-      const rightFlank = getFlankPts(shortenRightPt, rightFirst);
+      result.addPath(leftArray.map(pt => [pt.x, pt.y]));
+      result.addPath(rightArray.map(pt => [pt.x, pt.y]));
 
-      // Build a single closed ring: leftArray -> arrow head -> reversed rightArray -> close
-      const ring: number[][] = [];
-      leftArray.forEach(p => ring.push(p));
-      ring.push(toPair(leftFlank[1]));
-      ring.push([ctrlPts[ctrlPts.length - 1].x, ctrlPts[ctrlPts.length - 1].y]);
-      ring.push(toPair(rightFlank[0]));
-      rightArray.slice().reverse().forEach(p => ring.push(p));
-      if (leftArray.length > 0) {
-        ring.push(leftArray[0]);
-      }
+      // Create Arrow Head
+      const LeftFlankPt = this.getFlankPts(shortenLeftPt, leftArray[0]);
+      const rightFlankPt = this.getFlankPts(shortenRightPt, rightArray[0]);
+      const lastCtrlPt = pts[pts.length - 1];
 
-      polygon.addRing(ring);
-      return polygon;
+      result.addPath([
+        [shortenLeftPt.x, shortenLeftPt.y],
+        [LeftFlankPt[1].x, LeftFlankPt[1].y],
+        [lastCtrlPt.x, lastCtrlPt.y],
+        [rightFlankPt[0].x, rightFlankPt[0].y],
+        [shortenRightPt.x, shortenRightPt.y]
+      ]);
+
+      return result;
     } catch (e) {
-      console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+      console.log(this.declaredClass + ' Cannot create Symbol due to invalid geometry');
       return null;
     }
   }
 
-  // Removed legacy simple/complex arrow builders in favor of source-accurate algorithm above
+  private getFlankPts(firstPoint: Point, lastPoint: Point): Point[] {
+    const baseLineLen = GeoTools._2PtLen(firstPoint, lastPoint) / 4;
+    let cLenLimit = baseLineLen / 4;
+    if (cLenLimit > baseLineLen / 2) cLenLimit = baseLineLen / 2;
 
-  // (unused) legacy arrow head kept removed to avoid lints
+    const len = cLenLimit;
+    let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
 
-  /**
-   * Create Bezier path for point collection only (fallback)
-   */
-  // Removed unused fallback CreateBezierPathPCOnly (Shapes.CreateBezierPathPCOnly is used)
+    switch (GeoTools.twoPtsRelationShip(firstPoint, lastPoint)) {
+      case "ne":
+        k += Math.PI / 2;
+        break;
+      case "nw":
+        k += Math.PI * 3 / 2;
+        break;
+      case "sw":
+        k += Math.PI * 3 / 2;
+        break;
+      case "se":
+        k += Math.PI / 2;
+        break;
+    }
 
-  // (unused) twoPtsAngle removed; using inline angleBetween helpers
+    const partialLen = len;
 
-  // (unused) distance helper removed to avoid lints; using local inline funcs instead
-
-  // (unused) angle helper removed to avoid lints; using local inline logic in createSymbol
-
-  /**
-   * Determine relationship between two points
-   */
-  private twoPtsRelationship(pt1: Point, pt2: Point): string {
-    if (pt2.x >= pt1.x && pt2.y >= pt1.y) return "ne";
-    if (pt2.x < pt1.x && pt2.y >= pt1.y) return "nw";
-    if (pt2.x < pt1.x && pt2.y < pt1.y) return "sw";
-    return "se";
+    return [
+      new Point({ x: partialLen * Math.cos(k) + firstPoint.x, y: partialLen * Math.sin(k) + firstPoint.y, spatialReference: this.view.spatialReference }),
+      new Point({ x: -1 * partialLen * Math.cos(k) + firstPoint.x, y: -1 * partialLen * Math.sin(k) + firstPoint.y, spatialReference: this.view.spatialReference })
+    ];
   }
 
-  // (unused) calculateVertexAngles removed
-
-  // (unused) calculatePathLength removed
-
-  /**
-   * Get baseline points
-   */
-  public getBaseLinePts(): Point[] {
+  public getBaseLinePts(): any {
     return this._baseLinePts;
   }
 
-  /**
-   * Clean up drawing state and finalize
-   */
   private cleanUp(): void {
     if (this._points.length === 0) return;
 
-    const drawEssentials = this.createDrawEssentials(this._points.slice(), this._headPercentage, this._tailFactor);
+    const drawEssentials = this.createDrawEssentials(this._points.slice(), this._baseLinePts);
 
     if (this.tempGraphic && this.tempGraphic.geometry) {
-      this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEssentials);
+      this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
     }
 
     this._clear();
     this._removeEvents();
   }
 
-  /**
-   * Handle draw end
-   */
-  private __drawEnd(drawGeometry: Polygon, drawEssentials: DrawEssentials): void {
+  private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
     if (drawGeometry) {
       const spatialRef = this.view.spatialReference;
       let geographicGeometry = drawGeometry;
@@ -486,10 +464,7 @@ export class MovingConvoy {
     }
   }
 
-  /**
-   * Final draw end handler
-   */
-  private __onDrawEnd(geometry: Polygon, geoGeometry: Polygon, drawEssParam: DrawEssentials): void {
+  private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
     this.emit("onDrawEnd", {
       geometry: geometry,
       geographicGeometry: geoGeometry,
@@ -498,9 +473,6 @@ export class MovingConvoy {
     });
   }
 
-  /**
-   * Clear graphics and state
-   */
   private _clear(): void {
     if (this.tempGraphic && this.symbolLayer) {
       this.symbolLayer.remove(this.tempGraphic);
@@ -508,12 +480,9 @@ export class MovingConvoy {
 
     this.tempGraphic = null;
     this._points = [];
-    this._baseLinePts = [];
+    this._baseLinePts = null;
   }
 
-  /**
-   * Remove event handlers
-   */
   private _removeEvents(): void {
     if (this.clickHandler) {
       this.clickHandler.remove();
@@ -527,21 +496,27 @@ export class MovingConvoy {
       this.mouseMoveHandler.remove();
       this.mouseMoveHandler = null;
     }
+    if (this.baseLineEndHandler) {
+      this.baseLineEndHandler.remove();
+      this.baseLineEndHandler = null;
+    }
+    if (this.baseLineProgressHandler) {
+      this.baseLineProgressHandler.remove();
+      this.baseLineProgressHandler = null;
+    }
+    if (this.baseLineClickHandler) {
+      this.baseLineClickHandler.remove();
+      this.baseLineClickHandler = null;
+    }
   }
 
-  /**
-   * Deactivate the drawing tool
-   */
   public deactivate(): void {
     this._clear();
     this._removeEvents();
-    // this._geometryType = null;
+    this._geometryType = null;
     this.isDrawing = false;
   }
 
-  /**
-   * Event emitter functionality
-   */
   private emit(eventName: string, data: any): void {
     const listeners = this.eventListeners.get(eventName);
     if (listeners) {
