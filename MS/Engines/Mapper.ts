@@ -215,7 +215,8 @@ import SlowGo from "../Symbols/SlowGo.ts";
 import StrongPoint from "../Symbols/StrongPoint.ts";
 import SupportingAttack from "../Symbols/SupportingAttack.ts";
 import UnspecifiedWire from "../Symbols/UnspecifiedWire.ts";
-import Withdraw from "../Symbols/Withdraw.ts";
+import Withdraw from "../Symbols/Withdraw.ts"; //Fixed
+import WithdrawUnderPressure from "../Symbols/WithdrawUnderPressure.ts"; //Fixed
 
 
 import MapView from "@arcgis/core/views/MapView";
@@ -346,7 +347,8 @@ export default class Mapper {
             "SupportingAttack": SupportingAttack,
             "UnspecifiedWire": UnspecifiedWire,
             "VitalGr": VitalGr,
-            "Withdraw": Withdraw
+            "Withdraw": Withdraw,
+            "WithdrawUnderPressure": WithdrawUnderPressure,
 
             /*
             "SupportByFirePosition": SupportByFirePosition,

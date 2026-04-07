@@ -22,20 +22,20 @@ export interface WithdrawOptions {
 }
 
 /**
- * Withdraw class for drawing Withdraw tactical symbols
+ * WithdrawUnderPressure class for drawing WithdrawUnderPressure tactical symbols
  * Uses baseline + control points pattern with arc and arrow
  * Returns Polyline geometry despite being classified as an Area symbol
  */
-export class Withdraw {
+export class WithdrawUnderPressure {
   private view: MapView | SceneView;
   private layerManager: GraphicsLayerManager;
   private symbolLayer: GraphicsLayer;
   private isLine: boolean;
 
   // Symbol properties
-  public declaredClass: string = 'MilitarySymbology.Symbols.Withdraw';
-  public SID: string = '342400';
-  public symName: string = 'Withdraw';
+  public declaredClass: string = 'MilitarySymbology.Symbols.WithdrawUnderPressure';
+  public SID: string = '342500';
+  public symName: string = 'WithdrawUnderPressure';
   public symGeometricType: string = 'Area';
 
   private _lineSym: SimpleLineSymbol | null = null;
@@ -322,14 +322,15 @@ export class Withdraw {
         for (var i = 0; i < values.midPoints.length; i++) {
           cLenLimit = values.midPoints[i].len / 2;
           if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-          result.addPath(
-            this.toXYPath(Shapes.createW(
-              values.midPoints[i].midPt.x,
-              values.midPoints[i].midPt.y,
-              cLenLimit,
-              this.view.spatialReference,
-            )),
+          const wpPaths = Shapes.createWP(
+            values.midPoints[i].midPt.x,
+            values.midPoints[i].midPt.y,
+            cLenLimit,
+            this.view.spatialReference,
           );
+          for (let j = 0; j < wpPaths.length; j++) {
+            result.addPath(this.toXYPath(wpPaths[j]));
+          }
         }
 
         result.addPath(
@@ -674,4 +675,4 @@ export class Withdraw {
   }
 }
 
-export default Withdraw;
+export default WithdrawUnderPressure;
