@@ -209,7 +209,7 @@ import MovingConvoy from "../Symbols/MovingConvoy.ts"; //Fixed
 // Import the new TypeScript symbol classes
 
 import ObstacleBypassEasy from "../Symbols/ObstacleBypassEasy.ts"; //Fixed
-import Occupy from "../Symbols/Occupy.ts";
+import Occupy from "../Symbols/Occupy.ts"; //Fixed
 import Penetrate from "../Symbols/Penetrate.ts";
 import SlowGo from "../Symbols/SlowGo.ts";
 import StrongPoint from "../Symbols/StrongPoint.ts";

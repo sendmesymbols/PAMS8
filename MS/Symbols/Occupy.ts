@@ -1,572 +1,431 @@
+import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import Graphic from "@arcgis/core/Graphic";
-import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
+import Amplifier from "../Support/Amplifier.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
-import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 
 export interface OccupyOptions {
-    CTRL_PTS?: Point[];
-    GEOM?: Polyline;
-    ECHLON?: number;
-    [key: string]: any;
+  CTRL_PTS?: Point[];
+  GEOM?: Polyline;
+  ECHLON?: number;
+  [key: string]: any;
 }
 
 /**
  * Class Representing Occupy.
- * @class
- * @author Abdul Razak
+ * Direct click drawing (up to 3 points) with arc, "O" marker, and caret wings.
  */
-class Occupy {
-    public declaredClass: string = "MilitarySymbology.Symbols.Occupy";
-    public SID: string = "341700";
-    public symName: string = "Occupy";
-    public symGeometricType: string = "Area";
+export class Occupy {
+  private view: MapView | SceneView;
+  private layerManager: GraphicsLayerManager;
+  private symbolLayer: GraphicsLayer;
+  private isLine: boolean;
 
-    private view: MapView | SceneView;
-    private isLine: boolean;
-    private layerManager: GraphicsLayerManager;
-    private symbolLayer: GraphicsLayer;
-    private _lineSymbol: SimpleLineSymbol | null = null;
-    private _points: Point[] = [];
-    private _geometryType: string | null = null;
-    private _arrowHeadRatio: number = 0;
-    private _echlon: number = 0;
-    private _tGraphic: Graphic | null = null;
+  // Symbol properties
+  public declaredClass: string = "MilitarySymbology.Symbols.Occupy";
+  public SID: string = "341700";
+  public symName: string = "Occupy";
+  public symGeometricType: string = "Area";
 
-    // Event handlers
-    private _onClick: any = null;
-    private _onDblClick: any = null;
-    private _onMouseMove: any = null;
+  private _lineSym: SimpleLineSymbol | null = null;
+  private _points: Point[] = [];
+  private _geometryType: string | null = null;
+  private _echlon: number = 0;
+  private amplifier: Amplifier;
 
-    // Event emitter
-    private eventListeners: Map<string, Function[]> = new Map();
+  // Drawing state
+  private isDrawing: boolean = false;
+  private tempGraphic: Graphic | null = null;
 
-    constructor(view: MapView | SceneView, isLine: boolean) {
-        this.view = view;
-        this.isLine = isLine;
-        this.layerManager = GraphicsLayerManager.getInstance(view);
-        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
-        this.layerManager.initializeLayers();
-    }
+  // Event handlers
+  private clickHandler: any = null;
+  private doubleClickHandler: any = null;
+  private mouseMoveHandler: any = null;
 
-    /**
-     * Initialize the symbol drawing
-     */
-    public init(options: OccupyOptions, marker: SimpleLineSymbol): void {
-        this._lineSymbol = marker;
-        this.view.navigation.setImmediateClick(false);
-        this.view.disableDoubleClickZoom();
+  // Event emitter
+  private eventListeners: Map<string, Function[]> = new Map();
 
-        const drawEssentials = new DrawEssentials();
-        this._echlon = options.ECHLON || 0;
+  constructor(view: MapView | SceneView, isLine: boolean = false) {
+    this.view = view;
+    this.isLine = isLine;
+    this.layerManager = GraphicsLayerManager.getInstance(view);
+    this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
+    this.amplifier = new Amplifier();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-            this._tGraphic = new Graphic({ geometry: options.GEOM });
-            drawEssentials.CTRL_PTS = [...(options.CTRL_PTS || [])];
-            (drawEssentials as any).ECHELON = this._echlon.toString();
-            this.__drawEnd(this._tGraphic.geometry as Polyline, drawEssentials);
-            this._clear();
-        } else if (options.hasOwnProperty("CTRL_PTS")) {
-            drawEssentials.CTRL_PTS = [...(options.CTRL_PTS || [])];
-            (drawEssentials as any).ECHELON = this._echlon.toString();
-            this._tGraphic = new Graphic({ 
-                geometry: this.createSymbol(drawEssentials),
-                symbol: this._lineSymbol 
-            });
-            this.__drawEnd(this._tGraphic.geometry as Polyline, drawEssentials);
-            this._clear();
-        } else {
-            this._tGraphic = new Graphic({ symbol: this._lineSymbol });
-            this.symbolLayer.add(this._tGraphic);
+    // Initialize layers if not already done
+    this.layerManager.initializeLayers();
 
-            this._onClick = this.view.on("click", this._onClickHandler.bind(this));
-            this._onDblClick = this.view.on("double-click", this._onDblClickHandler.bind(this));
-        }
-    }
+    // Initialize temporary graphic
+    this.tempGraphic = new Graphic();
+  }
 
-    /**
-     * Find angle between three points
-     */
-    private find_angle(p0: Point, p1: Point, c: Point): number {
-        const p0c = Math.sqrt(Math.pow(c.x - p0.x, 2) + Math.pow(c.y - p0.y, 2));
-        const p1c = Math.sqrt(Math.pow(c.x - p1.x, 2) + Math.pow(c.y - p1.y, 2));
-        const p0p1 = Math.sqrt(Math.pow(p1.x - p0.x, 2) + Math.pow(p1.y - p0.y, 2));
-        return Math.acos((p1c * p1c + p0c * p0c - p0p1 * p0p1) / (2 * p1c * p0c));
-    }
+  /**
+   * Initialize the Occupy drawing
+   */
+  public init(options: OccupyOptions, marker: SimpleLineSymbol): void {
+    this._lineSym = marker;
 
-    /**
-     * Calculate angle between two points with fixed point
-     */
-    private angleBetweenTwoPointsWithFixedPoint(point1X: number, point1Y: number, point2X: number, point2Y: number, fixedX: number, fixedY: number): number {
-        const angle1 = Math.atan2(point1Y - fixedY, point1X - fixedX);
-        const angle2 = Math.atan2(point2Y - fixedY, point2X - fixedX);
-        return angle1 - angle2;
-    }
+    this._echlon = options.ECHLON || 0;
 
-    /**
-     * Create draw essentials object
-     */
-    private createDrawEssentials(ctrlPts: Point[], echlon: number): DrawEssentials {
-        const drawEssentials = new DrawEssentials();
-        drawEssentials.SCOPE = this.declaredClass;
-        drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
-        drawEssentials.SID = this.SID;
-        drawEssentials.SYM_NAME = this.symName;
-        drawEssentials.CTRL_PTS = ctrlPts;
-        drawEssentials.AMPLIFIER = (this as any).amplifier;
-        (drawEssentials as any).ECHELON = echlon.toString();
-        return drawEssentials;
-    }
-
-    /**
-     * Create the symbol geometry
-     */
-    private createSymbol(drawEssentials: DrawEssentials): Polyline {
+    if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+      if (options.GEOM && this.tempGraphic) {
         try {
-            const pts = drawEssentials.CTRL_PTS;
-            if (!pts || pts.length === 0) {
-                throw new Error("controlPoints not found");
-            }
-
-            const result = new Polyline({ spatialReference: this.view.spatialReference });
-            const startingPt = pts[0];
-            const endPt = pts[1];
-
-            if (pts.length === 2) {
-                result.addPath([startingPt, endPt]);
-            } else if (pts.length > 2) {
-                const candidatePoint = pts[2];
-                const circle = this._circleDrawEx(
-                    this.view.toScreen(startingPt),
-                    this.view.toScreen(endPt),
-                    this.view.toScreen(candidatePoint)
-                );
-
-                if (circle.radius > 0) {
-                    const values = this.CreateCircleSegmentFromThreePoints(
-                        circle,
-                        this.view.toScreen(startingPt),
-                        this.view.toScreen(endPt),
-                        this.view.toScreen(candidatePoint),
-                        60,
-                        this.view
-                    );
-
-                    const paths = values.geometry.paths[0];
-                    result.addPath(paths.slice(0, 25));
-                    result.addPath(paths.slice(35, 60));
-
-                    // Create O
-                    const cPoint = new Point({
-                        x: paths[30][0],
-                        y: paths[30][1],
-                        spatialReference: this.view.spatialReference
-                    });
-
-                    const firstPoint = new Point({
-                        x: paths[25][0],
-                        y: paths[25][1],
-                        spatialReference: this.view.spatialReference
-                    });
-
-                    const secondPoint = new Point({
-                        x: paths[35][0],
-                        y: paths[35][1],
-                        spatialReference: this.view.spatialReference
-                    });
-
-                    const baseLineLen = GeoTools._2PtLen(firstPoint, secondPoint);
-                    let cLenLimit = baseLineLen / 5;
-                    if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-
-                    result.addPath(Shapes.createO(cPoint.x, cPoint.y, cLenLimit, this.view.spatialReference));
-
-                    // End of Create O
-                    const length = GeoTools._2PtLen(endPt, cPoint) / 10;
-                    let angle = GeoTools.twoPtsAngle(values.backPoint, values.lastPoint);
-
-                    if (angle < 3.14159) {
-                        angle += 2.35619;
-                    } else {
-                        angle -= 2.35619;
-                    }
-
-                    const innerWing = new Point({
-                        x: endPt.x + length * Math.cos(angle),
-                        y: endPt.y + length * Math.sin(angle),
-                        spatialReference: this.view.spatialReference
-                    });
-
-                    const innerWingPlus = new Point({
-                        x: -1 * length * Math.cos(angle) + endPt.x,
-                        y: -1 * length * Math.sin(angle) + endPt.y,
-                        spatialReference: this.view.spatialReference
-                    });
-
-                    angle = GeoTools.twoPtsAngle(values.backPoint, values.lastPoint);
-
-                    if (angle > 3.14159) {
-                        angle += 2.35619;
-                    } else {
-                        angle -= 2.35619;
-                    }
-
-                    const outerWing = new Point({
-                        x: endPt.x + length * Math.cos(angle),
-                        y: endPt.y + length * Math.sin(angle),
-                        spatialReference: this.view.spatialReference
-                    });
-
-                    const outerWingPlus = new Point({
-                        x: -1 * length * Math.cos(angle) + endPt.x,
-                        y: -1 * length * Math.sin(angle) + endPt.y,
-                        spatialReference: this.view.spatialReference
-                    });
-
-                    result.addPath([innerWingPlus, endPt, innerWing]);
-                    result.addPath([outerWingPlus, endPt, outerWing]);
-                }
-            }
-
-            return result;
-        } catch (e) {
-            console.log(this.declaredClass + ' Can not create Symbol due to invalid geometry');
-            throw e;
+          this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
+            ? options.GEOM
+            : new Polyline({ paths: (options.GEOM as any), spatialReference: this.view.spatialReference });
+        } catch (error) {
+          console.error(this.symName, "Failed to create Polyline geometry:", error);
         }
-    }
+      }
 
-    /**
-     * Handle mouse move events
-     */
-    private _onMouseMoveHandler(inputPoint: any): void {
-        const candidatePoint = this.view.toMap(inputPoint);
-        if (!candidatePoint) return;
+      const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.ECHLON || 0);
+      if (this.tempGraphic && this.tempGraphic.geometry) {
+        this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
+      }
+      this._clear();
 
-        const drawEssentials = new DrawEssentials();
-        drawEssentials.CTRL_PTS = [...this._points, candidatePoint];
-        (drawEssentials as any).ECHELON = this._echlon.toString();
-
-        if (this._tGraphic) {
-            this._tGraphic.geometry = this.createSymbol(drawEssentials);
-        }
-
-        this.emit("onDrawProgress", { 
-            currentGeometry: this._tGraphic?.geometry, 
-            currentDrawEssentials: drawEssentials, 
-            currentMarker: this._lineSymbol 
-        });
-    }
-
-    /**
-     * Handle click events
-     */
-    private _onClickHandler(clickPoint: any): void {
-        const mapPoint = this.view.toMap(clickPoint);
-        if (!mapPoint) return;
-
-        this._points.push(new Point({
-            x: mapPoint.x,
-            y: mapPoint.y,
-            spatialReference: this.view.spatialReference
-        }));
-
-        if (this._points.length === 1) {
-            this._onMouseMove = this.view.on("pointer-move", this._onMouseMoveHandler.bind(this));
-        }
-
-        this.emit("onDrawClick", { currentPts: this._points });
-
-        if (this._points.length === 3) {
-            this.emit("onDrawClick", { currentPts: this._points });
-            this.cleanUp();
-        }
-    }
-
-    /**
-     * Handle double click events
-     */
-    private _onDblClickHandler(clickPoint: any): void {
-        const mapPoint = this.view.toMap(clickPoint);
-        if (!mapPoint) return;
-
-        this._points.push(new Point({
-            x: mapPoint.x,
-            y: mapPoint.y,
-            spatialReference: this.view.spatialReference
-        }));
-
-        this.cleanUp();
-    }
-
-    /**
-     * Clean up drawing state
-     */
-    private cleanUp(): void {
-        const drawEss = this.createDrawEssentials([...this._points], this._echlon);
-        this.__drawEnd(this._tGraphic?.geometry as Polyline, drawEss);
+    } else if (options.hasOwnProperty("CTRL_PTS")) {
+      const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._echlon);
+      const geometry = this.createSymbol(drawEss);
+      if (geometry && this.tempGraphic) {
+        this.tempGraphic.geometry = geometry;
+        this.__drawEnd(geometry, drawEss);
         this._clear();
-        this._removeEvents();
+      }
+    } else {
+      // Interactive drawing mode
+      this.startInteractiveDrawing();
+    }
+  }
+
+  private startInteractiveDrawing(): void {
+    if (!this._lineSym) return;
+
+    this.isDrawing = true;
+    this.tempGraphic = new Graphic({
+      geometry: null,
+      symbol: this._lineSym
+    });
+    this.symbolLayer.add(this.tempGraphic);
+
+    this.clickHandler = this.view.on("click", (event) => {
+      this._onClickHandler(event);
+    });
+
+    this.doubleClickHandler = this.view.on("double-click", (event) => {
+      this._onDoubleClickHandler(event);
+    });
+  }
+
+  private _onClickHandler(clickEvent: any): void {
+    const mapPoint = this.view.toMap(clickEvent);
+    if (!mapPoint) return;
+
+    const point = new Point({
+      x: mapPoint.x,
+      y: mapPoint.y,
+      spatialReference: this.view.spatialReference
+    });
+
+    this._points.push(point);
+
+    if (this._points.length === 1) {
+      this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
+        this._onMouseMoveHandler(event);
+      });
     }
 
-    /**
-     * Handle draw end
-     */
-    private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
-        if (drawGeometry) {
-            let geographicGeometry: Polyline | null = null;
-            const spRef = this.view.spatialReference;
+    this.emit("onDrawClick", { currentPts: this._points });
 
-            if (spRef.isWebMercator) {
-                geographicGeometry = drawGeometry.clone() as Polyline;
-            } else if (spRef.wkid === 4326) {
-                geographicGeometry = drawGeometry.clone() as Polyline;
-            }
+    // Auto-complete after 3 clicks
+    if (this._points.length === 3) {
+      this.emit("onDrawClick", { currentPts: this._points });
+      this.cleanUp();
+    }
+  }
 
-            this.__onDrawEnd(drawGeometry, geographicGeometry, drawEssentials);
+  private _onDoubleClickHandler(clickEvent: any): void {
+    const mapPoint = this.view.toMap(clickEvent);
+    if (!mapPoint) return;
+
+    const point = new Point({
+      x: mapPoint.x,
+      y: mapPoint.y,
+      spatialReference: this.view.spatialReference
+    });
+
+    this._points.push(point);
+    this.cleanUp();
+  }
+
+  private _onMouseMoveHandler(inputEvent: any): void {
+    if (!this.tempGraphic) return;
+
+    const mapPoint = this.view.toMap(inputEvent);
+    if (!mapPoint) return;
+
+    const candidatePoint = new Point({
+      x: mapPoint.x,
+      y: mapPoint.y,
+      spatialReference: this.view.spatialReference
+    });
+
+    const drawEssentials = new DrawEssentials();
+    (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
+    (drawEssentials as any).ECHLON = this._echlon;
+
+    const geometry = this.createSymbol(drawEssentials);
+    if (geometry) {
+      this.tempGraphic.geometry = geometry;
+      this.emit("onDrawProgress", {
+        currentGeometry: geometry,
+        currentDrawEssentials: drawEssentials,
+        currentMarker: this._lineSym
+      });
+    }
+  }
+
+  private createDrawEssentials(ctrlPts: Point[], echlon: number ): DrawEssentials {
+    const drawEssentials = new DrawEssentials();
+    drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
+    drawEssentials.SID = this.SID;
+    drawEssentials.SYM_NAME = this.symName;
+    drawEssentials.AMPLIFIER = this.amplifier.toString();
+
+    (drawEssentials as any).SCOPE = this;
+    (drawEssentials as any).CTRL_PTS = ctrlPts;
+    (drawEssentials as any).ECHLON = echlon;
+
+    return drawEssentials;
+  }
+
+
+
+  private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
+    try {
+      const spatialReference = this.view.spatialReference;
+      const pts: Point[] = (drawEssentials as any).CTRL_PTS;
+      if (!pts || pts.length === 0) throw new Error("controlPoints not found");
+
+      const result = new Polyline({ spatialReference });
+      const startingPt = pts[0];
+      const endPt = pts[1];
+
+      if (pts.length === 2) {
+        result.addPath([[startingPt.x, startingPt.y], [endPt.x, endPt.y]]);
+
+      } else if (pts.length > 2) {
+        const candidatePoint = pts[2];
+
+        // Build circle from three points in screen space
+        const stScr = (this.view as any).toScreen(startingPt);
+        const endScr = (this.view as any).toScreen(endPt);
+        const candScr = (this.view as any).toScreen(candidatePoint);
+        if (!stScr || !endScr || !candScr) return null;
+
+        const circle = GeoTools.circleFromThreeScreenPoints(stScr, endScr, candScr);
+        if (!circle || circle.radius <= 0) {
+          result.addPath([[startingPt.x, startingPt.y], [endPt.x, endPt.y]]);
+          return result;
         }
+
+        const circleSeg = Shapes.createCircleSegmentFromThreePoints(this.view as any, circle, stScr, endScr, candScr, 60);
+        const ring = (circleSeg.geometry as any).paths?.[0] as number[][];
+        if (!ring || ring.length === 0) return null;
+
+        // Split arc with a gap
+        const firstArc = ring.slice(0, 25);
+        const secondArc = ring.slice(35, 60);
+        if (firstArc.length >= 2) result.addPath(firstArc);
+        if (secondArc.length >= 2) result.addPath(secondArc);
+
+        // Create O at the gap
+        if (ring[30] && ring[25] && ring[35]) {
+          const cPoint = new Point({ x: ring[30][0], y: ring[30][1], spatialReference });
+          const firstPoint = new Point({ x: ring[25][0], y: ring[25][1], spatialReference });
+          const secondPoint = new Point({ x: ring[35][0], y: ring[35][1], spatialReference });
+          const baseLineLen = GeoTools._2PtLen(firstPoint, secondPoint);
+          let cLenLimit = baseLineLen / 5;
+          if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+          const oPts: Point[] = (Shapes as any).createO(cPoint.x, cPoint.y, cLenLimit, spatialReference) || [];
+          if (oPts.length) result.addPath(oPts.map(p => [p.x, p.y]));
+        }
+
+        // Create wings (caret arrowhead) at endPt aligned to arc tangent
+        if (endPt && ring.length >= 6) {
+          const cPoint = new Point({ x: ring[30][0], y: ring[30][1], spatialReference });
+          const length = GeoTools._2PtLen(endPt, cPoint) / 10;
+
+          // Determine which end of the arc ring is near endPt
+          const firstRingPt = new Point({ x: ring[0][0], y: ring[0][1], spatialReference });
+          const lastRingPt = new Point({ x: ring[ring.length - 1][0], y: ring[ring.length - 1][1], spatialReference });
+
+          let arcBackPt: Point;
+          let arcTipPt: Point;
+
+          if (GeoTools._2PtLen(endPt, lastRingPt) <= GeoTools._2PtLen(endPt, firstRingPt)) {
+            const bi = Math.max(0, ring.length - 6);
+            arcBackPt = new Point({ x: ring[bi][0], y: ring[bi][1], spatialReference });
+            arcTipPt = lastRingPt;
+          } else {
+            const bi = Math.min(5, ring.length - 1);
+            arcBackPt = new Point({ x: ring[bi][0], y: ring[bi][1], spatialReference });
+            arcTipPt = firstRingPt;
+          }
+
+          // Inner wing
+          let angle = GeoTools.twoPtsAngle(arcBackPt, arcTipPt);
+          if (angle < Math.PI) angle += 2.35619; else angle -= 2.35619;
+          const innerWing = [endPt.x + length * Math.cos(angle), endPt.y + length * Math.sin(angle)];
+          const innerWingPlus = [-1 * length * Math.cos(angle) + endPt.x, -1 * length * Math.sin(angle) + endPt.y];
+          result.addPath([innerWingPlus, [endPt.x, endPt.y], innerWing]);
+
+          // Outer wing
+          angle = GeoTools.twoPtsAngle(arcBackPt, arcTipPt);
+          if (angle > Math.PI) angle += 2.35619; else angle -= 2.35619;
+          const outerWing = [endPt.x + length * Math.cos(angle), endPt.y + length * Math.sin(angle)];
+          const outerWingPlus = [-1 * length * Math.cos(angle) + endPt.x, -1 * length * Math.sin(angle) + endPt.y];
+          result.addPath([outerWingPlus, [endPt.x, endPt.y], outerWing]);
+        }
+      }
+
+      return result;
+    } catch (e) {
+      console.log(this.declaredClass + ' Cannot create Symbol due to invalid geometry');
+      return null;
+    }
+  }
+
+  private cleanUp(): void {
+    if (this._points.length === 0) return;
+
+    const drawEssentials = this.createDrawEssentials(this._points.slice(), this._echlon);
+
+    if (this.tempGraphic && this.tempGraphic.geometry) {
+      this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
     }
 
-    /**
-     * Emit draw end event
-     */
-    private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline | null, drawEssParam: DrawEssentials): void {
-        this.emit("onDrawEnd", { 
-            geometry: geometry, 
-            geographicGeometry: geoGeometry, 
-            drawEssentials: drawEssParam, 
-            marker: this._lineSymbol 
-        });
+    this._clear();
+    this._removeEvents();
+  }
+
+  private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
+    if (drawGeometry) {
+      const spatialRef = this.view.spatialReference;
+      let geographicGeometry = drawGeometry;
+
+      if (spatialRef && spatialRef.isWebMercator) {
+        // Geographic conversion would go here if needed
+      } else if (spatialRef && spatialRef.wkid === 4326) {
+        geographicGeometry = drawGeometry.clone();
+      }
+
+      this.__onDrawEnd(drawGeometry, geographicGeometry, drawEssentials);
+    }
+  }
+
+  private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
+    this.emit("onDrawEnd", {
+      geometry: geometry,
+      geographicGeometry: geoGeometry,
+      drawEssentials: drawEssParam,
+      marker: this._lineSym
+    });
+  }
+
+  private _clear(): void {
+    if (this.tempGraphic && this.symbolLayer) {
+      this.symbolLayer.remove(this.tempGraphic);
     }
 
-    /**
-     * Clear drawing state
-     */
-    private _clear(): void {
-        if (this._tGraphic) {
-            this.symbolLayer.remove(this._tGraphic);
-        }
+    this.tempGraphic = null;
+    this._points = [];
+  }
 
-        this._tGraphic = null;
-        this._points = [];
+  private _removeEvents(): void {
+    if (this.clickHandler) {
+      this.clickHandler.remove();
+      this.clickHandler = null;
+    }
+    if (this.doubleClickHandler) {
+      this.doubleClickHandler.remove();
+      this.doubleClickHandler = null;
+    }
+    if (this.mouseMoveHandler) {
+      this.mouseMoveHandler.remove();
+      this.mouseMoveHandler = null;
+    }
+  }
+
+  public deactivate(): void {
+    this._clear();
+    this._removeEvents();
+    this._geometryType = null;
+    this.isDrawing = false;
+  }
+
+  private emit(eventName: string, data: any): void {
+    const listeners = this.eventListeners.get(eventName);
+    if (listeners) {
+      listeners.forEach(listener => listener(data));
     }
 
-    /**
-     * Remove event listeners
-     */
-    private _removeEvents(): void {
-        if (this._onClick) this._onClick.remove();
-        if (this._onDblClick) this._onDblClick.remove();
-        if (this._onMouseMove) this._onMouseMove.remove();
-        this.view.enableDoubleClickZoom();
+    this.emitGlobalEvent(eventName, data);
+  }
+
+  private emitGlobalEvent(eventName: string, data: any): void {
+    const customEvent = new CustomEvent(eventName, {
+      detail: {
+        symbolType: this.constructor.name,
+        eventName: eventName,
+        ...data
+      },
+      bubbles: true,
+      cancelable: true
+    });
+
+    if (this.view && this.view.container) {
+      this.view.container.dispatchEvent(customEvent);
+    } else {
+      document.dispatchEvent(customEvent);
     }
+  }
 
-    /**
-     * Deactivate the symbol
-     */
-    public deactivate(): void {
-        this._clear();
-        this._removeEvents();
-        this._geometryType = null;
+  public on(eventName: string, callback: Function): void {
+    if (!this.eventListeners.has(eventName)) {
+      this.eventListeners.set(eventName, []);
     }
+    this.eventListeners.get(eventName)!.push(callback);
+  }
 
-    /**
-     * Circle drawing helper
-     */
-    private _circleDrawEx(pt1: any, pt2: any, pt3: any): { radius: number; center: { x: number; y: number } } {
-        let r, m11, m12, m13, m14;
-        let Xo = 0, Yo = 0;
-        const a = [
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0]
-        ];
-        const P = [
-            [pt1.x, pt1.y],
-            [pt2.x, pt2.y],
-            [pt3.x, pt3.y]
-        ];
-
-        for (let i = 0; i < 3; i++) {
-            a[i][0] = P[i][0];
-            a[i][1] = P[i][1];
-            a[i][2] = 1;
+  public off(eventName: string, callback?: Function): void {
+    if (!callback) {
+      this.eventListeners.delete(eventName);
+    } else {
+      const listeners = this.eventListeners.get(eventName);
+      if (listeners) {
+        const index = listeners.indexOf(callback);
+        if (index > -1) {
+          listeners.splice(index, 1);
         }
-        m11 = this._determinantDrawEx(a, 3);
-
-        for (let i = 0; i < 3; i++) {
-            a[i][0] = P[i][0] * P[i][0] + P[i][1] * P[i][1];
-            a[i][1] = P[i][1];
-            a[i][2] = 1;
-        }
-        m12 = this._determinantDrawEx(a, 3);
-
-        for (let i = 0; i < 3; i++) {
-            a[i][0] = P[i][0] * P[i][0] + P[i][1] * P[i][1];
-            a[i][1] = P[i][0];
-            a[i][2] = 1;
-        }
-        m13 = this._determinantDrawEx(a, 3);
-
-        for (let i = 0; i < 3; i++) {
-            a[i][0] = P[i][0] * P[i][0] + P[i][1] * P[i][1];
-            a[i][1] = P[i][0];
-            a[i][2] = P[i][1];
-        }
-        m14 = this._determinantDrawEx(a, 3);
-
-        if (m11 === 0) {
-            r = 0;
-        } else {
-            Xo = 0.5 * m12 / m11;
-            Yo = -0.5 * m13 / m11;
-            r = Math.sqrt(Xo * Xo + Yo * Yo + m14 / m11);
-        }
-
-        return { radius: r, center: { x: Xo, y: Yo } };
+      }
     }
+  }
 
-    /**
-     * Determinant calculation helper
-     */
-    private _determinantDrawEx(a: number[][], n: number): number {
-        let d = 0;
-        const m = [
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0]
-        ];
+  public getSymbolLayer(): GraphicsLayer {
+    return this.symbolLayer;
+  }
 
-        if (n === 2) {
-            d = a[0][0] * a[1][1] - a[1][0] * a[0][1];
-        } else {
-            d = 0;
-            for (let j1 = 0; j1 < n; j1++) {
-                for (let i = 1; i < n; i++) {
-                    let j2 = 0;
-                    for (let j = 0; j < n; j++) {
-                        if (j === j1) continue;
-                        m[i - 1][j2] = a[i][j];
-                        j2++;
-                    }
-                }
-                d = d + Math.pow(-1.0, j1) * a[0][j1] * this._determinantDrawEx(m, n - 1);
-            }
-        }
-
-        return d;
-    }
-
-    /**
-     * Create circle segment from three points
-     */
-    private CreateCircleSegmentFromThreePoints(circle: any, pt1: any, pt2: any, pt3: any, numberOfPts: number, view: MapView | SceneView): any {
-        const center = circle.center;
-        const radius = circle.radius;
-        const path: Point[] = [];
-
-        pt1.x -= center.x;
-        pt1.y -= center.y;
-        pt2.x -= center.x;
-        pt2.y -= center.y;
-        pt3.x -= center.x;
-        pt3.y -= center.y;
-
-        let anglePt1 = Math.atan2(pt1.y, pt1.x);
-        let anglePt2 = Math.atan2(pt2.y, pt2.x);
-        let anglePt3 = Math.atan2(pt3.y, pt3.x);
-
-        anglePt1 = anglePt1 < 0 ? 2 * Math.PI + anglePt1 : anglePt1;
-        anglePt2 = anglePt2 < 0 ? 2 * Math.PI + anglePt2 : anglePt2;
-        anglePt3 = anglePt3 < 0 ? 2 * Math.PI + anglePt3 : anglePt3;
-
-        const startAngle = Math.min(anglePt1, anglePt2);
-        const endAngle = Math.max(anglePt1, anglePt2);
-        let swipeAngle = endAngle - startAngle;
-
-        if (anglePt3 < startAngle || anglePt3 > endAngle) {
-            swipeAngle -= (2 * Math.PI);
-        }
-
-        const angle = swipeAngle / numberOfPts;
-
-        for (let i = 0; i <= numberOfPts; i++) {
-            const pt = view.toMap({
-                x: radius * Math.cos(startAngle + i * angle) + center.x,
-                y: radius * Math.sin(startAngle + i * angle) + center.y
-            });
-            path.push(pt);
-        }
-
-        const result = new Polyline({ spatialReference: view.spatialReference });
-        result.addPath(path);
-
-        return { 
-            geometry: result, 
-            lastPoint: path[numberOfPts], 
-            backPoint: path[numberOfPts - 5] 
-        };
-    }
-
-    /**
-     * Emit events
-     */
-    private emit(eventName: string, data: any): void {
-        const listeners = this.eventListeners.get(eventName);
-        if (listeners) {
-            listeners.forEach(callback => callback(data));
-        }
-        this.emitGlobalEvent(eventName, data);
-    }
-
-    private emitGlobalEvent(eventName: string, data: any): void {
-        const customEvent = new CustomEvent(eventName, {
-            detail: {
-                symbolType: "Occupy",
-                eventName,
-                ...data
-            },
-            bubbles: true,
-            cancelable: true
-        });
-        if (this.view && this.view.container) {
-            this.view.container.dispatchEvent(customEvent);
-        } else {
-            document.dispatchEvent(customEvent);
-        }
-    }
-
-    /**
-     * Add event listener
-     */
-    public on(eventName: string, callback: Function): void {
-        if (!this.eventListeners.has(eventName)) {
-            this.eventListeners.set(eventName, []);
-        }
-        this.eventListeners.get(eventName)!.push(callback);
-    }
-
-    /**
-     * Remove event listener
-     */
-    public off(eventName: string, callback?: Function): void {
-        if (!callback) {
-            this.eventListeners.delete(eventName);
-        } else {
-            const listeners = this.eventListeners.get(eventName);
-            if (listeners) {
-                const index = listeners.indexOf(callback);
-                if (index > -1) {
-                    listeners.splice(index, 1);
-                }
-            }
-        }
-    }
+  public clearSymbols(): void {
+    this.symbolLayer.removeAll();
+  }
 }
 
 export default Occupy;
