@@ -78,7 +78,7 @@ class Shapes {
         pt2: any,
         pt3: any,
         numberOfPts: number
-    ): { geometry: Polygon; lastPoint: Point; backPoint: Point } {
+    ): { geometry: Polyline; lastPoint: Point; backPoint: Point } {
         const center = circle.center;
         const radius = circle.radius;
         const path: Point[] = [];
@@ -117,9 +117,9 @@ class Shapes {
             }
         }
 
-        const result = new Polygon({ spatialReference: view.spatialReference });
+        const result = new Polyline({ spatialReference: view.spatialReference });
         const pathCoords = path.map(p => [p.x, p.y]);
-        result.addRing(pathCoords);
+        result.addPath(pathCoords);
 
         return {
             geometry: result,

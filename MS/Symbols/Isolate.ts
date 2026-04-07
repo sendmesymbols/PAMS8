@@ -352,7 +352,7 @@ export class Isolate {
       }
 
       const circleSeg = Shapes.createCircleSegmentFromThreePoints(this.view as any, circle, stScr, endScr, candScr, 60);
-      const ring = (circleSeg.geometry as any).rings?.[0] as number[][];
+      const ring = (circleSeg.geometry as any).paths?.[0] as number[][];
       if (!ring || ring.length === 0) return null;
 
       // Split arc with a gap (mirror legacy indices)
@@ -373,18 +373,39 @@ export class Isolate {
         if (iPts.length) result.addPath(iPts.map(p => [p.x, p.y]));
       }
 
-      // Create wings from end point using adjusted angles
-      if (endPt && circleSeg.lastPoint && circleSeg.backPoint) {
+      // Create wings (caret arrowhead) at endPt aligned to arc tangent
+      if (endPt && ring.length >= 6) {
         const cPoint = new Point({ x: ring[30][0], y: ring[30][1], spatialReference });
         const length = GeoTools._2PtLen(endPt, cPoint) / 10;
-        let angle = GeoTools.twoPtsAngle(circleSeg.backPoint, circleSeg.lastPoint);
+
+        // Determine which end of the arc ring is near endPt
+        // The arc may start at startingPt or endPt depending on angular ordering
+        const firstRingPt = new Point({ x: ring[0][0], y: ring[0][1], spatialReference });
+        const lastRingPt = new Point({ x: ring[ring.length - 1][0], y: ring[ring.length - 1][1], spatialReference });
+
+        let arcBackPt: Point;
+        let arcTipPt: Point;
+
+        if (GeoTools._2PtLen(endPt, lastRingPt) <= GeoTools._2PtLen(endPt, firstRingPt)) {
+          // endPt is at end of ring → tangent from ring[N-5] toward ring[N]
+          const bi = Math.max(0, ring.length - 6);
+          arcBackPt = new Point({ x: ring[bi][0], y: ring[bi][1], spatialReference });
+          arcTipPt = lastRingPt;
+        } else {
+          // endPt is at start of ring → tangent from ring[5] toward ring[0]
+          const bi = Math.min(5, ring.length - 1);
+          arcBackPt = new Point({ x: ring[bi][0], y: ring[bi][1], spatialReference });
+          arcTipPt = firstRingPt;
+        }
+
         // Inner wing
+        let angle = GeoTools.twoPtsAngle(arcBackPt, arcTipPt);
         if (angle < Math.PI) angle += 2.35619; else angle -= 2.35619; // +/- 135 deg
         const innerWing = [endPt.x + length * Math.cos(angle), endPt.y + length * Math.sin(angle)];
         result.addPath([innerWing, [endPt.x, endPt.y]]);
 
         // Outer wing
-        angle = GeoTools.twoPtsAngle(circleSeg.backPoint, circleSeg.lastPoint);
+        angle = GeoTools.twoPtsAngle(arcBackPt, arcTipPt);
         if (angle > Math.PI) angle += 2.35619; else angle -= 2.35619;
         const outerWing = [endPt.x + length * Math.cos(angle), endPt.y + length * Math.sin(angle)];
         result.addPath([outerWing, [endPt.x, endPt.y]]);
