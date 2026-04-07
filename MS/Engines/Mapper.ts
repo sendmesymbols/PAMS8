@@ -208,7 +208,7 @@ import Screen from "../Symbols/Screen.ts"; //Fixed
 import MovingConvoy from "../Symbols/MovingConvoy.ts"; //Fixed
 // Import the new TypeScript symbol classes
 
-import ObstacleBypassEasy from "../Symbols/ObstacleBypassEasy.ts";
+import ObstacleBypassEasy from "../Symbols/ObstacleBypassEasy.ts"; //Fixed
 import Occupy from "../Symbols/Occupy.ts";
 import Penetrate from "../Symbols/Penetrate.ts";
 import SlowGo from "../Symbols/SlowGo.ts";
