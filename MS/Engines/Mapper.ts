@@ -202,7 +202,7 @@ import Guard from "../Symbols/Guard.ts"; //Fixed
 import Secure from "../Symbols/Secure.ts"; //Fixed
 
 import InfiltrationLane from "../Symbols/InfiltrationLane.ts"; //Fixed
-import Isolate from "../Symbols/Isolate.ts";
+import Isolate from "../Symbols/Isolate.ts";  //Fixed
 
 import Screen from "../Symbols/Screen.ts";
 import MovingConvoy from "../Symbols/MovingConvoy.ts";
