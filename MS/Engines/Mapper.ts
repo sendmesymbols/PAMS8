@@ -217,6 +217,11 @@ import SupportingAttack from "../Symbols/SupportingAttack.ts";
 import UnspecifiedWire from "../Symbols/UnspecifiedWire.ts";
 import Withdraw from "../Symbols/Withdraw.ts"; //Fixed
 import WithdrawUnderPressure from "../Symbols/WithdrawUnderPressure.ts"; //Fixed
+import SupportByFirePosition from "../Symbols/SupportByFirePosition.ts";
+import Bypass from "../Symbols/Bypass.ts";
+import StartLine from "../Symbols/StartLine.ts";
+import ObjArea from "../Symbols/ObjArea.ts";
+
 
 
 import MapView from "@arcgis/core/views/MapView";
@@ -349,6 +354,10 @@ export default class Mapper {
             "VitalGr": VitalGr,
             "Withdraw": Withdraw,
             "WithdrawUnderPressure": WithdrawUnderPressure,
+            "SupportByFirePosition": SupportByFirePosition,
+            "Bypass": Bypass,
+            "StartLine": StartLine,
+            "ObjArea": ObjArea,
 
             /*
             "SupportByFirePosition": SupportByFirePosition,

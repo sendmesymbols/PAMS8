@@ -66,7 +66,8 @@ export default defineConfig({
         minify: false, // handled by terser plugin instead
     },
     server: {
-        port: 3000
+        host: "0.0.0.0",
+        port: 6547
     },
     plugins: [
         dts({
