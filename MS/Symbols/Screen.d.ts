@@ -4,18 +4,15 @@ import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-export interface ContainOptions {
+export interface ScreenOptions {
     CTRL_PTS?: Point[];
-    BASE_LN_PTS?: {
-        startPt: Point;
-        endPt: Point;
-    };
     GEOM?: Polyline;
+    ECHLON?: number;
     [key: string]: any;
 }
 /**
- * Contain class for drawing Contain tactical symbols
- * Uses baseline + control points
+ * Screen class for drawing Screen tactical symbols
+ * Uses direct click drawing (up to 3 points) with arrow heads and S-curves
  * Returns Polyline geometry despite being classified as an Area symbol
  */
 export declare class Screen {
@@ -29,48 +26,26 @@ export declare class Screen {
     symGeometricType: string;
     private _lineSym;
     private _points;
-    private _baseLinePts;
     private _geometryType;
+    private _echlon;
     private amplifier;
-    private _teethSize;
-    private _teethGap;
     private isDrawing;
     private tempGraphic;
-    private baseLineComplete;
     private clickHandler;
     private doubleClickHandler;
     private mouseMoveHandler;
-    private baseLineEndHandler;
-    private baseLineProgressHandler;
-    private baseLineClickHandler;
     private eventListeners;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
      * Initialize the Screen drawing
      */
-    init(options: ContainOptions, marker: SimpleLineSymbol): void;
+    init(options: ScreenOptions, marker: SimpleLineSymbol): void;
     /**
-     * Start baseline drawing
+     * Start interactive drawing mode
      */
-    private startBaseLineDrawing;
+    private startInteractiveDrawing;
     /**
-     * Handle baseline click events
-     */
-    private baseLineClick;
-    /**
-     * Handle baseline draw progress
-     */
-    private baseLineDrawProgress;
-    /**
-     * Handle baseline draw end
-     */
-    private baseLineDrawEnd;
-    /**
-     * Set up control point drawing handlers
-     */
-    private setupControlPointHandlers;
-    /**
-     * Handle click events for control points
+     * Handle click events
      */
     private _onClickHandler;
     /**
@@ -89,11 +64,10 @@ export declare class Screen {
      * Create symbol geometry from DrawEssentials
      */
     private createSymbol;
-    private createTeeth3;
     /**
-     * Get baseline points
+     * Convert degrees to radians (legacy helper matching JS source)
      */
-    getBaseLinePts(): any;
+    private toRad;
     /**
      * Clean up drawing state and finalize
      */

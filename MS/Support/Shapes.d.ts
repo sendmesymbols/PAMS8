@@ -38,7 +38,7 @@ declare class Shapes {
             y: number;
         };
     }, pt1: any, pt2: any, pt3: any, numberOfPts: number): {
-        geometry: Polygon;
+        geometry: Polyline;
         lastPoint: Point;
         backPoint: Point;
     };

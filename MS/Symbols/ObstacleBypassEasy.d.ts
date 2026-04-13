@@ -26,6 +26,7 @@ declare class ObstacleBypassEasy {
     private isLine;
     private layerManager;
     private symbolLayer;
+    private amplifier;
     private _lineSymbol;
     private _points;
     private _baseLinePts;
@@ -35,14 +36,15 @@ declare class ObstacleBypassEasy {
     private _onDblClick;
     private _onMouseMove;
     private _onBaseLineEnd;
-    private _onBaseLineProgress;
-    private _onBaseLineClick;
+    private baseLineProgressHandler;
+    private baseLineClickHandler;
     private eventListeners;
     constructor(view: MapView | SceneView, isLine: boolean);
-    /**
-     * Initialize the symbol drawing
-     */
     init(options: ObstacleBypassEasyOptions, marker: SimpleLineSymbol): void;
+    /**
+     * Start baseline drawing
+     */
+    private startBaseLineDrawing;
     /**
      * Create draw essentials object
      */
