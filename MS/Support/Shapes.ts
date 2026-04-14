@@ -212,26 +212,20 @@ class Shapes {
     }
 
     /**
-     * Create P shape (letter P: upper half circle + stem)
+     * Create P shape (letter P: stem going up + upper half circle)
      */
     static createP(pt: Point, radius: number, steps: number): Point[] {
+        const sp = pt.spatialReference;
+        const stemX = pt.x - radius / 5.6;
+
         const halfCircle = this.createHalfCircle(
-            new Point({
-                x: pt.x - radius / 5.6,
-                y: pt.y + radius / 2,
-                spatialReference: pt.spatialReference
-            }),
+            new Point({ x: stemX, y: pt.y + radius / 2, spatialReference: sp }),
             radius / 2, 4.4, 1.6, steps
         );
 
-        // Stem extending below the half circle
-        halfCircle.push(new Point({
-            x: pt.x - radius / 5.6,
-            y: pt.y - radius,
-            spatialReference: pt.spatialReference
-        }));
-
-        return halfCircle;
+        // Prepend the bottom of the stem so the path reads:
+        // bottom → (arc start near top = left stem) → arc → middle
+        return [new Point({ x: stemX, y: pt.y - radius, spatialReference: sp }), ...halfCircle];
     }
 
     /**
