@@ -180,7 +180,6 @@ import SingleFenceWire from "../Symbols/SingleFenceWire.ts";  //Fixed
 import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";  //Fixed
 import UARoute from "../Symbols/UARoute.ts";  //Fixed
 import Canalize from "../Symbols/Canalize.ts";  //Fixed
-import Contain from "../Symbols/Contain.ts"; //Fixed
 import Corridors from "../Symbols/Corridors.ts"; //Fixed
 import Cover from "../Symbols/Cover.ts"; //Fixed
 import Delay from "../Symbols/Delay.ts"; //Fixed
@@ -210,17 +209,18 @@ import MovingConvoy from "../Symbols/MovingConvoy.ts"; //Fixed
 
 import ObstacleBypassEasy from "../Symbols/ObstacleBypassEasy.ts"; //Fixed
 import Occupy from "../Symbols/Occupy.ts"; //Fixed
-import Penetrate from "../Symbols/Penetrate.ts";
-import SlowGo from "../Symbols/SlowGo.ts";
+import Penetrate from "../Symbols/Penetrate.ts"; //Fixed
+import SlowGo from "../Symbols/SlowGo.ts"; //Gone for
 import StrongPoint from "../Symbols/StrongPoint.ts";
 import SupportingAttack from "../Symbols/SupportingAttack.ts";
 import UnspecifiedWire from "../Symbols/UnspecifiedWire.ts";
 import Withdraw from "../Symbols/Withdraw.ts"; //Fixed
 import WithdrawUnderPressure from "../Symbols/WithdrawUnderPressure.ts"; //Fixed
 import SupportByFirePosition from "../Symbols/SupportByFirePosition.ts";
-import Bypass from "../Symbols/Bypass.ts";
-import StartLine from "../Symbols/StartLine.ts";
-import ObjArea from "../Symbols/ObjArea.ts";
+import Bypass from "../Symbols/Bypass.ts"; //Fixed
+import StartLine from "../Symbols/StartLine.ts"; //Gone for
+import ObjArea from "../Symbols/ObjArea.ts"; //Gone for
+import Contain from "../Symbols/Contain.ts";
 
 
 

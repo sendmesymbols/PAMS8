@@ -1,11 +1,9 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
-import Polyline from "@arcgis/core/geometry/Polyline";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
@@ -21,34 +19,37 @@ export interface ObjAreaOptions {
 }
 
 /**
- * ObjArea class for drawing Objective Area symbols on MapView or SceneView
- * Creates area symbols with 3 draw types: Bezier curve, polygon, and rectangle with inner "OBJ" text
+ * ObjArea class for drawing Objective Area tactical symbols
+ * No baseline - direct polygon drawing with "OBJ" inner text
+ * Returns Polygon geometry
  */
 export class ObjArea {
     private view: MapView | SceneView;
     private layerManager: GraphicsLayerManager;
     private symbolLayer: GraphicsLayer;
     private isLine: boolean;
-    
+
     // Symbol properties
-    private SID: string = "151700";
-    private symName: string = "Obj Area";
-    private symGeometricType: string = "Area";
-    private _lineSym: SimpleLineSymbol | SimpleFillSymbol | null = null;
+    public declaredClass: string = "MilitarySymbology.Symbols.ObjArea";
+    public SID: string = "151700";
+    public symName: string = "Obj Area";
+    public symGeometricType: string = "Area";
+
+    private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
     private _drawType: number = 1;
     private _geometryType: string | null = null;
     private amplifier: Amplifier;
-    
+
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
-    
+
     // Event handlers
     private clickHandler: any = null;
     private doubleClickHandler: any = null;
     private mouseMoveHandler: any = null;
-    
+
     // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
 
@@ -56,85 +57,154 @@ export class ObjArea {
         this.view = view;
         this.isLine = isLine;
         this.layerManager = GraphicsLayerManager.getInstance(view);
-        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
         this.amplifier = new Amplifier();
-        
+
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
-        
+
         // Initialize temporary graphic
         this.tempGraphic = new Graphic();
     }
 
     /**
-     * Initialize the objective area drawing
+     * Initialize the ObjArea drawing
      */
-    public init(options: ObjAreaOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void {
-        this._lineSym = marker;
-        this._drawType = options.DRAW_TYPE || this._drawType;
+    public init(options: ObjAreaOptions, marker: SimpleLineSymbol): void {
+        this._lineSym = marker.clone();
+        // this.map.navigationManager.setImmediateClick(false);
+        // this.map.disableDoubleClickZoom();
 
-        const drawEssentials = new DrawEssentials();
+        this._drawType = GeoTools.setDefault(options, "DRAW_TYPE", this._drawType);
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with geometry
             if (options.GEOM && this.tempGraphic) {
                 this.tempGraphic.geometry = options.GEOM;
             }
-            
-            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE!);
-            
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType);
             if (this.tempGraphic && this.tempGraphic.geometry) {
                 this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
             }
             this._clear();
 
         } else if (options.hasOwnProperty("CTRL_PTS")) {
-            // Immediate placement with control points only
-            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE!);
-            
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._drawType);
             const geometry = this.createSymbol(drawEss);
             if (geometry && this.tempGraphic) {
                 this.tempGraphic.geometry = geometry;
                 this.__drawEnd(geometry, drawEss);
-                this._clear();
             }
+            this._clear();
 
         } else {
             // Interactive drawing mode
-            this.startInteractiveDrawing();
+            this.tempGraphic = new Graphic({ symbol: this._lineSym });
+            this.symbolLayer.add(this.tempGraphic);
+
+            this.clickHandler = this.view.on("click", (event) => {
+                this._onClickHandler(event);
+            });
+            this.doubleClickHandler = this.view.on("double-click", (event) => {
+                this._onDoubleClickHandler(event);
+            });
         }
     }
 
     /**
-     * Start interactive drawing mode
+     * Create DrawEssentials object
      */
-    private startInteractiveDrawing(): void {
-        if (!this._lineSym) return;
-        
-        this.isDrawing = true;
-        this.tempGraphic = new Graphic({
-            geometry: null,
-            symbol: this._lineSym
-        });
-        this.symbolLayer.add(this.tempGraphic);
-        
-        // Set up event handlers
-        this.setupEventHandlers();
+    private createDrawEssentials(ctrlPts: Point[], drawType: number): DrawEssentials {
+        const drawEssentials = new DrawEssentials();
+        drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
+        drawEssentials.SID = this.SID;
+        drawEssentials.SYM_NAME = this.symName;
+        drawEssentials.AMPLIFIER = this.amplifier.toString();
+
+        (drawEssentials as any).SCOPE = this;
+        (drawEssentials as any).CTRL_PTS = ctrlPts;
+        (drawEssentials as any).DRAW_TYPE = drawType;
+
+        return drawEssentials;
     }
 
     /**
-     * Set up mouse event handlers for interactive drawing
+     * Create symbol geometry from DrawEssentials
      */
-    private setupEventHandlers(): void {
-        // Click handler
-        this.clickHandler = this.view.on("click", (event) => {
-            this._onClickHandler(event);
-        });
+    private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
+        try {
+            const pts: Point[] = (drawEssentials as any).CTRL_PTS;
+            if (!pts || pts.length === 0) throw new Error("controlPoints not found");
 
-        // Double click handler  
-        this.doubleClickHandler = this.view.on("double-click", (event) => {
-            this._onDoubleClickHandler(event);
-        });
+            const firstPoint = pts[0];
+            const lastPoint = pts[pts.length - 1];
+
+            switch ((drawEssentials as any).DRAW_TYPE || 1) {
+                case 1: return this.createSymbolByBCurve(pts, firstPoint, lastPoint);
+                case 2: return this.createSymbolByPolygon(pts, firstPoint, lastPoint);
+                case 3: return this.createSymbolByRect(pts, firstPoint, lastPoint);
+                default: return this.createSymbolByBCurve(pts, firstPoint, lastPoint);
+            }
+        } catch (e) {
+            console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
+            return null;
+        }
+    }
+
+    private createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
+        const result = new Polygon({ spatialReference: this.view.spatialReference });
+        const tempArray = pts.map(pt => ({ x: pt.x, y: pt.y }));
+        tempArray.push({ x: firstPoint.x, y: firstPoint.y });
+        const bezierPts = Shapes.CreateBezierPathPCOnly(tempArray, 130);
+        result.addRing(bezierPts.map(pt => [pt.x, pt.y]));
+        return this.createInnerText(result, firstPoint, lastPoint);
+    }
+
+    private createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
+        const result = new Polygon({ spatialReference: this.view.spatialReference });
+        const tempArray = pts.map(pt => [pt.x, pt.y] as number[]);
+        tempArray.push([firstPoint.x, firstPoint.y]);
+        result.addRing(tempArray);
+        return this.createInnerText(result, firstPoint, lastPoint);
+    }
+
+    private createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
+        let result = new Polygon({ spatialReference: this.view.spatialReference });
+        result.addRing(pts.map(pt => [pt.x, pt.y]));
+        const extent = result.extent;
+        result = new Polygon({ spatialReference: this.view.spatialReference });
+        if (extent) {
+            result.addRing([
+                [firstPoint.x, firstPoint.y],
+                [extent.xmin, extent.ymin],
+                [lastPoint.x, lastPoint.y],
+                [extent.xmax, extent.ymax],
+                [firstPoint.x, firstPoint.y]
+            ]);
+        }
+        return this.createInnerText(result, firstPoint, lastPoint);
+    }
+
+    /**
+     * Add "OBJ" text inside the polygon
+     */
+    private createInnerText(result: Polygon, firstPoint: Point, lastPoint: Point): Polygon {
+        try {
+            const midPt = result.extent?.center;
+            if (!midPt) return result;
+
+            const baseLineLen = GeoTools._2PtLen(firstPoint, lastPoint);
+            let cLenLimit = baseLineLen / 10;
+            if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+
+            const objPaths = Shapes.createOBJ(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+            for (const path of objPaths) {
+                result.addRing(path.map(pt => [pt.x, pt.y]));
+            }
+        } catch (e) {
+            console.log("Cannot create Inner Text");
+        }
+        return result;
     }
 
     /**
@@ -149,25 +219,26 @@ export class ObjArea {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
-        
+
         if (this._points.length === 1) {
-            // First click - set up mouse move handler
             this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
                 this._onMouseMoveHandler(event);
             });
         }
-        
+
         this.emit("onDrawClick", { currentPts: this._points });
 
-        // For single line mode, finish after first click
         if (this.isLine === true && this._points.length === 1) {
+            this.emit("onDrawClick", { currentPts: this._points });
             this.cleanUp();
+            return;
         }
 
-        // For rectangle draw type, finish after 2 points
+        // For rect draw type, finish after 2 points
         if (this._drawType === 3 && this._points.length === 2) {
+            this.emit("onDrawClick", { currentPts: this._points });
             this.cleanUp();
         }
     }
@@ -184,7 +255,7 @@ export class ObjArea {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
         this.cleanUp();
     }
@@ -193,7 +264,7 @@ export class ObjArea {
      * Handle mouse move events
      */
     private _onMouseMoveHandler(inputEvent: any): void {
-        if (!this.isDrawing || !this.tempGraphic) return;
+        if (!this.tempGraphic) return;
 
         const mapPoint = this.view.toMap(inputEvent);
         if (!mapPoint) return;
@@ -207,7 +278,7 @@ export class ObjArea {
         const drawEssentials = new DrawEssentials();
         (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
         (drawEssentials as any).DRAW_TYPE = this._drawType;
-        
+
         const geometry = this.createSymbol(drawEssentials);
         if (geometry) {
             this.tempGraphic.geometry = geometry;
@@ -220,173 +291,17 @@ export class ObjArea {
     }
 
     /**
-     * Create DrawEssentials object
-     */
-    private createDrawEssentials(ctrlPts: Point[], drawType: number): DrawEssentials {
-        const drawEssentials = new DrawEssentials();
-        drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
-        drawEssentials.SID = this.SID;
-        drawEssentials.SYM_NAME = this.symName;
-        drawEssentials.AMPLIFIER = this.amplifier.toString();
-        
-        // Store additional properties
-        (drawEssentials as any).SCOPE = this;
-        (drawEssentials as any).CTRL_PTS = ctrlPts;
-        (drawEssentials as any).DRAW_TYPE = drawType;
-
-        return drawEssentials;
-    }
-
-    /**
-     * Create symbol geometry from DrawEssentials
-     */
-    private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
-        try {
-            let pts: Point[];
-
-            if ((drawEssentials as any).CTRL_PTS) {
-                pts = (drawEssentials as any).CTRL_PTS;
-            } else {
-                throw new Error("controlPoints not found");
-            }
-
-            const lastPoint = pts[pts.length - 1];
-            const firstPoint = pts[0];
-            let result = new Polygon({ spatialReference: this.view.spatialReference });
-
-            const drawType = (drawEssentials as any).DRAW_TYPE || 1;
-
-            switch (drawType) {
-                case 1:
-                    result = this.createSymbolByBCurve(pts, firstPoint, lastPoint);
-                    break;
-                case 2:
-                    result = this.createSymbolByPolygon(pts, firstPoint, lastPoint);
-                    break;
-                case 3:
-                    result = this.createSymbolByRect(pts, firstPoint, lastPoint);
-                    break;
-                default:
-                    result = this.createSymbolByBCurve(pts, firstPoint, lastPoint);
-            }
-
-            return result;
-
-        } catch (e) {
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
-            return null;
-        }
-    }
-
-    /**
-     * Create symbol by Bezier curve (draw type 1)
-     */
-    private createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(pt => ({ x: pt.x, y: pt.y }));
-        
-        // Close the path
-        tempArray.push({ x: firstPoint.x, y: firstPoint.y });
-        
-        // Create Bezier path
-        const bezierPoints = Shapes.CreateBezierPathPCOnly(tempArray, 130);
-        const bezierPath = bezierPoints.map(pt => [pt.x, pt.y]);
-        result.addRing(bezierPath);
-        
-        // Add inner text
-        return this.createInnerText(result, firstPoint, lastPoint);
-    }
-
-    /**
-     * Create symbol by polygon (draw type 2)
-     */
-    private createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(pt => [pt.x, pt.y]);
-        
-        // Close the path
-        tempArray.push([firstPoint.x, firstPoint.y]);
-        
-        result.addRing(tempArray);
-        
-        // Add inner text
-        return this.createInnerText(result, firstPoint, lastPoint);
-    }
-
-    /**
-     * Create symbol by rectangle (draw type 3)
-     */
-    private createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
-        let result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(pt => [pt.x, pt.y]);
-        
-        result.addRing(tempArray);
-        const extent = result.extent;
-        
-        // Create rectangle from extent
-        result = new Polygon({ spatialReference: this.view.spatialReference });
-        if (extent) {
-            const rectPath = [
-                [firstPoint.x, firstPoint.y],
-                [extent.xmin, extent.ymin],
-                [lastPoint.x, lastPoint.y],
-                [extent.xmax, extent.ymax],
-                [firstPoint.x, firstPoint.y]
-            ];
-            result.addRing(rectPath);
-        }
-        
-        // Add inner text
-        return this.createInnerText(result, firstPoint, lastPoint);
-    }
-
-    /**
-     * Create inner "OBJ" text
-     */
-    private createInnerText(result: Polygon, firstPoint: Point, lastPoint: Point): Polygon {
-        try {
-            if (!result.extent) {
-                return result;
-            }
-            const midPt = result.extent.center;
-            const baseLineLen = GeoTools._2PtLen(firstPoint, lastPoint);
-            let cLenLimit = baseLineLen / 10;
-            
-            if (cLenLimit > baseLineLen / 3.6) {
-                cLenLimit = baseLineLen / 3.6;
-            }
-
-            // Create OBJ text (when Shapes.createOBJ is available)
-            if ('createOBJ' in Shapes && typeof (Shapes as any).createOBJ === 'function') {
-                const objPaths = (Shapes as any).createOBJ(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-                if (objPaths && Array.isArray(objPaths)) {
-                    objPaths.forEach((path: any) => {
-                        if (path && Array.isArray(path)) {
-                            result.addRing(path);
-                        }
-                    });
-                }
-            }
-            
-            return result;
-        } catch (e) {
-            console.log('Cannot create Inner Text');
-            return result;
-        }
-    }
-
-    /**
      * Clean up drawing state and finalize
      */
     private cleanUp(): void {
         if (this._points.length === 0) return;
 
         const drawEss = this.createDrawEssentials(this._points.slice(), this._drawType);
-        
+
         if (this.tempGraphic && this.tempGraphic.geometry) {
             this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
         }
-        
+
         this._clear();
         this._removeEvents();
     }
@@ -401,7 +316,6 @@ export class ObjArea {
 
             if (spatialRef && spatialRef.isWebMercator) {
                 // Geographic conversion would go here if needed
-                // geographicGeometry = webMercatorUtils.webMercatorToGeographic(drawGeometry);
             } else if (spatialRef && spatialRef.wkid === 4326) {
                 geographicGeometry = drawGeometry.clone();
             }
@@ -429,7 +343,7 @@ export class ObjArea {
         if (this.tempGraphic && this.symbolLayer) {
             this.symbolLayer.remove(this.tempGraphic);
         }
-        
+
         this.tempGraphic = null;
         this._points = [];
     }
@@ -470,18 +384,14 @@ export class ObjArea {
         if (listeners) {
             listeners.forEach(listener => listener(data));
         }
-        
-        // Also emit as a global document event for SymbolEngine to catch
+
         this.emitGlobalEvent(eventName, data);
     }
 
-    /**
-     * Emit global events that can be caught by SymbolEngine
-     */
     private emitGlobalEvent(eventName: string, data: any): void {
         const customEvent = new CustomEvent(eventName, {
             detail: {
-                symbolType: "ObjArea",
+                symbolType: this.constructor.name,
                 eventName: eventName,
                 ...data
             },
@@ -489,7 +399,6 @@ export class ObjArea {
             cancelable: true
         });
 
-        // Dispatch from the view container if available, otherwise from document
         if (this.view && this.view.container) {
             this.view.container.dispatchEvent(customEvent);
         } else {
@@ -518,19 +427,13 @@ export class ObjArea {
         }
     }
 
-    /**
-     * Get the current symbol layer
-     */
     public getSymbolLayer(): GraphicsLayer {
         return this.symbolLayer;
     }
 
-    /**
-     * Clear all symbols from the layer
-     */
     public clearSymbols(): void {
         this.symbolLayer.removeAll();
     }
 }
 
-export default ObjArea; 
+export default ObjArea;

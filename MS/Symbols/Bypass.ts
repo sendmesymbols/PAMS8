@@ -14,37 +14,39 @@ import Shapes from "../Support/Shapes.ts";
 
 export interface BypassOptions {
     CTRL_PTS?: Point[];
-    BASE_LN_PTS?: { startPt: Point; endPt: Point };
+    BASE_LN_PTS?: {startPt: Point, endPt: Point};
     GEOM?: Polyline;
     [key: string]: any;
 }
 
 /**
- * Bypass class for drawing Bypass symbols
- * Requires baseline drawing followed by bypass direction points
- * Creates fracture patterns and "B" markers on the baseline
+ * Bypass class for drawing Bypass tactical symbols
+ * Uses baseline + control points pattern
+ * Returns Polyline geometry
  */
 export class Bypass {
     private view: MapView | SceneView;
     private layerManager: GraphicsLayerManager;
     private symbolLayer: GraphicsLayer;
     private isLine: boolean;
-    
+
     // Symbol properties
-    private SID: string = "340300";
-    private symName: string = "Bypass";
-    private symGeometricType: string = "Area";
+    public declaredClass: string = "MilitarySymbology.Symbols.Bypass";
+    public SID: string = "340300";
+    public symName: string = "Bypass";
+    public symGeometricType: string = "Area";
+
     private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
-    private _baseLinePts: { startPt?: Point; endPt?: Point } = {};
+    private _baseLinePts: any = {};
     private _geometryType: string | null = null;
     private amplifier: Amplifier;
-    
+
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
-    private baselineDrawn: boolean = false;
-    
+    private baseLineComplete: boolean = false;
+
     // Event handlers
     private clickHandler: any = null;
     private doubleClickHandler: any = null;
@@ -52,7 +54,7 @@ export class Bypass {
     private baseLineEndHandler: any = null;
     private baseLineProgressHandler: any = null;
     private baseLineClickHandler: any = null;
-    
+
     // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
 
@@ -60,30 +62,36 @@ export class Bypass {
         this.view = view;
         this.isLine = isLine;
         this.layerManager = GraphicsLayerManager.getInstance(view);
-        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
         this.amplifier = new Amplifier();
-        
+
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
-        
+
         // Initialize temporary graphic
         this.tempGraphic = new Graphic();
     }
 
     /**
-     * Initialize the bypass drawing
+     * Initialize the Bypass drawing
      */
     public init(options: BypassOptions, marker: SimpleLineSymbol): void {
         this._lineSym = marker.clone();
-        
-        const drawEssentials = new DrawEssentials();
+        // this.map.navigationManager.setImmediateClick(false);
+        // this.map.disableDoubleClickZoom();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all data
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                try {
+                    this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
+                        ? options.GEOM
+                        : new Polyline({ paths: (options.GEOM as any), spatialReference: this.view.spatialReference });
+                } catch (error) {
+                    console.error(this.symName, "Failed to create Polyline geometry:", error);
+                }
             }
-            
+
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
             if (this.tempGraphic && this.tempGraphic.geometry) {
                 this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
@@ -100,89 +108,38 @@ export class Bypass {
                     this._clear();
                 }
             } else {
-                throw new Error("Control Points and Baseline Pts are required to create symbol non-interactively");
+                throw new Error("Control Points and Baseline or Distance is required to create symbol non-interactively");
             }
 
         } else {
             // Interactive drawing mode - start with baseline
-            this.startBaselineDrawing();
+            this.startBaseLineDrawing();
         }
     }
 
     /**
-     * Start baseline drawing mode
+     * Start baseline drawing
      */
-    private startBaselineDrawing(): void {
-        if (!this._lineSym) return;
-        
-        const baseLine = new (BaseLine as any)(this.view, this._lineSym);
-        
-        this.baseLineEndHandler = baseLine.on("drawEnd", (evt: any) => {
-            this.baseLineDrawEnd(evt);
-        });
-        
+    private startBaseLineDrawing(): void {
+        const baseLine = new BaseLine(this.view, this._lineSym!);
+
         this.baseLineClickHandler = baseLine.on("onBaseLineClick", (evt: any) => {
             this.baseLineClick(evt);
         });
-        
+
         this.baseLineProgressHandler = baseLine.on("onBaseLineProgress", (evt: any) => {
             this.baseLineDrawProgress(evt);
+        });
+
+        this.baseLineEndHandler = baseLine.on("drawEnd", (evt: any) => {
+            this.baseLineDrawEnd(evt);
         });
 
         baseLine.init("B");
     }
 
     /**
-     * Handle baseline draw end
-     */
-    private baseLineDrawEnd(evt: any): void {
-        if (this.baseLineEndHandler) {
-            this.baseLineEndHandler.remove();
-        }
-        
-        this.tempGraphic = new Graphic({
-            geometry: evt.geometry,
-            symbol: this._lineSym
-        });
-        this.symbolLayer.add(this.tempGraphic);
-        
-        this._baseLinePts = evt.geometry._baseLine;
-        this.baselineDrawn = true;
-        
-        // Set up handlers for bypass direction
-        this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
-            this._onMouseMoveHandler(event);
-        });
-        this.clickHandler = this.view.on("click", (event) => {
-            this._onClickHandler(event);
-        });
-        this.doubleClickHandler = this.view.on("double-click", (event) => {
-            this._onDoubleClickHandler(event);
-        });
-        
-        this.emit("onBaseLineDrawEnd", { currentPts: evt.geometry.controlPoints });
-    }
-
-    /**
-     * Handle baseline draw progress
-     */
-    private baseLineDrawProgress(evt: any): void {
-        const localDrawEssentials: any = {
-            CTRL_PTS: evt.currentGeometry
-        };
-        const pl = new Polyline({ spatialReference: this.view.spatialReference });
-        pl.addPath(evt.currentGeometry);
-        
-        this.emit("onDrawProgress", {
-            currentGeometry: pl,
-            currentDrawEssentials: localDrawEssentials,
-            currentMarker: evt.currentMarker,
-            isBaseLine: true
-        });
-    }
-
-    /**
-     * Handle baseline click
+     * Handle baseline click events
      */
     private baseLineClick(evt: any): void {
         this.emit("onDrawClick", {
@@ -192,11 +149,70 @@ export class Bypass {
     }
 
     /**
-     * Handle click events after baseline is drawn
+     * Handle baseline draw progress
+     */
+    private baseLineDrawProgress(evt: any): void {
+        const localDrawEssentials: any = {};
+        localDrawEssentials.CTRL_PTS = evt.currentGeometry;
+
+        const pl = new Polyline({ spatialReference: this.view.spatialReference });
+        pl.addPath(evt.currentGeometry);
+
+        this.emit("onDrawProgress", {
+            currentGeometry: pl,
+            currentDrawEssentials: localDrawEssentials,
+            currentMarker: evt.currentMarker,
+            isBaseLine: true
+        });
+    }
+
+    /**
+     * Handle baseline draw end
+     */
+    private baseLineDrawEnd(evt: any): void {
+        if (this.baseLineEndHandler) {
+            this.baseLineEndHandler.remove();
+            this.baseLineEndHandler = null;
+        }
+
+        this.tempGraphic = new Graphic({
+            geometry: evt.geometry,
+            symbol: this._lineSym
+        });
+        this.symbolLayer.add(this.tempGraphic);
+
+        this._baseLinePts = (evt.geometry as any)._baseLine;
+        this.baseLineComplete = true;
+
+        // Start control point drawing
+        this.setupControlPointHandlers();
+
+        this.emit("onBaseLineDrawEnd", {
+            currentPts: (evt.geometry as any).controlPoints
+        });
+    }
+
+    /**
+     * Set up control point drawing handlers
+     */
+    private setupControlPointHandlers(): void {
+        this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
+            this._onMouseMoveHandler(event);
+        });
+
+        this.clickHandler = this.view.on("click", (event) => {
+            this._onClickHandler(event);
+        });
+
+        this.doubleClickHandler = this.view.on("double-click", (event) => {
+            this._onDoubleClickHandler(event);
+        });
+    }
+
+    /**
+     * Handle click events for control points
      */
     private _onClickHandler(clickEvent: any): void {
-        if (!this.baselineDrawn) return;
-        
         const mapPoint = this.view.toMap(clickEvent);
         if (!mapPoint) return;
 
@@ -205,10 +221,11 @@ export class Bypass {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
+
         this.emit("onDrawClick", { currentPts: this._points });
-        
+
         if (this.isLine === true && this._points.length === 1) {
             this.emit("onDrawClick", { currentPts: this._points });
             this.cleanUp();
@@ -219,8 +236,6 @@ export class Bypass {
      * Handle double click events
      */
     private _onDoubleClickHandler(clickEvent: any): void {
-        if (!this.baselineDrawn) return;
-        
         const mapPoint = this.view.toMap(clickEvent);
         if (!mapPoint) return;
 
@@ -229,7 +244,7 @@ export class Bypass {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
         this.cleanUp();
     }
@@ -238,7 +253,7 @@ export class Bypass {
      * Handle mouse move events
      */
     private _onMouseMoveHandler(inputEvent: any): void {
-        if (!this.baselineDrawn || !this.tempGraphic) return;
+        if (!this.baseLineComplete || !this.tempGraphic) return;
 
         const mapPoint = this.view.toMap(inputEvent);
         if (!mapPoint) return;
@@ -267,15 +282,14 @@ export class Bypass {
     /**
      * Create DrawEssentials object
      */
-    private createDrawEssentials(ctrlPts: Point[], baseLinePts: { startPt: Point; endPt: Point }): DrawEssentials {
+    private createDrawEssentials(ctrlPts: Point[], baseLinePts: any): DrawEssentials {
         const drawEssentials = new DrawEssentials();
         drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
         drawEssentials.SID = this.SID;
         drawEssentials.SYM_NAME = this.symName;
         drawEssentials.GEOM = null;
         drawEssentials.AMPLIFIER = this.amplifier.toString();
-        
-        // Store additional properties
+
         (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
         (drawEssentials as any).BASE_LN_PTS = baseLinePts;
@@ -288,283 +302,104 @@ export class Bypass {
      */
     private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
         try {
-            let pts: Point[];
+            const pts: Point[] = (drawEssentials as any).CTRL_PTS;
+            if (!pts || pts.length === 0) throw new Error("controlPoints not found");
 
-            if ((drawEssentials as any).CTRL_PTS) {
-                pts = (drawEssentials as any).CTRL_PTS;
-            } else {
-                throw new Error("controlPoints not found");
-            }
+            const stPt: Point = (drawEssentials as any).BASE_LN_PTS?.startPt;
+            const endPt: Point = (drawEssentials as any).BASE_LN_PTS?.endPt;
+            if (!stPt || !endPt) throw new Error("First Parameter of the Function is an Array with Start and End Point");
 
-            const baseLinePts = (drawEssentials as any).BASE_LN_PTS;
-            const stPt = baseLinePts.startPt;
-            const endPt = baseLinePts.endPt;
-
-            if (!stPt || !endPt) {
-                throw new Error("Start and End Point required for baseline");
-            }
+            const spatialReference = this.view.spatialReference;
+            const midPt = GeoTools.getMidPoint(stPt, endPt);
+            const result = new Polyline({ spatialReference });
 
             const firstPoint = pts[0];
-            const lastPoint = pts[pts.length - 1];
-            const leftArray: Point[] = [];
-            const rightArray: Point[] = [];
-
-            const midPt = this.getMidPoint(stPt, endPt);
-            const result = new Polyline({ spatialReference: this.view.spatialReference });
-
-            // Determine direction based on first control point
-            let currentLastPoint = firstPoint;
+            let lastPoint = firstPoint;
             if (pts.length >= 1) {
-                currentLastPoint = firstPoint;
+                lastPoint = firstPoint;
             }
 
-            const len = this.calculateDistance(midPt, endPt);
-            let k = Math.atan((midPt.y - currentLastPoint.y) / (midPt.x - currentLastPoint.x));
+            const len = GeoTools._2PtLen(midPt, endPt);
+            let k = Math.atan((midPt.y - lastPoint.y) / (midPt.x - lastPoint.x));
 
-            // Adjust angle based on relationship
-            const relationship = this.twoPtsRelationShip(midPt, currentLastPoint);
-            switch (relationship) {
-                case "ne":
-                    k += Math.PI / 2;
-                    break;
-                case "nw":
-                    k += Math.PI * 3 / 2;
-                    break;
-                case "sw":
-                    k += Math.PI * 3 / 2;
-                    break;
-                case "se":
-                    k += Math.PI / 2;
-                    break;
+            switch (GeoTools.twoPtsRelationShip(midPt, lastPoint)) {
+                case "ne": k += Math.PI / 2; break;
+                case "nw": k += Math.PI * 3 / 2; break;
+                case "sw": k += Math.PI * 3 / 2; break;
+                case "se": k += Math.PI / 2; break;
             }
 
             const partialLen = len;
-            const p1 = { x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y };
-            const p2 = { x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y };
+            const p1 = new Point({ x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y, spatialReference });
+            const p2 = new Point({ x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y, spatialReference });
 
-            // Create fracture baseline
-            const fractureResult = this.createFractureBaseline(p1, p2);
-            fractureResult.paths.forEach(path => result.addPath(path));
+            // Fracture baseline with "B" marker
+            const values = GeoTools._fracturePts(p1, p2, 10, spatialReference);
+            result.paths = result.paths.concat(values.geometry.paths);
 
-            // Add bypass lines
+            const baseLineLen = GeoTools._2PtLen(p1, p2);
+            let cLenLimit = values.len / 2;
+            if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+            result.addPath(Shapes.createB(values.midPoint, cLenLimit, 40).map(pt => [pt.x, pt.y]));
+
+            // Build left and right arrays
+            const leftArray: Point[] = [];
+            const rightArray: Point[] = [];
+
             if (pts.length >= 1) {
-                leftArray.push(new Point({ x: p1.x, y: p1.y, spatialReference: this.view.spatialReference }));
-                rightArray.push(new Point({ x: p2.x, y: p2.y, spatialReference: this.view.spatialReference }));
+                leftArray.push(p1);
+                rightArray.push(p2);
             }
 
-            // Create bypass projection lines
-            for (let i = 0; i < pts.length; i++) {
-                const length = this.calculateDistance(midPt, pts[i]);
-                const angle = this.calculateAngle(midPt, pts[i]);
+            let stPtCandidatePt: Point | null = null;
+            let endPtCandidatePt: Point | null = null;
 
-                const stPtCandidatePt = new Point({
-                    x: p1.x + length * Math.cos(angle),
-                    y: p1.y + length * Math.sin(angle),
-                    spatialReference: this.view.spatialReference
-                });
-                
-                const endPtCandidatePt = new Point({
-                    x: p2.x + length * Math.cos(angle),
-                    y: p2.y + length * Math.sin(angle),
-                    spatialReference: this.view.spatialReference
-                });
+            for (let i = 0; i < pts.length; i++) {
+                const length = GeoTools._2PtLen(midPt, pts[i]);
+                const angle = GeoTools.angleInRadians(midPt, pts[i]);
+
+                stPtCandidatePt = new Point({ x: p1.x + length * Math.cos(angle), y: p1.y + length * Math.sin(angle), spatialReference });
+                endPtCandidatePt = new Point({ x: p2.x + length * Math.cos(angle), y: p2.y + length * Math.sin(angle), spatialReference });
 
                 leftArray.push(stPtCandidatePt);
                 rightArray.push(endPtCandidatePt);
             }
 
-            // Add paths for left and right sides
             result.addPath(leftArray.map(pt => [pt.x, pt.y]));
             result.addPath(rightArray.map(pt => [pt.x, pt.y]));
 
-            // Add arrow heads at the end
-            if (leftArray.length > 1 && rightArray.length > 1) {
-                const leftEndPt = leftArray[leftArray.length - 1];
-                const rightEndPt = rightArray[rightArray.length - 1];
-                const leftPrevPt = leftArray[leftArray.length - 2];
-                const rightPrevPt = rightArray[rightArray.length - 2];
-
-                const arrowLength = this.calculateArrowLength(midPt, pts[pts.length - 1], leftEndPt, rightEndPt);
-                
-                const leftArrow = this.createArrowHead(
-                    leftEndPt, 
-                    arrowLength,
-                    this.calculateAngle(leftPrevPt, leftEndPt)
-                );
-                
-                const rightArrow = this.createArrowHead(
-                    rightEndPt,
-                    arrowLength,
-                    this.calculateAngle(rightPrevPt, rightEndPt)
+            // Arrow heads at tips
+            if (stPtCandidatePt && endPtCandidatePt && leftArray.length >= 2 && rightArray.length >= 2) {
+                const arrowLen = GeoTools.ArrowFlanksLen(
+                    GeoTools._2PtLen(midPt, pts[pts.length - 1]),
+                    GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt)
                 );
 
-                result.addPath(leftArrow);
-                result.addPath(rightArrow);
+                result.addPath(Shapes.arrowHead(
+                    leftArray[leftArray.length - 1],
+                    arrowLen,
+                    GeoTools.angleInRadians(leftArray[leftArray.length - 2], leftArray[leftArray.length - 1])
+                ).map(pt => [pt.x, pt.y]));
+
+                result.addPath(Shapes.arrowHead(
+                    rightArray[rightArray.length - 1],
+                    arrowLen,
+                    GeoTools.angleInRadians(rightArray[rightArray.length - 2], rightArray[rightArray.length - 1])
+                ).map(pt => [pt.x, pt.y]));
             }
 
             return result;
-            
         } catch (e) {
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
             return null;
         }
     }
 
     /**
-     * Create fracture baseline pattern
-     */
-    private createFractureBaseline(p1: any, p2: any): Polyline {
-        const result = new Polyline({ spatialReference: this.view.spatialReference });
-        
-        // Create fractured baseline with "B" marker
-        const fracturedPts = this.fracturePts(p1, p2, 10);
-        result.addPath(fracturedPts.geometry);
-        
-        // Add "B" marker at midpoint
-        const midPoint = fracturedPts.midPoint;
-        const baseLineLen = this.calculateDistance(p1, p2);
-        let cLenLimit = fracturedPts.len / 2;
-        if (cLenLimit > baseLineLen / 3.6) {
-            cLenLimit = baseLineLen / 3.6;
-        }
-
-        const bMarker = this.createBMarker(midPoint, cLenLimit);
-        result.addPath(bMarker);
-
-        return result;
-    }
-
-    /**
-     * Create fracture points pattern
-     */
-    private fracturePts(p1: any, p2: any, numFractures: number): { geometry: number[][], midPoint: any, len: number } {
-        const path: number[][] = [];
-        const totalLen = this.calculateDistance(p1, p2);
-        const segmentLen = totalLen / numFractures;
-        
-        let currentX = p1.x;
-        let currentY = p1.y;
-        const deltaX = (p2.x - p1.x) / numFractures;
-        const deltaY = (p2.y - p1.y) / numFractures;
-        
-        path.push([currentX, currentY]);
-        
-        for (let i = 0; i < numFractures; i++) {
-            const nextX = currentX + deltaX;
-            const nextY = currentY + deltaY;
-            
-            // Add fracture pattern
-            const midX = currentX + deltaX / 2;
-            const midY = currentY + deltaY / 2;
-            const perpX = -(deltaY) / numFractures * 0.3;
-            const perpY = deltaX / numFractures * 0.3;
-            
-            path.push([midX + perpX, midY + perpY]);
-            path.push([midX - perpX, midY - perpY]);
-            path.push([nextX, nextY]);
-            
-            currentX = nextX;
-            currentY = nextY;
-        }
-        
-        const midPoint = {
-            x: (p1.x + p2.x) / 2,
-            y: (p1.y + p2.y) / 2
-        };
-        
-        return {
-            geometry: path,
-            midPoint: midPoint,
-            len: totalLen
-        };
-    }
-
-    /**
-     * Create "B" marker
-     */
-    private createBMarker(center: any, size: number): number[][] {
-        const letterHeight = size;
-        const letterWidth = size * 0.5;
-        
-        // Simple "B" shape
-        return [
-            [center.x - letterWidth/2, center.y - letterHeight/2],
-            [center.x - letterWidth/2, center.y + letterHeight/2],
-            [center.x + letterWidth/2, center.y + letterHeight/2],
-            [center.x + letterWidth/2, center.y],
-            [center.x - letterWidth/2, center.y],
-            [center.x + letterWidth/2, center.y],
-            [center.x + letterWidth/2, center.y - letterHeight/2],
-            [center.x - letterWidth/2, center.y - letterHeight/2]
-        ];
-    }
-
-    /**
-     * Create arrow head
-     */
-    private createArrowHead(candidatePoint: Point, length: number, angle: number): number[][] {
-        const path: number[][] = [];
-        
-        // Create arrow head with flaps
-        const leftWing = {
-            x: candidatePoint.x + length * Math.cos(angle - 0.3),
-            y: candidatePoint.y + length * Math.sin(angle - 0.3)
-        };
-        
-        const rightWing = {
-            x: candidatePoint.x + length * Math.cos(angle + 0.3),
-            y: candidatePoint.y + length * Math.sin(angle + 0.3)
-        };
-        
-        path.push([leftWing.x, leftWing.y]);
-        path.push([candidatePoint.x, candidatePoint.y]);
-        path.push([rightWing.x, rightWing.y]);
-        
-        return path;
-    }
-
-    /**
-     * Calculate arrow flank length
-     */
-    private calculateArrowLength(midPt: Point, lastPt: Point, stPtCandidate: Point, endPtCandidate: Point): number {
-        const mainLength = this.calculateDistance(midPt, lastPt);
-        const crossLength = this.calculateDistance(stPtCandidate, endPtCandidate);
-        return Math.min(mainLength * 0.2, crossLength * 0.3);
-    }
-
-    /**
      * Get baseline points
      */
-    public getBaseLinePts(): { startPt?: Point; endPt?: Point } {
+    public getBaseLinePts(): any {
         return this._baseLinePts;
-    }
-
-    /**
-     * Utility methods
-     */
-    private getMidPoint(pt1: Point, pt2: Point): Point {
-        return new Point({
-            x: (pt1.x + pt2.x) / 2,
-            y: (pt1.y + pt2.y) / 2,
-            spatialReference: this.view.spatialReference
-        });
-    }
-
-    private calculateDistance(pt1: Point | any, pt2: Point | any): number {
-        const dx = pt2.x - pt1.x;
-        const dy = pt2.y - pt1.y;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    private calculateAngle(pt1: Point | any, pt2: Point | any): number {
-        return Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
-    }
-
-    private twoPtsRelationShip(pt1: Point, pt2: Point): string {
-        if (pt2.x >= pt1.x && pt2.y >= pt1.y) return "ne";
-        if (pt2.x < pt1.x && pt2.y >= pt1.y) return "nw";
-        if (pt2.x < pt1.x && pt2.y < pt1.y) return "sw";
-        return "se";
     }
 
     /**
@@ -573,12 +408,12 @@ export class Bypass {
     private cleanUp(): void {
         if (this._points.length === 0) return;
 
-        const drawEssentials = this.createDrawEssentials(this._points.slice(), this._baseLinePts as { startPt: Point; endPt: Point });
-        
+        const drawEssentials = this.createDrawEssentials(this._points.slice(), this._baseLinePts);
+
         if (this.tempGraphic && this.tempGraphic.geometry) {
             this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
         }
-        
+
         this._clear();
         this._removeEvents();
     }
@@ -620,7 +455,7 @@ export class Bypass {
         if (this.tempGraphic && this.symbolLayer) {
             this.symbolLayer.remove(this.tempGraphic);
         }
-        
+
         this.tempGraphic = null;
         this._points = [];
         this._baseLinePts = {};
@@ -664,7 +499,7 @@ export class Bypass {
         this._removeEvents();
         this._geometryType = null;
         this.isDrawing = false;
-        this.baselineDrawn = false;
+        this.baseLineComplete = false;
     }
 
     /**
@@ -675,14 +510,14 @@ export class Bypass {
         if (listeners) {
             listeners.forEach(listener => listener(data));
         }
-        
+
         this.emitGlobalEvent(eventName, data);
     }
 
     private emitGlobalEvent(eventName: string, data: any): void {
         const customEvent = new CustomEvent(eventName, {
             detail: {
-                symbolType: "Bypass",
+                symbolType: this.constructor.name,
                 eventName: eventName,
                 ...data
             },
@@ -727,4 +562,4 @@ export class Bypass {
     }
 }
 
-export default Bypass; 
+export default Bypass;
