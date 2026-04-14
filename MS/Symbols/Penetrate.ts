@@ -382,7 +382,7 @@ export class Penetrate {
             }
 
             // Fracture and "P" markers
-            const values = (GeoTools as any)._fracture(middleArray, 10, spatialReference);
+            const values = GeoTools._fracture(middleArray, 10, spatialReference);
             if (values && values.geometry && values.geometry.paths) {
                 result.paths = result.paths.concat(values.geometry.paths);
             }
@@ -391,10 +391,8 @@ export class Penetrate {
                 for (let i = 0; i < values.midPoints.length; i++) {
                     let cLenLimit = values.midPoints[i].len / 2;
                     if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-                    const pPath = (Shapes as any).createP(values.midPoints[i].midPt, cLenLimit, 40);
-                    if (pPath) {
-                        result.addPath(Array.isArray(pPath[0]) ? pPath : pPath.map((pt: Point) => [pt.x, pt.y]));
-                    }
+                    const pPath = Shapes.createP(values.midPoints[i].midPt, cLenLimit, 40);
+                    result.addPath(pPath.map(pt => [pt.x, pt.y]));
                 }
             }
 

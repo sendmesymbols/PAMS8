@@ -212,6 +212,29 @@ class Shapes {
     }
 
     /**
+     * Create P shape (letter P: upper half circle + stem)
+     */
+    static createP(pt: Point, radius: number, steps: number): Point[] {
+        const halfCircle = this.createHalfCircle(
+            new Point({
+                x: pt.x - radius / 5.6,
+                y: pt.y + radius / 2,
+                spatialReference: pt.spatialReference
+            }),
+            radius / 2, 4.4, 1.6, steps
+        );
+
+        // Stem extending below the half circle
+        halfCircle.push(new Point({
+            x: pt.x - radius / 5.6,
+            y: pt.y - radius,
+            spatialReference: pt.spatialReference
+        }));
+
+        return halfCircle;
+    }
+
+    /**
      * Create ALD text
      */
     static createALD(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
