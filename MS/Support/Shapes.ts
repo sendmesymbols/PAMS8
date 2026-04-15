@@ -390,6 +390,31 @@ class Shapes {
     }
 
     /**
+     * Create letter J as 2-point stroke segments to prevent auto-closing when used as polygon rings.
+     * Each 2-point ring retraces itself on closure — visually invisible.
+     */
+    static createJStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const strokes: Point[][] = [];
+
+        // Build the full J point sequence (same as createJ)
+        const allPts: Point[] = [];
+        allPts.push(new Point({ x: dx - (dr * 0.5), y: dy + dr, spatialReference: sp })); // Left Arm
+        allPts.push(new Point({ x: dx + (dr * 0.5), y: dy + dr, spatialReference: sp })); // Right Arm
+        allPts.push(new Point({ x: dx, y: dy + dr, spatialReference: sp })); // Top center
+
+        const stPt = new Point({ x: dx - (dr * 0.5), y: dy - (dr / 2), spatialReference: sp });
+        const halfCirclePts = this.createHalfCircle(stPt, dr / 2, 2 * Math.PI, Math.PI, 30);
+        allPts.push(...halfCirclePts);
+
+        // Emit each consecutive pair as its own 2-point stroke
+        for (let i = 0; i < allPts.length - 1; i++) {
+            strokes.push([allPts[i], allPts[i + 1]]);
+        }
+
+        return strokes;
+    }
+
+    /**
      * Create letter C (CC version)
      */
     static createCC(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
@@ -1240,8 +1265,9 @@ class Shapes {
     static createOBJ(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const pts1 = this.createO(dx - (dr * 1.5), dy, dr, sp);
         const pts2 = this.createB(new Point({ x: dx, y: dy, spatialReference: sp }), dr, 60);
-        const pts3 = this.createJ(dx + (dr * 1.5), dy, dr, sp);
-        return [pts1, pts2, pts3];
+        // J uses strokes (2-point segments) so polygon ring closure retraces each segment — no spurious closing line
+        const jStrokes = this.createJStrokes(dx + (dr * 1.5), dy, dr, sp);
+        return [pts1, pts2, ...jStrokes];
     }
 
     static createSAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
