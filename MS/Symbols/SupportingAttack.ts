@@ -35,7 +35,7 @@ export class SupportingAttack {
     public declaredClass: string = "MilitarySymbology.Symbols.SupportingAttack";
     public SID: string = "151404";
     public symName: string = "Sp Attk";
-    public symGeometricType: string = "Line";
+    public symGeometricType: string = "Area";
     private _lineSym: SimpleLineSymbol | SimpleFillSymbol | null = null;
     private _points: Point[] = [];
     private amplifier: Amplifier;
@@ -60,7 +60,7 @@ export class SupportingAttack {
         this.view = view;
         this.isLine = isLine;
         this.layerManager = GraphicsLayerManager.getInstance(view);
-        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
         this.amplifier = new Amplifier();
 
         // Initialize layers if not already done
@@ -73,7 +73,7 @@ export class SupportingAttack {
     /**
      * Initialize the freehand supporting attack drawing
      */
-    public init(options: FreehandSupportingAttackOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void {
+    public init(options: SupportingAttackOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void {
         this._lineSym = marker;
 
         // Set parameters from options

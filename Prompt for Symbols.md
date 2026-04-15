@@ -1,6 +1,16 @@
 `d:\Projects\Web\PAMS8\claude.md` 
 lets work on 
 
+
+StartLine.ts
+import ObjArea from "../Symbols/ObjArea.ts"; //Gone for
+import StrongPoint from "../Symbols/StrongPoint.ts";
+import SupportingAttack from "../Symbols/SupportingAttack.ts";
+import UnspecifiedWire from "../Symbols/UnspecifiedWire.ts";
+import SupportByFirePosition from "../Symbols/SupportByFirePosition.ts";
+import Contain from "../Symbols/Contain.ts";
+
+
 `d:\Projects\Web\PAMS8\MS\Symbols\Contain.ts`
 which is translated from 
 `d:\Projects\Web\PAMS8\MS\Symbols\Contain.ts` 

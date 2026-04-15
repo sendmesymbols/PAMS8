@@ -8,13 +8,11 @@ import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
-import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
 export interface ContainOptions {
     CTRL_PTS?: Point[];
-    BASE_LN_PTS?: { startPt: Point, endPt: Point };
     GEOM?: Polyline;
     TEETH_SIZE?: number;
     TEETH_GAP?: number;
@@ -23,8 +21,8 @@ export interface ContainOptions {
 
 /**
  * Contain class for drawing Contain tactical symbols
- * Uses baseline + control points with circle arcs, teeth, and fracture lines
- * Returns Polyline geometry
+ * Uses control points with circle arcs, teeth, and fracture lines
+ * Returns Polyline geometry — NO baseline (matches JS version)
  */
 export class Contain {
     private view: MapView | SceneView;
@@ -40,7 +38,6 @@ export class Contain {
 
     private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
-    private _baseLinePts: any = {};
     private _geometryType: string | null = null;
     private amplifier: Amplifier;
 
@@ -50,15 +47,11 @@ export class Contain {
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
-    private baseLineComplete: boolean = false;
 
     // Event handlers
     private clickHandler: any = null;
     private doubleClickHandler: any = null;
     private mouseMoveHandler: any = null;
-    private baseLineEndHandler: any = null;
-    private baseLineProgressHandler: any = null;
-    private baseLineClickHandler: any = null;
 
     // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
@@ -70,10 +63,7 @@ export class Contain {
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
         this.amplifier = new Amplifier();
 
-        // Initialize layers if not already done
         this.layerManager.initializeLayers();
-
-        // Initialize temporary graphic
         this.tempGraphic = new Graphic();
     }
 
@@ -82,6 +72,8 @@ export class Contain {
      */
     public init(options: ContainOptions, marker: SimpleLineSymbol): void {
         this._lineSym = marker.clone();
+        // this.map.navigationManager.setImmediateClick(false);
+        // this.map.disableDoubleClickZoom();
 
         this._teethSize = 2;
         this._teethGap = 5;
@@ -89,7 +81,7 @@ export class Contain {
         this._teethSize = GeoTools.setDefault(options, "TEETH_SIZE", this._teethSize);
         this._teethGap = GeoTools.setDefault(options, "TEETH_GAP", this._teethGap);
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
             // Immediate placement with geometry
             if (options.GEOM && this.tempGraphic) {
                 this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
@@ -104,129 +96,224 @@ export class Contain {
             this._clear();
 
         } else if (options.hasOwnProperty("CTRL_PTS")) {
-            if (options.hasOwnProperty("BASE_LN_PTS")) {
-                // Immediate placement with control points and baseline
-                const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.TEETH_SIZE, options.TEETH_GAP);
-                const geometry = this.createSymbol(drawEss);
-                if (geometry && this.tempGraphic) {
-                    this.tempGraphic.geometry = geometry;
-                    this.__drawEnd(geometry, drawEss);
-                    this._clear();
-                }
-            } else {
-                // Immediate placement with control points only (no baseline)
-                const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.TEETH_SIZE, options.TEETH_GAP);
-                const geometry = this.createSymbol(drawEss);
-                if (geometry && this.tempGraphic) {
-                    this.tempGraphic.geometry = geometry;
-                    this.__drawEnd(geometry, drawEss);
-                    this._clear();
-                }
+            // Immediate placement with control points
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.TEETH_SIZE, options.TEETH_GAP);
+            const geometry = this.createSymbol(drawEss);
+            if (geometry && this.tempGraphic) {
+                this.tempGraphic.geometry = geometry;
+                this.__drawEnd(geometry, drawEss);
+                this._clear();
             }
 
         } else {
-            // Interactive drawing mode - start with baseline
-            this.startBaseLineDrawing();
+            // Interactive drawing mode
+            this.tempGraphic = new Graphic({ symbol: this._lineSym });
+            this.symbolLayer.add(this.tempGraphic);
+
+            this.clickHandler = this.view.on("click", (event) => {
+                this._onClickHandler(event);
+            });
+            this.doubleClickHandler = this.view.on("double-click", (event) => {
+                this._onDoubleClickHandler(event);
+            });
         }
     }
 
     /**
-     * Start baseline drawing
+     * Create DrawEssentials object
      */
-    private startBaseLineDrawing(): void {
-        const baseLine = new BaseLine(this.view, this._lineSym!);
+    private createDrawEssentials(ctrlPts: Point[], teethSize?: number, teethGap?: number): DrawEssentials {
+        const drawEssentials = new DrawEssentials();
+        drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
+        drawEssentials.SID = this.SID;
+        drawEssentials.SYM_NAME = this.symName;
+        drawEssentials.GEOM = null;
+        drawEssentials.AMPLIFIER = this.amplifier.toString();
 
-        this.baseLineClickHandler = baseLine.on("onBaseLineClick", (evt: any) => {
-            this.baseLineClick(evt);
-        });
+        (drawEssentials as any).SCOPE = this;
+        (drawEssentials as any).CTRL_PTS = ctrlPts;
+        (drawEssentials as any).TEETH_SIZE = teethSize !== undefined ? teethSize : this._teethSize;
+        (drawEssentials as any).TEETH_GAP = teethGap !== undefined ? teethGap : this._teethGap;
 
-        this.baseLineProgressHandler = baseLine.on("onBaseLineProgress", (evt: any) => {
-            this.baseLineDrawProgress(evt);
-        });
-
-        this.baseLineEndHandler = baseLine.on("drawEnd", (evt: any) => {
-            this.baseLineDrawEnd(evt);
-        });
-
-        baseLine.init();
+        return drawEssentials;
     }
 
     /**
-     * Handle baseline click events
+     * Create symbol geometry from DrawEssentials
      */
-    private baseLineClick(evt: any): void {
-        this.emit("onDrawClick", {
-            currentPts: evt.currentGeometry,
-            isBaseLine: true
-        });
-    }
+    private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
+        try {
+            const spatialReference = this.view.spatialReference;
+            const pts: Point[] = (drawEssentials as any).CTRL_PTS;
+            if (!pts || pts.length === 0) throw new Error("controlPoints not found");
 
-    /**
-     * Handle baseline draw progress
-     */
-    private baseLineDrawProgress(evt: any): void {
-        const localDrawEssentials: any = {};
-        localDrawEssentials.CTRL_PTS = evt.currentGeometry;
+            const result = new Polyline({ spatialReference });
 
-        const pl = new Polyline({ spatialReference: this.view.spatialReference });
-        pl.addPath(evt.currentGeometry);
+            const startingPt = pts[0];
+            const endPt = pts[1];
 
-        this.emit("onDrawProgress", {
-            currentGeometry: pl,
-            currentDrawEssentials: localDrawEssentials,
-            currentMarker: evt.currentMarker,
-            isBaseLine: true
-        });
-    }
+            const teethSize = GeoTools.setDefault(drawEssentials as any, "TEETH_SIZE", this._teethSize);
+            const teethGap = GeoTools.setDefault(drawEssentials as any, "TEETH_GAP", this._teethGap);
 
-    /**
-     * Handle baseline draw end
-     */
-    private baseLineDrawEnd(evt: any): void {
-        if (this.baseLineEndHandler) {
-            this.baseLineEndHandler.remove();
-            this.baseLineEndHandler = null;
+            if (pts.length === 2) {
+                result.addPath([[startingPt.x, startingPt.y], [endPt.x, endPt.y]]);
+
+            } else if (pts.length === 3) {
+                const candidatePoint = pts[2];
+                const circle = this._circleDrawEx(
+                    (this.view as any).toScreen(startingPt),
+                    (this.view as any).toScreen(endPt),
+                    (this.view as any).toScreen(candidatePoint)
+                );
+
+                if (circle.radius > 0) {
+                    const values = this.CreateCircleSegmentFromThreePoints(
+                        circle,
+                        (this.view as any).toScreen(startingPt),
+                        (this.view as any).toScreen(endPt),
+                        (this.view as any).toScreen(candidatePoint),
+                        60
+                    );
+
+                    const paths = values.geometry.paths[0];
+                    result.addPath(paths.slice(0, 28));
+                    result.addPath(paths.slice(32, 60));
+
+                    // Create C at middle of gap
+                    const cPoint = new Point({ x: paths[30][0], y: paths[30][1], spatialReference });
+                    const firstPoint = new Point({ x: paths[28][0], y: paths[28][1], spatialReference });
+                    const secondPoint = new Point({ x: paths[32][0], y: paths[32][1], spatialReference });
+                    const baseLineLen = GeoTools._2PtLen(firstPoint, secondPoint);
+                    let cLenLimit = baseLineLen / 5;
+                    if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+                    result.addPath((Shapes as any).createCC(cPoint.x, cPoint.y, cLenLimit, spatialReference).map((p: Point) => [p.x, p.y]));
+
+                    // Teeth
+                    const centerPt = result.extent?.center;
+                    if (centerPt) {
+                        const center = new Point({ x: centerPt.x, y: centerPt.y, spatialReference });
+                        const length = GeoTools._2PtLen(endPt, center) / 10;
+                        const teethSz = length * teethSize;
+
+                        for (let i = teethGap; i < 28; i += teethGap) {
+                            const p = new Point({ x: paths[i][0], y: paths[i][1], spatialReference });
+                            result.addPath(this.createTeeth(p, GeoTools.angleInRadians(center, p), teethSz));
+                        }
+                        for (let i = teethGap; i < 28; i += teethGap) {
+                            const idx = 32 + i;
+                            if (idx < paths.length) {
+                                const p = new Point({ x: paths[idx][0], y: paths[idx][1], spatialReference });
+                                result.addPath(this.createTeeth(p, GeoTools.angleInRadians(center, p), teethSz));
+                            }
+                        }
+                    }
+                }
+
+            } else if (pts.length > 3) {
+                const candidatePoint = pts[2];
+                const lastPt = pts[pts.length - 1];
+                const secLastPt = pts[pts.length - 2];
+
+                const circle = this._circleDrawEx(
+                    (this.view as any).toScreen(startingPt),
+                    (this.view as any).toScreen(endPt),
+                    (this.view as any).toScreen(candidatePoint)
+                );
+
+                if (circle.radius > 0) {
+                    const values = this.CreateCircleSegmentFromThreePoints(
+                        circle,
+                        (this.view as any).toScreen(startingPt),
+                        (this.view as any).toScreen(endPt),
+                        (this.view as any).toScreen(candidatePoint),
+                        60
+                    );
+
+                    const paths = values.geometry.paths[0];
+                    result.addPath(paths.slice(0, 28));
+                    result.addPath(paths.slice(32, 60));
+
+                    // Create C at middle of gap
+                    const cPoint = new Point({ x: paths[30][0], y: paths[30][1], spatialReference });
+                    const firstPoint = new Point({ x: paths[28][0], y: paths[28][1], spatialReference });
+                    const secondPoint = new Point({ x: paths[32][0], y: paths[32][1], spatialReference });
+                    const baseLineLen = GeoTools._2PtLen(firstPoint, secondPoint);
+                    let cLenLimit = baseLineLen / 5;
+                    if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+                    result.addPath((Shapes as any).createCC(cPoint.x, cPoint.y, cLenLimit, spatialReference).map((p: Point) => [p.x, p.y]));
+
+                    // Teeth
+                    const centerPt = result.extent?.center;
+                    if (centerPt) {
+                        const center = new Point({ x: centerPt.x, y: centerPt.y, spatialReference });
+                        const length = GeoTools._2PtLen(endPt, center) / 10;
+                        const teethSz = length * teethSize;
+
+                        for (let i = teethGap; i < 28; i += teethGap) {
+                            const p = new Point({ x: paths[i][0], y: paths[i][1], spatialReference });
+                            result.addPath(this.createTeeth(p, GeoTools.angleInRadians(center, p), teethSz));
+                        }
+                        for (let i = teethGap; i < 28; i += teethGap) {
+                            const idx = 32 + i;
+                            if (idx < paths.length) {
+                                const p = new Point({ x: paths[idx][0], y: paths[idx][1], spatialReference });
+                                result.addPath(this.createTeeth(p, GeoTools.angleInRadians(center, p), teethSz));
+                            }
+                        }
+
+                        // Fracture lines from center through control points to last point
+                        const fracturePaths: Point[] = [center];
+                        for (let i = 3; i < pts.length - 1; i++) {
+                            fracturePaths.push(pts[i]);
+                        }
+                        fracturePaths.push(lastPt);
+
+                        const fracValues = (GeoTools as any)._fracture(fracturePaths, 10, spatialReference);
+                        if (fracValues && fracValues.geometry) {
+                            const gPaths = (fracValues.geometry as Polyline).paths;
+                            gPaths.forEach((p: number[][]) => result.addPath(p));
+
+                            // ENY markers at midpoints
+                            for (let i = 0; i < fracValues.midPoints.length; i++) {
+                                let enyLenLimit = fracValues.midPoints[i].len / 2;
+                                if (enyLenLimit > baseLineLen / 3.6) enyLenLimit = baseLineLen / 3.6;
+                                const enyPaths = (Shapes as any).createENY(
+                                    fracValues.midPoints[i].midPt.x,
+                                    fracValues.midPoints[i].midPt.y,
+                                    enyLenLimit,
+                                    spatialReference
+                                );
+                                for (let j = 0; j < enyPaths.length; j++) {
+                                    result.addPath(enyPaths[j].map((p: Point) => [p.x, p.y]));
+                                }
+                            }
+                        }
+
+                        // Arrow head backward from center towards pts[3]
+                        if (pts.length > 3) {
+                            const toward = pts[3];
+                            const mainLen = GeoTools._2PtLen(center, toward);
+                            const baseLen = GeoTools._2PtLen(lastPt, secLastPt);
+                            const arrowLen = GeoTools.ArrowFlanksLen(mainLen, baseLen);
+                            const arrowAngle = GeoTools.angleInRadians(center, toward);
+                            const arrow = (Shapes as any).arrowHeadBackward(center, arrowLen, arrowAngle);
+                            if (arrow && arrow.length) {
+                                result.addPath(arrow.map((p: Point) => [p.x, p.y]));
+                            }
+                        }
+                    }
+                }
+            }
+
+            return result;
+        } catch (e) {
+            console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
+            return null;
         }
-
-        this.tempGraphic = new Graphic({
-            geometry: evt.geometry,
-            symbol: this._lineSym
-        });
-        this.symbolLayer.add(this.tempGraphic);
-
-        this._baseLinePts = (evt.geometry as any)._baseLine;
-        this.baseLineComplete = true;
-
-        // Start control point drawing
-        this.setupControlPointHandlers();
-
-        this.emit("onBaseLineDrawEnd", {
-            currentPts: (evt.geometry as any).controlPoints
-        });
     }
 
     /**
-     * Set up control point drawing handlers
-     */
-    private setupControlPointHandlers(): void {
-        // Mouse move handler
-        this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
-            this._onMouseMoveHandler(event);
-        });
-
-        // Click handler
-        this.clickHandler = this.view.on("click", (event) => {
-            this._onClickHandler(event);
-        });
-
-        // Double click handler
-        this.doubleClickHandler = this.view.on("double-click", (event) => {
-            this._onDoubleClickHandler(event);
-        });
-    }
-
-    /**
-     * Handle click events for control points
+     * Handle click events
      */
     private _onClickHandler(clickEvent: any): void {
         const mapPoint = this.view.toMap(clickEvent);
@@ -239,19 +326,15 @@ export class Contain {
         });
 
         this._points.push(point);
-
         this.emit("onDrawClick", { currentPts: this._points });
 
-        // Start mouse move tracking after first click
         if (this._points.length === 1) {
             this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
                 this._onMouseMoveHandler(event);
             });
         }
 
-        // For single line mode, finish after first click
         if (this.isLine === true && this._points.length === 1) {
-            this.emit("onDrawClick", { currentPts: this._points });
             this.cleanUp();
         }
     }
@@ -277,7 +360,7 @@ export class Contain {
      * Handle mouse move events
      */
     private _onMouseMoveHandler(inputEvent: any): void {
-        if (!this.baseLineComplete || !this.tempGraphic) return;
+        if (!this.tempGraphic || this._points.length === 0) return;
 
         const mapPoint = this.view.toMap(inputEvent);
         if (!mapPoint) return;
@@ -290,7 +373,6 @@ export class Contain {
 
         const drawEssentials = new DrawEssentials();
         (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
-        (drawEssentials as any).BASE_LN_PTS = this._baseLinePts;
         (drawEssentials as any).TEETH_SIZE = this._teethSize;
         (drawEssentials as any).TEETH_GAP = this._teethGap;
 
@@ -306,220 +388,6 @@ export class Contain {
     }
 
     /**
-     * Create DrawEssentials object
-     */
-    private createDrawEssentials(ctrlPts: Point[], teethSize?: number, teethGap?: number): DrawEssentials {
-        const drawEssentials = new DrawEssentials();
-        drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
-        drawEssentials.SID = this.SID;
-        drawEssentials.SYM_NAME = this.symName;
-        drawEssentials.GEOM = null;
-        drawEssentials.AMPLIFIER = this.amplifier.toString();
-
-        // Store additional properties
-        (drawEssentials as any).SCOPE = this;
-        (drawEssentials as any).CTRL_PTS = ctrlPts;
-        (drawEssentials as any).TEETH_SIZE = teethSize !== undefined ? teethSize : this._teethSize;
-        (drawEssentials as any).TEETH_GAP = teethGap !== undefined ? teethGap : this._teethGap;
-
-        return drawEssentials;
-    }
-
-    /**
-     * Create symbol geometry from DrawEssentials
-     */
-    private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
-        try {
-            const spatialReference = this.view.spatialReference;
-            const pts: Point[] = (drawEssentials as any).CTRL_PTS;
-            if (!pts || pts.length === 0) throw new Error("controlPoints not found");
-
-            const result = new Polyline({ spatialReference });
-
-            // Get baseline points or use first two points from ctrlPts
-            const baseLinePts = (drawEssentials as any).BASE_LN_PTS;
-            let startingPt: Point;
-            let endPt: Point;
-
-            if (baseLinePts && baseLinePts.startPt && baseLinePts.endPt) {
-                startingPt = baseLinePts.startPt;
-                endPt = baseLinePts.endPt;
-            } else if (pts.length >= 2) {
-                startingPt = pts[0];
-                endPt = pts[1];
-            } else {
-                throw new Error("First Parameter of the Function is an Array with Start and End Point");
-            }
-
-            // Determine teeth parameters
-            const teethSize = GeoTools.setDefault(drawEssentials as any, "TEETH_SIZE", this._teethSize);
-            const teethGap = GeoTools.setDefault(drawEssentials as any, "TEETH_GAP", this._teethGap);
-
-            if (pts.length === 2) {
-                // Simple line for 2 points
-                result.addPath([[startingPt.x, startingPt.y], [endPt.x, endPt.y]]);
-            } else if (pts.length === 3) {
-                // Three points - create circle segment with C and teeth
-                const candidatePoint = pts[2];
-                const circle = this._circleDrawEx(
-                    (this.view as any).toScreen(startingPt),
-                    (this.view as any).toScreen(endPt),
-                    (this.view as any).toScreen(candidatePoint)
-                );
-
-                if (circle.radius > 0) {
-                    const values = this.CreateCircleSegmentFromThreePoints(
-                        circle,
-                        (this.view as any).toScreen(startingPt),
-                        (this.view as any).toScreen(endPt),
-                        (this.view as any).toScreen(candidatePoint),
-                        60
-                    );
-
-                    const paths = values.geometry.paths[0];
-                    result.addPath(paths.slice(0, 28));
-                    result.addPath(paths.slice(32, 60));
-
-                    // Create C at middle of gap
-                    const cPoint = new Point(paths[30][0], paths[30][1], spatialReference);
-                    const firstPoint = new Point(paths[28][0], paths[28][1], spatialReference);
-                    const secondPoint = new Point(paths[32][0], paths[32][1], spatialReference);
-                    const baseLineLen = GeoTools._2PtLen(firstPoint, secondPoint);
-                    let cLenLimit = baseLineLen / 5;
-                    if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-                    const cPts: Point[] = (Shapes as any).createCC(cPoint.x, cPoint.y, cLenLimit, spatialReference);
-                    if (cPts.length) result.addPath(cPts.map(p => [p.x, p.y]));
-
-                    // Add teeth on both arcs
-                    const centerPt = result.extent?.center;
-                    if (centerPt) {
-                        const center = new Point({ x: centerPt.x, y: centerPt.y, spatialReference });
-                        const length = GeoTools._2PtLen(endPt, center) / 10;
-                        const teethSz = length * teethSize;
-
-                        for (let i = teethGap; i < 28; i += teethGap) {
-                            const p = new Point({ x: paths[i][0], y: paths[i][1], spatialReference });
-                            const ang = GeoTools.angleInRadians(center, p);
-                            result.addPath(this.createTeeth(p, ang, teethSz));
-                        }
-                        for (let i = teethGap; i < 28; i += teethGap) {
-                            const idx = 32 + i;
-                            if (idx < paths.length) {
-                                const p = new Point({ x: paths[idx][0], y: paths[idx][1], spatialReference });
-                                const ang = GeoTools.angleInRadians(center, p);
-                                result.addPath(this.createTeeth(p, ang, teethSz));
-                            }
-                        }
-                    }
-                }
-            } else if (pts.length > 3) {
-                // More than 3 points - add circle, teeth, fracture lines, ENY, and arrow head
-                const candidatePoint = pts[2];
-                const lastPt = pts[pts.length - 1];
-                const secLastPt = pts[pts.length - 2];
-
-                const circle = this._circleDrawEx(
-                    (this.view as any).toScreen(startingPt),
-                    (this.view as any).toScreen(endPt),
-                    (this.view as any).toScreen(candidatePoint)
-                );
-
-                if (circle.radius > 0) {
-                    const values = this.CreateCircleSegmentFromThreePoints(
-                        circle,
-                        (this.view as any).toScreen(startingPt),
-                        (this.view as any).toScreen(endPt),
-                        (this.view as any).toScreen(candidatePoint),
-                        60
-                    );
-
-                    const paths = values.geometry.paths[0];
-                    result.addPath(paths.slice(0, 28));
-                    result.addPath(paths.slice(32, 60));
-
-                    // Create C at middle of gap
-                    const cPoint = new Point(paths[30][0], paths[30][1], spatialReference);
-                    const firstPoint = new Point(paths[28][0], paths[28][1], spatialReference);
-                    const secondPoint = new Point(paths[32][0], paths[32][1], spatialReference);
-                    const baseLineLen = GeoTools._2PtLen(firstPoint, secondPoint);
-                    let cLenLimit = baseLineLen / 5;
-                    if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-                    const cPts: Point[] = (Shapes as any).createCC(cPoint.x, cPoint.y, cLenLimit, spatialReference);
-                    if (cPts.length) result.addPath(cPts.map(p => [p.x, p.y]));
-
-                    // Add teeth on both arcs
-                    const centerPt = result.extent?.center;
-                    if (centerPt) {
-                        const center = new Point({ x: centerPt.x, y: centerPt.y, spatialReference });
-                        const length = GeoTools._2PtLen(endPt, center) / 10;
-                        const teethSz = length * teethSize;
-
-                        for (let i = teethGap; i < 28; i += teethGap) {
-                            const p = new Point({ x: paths[i][0], y: paths[i][1], spatialReference });
-                            const ang = GeoTools.angleInRadians(center, p);
-                            result.addPath(this.createTeeth(p, ang, teethSz));
-                        }
-                        for (let i = teethGap; i < 28; i += teethGap) {
-                            const idx = 32 + i;
-                            if (idx < paths.length) {
-                                const p = new Point({ x: paths[idx][0], y: paths[idx][1], spatialReference });
-                                const ang = GeoTools.angleInRadians(center, p);
-                                result.addPath(this.createTeeth(p, ang, teethSz));
-                            }
-                        }
-
-                        // Add fracture lines from center through control points to last point
-                        const fracturePoints: Point[] = [center];
-                        for (let i = 3; i < pts.length - 1; i++) {
-                            fracturePoints.push(pts[i]);
-                        }
-                        fracturePoints.push(lastPt);
-
-                        const fracValues = (GeoTools as any)._fracture(fracturePoints, 10, spatialReference);
-                        if (fracValues && fracValues.geometry) {
-                            const gPaths = (fracValues.geometry as Polyline).paths;
-                            gPaths.forEach((p: number[][]) => result.addPath(p));
-
-                            // Add ENY markers at midpoints
-                            for (let i = 0; i < fracValues.midPoints.length; i++) {
-                                let enyLenLimit = fracValues.midPoints[i].len / 2;
-                                if (enyLenLimit > baseLineLen / 3.6) enyLenLimit = baseLineLen / 3.6;
-                                const enyPaths = (Shapes as any).createENY(
-                                    fracValues.midPoints[i].midPt.x,
-                                    fracValues.midPoints[i].midPt.y,
-                                    enyLenLimit,
-                                    spatialReference
-                                );
-                                for (let j = 0; j < enyPaths.length; j++) {
-                                    result.addPath(enyPaths[j].map((p: Point) => [p.x, p.y]));
-                                }
-                            }
-                        }
-
-                        // Add backward arrow head from center towards pts[3]
-                        if (pts.length > 3) {
-                            const toward = pts[3];
-                            const mainLen = GeoTools._2PtLen(center, toward);
-                            const baseLen = GeoTools._2PtLen(lastPt, secLastPt);
-                            const arrowLen = GeoTools.ArrowFlanksLen(mainLen, baseLen);
-                            const angle = GeoTools.angleInRadians(center, toward);
-                            const arrow = (Shapes as any).arrowHeadBackward(center, arrowLen, angle);
-                            if (arrow && arrow.length) {
-                                result.addPath(arrow.map((p: Point) => [p.x, p.y]));
-                            }
-                        }
-                    }
-                }
-            }
-
-            return result;
-        } catch (e) {
-            console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
-            return null;
-        }
-    }
-
-    /**
      * Calculate circle from three screen points
      */
     private _circleDrawEx(pt1: any, pt2: any, pt3: any): { radius: number; center: { x: number, y: number } } {
@@ -529,26 +397,20 @@ export class Contain {
             [pt3.x, pt3.y]
         ];
 
-        // Calculate determinant for minor 11
-        const m11 = P[0][0] * (P[1][1] - P[2][1]) - P[1][0] * (P[0][1] - P[2][1]) + P[2][0] * (P[0][1] - P[1][1]);
+        const a = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+        for (let i = 0; i < 3; i++) { a[i][0] = P[i][0]; a[i][1] = P[i][1]; a[i][2] = 1; }
+        const m11 = this._determinantDrawEx(a, 3);
 
-        // Calculate determinant for minor 12
-        const m12 = (P[0][0] * P[0][0] + P[0][1] * P[0][1]) * (P[1][1] - P[2][1]) -
-            (P[1][0] * P[1][0] + P[1][1] * P[1][1]) * (P[0][1] - P[2][1]) +
-            (P[2][0] * P[2][0] + P[2][1] * P[2][1]) * (P[0][1] - P[1][1]);
+        for (let i = 0; i < 3; i++) { a[i][0] = P[i][0] * P[i][0] + P[i][1] * P[i][1]; a[i][1] = P[i][1]; a[i][2] = 1; }
+        const m12 = this._determinantDrawEx(a, 3);
 
-        // Calculate determinant for minor 13
-        const m13 = (P[0][0] * P[0][0] + P[0][1] * P[0][1]) * (P[1][0] - P[2][0]) -
-            (P[1][0] * P[1][0] + P[1][1] * P[1][1]) * (P[0][0] - P[2][0]) +
-            (P[2][0] * P[2][0] + P[2][1] * P[2][1]) * (P[0][0] - P[1][0]);
+        for (let i = 0; i < 3; i++) { a[i][0] = P[i][0] * P[i][0] + P[i][1] * P[i][1]; a[i][1] = P[i][0]; a[i][2] = 1; }
+        const m13 = this._determinantDrawEx(a, 3);
 
-        // Calculate determinant for minor 14
-        const m14 = (P[0][0] * P[0][0] + P[0][1] * P[0][1]) * (P[1][0] * P[2][1] - P[2][0] * P[1][1]) -
-            (P[1][0] * P[1][0] + P[1][1] * P[1][1]) * (P[0][0] * P[2][1] - P[2][0] * P[0][1]) +
-            (P[2][0] * P[2][0] + P[2][1] * P[2][1]) * (P[0][0] * P[1][1] - P[1][0] * P[0][1]);
+        for (let i = 0; i < 3; i++) { a[i][0] = P[i][0] * P[i][0] + P[i][1] * P[i][1]; a[i][1] = P[i][0]; a[i][2] = P[i][1]; }
+        const m14 = this._determinantDrawEx(a, 3);
 
         let Xo = 0, Yo = 0, r = 0;
-
         if (m11 !== 0) {
             Xo = 0.5 * m12 / m11;
             Yo = -0.5 * m13 / m11;
@@ -558,8 +420,31 @@ export class Contain {
         return { radius: r, center: { x: Xo, y: Yo } };
     }
 
+    private _determinantDrawEx(a: number[][], n: number): number {
+        let d = 0;
+        const m = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+
+        if (n === 2) {
+            d = a[0][0] * a[1][1] - a[1][0] * a[0][1];
+        } else {
+            d = 0;
+            for (let j1 = 0; j1 < n; j1++) {
+                for (let i = 1; i < n; i++) {
+                    let j2 = 0;
+                    for (let j = 0; j < n; j++) {
+                        if (j === j1) continue;
+                        m[i - 1][j2] = a[i][j];
+                        j2++;
+                    }
+                }
+                d = d + Math.pow(-1.0, j1) * a[0][j1] * this._determinantDrawEx(m, n - 1);
+            }
+        }
+        return d;
+    }
+
     /**
-     * Create circle segment from three points
+     * Create circle segment from three screen points
      */
     private CreateCircleSegmentFromThreePoints(
         circle: { radius: number, center: { x: number, y: number } },
@@ -570,15 +455,10 @@ export class Contain {
         const radius = circle.radius;
         const path: any[] = [];
 
-        // Translate points relative to center
-        pt1.x -= center.x;
-        pt1.y -= center.y;
-        pt2.x -= center.x;
-        pt2.y -= center.y;
-        pt3.x -= center.x;
-        pt3.y -= center.y;
+        pt1.x -= center.x; pt1.y -= center.y;
+        pt2.x -= center.x; pt2.y -= center.y;
+        pt3.x -= center.x; pt3.y -= center.y;
 
-        // Calculate angles
         let anglePt1 = Math.atan2(pt1.y, pt1.x);
         let anglePt2 = Math.atan2(pt2.y, pt2.x);
         let anglePt3 = Math.atan2(pt3.y, pt3.x);
@@ -588,7 +468,7 @@ export class Contain {
         anglePt3 = anglePt3 < 0 ? 2 * Math.PI + anglePt3 : anglePt3;
 
         const startAngle = Math.min(anglePt1, anglePt2);
-        let endAngle = Math.max(anglePt1, anglePt2);
+        const endAngle = Math.max(anglePt1, anglePt2);
         let swipeAngle = endAngle - startAngle;
 
         if (anglePt3 < startAngle || anglePt3 > endAngle) {
@@ -620,17 +500,10 @@ export class Contain {
      */
     private createTeeth(startPt: Point, angle: number, teethSize: number): number[][] {
         const midPtTwrdsCntr = [
-            startPt.x - teethSize * Math.cos(angle),
-            startPt.y - teethSize * Math.sin(angle)
+            -1 * teethSize * Math.cos(angle) + startPt.x,
+            -1 * teethSize * Math.sin(angle) + startPt.y
         ];
         return [[startPt.x, startPt.y], midPtTwrdsCntr];
-    }
-
-    /**
-     * Get baseline points
-     */
-    public getBaseLinePts(): any {
-        return this._baseLinePts;
     }
 
     /**
@@ -689,7 +562,6 @@ export class Contain {
 
         this.tempGraphic = new Graphic();
         this._points = [];
-        this._baseLinePts = {};
     }
 
     /**
@@ -708,18 +580,6 @@ export class Contain {
             this.mouseMoveHandler.remove();
             this.mouseMoveHandler = null;
         }
-        if (this.baseLineEndHandler) {
-            this.baseLineEndHandler.remove();
-            this.baseLineEndHandler = null;
-        }
-        if (this.baseLineProgressHandler) {
-            this.baseLineProgressHandler.remove();
-            this.baseLineProgressHandler = null;
-        }
-        if (this.baseLineClickHandler) {
-            this.baseLineClickHandler.remove();
-            this.baseLineClickHandler = null;
-        }
     }
 
     /**
@@ -730,7 +590,6 @@ export class Contain {
         this._removeEvents();
         this._geometryType = null;
         this.isDrawing = false;
-        this.baseLineComplete = false;
     }
 
     /**

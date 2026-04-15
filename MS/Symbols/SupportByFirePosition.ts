@@ -326,142 +326,95 @@ export class SupportByFirePosition {
             const pts: Point[] = (drawEssentials as any).CTRL_PTS;
             if (!pts || pts.length === 0) throw new Error("controlPoints not found");
 
-            const stPt: Point = (drawEssentials as any).BASE_LN_PTS?.startPt;
-            const endPt: Point = (drawEssentials as any).BASE_LN_PTS?.endPt;
-            if (!stPt || !endPt) throw new Error("First Parameter of the Function is an Array with Start and End Point");
-
             const backLineDist = GeoTools.setDefault(drawEssentials as any, "BK_LN_DIST_RATIO", 5);
             const backLineAngle = GeoTools.setDefault(drawEssentials as any, "BK_LN_ANGL_RATIO", 5);
             const frontLineAngle = GeoTools.setDefault(drawEssentials as any, "FRNT_LN_ANGL_RATIO", 5);
 
-            const result = new Polyline({ spatialReference });
+            const stPt: Point = (drawEssentials as any).BASE_LN_PTS.startPt;
+            const endPt: Point = (drawEssentials as any).BASE_LN_PTS.endPt;
+            if (stPt === undefined || endPt === undefined) throw new Error("First Parameter of the Function is an Array with Start and End Point");
 
             const firstPoint = pts[0];
-            const lastPoint = pts[pts.length - 1];
-            const leftArray: any[] = [];
-            const rightArray: any[] = [];
+            let lastPoint = pts[pts.length - 1];
+            const leftArray: Point[] = [];
+            const rightArray: Point[] = [];
 
             const midPt = GeoTools.getMidPoint(stPt, endPt);
+            const result = new Polyline({ spatialReference });
 
-            // Base line - determine perpendicular points
+            // Base Line — JS: if (pts.length >= 1) { lastPoint = firstPoint; }
+            if (pts.length >= 1) {
+                lastPoint = firstPoint;
+            }
+
             let len = GeoTools._2PtLen(midPt, endPt);
             let k = Math.atan((midPt.y - lastPoint.y) / (midPt.x - lastPoint.x));
 
             switch (GeoTools.twoPtsRelationShip(midPt, lastPoint)) {
-                case "ne":
-                    k += Math.PI / 2;
-                    break;
-                case "nw":
-                    k += Math.PI * 3 / 2;
-                    break;
-                case "sw":
-                    k += Math.PI * 3 / 2;
-                    break;
-                case "se":
-                    k += Math.PI / 2;
-                    break;
+                case "ne": k += Math.PI / 2; break;
+                case "nw": k += Math.PI * 3 / 2; break;
+                case "sw": k += Math.PI * 3 / 2; break;
+                case "se": k += Math.PI / 2; break;
             }
 
             const partialLen = len;
             const p1 = { x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y };
             const p2 = { x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y };
 
-            // Add base line path between p1 and p2
             result.addPath([[p1.x, p1.y], [p2.x, p2.y]]);
 
-            // Front lines - extend perpendicular lines from control points
+            // Front
             if (pts.length >= 1) {
-                leftArray.push(p1);
-                rightArray.push(p2);
+                leftArray.push(new Point({ x: p1.x, y: p1.y, spatialReference }));
+                rightArray.push(new Point({ x: p2.x, y: p2.y, spatialReference }));
             }
+
+            let pt1 = new Point({ x: 0, y: 0, spatialReference });
+            let pt2 = new Point({ x: 0, y: 0, spatialReference });
+            let stPtCandidatePt = new Point({ x: 0, y: 0, spatialReference });
+            let endPtCandidatePt = new Point({ x: 0, y: 0, spatialReference });
 
             for (let i = 0; i < pts.length; i++) {
                 const length = GeoTools._2PtLen(midPt, pts[i]);
-                const angle = GeoTools.angleInRadians(midPt, pts[i]);
+                let angle = GeoTools.angleInRadians(midPt, pts[i]);
 
-                const stPtCandidatePt = new Point(
-                    p1.x + length * Math.cos(angle),
-                    p1.y + length * Math.sin(angle),
-                    spatialReference
-                );
-                const endPtCandidatePt = new Point(
-                    p2.x + length * Math.cos(angle),
-                    p2.y + length * Math.sin(angle),
-                    spatialReference
-                );
+                stPtCandidatePt = new Point({ x: p1.x + length * Math.cos(angle), y: p1.y + length * Math.sin(angle), spatialReference });
+                endPtCandidatePt = new Point({ x: p2.x + length * Math.cos(angle), y: p2.y + length * Math.sin(angle), spatialReference });
 
                 len = length / frontLineAngle;
                 angle = GeoTools.angleInRadians(stPtCandidatePt, endPtCandidatePt);
 
-                const pt1 = new Point(
-                    -1 * len * Math.cos(angle) + stPtCandidatePt.x,
-                    -1 * len * Math.sin(angle) + stPtCandidatePt.y,
-                    spatialReference
-                );
-                const pt2 = new Point(
-                    len * Math.cos(angle) + endPtCandidatePt.x,
-                    len * Math.sin(angle) + endPtCandidatePt.y,
-                    spatialReference
-                );
+                pt1 = new Point({ x: -1 * len * Math.cos(angle) + stPtCandidatePt.x, y: -1 * len * Math.sin(angle) + stPtCandidatePt.y, spatialReference });
+                pt2 = new Point({ x: len * Math.cos(angle) + endPtCandidatePt.x, y: len * Math.sin(angle) + endPtCandidatePt.y, spatialReference });
 
                 leftArray.push(pt1);
                 rightArray.push(pt2);
             }
 
-            result.addPath(leftArray);
-            result.addPath(rightArray);
+            result.addPath(leftArray.map(p => [p.x, p.y]));
+            result.addPath(rightArray.map(p => [p.x, p.y]));
 
-            // Arrow heads at the ends of front lines
-            if (leftArray.length > 0 && rightArray.length > 0) {
-                const lastLeftPt = leftArray[leftArray.length - 1];
-                const lastRightPt = rightArray[rightArray.length - 1];
-                const midLength = GeoTools._2PtLen(midPt, pts[pts.length - 1]);
-                const frontLength = GeoTools._2PtLen(
-                    new Point(p1.x, p1.y, spatialReference),
-                    new Point(p2.x, p2.y, spatialReference)
-                );
-                const arrowLen = GeoTools.ArrowFlanksLen(midLength, frontLength);
+            // Arrows
+            result.addPath(this._arrowHead(pt1,
+                GeoTools.ArrowFlanksLen(GeoTools._2PtLen(midPt, pts[pts.length - 1]), GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt)),
+                GeoTools.angleInRadians(leftArray[leftArray.length - 2], pt1)));
+            result.addPath(this._arrowHead(pt2,
+                GeoTools.ArrowFlanksLen(GeoTools._2PtLen(midPt, pts[pts.length - 1]), GeoTools._2PtLen(stPtCandidatePt, endPtCandidatePt)),
+                GeoTools.angleInRadians(rightArray[rightArray.length - 2], pt2)));
 
-                if (leftArray.length >= 2) {
-                    const angleLeft = GeoTools.angleInRadians(leftArray[leftArray.length - 2], lastLeftPt);
-                    result.addPath(this._arrowHead(lastLeftPt, arrowLen, angleLeft));
-                }
+            // Back — uses lastPoint which is firstPoint = pts[0]
+            let length = GeoTools._2PtLen(midPt, lastPoint);
+            let angle = GeoTools.angleInRadians(midPt, lastPoint);
+            length = length / backLineDist;
 
-                if (rightArray.length >= 2) {
-                    const angleRight = GeoTools.angleInRadians(rightArray[rightArray.length - 2], lastRightPt);
-                    result.addPath(this._arrowHead(lastRightPt, arrowLen, angleRight));
-                }
-            }
+            const stPtBackPt = new Point({ x: p1.x - length * Math.cos(angle), y: p1.y - length * Math.sin(angle), spatialReference });
+            const endPtBackPt = new Point({ x: p2.x - length * Math.cos(angle), y: p2.y - length * Math.sin(angle), spatialReference });
 
-            // Back lines - extend from base line endpoints in the opposite direction
-            const backLength = GeoTools._2PtLen(midPt, lastPoint);
-            const backAngle = GeoTools.angleInRadians(midPt, lastPoint);
-            const backDist = backLength / backLineDist;
+            len = length / backLineAngle;
+            angle = GeoTools.angleInRadians(stPtBackPt, endPtBackPt);
 
-            const stPtBackPt = new Point(
-                p1.x - backDist * Math.cos(backAngle),
-                p1.y - backDist * Math.sin(backAngle),
-                spatialReference
-            );
-            const endPtBackPt = new Point(
-                p2.x - backDist * Math.cos(backAngle),
-                p2.y - backDist * Math.sin(backAngle),
-                spatialReference
-            );
-
-            len = backDist / backLineAngle;
-            const backAngle2 = GeoTools.angleInRadians(stPtBackPt, endPtBackPt);
-
-            const backPt1 = new Point(
-                -1 * len * Math.cos(backAngle2) + stPtBackPt.x,
-                -1 * len * Math.sin(backAngle2) + stPtBackPt.y,
-                spatialReference
-            );
-            const backPt2 = new Point(
-                len * Math.cos(backAngle2) + endPtBackPt.x,
-                len * Math.sin(backAngle2) + endPtBackPt.y,
-                spatialReference
-            );
+            const backPt1 = new Point({ x: -1 * len * Math.cos(angle) + stPtBackPt.x, y: -1 * len * Math.sin(angle) + stPtBackPt.y, spatialReference });
+            const backPt2 = new Point({ x: len * Math.cos(angle) + endPtBackPt.x, y: len * Math.sin(angle) + endPtBackPt.y, spatialReference });
 
             result.addPath([[p1.x, p1.y], [backPt1.x, backPt1.y]]);
             result.addPath([[p2.x, p2.y], [backPt2.x, backPt2.y]]);
@@ -474,11 +427,11 @@ export class SupportByFirePosition {
     }
 
     /**
-     * Create arrow head path
+     * Create arrow head path — matches JS: angle += 15 (radians), angle -= 30 (radians)
      */
-    private _arrowHead(candidatePoint: any, length: number, angle: number): number[][] {
-        const angle1 = angle + (15 * Math.PI / 180); // Add 15 degrees
-        const angle2 = angle - (15 * Math.PI / 180);  // Subtract 15 degrees
+    private _arrowHead(candidatePoint: Point, length: number, angle: number): number[][] {
+        const angle1 = angle + 15;
+        const angle2 = angle - 15;
 
         const rightWing = {
             x: candidatePoint.x + length * Math.cos(angle1),
