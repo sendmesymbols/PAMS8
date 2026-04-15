@@ -1,7 +1,6 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
@@ -16,7 +15,7 @@ import GeoTools from "../Support/GeoTools.ts";
 export interface SupportByFirePositionOptions {
     CTRL_PTS?: Point[];
     BASE_LN_PTS?: { startPt: Point, endPt: Point };
-    GEOM?: Polygon;
+    GEOM?: Polyline;
     BK_LN_DIST_RATIO?: number;
     BK_LN_ANGL_RATIO?: number;
     FRNT_LN_ANGL_RATIO?: number;
@@ -24,42 +23,45 @@ export interface SupportByFirePositionOptions {
 }
 
 /**
- * SupportByFirePosition class for drawing Support By Fire Position symbols on MapView or SceneView
- * Supports both immediate placement and interactive drawing modes
+ * SupportByFirePosition class for drawing Support By Fire Position (BOF) tactical symbols
+ * Uses baseline + control points with front lines, arrows, and back lines
  */
 export class SupportByFirePosition {
     private view: MapView | SceneView;
     private layerManager: GraphicsLayerManager;
     private symbolLayer: GraphicsLayer;
     private isLine: boolean;
-    
+
     // Symbol properties
-    private SID: string = "152100";
-    private symName: string = "BOF";
-    private symGeometricType: string = "Area";
+    public declaredClass: string = "MilitarySymbology.Symbols.SupportByFirePosition";
+    public SID: string = "152100";
+    public symName: string = "BOF";
+    public symGeometricType: string = "Area";
+
     private _lineSym: SimpleLineSymbol | SimpleFillSymbol | null = null;
     private _points: Point[] = [];
-    private _baseLinePts: Point[] = [];
+    private _baseLinePts: any = {};
     private _geometryType: string | null = null;
     private amplifier: Amplifier;
-    
+
     // Symbol parameters
     private backLineDist: number = 5;
     private backLineAngle: number = 5;
-    private frontLineAgle: number = 5;
-    
+    private frontLineAngle: number = 5;
+
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
-    
+    private baseLineComplete: boolean = false;
+
     // Event handlers
     private clickHandler: any = null;
     private doubleClickHandler: any = null;
     private mouseMoveHandler: any = null;
     private baseLineEndHandler: any = null;
-    private baseLineClickHandler: any = null;
     private baseLineProgressHandler: any = null;
-    
+    private baseLineClickHandler: any = null;
+
     // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
 
@@ -67,73 +69,47 @@ export class SupportByFirePosition {
         this.view = view;
         this.isLine = isLine;
         this.layerManager = GraphicsLayerManager.getInstance(view);
-        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
         this.amplifier = new Amplifier();
-        
+
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
-        
+
         // Initialize temporary graphic
         this.tempGraphic = new Graphic();
     }
 
     /**
      * Initialize the support by fire position drawing
-     * @example
-     * // Activating interactive drawing and return geometry
-     * endEvent = supportByFirePosition.on("onDrawEnd", drawSymEnd);
-     * 
-     * var drawEssentials = {
-     *   baseLinePts: {startPt: new Point(88.59375, 88.59375, this.view.spatialReference), endPt: new Point(79.453125, -11.25, this.view.spatialReference)},
-     *   controlPoints: [new Point(6.6796875, 9.140625, this.view.spatialReference), new Point(7.6796875, 8.140625, this.view.spatialReference)],
-     *   backLineDist: 5,
-     *   backLineAngle: 5,
-     *   frontLineAgle: 5
-     * };
-     * 
-     * supportByFirePosition.init(drawEssentials);
      */
     public init(options: SupportByFirePositionOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void {
-        this._lineSym = marker;
-        
+        this._lineSym = marker.clone();
+
         // Set parameters from options
         this.backLineDist = GeoTools.setDefault(options, "BK_LN_DIST_RATIO", 5);
         this.backLineAngle = GeoTools.setDefault(options, "BK_LN_ANGL_RATIO", 5);
-        this.frontLineAgle = GeoTools.setDefault(options, "FRNT_LN_ANGL_RATIO", 5);
+        this.frontLineAngle = GeoTools.setDefault(options, "FRNT_LN_ANGL_RATIO", 5);
 
         const drawEssentials = new DrawEssentials();
-        const baseLine = new BaseLine(this.view, this._lineSym as SimpleLineSymbol);
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM")) {
-            // Immediate placement with all parameters
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("BASE_LN_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
+            // Immediate placement with geometry
             if (options.GEOM && this.tempGraphic) {
-                this.tempGraphic.geometry = options.GEOM;
+                this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
+                    ? options.GEOM
+                    : new Polyline({ paths: (options.GEOM as any), spatialReference: this.view.spatialReference });
             }
-            
-            const drawEss = this.createDrawEssentials(
-                options.CTRL_PTS!.slice(), 
-                options.BASE_LN_PTS!, 
-                this.backLineDist,
-                this.backLineAngle, 
-                this.frontLineAgle
-            );
-            
+
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
             if (this.tempGraphic && this.tempGraphic.geometry) {
-                this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
+                this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
             }
             this._clear();
 
         } else if (options.hasOwnProperty("CTRL_PTS")) {
-            // Immediate placement with control points
             if (options.hasOwnProperty("BASE_LN_PTS")) {
-                const drawEss = this.createDrawEssentials(
-                    options.CTRL_PTS!.slice(), 
-                    options.BASE_LN_PTS!, 
-                    this.backLineDist,
-                    this.backLineAngle, 
-                    this.frontLineAgle
-                );
-                
+                // Immediate placement with control points and baseline
+                const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.BASE_LN_PTS!);
                 const geometry = this.createSymbol(drawEss);
                 if (geometry && this.tempGraphic) {
                     this.tempGraphic.geometry = geometry;
@@ -145,71 +121,34 @@ export class SupportByFirePosition {
             }
 
         } else {
-            // Interactive drawing mode
-            this.startBaseLineDrawing(baseLine);
+            // Interactive drawing mode - start with baseline
+            this.startBaseLineDrawing();
         }
     }
 
     /**
-     * Start interactive baseline drawing
+     * Start baseline drawing
      */
-    private startBaseLineDrawing(baseLine: BaseLine): void {
-        // Set up baseline event handlers
-        baseLine.on("drawEnd", (evt: any) => {
-            this.baseLineDrawEnd(evt);
-        });
-        
-        baseLine.on("onBaseLineClick", (evt: any) => {
+    private startBaseLineDrawing(): void {
+        const baseLine = new BaseLine(this.view, this._lineSym as SimpleLineSymbol);
+
+        this.baseLineClickHandler = baseLine.on("onBaseLineClick", (evt: any) => {
             this.baseLineClick(evt);
         });
-        
-        baseLine.on("onBaseLineProgress", (evt: any) => {
+
+        this.baseLineProgressHandler = baseLine.on("onBaseLineProgress", (evt: any) => {
             this.baseLineDrawProgress(evt);
         });
-        
+
+        this.baseLineEndHandler = baseLine.on("drawEnd", (evt: any) => {
+            this.baseLineDrawEnd(evt);
+        });
+
         baseLine.init();
     }
 
     /**
-     * Handle baseline draw end
-     */
-    private baseLineDrawEnd(evt: any): void {
-        this.tempGraphic = new Graphic({
-            geometry: evt.geometry,
-            symbol: this._lineSym
-        });
-        this.symbolLayer.add(this.tempGraphic);
-        
-        this._baseLinePts = (evt.geometry as any)._baseLine || [];
-        
-        // Set up main drawing event handlers
-        this.setupEventHandlers();
-        
-        this.emit("onBaseLineDrawEnd", { currentPts: (evt.geometry as any).controlPoints || [] });
-    }
-
-    /**
-     * Handle baseline draw progress
-     */
-    private baseLineDrawProgress(evt: any): void {
-        const localDrawEssentials: any = {};
-        localDrawEssentials.CTRL_PTS = evt.currentGeometry;
-        
-        const pl = new Polyline({
-            paths: [evt.currentGeometry],
-            spatialReference: this.view.spatialReference
-        });
-        
-        this.emit("onDrawProgress", {
-            currentGeometry: pl,
-            currentDrawEssentials: localDrawEssentials,
-            currentMarker: evt.currentMarker,
-            isBaseLine: true
-        });
-    }
-
-    /**
-     * Handle baseline click
+     * Handle baseline click events
      */
     private baseLineClick(evt: any): void {
         this.emit("onDrawClick", {
@@ -219,27 +158,71 @@ export class SupportByFirePosition {
     }
 
     /**
-     * Set up mouse event handlers for interactive drawing
+     * Handle baseline draw progress
      */
-    private setupEventHandlers(): void {
+    private baseLineDrawProgress(evt: any): void {
+        const localDrawEssentials: any = {};
+        localDrawEssentials.CTRL_PTS = evt.currentGeometry;
+
+        const pl = new Polyline({ spatialReference: this.view.spatialReference });
+        pl.addPath(evt.currentGeometry);
+
+        this.emit("onDrawProgress", {
+            currentGeometry: pl,
+            currentDrawEssentials: localDrawEssentials,
+            currentMarker: evt.currentMarker,
+            isBaseLine: true
+        });
+    }
+
+    /**
+     * Handle baseline draw end
+     */
+    private baseLineDrawEnd(evt: any): void {
+        if (this.baseLineEndHandler) {
+            this.baseLineEndHandler.remove();
+            this.baseLineEndHandler = null;
+        }
+
+        this.tempGraphic = new Graphic({
+            geometry: evt.geometry,
+            symbol: this._lineSym
+        });
+        this.symbolLayer.add(this.tempGraphic);
+
+        this._baseLinePts = (evt.geometry as any)._baseLine;
+        this.baseLineComplete = true;
+
+        // Start control point drawing
+        this.setupControlPointHandlers();
+
+        this.emit("onBaseLineDrawEnd", {
+            currentPts: (evt.geometry as any).controlPoints
+        });
+    }
+
+    /**
+     * Set up control point drawing handlers
+     */
+    private setupControlPointHandlers(): void {
+        // Mouse move handler
+        this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
+            this._onMouseMoveHandler(event);
+        });
+
         // Click handler
         this.clickHandler = this.view.on("click", (event) => {
             this._onClickHandler(event);
         });
 
-        // Double click handler  
+        // Double click handler
         this.doubleClickHandler = this.view.on("double-click", (event) => {
             this._onDoubleClickHandler(event);
-        });
-
-        // Mouse move handler
-        this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
-            this._onMouseMoveHandler(event);
         });
     }
 
     /**
-     * Handle click events
+     * Handle click events for control points
      */
     private _onClickHandler(clickEvent: any): void {
         const mapPoint = this.view.toMap(clickEvent);
@@ -250,12 +233,14 @@ export class SupportByFirePosition {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
+
         this.emit("onDrawClick", { currentPts: this._points });
 
         // For single line mode, finish after first click
         if (this.isLine === true && this._points.length === 1) {
+            this.emit("onDrawClick", { currentPts: this._points });
             this.cleanUp();
         }
     }
@@ -272,7 +257,7 @@ export class SupportByFirePosition {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
         this.cleanUp();
     }
@@ -281,7 +266,7 @@ export class SupportByFirePosition {
      * Handle mouse move events
      */
     private _onMouseMoveHandler(inputEvent: any): void {
-        if (!this.tempGraphic || this._points.length === 0) return;
+        if (!this.baseLineComplete || !this.tempGraphic) return;
 
         const mapPoint = this.view.toMap(inputEvent);
         if (!mapPoint) return;
@@ -292,15 +277,13 @@ export class SupportByFirePosition {
             spatialReference: this.view.spatialReference
         });
 
-        const currentPoints = this._points.concat([candidatePoint]);
-        const drawEssentials = this.createDrawEssentials(
-            currentPoints,
-            { startPt: this._baseLinePts[0], endPt: this._baseLinePts[this._baseLinePts.length - 1] },
-            this.backLineDist,
-            this.backLineAngle,
-            this.frontLineAgle
-        );
-        
+        const drawEssentials = new DrawEssentials();
+        (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
+        (drawEssentials as any).BASE_LN_PTS = this._baseLinePts;
+        (drawEssentials as any).BK_LN_DIST_RATIO = this.backLineDist;
+        (drawEssentials as any).BK_LN_ANGL_RATIO = this.backLineAngle;
+        (drawEssentials as any).FRNT_LN_ANGL_RATIO = this.frontLineAngle;
+
         const geometry = this.createSymbol(drawEssentials);
         if (geometry) {
             this.tempGraphic.geometry = geometry;
@@ -315,26 +298,21 @@ export class SupportByFirePosition {
     /**
      * Create DrawEssentials object
      */
-    private createDrawEssentials(
-        ctrlPts: Point[], 
-        baseLinePts: { startPt: Point, endPt: Point },
-        backLineDistRatio: number, 
-        backLineAngleRatio: number, 
-        frontLineAngleRatio: number
-    ): DrawEssentials {
+    private createDrawEssentials(ctrlPts: Point[], baseLinePts: any): DrawEssentials {
         const drawEssentials = new DrawEssentials();
         drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
         drawEssentials.SID = this.SID;
         drawEssentials.SYM_NAME = this.symName;
+        drawEssentials.GEOM = null;
         drawEssentials.AMPLIFIER = this.amplifier.toString();
-        
+
         // Store additional properties
         (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
         (drawEssentials as any).BASE_LN_PTS = baseLinePts;
-        (drawEssentials as any).BK_LN_DIST_RATIO = backLineDistRatio;
-        (drawEssentials as any).BK_LN_ANGL_RATIO = backLineAngleRatio;
-        (drawEssentials as any).FRNT_LN_ANGL_RATIO = frontLineAngleRatio;
+        (drawEssentials as any).BK_LN_DIST_RATIO = this.backLineDist;
+        (drawEssentials as any).BK_LN_ANGL_RATIO = this.backLineAngle;
+        (drawEssentials as any).FRNT_LN_ANGL_RATIO = this.frontLineAngle;
 
         return drawEssentials;
     }
@@ -342,112 +320,197 @@ export class SupportByFirePosition {
     /**
      * Create symbol geometry from DrawEssentials
      */
-    private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
+    private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
         try {
-            let pts: Point[];
-            let backLineDist: number;
-            let backLineAngle: number; 
-            let frontLineAgle: number;
+            const spatialReference = this.view.spatialReference;
+            const pts: Point[] = (drawEssentials as any).CTRL_PTS;
+            if (!pts || pts.length === 0) throw new Error("controlPoints not found");
 
-            if ((drawEssentials as any).CTRL_PTS) {
-                pts = (drawEssentials as any).CTRL_PTS;
-            } else {
-                throw new Error("controlPoints not found");
+            const stPt: Point = (drawEssentials as any).BASE_LN_PTS?.startPt;
+            const endPt: Point = (drawEssentials as any).BASE_LN_PTS?.endPt;
+            if (!stPt || !endPt) throw new Error("First Parameter of the Function is an Array with Start and End Point");
+
+            const backLineDist = GeoTools.setDefault(drawEssentials as any, "BK_LN_DIST_RATIO", 5);
+            const backLineAngle = GeoTools.setDefault(drawEssentials as any, "BK_LN_ANGL_RATIO", 5);
+            const frontLineAngle = GeoTools.setDefault(drawEssentials as any, "FRNT_LN_ANGL_RATIO", 5);
+
+            const result = new Polyline({ spatialReference });
+
+            const firstPoint = pts[0];
+            const lastPoint = pts[pts.length - 1];
+            const leftArray: any[] = [];
+            const rightArray: any[] = [];
+
+            const midPt = GeoTools.getMidPoint(stPt, endPt);
+
+            // Base line - determine perpendicular points
+            let len = GeoTools._2PtLen(midPt, endPt);
+            let k = Math.atan((midPt.y - lastPoint.y) / (midPt.x - lastPoint.x));
+
+            switch (GeoTools.twoPtsRelationShip(midPt, lastPoint)) {
+                case "ne":
+                    k += Math.PI / 2;
+                    break;
+                case "nw":
+                    k += Math.PI * 3 / 2;
+                    break;
+                case "sw":
+                    k += Math.PI * 3 / 2;
+                    break;
+                case "se":
+                    k += Math.PI / 2;
+                    break;
             }
 
-            if ((drawEssentials as any).BK_LN_DIST_RATIO) {
-                backLineDist = (drawEssentials as any).BK_LN_DIST_RATIO;
-            } else {
-                backLineDist = this.backLineDist;
+            const partialLen = len;
+            const p1 = { x: partialLen * Math.cos(k) + midPt.x, y: partialLen * Math.sin(k) + midPt.y };
+            const p2 = { x: -1 * partialLen * Math.cos(k) + midPt.x, y: -1 * partialLen * Math.sin(k) + midPt.y };
+
+            // Add base line path between p1 and p2
+            result.addPath([[p1.x, p1.y], [p2.x, p2.y]]);
+
+            // Front lines - extend perpendicular lines from control points
+            if (pts.length >= 1) {
+                leftArray.push(p1);
+                rightArray.push(p2);
             }
 
-            if ((drawEssentials as any).BK_LN_ANGL_RATIO) {
-                backLineAngle = (drawEssentials as any).BK_LN_ANGL_RATIO;
-            } else {
-                backLineAngle = this.backLineAngle;
+            for (let i = 0; i < pts.length; i++) {
+                const length = GeoTools._2PtLen(midPt, pts[i]);
+                const angle = GeoTools.angleInRadians(midPt, pts[i]);
+
+                const stPtCandidatePt = new Point(
+                    p1.x + length * Math.cos(angle),
+                    p1.y + length * Math.sin(angle),
+                    spatialReference
+                );
+                const endPtCandidatePt = new Point(
+                    p2.x + length * Math.cos(angle),
+                    p2.y + length * Math.sin(angle),
+                    spatialReference
+                );
+
+                len = length / frontLineAngle;
+                angle = GeoTools.angleInRadians(stPtCandidatePt, endPtCandidatePt);
+
+                const pt1 = new Point(
+                    -1 * len * Math.cos(angle) + stPtCandidatePt.x,
+                    -1 * len * Math.sin(angle) + stPtCandidatePt.y,
+                    spatialReference
+                );
+                const pt2 = new Point(
+                    len * Math.cos(angle) + endPtCandidatePt.x,
+                    len * Math.sin(angle) + endPtCandidatePt.y,
+                    spatialReference
+                );
+
+                leftArray.push(pt1);
+                rightArray.push(pt2);
             }
 
-            if ((drawEssentials as any).FRNT_LN_ANGL_RATIO) {
-                frontLineAgle = (drawEssentials as any).FRNT_LN_ANGL_RATIO;
-            } else {
-                frontLineAgle = this.frontLineAgle;
+            result.addPath(leftArray);
+            result.addPath(rightArray);
+
+            // Arrow heads at the ends of front lines
+            if (leftArray.length > 0 && rightArray.length > 0) {
+                const lastLeftPt = leftArray[leftArray.length - 1];
+                const lastRightPt = rightArray[rightArray.length - 1];
+                const midLength = GeoTools._2PtLen(midPt, pts[pts.length - 1]);
+                const frontLength = GeoTools._2PtLen(
+                    new Point(p1.x, p1.y, spatialReference),
+                    new Point(p2.x, p2.y, spatialReference)
+                );
+                const arrowLen = GeoTools.ArrowFlanksLen(midLength, frontLength);
+
+                if (leftArray.length >= 2) {
+                    const angleLeft = GeoTools.angleInRadians(leftArray[leftArray.length - 2], lastLeftPt);
+                    result.addPath(this._arrowHead(lastLeftPt, arrowLen, angleLeft));
+                }
+
+                if (rightArray.length >= 2) {
+                    const angleRight = GeoTools.angleInRadians(rightArray[rightArray.length - 2], lastRightPt);
+                    result.addPath(this._arrowHead(lastRightPt, arrowLen, angleRight));
+                }
             }
 
-            const baseLinePts = (drawEssentials as any).BASE_LN_PTS;
-            if (!baseLinePts || !baseLinePts.startPt || !baseLinePts.endPt) {
-                throw new Error("baseline points not found");
-            }
+            // Back lines - extend from base line endpoints in the opposite direction
+            const backLength = GeoTools._2PtLen(midPt, lastPoint);
+            const backAngle = GeoTools.angleInRadians(midPt, lastPoint);
+            const backDist = backLength / backLineDist;
 
-            // Create the support by fire position geometry
-            const result = new Polygon({ 
-                spatialReference: this.view.spatialReference 
-            });
+            const stPtBackPt = new Point(
+                p1.x - backDist * Math.cos(backAngle),
+                p1.y - backDist * Math.sin(backAngle),
+                spatialReference
+            );
+            const endPtBackPt = new Point(
+                p2.x - backDist * Math.cos(backAngle),
+                p2.y - backDist * Math.sin(backAngle),
+                spatialReference
+            );
 
-            // Calculate the baseline length and angle
-            const baseLineLength = GeoTools._2PtLen(baseLinePts.startPt, baseLinePts.endPt);
-            const baseLineAngle = GeoTools.twoPtsAngle(baseLinePts.startPt, baseLinePts.endPt);
-            
-            // Calculate back line distance
-            const backLineDistance = baseLineLength * backLineDist / 100;
-            
-            // Calculate angles for front lines
-            const frontLeftAngle = baseLineAngle + (frontLineAgle * Math.PI / 180);
-            const frontRightAngle = baseLineAngle - (frontLineAgle * Math.PI / 180);
-            const backAngle = baseLineAngle + Math.PI;
-            
-            // Calculate back line points
-            const backLeftPt = {
-                x: baseLinePts.startPt.x + backLineDistance * Math.cos(backAngle + (backLineAngle * Math.PI / 180)),
-                y: baseLinePts.startPt.y + backLineDistance * Math.sin(backAngle + (backLineAngle * Math.PI / 180))
-            };
-            
-            const backRightPt = {
-                x: baseLinePts.endPt.x + backLineDistance * Math.cos(backAngle - (backLineAngle * Math.PI / 180)),
-                y: baseLinePts.endPt.y + backLineDistance * Math.sin(backAngle - (backLineAngle * Math.PI / 180))
-            };
+            len = backDist / backLineAngle;
+            const backAngle2 = GeoTools.angleInRadians(stPtBackPt, endPtBackPt);
 
-            // Create the main ring for the support by fire position
-            const ring: number[][] = [];
-            
-            // Add baseline points
-            ring.push([baseLinePts.startPt.x, baseLinePts.startPt.y]);
-            ring.push([baseLinePts.endPt.x, baseLinePts.endPt.y]);
-            
-            // Add back line points
-            ring.push([backRightPt.x, backRightPt.y]);
-            ring.push([backLeftPt.x, backLeftPt.y]);
-            
-            // Close the ring
-            ring.push([baseLinePts.startPt.x, baseLinePts.startPt.y]);
+            const backPt1 = new Point(
+                -1 * len * Math.cos(backAngle2) + stPtBackPt.x,
+                -1 * len * Math.sin(backAngle2) + stPtBackPt.y,
+                spatialReference
+            );
+            const backPt2 = new Point(
+                len * Math.cos(backAngle2) + endPtBackPt.x,
+                len * Math.sin(backAngle2) + endPtBackPt.y,
+                spatialReference
+            );
 
-            result.addRing(ring);
+            result.addPath([[p1.x, p1.y], [backPt1.x, backPt1.y]]);
+            result.addPath([[p2.x, p2.y], [backPt2.x, backPt2.y]]);
 
             return result;
-
         } catch (e) {
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
             return null;
         }
+    }
+
+    /**
+     * Create arrow head path
+     */
+    private _arrowHead(candidatePoint: any, length: number, angle: number): number[][] {
+        const angle1 = angle + (15 * Math.PI / 180); // Add 15 degrees
+        const angle2 = angle - (15 * Math.PI / 180);  // Subtract 15 degrees
+
+        const rightWing = {
+            x: candidatePoint.x + length * Math.cos(angle1),
+            y: candidatePoint.y + length * Math.sin(angle1)
+        };
+        const leftWing = {
+            x: candidatePoint.x + length * Math.cos(angle2),
+            y: candidatePoint.y + length * Math.sin(angle2)
+        };
+
+        return [[rightWing.x, rightWing.y], [candidatePoint.x, candidatePoint.y], [leftWing.x, leftWing.y]];
+    }
+
+    /**
+     * Get baseline points
+     */
+    public getBaseLinePts(): any {
+        return this._baseLinePts;
     }
 
     /**
      * Clean up drawing state and finalize
      */
     private cleanUp(): void {
-        if (this._points.length === 0 && this._baseLinePts.length === 0) return;
+        if (this._points.length === 0) return;
 
-        const drawEssentials = this.createDrawEssentials(
-            this._points.slice(),
-            { startPt: this._baseLinePts[0], endPt: this._baseLinePts[this._baseLinePts.length - 1] },
-            this.backLineDist,
-            this.backLineAngle,
-            this.frontLineAgle
-        );
-        
+        const drawEssentials = this.createDrawEssentials(this._points.slice(), this._baseLinePts);
+
         if (this.tempGraphic && this.tempGraphic.geometry) {
-            this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEssentials);
+            this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
         }
-        
+
         this._clear();
         this._removeEvents();
     }
@@ -455,14 +518,13 @@ export class SupportByFirePosition {
     /**
      * Handle draw end
      */
-    private __drawEnd(drawGeometry: Polygon, drawEssentials: DrawEssentials): void {
+    private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
         if (drawGeometry) {
             const spatialRef = this.view.spatialReference;
             let geographicGeometry = drawGeometry;
 
             if (spatialRef && spatialRef.isWebMercator) {
                 // Geographic conversion would go here if needed
-                // geographicGeometry = webMercatorUtils.webMercatorToGeographic(drawGeometry);
             } else if (spatialRef && spatialRef.wkid === 4326) {
                 geographicGeometry = drawGeometry.clone();
             }
@@ -474,7 +536,7 @@ export class SupportByFirePosition {
     /**
      * Final draw end handler
      */
-    private __onDrawEnd(geometry: Polygon, geoGeometry: Polygon, drawEssParam: DrawEssentials): void {
+    private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
         this.emit("onDrawEnd", {
             geometry: geometry,
             geographicGeometry: geoGeometry,
@@ -490,10 +552,10 @@ export class SupportByFirePosition {
         if (this.tempGraphic && this.symbolLayer) {
             this.symbolLayer.remove(this.tempGraphic);
         }
-        
-        this.tempGraphic = null;
+
+        this.tempGraphic = new Graphic();
         this._points = [];
-        this._baseLinePts = [];
+        this._baseLinePts = {};
     }
 
     /**
@@ -516,13 +578,13 @@ export class SupportByFirePosition {
             this.baseLineEndHandler.remove();
             this.baseLineEndHandler = null;
         }
-        if (this.baseLineClickHandler) {
-            this.baseLineClickHandler.remove();
-            this.baseLineClickHandler = null;
-        }
         if (this.baseLineProgressHandler) {
             this.baseLineProgressHandler.remove();
             this.baseLineProgressHandler = null;
+        }
+        if (this.baseLineClickHandler) {
+            this.baseLineClickHandler.remove();
+            this.baseLineClickHandler = null;
         }
     }
 
@@ -534,6 +596,7 @@ export class SupportByFirePosition {
         this._removeEvents();
         this._geometryType = null;
         this.isDrawing = false;
+        this.baseLineComplete = false;
     }
 
     /**
@@ -544,18 +607,14 @@ export class SupportByFirePosition {
         if (listeners) {
             listeners.forEach(listener => listener(data));
         }
-        
-        // Also emit as a global document event for SymbolEngine to catch
+
         this.emitGlobalEvent(eventName, data);
     }
 
-    /**
-     * Emit global events that can be caught by SymbolEngine
-     */
     private emitGlobalEvent(eventName: string, data: any): void {
         const customEvent = new CustomEvent(eventName, {
             detail: {
-                symbolType: "SupportByFirePosition",
+                symbolType: this.constructor.name,
                 eventName: eventName,
                 ...data
             },
@@ -563,7 +622,6 @@ export class SupportByFirePosition {
             cancelable: true
         });
 
-        // Dispatch from the view container if available, otherwise from document
         if (this.view && this.view.container) {
             this.view.container.dispatchEvent(customEvent);
         } else {
@@ -592,19 +650,13 @@ export class SupportByFirePosition {
         }
     }
 
-    /**
-     * Get the current symbol layer
-     */
     public getSymbolLayer(): GraphicsLayer {
         return this.symbolLayer;
     }
 
-    /**
-     * Clear all symbols from the layer
-     */
     public clearSymbols(): void {
         this.symbolLayer.removeAll();
     }
 }
 
-export default SupportByFirePosition; 
+export default SupportByFirePosition;

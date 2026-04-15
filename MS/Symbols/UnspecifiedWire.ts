@@ -1,76 +1,386 @@
-/**
- * Class Representing Unspecified Wire.
- * @class
- * @author Abdul Razak
- */
-
-import MapView from "@arcgis/core/views/MapView";
-import SceneView from "@arcgis/core/views/SceneView";
+import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import Graphic from "@arcgis/core/Graphic";
+import MapView from "@arcgis/core/views/MapView";
+import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import * as webMercatorUtils from "@arcgis/core/geometry/support/webMercatorUtils";
-import * as jsonUtils from "@arcgis/core/geometry/support/jsonUtils";
-
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
+import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
-import BaseLine from "../Support/BaseLine.ts";
 
 export interface UnspecifiedWireOptions {
     CTRL_PTS?: Point[];
-    GEOM?: any;
+    GEOM?: Polyline;
+    [key: string]: any;
 }
 
 /**
- * Class Representing Unspecified Wire.
- * @class
- * @author Abdul Razak
+ * UnspecifiedWire class for drawing Unspecified Wire tactical symbols
+ * Uses control points with echelon pattern along the path
  */
-class UnspecifiedWire {
+export class UnspecifiedWire {
+    private view: MapView | SceneView;
+    private layerManager: GraphicsLayerManager;
+    private symbolLayer: GraphicsLayer;
+    private isLine: boolean;
+
+    // Symbol properties
     public declaredClass: string = "MilitarySymbology.Symbols.UnspecifiedWire";
     public SID: string = "290301";
     public symName: string = "Wire Obs - Unspecified Wire";
     public symGeometricType: string = "Line";
     public isObstacle: string = "1";
 
-    private view: MapView | SceneView;
-    private isLine: boolean;
-    private _lineSym: any;
+    private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
-    private _geometryType: any = null;
-    private _onClk: any;
-    private _onDblClk: any;
-    private _onMM: any;
-    private _tGraphic: Graphic;
+    private _geometryType: string | null = null;
+    private amplifier: Amplifier;
+
+    // Drawing state
+    private isDrawing: boolean = false;
+    private tempGraphic: Graphic | null = null;
+
+    // Event handlers
+    private clickHandler: any = null;
+    private doubleClickHandler: any = null;
+    private mouseMoveHandler: any = null;
+
+    // Event emitter
     private eventListeners: Map<string, Function[]> = new Map();
 
-    constructor(view: MapView | SceneView, isLine: boolean) {
+    constructor(view: MapView | SceneView, isLine: boolean = false) {
         this.view = view;
         this.isLine = isLine;
-        this._tGraphic = new Graphic();
+        this.layerManager = GraphicsLayerManager.getInstance(view);
+        this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
+        this.amplifier = new Amplifier();
+
+        // Initialize layers if not already done
+        this.layerManager.initializeLayers();
+
+        // Initialize temporary graphic
+        this.tempGraphic = new Graphic();
     }
 
-    public emit(event: string, data: any): void {
-        const listeners = this.eventListeners.get(event);
+    /**
+     * Initialize the UnspecifiedWire drawing
+     */
+    public init(options: UnspecifiedWireOptions, marker: SimpleLineSymbol): void {
+        this._lineSym = marker.clone();
+
+        const drawEssentials = new DrawEssentials();
+
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
+            // Immediate placement with geometry
+            if (options.GEOM && this.tempGraphic) {
+                this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
+                    ? options.GEOM
+                    : new Polyline({ paths: (options.GEOM as any), spatialReference: this.view.spatialReference });
+            }
+
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice());
+            if (this.tempGraphic && this.tempGraphic.geometry) {
+                this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEss);
+            }
+            this._clear();
+
+        } else if (options.hasOwnProperty("CTRL_PTS")) {
+            // Immediate placement with control points only
+            const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice());
+            const geometry = this.createSymbol(drawEss);
+            if (geometry && this.tempGraphic) {
+                this.tempGraphic.geometry = geometry;
+                this.__drawEnd(geometry, drawEss);
+                this._clear();
+            }
+
+        } else {
+            // Interactive drawing mode
+            this.tempGraphic = new Graphic({
+                symbol: this._lineSym
+            });
+            this.symbolLayer.add(this.tempGraphic);
+
+            this.setupEventHandlers();
+        }
+    }
+
+    /**
+     * Set up mouse event handlers for interactive drawing
+     */
+    private setupEventHandlers(): void {
+        // Click handler
+        this.clickHandler = this.view.on("click", (event) => {
+            this._onClickHandler(event);
+        });
+
+        // Double click handler
+        this.doubleClickHandler = this.view.on("double-click", (event) => {
+            this._onDoubleClickHandler(event);
+        });
+    }
+
+    /**
+     * Handle click events
+     */
+    private _onClickHandler(clickEvent: any): void {
+        const mapPoint = this.view.toMap(clickEvent);
+        if (!mapPoint) return;
+
+        const point = new Point({
+            x: mapPoint.x,
+            y: mapPoint.y,
+            spatialReference: this.view.spatialReference
+        });
+
+        this._points.push(point);
+        this.emit("onDrawClick", { currentPts: this._points });
+
+        // Start mouse move tracking after first click
+        if (this._points.length === 1) {
+            this.mouseMoveHandler = this.view.on("pointer-move", (event) => {
+                this._onMouseMoveHandler(event);
+            });
+        }
+
+        // For single line mode, finish after first click
+        if (this.isLine === true && this._points.length === 1) {
+            this.cleanUp();
+        }
+    }
+
+    /**
+     * Handle double click events
+     */
+    private _onDoubleClickHandler(clickEvent: any): void {
+        const mapPoint = this.view.toMap(clickEvent);
+        if (!mapPoint) return;
+
+        const point = new Point({
+            x: mapPoint.x,
+            y: mapPoint.y,
+            spatialReference: this.view.spatialReference
+        });
+
+        this._points.push(point);
+        this.cleanUp();
+    }
+
+    /**
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler(inputEvent: any): void {
+        if (!this.tempGraphic || this._points.length === 0) return;
+
+        const mapPoint = this.view.toMap(inputEvent);
+        if (!mapPoint) return;
+
+        const candidatePoint = new Point({
+            x: mapPoint.x,
+            y: mapPoint.y,
+            spatialReference: this.view.spatialReference
+        });
+
+        const drawEssentials = new DrawEssentials();
+        (drawEssentials as any).CTRL_PTS = this._points.concat([candidatePoint]);
+
+        const geometry = this.createSymbol(drawEssentials);
+        if (geometry) {
+            this.tempGraphic.geometry = geometry;
+            this.emit("onDrawProgress", {
+                currentGeometry: geometry,
+                currentDrawEssentials: drawEssentials,
+                currentMarker: this._lineSym
+            });
+        }
+    }
+
+    /**
+     * Create DrawEssentials object
+     */
+    private createDrawEssentials(ctrlPts: Point[]): DrawEssentials {
+        const drawEssentials = new DrawEssentials();
+        drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
+        drawEssentials.SID = this.SID;
+        drawEssentials.SYM_NAME = this.symName;
+        drawEssentials.GEOM = null;
+        drawEssentials.AMPLIFIER = this.amplifier.toString();
+
+        // Store additional properties
+        (drawEssentials as any).SCOPE = this;
+        (drawEssentials as any).CTRL_PTS = ctrlPts;
+        (drawEssentials as any).IS_OBS = this.isObstacle;
+
+        return drawEssentials;
+    }
+
+    /**
+     * Create symbol geometry from DrawEssentials
+     */
+    private createSymbol(drawEssentials: DrawEssentials): Polyline | null {
+        try {
+            const pts: Point[] = (drawEssentials as any).CTRL_PTS;
+            if (!pts || pts.length === 0) {
+                throw new Error("controlPoints not found");
+            }
+
+            const result = new Polyline({ spatialReference: this.view.spatialReference });
+
+            // Calculate gap ratio for echelon spacing
+            const gapRatio = GeoTools._2PtLen(pts[0], pts[pts.length - 1]) / 20;
+
+            // Calculate base line length and echelon size
+            const baseLineLen = GeoTools._2PtLen(pts[0], pts[pts.length - 1]) / 7;
+            let cLenLimit = baseLineLen / 7;
+            if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
+
+            // Get dashed points along the path and create echelons
+            const resPts = GeoTools.getDashPts(pts, [gapRatio, gapRatio]);
+            for (let i = 0; i < resPts.length; i++) {
+                const echelons = Shapes.createEchelon('18', resPts[i], cLenLimit);
+                for (let j = 0; j <= echelons.length - 1; j++) {
+                    result.addPath(echelons[j]);
+                }
+            }
+
+            return result;
+        } catch (e) {
+            console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
+            return null;
+        }
+    }
+
+    /**
+     * Clean up drawing state and finalize
+     */
+    private cleanUp(): void {
+        if (this._points.length === 0) return;
+
+        const drawEssentials = this.createDrawEssentials(this._points.slice());
+
+        if (this.tempGraphic && this.tempGraphic.geometry) {
+            this.__drawEnd(this.tempGraphic.geometry as Polyline, drawEssentials);
+        }
+
+        this._clear();
+        this._removeEvents();
+    }
+
+    /**
+     * Handle draw end
+     */
+    private __drawEnd(drawGeometry: Polyline, drawEssentials: DrawEssentials): void {
+        if (drawGeometry) {
+            const spatialRef = this.view.spatialReference;
+            let geographicGeometry = drawGeometry;
+
+            if (spatialRef && spatialRef.isWebMercator) {
+                // Geographic conversion would go here if needed
+            } else if (spatialRef && spatialRef.wkid === 4326) {
+                geographicGeometry = drawGeometry.clone();
+            }
+
+            this.__onDrawEnd(drawGeometry, geographicGeometry, drawEssentials);
+        }
+    }
+
+    /**
+     * Final draw end handler
+     */
+    private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
+        this.emit("onDrawEnd", {
+            geometry: geometry,
+            geographicGeometry: geoGeometry,
+            drawEssentials: drawEssParam,
+            marker: this._lineSym
+        });
+    }
+
+    /**
+     * Clear graphics and state
+     */
+    private _clear(): void {
+        if (this.tempGraphic && this.symbolLayer) {
+            this.symbolLayer.remove(this.tempGraphic);
+        }
+
+        this.tempGraphic = new Graphic();
+        this._points = [];
+    }
+
+    /**
+     * Remove event handlers
+     */
+    private _removeEvents(): void {
+        if (this.clickHandler) {
+            this.clickHandler.remove();
+            this.clickHandler = null;
+        }
+        if (this.doubleClickHandler) {
+            this.doubleClickHandler.remove();
+            this.doubleClickHandler = null;
+        }
+        if (this.mouseMoveHandler) {
+            this.mouseMoveHandler.remove();
+            this.mouseMoveHandler = null;
+        }
+    }
+
+    /**
+     * Deactivate the drawing tool
+     */
+    public deactivate(): void {
+        this._clear();
+        this._removeEvents();
+        this._geometryType = null;
+        this.isDrawing = false;
+    }
+
+    /**
+     * Event emitter functionality
+     */
+    private emit(eventName: string, data: any): void {
+        const listeners = this.eventListeners.get(eventName);
         if (listeners) {
             listeners.forEach(listener => listener(data));
         }
+
+        this.emitGlobalEvent(eventName, data);
     }
 
-    public on(event: string, callback: Function): void {
-        if (!this.eventListeners.has(event)) {
-            this.eventListeners.set(event, []);
-        }
-        this.eventListeners.get(event)!.push(callback);
-    }
+    private emitGlobalEvent(eventName: string, data: any): void {
+        const customEvent = new CustomEvent(eventName, {
+            detail: {
+                symbolType: this.constructor.name,
+                eventName: eventName,
+                ...data
+            },
+            bubbles: true,
+            cancelable: true
+        });
 
-    public off(event: string, callback?: Function): void {
-        if (!callback) {
-            this.eventListeners.delete(event);
+        if (this.view && this.view.container) {
+            this.view.container.dispatchEvent(customEvent);
         } else {
-            const listeners = this.eventListeners.get(event);
+            document.dispatchEvent(customEvent);
+        }
+    }
+
+    public on(eventName: string, callback: Function): void {
+        if (!this.eventListeners.has(eventName)) {
+            this.eventListeners.set(eventName, []);
+        }
+        this.eventListeners.get(eventName)!.push(callback);
+    }
+
+    public off(eventName: string, callback?: Function): void {
+        if (!callback) {
+            this.eventListeners.delete(eventName);
+        } else {
+            const listeners = this.eventListeners.get(eventName);
             if (listeners) {
                 const index = listeners.indexOf(callback);
                 if (index > -1) {
@@ -80,153 +390,13 @@ class UnspecifiedWire {
         }
     }
 
-    public init(options: UnspecifiedWireOptions, marker: any): void {
-        this._lineSym = marker;
-        (this.view as any).navigation.setImmediateClick(false);
-        (this.view as any).disableDoubleClickZoom();
-
-        var drawEssentials = new DrawEssentials();
-        var baseLine = new BaseLine(this.view, this._lineSym);
-
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
-            this._tGraphic.geometry = options.GEOM;
-            drawEssentials = this.createDrawEssentials(options.CTRL_PTS!.slice());
-            this.__drawEnd(this._tGraphic.geometry, drawEssentials);
-            this._clear();
-        } else if (options.hasOwnProperty("CTRL_PTS")) {
-            drawEssentials = this.createDrawEssentials(options.CTRL_PTS!.slice());
-            this._tGraphic.geometry = this.createSymbol(drawEssentials);
-            this.__drawEnd(this._tGraphic.geometry, drawEssentials);
-            this._clear();
-        } else {
-            this._tGraphic = new Graphic(null, this._lineSym);
-            this.view.graphics.add(this._tGraphic);
-
-            this._onClk = this.view.on("click", this._onClckHdler.bind(this));
-            this._onDblClk = this.view.on("double-click", this._onDblClkHandler.bind(this));
-        }
+    public getSymbolLayer(): GraphicsLayer {
+        return this.symbolLayer;
     }
 
-    private createDrawEssentials(ctrlPts: Point[]): DrawEssentials {
-        var drawEssentials = new DrawEssentials();
-        drawEssentials.SCOPE = this;
-        drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
-        drawEssentials.SID = this.SID;
-        drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
-        drawEssentials.SYM_NAME = this.symName;
-        drawEssentials.CTRL_PTS = ctrlPts;
-        drawEssentials.AMPLIFIER = (this as any).amplifier;
-        drawEssentials.IS_OBS = this.isObstacle;
-        return drawEssentials;
-    }
-
-    public createSymbol(drawEssentials: DrawEssentials): Polyline {
-        try {
-            var pts: Point[];
-
-            if (drawEssentials.hasOwnProperty("CTRL_PTS")) {
-                pts = drawEssentials.CTRL_PTS;
-            } else {
-                throw "controlPoints not found";
-            }
-
-            var result = new Polyline(this.view.spatialReference);
-
-            var gapRatio = GeoTools._2PtLen(pts[0], pts[pts.length - 1]);
-            gapRatio = gapRatio / 20;
-
-            var cLenLimit: number, echelons: any[];
-            var baseLineLen = GeoTools._2PtLen(pts[0], pts[pts.length - 1]) / 7;
-            cLenLimit = baseLineLen / 7;
-            if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-            var resPts = GeoTools.getDashPts(pts, [gapRatio, gapRatio]);
-            for (var i = 0; i < resPts.length; i++) {
-                echelons = Shapes.createEchelon('18', resPts[i], cLenLimit);
-                for (var j = 0; j <= echelons.length - 1; j++) {
-                    result.addPath(echelons[j]);
-                }
-            }
-
-            return result;
-        } catch (e) {
-            console.log(this.declaredClass + ' Can not create Symbol due to invalid geometry');
-            return new Polyline(this.view.spatialReference);
-        }
-    }
-
-    private _onMMoveHdler(inputPoint: any): void {
-        var candidatePoint = inputPoint.mapPoint;
-        var drawEssentials = new DrawEssentials();
-        drawEssentials.CTRL_PTS = this._points.concat(candidatePoint);
-
-        this._tGraphic.geometry = this.createSymbol(drawEssentials);
-        this.emit("onDrawProgress", { 'currentGeometry': this._tGraphic.geometry, 'currentDrawEssentials': drawEssentials, 'currentMarker': this._lineSym });
-    }
-
-    private _onClckHdler(clickPoint: any): void {
-        this._points.push(clickPoint.mapPoint.offset(0, 0));
-        if (this._points.length == 1) this._onMM = this.view.on("pointer-move", this._onMMoveHdler.bind(this));
-        this.emit("onDrawClick", { 'currentPts': this._points });
-        if (this.isLine == true && this._points.length == 1) {
-            this.emit("onDrawClick", { 'currentPts': this._points });
-            this.cleanUp();
-        }
-    }
-
-    private _onDblClkHandler(clickPoint: any): void {
-        this._points.push(clickPoint.mapPoint);
-        this.cleanUp();
-    }
-
-    private cleanUp(): void {
-        var drawEss = new DrawEssentials();
-        drawEss = this.createDrawEssentials(this._points.slice());
-        this.__drawEnd(this._tGraphic.geometry, drawEss);
-        this._clear();
-        this._removeEvents();
-    }
-
-    private __drawEnd(drawGeometry: any, drawEssentials: DrawEssentials): void {
-        if (drawGeometry) {
-            var spRef = this.view.spatialReference, geographicGeometry: any;
-
-            if (spRef && spRef.isWebMercator) {
-                geographicGeometry = webMercatorUtils.webMercatorToGeographic(drawGeometry, true);
-            } else if (spRef && spRef.wkid === 4326) {
-                geographicGeometry = jsonUtils.fromJSON(drawGeometry.toJSON());
-            }
-            this.__onDrawEnd(drawGeometry, geographicGeometry, drawEssentials);
-        }
-    }
-
-    private __onDrawEnd(geometry: any, geoGeometry: any, drawEssParam: DrawEssentials): void {
-        this.emit("onDrawEnd", { 'geometry': geometry, 'geographicGeometry': geoGeometry, 'drawEssentials': drawEssParam, 'marker': this._lineSym });
-    }
-
-    private _clear(): void {
-        if (this._tGraphic && this.view.graphics.contains(this._tGraphic)) {
-            this.view.graphics.remove(this._tGraphic);
-        }
-        this._tGraphic = null;
-        this._points = [];
-    }
-
-    private _removeEvents(): void {
-        if (this._onClk) this._onClk.remove();
-        if (this._onDblClk) this._onDblClk.remove();
-        if (this._onMM) this._onMM.remove();
-        (this.view as any).enableDoubleClickZoom();
-    }
-
-    public deactivate(): void {
-        this._clear();
-        this._removeEvents();
-        this._geometryType = null;
-    }
-
-    private _onDrawComplete(event: any): void {
-        // Implementation if needed
+    public clearSymbols(): void {
+        this.symbolLayer.removeAll();
     }
 }
 
-export default UnspecifiedWire; 
+export default UnspecifiedWire;

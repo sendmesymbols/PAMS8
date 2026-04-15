@@ -1,6 +1,5 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
-import Polyline from "@arcgis/core/geometry/Polyline";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
@@ -128,72 +127,33 @@ export class SlowGo {
      */
     private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
         try {
-            const pts: Point[] = (drawEssentials as any).CTRL_PTS;
-            if (!pts || pts.length === 0) throw new Error("controlPoints not found");
+            let pts: Point[];
+
+            if ((drawEssentials as any).CTRL_PTS) {
+                pts = (drawEssentials as any).CTRL_PTS;
+            } else {
+                throw new Error("controlPoints not found");
+            }
 
             const firstPoint = pts[0];
             const lastPoint = pts[pts.length - 1];
 
             switch ((drawEssentials as any).DRAW_TYPE) {
-                case 1: return this.createSymbolByBCurve(pts, firstPoint, lastPoint);
-                case 2: return this.createSymbolByPolygon(pts, firstPoint, lastPoint);
-                case 3: return this.createSymbolByRect(pts, firstPoint, lastPoint);
-                case 4: return this.createSymbolByPerfectEllipse(pts, firstPoint, lastPoint);
-                default: return this.createSymbolByBCurve(pts, firstPoint, lastPoint);
+                case 1:
+                    return Shapes.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
+                case 2:
+                    return Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
+                case 3:
+                    return Shapes.createSymbolByRect(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
+                case 4:
+                    return Shapes.createSymbolByPerfectEllipse(pts, firstPoint, lastPoint, drawEssentials, this.view);
+                default:
+                    return Shapes.createSymbolByBCurve(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
             }
         } catch (e) {
             console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
             return null;
         }
-    }
-
-    private createSymbolByBCurve(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(pt => ({ x: pt.x, y: pt.y }));
-        tempArray.push({ x: firstPoint.x, y: firstPoint.y });
-        const bezierPts = Shapes.CreateBezierPathPCOnly(tempArray, 130);
-        result.addRing(bezierPts.map(pt => [pt.x, pt.y]));
-        return result;
-    }
-
-    private createSymbolByPolygon(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const tempArray = pts.map(pt => [pt.x, pt.y] as number[]);
-        tempArray.push([firstPoint.x, firstPoint.y]);
-        result.addRing(tempArray);
-        return result;
-    }
-
-    private createSymbolByRect(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
-        let result = new Polygon({ spatialReference: this.view.spatialReference });
-        result.addRing(pts.map(pt => [pt.x, pt.y]));
-        const extent = result.extent;
-        result = new Polygon({ spatialReference: this.view.spatialReference });
-        if (extent) {
-            result.addRing([
-                [firstPoint.x, firstPoint.y],
-                [extent.xmin, extent.ymin],
-                [lastPoint.x, lastPoint.y],
-                [extent.xmax, extent.ymax],
-                [firstPoint.x, firstPoint.y]
-            ]);
-        }
-        return result;
-    }
-
-    private createSymbolByPerfectEllipse(pts: Point[], firstPoint: Point, lastPoint: Point): Polygon {
-        const result = new Polygon({ spatialReference: this.view.spatialReference });
-        const longAxis = lastPoint.x - firstPoint.x;
-        const shortAxis = lastPoint.y - firstPoint.y;
-        const ellipsePts = Shapes.createEllipse({
-            center: firstPoint,
-            longAxis,
-            shortAxis,
-            numberOfPoints: 60,
-            spatialReference: this.view.spatialReference
-        });
-        result.addRing(ellipsePts.map(pt => [pt.x, pt.y]));
-        return result;
     }
 
     /**

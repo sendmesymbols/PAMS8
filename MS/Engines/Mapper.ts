@@ -210,16 +210,17 @@ import MovingConvoy from "../Symbols/MovingConvoy.ts"; //Fixed
 import ObstacleBypassEasy from "../Symbols/ObstacleBypassEasy.ts"; //Fixed
 import Occupy from "../Symbols/Occupy.ts"; //Fixed
 import Penetrate from "../Symbols/Penetrate.ts"; //Fixed
-import SlowGo from "../Symbols/SlowGo.ts"; //Gone for
+import SlowGo from "../Symbols/SlowGo.ts";  //Fixed
+import Withdraw from "../Symbols/Withdraw.ts"; //Fixed
+import WithdrawUnderPressure from "../Symbols/WithdrawUnderPressure.ts"; //Fixed
+import Bypass from "../Symbols/Bypass.ts"; //Fixed
+
+import StartLine from "../Symbols/StartLine.ts"; //Gone for
+import ObjArea from "../Symbols/ObjArea.ts"; //Gone for
 import StrongPoint from "../Symbols/StrongPoint.ts";
 import SupportingAttack from "../Symbols/SupportingAttack.ts";
 import UnspecifiedWire from "../Symbols/UnspecifiedWire.ts";
-import Withdraw from "../Symbols/Withdraw.ts"; //Fixed
-import WithdrawUnderPressure from "../Symbols/WithdrawUnderPressure.ts"; //Fixed
 import SupportByFirePosition from "../Symbols/SupportByFirePosition.ts";
-import Bypass from "../Symbols/Bypass.ts"; //Fixed
-import StartLine from "../Symbols/StartLine.ts"; //Gone for
-import ObjArea from "../Symbols/ObjArea.ts"; //Gone for
 import Contain from "../Symbols/Contain.ts";
 
 
