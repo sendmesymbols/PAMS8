@@ -14,18 +14,19 @@ export interface BypassOptions {
     [key: string]: any;
 }
 /**
- * Bypass class for drawing Bypass symbols
- * Requires baseline drawing followed by bypass direction points
- * Creates fracture patterns and "B" markers on the baseline
+ * Bypass class for drawing Bypass tactical symbols
+ * Uses baseline + control points pattern
+ * Returns Polyline geometry
  */
 export declare class Bypass {
     private view;
     private layerManager;
     private symbolLayer;
     private isLine;
-    private SID;
-    private symName;
-    private symGeometricType;
+    declaredClass: string;
+    SID: string;
+    symName: string;
+    symGeometricType: string;
     private _lineSym;
     private _points;
     private _baseLinePts;
@@ -33,7 +34,7 @@ export declare class Bypass {
     private amplifier;
     private isDrawing;
     private tempGraphic;
-    private baselineDrawn;
+    private baseLineComplete;
     private clickHandler;
     private doubleClickHandler;
     private mouseMoveHandler;
@@ -43,27 +44,31 @@ export declare class Bypass {
     private eventListeners;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
-     * Initialize the bypass drawing
+     * Initialize the Bypass drawing
      */
     init(options: BypassOptions, marker: SimpleLineSymbol): void;
     /**
-     * Start baseline drawing mode
+     * Start baseline drawing
      */
-    private startBaselineDrawing;
+    private startBaseLineDrawing;
     /**
-     * Handle baseline draw end
+     * Handle baseline click events
      */
-    private baseLineDrawEnd;
+    private baseLineClick;
     /**
      * Handle baseline draw progress
      */
     private baseLineDrawProgress;
     /**
-     * Handle baseline click
+     * Handle baseline draw end
      */
-    private baseLineClick;
+    private baseLineDrawEnd;
     /**
-     * Handle click events after baseline is drawn
+     * Set up control point drawing handlers
+     */
+    private setupControlPointHandlers;
+    /**
+     * Handle click events for control points
      */
     private _onClickHandler;
     /**
@@ -83,39 +88,9 @@ export declare class Bypass {
      */
     private createSymbol;
     /**
-     * Create fracture baseline pattern
-     */
-    private createFractureBaseline;
-    /**
-     * Create fracture points pattern
-     */
-    private fracturePts;
-    /**
-     * Create "B" marker
-     */
-    private createBMarker;
-    /**
-     * Create arrow head
-     */
-    private createArrowHead;
-    /**
-     * Calculate arrow flank length
-     */
-    private calculateArrowLength;
-    /**
      * Get baseline points
      */
-    getBaseLinePts(): {
-        startPt?: Point;
-        endPt?: Point;
-    };
-    /**
-     * Utility methods
-     */
-    private getMidPoint;
-    private calculateDistance;
-    private calculateAngle;
-    private twoPtsRelationShip;
+    getBaseLinePts(): any;
     /**
      * Clean up drawing state and finalize
      */

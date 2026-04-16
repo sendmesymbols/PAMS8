@@ -1,8 +1,9 @@
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 export interface PenetrateOptions {
     CTRL_PTS?: Point[];
     BASE_LN_PTS?: {
@@ -13,54 +14,77 @@ export interface PenetrateOptions {
     [key: string]: any;
 }
 /**
- * Class Representing Penetrate.
- * @class
- * @author Abdul Razak
+ * Penetrate class for drawing Penetrate tactical symbols
+ * Uses baseline + control points pattern with fracture lines and "P" markers
+ * Returns Polyline geometry despite being classified as an Area symbol
  */
-declare class Penetrate {
+export declare class Penetrate {
+    private view;
+    private layerManager;
+    private symbolLayer;
+    private isLine;
     declaredClass: string;
     SID: string;
     symName: string;
     symGeometricType: string;
-    private view;
-    private isLine;
-    private layerManager;
-    private symbolLayer;
-    private _lineSymbol;
+    private _lineSym;
     private _points;
     private _baseLinePts;
     private _geometryType;
-    private _tGraphic;
-    private _onClick;
-    private _onDblClick;
-    private _onMouseMove;
-    private _onBaseLineEnd;
-    private _onBaseLineProgress;
-    private _onBaseLineClick;
+    private amplifier;
+    private isDrawing;
+    private tempGraphic;
+    private baseLineComplete;
+    private clickHandler;
+    private doubleClickHandler;
+    private mouseMoveHandler;
+    private baseLineEndHandler;
+    private baseLineProgressHandler;
+    private baseLineClickHandler;
     private eventListeners;
-    constructor(view: MapView | SceneView, isLine: boolean);
+    constructor(view: MapView | SceneView, isLine?: boolean);
     /**
-     * Initialize the symbol drawing
+     * Initialize the Penetrate drawing
      */
     init(options: PenetrateOptions, marker: SimpleLineSymbol): void;
     /**
-     * Create draw essentials object
+     * Start baseline drawing
      */
-    private createDrawEssentials;
+    private startBaseLineDrawing;
     /**
-     * Handle baseline draw end event
-     */
-    private baseLineDrawEnd;
-    /**
-     * Handle baseline draw progress event
-     */
-    private baseLineDrawProgress;
-    /**
-     * Handle baseline click event
+     * Handle baseline click events
      */
     private baseLineClick;
     /**
-     * Create the symbol geometry
+     * Handle baseline draw progress
+     */
+    private baseLineDrawProgress;
+    /**
+     * Handle baseline draw end
+     */
+    private baseLineDrawEnd;
+    /**
+     * Set up control point drawing handlers
+     */
+    private setupControlPointHandlers;
+    /**
+     * Handle click events for control points
+     */
+    private _onClickHandler;
+    /**
+     * Handle double click events
+     */
+    private _onDoubleClickHandler;
+    /**
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler;
+    /**
+     * Create DrawEssentials object
+     */
+    private createDrawEssentials;
+    /**
+     * Create symbol geometry from DrawEssentials
      */
     private createSymbol;
     /**
@@ -68,19 +92,7 @@ declare class Penetrate {
      */
     getBaseLinePts(): any;
     /**
-     * Handle mouse move events
-     */
-    private _onMouseMoveHandler;
-    /**
-     * Handle click events
-     */
-    private _onClickHandler;
-    /**
-     * Handle double click events
-     */
-    private _onDblClickHandler;
-    /**
-     * Clean up drawing state
+     * Clean up drawing state and finalize
      */
     private cleanUp;
     /**
@@ -88,37 +100,29 @@ declare class Penetrate {
      */
     private __drawEnd;
     /**
-     * Emit draw end event
+     * Final draw end handler
      */
     private __onDrawEnd;
     /**
-     * Clear drawing state
+     * Clear graphics and state
      */
     private _clear;
     /**
-     * Remove event listeners
+     * Remove event handlers
      */
     private _removeEvents;
     /**
-     * Deactivate the symbol
+     * Deactivate the drawing tool
      */
     deactivate(): void;
     /**
-     * Create arrow head
-     */
-    private _arrowHead;
-    /**
-     * Emit events
+     * Event emitter functionality
      */
     private emit;
     private emitGlobalEvent;
-    /**
-     * Add event listener
-     */
     on(eventName: string, callback: Function): void;
-    /**
-     * Remove event listener
-     */
     off(eventName: string, callback?: Function): void;
+    getSymbolLayer(): GraphicsLayer;
+    clearSymbols(): void;
 }
 export default Penetrate;

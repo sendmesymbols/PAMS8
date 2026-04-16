@@ -1,52 +1,52 @@
 import Point from "@arcgis/core/geometry/Point";
-import Polyline from "@arcgis/core/geometry/Polyline";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 export interface SlowGoOptions {
     CTRL_PTS?: Point[];
-    GEOM?: Polyline;
+    GEOM?: Polygon;
+    DRAW_TYPE?: number;
     [key: string]: any;
 }
 /**
- * Class Representing SlowGo.
- * @class
- * @author Abdul Razak
+ * SlowGo class for drawing Slow Go Area tactical symbols
+ * No baseline - direct polygon drawing with multiple draw types
+ * Returns Polygon geometry
  */
-declare class SlowGo {
+export declare class SlowGo {
+    private view;
+    private layerManager;
+    private symbolLayer;
+    private isLine;
     declaredClass: string;
     SID: string;
     symName: string;
     symGeometricType: string;
-    private view;
-    private isLine;
-    private layerManager;
-    private symbolLayer;
-    private _lineSymbol;
+    private _lineSym;
     private _points;
+    private _drawType;
     private _geometryType;
-    private _tGraphic;
-    private _onClick;
-    private _onDblClick;
-    private _onMouseMove;
+    private amplifier;
+    private tempGraphic;
+    private clickHandler;
+    private doubleClickHandler;
+    private mouseMoveHandler;
     private eventListeners;
-    constructor(view: MapView | SceneView, isLine: boolean);
+    constructor(view: MapView | SceneView, isLine?: boolean);
     /**
-     * Initialize the symbol drawing
+     * Initialize the SlowGo drawing
      */
     init(options: SlowGoOptions, marker: SimpleLineSymbol): void;
     /**
-     * Create draw essentials object
+     * Create DrawEssentials object
      */
     private createDrawEssentials;
     /**
-     * Create the symbol geometry
+     * Create symbol geometry from DrawEssentials
      */
     private createSymbol;
-    /**
-     * Handle mouse move events
-     */
-    private _onMouseMoveHandler;
     /**
      * Handle click events
      */
@@ -54,9 +54,13 @@ declare class SlowGo {
     /**
      * Handle double click events
      */
-    private _onDblClickHandler;
+    private _onDoubleClickHandler;
     /**
-     * Clean up drawing state
+     * Handle mouse move events
+     */
+    private _onMouseMoveHandler;
+    /**
+     * Clean up drawing state and finalize
      */
     private cleanUp;
     /**
@@ -64,32 +68,29 @@ declare class SlowGo {
      */
     private __drawEnd;
     /**
-     * Emit draw end event
+     * Final draw end handler
      */
     private __onDrawEnd;
     /**
-     * Clear drawing state
+     * Clear graphics and state
      */
     private _clear;
     /**
-     * Remove event listeners
+     * Remove event handlers
      */
     private _removeEvents;
     /**
-     * Deactivate the symbol
+     * Deactivate the drawing tool
      */
     deactivate(): void;
     /**
-     * Emit events
+     * Event emitter functionality
      */
     private emit;
-    /**
-     * Add event listener
-     */
+    private emitGlobalEvent;
     on(eventName: string, callback: Function): void;
-    /**
-     * Remove event listener
-     */
     off(eventName: string, callback?: Function): void;
+    getSymbolLayer(): GraphicsLayer;
+    clearSymbols(): void;
 }
 export default SlowGo;

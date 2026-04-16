@@ -3,7 +3,6 @@ import Polyline from "@arcgis/core/geometry/Polyline";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 export interface StartLineOptions {
     CTRL_PTS?: Point[];
@@ -12,17 +11,19 @@ export interface StartLineOptions {
     [key: string]: any;
 }
 /**
- * StartLine class for drawing Start Line symbols on MapView or SceneView
- * Creates line symbols with "SL" text markers at both ends
+ * StartLine class for drawing Start Line tactical symbols
+ * No baseline - direct polyline drawing with "SL" markers at both ends
+ * Returns Polyline geometry
  */
 export declare class StartLine {
     private view;
     private layerManager;
     private symbolLayer;
     private isLine;
-    private SID;
-    private symName;
-    private symGeometricType;
+    declaredClass: string;
+    SID: string;
+    symName: string;
+    symGeometricType: string;
     private _lineSym;
     private _points;
     private _drawType;
@@ -36,17 +37,19 @@ export declare class StartLine {
     private eventListeners;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
-     * Initialize the start line drawing
+     * Initialize the StartLine drawing
      */
-    init(options: StartLineOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void;
+    init(options: StartLineOptions, marker: SimpleLineSymbol): void;
     /**
-     * Start interactive drawing mode
+     * Create DrawEssentials object
      */
-    private startInteractiveDrawing;
+    private createDrawEssentials;
     /**
-     * Set up mouse event handlers for interactive drawing
+     * Create symbol geometry from DrawEssentials
      */
-    private setupEventHandlers;
+    private createSymbol;
+    private createSymbolByStraightLine;
+    private createSymbolByLine;
     /**
      * Handle click events
      */
@@ -59,22 +62,6 @@ export declare class StartLine {
      * Handle mouse move events
      */
     private _onMouseMoveHandler;
-    /**
-     * Create DrawEssentials object
-     */
-    private createDrawEssentials;
-    /**
-     * Create symbol geometry from DrawEssentials
-     */
-    private createSymbol;
-    /**
-     * Create symbol by straight line (draw type 1)
-     */
-    private createSymbolByStraightLine;
-    /**
-     * Create symbol by bezier line (draw type 2)
-     */
-    private createSymbolByLine;
     /**
      * Clean up drawing state and finalize
      */
@@ -103,19 +90,10 @@ export declare class StartLine {
      * Event emitter functionality
      */
     private emit;
-    /**
-     * Emit global events that can be caught by SymbolEngine
-     */
     private emitGlobalEvent;
     on(eventName: string, callback: Function): void;
     off(eventName: string, callback?: Function): void;
-    /**
-     * Get the current symbol layer
-     */
     getSymbolLayer(): GraphicsLayer;
-    /**
-     * Clear all symbols from the layer
-     */
     clearSymbols(): void;
 }
 export default StartLine;

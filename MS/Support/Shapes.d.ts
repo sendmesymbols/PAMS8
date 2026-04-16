@@ -59,6 +59,10 @@ declare class Shapes {
      */
     static createB(pt: Point, radius: number, steps: number): Point[];
     /**
+     * Create P shape (letter P: stem going up + upper half circle)
+     */
+    static createP(pt: Point, radius: number, steps: number): Point[];
+    /**
      * Create ALD text
      */
     static createALD(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
@@ -94,6 +98,11 @@ declare class Shapes {
      * Create letter J
      */
     static createJ(dx: number, dy: number, dr: number, sp: SpatialReference): Point[];
+    /**
+     * Create letter J as 2-point stroke segments to prevent auto-closing when used as polygon rings.
+     * Each 2-point ring retraces itself on closure — visually invisible.
+     */
+    static createJStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][];
     /**
      * Create letter C (CC version)
      */

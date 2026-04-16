@@ -6,42 +6,36 @@ import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 export interface ContainOptions {
     CTRL_PTS?: Point[];
-    BASE_LN_PTS?: {
-        startPt: Point;
-        endPt: Point;
-    };
     GEOM?: Polyline;
+    TEETH_SIZE?: number;
+    TEETH_GAP?: number;
     [key: string]: any;
 }
 /**
  * Contain class for drawing Contain tactical symbols
- * Uses baseline + control points
- * Returns Polyline geometry despite being classified as an Area symbol
+ * Uses control points with circle arcs, teeth, and fracture lines
+ * Returns Polyline geometry — NO baseline (matches JS version)
  */
 export declare class Contain {
     private view;
     private layerManager;
     private symbolLayer;
     private isLine;
-    private SID;
-    private symName;
-    private symGeometricType;
+    declaredClass: string;
+    SID: string;
+    symName: string;
+    symGeometricType: string;
     private _lineSym;
     private _points;
-    private _baseLinePts;
     private _geometryType;
     private amplifier;
     private _teethSize;
     private _teethGap;
     private isDrawing;
     private tempGraphic;
-    private baseLineComplete;
     private clickHandler;
     private doubleClickHandler;
     private mouseMoveHandler;
-    private baseLineEndHandler;
-    private baseLineProgressHandler;
-    private baseLineClickHandler;
     private eventListeners;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
@@ -49,27 +43,15 @@ export declare class Contain {
      */
     init(options: ContainOptions, marker: SimpleLineSymbol): void;
     /**
-     * Start baseline drawing
+     * Create DrawEssentials object
      */
-    private startBaseLineDrawing;
+    private createDrawEssentials;
     /**
-     * Handle baseline click events
+     * Create symbol geometry from DrawEssentials
      */
-    private baseLineClick;
+    private createSymbol;
     /**
-     * Handle baseline draw progress
-     */
-    private baseLineDrawProgress;
-    /**
-     * Handle baseline draw end
-     */
-    private baseLineDrawEnd;
-    /**
-     * Set up control point drawing handlers
-     */
-    private setupControlPointHandlers;
-    /**
-     * Handle click events for control points
+     * Handle click events
      */
     private _onClickHandler;
     /**
@@ -81,22 +63,18 @@ export declare class Contain {
      */
     private _onMouseMoveHandler;
     /**
-     * Create DrawEssentials object
+     * Calculate circle from three screen points
      */
-    private createDrawEssentials;
+    private _circleDrawEx;
+    private _determinantDrawEx;
     /**
-     * Create symbol geometry from DrawEssentials
+     * Create circle segment from three screen points
      */
-    private createSymbol;
+    private CreateCircleSegmentFromThreePoints;
     /**
-     * Create flap (arrow wings) path at the end point
+     * Create teeth path
      */
-    private flaps;
     private createTeeth;
-    /**
-     * Get baseline points
-     */
-    getBaseLinePts(): any;
     /**
      * Clean up drawing state and finalize
      */

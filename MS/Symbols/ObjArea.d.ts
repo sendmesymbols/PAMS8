@@ -3,7 +3,6 @@ import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 export interface ObjAreaOptions {
     CTRL_PTS?: Point[];
@@ -12,17 +11,19 @@ export interface ObjAreaOptions {
     [key: string]: any;
 }
 /**
- * ObjArea class for drawing Objective Area symbols on MapView or SceneView
- * Creates area symbols with 3 draw types: Bezier curve, polygon, and rectangle with inner "OBJ" text
+ * ObjArea class for drawing Objective Area tactical symbols
+ * No baseline - direct polygon drawing with "OBJ" inner text
+ * Returns Polygon geometry
  */
 export declare class ObjArea {
     private view;
     private layerManager;
     private symbolLayer;
     private isLine;
-    private SID;
-    private symName;
-    private symGeometricType;
+    declaredClass: string;
+    SID: string;
+    symName: string;
+    symGeometricType: string;
     private _lineSym;
     private _points;
     private _drawType;
@@ -36,17 +37,24 @@ export declare class ObjArea {
     private eventListeners;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
-     * Initialize the objective area drawing
+     * Initialize the ObjArea drawing
      */
-    init(options: ObjAreaOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void;
+    init(options: ObjAreaOptions, marker: SimpleLineSymbol): void;
     /**
-     * Start interactive drawing mode
+     * Create DrawEssentials object
      */
-    private startInteractiveDrawing;
+    private createDrawEssentials;
     /**
-     * Set up mouse event handlers for interactive drawing
+     * Create symbol geometry from DrawEssentials
      */
-    private setupEventHandlers;
+    private createSymbol;
+    private createSymbolByBCurve;
+    private createSymbolByPolygon;
+    private createSymbolByRect;
+    /**
+     * Add "OBJ" text inside the polygon
+     */
+    private createInnerText;
     /**
      * Handle click events
      */
@@ -59,30 +67,6 @@ export declare class ObjArea {
      * Handle mouse move events
      */
     private _onMouseMoveHandler;
-    /**
-     * Create DrawEssentials object
-     */
-    private createDrawEssentials;
-    /**
-     * Create symbol geometry from DrawEssentials
-     */
-    private createSymbol;
-    /**
-     * Create symbol by Bezier curve (draw type 1)
-     */
-    private createSymbolByBCurve;
-    /**
-     * Create symbol by polygon (draw type 2)
-     */
-    private createSymbolByPolygon;
-    /**
-     * Create symbol by rectangle (draw type 3)
-     */
-    private createSymbolByRect;
-    /**
-     * Create inner "OBJ" text
-     */
-    private createInnerText;
     /**
      * Clean up drawing state and finalize
      */
@@ -111,19 +95,10 @@ export declare class ObjArea {
      * Event emitter functionality
      */
     private emit;
-    /**
-     * Emit global events that can be caught by SymbolEngine
-     */
     private emitGlobalEvent;
     on(eventName: string, callback: Function): void;
     off(eventName: string, callback?: Function): void;
-    /**
-     * Get the current symbol layer
-     */
     getSymbolLayer(): GraphicsLayer;
-    /**
-     * Clear all symbols from the layer
-     */
     clearSymbols(): void;
 }
 export default ObjArea;

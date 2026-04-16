@@ -40,7 +40,7 @@ export declare class SupportingAttack {
     /**
      * Initialize the freehand supporting attack drawing
      */
-    init(options: FreehandSupportingAttackOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void;
+    init(options: SupportingAttackOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void;
     /**
      * Start interactive drawing mode
      */
