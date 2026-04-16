@@ -323,6 +323,13 @@ class SymbolEngine implements Evented {
         this._editEngine = new EditEngine(this._getView, this._layerManager);
         // Re-attach measurement engine to the new view
         this._measurementEngine?.onViewChanged(newView);
+
+        // Re-initialize the ContextMenuManager for the new view so its
+        // pointer-down / contextmenu listeners are bound to the active view.
+        this._contextMenuManager.initialize(newView, {
+            targetGraphicTypes: [],
+            targetLayerIds: [LAYER_NAMES.FORCE, LAYER_NAMES.TACT_PT, LAYER_NAMES.TACT, "milSymbols"]
+        });
     }
 
     /**

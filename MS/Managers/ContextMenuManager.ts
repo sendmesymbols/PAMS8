@@ -65,6 +65,11 @@ class ContextMenuManager extends Evented {
     private originalEvent: any = null;
     private _measurementEngine: MeasurementEngine | null = null;
 
+    // Event handles for cleanup on re-initialization
+    private _pointerDownHandle: any = null;
+    private _contextMenuHandler: ((e: Event) => void) | null = null;
+    private _contextMenuContainer: HTMLElement | null = null;
+
     private constructor() {
         super();
 
@@ -420,18 +425,39 @@ class ContextMenuManager extends Evented {
     }
 
     /**
+     * Remove event listeners from the previous view before re-initialization.
+     */
+    private teardownViewEvents(): void {
+        // Remove the ArcGIS view pointer-down handle
+        if (this._pointerDownHandle) {
+            this._pointerDownHandle.remove();
+            this._pointerDownHandle = null;
+        }
+
+        // Remove the native contextmenu listener from the old container
+        if (this._contextMenuHandler && this._contextMenuContainer) {
+            this._contextMenuContainer.removeEventListener("contextmenu", this._contextMenuHandler);
+            this._contextMenuHandler = null;
+            this._contextMenuContainer = null;
+        }
+    }
+
+    /**
      * Set up event listeners on the view
      */
     private setupViewEvents(): void {
         if (!this.view) return;
 
+        // Clean up any previous listeners before attaching new ones
+        this.teardownViewEvents();
+
         // Prevent default context menu
-        this.view.container.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-        });
+        this._contextMenuHandler = (e: Event) => e.preventDefault();
+        this._contextMenuContainer = this.view.container;
+        this.view.container.addEventListener("contextmenu", this._contextMenuHandler);
 
         // Listen for pointer-down events (to catch right-clicks)
-        this.view.on("pointer-down", (event) => {
+        this._pointerDownHandle = this.view.on("pointer-down", (event) => {
             // Left-click (button 0) always dismisses any open menu
             if (event.button !== 2) {
                 this.hideMenu();
