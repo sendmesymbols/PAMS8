@@ -215,11 +215,12 @@ import Withdraw from "../Symbols/Withdraw.ts"; //Fixed
 import WithdrawUnderPressure from "../Symbols/WithdrawUnderPressure.ts"; //Fixed
 import Bypass from "../Symbols/Bypass.ts"; //Fixed
 import SupportByFirePosition from "../Symbols/SupportByFirePosition.ts"; //Fixed
+import StartLine from "../Symbols/StartLine.ts";  //Fixed
+import ObjArea from "../Symbols/ObjArea.ts"; //Fixed
+import SupportingAttack from "../Symbols/SupportingAttack.ts"; //Fixed
 
-import StartLine from "../Symbols/StartLine.ts"; //Gone for
-import ObjArea from "../Symbols/ObjArea.ts"; //Gone for
 import StrongPoint from "../Symbols/StrongPoint.ts";
-import SupportingAttack from "../Symbols/SupportingAttack.ts";
+
 import UnspecifiedWire from "../Symbols/UnspecifiedWire.ts";
 import Contain from "../Symbols/Contain.ts";
 
