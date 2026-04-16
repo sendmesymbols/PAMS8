@@ -8,6 +8,7 @@ import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
 import Point from "@arcgis/core/geometry/Point";
 
 import GraphicsLayerManager from "./GraphicsLayerManager";
+import MeasurementEngine from "../Engines/MeasurementEngine";
 
 export interface ContextMenuItem {
     id: string;
@@ -62,6 +63,7 @@ class ContextMenuManager extends Evented {
     private options: ContextMenuOptions;
     private clickPoint: Point | null = null;
     private originalEvent: any = null;
+    private _measurementEngine: MeasurementEngine | null = null;
 
     private constructor() {
         super();
@@ -185,6 +187,16 @@ class ContextMenuManager extends Evented {
     }
 
     /**
+     * Link a MeasurementEngine so the context menu gains a measurement section.
+     * The section is rendered at the bottom of every right-click menu and allows
+     * the user to toggle measurements on/off and measure the selected graphic.
+     */
+    public linkMeasurementEngine(engine: MeasurementEngine): void {
+        this._measurementEngine = engine;
+        console.log("ContextMenuManager: MeasurementEngine linked");
+    }
+
+    /**
      * Display the context menu at the given coordinates
      */
     private showMenuAt(x: number, y: number, graphic: Graphic): void {
@@ -284,6 +296,59 @@ class ContextMenuManager extends Evented {
                 this.menuElement.appendChild(menuItem);
             }
         });
+
+        // ── Measurement section ──────────────────────────────────────────────
+        if (this._measurementEngine) {
+            const isOn = this._measurementEngine.isEnabled;
+
+            // Separator
+            const sep = document.createElement("div");
+            sep.className = this.options.menuSeparatorClass || "";
+            this.menuElement.appendChild(sep);
+
+            // Section header (non-clickable informational row)
+            const header = document.createElement("div");
+            header.style.cssText = "padding:4px 12px 2px;font-size:11px;color:#888;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px";
+            header.textContent = "Measurements";
+            this.menuElement.appendChild(header);
+
+            // Toggle item — label reflects current state
+            const toggleItem = document.createElement("div");
+            toggleItem.className = this.options.menuItemClass || "";
+            toggleItem.innerHTML = isOn
+                ? `<span class="menu-icon" style="font-size:14px">🔬</span><span>Disable Measurements <span style="color:#4caf50;font-size:11px">● ON</span></span>`
+                : `<span class="menu-icon" style="font-size:14px">📐</span><span>Enable Measurements <span style="color:#aaa;font-size:11px">○ OFF</span></span>`;
+            toggleItem.addEventListener("click", (e) => {
+                e.stopPropagation();
+                this._measurementEngine!.toggle();
+                this.hideMenu();
+            });
+            toggleItem.addEventListener("mouseenter", () => toggleItem.classList.add(this.options.menuItemHoverClass || ""));
+            toggleItem.addEventListener("mouseleave", () => toggleItem.classList.remove(this.options.menuItemHoverClass || ""));
+            this.menuElement.appendChild(toggleItem);
+
+            // "Measure This Symbol" — only when measurements are on
+            if (isOn) {
+                const measureItem = document.createElement("div");
+                measureItem.className = this.options.menuItemClass || "";
+                measureItem.innerHTML = `<span class="menu-icon" style="font-size:14px">📏</span><span>Measure This Symbol</span>`;
+                measureItem.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    if (this.activeGraphic) {
+                        const snap = this._measurementEngine!.measureGraphic(this.activeGraphic);
+                        if (snap) {
+                            // Brief toast showing the measurement result
+                            this._showMeasurementToast(snap, x, y);
+                        }
+                    }
+                    this.hideMenu();
+                });
+                measureItem.addEventListener("mouseenter", () => measureItem.classList.add(this.options.menuItemHoverClass || ""));
+                measureItem.addEventListener("mouseleave", () => measureItem.classList.remove(this.options.menuItemHoverClass || ""));
+                this.menuElement.appendChild(measureItem);
+            }
+        }
+        // ────────────────────────────────────────────────────────────────────
 
         // Position the menu
         this.menuElement.style.left = `${x + (this.options.offsetX || 0)}px`;
@@ -430,6 +495,64 @@ class ContextMenuManager extends Evented {
         });
 
         // Note: menu dismissal on left-click is handled in the pointer-down handler above
+    }
+
+    /**
+     * Show a brief floating toast with measurement results near the click point.
+     * Auto-dismisses after 4 seconds.
+     */
+    private _showMeasurementToast(snap: import("../Engines/MeasurementEngine").MeasurementSnapshot, x: number, y: number): void {
+        const toast = document.createElement("div");
+        toast.style.cssText = `
+            position: absolute;
+            left: ${x + 10}px;
+            top:  ${y - 10}px;
+            background: rgba(20, 25, 35, 0.92);
+            color: #dce8f5;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            border: 1px solid rgba(100, 160, 230, 0.5);
+            z-index: 1001;
+            pointer-events: none;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            min-width: 160px;
+            line-height: 1.7;
+            animation: ms-toast-fade 4s forwards;
+        `;
+
+        const row = (label: string, val: string) =>
+            val ? `<tr><td style="color:#7eb4e8;padding-right:8px">${label}</td><td style="color:#e8f4ff">${val}</td></tr>` : "";
+
+        toast.innerHTML = `
+            <div style="color:#64b4ff;font-weight:bold;border-bottom:1px solid rgba(100,160,230,0.3);
+                        padding-bottom:4px;margin-bottom:6px">📏 Symbol Dimensions</div>
+            <table style="border-spacing:0 1px">
+                ${row("Width",  snap.width)}
+                ${row("Height", snap.height)}
+                ${row("Area",   snap.area)}
+                ${row("Length", snap.totalLength)}
+            </table>
+        `;
+
+        // Inject keyframe once
+        if (!document.getElementById("ms-toast-style")) {
+            const style = document.createElement("style");
+            style.id = "ms-toast-style";
+            style.textContent = `
+                @keyframes ms-toast-fade {
+                    0%   { opacity: 0; transform: translateY(6px); }
+                    10%  { opacity: 1; transform: translateY(0);   }
+                    80%  { opacity: 1; }
+                    100% { opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(toast);
+        setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 4200);
     }
 
     /**

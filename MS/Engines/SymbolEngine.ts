@@ -36,6 +36,7 @@ import Mapper from "../Engines/Mapper.ts"
 import AnnotationEngine from "./AnnotationEngine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import EditEngine from "./EditEngine.ts";
+import MeasurementEngine from "./MeasurementEngine.ts";
 
 
 interface Evented {
@@ -82,6 +83,7 @@ class SymbolEngine implements Evented {
     private _contextMenuManager: ContextMenuManager;
     private _getView: () => MapView | SceneView;
     private _editEngine: EditEngine;
+    private _measurementEngine: MeasurementEngine;
     private currentSymbol: any | undefined;
     private sidc:any | undefined;
     private amplifier: Amplifier | undefined;
@@ -144,6 +146,11 @@ class SymbolEngine implements Evented {
 
         // Listen for context menu events
         this._contextMenuManager.on("menu-item-click", this.handleContextMenuAction.bind(this));
+
+        // Initialize MeasurementEngine and link it to the context menu
+        this._measurementEngine = MeasurementEngine.getInstance();
+        this._measurementEngine.start(this.view);
+        this._contextMenuManager.linkMeasurementEngine(this._measurementEngine);
 
         // Set up global event listeners for drawing events
         this.setupGlobalEventListener();
@@ -259,14 +266,34 @@ class SymbolEngine implements Evented {
         document.addEventListener("onDrawProgress", (event: any) => {
             console.log("SymbolEngine caught global onDrawProgress event:");
             console.log("  Event detail:", event.detail);
+
+            // Feed drawing progress into the measurement engine
+            const detail = event.detail;
+            if (detail?.currentGeometry && detail?.currentDrawEssentials?.CTRL_PTS) {
+                this._measurementEngine?.updateSegments(
+                    detail.currentGeometry,
+                    detail.currentDrawEssentials.CTRL_PTS,
+                );
+            }
+        });
+
+        // New control point clicked — arm the next segment measurement graphic
+        document.addEventListener("onDrawClick", (event: any) => {
+            const detail = event.detail;
+            if (detail?.currentPts) {
+                this._measurementEngine?.addSegment(detail.currentPts);
+            }
         });
 
         document.addEventListener("onDrawEnd", (event: any) => {
             console.log("SymbolEngine caught global onDrawEnd event:");
             console.log("  Event detail:", event.detail);
-            
+
             // Handle the draw end event by creating and adding a graphic
             this.drawSymEnd(event.detail);
+
+            // Clear measurement overlays when the symbol is finalised
+            this._measurementEngine?.wrapUp();
         });
 
         console.log("SymbolEngine global event listeners set up");
@@ -295,6 +322,8 @@ class SymbolEngine implements Evented {
         this._layerManager = GraphicsLayerManager.getInstance(newView);
         this._layerManager.initializeLayers();
         this._editEngine = new EditEngine(this._getView, this._layerManager);
+        // Re-attach measurement engine to the new view
+        this._measurementEngine?.onViewChanged(newView);
     }
 
     get view() {
@@ -520,6 +549,11 @@ class SymbolEngine implements Evented {
     /** Access the underlying EditEngine to register event listeners. */
     public get editEngine(): EditEngine {
         return this._editEngine;
+    }
+
+    /** Access the MeasurementEngine — configure units or toggle programmatically. */
+    public get measurementEngine(): MeasurementEngine {
+        return this._measurementEngine;
     }
 
 
