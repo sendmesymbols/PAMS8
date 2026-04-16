@@ -78,7 +78,7 @@ class StrongPoint {
         this._drawType = options.DRAW_TYPE || 1;
         this._face_gap = options.FACE_GAP || 0;
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null && options.GEOM !== undefined) {
             this._tGraphic = new Graphic({ geometry: options.GEOM });
             const drawEssentials = this.createDrawEssentials(options.CTRL_PTS!.slice(), this._echelon, this._drawType, this._face_gap);
             this.__drawEnd(this._tGraphic.geometry, drawEssentials);

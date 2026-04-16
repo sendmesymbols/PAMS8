@@ -81,7 +81,7 @@ export class Contain {
         this._teethSize = GeoTools.setDefault(options, "TEETH_SIZE", this._teethSize);
         this._teethGap = GeoTools.setDefault(options, "TEETH_GAP", this._teethGap);
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null && options.GEOM !== undefined) {
             // Immediate placement with geometry
             if (options.GEOM && this.tempGraphic) {
                 this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
