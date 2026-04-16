@@ -220,8 +220,8 @@ import ObjArea from "../Symbols/ObjArea.ts"; //Fixed
 import SupportingAttack from "../Symbols/SupportingAttack.ts"; //Fixed
 import UnspecifiedWire from "../Symbols/UnspecifiedWire.ts"; //Fixed
 
-import StrongPoint from "../Symbols/StrongPoint.ts";
-import Contain from "../Symbols/Contain.ts";
+import StrongPoint from "../Symbols/StrongPoint.ts"; //Fixed
+import Contain from "../Symbols/Contain.ts"; //Fixed
 
 
 
