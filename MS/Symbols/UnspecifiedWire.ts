@@ -73,7 +73,7 @@ export class UnspecifiedWire {
 
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null && options.GEOM !== undefined) {
             // Immediate placement with geometry
             if (options.GEOM && this.tempGraphic) {
                 this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
@@ -206,7 +206,6 @@ export class UnspecifiedWire {
         drawEssentials.SYM_GEO_TYPE = this.symGeometricType;
         drawEssentials.SID = this.SID;
         drawEssentials.SYM_NAME = this.symName;
-        drawEssentials.GEOM = null;
         drawEssentials.AMPLIFIER = this.amplifier.toString();
 
         // Store additional properties

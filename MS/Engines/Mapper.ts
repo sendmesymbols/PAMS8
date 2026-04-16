@@ -218,10 +218,9 @@ import SupportByFirePosition from "../Symbols/SupportByFirePosition.ts"; //Fixed
 import StartLine from "../Symbols/StartLine.ts";  //Fixed
 import ObjArea from "../Symbols/ObjArea.ts"; //Fixed
 import SupportingAttack from "../Symbols/SupportingAttack.ts"; //Fixed
+import UnspecifiedWire from "../Symbols/UnspecifiedWire.ts"; //Fixed
 
 import StrongPoint from "../Symbols/StrongPoint.ts";
-
-import UnspecifiedWire from "../Symbols/UnspecifiedWire.ts";
 import Contain from "../Symbols/Contain.ts";
 
 

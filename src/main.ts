@@ -866,7 +866,7 @@ function initializeAutocomplete() {
     "spatialReference":{"wkid":102100,"latestWkid":3857}
 }]`);
 
-    //drawEssentials.CTRL_PTS = rawPoly.map(pt => new Point(pt));  // <-- Not necessary
+    
    drawEssentials.CTRL_PTS = rawPoly; // <--Working
 
 
