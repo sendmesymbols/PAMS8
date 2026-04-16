@@ -137,3 +137,93 @@ Can we have functionality of  adding a new control point when in "Edit Control p
 Visualization change
 Measurement Engine
 Same in 2D view
+
+
+
+ ---
+High Priority (Immediate Utility)
+
+1. Undo / Redo Stack
+
+You already have edit operations. Add a simple command pattern:
+private _undoStack: Graphic[][] = [];
+private _redoStack: Graphic[][] = [];
+Every drawSymEnd or edit operation pushes to undo. Critical for map editing.
+
+2. Multi-Select + Batch Operations
+
+- Shift+click to select multiple symbols
+- Move, scale, delete all selected at once
+- Align distribute (spread evenly along a line)
+
+3. Copy / Paste Symbols
+
+copySymbol(graphic: Graphic): void
+pasteSymbol(targetPoint: Point): Graphic | null
+Persists drawEssentials + AMPLIFIER on the clipboard.
+
+4. Symbol Search & Filter (extend autocomplete)
+
+You've already built autocomplete — extend it to:
+- Filter by affiliation (Friendly/Hostile/Neutral/Unknown)
+- Filter by symbol set (Unit, Equipment, Control Measure, etc.)
+- "Recently used" symbols at the top
+
+  ---
+Medium Priority (Professional Use)
+
+5. Save / Load Symbol Configurations
+
+saveSymbolToJSON(graphic: Graphic): object
+loadSymbolFromJSON(data: object): Graphic
+Export drawn operational graphics to a JSON file that can be reloaded or shared.
+
+6. Export Symbols
+
+- exportToSVG(graphic) — SVG for reports/briefings
+- exportToPNG(graphic, scale) — image output
+- exportToGeoJSON() — full layer export with all attributes
+
+7. Symbol Templates
+
+Pre-configure common symbols with pre-filled AMPLIFIER data:
+saveAsTemplate(name: string, drawEssentials: DrawEssentials, amplifier: Amplifier): void
+loadTemplate(name: string): { drawEssentials, amplifier }
+e.g., a template "Phase Line Alpha" with pre-filled text "PL ALPHA".
+
+8. Layer Management Panel
+
+Add visibility toggles + opacity sliders per layer (FORCE, TACT, TACT_PT, ANNOTATION). Your GraphicsLayerManager already
+has the layers — just expose a UI.
+
+  ---
+Lower Priority (Nice to Have)
+
+9. Keyboard Shortcuts
+
+┌──────────┬──────────────────────────────────────────┐
+│   Key    │                  Action                  │
+├──────────┼──────────────────────────────────────────┤
+│ Esc      │ Cancel current drawing / deactivate edit │
+├──────────┼──────────────────────────────────────────┤
+│ Delete   │ Remove selected symbol                   │
+├──────────┼──────────────────────────────────────────┤
+│ Ctrl+C/V │ Copy/paste                               │
+├──────────┼──────────────────────────────────────────┤
+│ Ctrl+Z/Y │ Undo/redo                                │
+└──────────┴──────────────────────────────────────────┘
+
+10. Snapping
+
+Snap to:
+- Grid coordinates
+- Other symbol centers
+- Baseline points (for phase lines, boundaries)
+
+11. Scale Bar + Coordinate Display
+
+Show current map scale and cursor coordinates in a status bar — standard in military mapping apps.
+
+12. Legend Generation
+
+Auto-generate a legend graphic showing all symbols drawn, with their labels.

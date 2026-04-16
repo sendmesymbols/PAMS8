@@ -1046,3 +1046,178 @@ function initializeAutocomplete() {
   }
 }
 
+
+// ── Measurement Panel Controller ───────────────────────────────────────────────
+// The MS library emits events; all DOM work lives here, not in the library.
+
+(function initMeasurementPanel() {
+    const panel      = document.getElementById("measurePanel")!;
+    const toggleBtn  = document.getElementById("measureToggleBtn")!;
+    const dataTable  = document.getElementById("measureDataTable") as HTMLTableElement;
+    const idleHint   = document.getElementById("measureIdle")!;
+    const copyBtn    = document.getElementById("measureCopyBtn")!;
+
+    // Cell references
+    const cells: Record<string, HTMLElement | null> = {
+        seg:    document.getElementById("ms-seg"),
+        bng:    document.getElementById("ms-bng"),
+        total:  document.getElementById("ms-total"),
+        height: document.getElementById("ms-height"),
+        width:  document.getElementById("ms-width"),
+        area:   document.getElementById("ms-area"),
+    };
+
+    // Row references (hide rows with no data)
+    const rows: Record<string, HTMLElement | null> = {
+        seg:    document.getElementById("ms-row-seg"),
+        bng:    document.getElementById("ms-row-bng"),
+        total:  document.getElementById("ms-row-total"),
+        height: document.getElementById("ms-row-height"),
+        width:  document.getElementById("ms-row-width"),
+        area:   document.getElementById("ms-row-area"),
+    };
+
+    let lastSnap: Record<string, string> = {};
+
+    // ── Toggle measurement on/off ───────────────────────────────────────────
+
+    function applyState(isEnabled: boolean) {
+        panel.classList.toggle("ms-on", isEnabled);
+        toggleBtn.classList.toggle("ms-btn-active", isEnabled);
+        toggleBtn.title = isEnabled
+            ? "Measurements ON  — click or press M to disable"
+            : "Measurements OFF — click or press M to enable";
+        if (!isEnabled) resetRows();
+    }
+
+    toggleBtn.addEventListener("click", () => {
+        panel.classList.add("ms-active");            // show panel on first click
+        symbolEngine.measurementEngine?.toggle();
+    });
+
+    // ── Keyboard shortcut M ────────────────────────────────────────────────
+
+    document.addEventListener("keydown", (e) => {
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        if (e.key === "m" || e.key === "M") {
+            panel.classList.add("ms-active");
+            symbolEngine.measurementEngine?.toggle();
+        }
+    });
+
+    // ── Library events ─────────────────────────────────────────────────────
+
+    document.addEventListener("measurement-state-change", (e: any) => {
+        applyState(e.detail.isEnabled);
+    });
+
+    document.addEventListener("measurement-update", (e: any) => {
+        const d = e.detail;
+        lastSnap = d;
+        idleHint.style.display  = "none";
+        dataTable.style.display = "";
+
+        const set = (key: string, val: string | undefined) => {
+            if (val) {
+                cells[key]!.textContent   = val;
+                rows[key]!.style.display  = "";
+            } else {
+                rows[key]!.style.display  = "none";
+            }
+        };
+        set("seg",    d.segmentLength);
+        set("bng",    d.bearing);
+        set("total",  d.totalLength);
+        set("height", d.height);
+        set("width",  d.width);
+        set("area",   d.area);
+    });
+
+    // Right-click "Measure This Symbol" result
+    document.addEventListener("measurement-graphic-measured", (e: any) => {
+        const d = e.detail;
+        lastSnap = d;
+        showSnapToast(d);
+
+        // Mirror into the panel so the user can copy it
+        idleHint.style.display  = "none";
+        dataTable.style.display = "";
+        rows.seg!.style.display = "none";
+        rows.bng!.style.display = "none";
+        const set = (key: string, val: string | undefined) => {
+            cells[key]!.textContent  = val || "—";
+            rows[key]!.style.display = val ? "" : "none";
+        };
+        set("total",  d.totalLength);
+        set("height", d.height);
+        set("width",  d.width);
+        set("area",   d.area);
+    });
+
+    // ── Reset rows ─────────────────────────────────────────────────────────
+
+    function resetRows() {
+        idleHint.style.display  = "";
+        dataTable.style.display = "none";
+        lastSnap = {};
+    }
+
+    // ── Snap toast for "Measure This Symbol" ──────────────────────────────
+
+    function showSnapToast(d: any) {
+        const toast = document.createElement("div");
+        toast.className = "ms-snap-toast";
+        const row = (label: string, val: string) =>
+            val ? `<tr><td style="color:#7eb4e8;padding-right:8px">${label}</td>
+                       <td style="color:#e8f4ff">${val}</td></tr>` : "";
+        toast.innerHTML = `
+            <div style="color:#64b4ff;font-weight:bold;border-bottom:1px solid
+                        rgba(100,160,230,0.3);padding-bottom:4px;margin-bottom:6px">
+                📏 Symbol Dimensions</div>
+            <table style="border-spacing:0 1px">
+                ${row("Width",  d.width)}
+                ${row("Height", d.height)}
+                ${row("Area",   d.area)}
+                ${row("Length", d.totalLength)}
+            </table>`;
+        toast.style.right  = "220px";
+        toast.style.bottom = "30px";
+        document.body.appendChild(toast);
+        setTimeout(() => toast.parentNode?.removeChild(toast), 4200);
+    }
+
+    // ── Unit switcher ──────────────────────────────────────────────────────
+
+    document.querySelectorAll("#measurePanel .ms-units button").forEach(btn => {
+        btn.addEventListener("click", () => {
+            document.querySelectorAll("#measurePanel .ms-units button")
+                    .forEach(b => b.classList.remove("ms-active-unit"));
+            btn.classList.add("ms-active-unit");
+            const distUnit = (btn as HTMLElement).dataset.unit as any;
+            const areaUnit = (btn as HTMLElement).dataset.area as any;
+            symbolEngine.measurementEngine?.setOptions({ dist_unit: distUnit, area_unit: areaUnit });
+        });
+    });
+
+    // ── Copy to clipboard ──────────────────────────────────────────────────
+
+    copyBtn.addEventListener("click", () => {
+        const lines: string[] = [];
+        const add = (label: string, key: string) => { if (lastSnap[key]) lines.push(`${label}: ${lastSnap[key]}`); };
+        add("Segment", "segmentLength");
+        add("Bearing", "bearing");
+        add("Total",   "totalLength");
+        add("Height",  "height");
+        add("Width",   "width");
+        add("Area",    "area");
+
+        if (!lines.length) return;
+        navigator.clipboard.writeText(lines.join("\n")).then(() => {
+            const orig = copyBtn.textContent!;
+            copyBtn.textContent = "✓ Copied!";
+            setTimeout(() => (copyBtn.textContent = orig), 1800);
+        });
+    });
+
+})();

@@ -100,6 +100,148 @@
       color: #0078d4;
     }
 
+  /* ── Measurement panel ──────────────────────────────────────────────────── */
+  #measurePanel {
+    display: none;
+    position: absolute;
+    bottom: 30px;
+    right: 10px;
+    width: 210px;
+    background: rgba(18, 22, 32, 0.92);
+    color: #dce8f5;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    border: 1px solid rgba(100, 160, 230, 0.4);
+    border-radius: 8px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
+    z-index: 900;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  #measurePanel.ms-active {
+    display: block;
+    animation: ms-panel-in 0.18s ease;
+  }
+
+  @keyframes ms-panel-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0);   }
+  }
+
+  #measurePanel header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px 6px;
+    border-bottom: 1px solid rgba(100,160,230,0.25);
+    background: rgba(100,160,230,0.08);
+  }
+
+  #measurePanel header span { color: #64b4ff; font-weight: bold; letter-spacing: 0.4px; }
+
+  /* Status dot */
+  #measurePanel header .ms-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #555;
+    transition: background 0.3s;
+  }
+  #measurePanel.ms-on header .ms-dot { background: #4caf50; box-shadow: 0 0 6px #4caf5088; }
+
+  /* Unit switcher */
+  #measurePanel .ms-units {
+    display: flex;
+    gap: 4px;
+    padding: 6px 12px;
+    border-bottom: 1px solid rgba(100,160,230,0.15);
+  }
+  #measurePanel .ms-units button {
+    flex: 1;
+    padding: 3px 0;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(100,160,230,0.25);
+    border-radius: 4px;
+    color: #90b8d8;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  #measurePanel .ms-units button.ms-active-unit {
+    background: rgba(100,160,230,0.25);
+    color: #e8f4ff;
+    border-color: rgba(100,160,230,0.6);
+  }
+  #measurePanel .ms-units button:hover { background: rgba(100,160,230,0.15); }
+
+  /* Data rows */
+  #measurePanel table {
+    width: 100%;
+    border-spacing: 0;
+    padding: 6px 12px 4px;
+  }
+  #measurePanel td { padding: 2px 0; line-height: 1.6; }
+  #measurePanel td:first-child { color: #7eb4e8; padding-right: 8px; white-space: nowrap; }
+  #measurePanel td:last-child  { color: #e8f4ff; font-weight: bold; }
+
+  /* Idle hint */
+  #measurePanel .ms-idle {
+    padding: 8px 12px 10px;
+    color: #445;
+    font-style: italic;
+    font-size: 11px;
+  }
+
+  /* Copy button */
+  #measurePanel footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 8px 8px;
+  }
+  #measurePanel footer button {
+    background: none;
+    border: 1px solid rgba(100,160,230,0.3);
+    border-radius: 4px;
+    color: #7eb4e8;
+    font-size: 11px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  #measurePanel footer button:hover { background: rgba(100,160,230,0.15); color: #e8f4ff; }
+
+  /* Measurement toggle button active state */
+  #measureToggleBtn.ms-btn-active {
+    background: rgba(100,160,230,0.2) !important;
+    box-shadow: inset 0 0 0 2px rgba(100,160,230,0.6);
+  }
+
+  /* Snap toast (measurement-graphic-measured result) */
+  .ms-snap-toast {
+    position: fixed;
+    background: rgba(18,22,32,0.94);
+    color: #dce8f5;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(100,160,230,0.5);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    z-index: 1100;
+    pointer-events: none;
+    min-width: 160px;
+    line-height: 1.7;
+    animation: ms-toast-fade 4s forwards;
+  }
+  @keyframes ms-toast-fade {
+    0%   { opacity: 0; transform: translateY(6px); }
+    10%  { opacity: 1; transform: translateY(0);   }
+    80%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
   </style>
   <link rel="stylesheet" href="https://js.arcgis.com/4.32/@arcgis/core/assets/esri/themes/light/main.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
@@ -155,6 +297,47 @@
   <button id="createButton">Create</button>
   <button id="drawBlockSymbolButton">Draw Block Symbol</button>
 
+  <!-- Measurement toggle button -->
+  <button
+    id="measureToggleBtn"
+    class="esri-component esri-widget--button esri-widget esri-interactive"
+    title="Toggle Measurements  [M]"
+    style="font-size:16px;min-width:36px;"
+  >📐</button>
+
+</div>
+
+<!-- ── Measurement Panel ────────────────────────────────────────────────── -->
+<div id="measurePanel">
+  <header>
+    <span>📐 Measurements</span>
+    <div class="ms-dot" title="Measurements on/off"></div>
+  </header>
+
+  <!-- Unit switcher -->
+  <div class="ms-units">
+    <button data-unit="kilometers" data-area="square-kilometers" class="ms-active-unit">km</button>
+    <button data-unit="miles"      data-area="square-miles">mi</button>
+    <button data-unit="nautical-miles" data-area="square-miles">nm</button>
+    <button data-unit="meters"    data-area="square-meters">m</button>
+  </div>
+
+  <!-- Live data rows (hidden until first update) -->
+  <table id="measureDataTable" style="display:none">
+    <tr id="ms-row-seg">    <td>Segment</td> <td id="ms-seg">—</td></tr>
+    <tr id="ms-row-bng">    <td>Bearing</td> <td id="ms-bng">—</td></tr>
+    <tr id="ms-row-total">  <td>Total</td>   <td id="ms-total">—</td></tr>
+    <tr id="ms-row-height"> <td>Height</td>  <td id="ms-height">—</td></tr>
+    <tr id="ms-row-width">  <td>Width</td>   <td id="ms-width">—</td></tr>
+    <tr id="ms-row-area">   <td>Area</td>    <td id="ms-area">—</td></tr>
+  </table>
+
+  <!-- Idle hint (shown before first measurement) -->
+  <div class="ms-idle" id="measureIdle">Draw a symbol to see live measurements</div>
+
+  <footer>
+    <button id="measureCopyBtn" title="Copy measurements to clipboard">⎘ Copy</button>
+  </footer>
 </div>
 
 <div id="symbolDetails" class="symbol-details">

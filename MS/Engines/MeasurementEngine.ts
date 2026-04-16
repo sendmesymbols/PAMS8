@@ -87,9 +87,6 @@ class MeasurementEngine {
     private _aGraphic: Graphic | null = null;   // area label
     private _tGraphic: Graphic | null = null;   // total-length label
 
-    // HUD overlay element
-    private _hud: HTMLDivElement | null = null;
-
     // ── Unit tables ──────────────────────────────────────────────────────────
 
     readonly distanceUnits: Array<{ unit: DistanceUnit; abbr: string }> = [
@@ -133,9 +130,7 @@ class MeasurementEngine {
 
     // ─────────────────────────────────────────────────────────────────────────
 
-    private constructor() {
-        this._buildHUD();
-    }
+    private constructor() {}
 
     public static getInstance(): MeasurementEngine {
         if (!MeasurementEngine._instance) {
@@ -160,29 +155,16 @@ class MeasurementEngine {
         const sr = view.spatialReference;
         this._isGeodesic = sr != null && (sr.wkid === 4326 || sr.wkid === 3857);
         this._layer = this._getOrCreateLayer("measurementGraphicsLayer");
-
-        // Move HUD into the view container
-        if (this._hud && view.container) {
-            // Avoid double-appending
-            if (!view.container.contains(this._hud)) {
-                view.container.style.position = "relative"; // ensure stacking context
-                view.container.appendChild(this._hud);
-            }
-            this._hud.style.display = this._isEnabled ? "block" : "none";
-        }
     }
 
     public enable(): void {
         this._isEnabled = true;
-        if (this._hud) this._hud.style.display = "block";
-        this._refreshHUD(null);
         this._emitStateChange("enabled");
         console.info("[MeasurementEngine] Measurements enabled");
     }
 
     public disable(): void {
         this._isEnabled = false;
-        if (this._hud) this._hud.style.display = "none";
         this._layer?.removeAll();
         this._clearHandles();
         this._emitStateChange("disabled");
@@ -310,7 +292,8 @@ class MeasurementEngine {
     public wrapUp(firstPts?: Point[]): void {
         this._layer?.removeAll();
         this._clearHandles();
-        this._refreshHUD(null);
+        // Notify the host app that measurements have been cleared
+        this._emitUpdate({} as MeasurementSnapshot);
         if (firstPts && firstPts.length > 0) {
             this.addSegment(firstPts);
         }
@@ -353,7 +336,6 @@ class MeasurementEngine {
         };
 
         this._emitUpdate(snap);
-        this._refreshHUD(snap);
         return snap;
     }
 
@@ -368,10 +350,6 @@ class MeasurementEngine {
     public destroy(): void {
         if (this._view && this._layer) {
             (this._view.map as any).remove(this._layer);
-        }
-        if (this._hud?.parentNode) {
-            this._hud.parentNode.removeChild(this._hud);
-            this._hud = null;
         }
         this._layer = null;
         this._view  = null;
@@ -478,7 +456,6 @@ class MeasurementEngine {
         }
 
         this._emitUpdate(snap as MeasurementSnapshot);
-        this._refreshHUD(snap as MeasurementSnapshot);
     }
 
     /** Edit mode variant — always creates a fresh segment graphic. */
@@ -642,77 +619,6 @@ class MeasurementEngine {
             this._view.map.add(layer);
         }
         return layer;
-    }
-
-    // ── HUD ───────────────────────────────────────────────────────────────────
-
-    private _buildHUD(): void {
-        this._hud = document.createElement("div");
-        this._hud.id = "ms-measurement-hud";
-        Object.assign(this._hud.style, {
-            position:       "absolute",
-            bottom:         "30px",
-            right:          "10px",
-            background:     "rgba(20, 25, 35, 0.88)",
-            color:          "#dce8f5",
-            fontFamily:     "'Courier New', monospace",
-            fontSize:       "12px",
-            padding:        "8px 12px",
-            borderRadius:   "6px",
-            border:         "1px solid rgba(100, 160, 230, 0.45)",
-            minWidth:       "190px",
-            display:        "none",
-            zIndex:         "999",
-            backdropFilter: "blur(6px)",
-            pointerEvents:  "none",
-            lineHeight:     "1.6",
-            boxShadow:      "0 4px 16px rgba(0,0,0,0.4)",
-        });
-        this._hud.innerHTML = this._hudIdleHTML();
-    }
-
-    private _refreshHUD(snap: Partial<MeasurementSnapshot> | null): void {
-        if (!this._hud) return;
-        if (!this._isEnabled || !snap) {
-            this._hud.innerHTML = this._hudIdleHTML();
-            return;
-        }
-
-        const row = (label: string, value: string | undefined): string =>
-            value ? `<tr>
-                <td style="color:#7eb4e8;padding-right:8px">${label}</td>
-                <td style="color:#e8f4ff;font-weight:bold">${value}</td>
-            </tr>` : "";
-
-        this._hud.innerHTML = `
-            <div style="color:#64b4ff;font-weight:bold;border-bottom:1px solid rgba(100,160,230,0.3);
-                        padding-bottom:4px;margin-bottom:6px;letter-spacing:0.5px">
-                📐 Live Measurements
-            </div>
-            <table style="border-spacing:0 1px;width:100%">
-                ${row("Segment",  snap.segmentLength)}
-                ${row("Bearing",  snap.bearing)}
-                ${row("Total",    snap.totalLength)}
-                ${row("Height",   snap.height)}
-                ${row("Width",    snap.width)}
-                ${row("Area",     snap.area)}
-            </table>
-        `;
-    }
-
-    private _hudIdleHTML(): string {
-        const dot = this._isEnabled
-            ? `<span style="color:#4caf50">&#9679;</span> ON`
-            : `<span style="color:#555">&#9675;</span> OFF`;
-        return `
-            <div style="color:#64b4ff;font-weight:bold;border-bottom:1px solid rgba(100,160,230,0.3);
-                        padding-bottom:4px;margin-bottom:6px">
-                📐 Measurements ${dot}
-            </div>
-            <div style="color:#556;font-style:italic;font-size:11px">
-                ${this._isEnabled ? "Draw a symbol to measure" : "Enable via right-click menu"}
-            </div>
-        `;
     }
 
     // ── Event helpers ─────────────────────────────────────────────────────────

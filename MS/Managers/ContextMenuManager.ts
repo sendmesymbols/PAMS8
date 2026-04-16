@@ -337,8 +337,11 @@ class ContextMenuManager extends Evented {
                     if (this.activeGraphic) {
                         const snap = this._measurementEngine!.measureGraphic(this.activeGraphic);
                         if (snap) {
-                            // Brief toast showing the measurement result
-                            this._showMeasurementToast(snap, x, y);
+                            // Let the host application render the result however it wants
+                            document.dispatchEvent(new CustomEvent("measurement-graphic-measured", {
+                                detail: { ...snap, screenX: x, screenY: y },
+                                bubbles: true,
+                            }));
                         }
                     }
                     this.hideMenu();
@@ -495,64 +498,6 @@ class ContextMenuManager extends Evented {
         });
 
         // Note: menu dismissal on left-click is handled in the pointer-down handler above
-    }
-
-    /**
-     * Show a brief floating toast with measurement results near the click point.
-     * Auto-dismisses after 4 seconds.
-     */
-    private _showMeasurementToast(snap: import("../Engines/MeasurementEngine").MeasurementSnapshot, x: number, y: number): void {
-        const toast = document.createElement("div");
-        toast.style.cssText = `
-            position: absolute;
-            left: ${x + 10}px;
-            top:  ${y - 10}px;
-            background: rgba(20, 25, 35, 0.92);
-            color: #dce8f5;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            padding: 10px 14px;
-            border-radius: 6px;
-            border: 1px solid rgba(100, 160, 230, 0.5);
-            z-index: 1001;
-            pointer-events: none;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-            min-width: 160px;
-            line-height: 1.7;
-            animation: ms-toast-fade 4s forwards;
-        `;
-
-        const row = (label: string, val: string) =>
-            val ? `<tr><td style="color:#7eb4e8;padding-right:8px">${label}</td><td style="color:#e8f4ff">${val}</td></tr>` : "";
-
-        toast.innerHTML = `
-            <div style="color:#64b4ff;font-weight:bold;border-bottom:1px solid rgba(100,160,230,0.3);
-                        padding-bottom:4px;margin-bottom:6px">📏 Symbol Dimensions</div>
-            <table style="border-spacing:0 1px">
-                ${row("Width",  snap.width)}
-                ${row("Height", snap.height)}
-                ${row("Area",   snap.area)}
-                ${row("Length", snap.totalLength)}
-            </table>
-        `;
-
-        // Inject keyframe once
-        if (!document.getElementById("ms-toast-style")) {
-            const style = document.createElement("style");
-            style.id = "ms-toast-style";
-            style.textContent = `
-                @keyframes ms-toast-fade {
-                    0%   { opacity: 0; transform: translateY(6px); }
-                    10%  { opacity: 1; transform: translateY(0);   }
-                    80%  { opacity: 1; }
-                    100% { opacity: 0; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
-        document.body.appendChild(toast);
-        setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 4200);
     }
 
     /**

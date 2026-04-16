@@ -36,7 +36,8 @@ import Mapper from "../Engines/Mapper.ts"
 import AnnotationEngine from "./AnnotationEngine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import EditEngine from "./EditEngine.ts";
-import MeasurementEngine from "./MeasurementEngine.ts";
+// MeasurementEngine is loaded dynamically based on Settings.json features.measurementEngine
+import type MeasurementEngine from "./MeasurementEngine.ts";
 
 
 interface Evented {
@@ -83,7 +84,7 @@ class SymbolEngine implements Evented {
     private _contextMenuManager: ContextMenuManager;
     private _getView: () => MapView | SceneView;
     private _editEngine: EditEngine;
-    private _measurementEngine: MeasurementEngine;
+    private _measurementEngine?: MeasurementEngine;
     private currentSymbol: any | undefined;
     private sidc:any | undefined;
     private amplifier: Amplifier | undefined;
@@ -147,10 +148,8 @@ class SymbolEngine implements Evented {
         // Listen for context menu events
         this._contextMenuManager.on("menu-item-click", this.handleContextMenuAction.bind(this));
 
-        // Initialize MeasurementEngine and link it to the context menu
-        this._measurementEngine = MeasurementEngine.getInstance();
-        this._measurementEngine.start(this.view);
-        this._contextMenuManager.linkMeasurementEngine(this._measurementEngine);
+        // Conditionally load MeasurementEngine based on Settings.json feature flag
+        this._initMeasurementEngine();
 
         // Set up global event listeners for drawing events
         this.setupGlobalEventListener();
@@ -324,6 +323,30 @@ class SymbolEngine implements Evented {
         this._editEngine = new EditEngine(this._getView, this._layerManager);
         // Re-attach measurement engine to the new view
         this._measurementEngine?.onViewChanged(newView);
+    }
+
+    /**
+     * Dynamically import and initialise MeasurementEngine only when the
+     * Settings.json feature flag is true.  The dynamic import keeps the module
+     * out of the initial bundle when the feature is disabled.
+     */
+    private async _initMeasurementEngine(): Promise<void> {
+        const features = (settingsData as any).features ?? {};
+        if (features.measurementEngine === false) {
+            console.info("[SymbolEngine] MeasurementEngine disabled via Settings.json");
+            return;
+        }
+        try {
+            const { default: ME } = await import("./MeasurementEngine.ts");
+            this._measurementEngine = ME.getInstance();
+            this._measurementEngine.start(this.view);
+            this._contextMenuManager.linkMeasurementEngine(this._measurementEngine);
+            // Emit so the host app can initialise its panel
+            this.emitEvent("measurementEngineReady", { engine: this._measurementEngine });
+            console.info("[SymbolEngine] MeasurementEngine loaded");
+        } catch (e) {
+            console.error("[SymbolEngine] Failed to load MeasurementEngine:", e);
+        }
     }
 
     get view() {
@@ -551,8 +574,9 @@ class SymbolEngine implements Evented {
         return this._editEngine;
     }
 
-    /** Access the MeasurementEngine — configure units or toggle programmatically. */
-    public get measurementEngine(): MeasurementEngine {
+    /** Access the MeasurementEngine — configure units or toggle programmatically.
+     *  May be undefined if the feature is disabled in Settings.json or not yet loaded. */
+    public get measurementEngine(): MeasurementEngine | undefined {
         return this._measurementEngine;
     }
 
