@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"D:/Projects/Web/PAMS8/MS/Symbols/\"SlowGo* \"D:/Projects/Web/PAMS8/MS/Symbols/\"Bypass* \"D:/Projects/Web/PAMS8/MS/Symbols/\"StartLine* \"D:/Projects/Web/PAMS8/MS/Symbols/\"ObjArea*)"
+    ]
+  }
+}

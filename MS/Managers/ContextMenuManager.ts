@@ -194,17 +194,20 @@ class ContextMenuManager extends Evented {
         // Get graphic type from attributes
         const graphicType = graphic.attributes?.graphicType || graphic.attributes?.type;
 
-        // Check if we have menu items for this graphic type
-        if (!graphicType || !this.menuItems.has(graphicType)) {
+        // Resolve items: exact type match → fallback to first registered set → bail
+        let items: ContextMenuItem[];
+        if (graphicType && this.menuItems.has(graphicType)) {
+            items = this.menuItems.get(graphicType)!;
+        } else if (this.menuItems.size > 0) {
+            // No registered type for this graphic — show the first registered set
+            items = this.menuItems.values().next().value;
+        } else {
             console.warn(`No menu items registered for graphic type: ${graphicType}`);
             return;
         }
 
         // Store the active graphic
-        this.activeGraphic = graphic;
-
-        // Get menu items for this graphic type
-        const items = this.menuItems.get(graphicType)!;
+        this.activeGraphic = graphic;;
 
         // Create menu structure
         let currentGroup: string | null = null;
@@ -310,10 +313,15 @@ class ContextMenuManager extends Evented {
         const graphicType = this.activeGraphic.attributes?.graphicType ||
             this.activeGraphic.attributes?.type;
 
-        if (!graphicType || !this.menuItems.has(graphicType)) return;
-
-        // Find menu item
-        const items = this.menuItems.get(graphicType)!;
+        // Resolve items: exact type match → fallback to first registered set
+        let items: ContextMenuItem[];
+        if (graphicType && this.menuItems.has(graphicType)) {
+            items = this.menuItems.get(graphicType)!;
+        } else if (this.menuItems.size > 0) {
+            items = this.menuItems.values().next().value;
+        } else {
+            return;
+        }
         const item = items.find(i => i.id === actionId);
 
         if (!item) {
@@ -356,23 +364,26 @@ class ContextMenuManager extends Evented {
 
         // Listen for pointer-down events (to catch right-clicks)
         this.view.on("pointer-down", (event) => {
-            // Check if it's a right-click (button property is 2 for right clicks)
-            console.log("Click");
-            if (event.button === 2) {
-
-                console.log("Right Click");
-
-                // Store original event
-                this.originalEvent = event.native;
-
-                // Prevent default behavior
-                event.stopPropagation();
-
-                // Hide any existing menu
+            // Left-click (button 0) always dismisses any open menu
+            if (event.button !== 2) {
                 this.hideMenu();
+                return;
+            }
 
-                // Hit test to see if a graphic was clicked
-                this.view!.hitTest(event).then((response) => {
+            // Right-click handling
+            console.log("Right Click");
+
+            // Store original event
+            this.originalEvent = event.native;
+
+            // Prevent default behavior
+            event.stopPropagation();
+
+            // Hide any existing menu (in case another is open)
+            this.hideMenu();
+
+            // Hit test to see if a graphic was clicked
+            this.view!.hitTest(event).then((response) => {
                     console.log("Hit test", response);
                     // Find first graphic that matches our target criteria
                     const graphicHit = response.results?.find(result => {
@@ -416,11 +427,9 @@ class ContextMenuManager extends Evented {
                         this.showMenuAt(event.x, event.y, graphic);
                     }
                 });
-            }
         });
 
-        // Close menu on map click
-        reactiveUtils.on(() => this.view!, "click", this.hideMenu.bind(this));
+        // Note: menu dismissal on left-click is handled in the pointer-down handler above
     }
 
     /**

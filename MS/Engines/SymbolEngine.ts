@@ -35,6 +35,7 @@ import DrawEssentials from "../Support/DrawEssentials.ts";
 import Mapper from "../Engines/Mapper.ts"
 import AnnotationEngine from "./AnnotationEngine.ts";
 import GeoTools from "../Support/GeoTools.ts";
+import EditEngine from "./EditEngine.ts";
 
 
 interface Evented {
@@ -80,6 +81,7 @@ class SymbolEngine implements Evented {
     private _layerManager: GraphicsLayerManager;
     private _contextMenuManager: ContextMenuManager;
     private _getView: () => MapView | SceneView;
+    private _editEngine: EditEngine;
     private currentSymbol: any | undefined;
     private sidc:any | undefined;
     private amplifier: Amplifier | undefined;
@@ -96,6 +98,7 @@ class SymbolEngine implements Evented {
         this._getView = viewProvider;
         this._layerManager = GraphicsLayerManager.getInstance(this.view);
         this._layerManager.initializeLayers();
+        this._editEngine = new EditEngine(viewProvider, this._layerManager);
         this.ensureMsAvailable();
 
         // Initialize symbol engine
@@ -132,7 +135,7 @@ class SymbolEngine implements Evented {
         // Initialize the ContextMenuManager
         this._contextMenuManager = ContextMenuManager.getInstance();
         this._contextMenuManager.initialize(this.view, {
-            targetGraphicTypes: ["milSymbol", "specialPoint", "force"],
+            targetGraphicTypes: [],   // any type on these layers gets the menu
             targetLayerIds: [LAYER_NAMES.FORCE, LAYER_NAMES.TACT_PT, LAYER_NAMES.TACT, "milSymbols"]
         });
 
@@ -287,10 +290,11 @@ class SymbolEngine implements Evented {
 
 
     onViewChanged(newView: MapView | SceneView) {
-        console.log("SymbolEngine: Detected view change:00000000000000000000000", newView?.type);
+        console.log("SymbolEngine: Detected view change:", newView?.type);
+        this._editEngine.deactivate();
         this._layerManager = GraphicsLayerManager.getInstance(newView);
         this._layerManager.initializeLayers();
-        // Possibly clear or rebind events
+        this._editEngine = new EditEngine(this._getView, this._layerManager);
     }
 
     get view() {
@@ -348,6 +352,23 @@ class SymbolEngine implements Evented {
                 action: (graphic) => this.modifySymbol(graphic),
                 group: "Edit Actions",
                 order: 1
+            },
+            {
+                id: "edit-ctrl-pts",
+                label: "Edit Control Points",
+                icon: '<span style="font-size:14px">⬡</span>',
+                action: (graphic) => this.activateEditControlPoints(graphic),
+                group: "Edit Actions",
+                order: 2
+            },
+            {
+                id: "deactivate-ctrl-pts",
+                label: "Deactivate Control Points",
+                icon: '<span style="font-size:14px">✖</span>',
+                visible: (_graphic) => this._editEngine.isEditingControlPoints,
+                action: (_graphic) => this.deactivateEdit(),
+                group: "Edit Actions",
+                order: 3
             }
         ];
 
@@ -374,7 +395,10 @@ class SymbolEngine implements Evented {
         ];
 
         // Register the menu items
+        // "milSymbol" / "force" = legacy explicit types
+        // "symbol" = default type set by drawSymEnd for all tactical symbols
         this._contextMenuManager.registerMenuItems("milSymbol", milSymbolMenuItems);
+        this._contextMenuManager.registerMenuItems("symbol", milSymbolMenuItems);
         this._contextMenuManager.registerMenuItems("force", forceMenuItems);
 
         // You can also register menu items for other graphic types as needed
@@ -461,13 +485,41 @@ class SymbolEngine implements Evented {
     }
 
     /**
-     * Modify a military symbol
+     * Activate interactive editing for a graphic.
+     * Point symbols → move.  Poly/polygon symbols → move + rotate + scale.
+     * Called automatically from the right-click context menu "Modify Symbol" item.
      */
     private modifySymbol(graphic: Graphic): void {
-        console.log("Modifying symbol:", graphic.attributes?.name || "Unnamed");
+        console.log("SymbolEngine: activating edit for", graphic.attributes?.id ?? "graphic");
+        this._editEngine.activate(graphic);
+    }
 
-        // Example implementation - in a real app, you might show a form
-        // that allows users to modify the symbol's properties
+    /**
+     * Activate control-point editing (CTRL_PTS drag handles) for a poly/polygon graphic.
+     */
+    public activateEditControlPoints(graphic: Graphic): void {
+        this._editEngine.activateEditControlPoints(graphic);
+    }
+
+    /**
+     * Programmatically scale a point symbol by a factor (e.g. 1.2 = +20 %).
+     * Emits "scalePointSymbol" on the EditEngine; listen there to regenerate
+     * the PictureMarkerSymbol with the new SIZE.
+     */
+    public scalePointSymbol(graphic: Graphic, factor: number): void {
+        this._editEngine.scalePointSymbol(graphic, factor);
+    }
+
+    /**
+     * Deactivate any active edit / reshape session.
+     */
+    public deactivateEdit(): void {
+        this._editEngine.deactivate();
+    }
+
+    /** Access the underlying EditEngine to register event listeners. */
+    public get editEngine(): EditEngine {
+        return this._editEngine;
     }
 
 
