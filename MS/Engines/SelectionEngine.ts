@@ -70,10 +70,18 @@ class SelectionEngine {
 
     private _eventListeners: Map<string, Function[]> = new Map();
 
+    // Called after each graphic's geometry is updated so the caller can refresh annotations
+    private _annotationRefresh: ((graphic: Graphic) => void) | null = null;
+
     constructor(viewProvider: () => MapView | SceneView, layerManager: GraphicsLayerManager) {
         this._getView = viewProvider;
         this._layerManager = layerManager;
         this._highlightLayer = layerManager.getOrCreateLayer(LAYER_NAMES.SELECTION_HIGHLIGHT);
+    }
+
+    /** Register a callback that re-annotates a graphic after its geometry is moved. */
+    public setAnnotationRefreshCallback(fn: (graphic: Graphic) => void): void {
+        this._annotationRefresh = fn;
     }
 
     // ── View management ───────────────────────────────────────────────────────
@@ -97,6 +105,7 @@ class SelectionEngine {
         if (this._clickHandle) this._clickHandle.remove();
 
         this._clickHandle = this.view.on("click", async (evt) => {
+            if (evt.button !== 0) return; // ignore right/middle click — ArcGIS fires click for all buttons
             const isShift = (evt.native as MouseEvent).shiftKey;
 
             const response = await this.view.hitTest(evt);
@@ -291,6 +300,78 @@ class SelectionEngine {
         this._align("vertical", onEntry);
     }
 
+    // ── Edge-align operations ─────────────────────────────────────────────────
+    // Each moves every symbol so the specified edge/axis aligns to the extreme value
+    // across all selected graphics.  Works correctly for point, line, and area symbols
+    // because _edges() uses extent for line/polygon and raw coordinates for points.
+
+    alignLeft(onEntry?: (e: any) => void): void {
+        this._alignEdge("left", onEntry);
+    }
+
+    alignRight(onEntry?: (e: any) => void): void {
+        this._alignEdge("right", onEntry);
+    }
+
+    alignTop(onEntry?: (e: any) => void): void {
+        this._alignEdge("top", onEntry);
+    }
+
+    alignBottom(onEntry?: (e: any) => void): void {
+        this._alignEdge("bottom", onEntry);
+    }
+
+    /** Move all symbols so their centroids share the same X (vertical centre axis). */
+    centerOnX(onEntry?: (e: any) => void): void {
+        this._alignEdge("centerX", onEntry);
+    }
+
+    /** Move all symbols so their centroids share the same Y (horizontal centre axis). */
+    centerOnY(onEntry?: (e: any) => void): void {
+        this._alignEdge("centerY", onEntry);
+    }
+
+    private _alignEdge(
+        edge: "left" | "right" | "top" | "bottom" | "centerX" | "centerY",
+        onEntry?: (e: any) => void
+    ): void {
+        const graphics = this.selectedGraphics;
+        if (graphics.length < 2) return;
+        const snapshots = this._snapshots(graphics);
+        const edges = graphics.map(g => this._edges(g));
+
+        let target: number;
+        switch (edge) {
+            case "left":    target = Math.min(...edges.map(e => e.left));  break;
+            case "right":   target = Math.max(...edges.map(e => e.right)); break;
+            case "top":     target = Math.max(...edges.map(e => e.top));   break;
+            case "bottom":  target = Math.min(...edges.map(e => e.bottom)); break;
+            case "centerX": target = (Math.min(...edges.map(e => e.left)) + Math.max(...edges.map(e => e.right))) / 2; break;
+            case "centerY": target = (Math.min(...edges.map(e => e.bottom)) + Math.max(...edges.map(e => e.top))) / 2; break;
+        }
+
+        graphics.forEach((g, i) => {
+            let dx = 0, dy = 0;
+            switch (edge) {
+                case "left":    dx = target - edges[i].left;   break;
+                case "right":   dx = target - edges[i].right;  break;
+                case "top":     dy = target - edges[i].top;    break;
+                case "bottom":  dy = target - edges[i].bottom; break;
+                case "centerX": dx = target - edges[i].cx;     break;
+                case "centerY": dy = target - edges[i].cy;     break;
+            }
+            if (dx !== 0 || dy !== 0) this._applyDelta([g], dx, dy);
+        });
+
+        this._refreshHighlights();
+        const labels: Record<string, string> = {
+            left: "Align Left", right: "Align Right",
+            top: "Align Top", bottom: "Align Bottom",
+            centerX: "Center on X", centerY: "Center on Y"
+        };
+        this._pushAlignUndo(labels[edge], snapshots, onEntry);
+    }
+
     private _align(axis: "horizontal" | "vertical", onEntry?: (e: any) => void): void {
         const graphics = this.selectedGraphics;
         if (graphics.length < 2) return;
@@ -338,32 +419,69 @@ class SelectionEngine {
 
     /**
      * Arrange selected symbols in a square grid centred on their collective centroid.
+     * When `spacing` is omitted the mean nearest-neighbour distance of the current
+     * selection is used, so the formation respects the existing scale of the map.
      */
-    arrangeSquare(spacing: number = 500, onEntry?: (e: any) => void): void {
+    arrangeSquare(spacing?: number, onEntry?: (e: any) => void): void {
         this._arrange("square", spacing, onEntry);
     }
 
-    /**
-     * Arrange selected symbols in a triangle formation (1 front, widening to rear).
-     */
-    arrangeTriangle(spacing: number = 500, onEntry?: (e: any) => void): void {
+    /** Arrange in a triangle formation (1 front, widening to rear). */
+    arrangeTriangle(spacing?: number, onEntry?: (e: any) => void): void {
         this._arrange("triangle", spacing, onEntry);
     }
 
-    /**
-     * Arrange in an inverted triangle (wide front, narrowing to rear).
-     */
-    arrangeInvertedTriangle(spacing: number = 500, onEntry?: (e: any) => void): void {
+    /** Arrange in an inverted triangle (wide front, narrowing to rear). */
+    arrangeInvertedTriangle(spacing?: number, onEntry?: (e: any) => void): void {
         this._arrange("invertedTriangle", spacing, onEntry);
     }
 
+    /** V-shape: one lead symbol at the point, two arms trailing back at ~45°. */
+    arrangeWedge(spacing?: number, onEntry?: (e: any) => void): void {
+        this._arrange("wedge", spacing, onEntry);
+    }
+
+    /** Diagonal staircase, trailing left and rear. */
+    arrangeEchelonLeft(spacing?: number, onEntry?: (e: any) => void): void {
+        this._arrange("echelonLeft", spacing, onEntry);
+    }
+
+    /** Diagonal staircase, trailing right and rear. */
+    arrangeEchelonRight(spacing?: number, onEntry?: (e: any) => void): void {
+        this._arrange("echelonRight", spacing, onEntry);
+    }
+
+    /** Single file, evenly spaced along the Y axis (north–south column). */
+    arrangeColumn(spacing?: number, onEntry?: (e: any) => void): void {
+        this._arrange("column", spacing, onEntry);
+    }
+
+    /** Single file, evenly spaced along the X axis (east–west line). */
+    arrangeLine(spacing?: number, onEntry?: (e: any) => void): void {
+        this._arrange("line", spacing, onEntry);
+    }
+
+    /** Distribute symbols on the perimeter of a rotated square (N/E/S/W corners first). */
+    arrangeDiamond(spacing?: number, onEntry?: (e: any) => void): void {
+        this._arrange("diamond", spacing, onEntry);
+    }
+
+    /** Distribute symbols evenly around a circle; arc-spacing equals the computed spacing. */
+    arrangeCircle(spacing?: number, onEntry?: (e: any) => void): void {
+        this._arrange("circle", spacing, onEntry);
+    }
+
     private _arrange(
-        type: "square" | "triangle" | "invertedTriangle",
-        spacing: number,
+        type: "square" | "triangle" | "invertedTriangle" | "wedge" | "echelonLeft" | "echelonRight" | "column" | "line" | "diamond" | "circle",
+        spacingOverride: number | undefined,
         onEntry?: (e: any) => void
     ): void {
         const graphics = this.selectedGraphics;
         if (graphics.length < 2) return;
+
+        // Use the mean nearest-neighbour distance of the current layout so
+        // the formation preserves the visual scale rather than a hardcoded value.
+        const spacing = spacingOverride ?? this._computeSpacing(graphics);
 
         const snapshots = graphics.map(g => ({
             graphic: g, prevGeom: g.geometry.clone(), prevCtrlPts: null as any
@@ -382,20 +500,33 @@ class SelectionEngine {
         });
 
         this._refreshHighlights();
-        const label = type === "square" ? "Arrange Square"
-            : type === "triangle" ? "Arrange Triangle"
-            : "Arrange Inverted Triangle";
-        this._pushAlignUndo(label, snapshots, onEntry);
+        const labelMap: Record<string, string> = {
+            square: "Arrange Square", triangle: "Arrange Triangle",
+            invertedTriangle: "Arrange Inverted Triangle", wedge: "Arrange Wedge",
+            echelonLeft: "Arrange Echelon Left", echelonRight: "Arrange Echelon Right",
+            column: "Arrange Column", line: "Arrange Line",
+            diamond: "Arrange Diamond", circle: "Arrange Circle",
+        };
+        this._pushAlignUndo(labelMap[type] ?? "Arrange", snapshots, onEntry);
     }
 
     // ── Formation position generators ─────────────────────────────────────────
 
     private _formationPositions(
-        type: "square" | "triangle" | "invertedTriangle",
+        type: "square" | "triangle" | "invertedTriangle" | "wedge" | "echelonLeft" | "echelonRight" | "column" | "line" | "diamond" | "circle",
         n: number,
         cx: number, cy: number,
         spacing: number
     ): { x: number; y: number }[] {
+        switch (type) {
+            case "wedge":        return this._wedgePositions(n, cx, cy, spacing);
+            case "echelonLeft":  return this._echelonPositions(n, cx, cy, spacing, "left");
+            case "echelonRight": return this._echelonPositions(n, cx, cy, spacing, "right");
+            case "column":       return this._columnPositions(n, cx, cy, spacing);
+            case "line":         return this._linePositions(n, cx, cy, spacing);
+            case "diamond":      return this._diamondPerimeterPositions(n, cx, cy, spacing);
+            case "circle":       return this._circlePositions(n, cx, cy, spacing);
+        }
         if (type === "square") {
             const cols = Math.ceil(Math.sqrt(n));
             const rows = Math.ceil(n / cols);
@@ -442,6 +573,148 @@ class SelectionEngine {
             row++;
         }
         return rows;
+    }
+
+    /**
+     * Wedge (V-shape): one tip at the front, arms alternating left/right going back.
+     * Odd remainders go to a centre column behind the last arm pair.
+     */
+    private _wedgePositions(n: number, cx: number, cy: number, s: number): { x: number; y: number }[] {
+        const depth = Math.ceil((n - 1) / 2);
+        const positions: { x: number; y: number }[] = [{ x: cx, y: cy + depth * s }];
+        let la = 1, ra = 1;
+        for (let i = 1; i < n; i++) {
+            if (i % 2 === 1) {
+                positions.push({ x: cx - la * s, y: cy + (depth - la) * s });
+                la++;
+            } else {
+                positions.push({ x: cx + ra * s, y: cy + (depth - ra) * s });
+                ra++;
+            }
+        }
+        return positions;
+    }
+
+    /**
+     * Echelon: diagonal staircase.
+     * Left: lead is top-right, trail goes down-left.
+     * Right: lead is top-left, trail goes down-right.
+     */
+    private _echelonPositions(n: number, cx: number, cy: number, s: number, dir: "left" | "right"): { x: number; y: number }[] {
+        const sign = dir === "left" ? -1 : 1;
+        return Array.from({ length: n }, (_, i) => ({
+            x: cx + sign * (i - (n - 1) / 2) * s,
+            y: cy + ((n - 1) / 2 - i) * s
+        }));
+    }
+
+    /** Column: single file along Y axis, evenly spaced, all at the same X. */
+    private _columnPositions(n: number, cx: number, cy: number, s: number): { x: number; y: number }[] {
+        return Array.from({ length: n }, (_, i) => ({
+            x: cx,
+            y: cy + ((n - 1) / 2 - i) * s
+        }));
+    }
+
+    /** Line: single file along X axis, evenly spaced, all at the same Y. */
+    private _linePositions(n: number, cx: number, cy: number, s: number): { x: number; y: number }[] {
+        return Array.from({ length: n }, (_, i) => ({
+            x: cx + (i - (n - 1) / 2) * s,
+            y: cy
+        }));
+    }
+
+    /**
+     * Diamond: symbols distributed evenly on the perimeter of a rotated square
+     * (radius = spacing).  For n=4 this gives the classic N/E/S/W diamond.
+     */
+    private _diamondPerimeterPositions(n: number, cx: number, cy: number, s: number): { x: number; y: number }[] {
+        if (n === 1) return [{ x: cx, y: cy }];
+        if (n === 2) return [{ x: cx, y: cy + s }, { x: cx, y: cy - s }];
+        if (n === 3) return [{ x: cx, y: cy + s }, { x: cx - s, y: cy - s }, { x: cx + s, y: cy - s }];
+
+        return Array.from({ length: n }, (_, i) => {
+            const t = (i / n) * 4;   // [0, 4) mapped to 4 sides
+            const frac = t % 1;
+            if (t < 1) return { x: cx + frac * s,         y: cy + (1 - frac) * s }; // N→E
+            if (t < 2) return { x: cx + (1 - frac) * s,   y: cy - frac * s };       // E→S
+            if (t < 3) return { x: cx - frac * s,         y: cy - (1 - frac) * s }; // S→W
+            return           { x: cx - (1 - frac) * s,    y: cy + frac * s };        // W→N
+        });
+    }
+
+    /**
+     * Circle: symbols distributed evenly on a circle whose arc-spacing ≈ spacing.
+     * Starts at the top (north) and goes clockwise.
+     */
+    private _circlePositions(n: number, cx: number, cy: number, s: number): { x: number; y: number }[] {
+        const radius = (s * n) / (2 * Math.PI);
+        return Array.from({ length: n }, (_, i) => {
+            const angle = (2 * Math.PI * i / n) - Math.PI / 2; // 0 = north
+            return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+        });
+    }
+
+    // ── Shared snap/edge helpers ──────────────────────────────────────────────
+
+    /**
+     * Derive a formation spacing from the current layout of the selected graphics.
+     *
+     * Algorithm: mean nearest-neighbour distance across all selected symbol centroids.
+     * This respects whatever zoom-level / map-scale the user is working at.
+     * If all symbols are stacked on the same point a pixel-based fallback is used.
+     */
+    private _computeSpacing(graphics: Graphic[]): number {
+        const pts = graphics.map(g => this._centroid(g));
+        const n = pts.length;
+
+        let totalNND = 0;
+        for (let i = 0; i < n; i++) {
+            let minDist = Infinity;
+            for (let j = 0; j < n; j++) {
+                if (i === j) continue;
+                const dx = pts[i].x - pts[j].x;
+                const dy = pts[i].y - pts[j].y;
+                const d = Math.sqrt(dx * dx + dy * dy);
+                if (d < minDist) minDist = d;
+            }
+            if (isFinite(minDist)) totalNND += minDist;
+        }
+        const meanNND = totalNND / n;
+
+        // Pixel-based fallback for stacked/coincident symbols (at least 60 screen px)
+        const pixelFallback = ((this.view as any).resolution ?? 1) * 60;
+        return meanNND > 0 ? meanNND : pixelFallback;
+    }
+
+    /** Snapshot geometries before a bulk operation so undo can restore them. */
+    private _snapshots(graphics: Graphic[]): { graphic: Graphic; prevGeom: any }[] {
+        return graphics.map(g => ({ graphic: g, prevGeom: g.geometry?.clone() }));
+    }
+
+    /**
+     * Bounding edges of a graphic's geometry.
+     * Point symbols use their coordinates directly (no spatial extent).
+     * Line/area symbols use the geometry's extent.
+     */
+    private _edges(graphic: Graphic): { left: number; right: number; top: number; bottom: number; cx: number; cy: number } {
+        const geom = graphic.geometry;
+        if (!geom) return { left: 0, right: 0, top: 0, bottom: 0, cx: 0, cy: 0 };
+        if (geom.type === "point") {
+            const p = geom as Point;
+            return { left: p.x, right: p.x, top: p.y, bottom: p.y, cx: p.x, cy: p.y };
+        }
+        const ext = geom.extent;
+        if (!ext) {
+            const c = this._centroid(graphic);
+            return { left: c.x, right: c.x, top: c.y, bottom: c.y, cx: c.x, cy: c.y };
+        }
+        return {
+            left: ext.xmin, right: ext.xmax,
+            top: ext.ymax, bottom: ext.ymin,
+            cx: (ext.xmin + ext.xmax) / 2,
+            cy: (ext.ymin + ext.ymax) / 2
+        };
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -505,6 +778,9 @@ class SelectionEngine {
                     ...p, x: (p.x ?? 0) + dx, y: (p.y ?? 0) + dy
                 }));
             }
+
+            // Refresh annotation label at new position
+            this._annotationRefresh?.(g);
         });
     }
 
@@ -574,11 +850,17 @@ class SelectionEngine {
         onEntry({
             label,
             undo: () => {
-                snapshots.forEach(s => { s.graphic.geometry = s.prevGeom; });
+                snapshots.forEach(s => {
+                    s.graphic.geometry = s.prevGeom;
+                    this._annotationRefresh?.(s.graphic);
+                });
                 this._refreshHighlights();
             },
             redo: () => {
-                afterStates.forEach(s => { s.graphic.geometry = s.afterGeom; });
+                afterStates.forEach(s => {
+                    s.graphic.geometry = s.afterGeom;
+                    this._annotationRefresh?.(s.graphic);
+                });
                 this._refreshHighlights();
             },
         });

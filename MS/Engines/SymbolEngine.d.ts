@@ -184,10 +184,20 @@ declare class SymbolEngine implements Evented {
      */
     get hasClipboard(): boolean;
     /**
-     * Paste the clipboard graphic at a specific map point.
-     * Returns the newly created Graphic, or null if the clipboard is empty.
+     * Paste clipboard graphic(s) at targetPoint.
+     * Single item: places its centroid at targetPoint.
+     * Multiple items: preserves relative layout, collective centroid lands at targetPoint.
+     * Returns the first pasted Graphic, or null if clipboard is empty.
      */
     pasteSymbol(targetPoint: Point): Graphic | null;
+    /** Paste a single clipboard item whose geometry has already been positioned. */
+    private _pasteOneItem;
+    /** Build a new graphic from a clipboard item + positioned geometry, returning undo/redo closures. */
+    private _buildPastedGraphic;
+    /** Centroid of all clipboard geometries (for multi-paste anchor). */
+    private _clipboardCentroid;
+    /** Translate all vertices of a geometry by (dx, dy). */
+    private _shiftGeometry;
     /**
      * Enter "paste mode": the next map click pastes the clipboard graphic there.
      * Escape cancels paste mode.

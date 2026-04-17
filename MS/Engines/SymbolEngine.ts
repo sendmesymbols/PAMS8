@@ -109,8 +109,8 @@ class SymbolEngine implements Evented {
     // Geometry/CTRL_PTS snapshot captured just before an edit operation starts
     private _preEditSnapshot: { geometry: any; ctrlPts: any; baseLnPts: any } | null = null;
 
-    // Copy/Paste clipboard
-    private _clipboard: { graphic: Graphic; layerId: string } | null = null;
+    // Copy/Paste clipboard — stores one or more items for multi-copy
+    private _clipboard: Array<{ graphic: Graphic; layerId: string }> | null = null;
 
     // Multi-select
     private _selectionEngine!: SelectionEngine;
@@ -126,6 +126,17 @@ class SymbolEngine implements Evented {
         this._wireEditEngineUndo();
         this._selectionEngine = new SelectionEngine(viewProvider, this._layerManager);
         this._selectionEngine.activate([LAYER_NAMES.FORCE, LAYER_NAMES.TACT_PT, LAYER_NAMES.TACT, "milSymbols"]);
+        this._selectionEngine.setAnnotationRefreshCallback((graphic: Graphic) => {
+            const de = graphic.attributes?.drawEssentials;
+            const id = graphic.attributes?.id;
+            if (!de?.AMPLIFIER || !id) return;
+            const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
+            AnnotationEngine.deAnnotate(annotationLayer, id);
+            AnnotationEngine.annotate(
+                annotationLayer, graphic.geometry, de.AMPLIFIER, de,
+                id, settingsData.textSize, de.ISFHAND || 0, this.labelOptions || {}, {}
+            );
+        });
         this.ensureMsAvailable();
 
         // Initialize symbol engine
@@ -522,40 +533,140 @@ class SymbolEngine implements Evented {
                             (entry) => this._pushUndo(entry)
                         )
                     },
+                    // ── Align sub-submenu ─────────────────────────────────
                     {
-                        id: "align-horizontal",
-                        label: "Distribute Horizontal",
-                        icon: '<span style="font-size:14px">⇔</span>',
-                        visible: () => this._selectionEngine.count > 1,
-                        action: (_graphic) => this._selectionEngine.alignHorizontal(e => this._pushUndo(e))
-                    },
-                    {
-                        id: "align-vertical",
-                        label: "Distribute Vertical",
-                        icon: '<span style="font-size:14px">⇕</span>',
-                        visible: () => this._selectionEngine.count > 1,
-                        action: (_graphic) => this._selectionEngine.alignVertical(e => this._pushUndo(e))
-                    },
-                    {
-                        id: "arrange-square",
-                        label: "Arrange Square",
+                        id: "align-submenu",
+                        label: "Align",
                         icon: '<span style="font-size:14px">⊞</span>',
                         visible: () => this._selectionEngine.count > 1,
-                        action: (_graphic) => this._selectionEngine.arrangeSquare(500, e => this._pushUndo(e))
+                        children: [
+                            {
+                                id: "align-left",
+                                label: "Align Left",
+                                icon: '<span style="font-size:14px">⬅</span>',
+                                action: (_g) => this._selectionEngine.alignLeft(e => this._pushUndo(e))
+                            },
+                            {
+                                id: "align-right",
+                                label: "Align Right",
+                                icon: '<span style="font-size:14px">➡</span>',
+                                action: (_g) => this._selectionEngine.alignRight(e => this._pushUndo(e))
+                            },
+                            {
+                                id: "align-top",
+                                label: "Align Top",
+                                icon: '<span style="font-size:14px">⬆</span>',
+                                action: (_g) => this._selectionEngine.alignTop(e => this._pushUndo(e))
+                            },
+                            {
+                                id: "align-bottom",
+                                label: "Align Bottom",
+                                icon: '<span style="font-size:14px">⬇</span>',
+                                action: (_g) => this._selectionEngine.alignBottom(e => this._pushUndo(e))
+                            },
+                            {
+                                id: "center-on-x",
+                                label: "Center on X",
+                                icon: '<span style="font-size:14px">↕</span>',
+                                action: (_g) => this._selectionEngine.centerOnX(e => this._pushUndo(e))
+                            },
+                            {
+                                id: "center-on-y",
+                                label: "Center on Y",
+                                icon: '<span style="font-size:14px">↔</span>',
+                                action: (_g) => this._selectionEngine.centerOnY(e => this._pushUndo(e))
+                            }
+                        ]
                     },
+                    // ── Distribute sub-submenu ────────────────────────────
                     {
-                        id: "arrange-triangle",
-                        label: "Arrange Triangle",
-                        icon: '<span style="font-size:14px">▲</span>',
+                        id: "distribute-submenu",
+                        label: "Distribute",
+                        icon: '<span style="font-size:14px">⇔</span>',
                         visible: () => this._selectionEngine.count > 1,
-                        action: (_graphic) => this._selectionEngine.arrangeTriangle(500, e => this._pushUndo(e))
+                        children: [
+                            {
+                                id: "align-horizontal",
+                                label: "Distribute Horizontal",
+                                icon: '<span style="font-size:14px">⇔</span>',
+                                action: (_g) => this._selectionEngine.alignHorizontal(e => this._pushUndo(e))
+                            },
+                            {
+                                id: "align-vertical",
+                                label: "Distribute Vertical",
+                                icon: '<span style="font-size:14px">⇕</span>',
+                                action: (_g) => this._selectionEngine.alignVertical(e => this._pushUndo(e))
+                            }
+                        ]
                     },
+                    // ── Arrange sub-submenu ───────────────────────────────
                     {
-                        id: "arrange-inv-triangle",
-                        label: "Arrange Inverted Triangle",
-                        icon: '<span style="font-size:14px">▽</span>',
+                        id: "arrange-submenu",
+                        label: "Arrange",
+                        icon: '<span style="font-size:14px">⊞</span>',
                         visible: () => this._selectionEngine.count > 1,
-                        action: (_graphic) => this._selectionEngine.arrangeInvertedTriangle(500, e => this._pushUndo(e))
+                        children: [
+                            {
+                                id: "arrange-line",
+                                label: "Line",
+                                icon: '<span style="font-size:14px">―</span>',
+                                action: (_g) => this._selectionEngine.arrangeLine(undefined, e => this._pushUndo(e))
+                            },
+                            {
+                                id: "arrange-column",
+                                label: "Column",
+                                icon: '<span style="font-size:14px">|</span>',
+                                action: (_g) => this._selectionEngine.arrangeColumn(undefined, e => this._pushUndo(e))
+                            },
+                            {
+                                id: "arrange-square",
+                                label: "Square Grid",
+                                icon: '<span style="font-size:14px">⊞</span>',
+                                action: (_g) => this._selectionEngine.arrangeSquare(undefined, e => this._pushUndo(e))
+                            },
+                            {
+                                id: "arrange-triangle",
+                                label: "Triangle",
+                                icon: '<span style="font-size:14px">▲</span>',
+                                action: (_g) => this._selectionEngine.arrangeTriangle(undefined, e => this._pushUndo(e))
+                            },
+                            {
+                                id: "arrange-inv-triangle",
+                                label: "Inverted Triangle",
+                                icon: '<span style="font-size:14px">▽</span>',
+                                action: (_g) => this._selectionEngine.arrangeInvertedTriangle(undefined, e => this._pushUndo(e))
+                            },
+                            {
+                                id: "arrange-wedge",
+                                label: "Wedge",
+                                icon: '<span style="font-size:14px">⋁</span>',
+                                action: (_g) => this._selectionEngine.arrangeWedge(undefined, e => this._pushUndo(e))
+                            },
+                            {
+                                id: "arrange-echelon-left",
+                                label: "Echelon Left",
+                                icon: '<span style="font-size:14px">↙</span>',
+                                action: (_g) => this._selectionEngine.arrangeEchelonLeft(undefined, e => this._pushUndo(e))
+                            },
+                            {
+                                id: "arrange-echelon-right",
+                                label: "Echelon Right",
+                                icon: '<span style="font-size:14px">↘</span>',
+                                action: (_g) => this._selectionEngine.arrangeEchelonRight(undefined, e => this._pushUndo(e))
+                            },
+                            {
+                                id: "arrange-diamond",
+                                label: "Diamond",
+                                icon: '<span style="font-size:14px">◇</span>',
+                                action: (_g) => this._selectionEngine.arrangeDiamond(undefined, e => this._pushUndo(e))
+                            },
+                            {
+                                id: "arrange-circle",
+                                label: "Circle",
+                                icon: '<span style="font-size:14px">○</span>',
+                                action: (_g) => this._selectionEngine.arrangeCircle(undefined, e => this._pushUndo(e))
+                            }
+                        ]
                     }
                 ]
             },
@@ -1046,12 +1157,17 @@ class SymbolEngine implements Evented {
      * Stores a deep clone of the graphic's geometry, symbol, and drawEssentials.
      */
     public copySymbol(graphic: Graphic): void {
-        this._clipboard = {
-            graphic: graphic.clone(),
-            layerId: graphic.layer?.id ?? this._layerManager.getSymbolLayer().id
-        };
-        console.info("[CopyPaste] Copied:", graphic.attributes?.id ?? "graphic");
-        this.emitEvent("symbolCopied", { graphic });
+        // When the right-clicked graphic is part of a multi-selection, copy all selected
+        const toCopy = (this._selectionEngine.isSelected(graphic) && this._selectionEngine.count > 1)
+            ? this._selectionEngine.selectedGraphics
+            : [graphic];
+        const clipboard = toCopy.map(g => ({
+            graphic: g.clone(),
+            layerId: String(g.layer?.id ?? this._layerManager.getSymbolLayer().id)
+        }));
+        this._clipboard = clipboard;
+        console.info(`[CopyPaste] Copied ${clipboard.length} graphic(s)`);
+        this.emitEvent("symbolCopied", { graphic, count: clipboard.length });
     }
 
     /**
@@ -1062,34 +1178,79 @@ class SymbolEngine implements Evented {
     }
 
     /**
-     * Paste the clipboard graphic at a specific map point.
-     * Returns the newly created Graphic, or null if the clipboard is empty.
+     * Paste clipboard graphic(s) at targetPoint.
+     * Single item: places its centroid at targetPoint.
+     * Multiple items: preserves relative layout, collective centroid lands at targetPoint.
+     * Returns the first pasted Graphic, or null if clipboard is empty.
      */
     public pasteSymbol(targetPoint: Point): Graphic | null {
-        if (!this._clipboard) return null;
+        if (!this._clipboard || this._clipboard.length === 0) return null;
 
-        const source = this._clipboard.graphic;
-        const de = source.attributes?.drawEssentials;
+        const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
 
-        // Clone and offset geometry to the target point
-        const newGeom = this._offsetGeometryTo(source.geometry, targetPoint);
+        if (this._clipboard.length === 1) {
+            const item = this._clipboard[0];
+            return this._pasteOneItem(item, this._offsetGeometryTo(item.graphic.geometry, targetPoint), annotationLayer);
+        }
+
+        // Multi-paste: compute collective centroid and apply uniform offset
+        const centroid = this._clipboardCentroid();
+        const dx = targetPoint.x - centroid.x;
+        const dy = targetPoint.y - centroid.y;
+
+        const pasted: Graphic[] = [];
+        const undos: (() => void)[] = [];
+        const redos: (() => void)[] = [];
+
+        for (const item of this._clipboard) {
+            const newGeom = this._shiftGeometry(item.graphic.geometry, dx, dy);
+            if (!newGeom) continue;
+            const { graphic: g, undo, redo } = this._buildPastedGraphic(item, newGeom, annotationLayer);
+            const layer = this._layerManager.getOrCreateLayer(item.layerId) ?? this._layerManager.getSymbolLayer();
+            layer.add(g);
+            pasted.push(g);
+            undos.push(undo);
+            redos.push(redo);
+        }
+
+        if (pasted.length > 0) {
+            this._pushUndo({
+                label: `Paste ${pasted.length} Symbols`,
+                undo: () => undos.forEach(fn => fn()),
+                redo: () => redos.forEach(fn => fn()),
+            });
+            console.info(`[CopyPaste] Pasted ${pasted.length} graphics at`, targetPoint);
+            this.emitEvent("symbolPasted", { graphics: pasted, count: pasted.length });
+        }
+        return pasted[0] ?? null;
+    }
+
+    /** Paste a single clipboard item whose geometry has already been positioned. */
+    private _pasteOneItem(item: { graphic: Graphic; layerId: string }, newGeom: any, annotationLayer: GraphicsLayer): Graphic | null {
         if (!newGeom) return null;
+        const { graphic: newGraphic, undo, redo } = this._buildPastedGraphic(item, newGeom, annotationLayer);
+        const layer = this._layerManager.getOrCreateLayer(item.layerId) ?? this._layerManager.getSymbolLayer();
+        layer.add(newGraphic);
+        this._pushUndo({ label: "Paste Symbol", undo, redo });
+        console.info("[CopyPaste] Pasted at", newGeom);
+        this.emitEvent("symbolPasted", { graphic: newGraphic });
+        return newGraphic;
+    }
 
+    /** Build a new graphic from a clipboard item + positioned geometry, returning undo/redo closures. */
+    private _buildPastedGraphic(
+        item: { graphic: Graphic; layerId: string },
+        newGeom: any,
+        annotationLayer: GraphicsLayer
+    ): { graphic: Graphic; undo: () => void; redo: () => void } {
+        const source = item.graphic;
+        const de = source.attributes?.drawEssentials;
         const newId = this.generateUUID();
         const newGraphic = source.clone();
         newGraphic.geometry = newGeom;
-        newGraphic.attributes = {
-            ...source.attributes,
-            id: newId,
-            drawEssentials: de ? { ...de } : undefined,
-        };
+        newGraphic.attributes = { ...source.attributes, id: newId, drawEssentials: de ? { ...de } : undefined };
 
-        const layer = this._layerManager.getOrCreateLayer(this._clipboard.layerId)
-            ?? this._layerManager.getSymbolLayer();
-        layer.add(newGraphic);
-
-        // Re-annotate
-        const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
+        const layer = this._layerManager.getOrCreateLayer(item.layerId) ?? this._layerManager.getSymbolLayer();
         if (de?.AMPLIFIER) {
             AnnotationEngine.annotate(
                 annotationLayer, newGeom, de.AMPLIFIER,
@@ -1097,29 +1258,42 @@ class SymbolEngine implements Evented {
                 de.ISFHAND || 0, this.labelOptions || {}, {}
             );
         }
-
-        // Push undo entry
-        this._pushUndo({
-            label: "Paste Symbol",
-            undo: () => {
-                layer.remove(newGraphic);
-                AnnotationEngine.deAnnotate(annotationLayer, newId);
-            },
+        return {
+            graphic: newGraphic,
+            undo: () => { layer.remove(newGraphic); AnnotationEngine.deAnnotate(annotationLayer, newId); },
             redo: () => {
                 layer.add(newGraphic);
-                if (de?.AMPLIFIER) {
-                    AnnotationEngine.annotate(
-                        annotationLayer, newGeom, de.AMPLIFIER,
-                        de, newId, settingsData.textSize,
-                        de.ISFHAND || 0, this.labelOptions || {}, {}
-                    );
-                }
+                if (de?.AMPLIFIER) AnnotationEngine.annotate(annotationLayer, newGeom, de.AMPLIFIER, de, newId, settingsData.textSize, de.ISFHAND || 0, this.labelOptions || {}, {});
             }
-        });
+        };
+    }
 
-        console.info("[CopyPaste] Pasted at", targetPoint);
-        this.emitEvent("symbolPasted", { graphic: newGraphic });
-        return newGraphic;
+    /** Centroid of all clipboard geometries (for multi-paste anchor). */
+    private _clipboardCentroid(): { x: number; y: number } {
+        if (!this._clipboard || this._clipboard.length === 0) return { x: 0, y: 0 };
+        let tx = 0, ty = 0;
+        for (const { graphic: g } of this._clipboard) {
+            const geom = g.geometry;
+            if (!geom) continue;
+            if (geom.type === "point") { tx += (geom as any).x; ty += (geom as any).y; }
+            else { const ext = geom.extent; if (ext) { tx += (ext.xmin + ext.xmax) / 2; ty += (ext.ymin + ext.ymax) / 2; } }
+        }
+        return { x: tx / this._clipboard.length, y: ty / this._clipboard.length };
+    }
+
+    /** Translate all vertices of a geometry by (dx, dy). */
+    private _shiftGeometry(sourceGeom: any, dx: number, dy: number): any {
+        if (!sourceGeom) return null;
+        try {
+            const clone = sourceGeom.clone();
+            if (clone.type === "point") { clone.x += dx; clone.y += dy; }
+            else if (clone.type === "polyline") {
+                clone.paths = clone.paths.map((path: number[][]) => path.map(([x, y, ...r]) => [x + dx, y + dy, ...r]));
+            } else if (clone.type === "polygon") {
+                clone.rings = clone.rings.map((ring: number[][]) => ring.map(([x, y, ...r]) => [x + dx, y + dy, ...r]));
+            }
+            return clone;
+        } catch { return sourceGeom.clone(); }
     }
 
     /**
