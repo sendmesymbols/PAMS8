@@ -925,8 +925,11 @@ class SymbolEngine implements Evented {
     public modifySymbol(graphic: Graphic): void {
         console.log("SymbolEngine: activating edit for", graphic.attributes?.id ?? "graphic");
         this._closeActiveWorkflow();
-        this._capturePreEditSnapshot(graphic, "Move, Scale, Rotate");
-        this._editEngine.activate(graphic);
+        const selected = this._selectionEngine.selectedGraphics;
+        const isInSelection = selected.some(g => g === graphic);
+        const additional = isInSelection ? selected.filter(g => g !== graphic) : [];
+        this._capturePreEditSnapshot(graphic, additional, "Move, Scale, Rotate");
+        this._editEngine.activate(graphic, additional);
     }
 
     /**
@@ -934,7 +937,7 @@ class SymbolEngine implements Evented {
      */
     public activateEditControlPoints(graphic: Graphic): void {
         this._closeActiveWorkflow();
-        this._capturePreEditSnapshot(graphic, "Edit Control Points");
+        this._capturePreEditSnapshot(graphic, [], "Edit Control Points");
         this._editEngine.activateEditControlPoints(graphic);
     }
 
@@ -1054,7 +1057,7 @@ class SymbolEngine implements Evented {
     }
 
     /** Snapshot the graphic's current geometry and CTRL_PTS before an edit begins. */
-    private _capturePreEditSnapshot(graphic: Graphic, operationLabel: string): void {
+    private _capturePreEditSnapshot(graphic: Graphic, additionalGraphics: Graphic[], operationLabel: string): void {
         const de = graphic.attributes?.drawEssentials;
         this._preEditSnapshot = {
             geometry: graphic.geometry?.clone(),
@@ -1063,6 +1066,15 @@ class SymbolEngine implements Evented {
         };
         (this._preEditSnapshot as any)._graphic = graphic;
         (this._preEditSnapshot as any)._label = operationLabel;
+        (this._preEditSnapshot as any)._additionalSnapshots = additionalGraphics.map(g => {
+            const ade = g.attributes?.drawEssentials;
+            return {
+                graphic: g,
+                geometry: g.geometry?.clone(),
+                ctrlPts: ade?.CTRL_PTS ? ade.CTRL_PTS.map((p: any) => p.clone?.() ?? p) : null,
+                baseLnPts: ade?.BASE_LN_PTS ? JSON.parse(JSON.stringify(ade.BASE_LN_PTS)) : null,
+            };
+        });
     }
 
     /**
@@ -1074,30 +1086,34 @@ class SymbolEngine implements Evented {
             const snap = this._preEditSnapshot;
             if (!snap || (snap as any)._graphic !== graphic) return;
 
-            const prevGeometry = snap.geometry;
-            const prevCtrlPts = snap.ctrlPts;
-            const prevBaseLnPts = snap.baseLnPts;
             const label = (snap as any)._label ?? "Edit";
-
-            // Capture the "after" state now (changeInSymbol fires after completion)
-            const de = graphic.attributes?.drawEssentials;
-            const nextGeometry = graphic.geometry?.clone();
-            const nextCtrlPts = de?.CTRL_PTS ? de.CTRL_PTS.map((p: any) => p.clone?.() ?? p) : null;
-            const nextBaseLnPts = de?.BASE_LN_PTS ? JSON.parse(JSON.stringify(de.BASE_LN_PTS)) : null;
-
             const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
-            const graphicId = graphic.attributes?.id;
 
-            const applyState = (geom: any, ctrlPts: any, baseLnPts: any) => {
-                graphic.geometry = geom;
+            // Build undo/redo state for primary graphic
+            const primaryStates = this._buildGraphicUndoState(graphic, snap);
+
+            // Build undo/redo state for additional graphics
+            const additionalPrev: { graphic: Graphic; geometry: any; ctrlPts: any; baseLnPts: any }[] =
+                ((snap as any)._additionalSnapshots ?? []).map((s: any) => ({
+                    graphic: s.graphic,
+                    geometry: s.geometry,
+                    ctrlPts: s.ctrlPts,
+                    baseLnPts: s.baseLnPts,
+                }));
+            const additionalNext = additionalPrev.map(s => this._buildGraphicUndoState(s.graphic, s));
+
+            const applyGraphicState = (g: Graphic, geom: any, ctrlPts: any, baseLnPts: any) => {
+                const de = g.attributes?.drawEssentials;
+                g.geometry = geom;
                 if (de && ctrlPts) de.CTRL_PTS = ctrlPts;
                 if (de && baseLnPts) de.BASE_LN_PTS = baseLnPts;
-                if (graphicId) {
-                    AnnotationEngine.deAnnotate(annotationLayer, graphicId);
+                const gid = g.attributes?.id;
+                if (gid) {
+                    AnnotationEngine.deAnnotate(annotationLayer, gid);
                     if (de?.AMPLIFIER) {
                         AnnotationEngine.annotate(
                             annotationLayer, geom, de.AMPLIFIER,
-                            de, graphicId, settingsData.textSize,
+                            de, gid, settingsData.textSize,
                             de.ISFHAND || 0, this.labelOptions || {}, {}
                         );
                     }
@@ -1106,12 +1122,30 @@ class SymbolEngine implements Evented {
 
             this._pushUndo({
                 label,
-                undo: () => applyState(prevGeometry, prevCtrlPts, prevBaseLnPts),
-                redo: () => applyState(nextGeometry, nextCtrlPts, nextBaseLnPts),
+                undo: () => {
+                    applyGraphicState(graphic, primaryStates.prev.geometry, primaryStates.prev.ctrlPts, primaryStates.prev.baseLnPts);
+                    additionalPrev.forEach(s => applyGraphicState(s.graphic, s.geometry, s.ctrlPts, s.baseLnPts));
+                },
+                redo: () => {
+                    applyGraphicState(graphic, primaryStates.next.geometry, primaryStates.next.ctrlPts, primaryStates.next.baseLnPts);
+                    additionalNext.forEach(s => applyGraphicState(s.graphic, s.geometry, s.ctrlPts, s.baseLnPts));
+                },
             });
 
             this._preEditSnapshot = null;
         });
+    }
+
+    private _buildGraphicUndoState(graphic: Graphic, prevSnap: { geometry: any; ctrlPts: any; baseLnPts: any }) {
+        const de = graphic.attributes?.drawEssentials;
+        return {
+            prev: { geometry: prevSnap.geometry, ctrlPts: prevSnap.ctrlPts, baseLnPts: prevSnap.baseLnPts },
+            next: {
+                geometry: graphic.geometry?.clone(),
+                ctrlPts: de?.CTRL_PTS ? de.CTRL_PTS.map((p: any) => p.clone?.() ?? p) : null,
+                baseLnPts: de?.BASE_LN_PTS ? JSON.parse(JSON.stringify(de.BASE_LN_PTS)) : null,
+            },
+        };
     }
 
     /** Undo the last operation. */

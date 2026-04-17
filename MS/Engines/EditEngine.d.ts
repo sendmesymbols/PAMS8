@@ -29,6 +29,7 @@ declare class EditEngine {
     private _originalGeometry;
     private _originalCtrlPts;
     private _originalBaseLnPts;
+    private _additionalSnapshots;
     private _handleLayer;
     private _handleGraphics;
     private _pointerDownHandle;
@@ -51,7 +52,7 @@ declare class EditEngine {
      * Annotations are removed at the start of the operation and restored
      * when the operation completes or is cancelled.
      */
-    activate(graphic: Graphic): void;
+    activate(graphic: Graphic, additionalGraphics?: Graphic[]): void;
     /**
      * Activate reshape mode for a poly/polygon symbol.
      * Places a draggable handle at each CTRL_PT; dragging a handle updates
@@ -89,6 +90,8 @@ declare class EditEngine {
      * so they remain consistent for future saves or redraws.
      */
     private _syncCtrlPts;
+    /** Sync CTRL_PTS for an additional graphic using its own pre-edit snapshot. */
+    private _syncCtrlPtsFrom;
     /**
      * Derive the 2D similarity transform that maps oldGeom to newGeom.
      *

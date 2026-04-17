@@ -62,6 +62,9 @@ class EditEngine {
     private _originalCtrlPts: Point[] | null = null;
     private _originalBaseLnPts: any = null;
 
+    // Additional graphics (from a multi-selection) included in the same transform session.
+    private _additionalSnapshots: { graphic: Graphic; geometry: any; ctrlPts: Point[] | null; baseLnPts: any }[] = [];
+
     // Reshape handle state
     private _handleLayer: GraphicsLayer;
     private _handleGraphics: Graphic[] = [];
@@ -100,14 +103,16 @@ class EditEngine {
      * Annotations are removed at the start of the operation and restored
      * when the operation completes or is cancelled.
      */
-    public activate(graphic: Graphic): void {
+    public activate(graphic: Graphic, additionalGraphics: Graphic[] = []): void {
         this.deactivate();
         this._activeGraphic = graphic;
 
-        if (graphic.geometry?.type === "point") {
+        if (additionalGraphics.length === 0 && graphic.geometry?.type === "point") {
+            // Single point symbol — move only
             this._activatePointEdit(graphic);
         } else {
-            this._activatePolyEdit(graphic);
+            // Multi-selection or poly: use transform tool for all (points move along with the group)
+            this._activatePolyEdit(graphic, additionalGraphics);
         }
     }
 
@@ -178,6 +183,7 @@ class EditEngine {
         this._originalGeometry = null;
         this._originalCtrlPts = null;
         this._originalBaseLnPts = null;
+        this._additionalSnapshots = [];
         this._isDraggingHandle = false;
         this._activeHandleIndex = -1;
     }
@@ -248,7 +254,7 @@ class EditEngine {
     // SketchViewModel — Poly/Polygon symbols (move + rotate + scale)
     // -----------------------------------------------------------------------
 
-    private _activatePolyEdit(graphic: Graphic): void {
+    private _activatePolyEdit(graphic: Graphic, additionalGraphics: Graphic[] = []): void {
         const layer = graphic.layer as GraphicsLayer | null;
         if (!layer) {
             console.error("EditEngine: graphic has no layer — cannot activate SketchViewModel");
@@ -257,30 +263,53 @@ class EditEngine {
 
         const de = this._getDrawEssentials(graphic);
 
-        // Snapshot everything so we can (a) sync CTRL_PTS after transform, (b) restore on cancel
+        // Snapshot primary graphic so we can (a) sync CTRL_PTS after transform, (b) restore on cancel
         this._originalGeometry = graphic.geometry.clone();
         this._originalCtrlPts = this._cloneCtrlPts((de as any)?.CTRL_PTS);
         this._originalBaseLnPts = this._cloneBaseLnPts((de as any)?.BASE_LN_PTS);
 
+        // Snapshot additional graphics from multi-selection
+        this._additionalSnapshots = additionalGraphics.map(g => {
+            const ade = this._getDrawEssentials(g);
+            return {
+                graphic: g,
+                geometry: g.geometry.clone(),
+                ctrlPts: this._cloneCtrlPts((ade as any)?.CTRL_PTS),
+                baseLnPts: this._cloneBaseLnPts((ade as any)?.BASE_LN_PTS),
+            };
+        });
+
+        const allGraphics = [graphic, ...additionalGraphics];
+
         this._sketchVM = new SketchViewModel({ view: this.view, layer });
-        this._sketchVM.update([graphic], { tool: "transform" } as any);
+        this._sketchVM.update(allGraphics, { tool: "transform" } as any);
 
         this._sketchVM.on("update", (evt: any) => {
             switch (evt.state) {
                 case "start":
                     this._deAnnotate(graphic);
+                    this._additionalSnapshots.forEach(s => this._deAnnotate(s.graphic));
                     break;
                 case "complete":
                     this._syncCtrlPts(graphic);
+                    this._additionalSnapshots.forEach(s => this._syncCtrlPtsFrom(s));
                     this._reAnnotate(graphic);
-                    this._emit("changeInSymbol", { graphic });
+                    this._additionalSnapshots.forEach(s => this._reAnnotate(s.graphic));
+                    this._emit("changeInSymbol", { graphic, additionalGraphics: this._additionalSnapshots.map(s => s.graphic) });
                     break;
                 case "cancel":
-                    // Restore geometry and CTRL_PTS to pre-edit state
+                    // Restore all graphics to pre-edit state
                     graphic.geometry = this._originalGeometry;
                     if (de && this._originalCtrlPts) (de as any).CTRL_PTS = this._originalCtrlPts;
                     if (de && this._originalBaseLnPts) (de as any).BASE_LN_PTS = this._originalBaseLnPts;
                     this._reAnnotate(graphic);
+                    this._additionalSnapshots.forEach(s => {
+                        s.graphic.geometry = s.geometry;
+                        const ade = this._getDrawEssentials(s.graphic);
+                        if (ade && s.ctrlPts) (ade as any).CTRL_PTS = s.ctrlPts;
+                        if (ade && s.baseLnPts) (ade as any).BASE_LN_PTS = s.baseLnPts;
+                        this._reAnnotate(s.graphic);
+                    });
                     break;
             }
         });
@@ -320,6 +349,26 @@ class EditEngine {
                 result.midPt = this._applyAffineToPoint(this._originalBaseLnPts.midPt, t);
             if (this._originalBaseLnPts.endPt)
                 result.endPt = this._applyAffineToPoint(this._originalBaseLnPts.endPt, t);
+            (de as any).BASE_LN_PTS = result;
+        }
+    }
+
+    /** Sync CTRL_PTS for an additional graphic using its own pre-edit snapshot. */
+    private _syncCtrlPtsFrom(snapshot: { graphic: Graphic; geometry: any; ctrlPts: Point[] | null; baseLnPts: any }): void {
+        const de = this._getDrawEssentials(snapshot.graphic);
+        if (!de || !snapshot.geometry || !snapshot.ctrlPts) return;
+
+        const t = this._computeAffineTransform(snapshot.geometry, snapshot.graphic.geometry);
+
+        if (snapshot.ctrlPts) {
+            (de as any).CTRL_PTS = snapshot.ctrlPts.map(pt => this._applyAffineToPoint(pt, t));
+        }
+
+        if (snapshot.baseLnPts) {
+            const result: any = {};
+            if (snapshot.baseLnPts.startPt) result.startPt = this._applyAffineToPoint(snapshot.baseLnPts.startPt, t);
+            if (snapshot.baseLnPts.midPt) result.midPt = this._applyAffineToPoint(snapshot.baseLnPts.midPt, t);
+            if (snapshot.baseLnPts.endPt) result.endPt = this._applyAffineToPoint(snapshot.baseLnPts.endPt, t);
             (de as any).BASE_LN_PTS = result;
         }
     }

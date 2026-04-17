@@ -162,6 +162,7 @@ declare class SymbolEngine implements Evented {
      * Called once in the constructor; re-called after view switch.
      */
     private _wireEditEngineUndo;
+    private _buildGraphicUndoState;
     /** Undo the last operation. */
     undo(): void;
     /** Redo the last undone operation. */
