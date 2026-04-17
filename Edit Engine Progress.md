@@ -141,7 +141,17 @@ Same in 2D view
 
 
  ---
-High Priority (Immediate Utility)
+Features I want you to implement
+--> All featires should be controllable throw @settings.json and should be enabled by default
+--> All features Should work in 3D and 2D view
+--> All should features should be added in context menu as well along with short cut keys
+--> Create file called new_features.md at root and add progress so that I can start from there and hand over
+-->  All the features should be coded inside @MS, main entry point being @SymbolEngine.ts because it is a library which will be consumed all over. @main.ts and @index.html are its test code
+
+
+0. Add Shortcut keys to existing options in @content menu, and mention those
+   0.1. as we have Disable Edit Control points to deactivate, add disable Modify Symbol
+   0.2. Modify Symbol should say "Move, Scale, Rotate" and disable should say the "Disable Move, Scale, Rotate" and it should deactivate it
 
 1. Undo / Redo Stack
 
@@ -149,12 +159,14 @@ You already have edit operations. Add a simple command pattern:
 private _undoStack: Graphic[][] = [];
 private _redoStack: Graphic[][] = [];
 Every drawSymEnd or edit operation pushes to undo. Critical for map editing.
+Should it have a lable as well which says, Undo Move, or scale or undo add control point?
 
-2. Multi-Select + Batch Operations
+
+2. Multi-Select + Batch Operations  -- No need to add in @settings.json as it is must have option
 
 - Shift+click to select multiple symbols
 - Move, scale, delete all selected at once
-- Align distribute (spread evenly along a line)
+- Align distribute (spread evenly along a line), important -- Horizonlty, vertically, Square, Triangle, Inverted Triangle
 
 3. Copy / Paste Symbols
 
@@ -162,15 +174,6 @@ copySymbol(graphic: Graphic): void
 pasteSymbol(targetPoint: Point): Graphic | null
 Persists drawEssentials + AMPLIFIER on the clipboard.
 
-4. Symbol Search & Filter (extend autocomplete)
-
-You've already built autocomplete — extend it to:
-- Filter by affiliation (Friendly/Hostile/Neutral/Unknown)
-- Filter by symbol set (Unit, Equipment, Control Measure, etc.)
-- "Recently used" symbols at the top
-
-  ---
-Medium Priority (Professional Use)
 
 5. Save / Load Symbol Configurations
 
@@ -191,39 +194,16 @@ saveAsTemplate(name: string, drawEssentials: DrawEssentials, amplifier: Amplifie
 loadTemplate(name: string): { drawEssentials, amplifier }
 e.g., a template "Phase Line Alpha" with pre-filled text "PL ALPHA".
 
-8. Layer Management Panel
-
-Add visibility toggles + opacity sliders per layer (FORCE, TACT, TACT_PT, ANNOTATION). Your GraphicsLayerManager already
-has the layers — just expose a UI.
-
-  ---
-Lower Priority (Nice to Have)
-
-9. Keyboard Shortcuts
-
-┌──────────┬──────────────────────────────────────────┐
-│   Key    │                  Action                  │
-├──────────┼──────────────────────────────────────────┤
-│ Esc      │ Cancel current drawing / deactivate edit │
-├──────────┼──────────────────────────────────────────┤
-│ Delete   │ Remove selected symbol                   │
-├──────────┼──────────────────────────────────────────┤
-│ Ctrl+C/V │ Copy/paste                               │
-├──────────┼──────────────────────────────────────────┤
-│ Ctrl+Z/Y │ Undo/redo                                │
-└──────────┴──────────────────────────────────────────┘
-
 10. Snapping
 
 Snap to:
-- Grid coordinates
-- Other symbol centers
-- Baseline points (for phase lines, boundaries)
+- Other symbol centers, corners
 
-11. Scale Bar + Coordinate Display
 
-Show current map scale and cursor coordinates in a status bar — standard in military mapping apps.
+Don not create any work tree, work on main branch
 
-12. Legend Generation
+lets start from features
 
-Auto-generate a legend graphic showing all symbols drawn, with their labels.
+@new_features.md
+
+update the done and in progress features

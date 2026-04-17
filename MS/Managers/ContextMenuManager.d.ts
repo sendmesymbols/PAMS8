@@ -3,15 +3,18 @@ import SceneView from "@arcgis/core/views/SceneView";
 import Graphic from "@arcgis/core/Graphic";
 import Evented from "@arcgis/core/core/Evented";
 import Point from "@arcgis/core/geometry/Point";
+import MeasurementEngine from "../Engines/MeasurementEngine";
 export interface ContextMenuItem {
     id: string;
-    label: string;
+    label: string | ((graphic?: Graphic) => string);
+    shortcut?: string;
     icon?: string;
     enabled?: boolean | ((graphic: Graphic) => boolean);
     visible?: boolean | ((graphic: Graphic) => boolean);
     action?: (graphic: Graphic) => void;
     group?: string;
     order?: number;
+    children?: ContextMenuItem[];
 }
 export interface ContextMenuOptions {
     menuClass?: string;
@@ -47,6 +50,11 @@ declare class ContextMenuManager extends Evented {
     private options;
     private clickPoint;
     private originalEvent;
+    private _measurementEngine;
+    private _pointerDownHandle;
+    private _contextMenuHandler;
+    private _contextMenuContainer;
+    private _dynamicItemProviders;
     private constructor();
     /**
      * Get the singleton instance
@@ -83,9 +91,31 @@ declare class ContextMenuManager extends Evented {
      */
     clearAllMenuItems(): void;
     /**
+     * Link a MeasurementEngine so the context menu gains a measurement section.
+     * The section is rendered at the bottom of every right-click menu and allows
+     * the user to toggle measurements on/off and measure the selected graphic.
+     */
+    linkMeasurementEngine(engine: MeasurementEngine): void;
+    /**
+     * Register a function that returns extra context menu items dynamically.
+     * Called each time the menu opens, so items can depend on runtime state
+     * (e.g. the current list of saved templates).
+     */
+    addDynamicItemProvider(provider: (graphic: Graphic) => ContextMenuItem[]): void;
+    /**
+     * Returns the graphic that was most recently right-clicked.
+     * Useful for keyboard-shortcut handlers that need a target graphic.
+     */
+    getLastClickedGraphic(): Graphic | null;
+    /**
      * Display the context menu at the given coordinates
      */
     private showMenuAt;
+    /**
+     * Recursively render menu items into a container element.
+     * Items with `children` become submenu triggers; others are leaf actions.
+     */
+    private renderMenuItems;
     /**
      * Hide the context menu
      */
@@ -94,6 +124,10 @@ declare class ContextMenuManager extends Evented {
      * Handle menu item clicks
      */
     private handleMenuItemClick;
+    /**
+     * Remove event listeners from the previous view before re-initialization.
+     */
+    private teardownViewEvents;
     /**
      * Set up event listeners on the view
      */

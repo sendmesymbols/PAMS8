@@ -161,7 +161,11 @@
         "measurementEngine": true,
         "contextMenu":       true,
         "editEngine":        true,
-        "annotationEngine":  true
+        "annotationEngine":  true,
+        "shortcuts":         true,
+        "copyPaste":         true,
+        "saveLoad":          true,
+        "templates":         true
     },
     "echelonMap23": {
         "0": ["23", "00"],

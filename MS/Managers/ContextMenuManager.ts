@@ -12,14 +12,15 @@ import MeasurementEngine from "../Engines/MeasurementEngine";
 
 export interface ContextMenuItem {
     id: string;
-    label: string;
+    label: string | ((graphic?: Graphic) => string);
+    shortcut?: string;
     icon?: string;
     enabled?: boolean | ((graphic: Graphic) => boolean);
     visible?: boolean | ((graphic: Graphic) => boolean);
     action?: (graphic: Graphic) => void;
-    // Optional properties for grouping and ordering
     group?: string;
     order?: number;
+    children?: ContextMenuItem[];
 }
 
 export interface ContextMenuOptions {
@@ -69,6 +70,7 @@ class ContextMenuManager extends Evented {
     private _pointerDownHandle: any = null;
     private _contextMenuHandler: ((e: Event) => void) | null = null;
     private _contextMenuContainer: HTMLElement | null = null;
+    private _dynamicItemProviders: Array<(graphic: Graphic) => ContextMenuItem[]> = [];
 
     private constructor() {
         super();
@@ -202,122 +204,60 @@ class ContextMenuManager extends Evented {
     }
 
     /**
+     * Register a function that returns extra context menu items dynamically.
+     * Called each time the menu opens, so items can depend on runtime state
+     * (e.g. the current list of saved templates).
+     */
+    public addDynamicItemProvider(provider: (graphic: Graphic) => ContextMenuItem[]): void {
+        this._dynamicItemProviders.push(provider);
+    }
+
+    /**
+     * Returns the graphic that was most recently right-clicked.
+     * Useful for keyboard-shortcut handlers that need a target graphic.
+     */
+    public getLastClickedGraphic(): Graphic | null {
+        return this.activeGraphic;
+    }
+
+    /**
      * Display the context menu at the given coordinates
      */
     private showMenuAt(x: number, y: number, graphic: Graphic): void {
-        // Clear existing menu content
         this.menuElement.innerHTML = "";
 
-        // Get graphic type from attributes
         const graphicType = graphic.attributes?.graphicType || graphic.attributes?.type;
 
-        // Resolve items: exact type match → fallback to first registered set → bail
         let items: ContextMenuItem[];
         if (graphicType && this.menuItems.has(graphicType)) {
             items = this.menuItems.get(graphicType)!;
         } else if (this.menuItems.size > 0) {
-            // No registered type for this graphic — show the first registered set
             items = this.menuItems.values().next().value;
         } else {
             console.warn(`No menu items registered for graphic type: ${graphicType}`);
             return;
         }
 
-        // Store the active graphic
-        this.activeGraphic = graphic;;
+        this.activeGraphic = graphic;
 
-        // Create menu structure
-        let currentGroup: string | null = null;
-        let groupContainer: HTMLDivElement | null = null;
+        const dynamicItems = this._dynamicItemProviders.flatMap(p => p(graphic));
+        items = [...items, ...dynamicItems];
 
-        items.forEach(item => {
-            // Check visibility and enabled state if they are functions
-            const isVisible = typeof item.visible === 'function' ? item.visible(graphic) :
-                item.visible !== undefined ? item.visible : true;
-
-            if (!isVisible) return;
-
-            const isEnabled = typeof item.enabled === 'function' ? item.enabled(graphic) :
-                item.enabled !== undefined ? item.enabled : true;
-
-            // Handle grouping
-            if (item.group && item.group !== currentGroup) {
-                // Create a new group
-                currentGroup = item.group;
-                groupContainer = document.createElement("div");
-                groupContainer.className = this.options.menuGroupClass || "";
-
-                const groupTitle = document.createElement("div");
-                groupTitle.textContent = currentGroup;
-                groupTitle.className = "arcgis-context-menu-group-title";
-                groupContainer.appendChild(groupTitle);
-
-                this.menuElement.appendChild(groupContainer);
-            }
-
-            // Create menu item
-            const menuItem = document.createElement("div");
-            menuItem.className = this.options.menuItemClass || "";
-            menuItem.dataset.id = item.id;
-
-            // Apply disabled state if needed
-            if (!isEnabled) {
-                menuItem.classList.add("disabled");
-            }
-
-            // Create content with icon and label
-            if (item.icon) {
-                const iconSpan = document.createElement("span");
-                iconSpan.className = "menu-icon";
-                iconSpan.innerHTML = item.icon;
-                menuItem.appendChild(iconSpan);
-            }
-
-            const labelSpan = document.createElement("span");
-            labelSpan.textContent = item.label;
-            menuItem.appendChild(labelSpan);
-
-            // Add event listener for clicks
-            if (isEnabled) {
-                menuItem.addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    this.handleMenuItemClick(item.id);
-                });
-
-                // Add hover effect
-                menuItem.addEventListener("mouseenter", () => {
-                    menuItem.classList.add(this.options.menuItemHoverClass || "");
-                });
-
-                menuItem.addEventListener("mouseleave", () => {
-                    menuItem.classList.remove(this.options.menuItemHoverClass || "");
-                });
-            }
-
-            // Add to group or directly to menu
-            if (groupContainer && item.group === currentGroup) {
-                groupContainer.appendChild(menuItem);
-            } else {
-                this.menuElement.appendChild(menuItem);
-            }
-        });
+        this.renderMenuItems(items, this.menuElement, graphic, x, y);
 
         // ── Measurement section ──────────────────────────────────────────────
         if (this._measurementEngine) {
             const isOn = this._measurementEngine.isEnabled;
 
-            // Separator
             const sep = document.createElement("div");
             sep.className = this.options.menuSeparatorClass || "";
             this.menuElement.appendChild(sep);
 
-            // Section header (non-clickable informational row)
             const header = document.createElement("div");
             header.style.cssText = "padding:4px 12px 2px;font-size:11px;color:#888;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px";
             header.textContent = "Measurements";
             this.menuElement.appendChild(header);
 
-            // Toggle item — label reflects current state
             const toggleItem = document.createElement("div");
             toggleItem.className = this.options.menuItemClass || "";
             toggleItem.innerHTML = isOn
@@ -332,7 +272,6 @@ class ContextMenuManager extends Evented {
             toggleItem.addEventListener("mouseleave", () => toggleItem.classList.remove(this.options.menuItemHoverClass || ""));
             this.menuElement.appendChild(toggleItem);
 
-            // "Measure This Symbol" — only when measurements are on
             if (isOn) {
                 const measureItem = document.createElement("div");
                 measureItem.className = this.options.menuItemClass || "";
@@ -342,7 +281,6 @@ class ContextMenuManager extends Evented {
                     if (this.activeGraphic) {
                         const snap = this._measurementEngine!.measureGraphic(this.activeGraphic);
                         if (snap) {
-                            // Let the host application render the result however it wants
                             document.dispatchEvent(new CustomEvent("measurement-graphic-measured", {
                                 detail: { ...snap, screenX: x, screenY: y },
                                 bubbles: true,
@@ -358,12 +296,124 @@ class ContextMenuManager extends Evented {
         }
         // ────────────────────────────────────────────────────────────────────
 
-        // Position the menu
         this.menuElement.style.left = `${x + (this.options.offsetX || 0)}px`;
         this.menuElement.style.top = `${y + (this.options.offsetY || 0)}px`;
-
-        // Display the menu
         this.menuElement.style.display = "block";
+    }
+
+    /**
+     * Recursively render menu items into a container element.
+     * Items with `children` become submenu triggers; others are leaf actions.
+     */
+    private renderMenuItems(items: ContextMenuItem[], container: HTMLElement, graphic: Graphic, screenX: number, screenY: number): void {
+        let currentGroup: string | null = null;
+        let groupContainer: HTMLDivElement | null = null;
+
+        items.forEach(item => {
+            const isVisible = typeof item.visible === 'function' ? item.visible(graphic) :
+                item.visible !== undefined ? item.visible : true;
+            if (!isVisible) return;
+
+            const isEnabled = typeof item.enabled === 'function' ? item.enabled(graphic) :
+                item.enabled !== undefined ? item.enabled : true;
+
+            // Flat group headers (backward compat, only for non-submenu items)
+            if (item.group && item.group !== currentGroup && !item.children) {
+                currentGroup = item.group;
+                groupContainer = document.createElement("div");
+                groupContainer.className = this.options.menuGroupClass || "";
+                const groupTitle = document.createElement("div");
+                groupTitle.textContent = currentGroup;
+                groupTitle.className = "arcgis-context-menu-group-title";
+                groupContainer.appendChild(groupTitle);
+                container.appendChild(groupContainer);
+            }
+
+            const menuItem = document.createElement("div");
+            menuItem.className = this.options.menuItemClass || "";
+            menuItem.dataset.id = item.id;
+            if (!isEnabled) menuItem.classList.add("disabled");
+
+            if (item.icon) {
+                const iconSpan = document.createElement("span");
+                iconSpan.className = "menu-icon";
+                iconSpan.innerHTML = item.icon;
+                menuItem.appendChild(iconSpan);
+            }
+
+            const labelSpan = document.createElement("span");
+            labelSpan.textContent = typeof item.label === "function" ? item.label(graphic) : item.label;
+            labelSpan.style.flex = "1";
+            menuItem.appendChild(labelSpan);
+
+            if (item.children && item.children.length > 0) {
+                menuItem.classList.add("has-submenu");
+
+                const submenuEl = document.createElement("div");
+                submenuEl.className = "arcgis-submenu";
+                this.renderMenuItems(item.children, submenuEl, graphic, screenX, screenY);
+                menuItem.appendChild(submenuEl);
+
+                menuItem.addEventListener("mouseenter", () => {
+                    menuItem.classList.add(this.options.menuItemHoverClass || "");
+                    submenuEl.style.display = "block";
+                    // Flip to left if submenu goes off-screen right
+                    const rect = submenuEl.getBoundingClientRect();
+                    if (rect.right > window.innerWidth) {
+                        submenuEl.style.left = "auto";
+                        submenuEl.style.right = "100%";
+                    } else {
+                        submenuEl.style.left = "100%";
+                        submenuEl.style.right = "auto";
+                    }
+                });
+                menuItem.addEventListener("mouseleave", (e) => {
+                    // Keep submenu open when cursor moves into it
+                    if (!submenuEl.contains(e.relatedTarget as Node)) {
+                        menuItem.classList.remove(this.options.menuItemHoverClass || "");
+                        submenuEl.style.display = "none";
+                    }
+                });
+                submenuEl.addEventListener("mouseleave", (e) => {
+                    if (!menuItem.contains(e.relatedTarget as Node)) {
+                        menuItem.classList.remove(this.options.menuItemHoverClass || "");
+                        submenuEl.style.display = "none";
+                    }
+                });
+            } else {
+                if (item.shortcut) {
+                    const kbdSpan = document.createElement("span");
+                    kbdSpan.className = "menu-shortcut";
+                    kbdSpan.textContent = item.shortcut;
+                    menuItem.appendChild(kbdSpan);
+                }
+
+                if (isEnabled) {
+                    menuItem.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        if (item.action) item.action(graphic);
+                        this.emit("menu-item-click", {
+                            actionId: item.id,
+                            graphic,
+                            layerId: graphic.layer?.id || "",
+                            graphicType: graphic.attributes?.graphicType || graphic.attributes?.type,
+                            view: this.view,
+                            point: this.clickPoint!,
+                            originalEvent: this.originalEvent
+                        } as MenuItemEvent);
+                        this.hideMenu();
+                    });
+                    menuItem.addEventListener("mouseenter", () => menuItem.classList.add(this.options.menuItemHoverClass || ""));
+                    menuItem.addEventListener("mouseleave", () => menuItem.classList.remove(this.options.menuItemHoverClass || ""));
+                }
+            }
+
+            if (groupContainer && item.group === currentGroup && !item.children) {
+                groupContainer.appendChild(menuItem);
+            } else {
+                container.appendChild(menuItem);
+            }
+        });
     }
 
     /**
@@ -589,6 +639,36 @@ class ContextMenuManager extends Evented {
         margin-right: 8px;
         display: inline-flex;
         align-items: center;
+      }
+
+      .menu-shortcut {
+        margin-left: 16px;
+        font-size: 11px;
+        color: #999;
+        white-space: nowrap;
+      }
+
+      .arcgis-context-menu-item.has-submenu::after {
+        content: '▶';
+        margin-left: 8px;
+        font-size: 10px;
+        color: #666;
+        flex-shrink: 0;
+      }
+
+      .arcgis-submenu {
+        display: none;
+        position: absolute;
+        left: 100%;
+        top: -5px;
+        background-color: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        padding: 5px 0;
+        min-width: 180px;
+        max-width: 300px;
+        z-index: 1001;
       }
     `;
         document.head.appendChild(style);

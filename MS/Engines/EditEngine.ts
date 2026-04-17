@@ -187,6 +187,11 @@ class EditEngine {
         return this._handleGraphics.length > 0;
     }
 
+    /** True while SketchViewModel move/transform is active (not control-point mode). */
+    public get isModifyingSymbol(): boolean {
+        return this._sketchVM !== null && !this.isEditingControlPoints;
+    }
+
     /** Register a listener for EditEngine events ("changeInSymbol", "scalePointSymbol"). */
     public on(type: string, listener: Function): { remove(): void } {
         if (!this._eventListeners.has(type)) {

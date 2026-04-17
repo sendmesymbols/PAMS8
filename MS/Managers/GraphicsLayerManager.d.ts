@@ -7,6 +7,7 @@ export declare const LAYER_NAMES: {
     TACT: string;
     SKETCH: string;
     ANNOTATION_LAYER: string;
+    SELECTION_HIGHLIGHT: string;
 };
 declare class GraphicsLayerManager {
     private static instances;

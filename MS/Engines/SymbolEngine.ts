@@ -13,6 +13,8 @@ import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import Point from "@arcgis/core/geometry/Point";
+import Polyline from "@arcgis/core/geometry/Polyline";
+import Polygon from "@arcgis/core/geometry/Polygon";
 
 //import  from "esri/core/reactiveUtils";
 
@@ -36,6 +38,7 @@ import Mapper from "../Engines/Mapper.ts"
 import AnnotationEngine from "./AnnotationEngine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import EditEngine from "./EditEngine.ts";
+import SelectionEngine from "./SelectionEngine.ts";
 // MeasurementEngine is loaded dynamically based on Settings.json features.measurementEngine
 import type MeasurementEngine from "./MeasurementEngine.ts";
 
@@ -79,6 +82,12 @@ interface SymbolData {
 
 
 
+interface UndoEntry {
+    label: string;
+    undo: () => void;
+    redo: () => void;
+}
+
 class SymbolEngine implements Evented {
     private _layerManager: GraphicsLayerManager;
     private _contextMenuManager: ContextMenuManager;
@@ -94,6 +103,18 @@ class SymbolEngine implements Evented {
     private mapper: any;
     private isDrawing = false;
 
+    // Undo / Redo stacks
+    private _undoStack: UndoEntry[] = [];
+    private _redoStack: UndoEntry[] = [];
+    // Geometry/CTRL_PTS snapshot captured just before an edit operation starts
+    private _preEditSnapshot: { geometry: any; ctrlPts: any; baseLnPts: any } | null = null;
+
+    // Copy/Paste clipboard
+    private _clipboard: { graphic: Graphic; layerId: string } | null = null;
+
+    // Multi-select
+    private _selectionEngine!: SelectionEngine;
+
 
 
 
@@ -102,6 +123,9 @@ class SymbolEngine implements Evented {
         this._layerManager = GraphicsLayerManager.getInstance(this.view);
         this._layerManager.initializeLayers();
         this._editEngine = new EditEngine(viewProvider, this._layerManager);
+        this._wireEditEngineUndo();
+        this._selectionEngine = new SelectionEngine(viewProvider, this._layerManager);
+        this._selectionEngine.activate([LAYER_NAMES.FORCE, LAYER_NAMES.TACT_PT, LAYER_NAMES.TACT, "milSymbols"]);
         this.ensureMsAvailable();
 
         // Initialize symbol engine
@@ -150,6 +174,11 @@ class SymbolEngine implements Evented {
 
         // Conditionally load MeasurementEngine based on Settings.json feature flag
         this._initMeasurementEngine();
+
+        // Wire global keyboard shortcuts (if enabled in Settings.json)
+        if ((settingsData as any).features?.shortcuts !== false) {
+            this._setupKeyboardShortcuts();
+        }
 
         // Set up global event listeners for drawing events
         this.setupGlobalEventListener();
@@ -321,6 +350,8 @@ class SymbolEngine implements Evented {
         this._layerManager = GraphicsLayerManager.getInstance(newView);
         this._layerManager.initializeLayers();
         this._editEngine = new EditEngine(this._getView, this._layerManager);
+        this._wireEditEngineUndo();
+        this._selectionEngine.onViewChanged(newView);
         // Re-attach measurement engine to the new view
         this._measurementEngine?.onViewChanged(newView);
 
@@ -382,72 +413,270 @@ class SymbolEngine implements Evented {
     private registerContextMenuItems(): void {
 
         console.log("Registered")
-        // Register menu items for military symbols
         const milSymbolMenuItems: ContextMenuItem[] = [
             {
                 id: "show-details",
                 label: "Show Details",
+                shortcut: "I",
                 icon: '<span style="font-size:14px">ℹ️</span>',
                 action: (graphic) => this.showSymbolDetails(graphic)
             },
             {
                 id: "center-on",
                 label: "Center On",
+                shortcut: "C",
                 icon: '<span style="font-size:14px">🎯</span>',
                 action: (graphic) => this.centerOnGraphic(graphic)
             },
             {
                 id: "remove-graphic",
                 label: "Remove",
+                shortcut: "Del",
                 icon: '<span style="font-size:14px">🗑️</span>',
-                action: (graphic) => this.removeGraphic(graphic),
-                group: "Edit Actions",
-                order: 2
+                action: (graphic) => this.removeGraphic(graphic)
             },
+            // ── Edit submenu ────────────────────────────────────────────────
             {
-                id: "modify-symbol",
-                label: "Modify Symbol",
+                id: "edit-submenu",
+                label: "Edit",
                 icon: '<span style="font-size:14px">✏️</span>',
-                action: (graphic) => this.modifySymbol(graphic),
-                group: "Edit Actions",
-                order: 1
+                children: [
+                    {
+                        id: "modify-symbol",
+                        label: "Move, Scale, Rotate",
+                        shortcut: "M",
+                        icon: '<span style="font-size:14px">✏️</span>',
+                        visible: (_graphic) => !this._editEngine.isModifyingSymbol,
+                        action: (graphic) => this.modifySymbol(graphic)
+                    },
+                    {
+                        id: "disable-modify-symbol",
+                        label: "Disable Move, Scale, Rotate",
+                        shortcut: "Esc",
+                        icon: '<span style="font-size:14px">✖</span>',
+                        visible: (_graphic) => this._editEngine.isModifyingSymbol,
+                        action: (_graphic) => this.deactivateEdit()
+                    },
+                    {
+                        id: "edit-ctrl-pts",
+                        label: "Edit Control Points",
+                        shortcut: "E",
+                        icon: '<span style="font-size:14px">⬡</span>',
+                        visible: (_graphic) => !this._editEngine.isEditingControlPoints,
+                        action: (graphic) => this.activateEditControlPoints(graphic)
+                    },
+                    {
+                        id: "deactivate-ctrl-pts",
+                        label: "Deactivate Control Points",
+                        shortcut: "Esc",
+                        icon: '<span style="font-size:14px">✖</span>',
+                        visible: (_graphic) => this._editEngine.isEditingControlPoints,
+                        action: (_graphic) => this.deactivateEdit()
+                    }
+                ]
             },
+            // ── Selection submenu ───────────────────────────────────────────
             {
-                id: "edit-ctrl-pts",
-                label: "Edit Control Points",
-                icon: '<span style="font-size:14px">⬡</span>',
-                action: (graphic) => this.activateEditControlPoints(graphic),
-                group: "Edit Actions",
-                order: 2
+                id: "selection-submenu",
+                label: "Selection",
+                icon: '<span style="font-size:14px">☑</span>',
+                children: [
+                    {
+                        id: "toggle-select",
+                        label: (graphic: any) => this._selectionEngine.isSelected(graphic) ? "Deselect" : "Add to Selection",
+                        shortcut: "Shift+Click",
+                        icon: '<span style="font-size:14px">☑</span>',
+                        action: (graphic) => this._selectionEngine.toggleGraphic(graphic)
+                    },
+                    {
+                        id: "clear-selection",
+                        label: () => `Clear Selection (${this._selectionEngine.count})`,
+                        icon: '<span style="font-size:14px">✕</span>',
+                        visible: () => this._selectionEngine.count > 0,
+                        action: (_graphic) => this._selectionEngine.clearSelection()
+                    },
+                    {
+                        id: "move-selected",
+                        label: () => `Move Selected (${this._selectionEngine.count})`,
+                        shortcut: "M",
+                        icon: '<span style="font-size:14px">⤢</span>',
+                        visible: () => this._selectionEngine.count > 1,
+                        action: (_graphic) => {
+                            this._closeActiveWorkflow();
+                            this._selectionEngine.moveSelected(
+                                ({ graphics, dx, dy }) => this._pushUndo({
+                                    label: `Move ${graphics.length} Symbols`,
+                                    undo: () => this._selectionEngine["_applyDelta"](graphics, -dx, -dy),
+                                    redo: () => this._selectionEngine["_applyDelta"](graphics, dx, dy),
+                                })
+                            );
+                        }
+                    },
+                    {
+                        id: "delete-selected",
+                        label: () => `Delete Selected (${this._selectionEngine.count})`,
+                        shortcut: "Del",
+                        icon: '<span style="font-size:14px">🗑️</span>',
+                        visible: () => this._selectionEngine.count > 1,
+                        action: (_graphic) => this._selectionEngine.deleteSelected(
+                            (entry) => this._pushUndo(entry)
+                        )
+                    },
+                    {
+                        id: "align-horizontal",
+                        label: "Distribute Horizontal",
+                        icon: '<span style="font-size:14px">⇔</span>',
+                        visible: () => this._selectionEngine.count > 1,
+                        action: (_graphic) => this._selectionEngine.alignHorizontal(e => this._pushUndo(e))
+                    },
+                    {
+                        id: "align-vertical",
+                        label: "Distribute Vertical",
+                        icon: '<span style="font-size:14px">⇕</span>',
+                        visible: () => this._selectionEngine.count > 1,
+                        action: (_graphic) => this._selectionEngine.alignVertical(e => this._pushUndo(e))
+                    },
+                    {
+                        id: "arrange-square",
+                        label: "Arrange Square",
+                        icon: '<span style="font-size:14px">⊞</span>',
+                        visible: () => this._selectionEngine.count > 1,
+                        action: (_graphic) => this._selectionEngine.arrangeSquare(500, e => this._pushUndo(e))
+                    },
+                    {
+                        id: "arrange-triangle",
+                        label: "Arrange Triangle",
+                        icon: '<span style="font-size:14px">▲</span>',
+                        visible: () => this._selectionEngine.count > 1,
+                        action: (_graphic) => this._selectionEngine.arrangeTriangle(500, e => this._pushUndo(e))
+                    },
+                    {
+                        id: "arrange-inv-triangle",
+                        label: "Arrange Inverted Triangle",
+                        icon: '<span style="font-size:14px">▽</span>',
+                        visible: () => this._selectionEngine.count > 1,
+                        action: (_graphic) => this._selectionEngine.arrangeInvertedTriangle(500, e => this._pushUndo(e))
+                    }
+                ]
             },
+            // ── Clipboard submenu ───────────────────────────────────────────
             {
-                id: "deactivate-ctrl-pts",
-                label: "Deactivate Control Points",
-                icon: '<span style="font-size:14px">✖</span>',
-                visible: (_graphic) => this._editEngine.isEditingControlPoints,
-                action: (_graphic) => this.deactivateEdit(),
-                group: "Edit Actions",
-                order: 3
+                id: "clipboard-submenu",
+                label: "Clipboard",
+                icon: '<span style="font-size:14px">📋</span>',
+                visible: () => (settingsData as any).features?.copyPaste !== false || (settingsData as any).features?.shortcuts !== false,
+                children: [
+                    {
+                        id: "copy-symbol",
+                        label: "Copy Symbol",
+                        shortcut: "Ctrl+C",
+                        icon: '<span style="font-size:14px">📋</span>',
+                        visible: () => (settingsData as any).features?.copyPaste !== false,
+                        action: (graphic) => this.copySymbol(graphic)
+                    },
+                    {
+                        id: "paste-symbol",
+                        label: "Paste Symbol",
+                        shortcut: "Ctrl+V",
+                        icon: '<span style="font-size:14px">📌</span>',
+                        visible: () => (settingsData as any).features?.copyPaste !== false && this._clipboard !== null,
+                        action: (_graphic) => this._activatePasteMode()
+                    },
+                    {
+                        id: "undo",
+                        label: () => this._undoStack.length > 0 ? `Undo ${this._undoStack[this._undoStack.length - 1].label}` : "Undo",
+                        shortcut: "Ctrl+Z",
+                        icon: '<span style="font-size:14px">↩</span>',
+                        enabled: (_graphic) => this._undoStack.length > 0,
+                        visible: () => (settingsData as any).features?.shortcuts !== false,
+                        action: (_graphic) => this.undo()
+                    },
+                    {
+                        id: "redo",
+                        label: () => this._redoStack.length > 0 ? `Redo ${this._redoStack[this._redoStack.length - 1].label}` : "Redo",
+                        shortcut: "Ctrl+Y",
+                        icon: '<span style="font-size:14px">↪</span>',
+                        enabled: (_graphic) => this._redoStack.length > 0,
+                        visible: () => (settingsData as any).features?.shortcuts !== false,
+                        action: (_graphic) => this.redo()
+                    }
+                ]
+            },
+            // ── Save / Load submenu ─────────────────────────────────────────
+            {
+                id: "saveload-submenu",
+                label: "Save / Load",
+                icon: '<span style="font-size:14px">💾</span>',
+                visible: () => (settingsData as any).features?.saveLoad !== false,
+                children: [
+                    {
+                        id: "save-symbol",
+                        label: "Save Symbol",
+                        icon: '<span style="font-size:14px">💾</span>',
+                        action: (graphic) => this.saveSymbolToFile(graphic)
+                    },
+                    {
+                        id: "save-all-symbols",
+                        label: "Save All Symbols",
+                        icon: '<span style="font-size:14px">🗂️</span>',
+                        action: (_graphic) => this.saveToFile()
+                    },
+                    {
+                        id: "load-symbols",
+                        label: "Load Symbols",
+                        icon: '<span style="font-size:14px">📂</span>',
+                        action: (_graphic) => this.loadFromFile()
+                    }
+                ]
             }
         ];
+
+        // Dynamic Templates submenu — rebuilt each time the menu opens
+        this._contextMenuManager.addDynamicItemProvider((graphic) => {
+            if ((settingsData as any).features?.templates === false) return [];
+            const names = this.listTemplates();
+            const applyItems: ContextMenuItem[] = names.map((name, i) => ({
+                id: `apply-template-${i}`,
+                label: name,
+                icon: '<span style="font-size:14px">🏷️</span>',
+                action: (_g: Graphic) => this.applyTemplate(name, graphic),
+            }));
+            return [{
+                id: "templates-submenu",
+                label: "Templates",
+                icon: '<span style="font-size:14px">📌</span>',
+                children: [
+                    {
+                        id: "save-as-template",
+                        label: "Save as Template…",
+                        icon: '<span style="font-size:14px">📌</span>',
+                        action: (g) => this._promptSaveTemplate(g)
+                    },
+                    ...applyItems
+                ]
+            }];
+        });
 
         // Register menu items for force symbols
         const forceMenuItems: ContextMenuItem[] = [
             {
                 id: "show-details",
                 label: "Show Details",
+                shortcut: "I",
                 icon: '<span style="font-size:14px">ℹ️</span>',
                 action: (graphic) => this.showSymbolDetails(graphic)
             },
             {
                 id: "center-on",
                 label: "Center On",
+                shortcut: "C",
                 icon: '<span style="font-size:14px">🎯</span>',
                 action: (graphic) => this.centerOnGraphic(graphic)
             },
             {
                 id: "remove-graphic",
                 label: "Remove",
+                shortcut: "Del",
                 icon: '<span style="font-size:14px">🗑️</span>',
                 action: (graphic) => this.removeGraphic(graphic)
             }
@@ -538,18 +767,54 @@ class SymbolEngine implements Evented {
     private removeGraphic(graphic: Graphic): void {
         console.log("Removing graphic:", graphic.attributes?.name || "Unnamed");
 
-        if (graphic.layer) {
-            (graphic.layer as __esri.GraphicsLayer).remove(graphic);
-        }
+        const layer = graphic.layer as __esri.GraphicsLayer | null;
+        if (!layer) return;
+
+        const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
+        const graphicId = graphic.attributes?.id;
+        const de = graphic.attributes?.drawEssentials;
+
+        this._pushUndo({
+            label: "Remove Symbol",
+            undo: () => {
+                layer.add(graphic);
+                if (de?.AMPLIFIER && graphicId) {
+                    AnnotationEngine.annotate(
+                        annotationLayer, graphic.geometry, de.AMPLIFIER,
+                        de, graphicId, settingsData.textSize,
+                        de.ISFHAND || 0, this.labelOptions || {}, {}
+                    );
+                }
+            },
+            redo: () => {
+                layer.remove(graphic);
+                if (graphicId) AnnotationEngine.deAnnotate(annotationLayer, graphicId);
+            }
+        });
+
+        layer.remove(graphic);
+        if (graphicId) AnnotationEngine.deAnnotate(annotationLayer, graphicId);
+    }
+
+    /**
+     * Close whichever workflow is currently active (EditEngine edit session or
+     * SelectionEngine move) before starting a new one.  Must be called at the
+     * top of every operation that begins an interactive workflow.
+     */
+    private _closeActiveWorkflow(): void {
+        this._editEngine.deactivate();
+        this._selectionEngine.cancelMove();
     }
 
     /**
      * Activate interactive editing for a graphic.
      * Point symbols → move.  Poly/polygon symbols → move + rotate + scale.
-     * Called automatically from the right-click context menu "Modify Symbol" item.
+     * Called automatically from the right-click context menu or M shortcut.
      */
-    private modifySymbol(graphic: Graphic): void {
+    public modifySymbol(graphic: Graphic): void {
         console.log("SymbolEngine: activating edit for", graphic.attributes?.id ?? "graphic");
+        this._closeActiveWorkflow();
+        this._capturePreEditSnapshot(graphic, "Move, Scale, Rotate");
         this._editEngine.activate(graphic);
     }
 
@@ -557,6 +822,8 @@ class SymbolEngine implements Evented {
      * Activate control-point editing (CTRL_PTS drag handles) for a poly/polygon graphic.
      */
     public activateEditControlPoints(graphic: Graphic): void {
+        this._closeActiveWorkflow();
+        this._capturePreEditSnapshot(graphic, "Edit Control Points");
         this._editEngine.activateEditControlPoints(graphic);
     }
 
@@ -581,13 +848,343 @@ class SymbolEngine implements Evented {
         return this._editEngine;
     }
 
+    /** Access the SelectionEngine for multi-select state and batch operations. */
+    public get selectionEngine(): SelectionEngine {
+        return this._selectionEngine;
+    }
+
+    /**
+     * Wire global keyboard shortcuts for context-menu actions.
+     * Shortcuts only fire when the map container (or document) is focused and
+     * no input/textarea element has keyboard focus.
+     *
+     * Shortcut table:
+     *   M        → Move, Scale, Rotate (last right-clicked graphic)
+     *   E        → Edit Control Points (last right-clicked graphic)
+     *   Escape   → Deactivate any active edit session
+     *   Delete   → Remove last right-clicked graphic
+     *   I        → Show Details
+     *   C        → Center On
+     */
+    private _setupKeyboardShortcuts(): void {
+        document.addEventListener("keydown", (e: KeyboardEvent) => {
+            // Skip when typing in an input field
+            const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+            if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+            // Handle Ctrl shortcuts first
+            if (e.ctrlKey || e.metaKey) {
+                if (e.shiftKey && (e.key === "z" || e.key === "Z")) { e.preventDefault(); this.redo(); }
+                else if (e.key === "z" || e.key === "Z") { e.preventDefault(); this.undo(); }
+                else if (e.key === "y" || e.key === "Y") { e.preventDefault(); this.redo(); }
+                else if (e.key === "c" || e.key === "C") {
+                    const g = this._contextMenuManager.getLastClickedGraphic();
+                    if (g) { e.preventDefault(); this.copySymbol(g); }
+                }
+                else if (e.key === "v" || e.key === "V") {
+                    e.preventDefault(); this._activatePasteMode();
+                }
+                return;
+            }
+
+            const graphic = this._contextMenuManager.getLastClickedGraphic();
+
+            switch (e.key) {
+                case "m":
+                case "M":
+                    if (graphic) { e.preventDefault(); this.modifySymbol(graphic); }
+                    break;
+                case "e":
+                case "E":
+                    if (graphic) { e.preventDefault(); this.activateEditControlPoints(graphic); }
+                    break;
+                case "Escape":
+                    if (this._editEngine.isModifyingSymbol || this._editEngine.isEditingControlPoints) {
+                        e.preventDefault();
+                        this.deactivateEdit();
+                    }
+                    break;
+                case "Delete":
+                    // Batch delete if multiple selected, otherwise remove the right-clicked graphic
+                    if (this._selectionEngine.count > 1) {
+                        e.preventDefault();
+                        this._selectionEngine.deleteSelected(entry => this._pushUndo(entry));
+                    } else if (graphic) {
+                        e.preventDefault();
+                        this.removeGraphic(graphic);
+                    }
+                    break;
+                case "i":
+                case "I":
+                    if (graphic) { e.preventDefault(); this.showSymbolDetails(graphic); }
+                    break;
+                case "c":
+                case "C":
+                    if (graphic) { e.preventDefault(); this.centerOnGraphic(graphic); }
+                    break;
+            }
+        });
+    }
+
     /** Access the MeasurementEngine — configure units or toggle programmatically.
      *  May be undefined if the feature is disabled in Settings.json or not yet loaded. */
     public get measurementEngine(): MeasurementEngine | undefined {
         return this._measurementEngine;
     }
 
+    // -----------------------------------------------------------------------
+    // Undo / Redo
+    // -----------------------------------------------------------------------
 
+    /** Push an undo entry and clear the redo stack. */
+    private _pushUndo(entry: UndoEntry): void {
+        this._undoStack.push(entry);
+        this._redoStack = [];
+    }
+
+    /** Snapshot the graphic's current geometry and CTRL_PTS before an edit begins. */
+    private _capturePreEditSnapshot(graphic: Graphic, operationLabel: string): void {
+        const de = graphic.attributes?.drawEssentials;
+        this._preEditSnapshot = {
+            geometry: graphic.geometry?.clone(),
+            ctrlPts: de?.CTRL_PTS ? de.CTRL_PTS.map((p: any) => p.clone?.() ?? p) : null,
+            baseLnPts: de?.BASE_LN_PTS ? JSON.parse(JSON.stringify(de.BASE_LN_PTS)) : null,
+        };
+        (this._preEditSnapshot as any)._graphic = graphic;
+        (this._preEditSnapshot as any)._label = operationLabel;
+    }
+
+    /**
+     * Wire the EditEngine's changeInSymbol event to push an undo entry.
+     * Called once in the constructor; re-called after view switch.
+     */
+    private _wireEditEngineUndo(): void {
+        this._editEngine.on("changeInSymbol", ({ graphic }: { graphic: Graphic }) => {
+            const snap = this._preEditSnapshot;
+            if (!snap || (snap as any)._graphic !== graphic) return;
+
+            const prevGeometry = snap.geometry;
+            const prevCtrlPts = snap.ctrlPts;
+            const prevBaseLnPts = snap.baseLnPts;
+            const label = (snap as any)._label ?? "Edit";
+
+            // Capture the "after" state now (changeInSymbol fires after completion)
+            const de = graphic.attributes?.drawEssentials;
+            const nextGeometry = graphic.geometry?.clone();
+            const nextCtrlPts = de?.CTRL_PTS ? de.CTRL_PTS.map((p: any) => p.clone?.() ?? p) : null;
+            const nextBaseLnPts = de?.BASE_LN_PTS ? JSON.parse(JSON.stringify(de.BASE_LN_PTS)) : null;
+
+            const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
+            const graphicId = graphic.attributes?.id;
+
+            const applyState = (geom: any, ctrlPts: any, baseLnPts: any) => {
+                graphic.geometry = geom;
+                if (de && ctrlPts) de.CTRL_PTS = ctrlPts;
+                if (de && baseLnPts) de.BASE_LN_PTS = baseLnPts;
+                if (graphicId) {
+                    AnnotationEngine.deAnnotate(annotationLayer, graphicId);
+                    if (de?.AMPLIFIER) {
+                        AnnotationEngine.annotate(
+                            annotationLayer, geom, de.AMPLIFIER,
+                            de, graphicId, settingsData.textSize,
+                            de.ISFHAND || 0, this.labelOptions || {}, {}
+                        );
+                    }
+                }
+            };
+
+            this._pushUndo({
+                label,
+                undo: () => applyState(prevGeometry, prevCtrlPts, prevBaseLnPts),
+                redo: () => applyState(nextGeometry, nextCtrlPts, nextBaseLnPts),
+            });
+
+            this._preEditSnapshot = null;
+        });
+    }
+
+    /** Undo the last operation. */
+    public undo(): void {
+        const entry = this._undoStack.pop();
+        if (!entry) return;
+        entry.undo();
+        this._redoStack.push(entry);
+        console.info(`[Undo] ${entry.label}`);
+    }
+
+    /** Redo the last undone operation. */
+    public redo(): void {
+        const entry = this._redoStack.pop();
+        if (!entry) return;
+        entry.redo();
+        this._undoStack.push(entry);
+        console.info(`[Redo] ${entry.label}`);
+    }
+
+    /** Number of operations available to undo. */
+    public get undoCount(): number { return this._undoStack.length; }
+
+    /** Number of operations available to redo. */
+    public get redoCount(): number { return this._redoStack.length; }
+
+    /** Label of the next undo operation, or null if the stack is empty. */
+    public get nextUndoLabel(): string | null {
+        return this._undoStack.length > 0 ? this._undoStack[this._undoStack.length - 1].label : null;
+    }
+
+    /** Label of the next redo operation, or null if the stack is empty. */
+    public get nextRedoLabel(): string | null {
+        return this._redoStack.length > 0 ? this._redoStack[this._redoStack.length - 1].label : null;
+    }
+
+    // -----------------------------------------------------------------------
+    // Copy / Paste
+    // -----------------------------------------------------------------------
+
+    /**
+     * Copy a graphic to the internal clipboard.
+     * Stores a deep clone of the graphic's geometry, symbol, and drawEssentials.
+     */
+    public copySymbol(graphic: Graphic): void {
+        this._clipboard = {
+            graphic: graphic.clone(),
+            layerId: graphic.layer?.id ?? this._layerManager.getSymbolLayer().id
+        };
+        console.info("[CopyPaste] Copied:", graphic.attributes?.id ?? "graphic");
+        this.emitEvent("symbolCopied", { graphic });
+    }
+
+    /**
+     * True when the clipboard holds a graphic ready to paste.
+     */
+    public get hasClipboard(): boolean {
+        return this._clipboard !== null;
+    }
+
+    /**
+     * Paste the clipboard graphic at a specific map point.
+     * Returns the newly created Graphic, or null if the clipboard is empty.
+     */
+    public pasteSymbol(targetPoint: Point): Graphic | null {
+        if (!this._clipboard) return null;
+
+        const source = this._clipboard.graphic;
+        const de = source.attributes?.drawEssentials;
+
+        // Clone and offset geometry to the target point
+        const newGeom = this._offsetGeometryTo(source.geometry, targetPoint);
+        if (!newGeom) return null;
+
+        const newId = this.generateUUID();
+        const newGraphic = source.clone();
+        newGraphic.geometry = newGeom;
+        newGraphic.attributes = {
+            ...source.attributes,
+            id: newId,
+            drawEssentials: de ? { ...de } : undefined,
+        };
+
+        const layer = this._layerManager.getOrCreateLayer(this._clipboard.layerId)
+            ?? this._layerManager.getSymbolLayer();
+        layer.add(newGraphic);
+
+        // Re-annotate
+        const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
+        if (de?.AMPLIFIER) {
+            AnnotationEngine.annotate(
+                annotationLayer, newGeom, de.AMPLIFIER,
+                de, newId, settingsData.textSize,
+                de.ISFHAND || 0, this.labelOptions || {}, {}
+            );
+        }
+
+        // Push undo entry
+        this._pushUndo({
+            label: "Paste Symbol",
+            undo: () => {
+                layer.remove(newGraphic);
+                AnnotationEngine.deAnnotate(annotationLayer, newId);
+            },
+            redo: () => {
+                layer.add(newGraphic);
+                if (de?.AMPLIFIER) {
+                    AnnotationEngine.annotate(
+                        annotationLayer, newGeom, de.AMPLIFIER,
+                        de, newId, settingsData.textSize,
+                        de.ISFHAND || 0, this.labelOptions || {}, {}
+                    );
+                }
+            }
+        });
+
+        console.info("[CopyPaste] Pasted at", targetPoint);
+        this.emitEvent("symbolPasted", { graphic: newGraphic });
+        return newGraphic;
+    }
+
+    /**
+     * Enter "paste mode": the next map click pastes the clipboard graphic there.
+     * Escape cancels paste mode.
+     */
+    private _activatePasteMode(): void {
+        if (!this._clipboard) return;
+
+        this._closeActiveWorkflow();
+        this.emitEvent("pasteMode", { active: true });
+        console.info("[CopyPaste] Paste mode active — click map to paste");
+
+        const clickHandle = this.view.on("click", (evt) => {
+            clickHandle.remove();
+            keyHandle();
+            const pt = this.view.toMap({ x: evt.x, y: evt.y });
+            if (pt) this.pasteSymbol(pt);
+            this.emitEvent("pasteMode", { active: false });
+        });
+
+        const keyHandler = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                clickHandle.remove();
+                keyHandle();
+                this.emitEvent("pasteMode", { active: false });
+                console.info("[CopyPaste] Paste mode cancelled");
+            }
+        };
+        document.addEventListener("keydown", keyHandler, { once: false });
+        const keyHandle = () => document.removeEventListener("keydown", keyHandler);
+    }
+
+    /**
+     * Translate all vertices of a geometry so that its centroid lands at targetPoint.
+     */
+    private _offsetGeometryTo(sourceGeom: any, targetPoint: Point): any {
+        if (!sourceGeom) return null;
+        try {
+            const clone = sourceGeom.clone();
+            if (clone.type === "point") {
+                clone.x = targetPoint.x;
+                clone.y = targetPoint.y;
+                if (targetPoint.z !== undefined) clone.z = targetPoint.z;
+            } else {
+                // Compute centroid from extent
+                const ext = clone.extent;
+                if (!ext) return clone;
+                const dx = targetPoint.x - (ext.xmin + ext.xmax) / 2;
+                const dy = targetPoint.y - (ext.ymin + ext.ymax) / 2;
+                if (clone.type === "polyline") {
+                    clone.paths = clone.paths.map((path: number[][]) =>
+                        path.map(([x, y, ...rest]) => [x + dx, y + dy, ...rest])
+                    );
+                } else if (clone.type === "polygon") {
+                    clone.rings = clone.rings.map((ring: number[][]) =>
+                        ring.map(([x, y, ...rest]) => [x + dx, y + dy, ...rest])
+                    );
+                }
+            }
+            return clone;
+        } catch {
+            return sourceGeom.clone();
+        }
+    }
 
 
 
@@ -871,6 +1468,9 @@ class SymbolEngine implements Evented {
                 isPassive = false;
             }
 
+            // Close any active edit/move workflow before starting a new draw
+            if (!isPassive) this._closeActiveWorkflow();
+
             // Moved initialization of symbolData to constructor to avoid re-parsing
             // this.symbolData = JSON.parse(symData); // symData is already imported as JSON object
 
@@ -1121,6 +1721,27 @@ class SymbolEngine implements Evented {
             graphicsLayer.add(graphic);
             console.info("Symbol Added")
 
+            // Push undo entry for the Add operation
+            const symLabel = drawEssentials?.SIDC ? `Symbol (${drawEssentials.SIDC.slice(0, 6)})` : "Symbol";
+            const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
+            this._pushUndo({
+                label: `Add ${symLabel}`,
+                undo: () => {
+                    graphicsLayer.remove(graphic);
+                    AnnotationEngine.deAnnotate(annotationLayer, attrs.id);
+                },
+                redo: () => {
+                    graphicsLayer.add(graphic);
+                    if (drawEssentials?.AMPLIFIER) {
+                        AnnotationEngine.annotate(
+                            annotationLayer, geometry, drawEssentials.AMPLIFIER,
+                            drawEssentials, attrs.id, settingsData.textSize,
+                            drawEssentials.ISFHAND || 0, this.labelOptions || {}, {}
+                        );
+                    }
+                }
+            });
+
 
 
             // Clean up event handlers if they exist
@@ -1367,7 +1988,251 @@ class SymbolEngine implements Evented {
         }));
     }
 
+    // -----------------------------------------------------------------------
+    // Feature 5 — Save / Load Symbol Configurations
+    // -----------------------------------------------------------------------
 
+    /** Serialize a single graphic to a plain JSON-safe object. */
+    public saveSymbolToJSON(graphic: Graphic): object {
+        const de: any = graphic.attributes?.drawEssentials;
+        const amplifier: any = de?.AMPLIFIER;
+
+        const serializePt = (pt: any) =>
+            pt ? { x: pt.x, y: pt.y, spatialReference: pt.spatialReference?.toJSON?.() } : null;
+
+        const ctrlPtsSerialized = de?.CTRL_PTS
+            ? de.CTRL_PTS.map(serializePt)
+            : undefined;
+
+        const baseLnPtsSerialized = de?.BASE_LN_PTS ? {
+            startPt: serializePt(de.BASE_LN_PTS.startPt),
+            midPt:   serializePt(de.BASE_LN_PTS.midPt),
+            endPt:   serializePt(de.BASE_LN_PTS.endPt),
+        } : undefined;
+
+        const deJson: any = { ...de };
+        delete deJson.SCOPE;
+        delete deJson.AMPLIFIER;
+        delete deJson.CTRL_PTS;
+        delete deJson.BASE_LN_PTS;
+        deJson._CTRL_PTS = ctrlPtsSerialized;
+        deJson._BASE_LN_PTS = baseLnPtsSerialized;
+
+        return {
+            pams8Version: "1.0",
+            layerId:      graphic.layer?.id ?? this._layerManager.getSymbolLayer().id,
+            id:           graphic.attributes?.id,
+            graphicType:  graphic.attributes?.type ?? "symbol",
+            geometry:     graphic.geometry?.toJSON?.(),
+            geometryType: graphic.geometry?.type,
+            symbol:       graphic.symbol?.toJSON?.(),
+            symbolType:   graphic.symbol?.type,
+            drawEssentials: deJson,
+            amplifier:    amplifier ? { ...amplifier } : null,
+        };
+    }
+
+    /** Reconstruct a Graphic from a serialised object and add it to the correct layer. */
+    public loadSymbolFromJSON(data: any): Graphic | null {
+        try {
+            let geometry: any;
+            if (data.geometry && data.geometryType) {
+                if      (data.geometryType === "point")    geometry = new Point(data.geometry);
+                else if (data.geometryType === "polyline") geometry = new Polyline(data.geometry);
+                else if (data.geometryType === "polygon")  geometry = new Polygon(data.geometry);
+            }
+
+            let symbol: any;
+            if (data.symbol && data.symbolType) {
+                if      (data.symbolType === "picture-marker") symbol = new PictureMarkerSymbol(data.symbol);
+                else if (data.symbolType === "simple-line")    symbol = new SimpleLineSymbol(data.symbol);
+                else if (data.symbolType === "simple-fill")    symbol = new SimpleFillSymbol(data.symbol);
+                else if (data.symbolType === "simple-marker")  symbol = new SimpleMarkerSymbol(data.symbol);
+            }
+
+            const amplifier = new Amplifier();
+            if (data.amplifier) Object.assign(amplifier, data.amplifier);
+
+            const de = new DrawEssentials();
+            if (data.drawEssentials) {
+                const { _CTRL_PTS, _BASE_LN_PTS, ...rest } = data.drawEssentials;
+                Object.assign(de, rest);
+                if (_CTRL_PTS) {
+                    (de as any).CTRL_PTS = (_CTRL_PTS as any[])
+                        .map((p: any) => p ? new Point({ x: p.x, y: p.y, spatialReference: p.spatialReference }) : null)
+                        .filter(Boolean);
+                }
+                if (_BASE_LN_PTS) {
+                    (de as any).BASE_LN_PTS = {
+                        startPt: _BASE_LN_PTS.startPt ? new Point(_BASE_LN_PTS.startPt) : undefined,
+                        midPt:   _BASE_LN_PTS.midPt   ? new Point(_BASE_LN_PTS.midPt)   : undefined,
+                        endPt:   _BASE_LN_PTS.endPt   ? new Point(_BASE_LN_PTS.endPt)   : undefined,
+                    };
+                }
+            }
+            (de as any).AMPLIFIER = amplifier;
+
+            const id = data.id || this.generateUUID();
+            const graphic = new Graphic({
+                geometry,
+                symbol,
+                attributes: { id, type: data.graphicType || "symbol", drawEssentials: de },
+            });
+
+            const layer = this._layerManager.getOrCreateLayer(data.layerId)
+                ?? this._layerManager.getSymbolLayer();
+            layer.add(graphic);
+
+            const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
+            if (geometry && amplifier.SIDC) {
+                AnnotationEngine.annotate(
+                    annotationLayer, geometry, amplifier,
+                    de, id, settingsData.textSize,
+                    (de as any).ISFHAND || 0, this.labelOptions || {}, {}
+                );
+            }
+
+            return graphic;
+        } catch (e) {
+            console.error("[SaveLoad] loadSymbolFromJSON failed:", e);
+            return null;
+        }
+    }
+
+    /** Serialise every graphic across all symbol layers into an array. */
+    public exportLayerToJSON(): object[] {
+        const result: object[] = [];
+        const layerIds = [LAYER_NAMES.TACT, LAYER_NAMES.TACT_PT, LAYER_NAMES.FORCE, "milSymbols"];
+        for (const layerId of layerIds) {
+            const layer = this._layerManager.getOrCreateLayer(layerId) as any;
+            if (!layer?.graphics) continue;
+            (layer.graphics as any).forEach((g: Graphic) => {
+                try { result.push(this.saveSymbolToJSON(g)); } catch { /* skip */ }
+            });
+        }
+        return result;
+    }
+
+    /** Reconstruct all graphics from a serialised array. */
+    public importLayerFromJSON(data: object[]): void {
+        data.forEach(item => this.loadSymbolFromJSON(item as any));
+        console.info(`[SaveLoad] Imported ${data.length} symbols`);
+    }
+
+    /** Trigger a browser download of all graphics as a JSON file. */
+    public saveToFile(filename?: string): void {
+        const data = this.exportLayerToJSON();
+        this._downloadJSON(data, filename ?? `pams8_symbols_${Date.now()}.json`);
+        console.info(`[SaveLoad] Exported ${data.length} symbols`);
+    }
+
+    /** Trigger a browser download of a single graphic as a JSON file. */
+    public saveSymbolToFile(graphic: Graphic): void {
+        const data = this.saveSymbolToJSON(graphic);
+        this._downloadJSON(data, `pams8_symbol_${Date.now()}.json`);
+    }
+
+    /** Open a file picker; load symbols from the chosen JSON file. */
+    public loadFromFile(): void {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json,application/json";
+        input.onchange = (e: Event) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const parsed = JSON.parse(evt.target?.result as string);
+                    if (Array.isArray(parsed)) this.importLayerFromJSON(parsed);
+                    else this.loadSymbolFromJSON(parsed);
+                } catch (err) {
+                    console.error("[SaveLoad] Failed to parse JSON file:", err);
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+
+    private _downloadJSON(data: any, filename: string): void {
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: "application/json" });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // -----------------------------------------------------------------------
+    // Feature 7 — Symbol Templates
+    // -----------------------------------------------------------------------
+
+    private readonly _TEMPLATES_KEY = "pams8_templates";
+
+    /** Save the amplifier + size of the given graphic as a named template. */
+    public saveAsTemplate(name: string, graphic: Graphic): void {
+        const de: any = graphic.attributes?.drawEssentials;
+        const templates = this._loadTemplatesStore();
+        templates[name] = {
+            name,
+            size:      de?.SIZE,
+            amplifier: de?.AMPLIFIER ? { ...de.AMPLIFIER } : {},
+        };
+        localStorage.setItem(this._TEMPLATES_KEY, JSON.stringify(templates));
+        console.info(`[Templates] Saved template: "${name}"`);
+    }
+
+    /** Apply a saved template's amplifier + size to an existing graphic and re-annotate. */
+    public applyTemplate(name: string, graphic: Graphic): void {
+        const t = this._loadTemplatesStore()[name];
+        if (!t) { console.warn(`[Templates] Not found: "${name}"`); return; }
+
+        const de: any = graphic.attributes?.drawEssentials;
+        if (!de) return;
+
+        if (t.size !== undefined) de.SIZE = t.size;
+
+        const amplifier = new Amplifier();
+        Object.assign(amplifier, t.amplifier);
+        de.AMPLIFIER = amplifier;
+
+        const id = graphic.attributes?.id;
+        const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
+        if (id) {
+            AnnotationEngine.deAnnotate(annotationLayer, id);
+            if (amplifier.SIDC) {
+                AnnotationEngine.annotate(
+                    annotationLayer, graphic.geometry, amplifier,
+                    de, id, settingsData.textSize,
+                    de.ISFHAND || 0, this.labelOptions || {}, {}
+                );
+            }
+        }
+        console.info(`[Templates] Applied template: "${name}"`);
+    }
+
+    public listTemplates(): string[] {
+        return Object.keys(this._loadTemplatesStore());
+    }
+
+    public deleteTemplate(name: string): void {
+        const templates = this._loadTemplatesStore();
+        delete templates[name];
+        localStorage.setItem(this._TEMPLATES_KEY, JSON.stringify(templates));
+    }
+
+    private _loadTemplatesStore(): Record<string, any> {
+        try { return JSON.parse(localStorage.getItem(this._TEMPLATES_KEY) || "{}"); }
+        catch { return {}; }
+    }
+
+    private _promptSaveTemplate(graphic: Graphic): void {
+        const name = window.prompt("Enter template name:");
+        if (name?.trim()) this.saveAsTemplate(name.trim(), graphic);
+    }
 
 }
 

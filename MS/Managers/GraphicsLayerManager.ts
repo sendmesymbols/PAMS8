@@ -9,6 +9,7 @@ export const LAYER_NAMES = {
     TACT: "TacticalSymbolsLayer",
     SKETCH: "SketchLayer",
     ANNOTATION_LAYER: "AnnotationLayer",
+    SELECTION_HIGHLIGHT: "SelectionHighlightLayer",
 };
 
 // Singleton pattern to ensure layers are created only once per view

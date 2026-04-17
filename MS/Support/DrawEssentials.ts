@@ -152,7 +152,7 @@ export class DrawEssentials {
             FRNT_LN_ANGL_RATIO: this.FRNT_LN_ANGL_RATIO,
             SCOPE: this.SCOPE,
             BASE_LN_PTS: { ...this.BASE_LN_PTS },
-            CTRL_PTS: [...this.CTRL_PTS],
+            CTRL_PTS: this.CTRL_PTS ? [...this.CTRL_PTS] : undefined,
             SID: this.SID,
             SYM_NAME: this.SYM_NAME,
             SYM_GEO_TYPE: this.SYM_GEO_TYPE,
