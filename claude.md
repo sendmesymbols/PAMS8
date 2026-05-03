@@ -167,3 +167,4 @@ reactiveUtils.watch(
 3. The `window.MS` object provides access to the milsymbol library
 4. Symbol classes must emit global CustomEvents for `SymbolEngine` to catch them
 5. `dist/MS` contains the production build of the library
+6. API Test and Settings panel in @index.html and @main.ts should be kept in sync with utility functions and features being added in @MS library

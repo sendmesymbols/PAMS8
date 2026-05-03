@@ -165,7 +165,22 @@
         "shortcuts":         true,
         "copyPaste":         true,
         "saveLoad":          true,
-        "templates":         true
+        "templates":         true,
+        "proximityEngine":   true
+    },
+    "proximity": {
+        "nearestVertex":     true,
+        "nearestCoordinate": true,
+        "showDistance":      true,
+        "distanceUnit":      "miles",
+        "snapRadiusPx":      0,
+        "lineColor":         [0, 120, 255],
+        "lineOpacity":       0.7,
+        "lineWidth":         1.5,
+        "markerColor":       [0, 120, 255],
+        "markerSize":        10,
+        "fontSize":          11,
+        "fontColor":         [0, 80, 200]
     },
     "echelonMap23": {
         "0": ["23", "00"],

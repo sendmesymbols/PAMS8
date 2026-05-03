@@ -1,351 +1,2213 @@
 <!doctype html>
 <html>
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
-
-  <title>PAMS8</title>
-  <style>
-    html,
-    body,
-    #viewDiv {
-      padding: 0;
-      margin: 0;
-      height: 100%;
-      width: 100%;
-    }
-
-    #infoDiv {
-      position: absolute;
-      top: 15px;
-      left: 60px;
-      display: flex;          /* Aligns children in a row */
-      align-items: center;    /* Vertically centers the items */
-      gap: 10px;              /* Adds space between the items */
-    }
-
-    #infoDiv input {
-      border: none;
-      box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 2px;
-    }
-
-    #fabricCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      pointer-events: none;
-    }
-
-    /* Autocomplete styles */
-    .autocomplete-container {
-      position: relative;
-      display: inline-block;
-    }
-
-    .autocomplete-list {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: white;
-      border: 1px solid #ccc;
-      border-top: none;
-      max-height: 200px;
-      overflow-y: auto;
-      z-index: 1000;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .autocomplete-item {
-      padding: 8px 12px;
-      cursor: pointer;
-      border-bottom: 1px solid #eee;
-    }
-
-    .autocomplete-item:hover {
-      background-color: #f0f0f0;
-    }
-
-    .autocomplete-item.selected {
-      background-color: #0078d4;
-      color: white;
-    }
-
-    .symbol-details {
-      position: absolute;
-      top: 60px;
-      right: 60px;
-      background: white;
-      border: 1px solid #ccc;
-      padding: 15px;
-      border-radius: 4px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      max-width: 400px;
-      z-index: 1000;
-      display: none;
-    }
-
-    .symbol-details h3 {
-      margin: 0 0 10px 0;
-      color: #333;
-    }
-
-    .symbol-details p {
-      margin: 5px 0;
-      font-size: 14px;
-    }
-
-    .symbol-details .key {
-      font-weight: bold;
-      color: #0078d4;
-    }
-
-  /* ── Measurement panel ──────────────────────────────────────────────────── */
-  #measurePanel {
-    display: none;
-    position: absolute;
-    bottom: 30px;
-    right: 10px;
-    width: 210px;
-    background: rgba(18, 22, 32, 0.92);
-    color: #dce8f5;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    border: 1px solid rgba(100, 160, 230, 0.4);
-    border-radius: 8px;
-    box-shadow: 0 6px 24px rgba(0,0,0,0.5);
-    backdrop-filter: blur(8px);
-    z-index: 900;
-    overflow: hidden;
-    user-select: none;
-  }
-
-  #measurePanel.ms-active {
-    display: block;
-    animation: ms-panel-in 0.18s ease;
-  }
-
-  @keyframes ms-panel-in {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0);   }
-  }
-
-  #measurePanel header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px 6px;
-    border-bottom: 1px solid rgba(100,160,230,0.25);
-    background: rgba(100,160,230,0.08);
-  }
-
-  #measurePanel header span { color: #64b4ff; font-weight: bold; letter-spacing: 0.4px; }
-
-  /* Status dot */
-  #measurePanel header .ms-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: #555;
-    transition: background 0.3s;
-  }
-  #measurePanel.ms-on header .ms-dot { background: #4caf50; box-shadow: 0 0 6px #4caf5088; }
-
-  /* Unit switcher */
-  #measurePanel .ms-units {
-    display: flex;
-    gap: 4px;
-    padding: 6px 12px;
-    border-bottom: 1px solid rgba(100,160,230,0.15);
-  }
-  #measurePanel .ms-units button {
-    flex: 1;
-    padding: 3px 0;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(100,160,230,0.25);
-    border-radius: 4px;
-    color: #90b8d8;
-    font-family: inherit;
-    font-size: 11px;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-  }
-  #measurePanel .ms-units button.ms-active-unit {
-    background: rgba(100,160,230,0.25);
-    color: #e8f4ff;
-    border-color: rgba(100,160,230,0.6);
-  }
-  #measurePanel .ms-units button:hover { background: rgba(100,160,230,0.15); }
-
-  /* Data rows */
-  #measurePanel table {
-    width: 100%;
-    border-spacing: 0;
-    padding: 6px 12px 4px;
-  }
-  #measurePanel td { padding: 2px 0; line-height: 1.6; }
-  #measurePanel td:first-child { color: #7eb4e8; padding-right: 8px; white-space: nowrap; }
-  #measurePanel td:last-child  { color: #e8f4ff; font-weight: bold; }
-
-  /* Idle hint */
-  #measurePanel .ms-idle {
-    padding: 8px 12px 10px;
-    color: #445;
-    font-style: italic;
-    font-size: 11px;
-  }
-
-  /* Copy button */
-  #measurePanel footer {
-    display: flex;
-    justify-content: flex-end;
-    padding: 4px 8px 8px;
-  }
-  #measurePanel footer button {
-    background: none;
-    border: 1px solid rgba(100,160,230,0.3);
-    border-radius: 4px;
-    color: #7eb4e8;
-    font-size: 11px;
-    padding: 3px 8px;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-  #measurePanel footer button:hover { background: rgba(100,160,230,0.15); color: #e8f4ff; }
-
-  /* Measurement toggle button active state */
-  #measureToggleBtn.ms-btn-active {
-    background: rgba(100,160,230,0.2) !important;
-    box-shadow: inset 0 0 0 2px rgba(100,160,230,0.6);
-  }
-
-  /* Snap toast (measurement-graphic-measured result) */
-  .ms-snap-toast {
-    position: fixed;
-    background: rgba(18,22,32,0.94);
-    color: #dce8f5;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    padding: 10px 14px;
-    border-radius: 6px;
-    border: 1px solid rgba(100,160,230,0.5);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-    z-index: 1100;
-    pointer-events: none;
-    min-width: 160px;
-    line-height: 1.7;
-    animation: ms-toast-fade 4s forwards;
-  }
-  @keyframes ms-toast-fade {
-    0%   { opacity: 0; transform: translateY(6px); }
-    10%  { opacity: 1; transform: translateY(0);   }
-    80%  { opacity: 1; }
-    100% { opacity: 0; }
-  }
-
-  </style>
-  <link rel="stylesheet" href="https://js.arcgis.com/4.32/@arcgis/core/assets/esri/themes/light/main.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
-  <script src="MS/ThirdParty/MilSymbols/milsymbol.js"></script>
-  <script src="MS/ThirdParty/TweenJS/tween.js"></script>
-
-</head>
-<body>
-<div id="viewDiv"></div>
-<canvas id="fabricCanvas"></canvas>
-
-<div id="infoDiv">
-  <div class="autocomplete-container">
-    <input
-            class="esri-component esri-widget esri-interactive"
-            type="text"
-            id="symbolSearch"
-            placeholder="Search symbols by name..."
-            autocomplete="off"
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
     />
-    <div id="autocompleteList" class="autocomplete-list" style="display: none;"></div>
-  </div>
-    <select id="drawTypesSelectPre" class="drawTypesSelectPre">
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
 
-  <input
+    <title>PAMS8</title>
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+
+      #infoDiv {
+        position: absolute;
+        top: 15px;
+        left: 60px;
+        display: flex; /* Aligns children in a row */
+        align-items: center; /* Vertically centers the items */
+        gap: 10px; /* Adds space between the items */
+      }
+
+      #infoDiv input {
+        border: none;
+        box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 2px;
+      }
+
+      #fabricCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+      }
+
+      /* Autocomplete styles */
+      .autocomplete-container {
+        position: relative;
+        display: inline-block;
+      }
+
+      .autocomplete-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ccc;
+        border-top: none;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .autocomplete-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+      }
+
+      .autocomplete-item:hover {
+        background-color: #f0f0f0;
+      }
+
+      .autocomplete-item.selected {
+        background-color: #0078d4;
+        color: white;
+      }
+
+      .symbol-details {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(30, 35, 45, 0.95);
+        border: 1px solid rgba(100, 160, 230, 0.4);
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        max-width: 350px;
+        z-index: 1000;
+        display: none;
+        animation: symbol-toast-in 0.3s ease-out;
+      }
+
+      .symbol-details.show {
+        display: block;
+      }
+
+      @keyframes symbol-toast-in {
+        from {
+          opacity: 0;
+          transform: translateX(100px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .symbol-details.fade-out {
+        animation: symbol-toast-out 0.3s ease-in forwards;
+      }
+
+      @keyframes symbol-toast-out {
+        from {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        to {
+          opacity: 0;
+          transform: translateX(100px);
+        }
+      }
+
+      .symbol-details h3 {
+        margin: 0 0 10px 0;
+        color: #64b4ff;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .symbol-details p {
+        margin: 5px 0;
+        font-size: 12px;
+        color: #a0b8d8;
+      }
+
+      .symbol-details .key {
+        font-weight: bold;
+        color: #64b4ff;
+      }
+
+      /* ── Measurement panel ──────────────────────────────────────────────────── */
+      #measurePanel {
+        display: none;
+        position: absolute;
+        bottom: 30px;
+        right: 10px;
+        width: 210px;
+        background: rgba(18, 22, 32, 0.92);
+        color: #dce8f5;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        border: 1px solid rgba(100, 160, 230, 0.4);
+        border-radius: 8px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        z-index: 900;
+        overflow: hidden;
+        user-select: none;
+      }
+
+      #measurePanel.ms-active {
+        display: block;
+        animation: ms-panel-in 0.18s ease;
+      }
+
+      @keyframes ms-panel-in {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      #measurePanel header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px 6px;
+        border-bottom: 1px solid rgba(100, 160, 230, 0.25);
+        background: rgba(100, 160, 230, 0.08);
+      }
+
+      #measurePanel header span {
+        color: #64b4ff;
+        font-weight: bold;
+        letter-spacing: 0.4px;
+      }
+
+      /* Status dot */
+      #measurePanel header .ms-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #555;
+        transition: background 0.3s;
+      }
+      #measurePanel.ms-on header .ms-dot {
+        background: #4caf50;
+        box-shadow: 0 0 6px #4caf5088;
+      }
+
+      /* Unit switcher */
+      #measurePanel .ms-units {
+        display: flex;
+        gap: 4px;
+        padding: 6px 12px;
+        border-bottom: 1px solid rgba(100, 160, 230, 0.15);
+      }
+      #measurePanel .ms-units button {
+        flex: 1;
+        padding: 3px 0;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(100, 160, 230, 0.25);
+        border-radius: 4px;
+        color: #90b8d8;
+        font-family: inherit;
+        font-size: 11px;
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          color 0.15s;
+      }
+      #measurePanel .ms-units button.ms-active-unit {
+        background: rgba(100, 160, 230, 0.25);
+        color: #e8f4ff;
+        border-color: rgba(100, 160, 230, 0.6);
+      }
+      #measurePanel .ms-units button:hover {
+        background: rgba(100, 160, 230, 0.15);
+      }
+
+      /* Data rows */
+      #measurePanel table {
+        width: 100%;
+        border-spacing: 0;
+        padding: 6px 12px 4px;
+      }
+      #measurePanel td {
+        padding: 2px 0;
+        line-height: 1.6;
+      }
+      #measurePanel td:first-child {
+        color: #7eb4e8;
+        padding-right: 8px;
+        white-space: nowrap;
+      }
+      #measurePanel td:last-child {
+        color: #e8f4ff;
+        font-weight: bold;
+      }
+
+      /* Idle hint */
+      #measurePanel .ms-idle {
+        padding: 8px 12px 10px;
+        color: #445;
+        font-style: italic;
+        font-size: 11px;
+      }
+
+      /* Copy button */
+      #measurePanel footer {
+        display: flex;
+        justify-content: flex-end;
+        padding: 4px 8px 8px;
+      }
+      #measurePanel footer button {
+        background: none;
+        border: 1px solid rgba(100, 160, 230, 0.3);
+        border-radius: 4px;
+        color: #7eb4e8;
+        font-size: 11px;
+        padding: 3px 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      #measurePanel footer button:hover {
+        background: rgba(100, 160, 230, 0.15);
+        color: #e8f4ff;
+      }
+
+      /* Measurement toggle button active state */
+      #measureToggleBtn.ms-btn-active {
+        background: rgba(100, 160, 230, 0.2) !important;
+        box-shadow: inset 0 0 0 2px rgba(100, 160, 230, 0.6);
+      }
+
+      /* Snap toast (measurement-graphic-measured result) */
+      .ms-snap-toast {
+        position: fixed;
+        background: rgba(18, 22, 32, 0.94);
+        color: #dce8f5;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        padding: 10px 14px;
+        border-radius: 6px;
+        border: 1px solid rgba(100, 160, 230, 0.5);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        z-index: 1100;
+        pointer-events: none;
+        min-width: 160px;
+        line-height: 1.7;
+        animation: ms-toast-fade 4s forwards;
+      }
+      @keyframes ms-toast-fade {
+        0% {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        10% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        80% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+
+      /* Hint toast (measurement-hint, proximity-hint) */
+      .ms-hint-toast {
+        position: fixed;
+        background: rgba(40, 45, 55, 0.92);
+        color: #c8d8f0;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 12px;
+        padding: 8px 14px;
+        border-radius: 5px;
+        border: 1px solid rgba(100, 160, 230, 0.4);
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+        z-index: 1100;
+        pointer-events: none;
+        min-width: 180px;
+        max-width: 300px;
+        line-height: 1.5;
+        animation: ms-toast-fade 3.5s forwards;
+      }
+
+      /* Phase-specific hint colors */
+      .ms-hint-toast[data-phase='idle'] {
+        border-color: rgba(140, 150, 170, 0.4);
+      }
+      .ms-hint-toast[data-phase='drawing'],
+      .ms-hint-toast[data-phase='active'] {
+        border-color: rgba(100, 180, 255, 0.5);
+        background: rgba(50, 60, 80, 0.92);
+      }
+      .ms-hint-toast[data-phase='segment'],
+      .ms-hint-toast[data-phase='snapped'] {
+        border-color: rgba(80, 200, 120, 0.5);
+        background: rgba(40, 60, 50, 0.92);
+      }
+      .ms-hint-toast[data-phase='complete'] {
+        border-color: rgba(255, 200, 100, 0.5);
+        background: rgba(60, 55, 40, 0.92);
+      }
+      .ms-hint-toast[data-phase='no-targets'] {
+        border-color: rgba(255, 150, 100, 0.5);
+        background: rgba(60, 45, 40, 0.92);
+      }
+
+      /* Settings Control Panel */
+      #settingsPanel {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        width: 280px;
+        background: rgba(30, 35, 45, 0.95);
+        color: #dce8f5;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 12px;
+        border: 1px solid rgba(100, 160, 230, 0.4);
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        z-index: 1050;
+        overflow: hidden;
+        transition: height 0.2s ease;
+      }
+
+      #settingsPanel.collapsed {
+        height: 36px;
+      }
+
+      #settingsPanel.expanded {
+        height: auto;
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+
+      #settingsPanel header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: rgba(100, 160, 230, 0.15);
+        border-bottom: 1px solid rgba(100, 160, 230, 0.2);
+        cursor: pointer;
+        user-select: none;
+      }
+
+      #settingsPanel header span {
+        font-weight: 600;
+        color: #64b4ff;
+        font-size: 13px;
+      }
+
+      #settingsPanel header .toggle-icon {
+        font-size: 10px;
+        color: #7eb4e8;
+        transition: transform 0.2s;
+      }
+
+      #settingsPanel.collapsed .toggle-icon {
+        transform: rotate(-90deg);
+      }
+
+      #settingsPanel .settings-content {
+        padding: 8px 12px;
+      }
+
+      #settingsPanel .settings-section {
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(100, 160, 230, 0.1);
+      }
+
+      #settingsPanel .settings-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+      }
+
+      #settingsPanel .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: #7eb4e8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+      }
+
+      #settingsPanel .setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+
+      #settingsPanel .setting-row label {
+        flex: 1;
+        color: #a0b8d8;
+        font-size: 11px;
+      }
+
+      #settingsPanel .setting-row input[type='number'],
+      #settingsPanel .setting-row input[type='text'],
+      #settingsPanel .setting-row select {
+        width: 70px;
+        padding: 3px 6px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(100, 160, 230, 0.3);
+        border-radius: 4px;
+        color: #e8f4ff;
+        font-size: 11px;
+      }
+
+      #settingsPanel .setting-row input:focus,
+      #settingsPanel .setting-row select:focus {
+        outline: none;
+        border-color: rgba(100, 160, 230, 0.6);
+      }
+
+      #settingsPanel .setting-row input[type='checkbox'] {
+        width: 16px;
+        height: 16px;
+        accent-color: #4caf50;
+      }
+
+      #settingsPanel .setting-row input[type='color'] {
+        width: 50px;
+        height: 24px;
+        padding: 0;
+        border: 1px solid rgba(100, 160, 230, 0.3);
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      #settingsPanel .setting-row input[type='range'] {
+        width: 70px;
+        accent-color: #64b4ff;
+      }
+
+      #settingsPanel .value-display {
+        font-size: 10px;
+        color: #7eb4e8;
+        min-width: 30px;
+        text-align: right;
+      }
+
+      /* API Test Panel */
+      #apiPanel {
+        position: absolute;
+        top: 15px;
+        right: 310px;
+        width: 320px;
+        background: rgba(30, 35, 45, 0.95);
+        color: #dce8f5;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 12px;
+        border: 1px solid rgba(100, 160, 230, 0.4);
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        z-index: 1060;
+        overflow: hidden;
+        transition: height 0.2s ease;
+      }
+
+      #apiPanel.collapsed {
+        height: 36px;
+      }
+
+      #apiPanel.expanded {
+        height: auto;
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+
+      #apiPanel header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: rgba(100, 160, 230, 0.15);
+        border-bottom: 1px solid rgba(100, 160, 230, 0.2);
+        cursor: pointer;
+        user-select: none;
+      }
+
+      #apiPanel header span {
+        font-weight: 600;
+        color: #64b4ff;
+        font-size: 13px;
+      }
+
+      #apiPanel header .toggle-icon {
+        font-size: 10px;
+        color: #7eb4e8;
+        transition: transform 0.2s;
+      }
+
+      #apiPanel.collapsed header .toggle-icon {
+        transform: rotate(-90deg);
+      }
+
+      #apiPanel .api-content {
+        padding: 8px 12px;
+      }
+
+      #apiPanel .api-section {
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(100, 160, 230, 0.1);
+      }
+
+      #apiPanel .api-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+      }
+
+      #apiPanel .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: #7eb4e8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+      }
+
+      #apiPanel .api-btn {
+        display: inline-block;
+        padding: 4px 8px;
+        margin: 2px;
+        background: rgba(100, 160, 230, 0.2);
+        border: 1px solid rgba(100, 160, 230, 0.3);
+        border-radius: 4px;
+        color: #dce8f5;
+        font-size: 11px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      #apiPanel .api-btn:hover {
+        background: rgba(100, 160, 230, 0.4);
+      }
+
+      #apiPanel .api-btn:active {
+        background: rgba(100, 160, 230, 0.6);
+      }
+
+      #apiPanel .api-btn.danger {
+        border-color: rgba(255, 100, 100, 0.4);
+        background: rgba(255, 100, 100, 0.15);
+      }
+
+      #apiPanel .api-btn.danger:hover {
+        background: rgba(255, 100, 100, 0.3);
+      }
+
+      #apiPanel .api-btn.success {
+        border-color: rgba(100, 200, 100, 0.4);
+        background: rgba(100, 200, 100, 0.15);
+      }
+
+      #apiPanel .api-btn.success:hover {
+        background: rgba(100, 200, 100, 0.3);
+      }
+
+      #apiPanel .status-text {
+        font-size: 10px;
+        color: #7eb4e8;
+        margin-top: 4px;
+        font-style: italic;
+      }
+    </style>
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.32/@arcgis/core/assets/esri/themes/light/main.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
+    <script src="MS/ThirdParty/MilSymbols/milsymbol.js"></script>
+    <script src="MS/ThirdParty/TweenJS/tween.js"></script>
+  </head>
+  <body>
+    <div id="viewDiv"></div>
+    <canvas id="fabricCanvas"></canvas>
+
+    <div id="infoDiv">
+      <div class="autocomplete-container">
+        <input
           class="esri-component esri-widget esri-interactive"
           type="text"
-          id="sidcText"
-          value="130610001411000010891000000000"
-  />
+          id="symbolSearch"
+          placeholder="Search symbols by name..."
+          autocomplete="off"
+        />
+        <div
+          id="autocompleteList"
+          class="autocomplete-list"
+          style="display: none"
+        ></div>
+      </div>
+      <select id="drawTypesSelectPre" class="drawTypesSelectPre">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
 
-  <input
-          class="esri-component esri-widget--button esri-widget esri-interactive"
-          type="button"
-          id="draw-btn"
-          value="Draw"
-  />
+      <input
+        class="esri-component esri-widget esri-interactive"
+        type="text"
+        id="sidcText"
+        value="130610001411000010891000000000"
+      />
 
-  <input
-          class="esri-component esri-widget--button esri-widget esri-interactive"
-          type="button"
-          id="switch-btn"
-          value="2D"
-  />
+      <input
+        class="esri-component esri-widget--button esri-widget esri-interactive"
+        type="button"
+        id="draw-btn"
+        value="Draw"
+      />
 
-  <button id="drawArrowButton">Draw Arrow</button>
-  <button id="addTextButton">Add Text</button>
-  <button id="createButton">Create</button>
-  <button id="drawBlockSymbolButton">Draw Block Symbol</button>
+      <input
+        class="esri-component esri-widget--button esri-widget esri-interactive"
+        type="button"
+        id="switch-btn"
+        value="2D"
+      />
 
-  <!-- Measurement toggle button -->
-  <button
-    id="measureToggleBtn"
-    class="esri-component esri-widget--button esri-widget esri-interactive"
-    title="Toggle Measurements  [M]"
-    style="font-size:16px;min-width:36px;"
-  >📐</button>
+      <button id="drawArrowButton">Draw Arrow</button>
+      <button id="addTextButton">Add Text</button>
+      <button id="createButton">Create</button>
+      <button id="drawBlockSymbolButton">Draw Block Symbol</button>
 
-</div>
+      <!-- Measurement toggle button -->
+      <button
+        id="measureToggleBtn"
+        class="esri-component esri-widget--button esri-widget esri-interactive"
+        title="Toggle Measurements  [M]"
+        style="font-size: 16px; min-width: 36px"
+      >
+        📐
+      </button>
+    </div>
 
-<!-- ── Measurement Panel ────────────────────────────────────────────────── -->
-<div id="measurePanel">
-  <header>
-    <span>📐 Measurements</span>
-    <div class="ms-dot" title="Measurements on/off"></div>
-  </header>
+    <!-- ── Measurement Panel ────────────────────────────────────────────────── -->
+    <div id="measurePanel">
+      <header>
+        <span>📐 Measurements</span>
+        <div class="ms-dot" title="Measurements on/off"></div>
+      </header>
 
-  <!-- Unit switcher -->
-  <div class="ms-units">
-    <button data-unit="kilometers" data-area="square-kilometers" class="ms-active-unit">km</button>
-    <button data-unit="miles"      data-area="square-miles">mi</button>
-    <button data-unit="nautical-miles" data-area="square-miles">nm</button>
-    <button data-unit="meters"    data-area="square-meters">m</button>
-  </div>
+      <!-- Unit switcher -->
+      <div class="ms-units">
+        <button
+          data-unit="kilometers"
+          data-area="square-kilometers"
+          class="ms-active-unit"
+        >
+          km
+        </button>
+        <button data-unit="miles" data-area="square-miles">mi</button>
+        <button data-unit="nautical-miles" data-area="square-miles">nm</button>
+        <button data-unit="meters" data-area="square-meters">m</button>
+      </div>
 
-  <!-- Live data rows (hidden until first update) -->
-  <table id="measureDataTable" style="display:none">
-    <tr id="ms-row-seg">    <td>Segment</td> <td id="ms-seg">—</td></tr>
-    <tr id="ms-row-bng">    <td>Bearing</td> <td id="ms-bng">—</td></tr>
-    <tr id="ms-row-total">  <td>Total</td>   <td id="ms-total">—</td></tr>
-    <tr id="ms-row-height"> <td>Height</td>  <td id="ms-height">—</td></tr>
-    <tr id="ms-row-width">  <td>Width</td>   <td id="ms-width">—</td></tr>
-    <tr id="ms-row-area">   <td>Area</td>    <td id="ms-area">—</td></tr>
-  </table>
+      <!-- Live data rows (hidden until first update) -->
+      <table id="measureDataTable" style="display: none">
+        <tr id="ms-row-seg">
+          <td>Segment</td>
+          <td id="ms-seg">—</td>
+        </tr>
+        <tr id="ms-row-bng">
+          <td>Bearing</td>
+          <td id="ms-bng">—</td>
+        </tr>
+        <tr id="ms-row-total">
+          <td>Total</td>
+          <td id="ms-total">—</td>
+        </tr>
+        <tr id="ms-row-height">
+          <td>Height</td>
+          <td id="ms-height">—</td>
+        </tr>
+        <tr id="ms-row-width">
+          <td>Width</td>
+          <td id="ms-width">—</td>
+        </tr>
+        <tr id="ms-row-area">
+          <td>Area</td>
+          <td id="ms-area">—</td>
+        </tr>
+      </table>
 
-  <!-- Idle hint (shown before first measurement) -->
-  <div class="ms-idle" id="measureIdle">Draw a symbol to see live measurements</div>
+      <!-- Idle hint (shown before first measurement) -->
+      <div class="ms-idle" id="measureIdle">
+        Draw a symbol to see live measurements
+      </div>
 
-  <footer>
-    <button id="measureCopyBtn" title="Copy measurements to clipboard">⎘ Copy</button>
-  </footer>
-</div>
+      <footer>
+        <button id="measureCopyBtn" title="Copy measurements to clipboard">
+          ⎘ Copy
+        </button>
+      </footer>
+    </div>
 
-<div id="symbolDetails" class="symbol-details">
-  <h3>Symbol Details</h3>
-  <div id="symbolDetailsContent"></div>
-</div>
+    <div id="symbolDetails" class="symbol-details">
+      <h3>Symbol Details</h3>
+      <div id="symbolDetailsContent"></div>
+    </div>
 
-<script type="module" src="/src/main.ts"></script>
-</body>
+    <!-- Settings Control Panel -->
+    <div id="settingsPanel" class="collapsed">
+      <header id="settingsHeader">
+        <span>⚙️ Settings</span>
+        <span class="toggle-icon">▼</span>
+      </header>
+      <div class="settings-content">
+        <div class="settings-section">
+          <div class="section-title">Symbol Sizes</div>
+          <div class="setting-row">
+            <label>Size</label>
+            <input
+              type="number"
+              id="setting-size"
+              value="25"
+              min="5"
+              max="200"
+              step="1"
+            />
+          </div>
+          <div class="setting-row">
+            <label>Line Width</label>
+            <input
+              type="number"
+              id="setting-lineWidth"
+              value="2.5"
+              min="0.5"
+              max="20"
+              step="0.5"
+            />
+          </div>
+          <div class="setting-row">
+            <label>Pt Line Width</label>
+            <input
+              type="number"
+              id="setting-PtlineWidth"
+              value="14"
+              min="1"
+              max="50"
+              step="1"
+            />
+          </div>
+          <div class="setting-row">
+            <label>Text Size</label>
+            <input
+              type="number"
+              id="setting-textSize"
+              value="12"
+              min="6"
+              max="48"
+              step="1"
+            />
+          </div>
+          <div class="setting-row">
+            <label>Freehand Text</label>
+            <input
+              type="number"
+              id="setting-freeHandTextSize"
+              value="14"
+              min="6"
+              max="48"
+              step="1"
+            />
+          </div>
+          <div class="setting-row">
+            <label>Freehand Line</label>
+            <input
+              type="number"
+              id="setting-freeHandLineWidth"
+              value="2.5"
+              min="0.5"
+              max="20"
+              step="0.5"
+            />
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="section-title">Features</div>
+          <div class="setting-row">
+            <label>Measurement</label>
+            <input type="checkbox" id="setting-measurementEngine" checked />
+          </div>
+          <div class="setting-row">
+            <label>Context Menu</label>
+            <input type="checkbox" id="setting-contextMenu" checked />
+          </div>
+          <div class="setting-row">
+            <label>Edit Engine</label>
+            <input type="checkbox" id="setting-editEngine" checked />
+          </div>
+          <div class="setting-row">
+            <label>Annotation</label>
+            <input type="checkbox" id="setting-annotationEngine" checked />
+          </div>
+          <div class="setting-row">
+            <label>Shortcuts</label>
+            <input type="checkbox" id="setting-shortcuts" checked />
+          </div>
+          <div class="setting-row">
+            <label>Copy/Paste</label>
+            <input type="checkbox" id="setting-copyPaste" checked />
+          </div>
+          <div class="setting-row">
+            <label>Save/Load</label>
+            <input type="checkbox" id="setting-saveLoad" checked />
+          </div>
+          <div class="setting-row">
+            <label>Templates</label>
+            <input type="checkbox" id="setting-templates" checked />
+          </div>
+          <div class="setting-row">
+            <label>Proximity</label>
+            <input type="checkbox" id="setting-proximityEngine" checked />
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="section-title">Proximity</div>
+          <div class="setting-row">
+            <label>Nearest Vertex</label>
+            <input type="checkbox" id="setting-nearestVertex" checked />
+          </div>
+          <div class="setting-row">
+            <label>Nearest Coord</label>
+            <input type="checkbox" id="setting-nearestCoordinate" checked />
+          </div>
+          <div class="setting-row">
+            <label>Show Distance</label>
+            <input type="checkbox" id="setting-showDistance" checked />
+          </div>
+          <div class="setting-row">
+            <label>Distance Unit</label>
+            <select id="setting-distanceUnit">
+              <option value="meters" selected>meters</option>
+              <option value="kilometers">km</option>
+              <option value="miles">miles</option>
+              <option value="nautical-miles">nm</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <label>Snap Radius</label>
+            <input
+              type="range"
+              id="setting-snapRadiusPx"
+              min="0"
+              max="200"
+              value="80"
+            />
+            <span class="value-display" id="snapRadius-display">80</span>
+          </div>
+          <div class="setting-row">
+            <label>Line Opacity</label>
+            <input
+              type="range"
+              id="setting-lineOpacity"
+              min="0"
+              max="1"
+              step="0.1"
+              value="0.7"
+            />
+            <span class="value-display" id="lineOpacity-display">0.7</span>
+          </div>
+          <div class="setting-row">
+            <label>Line Width</label>
+            <input
+              type="number"
+              id="setting-proxLineWidth"
+              value="1.5"
+              min="0.5"
+              max="10"
+              step="0.5"
+            />
+          </div>
+          <div class="setting-row">
+            <label>Line Color</label>
+            <input type="color" id="setting-lineColor" value="#0078ff" />
+          </div>
+          <div class="setting-row">
+            <label>Marker Size</label>
+            <input
+              type="number"
+              id="setting-markerSize"
+              value="10"
+              min="4"
+              max="30"
+              step="1"
+            />
+          </div>
+          <div class="setting-row">
+            <label>Marker Color</label>
+            <input type="color" id="setting-markerColor" value="#0078ff" />
+          </div>
+          <div class="setting-row">
+            <label>Font Size</label>
+            <input
+              type="number"
+              id="setting-fontSize"
+              value="11"
+              min="8"
+              max="24"
+              step="1"
+            />
+          </div>
+          <div class="setting-row">
+            <label>Font Color</label>
+            <input type="color" id="setting-fontColor" value="#0050c8" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API Test Panel -->
+    <div id="apiPanel" class="collapsed">
+      <header id="apiHeader">
+        <span>🧪 API Test</span>
+        <span class="toggle-icon">▼</span>
+      </header>
+      <div class="api-content">
+        <div class="api-section">
+          <div class="section-title">SymbolEngine</div>
+          <button class="api-btn" id="api-drawSymbol">Draw Symbol</button>
+          <button class="api-btn" id="api-addSymbol">Add at Center</button>
+          <button class="api-btn" id="api-clearAll">Clear All</button>
+          <div class="status-text" id="api-symbol-status">Ready</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">MeasurementEngine</div>
+          <button class="api-btn success" id="api-me-enable">Enable</button>
+          <button class="api-btn danger" id="api-me-disable">Disable</button>
+          <button class="api-btn" id="api-me-toggle">Toggle</button>
+          <div class="setting-row" style="margin-top: 6px">
+            <label>Distance:</label>
+            <select
+              id="api-me-distUnit"
+              style="
+                width: 80px;
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(100, 160, 230, 0.3);
+                border-radius: 4px;
+                color: #e8f4ff;
+                font-size: 11px;
+              "
+            >
+              <option value="meters">meters</option>
+              <option value="kilometers">km</option>
+              <option value="miles">miles</option>
+              <option value="nautical-miles">nm</option>
+              <option value="feet">feet</option>
+              <option value="yards">yards</option>
+            </select>
+          </div>
+          <div class="status-text" id="api-me-status">Disabled</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">ProximityEngine</div>
+          <button class="api-btn success" id="api-prox-enable">Enable</button>
+          <button class="api-btn danger" id="api-prox-disable">Disable</button>
+          <button class="api-btn" id="api-prox-toggle">Toggle</button>
+          <div class="setting-row" style="margin-top: 6px">
+            <label>Snap:</label>
+            <input
+              type="range"
+              id="api-prox-snap"
+              min="0"
+              max="200"
+              value="80"
+              style="width: 60px"
+            />
+          </div>
+          <div class="status-text" id="api-prox-status">Enabled</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">SelectionEngine</div>
+          <button class="api-btn" id="api-sel-clear">Clear Selection</button>
+          <button class="api-btn" id="api-sel-count">Selection Count</button>
+          <button class="api-btn" id="api-sel-delete">Delete Selected</button>
+          <button class="api-btn" id="api-sel-move">Move Selected</button>
+          <div class="setting-row" style="margin-top: 4px">
+            <label>Align:</label>
+            <select
+              id="api-sel-align"
+              style="
+                width: 70px;
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(100, 160, 230, 0.3);
+                border-radius: 4px;
+                color: #e8f4ff;
+                font-size: 11px;
+              "
+            >
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+              <option value="top">Top</option>
+              <option value="bottom">Bottom</option>
+              <option value="centerX">Center X</option>
+              <option value="centerY">Center Y</option>
+            </select>
+          </div>
+          <div class="status-text" id="api-sel-status">0 selected</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">Undo/Redo</div>
+          <button class="api-btn" id="api-undo">Undo</button>
+          <button class="api-btn" id="api-redo">Redo</button>
+          <button class="api-btn" id="api-undoCount">Stack Info</button>
+          <div class="status-text" id="api-undo-status">Ready</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">Save/Load</div>
+          <button class="api-btn" id="api-saveAll">Save All</button>
+          <button class="api-btn" id="api-load">Load</button>
+          <button class="api-btn" id="api-export">Export JSON</button>
+          <button class="api-btn" id="api-import">Import JSON</button>
+          <button class="api-btn success" id="api-export-geojson">
+            Export GeoJSON
+          </button>
+          <button class="api-btn" id="api-import-geojson">
+            Import GeoJSON
+          </button>
+          <div class="status-text" id="api-save-status">Ready</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">Templates</div>
+          <button class="api-btn" id="api-template-list">List</button>
+          <button class="api-btn" id="api-template-save">Save to File</button>
+          <button class="api-btn" id="api-template-load">Load from File</button>
+          <button class="api-btn danger" id="api-template-delete">
+            Delete All
+          </button>
+          <div class="status-text" id="api-template-status">0 templates</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">Symbol Info</div>
+          <button class="api-btn" id="api-symbol-autocomplete">
+            Autocomplete List
+          </button>
+          <button class="api-btn" id="api-symbol-bykey">Get by Key</button>
+          <button class="api-btn" id="api-symbol-data">Get Symbol Data</button>
+          <div class="status-text" id="api-symbol-info-status">Ready</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">Layers</div>
+          <button class="api-btn" id="api-layer-list">List Layers</button>
+          <button class="api-btn" id="api-layer-graphics">Graphic Count</button>
+          <button class="api-btn danger" id="api-layer-remove">
+            Remove All
+          </button>
+          <div class="status-text" id="api-layer-status">Ready</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">Graphics</div>
+          <button class="api-btn" id="api-graphic-add">Add Test Symbol</button>
+          <button class="api-btn" id="api-graphic-last">Last Clicked</button>
+          <button class="api-btn" id="api-graphic-remove">Remove Last</button>
+          <div class="status-text" id="api-graphic-status">Ready</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">View</div>
+          <button class="api-btn" id="api-view-zoomIn">Zoom In</button>
+          <button class="api-btn" id="api-view-zoomOut">Zoom Out</button>
+          <button class="api-btn" id="api-view-center">Center</button>
+          <button class="api-btn" id="api-view-extent">Get Extent</button>
+          <div class="status-text" id="api-view-status">Ready</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">Keyboard Shortcuts</div>
+          <button class="api-btn" id="api-shortcut-info">Show Shortcuts</button>
+          <div class="status-text" id="api-shortcut-status">
+            M:Move E:Edit Esc:Cancel Del:Delete I:Info C:Center
+          </div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">ContextMenuManager</div>
+          <button class="api-btn" id="api-cmenu-items">List Items</button>
+          <button class="api-btn" id="api-cmenu-clear">Clear All</button>
+          <div class="status-text" id="api-cmenu-status">Ready</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">EditEngine</div>
+          <button class="api-btn" id="api-edit-activate">Activate Edit</button>
+          <button class="api-btn danger" id="api-edit-deactivate">
+            Deactivate
+          </button>
+          <div class="status-text" id="api-edit-status">Inactive</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">Clipboard</div>
+          <button class="api-btn" id="api-clip-copy">Copy Last</button>
+          <button class="api-btn" id="api-clip-paste">Paste</button>
+          <button class="api-btn" id="api-clip-has-btn">Has Clipboard?</button>
+          <div class="status-text" id="api-clip-status">Empty</div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+
+    <script>
+      // Settings panel toggle
+      const settingsPanel = document.getElementById('settingsPanel');
+      const settingsHeader = document.getElementById('settingsHeader');
+
+      settingsHeader.addEventListener('click', () => {
+        settingsPanel.classList.toggle('collapsed');
+        settingsPanel.classList.toggle('expanded');
+      });
+
+      // Map input IDs to settings paths
+      const settingMappings = {
+        'setting-size': (v) => ({ path: ['size'], value: +v }),
+        'setting-lineWidth': (v) => ({ path: ['lineWidth'], value: +v }),
+        'setting-PtlineWidth': (v) => ({ path: ['PtlineWidth'], value: +v }),
+        'setting-textSize': (v) => ({ path: ['textSize'], value: +v }),
+        'setting-freeHandTextSize': (v) => ({
+          path: ['freeHandTextSize'],
+          value: +v,
+        }),
+        'setting-freeHandLineWidth': (v) => ({
+          path: ['freeHandLineWidth'],
+          value: +v,
+        }),
+        // Features
+        'setting-measurementEngine': (v) => ({
+          path: ['features', 'measurementEngine'],
+          value: v,
+        }),
+        'setting-contextMenu': (v) => ({
+          path: ['features', 'contextMenu'],
+          value: v,
+        }),
+        'setting-editEngine': (v) => ({
+          path: ['features', 'editEngine'],
+          value: v,
+        }),
+        'setting-annotationEngine': (v) => ({
+          path: ['features', 'annotationEngine'],
+          value: v,
+        }),
+        'setting-shortcuts': (v) => ({
+          path: ['features', 'shortcuts'],
+          value: v,
+        }),
+        'setting-copyPaste': (v) => ({
+          path: ['features', 'copyPaste'],
+          value: v,
+        }),
+        'setting-saveLoad': (v) => ({
+          path: ['features', 'saveLoad'],
+          value: v,
+        }),
+        'setting-templates': (v) => ({
+          path: ['features', 'templates'],
+          value: v,
+        }),
+        'setting-proximityEngine': (v) => ({
+          path: ['features', 'proximityEngine'],
+          value: v,
+        }),
+        // Proximity
+        'setting-nearestVertex': (v) => ({
+          path: ['proximity', 'nearestVertex'],
+          value: v,
+        }),
+        'setting-nearestCoordinate': (v) => ({
+          path: ['proximity', 'nearestCoordinate'],
+          value: v,
+        }),
+        'setting-showDistance': (v) => ({
+          path: ['proximity', 'showDistance'],
+          value: v,
+        }),
+        'setting-distanceUnit': (v) => ({
+          path: ['proximity', 'distanceUnit'],
+          value: v,
+        }),
+        'setting-snapRadiusPx': (v) => ({
+          path: ['proximity', 'snapRadiusPx'],
+          value: +v,
+        }),
+        'setting-lineOpacity': (v) => ({
+          path: ['proximity', 'lineOpacity'],
+          value: +v,
+        }),
+        'setting-proxLineWidth': (v) => ({
+          path: ['proximity', 'lineWidth'],
+          value: +v,
+        }),
+        'setting-markerSize': (v) => ({
+          path: ['proximity', 'markerSize'],
+          value: +v,
+        }),
+        'setting-fontSize': (v) => ({
+          path: ['proximity', 'fontSize'],
+          value: +v,
+        }),
+      };
+
+      // Color conversion helpers
+      function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result
+          ? [
+              parseInt(result[1], 16),
+              parseInt(result[2], 16),
+              parseInt(result[3], 16),
+            ]
+          : [0, 0, 0];
+      }
+
+      function rgbToHex(r, g, b) {
+        return (
+          '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)
+        );
+      }
+
+      // Apply setting to the global settingsData and dispatch event
+      function updateSetting(input, transform) {
+        const value = input.value;
+        const { path, value: transformedValue } = transform(value);
+
+        // Dispatch custom event that SymbolEngine can listen to
+        window.dispatchEvent(
+          new CustomEvent('settingsChanged', {
+            detail: { path, value: transformedValue, fullPath: path.join('.') },
+          }),
+        );
+      }
+
+      // Bind all inputs
+      document
+        .querySelectorAll('#settingsPanel input, #settingsPanel select')
+        .forEach((input) => {
+          const mapping = settingMappings[input.id];
+          if (!mapping) return;
+
+          // Handle different input types
+          if (input.type === 'checkbox') {
+            input.addEventListener('change', () =>
+              updateSetting(input, mapping),
+            );
+          } else if (input.type === 'range') {
+            const displayId = input.id.replace('setting-', '') + '-display';
+            const display = document.getElementById(displayId);
+            if (display) {
+              input.addEventListener('input', () => {
+                display.textContent = input.value;
+              });
+            }
+            input.addEventListener('change', () =>
+              updateSetting(input, mapping),
+            );
+          } else if (input.type === 'color') {
+            input.addEventListener('change', () => {
+              const rgb = hexToRgb(input.value);
+              // Store as array for proximity settings, keep as hex for others
+              if (
+                input.id.includes('lineColor') ||
+                input.id.includes('markerColor') ||
+                input.id.includes('fontColor')
+              ) {
+                updateSetting({ value: rgb }, mapping);
+              } else {
+                updateSetting(input, mapping);
+              }
+            });
+          } else {
+            input.addEventListener('change', () =>
+              updateSetting(input, mapping),
+            );
+          }
+        });
+
+      // Listen for settings changes and notify SymbolEngine
+      window.addEventListener('settingsChanged', (e) => {
+        const { path, value } = e.detail;
+        console.log('Setting changed:', path.join('.'), '=', value);
+
+        // Try to find SymbolEngine instance and notify it
+        if (window.symbolEngine) {
+          window.symbolEngine.onSettingChanged(path, value);
+        }
+      });
+
+      // Initialize panel values from SymbolEngine settings after module loads
+      function initSettingsPanel() {
+        if (!window.symbolEngine) {
+          setTimeout(initSettingsPanel, 500);
+          return;
+        }
+
+        // Read current settings from SymbolEngine and update UI
+        const settings = window.symbolEngine.settings;
+        if (settings) {
+          // Update size settings
+          if (settings.size)
+            document.getElementById('setting-size').value = settings.size;
+          if (settings.lineWidth)
+            document.getElementById('setting-lineWidth').value =
+              settings.lineWidth;
+          if (settings.PtlineWidth)
+            document.getElementById('setting-PtlineWidth').value =
+              settings.PtlineWidth;
+          if (settings.textSize)
+            document.getElementById('setting-textSize').value =
+              settings.textSize;
+          if (settings.freeHandTextSize)
+            document.getElementById('setting-freeHandTextSize').value =
+              settings.freeHandTextSize;
+          if (settings.freeHandLineWidth)
+            document.getElementById('setting-freeHandLineWidth').value =
+              settings.freeHandLineWidth;
+
+          // Update features
+          const features = settings.features || {};
+          document.getElementById('setting-measurementEngine').checked =
+            features.measurementEngine !== false;
+          document.getElementById('setting-contextMenu').checked =
+            features.contextMenu !== false;
+          document.getElementById('setting-editEngine').checked =
+            features.editEngine !== false;
+          document.getElementById('setting-annotationEngine').checked =
+            features.annotationEngine !== false;
+          document.getElementById('setting-shortcuts').checked =
+            features.shortcuts !== false;
+          document.getElementById('setting-copyPaste').checked =
+            features.copyPaste !== false;
+          document.getElementById('setting-saveLoad').checked =
+            features.saveLoad !== false;
+          document.getElementById('setting-templates').checked =
+            features.templates !== false;
+          document.getElementById('setting-proximityEngine').checked =
+            features.proximityEngine !== false;
+
+          // Update proximity settings
+          const prox = settings.proximity || {};
+          document.getElementById('setting-nearestVertex').checked =
+            prox.nearestVertex !== false;
+          document.getElementById('setting-nearestCoordinate').checked =
+            prox.nearestCoordinate !== false;
+          document.getElementById('setting-showDistance').checked =
+            prox.showDistance !== false;
+          document.getElementById('setting-distanceUnit').value =
+            prox.distanceUnit || 'meters';
+          document.getElementById('setting-snapRadiusPx').value =
+            prox.snapRadiusPx ?? 80;
+          document.getElementById('snapRadius-display').textContent = String(
+            prox.snapRadiusPx ?? 80,
+          );
+          document.getElementById('setting-lineOpacity').value =
+            prox.lineOpacity ?? 0.7;
+          document.getElementById('lineOpacity-display').textContent = String(
+            prox.lineOpacity ?? 0.7,
+          );
+          document.getElementById('setting-proxLineWidth').value =
+            prox.lineWidth ?? 1.5;
+          document.getElementById('setting-markerSize').value =
+            prox.markerSize ?? 10;
+          document.getElementById('setting-fontSize').value =
+            prox.fontSize ?? 11;
+
+          // Color inputs - convert RGB arrays to hex
+          if (prox.lineColor) {
+            document.getElementById('setting-lineColor').value = rgbToHex(
+              prox.lineColor[0],
+              prox.lineColor[1],
+              prox.lineColor[2],
+            );
+          }
+          if (prox.markerColor) {
+            document.getElementById('setting-markerColor').value = rgbToHex(
+              prox.markerColor[0],
+              prox.markerColor[1],
+              prox.markerColor[2],
+            );
+          }
+          if (prox.fontColor) {
+            document.getElementById('setting-fontColor').value = rgbToHex(
+              prox.fontColor[0],
+              prox.fontColor[1],
+              prox.fontColor[2],
+            );
+          }
+        }
+
+        console.log('Settings panel initialized from SymbolEngine');
+      }
+
+      // Wait for module to load then initialize
+      setTimeout(initSettingsPanel, 1000);
+
+      // ── API Test Panel ───────────────────────────────────────────────────────
+      const apiPanel = document.getElementById('apiPanel');
+      const apiHeader = document.getElementById('apiHeader');
+
+      apiHeader.addEventListener('click', () => {
+        apiPanel.classList.toggle('collapsed');
+        apiPanel.classList.toggle('expanded');
+      });
+
+      // Helper to get engines from window.symbolEngine
+      function getEngines() {
+        if (!window.symbolEngine) {
+          alert('SymbolEngine not loaded yet');
+          return null;
+        }
+        return window.symbolEngine;
+      }
+
+      // SymbolEngine buttons
+      document
+        .getElementById('api-drawSymbol')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine) {
+            document.getElementById('api-symbol-status').textContent =
+              'Draw mode ready - click on map';
+          }
+        });
+
+      document.getElementById('api-addSymbol').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.addMilSymbolAtCenter) {
+          engine.addMilSymbolAtCenter({
+            sidc: '130610001411000010891000000000',
+            size: 40,
+          });
+          document.getElementById('api-symbol-status').textContent =
+            'Symbol added at center';
+        }
+      });
+
+      document.getElementById('api-clearAll').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.clearAllGraphics) {
+          engine.clearAllGraphics();
+          document.getElementById('api-symbol-status').textContent =
+            'All graphics cleared';
+        }
+      });
+
+      // MeasurementEngine buttons
+      document.getElementById('api-me-enable').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.measurementEngine) {
+          engine.measurementEngine.enable();
+          document.getElementById('api-me-status').textContent = 'Enabled';
+        }
+      });
+
+      document
+        .getElementById('api-me-disable')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.measurementEngine) {
+            engine.measurementEngine.disable();
+            document.getElementById('api-me-status').textContent = 'Disabled';
+          }
+        });
+
+      document.getElementById('api-me-toggle').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.measurementEngine) {
+          const newState = engine.measurementEngine.toggle();
+          document.getElementById('api-me-status').textContent = newState
+            ? 'Enabled'
+            : 'Disabled';
+        }
+      });
+
+      document
+        .getElementById('api-me-distUnit')
+        .addEventListener('change', (e) => {
+          const engine = getEngines();
+          if (engine && engine.measurementEngine) {
+            engine.measurementEngine.setOptions({ dist_unit: e.target.value });
+          }
+        });
+
+      // ProximityEngine buttons
+      document
+        .getElementById('api-prox-enable')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.proximityEngine) {
+            engine.proximityEngine.enable();
+            document.getElementById('api-prox-status').textContent = 'Enabled';
+          }
+        });
+
+      document
+        .getElementById('api-prox-disable')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.proximityEngine) {
+            engine.proximityEngine.disable();
+            document.getElementById('api-prox-status').textContent = 'Disabled';
+          }
+        });
+
+      document
+        .getElementById('api-prox-toggle')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.proximityEngine) {
+            const newState = engine.proximityEngine.toggle();
+            document.getElementById('api-prox-status').textContent = newState
+              ? 'Enabled'
+              : 'Disabled';
+          }
+        });
+
+      document
+        .getElementById('api-prox-snap')
+        .addEventListener('input', (e) => {
+          const engine = getEngines();
+          if (engine && engine.proximityEngine) {
+            engine.proximityEngine.updateConfig({
+              snapRadiusPx: +e.target.value,
+            });
+          }
+        });
+
+      // SelectionEngine buttons
+      document.getElementById('api-sel-clear').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine) {
+          engine.selectionEngine.clearSelection();
+          document.getElementById('api-sel-status').textContent =
+            'Selection cleared';
+        }
+      });
+
+      document.getElementById('api-sel-count').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine) {
+          document.getElementById('api-sel-status').textContent =
+            engine.selectionEngine.count + ' selected';
+        }
+      });
+
+      document
+        .getElementById('api-sel-delete')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (
+            engine &&
+            engine.selectionEngine &&
+            engine.selectionEngine.count > 0
+          ) {
+            engine.selectionEngine.deleteSelected((entry) =>
+              engine._pushUndo(entry),
+            );
+            document.getElementById('api-sel-status').textContent =
+              'Selected deleted';
+          }
+        });
+
+      document.getElementById('api-sel-move').addEventListener('click', () => {
+        const engine = getEngines();
+        if (
+          engine &&
+          engine.selectionEngine &&
+          engine.selectionEngine.count > 1
+        ) {
+          engine.selectionEngine.moveSelected(({ dx, dy }) => {
+            engine._pushUndo({
+              label: 'Move',
+              undo: () =>
+                engine.selectionEngine._applyDelta(
+                  engine.selectionEngine.selectedGraphics,
+                  -dx,
+                  -dy,
+                ),
+              redo: () =>
+                engine.selectionEngine._applyDelta(
+                  engine.selectionEngine.selectedGraphics,
+                  dx,
+                  dy,
+                ),
+            });
+          });
+          document.getElementById('api-sel-status').textContent =
+            'Move mode - drag to move';
+        }
+      });
+
+      document
+        .getElementById('api-sel-align')
+        .addEventListener('change', (e) => {
+          const engine = getEngines();
+          if (
+            engine &&
+            engine.selectionEngine &&
+            engine.selectionEngine.count > 1
+          ) {
+            const align = e.target.value;
+            const callback = (entry) => engine._pushUndo(entry);
+            switch (align) {
+              case 'left':
+                engine.selectionEngine.alignLeft(callback);
+                break;
+              case 'right':
+                engine.selectionEngine.alignRight(callback);
+                break;
+              case 'top':
+                engine.selectionEngine.alignTop(callback);
+                break;
+              case 'bottom':
+                engine.selectionEngine.alignBottom(callback);
+                break;
+              case 'centerX':
+                engine.selectionEngine.centerOnX(callback);
+                break;
+              case 'centerY':
+                engine.selectionEngine.centerOnY(callback);
+                break;
+            }
+            document.getElementById('api-sel-status').textContent =
+              `Aligned ${align}`;
+          }
+        });
+
+      document.getElementById('api-sel-count').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine) {
+          document.getElementById('api-sel-status').textContent =
+            engine.selectionEngine.count + ' selected';
+        }
+      });
+
+      // Undo/Redo buttons
+      document.getElementById('api-undo').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.undo) {
+          engine.undo();
+          document.getElementById('api-undo-status').textContent =
+            'Undo performed';
+        }
+      });
+
+      document.getElementById('api-redo').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.redo) {
+          engine.redo();
+          document.getElementById('api-undo-status').textContent =
+            'Redo performed';
+        }
+      });
+
+      document.getElementById('api-undoCount').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine) {
+          document.getElementById('api-undo-status').textContent =
+            `Undo: ${engine.undoCount}, Redo: ${engine.redoCount}`;
+        }
+      });
+
+      // Save/Load buttons
+      document.getElementById('api-saveAll').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.saveToFile) {
+          engine.saveToFile();
+          document.getElementById('api-save-status').textContent =
+            'Saved to file';
+        }
+      });
+
+      document.getElementById('api-load').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.loadFromFile) {
+          engine.loadFromFile();
+          document.getElementById('api-save-status').textContent =
+            'Load dialog opened';
+        }
+      });
+
+      document.getElementById('api-export').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.exportLayerToJSON) {
+          const json = engine.exportLayerToJSON();
+          console.log('Exported JSON:', json);
+          document.getElementById('api-save-status').textContent =
+            `Exported ${json.length} graphics to console`;
+        }
+      });
+
+      document.getElementById('api-import').addEventListener('click', () => {
+        const jsonStr = prompt('Paste JSON array to import:');
+        if (jsonStr) {
+          const engine = getEngines();
+          if (engine && engine.importLayerFromJSON) {
+            try {
+              const data = JSON.parse(jsonStr);
+              engine.importLayerFromJSON(data);
+              document.getElementById('api-save-status').textContent =
+                'Imported successfully';
+            } catch (e) {
+              document.getElementById('api-save-status').textContent =
+                'Invalid JSON';
+            }
+          }
+        }
+      });
+
+      document
+        .getElementById('api-export-geojson')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.saveToGeoJSONFile) {
+            engine.saveToGeoJSONFile();
+            document.getElementById('api-save-status').textContent =
+              'GeoJSON exported';
+          }
+        });
+
+      document
+        .getElementById('api-import-geojson')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.loadFromGeoJSONFile) {
+            engine.loadFromGeoJSONFile();
+            document.getElementById('api-save-status').textContent =
+              'Loading GeoJSON…';
+          }
+        });
+
+      // Templates buttons
+      document
+        .getElementById('api-template-list')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.listTemplates) {
+            const templates = engine.listTemplates();
+            document.getElementById('api-template-status').textContent =
+              templates.length +
+              ' templates: ' +
+              templates.slice(0, 3).join(', ') +
+              (templates.length > 3 ? '...' : '');
+          }
+        });
+
+      document
+        .getElementById('api-template-save')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.contextMenuManager) {
+            const graphic = engine.contextMenuManager.getLastClickedGraphic();
+            if (graphic && engine.saveTemplateToFile) {
+              engine.saveTemplateToFile(graphic);
+              document.getElementById('api-template-status').textContent =
+                'Template saved to file';
+            } else {
+              document.getElementById('api-template-status').textContent =
+                'No graphic selected — right-click a symbol first';
+            }
+          }
+        });
+
+      document
+        .getElementById('api-template-load')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.loadTemplateFromFile) {
+            engine.loadTemplateFromFile();
+            document.getElementById('api-template-status').textContent =
+              'Loading template…';
+          }
+        });
+
+      document
+        .getElementById('api-template-delete')
+        .addEventListener('click', () => {
+          if (confirm('Delete all templates?')) {
+            const engine = getEngines();
+            if (engine && engine.deleteTemplate) {
+              const templates = engine.listTemplates();
+              templates.forEach((t) => engine.deleteTemplate(t));
+              document.getElementById('api-template-status').textContent =
+                'All templates deleted';
+            }
+          }
+        });
+
+      // Symbol Info buttons
+      document
+        .getElementById('api-symbol-autocomplete')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.getSymbolNamesForAutocomplete) {
+            const symbols = engine.getSymbolNamesForAutocomplete();
+            console.log('Available symbols:', symbols);
+            document.getElementById('api-symbol-info-status').textContent =
+              symbols.length + ' symbols available';
+          }
+        });
+
+      document
+        .getElementById('api-symbol-bykey')
+        .addEventListener('click', () => {
+          const key = prompt('Enter symbol key (e.g., 100100):');
+          if (key) {
+            const engine = getEngines();
+            if (engine && engine.getSymbolByKey) {
+              const symbol = engine.getSymbolByKey(key);
+              console.log('Symbol:', symbol);
+              document.getElementById('api-symbol-info-status').textContent =
+                symbol ? `Found: ${symbol.Name}` : 'Not found';
+            }
+          }
+        });
+
+      document
+        .getElementById('api-symbol-data')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.getSymbolData) {
+            const data = engine.getSymbolData();
+            console.log('Symbol data:', data);
+            document.getElementById('api-symbol-info-status').textContent =
+              'Symbol data logged to console';
+          }
+        });
+
+      // Layer buttons
+      document
+        .getElementById('api-layer-list')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.layerManager) {
+            const layers = engine.layerManager.listLayers();
+            console.log('Layers:', layers);
+            document.getElementById('api-layer-status').textContent =
+              layers.length + ' layers: ' + layers.join(', ');
+          }
+        });
+
+      document
+        .getElementById('api-layer-graphics')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.layerManager) {
+            const layers = engine.layerManager.listLayers();
+            let total = 0;
+            layers.forEach((id) => {
+              const layer = engine.layerManager.getLayer(id);
+              if (layer && layer.graphics) {
+                total += layer.graphics.length;
+              }
+            });
+            document.getElementById('api-layer-status').textContent =
+              total + ' total graphics';
+          }
+        });
+
+      document
+        .getElementById('api-layer-remove')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.layerManager) {
+            const layers = engine.layerManager.listLayers();
+            layers.forEach((id) => {
+              const layer = engine.layerManager.getLayer(id);
+              if (layer) layer.removeAll();
+            });
+            document.getElementById('api-layer-status').textContent =
+              'All layers cleared';
+          }
+        });
+
+      // Graphic buttons
+      document
+        .getElementById('api-graphic-add')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.view) {
+            const view = engine.view;
+            const center = view.center;
+            const sidc = '10031000003401000000'; // Example SIDC
+            engine.addMilSymbolAtCenter({
+              sidc,
+              size: 40,
+              uniqueDesignation: 'Test',
+            });
+            document.getElementById('api-graphic-status').textContent =
+              'Symbol added at center';
+          }
+        });
+
+      document
+        .getElementById('api-graphic-last')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.contextMenuManager) {
+            const graphic = engine.contextMenuManager.getLastClickedGraphic();
+            if (graphic) {
+              console.log('Last clicked graphic:', graphic);
+              document.getElementById('api-graphic-status').textContent =
+                graphic.attributes?.id || 'Graphic details in console';
+            } else {
+              document.getElementById('api-graphic-status').textContent =
+                'No graphic clicked';
+            }
+          }
+        });
+
+      document
+        .getElementById('api-graphic-remove')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.contextMenuManager) {
+            const graphic = engine.contextMenuManager.getLastClickedGraphic();
+            if (graphic && graphic.layer) {
+              graphic.layer.remove(graphic);
+              document.getElementById('api-graphic-status').textContent =
+                'Graphic removed';
+            } else {
+              document.getElementById('api-graphic-status').textContent =
+                'No graphic to remove';
+            }
+          }
+        });
+
+      // View buttons
+      document
+        .getElementById('api-view-zoomIn')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.view) {
+            engine.view.zoom = engine.view.zoom + 1;
+            document.getElementById('api-view-status').textContent =
+              'Zoomed in';
+          }
+        });
+
+      document
+        .getElementById('api-view-zoomOut')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.view) {
+            engine.view.zoom = engine.view.zoom - 1;
+            document.getElementById('api-view-status').textContent =
+              'Zoomed out';
+          }
+        });
+
+      document
+        .getElementById('api-view-center')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.view) {
+            const center = engine.view.center;
+            engine.view.goTo({ target: center });
+            document.getElementById('api-view-status').textContent =
+              `Center: ${center.longitude.toFixed(4)}, ${center.latitude.toFixed(4)}`;
+          }
+        });
+
+      document
+        .getElementById('api-view-extent')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.view) {
+            const ext = engine.view.extent;
+            console.log('Extent:', ext);
+            document.getElementById('api-view-status').textContent =
+              `Extent logged to console`;
+          }
+        });
+
+      // Shortcuts info button
+      document
+        .getElementById('api-shortcut-info')
+        .addEventListener('click', () => {
+          alert(
+            'Keyboard Shortcuts:\n\n' +
+              'M - Move/Scale/Rotate\n' +
+              'E - Edit Control Points\n' +
+              'Esc - Cancel/Deactivate\n' +
+              'Delete - Remove graphic\n' +
+              'I - Show Details\n' +
+              'C - Center On\n' +
+              'Ctrl+Z - Undo\n' +
+              'Ctrl+Y - Redo\n' +
+              'Ctrl+C - Copy\n' +
+              'Ctrl+V - Paste\n' +
+              'Shift+Click - Toggle Selection',
+          );
+        });
+
+      // ContextMenuManager buttons
+      document
+        .getElementById('api-cmenu-items')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.contextMenuManager) {
+            const items = engine.contextMenuManager.menuItems;
+            console.log('Registered menu items:', items);
+            document.getElementById('api-cmenu-status').textContent =
+              items.size + ' graphic types registered';
+          }
+        });
+
+      document
+        .getElementById('api-cmenu-clear')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.contextMenuManager) {
+            engine.contextMenuManager.clearAllMenuItems();
+            document.getElementById('api-cmenu-status').textContent =
+              'All menu items cleared';
+          }
+        });
+
+      // EditEngine buttons
+      document
+        .getElementById('api-edit-activate')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.editEngine) {
+            document.getElementById('api-edit-status').textContent =
+              'Ready - right-click a symbol to edit';
+          }
+        });
+
+      document
+        .getElementById('api-edit-deactivate')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine.deactivateEdit) {
+            engine.deactivateEdit();
+            document.getElementById('api-edit-status').textContent =
+              'Deactivated';
+          }
+        });
+
+      // Clipboard buttons
+      document.getElementById('api-clip-copy').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.contextMenuManager) {
+          const graphic = engine.contextMenuManager.getLastClickedGraphic();
+          if (graphic) {
+            engine.copySymbol(graphic);
+            document.getElementById('api-clip-status').textContent =
+              engine.hasClipboard ? 'Copied to clipboard' : 'Copy failed';
+          } else {
+            document.getElementById('api-clip-status').textContent =
+              'No graphic selected';
+          }
+        }
+      });
+
+      document
+        .getElementById('api-clip-paste')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine._activatePasteMode) {
+            engine._activatePasteMode();
+            document.getElementById('api-clip-status').textContent =
+              'Paste mode - click on map';
+          }
+        });
+
+      document
+        .getElementById('api-clip-has-btn')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine) {
+            document.getElementById('api-clip-status').textContent =
+              engine.hasClipboard
+                ? 'Clipboard has content'
+                : 'Clipboard is empty';
+          }
+        });
+
+      // Update status displays periodically
+      function updateApiStatus() {
+        const engine = getEngines();
+        if (!engine) return;
+
+        // Measurement status
+        if (engine.measurementEngine) {
+          document.getElementById('api-me-status').textContent = engine
+            .measurementEngine.isEnabled
+            ? 'Enabled'
+            : 'Disabled';
+        }
+
+        // Proximity status
+        if (engine.proximityEngine) {
+          document.getElementById('api-prox-status').textContent = engine
+            .proximityEngine.isEnabled
+            ? 'Enabled'
+            : 'Disabled';
+        }
+
+        // Selection count
+        if (engine.selectionEngine) {
+          document.getElementById('api-sel-status').textContent =
+            engine.selectionEngine.count + ' selected';
+        }
+
+        // Edit status
+        if (engine.editEngine) {
+          const editing =
+            engine.editEngine.isModifyingSymbol ||
+            engine.editEngine.isEditingControlPoints;
+          document.getElementById('api-edit-status').textContent = editing
+            ? 'Active'
+            : 'Inactive';
+        }
+
+        // Clipboard status
+        document.getElementById('api-clip-status').textContent =
+          engine.hasClipboard ? 'Has content' : 'Empty';
+
+        // Template count
+        if (engine && engine.listTemplates) {
+          const templates = engine.listTemplates();
+          document.getElementById('api-template-status').textContent =
+            templates.length +
+            ' template' +
+            (templates.length !== 1 ? 's' : '');
+        }
+
+        // Undo/Redo status
+        document.getElementById('api-undo-status').textContent =
+          `Undo: ${engine.undoCount}, Redo: ${engine.redoCount}`;
+
+        // Layer graphic count
+        if (engine && engine.layerManager) {
+          const layers = engine.layerManager.listLayers();
+          let total = 0;
+          layers.forEach((id) => {
+            const layer = engine.layerManager.getLayer(id);
+            if (layer && layer.graphics) {
+              total += layer.graphics.length;
+            }
+          });
+          document.getElementById('api-layer-status').textContent =
+            total + ' graphics';
+        }
+
+        // Save status
+        document.getElementById('api-save-status').textContent =
+          `Undo: ${engine.undoCount}, Redo: ${engine.redoCount}`;
+      }
+
+      setInterval(updateApiStatus, 1000);
+    </script>
+  </body>
 </html>
-

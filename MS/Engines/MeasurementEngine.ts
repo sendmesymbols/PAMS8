@@ -8,6 +8,8 @@
  * Events emitted on document:
  *   "measurement-update"       – { segmentLength, totalLength, area, bearing, height, width, unit, areaUnit }
  *   "measurement-state-change" – { state: "enabled"|"disabled", isEnabled: boolean }
+ *   "measurement-hint"         – { message: string, phase: "idle"|"drawing"|"segment"|"complete" }
+ *                                 Contextual guidance emitted at key drawing moments.
  */
 
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
@@ -64,6 +66,12 @@ export interface MeasurementSnapshot {
     width: string;
     unit: DistanceUnit;
     areaUnit: AreaUnit;
+}
+
+export interface MeasurementHint {
+    message: string;
+    /** Drawing phase that triggered this hint. */
+    phase: "idle" | "drawing" | "segment" | "complete";
 }
 
 // ─── Engine ───────────────────────────────────────────────────────────────────
@@ -160,7 +168,14 @@ class MeasurementEngine {
     public enable(): void {
         this._isEnabled = true;
         this._emitStateChange("enabled");
-        console.info("[MeasurementEngine] Measurements enabled");
+        this._emitHint(
+            `Measurements on — draw a polyline or polygon to see live segment lengths` +
+            (this._showBng  ? ", bearings" : "") +
+            (this._showArea ? ", and area" : "") +
+            `. Current unit: ${this._distAbbr(this._distUnit)}.`,
+            "idle",
+        );
+        console.info("[MeasurementEngine] enabled — unit:", this._distUnit, "| geodesic:", this._isGeodesic);
     }
 
     public disable(): void {
@@ -168,7 +183,8 @@ class MeasurementEngine {
         this._layer?.removeAll();
         this._clearHandles();
         this._emitStateChange("disabled");
-        console.info("[MeasurementEngine] Measurements disabled");
+        this._emitHint("Measurements off. Re-enable to see live segment and area data while drawing.", "idle");
+        console.info("[MeasurementEngine] disabled");
     }
 
     /** Toggle on/off. Returns new enabled state. */
@@ -249,6 +265,13 @@ class MeasurementEngine {
 
         if (ctrlPts.length <= 1) {
             this._addEmptyGraphics();
+            this._emitHint(
+                "First point placed. Click to add the next point — each segment will show its length" +
+                (this._showBng ? " and bearing" : "") + ".",
+                "drawing",
+            );
+        } else {
+            this._emitHint("Point added. Keep clicking to extend the line. Double-click to finish.", "segment");
         }
     }
 
@@ -292,8 +315,13 @@ class MeasurementEngine {
     public wrapUp(firstPts?: Point[]): void {
         this._layer?.removeAll();
         this._clearHandles();
-        // Notify the host app that measurements have been cleared
         this._emitUpdate({} as MeasurementSnapshot);
+        this._emitHint(
+            firstPts && firstPts.length > 0
+                ? "Symbol complete. Starting the next segment…"
+                : "Drawing complete. Start a new symbol to measure again.",
+            "complete",
+        );
         if (firstPts && firstPts.length > 0) {
             this.addSegment(firstPts);
         }
@@ -353,6 +381,26 @@ class MeasurementEngine {
         }
         this._layer = null;
         this._view  = null;
+    }
+
+    /**
+     * Returns a snapshot of the engine's current operational state.
+     * Useful for status indicators and debugging.
+     */
+    public getStatus(): {
+        isEnabled: boolean;
+        unit: DistanceUnit;
+        areaUnit: AreaUnit;
+        isGeodesic: boolean;
+        activeGraphics: number;
+    } {
+        return {
+            isEnabled: this._isEnabled,
+            unit: this._distUnit,
+            areaUnit: this._areaUnit,
+            isGeodesic: this._isGeodesic,
+            activeGraphics: this._layer?.graphics.length ?? 0,
+        };
     }
 
     // ── Internal: graphics update ─────────────────────────────────────────────
@@ -633,6 +681,13 @@ class MeasurementEngine {
     private _emitStateChange(state: "enabled" | "disabled"): void {
         document.dispatchEvent(new CustomEvent("measurement-state-change", {
             detail: { state, isEnabled: this._isEnabled },
+            bubbles: true,
+        }));
+    }
+
+    private _emitHint(message: string, phase: "idle" | "drawing" | "segment" | "complete"): void {
+        document.dispatchEvent(new CustomEvent("measurement-hint", {
+            detail: { message, phase },
             bubbles: true,
         }));
     }

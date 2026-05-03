@@ -71,7 +71,9 @@ class EditEngine {
     private _pointerDownHandle: any = null;
     private _pointerMoveHandle: any = null;
     private _pointerUpHandle: any = null;
+    private _pointerMoveRawHandle: any = null; // cursor/hover indication
     private _isDraggingHandle = false;
+    private _handleDragOccurred = false;       // distinguishes click vs real drag on a handle
     private _activeHandleIndex = -1;
     private _suppressNextClick = false;   // true after handle drag so click doesn't add a point
     private _clickHandle: any = null;
@@ -484,6 +486,7 @@ class EditEngine {
         this._pointerDownHandle = view.on("pointer-down", (evt: any) => {
             if (evt.button !== 0) return; // left button only
             this._isDraggingHandle = false;
+            this._handleDragOccurred = false;
             this._activeHandleIndex = -1;
 
             for (let i = 0; i < this._handleGraphics.length; i++) {
@@ -542,6 +545,8 @@ class EditEngine {
 
             if (evt.action !== "update") return;
 
+            this._handleDragOccurred = true;
+
             const mapPt = view.toMap({ x: evt.x, y: evt.y });
             if (!mapPt) return;
 
@@ -557,13 +562,48 @@ class EditEngine {
             }
         });
 
-        // pointer-up: finalise the drag
+        // pointer-up: finalise drag OR detect handle click → remove
         this._pointerUpHandle = view.on("pointer-up", () => {
             if (!this._isDraggingHandle) return;
+
+            const wasRealDrag = this._handleDragOccurred;
             this._isDraggingHandle = false;
+            this._handleDragOccurred = false;
+
+            if (!wasRealDrag) {
+                // Click on a handle (pointer-down+up with no movement) → remove if it was added
+                const handle = this._handleGraphics[this._activeHandleIndex];
+                if (handle?.attributes?.isAdded) {
+                    this._removeControlPoint(this._activeHandleIndex, graphic, de);
+                }
+                this._activeHandleIndex = -1;
+                return;
+            }
+
             this._activeHandleIndex = -1;
             this._reAnnotate(graphic);
             this._emit("changeInSymbol", { graphic });
+        });
+
+        // pointer-move: update cursor to indicate add / drag / remove mode
+        this._pointerMoveRawHandle = view.on("pointer-move", (evt: any) => {
+            let nearAdded = false;
+            let nearOriginal = false;
+            for (const handle of this._handleGraphics) {
+                const geom = handle.geometry as any;
+                if (!geom) continue;
+                const screenPt = view.toScreen(geom);
+                if (Math.hypot(screenPt.x - evt.x, screenPt.y - evt.y) < 16) {
+                    if (handle.attributes?.isAdded) nearAdded = true;
+                    else nearOriginal = true;
+                    break;
+                }
+            }
+            const container = (view as any).container as HTMLElement;
+            if (!container) return;
+            if (nearAdded) container.style.cursor = "not-allowed";     // click will remove
+            else if (nearOriginal) container.style.cursor = "move";    // click will drag
+            else container.style.cursor = "crosshair";                 // click will add
         });
     }
 
@@ -617,12 +657,34 @@ class EditEngine {
                 style: "circle",
                 outline: { color: new Color([255, 255, 255, 1]), width: 2 },
             }),
-            attributes: { isEditHandle: true, ctrlPtIndex: insertIdx },
+            attributes: { isEditHandle: true, ctrlPtIndex: insertIdx, isAdded: true },
         });
         this._handleGraphics.splice(insertIdx, 0, newHandle);
         this._handleLayer.add(newHandle);
 
         // Redraw symbol with the new point
+        this._redrawFromCtrlPts(graphic, de);
+        this._emit("changeInSymbol", { graphic });
+    }
+
+    /**
+     * Remove an added control point at the given handle index.
+     * Guards against removing below 2 points (minimum for a valid polyline).
+     */
+    private _removeControlPoint(index: number, graphic: Graphic, de: DrawEssentials): void {
+        const ctrlPts: Point[] = (de as any).CTRL_PTS;
+        if (!ctrlPts || ctrlPts.length <= 2) return;
+
+        ctrlPts.splice(index, 1);
+
+        const removed = this._handleGraphics.splice(index, 1)[0];
+        if (removed) this._handleLayer.remove(removed);
+
+        // Re-index remaining handles
+        for (let i = index; i < this._handleGraphics.length; i++) {
+            this._handleGraphics[i].attributes.ctrlPtIndex = i;
+        }
+
         this._redrawFromCtrlPts(graphic, de);
         this._emit("changeInSymbol", { graphic });
     }
@@ -664,11 +726,18 @@ class EditEngine {
         this._pointerMoveHandle?.remove();
         this._pointerUpHandle?.remove();
         this._clickHandle?.remove();
+        this._pointerMoveRawHandle?.remove();
         this._pointerDownHandle = null;
         this._pointerMoveHandle = null;
         this._pointerUpHandle = null;
         this._clickHandle = null;
+        this._pointerMoveRawHandle = null;
         this._suppressNextClick = false;
+        this._handleDragOccurred = false;
+
+        // Restore default cursor when leaving reshape mode
+        const container = (this.view as any)?.container as HTMLElement;
+        if (container) container.style.cursor = "";
     }
 
     // -----------------------------------------------------------------------

@@ -2,36 +2,15 @@ import Graphic from "@arcgis/core/Graphic";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
-import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import Color from "@arcgis/core/Color";
+import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
-import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
+import GraphicsLayerManager from "../Managers/GraphicsLayerManager";
 import AnnotationEngine from "./AnnotationEngine.ts";
-
-// ── Highlight symbols ────────────────────────────────────────────────────────
-
-const HIGHLIGHT_POINT_SYM = new SimpleMarkerSymbol({
-    style: "circle",
-    color: new Color([0, 120, 255, 0]),
-    size: 24,
-    outline: { color: new Color([0, 120, 255, 1]), width: 3 }
-});
-
-const HIGHLIGHT_LINE_SYM = new SimpleLineSymbol({
-    color: new Color([0, 120, 255, 0.9]),
-    width: 4,
-    style: "dash"
-});
-
-const HIGHLIGHT_FILL_SYM = new SimpleFillSymbol({
-    color: new Color([0, 120, 255, 0.12]),
-    outline: { color: new Color([0, 120, 255, 1]), width: 3 }
-});
+import * as promiseUtils from "@arcgis/core/core/promiseUtils";
 
 // ── Proxy bounding-box symbol (used as drag handle for batch move) ───────────
 
@@ -58,11 +37,14 @@ class SelectionEngine {
     private _getView: () => MapView | SceneView;
     private _layerManager: GraphicsLayerManager;
 
-    private _selected: Map<string, Graphic> = new Map();         // id → graphic
-    private _highlights: Map<string, Graphic> = new Map();       // id → highlight overlay
-    private _highlightLayer!: GraphicsLayer;
+    private _selected: Map<string, Graphic> = new Map();                 // id → graphic
+    private _highlights: Map<string, { remove(): void }> = new Map();   // id → ArcGIS highlight handle
 
     private _clickHandle: any = null;
+    private _pointerMoveHandle: any = null;
+    private _hoverHandle: { remove(): void } | null = null;
+    private _hoverGraphic: Graphic | null = null;
+    private _isDrawing: boolean = false;
     private _targetLayerIds: string[] = [];
 
     // Active SketchVM for batch-move proxy drag
@@ -76,7 +58,6 @@ class SelectionEngine {
     constructor(viewProvider: () => MapView | SceneView, layerManager: GraphicsLayerManager) {
         this._getView = viewProvider;
         this._layerManager = layerManager;
-        this._highlightLayer = layerManager.getOrCreateLayer(LAYER_NAMES.SELECTION_HIGHLIGHT);
     }
 
     /** Register a callback that re-annotates a graphic after its geometry is moved. */
@@ -84,15 +65,35 @@ class SelectionEngine {
         this._annotationRefresh = fn;
     }
 
+    /** Suppress hover highlights while a symbol is being drawn. */
+    public setDrawing(drawing: boolean): void {
+        this._isDrawing = drawing;
+        if (drawing) {
+            this._hoverHandle?.remove();
+            this._hoverHandle = null;
+            this._hoverGraphic = null;
+        }
+    }
+
     // ── View management ───────────────────────────────────────────────────────
 
     get view(): MapView | SceneView { return this._getView(); }
 
     onViewChanged(newView: MapView | SceneView): void {
+        // Preserve logical selection but drop stale layerView highlight handles
+        const prevSelected = Array.from(this._selected.values());
+        this._highlights.forEach(h => h.remove());
+        this._highlights.clear();
+
         this.deactivate();
         this._layerManager = GraphicsLayerManager.getInstance(newView);
-        this._highlightLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.SELECTION_HIGHLIGHT);
         this.activate(this._targetLayerIds);
+
+        // Re-establish highlights on the new view for any previously selected graphics
+        prevSelected.forEach(g => {
+            const id = this._graphicId(g);
+            if (id && this._selected.has(id)) this._addHighlight(g, id);
+        });
     }
 
     // ── Activation ───────────────────────────────────────────────────────────
@@ -103,17 +104,47 @@ class SelectionEngine {
     activate(targetLayerIds: string[]): void {
         this._targetLayerIds = targetLayerIds;
         if (this._clickHandle) this._clickHandle.remove();
+        if (this._pointerMoveHandle) this._pointerMoveHandle.remove();
+
+        const debouncedHover = promiseUtils.debounce(async (evt: any) => {
+            if (this._isDrawing) return;
+            const targetLayers = this._targetLayerIds
+                .map(id => this._layerManager.getLayer(id))
+                .filter((l): l is GraphicsLayer => l !== undefined);
+            const hitOptions = targetLayers.length ? { include: targetLayers } : undefined;
+            const response = await this.view.hitTest(evt, hitOptions);
+            const hit = response.results?.find((r: any) => !!r.graphic);
+            const graphic: Graphic | null = hit ? (hit as any).graphic : null;
+
+            if (graphic === this._hoverGraphic) return;
+
+            this._hoverHandle?.remove();
+            this._hoverHandle = null;
+            this._hoverGraphic = null;
+
+            if (graphic) {
+                const layer = graphic.layer as GraphicsLayer | null;
+                if (!layer) return;
+                const layerView = await this.view.whenLayerView(layer) as any;
+                this._hoverHandle = layerView.highlight(graphic);
+                this._hoverGraphic = graphic;
+            }
+        });
+
+        this._pointerMoveHandle = this.view.on("pointer-move", (evt) => {
+            debouncedHover(evt).catch(() => {}); // suppress AbortError from debounce cancellation
+        });
 
         this._clickHandle = this.view.on("click", async (evt) => {
             if (evt.button !== 0) return; // ignore right/middle click — ArcGIS fires click for all buttons
             const isShift = (evt.native as MouseEvent).shiftKey;
 
-            const response = await this.view.hitTest(evt);
-            const hit = response.results?.find((r: any) => {
-                if (!r.graphic) return false;
-                const id = r.graphic.layer?.id;
-                return targetLayerIds.length === 0 || (id && targetLayerIds.includes(id));
-            });
+            const targetLayers = this._targetLayerIds
+                .map(id => this._layerManager.getLayer(id))
+                .filter((l): l is GraphicsLayer => l !== undefined);
+            const hitOptions = targetLayers.length ? { include: targetLayers } : undefined;
+            const response = await this.view.hitTest(evt, hitOptions);
+            const hit = response.results?.find((r: any) => !!r.graphic);
 
             if (hit) {
                 const graphic = (hit as any).graphic as Graphic;
@@ -131,6 +162,8 @@ class SelectionEngine {
 
     deactivate(): void {
         if (this._clickHandle) { this._clickHandle.remove(); this._clickHandle = null; }
+        if (this._pointerMoveHandle) { this._pointerMoveHandle.remove(); this._pointerMoveHandle = null; }
+        this._hoverHandle?.remove(); this._hoverHandle = null; this._hoverGraphic = null;
         if (this._sketchVM) { this._sketchVM.cancel(); this._sketchVM.destroy(); this._sketchVM = null; }
     }
 
@@ -165,7 +198,7 @@ class SelectionEngine {
 
     clearSelection(): void {
         this._selected.clear();
-        this._highlightLayer.removeAll();
+        this._highlights.forEach(h => h.remove());
         this._highlights.clear();
         this._emit("selectionChange", { selected: [] });
     }
@@ -241,9 +274,6 @@ class SelectionEngine {
                 proxyLayer.remove(proxyGraphic);
                 this._sketchVM?.destroy();
                 this._sketchVM = null;
-
-                // Refresh highlights at new positions
-                this._refreshHighlights();
 
                 if (onComplete) onComplete({ graphics, dx, dy });
             }
@@ -363,7 +393,6 @@ class SelectionEngine {
             if (dx !== 0 || dy !== 0) this._applyDelta([g], dx, dy);
         });
 
-        this._refreshHighlights();
         const labels: Record<string, string> = {
             left: "Align Left", right: "Align Right",
             top: "Align Top", bottom: "Align Bottom",
@@ -413,7 +442,6 @@ class SelectionEngine {
             });
         }
 
-        this._refreshHighlights();
         this._pushAlignUndo(`Align ${axis === "horizontal" ? "Horizontal" : "Vertical"}`, snapshots, onEntry);
     }
 
@@ -499,7 +527,6 @@ class SelectionEngine {
             this._applyDelta([g], positions[i].x - curr.x, positions[i].y - curr.y);
         });
 
-        this._refreshHighlights();
         const labelMap: Record<string, string> = {
             square: "Arrange Square", triangle: "Arrange Triangle",
             invertedTriangle: "Arrange Inverted Triangle", wedge: "Arrange Wedge",
@@ -736,7 +763,7 @@ class SelectionEngine {
             : { x: 0, y: 0 };
     }
 
-    private _applyDelta(graphics: Graphic[], dx: number, dy: number): void {
+    public _applyDelta(graphics: Graphic[], dx: number, dy: number): void {
         graphics.forEach(g => {
             const geom = g.geometry;
             if (!geom) return;
@@ -810,30 +837,20 @@ class SelectionEngine {
         });
     }
 
-    private _addHighlight(graphic: Graphic, id: string): void {
-        const geom = graphic.geometry;
-        if (!geom) return;
-        let sym: any;
-        if (geom.type === "point") sym = HIGHLIGHT_POINT_SYM;
-        else if (geom.type === "polyline") sym = HIGHLIGHT_LINE_SYM;
-        else sym = HIGHLIGHT_FILL_SYM;
-
-        const h = new Graphic({ geometry: geom, symbol: sym });
-        this._highlightLayer.add(h);
-        this._highlights.set(id, h);
+    private async _addHighlight(graphic: Graphic, id: string): Promise<void> {
+        const layer = graphic.layer as GraphicsLayer | null;
+        if (!layer) return;
+        try {
+            const layerView = await this.view.whenLayerView(layer) as any;
+            if (!this._selected.has(id)) return; // cleared while awaiting
+            const handle = layerView.highlight(graphic);
+            this._highlights.set(id, handle);
+        } catch { /* view replaced during await */ }
     }
 
     private _removeHighlight(id: string): void {
-        const h = this._highlights.get(id);
-        if (h) { this._highlightLayer.remove(h); this._highlights.delete(id); }
-    }
-
-    /** Re-sync highlight geometries to current graphic positions (after move/align). */
-    private _refreshHighlights(): void {
-        this._selected.forEach((graphic, id) => {
-            const h = this._highlights.get(id);
-            if (h) h.geometry = graphic.geometry;
-        });
+        this._highlights.get(id)?.remove();
+        this._highlights.delete(id);
     }
 
     private _pushAlignUndo(
@@ -854,14 +871,12 @@ class SelectionEngine {
                     s.graphic.geometry = s.prevGeom;
                     this._annotationRefresh?.(s.graphic);
                 });
-                this._refreshHighlights();
             },
             redo: () => {
                 afterStates.forEach(s => {
                     s.graphic.geometry = s.afterGeom;
                     this._annotationRefresh?.(s.graphic);
                 });
-                this._refreshHighlights();
             },
         });
     }

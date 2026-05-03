@@ -9,7 +9,6 @@ export const LAYER_NAMES = {
     TACT: "TacticalSymbolsLayer",
     SKETCH: "SketchLayer",
     ANNOTATION_LAYER: "AnnotationLayer",
-    SELECTION_HIGHLIGHT: "SelectionHighlightLayer",
 };
 
 // Singleton pattern to ensure layers are created only once per view
@@ -60,6 +59,13 @@ class GraphicsLayerManager {
     public getOrCreateLayer(layerName: string): GraphicsLayer {
         if (this.layers.has(layerName)) {
             return this.layers.get(layerName)!;
+        }
+
+        // Reuse an existing map layer so graphics survive view switches
+        const existing = this.view.map.findLayerById(layerName) as GraphicsLayer | null;
+        if (existing) {
+            this.layers.set(layerName, existing);
+            return existing;
         }
 
         const layer = new GraphicsLayer({
