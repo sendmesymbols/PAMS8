@@ -2358,6 +2358,10 @@ class SymbolEngine implements Evented {
         this._selectionEngine.setDrawing(true);
         // Arm proximity indicator for the upcoming draw session
         this._proximityEngine?.activate();
+        // Arm drawing cue overlays for the upcoming draw session
+        this._drawingCueEngine?.activate([
+          LAYER_NAMES.FORCE, LAYER_NAMES.TACT_PT, LAYER_NAMES.TACT, 'milSymbols',
+        ]);
       }
 
       // Moved initialization of symbolData to constructor to avoid re-parsing

@@ -4,7 +4,7 @@
  *   • Rubber-band dashed line + live length / bearing label (last ctrl-pt → cursor)
  *   • Floating cursor coordinate label (lat / lon)
  *   • Distance rings from the last placed control point
- *   • Angular guide lines (0 / 45 / 90 / 135 / 180 / 225 / 270 / 315 ° from last ctrl-pt)
+ *   • Angular guide line snapping to nearest of 0/45/90/135/180/225/270/315° from last ctrl-pt
  *   • Nearby-symbol highlight rings, color-coded by cursor proximity
  *
  * Singleton — DrawingCueEngine.getInstance().
@@ -267,7 +267,8 @@ class DrawingCueEngine {
     if (!this._isEnabled || !this._isActive || ctrlPts.length < 1) return;
     const newCount = ctrlPts.length;
     if (newCount !== this._prevCtrlPtCount) {
-      this._lastCtrlPt = ctrlPts[newCount - 1];
+      // ctrlPts[last] is the live cursor; the committed anchor is one before it
+      this._lastCtrlPt = newCount > 1 ? ctrlPts[newCount - 2] : ctrlPts[0];
       this._prevCtrlPtCount = newCount;
       if (this._ringsEnabled) this._updateDistanceRings(this._lastCtrlPt);
     }
@@ -378,7 +379,7 @@ class DrawingCueEngine {
 
     if (this._rbEnabled && this._lastCtrlPt) {
       this._updateRubberBand(this._lastCtrlPt, cursor);
-    } else if (!this._lastCtrlPt) {
+    } else {
       this._removeGraphic(this._rbLineG);  this._rbLineG  = null;
       this._removeGraphic(this._rbLabelG); this._rbLabelG = null;
     }
@@ -430,6 +431,9 @@ class DrawingCueEngine {
         this._rbLabelG.geometry = mid;
         this._rbLabelG.symbol   = sym;
       }
+    } else {
+      this._removeGraphic(this._rbLabelG);
+      this._rbLabelG = null;
     }
   }
 
@@ -582,8 +586,7 @@ class DrawingCueEngine {
     for (const info of this._candidateInfo) {
       if (!info.highlightGraphic) continue;
 
-      const mapDist = Math.hypot(cursor.x - info.centroid.x, cursor.y - info.centroid.y);
-      const distKm  = this._mapUnitsToKm(mapDist, info.centroid);
+      const distKm  = this._geodesicDistKm(cursor, info.centroid);
       const alpha   = distKm < this._hlRadiusKm
         ? Math.round(this._hlOutlineOpacity * 255)
         : 0;
@@ -601,6 +604,20 @@ class DrawingCueEngine {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+
+  private _geodesicDistKm(a: Point, b: Point): number {
+    try {
+      const pl = new Polyline({ spatialReference: a.spatialReference });
+      pl.addPath([[a.x, a.y], [b.x, b.y]]);
+      const raw = this._isGeodesic
+        ? geometryEngine.geodesicLength(pl, 'kilometers' as any)
+        : geometryEngine.planarLength(pl, 'kilometers' as any);
+      return Math.abs(raw);
+    } catch {
+      const mapDist = Math.hypot(b.x - a.x, b.y - a.y);
+      return this._mapUnitsToKm(mapDist, a);
+    }
+  }
 
   private _hlColor(distKm: number): [number, number, number] {
     const t1 = this._hlRadiusKm / 3;
