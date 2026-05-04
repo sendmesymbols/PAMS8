@@ -875,10 +875,6 @@
             <label>Proximity</label>
             <input type="checkbox" id="setting-proximityEngine" checked />
           </div>
-          <div class="setting-row">
-            <label>Echelon Buffer</label>
-            <input type="checkbox" id="setting-echelonBuffer" checked />
-          </div>
         </div>
         <div class="settings-section">
           <div class="section-title">Proximity</div>
@@ -970,80 +966,6 @@
           <div class="setting-row">
             <label>Font Color</label>
             <input type="color" id="setting-fontColor" value="#0050c8" />
-          </div>
-        </div>
-        <div class="settings-section">
-          <div class="section-title">Echelon Buffer</div>
-          <div class="setting-row">
-            <label>Enabled</label>
-            <input type="checkbox" id="setting-echelonBufferEnabled" checked />
-          </div>
-          <div class="setting-row">
-            <label>Buffer Color</label>
-            <input type="color" id="setting-bufferColor" value="#ffa500" />
-          </div>
-          <div class="setting-row">
-            <label>Fill Opacity</label>
-            <input
-              type="range"
-              id="setting-bufferFillOpacity"
-              min="0"
-              max="1"
-              step="0.05"
-              value="0.5"
-            />
-            <span class="value-display" id="bufferFillOpacity-display">0.5</span>
-          </div>
-          <div class="setting-row">
-            <label>Outline Color</label>
-            <input
-              type="color"
-              id="setting-bufferOutlineColor"
-              value="#ffa500"
-            />
-          </div>
-          <div class="setting-row">
-            <label>Outline Opacity</label>
-            <input
-              type="range"
-              id="setting-bufferOutlineOpacity"
-              min="0"
-              max="1"
-              step="0.05"
-              value="0.78"
-            />
-            <span class="value-display" id="bufferOutlineOpacity-display">0.78</span>
-          </div>
-          <div class="setting-row">
-            <label>Outline Width</label>
-            <input
-              type="number"
-              id="setting-bufferOutlineWidth"
-              value="1.5"
-              min="0.5"
-              max="10"
-              step="0.5"
-            />
-          </div>
-          <div class="setting-row">
-            <label>Join Type</label>
-            <select id="setting-joinType">
-              <option value="miter">miter</option>
-              <option value="bevel">bevel</option>
-              <option value="round" selected>round</option>
-              <option value="square">square</option>
-            </select>
-          </div>
-          <div class="setting-row">
-            <label>Miter Limit</label>
-            <input
-              type="number"
-              id="setting-miterLimit"
-              value="10"
-              min="1"
-              max="50"
-              step="1"
-            />
           </div>
         </div>
         <div class="settings-section">
@@ -1397,12 +1319,6 @@
           path: ['proximity', 'fontColor'],
           value: v,
         }),
-        // Echelon Buffer Feature (Features section checkbox)
-        // All other echelon buffer controls are wired in src/main.ts
-        'setting-echelonBuffer': (v) => ({
-          path: ['features', 'echelonBuffer'],
-          value: v,
-        }),
         // Drawing Cues
         'setting-drawingCues': (v) => ({ path: ['features', 'drawingCues'], value: v }),
         'setting-rubberBand':  (v) => ({ path: ['drawingCues', 'rubberBand', 'enabled'], value: v }),
@@ -1595,31 +1511,6 @@
             );
           }
 
-          // Echelon Buffer settings
-          const eb = settings.proximityEchelonBuffer || {};
-          if (eb.enabled !== undefined) {
-            document.getElementById('setting-echelonBufferEnabled').checked = eb.enabled !== false;
-            document.getElementById('setting-echelonBuffer').checked = eb.enabled !== false;
-          }
-          if (eb.bufferFillOpacity !== undefined) {
-            const el = document.getElementById('setting-bufferFillOpacity');
-            if (el) { el.value = eb.bufferFillOpacity; document.getElementById('bufferFillOpacity-display').textContent = String(eb.bufferFillOpacity); }
-          }
-          if (eb.bufferOutlineOpacity !== undefined) {
-            const el = document.getElementById('setting-bufferOutlineOpacity');
-            if (el) { el.value = eb.bufferOutlineOpacity; document.getElementById('bufferOutlineOpacity-display').textContent = String(eb.bufferOutlineOpacity); }
-          }
-          if (eb.bufferColor) {
-            document.getElementById('setting-bufferColor').value = rgbToHex(eb.bufferColor[0], eb.bufferColor[1], eb.bufferColor[2]);
-          }
-          if (eb.bufferOutlineColor) {
-            document.getElementById('setting-bufferOutlineColor').value = rgbToHex(eb.bufferOutlineColor[0], eb.bufferOutlineColor[1], eb.bufferOutlineColor[2]);
-          }
-          if (eb.bufferOutlineWidth !== undefined)
-            document.getElementById('setting-bufferOutlineWidth').value = eb.bufferOutlineWidth;
-          if (eb.joinType) document.getElementById('setting-joinType').value = eb.joinType;
-          if (eb.miterLimit !== undefined)
-            document.getElementById('setting-miterLimit').value = eb.miterLimit;
         }
 
         console.log('Settings panel initialized from SymbolEngine');

@@ -390,27 +390,6 @@ class SymbolEngine implements Evented {
         );
       }
 
-      // Update echelon buffer if enabled
-      if (
-        this._proximityEngine?.echelonBufferEnabled &&
-        detail?.currentGeometry
-      ) {
-        const drawEssentials = detail?.currentDrawEssentials;
-        let echelon = 0;
-        const sidc = drawEssentials?.AMPLIFIER?.SIDC;
-        if (sidc) {
-          try {
-            const parsed = parseSIDC(sidc);
-            echelon = parseInt(parsed.setA.echelonMobility, 10) || 0;
-          } catch (e) {
-            // Non-30-digit SIDC (tactical symbols) — default echelon 0
-          }
-        }
-        this._proximityEngine.updateEchelonBuffer(
-          detail.currentGeometry,
-          echelon,
-        );
-      }
     });
 
     // New control point clicked — arm the next segment measurement graphic
@@ -517,7 +496,6 @@ class SymbolEngine implements Evented {
       return;
     }
     const proxCfg = (settingsData as any).proximity ?? {};
-    const echelonBufferCfg = (settingsData as any).proximityEchelonBuffer ?? {};
 
     this._proximityEngine = ProximityEngine.getInstance();
     this._proximityEngine.start(
@@ -538,19 +516,6 @@ class SymbolEngine implements Evented {
         fontColor: proxCfg.fontColor ?? [0, 80, 200],
       },
     );
-
-    // Initialize echelon buffer settings
-    this._proximityEngine.setEchelonBufferOptions({
-      enabled: echelonBufferCfg.enabled ?? true,
-      bufferColor: echelonBufferCfg.bufferColor ?? [255, 165, 0],
-      bufferFillOpacity: echelonBufferCfg.bufferFillOpacity ?? 0.5,
-      bufferOutlineColor: echelonBufferCfg.bufferOutlineColor ?? [255, 165, 0],
-      bufferOutlineOpacity: echelonBufferCfg.bufferOutlineOpacity ?? 0.78,
-      bufferOutlineWidth: echelonBufferCfg.bufferOutlineWidth ?? 1.5,
-      joinType: echelonBufferCfg.joinType ?? 'round',
-      miterLimit: echelonBufferCfg.miterLimit ?? 10,
-      echelonMap: echelonBufferCfg.echelonMap ?? {},
-    });
 
     this._proximityEngine.enable();
     this.emitEvent('proximityEngineReady', { engine: this._proximityEngine });
@@ -1417,11 +1382,6 @@ class SymbolEngine implements Evented {
         value
           ? this._proximityEngine.enable()
           : this._proximityEngine.disable();
-      } else if (feature === 'echelonBuffer' && this._proximityEngine) {
-        this._proximityEngine.setEchelonBufferEnabled(value);
-        console.log(
-          `[SymbolEngine] Echelon buffer ${value ? 'enabled' : 'disabled'}`,
-        );
       } else {
         console.log(`[SymbolEngine] Feature '${feature}' changed to ${value}`);
       }
@@ -1469,33 +1429,6 @@ class SymbolEngine implements Evented {
       // Re-apply the entire drawingCues block from the (already-mutated) settingsData
       const cuesCfg = (settingsData as any).drawingCues ?? {};
       this._drawingCueEngine.setOptions(cuesCfg as DrawingCueOptions);
-    }
-
-    if (fullPath.startsWith('proximityEchelonBuffer.')) {
-      if (this._proximityEngine) {
-        const key = path[path.length - 1];
-        const bufferConfig: any = {};
-
-        const bufferKeyMap: Record<string, string> = {
-          bufferColor: 'bufferColor',
-          bufferFillOpacity: 'bufferFillOpacity',
-          bufferOutlineColor: 'bufferOutlineColor',
-          bufferOutlineOpacity: 'bufferOutlineOpacity',
-          bufferOutlineWidth: 'bufferOutlineWidth',
-          joinType: 'joinType',
-          miterLimit: 'miterLimit',
-        };
-
-        const configKey = bufferKeyMap[key];
-        if (configKey) {
-          bufferConfig[configKey] = value;
-          this._proximityEngine.setEchelonBufferOptions(bufferConfig);
-          console.log(
-            `[SymbolEngine] EchelonBuffer config updated: ${configKey} =`,
-            value,
-          );
-        }
-      }
     }
 
     // Emit event so other parts of the app can react

@@ -384,7 +384,6 @@
     "saveLoad": true,
     "templates": true,
     "proximityEngine": true,
-    "echelonBuffer": true,
     "drawingCues": true
   },
   "drawingCues": {
@@ -445,35 +444,6 @@
     "markerSize": 10,
     "fontSize": 11,
     "fontColor": [0, 80, 200]
-  },
-  "proximityEchelonBuffer": {
-    "enabled": true,
-    "bufferColor": [255, 165, 0],
-    "bufferFillOpacity": 0.5,
-    "bufferOutlineColor": [255, 165, 0],
-    "bufferOutlineOpacity": 0.78,
-    "bufferOutlineWidth": 1.5,
-    "joinType": "round",
-    "miterLimit": 10,
-    "echelonMap": {
-      "0": { "label": "Team / Crew", "distanceKm": 0.2 },
-      "1": { "label": "Squad", "distanceKm": 0.5 },
-      "2": { "label": "Section", "distanceKm": 0.7 },
-      "3": { "label": "Platoon", "distanceKm": 1.0 },
-      "4": { "label": "Company", "distanceKm": 2.0 },
-      "5": { "label": "Battalion", "distanceKm": 5.0 },
-      "6": { "label": "Regiment", "distanceKm": 8.0 },
-      "7": { "label": "Brigade", "distanceKm": 12.0 },
-      "8": { "label": "Division", "distanceKm": 20.0 },
-      "9": { "label": "Corps", "distanceKm": 30.0 },
-      "10": { "label": "Field Army", "distanceKm": 50.0 },
-      "11": { "label": "Army Group", "distanceKm": 80.0 },
-      "12": { "label": "Theater", "distanceKm": 120.0 },
-      "13": { "label": "Command Level 1", "distanceKm": 180.0 },
-      "14": { "label": "Command Level 2", "distanceKm": 250.0 },
-      "15": { "label": "Command Level 3", "distanceKm": 350.0 },
-      "16": { "label": "Strategic Command", "distanceKm": 500.0 }
-    }
   },
   "echelonMap23": {
     "0": ["23", "00"],

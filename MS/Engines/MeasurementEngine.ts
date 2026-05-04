@@ -121,7 +121,7 @@ class MeasurementEngine {
     private _distUnit: DistanceUnit = "miles";
     private _areaUnit: AreaUnit     = "square-miles";
     private _fontSize: number                  = 12;
-    private _fontColor: [number, number, number] = [255, 0, 0];
+    private _fontColor: [number, number, number] = [20, 20, 20];
     private _fontOpacity: number               = 1;
     private _lineColor: [number, number, number] = [0, 255, 0];
     private _lineWidth: number                 = 2;
@@ -636,7 +636,12 @@ class MeasurementEngine {
         else if (angle > -45 && angle < 0) { xOff = 5;  yOff = 13; }
         else if (angle <= -45)             { xOff = -10; yOff = 5;  }
 
-        return new TextSymbol({ text: label, font, color, xoffset: xOff, yoffset: yOff, angle });
+        return new TextSymbol({
+            text: label, font, color,
+            haloColor: new Color([255, 255, 255, 0.95]),
+            haloSize: 2,
+            xoffset: xOff, yoffset: yOff, angle,
+        });
     }
 
     private _distAbbr(u: DistanceUnit): string {

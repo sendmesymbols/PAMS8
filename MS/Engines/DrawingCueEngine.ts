@@ -122,12 +122,12 @@ class DrawingCueEngine {
   private _rbLineWidth: number = 1.5;
   private _rbShowLabel: boolean = true;
   private _rbFontSize: number = 11;
-  private _rbFontColor: [number, number, number] = [255, 230, 50];
+  private _rbFontColor: [number, number, number] = [0, 0, 0];
 
   // ── Option fields — coordinate display ───────────────────────────────────
   private _coordEnabled: boolean = true;
   private _coordFontSize: number = 11;
-  private _coordFontColor: [number, number, number] = [220, 220, 220];
+  private _coordFontColor: [number, number, number] = [0, 0, 0];
 
   // ── Option fields — angular guides ────────────────────────────────────────
   private _guidesEnabled: boolean = true;
@@ -145,7 +145,7 @@ class DrawingCueEngine {
   private _ringsLineWidth: number = 1;
   private _ringsShowLabels: boolean = true;
   private _ringsFontSize: number = 10;
-  private _ringsFontColor: [number, number, number] = [100, 200, 100];
+  private _ringsFontColor: [number, number, number] = [20, 20, 20];
 
   // ── Option fields — nearby highlight ─────────────────────────────────────
   private _hlEnabled: boolean = true;
@@ -398,9 +398,9 @@ class DrawingCueEngine {
     pl.addPath([[from.x, from.y], [to.x, to.y]]);
 
     const lineSym = new SimpleLineSymbol({
-      style: 'dash',
+      style: 'short-dash',
       color: new Color([...this._rbLineColor, this._rbLineOpacity]),
-      width: this._rbLineWidth,
+      width: this._rbLineWidth + 0.5,
     });
 
     if (!this._rbLineG) {
@@ -457,9 +457,9 @@ class DrawingCueEngine {
     const sym  = new TextSymbol({
       text: label,
       font,
-      color:     new Color([...this._coordFontColor, 0.95]),
-      haloColor: new Color([0, 0, 0, 0.65]),
-      haloSize:  1.5,
+      color:     new Color([...this._coordFontColor, 1.0]),
+      haloColor: new Color([255, 255, 255, 0.95]),
+      haloSize:  2.5,
       xoffset:   14,
       yoffset:   -16,
     });
@@ -662,10 +662,10 @@ class DrawingCueEngine {
   private _textSym(text: string, size: number, color: [number, number, number], angle: number): TextSymbol {
     return new TextSymbol({
       text,
-      font:      new Font({ size, style: 'italic', weight: 'bold', family: 'Helvetica' }),
+      font:      new Font({ size, style: 'normal', weight: 'bold', family: 'Helvetica' }),
       color:     new Color([...color, 1]),
-      haloColor: new Color([0, 0, 0, 0.7]),
-      haloSize:  1.5,
+      haloColor: new Color([255, 255, 255, 0.95]),
+      haloSize:  2,
       angle,
       xoffset:   5,
       yoffset:   8,
