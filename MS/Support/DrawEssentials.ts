@@ -88,6 +88,17 @@ export class DrawEssentials {
 
     public FLAP_ANGLE?: number;
 
+    public cim?: {
+        style?: string;
+        size?: number;
+        color?: string;
+        gridType?: "Fixed" | "Random";
+        randomness?: number;
+        stepX?: number;
+        stepY?: number;
+        shiftOddRows?: boolean;
+    };
+
     constructor(options?: Partial<DrawEssentials>) {
         if (options) {
             Object.assign(this, options);
@@ -140,6 +151,7 @@ export class DrawEssentials {
         this.FLAP_ANGLE = undefined;
         this.FRNT_LN_DIST_RATIO = undefined;
         this.FLAP_DIST_RATIO = undefined;
+        this.cim = undefined;
     }
 
     /**
@@ -174,6 +186,7 @@ export class DrawEssentials {
             FLAP_ANGLE: this.FLAP_ANGLE,
             FRNT_LN_DIST_RATIO : this.FRNT_LN_DIST_RATIO,
             FLAP_DIST_RATIO:  this.FLAP_DIST_RATIO,
+            cim: this.cim ? { ...this.cim } : undefined,
         });
     }
 

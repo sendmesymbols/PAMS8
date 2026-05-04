@@ -47,6 +47,16 @@ export declare class DrawEssentials {
     uniqueDesignation?: string;
     infoFields?: boolean;
     FLAP_ANGLE?: number;
+    cim?: {
+        style?: string;
+        size?: number;
+        color?: string;
+        gridType?: "Fixed" | "Random";
+        randomness?: number;
+        stepX?: number;
+        stepY?: number;
+        shiftOddRows?: boolean;
+    };
     constructor(options?: Partial<DrawEssentials>);
     /**
      * Reset all properties to default values

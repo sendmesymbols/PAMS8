@@ -6,6 +6,7 @@ import FreehandLine from "../Symbols/FreehandLine.ts";
 import FreehandLineDotted from "../Symbols/FreehandLineDotted.ts";
 import FreehandArea from "../Symbols/FreehandArea.ts";
 import FreehandAreaFilled from "../Symbols/FreehandAreaFilled.ts";
+import CartoInformationModelSymbol from "../Symbols/CartoInformationModelSymbol.ts";
 import FreehandArrow from "../Symbols/FreehandArrow.ts";
 import FreehandDottedArrow from "../Symbols/FreehandDottedArrow.ts";
 import FreehandDoubleLineArrow from "../Symbols/FreehandDoubleLineArrow.ts";
@@ -160,6 +161,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "FreehandLine": FreehandLine,
     "FreehandArea": FreehandArea,
     "FreehandAreaFilled": FreehandAreaFilled,
+    "CartoInformationModelSymbol": CartoInformationModelSymbol,
     "TacticalPointText": TacticalPointText,
     "TacticalPoint": TacticalPoint,
     "UEISymbol": UEISymbol,

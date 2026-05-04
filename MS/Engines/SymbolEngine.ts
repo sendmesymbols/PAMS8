@@ -49,6 +49,8 @@ import SelectionEngine from './SelectionEngine.ts';
 // MeasurementEngine is loaded dynamically based on Settings.json features.measurementEngine
 import type MeasurementEngine from './MeasurementEngine.ts';
 import ProximityEngine from './ProximityEngine.ts';
+import DrawingCueEngine from './DrawingCueEngine.ts';
+import type { DrawingCueOptions } from './DrawingCueEngine.ts';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -95,6 +97,7 @@ class SymbolEngine implements Evented {
   private _editEngine: EditEngine;
   private _measurementEngine?: MeasurementEngine;
   private _proximityEngine: ProximityEngine | null = null;
+  private _drawingCueEngine: DrawingCueEngine | null = null;
   private currentSymbol: any | undefined;
   private sidc: any | undefined;
   private amplifier: Amplifier | undefined;
@@ -233,6 +236,9 @@ class SymbolEngine implements Evented {
     // Conditionally load ProximityEngine based on Settings.json feature flag
     this._initProximityEngine();
 
+    // Conditionally load DrawingCueEngine based on Settings.json feature flag
+    this._initDrawingCueEngine();
+
     // Wire global keyboard shortcuts (if enabled in Settings.json)
     if ((settingsData as any).features?.shortcuts !== false) {
       this._setupKeyboardShortcuts();
@@ -366,12 +372,43 @@ class SymbolEngine implements Evented {
       // Arm proximity indicator on first progress event (idempotent — no-ops if already active)
       this._proximityEngine?.activate();
 
+      // Arm drawing cue overlays (idempotent)
+      this._drawingCueEngine?.activate([
+        LAYER_NAMES.FORCE, LAYER_NAMES.TACT_PT, LAYER_NAMES.TACT, 'milSymbols',
+      ]);
+
       // Feed drawing progress into the measurement engine
       const detail = event.detail;
       if (detail?.currentGeometry && detail?.currentDrawEssentials?.CTRL_PTS) {
         this._measurementEngine?.updateSegments(
           detail.currentGeometry,
           detail.currentDrawEssentials.CTRL_PTS,
+        );
+        this._drawingCueEngine?.updateFromProgress(
+          detail.currentGeometry,
+          detail.currentDrawEssentials.CTRL_PTS,
+        );
+      }
+
+      // Update echelon buffer if enabled
+      if (
+        this._proximityEngine?.echelonBufferEnabled &&
+        detail?.currentGeometry
+      ) {
+        const drawEssentials = detail?.currentDrawEssentials;
+        let echelon = 0;
+        const sidc = drawEssentials?.AMPLIFIER?.SIDC;
+        if (sidc) {
+          try {
+            const parsed = parseSIDC(sidc);
+            echelon = parseInt(parsed.setA.echelonMobility, 10) || 0;
+          } catch (e) {
+            // Non-30-digit SIDC (tactical symbols) — default echelon 0
+          }
+        }
+        this._proximityEngine.updateEchelonBuffer(
+          detail.currentGeometry,
+          echelon,
         );
       }
     });
@@ -396,6 +433,8 @@ class SymbolEngine implements Evented {
 
       // Deactivate proximity indicator when drawing ends
       this._proximityEngine?.deactivate();
+      // Deactivate drawing cue overlays when drawing ends
+      this._drawingCueEngine?.deactivate();
     });
 
     console.log('SymbolEngine global event listeners set up');
@@ -427,6 +466,8 @@ class SymbolEngine implements Evented {
     this._measurementEngine?.onViewChanged(newView);
     // Re-attach proximity engine to the new view
     this._proximityEngine?.onViewChanged(newView);
+    // Re-attach drawing cue engine to the new view
+    this._drawingCueEngine?.onViewChanged(newView);
 
     // Re-initialize the ContextMenuManager for the new view so its
     // pointer-down / contextmenu listeners are bound to the active view.
@@ -476,6 +517,8 @@ class SymbolEngine implements Evented {
       return;
     }
     const proxCfg = (settingsData as any).proximity ?? {};
+    const echelonBufferCfg = (settingsData as any).proximityEchelonBuffer ?? {};
+
     this._proximityEngine = ProximityEngine.getInstance();
     this._proximityEngine.start(
       this.view,
@@ -495,9 +538,38 @@ class SymbolEngine implements Evented {
         fontColor: proxCfg.fontColor ?? [0, 80, 200],
       },
     );
+
+    // Initialize echelon buffer settings
+    this._proximityEngine.setEchelonBufferOptions({
+      enabled: echelonBufferCfg.enabled ?? true,
+      bufferColor: echelonBufferCfg.bufferColor ?? [255, 165, 0],
+      bufferFillOpacity: echelonBufferCfg.bufferFillOpacity ?? 0.5,
+      bufferOutlineColor: echelonBufferCfg.bufferOutlineColor ?? [255, 165, 0],
+      bufferOutlineOpacity: echelonBufferCfg.bufferOutlineOpacity ?? 0.78,
+      bufferOutlineWidth: echelonBufferCfg.bufferOutlineWidth ?? 1.5,
+      joinType: echelonBufferCfg.joinType ?? 'round',
+      miterLimit: echelonBufferCfg.miterLimit ?? 10,
+      echelonMap: echelonBufferCfg.echelonMap ?? {},
+    });
+
     this._proximityEngine.enable();
     this.emitEvent('proximityEngineReady', { engine: this._proximityEngine });
     console.info('[SymbolEngine] ProximityEngine loaded');
+  }
+
+  private _initDrawingCueEngine(): void {
+    const features = (settingsData as any).features ?? {};
+    if (features.drawingCues === false) {
+      console.info('[SymbolEngine] DrawingCueEngine disabled via Settings.json');
+      return;
+    }
+    const cuesCfg = (settingsData as any).drawingCues ?? {};
+    this._drawingCueEngine = DrawingCueEngine.getInstance();
+    this._drawingCueEngine.start(this.view);
+    this._drawingCueEngine.setOptions(cuesCfg as DrawingCueOptions);
+    this._drawingCueEngine.enable();
+    this.emitEvent('drawingCueEngineReady', { engine: this._drawingCueEngine });
+    console.info('[SymbolEngine] DrawingCueEngine loaded');
   }
 
   get view() {
@@ -1307,6 +1379,11 @@ class SymbolEngine implements Evented {
     return this._proximityEngine;
   }
 
+  /** Access the DrawingCueEngine — control visual overlays during drawing. */
+  public get drawingCueEngine(): DrawingCueEngine | null {
+    return this._drawingCueEngine;
+  }
+
   /** Get current settings data for the control panel */
   public get settings(): typeof settingsData {
     return settingsData;
@@ -1333,9 +1410,18 @@ class SymbolEngine implements Evented {
     if (fullPath.startsWith('features.')) {
       const feature = path[1];
       if (feature === 'measurementEngine' && this._measurementEngine) {
-        value ? this._measurementEngine.enable() : this._measurementEngine.disable();
+        value
+          ? this._measurementEngine.enable()
+          : this._measurementEngine.disable();
       } else if (feature === 'proximityEngine' && this._proximityEngine) {
-        value ? this._proximityEngine.enable() : this._proximityEngine.disable();
+        value
+          ? this._proximityEngine.enable()
+          : this._proximityEngine.disable();
+      } else if (feature === 'echelonBuffer' && this._proximityEngine) {
+        this._proximityEngine.setEchelonBufferEnabled(value);
+        console.log(
+          `[SymbolEngine] Echelon buffer ${value ? 'enabled' : 'disabled'}`,
+        );
       } else {
         console.log(`[SymbolEngine] Feature '${feature}' changed to ${value}`);
       }
@@ -1369,6 +1455,43 @@ class SymbolEngine implements Evented {
           this._proximityEngine.updateConfig(config);
           console.log(
             `[SymbolEngine] ProximityEngine config updated: ${configKey} =`,
+            value,
+          );
+        }
+      }
+    }
+
+    if (fullPath === 'features.drawingCues' && this._drawingCueEngine) {
+      value ? this._drawingCueEngine.enable() : this._drawingCueEngine.disable();
+    }
+
+    if (fullPath.startsWith('drawingCues.') && this._drawingCueEngine) {
+      // Re-apply the entire drawingCues block from the (already-mutated) settingsData
+      const cuesCfg = (settingsData as any).drawingCues ?? {};
+      this._drawingCueEngine.setOptions(cuesCfg as DrawingCueOptions);
+    }
+
+    if (fullPath.startsWith('proximityEchelonBuffer.')) {
+      if (this._proximityEngine) {
+        const key = path[path.length - 1];
+        const bufferConfig: any = {};
+
+        const bufferKeyMap: Record<string, string> = {
+          bufferColor: 'bufferColor',
+          bufferFillOpacity: 'bufferFillOpacity',
+          bufferOutlineColor: 'bufferOutlineColor',
+          bufferOutlineOpacity: 'bufferOutlineOpacity',
+          bufferOutlineWidth: 'bufferOutlineWidth',
+          joinType: 'joinType',
+          miterLimit: 'miterLimit',
+        };
+
+        const configKey = bufferKeyMap[key];
+        if (configKey) {
+          bufferConfig[configKey] = value;
+          this._proximityEngine.setEchelonBufferOptions(bufferConfig);
+          console.log(
+            `[SymbolEngine] EchelonBuffer config updated: ${configKey} =`,
             value,
           );
         }
@@ -2008,11 +2131,28 @@ class SymbolEngine implements Evented {
     sketchVM.create('point');
 
     sketchVM.on('create', (event) => {
+      if (event.state === 'active' && event.graphic?.geometry) {
+        // Feed cursor position into the proximity/echelon-buffer pipeline
+        document.dispatchEvent(
+          new CustomEvent('onDrawProgress', {
+            detail: {
+              symbolType: 'milSymbol',
+              currentGeometry: event.graphic.geometry,
+              currentDrawEssentials: { AMPLIFIER: amplifier },
+            },
+            bubbles: true,
+          }),
+        );
+      }
       if (event.state === 'complete') {
         const point = event.graphic.geometry as __esri.Point;
         this.addMilSymbolAtPoint(point, drawEssentials, amplifier, attr);
         sketchLayer.remove(event.graphic);
         sketchVM.destroy();
+        this._proximityEngine?.deactivate();
+      }
+      if (event.state === 'cancel') {
+        this._proximityEngine?.deactivate();
       }
     });
   }

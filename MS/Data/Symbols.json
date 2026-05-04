@@ -357,6 +357,44 @@
         "Cat": ["attk", "def"],
         "Grp": ["Freehand", "Shapes"]
     },
+    "00000150": {
+        "Class": "CartoInformationModelSymbol",
+        "Description": "",
+        "Name": "Carto Symbol",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Sharp Edged Polygon), 3 (Rectangle) and 4 (Circle or Ellipse)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+            "DRAW_TYPE": "1",
+            "Name": "Smooth Polygon",
+            "description": "Use Smooth Polygon"
+        },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            },
+            {
+                "DRAW_TYPE": "4",
+                "Name": "Circle or Ellipse",
+                "description": "Draw using Circle or Ellipse"
+            }
+        ],
+        "isFreeHand": "1",
+        "Cat": ["attk", "def"],
+        "Grp": ["Freehand", "Shapes"]
+    },
     "01110104": {
         "Class": "UEISymbol",
         "Description": "",

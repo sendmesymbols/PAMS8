@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm run *)",
       "Bash(xargs grep *)",
-      "Bash(grep -n \"features\\\\\\\\.\\\\\\\\|features\\\\\\\\[\" /d/Projects/PAMS8/MS/Engines/SymbolEngine.ts)"
+      "Bash(grep -n \"features\\\\\\\\.\\\\\\\\|features\\\\\\\\[\" /d/Projects/PAMS8/MS/Engines/SymbolEngine.ts)",
+      "Bash(npx tsc *)"
     ]
   }
 }

@@ -29,8 +29,10 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
+import Polygon from '@arcgis/core/geometry/Polygon';
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
+import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
 import TextSymbol from '@arcgis/core/symbols/TextSymbol';
 import Font from '@arcgis/core/symbols/Font';
 import Color from '@arcgis/core/Color';
@@ -62,6 +64,18 @@ export interface ProximityOptions {
   fontColor?: [number, number, number];
 }
 
+export interface EchelonBufferOptions {
+  enabled?: boolean;
+  bufferColor?: [number, number, number];
+  bufferFillOpacity?: number;
+  bufferOutlineColor?: [number, number, number];
+  bufferOutlineOpacity?: number;
+  bufferOutlineWidth?: number;
+  joinType?: 'miter' | 'bevel' | 'round' | 'square';
+  miterLimit?: number;
+  echelonMap?: Record<string, { label: string; distanceKm: number }>;
+}
+
 const DIST_ABBR: Record<ProximityDistanceUnit, string> = {
   feet: "'",
   miles: 'mi',
@@ -72,6 +86,7 @@ const DIST_ABBR: Record<ProximityDistanceUnit, string> = {
 };
 
 const LAYER_ID = 'ProximityGraphicsLayer';
+const ECHELON_BUFFER_LAYER_ID = 'EchelonBufferGraphicsLayer';
 
 class ProximityEngine {
   private static _instance: ProximityEngine;
@@ -110,6 +125,19 @@ class ProximityEngine {
   private _fontSize: number = 11;
   private _fontColor: [number, number, number] = [0, 80, 200];
 
+  private _echelonBufferEnabled: boolean = false;
+  private _echelonBufferColor: [number, number, number] = [255, 165, 0];
+  private _echelonBufferFillOpacity: number = 0.5;
+  private _echelonBufferOutlineColor: [number, number, number] = [255, 165, 0];
+  private _echelonBufferOutlineOpacity: number = 0.78;
+  private _echelonBufferOutlineWidth: number = 1.5;
+  private _echelonJoinType: 'miter' | 'bevel' | 'round' | 'square' = 'round';
+  private _echelonMiterLimit: number = 10;
+  private _echelonMap: Record<string, { label: string; distanceKm: number }> =
+    {};
+  private _bufferGraphic: Graphic | null = null;
+  private _currentEchelon: number = 0;
+
   private constructor() {}
 
   public static getInstance(): ProximityEngine {
@@ -141,6 +169,7 @@ class ProximityEngine {
     this._targetLayerIds = targetLayerIds;
     this._resolveGeodesic();
     this._layer = this._getOrCreateLayer();
+    this._getOrCreateEchelonBufferLayer();
     if (options) this.setOptions(options);
     console.info('[ProximityEngine] started');
   }
@@ -269,6 +298,7 @@ class ProximityEngine {
     this._isActive = false;
     this._candidateSnapshot = [];
     this._clear();
+    this._clearEchelonBuffer();
     this._emitHint('Proximity snap ended — drawing complete.', 'idle');
     console.info('[ProximityEngine] deactivated');
   }
@@ -276,12 +306,14 @@ class ProximityEngine {
   /** Re-attach to a new view after 2D ↔ 3D switch. */
   public onViewChanged(view: MapView | SceneView): void {
     this.deactivate();
+    this._clearEchelonBuffer();
     this._view = view;
     this._resolveGeodesic();
     this._snapGraphic = null;
     this._lineGraphic = null;
     this._labelGraphic = null;
     this._layer = this._getOrCreateLayer();
+    this._getOrCreateEchelonBufferLayer();
     console.info('[ProximityEngine] view changed');
   }
 
@@ -302,6 +334,121 @@ class ProximityEngine {
     if (opts.markerSize !== undefined) this._markerSize = opts.markerSize;
     if (opts.fontSize !== undefined) this._fontSize = opts.fontSize;
     if (opts.fontColor !== undefined) this._fontColor = opts.fontColor;
+  }
+
+  public setEchelonBufferOptions(opts: EchelonBufferOptions): void {
+    if (opts.enabled !== undefined) this._echelonBufferEnabled = opts.enabled;
+    if (opts.bufferColor !== undefined) this._echelonBufferColor = opts.bufferColor;
+    if (opts.bufferFillOpacity !== undefined) this._echelonBufferFillOpacity = opts.bufferFillOpacity;
+    if (opts.bufferOutlineColor !== undefined) this._echelonBufferOutlineColor = opts.bufferOutlineColor;
+    if (opts.bufferOutlineOpacity !== undefined) this._echelonBufferOutlineOpacity = opts.bufferOutlineOpacity;
+    if (opts.bufferOutlineWidth !== undefined) this._echelonBufferOutlineWidth = opts.bufferOutlineWidth;
+    if (opts.joinType !== undefined) this._echelonJoinType = opts.joinType;
+    if (opts.miterLimit !== undefined) this._echelonMiterLimit = opts.miterLimit;
+    if (opts.echelonMap !== undefined) this._echelonMap = opts.echelonMap;
+  }
+
+  public get echelonBufferEnabled(): boolean {
+    return this._echelonBufferEnabled;
+  }
+
+  public setEchelonBufferEnabled(enabled: boolean): void {
+    this._echelonBufferEnabled = enabled;
+    if (!enabled) {
+      this._clearEchelonBuffer();
+    }
+  }
+
+  public updateEchelonBuffer(geometry: any, echelon: number): void {
+    if (!this._echelonBufferEnabled || !this._view) return;
+
+    this._currentEchelon = echelon;
+    const echelonConfig = this._echelonMap[String(echelon)];
+    if (!echelonConfig) return;
+
+    this._createEchelonBuffer(geometry, echelonConfig.distanceKm);
+  }
+
+  private _createEchelonBuffer(geometry: any, distanceKm: number): void {
+    if (!this._view) return;
+
+    const bufferLayer = this._getOrCreateEchelonBufferLayer();
+    this._clearEchelonBuffer();
+
+    const distanceMeters = distanceKm * 1000;
+
+    try {
+      const geoType = geometry?.type;
+
+      // Use geodesic or planar buffer for all geometry types — produces a Polygon
+      // corridor (for lines) or expansion zone (for points/polygons).
+      const outerBuffer = this._isGeodesic
+        ? geometryEngine.geodesicBuffer(geometry, distanceMeters, 'meters')
+        : geometryEngine.buffer(geometry, distanceMeters, 'meters');
+
+      if (!outerBuffer) return;
+
+      let bufferGeometry: any = outerBuffer;
+
+      // For polygon symbols, subtract the original area so only the outer
+      // deployment ring is shown — not the fill inside the symbol itself.
+      if (geoType === 'polygon') {
+        try {
+          const ring = geometryEngine.difference(outerBuffer, geometry);
+          if (ring) bufferGeometry = ring;
+        } catch {
+          // keep the full outer buffer if difference fails
+        }
+      }
+
+      const fillAlpha = Math.round(this._echelonBufferFillOpacity * 255);
+      const outlineAlpha = Math.round(this._echelonBufferOutlineOpacity * 255);
+      const bufferSymbol = new SimpleFillSymbol({
+        color: new Color([...this._echelonBufferColor, fillAlpha]),
+        outline: new SimpleLineSymbol({
+          color: new Color([...this._echelonBufferOutlineColor, outlineAlpha]),
+          width: this._echelonBufferOutlineWidth,
+        }),
+      });
+
+      this._bufferGraphic = new Graphic({
+        geometry: bufferGeometry,
+        symbol: bufferSymbol,
+      });
+      bufferLayer.add(this._bufferGraphic);
+    } catch (e) {
+      console.warn('[ProximityEngine] Failed to create echelon buffer:', e);
+    }
+  }
+
+  private _clearEchelonBuffer(): void {
+    const bufferLayer = this._view?.map.findLayerById(
+      ECHELON_BUFFER_LAYER_ID,
+    ) as GraphicsLayer | undefined;
+    if (bufferLayer && this._bufferGraphic) {
+      bufferLayer.remove(this._bufferGraphic);
+      this._bufferGraphic = null;
+    }
+  }
+
+  private _getOrCreateEchelonBufferLayer(): GraphicsLayer {
+    if (!this._view) throw new Error('[ProximityEngine] View not initialized');
+
+    let layer = this._view.map.findLayerById(ECHELON_BUFFER_LAYER_ID) as
+      | GraphicsLayer
+      | undefined;
+    if (!layer) {
+      layer = new GraphicsLayer({
+        id: ECHELON_BUFFER_LAYER_ID,
+        elevationInfo: { mode: 'on-the-ground' },
+      });
+      this._view.map.add(layer);
+    }
+    return layer;
+  }
+
+  public clearEchelonBuffer(): void {
+    this._clearEchelonBuffer();
   }
 
   // ── Core logic ────────────────────────────────────────────────────────────

@@ -1118,6 +1118,129 @@ function initializeAutocomplete() {
   }
 }
 
+// ── Echelon Buffer Settings Panel ──────────────────────────────────────────────
+// Wires up the Echelon Buffer section of the Settings panel and initialises its
+// controls from SymbolEngine once it has loaded.
+
+(function initEchelonBufferPanel() {
+  function waitForEngine(cb: () => void) {
+    if ((window as any).symbolEngine?.settings) cb();
+    else setTimeout(() => waitForEngine(cb), 200);
+  }
+
+  function dispatchSetting(path: string[], value: unknown) {
+    window.dispatchEvent(
+      new CustomEvent('settingsChanged', {
+        detail: { path, value, fullPath: path.join('.') },
+      }),
+    );
+  }
+
+  function hexToRgb(hex: string): [number, number, number] {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m
+      ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)]
+      : [0, 0, 0];
+  }
+
+  function rgbToHex(r: number, g: number, b: number): string {
+    return '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
+  }
+
+  waitForEngine(() => {
+    const engine = (window as any).symbolEngine;
+    const eb: Record<string, any> = engine.settings?.proximityEchelonBuffer ?? {};
+
+    const get = <T extends HTMLElement>(id: string) =>
+      document.getElementById(id) as T | null;
+
+    const enabledCb = get<HTMLInputElement>('setting-echelonBufferEnabled');
+    const featureCb = get<HTMLInputElement>('setting-echelonBuffer');
+    const bufColor = get<HTMLInputElement>('setting-bufferColor');
+    const fillOpSlider = get<HTMLInputElement>('setting-bufferFillOpacity');
+    const fillOpDisplay = get<HTMLElement>('bufferFillOpacity-display');
+    const outColor = get<HTMLInputElement>('setting-bufferOutlineColor');
+    const outOpSlider = get<HTMLInputElement>('setting-bufferOutlineOpacity');
+    const outOpDisplay = get<HTMLElement>('bufferOutlineOpacity-display');
+
+    // ── Populate from current settings ──────────────────────────────────────
+    if (enabledCb) enabledCb.checked = eb.enabled !== false;
+    if (featureCb) featureCb.checked = eb.enabled !== false;
+
+    if (bufColor && eb.bufferColor)
+      bufColor.value = rgbToHex(...(eb.bufferColor as [number, number, number]));
+
+    if (fillOpSlider && eb.bufferFillOpacity !== undefined) {
+      fillOpSlider.value = String(eb.bufferFillOpacity);
+      if (fillOpDisplay) fillOpDisplay.textContent = String(eb.bufferFillOpacity);
+    }
+
+    if (outColor && eb.bufferOutlineColor)
+      outColor.value = rgbToHex(...(eb.bufferOutlineColor as [number, number, number]));
+
+    if (outOpSlider && eb.bufferOutlineOpacity !== undefined) {
+      outOpSlider.value = String(eb.bufferOutlineOpacity);
+      if (outOpDisplay) outOpDisplay.textContent = String(eb.bufferOutlineOpacity);
+    }
+
+    const outWidthEl = get<HTMLInputElement>('setting-bufferOutlineWidth');
+    if (outWidthEl && eb.bufferOutlineWidth !== undefined) outWidthEl.value = String(eb.bufferOutlineWidth);
+
+    const joinEl = get<HTMLSelectElement>('setting-joinType');
+    if (joinEl && eb.joinType) joinEl.value = eb.joinType;
+
+    const miterEl = get<HTMLInputElement>('setting-miterLimit');
+    if (miterEl && eb.miterLimit !== undefined) miterEl.value = String(eb.miterLimit);
+
+    // ── Wire up handlers ────────────────────────────────────────────────────
+    enabledCb?.addEventListener('change', () => {
+      if (featureCb) featureCb.checked = enabledCb.checked;
+      dispatchSetting(['features', 'echelonBuffer'], enabledCb.checked);
+    });
+
+    // Keep Features-section checkbox in sync
+    featureCb?.addEventListener('change', () => {
+      if (enabledCb) enabledCb.checked = featureCb.checked;
+    });
+
+    bufColor?.addEventListener('change', () => {
+      dispatchSetting(['proximityEchelonBuffer', 'bufferColor'], hexToRgb(bufColor.value));
+    });
+
+    fillOpSlider?.addEventListener('input', () => {
+      if (fillOpDisplay) fillOpDisplay.textContent = fillOpSlider.value;
+    });
+    fillOpSlider?.addEventListener('change', () => {
+      dispatchSetting(['proximityEchelonBuffer', 'bufferFillOpacity'], +fillOpSlider.value);
+    });
+
+    outColor?.addEventListener('change', () => {
+      dispatchSetting(['proximityEchelonBuffer', 'bufferOutlineColor'], hexToRgb(outColor.value));
+    });
+
+    outOpSlider?.addEventListener('input', () => {
+      if (outOpDisplay) outOpDisplay.textContent = outOpSlider.value;
+    });
+    outOpSlider?.addEventListener('change', () => {
+      dispatchSetting(['proximityEchelonBuffer', 'bufferOutlineOpacity'], +outOpSlider.value);
+    });
+
+    get<HTMLInputElement>('setting-bufferOutlineWidth')?.addEventListener('change', (e) => {
+      dispatchSetting(['proximityEchelonBuffer', 'bufferOutlineWidth'], +(e.target as HTMLInputElement).value);
+    });
+
+    get<HTMLSelectElement>('setting-joinType')?.addEventListener('change', (e) => {
+      dispatchSetting(['proximityEchelonBuffer', 'joinType'], (e.target as HTMLSelectElement).value);
+    });
+
+    get<HTMLInputElement>('setting-miterLimit')?.addEventListener('change', (e) => {
+      dispatchSetting(['proximityEchelonBuffer', 'miterLimit'], +(e.target as HTMLInputElement).value);
+    });
+
+    console.log('[EchelonBufferPanel] initialized');
+  });
+})();
+
 // ── Measurement Panel Controller ───────────────────────────────────────────────
 // The MS library emits events; all DOM work lives here, not in the library.
 
@@ -1309,6 +1432,11 @@ function initializeAutocomplete() {
     });
   });
 
+  // ── Drawing cue state change ───────────────────────────────────────────
+  document.addEventListener('drawing-cue-state-change', (_e: any) => {
+    // Nothing to drive in the panel right now — overlays are on-map
+  });
+
   // ── Copy to clipboard ──────────────────────────────────────────────────
 
   copyBtn.addEventListener('click', () => {
@@ -1329,5 +1457,120 @@ function initializeAutocomplete() {
       copyBtn.textContent = '✓ Copied!';
       setTimeout(() => (copyBtn.textContent = orig), 1800);
     });
+  });
+})();
+
+// ── Drawing Cues Settings Panel ────────────────────────────────────────────────
+// Initialises Drawing Cues controls from SymbolEngine settings once loaded.
+
+(function initDrawingCuesPanel() {
+  function waitForEngine(cb: () => void) {
+    if ((window as any).symbolEngine?.settings) cb();
+    else setTimeout(() => waitForEngine(cb), 200);
+  }
+
+  function dispatchSetting(path: string[], value: unknown) {
+    window.dispatchEvent(
+      new CustomEvent('settingsChanged', {
+        detail: { path, value, fullPath: path.join('.') },
+      }),
+    );
+  }
+
+  waitForEngine(() => {
+    const engine = (window as any).symbolEngine;
+    const dc: Record<string, any> = engine.settings?.drawingCues ?? {};
+
+    const get = <T extends HTMLElement>(id: string) =>
+      document.getElementById(id) as T | null;
+
+    // ── Populate from current settings ──────────────────────────────────────
+    const masterCb = get<HTMLInputElement>('setting-drawingCues');
+    if (masterCb) masterCb.checked = dc.enabled !== false;
+
+    const rb = dc.rubberBand ?? {};
+    const rbCb = get<HTMLInputElement>('setting-rubberBand');
+    if (rbCb) rbCb.checked = rb.enabled !== false;
+
+    const rbOpEl = get<HTMLInputElement>('setting-rbOpacity');
+    const rbOpDisp = get<HTMLElement>('rbOpacity-display');
+    if (rbOpEl && rb.lineOpacity !== undefined) {
+      rbOpEl.value = String(rb.lineOpacity);
+      if (rbOpDisp) rbOpDisp.textContent = String(rb.lineOpacity);
+    }
+
+    const coordCb = get<HTMLInputElement>('setting-coordDisplay');
+    if (coordCb) coordCb.checked = (dc.coordinateDisplay?.enabled) !== false;
+
+    const guideCb = get<HTMLInputElement>('setting-angularGuides');
+    if (guideCb) guideCb.checked = (dc.angularGuides?.enabled) !== false;
+
+    const guideThreshEl = get<HTMLInputElement>('setting-guideThreshold');
+    if (guideThreshEl && dc.angularGuides?.snapThresholdDeg !== undefined)
+      guideThreshEl.value = String(dc.angularGuides.snapThresholdDeg);
+
+    const ringsCb = get<HTMLInputElement>('setting-distanceRings');
+    if (ringsCb) ringsCb.checked = (dc.distanceRings?.enabled) !== false;
+
+    const ringIntEl = get<HTMLInputElement>('setting-ringInterval');
+    if (ringIntEl && dc.distanceRings?.intervalKm !== undefined)
+      ringIntEl.value = String(dc.distanceRings.intervalKm);
+
+    const ringCountEl = get<HTMLInputElement>('setting-ringCount');
+    if (ringCountEl && dc.distanceRings?.ringCount !== undefined)
+      ringCountEl.value = String(dc.distanceRings.ringCount);
+
+    const hlCb = get<HTMLInputElement>('setting-nearbyHighlight');
+    if (hlCb) hlCb.checked = (dc.nearbyHighlight?.enabled) !== false;
+
+    const hlRadEl = get<HTMLInputElement>('setting-hlRadius');
+    if (hlRadEl && dc.nearbyHighlight?.radiusKm !== undefined)
+      hlRadEl.value = String(dc.nearbyHighlight.radiusKm);
+
+    const hlRingEl = get<HTMLInputElement>('setting-hlRingRadius');
+    if (hlRingEl && dc.nearbyHighlight?.ringRadiusKm !== undefined)
+      hlRingEl.value = String(dc.nearbyHighlight.ringRadiusKm);
+
+    // ── Wire up live handlers ────────────────────────────────────────────────
+    masterCb?.addEventListener('change', () =>
+      dispatchSetting(['features', 'drawingCues'], masterCb.checked));
+
+    rbCb?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'rubberBand', 'enabled'], rbCb.checked));
+
+    rbOpEl?.addEventListener('input', () => {
+      if (rbOpDisp) rbOpDisp.textContent = rbOpEl.value;
+    });
+    rbOpEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'rubberBand', 'lineOpacity'], +rbOpEl.value));
+
+    coordCb?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'coordinateDisplay', 'enabled'], coordCb.checked));
+
+    guideCb?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'enabled'], guideCb.checked));
+
+    guideThreshEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'snapThresholdDeg'], +guideThreshEl.value));
+
+    ringsCb?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'distanceRings', 'enabled'], ringsCb.checked));
+
+    ringIntEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'distanceRings', 'intervalKm'], +ringIntEl.value));
+
+    ringCountEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'distanceRings', 'ringCount'], +ringCountEl.value));
+
+    hlCb?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'nearbyHighlight', 'enabled'], hlCb.checked));
+
+    hlRadEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'nearbyHighlight', 'radiusKm'], +hlRadEl.value));
+
+    hlRingEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'nearbyHighlight', 'ringRadiusKm'], +hlRingEl.value));
+
+    console.log('[DrawingCuesPanel] initialized');
   });
 })();
