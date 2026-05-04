@@ -1085,6 +1085,7 @@
         </div>
         <div class="api-section">
           <div class="section-title">SelectionEngine</div>
+          <button class="api-btn" id="api-sel-lasso">Lasso Select</button>
           <button class="api-btn" id="api-sel-clear">Clear Selection</button>
           <button class="api-btn" id="api-sel-count">Selection Count</button>
           <button class="api-btn" id="api-sel-delete">Delete Selected</button>
@@ -1180,7 +1181,7 @@
           <div class="section-title">Keyboard Shortcuts</div>
           <button class="api-btn" id="api-shortcut-info">Show Shortcuts</button>
           <div class="status-text" id="api-shortcut-status">
-            M:Move E:Edit Esc:Cancel Del:Delete I:Info C:Center
+            L:Lasso M:Move E:Edit Esc:Cancel Del:Delete I:Info C:Center
           </div>
         </div>
         <div class="api-section">
@@ -1652,6 +1653,25 @@
         });
 
       // SelectionEngine buttons
+      document.getElementById('api-sel-lasso').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine) {
+          if (engine.selectionEngine.isLassoActive) {
+            engine.selectionEngine.cancelLasso();
+            document.getElementById('api-sel-lasso').textContent = 'Lasso Select';
+            document.getElementById('api-sel-status').textContent = 'Lasso cancelled';
+          } else {
+            engine.selectionEngine.lassoSelect({}, (selected) => {
+              document.getElementById('api-sel-lasso').textContent = 'Lasso Select';
+              document.getElementById('api-sel-status').textContent =
+                selected.length + ' symbol' + (selected.length !== 1 ? 's' : '') + ' selected';
+            });
+            document.getElementById('api-sel-lasso').textContent = 'Cancel Lasso';
+            document.getElementById('api-sel-status').textContent = 'Draw polygon to select — dbl-click to finish';
+          }
+        }
+      });
+
       document.getElementById('api-sel-clear').addEventListener('click', () => {
         const engine = getEngines();
         if (engine && engine.selectionEngine) {
@@ -2104,6 +2124,7 @@
         .addEventListener('click', () => {
           alert(
             'Keyboard Shortcuts:\n\n' +
+              'L - Lasso Select (draw polygon to select)\n' +
               'M - Move/Scale/Rotate\n' +
               'E - Edit Control Points\n' +
               'Esc - Cancel/Deactivate\n' +

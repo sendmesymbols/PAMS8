@@ -634,6 +634,20 @@ class SymbolEngine implements Evented {
         icon: '<span style="font-size:14px">☑</span>',
         children: [
           {
+            id: 'lasso-select',
+            label: () => this._selectionEngine.isLassoActive ? 'Cancel Lasso' : 'Lasso Select',
+            shortcut: 'L',
+            icon: '<span style="font-size:14px">🔲</span>',
+            action: (_graphic) => {
+              if (this._selectionEngine.isLassoActive) {
+                this._selectionEngine.cancelLasso();
+              } else {
+                this._closeActiveWorkflow();
+                this._selectionEngine.lassoSelect();
+              }
+            },
+          },
+          {
             id: 'toggle-select',
             label: (graphic: any) =>
               this._selectionEngine.isSelected(graphic)
@@ -1326,6 +1340,16 @@ class SymbolEngine implements Evented {
           if (graphic) {
             e.preventDefault();
             this.centerOnGraphic(graphic);
+          }
+          break;
+        case 'l':
+        case 'L':
+          e.preventDefault();
+          if (this._selectionEngine.isLassoActive) {
+            this._selectionEngine.cancelLasso();
+          } else {
+            this._closeActiveWorkflow();
+            this._selectionEngine.lassoSelect();
           }
           break;
       }

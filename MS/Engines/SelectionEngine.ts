@@ -8,6 +8,7 @@ import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
+import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
 import GraphicsLayerManager from "../Managers/GraphicsLayerManager";
 import AnnotationEngine from "./AnnotationEngine.ts";
 import * as promiseUtils from "@arcgis/core/core/promiseUtils";
@@ -17,6 +18,13 @@ import * as promiseUtils from "@arcgis/core/core/promiseUtils";
 const PROXY_SYM = new SimpleFillSymbol({
     color: new Color([0, 120, 255, 0.08]),
     outline: { color: new Color([0, 120, 255, 0.6]), width: 2, style: "dash" }
+});
+
+// ── Lasso selection polygon symbol ───────────────────────────────────────────
+
+const LASSO_SYM = new SimpleFillSymbol({
+    color: new Color([0, 200, 100, 0.10]),
+    outline: { color: new Color([0, 200, 100, 0.8]), width: 1.5, style: "dash" }
 });
 
 /**
@@ -49,6 +57,9 @@ class SelectionEngine {
 
     // Active SketchVM for batch-move proxy drag
     private _sketchVM: SketchViewModel | null = null;
+
+    // Active SketchVM for lasso-select polygon draw
+    private _lassoVM: SketchViewModel | null = null;
 
     private _eventListeners: Map<string, Function[]> = new Map();
 
@@ -165,11 +176,90 @@ class SelectionEngine {
         if (this._pointerMoveHandle) { this._pointerMoveHandle.remove(); this._pointerMoveHandle = null; }
         this._hoverHandle?.remove(); this._hoverHandle = null; this._hoverGraphic = null;
         if (this._sketchVM) { this._sketchVM.cancel(); this._sketchVM.destroy(); this._sketchVM = null; }
+        this.cancelLasso();
     }
 
     /** Cancel any in-progress moveSelected operation without clearing the selection. */
     cancelMove(): void {
         if (this._sketchVM) { this._sketchVM.cancel(); this._sketchVM.destroy(); this._sketchVM = null; }
+    }
+
+    /** Cancel any in-progress lasso-select operation without changing the selection. */
+    cancelLasso(): void {
+        if (this._lassoVM) { this._lassoVM.cancel(); this._lassoVM.destroy(); this._lassoVM = null; }
+        this._layerManager.getLayer("_LassoLayer")?.removeAll();
+    }
+
+    get isLassoActive(): boolean { return this._lassoVM !== null; }
+
+    // ── Lasso Select ─────────────────────────────────────────────────────────
+
+    /**
+     * Let the user draw a polygon; on completion every symbol whose geometry
+     * is contained in (or intersects) the polygon is added to the selection.
+     *
+     * The polygon is drawn as a single click-to-vertex sketch (double-click
+     * or right-click to finish).  Pass `freehand: true` for a freehand lasso.
+     *
+     * @param onComplete  Called with the newly-selected graphics when done.
+     */
+    lassoSelect(
+        opts?: { freehand?: boolean; addToSelection?: boolean },
+        onComplete?: (selected: Graphic[]) => void
+    ): void {
+        if (this._lassoVM) { this._lassoVM.cancel(); this._lassoVM.destroy(); }
+
+        const lassoLayer = this._layerManager.getOrCreateLayer("_LassoLayer");
+        lassoLayer.removeAll();
+
+        this._lassoVM = new SketchViewModel({
+            view: this.view,
+            layer: lassoLayer,
+            polygonSymbol: LASSO_SYM,
+        });
+
+        const mode = opts?.freehand ? "freehand" : "click";
+        this._lassoVM.create("polygon", { mode } as any);
+
+        this._lassoVM.on("create", (evt: any) => {
+            if (evt.state === "complete") {
+                const poly = evt.graphic?.geometry as Polygon | null;
+                lassoLayer.removeAll();
+                this._lassoVM?.destroy();
+                this._lassoVM = null;
+
+                if (!poly) return;
+
+                // Gather all target layers (fall back to all managed layers if none configured)
+                const targetIds = this._targetLayerIds.length
+                    ? this._targetLayerIds
+                    : this._layerManager.listLayers();
+
+                const hit: Graphic[] = [];
+                targetIds.forEach(id => {
+                    const layer = this._layerManager.getLayer(id);
+                    if (!layer) return;
+                    (layer.graphics as any).forEach((g: Graphic) => {
+                        if (!g.geometry || g.layer?.id === "_LassoLayer") return;
+                        const inside = g.geometry.type === "point"
+                            ? geometryEngine.contains(poly, g.geometry)
+                            : geometryEngine.intersects(poly, g.geometry);
+                        if (inside) hit.push(g);
+                    });
+                });
+
+                if (!opts?.addToSelection) this.clearSelection();
+                hit.forEach(g => this.selectGraphic(g));
+
+                if (onComplete) onComplete(hit);
+            }
+
+            if (evt.state === "cancel") {
+                lassoLayer.removeAll();
+                this._lassoVM?.destroy();
+                this._lassoVM = null;
+            }
+        });
     }
 
     // ── Selection management ──────────────────────────────────────────────────
