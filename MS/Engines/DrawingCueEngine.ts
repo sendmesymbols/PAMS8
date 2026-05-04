@@ -560,8 +560,8 @@ class DrawingCueEngine {
           const ext = (ring as any).extent;
           if (ext) {
             const labelPt = new Point({
-              x: center.x,
-              y: ext.ymax,
+              x: ext.xmax,
+              y: center.y + (ext.ymax - center.y) * 0.707,
               spatialReference: center.spatialReference,
             });
             const abbr = distKm >= 1 ? `${distKm} km` : `${Math.round(distKm * 1000)} m`;

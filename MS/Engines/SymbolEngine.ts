@@ -1388,7 +1388,11 @@ class SymbolEngine implements Evented {
           }
         } else if (e.key === 'v' || e.key === 'V') {
           e.preventDefault();
-          this._activatePasteMode();
+          if (e.shiftKey) {
+            this._showPasteOffsetDialog();
+          } else {
+            this._activatePasteMode();
+          }
         }
         return;
       }
@@ -1830,14 +1834,14 @@ class SymbolEngine implements Evented {
    * Multiple items: preserves relative layout, collective centroid lands at targetPoint.
    * Returns the first pasted Graphic, or null if clipboard is empty.
    */
-  public pasteSymbol(targetPoint: Point): Graphic | null {
+  public pasteSymbol(targetPoint: Point, ratio: number = 0): Graphic | null {
     if (!this._clipboard || this._clipboard.length === 0) return null;
 
     const annotationLayer = this._layerManager.getOrCreateLayer(
       LAYER_NAMES.ANNOTATION_LAYER,
     );
 
-    if (this._clipboard.length === 1) {
+    if (this._clipboard.length === 1 && ratio === 0) {
       const item = this._clipboard[0];
       return this._pasteOneItem(
         item,
@@ -1846,23 +1850,50 @@ class SymbolEngine implements Evented {
       );
     }
 
-    // Multi-paste: compute collective centroid and apply uniform offset
+    // Multi-paste or ratio applied: compute collective centroid
     const centroid = this._clipboardCentroid();
-    const dx = targetPoint.x - centroid.x;
-    const dy = targetPoint.y - centroid.y;
+    const scale = 1 + ratio;
+
+    const transformPt = (x: number, y: number) => ({
+      x: targetPoint.x + scale * (x - centroid.x),
+      y: targetPoint.y + scale * (y - centroid.y)
+    });
 
     const pasted: Graphic[] = [];
     const undos: (() => void)[] = [];
     const redos: (() => void)[] = [];
 
     for (const item of this._clipboard) {
-      const newGeom = this._shiftGeometry(item.graphic.geometry, dx, dy);
+      let newGeom = item.graphic.geometry?.clone();
+      if (newGeom) {
+        if (newGeom.type === 'point') {
+          const pt = transformPt(newGeom.x, newGeom.y);
+          newGeom.x = pt.x;
+          newGeom.y = pt.y;
+          if (targetPoint.z !== undefined) newGeom.z = targetPoint.z;
+        } else if (newGeom.type === 'polyline' && newGeom.paths) {
+          newGeom.paths = newGeom.paths.map((path: number[][]) =>
+            path.map(([x, y, ...rest]) => {
+              const pt = transformPt(x, y);
+              return [pt.x, pt.y, ...rest];
+            }),
+          );
+        } else if (newGeom.type === 'polygon' && newGeom.rings) {
+          newGeom.rings = newGeom.rings.map((ring: number[][]) =>
+            ring.map(([x, y, ...rest]) => {
+              const pt = transformPt(x, y);
+              return [pt.x, pt.y, ...rest];
+            }),
+          );
+        }
+      }
+
       if (!newGeom) continue;
       const {
         graphic: g,
         undo,
         redo,
-      } = this._buildPastedGraphic(item, newGeom, annotationLayer);
+      } = this._buildPastedGraphic(item, newGeom, annotationLayer, transformPt);
       const layer =
         this._layerManager.getOrCreateLayer(item.layerId) ??
         this._layerManager.getSymbolLayer();
@@ -1895,13 +1926,14 @@ class SymbolEngine implements Evented {
     item: { graphic: Graphic; layerId: string },
     newGeom: any,
     annotationLayer: GraphicsLayer,
+    transformFn?: (pt: {x: number, y: number}) => {x: number, y: number}
   ): Graphic | null {
     if (!newGeom) return null;
     const {
       graphic: newGraphic,
       undo,
       redo,
-    } = this._buildPastedGraphic(item, newGeom, annotationLayer);
+    } = this._buildPastedGraphic(item, newGeom, annotationLayer, transformFn);
     const layer =
       this._layerManager.getOrCreateLayer(item.layerId) ??
       this._layerManager.getSymbolLayer();
@@ -1912,27 +1944,33 @@ class SymbolEngine implements Evented {
     return newGraphic;
   }
 
-  /** Shift CTRL_PTS, BASE_LN_PTS and GEOM in a drawEssentials copy by (dx, dy). */
-  private _shiftDrawEssentials(de: any, dx: number, dy: number): any {
+  /** Transform CTRL_PTS, BASE_LN_PTS and GEOM in a drawEssentials copy using a transform function. */
+  private _transformDrawEssentials(de: any, transformFn: (pt: any) => {x: number, y: number}): any {
     if (!de) return de;
     const result = { ...de };
-    const shiftPt = (pt: any) => {
+    const tPt = (pt: any) => {
       if (!pt) return pt;
       const clone = pt.clone?.() ?? { ...pt };
-      clone.x += dx;
-      clone.y += dy;
+      const { x, y } = transformFn(clone);
+      clone.x = x;
+      clone.y = y;
       return clone;
     };
-    if (de.CTRL_PTS) result.CTRL_PTS = de.CTRL_PTS.map(shiftPt);
+    if (de.CTRL_PTS) result.CTRL_PTS = de.CTRL_PTS.map(tPt);
     if (de.BASE_LN_PTS) {
       result.BASE_LN_PTS = {
-        startPt: shiftPt(de.BASE_LN_PTS.startPt),
-        midPt: shiftPt(de.BASE_LN_PTS.midPt),
-        endPt: shiftPt(de.BASE_LN_PTS.endPt),
+        startPt: tPt(de.BASE_LN_PTS.startPt),
+        midPt: tPt(de.BASE_LN_PTS.midPt),
+        endPt: tPt(de.BASE_LN_PTS.endPt),
       };
     }
-    if (de.GEOM) result.GEOM = shiftPt(de.GEOM);
+    if (de.GEOM) result.GEOM = tPt(de.GEOM);
     return result;
+  }
+
+  /** Shift CTRL_PTS, BASE_LN_PTS and GEOM in a drawEssentials copy by (dx, dy). */
+  private _shiftDrawEssentials(de: any, dx: number, dy: number): any {
+    return this._transformDrawEssentials(de, (pt) => ({ x: pt.x + dx, y: pt.y + dy }));
   }
 
   /** Build a new graphic from a clipboard item + positioned geometry, returning undo/redo closures. */
@@ -1940,29 +1978,35 @@ class SymbolEngine implements Evented {
     item: { graphic: Graphic; layerId: string },
     newGeom: any,
     annotationLayer: GraphicsLayer,
+    transformFn?: (pt: {x: number, y: number}) => {x: number, y: number}
   ): { graphic: Graphic; undo: () => void; redo: () => void } {
     const source = item.graphic;
     const origGeom = source.geometry;
 
-    // Compute translation vector so we can shift CTRL_PTS / BASE_LN_PTS too
-    let dx = 0,
-      dy = 0;
-    if (origGeom && newGeom) {
-      if (origGeom.type === 'point') {
-        dx = (newGeom as any).x - (origGeom as any).x;
-        dy = (newGeom as any).y - (origGeom as any).y;
-      } else {
-        const oe = origGeom.extent,
-          ne = newGeom.extent;
-        if (oe && ne) {
-          dx = (ne.xmin + ne.xmax) / 2 - (oe.xmin + oe.xmax) / 2;
-          dy = (ne.ymin + ne.ymax) / 2 - (oe.ymin + oe.ymax) / 2;
+    let shiftedDe;
+    const sourceDe = source.attributes?.drawEssentials;
+
+    if (transformFn) {
+      shiftedDe = this._transformDrawEssentials(sourceDe, transformFn);
+    } else {
+      // Compute translation vector so we can shift CTRL_PTS / BASE_LN_PTS too
+      let dx = 0,
+        dy = 0;
+      if (origGeom && newGeom) {
+        if (origGeom.type === 'point') {
+          dx = (newGeom as any).x - (origGeom as any).x;
+          dy = (newGeom as any).y - (origGeom as any).y;
+        } else {
+          const oe = origGeom.extent,
+            ne = newGeom.extent;
+          if (oe && ne) {
+            dx = (ne.xmin + ne.xmax) / 2 - (oe.xmin + oe.xmax) / 2;
+            dy = (ne.ymin + ne.ymax) / 2 - (oe.ymin + oe.ymax) / 2;
+          }
         }
       }
+      shiftedDe = this._shiftDrawEssentials(sourceDe, dx, dy);
     }
-
-    const sourceDe = source.attributes?.drawEssentials;
-    const shiftedDe = this._shiftDrawEssentials(sourceDe, dx, dy);
     const newId = this.generateUUID();
     const newGraphic = source.clone();
     newGraphic.geometry = newGeom;
@@ -2055,6 +2099,160 @@ class SymbolEngine implements Evented {
     } catch {
       return sourceGeom.clone();
     }
+  }
+
+  /**
+   * Show Paste Offset Dialog (Triggered by CTRL+SHIFT+V)
+   */
+  private _showPasteOffsetDialog(): void {
+    if (!this._clipboard || this._clipboard.length === 0) {
+      console.warn('[CopyPaste] Clipboard is empty.');
+      return;
+    }
+
+    let dialog = document.getElementById('pasteOffsetDialog');
+    if (!dialog) {
+      dialog = document.createElement('div');
+      dialog.id = 'pasteOffsetDialog';
+      dialog.style.cssText = `
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        background: rgba(30, 35, 45, 0.95); border: 1px solid rgba(100, 160, 230, 0.4);
+        padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        z-index: 1000; color: #dce8f5; font-family: 'Courier New', monospace; min-width: 320px;
+      `;
+
+      dialog.innerHTML = `
+        <h3 style="margin: 0 0 15px 0; color: #64b4ff; font-size: 16px; border-bottom: 1px solid rgba(100, 160, 230, 0.25); padding-bottom: 8px;">Paste Offset</h3>
+        
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">Location Mode:</label>
+          <select id="poMode" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
+            <option value="exact">Exact Location</option>
+            <option value="offset">Direction & Offset</option>
+            <option value="center">Pick Center Point</option>
+          </select>
+        </div>
+
+        <div id="poOffsetGroup" style="display: none; margin-bottom: 15px;">
+          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <div style="flex: 1;">
+              <label style="display: block; margin-bottom: 5px;">Distance:</label>
+              <input type="number" id="poDistance" value="0" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; box-sizing: border-box;" />
+            </div>
+            <div style="flex: 1;">
+              <label style="display: block; margin-bottom: 5px;">Unit:</label>
+              <select id="poUnit" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
+                <option value="meters">Meters</option>
+                <option value="kilometers">Kilometers</option>
+                <option value="miles">Miles</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 5px;">Direction:</label>
+            <select id="poDirection" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
+              <option value="0">North (0°)</option>
+              <option value="45">North East (45°)</option>
+              <option value="90">East (90°)</option>
+              <option value="135">South East (135°)</option>
+              <option value="180">South (180°)</option>
+              <option value="225">South West (225°)</option>
+              <option value="270">West (270°)</option>
+              <option value="315">North West (315°)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">Expand/Contract Ratio (default 0):</label>
+          <input type="number" id="poRatio" step="0.1" value="0" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; box-sizing: border-box;" />
+          <small style="color: #a0b8d8; font-size: 10px; display: block; margin-top: 4px;">> 0 to space out, < 0 to contract.</small>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button id="poCancel" style="padding: 6px 15px; background: rgba(100, 160, 230, 0.2); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; cursor: pointer;">Cancel</button>
+          <button id="poApply" style="padding: 6px 15px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer;">Paste</button>
+        </div>
+      `;
+      document.body.appendChild(dialog);
+
+      const modeSelect = document.getElementById('poMode') as HTMLSelectElement;
+      const offsetGroup = document.getElementById('poOffsetGroup') as HTMLDivElement;
+      const applyBtn = document.getElementById('poApply') as HTMLButtonElement;
+
+      modeSelect.addEventListener('change', () => {
+        if (modeSelect.value === 'offset') {
+          offsetGroup.style.display = 'block';
+        } else {
+          offsetGroup.style.display = 'none';
+        }
+        applyBtn.innerText = modeSelect.value === 'center' ? 'Pick & Paste' : 'Paste';
+      });
+
+      document.getElementById('poCancel')!.addEventListener('click', () => {
+        dialog!.style.display = 'none';
+      });
+
+      applyBtn.addEventListener('click', () => {
+        dialog!.style.display = 'none';
+        const mode = modeSelect.value;
+        const ratio = parseFloat((document.getElementById('poRatio') as HTMLInputElement).value) || 0;
+        
+        if (mode === 'exact') {
+          const centroid = this._clipboardCentroid();
+          this.pasteSymbol(new Point({ x: centroid.x, y: centroid.y, spatialReference: this.view.spatialReference }), ratio);
+        } else if (mode === 'offset') {
+          const distance = parseFloat((document.getElementById('poDistance') as HTMLInputElement).value) || 0;
+          const unit = (document.getElementById('poUnit') as HTMLSelectElement).value;
+          const bearing = parseFloat((document.getElementById('poDirection') as HTMLSelectElement).value) || 0;
+          
+          const centroid = this._clipboardCentroid();
+          const p = new Point({ x: centroid.x, y: centroid.y, spatialReference: this.view.spatialReference });
+          const targetPoint = GeoTools.destination(p, distance, bearing, unit);
+          this.pasteSymbol(targetPoint, ratio);
+        } else if (mode === 'center') {
+          this._activatePasteModeWithRatio(ratio);
+        }
+      });
+    }
+
+    // Reset and show
+    (document.getElementById('poMode') as HTMLSelectElement).value = 'exact';
+    (document.getElementById('poOffsetGroup') as HTMLDivElement).style.display = 'none';
+    (document.getElementById('poDistance') as HTMLInputElement).value = '0';
+    (document.getElementById('poRatio') as HTMLInputElement).value = '0';
+    (document.getElementById('poApply') as HTMLButtonElement).innerText = 'Paste';
+    dialog.style.display = 'block';
+  }
+
+  /**
+   * Enter "paste mode" with expansion/contraction ratio: the next map click pastes the clipboard graphic there.
+   */
+  public _activatePasteModeWithRatio(ratio: number): void {
+    if (!this._clipboard) return;
+
+    this._closeActiveWorkflow();
+    this.emitEvent('pasteMode', { active: true });
+    console.info('[CopyPaste] Paste offset mode active — click map to paste');
+
+    const clickHandle = this.view.on('click', (evt) => {
+      clickHandle.remove();
+      keyHandle();
+      const pt = this.view.toMap({ x: evt.x, y: evt.y });
+      if (pt) this.pasteSymbol(pt, ratio);
+      this.emitEvent('pasteMode', { active: false });
+    });
+
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        clickHandle.remove();
+        keyHandle();
+        this.emitEvent('pasteMode', { active: false });
+        console.info('[CopyPaste] Paste offset mode cancelled');
+      }
+    };
+    document.addEventListener('keydown', keyHandler, { once: false });
+    const keyHandle = () => document.removeEventListener('keydown', keyHandler);
   }
 
   /**
