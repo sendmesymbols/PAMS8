@@ -719,6 +719,84 @@ class SymbolEngine implements Evented {
                 this._pushUndo(entry),
               ),
           },
+          // ── Select Similar submenu ───────────────────────────────
+          {
+            id: 'select-similar-submenu',
+            label: 'Select Similar',
+            icon: '<span style="font-size:14px">🔍</span>',
+            children: [
+              {
+                id: 'select-same-sidc',
+                label: 'Same SIDC',
+                icon: '<span style="font-size:14px">⚜</span>',
+                action: (graphic) => this._selectionEngine.selectSimilarSameSIDC(graphic),
+              },
+              {
+                id: 'select-same-echelon',
+                label: 'Same Echelon',
+                icon: '<span style="font-size:14px">▣</span>',
+                action: (graphic) => this._selectionEngine.selectSimilarSameEchelon(graphic),
+              },
+              {
+                id: 'select-own-only',
+                label: 'Own Only',
+                icon: '<span style="font-size:14px">🟢</span>',
+                action: () => this._selectionEngine.selectOwnOnly(),
+              },
+              {
+                id: 'select-enemy',
+                label: 'Enemy',
+                icon: '<span style="font-size:14px">🔴</span>',
+                action: () => this._selectionEngine.selectEnemy(),
+              },
+            ],
+          },
+          // ── Select Within submenu ───────────────────────────────
+          {
+            id: 'select-within-submenu',
+            label: 'Select Within',
+            icon: '<span style="font-size:14px">⭕</span>',
+            children: [
+              {
+                id: 'select-within',
+                label: 'Within',
+                icon: '<span style="font-size:14px">⭕</span>',
+                action: (graphic) => this._selectionEngine.selectWithin(graphic, false),
+              },
+              {
+                id: 'select-within-self',
+                label: 'Within + Self',
+                icon: '<span style="font-size:14px">◎</span>',
+                action: (graphic) => this._selectionEngine.selectWithin(graphic, true),
+              },
+            ],
+          },
+          // ── Filter by Type submenu ───────────────────────────────
+          {
+            id: 'filter-type-submenu',
+            label: 'Filter by Type',
+            icon: '<span style="font-size:14px">▼</span>',
+            children: [
+              {
+                id: 'select-points',
+                label: 'Points',
+                icon: '<span style="font-size:14px">●</span>',
+                action: () => this._selectionEngine.selectPointSymbols(),
+              },
+              {
+                id: 'select-areas',
+                label: 'Areas',
+                icon: '<span style="font-size:14px">■</span>',
+                action: () => this._selectionEngine.selectAreaSymbols(),
+              },
+              {
+                id: 'select-lines',
+                label: 'Lines',
+                icon: '<span style="font-size:14px">╱</span>',
+                action: () => this._selectionEngine.selectLineSymbols(),
+              },
+            ],
+          },
         ],
       },
       // ── Align parent menu (contains Align, Distribute, Arrange) ───────

@@ -262,6 +262,142 @@ class SelectionEngine {
         });
     }
 
+    // ── Select Similar / Within ──────────────────────────────────────────────────
+
+    private _getGraphicSIDC(graphic: Graphic): string | null {
+        const de = graphic.attributes?.drawEssentials;
+        return de?.AMPLIFIER?.SIDC || de?.SIDC || null;
+    }
+
+    private _getGraphicSymbolCode(graphic: Graphic): string | null {
+        const sidc = this._getGraphicSIDC(graphic);
+        if (!sidc || sidc.length < 16) return null;
+        return sidc.substring(10, 16);
+    }
+
+    private _getGraphicEchelon(graphic: Graphic): string | null {
+        const sidc = this._getGraphicSIDC(graphic);
+        if (!sidc || sidc.length < 10) return null;
+        return sidc.substring(8, 10);
+    }
+
+    private _getGraphicIdentity(graphic: Graphic): string | null {
+        const sidc = this._getGraphicSIDC(graphic);
+        if (!sidc || sidc.length < 4) return null;
+        return sidc.substring(2, 4);
+    }
+
+    private _getGraphicGeomType(graphic: Graphic): string | null {
+        const de = graphic.attributes?.drawEssentials;
+        if (de?.SYM_GEO_TYPE) return de.SYM_GEO_TYPE;
+        if (graphic.geometry?.type === "point") return "Point";
+        if (graphic.geometry?.type === "polyline") return "Line";
+        if (graphic.geometry?.type === "polygon") return "Area";
+        return null;
+    }
+
+    private _selectAllMatching(predicate: (g: Graphic) => boolean): void {
+        const hit: Graphic[] = [];
+        const targetIds = this._targetLayerIds.length ? this._targetLayerIds : this._layerManager.listLayers();
+        targetIds.forEach(id => {
+            const layer = this._layerManager.getLayer(id);
+            if (!layer) return;
+            (layer.graphics as any).forEach((g: Graphic) => {
+                if (!g.geometry || g.layer?.id === "_LassoLayer") return;
+                if (predicate(g)) {
+                    hit.push(g);
+                }
+            });
+        });
+        this.clearSelection();
+        hit.forEach(g => this.selectGraphic(g));
+    }
+
+    selectSimilarSameSIDC(graphic: Graphic): void {
+        const code = this._getGraphicSymbolCode(graphic);
+        if (!code) return;
+        this._selectAllMatching(g => this._getGraphicSymbolCode(g) === code);
+    }
+
+    selectSimilarSameEchelon(graphic: Graphic): void {
+        const echelon = this._getGraphicEchelon(graphic);
+        if (!echelon) return;
+        this._selectAllMatching(g => this._getGraphicEchelon(g) === echelon);
+    }
+
+    selectOwnOnly(): void {
+        this._selectAllMatching(g => {
+            const id = this._getGraphicIdentity(g);
+            return id === "03" || id === "02"; // Friend, Assumed Friend
+        });
+    }
+
+    selectEnemy(): void {
+        this._selectAllMatching(g => {
+            const id = this._getGraphicIdentity(g);
+            return id === "06" || id === "05" || id === "07"; // Hostile, Suspect, Red
+        });
+    }
+
+    selectPointSymbols(): void {
+        this._selectAllMatching(g => this._getGraphicGeomType(g) === "Point");
+    }
+
+    selectAreaSymbols(): void {
+        this._selectAllMatching(g => {
+            const t = this._getGraphicGeomType(g);
+            return t === "Area" || t === "Polygon";
+        });
+    }
+
+    selectLineSymbols(): void {
+        this._selectAllMatching(g => {
+            const t = this._getGraphicGeomType(g);
+            return t === "Line" || t === "Polyline";
+        });
+    }
+
+    selectWithin(graphic: Graphic, includeSelf: boolean = false): void {
+        if (!graphic.geometry) return;
+        
+        let poly: Polygon;
+        if (graphic.geometry.type === "polygon") {
+            poly = graphic.geometry as Polygon;
+        } else if (graphic.geometry.type === "polyline") {
+            poly = new Polygon({
+                rings: (graphic.geometry as Polyline).paths,
+                spatialReference: graphic.geometry.spatialReference
+            });
+        } else {
+            return;
+        }
+
+        const hit: Graphic[] = [];
+        const targetIds = this._targetLayerIds.length ? this._targetLayerIds : this._layerManager.listLayers();
+        targetIds.forEach(id => {
+            const layer = this._layerManager.getLayer(id);
+            if (!layer) return;
+            (layer.graphics as any).forEach((g: Graphic) => {
+                if (!g.geometry || g.layer?.id === "_LassoLayer") return;
+                if (!includeSelf && g === graphic) return;
+                
+                const inside = g.geometry.type === "point"
+                    ? geometryEngine.contains(poly, g.geometry)
+                    : geometryEngine.intersects(poly, g.geometry);
+                    
+                if (inside) {
+                    hit.push(g);
+                }
+            });
+        });
+        
+        this.clearSelection();
+        hit.forEach(g => this.selectGraphic(g));
+        if (includeSelf) {
+            this.selectGraphic(graphic);
+        }
+    }
+
     // ── Selection management ──────────────────────────────────────────────────
 
     selectGraphic(graphic: Graphic): void {

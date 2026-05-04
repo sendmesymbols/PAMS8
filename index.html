@@ -1172,6 +1172,15 @@
           <button class="api-btn" id="api-sel-count">Selection Count</button>
           <button class="api-btn" id="api-sel-delete">Delete Selected</button>
           <button class="api-btn" id="api-sel-move">Move Selected</button>
+          <button class="api-btn" id="api-sel-sim-sidc">Same Code</button>
+          <button class="api-btn" id="api-sel-sim-ech">Same Echelon</button>
+          <button class="api-btn" id="api-sel-own">Own Only</button>
+          <button class="api-btn" id="api-sel-enemy">Enemy</button>
+          <button class="api-btn" id="api-sel-pt">Points</button>
+          <button class="api-btn" id="api-sel-area">Areas</button>
+          <button class="api-btn" id="api-sel-line">Lines</button>
+          <button class="api-btn" id="api-sel-within">Select Within</button>
+          <button class="api-btn" id="api-sel-within-self">Select Within+Self</button>
           <div class="setting-row" style="margin-top: 4px">
             <label>Align:</label>
             <select
@@ -1885,6 +1894,59 @@
           });
           document.getElementById('api-sel-status').textContent =
             'Move mode - drag to move';
+        }
+      });
+
+      document.getElementById('api-sel-sim-sidc').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine && engine.selectionEngine.selectedGraphics.length === 1) {
+          engine.selectionEngine.selectSimilarSameSIDC(engine.selectionEngine.selectedGraphics[0]);
+        }
+      });
+
+      document.getElementById('api-sel-sim-ech').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine && engine.selectionEngine.selectedGraphics.length === 1) {
+          engine.selectionEngine.selectSimilarSameEchelon(engine.selectionEngine.selectedGraphics[0]);
+        }
+      });
+
+      document.getElementById('api-sel-own').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine) engine.selectionEngine.selectOwnOnly();
+      });
+
+      document.getElementById('api-sel-enemy').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine) engine.selectionEngine.selectEnemy();
+      });
+
+      document.getElementById('api-sel-pt').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine) engine.selectionEngine.selectPointSymbols();
+      });
+
+      document.getElementById('api-sel-area').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine) engine.selectionEngine.selectAreaSymbols();
+      });
+
+      document.getElementById('api-sel-line').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine) engine.selectionEngine.selectLineSymbols();
+      });
+
+      document.getElementById('api-sel-within').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine && engine.selectionEngine.selectedGraphics.length === 1) {
+          engine.selectionEngine.selectWithin(engine.selectionEngine.selectedGraphics[0], false);
+        }
+      });
+
+      document.getElementById('api-sel-within-self').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.selectionEngine && engine.selectionEngine.selectedGraphics.length === 1) {
+          engine.selectionEngine.selectWithin(engine.selectionEngine.selectedGraphics[0], true);
         }
       });
 

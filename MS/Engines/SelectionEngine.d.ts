@@ -43,6 +43,16 @@ declare class SelectionEngine {
     deselectGraphic(graphic: Graphic): void;
     toggleGraphic(graphic: Graphic): void;
     clearSelection(): void;
+    
+    selectSimilarSameSIDC(graphic: Graphic): void;
+    selectSimilarSameEchelon(graphic: Graphic): void;
+    selectOwnOnly(): void;
+    selectEnemy(): void;
+    selectPointSymbols(): void;
+    selectAreaSymbols(): void;
+    selectLineSymbols(): void;
+    selectWithin(graphic: Graphic, includeSelf?: boolean): void;
+
     isSelected(graphic: Graphic): boolean;
     get selectedGraphics(): Graphic[];
     get count(): number;
