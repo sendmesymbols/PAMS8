@@ -262,6 +262,7 @@ class ContextMenuManager extends Evented {
     // ── Measurement section ──────────────────────────────────────────────
     if (this._measurementEngine) {
       const isOn = this._measurementEngine.isEnabled;
+      const opts = this._measurementEngine.getOptions();
 
       const sep = document.createElement('div');
       sep.className = this.options.menuSeparatorClass || '';
@@ -292,6 +293,24 @@ class ContextMenuManager extends Evented {
       this.menuElement.appendChild(toggleItem);
 
       if (isOn) {
+        const slantItem = document.createElement('div');
+        slantItem.className = this.options.menuItemClass || '';
+        slantItem.innerHTML = opts.slant_range
+          ? `<span class="menu-icon" style="font-size:14px">⛰️</span><span>Disable 3D Slant Range</span>`
+          : `<span class="menu-icon" style="font-size:14px">⛰️</span><span>Enable 3D Slant Range</span>`;
+        slantItem.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this._measurementEngine!.setOptions({ slant_range: !opts.slant_range });
+          this.hideMenu();
+        });
+        slantItem.addEventListener('mouseenter', () =>
+          slantItem.classList.add(this.options.menuItemHoverClass || ''),
+        );
+        slantItem.addEventListener('mouseleave', () =>
+          slantItem.classList.remove(this.options.menuItemHoverClass || ''),
+        );
+        this.menuElement.appendChild(slantItem);
+
         const measureItem = document.createElement('div');
         measureItem.className = this.options.menuItemClass || '';
         measureItem.innerHTML = `<span class="menu-icon" style="font-size:14px">📏</span><span>Measure This Symbol</span>`;

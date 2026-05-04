@@ -40,6 +40,12 @@ MS/
 2. **Tactical Point Symbols** - Uses `TacticalPoint.ts` class (dots, text, etc.)
 3. **Area and Line Symbols** - Uses individual symbol classes in `MS/Symbols/`
 
+## Key Engines & Managers
+
+- **SymbolEngine**: Core entry point that handles initialization, view switching, testing, and acts as a central mediator for sub-engines.
+- **MeasurementEngine**: Provides smart measurements (distance, slant range, area, true/magnetic/grid azimuth, march-time ETA) for drawn symbols. Live updates append ETA strings and respect magnetic declination or 3D elevation differences.
+- **ContextMenuManager**: Provides interactive right-click options for drawn graphics (including quick toggles for MeasurementEngine).
+
 ## Key Dependencies
 
 - **ArcGIS API for JS 5**: `https://developers.arcgis.com/javascript/latest/`

@@ -386,6 +386,28 @@
     "proximityEngine": true,
     "drawingCues": true
   },
+  "measurement": {
+    "distUnit": "kilometers",
+    "areaUnit": "square-kilometers",
+    "fontSize": 12,
+    "fontColor": [20, 20, 20],
+    "fontOpacity": 1,
+    "lineColor": [0, 255, 0],
+    "lineWidth": 2,
+    "lineOpacity": 0.5,
+    "showBng": true,
+    "showHeight": true,
+    "showWidth": true,
+    "showArea": true,
+    "showTotal": true,
+    "showSegment": true,
+    "showExtent": true,
+    "showLine": true,
+    "showLastSegOnly": false,
+    "slantRange": false,
+    "magneticDeclination": 0,
+    "speedKmh": 5.0
+  },
   "drawingCues": {
     "enabled": true,
     "rubberBand": {

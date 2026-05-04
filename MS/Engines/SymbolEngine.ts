@@ -477,6 +477,31 @@ class SymbolEngine implements Evented {
     try {
       const { default: ME } = await import('./MeasurementEngine.ts');
       this._measurementEngine = ME.getInstance();
+      
+      const measureCfg = (settingsData as any).measurement ?? {};
+      this._measurementEngine.setOptions({
+          dist_unit: measureCfg.distUnit,
+          area_unit: measureCfg.areaUnit,
+          font_size: measureCfg.fontSize,
+          font_color: measureCfg.fontColor,
+          font_opacity: measureCfg.fontOpacity,
+          line_color: measureCfg.lineColor,
+          line_width: measureCfg.lineWidth,
+          line_opacity: measureCfg.lineOpacity,
+          show_bng: measureCfg.showBng,
+          show_height: measureCfg.showHeight,
+          show_width: measureCfg.showWidth,
+          show_area: measureCfg.showArea,
+          show_total: measureCfg.showTotal,
+          show_segment: measureCfg.showSegment,
+          show_extent: measureCfg.showExtent,
+          show_line: measureCfg.showLine,
+          show_last_seg_only: measureCfg.showLastSegOnly,
+          slant_range: measureCfg.slantRange,
+          magnetic_declination: measureCfg.magneticDeclination,
+          speed_kmh: measureCfg.speedKmh
+      });
+
       this._measurementEngine.start(this.view);
       this._contextMenuManager.linkMeasurementEngine(this._measurementEngine);
       // Emit so the host app can initialise its panel
@@ -1409,6 +1434,33 @@ class SymbolEngine implements Evented {
       } else {
         console.log(`[SymbolEngine] Feature '${feature}' changed to ${value}`);
       }
+    }
+
+    if (fullPath.startsWith('measurement.') && this._measurementEngine) {
+      const measureCfg = (settingsData as any).measurement ?? {};
+      this._measurementEngine.setOptions({
+          dist_unit: measureCfg.distUnit,
+          area_unit: measureCfg.areaUnit,
+          font_size: measureCfg.fontSize,
+          font_color: measureCfg.fontColor,
+          font_opacity: measureCfg.fontOpacity,
+          line_color: measureCfg.lineColor,
+          line_width: measureCfg.lineWidth,
+          line_opacity: measureCfg.lineOpacity,
+          show_bng: measureCfg.showBng,
+          show_height: measureCfg.showHeight,
+          show_width: measureCfg.showWidth,
+          show_area: measureCfg.showArea,
+          show_total: measureCfg.showTotal,
+          show_segment: measureCfg.showSegment,
+          show_extent: measureCfg.showExtent,
+          show_line: measureCfg.showLine,
+          show_last_seg_only: measureCfg.showLastSegOnly,
+          slant_range: measureCfg.slantRange,
+          magnetic_declination: measureCfg.magneticDeclination,
+          speed_kmh: measureCfg.speedKmh
+      });
+      console.log(`[SymbolEngine] MeasurementEngine config updated from Settings.json`);
     }
 
     if (fullPath.startsWith('proximity.')) {

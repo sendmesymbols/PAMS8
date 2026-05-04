@@ -55,6 +55,12 @@ export interface MeasurementOptions {
     show_line?: boolean;
     /** Only keep the most-recent segment label on the map */
     show_last_seg_only?: boolean;
+    /** Compute slant range using elevation delta-Z */
+    slant_range?: boolean;
+    /** Magnetic declination to apply to bearings (degrees) */
+    magnetic_declination?: number;
+    /** Speed in km/h for march-time estimation */
+    speed_kmh?: number;
 }
 
 export interface MeasurementSnapshot {
@@ -62,6 +68,9 @@ export interface MeasurementSnapshot {
     totalLength: string;
     area: string;
     bearing: string;
+    trueAzimuth?: number;
+    magneticAzimuth?: number;
+    gridAzimuth?: number;
     height: string;
     width: string;
     unit: DistanceUnit;
@@ -135,6 +144,9 @@ class MeasurementEngine {
     private _showExtent: boolean       = true;
     private _showLine: boolean         = true;
     private _showLastSegOnly: boolean  = false;
+    private _slantRange: boolean       = false;
+    private _magneticDeclination: number = 0;
+    private _speedKmh: number          = 0;
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -211,6 +223,9 @@ class MeasurementEngine {
         if (options.show_extent     !== undefined) this._showExtent      = options.show_extent;
         if (options.show_line       !== undefined) this._showLine        = options.show_line;
         if (options.show_last_seg_only !== undefined) this._showLastSegOnly = options.show_last_seg_only;
+        if (options.slant_range     !== undefined) this._slantRange      = options.slant_range;
+        if (options.magnetic_declination !== undefined) this._magneticDeclination = options.magnetic_declination;
+        if (options.speed_kmh       !== undefined) this._speedKmh        = options.speed_kmh;
 
         if (this._showLastSegOnly && !this._showSegment) {
             console.info("[MeasurementEngine] show_last_seg_only requires show_segment — forcing on");
@@ -237,6 +252,9 @@ class MeasurementEngine {
             show_extent:      this._showExtent,
             show_line:        this._showLine,
             show_last_seg_only: this._showLastSegOnly,
+            slant_range:      this._slantRange,
+            magnetic_declination: this._magneticDeclination,
+            speed_kmh:        this._speedKmh,
         };
     }
 
@@ -427,10 +445,14 @@ class MeasurementEngine {
         if (this._showSegment) {
             const mid    = this._mid(firstPt, lastPt);
             const segLen = this._segLen(firstPt, lastPt);
-            const bng    = this._showBng ? " " + this._bearing(firstPt, lastPt) : "";
+            const bVals  = this._bearingValues(firstPt, lastPt);
+            const bng    = this._showBng ? " " + bVals.label : "";
             const label  = segLen + bng;
             snap.segmentLength = segLen;
             snap.bearing       = bng.trim();
+            snap.trueAzimuth   = bVals.trueAzimuth;
+            snap.magneticAzimuth = bVals.magneticAzimuth;
+            snap.gridAzimuth   = bVals.gridAzimuth;
 
             if (newSeg) {
                 // Edit mode: create a fresh graphic each time
@@ -576,20 +598,74 @@ class MeasurementEngine {
         return Math.atan((b.y - a.y) / (b.x - a.x)) * 180 / Math.PI * -1;
     }
 
-    private _segLen(pt1: Point, pt2: Point): string {
+    private _metersToUnit(meters: number, unit: DistanceUnit): number {
+        switch (unit) {
+            case "feet": return meters * 3.28084;
+            case "miles": return meters * 0.000621371;
+            case "kilometers": return meters / 1000;
+            case "nautical-miles": return meters * 0.000539957;
+            case "yards": return meters * 1.09361;
+            case "meters":
+            default: return meters;
+        }
+    }
+
+    private _segLenVal(pt1: Point, pt2: Point): number {
         const pl = new Polyline({ spatialReference: pt1.spatialReference });
         pl.addPath([[pt1.x, pt1.y], [pt2.x, pt2.y]]);
-        const raw = this._isGeodesic
+        let len2D = this._isGeodesic
             ? geometryEngine.geodesicLength(pl, this._distUnit as any)
             : geometryEngine.planarLength(pl, this._distUnit as any);
-        return `${Math.abs(raw).toFixed(1)} ${this._distAbbr(this._distUnit)}`;
+        
+        len2D = Math.abs(len2D);
+
+        if (this._slantRange && pt1.z !== undefined && pt2.z !== undefined) {
+            const dzMeters = pt2.z - pt1.z;
+            const dzUnit = this._metersToUnit(dzMeters, this._distUnit);
+            return Math.sqrt(len2D * len2D + dzUnit * dzUnit);
+        }
+        return len2D;
+    }
+
+    private _segLen(pt1: Point, pt2: Point): string {
+        const raw = this._segLenVal(pt1, pt2);
+        return `${raw.toFixed(1)} ${this._distAbbr(this._distUnit)}`;
+    }
+
+    private _polyLenVal(pl: Polyline): number {
+        if (!this._slantRange || !pl.hasZ) {
+            const len2D = this._isGeodesic
+                ? geometryEngine.geodesicLength(pl, this._distUnit as any)
+                : geometryEngine.planarLength(pl, this._distUnit as any);
+            return Math.abs(len2D);
+        }
+
+        // Slant range for polyline: sum of slant range for all segments
+        let total = 0;
+        pl.paths.forEach(path => {
+            for (let i = 0; i < path.length - 1; i++) {
+                const p1 = pl.getPoint(0, i);
+                const p2 = pl.getPoint(0, i + 1);
+                total += this._segLenVal(p1, p2);
+            }
+        });
+        return total;
     }
 
     private _polyLen(pl: Polyline): string {
-        const raw = this._isGeodesic
-            ? geometryEngine.geodesicLength(pl, this._distUnit as any)
-            : geometryEngine.planarLength(pl, this._distUnit as any);
-        return `${Math.abs(raw).toFixed(1)} ${this._distAbbr(this._distUnit)}`;
+        const raw = this._polyLenVal(pl);
+        let res = `${raw.toFixed(1)} ${this._distAbbr(this._distUnit)}`;
+        
+        // March-time estimator
+        if (this._speedKmh > 0) {
+            const distKm = this._distUnit === "kilometers" ? raw : 
+                           this._metersToUnit(raw / this._metersToUnit(1, this._distUnit), "kilometers");
+            const hours = distKm / this._speedKmh;
+            const h = Math.floor(hours);
+            const m = Math.round((hours - h) * 60);
+            res += ` · ${h}h ${m}m @ ${this._speedKmh} km/h`;
+        }
+        return res;
     }
 
     private _area(poly: Polygon): string {
@@ -612,19 +688,47 @@ class MeasurementEngine {
         });
     }
 
-    private _bearing(a: Point, b: Point): string {
+    private _bearingValues(a: Point, b: Point): { trueAzimuth: number, magneticAzimuth: number, gridAzimuth: number, label: string } {
         const rise = b.y - a.y;
         const run  = b.x - a.x;
-        if (rise === 0) return a.x > b.x ? "Due W" : "Due E";
-        if (run  === 0) return a.y > b.y ? "Due S" : "Due N";
-        const ns  = rise < 0 ? "S" : "N";
-        const ew  = run  < 0 ? "W" : "E";
-        const deg = Math.atan(Math.abs(run) / Math.abs(rise)) / (2 * Math.PI) * 360;
-        const d   = Math.floor(deg);
-        const t   = (deg - d) * 60;
-        const m   = Math.floor(t);
-        const s   = Math.floor(60 * (t - m));
-        return `${ns}${d}°${m}'${s}"${ew}`;
+        
+        let gridAzimuth = 0;
+        if (rise === 0 && run === 0) {
+            gridAzimuth = 0;
+        } else {
+            // Angle from North clockwise
+            gridAzimuth = Math.atan2(run, rise) * (180 / Math.PI);
+            if (gridAzimuth < 0) gridAzimuth += 360;
+        }
+
+        // For simplicity in this engine, we'll treat grid azimuth as true azimuth.
+        // In a strict geodetic sense, convergence angle is needed for true azimuth.
+        const trueAzimuth = gridAzimuth;
+        
+        let magneticAzimuth = trueAzimuth - this._magneticDeclination;
+        if (magneticAzimuth < 0) magneticAzimuth += 360;
+        if (magneticAzimuth >= 360) magneticAzimuth -= 360;
+
+        // Create label from magnetic azimuth
+        const ns = (magneticAzimuth > 270 || magneticAzimuth < 90) ? "N" : "S";
+        const ew = (magneticAzimuth > 0 && magneticAzimuth < 180) ? "E" : (magneticAzimuth > 180 && magneticAzimuth < 360) ? "W" : "";
+        
+        let degFromPole = magneticAzimuth;
+        if (magneticAzimuth > 90 && magneticAzimuth <= 180) degFromPole = 180 - magneticAzimuth;
+        else if (magneticAzimuth > 180 && magneticAzimuth <= 270) degFromPole = magneticAzimuth - 180;
+        else if (magneticAzimuth > 270) degFromPole = 360 - magneticAzimuth;
+        
+        const d = Math.floor(degFromPole);
+        const t = (degFromPole - d) * 60;
+        const m = Math.floor(t);
+        const s = Math.floor(60 * (t - m));
+        const label = `${ns}${d}°${m}'${s}"${ew}`;
+
+        return { trueAzimuth, magneticAzimuth, gridAzimuth, label };
+    }
+
+    private _bearing(a: Point, b: Point): string {
+        return this._bearingValues(a, b).label;
     }
 
     private _textSymbol(pt: Point, angle: number, label: string): TextSymbol {

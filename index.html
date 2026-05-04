@@ -877,6 +877,76 @@
           </div>
         </div>
         <div class="settings-section">
+          <div class="section-title">Measurement</div>
+          <div class="setting-row">
+            <label>Distance Unit</label>
+            <select id="setting-msDistUnit">
+              <option value="meters">meters</option>
+              <option value="kilometers" selected>km</option>
+              <option value="miles">miles</option>
+              <option value="nautical-miles">nm</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <label>Area Unit</label>
+            <select id="setting-msAreaUnit">
+              <option value="square-meters">sq meters</option>
+              <option value="square-kilometers" selected>sq km</option>
+              <option value="square-miles">sq miles</option>
+              <option value="hectares">hectares</option>
+              <option value="acres">acres</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <label>Slant Range (3D)</label>
+            <input type="checkbox" id="setting-slantRange" />
+          </div>
+          <div class="setting-row">
+            <label>Mag Declination °</label>
+            <input type="number" id="setting-magneticDeclination" value="0" step="0.1" />
+          </div>
+          <div class="setting-row">
+            <label>March Speed km/h</label>
+            <input type="number" id="setting-speedKmh" value="5" min="0" step="0.5" />
+          </div>
+          <div class="setting-row">
+            <label>Show Bearing</label>
+            <input type="checkbox" id="setting-showBng" checked />
+          </div>
+          <div class="setting-row">
+            <label>Show Area</label>
+            <input type="checkbox" id="setting-showArea" checked />
+          </div>
+          <div class="setting-row">
+            <label>Show Total</label>
+            <input type="checkbox" id="setting-showTotal" checked />
+          </div>
+          <div class="setting-row">
+            <label>Show Segment</label>
+            <input type="checkbox" id="setting-showSegment" checked />
+          </div>
+          <div class="setting-row">
+            <label>Show Extent</label>
+            <input type="checkbox" id="setting-showExtent" checked />
+          </div>
+          <div class="setting-row">
+            <label>Line Width</label>
+            <input type="number" id="setting-msLineWidth" value="2" min="0.5" max="10" step="0.5" />
+          </div>
+          <div class="setting-row">
+            <label>Line Color</label>
+            <input type="color" id="setting-msLineColor" value="#00ff00" />
+          </div>
+          <div class="setting-row">
+            <label>Font Size</label>
+            <input type="number" id="setting-msFontSize" value="12" min="8" max="24" step="1" />
+          </div>
+          <div class="setting-row">
+            <label>Font Color</label>
+            <input type="color" id="setting-msFontColor" value="#141414" />
+          </div>
+        </div>
+        <div class="settings-section">
           <div class="section-title">Proximity</div>
           <div class="setting-row">
             <label>Nearest Vertex</label>
@@ -1062,6 +1132,18 @@
               <option value="feet">feet</option>
               <option value="yards">yards</option>
             </select>
+          </div>
+          <div class="setting-row">
+            <label>Slant Range</label>
+            <input type="checkbox" id="api-me-slantRange" />
+          </div>
+          <div class="setting-row">
+            <label>Mag Decl °</label>
+            <input type="number" id="api-me-magDecl" value="0" step="0.1" style="width: 60px" />
+          </div>
+          <div class="setting-row">
+            <label>Speed km/h</label>
+            <input type="number" id="api-me-speed" value="5" step="0.5" style="width: 60px" />
           </div>
           <div class="status-text" id="api-me-status">Disabled</div>
         </div>
@@ -1271,6 +1353,30 @@
           path: ['features', 'proximityEngine'],
           value: v,
         }),
+        // Measurement
+        'setting-msDistUnit': (v) => ({ path: ['measurement', 'distUnit'], value: v }),
+        'setting-msAreaUnit': (v) => ({ path: ['measurement', 'areaUnit'], value: v }),
+        'setting-slantRange': (v) => ({
+          path: ['measurement', 'slantRange'],
+          value: v,
+        }),
+        'setting-magneticDeclination': (v) => ({
+          path: ['measurement', 'magneticDeclination'],
+          value: +v,
+        }),
+        'setting-speedKmh': (v) => ({
+          path: ['measurement', 'speedKmh'],
+          value: +v,
+        }),
+        'setting-showBng': (v) => ({ path: ['measurement', 'showBng'], value: v }),
+        'setting-showArea': (v) => ({ path: ['measurement', 'showArea'], value: v }),
+        'setting-showTotal': (v) => ({ path: ['measurement', 'showTotal'], value: v }),
+        'setting-showSegment': (v) => ({ path: ['measurement', 'showSegment'], value: v }),
+        'setting-showExtent': (v) => ({ path: ['measurement', 'showExtent'], value: v }),
+        'setting-msLineWidth': (v) => ({ path: ['measurement', 'lineWidth'], value: +v }),
+        'setting-msLineColor': (v) => ({ path: ['measurement', 'lineColor'], value: hexToRgb(v) }),
+        'setting-msFontSize': (v) => ({ path: ['measurement', 'fontSize'], value: +v }),
+        'setting-msFontColor': (v) => ({ path: ['measurement', 'fontColor'], value: hexToRgb(v) }),
         // Proximity
         'setting-nearestVertex': (v) => ({
           path: ['proximity', 'nearestVertex'],
@@ -1462,6 +1568,32 @@
           document.getElementById('setting-proximityEngine').checked =
             features.proximityEngine !== false;
 
+          // Update measurement settings
+          const measure = settings.measurement || {};
+          document.getElementById('setting-msDistUnit').value = measure.distUnit || 'kilometers';
+          document.getElementById('setting-msAreaUnit').value = measure.areaUnit || 'square-kilometers';
+          document.getElementById('setting-slantRange').checked = measure.slantRange === true;
+          document.getElementById('setting-magneticDeclination').value = measure.magneticDeclination || 0;
+          document.getElementById('setting-speedKmh').value = measure.speedKmh || 5;
+          document.getElementById('setting-showBng').checked = measure.showBng !== false;
+          document.getElementById('setting-showArea').checked = measure.showArea !== false;
+          document.getElementById('setting-showTotal').checked = measure.showTotal !== false;
+          document.getElementById('setting-showSegment').checked = measure.showSegment !== false;
+          document.getElementById('setting-showExtent').checked = measure.showExtent !== false;
+          document.getElementById('setting-msLineWidth').value = measure.lineWidth || 2;
+          document.getElementById('setting-msFontSize').value = measure.fontSize || 12;
+
+          if (measure.lineColor) {
+            document.getElementById('setting-msLineColor').value = rgbToHex(
+              measure.lineColor[0], measure.lineColor[1], measure.lineColor[2]
+            );
+          }
+          if (measure.fontColor) {
+            document.getElementById('setting-msFontColor').value = rgbToHex(
+              measure.fontColor[0], measure.fontColor[1], measure.fontColor[2]
+            );
+          }
+
           // Update proximity settings
           const prox = settings.proximity || {};
           document.getElementById('setting-nearestVertex').checked =
@@ -1607,6 +1739,27 @@
             engine.measurementEngine.setOptions({ dist_unit: e.target.value });
           }
         });
+
+      document.getElementById('api-me-slantRange').addEventListener('change', (e) => {
+        const engine = getEngines();
+        if (engine && engine.measurementEngine) {
+          engine.measurementEngine.setOptions({ slant_range: e.target.checked });
+        }
+      });
+
+      document.getElementById('api-me-magDecl').addEventListener('input', (e) => {
+        const engine = getEngines();
+        if (engine && engine.measurementEngine) {
+          engine.measurementEngine.setOptions({ magnetic_declination: +e.target.value });
+        }
+      });
+
+      document.getElementById('api-me-speed').addEventListener('input', (e) => {
+        const engine = getEngines();
+        if (engine && engine.measurementEngine) {
+          engine.measurementEngine.setOptions({ speed_kmh: +e.target.value });
+        }
+      });
 
       // ProximityEngine buttons
       document
