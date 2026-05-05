@@ -427,20 +427,20 @@
     "angularGuides": {
       "enabled": true,
       "snapThresholdDeg": 8,
-      "lineColor": [100, 200, 255],
-      "lineOpacity": 0.45,
-      "lineWidth": 1
+      "lineColor": [80, 200, 255],
+      "lineOpacity": 0.75,
+      "lineWidth": 1.5
     },
     "distanceRings": {
       "enabled": true,
       "intervalKm": 1.0,
-      "ringCount": 3,
-      "lineColor": [100, 200, 100],
-      "lineOpacity": 0.4,
-      "lineWidth": 1,
+      "ringCount": 5,
+      "lineColor": [80, 230, 120],
+      "lineOpacity": 0.7,
+      "lineWidth": 1.5,
       "showLabels": true,
-      "fontSize": 10,
-      "fontColor": [100, 200, 100]
+      "fontSize": 11,
+      "fontColor": [255, 255, 255]
     },
     "nearbyHighlight": {
       "enabled": true,

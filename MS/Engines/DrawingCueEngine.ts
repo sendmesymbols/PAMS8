@@ -122,31 +122,31 @@ class DrawingCueEngine {
   private _rbLineOpacity: number = 0.75;
   private _rbLineWidth: number = 1.5;
   private _rbShowLabel: boolean = true;
-  private _rbFontSize: number = 11;
-  private _rbFontColor: [number, number, number] = [0, 0, 0];
+  private _rbFontSize: number = 12;
+  private _rbFontColor: [number, number, number] = [255, 255, 255];
 
   // ── Option fields — coordinate display ───────────────────────────────────
   private _coordEnabled: boolean = true;
-  private _coordFontSize: number = 11;
-  private _coordFontColor: [number, number, number] = [0, 0, 0];
+  private _coordFontSize: number = 12;
+  private _coordFontColor: [number, number, number] = [255, 255, 255];
 
   // ── Option fields — angular guides ────────────────────────────────────────
   private _guidesEnabled: boolean = true;
   private _guidesSnapThresholdDeg: number = 8;
-  private _guidesLineColor: [number, number, number] = [100, 200, 255];
-  private _guidesLineOpacity: number = 0.45;
-  private _guidesLineWidth: number = 1;
+  private _guidesLineColor: [number, number, number] = [80, 200, 255];
+  private _guidesLineOpacity: number = 0.75;
+  private _guidesLineWidth: number = 1.5;
 
   // ── Option fields — distance rings ────────────────────────────────────────
   private _ringsEnabled: boolean = true;
   private _ringsIntervalKm: number = 1.0;
   private _ringsCount: number = 3;
-  private _ringsLineColor: [number, number, number] = [100, 200, 100];
-  private _ringsLineOpacity: number = 0.4;
-  private _ringsLineWidth: number = 1;
+  private _ringsLineColor: [number, number, number] = [80, 230, 120];
+  private _ringsLineOpacity: number = 0.7;
+  private _ringsLineWidth: number = 1.5;
   private _ringsShowLabels: boolean = true;
-  private _ringsFontSize: number = 10;
-  private _ringsFontColor: [number, number, number] = [20, 20, 20];
+  private _ringsFontSize: number = 11;
+  private _ringsFontColor: [number, number, number] = [255, 255, 255];
 
   // ── Option fields — nearby highlight ─────────────────────────────────────
   private _hlEnabled: boolean = true;
@@ -396,6 +396,12 @@ class DrawingCueEngine {
     }
 
     if (this._hlEnabled) this._updateNearbyHighlights(cursor);
+
+    // Point symbols never commit a control point, so _lastCtrlPt stays null.
+    // In that case center distance rings on the live cursor position instead.
+    if (this._ringsEnabled && !this._lastCtrlPt) {
+      this._updateDistanceRings(cursor);
+    }
   }
 
   // ── Rubber band ───────────────────────────────────────────────────────────
@@ -469,8 +475,8 @@ class DrawingCueEngine {
       text: label,
       font,
       color:     new Color([...this._coordFontColor, 1.0]),
-      haloColor: new Color([255, 255, 255, 0.95]),
-      haloSize:  2.5,
+      haloColor: new Color([0, 0, 0, 1]),
+      haloSize:  3,
       xoffset:   14,
       yoffset:   -16,
     });
@@ -688,8 +694,8 @@ class DrawingCueEngine {
       text,
       font:      new Font({ size, style: 'normal', weight: 'bold', family: 'Helvetica' }),
       color:     new Color([...color, 1]),
-      haloColor: new Color([255, 255, 255, 0.95]),
-      haloSize:  2,
+      haloColor: new Color([0, 0, 0, 1]),
+      haloSize:  3,
       angle,
       xoffset:   5,
       yoffset:   8,

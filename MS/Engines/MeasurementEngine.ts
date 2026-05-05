@@ -130,8 +130,8 @@ class MeasurementEngine {
 
     private _distUnit: DistanceUnit = "miles";
     private _areaUnit: AreaUnit     = "square-miles";
-    private _fontSize: number                  = 12;
-    private _fontColor: [number, number, number] = [20, 20, 20];
+    private _fontSize: number                  = 13;
+    private _fontColor: [number, number, number] = [255, 255, 255];
     private _fontOpacity: number               = 1;
     private _lineColor: [number, number, number] = [0, 255, 0];
     private _lineWidth: number                 = 2;
@@ -757,8 +757,8 @@ class MeasurementEngine {
 
         return new TextSymbol({
             text: label, font, color,
-            haloColor: new Color([255, 255, 255, 0.95]),
-            haloSize: 2,
+            haloColor: new Color([0, 0, 0, 1]),
+            haloSize: 3,
             xoffset: xOff, yoffset: yOff, angle,
         });
     }

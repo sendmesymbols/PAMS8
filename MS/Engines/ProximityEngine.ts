@@ -110,8 +110,8 @@ class ProximityEngine {
   private _lineWidth: number = 1.5;
   private _markerColor: [number, number, number] = [0, 120, 255];
   private _markerSize: number = 10;
-  private _fontSize: number = 11;
-  private _fontColor: [number, number, number] = [20, 20, 20];
+  private _fontSize: number = 12;
+  private _fontColor: [number, number, number] = [255, 255, 255];
 
   private constructor() {}
 
@@ -490,8 +490,8 @@ class ProximityEngine {
         text: combinedLabel,
         font,
         color: new Color([...this._fontColor, 1]),
-        haloColor: new Color([255, 255, 255, 0.95]),
-        haloSize: 2,
+        haloColor: new Color([0, 0, 0, 1]),
+        haloSize: 3,
         xoffset: 6,
         yoffset: 6,
       });
@@ -744,8 +744,8 @@ class ProximityEngine {
       const textSym = this._labelGraphic.symbol as TextSymbol;
       textSym.font = new Font({ size: this._fontSize, family: 'Helvetica', style: 'italic', weight: 'bold' });
       textSym.color = new Color([...this._fontColor, 1]);
-      textSym.haloColor = new Color([255, 255, 255, 0.95]);
-      textSym.haloSize = 2;
+      textSym.haloColor = new Color([0, 0, 0, 1]);
+      textSym.haloSize = 3;
     }
   }
 }

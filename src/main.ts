@@ -1371,6 +1371,19 @@ function initializeAutocomplete() {
     );
   }
 
+  function hexToRgb(hex: string): [number, number, number] {
+    const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return r ? [parseInt(r[1], 16), parseInt(r[2], 16), parseInt(r[3], 16)] : [0, 0, 0];
+  }
+
+  function rgbToHex(rgb: number[]): string {
+    return '#' + rgb.map(v => String(v | 0).padStart(2, '0').replace(/^(\d)$/, '0$1')).map(v => parseInt(v).toString(16).padStart(2, '0')).join('');
+  }
+
+  function rgbArrayToHex(c: number[]): string {
+    return '#' + c.map(v => (v | 0).toString(16).padStart(2, '0')).join('');
+  }
+
   waitForEngine(() => {
     const engine = (window as any).symbolEngine;
     const dc: Record<string, any> = engine.settings?.drawingCues ?? {};
@@ -1403,6 +1416,21 @@ function initializeAutocomplete() {
     if (guideThreshEl && dc.angularGuides?.snapThresholdDeg !== undefined)
       guideThreshEl.value = String(dc.angularGuides.snapThresholdDeg);
 
+    const guideColorEl = get<HTMLInputElement>('setting-guideColor');
+    if (guideColorEl && dc.angularGuides?.lineColor)
+      guideColorEl.value = rgbArrayToHex(dc.angularGuides.lineColor);
+
+    const guideOpEl = get<HTMLInputElement>('setting-guideOpacity');
+    const guideOpDisp = get<HTMLElement>('guideOpacity-display');
+    if (guideOpEl && dc.angularGuides?.lineOpacity !== undefined) {
+      guideOpEl.value = String(dc.angularGuides.lineOpacity);
+      if (guideOpDisp) guideOpDisp.textContent = String(dc.angularGuides.lineOpacity);
+    }
+
+    const guideWidthEl = get<HTMLInputElement>('setting-guideWidth');
+    if (guideWidthEl && dc.angularGuides?.lineWidth !== undefined)
+      guideWidthEl.value = String(dc.angularGuides.lineWidth);
+
     const ringsCb = get<HTMLInputElement>('setting-distanceRings');
     if (ringsCb) ringsCb.checked = (dc.distanceRings?.enabled) !== false;
 
@@ -1413,6 +1441,21 @@ function initializeAutocomplete() {
     const ringCountEl = get<HTMLInputElement>('setting-ringCount');
     if (ringCountEl && dc.distanceRings?.ringCount !== undefined)
       ringCountEl.value = String(dc.distanceRings.ringCount);
+
+    const ringColorEl = get<HTMLInputElement>('setting-ringColor');
+    if (ringColorEl && dc.distanceRings?.lineColor)
+      ringColorEl.value = rgbArrayToHex(dc.distanceRings.lineColor);
+
+    const ringOpEl = get<HTMLInputElement>('setting-ringOpacity');
+    const ringOpDisp = get<HTMLElement>('ringOpacity-display');
+    if (ringOpEl && dc.distanceRings?.lineOpacity !== undefined) {
+      ringOpEl.value = String(dc.distanceRings.lineOpacity);
+      if (ringOpDisp) ringOpDisp.textContent = String(dc.distanceRings.lineOpacity);
+    }
+
+    const ringWidthEl = get<HTMLInputElement>('setting-ringWidth');
+    if (ringWidthEl && dc.distanceRings?.lineWidth !== undefined)
+      ringWidthEl.value = String(dc.distanceRings.lineWidth);
 
     const hlCb = get<HTMLInputElement>('setting-nearbyHighlight');
     if (hlCb) hlCb.checked = (dc.nearbyHighlight?.enabled) !== false;
@@ -1447,6 +1490,18 @@ function initializeAutocomplete() {
     guideThreshEl?.addEventListener('change', () =>
       dispatchSetting(['drawingCues', 'angularGuides', 'snapThresholdDeg'], +guideThreshEl.value));
 
+    guideColorEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'lineColor'], hexToRgb(guideColorEl.value)));
+
+    guideOpEl?.addEventListener('input', () => {
+      if (guideOpDisp) guideOpDisp.textContent = guideOpEl.value;
+    });
+    guideOpEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'lineOpacity'], +guideOpEl.value));
+
+    guideWidthEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'lineWidth'], +guideWidthEl.value));
+
     ringsCb?.addEventListener('change', () =>
       dispatchSetting(['drawingCues', 'distanceRings', 'enabled'], ringsCb.checked));
 
@@ -1455,6 +1510,18 @@ function initializeAutocomplete() {
 
     ringCountEl?.addEventListener('change', () =>
       dispatchSetting(['drawingCues', 'distanceRings', 'ringCount'], +ringCountEl.value));
+
+    ringColorEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'distanceRings', 'lineColor'], hexToRgb(ringColorEl.value)));
+
+    ringOpEl?.addEventListener('input', () => {
+      if (ringOpDisp) ringOpDisp.textContent = ringOpEl.value;
+    });
+    ringOpEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'distanceRings', 'lineOpacity'], +ringOpEl.value));
+
+    ringWidthEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'distanceRings', 'lineWidth'], +ringWidthEl.value));
 
     hlCb?.addEventListener('change', () =>
       dispatchSetting(['drawingCues', 'nearbyHighlight', 'enabled'], hlCb.checked));
