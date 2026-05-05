@@ -110,6 +110,7 @@ class SymbolEngine implements Evented {
   private _creationMode: 'single' | 'continuous' = 'single';
   private _lastDrawEssentials: DrawEssentials | null = null;
   private _lastAmplifier: Amplifier | null = null;
+  private _continuousTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   // Undo / Redo stacks
   private _undoStack: UndoEntry[] = [];
@@ -1826,6 +1827,10 @@ class SymbolEngine implements Evented {
   /** Stop continuous creation mode and revert to single. No-op if already single. */
   public stopContinuousMode(): void {
     if (this._creationMode !== 'continuous') return;
+    if (this._continuousTimeoutId !== null) {
+      clearTimeout(this._continuousTimeoutId);
+      this._continuousTimeoutId = null;
+    }
     this._creationMode = 'single';
     (settingsData as any).creationMode = 'single';
     this._lastDrawEssentials = null;
@@ -2789,6 +2794,12 @@ class SymbolEngine implements Evented {
         isPassive = false;
       }
 
+      // Cancel any pending continuous re-init from the previous draw
+      if (this._continuousTimeoutId !== null) {
+        clearTimeout(this._continuousTimeoutId);
+        this._continuousTimeoutId = null;
+      }
+
       // Store for continuous creation mode re-use
       if (!isPassive) {
         this._lastDrawEssentials = drawEssentials;
@@ -3227,7 +3238,8 @@ class SymbolEngine implements Evented {
         this._lastDrawEssentials &&
         this._lastAmplifier
       ) {
-        setTimeout(() => {
+        this._continuousTimeoutId = setTimeout(() => {
+          this._continuousTimeoutId = null;
           this.initialize(this._lastDrawEssentials!, this._lastAmplifier!);
         }, 0);
       }
