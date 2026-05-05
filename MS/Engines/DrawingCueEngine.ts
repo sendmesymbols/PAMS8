@@ -84,6 +84,11 @@ export interface DrawingCueOptions {
     outlineWidth?: number;
     outlineOpacity?: number;
   };
+  adaptive?: {
+    enabled?: boolean;
+    coverageFraction?: number;
+    maxOuterKm?: number;
+  };
 }
 
 // ── Internal candidate record ─────────────────────────────────────────────────
@@ -178,6 +183,11 @@ class DrawingCueEngine {
   private _hlFarColor: [number, number, number] = [80, 200, 80];
   private _hlOutlineWidth: number = 2.5;
   private _hlOutlineOpacity: number = 0.85;
+
+  // ── Option fields — adaptive control ──────────────────────────────────────
+  private _adaptiveEnabled: boolean = false;
+  private _adaptiveCoverageFraction: number = 0.25;
+  private _adaptiveMaxOuterKm: number = 200;
 
   private constructor() {}
 
@@ -406,6 +416,13 @@ class DrawingCueEngine {
       if (nh.outlineWidth   !== undefined) this._hlOutlineWidth   = nh.outlineWidth;
       if (nh.outlineOpacity !== undefined) this._hlOutlineOpacity = nh.outlineOpacity;
     }
+
+    const ad = opts.adaptive;
+    if (ad) {
+      if (ad.enabled          !== undefined) this._adaptiveEnabled          = ad.enabled;
+      if (ad.coverageFraction !== undefined) this._adaptiveCoverageFraction = ad.coverageFraction;
+      if (ad.maxOuterKm       !== undefined) this._adaptiveMaxOuterKm       = ad.maxOuterKm;
+    }
   }
 
   public getStatus() {
@@ -413,6 +430,7 @@ class DrawingCueEngine {
       isEnabled: this._isEnabled,
       isActive: this._isActive,
       isGeodesic: this._isGeodesic,
+      adaptiveEnabled: this._adaptiveEnabled,
       candidates: this._candidateInfo.length,
       activeGraphics: this._layer?.graphics.length ?? 0,
     };
@@ -712,6 +730,16 @@ class DrawingCueEngine {
     return km * 1000;
   }
 
+  private _computeAdaptiveIntervalKm(ref: Point): number {
+    if (!this._view?.extent) return this._ringsIntervalKm;
+    const ext      = this._view.extent;
+    const minDimKm = this._mapUnitsToKm(Math.min(ext.width, ext.height), ref);
+    const count    = Math.max(1, this._ringsCount);
+    const rawTotal = minDimKm * this._adaptiveCoverageFraction / 2;
+    const cappedTotal = Math.min(rawTotal, this._adaptiveMaxOuterKm);
+    return Math.max(0.001, cappedTotal / count);
+  }
+
   // ── Distance rings ────────────────────────────────────────────────────────
 
   private _updateDistanceRings(center: Point): void {
@@ -722,8 +750,12 @@ class DrawingCueEngine {
 
     if (!this._ringsEnabled || this._ringsCount < 1 || this._ringsIntervalKm <= 0) return;
 
+    const intervalKm = this._adaptiveEnabled
+      ? this._computeAdaptiveIntervalKm(center)
+      : this._ringsIntervalKm;
+
     for (let i = 1; i <= this._ringsCount; i++) {
-      const distKm = i * this._ringsIntervalKm;
+      const distKm = i * intervalKm;
       try {
         const rawRing = this._isGeodesic
           ? geometryEngine.geodesicBuffer(center, distKm, 'kilometers')
@@ -773,8 +805,11 @@ class DrawingCueEngine {
     this._protractorGs = [];
     if (!this._guidesShowArc || !this._layer || !this._view) return;
 
-    const outerKm = (this._ringsCount > 0 && this._ringsIntervalKm > 0)
-      ? this._ringsCount * this._ringsIntervalKm
+    const intervalKm = this._adaptiveEnabled
+      ? this._computeAdaptiveIntervalKm(center)
+      : this._ringsIntervalKm;
+    const outerKm = (this._ringsCount > 0 && intervalKm > 0)
+      ? this._ringsCount * intervalKm
       : this._guidesArcRadiusKm;
     const r = this._kmToMapUnits(outerKm, center);
     if (r <= 0) return;

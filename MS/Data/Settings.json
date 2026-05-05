@@ -460,6 +460,11 @@
       "farColor": [80, 200, 80],
       "outlineWidth": 2.5,
       "outlineOpacity": 0.85
+    },
+    "adaptive": {
+      "enabled": false,
+      "coverageFraction": 0.25,
+      "maxOuterKm": 200
     }
   },
   "proximity": {

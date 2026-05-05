@@ -1458,7 +1458,7 @@
             </select>
           </div>
           <div class="setting-row">
-            <label>Slant Range (3D)</label>
+            <label title="Slant Range (3D) accounts for elevation differences when measuring distances.&#10;&#10;By default, distances are measured as 2D horizontal distances — the flat ground distance between two points, ignoring any height difference.&#10;&#10;When enabled, the engine uses the actual 3D straight-line distance between two points, incorporating the vertical (Z) component:&#10;  slant_distance = √(horizontal² + elevation_delta²)&#10;&#10;Example: Two points 5 km apart horizontally, one 1 km higher → 2D shows 5.0 km, slant range shows 5.1 km (true line-of-sight distance).&#10;&#10;Useful for:&#10;• 3D/SceneView maps with real elevation (Z values)&#10;• Military LOS, weapons range, helicopter/aircraft routing&#10;• Accurate distances along mountainous terrain&#10;&#10;If geometry has no Z values, falls back to standard 2D distance.">Slant Range (3D)</label>
             <input type="checkbox" id="setting-slantRange" />
           </div>
           <div class="setting-row">
@@ -1710,6 +1710,22 @@
           <div class="setting-row">
             <label>Ring Size km</label>
             <input type="number" id="setting-hlRingRadius" value="0.5" min="0.1" max="10" step="0.1" />
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="section-title">Adaptive Control</div>
+          <div class="setting-row">
+            <label>Adaptive Rings</label>
+            <input type="checkbox" id="setting-adaptive" />
+          </div>
+          <div class="setting-row">
+            <label>Coverage Fraction</label>
+            <input type="range" id="setting-adaptiveCoverage" min="0.05" max="0.75" step="0.05" value="0.25" />
+            <span class="value-display" id="adaptiveCoverage-display">0.25</span>
+          </div>
+          <div class="setting-row">
+            <label>Max Outer km</label>
+            <input type="number" id="setting-adaptiveMaxKm" value="200" min="1" max="10000" step="10" />
           </div>
         </div>
       </div>
@@ -2083,6 +2099,10 @@
         'setting-nearbyHighlight': (v) => ({ path: ['drawingCues', 'nearbyHighlight', 'enabled'], value: v }),
         'setting-hlRadius':    (v) => ({ path: ['drawingCues', 'nearbyHighlight', 'radiusKm'], value: +v }),
         'setting-hlRingRadius':(v) => ({ path: ['drawingCues', 'nearbyHighlight', 'ringRadiusKm'], value: +v }),
+        // Adaptive control
+        'setting-adaptive':         (v) => ({ path: ['drawingCues', 'adaptive', 'enabled'],          value: v  }),
+        'setting-adaptiveCoverage': (v) => ({ path: ['drawingCues', 'adaptive', 'coverageFraction'],  value: +v }),
+        'setting-adaptiveMaxKm':    (v) => ({ path: ['drawingCues', 'adaptive', 'maxOuterKm'],         value: +v }),
       };
 
       // Color conversion helpers
@@ -2293,6 +2313,14 @@
           }
 
         }
+
+          // Adaptive control
+          const adaptive = (settings.drawingCues ?? {}).adaptive ?? {};
+          document.getElementById('setting-adaptive').checked = adaptive.enabled === true;
+          const covFrac = adaptive.coverageFraction ?? 0.25;
+          document.getElementById('setting-adaptiveCoverage').value = covFrac;
+          document.getElementById('adaptiveCoverage-display').textContent = String(covFrac);
+          document.getElementById('setting-adaptiveMaxKm').value = adaptive.maxOuterKm ?? 200;
 
         console.log('Settings panel initialized from SymbolEngine');
       }
