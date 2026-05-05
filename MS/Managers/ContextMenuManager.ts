@@ -65,6 +65,7 @@ class ContextMenuManager extends Evented {
   private clickPoint: Point | null = null;
   private originalEvent: any = null;
   private _measurementEngine: MeasurementEngine | null = null;
+  private _symbolEngine: { creationMode: 'single' | 'continuous'; stopContinuousMode(): void } | null = null;
 
   // Event handles for cleanup on re-initialization
   private _pointerDownHandle: any = null;
@@ -214,6 +215,14 @@ class ContextMenuManager extends Evented {
   }
 
   /**
+   * Link a SymbolEngine so the context menu can show a "Stop Continuous Mode"
+   * option whenever continuous creation mode is active.
+   */
+  public linkSymbolEngine(engine: { creationMode: 'single' | 'continuous'; stopContinuousMode(): void }): void {
+    this._symbolEngine = engine;
+  }
+
+  /**
    * Register a function that returns extra context menu items dynamically.
    * Called each time the menu opens, so items can depend on runtime state
    * (e.g. the current list of saved templates).
@@ -270,15 +279,15 @@ class ContextMenuManager extends Evented {
 
       const header = document.createElement('div');
       header.style.cssText =
-        'padding:4px 12px 2px;font-size:11px;color:#888;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px';
+        'padding:8px 14px 4px;font-size:10px;color:#5a8ad0;font-weight:700;text-transform:uppercase;letter-spacing:1px';
       header.textContent = 'Measurements';
       this.menuElement.appendChild(header);
 
       const toggleItem = document.createElement('div');
       toggleItem.className = this.options.menuItemClass || '';
       toggleItem.innerHTML = isOn
-        ? `<span class="menu-icon" style="font-size:14px">🔬</span><span>Disable Measurements <span style="color:#4caf50;font-size:11px">● ON</span></span>`
-        : `<span class="menu-icon" style="font-size:14px">📐</span><span>Enable Measurements <span style="color:#aaa;font-size:11px">○ OFF</span></span>`;
+        ? `<span class="menu-icon" style="font-size:14px">🔬</span><span>Disable Measurements <span style="color:#4caf50;font-size:10px;margin-left:6px;background:rgba(76,175,80,0.15);padding:2px 6px;border-radius:3px">● ON</span></span>`
+        : `<span class="menu-icon" style="font-size:14px">📐</span><span>Enable Measurements <span style="color:#5a7aa8;font-size:10px;margin-left:6px;background:rgba(90,122,168,0.15);padding:2px 6px;border-radius:3px">○ OFF</span></span>`;
       toggleItem.addEventListener('click', (e) => {
         e.stopPropagation();
         this._measurementEngine!.toggle();
@@ -339,6 +348,30 @@ class ContextMenuManager extends Evented {
         );
         this.menuElement.appendChild(measureItem);
       }
+    }
+    // ────────────────────────────────────────────────────────────────────
+
+    // ── Continuous creation mode section ────────────────────────────────
+    if (this._symbolEngine?.creationMode === 'continuous') {
+      const sep2 = document.createElement('div');
+      sep2.className = this.options.menuSeparatorClass || '';
+      this.menuElement.appendChild(sep2);
+
+      const stopItem = document.createElement('div');
+      stopItem.className = this.options.menuItemClass || '';
+      stopItem.innerHTML = `<span class="menu-icon" style="font-size:14px">⏹</span><span>Stop Continuous Mode <span style="color:#e5a540;font-size:10px;margin-left:6px;background:rgba(229,165,64,0.15);padding:2px 6px;border-radius:3px">● LOOP</span></span><span class="menu-shortcut">Esc</span>`;
+      stopItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._symbolEngine!.stopContinuousMode();
+        this.hideMenu();
+      });
+      stopItem.addEventListener('mouseenter', () =>
+        stopItem.classList.add(this.options.menuItemHoverClass || ''),
+      );
+      stopItem.addEventListener('mouseleave', () =>
+        stopItem.classList.remove(this.options.menuItemHoverClass || ''),
+      );
+      this.menuElement.appendChild(stopItem);
     }
     // ────────────────────────────────────────────────────────────────────
 
@@ -651,92 +684,139 @@ class ContextMenuManager extends Evented {
     const style = document.createElement('style');
     style.textContent = `
       .arcgis-context-menu {
-        background-color: white;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        padding: 5px 0;
-        min-width: 150px;
-        max-width: 300px;
+        background-color: rgba(22, 27, 38, 0.97);
+        border: 1px solid rgba(90, 130, 200, 0.3);
+        border-radius: 10px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+        padding: 6px 0;
+        min-width: 180px;
+        max-width: 320px;
         user-select: none;
+        backdrop-filter: blur(12px);
+        animation: contextMenuFadeIn 0.15s ease-out;
       }
-      
+
+      @keyframes contextMenuFadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.96) translateY(-4px);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+      }
+
       .arcgis-context-menu-item {
-        padding: 8px 12px;
+        padding: 8px 14px;
         cursor: pointer;
         display: flex;
         align-items: center;
-        color: #333;
-        font-size: 14px;
+        color: #b8c8e0;
+        font-size: 12px;
+        font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+        transition: all 0.1s ease;
+        border-left: 2px solid transparent;
+        margin: 0 4px;
+        border-radius: 4px;
       }
-      
+
       .arcgis-context-menu-item:hover,
       .arcgis-context-menu-item-hover {
-        background-color: #f5f5f5;
+        background-color: rgba(80, 130, 200, 0.2);
+        border-left-color: #64b4ff;
+        color: #ffffff;
+        padding-left: 16px;
       }
-      
+
       .arcgis-context-menu-item.disabled {
-        color: #aaa;
+        color: #4a5a78;
         cursor: default;
       }
-      
+
       .arcgis-context-menu-item.disabled:hover {
         background-color: inherit;
+        border-left-color: transparent;
       }
-      
+
       .arcgis-context-menu-group {
-        margin-top: 5px;
-        padding-top: 5px;
-        border-top: 1px solid #eee;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid rgba(80, 120, 180, 0.15);
       }
-      
+
       .arcgis-context-menu-group-title {
-        padding: 4px 12px;
-        font-size: 12px;
-        color: #777;
-        font-weight: bold;
+        padding: 6px 14px;
+        font-size: 10px;
+        color: #5a8ad0;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
       }
-      
+
       .arcgis-context-menu-separator {
         height: 1px;
-        background-color: #eee;
-        margin: 5px 0;
+        background: linear-gradient(90deg, transparent, rgba(80, 120, 180, 0.2), transparent);
+        margin: 6px 12px;
       }
-      
+
       .menu-icon {
-        margin-right: 8px;
+        margin-right: 10px;
         display: inline-flex;
         align-items: center;
+        font-size: 14px;
+        opacity: 0.9;
       }
 
       .menu-shortcut {
         margin-left: 16px;
-        font-size: 11px;
-        color: #999;
+        font-size: 10px;
+        color: #5a7aa8;
         white-space: nowrap;
+        font-family: 'SF Mono', 'Consolas', monospace;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 2px 5px;
+        border-radius: 3px;
+      }
+
+      .arcgis-context-menu-item.has-submenu {
+        position: relative;
       }
 
       .arcgis-context-menu-item.has-submenu::after {
-        content: '▶';
-        margin-left: 8px;
+        content: '▸';
+        margin-left: auto;
         font-size: 10px;
-        color: #666;
+        color: #5a8ad0;
         flex-shrink: 0;
       }
 
       .arcgis-submenu {
         display: none;
         position: absolute;
-        left: 100%;
-        top: 0;
-        background-color: white;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        padding: 5px 0;
+        left: calc(100% + 4px);
+        top: -4px;
+        background-color: rgba(22, 27, 38, 0.98);
+        border: 1px solid rgba(90, 130, 200, 0.3);
+        border-radius: 10px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        padding: 6px 0;
         min-width: 180px;
         max-width: 300px;
         z-index: 1001;
+        backdrop-filter: blur(12px);
+        animation: submenuFadeIn 0.12s ease-out;
+      }
+
+      @keyframes submenuFadeIn {
+        from {
+          opacity: 0;
+          transform: translateX(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
       }
     `;
     document.head.appendChild(style);

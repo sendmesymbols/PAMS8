@@ -107,6 +107,9 @@ class SymbolEngine implements Evented {
   private labelOptions: any = {};
   private mapper: any;
   private isDrawing = false;
+  private _creationMode: 'single' | 'continuous' = 'single';
+  private _lastDrawEssentials: DrawEssentials | null = null;
+  private _lastAmplifier: Amplifier | null = null;
 
   // Undo / Redo stacks
   private _undoStack: UndoEntry[] = [];
@@ -169,6 +172,9 @@ class SymbolEngine implements Evented {
     // Initialize EngineLogger from settings
     EngineLogger.setEnabled((settingsData as any).logging?.enabled !== false);
 
+    // Initialize creation mode from settings
+    this._creationMode = ((settingsData as any).creationMode as 'single' | 'continuous') || 'single';
+
     // Initialize symbol engine
     console.log('Symbol Engine initialized');
 
@@ -224,6 +230,7 @@ class SymbolEngine implements Evented {
         'milSymbols',
       ],
     });
+    this._contextMenuManager.linkSymbolEngine(this);
 
     // Register context menu items for different graphic types
     this.registerContextMenuItems();
@@ -1436,6 +1443,10 @@ class SymbolEngine implements Evented {
             e.preventDefault();
             this.deactivateEdit();
           }
+          if (this._creationMode === 'continuous') {
+            e.preventDefault();
+            this.stopContinuousMode();
+          }
           break;
         case 'Delete':
           // Batch delete if multiple selected, otherwise remove the right-clicked graphic
@@ -1605,6 +1616,10 @@ class SymbolEngine implements Evented {
 
     if (fullPath === 'logging.enabled') {
       EngineLogger.setEnabled(!!value);
+    }
+
+    if (fullPath === 'creationMode') {
+      this._creationMode = value as 'single' | 'continuous';
     }
 
     // Emit event so other parts of the app can react
@@ -1796,6 +1811,27 @@ class SymbolEngine implements Evented {
   /** Number of operations available to undo. */
   public get undoCount(): number {
     return this._undoStack.length;
+  }
+
+  /** Current creation mode ('single' or 'continuous'). */
+  public get creationMode(): 'single' | 'continuous' {
+    return this._creationMode;
+  }
+
+  public set creationMode(mode: 'single' | 'continuous') {
+    this._creationMode = mode;
+    (settingsData as any).creationMode = mode;
+  }
+
+  /** Stop continuous creation mode and revert to single. No-op if already single. */
+  public stopContinuousMode(): void {
+    if (this._creationMode !== 'continuous') return;
+    this._creationMode = 'single';
+    (settingsData as any).creationMode = 'single';
+    this._lastDrawEssentials = null;
+    this._lastAmplifier = null;
+    this.emitEvent('creationModeChanged', { mode: 'single' });
+    EngineLogger.success('Symbol Engine', 'Continuous mode stopped — reverted to single');
   }
 
   /** Number of operations available to redo. */
@@ -2097,10 +2133,22 @@ class SymbolEngine implements Evented {
 
   /** Geodesic bearing (degrees, 0=N, 90=E) from lon1/lat1 to lon2/lat2 (WGS84 coordinates). */
   private _computeBearing(lon1: number, lat1: number, lon2: number, lat2: number): number {
+    // If coordinates look like Web Mercator (metres, |value| >> 360), convert to geographic first
+    let gLon1 = lon1, gLat1 = lat1, gLon2 = lon2, gLat2 = lat2;
+    if (Math.abs(lat1) > 90 || Math.abs(lon1) > 180) {
+      const p1 = webMercatorUtils.webMercatorToGeographic(
+        new Point({ x: lon1, y: lat1, spatialReference: { wkid: 3857 } })
+      ) as Point;
+      const p2 = webMercatorUtils.webMercatorToGeographic(
+        new Point({ x: lon2, y: lat2, spatialReference: { wkid: 3857 } })
+      ) as Point;
+      gLon1 = p1.x; gLat1 = p1.y;
+      gLon2 = p2.x; gLat2 = p2.y;
+    }
     const toRad = Math.PI / 180;
-    const phi1 = lat1 * toRad;
-    const phi2 = lat2 * toRad;
-    const dLambda = (lon2 - lon1) * toRad;
+    const phi1 = gLat1 * toRad;
+    const phi2 = gLat2 * toRad;
+    const dLambda = (gLon2 - gLon1) * toRad;
     const y = Math.sin(dLambda) * Math.cos(phi2);
     const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLambda);
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
@@ -2741,6 +2789,12 @@ class SymbolEngine implements Evented {
         isPassive = false;
       }
 
+      // Store for continuous creation mode re-use
+      if (!isPassive) {
+        this._lastDrawEssentials = drawEssentials;
+        this._lastAmplifier = amplifier;
+      }
+
       // Close any active edit/move workflow before starting a new draw
       if (!isPassive) {
         this._closeActiveWorkflow();
@@ -3076,8 +3130,8 @@ class SymbolEngine implements Evented {
       console.info('Symbol Added');
 
       // Push undo entry for the Add operation
-      const symLabel = drawEssentials?.SIDC
-        ? `Symbol (${drawEssentials.SIDC.slice(0, 6)})`
+      const symLabel = drawEssentials?.SYM_NAME
+        ? drawEssentials.SYM_NAME
         : 'Symbol';
       const annotationLayer = this._layerManager.getOrCreateLayer(
         LAYER_NAMES.ANNOTATION_LAYER,
@@ -3166,6 +3220,17 @@ class SymbolEngine implements Evented {
         drawEssentials: drawEssentials,
         isDone: 'done',
       });
+
+      // Continuous creation mode — re-initialize with same symbol immediately
+      if (
+        this._creationMode === 'continuous' &&
+        this._lastDrawEssentials &&
+        this._lastAmplifier
+      ) {
+        setTimeout(() => {
+          this.initialize(this._lastDrawEssentials!, this._lastAmplifier!);
+        }, 0);
+      }
     } catch (error) {
       console.error('Error in drawSymEnd:', error);
     }

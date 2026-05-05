@@ -470,6 +470,7 @@
   "logging": {
     "enabled": true
   },
+  "creationMode": "single",
   "echelonMap23": {
     "0": ["23", "00"],
     "1": ["23", "22", "00"],

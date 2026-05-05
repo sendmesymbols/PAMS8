@@ -1,5 +1,6 @@
 import Polyline from "@arcgis/core/geometry/Polyline";
 import Point from "@arcgis/core/geometry/Point";
+import * as webMercatorUtils from "@arcgis/core/geometry/support/webMercatorUtils";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import Circle from "@arcgis/core/geometry/Circle";
 import Extent from "@arcgis/core/geometry/Extent";
@@ -191,21 +192,35 @@ export class GeoTools {
     static destination(origin: Point, distance: number, bearing: number, units: string): Point {
         const degrees2radians = Math.PI / 180;
         const radians2degrees = 180 / Math.PI;
-        const longitude1 = degrees2radians * origin.x;
-        const latitude1 = degrees2radians * origin.y;
+
+        // The haversine formula works in geographic (lon/lat) degrees.
+        // If the origin is in a projected SR (e.g. Web Mercator), convert to WGS-84 first.
+        const originalSR = origin.spatialReference;
+        const isProjected = originalSR && !originalSR.isGeographic;
+        const geoOrigin = isProjected
+            ? (webMercatorUtils.webMercatorToGeographic(origin) as Point)
+            : origin;
+
+        const longitude1 = degrees2radians * geoOrigin.x;
+        const latitude1  = degrees2radians * geoOrigin.y;
         const bearing_rad = degrees2radians * bearing;
         const radians = this.distanceToRadians(distance, units);
-        
+
         const latitude2 = Math.asin(Math.sin(latitude1) * Math.cos(radians) +
             Math.cos(latitude1) * Math.sin(radians) * Math.cos(bearing_rad));
         const longitude2 = longitude1 + Math.atan2(Math.sin(bearing_rad) * Math.sin(radians) * Math.cos(latitude1),
             Math.cos(radians) - Math.sin(latitude1) * Math.sin(latitude2));
 
-        return new Point({
+        const geoResult = new Point({
             x: radians2degrees * longitude2,
             y: radians2degrees * latitude2,
-            spatialReference: origin.spatialReference
+            spatialReference: { wkid: 4326 }
         });
+
+        // Convert result back to the original projected SR if needed
+        return isProjected
+            ? (webMercatorUtils.geographicToWebMercator(geoResult) as Point)
+            : geoResult;
     }
 
     /**

@@ -787,13 +787,13 @@
         top: 60px;
         right: 310px;
         width: 300px;
-        background: rgba(22, 27, 38, 0.96);
-        color: #dce8f5;
-        font-family: 'Segoe UI', -apple-system, sans-serif;
-        font-size: 11px;
-        border: 1px solid rgba(90, 130, 200, 0.25);
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.2) inset;
+        background: var(--bg-surface);
+        color: var(--neutral-200);
+        font-family: var(--font-sans);
+        font-size: var(--text-sm);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg), var(--shadow-inset);
         z-index: 1060;
         overflow: hidden;
         transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -818,12 +818,12 @@
       }
 
       #apiPanel::-webkit-scrollbar-thumb {
-        background: rgba(100, 160, 230, 0.25);
+        background: var(--border-default);
         border-radius: 3px;
       }
 
       #apiPanel::-webkit-scrollbar-thumb:hover {
-        background: rgba(100, 160, 230, 0.45);
+        background: var(--accent-tertiary);
       }
 
       #apiPanel header {
@@ -831,21 +831,21 @@
         align-items: center;
         justify-content: space-between;
         padding: 10px 14px 10px 16px;
-        background: linear-gradient(135deg, rgba(80, 130, 200, 0.12) 0%, rgba(60, 100, 180, 0.08) 100%);
-        border-bottom: 1px solid rgba(90, 140, 220, 0.15);
+        background: linear-gradient(135deg, rgba(176, 112, 224, 0.08) 0%, rgba(140, 80, 190, 0.05) 100%);
+        border-bottom: 1px solid var(--border-subtle);
         cursor: pointer;
         user-select: none;
         transition: background 0.15s ease;
       }
 
       #apiPanel header:hover {
-        background: linear-gradient(135deg, rgba(80, 130, 200, 0.18) 0%, rgba(60, 100, 180, 0.12) 100%);
+        background: linear-gradient(135deg, rgba(176, 112, 224, 0.12) 0%, rgba(140, 80, 190, 0.08) 100%);
       }
 
       #apiPanel header span {
         font-weight: 600;
-        color: #8ec4ff;
-        font-size: 12px;
+        color: var(--accent-secondary);
+        font-size: var(--text-base);
         letter-spacing: 0.3px;
         display: flex;
         align-items: center;
@@ -857,13 +857,13 @@
         display: inline-block;
         width: 8px;
         height: 8px;
-        background: linear-gradient(135deg, #e080ff, #a040d0);
+        background: linear-gradient(135deg, var(--accent-tertiary), #8040b0);
         border-radius: 2px;
       }
 
       #apiPanel header .toggle-icon {
         font-size: 9px;
-        color: #6a9ad8;
+        color: var(--neutral-500);
         transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         opacity: 0.7;
       }
@@ -879,7 +879,7 @@
       #apiPanel .api-section {
         margin-bottom: 14px;
         padding-bottom: 10px;
-        border-bottom: 1px solid rgba(80, 120, 180, 0.08);
+        border-bottom: 1px solid var(--border-subtle);
         position: relative;
       }
 
@@ -890,7 +890,7 @@
         left: 15%;
         right: 15%;
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(80, 120, 180, 0.12), transparent);
+        background: linear-gradient(90deg, transparent, var(--border-subtle), transparent);
       }
 
       #apiPanel .api-section:last-child {
@@ -904,9 +904,9 @@
       }
 
       #apiPanel .section-title {
-        font-size: 9.5px;
+        font-size: var(--text-xs);
         font-weight: 700;
-        color: #b070e0;
+        color: var(--accent-tertiary);
         text-transform: uppercase;
         letter-spacing: 1.2px;
         margin-bottom: 9px;
@@ -928,9 +928,9 @@
         padding: 5px 9px;
         margin: 0;
         background: rgba(80, 110, 160, 0.15);
-        border: 1px solid rgba(80, 110, 160, 0.25);
-        border-radius: 5px;
-        color: #b0c8e0;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        color: var(--neutral-300);
         font-size: 10px;
         font-weight: 500;
         cursor: pointer;
@@ -940,8 +940,8 @@
 
       #apiPanel .api-btn:hover {
         background: rgba(80, 110, 160, 0.28);
-        border-color: rgba(100, 140, 200, 0.45);
-        color: #e0f0ff;
+        border-color: var(--border-default);
+        color: var(--neutral-100);
         transform: translateY(-1px);
       }
 
@@ -989,14 +989,14 @@
       }
 
       #apiPanel .status-text {
-        font-size: 9.5px;
-        color: #6a8ac8;
+        font-size: var(--text-xs);
+        color: var(--neutral-500);
         margin-top: 6px;
         font-style: normal;
         padding: 4px 8px;
         background: rgba(0, 0, 0, 0.2);
-        border-radius: 4px;
-        border-left: 2px solid rgba(100, 160, 230, 0.3);
+        border-radius: var(--radius-sm);
+        border-left: 2px solid var(--border-default);
       }
 
       /* ═══════════════════════════════════════════════════════════════════════
@@ -1428,6 +1428,13 @@
             <label>Engine Logs</label>
             <input type="checkbox" id="setting-logging" checked />
           </div>
+          <div class="setting-row">
+            <label>Creation Mode</label>
+            <select id="setting-creationMode">
+              <option value="single" selected>Single</option>
+              <option value="continuous">Continuous</option>
+            </select>
+          </div>
         </div>
         <div class="settings-section">
           <div class="section-title">Measurement</div>
@@ -1658,6 +1665,7 @@
           <button class="api-btn" id="api-drawSymbol">Draw Symbol</button>
           <button class="api-btn" id="api-addSymbol">Add at Center</button>
           <button class="api-btn" id="api-clearAll">Clear All</button>
+          <button class="api-btn danger" id="api-stop-continuous">Stop Continuous</button>
           <div class="status-text" id="api-symbol-status">Ready</div>
         </div>
         <div class="api-section">
@@ -1924,6 +1932,7 @@
           path: ['features', 'proximityEngine'],
           value: v,
         }),
+        'setting-creationMode': (v) => ({ path: ['creationMode'], value: v }),
         // Measurement
         'setting-msDistUnit': (v) => ({ path: ['measurement', 'distUnit'], value: v }),
         'setting-msAreaUnit': (v) => ({ path: ['measurement', 'areaUnit'], value: v }),
@@ -2141,6 +2150,10 @@
           document.getElementById('setting-proximityEngine').checked =
             features.proximityEngine !== false;
 
+          if (settings.creationMode) {
+            document.getElementById('setting-creationMode').value = settings.creationMode;
+          }
+
           // Update measurement settings
           const measure = settings.measurement || {};
           document.getElementById('setting-msDistUnit').value = measure.distUnit || 'kilometers';
@@ -2272,6 +2285,18 @@
           engine.clearAllGraphics();
           document.getElementById('api-symbol-status').textContent =
             'All graphics cleared';
+        }
+      });
+
+      document.getElementById('api-stop-continuous').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine) {
+          if (engine.creationMode === 'continuous') {
+            engine.stopContinuousMode();
+            document.getElementById('api-symbol-status').textContent = 'Continuous mode stopped';
+          } else {
+            document.getElementById('api-symbol-status').textContent = 'Not in continuous mode';
+          }
         }
       });
 
@@ -3021,6 +3046,17 @@
       function updateApiStatus() {
         const engine = getEngines();
         if (!engine) return;
+
+        // Creation mode status
+        const isContinuous = engine.creationMode === 'continuous';
+        const stopBtn = document.getElementById('api-stop-continuous');
+        if (stopBtn) {
+          stopBtn.style.opacity = isContinuous ? '1' : '0.4';
+          stopBtn.style.pointerEvents = isContinuous ? '' : 'none';
+        }
+        if (isContinuous) {
+          document.getElementById('api-symbol-status').textContent = 'Mode: CONTINUOUS — drawing active';
+        }
 
         // Measurement status
         if (engine.measurementEngine) {
