@@ -1,0 +1,94 @@
+{
+  "id": "communications",
+  "name": "Communications Plan",
+  "version": "1.0",
+  "description": "Comms plan overlay: HQ node, radio relay stations, radio stations. LOS analysis auto-runs from each node on placement.",
+
+  "defaults": {
+    "frontageKm": 30,
+    "depthKm": 30,
+    "orientationDeg": 0,
+    "units": "kilometers"
+  },
+
+  "symbols": [
+
+    {
+      "id": "hq-node",
+      "symbolKey": "10110207",
+      "role": "CommNode",
+      "label": "HQ NODE",
+      "geoType": "FPoint",
+      "position": { "x":  0.00, "y":  0.00 },
+      "style": { "size": 26 },
+      "amplifier": { "uniqueDesignation": "HQ NODE" }
+    },
+
+    {
+      "id": "relay-north",
+      "symbolKey": "10111002",
+      "role": "RadioRelay",
+      "label": "RR NORTH",
+      "geoType": "FPoint",
+      "position": { "x":  0.00, "y":  0.65 },
+      "style": { "size": 20 },
+      "amplifier": { "uniqueDesignation": "RR NORTH" }
+    },
+
+    {
+      "id": "relay-left",
+      "symbolKey": "10111002",
+      "role": "RadioRelay",
+      "label": "RR LEFT",
+      "geoType": "FPoint",
+      "position": { "x": -0.60, "y":  0.20 },
+      "style": { "size": 20 },
+      "amplifier": { "uniqueDesignation": "RR LEFT" }
+    },
+
+    {
+      "id": "relay-right",
+      "symbolKey": "10111002",
+      "role": "RadioRelay",
+      "label": "RR RIGHT",
+      "geoType": "FPoint",
+      "position": { "x":  0.60, "y":  0.20 },
+      "style": { "size": 20 },
+      "amplifier": { "uniqueDesignation": "RR RIGHT" }
+    },
+
+    {
+      "id": "radio-rear",
+      "symbolKey": "10111001",
+      "role": "RadioStation",
+      "label": "RADIO REAR",
+      "geoType": "FPoint",
+      "position": { "x":  0.00, "y": -0.70 },
+      "style": { "size": 18 },
+      "amplifier": { "uniqueDesignation": "RADIO REAR" }
+    },
+
+    {
+      "id": "radio-left-fwd",
+      "symbolKey": "10111001",
+      "role": "RadioStation",
+      "label": "RADIO L",
+      "geoType": "FPoint",
+      "position": { "x": -0.75, "y":  0.55 },
+      "style": { "size": 18 },
+      "amplifier": { "uniqueDesignation": "RADIO L" }
+    },
+
+    {
+      "id": "radio-right-fwd",
+      "symbolKey": "10111001",
+      "role": "RadioStation",
+      "label": "RADIO R",
+      "geoType": "FPoint",
+      "position": { "x":  0.75, "y":  0.55 },
+      "style": { "size": 18 },
+      "amplifier": { "uniqueDesignation": "RADIO R" }
+    }
+
+  ]
+}

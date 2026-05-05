@@ -1,0 +1,168 @@
+{
+  "id": "ambush",
+  "name": "Ambush Exercise",
+  "version": "1.0",
+  "description": "Seeds kill zone, ambush positions with sector-of-fire arcs, blocking positions, and withdrawal route. Planner draws friendly force route through the kill zone.",
+  "scenarioType": "ambush",
+
+  "defaults": {
+    "frontageKm": 15,
+    "depthKm": 12,
+    "orientationDeg": 0,
+    "units": "kilometers"
+  },
+
+  "symbols": [
+
+    {
+      "id": "kill-zone",
+      "symbolKey": "25340100",
+      "role": "kill-zone",
+      "label": "KILL ZONE",
+      "geoType": "Area",
+      "rings": [
+        [
+          [-0.25,  0.20],
+          [ 0.25,  0.20],
+          [ 0.25,  0.65],
+          [-0.25,  0.65],
+          [-0.25,  0.20]
+        ]
+      ],
+      "locked": true,
+      "style": {
+        "fillColor":    [220, 30, 30],
+        "fillOpacity":  0.20,
+        "outlineColor": [180, 0, 0],
+        "outlineWidth": 2.0
+      },
+      "scenarioProp": {
+        "isKillZone": true,
+        "isForbiddenZone": false
+      }
+    },
+
+    {
+      "id": "ambush-left",
+      "symbolKey": "25141700",
+      "role": "ambush-position",
+      "label": "AMBUSH L",
+      "geoType": "Line",
+      "path": [
+        { "x": -0.60, "y":  0.30 },
+        { "x": -0.30, "y":  0.45 }
+      ],
+      "locked": true,
+      "style": {
+        "color":     [150, 0, 0],
+        "lineStyle": "solid",
+        "width":     2.5
+      },
+      "amplifier": { "uniqueDesignation": "AMBUSH L" },
+      "scenarioProp": {
+        "ambushSectorBearingDeg":    90,
+        "ambushSectorHalfAngleDeg":  30,
+        "ambushSectorRangeKm":       2.0
+      }
+    },
+
+    {
+      "id": "ambush-right",
+      "symbolKey": "25141700",
+      "role": "ambush-position",
+      "label": "AMBUSH R",
+      "geoType": "Line",
+      "path": [
+        { "x":  0.30, "y":  0.45 },
+        { "x":  0.60, "y":  0.30 }
+      ],
+      "locked": true,
+      "style": {
+        "color":     [150, 0, 0],
+        "lineStyle": "solid",
+        "width":     2.5
+      },
+      "amplifier": { "uniqueDesignation": "AMBUSH R" },
+      "scenarioProp": {
+        "ambushSectorBearingDeg":    270,
+        "ambushSectorHalfAngleDeg":  30,
+        "ambushSectorRangeKm":       2.0
+      }
+    },
+
+    {
+      "id": "blocking-north",
+      "symbolKey": "25340100",
+      "role": "blocking-position",
+      "label": "BLOCK N",
+      "geoType": "Area",
+      "rings": [
+        [
+          [-0.20,  0.65],
+          [ 0.20,  0.65],
+          [ 0.20,  0.80],
+          [-0.20,  0.80],
+          [-0.20,  0.65]
+        ]
+      ],
+      "locked": true,
+      "style": {
+        "fillColor":    [150, 0, 0],
+        "fillOpacity":  0.15,
+        "outlineColor": [120, 0, 0],
+        "outlineWidth": 1.5
+      },
+      "amplifier": { "uniqueDesignation": "BLOCK N" }
+    },
+
+    {
+      "id": "withdrawal-route",
+      "symbolKey": "25330100",
+      "role": "withdrawal-route",
+      "label": "WITHDRAWAL",
+      "geoType": "Line",
+      "path": [
+        { "x": -0.50, "y":  0.40 },
+        { "x": -0.75, "y":  0.00 },
+        { "x": -0.85, "y": -0.60 }
+      ],
+      "locked": true,
+      "style": {
+        "color":     [150, 50, 0],
+        "lineStyle": "dash",
+        "width":     1.5
+      },
+      "amplifier": { "uniqueDesignation": "WITHDRAWAL" }
+    },
+
+    {
+      "id": "friendly-entry",
+      "symbolKey": "25331800",
+      "role": "friendly-entry",
+      "label": "FWD ENTRY",
+      "geoType": "Point",
+      "position": { "x":  0.00, "y": -0.85 },
+      "locked": true,
+      "style": { "size": 16 },
+      "amplifier": { "uniqueDesignation": "FWD ENTRY" },
+      "scenarioProp": {
+        "isStartPoint": true
+      }
+    }
+
+  ],
+
+  "successCriteria": {
+    "requiredCheckpoints": [],
+    "forbiddenZoneIds": [],
+    "timeLimitMinutes": 20
+  },
+
+  "scoring": {
+    "baseScore": 100,
+    "penaltyPerKmOver": 0,
+    "penaltyForbiddenZone": 0,
+    "penaltyMissedCheckpoint": 0,
+    "passThreshold": 60
+  }
+}

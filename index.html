@@ -1293,6 +1293,7 @@
           <div class="section-title">Clipboard</div>
           <button class="api-btn" id="api-clip-copy">Copy Last</button>
           <button class="api-btn" id="api-clip-paste">Paste</button>
+          <button class="api-btn" id="api-clip-paste-offset">Paste w/ Offset</button>
           <button class="api-btn" id="api-clip-has-btn">Has Clipboard?</button>
           <div class="status-text" id="api-clip-status">Empty</div>
         </div>
@@ -2424,6 +2425,20 @@
             engine._activatePasteMode();
             document.getElementById('api-clip-status').textContent =
               'Paste mode - click on map';
+          }
+        });
+
+      document
+        .getElementById('api-clip-paste-offset')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          if (engine && engine._showPasteOffsetDialog) {
+            engine._showPasteOffsetDialog();
+            document.getElementById('api-clip-status').textContent =
+              'Paste offset dialog opened';
+          } else if (engine && !engine.hasClipboard) {
+            document.getElementById('api-clip-status').textContent =
+              'Clipboard is empty — copy a symbol first';
           }
         });
 

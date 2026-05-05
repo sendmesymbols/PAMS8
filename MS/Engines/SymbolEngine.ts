@@ -1009,6 +1009,16 @@ class SymbolEngine implements Evented {
             action: (_graphic) => this._activatePasteMode(),
           },
           {
+            id: 'paste-symbol-offset',
+            label: 'Paste with Offset…',
+            shortcut: 'Ctrl+Shift+V',
+            icon: '<span style="font-size:14px">📐</span>',
+            visible: () =>
+              (settingsData as any).features?.copyPaste !== false &&
+              this._clipboard !== null,
+            action: (_graphic) => this._showPasteOffsetDialog(),
+          },
+          {
             id: 'undo',
             label: () =>
               this._undoStack.length > 0
@@ -1834,14 +1844,14 @@ class SymbolEngine implements Evented {
    * Multiple items: preserves relative layout, collective centroid lands at targetPoint.
    * Returns the first pasted Graphic, or null if clipboard is empty.
    */
-  public pasteSymbol(targetPoint: Point, ratio: number = 0): Graphic | null {
+  public pasteSymbol(targetPoint: Point, expandDistance: number = 0, expandUnit: string = 'meters'): Graphic | null {
     if (!this._clipboard || this._clipboard.length === 0) return null;
 
     const annotationLayer = this._layerManager.getOrCreateLayer(
       LAYER_NAMES.ANNOTATION_LAYER,
     );
 
-    if (this._clipboard.length === 1 && ratio === 0) {
+    if (this._clipboard.length === 1 && expandDistance === 0) {
       const item = this._clipboard[0];
       return this._pasteOneItem(
         item,
@@ -1850,14 +1860,29 @@ class SymbolEngine implements Evented {
       );
     }
 
-    // Multi-paste or ratio applied: compute collective centroid
+    // Multi-paste or expand/contract: compute collective centroid
     const centroid = this._clipboardCentroid();
-    const scale = 1 + ratio;
 
-    const transformPt = (x: number, y: number) => ({
-      x: targetPoint.x + scale * (x - centroid.x),
-      y: targetPoint.y + scale * (y - centroid.y)
-    });
+    const transformPt = (x: number, y: number): { x: number; y: number } => {
+      // Base position: translate from original centroid to target point
+      const baseX = targetPoint.x + (x - centroid.x);
+      const baseY = targetPoint.y + (y - centroid.y);
+
+      if (expandDistance === 0) return { x: baseX, y: baseY };
+
+      // Offset from target: if near zero the item is at the center, no movement
+      const dX = baseX - targetPoint.x;
+      const dY = baseY - targetPoint.y;
+      if (Math.abs(dX) < 1e-10 && Math.abs(dY) < 1e-10) return { x: baseX, y: baseY };
+
+      // Geodesic bearing from target to this item's base position
+      const bearing = this._computeBearing(targetPoint.x, targetPoint.y, baseX, baseY);
+      // Positive expandDistance → move away; negative → contract toward center
+      const outwardBearing = expandDistance >= 0 ? bearing : (bearing + 180) % 360;
+      const basePoint = new Point({ x: baseX, y: baseY, spatialReference: targetPoint.spatialReference });
+      const expanded = GeoTools.destination(basePoint, Math.abs(expandDistance), outwardBearing, expandUnit);
+      return { x: expanded.x, y: expanded.y };
+    };
 
     const pasted: Graphic[] = [];
     const undos: (() => void)[] = [];
@@ -2056,6 +2081,17 @@ class SymbolEngine implements Evented {
     };
   }
 
+  /** Geodesic bearing (degrees, 0=N, 90=E) from lon1/lat1 to lon2/lat2 (WGS84 coordinates). */
+  private _computeBearing(lon1: number, lat1: number, lon2: number, lat2: number): number {
+    const toRad = Math.PI / 180;
+    const phi1 = lat1 * toRad;
+    const phi2 = lat2 * toRad;
+    const dLambda = (lon2 - lon1) * toRad;
+    const y = Math.sin(dLambda) * Math.cos(phi2);
+    const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLambda);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+
   /** Centroid of all clipboard geometries (for multi-paste anchor). */
   private _clipboardCentroid(): { x: number; y: number } {
     if (!this._clipboard || this._clipboard.length === 0) return { x: 0, y: 0 };
@@ -2104,7 +2140,7 @@ class SymbolEngine implements Evented {
   /**
    * Show Paste Offset Dialog (Triggered by CTRL+SHIFT+V)
    */
-  private _showPasteOffsetDialog(): void {
+  public _showPasteOffsetDialog(): void {
     if (!this._clipboard || this._clipboard.length === 0) {
       console.warn('[CopyPaste] Clipboard is empty.');
       return;
@@ -2164,9 +2200,17 @@ class SymbolEngine implements Evented {
         </div>
 
         <div style="margin-bottom: 15px;">
-          <label style="display: block; margin-bottom: 5px;">Expand/Contract Ratio (default 0):</label>
-          <input type="number" id="poRatio" step="0.1" value="0" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; box-sizing: border-box;" />
-          <small style="color: #a0b8d8; font-size: 10px; display: block; margin-top: 4px;">> 0 to space out, < 0 to contract.</small>
+          <label style="display: block; margin-bottom: 5px;">Expand / Contract Distance:</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="number" id="poExpandDist" step="0.1" value="0" style="flex: 1; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; box-sizing: border-box;" />
+            <select id="poExpandUnit" style="padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
+              <option value="meters">m</option>
+              <option value="kilometers">km</option>
+              <option value="miles">mi</option>
+              <option value="nautical-miles">nm</option>
+            </select>
+          </div>
+          <small style="color: #a0b8d8; font-size: 10px; display: block; margin-top: 4px;">&gt; 0 spreads symbols out · &lt; 0 contracts them · only affects multi-symbol paste</small>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
@@ -2196,22 +2240,23 @@ class SymbolEngine implements Evented {
       applyBtn.addEventListener('click', () => {
         dialog!.style.display = 'none';
         const mode = modeSelect.value;
-        const ratio = parseFloat((document.getElementById('poRatio') as HTMLInputElement).value) || 0;
-        
+        const expandDist = parseFloat((document.getElementById('poExpandDist') as HTMLInputElement).value) || 0;
+        const expandUnit = (document.getElementById('poExpandUnit') as HTMLSelectElement).value;
+
         if (mode === 'exact') {
           const centroid = this._clipboardCentroid();
-          this.pasteSymbol(new Point({ x: centroid.x, y: centroid.y, spatialReference: this.view.spatialReference }), ratio);
+          this.pasteSymbol(new Point({ x: centroid.x, y: centroid.y, spatialReference: this.view.spatialReference }), expandDist, expandUnit);
         } else if (mode === 'offset') {
           const distance = parseFloat((document.getElementById('poDistance') as HTMLInputElement).value) || 0;
           const unit = (document.getElementById('poUnit') as HTMLSelectElement).value;
           const bearing = parseFloat((document.getElementById('poDirection') as HTMLSelectElement).value) || 0;
-          
+
           const centroid = this._clipboardCentroid();
           const p = new Point({ x: centroid.x, y: centroid.y, spatialReference: this.view.spatialReference });
           const targetPoint = GeoTools.destination(p, distance, bearing, unit);
-          this.pasteSymbol(targetPoint, ratio);
+          this.pasteSymbol(targetPoint, expandDist, expandUnit);
         } else if (mode === 'center') {
-          this._activatePasteModeWithRatio(ratio);
+          this._activatePasteModeWithOffset(expandDist, expandUnit);
         }
       });
     }
@@ -2220,15 +2265,16 @@ class SymbolEngine implements Evented {
     (document.getElementById('poMode') as HTMLSelectElement).value = 'exact';
     (document.getElementById('poOffsetGroup') as HTMLDivElement).style.display = 'none';
     (document.getElementById('poDistance') as HTMLInputElement).value = '0';
-    (document.getElementById('poRatio') as HTMLInputElement).value = '0';
+    (document.getElementById('poExpandDist') as HTMLInputElement).value = '0';
+    (document.getElementById('poExpandUnit') as HTMLSelectElement).value = 'meters';
     (document.getElementById('poApply') as HTMLButtonElement).innerText = 'Paste';
     dialog.style.display = 'block';
   }
 
   /**
-   * Enter "paste mode" with expansion/contraction ratio: the next map click pastes the clipboard graphic there.
+   * Enter "paste mode" with expansion/contraction distance: the next map click pastes the clipboard graphic there.
    */
-  public _activatePasteModeWithRatio(ratio: number): void {
+  public _activatePasteModeWithOffset(expandDistance: number, expandUnit: string): void {
     if (!this._clipboard) return;
 
     this._closeActiveWorkflow();
@@ -2239,7 +2285,7 @@ class SymbolEngine implements Evented {
       clickHandle.remove();
       keyHandle();
       const pt = this.view.toMap({ x: evt.x, y: evt.y });
-      if (pt) this.pasteSymbol(pt, ratio);
+      if (pt) this.pasteSymbol(pt, expandDistance, expandUnit);
       this.emitEvent('pasteMode', { active: false });
     });
 

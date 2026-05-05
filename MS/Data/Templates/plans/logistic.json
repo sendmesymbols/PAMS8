@@ -1,0 +1,122 @@
+{
+  "id": "logistic",
+  "name": "Logistic Plan",
+  "version": "1.0",
+  "description": "Logistic plan overlay: MSR/ASR routes, logistic base, supply points, R3P, and ammo holding area. Corridor buffers auto-generated on route draw.",
+
+  "defaults": {
+    "frontageKm": 15,
+    "depthKm": 40,
+    "orientationDeg": 0,
+    "units": "kilometers"
+  },
+
+  "symbols": [
+
+    {
+      "id": "msr-main",
+      "symbolKey": "25330100",
+      "role": "MSR",
+      "label": "MSR MAIN",
+      "geoType": "Line",
+      "path": [
+        { "x":  0.00, "y": -0.90 },
+        { "x": -0.10, "y": -0.40 },
+        { "x":  0.05, "y":  0.10 },
+        { "x":  0.00, "y":  0.85 }
+      ],
+      "style": {
+        "color":     [0, 100, 200],
+        "lineStyle": "solid",
+        "width":     2.5
+      },
+      "amplifier": { "uniqueDesignation": "MSR MAIN" }
+    },
+
+    {
+      "id": "asr-left",
+      "symbolKey": "25330100",
+      "role": "ASR",
+      "label": "ASR LEFT",
+      "geoType": "Line",
+      "path": [
+        { "x": -0.80, "y": -0.90 },
+        { "x": -0.40, "y": -0.20 },
+        { "x": -0.05, "y":  0.10 }
+      ],
+      "style": {
+        "color":     [0, 100, 200],
+        "lineStyle": "dash",
+        "width":     1.5
+      },
+      "amplifier": { "uniqueDesignation": "ASR LEFT" }
+    },
+
+    {
+      "id": "log-base",
+      "symbolKey": "20120601",
+      "role": "LogisticBase",
+      "label": "LOG BASE",
+      "geoType": "FPoint",
+      "position": { "x":  0.00, "y": -0.80 },
+      "style": { "size": 24 },
+      "amplifier": { "uniqueDesignation": "LOG BASE" }
+    },
+
+    {
+      "id": "supply-pt-1",
+      "symbolKey": "25320200",
+      "role": "SupplyPoint",
+      "label": "SP-1",
+      "geoType": "Point",
+      "position": { "x": -0.50, "y":  0.00 },
+      "style": { "size": 16 },
+      "amplifier": { "uniqueDesignation": "SP-1" }
+    },
+
+    {
+      "id": "supply-pt-2",
+      "symbolKey": "25320200",
+      "role": "SupplyPoint",
+      "label": "SP-2",
+      "geoType": "Point",
+      "position": { "x":  0.50, "y":  0.00 },
+      "style": { "size": 16 },
+      "amplifier": { "uniqueDesignation": "SP-2" }
+    },
+
+    {
+      "id": "r3p-main",
+      "symbolKey": "25321200",
+      "role": "R3P",
+      "label": "R3P MAIN",
+      "geoType": "Point",
+      "position": { "x":  0.00, "y":  0.40 },
+      "style": { "size": 18 },
+      "amplifier": { "uniqueDesignation": "R3P MAIN" }
+    },
+
+    {
+      "id": "ammo-transfer",
+      "symbolKey": "25320300",
+      "role": "AmmoTransferPoint",
+      "label": "ATP",
+      "geoType": "Point",
+      "position": { "x": -0.40, "y": -0.50 },
+      "style": { "size": 16 },
+      "amplifier": { "uniqueDesignation": "ATP" }
+    },
+
+    {
+      "id": "ammo-holding",
+      "symbolKey": "20120601",
+      "role": "AmmoHoldingArea",
+      "label": "AHA",
+      "geoType": "FPoint",
+      "position": { "x": -0.60, "y": -0.70 },
+      "style": { "size": 20 },
+      "amplifier": { "uniqueDesignation": "AHA" }
+    }
+
+  ]
+}
