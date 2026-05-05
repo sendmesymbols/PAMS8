@@ -2340,7 +2340,7 @@
       // Helper to get engines from window.symbolEngine
       function getEngines() {
         if (!window.symbolEngine) {
-          alert('SymbolEngine not loaded yet');
+          console.info('SymbolEngine not loaded yet');
           return null;
         }
         return window.symbolEngine;
