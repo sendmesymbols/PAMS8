@@ -25,6 +25,7 @@ import Font from "@arcgis/core/symbols/Font";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import EngineLogger from "../Support/EngineLogger";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -187,6 +188,10 @@ class MeasurementEngine {
             `. Current unit: ${this._distAbbr(this._distUnit)}.`,
             "idle",
         );
+        EngineLogger.success(
+            'Measurement Engine',
+            `Enabled — draw a symbol to see live segment lengths${this._showBng ? ', bearings' : ''}${this._showArea ? ', and area' : ''}. Unit: ${this._distAbbr(this._distUnit)}`,
+        );
         console.info("[MeasurementEngine] enabled — unit:", this._distUnit, "| geodesic:", this._isGeodesic);
     }
 
@@ -196,6 +201,7 @@ class MeasurementEngine {
         this._clearHandles();
         this._emitStateChange("disabled");
         this._emitHint("Measurements off. Re-enable to see live segment and area data while drawing.", "idle");
+        EngineLogger.nextStep('Measurement Engine', 'Disabled — re-enable to measure drawings');
         console.info("[MeasurementEngine] disabled");
     }
 
@@ -288,6 +294,10 @@ class MeasurementEngine {
                 (this._showBng ? " and bearing" : "") + ".",
                 "drawing",
             );
+            EngineLogger.nextStep(
+                'Measurement Engine',
+                `First point placed — keep clicking to measure segments${this._showBng ? ' and bearings' : ''}. Double-click to finish`,
+            );
         } else {
             this._emitHint("Point added. Keep clicking to extend the line. Double-click to finish.", "segment");
         }
@@ -334,14 +344,19 @@ class MeasurementEngine {
         this._layer?.removeAll();
         this._clearHandles();
         this._emitUpdate({} as MeasurementSnapshot);
+        const continuing = firstPts && firstPts.length > 0;
         this._emitHint(
-            firstPts && firstPts.length > 0
+            continuing
                 ? "Symbol complete. Starting the next segment…"
                 : "Drawing complete. Start a new symbol to measure again.",
             "complete",
         );
-        if (firstPts && firstPts.length > 0) {
-            this.addSegment(firstPts);
+        EngineLogger.success(
+            'Measurement Engine',
+            continuing ? 'Symbol measured — continuing to next drawing' : 'Drawing complete — measurements recorded',
+        );
+        if (continuing) {
+            this.addSegment(firstPts!);
         }
     }
 

@@ -21,15 +21,21 @@ declare class SelectionEngine {
     private _layerManager;
     private _selected;
     private _highlights;
-    private _highlightLayer;
     private _clickHandle;
+    private _pointerMoveHandle;
+    private _hoverHandle;
+    private _hoverGraphic;
+    private _isDrawing;
     private _targetLayerIds;
     private _sketchVM;
+    private _lassoVM;
     private _eventListeners;
     private _annotationRefresh;
     constructor(viewProvider: () => MapView | SceneView, layerManager: GraphicsLayerManager);
     /** Register a callback that re-annotates a graphic after its geometry is moved. */
     setAnnotationRefreshCallback(fn: (graphic: Graphic) => void): void;
+    /** Suppress hover highlights while a symbol is being drawn. */
+    setDrawing(drawing: boolean): void;
     get view(): MapView | SceneView;
     onViewChanged(newView: MapView | SceneView): void;
     /**
@@ -39,11 +45,28 @@ declare class SelectionEngine {
     deactivate(): void;
     /** Cancel any in-progress moveSelected operation without clearing the selection. */
     cancelMove(): void;
-    selectGraphic(graphic: Graphic): void;
-    deselectGraphic(graphic: Graphic): void;
-    toggleGraphic(graphic: Graphic): void;
-    clearSelection(): void;
-    
+    /** Cancel any in-progress lasso-select operation without changing the selection. */
+    cancelLasso(): void;
+    get isLassoActive(): boolean;
+    /**
+     * Let the user draw a polygon; on completion every symbol whose geometry
+     * is contained in (or intersects) the polygon is added to the selection.
+     *
+     * The polygon is drawn as a single click-to-vertex sketch (double-click
+     * or right-click to finish).  Pass `freehand: true` for a freehand lasso.
+     *
+     * @param onComplete  Called with the newly-selected graphics when done.
+     */
+    lassoSelect(opts?: {
+        freehand?: boolean;
+        addToSelection?: boolean;
+    }, onComplete?: (selected: Graphic[]) => void): void;
+    private _getGraphicSIDC;
+    private _getGraphicSymbolCode;
+    private _getGraphicEchelon;
+    private _getGraphicIdentity;
+    private _getGraphicGeomType;
+    private _selectAllMatching;
     selectSimilarSameSIDC(graphic: Graphic): void;
     selectSimilarSameEchelon(graphic: Graphic): void;
     selectOwnOnly(): void;
@@ -52,7 +75,10 @@ declare class SelectionEngine {
     selectAreaSymbols(): void;
     selectLineSymbols(): void;
     selectWithin(graphic: Graphic, includeSelf?: boolean): void;
-
+    selectGraphic(graphic: Graphic): void;
+    deselectGraphic(graphic: Graphic): void;
+    toggleGraphic(graphic: Graphic): void;
+    clearSelection(): void;
     isSelected(graphic: Graphic): boolean;
     get selectedGraphics(): Graphic[];
     get count(): number;
@@ -166,13 +192,11 @@ declare class SelectionEngine {
     private _edges;
     private _graphicId;
     private _centroid;
-    private _applyDelta;
+    _applyDelta(graphics: Graphic[], dx: number, dy: number): void;
     private _boundingBox;
     private _bboxToPolygon;
     private _addHighlight;
     private _removeHighlight;
-    /** Re-sync highlight geometries to current graphic positions (after move/align). */
-    private _refreshHighlights;
     private _pushAlignUndo;
     on(type: string, listener: Function): {
         remove(): void;

@@ -467,6 +467,9 @@
     "fontSize": 11,
     "fontColor": [0, 80, 200]
   },
+  "logging": {
+    "enabled": true
+  },
   "echelonMap23": {
     "0": ["23", "00"],
     "1": ["23", "22", "00"],

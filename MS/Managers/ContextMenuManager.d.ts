@@ -1,9 +1,9 @@
-import MapView from "@arcgis/core/views/MapView";
-import SceneView from "@arcgis/core/views/SceneView";
-import Graphic from "@arcgis/core/Graphic";
-import Evented from "@arcgis/core/core/Evented";
-import Point from "@arcgis/core/geometry/Point";
-import MeasurementEngine from "../Engines/MeasurementEngine";
+import MapView from '@arcgis/core/views/MapView';
+import SceneView from '@arcgis/core/views/SceneView';
+import Graphic from '@arcgis/core/Graphic';
+import Evented from '@arcgis/core/core/Evented';
+import Point from '@arcgis/core/geometry/Point';
+import MeasurementEngine from '../Engines/MeasurementEngine';
 export interface ContextMenuItem {
     id: string;
     label: string | ((graphic?: Graphic) => string);
@@ -45,7 +45,7 @@ declare class ContextMenuManager extends Evented {
     private menuElement;
     private view;
     private activeGraphic;
-    private menuItems;
+    readonly menuItems: Map<string, ContextMenuItem[]>;
     private layerManager;
     private options;
     private clickPoint;

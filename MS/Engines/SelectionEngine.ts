@@ -14,6 +14,7 @@ import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
 import GraphicsLayerManager from "../Managers/GraphicsLayerManager";
 import AnnotationEngine from "./AnnotationEngine.ts";
 import * as promiseUtils from "@arcgis/core/core/promiseUtils";
+import EngineLogger from "../Support/EngineLogger";
 
 // ── Proxy bounding-box symbol (used as drag handle for batch move) ───────────
 
@@ -220,6 +221,11 @@ class SelectionEngine {
             polygonSymbol: LASSO_SYM,
         });
 
+        EngineLogger.nextStep(
+            'Selection Engine',
+            `Lasso active — draw a polygon to select symbols. ${opts?.freehand ? 'Release mouse' : 'Double-click'} to finish`,
+        );
+
         const mode = opts?.freehand ? "freehand" : "click";
         this._lassoVM.create("polygon", { mode } as any);
 
@@ -252,6 +258,15 @@ class SelectionEngine {
 
                 if (!opts?.addToSelection) this.clearSelection();
                 hit.forEach(g => this.selectGraphic(g));
+
+                if (hit.length > 0) {
+                    EngineLogger.success(
+                        'Selection Engine',
+                        `${hit.length} symbol${hit.length !== 1 ? 's' : ''} selected via lasso`,
+                    );
+                } else {
+                    EngineLogger.nextStep('Selection Engine', 'No symbols found in lasso area — try a wider selection');
+                }
 
                 if (onComplete) onComplete(hit);
             }
@@ -408,6 +423,8 @@ class SelectionEngine {
         this._selected.set(id, graphic);
         this._addHighlight(graphic, id);
         this._emit("selectionChange", { selected: this.selectedGraphics });
+        const n = this._selected.size;
+        EngineLogger.success('Selection Engine', `${n} symbol${n !== 1 ? 's' : ''} selected`);
     }
 
     deselectGraphic(graphic: Graphic): void {
@@ -425,10 +442,12 @@ class SelectionEngine {
     }
 
     clearSelection(): void {
+        const hadSelection = this._selected.size > 0;
         this._selected.clear();
         this._highlights.forEach(h => h.remove());
         this._highlights.clear();
         this._emit("selectionChange", { selected: [] });
+        if (hadSelection) EngineLogger.nextStep('Selection Engine', 'Selection cleared');
     }
 
     isSelected(graphic: Graphic): boolean {
@@ -455,6 +474,10 @@ class SelectionEngine {
         onComplete?: (result: { graphics: Graphic[]; dx: number; dy: number }) => void
     ): void {
         if (this._selected.size < 2) return;
+        EngineLogger.nextStep(
+            'Selection Engine',
+            `Move mode — drag to reposition ${this._selected.size} selected symbols`,
+        );
         if (this._sketchVM) { this._sketchVM.cancel(); this._sketchVM.destroy(); }
 
         const graphics = this.selectedGraphics;
@@ -532,6 +555,11 @@ class SelectionEngine {
         this.clearSelection();
 
         toDelete.forEach(({ graphic, layer }) => layer?.remove(graphic));
+
+        EngineLogger.success(
+            'Selection Engine',
+            `${toDelete.length} symbol${toDelete.length > 1 ? 's' : ''} deleted`,
+        );
 
         if (onEntry) {
             onEntry({

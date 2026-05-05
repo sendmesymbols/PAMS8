@@ -35,7 +35,9 @@ declare class EditEngine {
     private _pointerDownHandle;
     private _pointerMoveHandle;
     private _pointerUpHandle;
+    private _pointerMoveRawHandle;
     private _isDraggingHandle;
+    private _handleDragOccurred;
     private _activeHandleIndex;
     private _suppressNextClick;
     private _clickHandle;
@@ -129,6 +131,11 @@ declare class EditEngine {
      * Updates handles and triggers a live redraw.
      */
     private _addControlPoint;
+    /**
+     * Remove an added control point at the given handle index.
+     * Guards against removing below 2 points (minimum for a valid polyline).
+     */
+    private _removeControlPoint;
     /**
      * Return the index at which to insert mapPt so it falls on the nearest segment.
      */

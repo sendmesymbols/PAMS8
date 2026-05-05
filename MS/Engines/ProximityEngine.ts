@@ -38,6 +38,7 @@ import Color from '@arcgis/core/Color';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
+import EngineLogger from '../Support/EngineLogger';
 
 export type ProximityDistanceUnit =
   | 'feet'
@@ -156,6 +157,10 @@ class ProximityEngine {
         `. Unit: ${DIST_ABBR[this._distUnit]}.`,
       'idle',
     );
+    EngineLogger.success(
+      'Proximity Engine',
+      `Enabled — snap indicators on. Range: ${this._snapRadiusPx > 0 ? `${this._snapRadiusPx}px` : 'unlimited'}, unit: ${DIST_ABBR[this._distUnit]}`,
+    );
     console.info('[ProximityEngine] enabled');
   }
 
@@ -167,6 +172,7 @@ class ProximityEngine {
       'Snap to nearest point disabled. Re-enable to snap to existing symbols while drawing.',
       'idle',
     );
+    EngineLogger.nextStep('Proximity Engine', 'Disabled — re-enable before drawing to snap to existing symbols');
     console.info('[ProximityEngine] disabled');
   }
 
@@ -250,11 +256,16 @@ class ProximityEngine {
         `Proximity snap active — ${targetCount} symbol${targetCount === 1 ? '' : 's'} available to snap to.`,
         'active',
       );
+      EngineLogger.nextStep(
+        'Proximity Engine',
+        `Active — ${targetCount} symbol${targetCount === 1 ? '' : 's'} available. Move cursor near a symbol to snap`,
+      );
     } else {
       this._emitHint(
         'Proximity snap active — no symbols to snap to yet. Draw symbols first, then re-enable snap.',
         'no-targets',
       );
+      EngineLogger.error('Proximity Engine', 'No symbols on the map to snap to — draw some symbols first');
     }
 
     console.info('[ProximityEngine] activated, candidates:', targetCount);
@@ -272,6 +283,7 @@ class ProximityEngine {
     this._candidateSnapshot = [];
     this._clear();
     this._emitHint('Proximity snap ended — drawing complete.', 'idle');
+    EngineLogger.success('Proximity Engine', 'Deactivated — drawing complete');
     console.info('[ProximityEngine] deactivated');
   }
 
@@ -431,6 +443,7 @@ class ProximityEngine {
         'Snapped to nearest symbol — click to place point at snap target.',
         'snapped',
       );
+      EngineLogger.nextStep('Proximity Engine', 'Snapped to nearest symbol — click to confirm position');
     } else {
       this._snapGraphic.geometry = snap;
       this._snapGraphic.symbol = dotSym;

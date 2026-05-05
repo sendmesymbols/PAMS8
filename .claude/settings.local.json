@@ -4,7 +4,15 @@
       "Bash(npm run *)",
       "Bash(xargs grep *)",
       "Bash(grep -n \"features\\\\\\\\.\\\\\\\\|features\\\\\\\\[\" /d/Projects/PAMS8/MS/Engines/SymbolEngine.ts)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(node *)",
+      "PowerShell(node D:\\\\Projects\\\\Web\\\\PAMS8\\\\.claude\\\\skills\\\\impeccable\\\\scripts\\\\load-context.mjs)",
+      "PowerShell(Get-ChildItem *)",
+      "Bash(D:/Projects/Web/PAMS8/node_modules/.bin/vite --version)",
+      "PowerShell(fnm env *)",
+      "PowerShell(fnm list *)",
+      "PowerShell(fnm use *)",
+      "PowerShell(fnm *)"
     ]
   }
 }

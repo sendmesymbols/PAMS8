@@ -1,20 +1,25 @@
-import Graphic from "@arcgis/core/Graphic";
-import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
-import PictureMarkerSymbol from "@arcgis/core/symbols/PictureMarkerSymbol";
-import View from "@arcgis/core/views/View";
-import MapView from "@arcgis/core/views/MapView";
-import SceneView from "@arcgis/core/views/SceneView";
-import Point from "@arcgis/core/geometry/Point";
-import GraphicsLayerManager from "../Managers/GraphicsLayerManager";
+import Graphic from '@arcgis/core/Graphic';
+import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
+import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
+import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
+import PictureMarkerSymbol from '@arcgis/core/symbols/PictureMarkerSymbol';
+import View from '@arcgis/core/views/View';
+import MapView from '@arcgis/core/views/MapView';
+import SceneView from '@arcgis/core/views/SceneView';
+import Point from '@arcgis/core/geometry/Point';
+import SpatialReference from '@arcgis/core/geometry/SpatialReference';
+import GraphicsLayerManager from '../Managers/GraphicsLayerManager';
 import '../ThirdParty/MilSymbols/milsymbol.d.ts';
 import { ParsedSIDC } from '../SIDC/SIDC';
-import Amplifier from "../Support/Amplifier.ts";
-import DrawEssentials from "../Support/DrawEssentials.ts";
-import EditEngine from "./EditEngine.ts";
-import SelectionEngine from "./SelectionEngine.ts";
-import type MeasurementEngine from "./MeasurementEngine.ts";
+import ContextMenuManager from '../Managers/ContextMenuManager';
+import settingsData from '../Data/Settings.json';
+import Amplifier from '../Support/Amplifier.ts';
+import DrawEssentials from '../Support/DrawEssentials.ts';
+import EditEngine from './EditEngine.ts';
+import SelectionEngine from './SelectionEngine.ts';
+import type MeasurementEngine from './MeasurementEngine.ts';
+import ProximityEngine from './ProximityEngine.ts';
+import DrawingCueEngine from './DrawingCueEngine.ts';
 interface Evented {
     on(type: string, listener: Function): {
         remove(): void;
@@ -34,12 +39,19 @@ interface SymbolOptions {
     outlineWidth?: number;
     [key: string]: any;
 }
+interface UndoEntry {
+    label: string;
+    undo: () => void;
+    redo: () => void;
+}
 declare class SymbolEngine implements Evented {
     private _layerManager;
     private _contextMenuManager;
     private _getView;
     private _editEngine;
     private _measurementEngine?;
+    private _proximityEngine;
+    private _drawingCueEngine;
     private currentSymbol;
     private sidc;
     private amplifier;
@@ -52,6 +64,7 @@ declare class SymbolEngine implements Evented {
     private _redoStack;
     private _preEditSnapshot;
     private _clipboard;
+    private _pendingAttrs;
     private _selectionEngine;
     constructor(viewProvider: () => MapView | SceneView);
     /**
@@ -78,6 +91,8 @@ declare class SymbolEngine implements Evented {
      * out of the initial bundle when the feature is disabled.
      */
     private _initMeasurementEngine;
+    private _initProximityEngine;
+    private _initDrawingCueEngine;
     get view(): MapView | SceneView;
     get layerManager(): GraphicsLayerManager;
     set layerManager(value: GraphicsLayerManager);
@@ -136,6 +151,10 @@ declare class SymbolEngine implements Evented {
     get editEngine(): EditEngine;
     /** Access the SelectionEngine for multi-select state and batch operations. */
     get selectionEngine(): SelectionEngine;
+    /** Access the ContextMenuManager instance. */
+    get contextMenuManager(): ContextMenuManager;
+    /** Remove all graphics from every managed layer. */
+    clearAllGraphics(): void;
     /**
      * Wire global keyboard shortcuts for context-menu actions.
      * Shortcuts only fire when the map container (or document) is focused and
@@ -153,8 +172,20 @@ declare class SymbolEngine implements Evented {
     /** Access the MeasurementEngine — configure units or toggle programmatically.
      *  May be undefined if the feature is disabled in Settings.json or not yet loaded. */
     get measurementEngine(): MeasurementEngine | undefined;
+    /** Access the ProximityEngine — toggle or adjust snap options programmatically.
+     *  May be undefined if the feature is disabled in Settings.json or not yet loaded. */
+    get proximityEngine(): ProximityEngine | null;
+    /** Access the DrawingCueEngine — control visual overlays during drawing. */
+    get drawingCueEngine(): DrawingCueEngine | null;
+    /** Get current settings data for the control panel */
+    get settings(): typeof settingsData;
+    /**
+     * Handle runtime setting changes from the control panel.
+     * Updates settingsData in memory and applies changes to active engines.
+     */
+    onSettingChanged(path: string[], value: any): void;
     /** Push an undo entry and clear the redo stack. */
-    private _pushUndo;
+    _pushUndo(entry: UndoEntry): void;
     /** Snapshot the graphic's current geometry and CTRL_PTS before an edit begins. */
     private _capturePreEditSnapshot;
     /**
@@ -190,20 +221,34 @@ declare class SymbolEngine implements Evented {
      * Multiple items: preserves relative layout, collective centroid lands at targetPoint.
      * Returns the first pasted Graphic, or null if clipboard is empty.
      */
-    pasteSymbol(targetPoint: Point): Graphic | null;
+    pasteSymbol(targetPoint: Point, expandDistance?: number, expandUnit?: string): Graphic | null;
     /** Paste a single clipboard item whose geometry has already been positioned. */
     private _pasteOneItem;
+    /** Transform CTRL_PTS, BASE_LN_PTS and GEOM in a drawEssentials copy using a transform function. */
+    private _transformDrawEssentials;
+    /** Shift CTRL_PTS, BASE_LN_PTS and GEOM in a drawEssentials copy by (dx, dy). */
+    private _shiftDrawEssentials;
     /** Build a new graphic from a clipboard item + positioned geometry, returning undo/redo closures. */
     private _buildPastedGraphic;
+    /** Geodesic bearing (degrees, 0=N, 90=E) from lon1/lat1 to lon2/lat2 (WGS84 coordinates). */
+    private _computeBearing;
     /** Centroid of all clipboard geometries (for multi-paste anchor). */
     private _clipboardCentroid;
     /** Translate all vertices of a geometry by (dx, dy). */
     private _shiftGeometry;
     /**
+     * Show Paste Offset Dialog (Triggered by CTRL+SHIFT+V)
+     */
+    _showPasteOffsetDialog(): void;
+    /**
+     * Enter "paste mode" with expansion/contraction distance: the next map click pastes the clipboard graphic there.
+     */
+    _activatePasteModeWithOffset(expandDistance: number, expandUnit: string): void;
+    /**
      * Enter "paste mode": the next map click pastes the clipboard graphic there.
      * Escape cancels paste mode.
      */
-    private _activatePasteMode;
+    _activatePasteMode(): void;
     /**
      * Translate all vertices of a geometry so that its centroid lands at targetPoint.
      */
@@ -233,6 +278,13 @@ declare class SymbolEngine implements Evented {
     generateForceSymbol(drawEssentials: DrawEssentials, amplifier: Amplifier, attr: object): PictureMarkerSymbol | undefined;
     initialize(drawEssentials: DrawEssentials, amplifier: Amplifier, isPassive?: boolean): void;
     getSymbol(isLine?: boolean): any;
+    /**
+     * Project a Point to the specified spatial reference.
+     * @param point The Point to project
+     * @param spatialReference The target spatial reference
+     * @returns The projected Point (returns same as input)
+     */
+    reProject(point: Point, spatialReference: SpatialReference): Point;
     createSymbolCacheKey(options: SymbolOptions, scaleFactor: number): string;
     private drawSymEnd;
     private getOpacityValue;
@@ -263,20 +315,49 @@ declare class SymbolEngine implements Evented {
         key: string;
         name: string;
     }>;
-    /** Serialize a single graphic to a plain JSON-safe object. */
+    private _serializePoint;
+    /**
+     * Serialize a single graphic to a plain JSON-safe object.
+     * Saves CTRL_PTS / BASE_LN_PTS for line/area symbols and GEOM for point symbols.
+     * On load these are fed back into initialize(isPassive=true) so the symbol is
+     * reconstructed through the same rendering pipeline used when it was first drawn.
+     */
     saveSymbolToJSON(graphic: Graphic): object;
-    /** Reconstruct a Graphic from a serialised object and add it to the correct layer. */
+    /**
+     * Reconstruct a graphic from a serialised pams8 object.
+     * When CTRL_PTS / BASE_LN_PTS / GEOM are present the symbol is re-rendered
+     * through initialize(isPassive=true) — the same pipeline as interactive drawing.
+     * Falls back to direct Graphic construction for milsymbol / legacy format.
+     */
     loadSymbolFromJSON(data: any): Graphic | null;
     /** Serialise every graphic across all symbol layers into an array. */
     exportLayerToJSON(): object[];
     /** Reconstruct all graphics from a serialised array. */
     importLayerFromJSON(data: object[]): void;
-    /** Trigger a browser download of all graphics as a JSON file. */
+    /** Download all symbols as a PAMS8 JSON file. */
     saveToFile(filename?: string): void;
-    /** Trigger a browser download of a single graphic as a JSON file. */
+    /** Download a single graphic as a PAMS8 JSON file. */
     saveSymbolToFile(graphic: Graphic): void;
-    /** Open a file picker; load symbols from the chosen JSON file. */
+    /** Open a file picker; loads from PAMS8 JSON, template, or GeoJSON file. */
     loadFromFile(): void;
+    /**
+     * Save a symbol's draw configuration (without geometry) as a template file.
+     * Loading the template triggers interactive placement (no GEOM/CTRL_PTS set).
+     * Also stores to localStorage so the dynamic context-menu "Apply" list stays current.
+     */
+    saveTemplateToFile(graphic: Graphic): void;
+    /** Open a file picker; loads a template and starts interactive placement. */
+    loadTemplateFromFile(): void;
+    /** Reconstruct DrawEssentials from template data and start interactive placement. */
+    private _applyTemplateData;
+    /** Export all symbol layers as a standard GeoJSON FeatureCollection (WGS84 coordinates). */
+    exportToGeoJSON(): object;
+    /** Reconstruct symbols from a pams8 GeoJSON FeatureCollection. */
+    importFromGeoJSON(geojson: any): void;
+    /** Download all symbols as a standard GeoJSON file. */
+    saveToGeoJSONFile(filename?: string): void;
+    /** Open a file picker and load symbols from a GeoJSON or PAMS8 JSON file. */
+    loadFromGeoJSONFile(): void;
     private _downloadJSON;
     private readonly _TEMPLATES_KEY;
     /** Save the amplifier + size of the given graphic as a named template. */

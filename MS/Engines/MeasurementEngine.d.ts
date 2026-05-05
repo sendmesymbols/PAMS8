@@ -8,6 +8,8 @@
  * Events emitted on document:
  *   "measurement-update"       – { segmentLength, totalLength, area, bearing, height, width, unit, areaUnit }
  *   "measurement-state-change" – { state: "enabled"|"disabled", isEnabled: boolean }
+ *   "measurement-hint"         – { message: string, phase: "idle"|"drawing"|"segment"|"complete" }
+ *                                 Contextual guidance emitted at key drawing moments.
  */
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
@@ -35,16 +37,30 @@ export interface MeasurementOptions {
     show_line?: boolean;
     /** Only keep the most-recent segment label on the map */
     show_last_seg_only?: boolean;
+    /** Compute slant range using elevation delta-Z */
+    slant_range?: boolean;
+    /** Magnetic declination to apply to bearings (degrees) */
+    magnetic_declination?: number;
+    /** Speed in km/h for march-time estimation */
+    speed_kmh?: number;
 }
 export interface MeasurementSnapshot {
     segmentLength: string;
     totalLength: string;
     area: string;
     bearing: string;
+    trueAzimuth?: number;
+    magneticAzimuth?: number;
+    gridAzimuth?: number;
     height: string;
     width: string;
     unit: DistanceUnit;
     areaUnit: AreaUnit;
+}
+export interface MeasurementHint {
+    message: string;
+    /** Drawing phase that triggered this hint. */
+    phase: "idle" | "drawing" | "segment" | "complete";
 }
 declare class MeasurementEngine {
     private static _instance;
@@ -84,6 +100,9 @@ declare class MeasurementEngine {
     private _showExtent;
     private _showLine;
     private _showLastSegOnly;
+    private _slantRange;
+    private _magneticDeclination;
+    private _speedKmh;
     private constructor();
     static getInstance(): MeasurementEngine;
     get isEnabled(): boolean;
@@ -130,6 +149,17 @@ declare class MeasurementEngine {
      */
     onViewChanged(view: MapView | SceneView): void;
     destroy(): void;
+    /**
+     * Returns a snapshot of the engine's current operational state.
+     * Useful for status indicators and debugging.
+     */
+    getStatus(): {
+        isEnabled: boolean;
+        unit: DistanceUnit;
+        areaUnit: AreaUnit;
+        isGeodesic: boolean;
+        activeGraphics: number;
+    };
     /** Core update — shared by draw-progress and all-segment editing. */
     private _updateGraphics;
     /** Edit mode variant — always creates a fresh segment graphic. */
@@ -140,10 +170,14 @@ declare class MeasurementEngine {
     private _pt;
     private _mid;
     private _angle;
+    private _metersToUnit;
+    private _segLenVal;
     private _segLen;
+    private _polyLenVal;
     private _polyLen;
     private _area;
     private _extentToPolygon;
+    private _bearingValues;
     private _bearing;
     private _textSymbol;
     private _distAbbr;
@@ -154,5 +188,6 @@ declare class MeasurementEngine {
     private _getOrCreateLayer;
     private _emitUpdate;
     private _emitStateChange;
+    private _emitHint;
 }
 export default MeasurementEngine;

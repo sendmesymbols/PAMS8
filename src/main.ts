@@ -117,6 +117,20 @@ const symbolEngine = new SymbolEngine(() => appConfig.activeView);
 // Expose symbolEngine globally so the settings panel can communicate with it
 (window as any).symbolEngine = symbolEngine;
 
+// ── Engine log listener ───────────────────────────────────────────────────────
+// Engines emit 'engine-log' events — the client application decides how to
+// display them.  The log panel in index.html renders them visually; this
+// listener forwards them to the browser console so they are also searchable.
+import type { EngineLogEntry } from '../MS/Support/EngineLogger';
+document.addEventListener('engine-log', (e: Event) => {
+  const { engine, type, formatted } = (e as CustomEvent<EngineLogEntry>).detail;
+  if (type === 'error') {
+    console.warn(formatted);
+  } else {
+    console.info(formatted);
+  }
+});
+
 onActiveViewChanged = (newView, oldView) => {
   console.log('View changed from', oldView?.type, 'to', newView?.type);
   symbolEngine.onViewChanged(newView); // Add this method in SymbolEngine

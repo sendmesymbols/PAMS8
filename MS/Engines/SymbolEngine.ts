@@ -50,6 +50,7 @@ import SelectionEngine from './SelectionEngine.ts';
 import type MeasurementEngine from './MeasurementEngine.ts';
 import ProximityEngine from './ProximityEngine.ts';
 import DrawingCueEngine from './DrawingCueEngine.ts';
+import EngineLogger from '../Support/EngineLogger';
 import type { DrawingCueOptions } from './DrawingCueEngine.ts';
 
 interface Evented {
@@ -164,6 +165,9 @@ class SymbolEngine implements Evented {
       );
     });
     this.ensureMsAvailable();
+
+    // Initialize EngineLogger from settings
+    EngineLogger.setEnabled((settingsData as any).logging?.enabled !== false);
 
     // Initialize symbol engine
     console.log('Symbol Engine initialized');
@@ -1599,6 +1603,10 @@ class SymbolEngine implements Evented {
       this._drawingCueEngine.setOptions(cuesCfg as DrawingCueOptions);
     }
 
+    if (fullPath === 'logging.enabled') {
+      EngineLogger.setEnabled(!!value);
+    }
+
     // Emit event so other parts of the app can react
     this.emitEvent('settingChanged', { path: path.join('.'), value });
   }
@@ -1771,6 +1779,7 @@ class SymbolEngine implements Evented {
     if (!entry) return;
     entry.undo();
     this._redoStack.push(entry);
+    EngineLogger.success('Symbol Engine', `Undo — ${entry.label}`);
     console.info(`[Undo] ${entry.label}`);
   }
 
@@ -1780,6 +1789,7 @@ class SymbolEngine implements Evented {
     if (!entry) return;
     entry.redo();
     this._undoStack.push(entry);
+    EngineLogger.success('Symbol Engine', `Redo — ${entry.label}`);
     console.info(`[Redo] ${entry.label}`);
   }
 
@@ -1827,6 +1837,10 @@ class SymbolEngine implements Evented {
       layerId: String(g.layer?.id ?? this._layerManager.getSymbolLayer().id),
     }));
     this._clipboard = clipboard;
+    EngineLogger.nextStep(
+      'Symbol Engine',
+      `${clipboard.length} symbol${clipboard.length !== 1 ? 's' : ''} copied — click the map to paste`,
+    );
     console.info(`[CopyPaste] Copied ${clipboard.length} graphic(s)`);
     this.emitEvent('symbolCopied', { graphic, count: clipboard.length });
   }
@@ -2310,6 +2324,7 @@ class SymbolEngine implements Evented {
 
     this._closeActiveWorkflow();
     this.emitEvent('pasteMode', { active: true });
+    EngineLogger.nextStep('Symbol Engine', 'Paste mode active — click the map to place the copied symbol(s). Press Esc to cancel');
     console.info('[CopyPaste] Paste mode active — click map to paste');
 
     const clickHandle = this.view.on('click', (evt) => {
@@ -3127,6 +3142,10 @@ class SymbolEngine implements Evented {
         delete drawEssentials.opacity;
       }
 
+      EngineLogger.success(
+        'Symbol Engine',
+        `Symbol placed — ${symbolType || geometry.type} added to map`,
+      );
       console.log('Graphic added to layer:', {
         id: attrs.id,
         geometryType: geometry.type,

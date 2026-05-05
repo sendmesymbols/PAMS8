@@ -12,6 +12,7 @@ import AnnotationEngine from "./AnnotationEngine.ts";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import settingsData from "../Data/Settings.json";
+import EngineLogger from "../Support/EngineLogger";
 
 // Layer name for temporary reshape handle graphics
 const EDIT_HANDLES_LAYER = "EditHandlesLayer";
@@ -110,11 +111,11 @@ class EditEngine {
         this._activeGraphic = graphic;
 
         if (additionalGraphics.length === 0 && graphic.geometry?.type === "point") {
-            // Single point symbol — move only
             this._activatePointEdit(graphic);
+            EngineLogger.nextStep('Edit Engine', 'Edit mode active — drag symbol to move it');
         } else {
-            // Multi-selection or poly: use transform tool for all (points move along with the group)
             this._activatePolyEdit(graphic, additionalGraphics);
+            EngineLogger.nextStep('Edit Engine', 'Edit mode active — drag handles to move, rotate, or scale');
         }
     }
 
@@ -132,9 +133,11 @@ class EditEngine {
         const ctrlPts: Point[] | undefined = (de as any)?.CTRL_PTS;
 
         if (!ctrlPts || ctrlPts.length === 0) {
+            EngineLogger.error('Edit Engine', 'No control points found on this symbol — reshape is not available');
             console.warn("EditEngine.activateReshape: no CTRL_PTS found on graphic");
             return;
         }
+        EngineLogger.nextStep('Edit Engine', 'Reshape mode active — drag control points to reshape the symbol');
 
         this._deAnnotate(graphic);
         this._showHandles(ctrlPts);
@@ -810,6 +813,9 @@ class EditEngine {
     }
 
     private _emit(type: string, data: any): void {
+        if (type === 'changeInSymbol') {
+            EngineLogger.success('Edit Engine', 'Symbol updated — edit complete');
+        }
         this._eventListeners.get(type)?.forEach(fn => fn(data));
     }
 }

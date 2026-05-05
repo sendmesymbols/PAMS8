@@ -24,6 +24,7 @@ import Font from '@arcgis/core/symbols/Font';
 import Color from '@arcgis/core/Color';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
+import EngineLogger from '../Support/EngineLogger';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 
@@ -177,11 +178,15 @@ class DrawingCueEngine {
     this._layer = this._getOrCreateLayer();
   }
 
-  public enable(): void { this._isEnabled = true; }
+  public enable(): void {
+    this._isEnabled = true;
+    EngineLogger.success('Drawing Cue Engine', 'Enabled — visual guides will appear while drawing');
+  }
 
   public disable(): void {
     this._isEnabled = false;
     if (this._isActive) this.deactivate();
+    EngineLogger.nextStep('Drawing Cue Engine', 'Disabled — drawing guides off');
   }
 
   public toggle(): boolean {
@@ -256,6 +261,7 @@ class DrawingCueEngine {
       };
     }
 
+    EngineLogger.nextStep('Drawing Cue Engine', 'Active — rubber-band, angle guides, and distance rings enabled while drawing');
     this._emitStateChange(true);
   }
 
@@ -289,6 +295,7 @@ class DrawingCueEngine {
     this._candidateInfo = [];
 
     this._clearDrawingGraphics();
+    EngineLogger.success('Drawing Cue Engine', 'Drawing complete — visual guides cleared');
     this._emitStateChange(false);
   }
 
