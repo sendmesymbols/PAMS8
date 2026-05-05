@@ -1,0 +1,181 @@
+{
+  "id": "route-planning",
+  "name": "Route Planning Test",
+  "version": "1.0",
+  "description": "Presents start/end points, two checkpoints, two red-zone areas, and a time gate. Planner draws route avoiding red zones, passing checkpoints, and crossing the time gate.",
+  "scenarioType": "route-planning",
+
+  "defaults": {
+    "frontageKm": 25,
+    "depthKm": 30,
+    "orientationDeg": 0,
+    "units": "kilometers"
+  },
+
+  "symbols": [
+
+    {
+      "id": "start-pt",
+      "symbolKey": "25331800",
+      "role": "route-start",
+      "label": "START",
+      "geoType": "Point",
+      "position": { "x": -0.80, "y": -0.80 },
+      "locked": true,
+      "style": { "size": 18 },
+      "amplifier": { "uniqueDesignation": "START" },
+      "scenarioProp": {
+        "isStartPoint": true,
+        "isForbiddenZone": false
+      }
+    },
+
+    {
+      "id": "end-pt",
+      "symbolKey": "25331800",
+      "role": "route-end",
+      "label": "END",
+      "geoType": "Point",
+      "position": { "x":  0.70, "y":  0.80 },
+      "locked": true,
+      "style": { "size": 18 },
+      "amplifier": { "uniqueDesignation": "END" },
+      "scenarioProp": {
+        "isEndPoint": true,
+        "isForbiddenZone": false
+      }
+    },
+
+    {
+      "id": "checkpoint-a",
+      "symbolKey": "25331800",
+      "role": "checkpoint",
+      "label": "CP-A",
+      "geoType": "Point",
+      "position": { "x": -0.20, "y": -0.10 },
+      "locked": true,
+      "style": { "size": 16 },
+      "amplifier": { "uniqueDesignation": "CP-A" },
+      "scenarioProp": {
+        "isCheckpoint": true,
+        "checkpointId": "checkpoint-A",
+        "snapRadiusKm": 0.5,
+        "isForbiddenZone": false
+      }
+    },
+
+    {
+      "id": "checkpoint-b",
+      "symbolKey": "25331800",
+      "role": "checkpoint",
+      "label": "CP-B",
+      "geoType": "Point",
+      "position": { "x":  0.20, "y":  0.40 },
+      "locked": true,
+      "style": { "size": 16 },
+      "amplifier": { "uniqueDesignation": "CP-B" },
+      "scenarioProp": {
+        "isCheckpoint": true,
+        "checkpointId": "checkpoint-B",
+        "snapRadiusKm": 0.5,
+        "isForbiddenZone": false
+      }
+    },
+
+    {
+      "id": "time-gate",
+      "symbolKey": "25140300",
+      "role": "time-gate",
+      "label": "TIME GATE",
+      "geoType": "Line",
+      "path": [
+        { "x": -1.00, "y":  0.50 },
+        { "x":  1.00, "y":  0.50 }
+      ],
+      "locked": true,
+      "style": {
+        "color":     [0, 150, 0],
+        "lineStyle": "dash",
+        "width":     2.0
+      },
+      "amplifier": { "uniqueDesignation": "TIME GATE" },
+      "scenarioProp": {
+        "isCheckpoint": true,
+        "checkpointId": "time-gate",
+        "snapRadiusKm": 1.0
+      }
+    },
+
+    {
+      "id": "red-zone-1",
+      "symbolKey": "25270706",
+      "role": "forbidden-zone",
+      "label": "RED ZONE",
+      "geoType": "Area",
+      "rings": [
+        [
+          [-0.80, -0.10],
+          [-0.40, -0.10],
+          [-0.40,  0.50],
+          [-0.80,  0.50],
+          [-0.80, -0.10]
+        ]
+      ],
+      "locked": true,
+      "style": {
+        "fillColor":    [220, 30, 30],
+        "fillOpacity":  0.25,
+        "outlineColor": [180, 0, 0],
+        "outlineWidth": 1.5
+      },
+      "scenarioProp": {
+        "isForbiddenZone": true,
+        "forbiddenZoneId": "red-zone-1"
+      }
+    },
+
+    {
+      "id": "red-zone-2",
+      "symbolKey": "25270706",
+      "role": "forbidden-zone",
+      "label": "RED ZONE",
+      "geoType": "Area",
+      "rings": [
+        [
+          [ 0.40,  0.20],
+          [ 0.85,  0.20],
+          [ 0.85,  0.70],
+          [ 0.40,  0.70],
+          [ 0.40,  0.20]
+        ]
+      ],
+      "locked": true,
+      "style": {
+        "fillColor":    [220, 30, 30],
+        "fillOpacity":  0.25,
+        "outlineColor": [180, 0, 0],
+        "outlineWidth": 1.5
+      },
+      "scenarioProp": {
+        "isForbiddenZone": true,
+        "forbiddenZoneId": "red-zone-2"
+      }
+    }
+
+  ],
+
+  "successCriteria": {
+    "maxRouteLengthKm": 40,
+    "forbiddenZoneIds": ["red-zone-1", "red-zone-2"],
+    "requiredCheckpoints": ["checkpoint-A", "checkpoint-B", "time-gate"],
+    "timeLimitMinutes": 25
+  },
+
+  "scoring": {
+    "baseScore": 100,
+    "penaltyPerKmOver": 3,
+    "penaltyForbiddenZone": 25,
+    "penaltyMissedCheckpoint": 20,
+    "passThreshold": 65
+  }
+}

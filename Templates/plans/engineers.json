@@ -1,0 +1,122 @@
+{
+  "id": "engineers",
+  "name": "Engineers Plan",
+  "version": "1.0",
+  "description": "Engineers plan overlay: route classification, breach points, bridging sites, obstacle overlays. Slope cues auto-enabled.",
+
+  "defaults": {
+    "frontageKm": 15,
+    "depthKm": 20,
+    "orientationDeg": 0,
+    "units": "kilometers"
+  },
+
+  "symbols": [
+
+    {
+      "id": "route-main",
+      "symbolKey": "25330100",
+      "role": "RouteClassification",
+      "label": "ROUTE MAIN",
+      "geoType": "Line",
+      "path": [
+        { "x":  0.00, "y": -0.90 },
+        { "x":  0.00, "y":  0.90 }
+      ],
+      "style": {
+        "color":     [180, 120, 0],
+        "lineStyle": "solid",
+        "width":     2.0
+      },
+      "amplifier": { "uniqueDesignation": "ROUTE MAIN" }
+    },
+
+    {
+      "id": "obstacle-forward",
+      "symbolKey": "25270706",
+      "role": "ObstacleArea",
+      "label": "OB FWD",
+      "geoType": "Area",
+      "rings": [
+        [
+          [-0.80,  0.75],
+          [ 0.80,  0.75],
+          [ 0.80,  0.90],
+          [-0.80,  0.90],
+          [-0.80,  0.75]
+        ]
+      ],
+      "style": {
+        "fillColor":    [220, 30, 30],
+        "fillOpacity":  0.20,
+        "outlineColor": [200, 0, 0],
+        "outlineWidth": 1.5
+      }
+    },
+
+    {
+      "id": "breach-left",
+      "symbolKey": "25340200",
+      "role": "BreachArea",
+      "label": "BREACH A",
+      "geoType": "Area",
+      "rings": [
+        [
+          [-0.90,  0.72],
+          [-0.60,  0.72],
+          [-0.60,  0.93],
+          [-0.90,  0.93],
+          [-0.90,  0.72]
+        ]
+      ],
+      "style": {
+        "fillColor":    [180, 120, 0],
+        "fillOpacity":  0.20,
+        "outlineColor": [150, 90, 0],
+        "outlineWidth": 2.0
+      },
+      "amplifier": { "uniqueDesignation": "BREACH A" }
+    },
+
+    {
+      "id": "breach-sec-left",
+      "symbolKey": "20121426",
+      "role": "BreachSection",
+      "label": "BRCH SEC",
+      "geoType": "FPoint",
+      "position": { "x": -0.75, "y":  0.82 },
+      "style": { "size": 18 },
+      "amplifier": { "uniqueDesignation": "BRCH SEC" }
+    },
+
+    {
+      "id": "bridge-site",
+      "symbolKey": "15130100",
+      "role": "BridgingSite",
+      "label": "BDG SITE",
+      "geoType": "FPoint",
+      "position": { "x":  0.00, "y":  0.60 },
+      "style": { "size": 22 },
+      "amplifier": { "uniqueDesignation": "BDG SITE" }
+    },
+
+    {
+      "id": "bridge-gap",
+      "symbolKey": "25271100",
+      "role": "BridgeGap",
+      "label": "GAP",
+      "geoType": "Line",
+      "path": [
+        { "x": -0.10, "y":  0.60 },
+        { "x":  0.10, "y":  0.60 }
+      ],
+      "style": {
+        "color":     [180, 120, 0],
+        "lineStyle": "solid",
+        "width":     3.0
+      },
+      "amplifier": { "uniqueDesignation": "GAP" }
+    }
+
+  ]
+}

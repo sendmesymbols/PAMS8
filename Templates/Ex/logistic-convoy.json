@@ -1,0 +1,178 @@
+{
+  "id": "logistic-convoy",
+  "name": "Logistic Convoy Test",
+  "version": "1.0",
+  "description": "Auto-places convoy seed points and threat zones. Planner draws route from START to DEST passing checkpoints while avoiding threat zones.",
+  "scenarioType": "logistic-convoy",
+
+  "defaults": {
+    "frontageKm": 30,
+    "depthKm": 40,
+    "orientationDeg": 0,
+    "units": "kilometers"
+  },
+
+  "symbols": [
+
+    {
+      "id": "convoy-start",
+      "symbolKey": "25331800",
+      "role": "convoy-start",
+      "label": "START",
+      "geoType": "Point",
+      "position": { "x": -0.70, "y": -0.80 },
+      "locked": true,
+      "style": { "size": 18 },
+      "amplifier": { "uniqueDesignation": "START" },
+      "scenarioProp": {
+        "isStartPoint": true,
+        "threatZoneRadiusKm": 0,
+        "isCheckpoint": false,
+        "isForbiddenZone": false
+      }
+    },
+
+    {
+      "id": "waypoint-1",
+      "symbolKey": "25331800",
+      "role": "waypoint",
+      "label": "WP-1",
+      "geoType": "Point",
+      "position": { "x": -0.30, "y": -0.20 },
+      "locked": true,
+      "style": { "size": 14 },
+      "amplifier": { "uniqueDesignation": "WP-1" },
+      "scenarioProp": {
+        "isStartPoint": false,
+        "isCheckpoint": false,
+        "isForbiddenZone": false
+      }
+    },
+
+    {
+      "id": "checkpoint-a",
+      "symbolKey": "25331800",
+      "role": "checkpoint",
+      "label": "CP-A",
+      "geoType": "Point",
+      "position": { "x":  0.10, "y":  0.10 },
+      "locked": true,
+      "style": { "size": 16 },
+      "amplifier": { "uniqueDesignation": "CP-A" },
+      "scenarioProp": {
+        "isCheckpoint": true,
+        "checkpointId": "checkpoint-A",
+        "snapRadiusKm": 0.5,
+        "isForbiddenZone": false
+      }
+    },
+
+    {
+      "id": "checkpoint-b",
+      "symbolKey": "25331800",
+      "role": "checkpoint",
+      "label": "CP-B",
+      "geoType": "Point",
+      "position": { "x":  0.40, "y":  0.55 },
+      "locked": true,
+      "style": { "size": 16 },
+      "amplifier": { "uniqueDesignation": "CP-B" },
+      "scenarioProp": {
+        "isCheckpoint": true,
+        "checkpointId": "checkpoint-B",
+        "snapRadiusKm": 0.5,
+        "isForbiddenZone": false
+      }
+    },
+
+    {
+      "id": "destination",
+      "symbolKey": "25331800",
+      "role": "convoy-end",
+      "label": "DEST",
+      "geoType": "Point",
+      "position": { "x":  0.70, "y":  0.80 },
+      "locked": true,
+      "style": { "size": 18 },
+      "amplifier": { "uniqueDesignation": "DEST" },
+      "scenarioProp": {
+        "isEndPoint": true,
+        "isForbiddenZone": false
+      }
+    },
+
+    {
+      "id": "threat-zone-1",
+      "symbolKey": "25270706",
+      "role": "threat-zone",
+      "label": "THREAT",
+      "geoType": "Area",
+      "rings": [
+        [
+          [-0.15,  0.00],
+          [ 0.15,  0.00],
+          [ 0.15,  0.30],
+          [-0.15,  0.30],
+          [-0.15,  0.00]
+        ]
+      ],
+      "locked": true,
+      "style": {
+        "fillColor":    [220, 30, 30],
+        "fillOpacity":  0.25,
+        "outlineColor": [180, 0, 0],
+        "outlineWidth": 2.0
+      },
+      "scenarioProp": {
+        "threatZoneRadiusKm": 3,
+        "isForbiddenZone": true,
+        "forbiddenZoneId": "threat-zone-1"
+      }
+    },
+
+    {
+      "id": "threat-zone-2",
+      "symbolKey": "25270706",
+      "role": "threat-zone",
+      "label": "THREAT",
+      "geoType": "Area",
+      "rings": [
+        [
+          [ 0.50,  0.40],
+          [ 0.80,  0.40],
+          [ 0.80,  0.65],
+          [ 0.50,  0.65],
+          [ 0.50,  0.40]
+        ]
+      ],
+      "locked": true,
+      "style": {
+        "fillColor":    [220, 30, 30],
+        "fillOpacity":  0.25,
+        "outlineColor": [180, 0, 0],
+        "outlineWidth": 2.0
+      },
+      "scenarioProp": {
+        "threatZoneRadiusKm": 3,
+        "isForbiddenZone": true,
+        "forbiddenZoneId": "threat-zone-2"
+      }
+    }
+
+  ],
+
+  "successCriteria": {
+    "maxRouteLengthKm": 50,
+    "forbiddenZoneIds": ["threat-zone-1", "threat-zone-2"],
+    "requiredCheckpoints": ["checkpoint-A", "checkpoint-B"],
+    "timeLimitMinutes": 30
+  },
+
+  "scoring": {
+    "baseScore": 100,
+    "penaltyPerKmOver": 5,
+    "penaltyForbiddenZone": 20,
+    "penaltyMissedCheckpoint": 15,
+    "passThreshold": 70
+  }
+}

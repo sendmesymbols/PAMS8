@@ -17,7 +17,6 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
-import Polygon from '@arcgis/core/geometry/Polygon';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
@@ -117,6 +116,7 @@ class DrawingCueEngine {
   private _coordG: Graphic | null = null;
   private _guideGs: Graphic[] = [];
   private _ringGs: Graphic[] = [];
+  private _protractorGs: Graphic[] = [];
 
   // State
   private _lastCtrlPt: Point | null = null;
@@ -305,6 +305,7 @@ class DrawingCueEngine {
       }
       this._prevCtrlPtCount = newCount;
       if (this._ringsEnabled) this._updateDistanceRings(this._lastCtrlPt);
+      if (this._guidesShowArc) this._updateProtractorRing(this._lastCtrlPt!);
     }
   }
 
@@ -337,6 +338,7 @@ class DrawingCueEngine {
     this._coordG = null;
     this._guideGs = [];
     this._ringGs = [];
+    this._protractorGs = [];
     this._prevSegBearing = null;
     this._layer = this._getOrCreateLayer();
   }
@@ -440,6 +442,9 @@ class DrawingCueEngine {
     // In that case center distance rings on the live cursor position instead.
     if (this._ringsEnabled && !this._lastCtrlPt) {
       this._updateDistanceRings(cursor);
+    }
+    if (this._guidesShowArc && !this._lastCtrlPt) {
+      this._updateProtractorRing(cursor);
     }
   }
 
@@ -572,11 +577,6 @@ class DrawingCueEngine {
     if (!ext) return;
     const reach = Math.max(ext.width, ext.height);
 
-    // ── Protractor arc: circle + tick marks + sector wedge ─────────────────
-    if (this._guidesShowArc) {
-      this._drawProtractorArc(from, snapAngles, nearest, threshold, isSnapping);
-    }
-
     // ── Multi-guide fan: secondary snap angles at reduced opacity ───────────
     if (this._guidesShowFan) {
       for (const a of snapAngles) {
@@ -678,89 +678,6 @@ class DrawingCueEngine {
     }
   }
 
-  // ── Protractor arc helpers ────────────────────────────────────────────────
-
-  private _drawProtractorArc(
-    from: Point,
-    snapAngles: number[],
-    nearest: number,
-    threshold: number,
-    isSnapping: boolean,
-  ): void {
-    if (!this._layer) return;
-    const r = this._kmToMapUnits(this._guidesArcRadiusKm, from);
-    if (r <= 0) return;
-
-    // Full circle ring
-    const N    = 72;
-    const ring: number[][] = [];
-    for (let i = 0; i <= N; i++) {
-      const a = (i / N) * 2 * Math.PI;
-      ring.push([from.x + r * Math.sin(a), from.y + r * Math.cos(a)]);
-    }
-    const circlePl = new Polyline({ spatialReference: from.spatialReference });
-    circlePl.addPath(ring);
-    const circleG = new Graphic({
-      geometry: circlePl,
-      symbol: new SimpleLineSymbol({
-        style: 'solid',
-        color: new Color([...this._guidesLineColor, 0.22]),
-        width: 0.8,
-      }),
-    });
-    this._layer.add(circleG);
-    this._guideGs.push(circleG);
-
-    // Tick marks at each snap angle
-    const tickOuter = r;
-    const tickInner = r * 0.72;
-    for (const a of snapAngles) {
-      const rad     = a * Math.PI / 180;
-      const sx      = Math.sin(rad);
-      const sy      = Math.cos(rad);
-      const primary = a === nearest;
-      const tickPl  = new Polyline({ spatialReference: from.spatialReference });
-      tickPl.addPath([
-        [from.x + sx * tickInner, from.y + sy * tickInner],
-        [from.x + sx * tickOuter, from.y + sy * tickOuter],
-      ]);
-      const tickG = new Graphic({
-        geometry: tickPl,
-        symbol: new SimpleLineSymbol({
-          style: 'solid',
-          color: new Color([...this._guidesLineColor, primary && isSnapping ? 0.9 : 0.45]),
-          width: primary && isSnapping ? 2 : 1,
-        }),
-      });
-      this._layer.add(tickG);
-      this._guideGs.push(tickG);
-    }
-
-    // Sector wedge highlighting the snap zone (only when snapping)
-    if (isSnapping) {
-      const nSec     = 24;
-      const startA   = nearest - threshold;
-      const endA     = nearest + threshold;
-      const wedge: number[][] = [[from.x, from.y]];
-      for (let i = 0; i <= nSec; i++) {
-        const a = (startA + (i / nSec) * (endA - startA)) * Math.PI / 180;
-        wedge.push([from.x + r * Math.sin(a), from.y + r * Math.cos(a)]);
-      }
-      wedge.push([from.x, from.y]);
-      const wedgePoly = new Polygon({ spatialReference: from.spatialReference });
-      wedgePoly.addRing(wedge);
-      const wedgeG = new Graphic({
-        geometry: wedgePoly,
-        symbol: new SimpleFillSymbol({
-          color: new Color([...this._guidesLineColor, 0.18]),
-          outline: new SimpleLineSymbol({ color: new Color([0, 0, 0, 0]), width: 0 }),
-        }),
-      });
-      this._layer.add(wedgeG);
-      this._guideGs.push(wedgeG);
-    }
-  }
-
   private _addAnchorCrosshair(pt: Point): void {
     if (!this._layer) return;
     const g = new Graphic({
@@ -845,6 +762,123 @@ class DrawingCueEngine {
         }
       } catch (e) {
         console.warn('[DrawingCueEngine] ring error:', e);
+      }
+    }
+  }
+
+  // ── Protractor ring ───────────────────────────────────────────────────────
+
+  private _updateProtractorRing(center: Point): void {
+    for (const g of this._protractorGs) this._removeGraphic(g);
+    this._protractorGs = [];
+    if (!this._guidesShowArc || !this._layer || !this._view) return;
+
+    const outerKm = (this._ringsCount > 0 && this._ringsIntervalKm > 0)
+      ? this._ringsCount * this._ringsIntervalKm
+      : this._guidesArcRadiusKm;
+    const r = this._kmToMapUnits(outerKm, center);
+    if (r <= 0) return;
+
+    const sr  = center.spatialReference;
+    const col = this._guidesLineColor;
+    const add = (g: Graphic) => { this._layer!.add(g); this._protractorGs.push(g); };
+
+    // ── Outer ring ──────────────────────────────────────────────────────────
+    const SEGS = 180;
+    const ringPts: number[][] = [];
+    for (let i = 0; i <= SEGS; i++) {
+      const a = (i / SEGS) * 2 * Math.PI;
+      ringPts.push([center.x + r * Math.sin(a), center.y + r * Math.cos(a)]);
+    }
+    const ringPl = new Polyline({ spatialReference: sr });
+    ringPl.addPath(ringPts);
+    add(new Graphic({
+      geometry: ringPl,
+      symbol: new SimpleLineSymbol({
+        style: 'solid',
+        color: new Color([...col, 0.6]),
+        width: 1.4,
+      }),
+    }));
+
+    // ── Ticks + labels every 10° ────────────────────────────────────────────
+    const dirNames: Record<number, string> = {
+      0: 'N', 45: 'NE', 90: 'E', 135: 'SE',
+      180: 'S', 225: 'SW', 270: 'W', 315: 'NW',
+    };
+
+    for (let deg = 0; deg < 360; deg += 10) {
+      const rad = deg * Math.PI / 180;
+      const sx  = Math.sin(rad);
+      const sy  = Math.cos(rad);
+
+      const isCardinal  = deg % 90 === 0;
+      const isIntercard = deg % 45 === 0 && !isCardinal;
+      const isThirty    = deg % 30 === 0 && deg % 45 !== 0;
+
+      // Inward tick from ring edge
+      const tickLen = isCardinal  ? r * 0.14
+                    : isIntercard ? r * 0.10
+                    : isThirty    ? r * 0.065
+                    :               r * 0.038;
+      const tickOp  = isCardinal  ? 0.9
+                    : isIntercard ? 0.72
+                    : isThirty    ? 0.55
+                    :               0.35;
+      const tickW   = isCardinal  ? 2.0
+                    : isIntercard ? 1.5
+                    : isThirty    ? 1.0
+                    :               0.7;
+
+      const tickPl = new Polyline({ spatialReference: sr });
+      tickPl.addPath([
+        [center.x + sx * r,             center.y + sy * r            ],
+        [center.x + sx * (r - tickLen), center.y + sy * (r - tickLen)],
+      ]);
+      add(new Graphic({
+        geometry: tickPl,
+        symbol: new SimpleLineSymbol({
+          style: 'solid',
+          color: new Color([...col, tickOp]),
+          width: tickW,
+        }),
+      }));
+
+      // Direction name outside ring at cardinal / intercardinal positions
+      if (dirNames[deg] !== undefined) {
+        const fontSize = isCardinal ? 11 : 9;
+        const outDist  = r * (isCardinal ? 1.24 : 1.19);
+        const labelPt  = new Point({ x: center.x + sx * outDist, y: center.y + sy * outDist, spatialReference: sr });
+        add(new Graphic({
+          geometry: labelPt,
+          symbol: new TextSymbol({
+            text:      dirNames[deg],
+            font:      new Font({ size: fontSize, weight: 'bold', family: 'Helvetica' }),
+            color:     new Color([...col, isCardinal ? 0.95 : 0.75]),
+            haloColor: new Color([0, 0, 0, 1]),
+            haloSize:  2.5,
+            xoffset:   0,
+            yoffset:   0,
+          }),
+        }));
+      }
+
+      // Degree number inside ring every 30°
+      if (deg % 30 === 0) {
+        const inDist = r * 0.80;
+        const numPt  = new Point({ x: center.x + sx * inDist, y: center.y + sy * inDist, spatialReference: sr });
+        add(new Graphic({
+          geometry: numPt,
+          symbol: new TextSymbol({
+            text:      `${deg}°`,
+            font:      new Font({ size: 8, weight: 'normal', family: 'Helvetica' }),
+            color:     new Color([...col, 0.65]),
+            haloColor: new Color([0, 0, 0, 1]),
+            haloSize:  2,
+            xoffset:   0,
+            yoffset:   0,
+          }),
+        }));
       }
     }
   }
@@ -964,12 +998,13 @@ class DrawingCueEngine {
     for (const g of [this._rbLineG, this._rbLabelG, this._coordG]) {
       if (g) this._removeGraphic(g);
     }
-    for (const g of [...this._guideGs, ...this._ringGs]) this._removeGraphic(g);
-    this._rbLineG  = null;
-    this._rbLabelG = null;
-    this._coordG   = null;
-    this._guideGs  = [];
-    this._ringGs   = [];
+    for (const g of [...this._guideGs, ...this._ringGs, ...this._protractorGs]) this._removeGraphic(g);
+    this._rbLineG      = null;
+    this._rbLabelG     = null;
+    this._coordG       = null;
+    this._guideGs      = [];
+    this._ringGs       = [];
+    this._protractorGs = [];
   }
 
   private _removeGraphic(g: Graphic | null): void {

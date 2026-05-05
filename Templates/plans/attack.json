@@ -1,0 +1,161 @@
+{
+  "id": "attack",
+  "name": "Attack Plan",
+  "version": "1.0",
+  "description": "Standard attack plan overlay: LD/LC, main and supporting axes of advance, phase lines, objective, and assault position.",
+
+  "defaults": {
+    "frontageKm": 20,
+    "depthKm": 25,
+    "orientationDeg": 0,
+    "units": "kilometers"
+  },
+
+  "symbols": [
+
+    {
+      "id": "ld-lc",
+      "symbolKey": "25140300",
+      "role": "LD/LC",
+      "label": "LD/LC",
+      "geoType": "Line",
+      "path": [
+        { "x": -1.00, "y": -0.80 },
+        { "x":  1.00, "y": -0.80 }
+      ],
+      "style": {
+        "color":     [180, 30, 30],
+        "lineStyle": "solid",
+        "width":     2.5
+      },
+      "amplifier": { "uniqueDesignation": "LD/LC" }
+    },
+
+    {
+      "id": "pl-alpha",
+      "symbolKey": "25140300",
+      "role": "PhaseLine",
+      "label": "PL ALPHA",
+      "geoType": "Line",
+      "path": [
+        { "x": -1.00, "y": -0.30 },
+        { "x":  1.00, "y": -0.30 }
+      ],
+      "style": {
+        "color":     [180, 30, 30],
+        "lineStyle": "dash-dot",
+        "width":     1.5
+      },
+      "amplifier": { "uniqueDesignation": "PL ALPHA" }
+    },
+
+    {
+      "id": "pl-bravo",
+      "symbolKey": "25140300",
+      "role": "PhaseLine",
+      "label": "PL BRAVO",
+      "geoType": "Line",
+      "path": [
+        { "x": -1.00, "y":  0.30 },
+        { "x":  1.00, "y":  0.30 }
+      ],
+      "style": {
+        "color":     [180, 30, 30],
+        "lineStyle": "dash-dot",
+        "width":     1.5
+      },
+      "amplifier": { "uniqueDesignation": "PL BRAVO" }
+    },
+
+    {
+      "id": "objective",
+      "symbolKey": "25140301",
+      "role": "Objective",
+      "label": "OBJ TIGER",
+      "geoType": "Line",
+      "path": [
+        { "x": -0.40, "y":  0.80 },
+        { "x":  0.40, "y":  0.80 }
+      ],
+      "style": {
+        "color":     [180, 30, 30],
+        "lineStyle": "solid",
+        "width":     2.0
+      },
+      "amplifier": { "uniqueDesignation": "OBJ TIGER" }
+    },
+
+    {
+      "id": "axis-main",
+      "symbolKey": "25151406",
+      "role": "AxisOfAdvance",
+      "label": "AXIS MAIN",
+      "geoType": "Area",
+      "rings": [
+        [
+          [-0.25, -0.80],
+          [ 0.25, -0.80],
+          [ 0.25,  0.85],
+          [-0.25,  0.85],
+          [-0.25, -0.80]
+        ]
+      ],
+      "style": {
+        "fillColor":    [180, 30, 30],
+        "fillOpacity":  0.10,
+        "outlineColor": [150, 20, 20],
+        "outlineWidth": 1.0
+      },
+      "amplifier": { "uniqueDesignation": "AXIS MAIN" }
+    },
+
+    {
+      "id": "axis-supporting",
+      "symbolKey": "25151406",
+      "role": "SupportingAxis",
+      "label": "AXIS SP",
+      "geoType": "Area",
+      "rings": [
+        [
+          [ 0.50, -0.80],
+          [ 0.90, -0.80],
+          [ 0.90,  0.60],
+          [ 0.50,  0.60],
+          [ 0.50, -0.80]
+        ]
+      ],
+      "style": {
+        "fillColor":    [180, 80, 30],
+        "fillOpacity":  0.10,
+        "outlineColor": [150, 60, 20],
+        "outlineWidth": 1.0
+      },
+      "amplifier": { "uniqueDesignation": "AXIS SP" }
+    },
+
+    {
+      "id": "assault-position",
+      "symbolKey": "25340100",
+      "role": "AssaultPosition",
+      "label": "ASLT POS",
+      "geoType": "Area",
+      "rings": [
+        [
+          [-0.35,  0.65],
+          [ 0.35,  0.65],
+          [ 0.35,  0.78],
+          [-0.35,  0.78],
+          [-0.35,  0.65]
+        ]
+      ],
+      "style": {
+        "fillColor":    [180, 30, 30],
+        "fillOpacity":  0.15,
+        "outlineColor": [150, 20, 20],
+        "outlineWidth": 2.0
+      },
+      "amplifier": { "uniqueDesignation": "ASLT POS" }
+    }
+
+  ]
+}

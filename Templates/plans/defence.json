@@ -1,0 +1,224 @@
+{
+  "id": "defence",
+  "name": "Defence Plan",
+  "version": "1.0",
+  "description": "Standard defensive plan overlay: FEBA, FLOT, phase lines, battle positions, engagement area, obstacle belt, reserve, and minefield.",
+
+  "defaults": {
+    "frontageKm": 20,
+    "depthKm": 15,
+    "orientationDeg": 0,
+    "units": "kilometers"
+  },
+
+  "symbols": [
+
+    {
+      "id": "feba",
+      "symbolKey": "25140300",
+      "role": "FEBA",
+      "label": "FEBA",
+      "geoType": "Line",
+      "path": [
+        { "x": -1.00, "y":  0.85 },
+        { "x": -0.60, "y":  0.88 },
+        { "x": -0.20, "y":  0.90 },
+        { "x":  0.20, "y":  0.89 },
+        { "x":  0.60, "y":  0.87 },
+        { "x":  1.00, "y":  0.85 }
+      ],
+      "style": {
+        "color":     [220, 30, 30],
+        "lineStyle": "dash",
+        "width":     2.5
+      },
+      "amplifier": { "uniqueDesignation": "FEBA" }
+    },
+
+    {
+      "id": "flot",
+      "symbolKey": "25140300",
+      "role": "FLOT",
+      "label": "FLOT",
+      "geoType": "Line",
+      "path": [
+        { "x": -1.00, "y":  0.50 },
+        { "x": -0.30, "y":  0.53 },
+        { "x":  0.20, "y":  0.51 },
+        { "x":  1.00, "y":  0.50 }
+      ],
+      "style": {
+        "color":     [0, 80, 200],
+        "lineStyle": "solid",
+        "width":     2.0
+      },
+      "amplifier": { "uniqueDesignation": "FLOT" }
+    },
+
+    {
+      "id": "pl-alpha",
+      "symbolKey": "25140300",
+      "role": "PhaseLine",
+      "label": "PL ALPHA",
+      "geoType": "Line",
+      "path": [
+        { "x": -1.00, "y": -0.40 },
+        { "x":  1.00, "y": -0.40 }
+      ],
+      "style": {
+        "color":     [0, 80, 200],
+        "lineStyle": "dash-dot",
+        "width":     1.5
+      },
+      "amplifier": { "uniqueDesignation": "PL ALPHA" }
+    },
+
+    {
+      "id": "pl-bravo",
+      "symbolKey": "25140300",
+      "role": "PhaseLine",
+      "label": "PL BRAVO",
+      "geoType": "Line",
+      "path": [
+        { "x": -1.00, "y":  0.97 },
+        { "x":  1.00, "y":  0.97 }
+      ],
+      "style": {
+        "color":     [0, 80, 200],
+        "lineStyle": "dash-dot",
+        "width":     1.5
+      },
+      "amplifier": { "uniqueDesignation": "PL BRAVO" }
+    },
+
+    {
+      "id": "bp-alpha",
+      "symbolKey": "25340100",
+      "role": "BattlePosition",
+      "label": "BP ALPHA",
+      "geoType": "Area",
+      "rings": [
+        [
+          [-1.00,  0.50],
+          [-0.15,  0.50],
+          [-0.15,  0.85],
+          [-1.00,  0.85],
+          [-1.00,  0.50]
+        ]
+      ],
+      "style": {
+        "fillColor":    [0, 112, 0],
+        "fillOpacity":  0.12,
+        "outlineColor": [0, 90, 0],
+        "outlineWidth": 1.5
+      },
+      "amplifier": { "uniqueDesignation": "BP ALPHA" }
+    },
+
+    {
+      "id": "bp-bravo",
+      "symbolKey": "25340100",
+      "role": "BattlePosition",
+      "label": "BP BRAVO",
+      "geoType": "Area",
+      "rings": [
+        [
+          [ 0.15,  0.50],
+          [ 1.00,  0.50],
+          [ 1.00,  0.85],
+          [ 0.15,  0.85],
+          [ 0.15,  0.50]
+        ]
+      ],
+      "style": {
+        "fillColor":    [0, 112, 0],
+        "fillOpacity":  0.12,
+        "outlineColor": [0, 90, 0],
+        "outlineWidth": 1.5
+      },
+      "amplifier": { "uniqueDesignation": "BP BRAVO" }
+    },
+
+    {
+      "id": "engagement-area",
+      "symbolKey": "25340100",
+      "role": "EngagementArea",
+      "label": "EA LION",
+      "geoType": "Area",
+      "rings": [
+        [
+          [-0.40,  0.85],
+          [ 0.40,  0.85],
+          [ 0.40,  1.00],
+          [-0.40,  1.00],
+          [-0.40,  0.85]
+        ]
+      ],
+      "style": {
+        "fillColor":    [220, 140, 0],
+        "fillOpacity":  0.15,
+        "outlineColor": [180, 100, 0],
+        "outlineWidth": 1.5
+      },
+      "amplifier": { "uniqueDesignation": "EA LION" }
+    },
+
+    {
+      "id": "obstacle-belt",
+      "symbolKey": "25270706",
+      "role": "ObstacleBelt",
+      "label": "Obstacle Belt",
+      "geoType": "Area",
+      "rings": [
+        [
+          [-0.80,  0.82],
+          [ 0.80,  0.82],
+          [ 0.80,  0.88],
+          [-0.80,  0.88],
+          [-0.80,  0.82]
+        ]
+      ],
+      "style": {
+        "fillColor":    [220, 30, 30],
+        "fillOpacity":  0.20,
+        "outlineColor": [200, 0, 0],
+        "outlineWidth": 1.5
+      }
+    },
+
+    {
+      "id": "reserve",
+      "symbolKey": "30180000",
+      "role": "Reserve",
+      "label": "RES",
+      "geoType": "FPoint",
+      "position": { "x":  0.00, "y": -0.50 },
+      "style": { "size": 22 },
+      "amplifier": { "uniqueDesignation": "RES" }
+    },
+
+    {
+      "id": "minefield-left",
+      "symbolKey": "25270706",
+      "role": "Minefield",
+      "label": "Minefield",
+      "geoType": "Area",
+      "rings": [
+        [
+          [-1.00,  0.88],
+          [-0.65,  0.88],
+          [-0.65,  0.95],
+          [-1.00,  0.95],
+          [-1.00,  0.88]
+        ]
+      ],
+      "style": {
+        "fillColor":    [220, 0, 0],
+        "fillOpacity":  0.25,
+        "outlineColor": [180, 0, 0],
+        "outlineWidth": 1.5
+      }
+    }
+
+  ]
+}
