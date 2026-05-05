@@ -122,6 +122,7 @@ class DrawingCueEngine {
   private _guideGs: Graphic[] = [];
   private _ringGs: Graphic[] = [];
   private _protractorGs: Graphic[] = [];
+  private _needleGs: Graphic[] = [];
 
   // State
   private _lastCtrlPt: Point | null = null;
@@ -335,6 +336,8 @@ class DrawingCueEngine {
     this._candidateInfo = [];
 
     this._clearDrawingGraphics();
+    for (const g of this._needleGs) this._removeGraphic(g);
+    this._needleGs = [];
     EngineLogger.success('Drawing Cue Engine', 'Drawing complete — visual guides cleared');
     this._emitStateChange(false);
   }
@@ -349,6 +352,7 @@ class DrawingCueEngine {
     this._guideGs = [];
     this._ringGs = [];
     this._protractorGs = [];
+    this._needleGs = [];
     this._prevSegBearing = null;
     this._layer = this._getOrCreateLayer();
   }
@@ -463,6 +467,15 @@ class DrawingCueEngine {
     }
     if (this._guidesShowArc && !this._lastCtrlPt) {
       this._updateProtractorRing(cursor);
+    }
+
+    // Live bearing needle — tracks cursor relative to the last control point
+    if (this._guidesShowArc && this._lastCtrlPt) {
+      this._updateProtractorNeedle(this._lastCtrlPt, cursor);
+    } else if (!this._lastCtrlPt) {
+      // cursor-centred mode: needle not applicable, clear any stale needle
+      for (const g of this._needleGs) this._removeGraphic(g);
+      this._needleGs = [];
     }
   }
 
@@ -815,11 +828,11 @@ class DrawingCueEngine {
     if (r <= 0) return;
 
     const sr  = center.spatialReference;
-    const col = this._guidesLineColor;
+    const col = this._guidesLineColor;            // [R, G, B] = cyan-blue
     const add = (g: Graphic) => { this._layer!.add(g); this._protractorGs.push(g); };
 
-    // ── Outer ring ──────────────────────────────────────────────────────────
-    const SEGS = 180;
+    // ── Outer ring (bold) ────────────────────────────────────────────────────
+    const SEGS = 360;
     const ringPts: number[][] = [];
     for (let i = 0; i <= SEGS; i++) {
       const a = (i / SEGS) * 2 * Math.PI;
@@ -829,85 +842,143 @@ class DrawingCueEngine {
     ringPl.addPath(ringPts);
     add(new Graphic({
       geometry: ringPl,
-      symbol: new SimpleLineSymbol({
-        style: 'solid',
-        color: new Color([...col, 0.6]),
-        width: 1.4,
+      symbol: new SimpleLineSymbol({ style: 'solid', color: new Color([...col, 0.70]), width: 1.8 }),
+    }));
+
+    // ── Inner concentric reference ring at 60 % radius ───────────────────────
+    const rInner = r * 0.60;
+    const innerPts: number[][] = [];
+    for (let i = 0; i <= SEGS; i++) {
+      const a = (i / SEGS) * 2 * Math.PI;
+      innerPts.push([center.x + rInner * Math.sin(a), center.y + rInner * Math.cos(a)]);
+    }
+    const innerPl = new Polyline({ spatialReference: sr });
+    innerPl.addPath(innerPts);
+    add(new Graphic({
+      geometry: innerPl,
+      symbol: new SimpleLineSymbol({ style: 'solid', color: new Color([...col, 0.28]), width: 0.8 }),
+    }));
+
+    // ── Cardinal spokes (N / E / S / W) — thin dashed full-diameter lines ────
+    for (const spokeDeg of [0, 90, 180, 270]) {
+      const sRad = spokeDeg * Math.PI / 180;
+      const sx   = Math.sin(sRad);
+      const sy   = Math.cos(sRad);
+      const spokePl = new Polyline({ spatialReference: sr });
+      spokePl.addPath([
+        [center.x - sx * r, center.y - sy * r],
+        [center.x + sx * r, center.y + sy * r],
+      ]);
+      add(new Graphic({
+        geometry: spokePl,
+        symbol: new SimpleLineSymbol({ style: 'short-dot', color: new Color([...col, 0.22]), width: 0.7 }),
+      }));
+    }
+
+    // ── Center anchor dot ────────────────────────────────────────────────────
+    add(new Graphic({
+      geometry: center,
+      symbol: new SimpleMarkerSymbol({
+        style:   'circle',
+        color:   new Color([...col, 0.95]),
+        size:    6,
+        outline: new SimpleLineSymbol({ color: new Color([0, 0, 0, 0.8]), width: 1.2 }),
       }),
     }));
 
-    // ── Ticks + labels every 10° ────────────────────────────────────────────
+    // ── North triangle indicator at 12-o'clock ───────────────────────────────
+    // A small filled triangle pointing inward just inside the outer ring
+    const triBase  = r * 0.04;
+    const triTip   = r * 0.88;   // tip (towards center)
+    const triOuter = r * 1.02;   // base (just outside ring)
+    // Triangle vertices: left, right, tip
+    const triPl = new Polyline({ spatialReference: sr });
+    triPl.addPath([
+      [center.x - triBase, center.y + triOuter],
+      [center.x + triBase, center.y + triOuter],
+      [center.x,           center.y + triTip  ],
+      [center.x - triBase, center.y + triOuter],   // close
+    ]);
+    add(new Graphic({
+      geometry: triPl,
+      symbol: new SimpleLineSymbol({ style: 'solid', color: new Color([255, 80, 80, 0.95]), width: 2.0 }),
+    }));
+
+    // ── Tick marks ───────────────────────────────────────────────────────────
+    // Hierarchy:  5° micro | 10° minor | 30° major | 45° intercardinal | 90° cardinal
     const dirNames: Record<number, string> = {
       0: 'N', 45: 'NE', 90: 'E', 135: 'SE',
       180: 'S', 225: 'SW', 270: 'W', 315: 'NW',
     };
 
-    for (let deg = 0; deg < 360; deg += 10) {
+    for (let deg = 0; deg < 360; deg += 5) {
       const rad = deg * Math.PI / 180;
       const sx  = Math.sin(rad);
       const sy  = Math.cos(rad);
 
-      const isCardinal  = deg % 90 === 0;
-      const isIntercard = deg % 45 === 0 && !isCardinal;
-      const isThirty    = deg % 30 === 0 && deg % 45 !== 0;
+      const isCardinal   = deg % 90 === 0;
+      const isIntercard  = deg % 45 === 0 && !isCardinal;
+      const isMajor30    = deg % 30 === 0 && deg % 45 !== 0;
+      const isMinor10    = deg % 10 === 0 && deg % 30 !== 0;
+      const isMicro5     = !isMinor10 && !isMajor30 && !isIntercard && !isCardinal;
 
-      // Inward tick from ring edge
-      const tickLen = isCardinal  ? r * 0.14
-                    : isIntercard ? r * 0.10
-                    : isThirty    ? r * 0.065
-                    :               r * 0.038;
-      const tickOp  = isCardinal  ? 0.9
-                    : isIntercard ? 0.72
-                    : isThirty    ? 0.55
-                    :               0.35;
-      const tickW   = isCardinal  ? 2.0
-                    : isIntercard ? 1.5
-                    : isThirty    ? 1.0
-                    :               0.7;
+      const tickLen = isCardinal  ? r * 0.15
+                    : isIntercard ? r * 0.11
+                    : isMajor30   ? r * 0.075
+                    : isMinor10   ? r * 0.045
+                    :               r * 0.025;      // micro-5°
+      const tickOp  = isCardinal  ? 0.95
+                    : isIntercard ? 0.78
+                    : isMajor30   ? 0.60
+                    : isMinor10   ? 0.40
+                    :               0.22;
+      const tickW   = isCardinal  ? 2.2
+                    : isIntercard ? 1.6
+                    : isMajor30   ? 1.1
+                    : isMinor10   ? 0.8
+                    :               0.5;
 
       const tickPl = new Polyline({ spatialReference: sr });
       tickPl.addPath([
-        [center.x + sx * r,             center.y + sy * r            ],
-        [center.x + sx * (r - tickLen), center.y + sy * (r - tickLen)],
+        [center.x + sx * r,            center.y + sy * r           ],
+        [center.x + sx * (r-tickLen),  center.y + sy * (r-tickLen) ],
       ]);
       add(new Graphic({
         geometry: tickPl,
-        symbol: new SimpleLineSymbol({
-          style: 'solid',
-          color: new Color([...col, tickOp]),
-          width: tickW,
-        }),
+        symbol: new SimpleLineSymbol({ style: 'solid', color: new Color([...col, tickOp]), width: tickW }),
       }));
 
-      // Direction name outside ring at cardinal / intercardinal positions
+      // ── Cardinal / intercardinal direction labels (outside ring) ──────────
       if (dirNames[deg] !== undefined) {
-        const fontSize = isCardinal ? 11 : 9;
-        const outDist  = r * (isCardinal ? 1.24 : 1.19);
+        const isCard   = deg % 90 === 0;
+        const fontSize = isCard ? 12 : 9;
+        const outDist  = r * (isCard ? 1.28 : 1.20);
+        const labelCol: [number,number,number] = isCard ? [255, 80, 80] : col;
         const labelPt  = new Point({ x: center.x + sx * outDist, y: center.y + sy * outDist, spatialReference: sr });
         add(new Graphic({
           geometry: labelPt,
           symbol: new TextSymbol({
             text:      dirNames[deg],
             font:      new Font({ size: fontSize, weight: 'bold', family: 'Helvetica' }),
-            color:     new Color([...col, isCardinal ? 0.95 : 0.75]),
+            color:     new Color([...labelCol, isCard ? 1.0 : 0.82]),
             haloColor: new Color([0, 0, 0, 1]),
-            haloSize:  2.5,
+            haloSize:  3,
             xoffset:   0,
             yoffset:   0,
           }),
         }));
       }
 
-      // Degree number inside ring every 30°
+      // ── Degree numbers inside ring at every 30° ───────────────────────────
       if (deg % 30 === 0) {
-        const inDist = r * 0.80;
+        const inDist = r * 0.76;
         const numPt  = new Point({ x: center.x + sx * inDist, y: center.y + sy * inDist, spatialReference: sr });
         add(new Graphic({
           geometry: numPt,
           symbol: new TextSymbol({
             text:      `${deg}°`,
             font:      new Font({ size: 8, weight: 'normal', family: 'Helvetica' }),
-            color:     new Color([...col, 0.65]),
+            color:     new Color([...col, 0.70]),
             haloColor: new Color([0, 0, 0, 1]),
             haloSize:  2,
             xoffset:   0,
@@ -916,6 +987,89 @@ class DrawingCueEngine {
         }));
       }
     }
+  }
+
+  /**
+   * Live bearing needle — updates every pointer-move tick.
+   * Draws from the last control point toward the cursor with:
+   *  • a thin shaft line along the exact azimuth
+   *  • a bright arrowhead dot at the ring perimeter
+   *  • a halo label showing the numeric bearing
+   */
+  private _updateProtractorNeedle(center: Point, cursor: Point): void {
+    for (const g of this._needleGs) this._removeGraphic(g);
+    this._needleGs = [];
+    if (!this._guidesShowArc || !this._layer) return;
+
+    const intervalKm = this._adaptiveEnabled
+      ? this._computeAdaptiveIntervalKm(center)
+      : this._ringsIntervalKm;
+    const outerKm = (this._ringsCount > 0 && intervalKm > 0)
+      ? this._ringsCount * intervalKm
+      : this._guidesArcRadiusKm;
+    const r = this._kmToMapUnits(outerKm, center);
+    if (r <= 0) return;
+
+    const dx  = cursor.x - center.x;
+    const dy  = cursor.y - center.y;
+    if (Math.hypot(dx, dy) < r * 0.01) return;   // cursor too close to center
+
+    const sr  = center.spatialReference;
+    const addN = (g: Graphic) => { this._layer!.add(g); this._needleGs.push(g); };
+
+    // Bearing in degrees (0° = North, clockwise)
+    const bearingDeg = ((Math.atan2(dx, dy) * 180 / Math.PI) + 360) % 360;
+    const bearingRad = bearingDeg * Math.PI / 180;
+    const nsx = Math.sin(bearingRad);
+    const nsy = Math.cos(bearingRad);
+
+    // Needle tip: point on the outer ring perimeter
+    const tipX = center.x + nsx * r;
+    const tipY = center.y + nsy * r;
+
+    // Needle shaft: center → tip
+    const needlePl = new Polyline({ spatialReference: sr });
+    needlePl.addPath([[center.x, center.y], [tipX, tipY]]);
+    addN(new Graphic({
+      geometry: needlePl,
+      symbol: new SimpleLineSymbol({
+        style:  'solid',
+        color:  new Color([255, 220, 60, 0.85]),   // warm amber needle
+        width:  1.6,
+      }),
+    }));
+
+    // Arrowhead dot at the tip (on the ring)
+    addN(new Graphic({
+      geometry: new Point({ x: tipX, y: tipY, spatialReference: sr }),
+      symbol: new SimpleMarkerSymbol({
+        style:   'circle',
+        color:   new Color([255, 220, 60, 1.0]),
+        size:    9,
+        outline: new SimpleLineSymbol({ color: new Color([0, 0, 0, 0.9]), width: 1.5 }),
+      }),
+    }));
+
+    // Bearing label just outside the tip
+    const labelDist = r * 1.16;
+    const labelPt   = new Point({
+      x: center.x + nsx * labelDist,
+      y: center.y + nsy * labelDist,
+      spatialReference: sr,
+    });
+    const bearingStr = `${Math.round(bearingDeg).toString().padStart(3, '0')}°`;
+    addN(new Graphic({
+      geometry: labelPt,
+      symbol: new TextSymbol({
+        text:      bearingStr,
+        font:      new Font({ size: 11, weight: 'bold', family: 'Courier New' }),
+        color:     new Color([255, 220, 60, 1.0]),
+        haloColor: new Color([0, 0, 0, 1]),
+        haloSize:  3,
+        xoffset:   0,
+        yoffset:   0,
+      }),
+    }));
   }
 
   // ── Nearby highlight ──────────────────────────────────────────────────────
@@ -1033,13 +1187,14 @@ class DrawingCueEngine {
     for (const g of [this._rbLineG, this._rbLabelG, this._coordG]) {
       if (g) this._removeGraphic(g);
     }
-    for (const g of [...this._guideGs, ...this._ringGs, ...this._protractorGs]) this._removeGraphic(g);
+    for (const g of [...this._guideGs, ...this._ringGs, ...this._protractorGs, ...this._needleGs]) this._removeGraphic(g);
     this._rbLineG      = null;
     this._rbLabelG     = null;
     this._coordG       = null;
     this._guideGs      = [];
     this._ringGs       = [];
     this._protractorGs = [];
+    this._needleGs     = [];
   }
 
   private _removeGraphic(g: Graphic | null): void {
