@@ -1431,6 +1431,36 @@ function initializeAutocomplete() {
     if (guideWidthEl && dc.angularGuides?.lineWidth !== undefined)
       guideWidthEl.value = String(dc.angularGuides.lineWidth);
 
+    const guideIntervalEl = get<HTMLInputElement>('setting-guideInterval');
+    if (guideIntervalEl && dc.angularGuides?.snapIntervalDeg !== undefined)
+      guideIntervalEl.value = String(dc.angularGuides.snapIntervalDeg);
+
+    const guideLabelCb = get<HTMLInputElement>('setting-guideLabel');
+    if (guideLabelCb) guideLabelCb.checked = dc.angularGuides?.showLabel !== false;
+
+    const guideLabelSizeEl = get<HTMLInputElement>('setting-guideLabelSize');
+    if (guideLabelSizeEl && dc.angularGuides?.fontSize !== undefined)
+      guideLabelSizeEl.value = String(dc.angularGuides.fontSize);
+
+    const guideArcCb = get<HTMLInputElement>('setting-guideArc');
+    if (guideArcCb) guideArcCb.checked = dc.angularGuides?.showArc !== false;
+
+    const guideArcRadiusEl = get<HTMLInputElement>('setting-guideArcRadius');
+    if (guideArcRadiusEl && dc.angularGuides?.arcRadiusKm !== undefined)
+      guideArcRadiusEl.value = String(dc.angularGuides.arcRadiusKm);
+
+    const guideFanCb = get<HTMLInputElement>('setting-guideFan');
+    if (guideFanCb) guideFanCb.checked = dc.angularGuides?.showFan !== false;
+
+    const guideSnapPtCb = get<HTMLInputElement>('setting-guideSnapPoint');
+    if (guideSnapPtCb) guideSnapPtCb.checked = dc.angularGuides?.showSnapPoint !== false;
+
+    const guideAnchorCb = get<HTMLInputElement>('setting-guideAnchor');
+    if (guideAnchorCb) guideAnchorCb.checked = dc.angularGuides?.showAnchor !== false;
+
+    const guideRelSegCb = get<HTMLInputElement>('setting-guideRelSeg');
+    if (guideRelSegCb) guideRelSegCb.checked = dc.angularGuides?.relativeSegment === true;
+
     const ringsCb = get<HTMLInputElement>('setting-distanceRings');
     if (ringsCb) ringsCb.checked = (dc.distanceRings?.enabled) !== false;
 
@@ -1501,6 +1531,33 @@ function initializeAutocomplete() {
 
     guideWidthEl?.addEventListener('change', () =>
       dispatchSetting(['drawingCues', 'angularGuides', 'lineWidth'], +guideWidthEl.value));
+
+    guideIntervalEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'snapIntervalDeg'], +guideIntervalEl.value));
+
+    guideLabelCb?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'showLabel'], guideLabelCb.checked));
+
+    guideLabelSizeEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'fontSize'], +guideLabelSizeEl.value));
+
+    guideArcCb?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'showArc'], guideArcCb.checked));
+
+    guideArcRadiusEl?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'arcRadiusKm'], +guideArcRadiusEl.value));
+
+    guideFanCb?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'showFan'], guideFanCb.checked));
+
+    guideSnapPtCb?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'showSnapPoint'], guideSnapPtCb.checked));
+
+    guideAnchorCb?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'showAnchor'], guideAnchorCb.checked));
+
+    guideRelSegCb?.addEventListener('change', () =>
+      dispatchSetting(['drawingCues', 'angularGuides', 'relativeSegment'], guideRelSegCb.checked));
 
     ringsCb?.addEventListener('change', () =>
       dispatchSetting(['drawingCues', 'distanceRings', 'enabled'], ringsCb.checked));

@@ -17,8 +17,10 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
+import Polygon from '@arcgis/core/geometry/Polygon';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
+import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import TextSymbol from '@arcgis/core/symbols/TextSymbol';
 import Font from '@arcgis/core/symbols/Font';
 import Color from '@arcgis/core/Color';
@@ -49,9 +51,18 @@ export interface DrawingCueOptions {
   angularGuides?: {
     enabled?: boolean;
     snapThresholdDeg?: number;
+    snapIntervalDeg?: number;
     lineColor?: [number, number, number];
     lineOpacity?: number;
     lineWidth?: number;
+    showLabel?: boolean;
+    fontSize?: number;
+    showArc?: boolean;
+    arcRadiusKm?: number;
+    showFan?: boolean;
+    showSnapPoint?: boolean;
+    showAnchor?: boolean;
+    relativeSegment?: boolean;
   };
   distanceRings?: {
     enabled?: boolean;
@@ -133,9 +144,19 @@ class DrawingCueEngine {
   // ── Option fields — angular guides ────────────────────────────────────────
   private _guidesEnabled: boolean = true;
   private _guidesSnapThresholdDeg: number = 8;
+  private _guidesSnapIntervalDeg: number = 45;
   private _guidesLineColor: [number, number, number] = [80, 200, 255];
   private _guidesLineOpacity: number = 0.75;
   private _guidesLineWidth: number = 1.5;
+  private _guidesShowLabel: boolean = true;
+  private _guidesLabelFontSize: number = 11;
+  private _guidesShowArc: boolean = true;
+  private _guidesArcRadiusKm: number = 0.5;
+  private _guidesShowFan: boolean = true;
+  private _guidesShowSnapPoint: boolean = true;
+  private _guidesShowAnchor: boolean = true;
+  private _guidesRelativeSegment: boolean = false;
+  private _prevSegBearing: number | null = null;
 
   // ── Option fields — distance rings ────────────────────────────────────────
   private _ringsEnabled: boolean = true;
@@ -273,8 +294,15 @@ class DrawingCueEngine {
     if (!this._isEnabled || !this._isActive || ctrlPts.length < 1) return;
     const newCount = ctrlPts.length;
     if (newCount !== this._prevCtrlPtCount) {
+      const oldLastCtrlPt = this._lastCtrlPt;
       // ctrlPts[last] is the live cursor; the committed anchor is one before it
       this._lastCtrlPt = newCount > 1 ? ctrlPts[newCount - 2] : ctrlPts[0];
+      // Track bearing of the segment just committed (for relative-segment guides)
+      if (oldLastCtrlPt && this._lastCtrlPt && newCount > 2) {
+        const ddx = this._lastCtrlPt.x - oldLastCtrlPt.x;
+        const ddy = this._lastCtrlPt.y - oldLastCtrlPt.y;
+        this._prevSegBearing = (Math.atan2(ddx, ddy) * 180 / Math.PI + 360) % 360;
+      }
       this._prevCtrlPtCount = newCount;
       if (this._ringsEnabled) this._updateDistanceRings(this._lastCtrlPt);
     }
@@ -284,6 +312,7 @@ class DrawingCueEngine {
     this._isActive = false;
     this._lastCtrlPt = null;
     this._prevCtrlPtCount = 0;
+    this._prevSegBearing = null;
 
     this._pointerHandle?.remove();
     this._pointerHandle = null;
@@ -308,6 +337,7 @@ class DrawingCueEngine {
     this._coordG = null;
     this._guideGs = [];
     this._ringGs = [];
+    this._prevSegBearing = null;
     this._layer = this._getOrCreateLayer();
   }
 
@@ -336,9 +366,18 @@ class DrawingCueEngine {
     if (ag) {
       if (ag.enabled            !== undefined) this._guidesEnabled           = ag.enabled;
       if (ag.snapThresholdDeg   !== undefined) this._guidesSnapThresholdDeg  = ag.snapThresholdDeg;
+      if (ag.snapIntervalDeg    !== undefined) this._guidesSnapIntervalDeg   = ag.snapIntervalDeg;
       if (ag.lineColor          !== undefined) this._guidesLineColor         = ag.lineColor;
       if (ag.lineOpacity        !== undefined) this._guidesLineOpacity       = ag.lineOpacity;
       if (ag.lineWidth          !== undefined) this._guidesLineWidth         = ag.lineWidth;
+      if (ag.showLabel          !== undefined) this._guidesShowLabel         = ag.showLabel;
+      if (ag.fontSize           !== undefined) this._guidesLabelFontSize     = ag.fontSize;
+      if (ag.showArc            !== undefined) this._guidesShowArc           = ag.showArc;
+      if (ag.arcRadiusKm        !== undefined) this._guidesArcRadiusKm       = ag.arcRadiusKm;
+      if (ag.showFan            !== undefined) this._guidesShowFan           = ag.showFan;
+      if (ag.showSnapPoint      !== undefined) this._guidesShowSnapPoint      = ag.showSnapPoint;
+      if (ag.showAnchor         !== undefined) this._guidesShowAnchor        = ag.showAnchor;
+      if (ag.relativeSegment    !== undefined) this._guidesRelativeSegment   = ag.relativeSegment;
     }
 
     const dr = opts.distanceRings;
@@ -493,49 +532,267 @@ class DrawingCueEngine {
   // ── Angular guides ────────────────────────────────────────────────────────
 
   private _updateAngularGuides(from: Point, cursor: Point): void {
+    for (const g of this._guideGs) this._removeGraphic(g);
+    this._guideGs = [];
     if (!this._view || !this._layer) return;
 
     const dx = cursor.x - from.x;
     const dy = cursor.y - from.y;
-    // Bearing 0=North, clockwise
     const cursorBearing = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
 
-    const cardinals = [0, 45, 90, 135, 180, 225, 270, 315];
-    let minDiff = Infinity;
-    let nearest = 0;
-    for (const c of cardinals) {
-      let diff = Math.abs(cursorBearing - c);
-      if (diff > 180) diff = 360 - diff;
-      if (diff < minDiff) { minDiff = diff; nearest = c; }
+    // Build snap angles from configurable interval
+    const interval = Math.max(1, this._guidesSnapIntervalDeg);
+    const snapAngles: number[] = [];
+    for (let a = 0; a < 360; a += interval) snapAngles.push(a);
+
+    // Add parallel / perpendicular guides relative to the last committed segment
+    if (this._guidesRelativeSegment && this._prevSegBearing !== null) {
+      for (const offset of [0, 90, 180, 270]) {
+        const rel = ((this._prevSegBearing + offset) % 360 + 360) % 360;
+        if (!snapAngles.some(a => Math.abs(a - rel) < 1)) snapAngles.push(rel);
+      }
     }
 
-    // Clear old guides
-    for (const g of this._guideGs) this._removeGraphic(g);
-    this._guideGs = [];
+    // Find nearest snap angle
+    let minDiff = Infinity, nearest = 0;
+    for (const a of snapAngles) {
+      let diff = Math.abs(cursorBearing - a);
+      if (diff > 180) diff = 360 - diff;
+      if (diff < minDiff) { minDiff = diff; nearest = a; }
+    }
 
-    if (minDiff > this._guidesSnapThresholdDeg) return;
+    const threshold  = this._guidesSnapThresholdDeg;
+    const isSnapping = minDiff <= threshold;
+    const inFanZone  = minDiff <= threshold * 2;
+
+    // Nothing to draw when cursor is far from any snap angle
+    if (!inFanZone) return;
 
     const ext = this._view.extent;
     if (!ext) return;
     const reach = Math.max(ext.width, ext.height);
-    const rad   = nearest * Math.PI / 180;
-    const gdx   = Math.sin(rad);
-    const gdy   = Math.cos(rad);
 
-    const pl = new Polyline({ spatialReference: from.spatialReference });
+    // ── Protractor arc: circle + tick marks + sector wedge ─────────────────
+    if (this._guidesShowArc) {
+      this._drawProtractorArc(from, snapAngles, nearest, threshold, isSnapping);
+    }
+
+    // ── Multi-guide fan: secondary snap angles at reduced opacity ───────────
+    if (this._guidesShowFan) {
+      for (const a of snapAngles) {
+        if (a === nearest) continue;
+        let diff = Math.abs(cursorBearing - a);
+        if (diff > 180) diff = 360 - diff;
+        if (diff > threshold * 2) continue;
+        const fanOp = this._guidesLineOpacity * 0.35 * (1 - diff / (threshold * 2));
+        const r2    = a * Math.PI / 180;
+        const pl2   = new Polyline({ spatialReference: from.spatialReference });
+        pl2.addPath([
+          [from.x - Math.sin(r2) * reach, from.y - Math.cos(r2) * reach],
+          [from.x + Math.sin(r2) * reach, from.y + Math.cos(r2) * reach],
+        ]);
+        const fg = new Graphic({
+          geometry: pl2,
+          symbol: new SimpleLineSymbol({
+            style: 'short-dash',
+            color: new Color([...this._guidesLineColor, fanOp]),
+            width: this._guidesLineWidth * 0.65,
+          }),
+        });
+        this._layer.add(fg);
+        this._guideGs.push(fg);
+      }
+    }
+
+    if (!isSnapping) return;
+
+    // ── Primary guide line — opacity scales with proximity to snap angle ────
+    const rad        = nearest * Math.PI / 180;
+    const gdx        = Math.sin(rad);
+    const gdy        = Math.cos(rad);
+    const primaryOp  = this._guidesLineOpacity * (0.6 + 0.4 * (1 - minDiff / threshold));
+    const pl         = new Polyline({ spatialReference: from.spatialReference });
     pl.addPath([
       [from.x - gdx * reach, from.y - gdy * reach],
       [from.x + gdx * reach, from.y + gdy * reach],
     ]);
-
-    const sym = new SimpleLineSymbol({
-      style: 'dash',
-      color: new Color([...this._guidesLineColor, this._guidesLineOpacity]),
-      width: this._guidesLineWidth,
+    const lineG = new Graphic({
+      geometry: pl,
+      symbol: new SimpleLineSymbol({
+        style: 'dash',
+        color: new Color([...this._guidesLineColor, primaryOp]),
+        width: this._guidesLineWidth,
+      }),
     });
-    const g = new Graphic({ geometry: pl, symbol: sym });
+    this._layer.add(lineG);
+    this._guideGs.push(lineG);
+
+    // ── Anchor crosshair at the origin control point ────────────────────────
+    if (this._guidesShowAnchor) {
+      this._addAnchorCrosshair(from);
+    }
+
+    // ── Angle label just outside the arc ───────────────────────────────────
+    if (this._guidesShowLabel) {
+      const labelDist = this._kmToMapUnits(this._guidesArcRadiusKm * 2.2, from);
+      const labelPt   = new Point({
+        x: from.x + gdx * labelDist,
+        y: from.y + gdy * labelDist,
+        spatialReference: from.spatialReference,
+      });
+      const lg = new Graphic({
+        geometry: labelPt,
+        symbol:   this._textSym(
+          this._angleLabel(nearest),
+          this._guidesLabelFontSize,
+          this._guidesLineColor,
+          0,
+        ),
+      });
+      this._layer.add(lg);
+      this._guideGs.push(lg);
+    }
+
+    // ── Projected snap point: where the cursor would land on the guide ──────
+    if (this._guidesShowSnapPoint) {
+      const dot    = dx * gdx + dy * gdy;
+      const snapPt = new Point({
+        x: from.x + gdx * dot,
+        y: from.y + gdy * dot,
+        spatialReference: from.spatialReference,
+      });
+      const sg = new Graphic({
+        geometry: snapPt,
+        symbol: new SimpleMarkerSymbol({
+          style: 'circle',
+          color: new Color([...this._guidesLineColor, 0.9]),
+          size: 8,
+          outline: new SimpleLineSymbol({
+            color: new Color([255, 255, 255, 0.85]),
+            width: 1.5,
+          }),
+        }),
+      });
+      this._layer.add(sg);
+      this._guideGs.push(sg);
+    }
+  }
+
+  // ── Protractor arc helpers ────────────────────────────────────────────────
+
+  private _drawProtractorArc(
+    from: Point,
+    snapAngles: number[],
+    nearest: number,
+    threshold: number,
+    isSnapping: boolean,
+  ): void {
+    if (!this._layer) return;
+    const r = this._kmToMapUnits(this._guidesArcRadiusKm, from);
+    if (r <= 0) return;
+
+    // Full circle ring
+    const N    = 72;
+    const ring: number[][] = [];
+    for (let i = 0; i <= N; i++) {
+      const a = (i / N) * 2 * Math.PI;
+      ring.push([from.x + r * Math.sin(a), from.y + r * Math.cos(a)]);
+    }
+    const circlePl = new Polyline({ spatialReference: from.spatialReference });
+    circlePl.addPath(ring);
+    const circleG = new Graphic({
+      geometry: circlePl,
+      symbol: new SimpleLineSymbol({
+        style: 'solid',
+        color: new Color([...this._guidesLineColor, 0.22]),
+        width: 0.8,
+      }),
+    });
+    this._layer.add(circleG);
+    this._guideGs.push(circleG);
+
+    // Tick marks at each snap angle
+    const tickOuter = r;
+    const tickInner = r * 0.72;
+    for (const a of snapAngles) {
+      const rad     = a * Math.PI / 180;
+      const sx      = Math.sin(rad);
+      const sy      = Math.cos(rad);
+      const primary = a === nearest;
+      const tickPl  = new Polyline({ spatialReference: from.spatialReference });
+      tickPl.addPath([
+        [from.x + sx * tickInner, from.y + sy * tickInner],
+        [from.x + sx * tickOuter, from.y + sy * tickOuter],
+      ]);
+      const tickG = new Graphic({
+        geometry: tickPl,
+        symbol: new SimpleLineSymbol({
+          style: 'solid',
+          color: new Color([...this._guidesLineColor, primary && isSnapping ? 0.9 : 0.45]),
+          width: primary && isSnapping ? 2 : 1,
+        }),
+      });
+      this._layer.add(tickG);
+      this._guideGs.push(tickG);
+    }
+
+    // Sector wedge highlighting the snap zone (only when snapping)
+    if (isSnapping) {
+      const nSec     = 24;
+      const startA   = nearest - threshold;
+      const endA     = nearest + threshold;
+      const wedge: number[][] = [[from.x, from.y]];
+      for (let i = 0; i <= nSec; i++) {
+        const a = (startA + (i / nSec) * (endA - startA)) * Math.PI / 180;
+        wedge.push([from.x + r * Math.sin(a), from.y + r * Math.cos(a)]);
+      }
+      wedge.push([from.x, from.y]);
+      const wedgePoly = new Polygon({ spatialReference: from.spatialReference });
+      wedgePoly.addRing(wedge);
+      const wedgeG = new Graphic({
+        geometry: wedgePoly,
+        symbol: new SimpleFillSymbol({
+          color: new Color([...this._guidesLineColor, 0.18]),
+          outline: new SimpleLineSymbol({ color: new Color([0, 0, 0, 0]), width: 0 }),
+        }),
+      });
+      this._layer.add(wedgeG);
+      this._guideGs.push(wedgeG);
+    }
+  }
+
+  private _addAnchorCrosshair(pt: Point): void {
+    if (!this._layer) return;
+    const g = new Graphic({
+      geometry: pt,
+      symbol: new SimpleMarkerSymbol({
+        style: 'cross',
+        color: new Color([...this._guidesLineColor, 0.9]),
+        size: 14,
+        outline: new SimpleLineSymbol({
+          color: new Color([...this._guidesLineColor, 0.6]),
+          width: 1.5,
+        }),
+      }),
+    });
     this._layer.add(g);
     this._guideGs.push(g);
+  }
+
+  private _angleLabel(bearing: number): string {
+    const norm  = ((bearing % 360) + 360) % 360;
+    const names: Record<number, string> = {
+      0: 'N', 45: 'NE', 90: 'E', 135: 'SE',
+      180: 'S', 225: 'SW', 270: 'W', 315: 'NW',
+    };
+    return names[norm] ?? `${Math.round(norm)}°`;
+  }
+
+  private _kmToMapUnits(km: number, ref: Point): number {
+    const wkid = (ref.spatialReference ?? this._view?.spatialReference)?.wkid;
+    if (wkid === 3857) return km * 1000;
+    if (wkid === 4326) return km / 111.32;
+    return km * 1000;
   }
 
   // ── Distance rings ────────────────────────────────────────────────────────

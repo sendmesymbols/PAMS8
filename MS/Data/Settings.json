@@ -427,9 +427,18 @@
     "angularGuides": {
       "enabled": true,
       "snapThresholdDeg": 8,
+      "snapIntervalDeg": 45,
       "lineColor": [80, 200, 255],
       "lineOpacity": 0.75,
-      "lineWidth": 1.5
+      "lineWidth": 1.5,
+      "showLabel": true,
+      "fontSize": 11,
+      "showArc": true,
+      "arcRadiusKm": 0.5,
+      "showFan": true,
+      "showSnapPoint": true,
+      "showAnchor": true,
+      "relativeSegment": false
     },
     "distanceRings": {
       "enabled": true,
