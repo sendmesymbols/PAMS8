@@ -2268,7 +2268,7 @@
             );
           }
           if (measure.fontOpacity !== undefined) {
-            const opEl = document.getElementById('setting-msFontOpacity') as HTMLInputElement;
+            const opEl = document.getElementById('setting-msFontOpacity');
             opEl.value = String(measure.fontOpacity);
             document.getElementById('msFontOpacity-display').textContent = Number(measure.fontOpacity).toFixed(2);
           }
