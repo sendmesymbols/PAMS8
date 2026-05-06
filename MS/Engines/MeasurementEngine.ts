@@ -750,16 +750,16 @@ class MeasurementEngine {
         const font = new Font({ size: this._fontSize, style: "italic", weight: "bold", family: "Helvetica" });
         const color = new Color([...this._fontColor, this._fontOpacity]);
 
-        let xOff = 5, yOff = 10;
-        if      (angle >  45)              { xOff = 10; yOff = 5;  }
-        else if (angle > -45 && angle < 0) { xOff = 5;  yOff = 13; }
-        else if (angle <= -45)             { xOff = -10; yOff = 5;  }
+        let xOff = 6, yOff = 6;
+        if      (angle >  45)              { xOff = 10; yOff = 4;  }
+        else if (angle > -45 && angle < 0) { xOff = 6;  yOff = 12; }
+        else if (angle <= -45)             { xOff = -10; yOff = 4; }
 
         return new TextSymbol({
             text: label, font, color,
             haloColor: new Color([0, 0, 0, 1]),
             haloSize: 3,
-            xoffset: xOff, yoffset: yOff, angle,
+            xoffset: xOff, yoffset: yOff,
         });
     }
 
