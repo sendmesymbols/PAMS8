@@ -390,7 +390,7 @@
     "distUnit": "kilometers",
     "areaUnit": "square-kilometers",
     "fontSize": 12,
-    "fontColor": [20, 20, 20],
+    "fontColor": [255, 255, 255],
     "fontOpacity": 1,
     "lineColor": [0, 255, 0],
     "lineWidth": 2,

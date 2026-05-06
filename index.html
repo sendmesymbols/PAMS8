@@ -1503,7 +1503,12 @@
           </div>
           <div class="setting-row">
             <label>Font Color</label>
-            <input type="color" id="setting-msFontColor" value="#141414" />
+            <input type="color" id="setting-msFontColor" value="#ffffff" />
+          </div>
+          <div class="setting-row">
+            <label>Font Opacity</label>
+            <input type="range" id="setting-msFontOpacity" min="0" max="1" step="0.05" value="1" />
+            <span class="value-display" id="msFontOpacity-display">1.00</span>
           </div>
         </div>
         <div class="settings-section">
@@ -2035,6 +2040,7 @@
         'setting-msLineColor': (v) => ({ path: ['measurement', 'lineColor'], value: hexToRgb(v) }),
         'setting-msFontSize': (v) => ({ path: ['measurement', 'fontSize'], value: +v }),
         'setting-msFontColor': (v) => ({ path: ['measurement', 'fontColor'], value: hexToRgb(v) }),
+        'setting-msFontOpacity': (v) => ({ path: ['measurement', 'fontOpacity'], value: +v }),
         // Proximity
         'setting-nearestVertex': (v) => ({
           path: ['proximity', 'nearestVertex'],
@@ -2260,6 +2266,11 @@
             document.getElementById('setting-msFontColor').value = rgbToHex(
               measure.fontColor[0], measure.fontColor[1], measure.fontColor[2]
             );
+          }
+          if (measure.fontOpacity !== undefined) {
+            const opEl = document.getElementById('setting-msFontOpacity') as HTMLInputElement;
+            opEl.value = String(measure.fontOpacity);
+            document.getElementById('msFontOpacity-display').textContent = Number(measure.fontOpacity).toFixed(2);
           }
 
           // Update proximity settings
