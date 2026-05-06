@@ -780,6 +780,151 @@
       }
 
       /* ═══════════════════════════════════════════════════════════════════════
+         FEATURE COLLAPSIBLE PANELS
+         ═══════════════════════════════════════════════════════════════════════ */
+      #settingsPanel .feature-panel {
+        margin-bottom: 10px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.15);
+      }
+
+      #settingsPanel .feature-panel:last-child {
+        margin-bottom: 0;
+      }
+
+      #settingsPanel .feature-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 10px;
+        background: linear-gradient(135deg, rgba(100, 180, 255, 0.08) 0%, rgba(80, 140, 200, 0.05) 100%);
+        border-bottom: 1px solid var(--border-subtle);
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.15s ease;
+      }
+
+      #settingsPanel .feature-header:hover {
+        background: linear-gradient(135deg, rgba(100, 180, 255, 0.12) 0%, rgba(80, 140, 200, 0.08) 100%);
+      }
+
+      #settingsPanel .feature-header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      #settingsPanel .feature-header-left input[type="checkbox"] {
+        width: 14px;
+        height: 14px;
+        accent-color: var(--accent-success);
+        cursor: pointer;
+      }
+
+      #settingsPanel .feature-header-left label {
+        color: var(--neutral-300);
+        font-size: 11.5px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      #settingsPanel .feature-header .toggle-icon {
+        font-size: 8px;
+        color: var(--neutral-500);
+        transition: transform 0.2s ease;
+        opacity: 0.7;
+      }
+
+      #settingsPanel .feature-panel.collapsed .feature-header .toggle-icon {
+        transform: rotate(-90deg);
+      }
+
+      #settingsPanel .feature-body {
+        padding: 8px 10px 6px;
+        max-height: 400px;
+        overflow-y: auto;
+        transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
+      }
+
+      #settingsPanel .feature-panel.collapsed .feature-body {
+        max-height: 0;
+        padding: 0 10px;
+        overflow-y: hidden;
+        opacity: 0.5;
+      }
+
+      #settingsPanel .feature-body::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      #settingsPanel .feature-body::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      #settingsPanel .feature-body::-webkit-scrollbar-thumb {
+        background: var(--border-default);
+        border-radius: 2px;
+      }
+
+      /* Disabled state for entire feature panel - but allow checkbox to still work */
+      #settingsPanel .feature-panel.disabled {
+        opacity: 0.5;
+      }
+
+      #settingsPanel .feature-panel.disabled .feature-body {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+
+      /* Header should always be clickable */
+      #settingsPanel .feature-panel .feature-header {
+        pointer-events: auto;
+      }
+
+      /* Checkbox wrapper to ensure it's always clickable */
+      #settingsPanel .feature-panel .feature-header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        pointer-events: auto;
+      }
+
+      /* Disabled input styling within feature panels */
+      #settingsPanel .feature-body input:disabled,
+      #settingsPanel .feature-body select:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      #settingsPanel .feature-body input[type='checkbox']:disabled,
+      #settingsPanel .feature-body input[type='range']:disabled,
+      #settingsPanel .feature-body input[type='color']:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
+      #settingsPanel .setting-row:has(input:disabled, select:disabled) label {
+        opacity: 0.4;
+      }
+
+      /* Sub-feature indicator */
+      #settingsPanel .sub-feature-label {
+        font-size: 9px;
+        color: var(--neutral-500);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin: 8px 0 4px;
+        padding-left: 2px;
+      }
+
+      #settingsPanel .sub-feature-label:first-child {
+        margin-top: 0;
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════════
          API TEST PANEL
          ═══════════════════════════════════════════════════════════════════════ */
       #apiPanel {
@@ -1317,6 +1462,7 @@
         <span class="toggle-icon">▼</span>
       </header>
       <div class="settings-content">
+        <!-- Symbol Sizes Section -->
         <div class="settings-section">
           <div class="section-title">Symbol Sizes</div>
           <div class="setting-row">
@@ -1386,12 +1532,10 @@
             />
           </div>
         </div>
+
+        <!-- Core Features Section -->
         <div class="settings-section">
-          <div class="section-title">Features</div>
-          <div class="setting-row">
-            <label>Measurement</label>
-            <input type="checkbox" id="setting-measurementEngine" checked />
-          </div>
+          <div class="section-title">Core Features</div>
           <div class="setting-row">
             <label>Context Menu</label>
             <input type="checkbox" id="setting-contextMenu" checked />
@@ -1421,10 +1565,6 @@
             <input type="checkbox" id="setting-templates" checked />
           </div>
           <div class="setting-row">
-            <label>Proximity</label>
-            <input type="checkbox" id="setting-proximityEngine" checked />
-          </div>
-          <div class="setting-row">
             <label>Engine Logs</label>
             <input type="checkbox" id="setting-logging" checked />
           </div>
@@ -1436,298 +1576,353 @@
             </select>
           </div>
         </div>
-        <div class="settings-section">
-          <div class="section-title">Measurement</div>
-          <div class="setting-row">
-            <label>Distance Unit</label>
-            <select id="setting-msDistUnit">
-              <option value="meters">meters</option>
-              <option value="kilometers" selected>km</option>
-              <option value="miles">miles</option>
-              <option value="nautical-miles">nm</option>
-            </select>
+
+        <!-- MEASUREMENT FEATURE PANEL -->
+        <div class="feature-panel" id="feature-panel-measurement">
+          <div class="feature-header">
+            <div class="feature-header-left">
+              <input type="checkbox" id="setting-measurementEngine" checked />
+              <label>Measurement</label>
+            </div>
+            <span class="toggle-icon">▼</span>
           </div>
-          <div class="setting-row">
-            <label>Area Unit</label>
-            <select id="setting-msAreaUnit">
-              <option value="square-meters">sq meters</option>
-              <option value="square-kilometers" selected>sq km</option>
-              <option value="square-miles">sq miles</option>
-              <option value="hectares">hectares</option>
-              <option value="acres">acres</option>
-            </select>
-          </div>
-          <div class="setting-row">
-            <label title="Slant Range (3D) accounts for elevation differences when measuring distances.&#10;&#10;By default, distances are measured as 2D horizontal distances — the flat ground distance between two points, ignoring any height difference.&#10;&#10;When enabled, the engine uses the actual 3D straight-line distance between two points, incorporating the vertical (Z) component:&#10;  slant_distance = √(horizontal² + elevation_delta²)&#10;&#10;Example: Two points 5 km apart horizontally, one 1 km higher → 2D shows 5.0 km, slant range shows 5.1 km (true line-of-sight distance).&#10;&#10;Useful for:&#10;• 3D/SceneView maps with real elevation (Z values)&#10;• Military LOS, weapons range, helicopter/aircraft routing&#10;• Accurate distances along mountainous terrain&#10;&#10;If geometry has no Z values, falls back to standard 2D distance.">Slant Range (3D)</label>
-            <input type="checkbox" id="setting-slantRange" />
-          </div>
-          <div class="setting-row">
-            <label>Mag Declination °</label>
-            <input type="number" id="setting-magneticDeclination" value="0" step="0.1" />
-          </div>
-          <div class="setting-row">
-            <label>March Speed km/h</label>
-            <input type="number" id="setting-speedKmh" value="5" min="0" step="0.5" />
-          </div>
-          <div class="setting-row">
-            <label>Show Bearing</label>
-            <input type="checkbox" id="setting-showBng" checked />
-          </div>
-          <div class="setting-row">
-            <label>Show Area</label>
-            <input type="checkbox" id="setting-showArea" checked />
-          </div>
-          <div class="setting-row">
-            <label>Show Total</label>
-            <input type="checkbox" id="setting-showTotal" checked />
-          </div>
-          <div class="setting-row">
-            <label>Show Segment</label>
-            <input type="checkbox" id="setting-showSegment" checked />
-          </div>
-          <div class="setting-row">
-            <label>Show Extent</label>
-            <input type="checkbox" id="setting-showExtent" checked />
-          </div>
-          <div class="setting-row">
-            <label>Line Width</label>
-            <input type="number" id="setting-msLineWidth" value="2" min="0.5" max="10" step="0.5" />
-          </div>
-          <div class="setting-row">
-            <label>Line Color</label>
-            <input type="color" id="setting-msLineColor" value="#00ff00" />
-          </div>
-          <div class="setting-row">
-            <label>Font Size</label>
-            <input type="number" id="setting-msFontSize" value="12" min="8" max="24" step="1" />
-          </div>
-          <div class="setting-row">
-            <label>Font Color</label>
-            <input type="color" id="setting-msFontColor" value="#0050c8" />
-          </div>
-        </div>
-        <div class="settings-section">
-          <div class="section-title">Proximity</div>
-          <div class="setting-row">
-            <label>Nearest Vertex</label>
-            <input type="checkbox" id="setting-nearestVertex" checked />
-          </div>
-          <div class="setting-row">
-            <label>Nearest Coord</label>
-            <input type="checkbox" id="setting-nearestCoordinate" checked />
-          </div>
-          <div class="setting-row">
-            <label>Show Distance</label>
-            <input type="checkbox" id="setting-showDistance" checked />
-          </div>
-          <div class="setting-row">
-            <label>Distance Unit</label>
-            <select id="setting-distanceUnit">
-              <option value="meters" selected>meters</option>
-              <option value="kilometers">km</option>
-              <option value="miles">miles</option>
-              <option value="nautical-miles">nm</option>
-            </select>
-          </div>
-          <div class="setting-row">
-            <label>Snap Radius</label>
-            <input
-              type="range"
-              id="setting-snapRadiusPx"
-              min="0"
-              max="200"
-              value="80"
-            />
-            <span class="value-display" id="snapRadius-display">80</span>
-          </div>
-          <div class="setting-row">
-            <label>Line Opacity</label>
-            <input
-              type="range"
-              id="setting-lineOpacity"
-              min="0"
-              max="1"
-              step="0.1"
-              value="0.7"
-            />
-            <span class="value-display" id="lineOpacity-display">0.7</span>
-          </div>
-          <div class="setting-row">
-            <label>Line Width</label>
-            <input
-              type="number"
-              id="setting-proxLineWidth"
-              value="1.5"
-              min="0.5"
-              max="10"
-              step="0.5"
-            />
-          </div>
-          <div class="setting-row">
-            <label>Line Color</label>
-            <input type="color" id="setting-lineColor" value="#0078ff" />
-          </div>
-          <div class="setting-row">
-            <label>Marker Size</label>
-            <input
-              type="number"
-              id="setting-markerSize"
-              value="10"
-              min="4"
-              max="30"
-              step="1"
-            />
-          </div>
-          <div class="setting-row">
-            <label>Marker Color</label>
-            <input type="color" id="setting-markerColor" value="#0078ff" />
-          </div>
-          <div class="setting-row">
-            <label>Font Size</label>
-            <input
-              type="number"
-              id="setting-fontSize"
-              value="11"
-              min="8"
-              max="24"
-              step="1"
-            />
-          </div>
-          <div class="setting-row">
-            <label>Font Color</label>
-            <input type="color" id="setting-fontColor" value="#0050c8" />
+          <div class="feature-body">
+            <div class="sub-feature-label">Units</div>
+            <div class="setting-row">
+              <label>Distance</label>
+              <select id="setting-msDistUnit">
+                <option value="meters">meters</option>
+                <option value="kilometers" selected>km</option>
+                <option value="miles">miles</option>
+                <option value="nautical-miles">nm</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Area</label>
+              <select id="setting-msAreaUnit">
+                <option value="square-meters">sq meters</option>
+                <option value="square-kilometers" selected>sq km</option>
+                <option value="square-miles">sq miles</option>
+                <option value="hectares">hectares</option>
+                <option value="acres">acres</option>
+              </select>
+            </div>
+            <div class="sub-feature-label">Display</div>
+            <div class="setting-row">
+              <label>Show Bearing</label>
+              <input type="checkbox" id="setting-showBng" checked />
+            </div>
+            <div class="setting-row">
+              <label>Show Area</label>
+              <input type="checkbox" id="setting-showArea" checked />
+            </div>
+            <div class="setting-row">
+              <label>Show Total</label>
+              <input type="checkbox" id="setting-showTotal" checked />
+            </div>
+            <div class="setting-row">
+              <label>Show Segment</label>
+              <input type="checkbox" id="setting-showSegment" checked />
+            </div>
+            <div class="setting-row">
+              <label>Show Extent</label>
+              <input type="checkbox" id="setting-showExtent" checked />
+            </div>
+            <div class="sub-feature-label">Advanced</div>
+            <div class="setting-row">
+              <label title="Slant Range (3D) accounts for elevation differences">Slant Range (3D)</label>
+              <input type="checkbox" id="setting-slantRange" />
+            </div>
+            <div class="setting-row">
+              <label>Mag Decl °</label>
+              <input type="number" id="setting-magneticDeclination" value="0" step="0.1" style="width: 60px" />
+            </div>
+            <div class="setting-row">
+              <label>March km/h</label>
+              <input type="number" id="setting-speedKmh" value="5" min="0" step="0.5" style="width: 60px" />
+            </div>
+            <div class="sub-feature-label">Styling</div>
+            <div class="setting-row">
+              <label>Line Width</label>
+              <input type="number" id="setting-msLineWidth" value="2" min="0.5" max="10" step="0.5" style="width: 50px" />
+            </div>
+            <div class="setting-row">
+              <label>Line Color</label>
+              <input type="color" id="setting-msLineColor" value="#00ff00" />
+            </div>
+            <div class="setting-row">
+              <label>Font Size</label>
+              <input type="number" id="setting-msFontSize" value="12" min="8" max="24" step="1" style="width: 50px" />
+            </div>
+            <div class="setting-row">
+              <label>Font Color</label>
+              <input type="color" id="setting-msFontColor" value="#0050c8" />
+            </div>
           </div>
         </div>
-        <div class="settings-section">
-          <div class="section-title">Drawing Cues</div>
-          <div class="setting-row">
-            <label>Drawing Cues</label>
-            <input type="checkbox" id="setting-drawingCues" checked />
+
+        <!-- PROXIMITY FEATURE PANEL -->
+        <div class="feature-panel" id="feature-panel-proximity">
+          <div class="feature-header">
+            <div class="feature-header-left">
+              <input type="checkbox" id="setting-proximityEngine" checked />
+              <label>Proximity</label>
+            </div>
+            <span class="toggle-icon">▼</span>
           </div>
-          <div class="setting-row">
-            <label>Rubber Band</label>
-            <input type="checkbox" id="setting-rubberBand" checked />
-          </div>
-          <div class="setting-row">
-            <label>RB Opacity</label>
-            <input type="range" id="setting-rbOpacity" min="0" max="1" step="0.05" value="0.75" />
-            <span class="value-display" id="rbOpacity-display">0.75</span>
-          </div>
-          <div class="setting-row">
-            <label>Coordinates</label>
-            <input type="checkbox" id="setting-coordDisplay" checked />
-          </div>
-          <div class="setting-row">
-            <label>Angle Guides</label>
-            <input type="checkbox" id="setting-angularGuides" checked />
-          </div>
-          <div class="setting-row">
-            <label>Guide Threshold °</label>
-            <input type="number" id="setting-guideThreshold" value="8" min="2" max="30" step="1" />
-          </div>
-          <div class="setting-row">
-            <label>Guide Color</label>
-            <input type="color" id="setting-guideColor" value="#50c8ff" />
-          </div>
-          <div class="setting-row">
-            <label>Guide Opacity</label>
-            <input type="range" id="setting-guideOpacity" min="0" max="1" step="0.05" value="0.75" />
-            <span class="value-display" id="guideOpacity-display">0.75</span>
-          </div>
-          <div class="setting-row">
-            <label>Guide Width</label>
-            <input type="number" id="setting-guideWidth" value="1.5" min="0.5" max="10" step="0.5" />
-          </div>
-          <div class="setting-row">
-            <label>Snap Interval °</label>
-            <input type="number" id="setting-guideInterval" value="45" min="5" max="90" step="5" />
-          </div>
-          <div class="setting-row">
-            <label>Angle Label</label>
-            <input type="checkbox" id="setting-guideLabel" checked />
-          </div>
-          <div class="setting-row">
-            <label>Label Size</label>
-            <input type="number" id="setting-guideLabelSize" value="11" min="8" max="20" step="1" />
-          </div>
-          <div class="setting-row">
-            <label>Protractor Arc</label>
-            <input type="checkbox" id="setting-guideArc" checked />
-          </div>
-          <div class="setting-row">
-            <label>Arc Radius km</label>
-            <input type="number" id="setting-guideArcRadius" value="0.5" min="0.1" max="20" step="0.1" />
-          </div>
-          <div class="setting-row">
-            <label>Guide Fan</label>
-            <input type="checkbox" id="setting-guideFan" checked />
-          </div>
-          <div class="setting-row">
-            <label>Snap Point</label>
-            <input type="checkbox" id="setting-guideSnapPoint" checked />
-          </div>
-          <div class="setting-row">
-            <label>Anchor Cross</label>
-            <input type="checkbox" id="setting-guideAnchor" checked />
-          </div>
-          <div class="setting-row">
-            <label>Rel. Segment</label>
-            <input type="checkbox" id="setting-guideRelSeg" />
-          </div>
-          <div class="setting-row">
-            <label>Distance Rings</label>
-            <input type="checkbox" id="setting-distanceRings" checked />
-          </div>
-          <div class="setting-row">
-            <label>Ring Interval km</label>
-            <input type="number" id="setting-ringInterval" value="1.0" min="0.1" max="100" step="0.1" />
-          </div>
-          <div class="setting-row">
-            <label>Ring Count</label>
-            <input type="number" id="setting-ringCount" value="3" min="1" max="10" step="1" />
-          </div>
-          <div class="setting-row">
-            <label>Ring Color</label>
-            <input type="color" id="setting-ringColor" value="#50e678" />
-          </div>
-          <div class="setting-row">
-            <label>Ring Opacity</label>
-            <input type="range" id="setting-ringOpacity" min="0" max="1" step="0.05" value="0.7" />
-            <span class="value-display" id="ringOpacity-display">0.70</span>
-          </div>
-          <div class="setting-row">
-            <label>Ring Width</label>
-            <input type="number" id="setting-ringWidth" value="1.5" min="0.5" max="10" step="0.5" />
-          </div>
-          <div class="setting-row">
-            <label>Nearby Highlight</label>
-            <input type="checkbox" id="setting-nearbyHighlight" checked />
-          </div>
-          <div class="setting-row">
-            <label>Highlight Radius km</label>
-            <input type="number" id="setting-hlRadius" value="5.0" min="0.1" max="200" step="0.5" />
-          </div>
-          <div class="setting-row">
-            <label>Ring Size km</label>
-            <input type="number" id="setting-hlRingRadius" value="0.5" min="0.1" max="10" step="0.1" />
+          <div class="feature-body">
+            <div class="sub-feature-label">Detection</div>
+            <div class="setting-row">
+              <label>Nearest Vertex</label>
+              <input type="checkbox" id="setting-nearestVertex" checked />
+            </div>
+            <div class="setting-row">
+              <label>Nearest Coord</label>
+              <input type="checkbox" id="setting-nearestCoordinate" checked />
+            </div>
+            <div class="setting-row">
+              <label>Show Distance</label>
+              <input type="checkbox" id="setting-showDistance" checked />
+            </div>
+            <div class="sub-feature-label">Appearance</div>
+            <div class="setting-row">
+              <label>Line Opacity</label>
+              <input
+                type="range"
+                id="setting-lineOpacity"
+                min="0"
+                max="1"
+                step="0.1"
+                value="0.7"
+                style="width: 60px"
+              />
+              <span class="value-display" id="lineOpacity-display">0.7</span>
+            </div>
+            <div class="setting-row">
+              <label>Line Width</label>
+              <input
+                type="number"
+                id="setting-proxLineWidth"
+                value="1.5"
+                min="0.5"
+                max="10"
+                step="0.5"
+                style="width: 50px"
+              />
+            </div>
+            <div class="setting-row">
+              <label>Line Color</label>
+              <input type="color" id="setting-lineColor" value="#0078ff" />
+            </div>
+            <div class="sub-feature-label">Marker</div>
+            <div class="setting-row">
+              <label>Size</label>
+              <input
+                type="number"
+                id="setting-markerSize"
+                value="10"
+                min="4"
+                max="30"
+                step="1"
+                style="width: 50px"
+              />
+            </div>
+            <div class="setting-row">
+              <label>Color</label>
+              <input type="color" id="setting-markerColor" value="#0078ff" />
+            </div>
+            <div class="sub-feature-label">Label</div>
+            <div class="setting-row">
+              <label>Font Size</label>
+              <input
+                type="number"
+                id="setting-fontSize"
+                value="11"
+                min="8"
+                max="24"
+                step="1"
+                style="width: 50px"
+              />
+            </div>
+            <div class="setting-row">
+              <label>Font Color</label>
+              <input type="color" id="setting-fontColor" value="#0050c8" />
+            </div>
+            <div class="sub-feature-label">Snap</div>
+            <div class="setting-row">
+              <label>Radius px</label>
+              <input
+                type="range"
+                id="setting-snapRadiusPx"
+                min="0"
+                max="200"
+                value="80"
+                style="width: 60px"
+              />
+              <span class="value-display" id="snapRadius-display">80</span>
+            </div>
+            <div class="setting-row">
+              <label>Distance</label>
+              <select id="setting-distanceUnit" style="width: 75px">
+                <option value="meters" selected>meters</option>
+                <option value="kilometers">km</option>
+                <option value="miles">miles</option>
+                <option value="nautical-miles">nm</option>
+              </select>
+            </div>
           </div>
         </div>
-        <div class="settings-section">
-          <div class="section-title">Adaptive Control</div>
-          <div class="setting-row">
-            <label>Adaptive Rings</label>
-            <input type="checkbox" id="setting-adaptive" />
+
+        <!-- DRAWING CUES FEATURE PANEL -->
+        <div class="feature-panel" id="feature-panel-drawingCues">
+          <div class="feature-header">
+            <div class="feature-header-left">
+              <input type="checkbox" id="setting-drawingCues" checked />
+              <label>Drawing Cues</label>
+            </div>
+            <span class="toggle-icon">▼</span>
           </div>
-          <div class="setting-row">
-            <label>Coverage Fraction</label>
-            <input type="range" id="setting-adaptiveCoverage" min="0.05" max="0.75" step="0.05" value="0.25" />
-            <span class="value-display" id="adaptiveCoverage-display">0.25</span>
-          </div>
-          <div class="setting-row">
-            <label>Max Outer km</label>
-            <input type="number" id="setting-adaptiveMaxKm" value="200" min="1" max="10000" step="10" />
+          <div class="feature-body">
+            <!-- Rubber Band Sub-Feature -->
+            <div class="sub-feature-label">Rubber Band</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-rubberBand" data-sf-master="rubberBand" checked />
+            </div>
+            <div class="setting-row" data-sf-group="rubberBand">
+              <label>Opacity</label>
+              <input type="range" id="setting-rbOpacity" min="0" max="1" step="0.05" value="0.75" style="width: 60px" />
+              <span class="value-display" id="rbOpacity-display">0.75</span>
+            </div>
+
+            <!-- Coordinates Sub-Feature -->
+            <div class="sub-feature-label">Coordinates</div>
+            <div class="setting-row">
+              <label>Show</label>
+              <input type="checkbox" id="setting-coordDisplay" checked />
+            </div>
+
+            <!-- Angular Guides Sub-Feature -->
+            <div class="sub-feature-label">Angular Guides</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-angularGuides" data-sf-master="angularGuides" checked />
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Threshold °</label>
+              <input type="number" id="setting-guideThreshold" value="8" min="2" max="30" step="1" style="width: 45px" />
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Color</label>
+              <input type="color" id="setting-guideColor" value="#50c8ff" />
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Opacity</label>
+              <input type="range" id="setting-guideOpacity" min="0" max="1" step="0.05" value="0.75" style="width: 60px" />
+              <span class="value-display" id="guideOpacity-display">0.75</span>
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Width</label>
+              <input type="number" id="setting-guideWidth" value="1.5" min="0.5" max="10" step="0.5" style="width: 45px" />
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Snap Interval °</label>
+              <input type="number" id="setting-guideInterval" value="45" min="5" max="90" step="5" style="width: 45px" />
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Show Label</label>
+              <input type="checkbox" id="setting-guideLabel" checked />
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Label Size</label>
+              <input type="number" id="setting-guideLabelSize" value="11" min="8" max="20" step="1" style="width: 45px" />
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Protractor</label>
+              <input type="checkbox" id="setting-guideArc" checked />
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Arc Radius km</label>
+              <input type="number" id="setting-guideArcRadius" value="0.5" min="0.1" max="20" step="0.1" style="width: 55px" />
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Fan</label>
+              <input type="checkbox" id="setting-guideFan" checked />
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Snap Point</label>
+              <input type="checkbox" id="setting-guideSnapPoint" checked />
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Anchor Cross</label>
+              <input type="checkbox" id="setting-guideAnchor" checked />
+            </div>
+            <div class="setting-row" data-sf-group="angularGuides">
+              <label>Rel. Segment</label>
+              <input type="checkbox" id="setting-guideRelSeg" />
+            </div>
+
+            <!-- Distance Rings Sub-Feature -->
+            <div class="sub-feature-label">Distance Rings</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-distanceRings" data-sf-master="distanceRings" checked />
+            </div>
+            <div class="setting-row" data-sf-group="distanceRings">
+              <label>Interval km</label>
+              <input type="number" id="setting-ringInterval" value="1.0" min="0.1" max="100" step="0.1" style="width: 55px" />
+            </div>
+            <div class="setting-row" data-sf-group="distanceRings">
+              <label>Count</label>
+              <input type="number" id="setting-ringCount" value="3" min="1" max="10" step="1" style="width: 45px" />
+            </div>
+            <div class="setting-row" data-sf-group="distanceRings">
+              <label>Color</label>
+              <input type="color" id="setting-ringColor" value="#50e678" />
+            </div>
+            <div class="setting-row" data-sf-group="distanceRings">
+              <label>Opacity</label>
+              <input type="range" id="setting-ringOpacity" min="0" max="1" step="0.05" value="0.7" style="width: 60px" />
+              <span class="value-display" id="ringOpacity-display">0.70</span>
+            </div>
+            <div class="setting-row" data-sf-group="distanceRings">
+              <label>Width</label>
+              <input type="number" id="setting-ringWidth" value="1.5" min="0.5" max="10" step="0.5" style="width: 45px" />
+            </div>
+
+            <!-- Nearby Highlight Sub-Feature -->
+            <div class="sub-feature-label">Nearby Highlight</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-nearbyHighlight" data-sf-master="nearbyHighlight" checked />
+            </div>
+            <div class="setting-row" data-sf-group="nearbyHighlight">
+              <label>Radius km</label>
+              <input type="number" id="setting-hlRadius" value="5.0" min="0.1" max="200" step="0.5" style="width: 55px" />
+            </div>
+            <div class="setting-row" data-sf-group="nearbyHighlight">
+              <label>Ring Size km</label>
+              <input type="number" id="setting-hlRingRadius" value="0.5" min="0.1" max="10" step="0.1" style="width: 55px" />
+            </div>
+
+            <!-- Adaptive Control Sub-Feature -->
+            <div class="sub-feature-label">Adaptive Control</div>
+            <div class="setting-row">
+              <label>Adaptive Rings</label>
+              <input type="checkbox" id="setting-adaptive" data-sf-master="adaptive" />
+            </div>
+            <div class="setting-row" data-sf-group="adaptive">
+              <label>Coverage</label>
+              <input type="range" id="setting-adaptiveCoverage" min="0.05" max="0.75" step="0.05" value="0.25" style="width: 60px" />
+              <span class="value-display" id="adaptiveCoverage-display">0.25</span>
+            </div>
+            <div class="setting-row" data-sf-group="adaptive">
+              <label>Max Outer km</label>
+              <input type="number" id="setting-adaptiveMaxKm" value="200" min="1" max="10000" step="10" style="width: 55px" />
+            </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
 
@@ -1959,6 +2154,101 @@
         settingsPanel.classList.toggle('expanded');
       });
 
+      // ── Feature panel helpers ─────────────────────────────────────────────────
+
+      function setFeatureBodyDisabled(panel, disabled) {
+        const body = panel.querySelector('.feature-body');
+        if (!body) return;
+        body.querySelectorAll('input, select').forEach(el => {
+          el.disabled = disabled;
+        });
+      }
+
+      function setSubFeatureGroupDisabled(group, disabled) {
+        document.querySelectorAll(`[data-sf-group="${group}"]`).forEach(row => {
+          row.querySelectorAll('input, select').forEach(el => {
+            el.disabled = disabled;
+          });
+        });
+      }
+
+      // Re-sync every sub-feature master within a panel body (call after panel is re-enabled)
+      function syncSubFeaturesInPanel(panel) {
+        panel.querySelectorAll('[data-sf-master]').forEach(master => {
+          const group = master.getAttribute('data-sf-master');
+          setSubFeatureGroupDisabled(group, !master.checked);
+        });
+      }
+
+      // ── Feature panels collapsible logic ──────────────────────────────────────
+      document.querySelectorAll('.feature-panel').forEach(panel => {
+        const header = panel.querySelector('.feature-header');
+        const checkbox = panel.querySelector('.feature-header input[type="checkbox"]');
+
+        if (!checkbox) return;
+
+        // Toggle collapse when clicking header (not checkbox area)
+        if (header) {
+          header.addEventListener('click', (e) => {
+            const target = e.target;
+            if (target === checkbox || target.closest('.feature-header-left')) {
+              return;
+            }
+            panel.classList.toggle('collapsed');
+          });
+        }
+
+        // Sync panel disabled state with checkbox on change
+        checkbox.addEventListener('change', () => {
+          const enabled = checkbox.checked;
+          panel.classList.toggle('disabled', !enabled);
+          setFeatureBodyDisabled(panel, !enabled);
+          // When re-enabling, restore sub-feature group disabled states
+          if (enabled) syncSubFeaturesInPanel(panel);
+        });
+
+        // Initialize — collapsed by default, disabled if unchecked
+        panel.classList.add('collapsed');
+        if (!checkbox.checked) {
+          panel.classList.add('disabled');
+          setFeatureBodyDisabled(panel, true);
+        }
+      });
+
+      // ── Sub-feature master checkboxes ─────────────────────────────────────────
+      document.querySelectorAll('[data-sf-master]').forEach(master => {
+        const group = master.getAttribute('data-sf-master');
+
+        master.addEventListener('change', () => {
+          // Only act if the parent feature panel is not itself disabled
+          const panel = master.closest('.feature-panel');
+          const panelEnabled = panel ? !panel.classList.contains('disabled') : true;
+          if (panelEnabled) setSubFeatureGroupDisabled(group, !master.checked);
+        });
+
+        // Initialize disabled state for unchecked sub-features
+        if (!master.checked) setSubFeatureGroupDisabled(group, true);
+      });
+
+      // Sync all panel and sub-feature disabled states — call after loading settings
+      function syncAllFeaturePanelStates() {
+        document.querySelectorAll('.feature-panel').forEach(panel => {
+          const checkbox = panel.querySelector('.feature-header input[type="checkbox"]');
+          if (!checkbox) return;
+          const enabled = checkbox.checked;
+          panel.classList.toggle('disabled', !enabled);
+          setFeatureBodyDisabled(panel, !enabled);
+          if (enabled) syncSubFeaturesInPanel(panel);
+        });
+      }
+
+      // Keeping this mapping for the settings system
+      const featureCheckboxes = {
+        'setting-measurementEngine': document.getElementById('setting-measurementEngine'),
+        'setting-proximityEngine': document.getElementById('setting-proximityEngine'),
+        'setting-drawingCues': document.getElementById('setting-drawingCues'),
+      };
+
       // Map input IDs to settings paths
       const settingMappings = {
         'setting-size': (v) => ({ path: ['size'], value: +v }),
@@ -2093,9 +2383,24 @@
         'setting-coordDisplay': (v) => ({ path: ['drawingCues', 'coordinateDisplay', 'enabled'], value: v }),
         'setting-angularGuides': (v) => ({ path: ['drawingCues', 'angularGuides', 'enabled'], value: v }),
         'setting-guideThreshold': (v) => ({ path: ['drawingCues', 'angularGuides', 'snapThresholdDeg'], value: +v }),
+        'setting-guideColor': (v) => ({ path: ['drawingCues', 'angularGuides', 'lineColor'], value: hexToRgb(v) }),
+        'setting-guideOpacity': (v) => ({ path: ['drawingCues', 'angularGuides', 'lineOpacity'], value: +v }),
+        'setting-guideWidth': (v) => ({ path: ['drawingCues', 'angularGuides', 'lineWidth'], value: +v }),
+        'setting-guideInterval': (v) => ({ path: ['drawingCues', 'angularGuides', 'snapIntervalDeg'], value: +v }),
+        'setting-guideLabel': (v) => ({ path: ['drawingCues', 'angularGuides', 'showLabel'], value: v }),
+        'setting-guideLabelSize': (v) => ({ path: ['drawingCues', 'angularGuides', 'fontSize'], value: +v }),
+        'setting-guideArc': (v) => ({ path: ['drawingCues', 'angularGuides', 'showArc'], value: v }),
+        'setting-guideArcRadius': (v) => ({ path: ['drawingCues', 'angularGuides', 'arcRadiusKm'], value: +v }),
+        'setting-guideFan': (v) => ({ path: ['drawingCues', 'angularGuides', 'showFan'], value: v }),
+        'setting-guideSnapPoint': (v) => ({ path: ['drawingCues', 'angularGuides', 'showSnapPoint'], value: v }),
+        'setting-guideAnchor': (v) => ({ path: ['drawingCues', 'angularGuides', 'showAnchor'], value: v }),
+        'setting-guideRelSeg': (v) => ({ path: ['drawingCues', 'angularGuides', 'relativeSegment'], value: v }),
         'setting-distanceRings': (v) => ({ path: ['drawingCues', 'distanceRings', 'enabled'], value: v }),
         'setting-ringInterval': (v) => ({ path: ['drawingCues', 'distanceRings', 'intervalKm'], value: +v }),
         'setting-ringCount':    (v) => ({ path: ['drawingCues', 'distanceRings', 'ringCount'], value: +v }),
+        'setting-ringColor': (v) => ({ path: ['drawingCues', 'distanceRings', 'lineColor'], value: hexToRgb(v) }),
+        'setting-ringOpacity': (v) => ({ path: ['drawingCues', 'distanceRings', 'lineOpacity'], value: +v }),
+        'setting-ringWidth': (v) => ({ path: ['drawingCues', 'distanceRings', 'lineWidth'], value: +v }),
         'setting-nearbyHighlight': (v) => ({ path: ['drawingCues', 'nearbyHighlight', 'enabled'], value: v }),
         'setting-hlRadius':    (v) => ({ path: ['drawingCues', 'nearbyHighlight', 'radiusKm'], value: +v }),
         'setting-hlRingRadius':(v) => ({ path: ['drawingCues', 'nearbyHighlight', 'ringRadiusKm'], value: +v }),
@@ -2231,6 +2536,8 @@
             features.templates !== false;
           document.getElementById('setting-proximityEngine').checked =
             features.proximityEngine !== false;
+          document.getElementById('setting-drawingCues').checked =
+            features.drawingCues !== false;
 
           if (settings.creationMode) {
             document.getElementById('setting-creationMode').value = settings.creationMode;
@@ -2322,6 +2629,8 @@
           document.getElementById('adaptiveCoverage-display').textContent = String(covFrac);
           document.getElementById('setting-adaptiveMaxKm').value = adaptive.maxOuterKm ?? 200;
 
+        // Re-sync all disabled states now that values have been loaded from settings
+        syncAllFeaturePanelStates();
         console.log('Settings panel initialized from SymbolEngine');
       }
 

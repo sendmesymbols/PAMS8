@@ -375,7 +375,7 @@
     ]
   },
   "features": {
-    "measurementEngine": true,
+    "measurementEngine": false,
     "contextMenu": true,
     "editEngine": true,
     "annotationEngine": true,
