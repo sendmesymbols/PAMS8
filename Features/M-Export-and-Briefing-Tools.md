@@ -8,7 +8,7 @@ These features allow the planner to export the current map state as a static ima
 
 ## Architecture
 
-- **New file**: `MS/Engines/ExportEngine.ts` (singleton)
+- **New file**: `MS/Engines/ImportExportEngine.ts` (singleton)
 - **Dependencies**: `html2canvas` (or ArcGIS native `view.takeScreenshot()`), XML builder for KML.
 - **Feature flag**: `Settings.json → features.exportTools`
 
@@ -33,7 +33,7 @@ These features allow the planner to export the current map state as a static ima
 **Constraints**:
 - **GeoJSON**: natively supported. Iterate all graphics, call `arcgisToGeoJSON(graphic.geometry)`, append attributes.
 - **KML**: requires translating ArcGIS symbology to KML `<Style>` tags. For `milsymbol` PictureMarkerSymbols, extract the PNG data-URL and embed it in the KML `<Icon>` tag, or host the icons and link to them.
-- `ExportEngine.exportToGeoJSON()` and `ExportEngine.exportToKML()`.
+- `ImportExportEngine.exportToGeoJSON()` and `ImportExportEngine.exportToKML()`.
 - Trigger download of the resulting text string as a blob.
 
 ---
@@ -44,7 +44,7 @@ These features allow the planner to export the current map state as a static ima
 
 **Constraints**:
 - **Slide Data Model**: `{ id: string, title: string, extent: Extent, visibleLayers: string[], timePhaseMs: number }`.
-- **Capture**: UI button "Capture Slide" saves current `view.extent`, active plan layer visibility, and `TemporalEngine.currentTime` to a list in `ExportEngine._slides`.
+- **Capture**: UI button "Capture Slide" saves current `view.extent`, active plan layer visibility, and `TemporalEngine.currentTime` to a list in `ImportExportEngine._slides`.
 - **Playback**: UI panel with Prev/Next buttons. Clicking Next calls `view.goTo(slide.extent, { duration: 1000 })`, applies layer visibility, and sets `TemporalEngine` time.
 - **Export Slides**: serialise `_slides` array to JSON so the briefing can be saved and shared.
 
@@ -75,7 +75,7 @@ These features allow the planner to export the current map state as a static ima
 
 ## Implementation Order
 
-1. Implement `ExportEngine.ts` with `takeScreenshot()` (M1).
+1. Implement `ImportExportEngine.ts` with `takeScreenshot()` (M1).
 2. Implement GeoJSON/KML data formatting and download (M2).
 3. Build Legend Panel UI component (M4).
 4. Implement Briefing Mode slide capture and playback (M3).

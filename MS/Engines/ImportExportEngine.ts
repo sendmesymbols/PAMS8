@@ -21,7 +21,7 @@ const LAYERS = [
   'milSymbols',
 ];
 
-export default class ExportEngine {
+export default class ImportExportEngine {
   private _layerManager: GraphicsLayerManager;
 
   constructor(getLayerManager: () => GraphicsLayerManager) {
