@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buffer & Threat Rings — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" />
+  <style>
+    /* ── Reset ────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100vh; overflow: hidden;
+      font-family: 'Courier New', monospace; background: #0b0c0e; }
+
+    /* ── Map area ─────────────────────────────────────────────────────── */
+    #viewDiv { position: absolute; inset: 0; }
+
+    /* ── Panel ────────────────────────────────────────────────────────── */
+    #panel {
+      position: absolute; top: 14px; right: 14px; width: 296px; z-index: 99;
+      background: rgba(11,12,14,0.96);
+      border: 1px solid rgba(55,138,221,0.28);
+      border-radius: 5px; color: #bfbcb4; font-size: 12px;
+      display: flex; flex-direction: column;
+    }
+
+    /* header */
+    .ph { display:flex; align-items:center; justify-content:space-between;
+      padding:9px 12px 8px; border-bottom:1px solid rgba(55,138,221,0.15);
+      background:rgba(55,138,221,0.07); }
+    .ph-title { font-size:10px; letter-spacing:.13em; text-transform:uppercase;
+      color:#378ADD; font-weight:700; }
+    .ph-status { font-size:9px; letter-spacing:.07em; text-transform:uppercase;
+      color:#3a3935; transition:color .2s; }
+    .ph-status.ready    { color:#1D9E75; }
+    .ph-status.busy     { color:#EF9F27; }
+    .ph-status.alert    { color:#DC3C30; }
+
+    /* section label */
+    .ps { font-size:9px; letter-spacing:.1em; text-transform:uppercase;
+      color:#3a3935; padding:9px 12px 5px; }
+
+    /* grid */
+    .pg { display:grid; grid-template-columns:1fr 1fr; gap:7px 10px; padding:0 12px 9px; }
+    .pf { display:flex; flex-direction:column; gap:3px; }
+    .pf.full { grid-column:1/-1; }
+    .pl { font-size:9px; letter-spacing:.07em; text-transform:uppercase; color:#888780; }
+    input, select {
+      background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px; color:#bfbcb4; font-family:'Courier New',monospace;
+      font-size:11px; padding:5px 7px; width:100%; outline:none;
+      transition:border-color .15s;
+    }
+    input:focus, select:focus { border-color:rgba(55,138,221,0.55); }
+    select option { background:#141618; }
+
+    /* ring rows — editable ring table */
+    #ring-table { display:flex; flex-direction:column; gap:5px; padding:0 12px 9px; }
+    .ring-row {
+      display:grid; grid-template-columns:1fr 90px 80px 24px;
+      gap:5px; align-items:center;
+    }
+    .ring-row input, .ring-row select { padding:4px 6px; font-size:10px; }
+    .ring-row .ring-del {
+      background:transparent; border:1px solid rgba(220,60,48,0.4);
+      border-radius:3px; color:#DC3C30; font-size:11px;
+      cursor:pointer; padding:3px; line-height:1; transition:all .12s;
+    }
+    .ring-row .ring-del:hover { background:rgba(220,60,48,0.15); }
+    .ring-header {
+      display:grid; grid-template-columns:1fr 90px 80px 24px;
+      gap:5px; padding:0 0 3px;
+    }
+    .ring-header span { font-size:8px; letter-spacing:.07em; text-transform:uppercase; color:#3a3935; }
+    #btn-add-ring {
+      margin:0 12px 9px; padding:5px; font-family:'Courier New',monospace;
+      font-size:9px; letter-spacing:.08em; text-transform:uppercase;
+      background:transparent; border:1px dashed rgba(55,138,221,0.35);
+      border-radius:3px; color:#378ADD; cursor:pointer; transition:all .14s;
+    }
+    #btn-add-ring:hover { background:rgba(55,138,221,0.08); }
+
+    /* toggle */
+    .ptr { display:flex; align-items:center; justify-content:space-between; padding:5px 12px; }
+    .ptr label { font-size:9px; letter-spacing:.07em; text-transform:uppercase; color:#888780; cursor:pointer; }
+    .ptr input[type=checkbox] { accent-color:#378ADD; width:13px; height:13px; cursor:pointer; }
+
+    /* divider */
+    .pdiv { height:1px; background:rgba(255,255,255,0.07); margin:4px 0; }
+
+    /* stats grid */
+    #stats {
+      display:grid; grid-template-columns:1fr 1fr; gap:4px 12px;
+      margin:4px 12px 8px;
+      background:rgba(55,138,221,0.06); border:1px solid rgba(55,138,221,0.15);
+      border-radius:3px; padding:7px 9px; font-size:10px;
+    }
+    .st-row { display:flex; flex-direction:column; gap:1px; }
+    .st-l { font-size:8px; letter-spacing:.08em; text-transform:uppercase; color:#3a3935; }
+    .st-v { color:#378ADD; }
+
+    /* mode tabs */
+    .ptabs { display:flex; gap:0; padding:0 12px 9px; }
+    .ptab {
+      flex:1; padding:5px; font-family:'Courier New',monospace;
+      font-size:9px; letter-spacing:.07em; text-transform:uppercase;
+      cursor:pointer; border:1px solid rgba(55,138,221,0.3);
+      background:transparent; color:#888780; transition:all .13s;
+    }
+    .ptab:first-child { border-radius:3px 0 0 3px; }
+    .ptab:last-child  { border-radius:0 3px 3px 0; border-left:none; }
+    .ptab.active { background:rgba(55,138,221,0.18); color:#378ADD; border-color:#378ADD; }
+
+    /* coords */
+    #coords { font-size:9px; color:#378ADD; padding:2px 12px 7px; letter-spacing:.05em; opacity:.75; }
+
+    /* buttons */
+    .pb-row { display:flex; gap:6px; padding:9px 12px; }
+    .pb {
+      flex:1; padding:7px; font-family:'Courier New',monospace;
+      font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+      cursor:pointer; border-radius:3px; border:1px solid rgba(55,138,221,0.4);
+      background:transparent; color:#378ADD; transition:all .14s;
+    }
+    .pb:hover:not(:disabled) { background:rgba(55,138,221,0.1); }
+    .pb.primary { background:rgba(55,138,221,0.16); border-color:#378ADD; }
+    .pb.primary:hover:not(:disabled) { background:rgba(55,138,221,0.3); }
+    .pb:disabled { opacity:.3; cursor:not-allowed; }
+    .pb.danger { border-color:rgba(220,60,48,0.4); color:#DC3C30; }
+    .pb.danger:hover:not(:disabled) { background:rgba(220,60,48,0.1); }
+
+    /* hint */
+    #hint {
+      position:absolute; bottom:55px; left:50%; transform:translateX(-50%);
+      background:rgba(11,12,14,0.93); border:1px solid rgba(55,138,221,0.4);
+      color:#378ADD; font-family:'Courier New',monospace; font-size:11px;
+      letter-spacing:.08em; padding:8px 20px; border-radius:3px;
+      pointer-events:none; z-index:99; text-transform:uppercase;
+      transition:opacity .25s;
+    }
+
+    /* legend strip */
+    #legend {
+      position:absolute; bottom:14px; left:14px; z-index:99;
+      background:rgba(11,12,14,0.92); border:1px solid rgba(255,255,255,0.08);
+      border-radius:4px; padding:8px 12px; display:flex; flex-direction:column; gap:5px;
+    }
+    .leg-row { display:flex; align-items:center; gap:7px; }
+    .leg-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .leg-label { font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:#888780; }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+
+  <!-- ── PANEL ────────────────────────────────────────────────────────── -->
+  <div id="panel">
+
+    <div class="ph">
+      <div class="ph-title">◎ Buffer &amp; Threat Rings</div>
+      <div class="ph-status" id="status">Awaiting point</div>
+    </div>
+
+    <!-- Analysis mode tabs -->
+    <div class="ps">Analysis mode</div>
+    <div class="ptabs">
+      <button class="ptab active" data-mode="single">Single source</button>
+      <button class="ptab" data-mode="union">Multi-source union</button>
+      <button class="ptab" data-mode="corridor">Corridor</button>
+    </div>
+
+    <!-- Threat type -->
+    <div class="ps">Threat / symbol type</div>
+    <div class="pg">
+      <div class="pf full">
+        <div class="pl">Preset</div>
+        <select id="inp-preset">
+          <option value="artillery_155mm">Artillery 155 mm</option>
+          <option value="mortar_81mm">Mortar 81 mm</option>
+          <option value="atgm">ATGM</option>
+          <option value="ied_vbied">IED / VBIED</option>
+          <option value="nbc_release">NBC release</option>
+          <option value="observation_post">Observation post</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Editable ring table -->
+    <div class="ps">Ring definitions <span style="color:#3a3935;font-size:9px">(live edit)</span></div>
+    <div id="ring-table">
+      <div class="ring-header">
+        <span>Label</span><span>Radius (m)</span><span>Type</span><span></span>
+      </div>
+    </div>
+    <button id="btn-add-ring">+ Add ring</button>
+
+    <div class="pdiv"></div>
+
+    <!-- Display options -->
+    <div class="ps">Display options</div>
+    <div class="ptr"><label>Extrude rings (3D volume)</label><input id="opt-extrude" type="checkbox" /></div>
+    <div class="ptr"><label>Show labels</label><input id="opt-labels" type="checkbox" checked /></div>
+    <div class="ptr"><label>Donut rings (punch inner)</label><input id="opt-donut" type="checkbox" checked /></div>
+    <div class="ptr"><label>Show contested zone</label><input id="opt-contested" type="checkbox" /></div>
+
+    <!-- Corridor options (hidden unless corridor mode) -->
+    <div id="corridor-opts" style="display:none">
+      <div class="pdiv"></div>
+      <div class="ps">Corridor options</div>
+      <div class="pg">
+        <div class="pf"><div class="pl">Width (m)</div><input id="inp-cor-width" type="number" value="250" min="50" step="50"/></div>
+        <div class="pf"><div class="pl">Standoff (m)</div><input id="inp-cor-standoff" type="number" value="500" min="0" step="50"/></div>
+      </div>
+    </div>
+
+    <div class="pdiv"></div>
+
+    <!-- Stats -->
+    <div id="stats">
+      <div class="st-row"><div class="st-l">Sources placed</div><div class="st-v" id="st-sources">0</div></div>
+      <div class="st-row"><div class="st-l">Ring count</div><div class="st-v" id="st-rings">0</div></div>
+      <div class="st-row"><div class="st-l">Outermost ring</div><div class="st-v" id="st-outer">—</div></div>
+      <div class="st-row"><div class="st-l">Mode</div><div class="st-v" id="st-mode">Single</div></div>
+    </div>
+
+    <div id="coords">Source: not placed — click map</div>
+
+    <div class="pb-row">
+      <button class="pb danger" id="btn-clear">Clear all</button>
+      <button class="pb" id="btn-undo" disabled>Undo last</button>
+      <button class="pb primary" id="btn-commit" disabled>Commit ↗</button>
+    </div>
+
+  </div>
+
+  <!-- legend -->
+  <div id="legend">
+    <div class="leg-row"><div class="leg-dot" style="background:#DC3C30"></div><div class="leg-label">Lethal</div></div>
+    <div class="leg-row"><div class="leg-dot" style="background:#EF9F27"></div><div class="leg-label">Warning</div></div>
+    <div class="leg-row"><div class="leg-dot" style="background:#1D9E75"></div><div class="leg-label">Safe / Max range</div></div>
+    <div class="leg-row"><div class="leg-dot" style="background:#378ADD"></div><div class="leg-label">Info / Observe</div></div>
+    <div class="leg-row"><div class="leg-dot" style="background:#B428DC"></div><div class="leg-label">Contested zone</div></div>
+  </div>
+
+  <div id="hint">Click map to place source point</div>
+
+  <script src="https://js.arcgis.com/4.28/"></script>
+  <script>
+  require([
+    "esri/Map",
+    "esri/views/SceneView",
+    "esri/layers/GraphicsLayer",
+    "esri/Graphic",
+    "esri/geometry/Point",
+    "esri/geometry/Polyline",
+    "esri/geometry/Polygon",
+    "esri/geometry/geometryEngine",
+  ], function(Map, SceneView, GraphicsLayer, Graphic,
+              Point, Polyline, Polygon, geometryEngine) {
+
+    // ── INLINE ENGINE ─────────────────────────────────────────────────────
+    const EARTH_R = 6_371_008.8;
+
+    const PRESETS = {
+      artillery_155mm:  { rings:[{ label:'Max range',      radiusM:30000, colorKey:'safe'    },{ label:'Effective range',radiusM:18000, colorKey:'warning' },{ label:'Danger close',  radiusM:600,   colorKey:'lethal'  }] },
+      mortar_81mm:      { rings:[{ label:'Max range',      radiusM:5600,  colorKey:'safe'    },{ label:'Effective range',radiusM:3200,  colorKey:'warning' },{ label:'Danger close',  radiusM:200,   colorKey:'lethal'  }] },
+      atgm:             { rings:[{ label:'Max range',      radiusM:5500,  colorKey:'safe'    },{ label:'Min arm dist',  radiusM:75,    colorKey:'dead'    }] },
+      ied_vbied:        { rings:[{ label:'Safe standoff',  radiusM:600,   colorKey:'safe'    },{ label:'Injury radius', radiusM:300,   colorKey:'warning' },{ label:'Lethal radius',  radiusM:100,   colorKey:'lethal'  }] },
+      nbc_release:      { rings:[{ label:'Downwind hazard',radiusM:10000, colorKey:'warning' },{ label:'Hot zone',      radiusM:500,   colorKey:'lethal'  }] },
+      observation_post: { rings:[{ label:'Max observe',    radiusM:8000,  colorKey:'info'    },{ label:'Effective obs', radiusM:3000,  colorKey:'safe'    }] },
+      custom:           { rings:[{ label:'Ring 1',         radiusM:3000,  colorKey:'safe'    },{ label:'Ring 2',        radiusM:1500,  colorKey:'warning' },{ label:'Ring 3',         radiusM:500,   colorKey:'lethal'  }] },
+    };
+
+    const COLORS = {
+      lethal:    { fill:[220,60,48,0.18],  outline:[220,60,48,0.85],   label:'#DC3C30' },
+      warning:   { fill:[239,159,39,0.14], outline:[239,159,39,0.80],  label:'#EF9F27' },
+      safe:      { fill:[29,158,117,0.10], outline:[29,158,117,0.60],  label:'#1D9E75' },
+      info:      { fill:[55,138,221,0.11], outline:[55,138,221,0.65],  label:'#378ADD' },
+      dead:      { fill:[100,100,100,0.25],outline:[150,150,150,0.70], label:'#969490' },
+      exclusion: { fill:[180,40,220,0.12], outline:[180,40,220,0.70],  label:'#B428DC' },
+    };
+
+    function destPt(lon, lat, brg, dist) {
+      const δ=dist/EARTH_R, θ=brg*Math.PI/180;
+      const φ1=lat*Math.PI/180, λ1=lon*Math.PI/180;
+      const φ2=Math.asin(Math.sin(φ1)*Math.cos(δ)+Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+      const λ2=λ1+Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1),Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+      return { longitude:λ2*180/Math.PI, latitude:φ2*180/Math.PI };
+    }
+
+    function computeRings(srcPt, defs, asDonut) {
+      const sorted = [...defs].sort((a,b)=>b.radiusM-a.radiusM);
+      const bufs = sorted.map(d=>({ ...d, geometry: geometryEngine.geodesicBuffer(srcPt, d.radiusM, 'meters') }));
+      if (!asDonut) return bufs;
+      return bufs.map((r,i)=>({ ...r, geometry: bufs[i+1] ? geometryEngine.difference(r.geometry, bufs[i+1].geometry) : r.geometry }));
+    }
+
+    function computeUnion(points, defs) {
+      const byRadius = {};
+      points.forEach(pt => computeRings(pt, defs, false).forEach(r => {
+        (byRadius[r.radiusM] = byRadius[r.radiusM]||[]).push(r.geometry);
+      }));
+      return Object.entries(byRadius).map(([rm, geoms])=>{
+        const def = defs.find(d=>d.radiusM===Number(rm));
+        return { ...def, radiusM:Number(rm), geometry: geoms.length===1?geoms[0]:geometryEngine.union(geoms) };
+      }).sort((a,b)=>b.radiusM-a.radiusM);
+    }
+
+    function buildGraphics(rings, extrude, donut) {
+      return rings.flatMap(ring => {
+        if (!ring.geometry) return [];
+        const c = COLORS[ring.colorKey]||COLORS.info;
+        const [fr,fg,fb,fa]=c.fill, [or,og,ob,oa]=c.outline;
+        const layers = [{ type:'fill', material:{color:[fr,fg,fb,fa]},
+          outline:{color:[or,og,ob,oa],size:1.6},
+          pattern:{ type:'style', style: donut ? 'none' : 'diagonal-cross' } }];
+        if (extrude && ring.radiusM) {
+          layers.push({ type:'extrude', material:{color:[fr,fg,fb,fa*0.5]},
+            edges:{type:'solid',color:[or,og,ob,oa*0.35],size:0.5},
+            size: Math.min(ring.radiusM * 0.04, 800) });
+        }
+        return [new Graphic({
+          geometry: ring.geometry,
+          symbol: { type:'polygon-3d', symbolLayers:layers },
+          attributes:{ type:'buffer_ring', label:ring.label, radiusM:ring.radiusM, colorKey:ring.colorKey },
+        })];
+      });
+    }
+
+    function buildLabels(srcPt, rings) {
+      return rings.map(r => {
+        const c = COLORS[r.colorKey]||COLORS.info;
+        const lp = destPt(srcPt.longitude, srcPt.latitude, 0, r.radiusM);
+        return new Graphic({
+          geometry: new Point({ longitude:lp.longitude, latitude:lp.latitude, spatialReference:{wkid:4326} }),
+          symbol: { type:'text', color:c.label, haloColor:[0,0,0,0.7], haloSize:1.5,
+            text: `${r.label}  ${r.radiusM>=1000?(r.radiusM/1000).toFixed(1)+' km':r.radiusM+' m'}`,
+            font:{ family:'Courier New', size:10, weight:'bold' },
+            horizontalAlignment:'center', verticalAlignment:'bottom' },
+          attributes:{ type:'buffer_label', label:r.label },
+        });
+      });
+    }
+
+    function buildSourceMarker(pt, color='#378ADD') {
+      return new Graphic({
+        geometry: pt,
+        symbol: { type:'point-3d', symbolLayers:[{ type:'object', resource:{primitive:'sphere'},
+          material:{color:[55,138,221,0.9]}, width:45, height:45, depth:45 }],
+          verticalOffset:{screenLength:22, maxWorldLength:400, minWorldLength:4} },
+        attributes:{ type:'source_point' },
+      });
+    }
+
+    // ── LAYERS ────────────────────────────────────────────────────────────
+    const analysisLayer  = new GraphicsLayer({ title:'Buffer — working',   elevationInfo:{mode:'on-the-ground'} });
+    const labelLayer     = new GraphicsLayer({ title:'Buffer — labels',    elevationInfo:{mode:'on-the-ground'} });
+    const committedLayer = new GraphicsLayer({ title:'Buffer — committed', elevationInfo:{mode:'on-the-ground'} });
+    const sourceLayer    = new GraphicsLayer({ title:'Buffer — sources',   elevationInfo:{mode:'on-the-ground'} });
+
+    const map = new Map({ basemap:'topo-3d', ground:'world-elevation',
+      layers:[committedLayer, analysisLayer, labelLayer, sourceLayer] });
+
+    const view = new SceneView({
+      container:'viewDiv', map,
+      camera:{ position:{longitude:73.06, latitude:33.65, z:22000}, heading:0, tilt:52 },
+      environment:{ atmosphere:{quality:'high'}, lighting:{date:new Date()} },
+      popup: {
+        dockEnabled:true,
+        dockOptions:{ position:'bottom-left', breakpoint:false },
+        defaultPopupTemplateEnabled:true,
+      },
+    });
+
+    // Popup template for committed rings
+    committedLayer.popupTemplate = {
+      title:'{type}',
+      content:'<b>{label}</b><br>Radius: {radiusM} m<br>Type: {colorKey}',
+    };
+
+    // ── STATE ──────────────────────────────────────────────────────────────
+    let mode         = 'single';    // 'single' | 'union' | 'corridor'
+    let sourcePts    = [];
+    let currentRings = [];          // { label, radiusM, colorKey } — live edited
+
+    // ── UI refs ───────────────────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
+    const statusEl   = $('status');
+    const hintEl     = $('hint');
+    const coordsEl   = $('coords');
+    const ringTable  = $('ring-table');
+    const optExtrude = $('opt-extrude');
+    const optLabels  = $('opt-labels');
+    const optDonut   = $('opt-donut');
+    const optContest = $('opt-contested');
+    const btnClear   = $('btn-clear');
+    const btnUndo    = $('btn-undo');
+    const btnCommit  = $('btn-commit');
+    const inpPreset  = $('inp-preset');
+
+    // ── Mode tabs ──────────────────────────────────────────────────────────
+    document.querySelectorAll('.ptab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
+        tab.classList.add('active');
+        mode = tab.dataset.mode;
+        $('corridor-opts').style.display = mode==='corridor' ? 'block' : 'none';
+        $('st-mode').textContent = { single:'Single', union:'Union', corridor:'Corridor' }[mode];
+        hintEl.textContent = mode==='corridor'
+          ? 'Click map to add route waypoints (3+ to buffer)'
+          : mode==='union'
+          ? 'Click map to place multiple source points'
+          : 'Click map to place source point';
+        redraw();
+      });
+    });
+
+    // ── Preset → ring table ────────────────────────────────────────────────
+    function loadPreset(key) {
+      const preset = PRESETS[key];
+      if (!preset) return;
+      currentRings = preset.rings.map(r=>({ ...r }));
+      renderRingTable();
+      redraw();
+    }
+    inpPreset.addEventListener('change', () => loadPreset(inpPreset.value));
+
+    // ── Ring table rendering ───────────────────────────────────────────────
+    function renderRingTable() {
+      // Keep the header row, clear the rest
+      const header = ringTable.querySelector('.ring-header');
+      ringTable.innerHTML = '';
+      if (header) ringTable.appendChild(header);
+      else {
+        const h = document.createElement('div');
+        h.className = 'ring-header';
+        h.innerHTML = '<span>Label</span><span>Radius (m)</span><span>Type</span><span></span>';
+        ringTable.appendChild(h);
+      }
+
+      currentRings.forEach((r, i) => {
+        const row = document.createElement('div');
+        row.className = 'ring-row';
+        row.innerHTML = `
+          <input type="text"   value="${r.label}"    data-i="${i}" data-k="label"    />
+          <input type="number" value="${r.radiusM}"  data-i="${i}" data-k="radiusM"  min="1" step="50"/>
+          <select data-i="${i}" data-k="colorKey">
+            ${['lethal','warning','safe','info','dead','exclusion']
+              .map(k=>`<option value="${k}"${r.colorKey===k?' selected':''}>${k}</option>`).join('')}
+          </select>
+          <button class="ring-del" data-i="${i}">✕</button>
+        `;
+        ringTable.appendChild(row);
+      });
+
+      // Wire change handlers
+      ringTable.querySelectorAll('input,select').forEach(el => {
+        el.addEventListener('change', () => {
+          const i = Number(el.dataset.i), k = el.dataset.k;
+          currentRings[i][k] = k==='radiusM' ? Number(el.value) : el.value;
+          redraw();
+        });
+      });
+      ringTable.querySelectorAll('.ring-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentRings.splice(Number(btn.dataset.i), 1);
+          renderRingTable();
+          redraw();
+        });
+      });
+    }
+
+    $('btn-add-ring').addEventListener('click', () => {
+      currentRings.push({ label:`Ring ${currentRings.length+1}`, radiusM:1000, colorKey:'info' });
+      renderRingTable();
+      redraw();
+    });
+
+    [optExtrude, optLabels, optDonut, optContest].forEach(el => el.addEventListener('change', redraw));
+
+    // ── REDRAW — fully synchronous, client-side geometryEngine ────────────
+    function redraw() {
+      if (sourcePts.length === 0) return;
+      setStatus('busy');
+      analysisLayer.removeAll();
+      labelLayer.removeAll();
+
+      const defs    = currentRings.filter(r => r.radiusM > 0);
+      const extrude = optExtrude.checked;
+      const donut   = optDonut.checked;
+      const labels  = optLabels.checked;
+
+      if (mode === 'single' || mode === 'union') {
+        // ── Rings ──────────────────────────────────────────────────────────
+        let rings;
+        if (mode === 'union' && sourcePts.length > 1) {
+          rings = computeUnion(sourcePts, defs);
+          // Optionally re-donut the merged rings
+          if (donut) {
+            const sorted = [...rings].sort((a,b)=>b.radiusM-a.radiusM);
+            rings = sorted.map((r,i)=>({
+              ...r,
+              geometry: sorted[i+1]
+                ? geometryEngine.difference(r.geometry, sorted[i+1].geometry)
+                : r.geometry,
+            }));
+          }
+        } else {
+          rings = computeRings(sourcePts[0], defs, donut);
+        }
+
+        buildGraphics(rings, extrude, donut).forEach(g => analysisLayer.add(g));
+
+        if (labels) {
+          const refPt = sourcePts[0]; // labels relative to first source
+          buildLabels(refPt, defs.sort((a,b)=>b.radiusM-a.radiusM))
+            .forEach(g => labelLayer.add(g));
+        }
+
+        // ── Contested zone — only when 2+ sources placed ───────────────────
+        if (optContest.checked && sourcePts.length >= 2) {
+          const ringsA = computeRings(sourcePts[0], defs, false);
+          const ringsB = computeRings(sourcePts[1], defs, false);
+          const geomA  = geometryEngine.union(ringsA.map(r=>r.geometry));
+          const geomB  = geometryEngine.union(ringsB.map(r=>r.geometry));
+          const contested = geometryEngine.intersect(geomA, geomB);
+          if (contested) {
+            analysisLayer.add(new Graphic({
+              geometry: contested,
+              symbol: { type:'polygon-3d', symbolLayers:[{ type:'fill',
+                material:{color:[180,40,220,0.30]},
+                outline:{color:[180,40,220,0.9],size:2},
+                pattern:{type:'style',style:'cross'} }] },
+              attributes:{ type:'Contested zone', label:'Mutual coverage — contested', radiusM:0 },
+            }));
+          }
+        }
+
+        // Update stats
+        const outer = defs.length ? Math.max(...defs.map(d=>d.radiusM)) : 0;
+        $('st-outer').textContent = outer>=1000?(outer/1000).toFixed(1)+' km':outer+' m';
+        $('st-rings').textContent = defs.length;
+
+      } else if (mode === 'corridor') {
+        // ── Corridor buffer along route polyline ────────────────────────────
+        if (sourcePts.length >= 2) {
+          const widthM   = Number($('inp-cor-width').value);
+          const standoff = Number($('inp-cor-standoff').value);
+          const path     = sourcePts.map(p=>[p.longitude, p.latitude]);
+          const polyline = new Polyline({ paths:[path], spatialReference:{wkid:4326} });
+
+          let densified = polyline;
+          try { densified = geometryEngine.geodesicDensify(polyline, 50, 'meters'); } catch(_){}
+
+          const corridor = geometryEngine.geodesicBuffer(densified, widthM, 'meters');
+          const soZone   = standoff > 0 ? geometryEngine.geodesicBuffer(densified, widthM+standoff, 'meters') : null;
+
+          if (soZone) analysisLayer.add(new Graphic({ geometry:soZone,
+            symbol:{ type:'polygon-3d', symbolLayers:[{ type:'fill',
+              material:{color:[220,60,48,0.07]}, outline:{color:[220,60,48,0.60],size:1.2},
+              pattern:{type:'style',style:'diagonal-cross'} }] },
+            attributes:{ type:'Standoff zone', label:'Route standoff', radiusM:widthM+standoff } }));
+
+          if (corridor) analysisLayer.add(new Graphic({ geometry:corridor,
+            symbol:{ type:'polygon-3d', symbolLayers:[{ type:'fill',
+              material:{color:[55,138,221,0.13]}, outline:{color:[55,138,221,0.75],size:1.6} }] },
+            attributes:{ type:'Movement corridor', label:'Route corridor', radiusM:widthM } }));
+
+          // Route line
+          analysisLayer.add(new Graphic({ geometry:polyline,
+            symbol:{ type:'line-3d', symbolLayers:[{ type:'line', size:2,
+              material:{color:[55,138,221,0.8]}, pattern:{type:'style',style:'solid'} }] },
+            attributes:{ type:'Route centreline' } }));
+
+          $('st-rings').textContent = '2 (corridor + standoff)';
+          $('st-outer').textContent = (widthM+standoff) + ' m';
+        }
+      }
+
+      $('st-sources').textContent = sourcePts.length;
+      btnCommit.disabled = analysisLayer.graphics.length === 0;
+      setStatus('ready');
+    }
+
+    // ── CLICK HANDLER ─────────────────────────────────────────────────────
+    view.on('click', async event => {
+      const result = await view.hitTest(event, { include:[map.ground] });
+      const gp     = result?.ground?.mapPoint ?? event.mapPoint;
+      const pt     = new Point({ longitude:gp.longitude, latitude:gp.latitude, z:gp.z??0, spatialReference:{wkid:4326} });
+
+      if (mode === 'single') {
+        // Single source: replace previous
+        sourcePts = [pt];
+        sourceLayer.removeAll();
+      } else {
+        // Multi-source / corridor: accumulate
+        sourcePts.push(pt);
+      }
+
+      sourceLayer.add(buildSourceMarker(pt));
+      coordsEl.textContent = `Source ${sourcePts.length}: ${pt.latitude.toFixed(4)}°N  ${pt.longitude.toFixed(4)}°E`;
+      hintEl.style.opacity = '0';
+      btnUndo.disabled = sourcePts.length === 0;
+
+      redraw();
+    });
+
+    // ── UNDO last point ────────────────────────────────────────────────────
+    btnUndo.addEventListener('click', () => {
+      if (sourcePts.length === 0) return;
+      sourcePts.pop();
+      // Rebuild source markers
+      sourceLayer.removeAll();
+      sourcePts.forEach(p => sourceLayer.add(buildSourceMarker(p)));
+      btnUndo.disabled = sourcePts.length === 0;
+      if (sourcePts.length === 0) {
+        analysisLayer.removeAll(); labelLayer.removeAll();
+        hintEl.style.opacity = '1';
+        coordsEl.textContent = 'Source: not placed — click map';
+        setStatus('awaiting');
+      } else { redraw(); }
+    });
+
+    // ── COMMIT ────────────────────────────────────────────────────────────
+    btnCommit.addEventListener('click', () => {
+      const ts = new Date().toISOString();
+      [...analysisLayer.graphics, ...labelLayer.graphics].forEach(g =>
+        committedLayer.add(new Graphic({
+          geometry: g.geometry.clone(), symbol: g.symbol.clone(),
+          attributes: { ...g.attributes, committedAt:ts },
+        }))
+      );
+      flashStatus('Committed ✓', 'ready');
+    });
+
+    // ── CLEAR ─────────────────────────────────────────────────────────────
+    btnClear.addEventListener('click', () => {
+      sourcePts = [];
+      [analysisLayer, labelLayer, sourceLayer].forEach(l=>l.removeAll());
+      btnCommit.disabled = true; btnUndo.disabled = true;
+      hintEl.style.opacity = '1';
+      coordsEl.textContent = 'Source: not placed — click map';
+      $('st-sources').textContent = '0'; $('st-rings').textContent = '0';
+      $('st-outer').textContent = '—';
+      setStatus('awaiting');
+    });
+
+    // ── HELPERS ───────────────────────────────────────────────────────────
+    function setStatus(s) {
+      const MAP = { awaiting:['Awaiting point',''], ready:['Ready','ready'], busy:['Computing…','busy'], alert:['Error','alert'] };
+      const [txt,cls] = MAP[s]??MAP.awaiting;
+      statusEl.textContent=txt; statusEl.className='ph-status'+(cls?' '+cls:'');
+    }
+    function flashStatus(msg, cls) {
+      const prev=statusEl.textContent, prevCls=statusEl.className;
+      statusEl.textContent=msg; statusEl.className='ph-status '+cls;
+      setTimeout(()=>{ statusEl.textContent=prev; statusEl.className=prevCls; },1800);
+    }
+
+    // ── INIT: load default preset ──────────────────────────────────────────
+    view.when(() => {
+      loadPreset('artillery_155mm');
+      console.log('[Buffer] SceneView ready. analysisLayer →', analysisLayer);
+      console.log('[Buffer] committedLayer →', committedLayer);
+    });
+
+    // Corridor-specific input wiring
+    ['inp-cor-width','inp-cor-standoff'].forEach(id => $(id)?.addEventListener('change', redraw));
+
+  }); // end require()
+  </script>
+</body>
+</html>

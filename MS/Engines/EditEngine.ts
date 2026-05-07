@@ -18,14 +18,18 @@ import EngineLogger from "../Support/EngineLogger";
 const EDIT_HANDLES_LAYER = "EditHandlesLayer";
 
 /**
- * 2D similarity transform parameters (translate + rotate + uniform scale).
- * Describes how oldGeom was transformed to produce newGeom.
+ * 2D similarity transform parameters solved from two point correspondences.
+ * Encodes translate + rotate + uniform scale as (a, b, tx, ty) where:
+ *   x' = a·x − b·y + tx
+ *   y' = b·x + a·y + ty
+ * This avoids any pivot/centroid assumption and works exactly for any
+ * combination of translate, rotate, and uniform scale.
  */
 interface AffineTransform {
-    angle: number;                     // rotation in radians, positive = CCW
-    scale: number;                     // uniform scale factor
-    centerOld: { x: number; y: number }; // centroid of old geometry
-    centerNew: { x: number; y: number }; // centroid of new geometry
+    a: number;   // scale · cos(angle)
+    b: number;   // scale · sin(angle)
+    tx: number;
+    ty: number;
 }
 
 /**
@@ -171,6 +175,21 @@ class EditEngine {
      */
     public deactivate(): void {
         if (this._sketchVM) {
+            // For tool:"transform" (scale/rotate), SketchViewModel "complete" only fires
+            // when the user clicks elsewhere — NOT when releasing a transform handle.
+            // So if the user right-clicks to open the context menu and then picks
+            // "Edit Control Points", "complete" never fired and CTRL_PTS were never synced.
+            // Sync them now, then clear the snapshots so the cancel handler below is a no-op
+            // (i.e., it won't revert the geometry back to pre-transform state).
+            if (this._activeGraphic && this._originalGeometry && this._originalCtrlPts) {
+                this._syncCtrlPts(this._activeGraphic);
+                this._additionalSnapshots.forEach(s => this._syncCtrlPtsFrom(s));
+            }
+            this._originalGeometry = null;
+            this._originalCtrlPts = null;
+            this._originalBaseLnPts = null;
+            this._additionalSnapshots = [];
+
             this._sketchVM.cancel();
             this._sketchVM.destroy();
             this._sketchVM = null;
@@ -301,10 +320,17 @@ class EditEngine {
                     this._reAnnotate(graphic);
                     this._additionalSnapshots.forEach(s => this._reAnnotate(s.graphic));
                     this._emit("changeInSymbol", { graphic, additionalGraphics: this._additionalSnapshots.map(s => s.graphic) });
+                    // Clear snapshots so a subsequent deactivate() / cancel doesn't revert.
+                    this._originalGeometry = null;
+                    this._originalCtrlPts = null;
+                    this._originalBaseLnPts = null;
+                    this._additionalSnapshots = [];
                     break;
                 case "cancel":
-                    // Restore all graphics to pre-edit state
-                    graphic.geometry = this._originalGeometry;
+                    // Only revert if snapshots are still set (i.e. deactivate() hasn't
+                    // already synced and cleared them — which it does for scale/rotate
+                    // where "complete" never fired before the cancel).
+                    if (this._originalGeometry) graphic.geometry = this._originalGeometry;
                     if (de && this._originalCtrlPts) (de as any).CTRL_PTS = this._originalCtrlPts;
                     if (de && this._originalBaseLnPts) (de as any).BASE_LN_PTS = this._originalBaseLnPts;
                     this._reAnnotate(graphic);
@@ -379,76 +405,65 @@ class EditEngine {
     }
 
     /**
-     * Derive the 2D similarity transform that maps oldGeom to newGeom.
+     * Derive the exact 2D similarity transform mapping oldGeom → newGeom.
      *
-     * Strategy: use the geometry centroid as the translation reference, and
-     * the first path/ring vertex (relative to centroid) to determine the
-     * rotation angle and uniform scale factor via vector comparison.
+     * Uses two vertex correspondences (SketchViewModel preserves vertex order)
+     * to solve (a, b, tx, ty) in closed form:
+     *   a  = (Δx·Δx' + Δy·Δy') / (Δx² + Δy²)
+     *   b  = (Δx·Δy' − Δy·Δx') / (Δx² + Δy²)
+     *   tx = x1' − a·x1 + b·y1
+     *   ty = y1' − b·x1 − a·y1
+     *
+     * This avoids any pivot/centroid assumption, so asymmetric shapes (e.g.
+     * MainAttack arrows) transform exactly regardless of which side is scaled.
      */
     private _computeAffineTransform(oldGeom: any, newGeom: any): AffineTransform {
-        const centerOld = this._getGeomCenter(oldGeom);
-        const centerNew = this._getGeomCenter(newGeom);
+        const v1old = this._getVertex(oldGeom, 0);
+        const v2old = this._getVertex(oldGeom, 1);
+        const v1new = this._getVertex(newGeom, 0);
+        const v2new = this._getVertex(newGeom, 1);
 
-        const oldV = this._getFirstVertex(oldGeom);
-        const newV = this._getFirstVertex(newGeom);
+        let a = 1, b = 0, tx = 0, ty = 0;
 
-        let angle = 0;
-        let scale = 1;
-
-        if (oldV && newV) {
-            const dxOld = oldV.x - centerOld.x;
-            const dyOld = oldV.y - centerOld.y;
-            const dxNew = newV.x - centerNew.x;
-            const dyNew = newV.y - centerNew.y;
-
-            const lenOld = Math.hypot(dxOld, dyOld);
-            const lenNew = Math.hypot(dxNew, dyNew);
-
-            if (lenOld > 1e-10) {
-                scale = lenNew / lenOld;
-                // Angle between the two reference vectors
-                angle = Math.atan2(dyNew, dxNew) - Math.atan2(dyOld, dxOld);
+        if (v1old && v2old && v1new && v2new) {
+            const dx  = v2old.x - v1old.x;
+            const dy  = v2old.y - v1old.y;
+            const lenSq = dx * dx + dy * dy;
+            if (lenSq > 1e-20) {
+                const dx2 = v2new.x - v1new.x;
+                const dy2 = v2new.y - v1new.y;
+                a  = (dx * dx2 + dy * dy2) / lenSq;
+                b  = (dx * dy2 - dy * dx2) / lenSq;
+                tx = v1new.x - (a * v1old.x - b * v1old.y);
+                ty = v1new.y - (b * v1old.x + a * v1old.y);
             }
+        } else if (v1old && v1new) {
+            // Degenerate — only one vertex available, treat as pure translation
+            tx = v1new.x - v1old.x;
+            ty = v1new.y - v1old.y;
         }
 
-        return { angle, scale, centerOld, centerNew };
+        return { a, b, tx, ty };
     }
 
-    /**
-     * Apply a 2D similarity transform to a single Point:
-     *   1. Translate to old centroid origin
-     *   2. Rotate by angle
-     *   3. Scale uniformly
-     *   4. Translate to new centroid
-     */
+    /** Apply the 2D similarity transform to a single Point. */
     private _applyAffineToPoint(pt: Point, t: AffineTransform): Point {
-        const dx = pt.x - t.centerOld.x;
-        const dy = pt.y - t.centerOld.y;
-
-        const cosA = Math.cos(t.angle);
-        const sinA = Math.sin(t.angle);
-
         return new Point({
-            x: (dx * cosA - dy * sinA) * t.scale + t.centerNew.x,
-            y: (dx * sinA + dy * cosA) * t.scale + t.centerNew.y,
+            x: t.a * pt.x - t.b * pt.y + t.tx,
+            y: t.b * pt.x + t.a * pt.y + t.ty,
             spatialReference: pt.spatialReference ?? this.view.spatialReference,
         });
     }
 
-    /** Returns the extent centre, or the point coords for a Point geometry. */
-    private _getGeomCenter(geom: any): { x: number; y: number } {
-        if (geom.extent) return { x: geom.extent.center.x, y: geom.extent.center.y };
-        if (geom.type === "point") return { x: geom.x, y: geom.y };
-        return { x: 0, y: 0 };
-    }
-
-    /** Returns the first vertex of the first path/ring, or null for degenerate geoms. */
-    private _getFirstVertex(geom: any): { x: number; y: number } | null {
-        if (geom.type === "polyline" && geom.paths?.length && geom.paths[0].length >= 2) {
-            return { x: geom.paths[0][0][0], y: geom.paths[0][0][1] };
+    /** Returns the vertex at `index` from the first path/ring of geom, or null. */
+    private _getVertex(geom: any, index: number): { x: number; y: number } | null {
+        if (geom.type === "polyline" && geom.paths?.length) {
+            const path = geom.paths[0];
+            if (path.length > index) return { x: path[index][0], y: path[index][1] };
         }
-        if (geom.type === "polygon" && geom.rings?.length && geom.rings[0].length >= 2) {
-            return { x: geom.rings[0][0][0], y: geom.rings[0][0][1] };
+        if (geom.type === "polygon" && geom.rings?.length) {
+            const ring = geom.rings[0];
+            if (ring.length > index) return { x: ring[index][0], y: ring[index][1] };
         }
         return null;
     }

@@ -4,6 +4,9 @@ import Graphic from '@arcgis/core/Graphic';
 import Evented from '@arcgis/core/core/Evented';
 import Point from '@arcgis/core/geometry/Point';
 import MeasurementEngine from '../Engines/MeasurementEngine';
+import WeaponEffectEngine from '../Engines/Analysis/WeaponEffectEngine';
+import LOSEngine from '../Engines/Analysis/LOSEngine';
+import TrajectoryEngine from '../Engines/Analysis/TrajectoryEngine';
 export interface ContextMenuItem {
     id: string;
     label: string | ((graphic?: Graphic) => string);
@@ -51,6 +54,10 @@ declare class ContextMenuManager extends Evented {
     private clickPoint;
     private originalEvent;
     private _measurementEngine;
+    private _symbolEngine;
+    private _weaponEffectEngine;
+    private _losEngine;
+    private _trajectoryEngine;
     private _pointerDownHandle;
     private _contextMenuHandler;
     private _contextMenuContainer;
@@ -96,6 +103,30 @@ declare class ContextMenuManager extends Evented {
      * the user to toggle measurements on/off and measure the selected graphic.
      */
     linkMeasurementEngine(engine: MeasurementEngine): void;
+    /**
+     * Link a SymbolEngine so the context menu can show a "Stop Continuous Mode"
+     * option whenever continuous creation mode is active.
+     */
+    linkSymbolEngine(engine: {
+        creationMode: 'single' | 'continuous';
+        stopContinuousMode(): void;
+    }): void;
+    /**
+     * Link a WeaponEffectEngine so the "Analysis → Weapon Engagement Zone"
+     * context menu item opens the WEZ panel with the right-clicked graphic
+     * as the observer origin.
+     */
+    linkWeaponEffectEngine(engine: WeaponEffectEngine): void;
+    /**
+     * Link a LOSEngine so the "Analysis → Line of Sight" context menu item
+     * opens the LOS panel with the right-clicked graphic as the observer origin.
+     */
+    linkLOSEngine(engine: LOSEngine): void;
+    /**
+     * Link a TrajectoryEngine so the "Analysis → Projectile Trajectory" item
+     * opens the trajectory panel with the right-clicked graphic as fire origin.
+     */
+    linkTrajectoryEngine(engine: TrajectoryEngine): void;
     /**
      * Register a function that returns extra context menu items dynamically.
      * Called each time the menu opens, so items can depend on runtime state

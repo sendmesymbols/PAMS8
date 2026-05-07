@@ -780,151 +780,6 @@
       }
 
       /* ═══════════════════════════════════════════════════════════════════════
-         FEATURE COLLAPSIBLE PANELS
-         ═══════════════════════════════════════════════════════════════════════ */
-      #settingsPanel .feature-panel {
-        margin-bottom: 10px;
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-        background: rgba(0, 0, 0, 0.15);
-      }
-
-      #settingsPanel .feature-panel:last-child {
-        margin-bottom: 0;
-      }
-
-      #settingsPanel .feature-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 10px;
-        background: linear-gradient(135deg, rgba(100, 180, 255, 0.08) 0%, rgba(80, 140, 200, 0.05) 100%);
-        border-bottom: 1px solid var(--border-subtle);
-        cursor: pointer;
-        user-select: none;
-        transition: background 0.15s ease;
-      }
-
-      #settingsPanel .feature-header:hover {
-        background: linear-gradient(135deg, rgba(100, 180, 255, 0.12) 0%, rgba(80, 140, 200, 0.08) 100%);
-      }
-
-      #settingsPanel .feature-header-left {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      #settingsPanel .feature-header-left input[type="checkbox"] {
-        width: 14px;
-        height: 14px;
-        accent-color: var(--accent-success);
-        cursor: pointer;
-      }
-
-      #settingsPanel .feature-header-left label {
-        color: var(--neutral-300);
-        font-size: 11.5px;
-        font-weight: 600;
-        cursor: pointer;
-      }
-
-      #settingsPanel .feature-header .toggle-icon {
-        font-size: 8px;
-        color: var(--neutral-500);
-        transition: transform 0.2s ease;
-        opacity: 0.7;
-      }
-
-      #settingsPanel .feature-panel.collapsed .feature-header .toggle-icon {
-        transform: rotate(-90deg);
-      }
-
-      #settingsPanel .feature-body {
-        padding: 8px 10px 6px;
-        max-height: 400px;
-        overflow-y: auto;
-        transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
-      }
-
-      #settingsPanel .feature-panel.collapsed .feature-body {
-        max-height: 0;
-        padding: 0 10px;
-        overflow-y: hidden;
-        opacity: 0.5;
-      }
-
-      #settingsPanel .feature-body::-webkit-scrollbar {
-        width: 4px;
-      }
-
-      #settingsPanel .feature-body::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      #settingsPanel .feature-body::-webkit-scrollbar-thumb {
-        background: var(--border-default);
-        border-radius: 2px;
-      }
-
-      /* Disabled state for entire feature panel - but allow checkbox to still work */
-      #settingsPanel .feature-panel.disabled {
-        opacity: 0.5;
-      }
-
-      #settingsPanel .feature-panel.disabled .feature-body {
-        opacity: 0.4;
-        pointer-events: none;
-      }
-
-      /* Header should always be clickable */
-      #settingsPanel .feature-panel .feature-header {
-        pointer-events: auto;
-      }
-
-      /* Checkbox wrapper to ensure it's always clickable */
-      #settingsPanel .feature-panel .feature-header-left {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        pointer-events: auto;
-      }
-
-      /* Disabled input styling within feature panels */
-      #settingsPanel .feature-body input:disabled,
-      #settingsPanel .feature-body select:disabled {
-        opacity: 0.35;
-        cursor: not-allowed;
-      }
-
-      #settingsPanel .feature-body input[type='checkbox']:disabled,
-      #settingsPanel .feature-body input[type='range']:disabled,
-      #settingsPanel .feature-body input[type='color']:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
-        pointer-events: none;
-      }
-
-      #settingsPanel .setting-row:has(input:disabled, select:disabled) label {
-        opacity: 0.4;
-      }
-
-      /* Sub-feature indicator */
-      #settingsPanel .sub-feature-label {
-        font-size: 9px;
-        color: var(--neutral-500);
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        margin: 8px 0 4px;
-        padding-left: 2px;
-      }
-
-      #settingsPanel .sub-feature-label:first-child {
-        margin-top: 0;
-      }
-
-      /* ═══════════════════════════════════════════════════════════════════════
          API TEST PANEL
          ═══════════════════════════════════════════════════════════════════════ */
       #apiPanel {
@@ -1462,7 +1317,6 @@
         <span class="toggle-icon">▼</span>
       </header>
       <div class="settings-content">
-        <!-- Symbol Sizes Section -->
         <div class="settings-section">
           <div class="section-title">Symbol Sizes</div>
           <div class="setting-row">
@@ -1485,6 +1339,7 @@
               min="0.5"
               max="20"
               step="0.5"
+              title="Width of lines used in the symbol outline."
             />
           </div>
           <div class="setting-row">
@@ -1496,6 +1351,7 @@
               min="1"
               max="50"
               step="1"
+              title="Width of lines used for point symbols (like dots)."
             />
           </div>
           <div class="setting-row">
@@ -1507,6 +1363,7 @@
               min="6"
               max="48"
               step="1"
+              title="Size of text labels in points."
             />
           </div>
           <div class="setting-row">
@@ -1518,6 +1375,7 @@
               min="6"
               max="48"
               step="1"
+              title="Size of text used in freehand drawings."
             />
           </div>
           <div class="setting-row">
@@ -1529,44 +1387,55 @@
               min="0.5"
               max="20"
               step="0.5"
+              title="Width of lines used in freehand drawings."
             />
           </div>
         </div>
-
-        <!-- Core Features Section -->
         <div class="settings-section">
-          <div class="section-title">Core Features</div>
+          <div class="section-title">Features</div>
+          <div class="setting-row">
+            <label>Measurement</label>
+            <input type="checkbox" id="setting-measurementEngine" checked title="Enable live measurements (distance, bearing, etc.) while drawing symbols." />
+          </div>
           <div class="setting-row">
             <label>Context Menu</label>
-            <input type="checkbox" id="setting-contextMenu" checked />
+            <input type="checkbox" id="setting-contextMenu" checked title="Enable right-click context menu for symbol editing and options." />
           </div>
           <div class="setting-row">
             <label>Edit Engine</label>
-            <input type="checkbox" id="setting-editEngine" checked />
+            <input type="checkbox" id="setting-editEngine" checked title="Enable interactive editing of symbol vertices and control points." />
           </div>
           <div class="setting-row">
             <label>Annotation</label>
-            <input type="checkbox" id="setting-annotationEngine" checked />
+            <input type="checkbox" id="setting-annotationEngine" checked title="Enable automatic text labels for symbols based on their properties." />
           </div>
           <div class="setting-row">
             <label>Shortcuts</label>
-            <input type="checkbox" id="setting-shortcuts" checked />
+            <input type="checkbox" id="setting-shortcuts" checked title="Enable keyboard shortcuts for common actions (Lasso, Move, Edit, etc.)." />
           </div>
           <div class="setting-row">
             <label>Copy/Paste</label>
-            <input type="checkbox" id="setting-copyPaste" checked />
+            <input type="checkbox" id="setting-copyPaste" checked title="Enable copying and pasting of symbols between maps or sessions." />
           </div>
           <div class="setting-row">
             <label>Save/Load</label>
-            <input type="checkbox" id="setting-saveLoad" checked />
+            <input type="checkbox" id="setting-saveLoad" checked title="Enable saving symbol configurations to file and loading them later." />
           </div>
           <div class="setting-row">
             <label>Templates</label>
-            <input type="checkbox" id="setting-templates" checked />
+            <input type="checkbox" id="setting-templates" checked title="Enable saving and loading symbol templates for reuse." />
+          </div>
+          <div class="setting-row">
+            <label>Proximity</label>
+            <input type="checkbox" id="setting-proximityEngine" checked title="Enable proximity detection and snapping to existing symbols." />
+          </div>
+          <div class="setting-row">
+            <label>MGRS Grid</label>
+            <input type="checkbox" id="setting-mgrsEngine" />
           </div>
           <div class="setting-row">
             <label>Engine Logs</label>
-            <input type="checkbox" id="setting-logging" checked />
+            <input type="checkbox" id="setting-logging" checked title="Enable logging of engine activities for debugging and monitoring." />
           </div>
           <div class="setting-row">
             <label>Creation Mode</label>
@@ -1574,468 +1443,387 @@
               <option value="single" selected>Single</option>
               <option value="continuous">Continuous</option>
             </select>
+            title="Single: draw one symbol at a time. Continuous: keep drawing symbols until deactivated."
           </div>
         </div>
-
-        <!-- MEASUREMENT FEATURE PANEL -->
-        <div class="feature-panel" id="feature-panel-measurement">
-          <div class="feature-header">
-            <div class="feature-header-left">
-              <input type="checkbox" id="setting-measurementEngine" checked />
-              <label>Measurement</label>
-            </div>
-            <span class="toggle-icon">▼</span>
+        <div class="settings-section">
+          <div class="section-title">Measurement</div>
+          <div class="setting-row">
+            <label>Distance Unit</label>
+            <select id="setting-msDistUnit">
+              <option value="meters">meters</option>
+              <option value="kilometers" selected>km</option>
+              <option value="miles">miles</option>
+              <option value="nautical-miles">nm</option>
+            </select>
+            title="Unit used for measuring distances (meters, kilometers, miles, nautical miles)."
           </div>
-          <div class="feature-body">
-            <div class="sub-feature-label">Units</div>
-            <div class="setting-row">
-              <label>Distance</label>
-              <select id="setting-msDistUnit">
-                <option value="meters">meters</option>
-                <option value="kilometers" selected>km</option>
-                <option value="miles">miles</option>
-                <option value="nautical-miles">nm</option>
-              </select>
-            </div>
-            <div class="setting-row">
-              <label>Area</label>
-              <select id="setting-msAreaUnit">
-                <option value="square-meters">sq meters</option>
-                <option value="square-kilometers" selected>sq km</option>
-                <option value="square-miles">sq miles</option>
-                <option value="hectares">hectares</option>
-                <option value="acres">acres</option>
-              </select>
-            </div>
-            <div class="sub-feature-label">Display</div>
-            <div class="setting-row">
-              <label>Show Bearing</label>
-              <input type="checkbox" id="setting-showBng" checked />
-            </div>
-            <div class="setting-row">
-              <label>Show Area</label>
-              <input type="checkbox" id="setting-showArea" checked />
-            </div>
-            <div class="setting-row">
-              <label>Show Total</label>
-              <input type="checkbox" id="setting-showTotal" checked />
-            </div>
-            <div class="setting-row">
-              <label>Show Segment</label>
-              <input type="checkbox" id="setting-showSegment" checked />
-            </div>
-            <div class="setting-row">
-              <label>Show Extent</label>
-              <input type="checkbox" id="setting-showExtent" checked />
-            </div>
-            <div class="sub-feature-label">Advanced</div>
-            <div class="setting-row">
-              <label title="Slant Range (3D) accounts for elevation differences">Slant Range (3D)</label>
-              <input type="checkbox" id="setting-slantRange" />
-            </div>
-            <div class="setting-row">
-              <label>Mag Decl °</label>
-              <input type="number" id="setting-magneticDeclination" value="0" step="0.1" style="width: 60px" />
-            </div>
-            <div class="setting-row">
-              <label>March km/h</label>
-              <input type="number" id="setting-speedKmh" value="5" min="0" step="0.5" style="width: 60px" />
-            </div>
-            <div class="sub-feature-label">Styling</div>
-            <div class="setting-row">
-              <label>Line Width</label>
-              <input type="number" id="setting-msLineWidth" value="2" min="0.5" max="10" step="0.5" style="width: 50px" />
-            </div>
-            <div class="setting-row">
-              <label>Line Color</label>
-              <input type="color" id="setting-msLineColor" value="#00ff00" />
-            </div>
-            <div class="setting-row">
-              <label>Font Size</label>
-              <input type="number" id="setting-msFontSize" value="12" min="8" max="24" step="1" style="width: 50px" />
-            </div>
-            <div class="setting-row">
-              <label>Font Color</label>
-              <input type="color" id="setting-msFontColor" value="#0050c8" />
-            </div>
+          <div class="setting-row">
+            <label>Area Unit</label>
+            <select id="setting-msAreaUnit">
+              <option value="square-meters">sq meters</option>
+              <option value="square-kilometers" selected>sq km</option>
+              <option value="square-miles">sq miles</option>
+              <option value="hectares">hectares</option>
+              <option value="acres">acres</option>
+            </select>
+            title="Unit used for measuring areas (square meters, square kilometers, etc.)."
+          </div>
+          <div class="setting-row">
+            <label title="Slant Range (3D) accounts for elevation differences when measuring distances.&#10;&#10;By default, distances are measured as 2D horizontal distances — the flat ground distance between two points, ignoring any height difference.&#10;&#10;When enabled, the engine uses the actual 3D straight-line distance between two points, incorporating the vertical (Z) component:&#10;  slant_distance = √(horizontal² + elevation_delta²)&#10;&#10;Example: Two points 5 km apart horizontally, one 1 km higher → 2D shows 5.0 km, slant range shows 5.1 km (true line-of-sight distance).&#10;&#10;Useful for:&#10;• 3D/SceneView maps with real elevation (Z values)&#10;• Military LOS, weapons range, helicopter/aircraft routing&#10;• Accurate distances along mountainous terrain&#10;&#10;If geometry has no Z values, falls back to standard 2D distance.">Slant Range (3D)</label>
+            <input type="checkbox" id="setting-slantRange" />
+          </div>
+          <div class="setting-row">
+            <label>Mag Declination °</label>
+            <input type="number" id="setting-magneticDeclination" value="0" step="0.1" />
+          </div>
+          <div class="setting-row">
+            <label>March Speed km/h</label>
+            <input type="number" id="setting-speedKmh" value="5" min="0" step="0.5" title="Speed used for calculating march time ETAs (kilometers per hour)." />
+          </div>
+          <div class="setting-row">
+            <label>Show Bearing</label>
+            <input type="checkbox" id="setting-showBng" checked title="Display bearing (direction) measurements." />
+          </div>
+          <div class="setting-row">
+            <label>Show Area</label>
+            <input type="checkbox" id="setting-showArea" checked title="Display area measurements." />
+          </div>
+          <div class="setting-row">
+            <label>Show Total</label>
+            <input type="checkbox" id="setting-showTotal" checked title="Display total distance/length measurements." />
+          </div>
+          <div class="setting-row">
+            <label>Show Segment</label>
+            <input type="checkbox" id="setting-showSegment" checked title="Display individual segment measurements." />
+          </div>
+          <div class="setting-row">
+            <label>Show Extent</label>
+            <input type="checkbox" id="setting-showExtent" checked title="Display bounding box extent measurements." />
+          </div>
+          <div class="setting-row">
+            <label>Line Width</label>
+            <input type="number" id="setting-msLineWidth" value="2" min="0.5" max="10" step="0.5" title="Width of measurement lines (for bearings, distances, etc.)." />
+          </div>
+          <div class="setting-row">
+            <label>Line Color</label>
+            <input type="color" id="setting-msLineColor" value="#00ff00" title="Color of measurement lines." />
+          </div>
+          <div class="setting-row">
+            <label>Font Size</label>
+            <input type="number" id="setting-msFontSize" value="12" min="8" max="24" step="1" title="Font size for measurement text labels." />
+          </div>
+          <div class="setting-row">
+            <label>Font Color</label>
+            <input type="color" id="setting-msFontColor" value="#ffffff" title="Color of measurement text labels." />
+          </div>
+          <div class="setting-row">
+            <label>Font Opacity</label>
+            <input type="range" id="setting-msFontOpacity" min="0" max="1" step="0.05" value="1" />
+            <span class="value-display" id="msFontOpacity-display">1.00</span>
+            title="Opacity/transparency of measurement text labels (0=transparent, 1=opaque)."
           </div>
         </div>
-
-        <!-- PROXIMITY FEATURE PANEL -->
-        <div class="feature-panel" id="feature-panel-proximity">
-          <div class="feature-header">
-            <div class="feature-header-left">
-              <input type="checkbox" id="setting-proximityEngine" checked />
-              <label>Proximity</label>
-            </div>
-            <span class="toggle-icon">▼</span>
+        <div class="settings-section">
+          <div class="section-title">Proximity</div>
+          <div class="setting-row">
+            <label>Nearest Vertex</label>
+            <input type="checkbox" id="setting-nearestVertex" checked title="Snap to the nearest vertex (point) of existing symbols." />
           </div>
-          <div class="feature-body">
-            <div class="sub-feature-label">Detection</div>
-            <div class="setting-row">
-              <label>Nearest Vertex</label>
-              <input type="checkbox" id="setting-nearestVertex" checked />
-            </div>
-            <div class="setting-row">
-              <label>Nearest Coord</label>
-              <input type="checkbox" id="setting-nearestCoordinate" checked />
-            </div>
-            <div class="setting-row">
-              <label>Show Distance</label>
-              <input type="checkbox" id="setting-showDistance" checked />
-            </div>
-            <div class="sub-feature-label">Appearance</div>
-            <div class="setting-row">
-              <label>Line Opacity</label>
-              <input
-                type="range"
-                id="setting-lineOpacity"
-                min="0"
-                max="1"
-                step="0.1"
-                value="0.7"
-                style="width: 60px"
-              />
-              <span class="value-display" id="lineOpacity-display">0.7</span>
-            </div>
-            <div class="setting-row">
-              <label>Line Width</label>
-              <input
-                type="number"
-                id="setting-proxLineWidth"
-                value="1.5"
-                min="0.5"
-                max="10"
-                step="0.5"
-                style="width: 50px"
-              />
-            </div>
-            <div class="setting-row">
-              <label>Line Color</label>
-              <input type="color" id="setting-lineColor" value="#0078ff" />
-            </div>
-            <div class="sub-feature-label">Marker</div>
-            <div class="setting-row">
-              <label>Size</label>
-              <input
-                type="number"
-                id="setting-markerSize"
-                value="10"
-                min="4"
-                max="30"
-                step="1"
-                style="width: 50px"
-              />
-            </div>
-            <div class="setting-row">
-              <label>Color</label>
-              <input type="color" id="setting-markerColor" value="#0078ff" />
-            </div>
-            <div class="sub-feature-label">Label</div>
-            <div class="setting-row">
-              <label>Font Size</label>
-              <input
-                type="number"
-                id="setting-fontSize"
-                value="11"
-                min="8"
-                max="24"
-                step="1"
-                style="width: 50px"
-              />
-            </div>
-            <div class="setting-row">
-              <label>Font Color</label>
-              <input type="color" id="setting-fontColor" value="#0050c8" />
-            </div>
-            <div class="sub-feature-label">Snap</div>
-            <div class="setting-row">
-              <label>Radius px</label>
-              <input
-                type="range"
-                id="setting-snapRadiusPx"
-                min="0"
-                max="200"
-                value="80"
-                style="width: 60px"
-              />
-              <span class="value-display" id="snapRadius-display">80</span>
-            </div>
-            <div class="setting-row">
-              <label>Distance</label>
-              <select id="setting-distanceUnit" style="width: 75px">
-                <option value="meters" selected>meters</option>
-                <option value="kilometers">km</option>
-                <option value="miles">miles</option>
-                <option value="nautical-miles">nm</option>
-              </select>
-            </div>
+          <div class="setting-row">
+            <label>Nearest Coord</label>
+            <input type="checkbox" id="setting-nearestCoordinate" checked title="Snap to the nearest coordinate along existing symbol edges." />
           </div>
-        </div>
-
-        <!-- DRAWING CUES FEATURE PANEL -->
-        <div class="feature-panel" id="feature-panel-drawingCues">
-          <div class="feature-header">
-            <div class="feature-header-left">
-              <input type="checkbox" id="setting-drawingCues" checked />
-              <label>Drawing Cues</label>
-            </div>
-            <span class="toggle-icon">▼</span>
+          <div class="setting-row">
+            <label>Show Distance</label>
+            <input type="checkbox" id="setting-showDistance" checked title="Display distance measurements from cursor to nearby symbols." />
           </div>
-          <div class="feature-body">
-            <!-- Rubber Band Sub-Feature -->
-            <div class="sub-feature-label">Rubber Band</div>
-            <div class="setting-row">
-              <label>Enabled</label>
-              <input type="checkbox" id="setting-rubberBand" data-sf-master="rubberBand" checked />
-            </div>
-            <div class="setting-row" data-sf-group="rubberBand">
-              <label>Opacity</label>
-              <input type="range" id="setting-rbOpacity" min="0" max="1" step="0.05" value="0.75" style="width: 60px" />
-              <span class="value-display" id="rbOpacity-display">0.75</span>
-            </div>
-
-            <!-- Coordinates Sub-Feature -->
-            <div class="sub-feature-label">Coordinates</div>
-            <div class="setting-row">
-              <label>Show</label>
-              <input type="checkbox" id="setting-coordDisplay" checked />
-            </div>
-
-            <!-- Angular Guides Sub-Feature -->
-            <div class="sub-feature-label">Angular Guides</div>
-            <div class="setting-row">
-              <label>Enabled</label>
-              <input type="checkbox" id="setting-angularGuides" data-sf-master="angularGuides" checked />
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Threshold °</label>
-              <input type="number" id="setting-guideThreshold" value="8" min="2" max="30" step="1" style="width: 45px" />
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Color</label>
-              <input type="color" id="setting-guideColor" value="#50c8ff" />
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Opacity</label>
-              <input type="range" id="setting-guideOpacity" min="0" max="1" step="0.05" value="0.75" style="width: 60px" />
-              <span class="value-display" id="guideOpacity-display">0.75</span>
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Width</label>
-              <input type="number" id="setting-guideWidth" value="1.5" min="0.5" max="10" step="0.5" style="width: 45px" />
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Snap Interval °</label>
-              <input type="number" id="setting-guideInterval" value="45" min="5" max="90" step="5" style="width: 45px" />
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Show Label</label>
-              <input type="checkbox" id="setting-guideLabel" checked />
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Label Size</label>
-              <input type="number" id="setting-guideLabelSize" value="11" min="8" max="20" step="1" style="width: 45px" />
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Protractor</label>
-              <input type="checkbox" id="setting-guideArc" checked />
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Arc Radius km</label>
-              <input type="number" id="setting-guideArcRadius" value="0.5" min="0.1" max="20" step="0.1" style="width: 55px" />
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Fan</label>
-              <input type="checkbox" id="setting-guideFan" checked />
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Snap Point</label>
-              <input type="checkbox" id="setting-guideSnapPoint" checked />
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Anchor Cross</label>
-              <input type="checkbox" id="setting-guideAnchor" checked />
-            </div>
-            <div class="setting-row" data-sf-group="angularGuides">
-              <label>Rel. Segment</label>
-              <input type="checkbox" id="setting-guideRelSeg" />
-            </div>
-
-            <!-- Distance Rings Sub-Feature -->
-            <div class="sub-feature-label">Distance Rings</div>
-            <div class="setting-row">
-              <label>Enabled</label>
-              <input type="checkbox" id="setting-distanceRings" data-sf-master="distanceRings" checked />
-            </div>
-            <div class="setting-row" data-sf-group="distanceRings">
-              <label>Interval km</label>
-              <input type="number" id="setting-ringInterval" value="1.0" min="0.1" max="100" step="0.1" style="width: 55px" />
-            </div>
-            <div class="setting-row" data-sf-group="distanceRings">
-              <label>Count</label>
-              <input type="number" id="setting-ringCount" value="3" min="1" max="10" step="1" style="width: 45px" />
-            </div>
-            <div class="setting-row" data-sf-group="distanceRings">
-              <label>Color</label>
-              <input type="color" id="setting-ringColor" value="#50e678" />
-            </div>
-            <div class="setting-row" data-sf-group="distanceRings">
-              <label>Opacity</label>
-              <input type="range" id="setting-ringOpacity" min="0" max="1" step="0.05" value="0.7" style="width: 60px" />
-              <span class="value-display" id="ringOpacity-display">0.70</span>
-            </div>
-            <div class="setting-row" data-sf-group="distanceRings">
-              <label>Width</label>
-              <input type="number" id="setting-ringWidth" value="1.5" min="0.5" max="10" step="0.5" style="width: 45px" />
-            </div>
-
-            <!-- Nearby Highlight Sub-Feature -->
-            <div class="sub-feature-label">Nearby Highlight</div>
-            <div class="setting-row">
-              <label>Enabled</label>
-              <input type="checkbox" id="setting-nearbyHighlight" data-sf-master="nearbyHighlight" checked />
-            </div>
-            <div class="setting-row" data-sf-group="nearbyHighlight">
-              <label>Radius km</label>
-              <input type="number" id="setting-hlRadius" value="5.0" min="0.1" max="200" step="0.5" style="width: 55px" />
-            </div>
-            <div class="setting-row" data-sf-group="nearbyHighlight">
-              <label>Ring Size km</label>
-              <input type="number" id="setting-hlRingRadius" value="0.5" min="0.1" max="10" step="0.1" style="width: 55px" />
-            </div>
-
-            <!-- Adaptive Control Sub-Feature -->
-            <div class="sub-feature-label">Adaptive Control</div>
-            <div class="setting-row">
-              <label>Adaptive Rings</label>
-              <input type="checkbox" id="setting-adaptive" data-sf-master="adaptive" />
-            </div>
-            <div class="setting-row" data-sf-group="adaptive">
-              <label>Coverage</label>
-              <input type="range" id="setting-adaptiveCoverage" min="0.05" max="0.75" step="0.05" value="0.25" style="width: 60px" />
-              <span class="value-display" id="adaptiveCoverage-display">0.25</span>
-            </div>
-            <div class="setting-row" data-sf-group="adaptive">
-              <label>Max Outer km</label>
-              <input type="number" id="setting-adaptiveMaxKm" value="200" min="1" max="10000" step="10" style="width: 55px" />
-            </div>
+          <div class="setting-row">
+            <label>Distance Unit</label>
+            <select id="setting-distanceUnit">
+              <option value="meters" selected>meters</option>
+              <option value="kilometers">km</option>
+              <option value="miles">miles</option>
+              <option value="nautical-miles">nm</option>
+            </select>
+            title="Unit used for proximity distance measurements."
+          </div>
+          <div class="setting-row">
+            <label>Snap Radius</label>
+            <input
+              type="range"
+              id="setting-snapRadiusPx"
+              min="0"
+              max="200"
+              value="80"
+            />
+            <span class="value-display" id="snapRadius-display">80</span>
+            title="Radius in pixels within which the cursor will snap to existing symbols."
+          </div>
+          <div class="setting-row">
+            <label>Line Opacity</label>
+            <input
+              type="range"
+              id="setting-lineOpacity"
+              min="0"
+              max="1"
+              step="0.1"
+              value="0.7"
+            />
+            <span class="value-display" id="lineOpacity-display">0.7</span>
+            title="Opacity/transparency of proximity lines (0=transparent, 1=opaque)."
+          </div>
+          <div class="setting-row">
+            <label>Line Width</label>
+            <input
+              type="number"
+              id="setting-proxLineWidth"
+              value="1.5"
+              min="0.5"
+              max="10"
+              step="0.5"
+            />
+            title="Width of proximity lines used for snapping visualization."
+          </div>
+          <div class="setting-row">
+            <label>Line Color</label>
+            <input type="color" id="setting-lineColor" value="#0078ff" title="Color of proximity lines used for snapping visualization." />
+          </div>
+          <div class="setting-row">
+            <label>Marker Size</label>
+            <input
+              type="number"
+              id="setting-markerSize"
+              value="10"
+              min="4"
+              max="30"
+              step="1"
+            />
+            title="Size of markers used to indicate snap points."
+          </div>
+          <div class="setting-row">
+            <label>Marker Color</label>
+            <input type="color" id="setting-markerColor" value="#0078ff" title="Color of markers used to indicate snap points." />
+          </div>
+          <div class="setting-row">
+            <label>Font Size</label>
+            <input
+              type="number"
+              id="setting-fontSize"
+              value="11"
+              min="8"
+              max="24"
+              step="1"
+            />
+            title="Font size for proximity text labels."
+          </div>
+          <div class="setting-row">
+            <label>Font Color</label>
+            <input type="color" id="setting-fontColor" value="#0050c8" title="Color of proximity text labels." />
+          </div>
+        <div class="settings-section">
+          <div class="section-title">Drawing Cues</div>
+          <div class="setting-row">
+            <label>Drawing Cues</label>
+            <input type="checkbox" id="setting-drawingCues" checked title="Enable visual drawing aids like guides, rubber bands, and coordinate displays." />
+          </div>
+          <div class="setting-row">
+            <label>Rubber Band</label>
+            <input type="checkbox" id="setting-rubberBand" checked title="Enable rubber band line that follows the cursor while drawing." />
+          </div>
+          <div class="setting-row">
+            <label>RB Opacity</label>
+            <input type="range" id="setting-rbOpacity" min="0" max="1" step="0.05" value="0.75" />
+            <span class="value-display" id="rbOpacity-display">0.75</span>
+            title="Opacity/transparency of the rubber band line (0=transparent, 1=opaque)."
+          </div>
+          <div class="setting-row">
+            <label>Coordinates</label>
+            <input type="checkbox" id="setting-coordDisplay" checked title="Display coordinate readout while drawing." />
+          </div>
+          <div class="setting-row">
+            <label>Angle Guides</label>
+            <input type="checkbox" id="setting-angularGuides" checked title="Show angle guide lines while drawing to help with alignment." />
+          </div>
+          <div class="setting-row">
+            <label>Guide Threshold °</label>
+            <input type="number" id="setting-guideThreshold" value="8" min="2" max="30" step="1" title="Minimum angle (in degrees) at which angle guides will appear." />
+          </div>
+          <div class="setting-row">
+            <label>Guide Color</label>
+            <input type="color" id="setting-guideColor" value="#50c8ff" title="Color of angle guide lines." />
+          </div>
+          <div class="setting-row">
+            <label>Guide Opacity</label>
+            <input type="range" id="setting-guideOpacity" min="0" max="1" step="0.05" value="0.75" />
+            <span class="value-display" id="guideOpacity-display">0.75</span>
+            title="Opacity/transparency of angle guide lines (0=transparent, 1=opaque)."
+          </div>
+          <div class="setting-row">
+            <label>Guide Width</label>
+            <input type="number" id="setting-guideWidth" value="1.5" min="0.5" max="10" step="0.5" title="Width of angle guide lines in pixels." />
+          </div>
+          <div class="setting-row">
+            <label>Snap Interval °</label>
+            <input type="number" id="setting-guideInterval" value="45" min="5" max="90" step="5" title="Interval (in degrees) at which angle guides snap to specific angles (like 45°, 90°, etc.)." />
+          </div>
+          <div class="setting-row">
+            <label>Angle Label</label>
+            <input type="checkbox" id="setting-guideLabel" checked title="Show angle measurements on the guide lines." />
+          </div>
+          <div class="setting-row">
+            <label>Label Size</label>
+            <input type="number" id="setting-guideLabelSize" value="11" min="8" max="20" step="1" title="Font size for angle label text." />
+          </div>
+          <div class="setting-row">
+            <label>Protractor Arc</label>
+            <input type="checkbox" id="setting-guideArc" checked title="Show a protractor arc to help visualize angles." />
+          </div>
+          <div class="setting-row">
+            <label>Arc Radius km</label>
+            <input type="number" id="setting-guideArcRadius" value="0.5" min="0.1" max="20" step="0.1" title="Radius of the protractor arc in kilometers." />
+          </div>
+          <div class="setting-row">
+            <label>Guide Fan</label>
+            <input type="checkbox" id="setting-guideFan" checked title="Show guide lines in a fan pattern around the cursor." />
+          </div>
+          <div class="setting-row">
+            <label>Snap Point</label>
+            <input type="checkbox" id="setting-guideSnapPoint" checked title="Show a point indicator at snap locations." />
+          </div>
+          <div class="setting-row">
+            <label>Anchor Cross</label>
+            <input type="checkbox" id="setting-guideAnchor" checked title="Show an anchor cross at the center of the drawing area." />
+          </div>
+          <div class="setting-row">
+            <label>Rel. Segment</label>
+            <input type="checkbox" id="setting-guideRelSeg" title="Show relative segment measurements." />
+          </div>
+          <div class="setting-row">
+            <label>Distance Rings</label>
+            <input type="checkbox" id="setting-distanceRings" checked title="Show concentric distance rings around the cursor." />
+          </div>
+          <div class="setting-row">
+            <label>Ring Interval km</label>
+            <input type="number" id="setting-ringInterval" value="1.0" min="0.1" max="100" step="0.1" title="Distance interval (in kilometers) between concentric rings." />
+          </div>
+          <div class="setting-row">
+            <label>Ring Count</label>
+            <input type="number" id="setting-ringCount" value="3" min="1" max="10" step="1" title="Number of concentric rings to display." />
+          </div>
+          <div class="setting-row">
+            <label>Ring Color</label>
+            <input type="color" id="setting-ringColor" value="#50e678" title="Color of the distance rings." />
+          </div>
+          <div class="setting-row">
+            <label>Ring Opacity</label>
+            <input type="range" id="setting-ringOpacity" min="0" max="1" step="0.05" value="0.7" />
+            <span class="value-display" id="ringOpacity-display">0.70</span>
+            title="Opacity/transparency of distance rings (0=transparent, 1=opaque)."
+          </div>
+          <div class="setting-row">
+            <label>Ring Width</label>
+            <input type="number" id="setting-ringWidth" value="1.5" min="0.5" max="10" step="0.5" title="Width of the distance rings in pixels." />
+          </div>
+          <div class="setting-row">
+            <label>Nearby Highlight</label>
+            <input type="checkbox" id="setting-nearbyHighlight" checked title="Highlight symbols that are near the cursor." />
+          </div>
+          <div class="setting-row">
+            <label>Highlight Radius km</label>
+            <input type="number" id="setting-hlRadius" value="5.0" min="0.1" max="200" step="0.5" title="Radius (in kilometers) for highlighting nearby symbols." />
+          </div>
+          <div class="setting-row">
+            <label>Ring Size km</label>
+            <input type="number" id="setting-hlRingRadius" value="0.5" min="0.1" max="10" step="0.1" title="Radius (in kilometers) of the highlight ring." />
           </div>
         </div>
-
-        <!-- MGRS FEATURE PANEL -->
-        <div class="feature-panel" id="feature-panel-mgrs">
-          <div class="feature-header">
-            <div class="feature-header-left">
-              <input type="checkbox" id="setting-mgrsEngine" />
-              <label>MGRS Grid</label>
-            </div>
-            <span class="toggle-icon">▼</span>
+        <div class="settings-section">
+          <div class="section-title">Adaptive Control</div>
+          <div class="setting-row">
+            <label>Adaptive Rings</label>
+            <input type="checkbox" id="setting-adaptive" title="Enable adaptive rings that adjust based on symbol density." />
           </div>
-          <div class="feature-body">
-            <div class="sub-feature-label">Grid Types</div>
-            <div class="setting-row">
-              <label>GZD</label>
-              <input type="checkbox" id="setting-mgrsShowGZD" checked />
-            </div>
-            <div class="setting-row">
-              <label>100km</label>
-              <input type="checkbox" id="setting-mgrsShow100K" checked />
-            </div>
-            <div class="setting-row">
-              <label>10km</label>
-              <input type="checkbox" id="setting-mgrsShow10K" />
-            </div>
-            <div class="setting-row">
-              <label>1km</label>
-              <input type="checkbox" id="setting-mgrsShow1K" />
-            </div>
-            <div class="setting-row">
-              <label>Auto Zoom</label>
-              <input type="checkbox" id="setting-mgrsAutoZoom" checked />
-            </div>
-
-            <div class="sub-feature-label">GZD Styling</div>
-            <div class="setting-row">
-              <label>Line Color</label>
-              <input type="color" id="setting-mgrsGzdColor" value="#ffc832" />
-            </div>
-            <div class="setting-row">
-              <label>Opacity</label>
-              <input type="range" id="setting-mgrsGzdOpacity" min="0" max="1" step="0.05" value="0.85" style="width: 60px" />
-              <span class="value-display" id="mgrsGzdOpacity-display">0.85</span>
-            </div>
-            <div class="setting-row">
-              <label>Width</label>
-              <input type="number" id="setting-mgrsGzdWidth" value="1.5" min="0.1" max="10" step="0.1" style="width: 55px" />
-            </div>
-
-            <div class="sub-feature-label">100km Styling</div>
-            <div class="setting-row">
-              <label>Line Color</label>
-              <input type="color" id="setting-mgrs100KColor" value="#ffc832" />
-            </div>
-            <div class="setting-row">
-              <label>Opacity</label>
-              <input type="range" id="setting-mgrs100KOpacity" min="0" max="1" step="0.05" value="0.55" style="width: 60px" />
-              <span class="value-display" id="mgrs100KOpacity-display">0.55</span>
-            </div>
-            <div class="setting-row">
-              <label>Width</label>
-              <input type="number" id="setting-mgrs100KWidth" value="0.8" min="0.1" max="10" step="0.1" style="width: 55px" />
-            </div>
-
-            <div class="sub-feature-label">10km Styling</div>
-            <div class="setting-row">
-              <label>Line Color</label>
-              <input type="color" id="setting-mgrs10KColor" value="#ffc832" />
-            </div>
-            <div class="setting-row">
-              <label>Opacity</label>
-              <input type="range" id="setting-mgrs10KOpacity" min="0" max="1" step="0.05" value="0.35" style="width: 60px" />
-              <span class="value-display" id="mgrs10KOpacity-display">0.35</span>
-            </div>
-            <div class="setting-row">
-              <label>Width</label>
-              <input type="number" id="setting-mgrs10KWidth" value="0.5" min="0.1" max="10" step="0.1" style="width: 55px" />
-            </div>
-
-            <div class="sub-feature-label">1km Styling</div>
-            <div class="setting-row">
-              <label>Line Color</label>
-              <input type="color" id="setting-mgrs1KColor" value="#ffc832" />
-            </div>
-            <div class="setting-row">
-              <label>Opacity</label>
-              <input type="range" id="setting-mgrs1KOpacity" min="0" max="1" step="0.05" value="0.25" style="width: 60px" />
-              <span class="value-display" id="mgrs1KOpacity-display">0.25</span>
-            </div>
-            <div class="setting-row">
-              <label>Width</label>
-              <input type="number" id="setting-mgrs1KWidth" value="0.35" min="0.1" max="10" step="0.1" style="width: 55px" />
-            </div>
-
-            <div class="sub-feature-label">Labels</div>
-            <div class="setting-row">
-              <label>Show Labels</label>
-              <input type="checkbox" id="setting-mgrsShowLabels" checked />
-            </div>
-            <div class="setting-row">
-              <label>Size</label>
-              <input type="number" id="setting-mgrsLabelSize" value="11" min="8" max="40" step="1" style="width: 55px" />
-            </div>
-            <div class="setting-row">
-              <label>Color</label>
-              <input type="color" id="setting-mgrsLabelColor" value="#ffffff" />
-            </div>
-            <div class="setting-row">
-              <label>Opacity</label>
-              <input type="range" id="setting-mgrsLabelOpacity" min="0" max="1" step="0.05" value="0.9" style="width: 60px" />
-              <span class="value-display" id="mgrsLabelOpacity-display">0.90</span>
-            </div>
+          <div class="setting-row">
+            <label>Coverage Fraction</label>
+            <input type="range" id="setting-adaptiveCoverage" min="0.05" max="0.75" step="0.05" value="0.25" />
+            <span class="value-display" id="adaptiveCoverage-display">0.25</span>
+            title="Fraction of view area covered by adaptive rings (0.05=5%, 0.75=75%)."
+          </div>
+          <div class="setting-row">
+            <label>Max Outer km</label>
+            <input type="number" id="setting-adaptiveMaxKm" value="200" min="1" max="10000" step="10" title="Maximum radius (in kilometers) for adaptive rings." />
           </div>
         </div>
-      </div>
+        <div class="settings-section">
+          <div class="section-title">MGRS Grid</div>
+          <div class="setting-row">
+            <label>Show GZD</label>
+            <input type="checkbox" id="setting-mgrsShowGZD" checked title="Show the Grid Zone Designator (GZD) label" />
+          </div>
+          <div class="setting-row">
+            <label>Show 100 km</label>
+            <input type="checkbox" id="setting-mgrsShow100K" checked title="Show the 100 km grid square border" />
+          </div>
+          <div class="setting-row">
+            <label>Show 10 km</label>
+            <input type="checkbox" id="setting-mgrsShow10K" title="Show the 10 km grid square border" />
+          </div>
+          <div class="setting-row">
+            <label>Show 1 km</label>
+            <input type="checkbox" id="setting-mgrsShow1K" title="Show the 1 km grid square border" />
+          </div>
+          <div class="setting-row">
+            <label>Auto-Zoom</label>
+            <input type="checkbox" id="setting-mgrsAutoZoom" checked title="Automatically zoom the map to show the full grid when coordinates change" />
+          </div>
+          <div class="setting-row">
+            <label>GZD Color</label>
+            <input type="color" id="setting-mgrsGzdColor" value="#ffc832" title="Color of the Grid Zone Designator (GZD) text" />
+          </div>
+          <div class="setting-row">
+            <label>GZD Opacity</label>
+            <input type="range" id="setting-mgrsGzdOpacity" min="0" max="1" step="0.05" value="0.85" />
+            <span class="value-display" id="mgrsGzdOpacity-display">0.85</span>
+            title="Opacity/transparency of the Grid Zone Designator (GZD) text (0=transparent, 1=opaque)" />
+          </div>
+          <div class="setting-row">
+            <label>GZD Width</label>
+            <input type="number" id="setting-mgrsGzdWidth" value="1.5" min="0.5" max="10" step="0.5" title="Width of the Grid Zone Designator (GZD) text outline" />
+          </div>
+          <div class="setting-row">
+            <label>100K Color</label>
+            <input type="color" id="setting-mgrs100KColor" value="#ffc832" title="Color of the 100 km grid lines" />
+          </div>
+          <div class="setting-row">
+            <label>100K Opacity</label>
+            <input type="range" id="setting-mgrs100KOpacity" min="0" max="1" step="0.05" value="0.55" />
+            <span class="value-display" id="mgrs100KOpacity-display">0.55</span>
+            title="Opacity/transparency of the 100 km grid lines (0=transparent, 1=opaque)" />
+          </div>
+          <div class="setting-row">
+            <label>100K Width</label>
+            <input type="number" id="setting-mgrs100KWidth" value="0.8" min="0.5" max="10" step="0.5" title="Width of the 100 km grid lines" />
+          </div>
+          <div class="setting-row">
+            <label>Show Labels</label>
+            <input type="checkbox" id="setting-mgrsShowLabels" checked title="Show grid coordinate labels" />
+          </div>
+          <div class="setting-row">
+            <label>Label Size</label>
+            <input type="number" id="setting-mgrsLabelSize" value="11" min="6" max="24" step="1" title="Font size for grid coordinate labels" />
+          </div>
+          <div class="setting-row">
+            <label>Label Color</label>
+            <input type="color" id="setting-mgrsLabelColor" value="#ffffff" title="Color of grid coordinate labels" />
+          </div>
+          <div class="setting-row">
+            <label>Label Opacity</label>
+            <input type="range" id="setting-mgrsLabelOpacity" min="0" max="1" step="0.05" value="0.9" />
+            <span class="value-display" id="mgrsLabelOpacity-display">0.90</span>
+            title="Opacity/transparency of grid coordinate labels (0=transparent, 1=opaque)" />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2048,21 +1836,22 @@
       <div class="api-content">
         <div class="api-section">
           <div class="section-title">SymbolEngine</div>
-          <button class="api-btn" id="api-drawSymbol">Draw Symbol</button>
-          <button class="api-btn" id="api-addSymbol">Add at Center</button>
-          <button class="api-btn" id="api-clearAll">Clear All</button>
-          <button class="api-btn danger" id="api-stop-continuous">Stop Continuous</button>
+          <button class="api-btn" id="api-drawSymbol" title="Enter draw mode to place a symbol by clicking on the map">Draw Symbol</button>
+          <button class="api-btn" id="api-addSymbol" title="Add a symbol at the center of the current map view">Add at Center</button>
+          <button class="api-btn" id="api-clearAll" title="Remove all symbols from the map">Clear All</button>
+          <button class="api-btn danger" id="api-stop-continuous" title="Stop continuous symbol drawing mode">Stop Continuous</button>
           <div class="status-text" id="api-symbol-status">Ready</div>
         </div>
         <div class="api-section">
           <div class="section-title">MeasurementEngine</div>
-          <button class="api-btn success" id="api-me-enable">Enable</button>
-          <button class="api-btn danger" id="api-me-disable">Disable</button>
-          <button class="api-btn" id="api-me-toggle">Toggle</button>
+          <button class="api-btn success" id="api-me-enable" title="Enable live measurements (distance, bearing, etc.) while drawing symbols">Enable</button>
+          <button class="api-btn danger" id="api-me-disable" title="Disable live measurements">Disable</button>
+          <button class="api-btn" id="api-me-toggle" title="Turn live measurements on or off">Toggle</button>
           <div class="setting-row" style="margin-top: 6px">
             <label>Distance:</label>
             <select
               id="api-me-distUnit"
+              title="Unit used for measuring distances (meters, kilometers, miles, etc.)"
               style="
                 width: 80px;
                 background: rgba(255, 255, 255, 0.08);
@@ -2082,28 +1871,29 @@
           </div>
           <div class="setting-row">
             <label>Slant Range</label>
-            <input type="checkbox" id="api-me-slantRange" />
+            <input type="checkbox" id="api-me-slantRange" title="Enable 3D slant range measurements that account for elevation differences" />
           </div>
           <div class="setting-row">
             <label>Mag Decl °</label>
-            <input type="number" id="api-me-magDecl" value="0" step="0.1" style="width: 60px" />
+            <input type="number" id="api-me-magDecl" value="0" step="0.1" style="width: 60px" title="Magnetic declination in degrees for converting between magnetic and true north" />
           </div>
           <div class="setting-row">
             <label>Speed km/h</label>
-            <input type="number" id="api-me-speed" value="5" step="0.5" style="width: 60px" />
+            <input type="number" id="api-me-speed" value="5" step="0.5" style="width: 60px" title="Speed used for calculating march time ETAs (kilometers per hour)" />
           </div>
           <div class="status-text" id="api-me-status">Disabled</div>
         </div>
         <div class="api-section">
           <div class="section-title">ProximityEngine</div>
-          <button class="api-btn success" id="api-prox-enable">Enable</button>
-          <button class="api-btn danger" id="api-prox-disable">Disable</button>
-          <button class="api-btn" id="api-prox-toggle">Toggle</button>
+          <button class="api-btn success" id="api-prox-enable" title="Enable proximity detection and snapping to existing symbols">Enable</button>
+          <button class="api-btn danger" id="api-prox-disable" title="Disable proximity detection and snapping">Disable</button>
+          <button class="api-btn" id="api-prox-toggle" title="Turn proximity detection and snapping on or off">Toggle</button>
           <div class="setting-row" style="margin-top: 6px">
             <label>Snap:</label>
             <input
               type="range"
               id="api-prox-snap"
+              title="Radius in pixels within which the cursor will snap to existing symbols"
               min="0"
               max="200"
               value="80"
@@ -2114,11 +1904,44 @@
         </div>
         <div class="api-section">
           <div class="section-title">SelectionEngine</div>
-          <button class="api-btn" id="api-sel-lasso">Lasso Select</button>
-          <button class="api-btn" id="api-sel-clear">Clear Selection</button>
-          <button class="api-btn" id="api-sel-count">Selection Count</button>
-          <button class="api-btn" id="api-sel-delete">Delete Selected</button>
-          <button class="api-btn" id="api-sel-move">Move Selected</button>
+          <button class="api-btn" id="api-sel-lasso" title="Draw a polygon on the map to select symbols within it">Lasso Select</button>
+          <button class="api-btn" id="api-sel-clear" title="Clear the current selection of symbols">Clear Selection</button>
+          <button class="api-btn" id="api-sel-count" title="Show the number of currently selected symbols">Selection Count</button>
+          <button class="api-btn" id="api-sel-delete" title="Delete all currently selected symbols">Delete Selected</button>
+          <button class="api-btn" id="api-sel-move" title="Move all currently selected symbols by dragging">Move Selected</button>
+          <button class="api-btn" id="api-sel-sim-sidc" title="Select symbols with the same SIDC (Symbol Identification Code)">Same Code</button>
+          <button class="api-btn" id="api-sel-sim-ech" title="Select symbols with the same echelon (military unit size)">Same Echelon</button>
+          <button class="api-btn" id="api-sel-own" title="Select only friendly (own) symbols">Own Only</button>
+          <button class="api-btn" id="api-sel-enemy" title="Select only enemy symbols">Enemy</button>
+          <button class="api-btn" id="api-sel-pt" title="Select only point symbols (dots, etc.)">Points</button>
+          <button class="api-btn" id="api-sel-area" title="Select only area symbols (polygons, etc.)">Areas</button>
+          <button class="api-btn" id="api-sel-line" title="Select only line symbols">Lines</button>
+          <button class="api-btn" id="api-sel-within" title="Select symbols that are within the first selected symbol">Select Within</button>
+          <button class="api-btn" id="api-sel-within-self" title="Select symbols that are within or identical to the first selected symbol">Select Within+Self</button>
+          <div class="setting-row" style="margin-top: 4px">
+            <label>Align:</label>
+            <select
+              id="api-sel-align"
+              title="Align selected symbols to a common edge or center point"
+              style="
+                width: 70px;
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(100, 160, 230, 0.3);
+                border-radius: 4px;
+                color: #e8f4ff;
+                font-size: 11px;
+              "
+            >
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+              <option value="top">Top</option>
+              <option value="bottom">Bottom</option>
+              <option value="centerX">Center X</option>
+              <option value="centerY">Center Y</option>
+            </select>
+          </div>
+          <div class="status-text" id="api-sel-status">0 selected</div>
+        </div>>
           <button class="api-btn" id="api-sel-sim-sidc">Same Code</button>
           <button class="api-btn" id="api-sel-sim-ech">Same Echelon</button>
           <button class="api-btn" id="api-sel-own">Own Only</button>
@@ -2153,104 +1976,108 @@
         </div>
         <div class="api-section">
           <div class="section-title">Undo/Redo</div>
-          <button class="api-btn" id="api-undo">Undo</button>
-          <button class="api-btn" id="api-redo">Redo</button>
-          <button class="api-btn" id="api-undoCount">Stack Info</button>
+          <button class="api-btn" id="api-undo" title="Undo the last action">Undo</button>
+          <button class="api-btn" id="api-redo" title="Redo the last undone action">Redo</button>
+          <button class="api-btn" id="api-undoCount" title="Show the number of actions in the undo and redo stacks">Stack Info</button>
           <div class="status-text" id="api-undo-status">Ready</div>
         </div>
         <div class="api-section">
           <div class="section-title">Save/Load</div>
-          <button class="api-btn" id="api-saveAll">Save All</button>
-          <button class="api-btn" id="api-load">Load</button>
-          <button class="api-btn" id="api-export">Export JSON</button>
-          <button class="api-btn" id="api-import">Import JSON</button>
-          <button class="api-btn success" id="api-export-geojson">
+          <button class="api-btn" id="api-saveAll" title="Save all symbols to a file">Save All</button>
+          <button class="api-btn" id="api-load" title="Load symbols from a file">Load</button>
+          <button class="api-btn" id="api-export" title="Export all symbols to JSON format">Export JSON</button>
+          <button class="api-btn" id="api-import" title="Import symbols from JSON format">Import JSON</button>
+          <button class="api-btn success" id="api-export-geojson" title="Export all symbols to GeoJSON format">
             Export GeoJSON
           </button>
-          <button class="api-btn" id="api-import-geojson">
+          <button class="api-btn" id="api-import-geojson" title="Import symbols from GeoJSON format">
             Import GeoJSON
           </button>
           <div class="status-text" id="api-save-status">Ready</div>
         </div>
         <div class="api-section">
           <div class="section-title">Templates</div>
-          <button class="api-btn" id="api-template-list">List</button>
-          <button class="api-btn" id="api-template-save">Save to File</button>
-          <button class="api-btn" id="api-template-load">Load from File</button>
-          <button class="api-btn danger" id="api-template-delete">
+          <button class="api-btn" id="api-template-list" title="List all available symbol templates">List</button>
+          <button class="api-btn" id="api-template-save" title="Save the last clicked symbol as a template">Save to File</button>
+          <button class="api-btn" id="api-template-load" title="Load a symbol template from file">Load from File</button>
+          <button class="api-btn danger" id="api-template-delete" title="Delete all saved symbol templates">
             Delete All
           </button>
           <div class="status-text" id="api-template-status">0 templates</div>
         </div>
         <div class="api-section">
           <div class="section-title">Symbol Info</div>
-          <button class="api-btn" id="api-symbol-autocomplete">
-            Autocomplete List
-          </button>
-          <button class="api-btn" id="api-symbol-bykey">Get by Key</button>
-          <button class="api-btn" id="api-symbol-data">Get Symbol Data</button>
+          <button class="api-btn" id="api-symbol-autocomplete" title="Show a list of all available symbol names for autocomplete">Autocomplete List</button>
+          <button class="api-btn" id="api-symbol-bykey" title="Get symbol information by its key (e.g., 100100)">Get by Key</button>
+          <button class="api-btn" id="api-symbol-data" title="Get the currently selected symbol's data">Get Symbol Data</button>
           <div class="status-text" id="api-symbol-info-status">Ready</div>
         </div>
         <div class="api-section">
           <div class="section-title">Layers</div>
-          <button class="api-btn" id="api-layer-list">List Layers</button>
-          <button class="api-btn" id="api-layer-graphics">Graphic Count</button>
-          <button class="api-btn danger" id="api-layer-remove">
-            Remove All
-          </button>
+          <button class="api-btn" id="api-layer-list" title="List all available symbol layers">List Layers</button>
+          <button class="api-btn" id="api-layer-graphics" title="Show the total number of symbols on all layers">Graphic Count</button>
+          <button class="api-btn danger" id="api-layer-remove" title="Remove all symbols from all layers">Remove All</button>
           <div class="status-text" id="api-layer-status">Ready</div>
         </div>
         <div class="api-section">
           <div class="section-title">Graphics</div>
-          <button class="api-btn" id="api-graphic-add">Add Test Symbol</button>
-          <button class="api-btn" id="api-graphic-last">Last Clicked</button>
-          <button class="api-btn" id="api-graphic-remove">Remove Last</button>
+          <button class="api-btn" id="api-graphic-add" title="Add a test symbol at the center of the map">Add Test Symbol</button>
+          <button class="api-btn" id="api-graphic-last" title="Show details of the last clicked symbol">Last Clicked</button>
+          <button class="api-btn" id="api-graphic-remove" title="Remove the last clicked symbol from the map">Remove Last</button>
           <div class="status-text" id="api-graphic-status">Ready</div>
         </div>
         <div class="api-section">
           <div class="section-title">View</div>
-          <button class="api-btn" id="api-view-zoomIn">Zoom In</button>
-          <button class="api-btn" id="api-view-zoomOut">Zoom Out</button>
-          <button class="api-btn" id="api-view-center">Center</button>
-          <button class="api-btn" id="api-view-extent">Get Extent</button>
+          <button class="api-btn" id="api-view-zoomIn" title="Zoom the map view in by one level">Zoom In</button>
+          <button class="api-btn" id="api-view-zoomOut" title="Zoom the map view out by one level">Zoom Out</button>
+          <button class="api-btn" id="api-view-center" title="Center the map view on the current map center">Center</button>
+          <button class="api-btn" id="api-view-extent" title="Get the current map view extent (bounding box)">Get Extent</button>
           <div class="status-text" id="api-view-status">Ready</div>
         </div>
         <div class="api-section">
           <div class="section-title">Keyboard Shortcuts</div>
-          <button class="api-btn" id="api-shortcut-info">Show Shortcuts</button>
+          <button class="api-btn" id="api-shortcut-info" title="Show help for all available keyboard shortcuts">Show Shortcuts</button>
           <div class="status-text" id="api-shortcut-status">
             L:Lasso M:Move E:Edit Esc:Cancel Del:Delete I:Info C:Center
           </div>
         </div>
         <div class="api-section">
           <div class="section-title">ContextMenuManager</div>
-          <button class="api-btn" id="api-cmenu-items">List Items</button>
-          <button class="api-btn" id="api-cmenu-clear">Clear All</button>
+          <button class="api-btn" id="api-cmenu-items" title="List all registered context menu items for different symbol types">List Items</button>
+          <button class="api-btn" id="api-cmenu-clear" title="Remove all registered context menu items">Clear All</button>
           <div class="status-text" id="api-cmenu-status">Ready</div>
         </div>
         <div class="api-section">
           <div class="section-title">EditEngine</div>
-          <button class="api-btn" id="api-edit-activate">Activate Edit</button>
-          <button class="api-btn danger" id="api-edit-deactivate">
+          <button class="api-btn" id="api-edit-activate" title="Activate edit mode for the last clicked symbol (right-click a symbol to edit)">Activate Edit</button>
+          <button class="api-btn danger" id="api-edit-deactivate" title="Deactivate edit mode and return to normal interaction">
             Deactivate
           </button>
           <div class="status-text" id="api-edit-status">Inactive</div>
         </div>
         <div class="api-section">
           <div class="section-title">Engine Logger</div>
-          <button class="api-btn success" id="api-log-enable">Enable</button>
-          <button class="api-btn danger" id="api-log-disable">Disable</button>
-          <button class="api-btn" id="api-log-clear">Clear Panel</button>
-          <button class="api-btn" id="api-log-test">Test Message</button>
+          <button class="api-btn success" id="api-log-enable" title="Enable logging of engine activities">Enable</button>
+          <button class="api-btn danger" id="api-log-disable" title="Disable logging of engine activities">Disable</button>
+          <button class="api-btn" id="api-log-clear" title="Clear the engine log panel">Clear Panel</button>
+          <button class="api-btn" id="api-log-test" title="Send test messages to the engine log panel">Test Message</button>
           <div class="status-text" id="api-log-status">Enabled</div>
         </div>
         <div class="api-section">
           <div class="section-title">Clipboard</div>
-          <button class="api-btn" id="api-clip-copy">Copy Last</button>
-          <button class="api-btn" id="api-clip-paste">Paste</button>
-          <button class="api-btn" id="api-clip-paste-offset">Paste w/ Offset</button>
-          <button class="api-btn" id="api-clip-has-btn">Has Clipboard?</button>
+          <button class="api-btn" id="api-clip-copy" title="Copy the last clicked symbol to the clipboard">Copy Last</button>
+          <button class="api-btn" id="api-clip-paste" title="Paste the symbol from the clipboard at the cursor location">Paste</button>
+          <button class="api-btn" id="api-clip-paste-offset" title="Paste the symbol from the clipboard with an offset from the cursor location">Paste w/ Offset</button>
+          <button class="api-btn" id="api-clip-has-btn" title="Check if there is a symbol currently stored in the clipboard">Has Clipboard?</button>
           <div class="status-text" id="api-clip-status">Empty</div>
+        </div>
+        <div class="api-section">
+          <div class="section-title">MGRSEngine</div>
+          <button class="api-btn success" id="api-mgrs-enable">Enable</button>
+          <button class="api-btn danger"  id="api-mgrs-disable">Disable</button>
+          <button class="api-btn"         id="api-mgrs-toggle">Toggle</button>
+          <button class="api-btn"         id="api-mgrs-refresh">Refresh</button>
+          <div class="status-text" id="api-mgrs-status">Off (feature disabled by default)</div>
         </div>
       </div>
     </div>
@@ -2266,102 +2093,6 @@
         settingsPanel.classList.toggle('collapsed');
         settingsPanel.classList.toggle('expanded');
       });
-
-      // ── Feature panel helpers ─────────────────────────────────────────────────
-
-      function setFeatureBodyDisabled(panel, disabled) {
-        const body = panel.querySelector('.feature-body');
-        if (!body) return;
-        body.querySelectorAll('input, select').forEach(el => {
-          el.disabled = disabled;
-        });
-      }
-
-      function setSubFeatureGroupDisabled(group, disabled) {
-        document.querySelectorAll(`[data-sf-group="${group}"]`).forEach(row => {
-          row.querySelectorAll('input, select').forEach(el => {
-            el.disabled = disabled;
-          });
-        });
-      }
-
-      // Re-sync every sub-feature master within a panel body (call after panel is re-enabled)
-      function syncSubFeaturesInPanel(panel) {
-        panel.querySelectorAll('[data-sf-master]').forEach(master => {
-          const group = master.getAttribute('data-sf-master');
-          setSubFeatureGroupDisabled(group, !master.checked);
-        });
-      }
-
-      // ── Feature panels collapsible logic ──────────────────────────────────────
-      document.querySelectorAll('.feature-panel').forEach(panel => {
-        const header = panel.querySelector('.feature-header');
-        const checkbox = panel.querySelector('.feature-header input[type="checkbox"]');
-
-        if (!checkbox) return;
-
-        // Toggle collapse when clicking header (not checkbox area)
-        if (header) {
-          header.addEventListener('click', (e) => {
-            const target = e.target;
-            if (target === checkbox || target.closest('.feature-header-left')) {
-              return;
-            }
-            panel.classList.toggle('collapsed');
-          });
-        }
-
-        // Sync panel disabled state with checkbox on change
-        checkbox.addEventListener('change', () => {
-          const enabled = checkbox.checked;
-          panel.classList.toggle('disabled', !enabled);
-          setFeatureBodyDisabled(panel, !enabled);
-          // When re-enabling, restore sub-feature group disabled states
-          if (enabled) syncSubFeaturesInPanel(panel);
-        });
-
-        // Initialize — collapsed by default, disabled if unchecked
-        panel.classList.add('collapsed');
-        if (!checkbox.checked) {
-          panel.classList.add('disabled');
-          setFeatureBodyDisabled(panel, true);
-        }
-      });
-
-      // ── Sub-feature master checkboxes ─────────────────────────────────────────
-      document.querySelectorAll('[data-sf-master]').forEach(master => {
-        const group = master.getAttribute('data-sf-master');
-
-        master.addEventListener('change', () => {
-          // Only act if the parent feature panel is not itself disabled
-          const panel = master.closest('.feature-panel');
-          const panelEnabled = panel ? !panel.classList.contains('disabled') : true;
-          if (panelEnabled) setSubFeatureGroupDisabled(group, !master.checked);
-        });
-
-        // Initialize disabled state for unchecked sub-features
-        if (!master.checked) setSubFeatureGroupDisabled(group, true);
-      });
-
-      // Sync all panel and sub-feature disabled states — call after loading settings
-      function syncAllFeaturePanelStates() {
-        document.querySelectorAll('.feature-panel').forEach(panel => {
-          const checkbox = panel.querySelector('.feature-header input[type="checkbox"]');
-          if (!checkbox) return;
-          const enabled = checkbox.checked;
-          panel.classList.toggle('disabled', !enabled);
-          setFeatureBodyDisabled(panel, !enabled);
-          if (enabled) syncSubFeaturesInPanel(panel);
-        });
-      }
-
-      // Keeping this mapping for the settings system
-      const featureCheckboxes = {
-        'setting-measurementEngine': document.getElementById('setting-measurementEngine'),
-        'setting-proximityEngine': document.getElementById('setting-proximityEngine'),
-        'setting-drawingCues': document.getElementById('setting-drawingCues'),
-        'setting-mgrsEngine': document.getElementById('setting-mgrsEngine'),
-      };
 
       // Map input IDs to settings paths
       const settingMappings = {
@@ -2439,6 +2170,7 @@
         'setting-msLineColor': (v) => ({ path: ['measurement', 'lineColor'], value: hexToRgb(v) }),
         'setting-msFontSize': (v) => ({ path: ['measurement', 'fontSize'], value: +v }),
         'setting-msFontColor': (v) => ({ path: ['measurement', 'fontColor'], value: hexToRgb(v) }),
+        'setting-msFontOpacity': (v) => ({ path: ['measurement', 'fontOpacity'], value: +v }),
         // Proximity
         'setting-nearestVertex': (v) => ({
           path: ['proximity', 'nearestVertex'],
@@ -2497,24 +2229,9 @@
         'setting-coordDisplay': (v) => ({ path: ['drawingCues', 'coordinateDisplay', 'enabled'], value: v }),
         'setting-angularGuides': (v) => ({ path: ['drawingCues', 'angularGuides', 'enabled'], value: v }),
         'setting-guideThreshold': (v) => ({ path: ['drawingCues', 'angularGuides', 'snapThresholdDeg'], value: +v }),
-        'setting-guideColor': (v) => ({ path: ['drawingCues', 'angularGuides', 'lineColor'], value: hexToRgb(v) }),
-        'setting-guideOpacity': (v) => ({ path: ['drawingCues', 'angularGuides', 'lineOpacity'], value: +v }),
-        'setting-guideWidth': (v) => ({ path: ['drawingCues', 'angularGuides', 'lineWidth'], value: +v }),
-        'setting-guideInterval': (v) => ({ path: ['drawingCues', 'angularGuides', 'snapIntervalDeg'], value: +v }),
-        'setting-guideLabel': (v) => ({ path: ['drawingCues', 'angularGuides', 'showLabel'], value: v }),
-        'setting-guideLabelSize': (v) => ({ path: ['drawingCues', 'angularGuides', 'fontSize'], value: +v }),
-        'setting-guideArc': (v) => ({ path: ['drawingCues', 'angularGuides', 'showArc'], value: v }),
-        'setting-guideArcRadius': (v) => ({ path: ['drawingCues', 'angularGuides', 'arcRadiusKm'], value: +v }),
-        'setting-guideFan': (v) => ({ path: ['drawingCues', 'angularGuides', 'showFan'], value: v }),
-        'setting-guideSnapPoint': (v) => ({ path: ['drawingCues', 'angularGuides', 'showSnapPoint'], value: v }),
-        'setting-guideAnchor': (v) => ({ path: ['drawingCues', 'angularGuides', 'showAnchor'], value: v }),
-        'setting-guideRelSeg': (v) => ({ path: ['drawingCues', 'angularGuides', 'relativeSegment'], value: v }),
         'setting-distanceRings': (v) => ({ path: ['drawingCues', 'distanceRings', 'enabled'], value: v }),
         'setting-ringInterval': (v) => ({ path: ['drawingCues', 'distanceRings', 'intervalKm'], value: +v }),
         'setting-ringCount':    (v) => ({ path: ['drawingCues', 'distanceRings', 'ringCount'], value: +v }),
-        'setting-ringColor': (v) => ({ path: ['drawingCues', 'distanceRings', 'lineColor'], value: hexToRgb(v) }),
-        'setting-ringOpacity': (v) => ({ path: ['drawingCues', 'distanceRings', 'lineOpacity'], value: +v }),
-        'setting-ringWidth': (v) => ({ path: ['drawingCues', 'distanceRings', 'lineWidth'], value: +v }),
         'setting-nearbyHighlight': (v) => ({ path: ['drawingCues', 'nearbyHighlight', 'enabled'], value: v }),
         'setting-hlRadius':    (v) => ({ path: ['drawingCues', 'nearbyHighlight', 'radiusKm'], value: +v }),
         'setting-hlRingRadius':(v) => ({ path: ['drawingCues', 'nearbyHighlight', 'ringRadiusKm'], value: +v }),
@@ -2522,29 +2239,24 @@
         'setting-adaptive':         (v) => ({ path: ['drawingCues', 'adaptive', 'enabled'],          value: v  }),
         'setting-adaptiveCoverage': (v) => ({ path: ['drawingCues', 'adaptive', 'coverageFraction'],  value: +v }),
         'setting-adaptiveMaxKm':    (v) => ({ path: ['drawingCues', 'adaptive', 'maxOuterKm'],         value: +v }),
-        // MGRS
-        'setting-mgrsEngine':     (v) => ({ path: ['features', 'mgrsEngine'], value: v }),
-        'setting-mgrsShowGZD':    (v) => ({ path: ['mgrs', 'showGZD'], value: v }),
-        'setting-mgrsShow100K':   (v) => ({ path: ['mgrs', 'show100K'], value: v }),
-        'setting-mgrsShow10K':    (v) => ({ path: ['mgrs', 'show10K'], value: v }),
-        'setting-mgrsShow1K':     (v) => ({ path: ['mgrs', 'show1K'], value: v }),
-        'setting-mgrsAutoZoom':   (v) => ({ path: ['mgrs', 'autoZoom'], value: v }),
-        'setting-mgrsGzdColor':   (v) => ({ path: ['mgrs', 'gzdColor'], value: hexToRgb(v) }),
-        'setting-mgrsGzdOpacity': (v) => ({ path: ['mgrs', 'gzdOpacity'], value: +v }),
-        'setting-mgrsGzdWidth':   (v) => ({ path: ['mgrs', 'gzdWidth'], value: +v }),
-        'setting-mgrs100KColor':   (v) => ({ path: ['mgrs', 'hundredKColor'], value: hexToRgb(v) }),
-        'setting-mgrs100KOpacity': (v) => ({ path: ['mgrs', 'hundredKOpacity'], value: +v }),
-        'setting-mgrs100KWidth':   (v) => ({ path: ['mgrs', 'hundredKWidth'], value: +v }),
-        'setting-mgrs10KColor':    (v) => ({ path: ['mgrs', 'tenKColor'], value: hexToRgb(v) }),
-        'setting-mgrs10KOpacity':  (v) => ({ path: ['mgrs', 'tenKOpacity'], value: +v }),
-        'setting-mgrs10KWidth':    (v) => ({ path: ['mgrs', 'tenKWidth'], value: +v }),
-        'setting-mgrs1KColor':     (v) => ({ path: ['mgrs', 'oneKColor'], value: hexToRgb(v) }),
-        'setting-mgrs1KOpacity':   (v) => ({ path: ['mgrs', 'oneKOpacity'], value: +v }),
-        'setting-mgrs1KWidth':     (v) => ({ path: ['mgrs', 'oneKWidth'], value: +v }),
-        'setting-mgrsShowLabels':  (v) => ({ path: ['mgrs', 'showLabels'], value: v }),
-        'setting-mgrsLabelSize':   (v) => ({ path: ['mgrs', 'labelSize'], value: +v }),
-        'setting-mgrsLabelColor':  (v) => ({ path: ['mgrs', 'labelColor'], value: hexToRgb(v) }),
-        'setting-mgrsLabelOpacity':(v) => ({ path: ['mgrs', 'labelOpacity'], value: +v }),
+        // MGRS Engine feature toggle
+        'setting-mgrsEngine': (v) => ({ path: ['features', 'mgrsEngine'], value: v }),
+        // MGRS grid settings
+        'setting-mgrsShowGZD':     (v) => ({ path: ['mgrs', 'showGZD'],        value: v  }),
+        'setting-mgrsShow100K':    (v) => ({ path: ['mgrs', 'show100K'],       value: v  }),
+        'setting-mgrsShow10K':     (v) => ({ path: ['mgrs', 'show10K'],        value: v  }),
+        'setting-mgrsShow1K':      (v) => ({ path: ['mgrs', 'show1K'],         value: v  }),
+        'setting-mgrsAutoZoom':    (v) => ({ path: ['mgrs', 'autoZoom'],       value: v  }),
+        'setting-mgrsGzdColor':    (v) => ({ path: ['mgrs', 'gzdColor'],       value: hexToRgb(v) }),
+        'setting-mgrsGzdOpacity':  (v) => ({ path: ['mgrs', 'gzdOpacity'],     value: +v }),
+        'setting-mgrsGzdWidth':    (v) => ({ path: ['mgrs', 'gzdWidth'],       value: +v }),
+        'setting-mgrs100KColor':   (v) => ({ path: ['mgrs', 'hundredKColor'],  value: hexToRgb(v) }),
+        'setting-mgrs100KOpacity': (v) => ({ path: ['mgrs', 'hundredKOpacity'],value: +v }),
+        'setting-mgrs100KWidth':   (v) => ({ path: ['mgrs', 'hundredKWidth'],  value: +v }),
+        'setting-mgrsShowLabels':  (v) => ({ path: ['mgrs', 'showLabels'],     value: v  }),
+        'setting-mgrsLabelSize':   (v) => ({ path: ['mgrs', 'labelSize'],      value: +v }),
+        'setting-mgrsLabelColor':  (v) => ({ path: ['mgrs', 'labelColor'],     value: hexToRgb(v) }),
+        'setting-mgrsLabelOpacity':(v) => ({ path: ['mgrs', 'labelOpacity'],   value: +v }),
       };
 
       // Color conversion helpers
@@ -2673,10 +2385,6 @@
             features.templates !== false;
           document.getElementById('setting-proximityEngine').checked =
             features.proximityEngine !== false;
-          document.getElementById('setting-drawingCues').checked =
-            features.drawingCues !== false;
-          document.getElementById('setting-mgrsEngine').checked =
-            features.mgrsEngine === true;
 
           if (settings.creationMode) {
             document.getElementById('setting-creationMode').value = settings.creationMode;
@@ -2706,6 +2414,11 @@
             document.getElementById('setting-msFontColor').value = rgbToHex(
               measure.fontColor[0], measure.fontColor[1], measure.fontColor[2]
             );
+          }
+          if (measure.fontOpacity !== undefined) {
+            const opEl = document.getElementById('setting-msFontOpacity');
+            opEl.value = String(measure.fontOpacity);
+            document.getElementById('msFontOpacity-display').textContent = Number(measure.fontOpacity).toFixed(2);
           }
 
           // Update proximity settings
@@ -2758,8 +2471,6 @@
             );
           }
 
-        }
-
           // Adaptive control
           const adaptive = (settings.drawingCues ?? {}).adaptive ?? {};
           document.getElementById('setting-adaptive').checked = adaptive.enabled === true;
@@ -2768,78 +2479,48 @@
           document.getElementById('adaptiveCoverage-display').textContent = String(covFrac);
           document.getElementById('setting-adaptiveMaxKm').value = adaptive.maxOuterKm ?? 200;
 
-          // MGRS controls
+          // MGRS feature flag
+          document.getElementById('setting-mgrsEngine').checked =
+            features.mgrsEngine === true;
+
+          // MGRS grid settings
           const mgrs = settings.mgrs ?? {};
-          document.getElementById('setting-mgrsShowGZD').checked = mgrs.showGZD !== false;
+          document.getElementById('setting-mgrsShowGZD').checked  = mgrs.showGZD  !== false;
           document.getElementById('setting-mgrsShow100K').checked = mgrs.show100K !== false;
-          document.getElementById('setting-mgrsShow10K').checked = mgrs.show10K === true;
-          document.getElementById('setting-mgrsShow1K').checked = mgrs.show1K === true;
+          document.getElementById('setting-mgrsShow10K').checked  = mgrs.show10K  === true;
+          document.getElementById('setting-mgrsShow1K').checked   = mgrs.show1K   === true;
           document.getElementById('setting-mgrsAutoZoom').checked = mgrs.autoZoom !== false;
           document.getElementById('setting-mgrsShowLabels').checked = mgrs.showLabels !== false;
-          document.getElementById('setting-mgrsLabelSize').value = mgrs.labelSize ?? 11;
-          document.getElementById('setting-mgrsGzdWidth').value = mgrs.gzdWidth ?? 1.5;
-          document.getElementById('setting-mgrs100KWidth').value = mgrs.hundredKWidth ?? 0.8;
-          document.getElementById('setting-mgrs10KWidth').value = mgrs.tenKWidth ?? 0.5;
-          document.getElementById('setting-mgrs1KWidth').value = mgrs.oneKWidth ?? 0.35;
+          document.getElementById('setting-mgrsLabelSize').value  = mgrs.labelSize ?? 11;
+          document.getElementById('setting-mgrsGzdWidth').value   = mgrs.gzdWidth  ?? 1.5;
+          document.getElementById('setting-mgrs100KWidth').value  = mgrs.hundredKWidth ?? 0.8;
 
           const gzdOp = mgrs.gzdOpacity ?? 0.85;
           document.getElementById('setting-mgrsGzdOpacity').value = gzdOp;
-          document.getElementById('mgrsGzdOpacity-display').textContent = Number(gzdOp).toFixed(2);
+          document.getElementById('mgrsGzdOpacity-display').textContent = gzdOp.toFixed(2);
 
           const k100Op = mgrs.hundredKOpacity ?? 0.55;
           document.getElementById('setting-mgrs100KOpacity').value = k100Op;
-          document.getElementById('mgrs100KOpacity-display').textContent = Number(k100Op).toFixed(2);
+          document.getElementById('mgrs100KOpacity-display').textContent = k100Op.toFixed(2);
 
           const lblOp = mgrs.labelOpacity ?? 0.9;
           document.getElementById('setting-mgrsLabelOpacity').value = lblOp;
-          document.getElementById('mgrsLabelOpacity-display').textContent = Number(lblOp).toFixed(2);
-
-          const k10Op = mgrs.tenKOpacity ?? 0.35;
-          document.getElementById('setting-mgrs10KOpacity').value = k10Op;
-          document.getElementById('mgrs10KOpacity-display').textContent = Number(k10Op).toFixed(2);
-
-          const k1Op = mgrs.oneKOpacity ?? 0.25;
-          document.getElementById('setting-mgrs1KOpacity').value = k1Op;
-          document.getElementById('mgrs1KOpacity-display').textContent = Number(k1Op).toFixed(2);
+          document.getElementById('mgrsLabelOpacity-display').textContent = lblOp.toFixed(2);
 
           if (mgrs.gzdColor) {
-            document.getElementById('setting-mgrsGzdColor').value = rgbToHex(
-              mgrs.gzdColor[0],
-              mgrs.gzdColor[1],
-              mgrs.gzdColor[2],
-            );
+            document.getElementById('setting-mgrsGzdColor').value =
+              rgbToHex(mgrs.gzdColor[0], mgrs.gzdColor[1], mgrs.gzdColor[2]);
           }
           if (mgrs.hundredKColor) {
-            document.getElementById('setting-mgrs100KColor').value = rgbToHex(
-              mgrs.hundredKColor[0],
-              mgrs.hundredKColor[1],
-              mgrs.hundredKColor[2],
-            );
-          }
-          if (mgrs.tenKColor) {
-            document.getElementById('setting-mgrs10KColor').value = rgbToHex(
-              mgrs.tenKColor[0],
-              mgrs.tenKColor[1],
-              mgrs.tenKColor[2],
-            );
-          }
-          if (mgrs.oneKColor) {
-            document.getElementById('setting-mgrs1KColor').value = rgbToHex(
-              mgrs.oneKColor[0],
-              mgrs.oneKColor[1],
-              mgrs.oneKColor[2],
-            );
+            document.getElementById('setting-mgrs100KColor').value =
+              rgbToHex(mgrs.hundredKColor[0], mgrs.hundredKColor[1], mgrs.hundredKColor[2]);
           }
           if (mgrs.labelColor) {
-            document.getElementById('setting-mgrsLabelColor').value = rgbToHex(
-              mgrs.labelColor[0],
-              mgrs.labelColor[1],
-              mgrs.labelColor[2],
-            );
+            document.getElementById('setting-mgrsLabelColor').value =
+              rgbToHex(mgrs.labelColor[0], mgrs.labelColor[1], mgrs.labelColor[2]);
           }
+        }
 
-        // Re-sync all disabled states now that values have been loaded from settings
-        syncAllFeaturePanelStates();
         console.log('Settings panel initialized from SymbolEngine');
       }
 
@@ -3650,6 +3331,44 @@
           }
         });
 
+      // MGRSEngine buttons
+      document.getElementById('api-mgrs-enable').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.mgrsEngine) {
+          engine.mgrsEngine.enable();
+          document.getElementById('api-mgrs-status').textContent = 'Enabled';
+        } else if (engine) {
+          engine.onSettingChanged(['features', 'mgrsEngine'], true);
+          document.getElementById('setting-mgrsEngine').checked = true;
+          document.getElementById('api-mgrs-status').textContent = 'Enabled';
+        }
+      });
+
+      document.getElementById('api-mgrs-disable').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.mgrsEngine) {
+          engine.mgrsEngine.disable();
+          document.getElementById('api-mgrs-status').textContent = 'Disabled';
+        }
+      });
+
+      document.getElementById('api-mgrs-toggle').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.mgrsEngine) {
+          const on = engine.mgrsEngine.toggle();
+          document.getElementById('api-mgrs-status').textContent = on ? 'Enabled' : 'Disabled';
+          document.getElementById('setting-mgrsEngine').checked = on;
+        }
+      });
+
+      document.getElementById('api-mgrs-refresh').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.mgrsEngine) {
+          engine.mgrsEngine.refresh();
+          document.getElementById('api-mgrs-status').textContent = 'Refreshed';
+        }
+      });
+
       // Update status displays periodically
       function updateApiStatus() {
         const engine = getEngines();
@@ -3732,6 +3451,13 @@
         // Save status
         document.getElementById('api-save-status').textContent =
           `Undo: ${engine.undoCount}, Redo: ${engine.redoCount}`;
+
+        // MGRS status
+        if (engine.mgrsEngine) {
+          document.getElementById('api-mgrs-status').textContent =
+            engine.mgrsEngine.isEnabled ? 'Enabled' : 'Disabled';
+          document.getElementById('setting-mgrsEngine').checked = engine.mgrsEngine.isEnabled;
+        }
       }
 
       setInterval(updateApiStatus, 1000);

@@ -375,7 +375,7 @@
     ]
   },
   "features": {
-    "measurementEngine": true,
+    "measurementEngine": false,
     "contextMenu": true,
     "editEngine": true,
     "annotationEngine": true,
@@ -384,13 +384,14 @@
     "saveLoad": true,
     "templates": true,
     "proximityEngine": true,
-    "drawingCues": true
+    "drawingCues": true,
+    "mgrsEngine": false
   },
   "measurement": {
     "distUnit": "kilometers",
     "areaUnit": "square-kilometers",
     "fontSize": 12,
-    "fontColor": [255, 255, 255],
+    "fontColor": [0, 80, 200],
     "fontOpacity": 1,
     "lineColor": [0, 255, 0],
     "lineWidth": 2,
@@ -466,6 +467,29 @@
       "coverageFraction": 0.25,
       "maxOuterKm": 200
     }
+  },
+  "mgrs": {
+    "showGZD": true,
+    "show100K": true,
+    "show10K": false,
+    "show1K": false,
+    "autoZoom": true,
+    "gzdColor": [255, 200, 50],
+    "gzdOpacity": 0.85,
+    "gzdWidth": 1.5,
+    "hundredKColor": [255, 200, 50],
+    "hundredKOpacity": 0.55,
+    "hundredKWidth": 0.8,
+    "tenKColor": [255, 200, 50],
+    "tenKOpacity": 0.35,
+    "tenKWidth": 0.5,
+    "oneKColor": [255, 200, 50],
+    "oneKOpacity": 0.25,
+    "oneKWidth": 0.35,
+    "showLabels": true,
+    "labelSize": 11,
+    "labelColor": [255, 255, 255],
+    "labelOpacity": 0.9
   },
   "proximity": {
     "nearestVertex": true,
