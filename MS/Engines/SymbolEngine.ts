@@ -3838,47 +3838,93 @@ class SymbolEngine implements Evented {
     this._downloadJSON(data, `pams8_symbol_${Date.now()}.json`);
   }
 
-  /** Convert an ArcGIS Point (or plain {x,y}) to the Plan PlanPoint format. */
+  /**
+   * Convert an ArcGIS Point (or plain {x,y}) to the Plan PlanPoint format.
+   * Web Mercator coordinates (wkid 102100 / 3857) are converted to WGS84 geographic
+   * degrees so the Plan file is consumable by the legacy system (sp:"WGS1SP").
+   */
   private _toPlanPoint(pt: any): { type: 'point'; x: number; y: number; sp: string } | null {
     if (!pt || pt.x == null || pt.y == null) return null;
-    return { type: 'point', x: pt.x, y: pt.y, sp: 'WGS1SP' };
+    let x: number = pt.x;
+    let y: number = pt.y;
+    const wkid = pt.spatialReference?.wkid ?? pt.spatialReference?.latestWkid;
+    if (wkid === 102100 || wkid === 3857) {
+      [x, y] = webMercatorUtils.xyToLngLat(x, y);
+    }
+    return { type: 'point', x, y, sp: 'WGS1SP' };
   }
 
   /**
    * Build the AMPLIFIER block for Area / Line / TacticalPoint symbols.
-   * Includes all fields that symbol classes may attach as extra properties.
+   * Always emits all 9 required legacy fields with correct defaults.
+   * SIDC is intentionally excluded — it lives at the top level of drawEss.
    */
   private _serializeAmplifierForPlan(amplifier: any): Record<string, any> {
-    if (!amplifier) return {};
-    const fields = [
-      'UNIQUE_DESIG', 'UNIQUE_DESIG_ID',
-      'HIGHER_FORM', 'hfid',
-      'STAFF_COM', 'ADDL_INFO',
-      'DTG', 'EDTG', 'DTGTO',
-      'MULTI_LINE_LABEL_TEXT', 'MULTI_LINE_LABEL_COLOR', 'MULTI_LINE_LABEL_ALIGN',
-      'SIDC',
-    ];
-    const result: Record<string, any> = {};
-    for (const f of fields) {
-      if (amplifier[f] !== undefined && amplifier[f] !== null && amplifier[f] !== '') {
-        result[f] = amplifier[f];
-      }
-    }
-    return result;
+    const amp: Record<string, any> = {
+      UNIQUE_DESIG:          amplifier?.UNIQUE_DESIG          ?? ' ',
+      UNIQUE_DESIG_ID:       amplifier?.UNIQUE_DESIG_ID       ?? '',
+      HIGHER_FORM:           amplifier?.HIGHER_FORM            ?? '',
+      hfid:                  amplifier?.hfid                   ?? '',
+      STAFF_COM:             amplifier?.STAFF_COM              ?? '',
+      ADDL_INFO:             amplifier?.ADDL_INFO              ?? '',
+      MULTI_LINE_LABEL_TEXT: amplifier?.MULTI_LINE_LABEL_TEXT  ?? '',
+      MULTI_LINE_LABEL_COLOR: amplifier?.MULTI_LINE_LABEL_COLOR ?? '#000000',
+      MULTI_LINE_LABEL_ALIGN: amplifier?.MULTI_LINE_LABEL_ALIGN ?? 'center',
+    };
+    if (amplifier?.DTG)   amp.DTG   = amplifier.DTG;
+    if (amplifier?.DTGTO) amp.DTGTO = amplifier.DTGTO;
+    return amp;
   }
 
-  /** Build drawEss JSON for UEI / milsymbol (FPoint) graphics. */
+  /**
+   * Build drawEss JSON for UEI / milsymbol (FPoint) graphics.
+   * OPTIONS uses de.OPTIONS when available (converting any nested GEOM to PlanPoint),
+   * or builds the milsymbol options structure from amplifier/de fields.
+   */
   private _buildFPointPlanDrawEss(de: any, amplifier: any): Record<string, any> {
     const geom = this._toPlanPoint(de?.GEOM);
     const sidc: string = amplifier?.SIDC || de?.SIDC || '';
+
+    // Build or adapt OPTIONS for the legacy system
+    let options: Record<string, any>;
+    const existingOpts = de?.OPTIONS;
+    if (existingOpts && typeof existingOpts === 'object' &&
+        (existingOpts.size !== undefined || existingOpts.symType !== undefined ||
+         existingOpts.uniqueDesignation !== undefined || existingOpts.SIDC !== undefined)) {
+      // de.OPTIONS already has milsymbol configuration — use it, converting nested GEOM
+      options = { ...existingOpts };
+      if (options.GEOM && options.GEOM.x != null) {
+        options.GEOM = this._toPlanPoint(options.GEOM) ?? options.GEOM;
+      }
+    } else {
+      // Build OPTIONS from amplifier / de fields
+      options = {
+        alphaNum: 100,
+        size: String(de?.SIZE ?? 25),
+        ANGLE: de?.ANGLE ?? 0,
+        symType: 'FPoint',
+        SIDC: sidc,
+        uniqueDesignation:    amplifier?.UNIQUE_DESIG    ?? ' ',
+        uniqueDesignationID:  amplifier?.UNIQUE_DESIG_ID ?? '',
+        higherFormation:      amplifier?.HIGHER_FORM      ?? '',
+        hfid:                 amplifier?.hfid             ?? '',
+        staffComments:        amplifier?.STAFF_COM        ?? '',
+        additionalInformation: amplifier?.ADDL_INFO       ?? '',
+        ECHELON:  de?.ECHELON ?? '00',
+        opacity:  de?.opacity ?? 1,
+        labelOptions: de?.labelOptions ?? {},
+      };
+      if (geom) options.GEOM = geom;
+    }
+
     return {
       SYM_GEO_TYPE: 'FPoint',
-      SID: de?.SID ?? '',
+      SID:      de?.SID      ?? '',
       SYM_NAME: de?.SYM_NAME ?? '',
-      OPTIONS: { ...(geom ? geom : {}) },
-      GEOM: geom,
+      OPTIONS:  options,
+      GEOM:     geom,
       AMPLIFIER: {},
-      UEI: '1',
+      UEI:  '1',
       SIDC: sidc,
       labelOptions: de?.labelOptions ?? {},
       opacity: de?.opacity ?? 1,
@@ -3892,32 +3938,39 @@ class SymbolEngine implements Evented {
     const sidc: string = amplifier?.SIDC || de?.SIDC || '';
     const result: Record<string, any> = {
       SYM_GEO_TYPE: geoType,
-      SID: de?.SID ?? '',
+      SID:      de?.SID      ?? '',
       SYM_NAME: de?.SYM_NAME ?? '',
       CTRL_PTS: ctrlPts,
       AMPLIFIER: this._serializeAmplifierForPlan(amplifier),
-      SIDC: sidc,
-      labelOptions: de?.labelOptions ?? {},
-      opacity: de?.opacity ?? 1,
     };
 
-    // Optional fields present on some symbol types
-    const optionals = ['DRAW_TYPE', 'ECHELON', 'SIZE', 'drawExtendType'];
+    // Pass through all optional per-symbol fields that appear in the legacy format
+    const optionals = [
+      'DRAW_TYPE', 'ECHELON', 'FACE_GAP',
+      'HEAD_RATIO', 'TAIL_FACTOR',
+      'ISFHAND', 'FRHNDSZ', 'FRHNDWDTH',
+      'drawExtendType',
+    ];
     for (const k of optionals) {
       if (de?.[k] !== undefined) result[k] = de[k];
     }
+
+    result.SIDC = sidc;
+    result.labelOptions = de?.labelOptions ?? {};
+    result.opacity = de?.opacity ?? 1;
 
     // BASE_LN_PTS block (e.g. obstacle belts, minefields)
     if (de?.BASE_LN_PTS) {
       const blp = de.BASE_LN_PTS;
       result.BASE_LN_PTS = {
         startPt: this._toPlanPoint(blp.startPt),
-        midPt: this._toPlanPoint(blp.midPt),
-        endPt: this._toPlanPoint(blp.endPt),
+        midPt:   this._toPlanPoint(blp.midPt),
+        endPt:   this._toPlanPoint(blp.endPt),
       };
-      if (de.BK_LN_DIST_RATIO !== undefined)  result.BK_LN_DIST_RATIO  = de.BK_LN_DIST_RATIO;
-      if (de.BK_LN_ANGL_RATIO !== undefined)  result.BK_LN_ANGL_RATIO  = de.BK_LN_ANGL_RATIO;
+      if (de.BK_LN_DIST_RATIO  !== undefined) result.BK_LN_DIST_RATIO   = de.BK_LN_DIST_RATIO;
+      if (de.BK_LN_ANGL_RATIO  !== undefined) result.BK_LN_ANGL_RATIO   = de.BK_LN_ANGL_RATIO;
       if (de.FRNT_LN_ANGL_RATIO !== undefined) result.FRNT_LN_ANGL_RATIO = de.FRNT_LN_ANGL_RATIO;
+      if (de.drawExtendType !== undefined) result.drawExtendType = de.drawExtendType;
     }
 
     return result;
@@ -3929,23 +3982,56 @@ class SymbolEngine implements Evented {
     const sidc: string = amplifier?.SIDC || de?.SIDC || '';
     const result: Record<string, any> = {
       SYM_GEO_TYPE: 'Point',
-      SID: de?.SID ?? '',
+      SID:      de?.SID      ?? '',
       SYM_NAME: de?.SYM_NAME ?? '',
-      SIZE: de?.SIZE ?? 25,
-      ANGLE: de?.ANGLE ?? 0,
-      GEOM: geom,
-      AMPLIFIER: this._serializeAmplifierForPlan(amplifier),
-      OFFSET: de?.OFFSET ?? 0,
-      SIDC: sidc,
-      labelOptions: de?.labelOptions ?? {},
-      opacity: de?.opacity ?? 1,
     };
 
-    if (de?.ISFHAND !== undefined) result.ISFHAND = de.ISFHAND;
-    if (de?.FRHNDSZ !== undefined) result.FRHNDSZ = de.FRHNDSZ;
+    // SIZE and ANGLE are present on non-freehand-only tactical points
+    if (de?.SIZE !== undefined) result.SIZE  = de.SIZE;
+    if (de?.ANGLE !== undefined) result.ANGLE = de.ANGLE;
+
+    result.GEOM = geom;
+    result.AMPLIFIER = this._serializeAmplifierForPlan(amplifier);
+
+    // Freehand rendering parameters
+    if (de?.ISFHAND !== undefined) result.ISFHAND  = de.ISFHAND;
+
+    result.SIDC = sidc;
+    result.labelOptions = de?.labelOptions ?? {};
+
+    if (de?.FRHNDSZ  !== undefined) result.FRHNDSZ  = de.FRHNDSZ;
     if (de?.FRHNDWDTH !== undefined) result.FRHNDWDTH = de.FRHNDWDTH;
 
+    result.opacity = de?.opacity ?? 1;
+
     return result;
+  }
+
+  /**
+   * Enrich a DrawEssentials object with data that UEI/milsymbol symbol classes may
+   * not store explicitly in drawEssentials but is derivable from the graphic:
+   * - GEOM: falls back to graphic.geometry (milsymbol symbols store position there)
+   * - SID:  derived from SIDC chars 11-16 when absent (maps to Symbols.json key)
+   * - SYM_NAME: looked up in symbolData by SID when absent
+   */
+  private _enrichDe(de: any, graphic: Graphic): any {
+    let out = de;
+
+    // GEOM fallback — milsymbol symbols keep position in graphic.geometry, not de.GEOM
+    if (!out.GEOM && graphic.geometry?.type === 'point') {
+      out = { ...out, GEOM: graphic.geometry };
+    }
+
+    // SID / SYM_NAME — derive from SIDC when the symbol class left them blank
+    const sidc: string = out.SIDC || out.AMPLIFIER?.SIDC || '';
+    if ((!out.SID || !out.SYM_NAME) && sidc.length >= 16) {
+      const sid = sidc.substring(10, 16);
+      const entry = (symbolData as any)[sid];
+      if (!out.SID)      out = { ...out, SID: sid };
+      if (!out.SYM_NAME && entry?.Name) out = { ...out, SYM_NAME: entry.Name };
+    }
+
+    return out;
   }
 
   /**
@@ -3953,28 +4039,29 @@ class SymbolEngine implements Evented {
    * Returns null for graphics that cannot be represented in plan format.
    */
   private _buildPlanDrawEss(graphic: Graphic): Record<string, any> | null {
-    const de: any = graphic.attributes?.drawEssentials;
-    if (!de) return null;
-    const amplifier: any = de?.AMPLIFIER ?? {};
-    const geoType: string = de?.SYM_GEO_TYPE ?? '';
+    const rawDe: any = graphic.attributes?.drawEssentials;
+    if (!rawDe) return null;
+    const amplifier: any = rawDe?.AMPLIFIER ?? {};
+    const geoType: string = rawDe?.SYM_GEO_TYPE ?? '';
 
     if (geoType === 'FPoint') {
-      return this._buildFPointPlanDrawEss(de, amplifier);
+      return this._buildFPointPlanDrawEss(this._enrichDe(rawDe, graphic), amplifier);
     }
     if (geoType === 'Area' || geoType === 'Line') {
-      return this._buildAreaLinePlanDrawEss(de, amplifier);
+      return this._buildAreaLinePlanDrawEss(rawDe, amplifier);
     }
     if (geoType === 'Point') {
-      return this._buildPointPlanDrawEss(de, amplifier);
+      return this._buildPointPlanDrawEss(this._enrichDe(rawDe, graphic), amplifier);
     }
-    // Fallback: try to infer from geometry and CTRL_PTS
-    if (de.CTRL_PTS?.length > 0) {
-      return this._buildAreaLinePlanDrawEss(de, amplifier);
+    // Fallback: infer type from geometry shape
+    if (rawDe.CTRL_PTS?.length > 0) {
+      return this._buildAreaLinePlanDrawEss(rawDe, amplifier);
     }
-    if (de.GEOM || graphic.geometry?.type === 'point') {
-      const hasUEI = de.UEI === '1' || amplifier?.SIDC?.length > 10;
-      if (hasUEI) return this._buildFPointPlanDrawEss(de, amplifier);
-      return this._buildPointPlanDrawEss(de, amplifier);
+    if (rawDe.GEOM || graphic.geometry?.type === 'point') {
+      const hasUEI = rawDe.UEI === '1' || amplifier?.SIDC?.length > 10;
+      const enriched = this._enrichDe(rawDe, graphic);
+      if (hasUEI) return this._buildFPointPlanDrawEss(enriched, amplifier);
+      return this._buildPointPlanDrawEss(enriched, amplifier);
     }
     return null;
   }
@@ -4031,9 +4118,19 @@ class SymbolEngine implements Evented {
   }
 
   /**
+   * Patch a PlanPoint ({type, x, y, sp:"WGS1SP"}) so that loadSymbolFromJSON's
+   * `new Point({x, y, spatialReference})` receives an explicit WGS84 reference.
+   * Without this ArcGIS defaults to WGS84 but some paths may mishandle it.
+   */
+  private _patchPlanPoint(p: any): any {
+    if (!p || p.sp !== 'WGS1SP') return p;
+    return { x: p.x, y: p.y, spatialReference: { wkid: 4326 } };
+  }
+
+  /**
    * Convert a Plan drawEss JSON string back into the format expected by loadSymbolFromJSON.
-   * PlanPoints ({type, x, y, sp}) are compatible with ArcGIS Point construction (spatialReference
-   * defaults to WGS84 when absent), so no special conversion is needed.
+   * PlanPoints are tagged with sp:"WGS1SP" (WGS84 geographic degrees) and get an explicit
+   * 4326 spatialReference so ArcGIS can project them into the view's coordinate system.
    */
   private _loadPlanSymbol(drawEssRaw: string, symbolId: string): void {
     let drawEssObj: any;
@@ -4047,19 +4144,33 @@ class SymbolEngine implements Evented {
     const amplifier = drawEssObj?.AMPLIFIER ?? {};
     if (drawEssObj?.SIDC && !amplifier.SIDC) amplifier.SIDC = drawEssObj.SIDC;
 
-    // Build the object loadSymbolFromJSON expects
-    const loadData: any = {
+    // Patch plan points inside drawEss before passing to loadSymbolFromJSON
+    const de: any = { ...drawEssObj };
+
+    if (de.GEOM?.sp === 'WGS1SP') {
+      de.GEOM = this._patchPlanPoint(de.GEOM);
+    }
+    if (Array.isArray(de.CTRL_PTS)) {
+      de.CTRL_PTS = de.CTRL_PTS.map((p: any) => this._patchPlanPoint(p));
+    }
+    if (de.BASE_LN_PTS) {
+      de.BASE_LN_PTS = {
+        startPt: this._patchPlanPoint(de.BASE_LN_PTS.startPt),
+        midPt:   this._patchPlanPoint(de.BASE_LN_PTS.midPt),
+        endPt:   this._patchPlanPoint(de.BASE_LN_PTS.endPt),
+      };
+    }
+    // Also patch GEOM nested inside FPoint OPTIONS
+    if (de.OPTIONS?.GEOM?.sp === 'WGS1SP') {
+      de.OPTIONS = { ...de.OPTIONS, GEOM: this._patchPlanPoint(de.OPTIONS.GEOM) };
+    }
+
+    this.loadSymbolFromJSON({
       id: symbolId,
       sidc: amplifier?.SIDC || drawEssObj?.SIDC,
       amplifier,
-      drawEssentials: { ...drawEssObj },
-    };
-
-    // Map field names to what loadSymbolFromJSON reads
-    // GEOM stays as GEOM; CTRL_PTS stays as CTRL_PTS; BASE_LN_PTS stays as BASE_LN_PTS
-    // PlanPoints have {type, x, y, sp} — ArcGIS Point() ignores unknown fields, uses x/y + WGS84 default
-
-    this.loadSymbolFromJSON(loadData);
+      drawEssentials: de,
+    });
   }
 
   /** Open a Plan JSON file and restore all symbols from it. */

@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Effects Radius — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#080a0b}
+
+    /* ── Panel shell ─────────────────────────────────────────────────────── */
+    #panel{
+      position:absolute;top:14px;right:14px;width:304px;z-index:99;
+      background:rgba(8,10,11,0.97);
+      border:1px solid rgba(220,60,48,0.30);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh - 28px);overflow-y:auto;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────────── */
+    .ph{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;
+      border-bottom:1px solid rgba(220,60,48,0.15);
+      background:rgba(220,60,48,0.08);
+      position:sticky;top:0;z-index:2;
+    }
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#DC3C30;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935;transition:color .2s}
+    .ph-status.ready    {color:#1D9E75}
+    .ph-status.busy     {color:#EF9F27}
+    .ph-status.animating{color:#DC3C30}
+
+    /* ── Section label ───────────────────────────────────────────────────── */
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#3a3935;padding:9px 12px 5px}
+
+    /* ── Grid ────────────────────────────────────────────────────────────── */
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s
+    }
+    input:focus,select:focus{border-color:rgba(220,60,48,0.55)}
+    select option{background:#141618}
+
+    /* ── Divider ─────────────────────────────────────────────────────────── */
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+
+    /* ── Toggle ──────────────────────────────────────────────────────────── */
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#DC3C30;width:13px;height:13px;cursor:pointer}
+
+    /* ── Physics readout cards ───────────────────────────────────────────── */
+    #phys-grid{
+      display:grid;grid-template-columns:1fr 1fr;gap:6px;
+      padding:0 12px 10px;
+    }
+    .phys-card{
+      background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
+      border-radius:3px;padding:6px 8px;
+    }
+    .phys-label{font-size:8px;letter-spacing:.09em;text-transform:uppercase;margin-bottom:3px}
+    .phys-value{font-size:13px;font-weight:700;letter-spacing:.02em}
+    .phys-unit {font-size:9px;margin-left:2px;opacity:.6}
+    .phys-card.lethal  .phys-label{color:#DC3C30} .phys-card.lethal  .phys-value{color:#DC3C30}
+    .phys-card.warning .phys-label{color:#EF9F27} .phys-card.warning .phys-value{color:#EF9F27}
+    .phys-card.thermal .phys-label{color:#DC7820} .phys-card.thermal .phys-value{color:#DC7820}
+    .phys-card.safe    .phys-label{color:#1D9E75} .phys-card.safe    .phys-value{color:#1D9E75}
+    .phys-card.qd      .phys-label{color:#378ADD} .phys-card.qd      .phys-value{color:#378ADD}
+
+    /* ── Blast animation slider ──────────────────────────────────────────── */
+    #anim-row{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+    #anim-row label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;flex:1}
+    #anim-speed{flex:2;accent-color:#DC3C30}
+    #anim-speed-v{font-size:10px;color:#DC3C30;min-width:28px;text-align:right}
+
+    /* ── Strike list ─────────────────────────────────────────────────────── */
+    #strike-list{padding:0 12px 8px;display:flex;flex-direction:column;gap:4px;max-height:110px;overflow-y:auto}
+    .sk-row{display:grid;grid-template-columns:20px 1fr auto;gap:6px;align-items:center}
+    .sk-idx{font-size:10px;color:#DC3C30;font-weight:700;text-align:center}
+    .sk-info{font-size:9.5px;color:#888780;letter-spacing:.03em}
+    .sk-del{background:transparent;border:none;color:#5a3535;font-size:11px;cursor:pointer;padding:2px 4px}
+    .sk-del:hover{color:#DC3C30}
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .pb-row{display:flex;gap:6px;padding:9px 12px}
+    .pb{
+      flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;
+      border:1px solid rgba(220,60,48,0.35);
+      background:transparent;color:#DC3C30;transition:all .14s
+    }
+    .pb:hover:not(:disabled){background:rgba(220,60,48,0.10)}
+    .pb.primary{background:rgba(220,60,48,0.16);border-color:#DC3C30}
+    .pb.primary:hover:not(:disabled){background:rgba(220,60,48,0.30)}
+    .pb.blue{border-color:rgba(55,138,221,0.40);color:#378ADD}
+    .pb.blue:hover:not(:disabled){background:rgba(55,138,221,0.10)}
+    .pb.green{border-color:rgba(29,158,117,0.40);color:#1D9E75}
+    .pb.green:hover:not(:disabled){background:rgba(29,158,117,0.10)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+
+    /* ── Hint overlay ────────────────────────────────────────────────────── */
+    #hint{
+      position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(8,10,11,0.93);border:1px solid rgba(220,60,48,0.45);
+      color:#DC3C30;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase;transition:opacity .3s
+    }
+
+    /* ── Legend ──────────────────────────────────────────────────────────── */
+    #legend{
+      position:absolute;bottom:14px;left:14px;z-index:99;
+      background:rgba(8,10,11,0.93);border:1px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:9px 13px;display:flex;flex-direction:column;gap:5px
+    }
+    .leg-row{display:flex;align-items:center;gap:8px}
+    .leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .leg-lbl{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#888780}
+
+    /* ── Coords ──────────────────────────────────────────────────────────── */
+    #coords{font-size:9px;color:#DC3C30;padding:2px 12px 7px;letter-spacing:.05em;opacity:.75}
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<!-- ── ANALYSIS PANEL ───────────────────────────────────────────────────── -->
+<div id="panel">
+
+  <div class="ph">
+    <div class="ph-title">✕ Effects Radius</div>
+    <div class="ph-status" id="status">Awaiting strike point</div>
+  </div>
+
+  <!-- Munition -->
+  <div class="ps">Munition / device</div>
+  <div class="pg">
+    <div class="pf full">
+      <div class="pl">Type</div>
+      <select id="inp-munition">
+        <option value="mortar_60mm">Mortar 60 mm</option>
+        <option value="mortar_81mm" selected>Mortar 81 mm</option>
+        <option value="artillery_105mm">Artillery 105 mm HE</option>
+        <option value="artillery_155mm">Artillery 155 mm HE</option>
+        <option value="ied_10kg">IED 10 kg TNT</option>
+        <option value="vbied_100kg">VBIED 100 kg TNT</option>
+        <option value="gbbu_500lb">GBU-12 500 lb</option>
+        <option value="thermobaric">Thermobaric / FAE</option>
+      </select>
+    </div>
+    <div class="pf">
+      <div class="pl">TNT equiv. (kg)</div>
+      <input id="inp-tnt" type="number" value="0.56" min="0.01" step="0.1"/>
+    </div>
+    <div class="pf">
+      <div class="pl">Det. height (m)</div>
+      <input id="inp-height" type="number" value="0" min="0" max="500" step="1"/>
+    </div>
+  </div>
+
+  <!-- Environment -->
+  <div class="ps">Environment / structure</div>
+  <div class="pg">
+    <div class="pf full">
+      <div class="pl">Structural factor</div>
+      <select id="inp-structure">
+        <option value="open_area" selected>Open area</option>
+        <option value="light_urban">Light urban (wood)</option>
+        <option value="masonry">Masonry / brick</option>
+        <option value="reinforced_concrete">Reinforced concrete</option>
+        <option value="reenforced_shelter">Field shelter / HESCO</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="pdiv"></div>
+
+  <!-- Display options -->
+  <div class="ps">Display options</div>
+  <div class="ptr"><label>Donut rings (punch inner)</label><input id="opt-donut"   type="checkbox" checked/></div>
+  <div class="ptr"><label>Ring labels</label>             <input id="opt-labels"  type="checkbox" checked/></div>
+  <div class="ptr"><label>Blast wave animation</label>    <input id="opt-anim"    type="checkbox" checked/></div>
+  <div class="ptr"><label>Multi-strike union</label>      <input id="opt-union"   type="checkbox" checked/></div>
+  <div id="anim-row">
+    <label>Anim speed</label>
+    <input id="anim-speed" type="range" min="0.3" max="3" step="0.1" value="1"/>
+    <div id="anim-speed-v">1×</div>
+  </div>
+
+  <div class="pdiv"></div>
+
+  <!-- Physics readout -->
+  <div class="ps">Computed radii — Hopkinson-Cranz model</div>
+  <div id="phys-grid">
+    <div class="phys-card lethal">
+      <div class="phys-label">Lethal (blast+frag)</div>
+      <div class="phys-value" id="ph-lethal">—<span class="phys-unit">m</span></div>
+    </div>
+    <div class="phys-card warning">
+      <div class="phys-label">Injury — blast</div>
+      <div class="phys-value" id="ph-injury">—<span class="phys-unit">m</span></div>
+    </div>
+    <div class="phys-card warning">
+      <div class="phys-label">Frag casualty</div>
+      <div class="phys-value" id="ph-frag">—<span class="phys-unit">m</span></div>
+    </div>
+    <div class="phys-card thermal">
+      <div class="phys-label">Thermal / 3° burn</div>
+      <div class="phys-value" id="ph-thermal">—<span class="phys-unit">m</span></div>
+    </div>
+    <div class="phys-card safe">
+      <div class="phys-label">Safe — blast</div>
+      <div class="phys-value" id="ph-safe">—<span class="phys-unit">m</span></div>
+    </div>
+    <div class="phys-card qd">
+      <div class="phys-label">QD inhabited</div>
+      <div class="phys-value" id="ph-qd">—<span class="phys-unit">m</span></div>
+    </div>
+  </div>
+
+  <div class="pdiv"></div>
+
+  <!-- Multi-strike list -->
+  <div class="ps">Strikes placed <span style="color:#3a3935;font-size:9px">(click map to add)</span></div>
+  <div id="strike-list"><div style="font-size:9px;color:#3a3935;padding:0 0 4px">No strikes placed</div></div>
+
+  <div id="coords">Impact: not placed — click map</div>
+
+  <div class="pb-row">
+    <button class="pb"       id="btn-clear">Clear all</button>
+    <button class="pb"       id="btn-undo"  disabled>Undo last</button>
+    <button class="pb blue"  id="btn-blast" disabled>▶ Blast wave</button>
+  </div>
+  <div class="pb-row" style="padding-top:0">
+    <button class="pb green" id="btn-commit" disabled>Commit to map ↗</button>
+  </div>
+</div>
+
+<!-- ── LEGEND ────────────────────────────────────────────────────────────── -->
+<div id="legend">
+  <div class="leg-row"><div class="leg-dot" style="background:#DC3C30"></div><div class="leg-lbl">Lethal (blast + frag)</div></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#EF9F27"></div><div class="leg-lbl">Injury / frag casualty</div></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#DC7820"></div><div class="leg-lbl">Thermal / 3° burn</div></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#1D9E75"></div><div class="leg-lbl">Safe distance — blast</div></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#378ADD"></div><div class="leg-lbl">QD inhabited buildings</div></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#B428DC"></div><div class="leg-lbl">Multi-strike union</div></div>
+</div>
+
+<div id="hint">Click map to place detonation point</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map",
+  "esri/views/SceneView",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic",
+  "esri/geometry/Point",
+  "esri/geometry/Mesh",
+  "esri/geometry/geometryEngine",
+], function(Map, SceneView, GraphicsLayer, Graphic, Point, Mesh, geometryEngine) {
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // INLINE PHYSICS ENGINE  (mirrors effects-engine.js)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const MUNITION_PRESETS = {
+    mortar_60mm:      { label:'Mortar 60 mm',         tntEquivKg:0.23,  fragmentVelocityMS:1200, casingMassRatio:2.8, detonationHeightM:0,    color:[239,159,39]  },
+    mortar_81mm:      { label:'Mortar 81 mm',         tntEquivKg:0.56,  fragmentVelocityMS:1350, casingMassRatio:2.5, detonationHeightM:0,    color:[239,159,39]  },
+    artillery_105mm:  { label:'Artillery 105 mm HE',  tntEquivKg:2.18,  fragmentVelocityMS:1550, casingMassRatio:3.1, detonationHeightM:0,    color:[186,117,23]  },
+    artillery_155mm:  { label:'Artillery 155 mm HE',  tntEquivKg:6.62,  fragmentVelocityMS:1650, casingMassRatio:3.3, detonationHeightM:0,    color:[186,117,23]  },
+    ied_10kg:         { label:'IED 10 kg TNT',         tntEquivKg:10.0,  fragmentVelocityMS:800,  casingMassRatio:0.5, detonationHeightM:0,    color:[220,90,48]   },
+    vbied_100kg:      { label:'VBIED 100 kg TNT',      tntEquivKg:100.0, fragmentVelocityMS:900,  casingMassRatio:0.3, detonationHeightM:1.2,  color:[220,60,48]   },
+    gbbu_500lb:       { label:'GBU-12 500 lb',         tntEquivKg:89.0,  fragmentVelocityMS:1800, casingMassRatio:4.2, detonationHeightM:0,    color:[55,138,221]  },
+    thermobaric:      { label:'Thermobaric / FAE',     tntEquivKg:55.0,  fragmentVelocityMS:600,  casingMassRatio:0.2, detonationHeightM:15,   color:[180,40,220]  },
+  };
+
+  const STRUCTURE_FACTORS = {
+    open_area:            { blastMult:1.00, fragMult:1.00 },
+    light_urban:          { blastMult:0.75, fragMult:0.60 },
+    masonry:              { blastMult:0.55, fragMult:0.40 },
+    reinforced_concrete:  { blastMult:0.30, fragMult:0.20 },
+    reenforced_shelter:   { blastMult:0.40, fragMult:0.35 },
+  };
+
+  const HC_TABLE = [
+    [0.3,82740],[0.4,27580],[0.5,12410],[0.6,6210],[0.7,3450],[0.8,2070],
+    [1.0,1040],[1.2,621],[1.5,345],[2.0,172],[2.5,103],[3.0,69],[4.0,41],
+    [5.0,28],[7.0,14],[10.0,7],[15.0,3.5],[20.0,2.0],[30.0,1.0],[50.0,0.35],
+  ];
+
+  function zToKPa(Z) {
+    if (Z <= HC_TABLE[0][0])     return HC_TABLE[0][1];
+    if (Z >= HC_TABLE.at(-1)[0]) return HC_TABLE.at(-1)[1];
+    for (let i=0;i<HC_TABLE.length-1;i++){
+      const[z0,p0]=HC_TABLE[i],[z1,p1]=HC_TABLE[i+1];
+      if(Z>=z0&&Z<=z1){ const t=(Z-z0)/(z1-z0); return Math.exp(Math.log(p0)+t*(Math.log(p1)-Math.log(p0))); }
+    }
+    return 0;
+  }
+
+  function overpressureRadius(W, targetKPa, h=0) {
+    let lo=0.1, hi=60;
+    for(let i=0;i<60;i++){ const mid=(lo+hi)/2; zToKPa(mid)>targetKPa?(lo=mid):(hi=mid); }
+    const groundR = lo * Math.cbrt(W);
+    return Math.sqrt(groundR*groundR + h*h);
+  }
+
+  function fragLethalRadius(W, v0, cr) {
+    const r0=0.15*Math.cbrt(W), λ=180+cr*15, vMin=60;
+    let r=r0;
+    for(let i=0;i<400;i++){ if(v0*(r0/r)*Math.exp(-r/λ)<=vMin)break; r+=0.5; }
+    return r;
+  }
+
+  function thermalRadius(W) { return 1.8*Math.cbrt(W)*Math.pow(W,0.17); }
+
+  function computeEffects(munKey, structKey, tntOverride, heightOverride) {
+    const m  = MUNITION_PRESETS[munKey] ?? MUNITION_PRESETS.mortar_81mm;
+    const sf = STRUCTURE_FACTORS[structKey] ?? STRUCTURE_FACTORS.open_area;
+    const W  = tntOverride  ?? m.tntEquivKg;
+    const h  = heightOverride ?? m.detonationHeightM;
+    const rLB  = overpressureRadius(W,200,h)*sf.blastMult;
+    const rIB  = overpressureRadius(W,35,h) *sf.blastMult;
+    const rSB  = overpressureRadius(W,6.9,h)*sf.blastMult;
+    const rFL  = fragLethalRadius(W,m.fragmentVelocityMS,m.casingMassRatio)*sf.fragMult;
+    const rFC  = rFL*1.6*sf.fragMult;
+    const rTH  = thermalRadius(W)*sf.blastMult;
+    const rQD  = 22.2*Math.cbrt(W);
+    const rCL  = Math.max(rLB,rFL);
+    return {
+      munition:m, structureFactor:sf, detonationHeightM:h,
+      tntKg:W,
+      rLethal:rCL, rInjury:rIB, rFrag:rFC, rThermal:rTH, rSafe:rSB, rQD,
+      rings:[
+        { id:'lethal',   label:'Lethal radius',     radiusM:rCL,  colorKey:'lethal',  opacity:0.22 },
+        { id:'injury',   label:'Injury — blast',    radiusM:rIB,  colorKey:'warning', opacity:0.15 },
+        { id:'frag',     label:'Frag casualty',     radiusM:rFC,  colorKey:'warning', opacity:0.11 },
+        { id:'thermal',  label:'Thermal / 3° burn', radiusM:rTH,  colorKey:'thermal', opacity:0.10 },
+        { id:'safe',     label:'Safe — blast',      radiusM:rSB,  colorKey:'safe',    opacity:0.08 },
+        { id:'qd',       label:'QD inhabited',      radiusM:rQD,  colorKey:'qd',      opacity:0.06 },
+      ].filter(r=>r.radiusM>0.5).sort((a,b)=>b.radiusM-a.radiusM),
+    };
+  }
+
+  const COLORS = {
+    lethal:  { fill:[220, 60, 48], outline:[220, 60, 48,0.90] },
+    warning: { fill:[239,159, 39], outline:[239,159, 39,0.85] },
+    thermal: { fill:[220,120,  0], outline:[220,120,  0,0.80] },
+    safe:    { fill:[ 29,158,117], outline:[ 29,158,117,0.70] },
+    qd:      { fill:[ 55,138,221], outline:[ 55,138,221,0.60] },
+  };
+
+  // ── Geodetic ───────────────────────────────────────────────────────────────
+  const EARTH_R=6_371_008.8;
+  function destPt(lon,lat,brg,dist){
+    const δ=dist/EARTH_R,θ=brg*Math.PI/180;
+    const φ1=lat*Math.PI/180,λ1=lon*Math.PI/180;
+    const φ2=Math.asin(Math.sin(φ1)*Math.cos(δ)+Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+    const λ2=λ1+Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1),Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+    return{longitude:λ2*180/Math.PI,latitude:φ2*180/Math.PI};
+  }
+
+  // ── Ring graphics builder ──────────────────────────────────────────────────
+  function buildRingGraphics(pt, result, donut, labels) {
+    const rings=result.rings;
+    const bufs=rings.map(r=>({...r, geometry:geometryEngine.geodesicBuffer(pt,r.radiusM,'meters')}));
+    const gfx=[];
+    bufs.forEach((ring,i)=>{
+      if(!ring.geometry)return;
+      const c=COLORS[ring.colorKey]??COLORS.safe;
+      const[r,g,b]=c.fill,[or,og,ob,oa]=c.outline;
+      const geom=donut&&bufs[i+1]?.geometry
+        ?geometryEngine.difference(ring.geometry,bufs[i+1].geometry)
+        :ring.geometry;
+      if(!geom)return;
+      gfx.push(new Graphic({
+        geometry:geom,
+        symbol:{type:'polygon-3d',symbolLayers:[{
+          type:'fill',material:{color:[r,g,b,ring.opacity]},
+          outline:{color:[or,og,ob,oa],size:1.7},
+          pattern:{type:'style',style:i===0?'none':'diagonal-cross'},
+        }]},
+        attributes:{type:`Effects — ${ring.label}`,label:`${ring.label}  ${Math.round(ring.radiusM)} m`,radiusM:Math.round(ring.radiusM),colorKey:ring.colorKey},
+      }));
+      if(labels){
+        const lp=destPt(pt.longitude,pt.latitude,0,ring.radiusM);
+        const ds=ring.radiusM>=1000?(ring.radiusM/1000).toFixed(2)+' km':Math.round(ring.radiusM)+' m';
+        gfx.push(new Graphic({
+          geometry:new Point({longitude:lp.longitude,latitude:lp.latitude,spatialReference:{wkid:4326}}),
+          symbol:{type:'text',color:`rgb(${c.fill.join(',')})`,haloColor:[0,0,0,0.75],haloSize:1.5,
+            text:`${ring.label}  ${ds}`,font:{family:'Courier New',size:9.5,weight:'bold'},
+            horizontalAlignment:'center',verticalAlignment:'bottom'},
+          attributes:{type:'effects_label',label:ring.label,radiusM:0,colorKey:ring.colorKey},
+        }));
+      }
+    });
+    return gfx;
+  }
+
+  // ── Impact marker ──────────────────────────────────────────────────────────
+  function buildImpactMarker(pt, color) {
+    const[r,g,b]=color;
+    return new Graphic({
+      geometry:pt,
+      symbol:{type:'point-3d',symbolLayers:[{type:'object',resource:{primitive:'sphere'},
+        material:{color:[r,g,b,0.95]},width:80,height:80,depth:80}],
+        verticalOffset:{screenLength:20,maxWorldLength:400,minWorldLength:4}},
+      attributes:{type:'Detonation point',label:'Strike point',radiusM:0,colorKey:'lethal'},
+    });
+  }
+
+  // ── UV sphere Mesh (blast wave) ────────────────────────────────────────────
+  function buildSphereMesh(pt, radiusM, color, alpha) {
+    const[r,g,b]=color;
+    const STACKS=18,SLICES=32,R=radiusM;
+    const degPerM=1/111320;
+    const pos=[],norm=[],uv=[],idx=[];
+    for(let si=0;si<=STACKS;si++){
+      const phi=(si/STACKS)*Math.PI;
+      for(let sl=0;sl<=SLICES;sl++){
+        const theta=(sl/SLICES)*2*Math.PI;
+        const x=R*Math.sin(phi)*Math.cos(theta);
+        const y=R*Math.sin(phi)*Math.sin(theta);
+        const z=R*Math.cos(phi);
+        const lon=pt.longitude+x*degPerM/Math.cos(pt.latitude*Math.PI/180);
+        const lat=pt.latitude +y*degPerM;
+        pos.push(lon,lat,(pt.z??0)+z);
+        norm.push(x/R,y/R,z/R); uv.push(sl/SLICES,si/STACKS);
+      }
+    }
+    for(let si=0;si<STACKS;si++){
+      for(let sl=0;sl<SLICES;sl++){
+        const a=si*(SLICES+1)+sl, b=a+SLICES+1;
+        idx.push(a,b,a+1, b,b+1,a+1);
+      }
+    }
+    return new Graphic({
+      geometry:new Mesh({
+        vertexAttributes:{
+          position:new Float64Array(pos),
+          normal:new Float32Array(norm),
+          uv:new Float32Array(uv),
+        },
+        components:[{faces:new Uint32Array(idx),material:{color:[r,g,b,Math.round(alpha*255)],doubleSided:true}}],
+        spatialReference:{wkid:4326},
+      }),
+      attributes:{type:'blast_sphere',radiusM:0,colorKey:'lethal'},
+    });
+  }
+
+  // ── Multi-strike union ─────────────────────────────────────────────────────
+  function buildUnionGraphic(strikes) {
+    const geoms=strikes.map(s=>{
+      const letR=s.result.rLethal;
+      return letR>0?geometryEngine.geodesicBuffer(s.point,letR,'meters'):null;
+    }).filter(Boolean);
+    if(geoms.length<2)return null;
+    const merged=geometryEngine.union(geoms);
+    return merged?new Graphic({
+      geometry:merged,
+      symbol:{type:'polygon-3d',symbolLayers:[{type:'fill',
+        material:{color:[180,40,220,0.22]},outline:{color:[180,40,220,0.90],size:2.2}}]},
+      attributes:{type:'Multi-strike lethal union',label:'Combined lethal footprint',radiusM:0,colorKey:'qd'},
+    }):null;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ARCGIS SETUP
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const ringsLayer     = new GraphicsLayer({title:'Effects — rings',    elevationInfo:{mode:'on-the-ground'}});
+  const markerLayer    = new GraphicsLayer({title:'Effects — markers',  elevationInfo:{mode:'on-the-ground'}});
+  const animLayer      = new GraphicsLayer({title:'Effects — blast',    elevationInfo:{mode:'absolute-height'}});
+  const unionLayer     = new GraphicsLayer({title:'Effects — union',    elevationInfo:{mode:'on-the-ground'}});
+  const committedLayer = new GraphicsLayer({title:'Effects — committed',elevationInfo:{mode:'on-the-ground'}});
+
+  const map=new Map({
+    basemap:'topo-3d',ground:'world-elevation',
+    layers:[committedLayer,unionLayer,ringsLayer,markerLayer,animLayer],
+  });
+
+  const view=new SceneView({
+    container:'viewDiv',map,
+    camera:{position:{longitude:73.06,latitude:33.68,z:14000},heading:0,tilt:58},
+    environment:{atmosphere:{quality:'high'},lighting:{date:new Date()}},
+    popup:{
+      dockEnabled:true,
+      dockOptions:{position:'bottom-left',breakpoint:false},
+      defaultPopupTemplateEnabled:true,
+    },
+  });
+
+  [ringsLayer,committedLayer].forEach(l=>{
+    l.popupTemplate={title:'{type}',content:'<b>{label}</b><br>Radius: {radiusM} m'};
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════════════════════════════════════
+  let strikes     = [];   // [{ point, result, munKey, structKey, tntKg, height }]
+  let blastRafId  = null;
+  let blastSphere = null;
+
+  const $=id=>document.getElementById(id);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PARAMETER WIRING
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Preset → snap TNT + height fields
+  $('inp-munition').addEventListener('change',()=>{
+    const m=MUNITION_PRESETS[$('inp-munition').value];
+    if(!m)return;
+    $('inp-tnt').value    = m.tntEquivKg;
+    $('inp-height').value = m.detonationHeightM;
+    redrawAll();
+  });
+
+  [$('inp-tnt'),$('inp-height'),$('inp-structure')]
+    .forEach(el=>el.addEventListener('change',redrawAll));
+  [$('opt-donut'),$('opt-labels'),$('opt-union')]
+    .forEach(el=>el.addEventListener('change',redrawAll));
+
+  $('anim-speed').addEventListener('input',()=>{
+    $('anim-speed-v').textContent=$('anim-speed').value+'×';
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // REDRAW — fully synchronous client-side
+  // ═══════════════════════════════════════════════════════════════════════════
+  function redrawAll() {
+    if(strikes.length===0)return;
+    setStatus('busy');
+    [ringsLayer,markerLayer,unionLayer].forEach(l=>l.removeAll());
+
+    const donut  = $('opt-donut').checked;
+    const labels = $('opt-labels').checked;
+    const union  = $('opt-union').checked;
+    const munKey = $('inp-munition').value;
+    const struct = $('inp-structure').value;
+    const tntOv  = parseFloat($('inp-tnt').value)||null;
+    const hOv    = parseFloat($('inp-height').value)||0;
+
+    strikes.forEach(s=>{
+      // Recompute with current panel values
+      s.result = computeEffects(munKey, struct, tntOv, hOv);
+
+      // Ring graphics
+      buildRingGraphics(s.point, s.result, donut, labels)
+        .forEach(g=>ringsLayer.add(g));
+
+      // Impact marker
+      markerLayer.add(buildImpactMarker(s.point, s.result.munition.color));
+    });
+
+    // Multi-strike union
+    if(union && strikes.length>1){
+      const ug=buildUnionGraphic(strikes);
+      if(ug)unionLayer.add(ug);
+    }
+
+    // Update physics readout from last-placed strike
+    const res=strikes.at(-1).result;
+    updatePhysicsPanel(res);
+
+    $('btn-blast').disabled  = false;
+    $('btn-commit').disabled = false;
+    setStatus('ready');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHYSICS PANEL UPDATE
+  // ═══════════════════════════════════════════════════════════════════════════
+  function updatePhysicsPanel(res) {
+    const fmt=v=>v>=1000?(v/1000).toFixed(2)+' km':Math.round(v)+' m';
+    $('ph-lethal').innerHTML  = fmt(res.rLethal);
+    $('ph-injury').innerHTML  = fmt(res.rInjury);
+    $('ph-frag').innerHTML    = fmt(res.rFrag);
+    $('ph-thermal').innerHTML = fmt(res.rThermal);
+    $('ph-safe').innerHTML    = fmt(res.rSafe);
+    $('ph-qd').innerHTML      = fmt(res.rQD);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STRIKE LIST UI
+  // ═══════════════════════════════════════════════════════════════════════════
+  function renderStrikeList() {
+    const list=$('strike-list');
+    list.innerHTML='';
+    if(strikes.length===0){
+      list.innerHTML='<div style="font-size:9px;color:#3a3935;padding:0 0 4px">No strikes placed</div>';
+      return;
+    }
+    strikes.forEach((s,i)=>{
+      const row=document.createElement('div'); row.className='sk-row';
+      row.innerHTML=`
+        <div class="sk-idx">${i+1}</div>
+        <div class="sk-info">${s.point.latitude.toFixed(4)}°N  ${s.point.longitude.toFixed(4)}°E</div>
+        <button class="sk-del" data-i="${i}">✕</button>`;
+      row.querySelector('.sk-del').addEventListener('click',()=>{
+        strikes.splice(i,1);
+        renderStrikeList();
+        if(strikes.length===0){
+          [ringsLayer,markerLayer,unionLayer].forEach(l=>l.removeAll());
+          $('btn-blast').disabled=$('btn-commit').disabled=true;
+          $('hint').style.opacity='1';
+          setStatus('awaiting');
+          ['ph-lethal','ph-injury','ph-frag','ph-thermal','ph-safe','ph-qd']
+            .forEach(id=>$(id).innerHTML='—');
+        } else { redrawAll(); }
+        $('btn-undo').disabled=strikes.length===0;
+      });
+      list.appendChild(row);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MAP CLICK — place detonation point
+  // ═══════════════════════════════════════════════════════════════════════════
+  view.on('click', async event=>{
+    const result = await view.hitTest(event,{include:[map.ground]});
+    const gp     = result?.ground?.mapPoint??event.mapPoint;
+    const pt     = new Point({longitude:gp.longitude,latitude:gp.latitude,z:gp.z??0,spatialReference:{wkid:4326}});
+
+    const munKey = $('inp-munition').value;
+    const struct = $('inp-structure').value;
+    const tntOv  = parseFloat($('inp-tnt').value)||null;
+    const hOv    = parseFloat($('inp-height').value)||0;
+    const res    = computeEffects(munKey,struct,tntOv,hOv);
+
+    strikes.push({point:pt,result:res,munKey,struct});
+
+    $('coords').textContent=`Strike ${strikes.length}: ${pt.latitude.toFixed(4)}°N  ${pt.longitude.toFixed(4)}°E`;
+    $('hint').style.opacity='0';
+    $('btn-undo').disabled=false;
+
+    renderStrikeList();
+    redrawAll();
+
+    // Auto-play blast wave for this strike
+    if($('opt-anim').checked) playBlastWave(pt,res);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BLAST WAVE ANIMATION
+  // Expands a UV-sphere Mesh from 0 → outermost ring radius, fading out.
+  // ═══════════════════════════════════════════════════════════════════════════
+  function playBlastWave(pt, res) {
+    // Cancel any in-progress wave
+    if(blastRafId){ cancelAnimationFrame(blastRafId); blastRafId=null; }
+    if(blastSphere && animLayer.graphics.includes(blastSphere)) animLayer.remove(blastSphere);
+
+    const maxR     = res.rQD;        // expand to QD radius
+    const color    = res.munition.color;
+    const speedMul = parseFloat($('anim-speed').value)||1;
+    const durationMs = (2200 / speedMul);
+    const startMs  = performance.now();
+
+    setStatus('animating');
+
+    function frame(nowMs) {
+      const t = Math.min(1,(nowMs-startMs)/durationMs);
+      const eased = 1-Math.pow(1-t,2.4);     // ease-out cubic
+      const radius = maxR*eased;
+      const alpha  = 0.38*(1-Math.pow(t,0.7));
+
+      if(blastSphere && animLayer.graphics.includes(blastSphere)) animLayer.remove(blastSphere);
+
+      if(radius>0.5 && alpha>0.005){
+        blastSphere=buildSphereMesh(pt,radius,color,alpha);
+        animLayer.add(blastSphere);
+      }
+
+      if(t<1){ blastRafId=requestAnimationFrame(frame); }
+      else{
+        blastRafId=null; blastSphere=null;
+        if(strikes.length>0) setStatus('ready');
+        else setStatus('awaiting');
+      }
+    }
+    blastRafId=requestAnimationFrame(frame);
+  }
+
+  $('btn-blast').addEventListener('click',()=>{
+    if(strikes.length===0)return;
+    const s=strikes.at(-1);
+    playBlastWave(s.point,s.result);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UNDO
+  // ═══════════════════════════════════════════════════════════════════════════
+  $('btn-undo').addEventListener('click',()=>{
+    if(strikes.length===0)return;
+    strikes.pop();
+    renderStrikeList();
+    $('btn-undo').disabled=strikes.length===0;
+    if(strikes.length===0){
+      [ringsLayer,markerLayer,unionLayer].forEach(l=>l.removeAll());
+      $('btn-blast').disabled=$('btn-commit').disabled=true;
+      $('hint').style.opacity='1';
+      setStatus('awaiting');
+    } else { redrawAll(); }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COMMIT
+  // ═══════════════════════════════════════════════════════════════════════════
+  $('btn-commit').addEventListener('click',()=>{
+    const ts=new Date().toISOString();
+    [...ringsLayer.graphics,...markerLayer.graphics,...unionLayer.graphics]
+      .forEach(g=>committedLayer.add(new Graphic({
+        geometry:g.geometry.clone(),symbol:g.symbol.clone(),
+        attributes:{...g.attributes,committedAt:ts},
+      })));
+    flashStatus('Committed ✓','ready');
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CLEAR
+  // ═══════════════════════════════════════════════════════════════════════════
+  $('btn-clear').addEventListener('click',()=>{
+    if(blastRafId){cancelAnimationFrame(blastRafId);blastRafId=null;}
+    if(blastSphere&&animLayer.graphics.includes(blastSphere))animLayer.remove(blastSphere);
+    blastSphere=null;
+    strikes=[];
+    [ringsLayer,markerLayer,animLayer,unionLayer].forEach(l=>l.removeAll());
+    renderStrikeList();
+    $('btn-blast').disabled=$('btn-commit').disabled=$('btn-undo').disabled=true;
+    $('hint').style.opacity='1';
+    $('coords').textContent='Impact: not placed — click map';
+    ['ph-lethal','ph-injury','ph-frag','ph-thermal','ph-safe','ph-qd']
+      .forEach(id=>$(id).innerHTML='—');
+    setStatus('awaiting');
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HELPERS
+  // ═══════════════════════════════════════════════════════════════════════════
+  function setStatus(s){
+    const M={awaiting:['Awaiting strike point',''],ready:['Ready','ready'],busy:['Computing…','busy'],animating:['Blast wave ↗','animating']};
+    const[txt,cls]=M[s]??M.awaiting;
+    $('status').textContent=txt;
+    $('status').className='ph-status'+(cls?' '+cls:'');
+  }
+  function flashStatus(msg,cls){
+    const prev=$('status').textContent,pc=$('status').className;
+    $('status').textContent=msg; $('status').className='ph-status '+cls;
+    setTimeout(()=>{ $('status').textContent=prev; $('status').className=pc; },1800);
+  }
+
+  view.when(()=>console.log('[Effects] SceneView ready — click the map to place a detonation point.'));
+
+}); // end require()
+</script>
+</body>
+</html>
