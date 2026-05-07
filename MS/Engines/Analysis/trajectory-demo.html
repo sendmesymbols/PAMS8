@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trajectory Analysis Module — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" />
+
+  <style>
+    /* ── Reset / Base ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #viewDiv { width: 100%; height: 100vh; }
+    body { font-family: "Courier New", monospace; background: #111; }
+
+    /* ── Panel ─────────────────────────────────────────────────────────── */
+    #panel {
+      position: absolute; top: 14px; right: 14px;
+      width: 290px;
+      background: rgba(16, 18, 22, 0.96);
+      border: 1px solid rgba(186, 117, 23, 0.4);
+      border-radius: 4px;
+      color: #c8c5ba;
+      font-size: 12px;
+      z-index: 99;
+    }
+
+    /* header */
+    .ph {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(186,117,23,.2);
+      background: rgba(186,117,23,.07);
+    }
+    .ph-title { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #BA7517; font-weight: 700; }
+    .ph-status { font-size: 9px; letter-spacing: .08em; color: #555; text-transform: uppercase; }
+    .ph-status.ready     { color: #1D9E75; }
+    .ph-status.computing { color: #BA7517; }
+    .ph-status.placing   { color: #378ADD; }
+
+    /* sections */
+    .ps { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: #555; padding: 9px 12px 5px; }
+
+    /* grid */
+    .pg { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 10px; padding: 0 12px 10px; }
+    .pf { display: flex; flex-direction: column; gap: 3px; }
+    .pf.full { grid-column: 1/-1; }
+    .pl { font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: #777; }
+
+    /* inputs */
+    .pf input, .pf select {
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 3px; color: #c8c5ba; font-family: "Courier New",monospace;
+      font-size: 11px; padding: 5px 7px; width: 100%; outline: none;
+      transition: border-color .13s;
+    }
+    .pf input:focus, .pf select:focus { border-color: rgba(186,117,23,.65); }
+    .pf select option { background: #1a1c20; }
+
+    /* slider rows */
+    .psr { display: flex; align-items: center; gap: 8px; padding: 2px 12px 7px; }
+    .psr-lbl { font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: #777; flex: 1; }
+    .psr input[type=range] { flex: 2; accent-color: #BA7517; }
+    .psr-val { font-size: 10px; color: #BA7517; min-width: 38px; text-align: right; }
+
+    /* divider */
+    .pdiv { height: 1px; background: rgba(255,255,255,.06); margin: 4px 0; }
+
+    /* toggles */
+    .ptr { display: flex; align-items: center; justify-content: space-between; padding: 4px 12px; }
+    .ptr label { font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: #777; }
+    .ptr input[type=checkbox] { accent-color: #BA7517; width: 13px; height: 13px; cursor: pointer; }
+
+    /* stats bar */
+    #stats-bar {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 1px; padding: 8px 12px; border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .stat { display: flex; flex-direction: column; gap: 2px; }
+    .stat-val { font-size: 13px; color: #BA7517; font-weight: 700; letter-spacing: .03em; }
+    .stat-lbl { font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; color: #555; }
+
+    /* buttons */
+    .pbtns { display: flex; gap: 6px; padding: 9px 12px; }
+    .pbtn {
+      flex: 1; padding: 7px; font-family: "Courier New",monospace;
+      font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+      cursor: pointer; border-radius: 3px;
+      border: 1px solid rgba(186,117,23,.4);
+      background: transparent; color: #BA7517;
+      transition: all .13s;
+    }
+    .pbtn:hover { background: rgba(186,117,23,.13); }
+    .pbtn.primary { background: rgba(186,117,23,.17); border-color: #BA7517; }
+    .pbtn.primary:hover { background: rgba(186,117,23,.30); }
+    .pbtn:disabled { opacity: .3; cursor: not-allowed; }
+
+    /* place-mode hint */
+    #hint {
+      position: absolute; bottom: 56px; left: 50%; transform: translateX(-50%);
+      background: rgba(16,18,22,.93); border: 1px solid rgba(55,138,221,.45);
+      color: #378ADD; font-family: "Courier New",monospace;
+      font-size: 11px; letter-spacing: .08em; padding: 8px 20px;
+      border-radius: 3px; pointer-events: none; z-index: 99;
+      text-transform: uppercase; white-space: nowrap;
+    }
+
+    /* animation scrubber */
+    #scrubber-bar {
+      display: none;
+      position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+      background: rgba(16,18,22,.93); border: 1px solid rgba(186,117,23,.35);
+      padding: 8px 14px; border-radius: 3px; z-index: 99;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase; color: #888;
+    }
+    #scrubber-bar input[type=range] { width: 200px; accent-color: #BA7517; }
+    #scrubber-time { font-size: 11px; color: #BA7517; min-width: 50px; }
+  </style>
+</head>
+
+<body>
+  <div id="viewDiv"></div>
+
+  <!-- ── Analysis Panel ───────────────────────────────────────────────── -->
+  <div id="panel">
+    <div class="ph">
+      <div class="ph-title">↗ Trajectory Analysis</div>
+      <div class="ph-status" id="status">Place firing point</div>
+    </div>
+
+    <!-- Projectile type -->
+    <div class="ps">Projectile / munition</div>
+    <div class="pg">
+      <div class="pf full">
+        <div class="pl">Type</div>
+        <select id="inp-type">
+          <option value="mortar_60mm">Mortar 60 mm</option>
+          <option value="mortar_81mm" selected>Mortar 81 mm</option>
+          <option value="mortar_120mm">Mortar 120 mm</option>
+          <option value="artillery_105">Artillery 105 mm</option>
+          <option value="artillery_155">Artillery 155 mm</option>
+          <option value="atgm">ATGM (wire-guided)</option>
+          <option value="rpg7">RPG-7</option>
+          <option value="drone_loiter">Loitering munition</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="pdiv"></div>
+
+    <!-- Launch params -->
+    <div class="ps">Launch parameters</div>
+
+    <div class="psr">
+      <div class="psr-lbl">Launch angle (°)</div>
+      <input id="inp-angle" type="range" min="1" max="85" value="45" step="0.5" />
+      <div class="psr-val" id="angle-val">45°</div>
+    </div>
+
+    <div class="psr">
+      <div class="psr-lbl">Muzzle vel (m/s)</div>
+      <input id="inp-vel" type="range" min="50" max="900" value="293" step="1" />
+      <div class="psr-val" id="vel-val">293</div>
+    </div>
+
+    <div class="pg">
+      <div class="pf">
+        <div class="pl">Fire azimuth (°)</div>
+        <input id="inp-azimuth" type="number" value="0" min="0" max="359" step="1" />
+      </div>
+      <div class="pf">
+        <div class="pl">Observer ht (m)</div>
+        <input id="inp-obsht" type="number" value="0" min="0" max="50" step="1" />
+      </div>
+    </div>
+
+    <div class="pdiv"></div>
+
+    <!-- Wind -->
+    <div class="ps">Wind</div>
+    <div class="psr">
+      <div class="psr-lbl">Speed (m/s)</div>
+      <input id="inp-wind-spd" type="range" min="0" max="30" value="5" step="0.5" />
+      <div class="psr-val" id="wind-spd-val">5.0</div>
+    </div>
+    <div class="psr">
+      <div class="psr-lbl">From bearing (°)</div>
+      <input id="inp-wind-brg" type="range" min="0" max="359" value="270" step="1" />
+      <div class="psr-val" id="wind-brg-val">270°</div>
+    </div>
+
+    <div class="pdiv"></div>
+
+    <!-- Options -->
+    <div class="ps">Display options</div>
+    <div class="ptr">
+      <label>Phase colouring</label>
+      <input id="opt-phases" type="checkbox" checked />
+    </div>
+    <div class="ptr">
+      <label>Show CEP ring</label>
+      <input id="opt-cep" type="checkbox" checked />
+    </div>
+    <div class="ptr">
+      <label>Coriolis effect</label>
+      <input id="opt-coriolis" type="checkbox" checked />
+    </div>
+    <div class="ptr">
+      <label>Auto-solve angle to target</label>
+      <input id="opt-autosolve" type="checkbox" />
+    </div>
+
+    <!-- Flight stats -->
+    <div id="stats-bar">
+      <div class="stat"><div class="stat-val" id="st-range">—</div><div class="stat-lbl">Range (m)</div></div>
+      <div class="stat"><div class="stat-val" id="st-tof">—</div><div class="stat-lbl">TOF (s)</div></div>
+      <div class="stat"><div class="stat-val" id="st-alt">—</div><div class="stat-lbl">Apex (m)</div></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="pbtns">
+      <button class="pbtn" id="btn-clear">Clear</button>
+      <button class="pbtn" id="btn-animate" disabled>Animate ▶</button>
+      <button class="pbtn primary" id="btn-commit" disabled>Commit ↗</button>
+    </div>
+  </div>
+
+  <!-- Placement hint -->
+  <div id="hint">Click map → set firing point</div>
+
+  <!-- Animation scrubber -->
+  <div id="scrubber-bar" style="display:none">
+    <span>T+</span>
+    <input type="range" id="scrubber" min="0" max="100" value="0" step="1" />
+    <span id="scrubber-time">0.00 s</span>
+    <button class="pbtn" id="btn-play" style="flex:none;padding:4px 10px">▶</button>
+  </div>
+
+  <script src="https://js.arcgis.com/4.28/"></script>
+  <script>
+  // ── Inline engine (mirrors trajectory-engine.js) ──────────────────────
+  const PRESETS = {
+    mortar_60mm:   { massKg:1.33,  diamM:0.060, Cd:0.295, muzzleVelocity:250,  optimalAngle:45, maxAngle:85, cepM:30,  color:[186,117,23] },
+    mortar_81mm:   { massKg:4.1,   diamM:0.081, Cd:0.285, muzzleVelocity:293,  optimalAngle:45, maxAngle:85, cepM:35,  color:[186,117,23] },
+    mortar_120mm:  { massKg:13.3,  diamM:0.120, Cd:0.28,  muzzleVelocity:320,  optimalAngle:45, maxAngle:85, cepM:40,  color:[186,117,23] },
+    artillery_105: { massKg:15.0,  diamM:0.105, Cd:0.30,  muzzleVelocity:472,  optimalAngle:35, maxAngle:65, cepM:50,  color:[220,90,48]  },
+    artillery_155: { massKg:43.5,  diamM:0.155, Cd:0.28,  muzzleVelocity:827,  optimalAngle:30, maxAngle:65, cepM:70,  color:[220,90,48]  },
+    atgm:          { massKg:11.5,  diamM:0.115, Cd:0.42,  muzzleVelocity:185,  optimalAngle:5,  maxAngle:20, cepM:1,   color:[55,138,221] },
+    rpg7:          { massKg:2.25,  diamM:0.085, Cd:0.50,  muzzleVelocity:115,  optimalAngle:0,  maxAngle:12, cepM:12,  color:[220,90,48]  },
+    drone_loiter:  { massKg:5.5,   diamM:0.12,  Cd:0.80,  muzzleVelocity:50,   optimalAngle:5,  maxAngle:15, cepM:3,   color:[55,138,221] },
+  };
+
+  const G = 9.80665, RHO_SL = 1.225, EARTH_OMEGA = 7.2921e-5;
+
+  function airDensity(alt) {
+    const T = 288.15 - 0.0065 * Math.min(Math.max(0, alt), 11000);
+    return RHO_SL * Math.pow(T / 288.15, 4.256);
+  }
+
+  function destPt(lon, lat, brg, dist) {
+    const R = 6_371_008.8, δ = dist / R, θ = brg * Math.PI / 180;
+    const φ1 = lat*Math.PI/180, λ1 = lon*Math.PI/180;
+    const φ2 = Math.asin(Math.sin(φ1)*Math.cos(δ)+Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+    const λ2 = λ1+Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1),Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+    return { lon: λ2*180/Math.PI, lat: φ2*180/Math.PI };
+  }
+
+  function enuToGeo(oLon, oLat, oZ, e, n, u) {
+    const dist = Math.sqrt(e*e+n*n);
+    const brg  = Math.atan2(e,n)*180/Math.PI;
+    const {lon, lat} = destPt(oLon, oLat, brg, dist);
+    return { lon, lat, z: oZ + u };
+  }
+
+  function integrate({ presetKey, originLon, originLat, originElevM=0,
+      bearingDeg=0, launchAngleDeg=45, windSpeedMs=0, windBearingDeg=270,
+      targetElevM=0, useCoriolis=true }) {
+    const p = PRESETS[presetKey]; if (!p) return null;
+    const azR = bearingDeg*Math.PI/180, elR = launchAngleDeg*Math.PI/180;
+    const vH = p.muzzleVelocity*Math.cos(elR);
+    let vE = vH*Math.sin(azR), vN = vH*Math.cos(azR), vU = p.muzzleVelocity*Math.sin(elR);
+    const wazR = windBearingDeg*Math.PI/180;
+    const wE = windSpeedMs*Math.sin(wazR), wN = windSpeedMs*Math.cos(wazR);
+    const fCor = useCoriolis ? 2*EARTH_OMEGA*Math.sin(originLat*Math.PI/180) : 0;
+    const dt = 0.05, maxT = 400;
+    let east=0,north=0,up=0,t=0, prevVU=vU;
+    let apogeeIdx=0, termIdx=0;
+    const pts = [];
+
+    while (t < maxT) {
+      const altMSL = originElevM + up;
+      if (t > 0.1 && altMSL <= targetElevM) break;
+      pts.push({ east, north, up, t, altMSL, vU });
+      if (prevVU>0 && vU<=0) apogeeIdx = pts.length-1;
+      const relE=vE-wE, relN=vN-wN;
+      const relSpd = Math.sqrt(relE**2+relN**2+vU**2)||1e-9;
+      const A = Math.PI*(p.diamM/2)**2;
+      const da = (0.5*airDensity(Math.max(0,altMSL))*p.Cd*A*relSpd**2)/p.massKg;
+      prevVU = vU;
+      vE += (-(da*relE/relSpd) + fCor*vN)*dt;
+      vN += (-(da*relN/relSpd) - fCor*vE)*dt;
+      vU += (-(da*vU/relSpd) - G)*dt;
+      east+=vE*dt; north+=vN*dt; up+=vU*dt; t+=dt;
+    }
+
+    for (let i=apogeeIdx; i<pts.length; i++) {
+      if (Math.abs(pts[i].vU) >= 0.25*p.muzzleVelocity) { termIdx=i; break; }
+    }
+
+    const last = pts[pts.length-1];
+    const impact = last ? enuToGeo(originLon,originLat,originElevM,last.east,last.north,0) : null;
+    const maxAlt = Math.max(...pts.map(p=>p.altMSL));
+    return { pts, apogeeIdx, termIdx, impact, tof: last?.t??0, maxAlt,
+             range: Math.sqrt((last?.east??0)**2+(last?.north??0)**2) };
+  }
+
+  function solveLaunchAngle(presetKey, rangeM, { originLon,originLat,originElevM,targetElevM,windSpeedMs,windBearingDeg,useCoriolis }) {
+    const p = PRESETS[presetKey]; if (!p) return 45;
+    const isHigh = p.optimalAngle >= 45;
+    let lo = isHigh ? 45.1 : 1, hi = isHigh ? p.maxAngle-0.1 : 44.9;
+    function achieved(ang) {
+      const r = integrate({ presetKey, originLon, originLat, originElevM, bearingDeg:0,
+        launchAngleDeg:ang, windSpeedMs, windBearingDeg, targetElevM, useCoriolis });
+      return r ? r.range : 0;
+    }
+    for (let i=0; i<30; i++) {
+      const mid=(lo+hi)/2, ach=achieved(mid);
+      if (ach < rangeM) { isHigh ? (hi=mid):(lo=mid); }
+      else              { isHigh ? (lo=mid):(hi=mid); }
+    }
+    return Math.min(p.maxAngle, Math.max(0, (lo+hi)/2));
+  }
+
+  function buildCEP(impLon, impLat, cepM, sides=48) {
+    return Array.from({length:sides+1},(_,i) => {
+      const {lon,lat} = destPt(impLon,impLat,(i/sides)*360,cepM);
+      return [lon,lat];
+    });
+  }
+
+  // ── ArcGIS modules ────────────────────────────────────────────────────
+  require([
+    "esri/Map","esri/views/SceneView",
+    "esri/layers/GraphicsLayer","esri/Graphic",
+    "esri/geometry/Point","esri/geometry/Polyline","esri/geometry/Polygon",
+    "esri/symbols/LineSymbol3D","esri/symbols/LineSymbol3DLayer",
+    "esri/symbols/PathSymbol3DLayer",
+    "esri/symbols/PointSymbol3D","esri/symbols/ObjectSymbol3DLayer",
+    "esri/symbols/PolygonSymbol3D","esri/symbols/FillSymbol3DLayer",
+  ], function(
+    Map, SceneView, GraphicsLayer, Graphic,
+    Point, Polyline, Polygon,
+    LineSymbol3D, LineSymbol3DLayer, PathSymbol3DLayer,
+    PointSymbol3D, ObjectSymbol3DLayer,
+    PolygonSymbol3D, FillSymbol3DLayer
+  ) {
+
+    // ── Layers ────────────────────────────────────────────────────────────
+    const trajLayer      = new GraphicsLayer({ title:"Trajectory — working",    elevationInfo:{ mode:"absolute-height" } });
+    const markerLayer    = new GraphicsLayer({ title:"Trajectory — markers",    elevationInfo:{ mode:"absolute-height" } });
+    const committedLayer = new GraphicsLayer({ title:"Trajectory — committed",  elevationInfo:{ mode:"absolute-height" } });
+
+    const map = new Map({
+      basemap: "topo-3d", ground: "world-elevation",
+      layers: [committedLayer, trajLayer, markerLayer],
+    });
+
+    const view = new SceneView({
+      container: "viewDiv", map,
+      camera: { position:{ longitude:73.06, latitude:33.65, z:14000 }, tilt:60 },
+      environment: { atmosphere:{ quality:"high" }, lighting:{ date:new Date() } },
+    });
+
+    // ── State ─────────────────────────────────────────────────────────────
+    let firePoint   = null;   // { lon, lat, z }
+    let targetPoint = null;   // { lon, lat, z }
+    let placeMode   = 'fire'; // 'fire' | 'target'
+    let currentTrajectory = null;  // result of integrate()
+    let animFrame   = null;
+
+    // ── Panel elements ────────────────────────────────────────────────────
+    const inpType    = document.getElementById('inp-type');
+    const inpAngle   = document.getElementById('inp-angle');
+    const inpVel     = document.getElementById('inp-vel');
+    const inpAz      = document.getElementById('inp-azimuth');
+    const inpObsHt   = document.getElementById('inp-obsht');
+    const inpWSpd    = document.getElementById('inp-wind-spd');
+    const inpWBrg    = document.getElementById('inp-wind-brg');
+    const optPhases  = document.getElementById('opt-phases');
+    const optCEP     = document.getElementById('opt-cep');
+    const optCor     = document.getElementById('opt-coriolis');
+    const optSolve   = document.getElementById('opt-autosolve');
+    const statusEl   = document.getElementById('status');
+    const hintEl     = document.getElementById('hint');
+    const btnAnimate = document.getElementById('btn-animate');
+    const btnCommit  = document.getElementById('btn-commit');
+    const btnClear   = document.getElementById('btn-clear');
+    const scrubBar   = document.getElementById('scrubber-bar');
+    const scrubEl    = document.getElementById('scrubber');
+    const scrubTime  = document.getElementById('scrubber-time');
+    const btnPlay    = document.getElementById('btn-play');
+
+    // ── Slider readouts ───────────────────────────────────────────────────
+    inpAngle.addEventListener('input', () => {
+      document.getElementById('angle-val').textContent = (+inpAngle.value).toFixed(1) + '°';
+      redraw();
+    });
+    inpVel.addEventListener('input', () => {
+      document.getElementById('vel-val').textContent = inpVel.value;
+      redraw();
+    });
+    inpWSpd.addEventListener('input', () => {
+      document.getElementById('wind-spd-val').textContent = (+inpWSpd.value).toFixed(1);
+      redraw();
+    });
+    inpWBrg.addEventListener('input', () => {
+      document.getElementById('wind-brg-val').textContent = inpWBrg.value + '°';
+      redraw();
+    });
+
+    // Preset → snap params to preset defaults
+    inpType.addEventListener('change', () => {
+      const p = PRESETS[inpType.value]; if (!p) return;
+      inpVel.value   = p.muzzleVelocity;
+      document.getElementById('vel-val').textContent = p.muzzleVelocity;
+      inpAngle.value = p.optimalAngle;
+      document.getElementById('angle-val').textContent = p.optimalAngle + '°';
+      redraw();
+    });
+
+    [inpAz, inpObsHt, optPhases, optCEP, optCor, optSolve]
+      .forEach(el => el.addEventListener('change', redraw));
+
+    // ── REDRAW ────────────────────────────────────────────────────────────
+    function readParams() {
+      return {
+        presetKey:      inpType.value,
+        launchAngleDeg: +inpAngle.value,
+        muzzleVelocity: +inpVel.value,
+        bearingDeg:     +inpAz.value,
+        obsHtM:         +inpObsHt.value,
+        windSpeedMs:    +inpWSpd.value,
+        windBearingDeg: +inpWBrg.value,
+        usePhases:      optPhases.checked,
+        showCEP:        optCEP.checked,
+        useCoriolis:    optCor.checked,
+        autoSolve:      optSolve.checked,
+      };
+    }
+
+    function redraw() {
+      if (!firePoint) return;
+      setStatus('computing');
+
+      const params = readParams();
+      const preset = PRESETS[params.presetKey];
+
+      // Elevation at the terrain for fire point (from prior hitTest z)
+      const originElevM  = firePoint.z ?? 0;
+      const targetElevM  = targetPoint?.z ?? originElevM;
+
+      // If auto-solve and we have a target, compute the required angle
+      let launchAngle = params.launchAngleDeg;
+      if (params.autoSolve && targetPoint) {
+        const rangeM = geoDist(firePoint.lon, firePoint.lat, targetPoint.lon, targetPoint.lat);
+        const brg    = geoBrg(firePoint.lon, firePoint.lat, targetPoint.lon, targetPoint.lat);
+        launchAngle  = solveLaunchAngle(params.presetKey, rangeM, {
+          originLon:      firePoint.lon,  originLat:     firePoint.lat,
+          originElevM, targetElevM,
+          windSpeedMs:    params.windSpeedMs,
+          windBearingDeg: params.windBearingDeg,
+          useCoriolis:    params.useCoriolis,
+        });
+        // Update panel to reflect solved angle (without re-triggering redraw)
+        inpAngle.value = launchAngle.toFixed(1);
+        document.getElementById('angle-val').textContent = launchAngle.toFixed(1) + '°';
+        inpAz.value = Math.round(brg);
+      }
+
+      // Override muzzle velocity from preset (the slider overrides default)
+      const tweakedPreset = { ...PRESETS[params.presetKey], muzzleVelocity: +inpVel.value };
+      PRESETS['__tmp'] = tweakedPreset;
+
+      const result = integrate({
+        presetKey:     '__tmp',
+        originLon:     firePoint.lon,  originLat: firePoint.lat,
+        originElevM:   originElevM + params.obsHtM,
+        bearingDeg:    params.autoSolve && targetPoint
+                         ? +inpAz.value
+                         : params.bearingDeg,
+        launchAngleDeg: launchAngle,
+        windSpeedMs:    params.windSpeedMs,
+        windBearingDeg: params.windBearingDeg,
+        targetElevM,
+        useCoriolis:    params.useCoriolis,
+      });
+
+      delete PRESETS['__tmp'];
+      if (!result || !result.pts.length) { setStatus('error'); return; }
+
+      currentTrajectory = result;
+
+      // Update stats bar
+      document.getElementById('st-range').textContent = Math.round(result.range).toLocaleString();
+      document.getElementById('st-tof').textContent   = result.tof.toFixed(1);
+      document.getElementById('st-alt').textContent   = Math.round(result.maxAlt);
+
+      // Build graphics
+      trajLayer.removeAll();
+
+      const color = preset.color;
+
+      if (params.usePhases) {
+        // Split into 3 phase segments — launch / flight / terminal
+        buildPhasedLines(result, firePoint, color, params.presetKey);
+      } else {
+        // Single colour arc
+        const coords = result.pts.map(pt => {
+          const g = enuToGeo(firePoint.lon, firePoint.lat, originElevM + params.obsHtM,
+                             pt.east, pt.north, pt.up);
+          return [g.lon, g.lat, g.z];
+        });
+        trajLayer.add(new Graphic({
+          geometry: new Polyline({ hasZ:true, paths:[coords], spatialReference:{ wkid:4326 } }),
+          symbol: new LineSymbol3D({ symbolLayers:[new PathSymbol3DLayer({
+            profile: 'quad', width: 4, height: 2,
+            material: { color: [...color, 0.85] },
+            profileRotation: 'heading',
+          })] }),
+          attributes: { type:'trajectory_arc' },
+        }));
+      }
+
+      // Apogee marker
+      const apPt = result.pts[result.apogeeIdx];
+      if (apPt) {
+        const ag = enuToGeo(firePoint.lon, firePoint.lat, originElevM + params.obsHtM,
+                            apPt.east, apPt.north, apPt.up);
+        trajLayer.add(new Graphic({
+          geometry: new Point({ longitude:ag.lon, latitude:ag.lat, z:ag.z, spatialReference:{wkid:4326} }),
+          symbol: new PointSymbol3D({ symbolLayers:[new ObjectSymbol3DLayer({
+            resource:{ primitive:'sphere' },
+            material:{ color:[186,117,23,.9] },
+            width:40, height:40, depth:40,
+          })],
+            verticalOffset:{ screenLength:22, maxWorldLength:400, minWorldLength:4 },
+          }),
+          attributes:{ type:'trajectory_apogee' },
+        }));
+      }
+
+      // CEP ring at impact
+      if (params.showCEP && result.impact) {
+        const ring = buildCEP(result.impact.lon, result.impact.lat, preset.cepM);
+        trajLayer.add(new Graphic({
+          geometry: new Polygon({ rings:[ring], spatialReference:{wkid:4326} }),
+          symbol: new PolygonSymbol3D({ symbolLayers:[new FillSymbol3DLayer({
+            material:{ color:[220,90,48,.18] },
+            outline:{ color:[220,90,48,.85], size:1.5 },
+          })] }),
+          attributes:{ type:'trajectory_cep', cepM: preset.cepM },
+        }));
+
+        // Impact marker
+        trajLayer.add(new Graphic({
+          geometry: new Point({ longitude:result.impact.lon, latitude:result.impact.lat,
+                                z:targetElevM, spatialReference:{wkid:4326} }),
+          symbol: new PointSymbol3D({ symbolLayers:[new ObjectSymbol3DLayer({
+            resource:{ primitive:'sphere' },
+            material:{ color:[220,90,48,.9] },
+            width:50, height:50, depth:50,
+          })],
+            verticalOffset:{ screenLength:22, maxWorldLength:400, minWorldLength:4 },
+          }),
+          attributes:{ type:'trajectory_impact' },
+        }));
+      }
+
+      // Enable UI
+      btnAnimate.disabled = false;
+      btnCommit.disabled  = false;
+      setStatus('ready');
+    }
+
+    // ── Build phase-coloured segments ─────────────────────────────────────
+    function buildPhasedLines(result, fp, color, presetKey) {
+      const obsHtM = +inpObsHt.value;
+      const oElevM = fp.z + obsHtM;
+
+      const PHASE_SEGS = [
+        { start: 0,                    end: result.apogeeIdx,  col:[29,158,117],  label:'launch'   },
+        { start: result.apogeeIdx,     end: result.termIdx,    col: color,         label:'flight'   },
+        { start: result.termIdx,       end: result.pts.length, col:[220,90,48],    label:'terminal' },
+      ];
+
+      PHASE_SEGS.forEach(({ start, end, col, label }) => {
+        if (end <= start) return;
+        const slice = result.pts.slice(start, end + 1);
+        if (slice.length < 2) return;
+        const coords = slice.map(pt => {
+          const g = enuToGeo(fp.lon, fp.lat, oElevM, pt.east, pt.north, pt.up);
+          return [g.lon, g.lat, g.z];
+        });
+        trajLayer.add(new Graphic({
+          geometry: new Polyline({ hasZ:true, paths:[coords], spatialReference:{wkid:4326} }),
+          symbol: new LineSymbol3D({ symbolLayers:[new PathSymbol3DLayer({
+            profile:'quad', width:5, height:2,
+            material:{ color:[...col, 0.9] },
+            profileRotation:'heading',
+          })] }),
+          attributes:{ type:'trajectory_phase', phase:label },
+        }));
+      });
+    }
+
+    // ── Animation ──────────────────────────────────────────────────────────
+    let animRunning = false;
+    let animGraphic = null;
+
+    btnAnimate.addEventListener('click', () => {
+      if (!currentTrajectory) return;
+      scrubBar.style.display = 'flex';
+      scrubEl.max = currentTrajectory.pts.length - 1;
+      scrubEl.value = 0;
+      setupAnimGraphic();
+      playAnimation();
+    });
+
+    btnPlay.addEventListener('click', () => {
+      if (animRunning) { cancelAnimationFrame(animFrame); animRunning = false; btnPlay.textContent = '▶'; }
+      else { playAnimation(); }
+    });
+
+    scrubEl.addEventListener('input', () => {
+      cancelAnimationFrame(animFrame); animRunning = false; btnPlay.textContent = '▶';
+      seekAnimation(+scrubEl.value);
+    });
+
+    function setupAnimGraphic() {
+      markerLayer.removeAll();
+      const preset = PRESETS[inpType.value];
+      animGraphic = new Graphic({
+        geometry: new Point({ longitude:firePoint.lon, latitude:firePoint.lat, z:firePoint.z+1,
+                              spatialReference:{wkid:4326} }),
+        symbol: new PointSymbol3D({ symbolLayers:[new ObjectSymbol3DLayer({
+          resource:{ primitive:'sphere' },
+          material:{ color:[...preset.color, 0.95] },
+          width:35, height:35, depth:35,
+        })] }),
+        attributes:{ type:'trajectory_projectile' },
+      });
+      markerLayer.add(animGraphic);
+    }
+
+    function seekAnimation(frameIdx) {
+      if (!currentTrajectory || !animGraphic) return;
+      const pt  = currentTrajectory.pts[Math.min(frameIdx, currentTrajectory.pts.length-1)];
+      const obsHtM = +inpObsHt.value;
+      const g   = enuToGeo(firePoint.lon, firePoint.lat, (firePoint.z??0)+obsHtM, pt.east, pt.north, pt.up);
+      animGraphic.geometry = new Point({ longitude:g.lon, latitude:g.lat, z:g.z, spatialReference:{wkid:4326} });
+      scrubTime.textContent = pt.t.toFixed(2) + ' s';
+      scrubEl.value = frameIdx;
+    }
+
+    function playAnimation() {
+      animRunning = true; btnPlay.textContent = '■';
+      let frameIdx = +scrubEl.value;
+      const total = currentTrajectory.pts.length;
+
+      function step() {
+        if (!animRunning || frameIdx >= total) {
+          animRunning = false; btnPlay.textContent = '▶';
+          return;
+        }
+        seekAnimation(frameIdx++);
+        // Skip frames to target ~20fps display regardless of integration step
+        animFrame = requestAnimationFrame(step);
+      }
+      animFrame = requestAnimationFrame(step);
+    }
+
+    // ── Map click handler — two-phase placement ───────────────────────────
+    view.on('click', async (event) => {
+      const res = await view.hitTest(event, { include: [map.ground] });
+      const mapPt = res?.ground?.mapPoint ?? event.mapPoint;
+
+      if (placeMode === 'fire') {
+        firePoint = { lon: mapPt.longitude, lat: mapPt.latitude, z: mapPt.z ?? 0 };
+        dropMarker(firePoint, PRESETS[inpType.value].color, 'fire');
+        hintEl.textContent = 'Click map → set target point';
+        placeMode = 'target';
+        setStatus('placing');
+      } else {
+        targetPoint = { lon: mapPt.longitude, lat: mapPt.latitude, z: mapPt.z ?? 0 };
+        dropMarker(targetPoint, [220, 90, 48], 'target');
+        // Auto-fill azimuth from fire → target bearing
+        const brg = geoBrg(firePoint.lon, firePoint.lat, targetPoint.lon, targetPoint.lat);
+        inpAz.value = Math.round(brg);
+        hintEl.style.display = 'none';
+        placeMode = 'fire';
+        redraw();
+      }
+    });
+
+    function dropMarker({ lon, lat, z }, color, role) {
+      // Remove previous marker of same role
+      const toRemove = markerLayer.graphics.filter(g => g.attributes?.markerRole === role);
+      toRemove.forEach(g => markerLayer.remove(g));
+
+      markerLayer.add(new Graphic({
+        geometry: new Point({ longitude:lon, latitude:lat, z:(z??0)+1, spatialReference:{wkid:4326} }),
+        symbol: new PointSymbol3D({ symbolLayers:[new ObjectSymbol3DLayer({
+          resource:{ primitive: role==='fire' ? 'cone' : 'diamond' },
+          material:{ color:[...color, 0.9] },
+          width:60, height:80, depth:60,
+        })],
+          verticalOffset:{ screenLength:28, maxWorldLength:500, minWorldLength:5 },
+        }),
+        attributes:{ type:'placement_marker', markerRole: role },
+      }));
+    }
+
+    // ── Commit to persistent layer ─────────────────────────────────────────
+    btnCommit.addEventListener('click', () => {
+      if (!currentTrajectory) return;
+      const ts = new Date().toISOString();
+      trajLayer.graphics.forEach(g => {
+        committedLayer.add(new Graphic({
+          geometry: g.geometry.clone(),
+          symbol:   g.symbol.clone(),
+          attributes: { ...g.attributes, committedAt:ts },
+        }));
+      });
+      flashStatus('Committed ✓');
+    });
+
+    // ── Clear ──────────────────────────────────────────────────────────────
+    btnClear.addEventListener('click', () => {
+      cancelAnimationFrame(animFrame);
+      trajLayer.removeAll(); markerLayer.removeAll();
+      firePoint = targetPoint = currentTrajectory = animGraphic = null;
+      placeMode = 'fire';
+      hintEl.style.display = 'block';
+      hintEl.textContent = 'Click map → set firing point';
+      scrubBar.style.display = 'none';
+      btnAnimate.disabled = btnCommit.disabled = true;
+      ['st-range','st-tof','st-alt'].forEach(id => document.getElementById(id).textContent = '—');
+      setStatus('placing');
+    });
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function setStatus(state) {
+      const map = {
+        placing:   ['Place points',  'ph-status placing'],
+        computing: ['Computing…',    'ph-status computing'],
+        ready:     ['Ready',         'ph-status ready'],
+        error:     ['Error',         'ph-status'],
+      };
+      const [txt, cls] = map[state] ?? map.placing;
+      statusEl.textContent = txt; statusEl.className = cls;
+    }
+    function flashStatus(msg) {
+      const prev = statusEl.textContent;
+      statusEl.textContent = msg; statusEl.className = 'ph-status ready';
+      setTimeout(() => { statusEl.textContent = prev; }, 1800);
+    }
+
+    function geoBrg(lon1,lat1,lon2,lat2) {
+      const φ1=lat1*Math.PI/180, φ2=lat2*Math.PI/180, Δλ=(lon2-lon1)*Math.PI/180;
+      return ((Math.atan2(Math.sin(Δλ)*Math.cos(φ2),
+        Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ))*180/Math.PI)+360)%360;
+    }
+    function geoDist(lon1,lat1,lon2,lat2) {
+      const R=6_371_008.8;
+      const dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+      const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+      return 2*R*Math.asin(Math.sqrt(a));
+    }
+
+    view.when(() => {
+      console.log('[Trajectory] SceneView ready.');
+      console.log('[Trajectory] trajLayer →', trajLayer);
+      console.log('[Trajectory] committedLayer →', committedLayer);
+    });
+
+  }); // end require
+  </script>
+</body>
+</html>
