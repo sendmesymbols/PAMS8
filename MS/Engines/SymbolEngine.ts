@@ -57,6 +57,8 @@ import type { MGRSEngineOptions } from './MGRSEngine.ts';
 import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
 import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
+import BufferEngine from './Analysis/BufferEngine';
+import CorridorEngine from './Analysis/CorridorEngine';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -108,6 +110,8 @@ class SymbolEngine implements Evented {
   private _weaponEffectEngine: WeaponEffectEngine | null = null;
   private _losEngine: LOSEngine | null = null;
   private _trajectoryEngine: TrajectoryEngine | null = null;
+  private _bufferEngine: BufferEngine | null = null;
+  private _corridorEngine: CorridorEngine | null = null;
   private currentSymbol: any | undefined;
   private sidc: any | undefined;
   private amplifier: Amplifier | undefined;
@@ -269,6 +273,10 @@ class SymbolEngine implements Evented {
     this._initLOSEngine();
     // Initialise TrajectoryEngine (always on — activated on demand via context menu)
     this._initTrajectoryEngine();
+    // Initialise BufferEngine (always on — activated on demand via context menu)
+    this._initBufferEngine();
+    // Initialise CorridorEngine (always on — activated on demand via context menu)
+    this._initCorridorEngine();
 
     // Wire global keyboard shortcuts (if enabled in Settings.json)
     if ((settingsData as any).features?.shortcuts !== false) {
@@ -485,6 +493,7 @@ class SymbolEngine implements Evented {
     this._weaponEffectEngine?.initialize(newView);
     this._losEngine?.initialize(newView);
     this._trajectoryEngine?.initialize(newView);
+    this._bufferEngine?.initialize(newView);
 
     // Re-initialize the ContextMenuManager for the new view so its
     // pointer-down / contextmenu listeners are bound to the active view.
@@ -637,6 +646,22 @@ class SymbolEngine implements Evented {
     this._contextMenuManager.linkTrajectoryEngine(this._trajectoryEngine);
     this.emitEvent('trajectoryEngineReady', { engine: this._trajectoryEngine });
     console.info('[SymbolEngine] TrajectoryEngine loaded');
+  }
+
+  private _initBufferEngine(): void {
+    this._bufferEngine = new BufferEngine();
+    this._bufferEngine.initialize(this.view);
+    this._contextMenuManager.linkBufferEngine(this._bufferEngine);
+    this.emitEvent('bufferEngineReady', { engine: this._bufferEngine });
+    console.info('[SymbolEngine] BufferEngine loaded');
+  }
+
+  private _initCorridorEngine(): void {
+    this._corridorEngine = new CorridorEngine();
+    this._corridorEngine.initialize(this.view);
+    this._contextMenuManager.linkCorridorEngine(this._corridorEngine);
+    this.emitEvent('corridorEngineReady', { engine: this._corridorEngine });
+    console.info('[SymbolEngine] CorridorEngine loaded');
   }
 
   get view() {
