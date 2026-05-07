@@ -95,25 +95,23 @@ declare class EditEngine {
     /** Sync CTRL_PTS for an additional graphic using its own pre-edit snapshot. */
     private _syncCtrlPtsFrom;
     /**
-     * Derive the 2D similarity transform that maps oldGeom to newGeom.
+     * Derive the exact 2D similarity transform mapping oldGeom → newGeom.
      *
-     * Strategy: use the geometry centroid as the translation reference, and
-     * the first path/ring vertex (relative to centroid) to determine the
-     * rotation angle and uniform scale factor via vector comparison.
+     * Uses two vertex correspondences (SketchViewModel preserves vertex order)
+     * to solve (a, b, tx, ty) in closed form:
+     *   a  = (Δx·Δx' + Δy·Δy') / (Δx² + Δy²)
+     *   b  = (Δx·Δy' − Δy·Δx') / (Δx² + Δy²)
+     *   tx = x1' − a·x1 + b·y1
+     *   ty = y1' − b·x1 − a·y1
+     *
+     * This avoids any pivot/centroid assumption, so asymmetric shapes (e.g.
+     * MainAttack arrows) transform exactly regardless of which side is scaled.
      */
     private _computeAffineTransform;
-    /**
-     * Apply a 2D similarity transform to a single Point:
-     *   1. Translate to old centroid origin
-     *   2. Rotate by angle
-     *   3. Scale uniformly
-     *   4. Translate to new centroid
-     */
+    /** Apply the 2D similarity transform to a single Point. */
     private _applyAffineToPoint;
-    /** Returns the extent centre, or the point coords for a Point geometry. */
-    private _getGeomCenter;
-    /** Returns the first vertex of the first path/ring, or null for degenerate geoms. */
-    private _getFirstVertex;
+    /** Returns the vertex at `index` from the first path/ring of geom, or null. */
+    private _getVertex;
     /** Render a visible handle graphic at each CTRL_PT position. */
     private _showHandles;
     /**

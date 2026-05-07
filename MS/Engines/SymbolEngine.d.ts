@@ -20,6 +20,7 @@ import SelectionEngine from './SelectionEngine.ts';
 import type MeasurementEngine from './MeasurementEngine.ts';
 import ProximityEngine from './ProximityEngine.ts';
 import DrawingCueEngine from './DrawingCueEngine.ts';
+import MGRSEngine from './MGRSEngine.ts';
 import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
 import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
@@ -55,9 +56,12 @@ declare class SymbolEngine implements Evented {
     private _measurementEngine?;
     private _proximityEngine;
     private _drawingCueEngine;
+    private _mgrsEngine;
     private _weaponEffectEngine;
     private _losEngine;
     private _trajectoryEngine;
+    private _bufferEngine;
+    private _corridorEngine;
     private currentSymbol;
     private sidc;
     private amplifier;
@@ -103,9 +107,12 @@ declare class SymbolEngine implements Evented {
     private _initMeasurementEngine;
     private _initProximityEngine;
     private _initDrawingCueEngine;
+    private _initMGRSEngine;
     private _initWeaponEffectEngine;
     private _initLOSEngine;
     private _initTrajectoryEngine;
+    private _initBufferEngine;
+    private _initCorridorEngine;
     get view(): MapView | SceneView;
     get layerManager(): GraphicsLayerManager;
     set layerManager(value: GraphicsLayerManager);
@@ -190,6 +197,8 @@ declare class SymbolEngine implements Evented {
     get proximityEngine(): ProximityEngine | null;
     /** Access the DrawingCueEngine — control visual overlays during drawing. */
     get drawingCueEngine(): DrawingCueEngine | null;
+    /** Access the MGRSEngine — grid overlay controls and runtime configuration. */
+    get mgrsEngine(): MGRSEngine | null;
     /** Access the WeaponEffectEngine — open WEZ analysis panels programmatically. */
     get weaponEffectEngine(): WeaponEffectEngine | null;
     /** Access the LOSEngine — open LOS/viewshed panels programmatically. */

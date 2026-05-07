@@ -137,7 +137,7 @@ declare class ContextMenuManager extends Evented {
      */
     linkBufferEngine(engine: BufferEngine): void;
     /**
-     * Link a CorridorEngine so the "Analysis → Corridor Analysis" item
+     * Link a CorridorEngine so the "Analysis -> Corridor Analysis" item
      * opens the corridor panel with the right-clicked graphic as route origin.
      */
     linkCorridorEngine(engine: CorridorEngine): void;

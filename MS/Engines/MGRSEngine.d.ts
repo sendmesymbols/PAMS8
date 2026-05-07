@@ -15,6 +15,7 @@ export interface MGRSEngineOptions {
     show100K?: boolean;
     show10K?: boolean;
     show1K?: boolean;
+    show100M?: boolean;
     autoZoom?: boolean;
     gzdColor?: [number, number, number];
     gzdOpacity?: number;
@@ -28,6 +29,9 @@ export interface MGRSEngineOptions {
     oneKColor?: [number, number, number];
     oneKOpacity?: number;
     oneKWidth?: number;
+    hundredMColor?: [number, number, number];
+    hundredMOpacity?: number;
+    hundredMWidth?: number;
     showLabels?: boolean;
     labelSize?: number;
     labelColor?: [number, number, number];
@@ -61,6 +65,8 @@ export default class MGRSEngine {
     private _buildGZDLines;
     private _buildGZDLabels;
     private _buildSubGridLines;
+    private _buildSubGridLabels;
+    private _formatSubGridLabel;
     private _lineGraphic;
     private _textGraphic;
     private _lineSym;
