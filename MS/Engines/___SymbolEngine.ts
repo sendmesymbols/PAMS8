@@ -50,10 +50,12 @@ import SelectionEngine from './SelectionEngine.ts';
 import type MeasurementEngine from './MeasurementEngine.ts';
 import ProximityEngine from './ProximityEngine.ts';
 import DrawingCueEngine from './DrawingCueEngine.ts';
+/*
+import MGRSEngine from './MGRSEngine.ts';
+import type { MGRSEngineOptions } from './MGRSEngine.ts';
+*/
 import EngineLogger from '../Support/EngineLogger';
 import type { DrawingCueOptions } from './DrawingCueEngine.ts';
-import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
-import LOSEngine from './Analysis/LOSEngine';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -101,8 +103,7 @@ class SymbolEngine implements Evented {
   private _measurementEngine?: MeasurementEngine;
   private _proximityEngine: ProximityEngine | null = null;
   private _drawingCueEngine: DrawingCueEngine | null = null;
-  private _weaponEffectEngine: WeaponEffectEngine | null = null;
-  private _losEngine: LOSEngine | null = null;
+  private _mgrsEngine: MGRSEngine | null = null;
   private currentSymbol: any | undefined;
   private sidc: any | undefined;
   private amplifier: Amplifier | undefined;
@@ -255,10 +256,8 @@ class SymbolEngine implements Evented {
     // Conditionally load DrawingCueEngine based on Settings.json feature flag
     this._initDrawingCueEngine();
 
-    // Initialise WeaponEffectEngine (always on — activated on demand via context menu)
-    this._initWeaponEffectEngine();
-    // Initialise LOSEngine (always on — activated on demand via context menu)
-    this._initLOSEngine();
+    // Conditionally load MGRSEngine based on Settings.json feature flag
+    this._initMGRSEngine();
 
     // Wire global keyboard shortcuts (if enabled in Settings.json)
     if ((settingsData as any).features?.shortcuts !== false) {
@@ -468,10 +467,8 @@ class SymbolEngine implements Evented {
     this._proximityEngine?.onViewChanged(newView);
     // Re-attach drawing cue engine to the new view
     this._drawingCueEngine?.onViewChanged(newView);
-
-    // Re-attach analysis engines to the new view
-    this._weaponEffectEngine?.initialize(newView);
-    this._losEngine?.initialize(newView);
+    // Re-attach MGRS engine to the new view
+    this._mgrsEngine?.onViewChanged(newView);
 
     // Re-initialize the ContextMenuManager for the new view so its
     // pointer-down / contextmenu listeners are bound to the active view.
@@ -587,20 +584,19 @@ class SymbolEngine implements Evented {
     console.info('[SymbolEngine] DrawingCueEngine loaded');
   }
 
-  private _initWeaponEffectEngine(): void {
-    this._weaponEffectEngine = new WeaponEffectEngine();
-    this._weaponEffectEngine.initialize(this.view);
-    this._contextMenuManager.linkWeaponEffectEngine(this._weaponEffectEngine);
-    this.emitEvent('weaponEffectEngineReady', { engine: this._weaponEffectEngine });
-    console.info('[SymbolEngine] WeaponEffectEngine loaded');
-  }
-
-  private _initLOSEngine(): void {
-    this._losEngine = new LOSEngine();
-    this._losEngine.initialize(this.view);
-    this._contextMenuManager.linkLOSEngine(this._losEngine);
-    this.emitEvent('losEngineReady', { engine: this._losEngine });
-    console.info('[SymbolEngine] LOSEngine loaded');
+  private _initMGRSEngine(): void {
+    const features = (settingsData as any).features ?? {};
+    if (features.mgrsEngine === false) {
+      console.info('[SymbolEngine] MGRSEngine disabled via Settings.json');
+      return;
+    }
+    const mgrsCfg = (settingsData as any).mgrs ?? {};
+    this._mgrsEngine = MGRSEngine.getInstance();
+    this._mgrsEngine.start(this.view);
+    this._mgrsEngine.setOptions(mgrsCfg as MGRSEngineOptions);
+    this._mgrsEngine.enable();
+    this.emitEvent('mgrsEngineReady', { engine: this._mgrsEngine });
+    console.info('[SymbolEngine] MGRSEngine loaded');
   }
 
   get view() {
@@ -1535,14 +1531,9 @@ class SymbolEngine implements Evented {
     return this._drawingCueEngine;
   }
 
-  /** Access the WeaponEffectEngine — open WEZ analysis panels programmatically. */
-  public get weaponEffectEngine(): WeaponEffectEngine | null {
-    return this._weaponEffectEngine;
-  }
-
-  /** Access the LOSEngine — open LOS/viewshed panels programmatically. */
-  public get losEngine(): LOSEngine | null {
-    return this._losEngine;
+  /** Access the MGRSEngine — toggle the MGRS grid overlay. */
+  public get mgrsEngine(): MGRSEngine | null {
+    return this._mgrsEngine;
   }
 
   /** Get current settings data for the control panel */
@@ -1642,6 +1633,20 @@ class SymbolEngine implements Evented {
           );
         }
       }
+    }
+
+    if (fullPath === 'features.mgrsEngine') {
+      if (this._mgrsEngine) {
+        value ? this._mgrsEngine.enable() : this._mgrsEngine.disable();
+      } else if (value) {
+        // Engine was disabled at startup — initialise it now
+        this._initMGRSEngine();
+      }
+    }
+
+    if (fullPath.startsWith('mgrs.') && this._mgrsEngine) {
+      const mgrsCfg = (settingsData as any).mgrs ?? {};
+      this._mgrsEngine.setOptions(mgrsCfg as MGRSEngineOptions);
     }
 
     if (fullPath === 'features.drawingCues' && this._drawingCueEngine) {
@@ -2311,7 +2316,7 @@ class SymbolEngine implements Evented {
             <input type="number" id="poExpandDist" step="0.1" value="0" style="flex: 1; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; box-sizing: border-box;" />
             <select id="poExpandUnit" style="padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
               <option value="meters">m</option>
-              <option value="kilometers">km</option>
+              <option value="kilometers" selected>km</option>
               <option value="miles">mi</option>
               <option value="nautical-miles">nm</option>
             </select>

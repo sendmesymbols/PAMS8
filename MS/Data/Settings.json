@@ -375,7 +375,7 @@
     ]
   },
   "features": {
-    "measurementEngine": true,
+    "measurementEngine": false,
     "contextMenu": true,
     "editEngine": true,
     "annotationEngine": true,
@@ -390,7 +390,7 @@
     "distUnit": "kilometers",
     "areaUnit": "square-kilometers",
     "fontSize": 12,
-    "fontColor": [255, 255, 255],
+    "fontColor": [0, 80, 200],
     "fontOpacity": 1,
     "lineColor": [0, 255, 0],
     "lineWidth": 2,

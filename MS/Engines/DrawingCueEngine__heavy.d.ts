@@ -181,12 +181,17 @@ declare class DrawingCueEngine {
     private _updateProtractorRing;
     /**
      * Live bearing needle — updates every pointer-move tick.
-     * Draws from the last control point toward the cursor with:
-     *  • a thin shaft line along the exact azimuth
-     *  • a bright arrowhead dot at the ring perimeter
-     *  • a halo label showing the numeric bearing
+     * Draws a rich compass needle with:
+     *  • glow/shadow underline for depth
+     *  • dimmed back-needle (opposite direction) for visual balance
+     *  • swept arc from North (0°) to the bearing for angular visualisation
+     *  • bright shaft line along the exact azimuth
+     *  • diamond arrowhead at the ring perimeter
+     *  • multi-line info label: bearing °, mils, compass quadrant, distance
      */
     private _updateProtractorNeedle;
+    /** Convert a 0-360 bearing into compass quadrant notation (e.g. N45°E, S30°W). */
+    private _compassQuadrant;
     private _updateNearbyHighlights;
     private _geodesicDistKm;
     private _hlColor;
