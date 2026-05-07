@@ -30,6 +30,8 @@ export interface MGRSEngineOptions {
   showGZD?: boolean;
   show100K?: boolean;
   show10K?: boolean;
+  show1K?: boolean;
+  show100M?: boolean;
   autoZoom?: boolean;
 
   gzdColor?: [number, number, number];
@@ -43,6 +45,14 @@ export interface MGRSEngineOptions {
   tenKColor?: [number, number, number];
   tenKOpacity?: number;
   tenKWidth?: number;
+
+  oneKColor?: [number, number, number];
+  oneKOpacity?: number;
+  oneKWidth?: number;
+
+  hundredMColor?: [number, number, number];
+  hundredMOpacity?: number;
+  hundredMWidth?: number;
 
   showLabels?: boolean;
   labelSize?: number;
@@ -68,6 +78,8 @@ const REBUILD_DEBOUNCE_MS = 200;
 
 const ZOOM_100K = 6;
 const ZOOM_10K  = 9;
+const ZOOM_1K   = 12;
+const ZOOM_100M = 14;
 
 // ── Compact UTM ↔ WGS-84 math ─────────────────────────────────────────────────
 // Transverse Mercator (Karney 2011, accuracy < 1 mm across all UTM zones)
@@ -176,6 +188,8 @@ export default class MGRSEngine {
     showGZD:         true,
     show100K:        true,
     show10K:         false,
+    show1K:          false,
+    show100M:        false,
     autoZoom:        true,
     gzdColor:        [255, 200, 50],
     gzdOpacity:      0.85,
@@ -186,6 +200,12 @@ export default class MGRSEngine {
     tenKColor:       [255, 200, 50],
     tenKOpacity:     0.35,
     tenKWidth:       0.5,
+    oneKColor:       [255, 200, 50],
+    oneKOpacity:     0.25,
+    oneKWidth:       0.35,
+    hundredMColor:   [255, 200, 50],
+    hundredMOpacity: 0.2,
+    hundredMWidth:   0.3,
     showLabels:      true,
     labelSize:       11,
     labelColor:      [255, 255, 255],
@@ -318,6 +338,8 @@ export default class MGRSEngine {
     const o = this._opts;
     const show100K = o.show100K && (!o.autoZoom || zoom >= ZOOM_100K);
     const show10K  = o.show10K  && (!o.autoZoom || zoom >= ZOOM_10K);
+    const show1K   = o.show1K   && (!o.autoZoom || zoom >= ZOOM_1K);
+    const show100M = o.show100M && (!o.autoZoom || zoom >= ZOOM_100M);
 
     const graphics: Graphic[] = [];
 
@@ -326,12 +348,21 @@ export default class MGRSEngine {
       if (o.showLabels) graphics.push(...this._buildGZDLabels(west, clampS, east, clampN));
     }
 
-    if (show10K || show100K) {
-      const interval = show10K ? 10000 : 100000;
-      const color   = show10K ? o.tenKColor   : o.hundredKColor;
-      const opacity = show10K ? o.tenKOpacity : o.hundredKOpacity;
-      const width   = show10K ? o.tenKWidth   : o.hundredKWidth;
+    if (show100M || show1K || show10K || show100K) {
+      const interval = show100M ? 100 : (show1K ? 1000 : (show10K ? 10000 : 100000));
+      const color = show100M
+        ? o.hundredMColor
+        : (show1K ? o.oneKColor : (show10K ? o.tenKColor : o.hundredKColor));
+      const opacity = show100M
+        ? o.hundredMOpacity
+        : (show1K ? o.oneKOpacity : (show10K ? o.tenKOpacity : o.hundredKOpacity));
+      const width = show100M
+        ? o.hundredMWidth
+        : (show1K ? o.oneKWidth : (show10K ? o.tenKWidth : o.hundredKWidth));
       graphics.push(...this._buildSubGridLines(west, clampS, east, clampN, interval, color, opacity, width));
+      if (o.showLabels) {
+        graphics.push(...this._buildSubGridLabels(west, clampS, east, clampN, interval));
+      }
     }
 
     this._layer.removeAll();
@@ -508,6 +539,82 @@ export default class MGRSEngine {
       }
     }
     return graphics;
+  }
+
+  private _buildSubGridLabels(
+    west: number, south: number, east: number, north: number,
+    intervalM: number,
+  ): Graphic[] {
+    const graphics: Graphic[] = [];
+    const baseSize = this._opts.labelSize;
+    const labelSize =
+      intervalM <= 100 ? Math.max(8, baseSize - 4) :
+      intervalM <= 1000 ? Math.max(8, baseSize - 3) :
+      intervalM <= 10000 ? Math.max(9, baseSize - 2) :
+      Math.max(10, baseSize - 1);
+    const sym = this._textSym(this._opts.labelColor, this._opts.labelOpacity, labelSize);
+
+    // Keep label count bounded; sample cells if too dense.
+    const targetMaxLabels = intervalM <= 100 ? 120 : 180;
+
+    for (const letter of BAND_LETTERS) {
+      const bS = BAND_SOUTH[letter], bN = BAND_NORTH[letter];
+      if (bN <= south || bS >= north) continue;
+      const isSouth = bN <= 0;
+
+      for (let zone = 1; zone <= 60; zone++) {
+        if (letter === 'X' && (zone === 32 || zone === 34 || zone === 36)) continue;
+
+        const stdW = -180 + (zone - 1) * 6;
+        const stdE = stdW + 6;
+        const pad  = letter === 'X' ? 9 : 0.5;
+        if (stdE + pad < west || stdW - pad > east) continue;
+
+        try {
+          const corners = [
+            latLonToUTM(Math.max(bS, -80), stdW + 0.01, zone),
+            latLonToUTM(Math.max(bS, -80), stdE - 0.01, zone),
+            latLonToUTM(Math.min(bN,  83.99), stdW + 0.01, zone),
+            latLonToUTM(Math.min(bN,  83.99), stdE - 0.01, zone),
+          ];
+          const eMin = Math.floor(Math.min(...corners.map(c => c.e)) / intervalM) * intervalM;
+          const eMax = Math.ceil (Math.max(...corners.map(c => c.e)) / intervalM) * intervalM;
+          const nMin = Math.floor(Math.min(...corners.map(c => c.n)) / intervalM) * intervalM;
+          const nMax = Math.ceil (Math.max(...corners.map(c => c.n)) / intervalM) * intervalM;
+
+          const eCount = Math.max(1, Math.floor((eMax - eMin) / intervalM));
+          const nCount = Math.max(1, Math.floor((nMax - nMin) / intervalM));
+          const totalCells = eCount * nCount;
+          const stride = Math.max(1, Math.ceil(Math.sqrt(totalCells / targetMaxLabels)));
+
+          for (let e = eMin + intervalM; e < eMax; e += intervalM * stride) {
+            for (let n = nMin + intervalM; n < nMax; n += intervalM * stride) {
+              const center = utmToLatLon(zone, isSouth, e + intervalM * 0.5, n + intervalM * 0.5);
+              if (
+                center.lon < west || center.lon > east ||
+                center.lat < south || center.lat > north
+              ) continue;
+              graphics.push(this._textGraphic(center.lon, center.lat, this._formatSubGridLabel(e, n, intervalM), sym));
+            }
+          }
+        } catch {
+          // skip invalid zone segments
+        }
+      }
+    }
+
+    return graphics;
+  }
+
+  private _formatSubGridLabel(easting: number, northing: number, intervalM: number): string {
+    const digits =
+      intervalM <= 100 ? 4 :
+      intervalM <= 1000 ? 3 :
+      intervalM <= 10000 ? 2 : 1;
+
+    const eVal = Math.floor((easting % 100000) / intervalM);
+    const nVal = Math.floor((northing % 100000) / intervalM);
+    return `${String(eVal).padStart(digits, '0')} ${String(nVal).padStart(digits, '0')}`;
   }
 
   // ── Graphic factories ──────────────────────────────────────────────────────

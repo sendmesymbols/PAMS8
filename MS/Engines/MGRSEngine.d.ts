@@ -14,6 +14,7 @@ export interface MGRSEngineOptions {
     showGZD?: boolean;
     show100K?: boolean;
     show10K?: boolean;
+    show1K?: boolean;
     autoZoom?: boolean;
     gzdColor?: [number, number, number];
     gzdOpacity?: number;
@@ -24,6 +25,9 @@ export interface MGRSEngineOptions {
     tenKColor?: [number, number, number];
     tenKOpacity?: number;
     tenKWidth?: number;
+    oneKColor?: [number, number, number];
+    oneKOpacity?: number;
+    oneKWidth?: number;
     showLabels?: boolean;
     labelSize?: number;
     labelColor?: [number, number, number];

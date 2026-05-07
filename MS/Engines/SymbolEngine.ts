@@ -50,8 +50,10 @@ import SelectionEngine from './SelectionEngine.ts';
 import type MeasurementEngine from './MeasurementEngine.ts';
 import ProximityEngine from './ProximityEngine.ts';
 import DrawingCueEngine from './DrawingCueEngine.ts';
+import MGRSEngine from './MGRSEngine.ts';
 import EngineLogger from '../Support/EngineLogger';
 import type { DrawingCueOptions } from './DrawingCueEngine.ts';
+import type { MGRSEngineOptions } from './MGRSEngine.ts';
 import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
 import LOSEngine from './Analysis/LOSEngine';
 
@@ -101,6 +103,7 @@ class SymbolEngine implements Evented {
   private _measurementEngine?: MeasurementEngine;
   private _proximityEngine: ProximityEngine | null = null;
   private _drawingCueEngine: DrawingCueEngine | null = null;
+  private _mgrsEngine: MGRSEngine | null = null;
   private _weaponEffectEngine: WeaponEffectEngine | null = null;
   private _losEngine: LOSEngine | null = null;
   private currentSymbol: any | undefined;
@@ -254,6 +257,9 @@ class SymbolEngine implements Evented {
 
     // Conditionally load DrawingCueEngine based on Settings.json feature flag
     this._initDrawingCueEngine();
+
+    // Conditionally load MGRSEngine based on Settings.json feature flag
+    this._initMGRSEngine();
 
     // Initialise WeaponEffectEngine (always on — activated on demand via context menu)
     this._initWeaponEffectEngine();
@@ -468,6 +474,8 @@ class SymbolEngine implements Evented {
     this._proximityEngine?.onViewChanged(newView);
     // Re-attach drawing cue engine to the new view
     this._drawingCueEngine?.onViewChanged(newView);
+    // Re-attach MGRS engine to the new view
+    this._mgrsEngine?.onViewChanged(newView);
 
     // Re-attach analysis engines to the new view
     this._weaponEffectEngine?.initialize(newView);
@@ -585,6 +593,21 @@ class SymbolEngine implements Evented {
     this._drawingCueEngine.enable();
     this.emitEvent('drawingCueEngineReady', { engine: this._drawingCueEngine });
     console.info('[SymbolEngine] DrawingCueEngine loaded');
+  }
+
+  private _initMGRSEngine(): void {
+    const features = (settingsData as any).features ?? {};
+    if (features.mgrsEngine === false) {
+      console.info('[SymbolEngine] MGRSEngine disabled via Settings.json');
+      return;
+    }
+    const mgrsCfg = (settingsData as any).mgrs ?? {};
+    this._mgrsEngine = MGRSEngine.getInstance();
+    this._mgrsEngine.start(this.view);
+    this._mgrsEngine.setOptions(mgrsCfg as MGRSEngineOptions);
+    this._mgrsEngine.enable();
+    this.emitEvent('mgrsEngineReady', { engine: this._mgrsEngine });
+    console.info('[SymbolEngine] MGRSEngine loaded');
   }
 
   private _initWeaponEffectEngine(): void {
@@ -1537,6 +1560,11 @@ class SymbolEngine implements Evented {
     return this._drawingCueEngine;
   }
 
+  /** Access the MGRSEngine — grid overlay controls and runtime configuration. */
+  public get mgrsEngine(): MGRSEngine | null {
+    return this._mgrsEngine;
+  }
+
   /** Access the WeaponEffectEngine — open WEZ analysis panels programmatically. */
   public get weaponEffectEngine(): WeaponEffectEngine | null {
     return this._weaponEffectEngine;
@@ -1644,6 +1672,20 @@ class SymbolEngine implements Evented {
           );
         }
       }
+    }
+
+    if (fullPath === 'features.mgrsEngine') {
+      if (this._mgrsEngine) {
+        value ? this._mgrsEngine.enable() : this._mgrsEngine.disable();
+      } else if (value) {
+        // Engine was disabled at startup — initialise it now
+        this._initMGRSEngine();
+      }
+    }
+
+    if (fullPath.startsWith('mgrs.') && this._mgrsEngine) {
+      const mgrsCfg = (settingsData as any).mgrs ?? {};
+      this._mgrsEngine.setOptions(mgrsCfg as MGRSEngineOptions);
     }
 
     if (fullPath === 'features.drawingCues' && this._drawingCueEngine) {

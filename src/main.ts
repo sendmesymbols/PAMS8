@@ -1592,3 +1592,48 @@ function initializeAutocomplete() {
     console.log('[DrawingCuesPanel] initialized');
   });
 })();
+
+// ── MGRS Settings Panel UX ───────────────────────────────────────────────────
+// Keep dependent controls visually in sync (type/style sections) without
+// duplicating the global settings dispatcher already defined in index.html.
+(function initMGRSPanel() {
+  const panel = document.getElementById('feature-panel-mgrs');
+  if (!panel) return;
+
+  const byId = <T extends HTMLElement>(id: string) =>
+    document.getElementById(id) as T | null;
+
+  const showGzd = byId<HTMLInputElement>('setting-mgrsShowGZD');
+  const show100k = byId<HTMLInputElement>('setting-mgrsShow100K');
+  const show10k = byId<HTMLInputElement>('setting-mgrsShow10K');
+  const show1k = byId<HTMLInputElement>('setting-mgrsShow1K');
+  const showLabels = byId<HTMLInputElement>('setting-mgrsShowLabels');
+
+  const gzdControls = ['setting-mgrsGzdColor', 'setting-mgrsGzdOpacity', 'setting-mgrsGzdWidth'];
+  const k100Controls = ['setting-mgrs100KColor', 'setting-mgrs100KOpacity', 'setting-mgrs100KWidth'];
+  const k10Controls = ['setting-mgrs10KColor', 'setting-mgrs10KOpacity', 'setting-mgrs10KWidth'];
+  const k1Controls = ['setting-mgrs1KColor', 'setting-mgrs1KOpacity', 'setting-mgrs1KWidth'];
+  const labelControls = ['setting-mgrsLabelSize', 'setting-mgrsLabelColor', 'setting-mgrsLabelOpacity'];
+
+  const setDisabled = (ids: string[], disabled: boolean) => {
+    for (const id of ids) {
+      const el = byId<HTMLInputElement | HTMLSelectElement>(id);
+      if (el) el.disabled = disabled;
+    }
+  };
+
+  const sync = () => {
+    setDisabled(gzdControls, !(showGzd?.checked ?? false));
+    setDisabled(k100Controls, !(show100k?.checked ?? false));
+    setDisabled(k10Controls, !(show10k?.checked ?? false));
+    setDisabled(k1Controls, !(show1k?.checked ?? false));
+    setDisabled(labelControls, !(showLabels?.checked ?? false));
+  };
+
+  showGzd?.addEventListener('change', sync);
+  show100k?.addEventListener('change', sync);
+  show10k?.addEventListener('change', sync);
+  show1k?.addEventListener('change', sync);
+  showLabels?.addEventListener('change', sync);
+  sync();
+})();

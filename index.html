@@ -1922,6 +1922,119 @@
             </div>
           </div>
         </div>
+
+        <!-- MGRS FEATURE PANEL -->
+        <div class="feature-panel" id="feature-panel-mgrs">
+          <div class="feature-header">
+            <div class="feature-header-left">
+              <input type="checkbox" id="setting-mgrsEngine" />
+              <label>MGRS Grid</label>
+            </div>
+            <span class="toggle-icon">▼</span>
+          </div>
+          <div class="feature-body">
+            <div class="sub-feature-label">Grid Types</div>
+            <div class="setting-row">
+              <label>GZD</label>
+              <input type="checkbox" id="setting-mgrsShowGZD" checked />
+            </div>
+            <div class="setting-row">
+              <label>100km</label>
+              <input type="checkbox" id="setting-mgrsShow100K" checked />
+            </div>
+            <div class="setting-row">
+              <label>10km</label>
+              <input type="checkbox" id="setting-mgrsShow10K" />
+            </div>
+            <div class="setting-row">
+              <label>1km</label>
+              <input type="checkbox" id="setting-mgrsShow1K" />
+            </div>
+            <div class="setting-row">
+              <label>Auto Zoom</label>
+              <input type="checkbox" id="setting-mgrsAutoZoom" checked />
+            </div>
+
+            <div class="sub-feature-label">GZD Styling</div>
+            <div class="setting-row">
+              <label>Line Color</label>
+              <input type="color" id="setting-mgrsGzdColor" value="#ffc832" />
+            </div>
+            <div class="setting-row">
+              <label>Opacity</label>
+              <input type="range" id="setting-mgrsGzdOpacity" min="0" max="1" step="0.05" value="0.85" style="width: 60px" />
+              <span class="value-display" id="mgrsGzdOpacity-display">0.85</span>
+            </div>
+            <div class="setting-row">
+              <label>Width</label>
+              <input type="number" id="setting-mgrsGzdWidth" value="1.5" min="0.1" max="10" step="0.1" style="width: 55px" />
+            </div>
+
+            <div class="sub-feature-label">100km Styling</div>
+            <div class="setting-row">
+              <label>Line Color</label>
+              <input type="color" id="setting-mgrs100KColor" value="#ffc832" />
+            </div>
+            <div class="setting-row">
+              <label>Opacity</label>
+              <input type="range" id="setting-mgrs100KOpacity" min="0" max="1" step="0.05" value="0.55" style="width: 60px" />
+              <span class="value-display" id="mgrs100KOpacity-display">0.55</span>
+            </div>
+            <div class="setting-row">
+              <label>Width</label>
+              <input type="number" id="setting-mgrs100KWidth" value="0.8" min="0.1" max="10" step="0.1" style="width: 55px" />
+            </div>
+
+            <div class="sub-feature-label">10km Styling</div>
+            <div class="setting-row">
+              <label>Line Color</label>
+              <input type="color" id="setting-mgrs10KColor" value="#ffc832" />
+            </div>
+            <div class="setting-row">
+              <label>Opacity</label>
+              <input type="range" id="setting-mgrs10KOpacity" min="0" max="1" step="0.05" value="0.35" style="width: 60px" />
+              <span class="value-display" id="mgrs10KOpacity-display">0.35</span>
+            </div>
+            <div class="setting-row">
+              <label>Width</label>
+              <input type="number" id="setting-mgrs10KWidth" value="0.5" min="0.1" max="10" step="0.1" style="width: 55px" />
+            </div>
+
+            <div class="sub-feature-label">1km Styling</div>
+            <div class="setting-row">
+              <label>Line Color</label>
+              <input type="color" id="setting-mgrs1KColor" value="#ffc832" />
+            </div>
+            <div class="setting-row">
+              <label>Opacity</label>
+              <input type="range" id="setting-mgrs1KOpacity" min="0" max="1" step="0.05" value="0.25" style="width: 60px" />
+              <span class="value-display" id="mgrs1KOpacity-display">0.25</span>
+            </div>
+            <div class="setting-row">
+              <label>Width</label>
+              <input type="number" id="setting-mgrs1KWidth" value="0.35" min="0.1" max="10" step="0.1" style="width: 55px" />
+            </div>
+
+            <div class="sub-feature-label">Labels</div>
+            <div class="setting-row">
+              <label>Show Labels</label>
+              <input type="checkbox" id="setting-mgrsShowLabels" checked />
+            </div>
+            <div class="setting-row">
+              <label>Size</label>
+              <input type="number" id="setting-mgrsLabelSize" value="11" min="8" max="40" step="1" style="width: 55px" />
+            </div>
+            <div class="setting-row">
+              <label>Color</label>
+              <input type="color" id="setting-mgrsLabelColor" value="#ffffff" />
+            </div>
+            <div class="setting-row">
+              <label>Opacity</label>
+              <input type="range" id="setting-mgrsLabelOpacity" min="0" max="1" step="0.05" value="0.9" style="width: 60px" />
+              <span class="value-display" id="mgrsLabelOpacity-display">0.90</span>
+            </div>
+          </div>
+        </div>
       </div>
       </div>
     </div>
@@ -2247,6 +2360,7 @@
         'setting-measurementEngine': document.getElementById('setting-measurementEngine'),
         'setting-proximityEngine': document.getElementById('setting-proximityEngine'),
         'setting-drawingCues': document.getElementById('setting-drawingCues'),
+        'setting-mgrsEngine': document.getElementById('setting-mgrsEngine'),
       };
 
       // Map input IDs to settings paths
@@ -2408,6 +2522,29 @@
         'setting-adaptive':         (v) => ({ path: ['drawingCues', 'adaptive', 'enabled'],          value: v  }),
         'setting-adaptiveCoverage': (v) => ({ path: ['drawingCues', 'adaptive', 'coverageFraction'],  value: +v }),
         'setting-adaptiveMaxKm':    (v) => ({ path: ['drawingCues', 'adaptive', 'maxOuterKm'],         value: +v }),
+        // MGRS
+        'setting-mgrsEngine':     (v) => ({ path: ['features', 'mgrsEngine'], value: v }),
+        'setting-mgrsShowGZD':    (v) => ({ path: ['mgrs', 'showGZD'], value: v }),
+        'setting-mgrsShow100K':   (v) => ({ path: ['mgrs', 'show100K'], value: v }),
+        'setting-mgrsShow10K':    (v) => ({ path: ['mgrs', 'show10K'], value: v }),
+        'setting-mgrsShow1K':     (v) => ({ path: ['mgrs', 'show1K'], value: v }),
+        'setting-mgrsAutoZoom':   (v) => ({ path: ['mgrs', 'autoZoom'], value: v }),
+        'setting-mgrsGzdColor':   (v) => ({ path: ['mgrs', 'gzdColor'], value: hexToRgb(v) }),
+        'setting-mgrsGzdOpacity': (v) => ({ path: ['mgrs', 'gzdOpacity'], value: +v }),
+        'setting-mgrsGzdWidth':   (v) => ({ path: ['mgrs', 'gzdWidth'], value: +v }),
+        'setting-mgrs100KColor':   (v) => ({ path: ['mgrs', 'hundredKColor'], value: hexToRgb(v) }),
+        'setting-mgrs100KOpacity': (v) => ({ path: ['mgrs', 'hundredKOpacity'], value: +v }),
+        'setting-mgrs100KWidth':   (v) => ({ path: ['mgrs', 'hundredKWidth'], value: +v }),
+        'setting-mgrs10KColor':    (v) => ({ path: ['mgrs', 'tenKColor'], value: hexToRgb(v) }),
+        'setting-mgrs10KOpacity':  (v) => ({ path: ['mgrs', 'tenKOpacity'], value: +v }),
+        'setting-mgrs10KWidth':    (v) => ({ path: ['mgrs', 'tenKWidth'], value: +v }),
+        'setting-mgrs1KColor':     (v) => ({ path: ['mgrs', 'oneKColor'], value: hexToRgb(v) }),
+        'setting-mgrs1KOpacity':   (v) => ({ path: ['mgrs', 'oneKOpacity'], value: +v }),
+        'setting-mgrs1KWidth':     (v) => ({ path: ['mgrs', 'oneKWidth'], value: +v }),
+        'setting-mgrsShowLabels':  (v) => ({ path: ['mgrs', 'showLabels'], value: v }),
+        'setting-mgrsLabelSize':   (v) => ({ path: ['mgrs', 'labelSize'], value: +v }),
+        'setting-mgrsLabelColor':  (v) => ({ path: ['mgrs', 'labelColor'], value: hexToRgb(v) }),
+        'setting-mgrsLabelOpacity':(v) => ({ path: ['mgrs', 'labelOpacity'], value: +v }),
       };
 
       // Color conversion helpers
@@ -2538,6 +2675,8 @@
             features.proximityEngine !== false;
           document.getElementById('setting-drawingCues').checked =
             features.drawingCues !== false;
+          document.getElementById('setting-mgrsEngine').checked =
+            features.mgrsEngine === true;
 
           if (settings.creationMode) {
             document.getElementById('setting-creationMode').value = settings.creationMode;
@@ -2628,6 +2767,76 @@
           document.getElementById('setting-adaptiveCoverage').value = covFrac;
           document.getElementById('adaptiveCoverage-display').textContent = String(covFrac);
           document.getElementById('setting-adaptiveMaxKm').value = adaptive.maxOuterKm ?? 200;
+
+          // MGRS controls
+          const mgrs = settings.mgrs ?? {};
+          document.getElementById('setting-mgrsShowGZD').checked = mgrs.showGZD !== false;
+          document.getElementById('setting-mgrsShow100K').checked = mgrs.show100K !== false;
+          document.getElementById('setting-mgrsShow10K').checked = mgrs.show10K === true;
+          document.getElementById('setting-mgrsShow1K').checked = mgrs.show1K === true;
+          document.getElementById('setting-mgrsAutoZoom').checked = mgrs.autoZoom !== false;
+          document.getElementById('setting-mgrsShowLabels').checked = mgrs.showLabels !== false;
+          document.getElementById('setting-mgrsLabelSize').value = mgrs.labelSize ?? 11;
+          document.getElementById('setting-mgrsGzdWidth').value = mgrs.gzdWidth ?? 1.5;
+          document.getElementById('setting-mgrs100KWidth').value = mgrs.hundredKWidth ?? 0.8;
+          document.getElementById('setting-mgrs10KWidth').value = mgrs.tenKWidth ?? 0.5;
+          document.getElementById('setting-mgrs1KWidth').value = mgrs.oneKWidth ?? 0.35;
+
+          const gzdOp = mgrs.gzdOpacity ?? 0.85;
+          document.getElementById('setting-mgrsGzdOpacity').value = gzdOp;
+          document.getElementById('mgrsGzdOpacity-display').textContent = Number(gzdOp).toFixed(2);
+
+          const k100Op = mgrs.hundredKOpacity ?? 0.55;
+          document.getElementById('setting-mgrs100KOpacity').value = k100Op;
+          document.getElementById('mgrs100KOpacity-display').textContent = Number(k100Op).toFixed(2);
+
+          const lblOp = mgrs.labelOpacity ?? 0.9;
+          document.getElementById('setting-mgrsLabelOpacity').value = lblOp;
+          document.getElementById('mgrsLabelOpacity-display').textContent = Number(lblOp).toFixed(2);
+
+          const k10Op = mgrs.tenKOpacity ?? 0.35;
+          document.getElementById('setting-mgrs10KOpacity').value = k10Op;
+          document.getElementById('mgrs10KOpacity-display').textContent = Number(k10Op).toFixed(2);
+
+          const k1Op = mgrs.oneKOpacity ?? 0.25;
+          document.getElementById('setting-mgrs1KOpacity').value = k1Op;
+          document.getElementById('mgrs1KOpacity-display').textContent = Number(k1Op).toFixed(2);
+
+          if (mgrs.gzdColor) {
+            document.getElementById('setting-mgrsGzdColor').value = rgbToHex(
+              mgrs.gzdColor[0],
+              mgrs.gzdColor[1],
+              mgrs.gzdColor[2],
+            );
+          }
+          if (mgrs.hundredKColor) {
+            document.getElementById('setting-mgrs100KColor').value = rgbToHex(
+              mgrs.hundredKColor[0],
+              mgrs.hundredKColor[1],
+              mgrs.hundredKColor[2],
+            );
+          }
+          if (mgrs.tenKColor) {
+            document.getElementById('setting-mgrs10KColor').value = rgbToHex(
+              mgrs.tenKColor[0],
+              mgrs.tenKColor[1],
+              mgrs.tenKColor[2],
+            );
+          }
+          if (mgrs.oneKColor) {
+            document.getElementById('setting-mgrs1KColor').value = rgbToHex(
+              mgrs.oneKColor[0],
+              mgrs.oneKColor[1],
+              mgrs.oneKColor[2],
+            );
+          }
+          if (mgrs.labelColor) {
+            document.getElementById('setting-mgrsLabelColor').value = rgbToHex(
+              mgrs.labelColor[0],
+              mgrs.labelColor[1],
+              mgrs.labelColor[2],
+            );
+          }
 
         // Re-sync all disabled states now that values have been loaded from settings
         syncAllFeaturePanelStates();
