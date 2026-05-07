@@ -11,6 +11,7 @@ import GraphicsLayerManager from './GraphicsLayerManager';
 import MeasurementEngine from '../Engines/MeasurementEngine';
 import WeaponEffectEngine from '../Engines/Analysis/WeaponEffectEngine';
 import LOSEngine from '../Engines/Analysis/LOSEngine';
+import TrajectoryEngine from '../Engines/Analysis/TrajectoryEngine';
 
 export interface ContextMenuItem {
   id: string;
@@ -70,6 +71,7 @@ class ContextMenuManager extends Evented {
   private _symbolEngine: { creationMode: 'single' | 'continuous'; stopContinuousMode(): void } | null = null;
   private _weaponEffectEngine: WeaponEffectEngine | null = null;
   private _losEngine: LOSEngine | null = null;
+  private _trajectoryEngine: TrajectoryEngine | null = null;
 
   // Event handles for cleanup on re-initialization
   private _pointerDownHandle: any = null;
@@ -244,6 +246,14 @@ class ContextMenuManager extends Evented {
   }
 
   /**
+   * Link a TrajectoryEngine so the "Analysis → Projectile Trajectory" item
+   * opens the trajectory panel with the right-clicked graphic as fire origin.
+   */
+  public linkTrajectoryEngine(engine: TrajectoryEngine): void {
+    this._trajectoryEngine = engine;
+  }
+
+  /**
    * Register a function that returns extra context menu items dynamically.
    * Called each time the menu opens, so items can depend on runtime state
    * (e.g. the current list of saved templates).
@@ -320,6 +330,11 @@ class ContextMenuManager extends Evented {
           id: 'analysis-trajectory',
           label: 'Projectile Trajectory',
           icon: `<span style="font-size:14px">📈</span>`,
+          action: (g: Graphic) => {
+            if (this._trajectoryEngine && this.view) {
+              this._trajectoryEngine.open(g, this.view);
+            }
+          },
         },
         {
           id: 'analysis-buffer',

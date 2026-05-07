@@ -56,6 +56,7 @@ import type { DrawingCueOptions } from './DrawingCueEngine.ts';
 import type { MGRSEngineOptions } from './MGRSEngine.ts';
 import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
 import LOSEngine from './Analysis/LOSEngine';
+import TrajectoryEngine from './Analysis/TrajectoryEngine';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -106,6 +107,7 @@ class SymbolEngine implements Evented {
   private _mgrsEngine: MGRSEngine | null = null;
   private _weaponEffectEngine: WeaponEffectEngine | null = null;
   private _losEngine: LOSEngine | null = null;
+  private _trajectoryEngine: TrajectoryEngine | null = null;
   private currentSymbol: any | undefined;
   private sidc: any | undefined;
   private amplifier: Amplifier | undefined;
@@ -265,6 +267,8 @@ class SymbolEngine implements Evented {
     this._initWeaponEffectEngine();
     // Initialise LOSEngine (always on — activated on demand via context menu)
     this._initLOSEngine();
+    // Initialise TrajectoryEngine (always on — activated on demand via context menu)
+    this._initTrajectoryEngine();
 
     // Wire global keyboard shortcuts (if enabled in Settings.json)
     if ((settingsData as any).features?.shortcuts !== false) {
@@ -480,6 +484,7 @@ class SymbolEngine implements Evented {
     // Re-attach analysis engines to the new view
     this._weaponEffectEngine?.initialize(newView);
     this._losEngine?.initialize(newView);
+    this._trajectoryEngine?.initialize(newView);
 
     // Re-initialize the ContextMenuManager for the new view so its
     // pointer-down / contextmenu listeners are bound to the active view.
@@ -624,6 +629,14 @@ class SymbolEngine implements Evented {
     this._contextMenuManager.linkLOSEngine(this._losEngine);
     this.emitEvent('losEngineReady', { engine: this._losEngine });
     console.info('[SymbolEngine] LOSEngine loaded');
+  }
+
+  private _initTrajectoryEngine(): void {
+    this._trajectoryEngine = new TrajectoryEngine();
+    this._trajectoryEngine.initialize(this.view);
+    this._contextMenuManager.linkTrajectoryEngine(this._trajectoryEngine);
+    this.emitEvent('trajectoryEngineReady', { engine: this._trajectoryEngine });
+    console.info('[SymbolEngine] TrajectoryEngine loaded');
   }
 
   get view() {
@@ -1573,6 +1586,11 @@ class SymbolEngine implements Evented {
   /** Access the LOSEngine — open LOS/viewshed panels programmatically. */
   public get losEngine(): LOSEngine | null {
     return this._losEngine;
+  }
+
+  /** Access the TrajectoryEngine — open projectile trajectory analysis panels programmatically. */
+  public get trajectoryEngine(): TrajectoryEngine | null {
+    return this._trajectoryEngine;
   }
 
   /** Get current settings data for the control panel */
