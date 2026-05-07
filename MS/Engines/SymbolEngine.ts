@@ -59,6 +59,7 @@ import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
 import BufferEngine from './Analysis/BufferEngine';
 import CorridorEngine from './Analysis/CorridorEngine';
+import Plan from './ImportExport/Plan';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -1172,18 +1173,16 @@ class SymbolEngine implements Evented {
             action: (_graphic) => this.loadFromFile(),
           },
           {
-            id: 'save-template-file',
-            label: 'Save as Template…',
-            icon: '<span style="font-size:14px">📌</span>',
-            visible: () => (settingsData as any).features?.templates !== false,
-            action: (graphic) => this.saveTemplateToFile(graphic),
+            id: 'save-plan',
+            label: 'Save Plan',
+            icon: '<span style="font-size:14px">🗺️</span>',
+            action: (_graphic) => this.savePlanToFile(),
           },
           {
-            id: 'load-template-file',
-            label: 'Load Template from File',
-            icon: '<span style="font-size:14px">📋</span>',
-            visible: () => (settingsData as any).features?.templates !== false,
-            action: (_graphic) => this.loadTemplateFromFile(),
+            id: 'load-plan',
+            label: 'Load Plan',
+            icon: '<span style="font-size:14px">🗂️</span>',
+            action: (_graphic) => this.loadPlanFromFile(),
           },
           {
             id: 'export-geojson',
@@ -1222,6 +1221,12 @@ class SymbolEngine implements Evented {
               label: 'Save as Template…',
               icon: '<span style="font-size:14px">📌</span>',
               action: (g) => this._promptSaveTemplate(g),
+            },
+            {
+              id: 'load-template-file',
+              label: 'Load Template From File',
+              icon: '<span style="font-size:14px">📋</span>',
+              action: () => this.loadTemplateFromFile(),
             },
             ...applyItems,
           ],
@@ -3831,6 +3836,264 @@ class SymbolEngine implements Evented {
   public saveSymbolToFile(graphic: Graphic): void {
     const data = this.saveSymbolToJSON(graphic);
     this._downloadJSON(data, `pams8_symbol_${Date.now()}.json`);
+  }
+
+  /** Convert an ArcGIS Point (or plain {x,y}) to the Plan PlanPoint format. */
+  private _toPlanPoint(pt: any): { type: 'point'; x: number; y: number; sp: string } | null {
+    if (!pt || pt.x == null || pt.y == null) return null;
+    return { type: 'point', x: pt.x, y: pt.y, sp: 'WGS1SP' };
+  }
+
+  /**
+   * Build the AMPLIFIER block for Area / Line / TacticalPoint symbols.
+   * Includes all fields that symbol classes may attach as extra properties.
+   */
+  private _serializeAmplifierForPlan(amplifier: any): Record<string, any> {
+    if (!amplifier) return {};
+    const fields = [
+      'UNIQUE_DESIG', 'UNIQUE_DESIG_ID',
+      'HIGHER_FORM', 'hfid',
+      'STAFF_COM', 'ADDL_INFO',
+      'DTG', 'EDTG', 'DTGTO',
+      'MULTI_LINE_LABEL_TEXT', 'MULTI_LINE_LABEL_COLOR', 'MULTI_LINE_LABEL_ALIGN',
+      'SIDC',
+    ];
+    const result: Record<string, any> = {};
+    for (const f of fields) {
+      if (amplifier[f] !== undefined && amplifier[f] !== null && amplifier[f] !== '') {
+        result[f] = amplifier[f];
+      }
+    }
+    return result;
+  }
+
+  /** Build drawEss JSON for UEI / milsymbol (FPoint) graphics. */
+  private _buildFPointPlanDrawEss(de: any, amplifier: any): Record<string, any> {
+    const geom = this._toPlanPoint(de?.GEOM);
+    const sidc: string = amplifier?.SIDC || de?.SIDC || '';
+    return {
+      SYM_GEO_TYPE: 'FPoint',
+      SID: de?.SID ?? '',
+      SYM_NAME: de?.SYM_NAME ?? '',
+      OPTIONS: { ...(geom ? geom : {}) },
+      GEOM: geom,
+      AMPLIFIER: {},
+      UEI: '1',
+      SIDC: sidc,
+      labelOptions: de?.labelOptions ?? {},
+      opacity: de?.opacity ?? 1,
+    };
+  }
+
+  /** Build drawEss JSON for Area / Line graphics (including those with BASE_LN_PTS). */
+  private _buildAreaLinePlanDrawEss(de: any, amplifier: any): Record<string, any> {
+    const geoType: string = de?.SYM_GEO_TYPE ?? 'Area';
+    const ctrlPts = (de?.CTRL_PTS as any[])?.map((p: any) => this._toPlanPoint(p)).filter(Boolean) ?? [];
+    const sidc: string = amplifier?.SIDC || de?.SIDC || '';
+    const result: Record<string, any> = {
+      SYM_GEO_TYPE: geoType,
+      SID: de?.SID ?? '',
+      SYM_NAME: de?.SYM_NAME ?? '',
+      CTRL_PTS: ctrlPts,
+      AMPLIFIER: this._serializeAmplifierForPlan(amplifier),
+      SIDC: sidc,
+      labelOptions: de?.labelOptions ?? {},
+      opacity: de?.opacity ?? 1,
+    };
+
+    // Optional fields present on some symbol types
+    const optionals = ['DRAW_TYPE', 'ECHELON', 'SIZE', 'drawExtendType'];
+    for (const k of optionals) {
+      if (de?.[k] !== undefined) result[k] = de[k];
+    }
+
+    // BASE_LN_PTS block (e.g. obstacle belts, minefields)
+    if (de?.BASE_LN_PTS) {
+      const blp = de.BASE_LN_PTS;
+      result.BASE_LN_PTS = {
+        startPt: this._toPlanPoint(blp.startPt),
+        midPt: this._toPlanPoint(blp.midPt),
+        endPt: this._toPlanPoint(blp.endPt),
+      };
+      if (de.BK_LN_DIST_RATIO !== undefined)  result.BK_LN_DIST_RATIO  = de.BK_LN_DIST_RATIO;
+      if (de.BK_LN_ANGL_RATIO !== undefined)  result.BK_LN_ANGL_RATIO  = de.BK_LN_ANGL_RATIO;
+      if (de.FRNT_LN_ANGL_RATIO !== undefined) result.FRNT_LN_ANGL_RATIO = de.FRNT_LN_ANGL_RATIO;
+    }
+
+    return result;
+  }
+
+  /** Build drawEss JSON for TacticalPoint (SYM_GEO_TYPE "Point") graphics. */
+  private _buildPointPlanDrawEss(de: any, amplifier: any): Record<string, any> {
+    const geom = this._toPlanPoint(de?.GEOM);
+    const sidc: string = amplifier?.SIDC || de?.SIDC || '';
+    const result: Record<string, any> = {
+      SYM_GEO_TYPE: 'Point',
+      SID: de?.SID ?? '',
+      SYM_NAME: de?.SYM_NAME ?? '',
+      SIZE: de?.SIZE ?? 25,
+      ANGLE: de?.ANGLE ?? 0,
+      GEOM: geom,
+      AMPLIFIER: this._serializeAmplifierForPlan(amplifier),
+      OFFSET: de?.OFFSET ?? 0,
+      SIDC: sidc,
+      labelOptions: de?.labelOptions ?? {},
+      opacity: de?.opacity ?? 1,
+    };
+
+    if (de?.ISFHAND !== undefined) result.ISFHAND = de.ISFHAND;
+    if (de?.FRHNDSZ !== undefined) result.FRHNDSZ = de.FRHNDSZ;
+    if (de?.FRHNDWDTH !== undefined) result.FRHNDWDTH = de.FRHNDWDTH;
+
+    return result;
+  }
+
+  /**
+   * Dispatch to the correct drawEss serializer based on the graphic's SYM_GEO_TYPE.
+   * Returns null for graphics that cannot be represented in plan format.
+   */
+  private _buildPlanDrawEss(graphic: Graphic): Record<string, any> | null {
+    const de: any = graphic.attributes?.drawEssentials;
+    if (!de) return null;
+    const amplifier: any = de?.AMPLIFIER ?? {};
+    const geoType: string = de?.SYM_GEO_TYPE ?? '';
+
+    if (geoType === 'FPoint') {
+      return this._buildFPointPlanDrawEss(de, amplifier);
+    }
+    if (geoType === 'Area' || geoType === 'Line') {
+      return this._buildAreaLinePlanDrawEss(de, amplifier);
+    }
+    if (geoType === 'Point') {
+      return this._buildPointPlanDrawEss(de, amplifier);
+    }
+    // Fallback: try to infer from geometry and CTRL_PTS
+    if (de.CTRL_PTS?.length > 0) {
+      return this._buildAreaLinePlanDrawEss(de, amplifier);
+    }
+    if (de.GEOM || graphic.geometry?.type === 'point') {
+      const hasUEI = de.UEI === '1' || amplifier?.SIDC?.length > 10;
+      if (hasUEI) return this._buildFPointPlanDrawEss(de, amplifier);
+      return this._buildPointPlanDrawEss(de, amplifier);
+    }
+    return null;
+  }
+
+  /** Download all graphics as a Plan JSON file. */
+  public savePlanToFile(filename?: string): void {
+    const planId = Date.now();
+    const plan = new Plan(Plan.createDefaultObject(planId));
+    const layerIds = [
+      LAYER_NAMES.TACT,
+      LAYER_NAMES.TACT_PT,
+      LAYER_NAMES.FORCE,
+      'milSymbols',
+    ];
+    let overlaySeq = 1;
+    let totalSymbols = 0;
+
+    for (const layerId of layerIds) {
+      const layer = this._layerManager.getOrCreateLayer(layerId) as any;
+      if (!layer?.graphics?.length) continue;
+
+      const overlayId = this.generateUUID();
+      const symbols: ReturnType<typeof Plan.createSymbol>[] = [];
+
+      (layer.graphics as any).forEach((g: Graphic) => {
+        try {
+          const drawEssObj = this._buildPlanDrawEss(g);
+          if (!drawEssObj) return;
+          const symbolId = g.attributes?.id || this.generateUUID();
+          symbols.push(
+            Plan.createSymbol(planId, overlayId, symbolId, JSON.stringify(drawEssObj)),
+          );
+        } catch (err) {
+          console.warn('[Plan] Could not serialize graphic:', err);
+        }
+      });
+
+      if (!symbols.length) continue;
+      totalSymbols += symbols.length;
+
+      plan.addOverlay(
+        Plan.createOverlay(
+          planId,
+          overlayId,
+          (layer?.title ?? layerId).trim(),
+          overlaySeq++,
+          symbols,
+        ),
+      );
+    }
+
+    this._downloadJSON(plan.toJSON(), filename ?? `pams8_plan_${Date.now()}.json`);
+    console.info(`[Plan] Saved plan with ${totalSymbols} symbols across ${overlaySeq - 1} overlays`);
+  }
+
+  /**
+   * Convert a Plan drawEss JSON string back into the format expected by loadSymbolFromJSON.
+   * PlanPoints ({type, x, y, sp}) are compatible with ArcGIS Point construction (spatialReference
+   * defaults to WGS84 when absent), so no special conversion is needed.
+   */
+  private _loadPlanSymbol(drawEssRaw: string, symbolId: string): void {
+    let drawEssObj: any;
+    try {
+      drawEssObj = JSON.parse(drawEssRaw);
+    } catch {
+      console.warn('[Plan] Could not parse drawEss for symbol', symbolId);
+      return;
+    }
+
+    const amplifier = drawEssObj?.AMPLIFIER ?? {};
+    if (drawEssObj?.SIDC && !amplifier.SIDC) amplifier.SIDC = drawEssObj.SIDC;
+
+    // Build the object loadSymbolFromJSON expects
+    const loadData: any = {
+      id: symbolId,
+      sidc: amplifier?.SIDC || drawEssObj?.SIDC,
+      amplifier,
+      drawEssentials: { ...drawEssObj },
+    };
+
+    // Map field names to what loadSymbolFromJSON reads
+    // GEOM stays as GEOM; CTRL_PTS stays as CTRL_PTS; BASE_LN_PTS stays as BASE_LN_PTS
+    // PlanPoints have {type, x, y, sp} — ArcGIS Point() ignores unknown fields, uses x/y + WGS84 default
+
+    this.loadSymbolFromJSON(loadData);
+  }
+
+  /** Open a Plan JSON file and restore all symbols from it. */
+  public loadPlanFromFile(): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const parsed = JSON.parse(evt.target?.result as string);
+          if (!Plan.isPlanDocument(parsed)) {
+            console.warn('[Plan] File does not appear to be a valid Plan document');
+            return;
+          }
+          let loaded = 0;
+          for (const overlay of parsed.poObj.plnOrdrOverlay) {
+            for (const sym of overlay.plnOrdrSymbolSet) {
+              if (sym.isDelete === 'Y') continue;
+              this._loadPlanSymbol(sym.drawEss, sym.plnOrdrSymbolPK.plnOrdrSymbolId);
+              loaded++;
+            }
+          }
+          console.info(`[Plan] Loaded ${loaded} symbols from plan`);
+        } catch (err) {
+          console.error('[Plan] Failed to parse plan file:', err);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   }
 
   /** Open a file picker; loads from PAMS8 JSON, template, or GeoJSON file. */

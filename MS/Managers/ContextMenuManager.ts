@@ -14,6 +14,7 @@ import LOSEngine from '../Engines/Analysis/LOSEngine';
 import TrajectoryEngine from '../Engines/Analysis/TrajectoryEngine';
 import BufferEngine from '../Engines/Analysis/BufferEngine';
 import CorridorEngine from '../Engines/Analysis/CorridorEngine';
+import ImportExportEngine from '../Engines/ImportExportEngine';
 
 export interface ContextMenuItem {
   id: string;
@@ -76,6 +77,7 @@ class ContextMenuManager extends Evented {
   private _trajectoryEngine: TrajectoryEngine | null = null;
   private _bufferEngine: BufferEngine | null = null;
   private _corridorEngine: CorridorEngine | null = null;
+  private _importExportEngine: ImportExportEngine | null = null;
 
   // Event handles for cleanup on re-initialization
   private _pointerDownHandle: any = null;
@@ -273,6 +275,10 @@ class ContextMenuManager extends Evented {
     this._corridorEngine = engine;
   }
 
+  public linkImportExportEngine(engine: ImportExportEngine): void {
+    this._importExportEngine = engine;
+  }
+
   /**
    * Register a function that returns extra context menu items dynamically.
    * Called each time the menu opens, so items can depend on runtime state
@@ -316,6 +322,93 @@ class ContextMenuManager extends Evented {
 
     const dynamicItems = this._dynamicItemProviders.flatMap((p) => p(graphic));
     items = [...items, ...dynamicItems];
+
+    // ── Save / Load section ───────────────────────────────────────────────
+    if (this._importExportEngine) {
+      const sep = document.createElement('div');
+      sep.className = this.options.menuSeparatorClass || '';
+      this.menuElement.appendChild(sep);
+
+      const saveLoadItems: ContextMenuItem[] = [
+        {
+          id: 'save-symbols',
+          label: 'Save Symbols',
+          icon: `<span style="font-size:14px">💾</span>`,
+          action: () => {
+            this._importExportEngine!.saveToFile();
+          },
+        },
+        {
+          id: 'load-symbols',
+          label: 'Load Symbols',
+          icon: `<span style="font-size:14px">📂</span>`,
+          action: () => {
+            this._importExportEngine!.loadFromFile();
+          },
+        },
+        {
+          id: 'save-as-plan',
+          label: 'Save Plan',
+          icon: `<span style="font-size:14px">💾</span>`,
+          action: () => {
+            this._importExportEngine!.savePlanToFile();
+          },
+        },
+        {
+          id: 'load-plan',
+          label: 'Load Plan',
+          icon: `<span style="font-size:14px">📂</span>`,
+          action: () => {
+            this._importExportEngine!.loadPlanFromFile();
+          },
+        },
+      ];
+
+      const saveLoadItem = document.createElement('div');
+      saveLoadItem.className = this.options.menuItemClass || '';
+      saveLoadItem.classList.add('has-submenu');
+      saveLoadItem.style.position = 'relative';
+      saveLoadItem.innerHTML = `<span class="menu-icon" style="font-size:14px">📁</span><span style="flex:1">Save / Load</span>`;
+
+      const submenuEl = document.createElement('div');
+      submenuEl.className = 'arcgis-submenu';
+      this.renderMenuItems(saveLoadItems, submenuEl, graphic, x, y);
+      saveLoadItem.appendChild(submenuEl);
+
+      saveLoadItem.addEventListener('mouseenter', () => {
+        saveLoadItem.classList.add(this.options.menuItemHoverClass || '');
+        submenuEl.style.display = 'block';
+        requestAnimationFrame(() => {
+          const rect = submenuEl.getBoundingClientRect();
+          if (rect.right > window.innerWidth) {
+            submenuEl.style.left = 'auto';
+            submenuEl.style.right = '100%';
+          } else {
+            submenuEl.style.left = '100%';
+            submenuEl.style.right = 'auto';
+          }
+        });
+      });
+      saveLoadItem.addEventListener('mouseleave', () => {
+        setTimeout(() => {
+          if (!submenuEl.matches(':hover') && !saveLoadItem.matches(':hover')) {
+            saveLoadItem.classList.remove(this.options.menuItemHoverClass || '');
+            submenuEl.style.display = 'none';
+          }
+        }, 100);
+      });
+      submenuEl.addEventListener('mouseleave', () => {
+        setTimeout(() => {
+          if (!submenuEl.matches(':hover') && !saveLoadItem.matches(':hover')) {
+            saveLoadItem.classList.remove(this.options.menuItemHoverClass || '');
+            submenuEl.style.display = 'none';
+          }
+        }, 100);
+      });
+
+      this.menuElement.appendChild(saveLoadItem);
+    }
+    // ───────────────────────────────────────────────────────────────────
 
     this.renderMenuItems(items, this.menuElement, graphic, x, y);
 

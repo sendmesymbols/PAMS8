@@ -371,6 +371,10 @@ declare class SymbolEngine implements Evented {
     saveToFile(filename?: string): void;
     /** Download a single graphic as a PAMS8 JSON file. */
     saveSymbolToFile(graphic: Graphic): void;
+    /** Stub: download a Plan JSON file structure. */
+    savePlanToFile(filename?: string): void;
+    /** Stub: open a Plan JSON file and load it. */
+    loadPlanFromFile(): void;
     /** Open a file picker; loads from PAMS8 JSON, template, or GeoJSON file. */
     loadFromFile(): void;
     /**

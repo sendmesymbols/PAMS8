@@ -33,6 +33,8 @@ const createButton: HTMLElement | null =
   document.getElementById('createButton');
 const drawBlockSymbolButton = document.getElementById('drawBlockSymbolButton');
 const drawAmbushButton = document.getElementById('drawAmbushButton');
+const savePlanButton = document.getElementById('savePlanButton');
+const loadPlanButton = document.getElementById('loadPlanButton');
 
 // Autocomplete elements
 const symbolSearchInput = document.getElementById(
@@ -1358,6 +1360,18 @@ function initializeAutocomplete() {
 // Initialises Drawing Cues controls from SymbolEngine settings once loaded.
 
 (function initDrawingCuesPanel() {
+  if (savePlanButton) {
+    savePlanButton.addEventListener('click', () => {
+      symbolEngine.importExportEngine?.savePlanToFile();
+    });
+  }
+
+  if (loadPlanButton) {
+    loadPlanButton.addEventListener('click', () => {
+      symbolEngine.importExportEngine?.loadPlanFromFile();
+    });
+  }
+
   function waitForEngine(cb: () => void) {
     if ((window as any).symbolEngine?.settings) cb();
     else setTimeout(() => waitForEngine(cb), 200);

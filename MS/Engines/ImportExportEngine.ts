@@ -13,6 +13,7 @@ import DrawEssentials from '../Support/DrawEssentials';
 import Amplifier from '../Support/Amplifier';
 import AnnotationEngine from './AnnotationEngine';
 import { LAYER_NAMES } from './SymbolEngine';
+import Plan, { PlanDocument, PlanPoint } from './ImportExport/Plan';
 
 const LAYERS = [
   LAYER_NAMES.TACT,
@@ -35,6 +36,213 @@ export default class ImportExportEngine {
       y: pt.y,
       spatialReference: pt.spatialReference?.toJSON?.() ?? pt.spatialReference,
     };
+  }
+
+  private _toPlanPoint(pt: any): PlanPoint | null {
+    if (!pt) return null;
+    const x = typeof pt.x === 'number' ? pt.x : pt.longitude;
+    const y = typeof pt.y === 'number' ? pt.y : pt.latitude;
+    if (typeof x !== 'number' || typeof y !== 'number') return null;
+    return { type: 'point', x, y, sp: 'WGS1SP' };
+  }
+
+  private _isPointLike(v: any): boolean {
+    if (!v || typeof v !== 'object') return false;
+    const hasXY =
+      (typeof v.x === 'number' || typeof v.longitude === 'number') &&
+      (typeof v.y === 'number' || typeof v.latitude === 'number');
+    return !!hasXY;
+  }
+
+  private _cloneDrawEssForPlan(value: any): any {
+    if (value === null || value === undefined) return value;
+    if (Array.isArray(value)) return value.map((item) => this._cloneDrawEssForPlan(item));
+    if (typeof value !== 'object') return value;
+
+    if (this._isPointLike(value)) {
+      return this._toPlanPoint(value);
+    }
+
+    const out: Record<string, any> = {};
+    Object.keys(value).forEach((k) => {
+      out[k] = this._cloneDrawEssForPlan(value[k]);
+    });
+    return out;
+  }
+
+  private _planPointToArcGisPoint(raw: any): Point | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const x = typeof raw.x === 'number' ? raw.x : undefined;
+    const y = typeof raw.y === 'number' ? raw.y : undefined;
+    if (x === undefined || y === undefined) return null;
+    return new Point({
+      x,
+      y,
+      spatialReference: raw.spatialReference ?? { wkid: 4326 },
+    });
+  }
+
+  private _drawEssToGeometry(drawEss: any): Point | Polyline | Polygon | null {
+    const geomPt = drawEss?.GEOM ?? drawEss?.OPTIONS?.GEOM;
+    const pointGeom = this._planPointToArcGisPoint(geomPt);
+    if (pointGeom) return pointGeom;
+
+    const ctrlPtsRaw = Array.isArray(drawEss?.CTRL_PTS) ? drawEss.CTRL_PTS : [];
+    const ctrlPts = ctrlPtsRaw
+      .map((p: any) => this._planPointToArcGisPoint(p))
+      .filter((p: Point | null): p is Point => !!p);
+
+    if (ctrlPts.length === 0) {
+      const base = drawEss?.BASE_LN_PTS;
+      const basePts = [base?.startPt, base?.midPt, base?.endPt]
+        .map((p: any) => this._planPointToArcGisPoint(p))
+        .filter((p: Point | null): p is Point => !!p);
+      if (basePts.length === 0) return null;
+      return new Polyline({
+        paths: [basePts.map((p) => [p.x, p.y])],
+        spatialReference: basePts[0].spatialReference,
+      });
+    }
+
+    if (drawEss?.SYM_GEO_TYPE === 'Area' && ctrlPts.length >= 3) {
+      const ring = ctrlPts.map((p) => [p.x, p.y]);
+      const [fx, fy] = ring[0];
+      const [lx, ly] = ring[ring.length - 1];
+      if (fx !== lx || fy !== ly) ring.push([fx, fy]);
+      return new Polygon({
+        rings: [ring],
+        spatialReference: ctrlPts[0].spatialReference,
+      });
+    }
+
+    return new Polyline({
+      paths: [ctrlPts.map((p) => [p.x, p.y])],
+      spatialReference: ctrlPts[0].spatialReference,
+    });
+  }
+
+  private _fallbackSymbolForGeometry(
+    geometry: Point | Polyline | Polygon | null,
+  ): PictureMarkerSymbol | SimpleLineSymbol | SimpleFillSymbol | SimpleMarkerSymbol | undefined {
+    if (!geometry) return undefined;
+    if (geometry.type === 'point') {
+      return new SimpleMarkerSymbol({
+        style: 'circle',
+        size: 12,
+        color: [230, 80, 80, 0.75],
+        outline: { color: [255, 255, 255, 0.9], width: 1.25 },
+      });
+    }
+    if (geometry.type === 'polyline') {
+      return new SimpleLineSymbol({
+        style: 'solid',
+        width: 2.5,
+        color: [80, 150, 250, 0.85],
+      });
+    }
+    return new SimpleFillSymbol({
+      style: 'solid',
+      color: [80, 150, 250, 0.18],
+      outline: { color: [80, 150, 250, 0.9], width: 2 },
+    });
+  }
+
+  private _layerIdForDrawEss(drawEss: any): string {
+    const t = `${drawEss?.SYM_GEO_TYPE ?? ''}`.toLowerCase();
+    if (t === 'fpoint') return LAYER_NAMES.FORCE;
+    if (t === 'point') return LAYER_NAMES.TACT_PT;
+    if (t === 'line' || t === 'area') return LAYER_NAMES.TACT;
+    return 'milSymbols';
+  }
+
+  private _buildPlanDrawEss(graphic: Graphic): Record<string, unknown> | null {
+    const de: any = graphic.attributes?.drawEssentials;
+    if (!de) return null;
+
+    const drawEss = this._cloneDrawEssForPlan(de) as Record<string, unknown>;
+    const geometry = graphic.geometry;
+    if (
+      !drawEss.GEOM &&
+      geometry?.type === 'point'
+    ) {
+      drawEss.GEOM = this._toPlanPoint(geometry);
+    }
+    if (drawEss.AMPLIFIER === undefined) {
+      drawEss.AMPLIFIER = {};
+    }
+    return drawEss;
+  }
+
+  private _buildRuntimeDrawEss(drawEssRaw: any): { de: DrawEssentials; amplifier: Amplifier } {
+    const de = new DrawEssentials();
+    const drawEss = this._cloneDrawEssForPlan(drawEssRaw);
+    Object.assign(de, drawEss);
+
+    const pointGeom = this._planPointToArcGisPoint(drawEss?.GEOM ?? drawEss?.OPTIONS?.GEOM);
+    if (pointGeom) {
+      (de as any).GEOM = pointGeom;
+    }
+    (de as any).CTRL_PTS = Array.isArray(drawEss?.CTRL_PTS)
+      ? drawEss.CTRL_PTS
+          .map((p: any) => this._planPointToArcGisPoint(p))
+          .filter((p: Point | null): p is Point => !!p)
+      : (de as any).CTRL_PTS ?? [];
+    if (drawEss?.BASE_LN_PTS) {
+      (de as any).BASE_LN_PTS = {
+        startPt: this._planPointToArcGisPoint(drawEss.BASE_LN_PTS.startPt) ?? undefined,
+        midPt: this._planPointToArcGisPoint(drawEss.BASE_LN_PTS.midPt) ?? undefined,
+        endPt: this._planPointToArcGisPoint(drawEss.BASE_LN_PTS.endPt) ?? undefined,
+      };
+    }
+
+    const amplifier = new Amplifier();
+    if (drawEss?.AMPLIFIER && typeof drawEss.AMPLIFIER === 'object') {
+      Object.assign(amplifier, drawEss.AMPLIFIER);
+    }
+    if ((drawEss as any)?.SIDC && !amplifier.SIDC) amplifier.SIDC = (drawEss as any).SIDC;
+    (de as any).AMPLIFIER = amplifier;
+    return { de, amplifier };
+  }
+
+  private _loadFallbackGraphicFromDrawEss(drawEssRaw: any, id: string, layerId: string): void {
+    const drawEss = this._cloneDrawEssForPlan(drawEssRaw);
+    const { de, amplifier } = this._buildRuntimeDrawEss(drawEss);
+
+    const geometry = this._drawEssToGeometry(drawEss);
+    (de as any).GEOM = geometry?.type === 'point' ? geometry : (de as any).GEOM;
+
+    const symbol = this._fallbackSymbolForGeometry(geometry);
+    const graphic = new Graphic({
+      geometry: geometry ?? undefined,
+      symbol,
+      attributes: {
+        id,
+        type: 'symbol',
+        drawEssentials: de,
+      },
+    });
+
+    const layer =
+      this._layerManager.getOrCreateLayer(layerId) ??
+      this._layerManager.getSymbolLayer();
+    layer.add(graphic);
+
+    if (geometry && amplifier.SIDC) {
+      const annotationLayer = this._layerManager.getOrCreateLayer(
+        LAYER_NAMES.ANNOTATION_LAYER,
+      );
+      AnnotationEngine.annotate(
+        annotationLayer,
+        geometry,
+        amplifier,
+        de,
+        id,
+        12,
+        (de as any).ISFHAND || 0,
+        {},
+        {},
+      );
+    }
   }
 
   private _downloadJSON(data: any, filename: string): void {
@@ -268,6 +476,115 @@ export default class ImportExportEngine {
   public saveSymbolToFile(graphic: Graphic): void {
     const data = this.saveSymbolToJSON(graphic);
     this._downloadJSON(data, `pams8_symbol_${Date.now()}.json`);
+  }
+
+  public savePlanToFile(filename?: string): void {
+    const planId = Date.now();
+    const plan = new Plan(Plan.createDefaultObject(planId));
+
+    let overlaySeq = Date.now();
+    let symbolCount = 0;
+
+    try {
+      for (const layerId of LAYERS) {
+        const layer = this._layerManager.getOrCreateLayer(layerId) as any;
+        if (!layer?.graphics || !layer.graphics.length) continue;
+
+        const overlayId = this.generateUUID();
+        const overlayName =
+          `${layer?.title ?? layer?.id ?? layerId}`.trim() || `Overlay ${overlaySeq}`;
+        const symbols: ReturnType<typeof Plan.createSymbol>[] = [];
+
+        (layer.graphics as any).forEach((g: Graphic) => {
+          try {
+            const drawEssObj = this._buildPlanDrawEss(g);
+            if (!drawEssObj) return;
+            const symbolId = g.attributes?.id || this.generateUUID();
+            symbols.push(
+              Plan.createSymbol(
+                planId,
+                overlayId,
+                symbolId,
+                JSON.stringify(drawEssObj),
+              ),
+            );
+          } catch (err) {
+            console.warn('[SaveLoad] Skipping symbol while saving plan:', err);
+          }
+        });
+
+        if (!symbols.length) continue;
+
+        symbolCount += symbols.length;
+        plan.addOverlay(
+          Plan.createOverlay(
+            planId,
+            overlayId,
+            overlayName,
+            overlaySeq++,
+            symbols,
+          ),
+        );
+      }
+
+      this._downloadJSON(plan.toJSON(), filename ?? `pams8_plan_${Date.now()}.json`);
+      console.info(`[SaveLoad] Exported plan with ${symbolCount} symbols`);
+    } catch (err) {
+      console.error('[SaveLoad] savePlanToFile failed:', err);
+    }
+  }
+
+  public loadPlanFromFile(onNeedsInit?: (de: DrawEssentials, amplifier: Amplifier, id: string) => void): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const parsed = JSON.parse(evt.target?.result as string) as PlanDocument;
+          if (!Plan.isPlanDocument(parsed)) {
+            console.error('[SaveLoad] Invalid plan file format');
+            return;
+          }
+
+          let imported = 0;
+          parsed.poObj.plnOrdrOverlay.forEach((overlay) => {
+            overlay.plnOrdrSymbolSet.forEach((symbol) => {
+              try {
+                const drawEss =
+                  typeof symbol.drawEss === 'string'
+                    ? JSON.parse(symbol.drawEss)
+                    : symbol.drawEss;
+                const symbolId =
+                  symbol.plnOrdrSymbolPK?.plnOrdrSymbolId ?? this.generateUUID();
+
+                if (onNeedsInit) {
+                  const { de, amplifier } = this._buildRuntimeDrawEss(drawEss);
+                  onNeedsInit(de, amplifier, symbolId);
+                } else {
+                  this._loadFallbackGraphicFromDrawEss(
+                    drawEss,
+                    symbolId,
+                    this._layerIdForDrawEss(drawEss),
+                  );
+                }
+                imported++;
+              } catch (err) {
+                console.warn('[SaveLoad] Skipping malformed plan symbol:', err);
+              }
+            });
+          });
+          console.info(`[SaveLoad] Imported ${imported} plan symbols`);
+        } catch (err) {
+          console.error('[SaveLoad] Failed to parse plan file:', err);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   }
 
   public loadFromFile(onNeedsInit?: (de: DrawEssentials, amplifier: Amplifier, id: string) => void): void {

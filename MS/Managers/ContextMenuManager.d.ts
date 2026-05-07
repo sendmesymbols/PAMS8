@@ -9,6 +9,7 @@ import LOSEngine from '../Engines/Analysis/LOSEngine';
 import TrajectoryEngine from '../Engines/Analysis/TrajectoryEngine';
 import BufferEngine from '../Engines/Analysis/BufferEngine';
 import CorridorEngine from '../Engines/Analysis/CorridorEngine';
+import ImportExportEngine from '../Engines/ImportExportEngine';
 export interface ContextMenuItem {
     id: string;
     label: string | ((graphic?: Graphic) => string);
@@ -62,6 +63,7 @@ declare class ContextMenuManager extends Evented {
     private _trajectoryEngine;
     private _bufferEngine;
     private _corridorEngine;
+    private _importExportEngine;
     private _pointerDownHandle;
     private _contextMenuHandler;
     private _contextMenuContainer;
@@ -141,6 +143,7 @@ declare class ContextMenuManager extends Evented {
      * opens the corridor panel with the right-clicked graphic as route origin.
      */
     linkCorridorEngine(engine: CorridorEngine): void;
+    linkImportExportEngine(engine: ImportExportEngine): void;
     /**
      * Register a function that returns extra context menu items dynamically.
      * Called each time the menu opens, so items can depend on runtime state

@@ -1363,6 +1363,8 @@
       <button id="addTextButton">Add Text</button>
       <button id="createButton">Create</button>
       <button id="drawBlockSymbolButton">Draw Block Symbol</button>
+      <button id="savePlanButton">Save Plan</button>
+      <button id="loadPlanButton">Load Plan</button>
 
       <!-- Measurement toggle button -->
       <button
@@ -2162,6 +2164,8 @@
           <div class="section-title">Save/Load</div>
           <button class="api-btn" id="api-saveAll">Save All</button>
           <button class="api-btn" id="api-load">Load</button>
+          <button class="api-btn" id="api-save-plan">Save Plan</button>
+          <button class="api-btn" id="api-load-plan">Load Plan</button>
           <button class="api-btn" id="api-export">Export JSON</button>
           <button class="api-btn" id="api-import">Import JSON</button>
           <button class="api-btn success" id="api-export-geojson">
@@ -3234,6 +3238,24 @@
           engine.loadFromFile();
           document.getElementById('api-save-status').textContent =
             'Load dialog opened';
+        }
+      });
+
+      document.getElementById('api-save-plan').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.savePlanToFile) {
+          engine.savePlanToFile();
+          document.getElementById('api-save-status').textContent =
+            'Plan saved to file';
+        }
+      });
+
+      document.getElementById('api-load-plan').addEventListener('click', () => {
+        const engine = getEngines();
+        if (engine && engine.loadPlanFromFile) {
+          engine.loadPlanFromFile();
+          document.getElementById('api-save-status').textContent =
+            'Plan load dialog opened';
         }
       });
 
