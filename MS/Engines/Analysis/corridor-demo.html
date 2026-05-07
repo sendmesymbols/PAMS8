@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Corridor Analysis — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#0a0b0d}
+
+    /* ── Panel ──────────────────────────────────────────────────────────── */
+    #panel{
+      position:absolute;top:14px;right:14px;width:300px;z-index:99;
+      background:rgba(10,11,13,0.97);
+      border:1px solid rgba(29,158,117,0.30);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+    }
+    .ph{display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;border-bottom:1px solid rgba(29,158,117,0.15);
+      background:rgba(29,158,117,0.07)}
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#1D9E75;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935;transition:color .2s}
+    .ph-status.ready   {color:#1D9E75}
+    .ph-status.busy    {color:#EF9F27}
+    .ph-status.drawing {color:#378ADD}
+
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#3a3935;padding:9px 12px 5px}
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s
+    }
+    input:focus,select:focus{border-color:rgba(29,158,117,0.55)}
+    select option{background:#141618}
+
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#1D9E75;width:13px;height:13px;cursor:pointer}
+
+    /* ── Waypoint table ──────────────────────────────────────────────────── */
+    #wp-list{padding:0 12px 4px;display:flex;flex-direction:column;gap:4px;max-height:130px;overflow-y:auto}
+    .wp-row{display:grid;grid-template-columns:22px 1fr auto;gap:6px;align-items:center}
+    .wp-idx{font-size:10px;color:#3a3935;font-weight:700;text-align:center}
+    .wp-coords{font-size:9.5px;color:#888780;font-family:'Courier New',monospace;letter-spacing:.04em}
+    .wp-del{background:transparent;border:none;color:#5a3535;font-size:11px;cursor:pointer;padding:2px 4px}
+    .wp-del:hover{color:#DC3C30}
+
+    /* ── Leg table ───────────────────────────────────────────────────────── */
+    #leg-table{padding:0 12px 8px;font-size:10px}
+    .leg-row{display:grid;grid-template-columns:auto 1fr 60px;gap:6px;
+      padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+    .leg-num{color:#3a3935}
+    .leg-dist{color:#1D9E75}
+    .leg-brg{color:#888780;text-align:right}
+
+    /* ── Stats bar ───────────────────────────────────────────────────────── */
+    #stats{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;
+      margin:4px 12px 8px;
+      background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.15);
+      border-radius:3px;padding:7px 9px;font-size:10px}
+    .st{display:flex;flex-direction:column;gap:1px}
+    .st-l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935}
+    .st-v{color:#1D9E75}
+
+    /* ── Exposure bar ────────────────────────────────────────────────────── */
+    #exposure-bar{padding:0 12px 8px}
+    .exp-label{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935;margin-bottom:4px}
+    .exp-track{height:6px;border-radius:3px;background:linear-gradient(to right,#1D9E75,#78C840,#EF9F27,#DC3C30);
+      position:relative;border:1px solid rgba(255,255,255,0.08)}
+    .exp-thumb{position:absolute;top:-4px;width:14px;height:14px;background:#fff;border-radius:50%;
+      border:2px solid #0a0b0d;transform:translateX(-50%);left:0%;transition:left .3s;
+      box-shadow:0 0 5px rgba(255,255,255,0.3)}
+    .exp-legend{display:flex;justify-content:space-between;margin-top:4px;font-size:8px;color:#3a3935}
+
+    #coords{font-size:9px;color:#1D9E75;padding:2px 12px 7px;letter-spacing:.05em;opacity:.75}
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .pb-row{display:flex;gap:6px;padding:9px 12px}
+    .pb{flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;border:1px solid rgba(29,158,117,0.40);
+      background:transparent;color:#1D9E75;transition:all .14s}
+    .pb:hover:not(:disabled){background:rgba(29,158,117,0.10)}
+    .pb.primary{background:rgba(29,158,117,0.16);border-color:#1D9E75}
+    .pb.primary:hover:not(:disabled){background:rgba(29,158,117,0.30)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+    .pb.danger{border-color:rgba(220,60,48,0.40);color:#DC3C30}
+    .pb.danger:hover:not(:disabled){background:rgba(220,60,48,0.10)}
+
+    /* ── Hint ────────────────────────────────────────────────────────────── */
+    #hint{position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(10,11,13,0.93);border:1px solid rgba(29,158,117,0.40);
+      color:#1D9E75;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 20px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase;transition:opacity .25s}
+
+    /* ── Threat palette ──────────────────────────────────────────────────── */
+    #threat-panel{
+      position:absolute;top:14px;left:14px;width:220px;z-index:99;
+      background:rgba(10,11,13,0.94);
+      border:1px solid rgba(220,60,48,0.25);
+      border-radius:5px;font-size:11px;color:#bfbcb4;font-family:'Courier New',monospace;
+    }
+    .tp-header{padding:8px 11px;border-bottom:1px solid rgba(220,60,48,0.12);
+      font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#DC3C30;font-weight:700}
+    .tp-body{padding:6px 11px 9px;display:flex;flex-direction:column;gap:5px}
+    .tp-row{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 6px;
+      border-radius:3px;border:1px solid transparent;transition:all .13s}
+    .tp-row:hover{background:rgba(220,60,48,0.07);border-color:rgba(220,60,48,0.20)}
+    .tp-row.active{background:rgba(220,60,48,0.12);border-color:rgba(220,60,48,0.40)}
+    .tp-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+    .tp-name{font-size:10px;letter-spacing:.04em}
+    .tp-radius{font-size:9px;color:#3a3935;margin-left:auto}
+    .tp-add-row{display:flex;gap:5px;margin-top:3px}
+    .tp-add-row input{font-size:10px;padding:4px 6px}
+    .tp-add-btn{padding:4px 8px;font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;border:1px solid rgba(220,60,48,0.35);
+      background:transparent;color:#DC3C30;font-family:'Courier New',monospace;
+      white-space:nowrap;transition:all .13s}
+    .tp-add-btn:hover{background:rgba(220,60,48,0.10)}
+
+    /* ── Elevation profile container ─────────────────────────────────────── */
+    #elev-profile-widget{
+      position:absolute;bottom:0;left:0;right:0;height:160px;z-index:98;
+      background:rgba(10,11,13,0.90);border-top:1px solid rgba(29,158,117,0.20);
+    }
+
+    /* ── Legend ──────────────────────────────────────────────────────────── */
+    #legend{
+      position:absolute;bottom:170px;left:14px;z-index:99;
+      background:rgba(10,11,13,0.92);border:1px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:8px 11px;display:flex;flex-direction:column;gap:5px;
+    }
+    .leg-row{display:flex;align-items:center;gap:7px}
+    .leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .leg-label{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#888780}
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+
+  <!-- ── MAIN PANEL ────────────────────────────────────────────────────── -->
+  <div id="panel">
+    <div class="ph">
+      <div class="ph-title">⬡ Corridor Analysis</div>
+      <div class="ph-status drawing" id="status">Place waypoints</div>
+    </div>
+
+    <!-- Route preset -->
+    <div class="ps">Route type</div>
+    <div class="pg">
+      <div class="pf full">
+        <div class="pl">Movement type preset</div>
+        <select id="inp-preset">
+          <option value="vehicle_patrol" selected>Vehicle patrol / MSR</option>
+          <option value="foot_patrol">Foot patrol</option>
+          <option value="heavy_convoy">Heavy convoy</option>
+          <option value="drone_flyway">Drone flyway</option>
+          <option value="exfil_route">Exfil / covert route</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Corridor parameters -->
+    <div class="ps">Corridor widths</div>
+    <div class="pg">
+      <div class="pf">
+        <div class="pl">Corridor (m)</div>
+        <input id="inp-corridor" type="number" value="100" min="10" step="25"/>
+      </div>
+      <div class="pf">
+        <div class="pl">Standoff (m)</div>
+        <input id="inp-standoff" type="number" value="500" min="0" step="50"/>
+      </div>
+      <div class="pf">
+        <div class="pl">Exclusion (m)</div>
+        <input id="inp-exclusion" type="number" value="1000" min="0" step="100"/>
+      </div>
+      <div class="pf">
+        <div class="pl">Segment len (m)</div>
+        <input id="inp-seglen" type="number" value="200" min="50" step="50"/>
+      </div>
+    </div>
+
+    <!-- Display options -->
+    <div class="ps">Display</div>
+    <div class="ptr"><label>Threat heat map</label><input id="opt-heatmap" type="checkbox" checked/></div>
+    <div class="ptr"><label>Chokepoints</label><input id="opt-choke" type="checkbox" checked/></div>
+    <div class="ptr"><label>Leg labels</label><input id="opt-leglabels" type="checkbox" checked/></div>
+    <div class="ptr"><label>Exclusion zone</label><input id="opt-excl" type="checkbox" checked/></div>
+    <div class="ptr"><label>Elevation profile</label><input id="opt-profile" type="checkbox" checked/></div>
+
+    <div class="pdiv"></div>
+
+    <!-- Waypoint list -->
+    <div class="ps">Waypoints <span style="color:#3a3935;font-size:9px">(click map to add)</span></div>
+    <div id="wp-list"></div>
+
+    <div class="pdiv"></div>
+
+    <!-- Leg breakdown -->
+    <div class="ps" id="leg-label">Legs</div>
+    <div id="leg-table"></div>
+
+    <!-- Stats -->
+    <div id="stats">
+      <div class="st"><div class="st-l">Total distance</div><div class="st-v" id="st-dist">—</div></div>
+      <div class="st"><div class="st-l">Waypoints</div><div class="st-v" id="st-wps">0</div></div>
+      <div class="st"><div class="st-l">Threats</div><div class="st-v" id="st-threats">0</div></div>
+    </div>
+
+    <!-- Exposure meter -->
+    <div id="exposure-bar">
+      <div class="exp-label">Avg threat exposure</div>
+      <div class="exp-track"><div class="exp-thumb" id="exp-thumb"></div></div>
+      <div class="exp-legend"><span>Safe</span><span>Caution</span><span>Danger</span></div>
+    </div>
+
+    <div id="coords">Waypoint: click map to begin route</div>
+
+    <div class="pb-row">
+      <button class="pb danger" id="btn-clear">Clear</button>
+      <button class="pb" id="btn-undo" disabled>Undo WP</button>
+      <button class="pb primary" id="btn-analyze" disabled>Analyse ↗</button>
+    </div>
+    <div class="pb-row" style="padding-top:0">
+      <button class="pb" id="btn-commit" disabled>Commit to map</button>
+    </div>
+  </div>
+
+  <!-- ── THREAT PANEL ──────────────────────────────────────────────────── -->
+  <div id="threat-panel">
+    <div class="tp-header">⊗ Threat overlays</div>
+    <div class="tp-body" id="tp-body">
+      <div style="font-size:9px;color:#3a3935;letter-spacing:.05em">
+        Place threat buffer geometries<br>to score corridor exposure
+      </div>
+    </div>
+    <div style="padding:0 11px 9px;display:flex;flex-direction:column;gap:5px">
+      <div style="font-size:9px;color:#3a3935;letter-spacing:.05em;text-transform:uppercase">Add threat radius</div>
+      <div class="tp-add-row">
+        <input id="tp-radius" type="number" value="2000" min="100" step="100" placeholder="radius m"/>
+        <button class="tp-add-btn" id="tp-add">+ Place</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LEGEND ────────────────────────────────────────────────────────── -->
+  <div id="legend">
+    <div class="leg-row"><div class="leg-dot" style="background:#1D9E75"></div><div class="leg-label">Safe — 0–25%</div></div>
+    <div class="leg-row"><div class="leg-dot" style="background:#78C840"></div><div class="leg-label">Low — 25–50%</div></div>
+    <div class="leg-row"><div class="leg-dot" style="background:#EF9F27"></div><div class="leg-label">Caution — 50–75%</div></div>
+    <div class="leg-row"><div class="leg-dot" style="background:#DC3C30"></div><div class="leg-label">Danger — 75–100%</div></div>
+    <div class="leg-row"><div class="leg-dot" style="background:#DC3C30;border:2px solid #fff"></div><div class="leg-label">Chokepoint</div></div>
+  </div>
+
+  <!-- Elevation profile placeholder -->
+  <div id="elev-profile-widget"></div>
+
+  <div id="hint">Click map to place waypoints — double-click to finish route</div>
+
+  <script src="https://js.arcgis.com/4.28/"></script>
+  <script>
+  require([
+    "esri/Map",
+    "esri/views/SceneView",
+    "esri/layers/GraphicsLayer",
+    "esri/Graphic",
+    "esri/geometry/Point",
+    "esri/geometry/Polyline",
+    "esri/geometry/geometryEngine",
+    "esri/widgets/ElevationProfile",
+    "esri/widgets/CoordinateConversion",
+    "esri/geometry/support/geodesicUtils",
+  ], function(
+    Map, SceneView, GraphicsLayer, Graphic,
+    Point, Polyline, geometryEngine,
+    ElevationProfile, CoordinateConversion, geodesicUtils
+  ) {
+
+    // ── INLINE ENGINE ─────────────────────────────────────────────────────
+    const EARTH_R = 6_371_008.8;
+
+    const PRESETS = {
+      vehicle_patrol: { corridorM:100,  standoffM:500,  exclusionM:1000, segmentLenM:200, color:[29,158,117]  },
+      foot_patrol:    { corridorM:25,   standoffM:100,  exclusionM:0,    segmentLenM:100, color:[29,158,117]  },
+      heavy_convoy:   { corridorM:200,  standoffM:1000, exclusionM:2000, segmentLenM:300, color:[186,117,23]  },
+      drone_flyway:   { corridorM:150,  standoffM:800,  exclusionM:0,    segmentLenM:150, color:[180,40,220]  },
+      exfil_route:    { corridorM:50,   standoffM:300,  exclusionM:500,  segmentLenM:100, color:[220,90,48]   },
+    };
+
+    const EXPOSURE_COLORS = [
+      { threshold:0.00, fill:[29,158,117,0.20], outline:[29,158,117,0.85] },
+      { threshold:0.25, fill:[120,200,80,0.22], outline:[120,200,80,0.80] },
+      { threshold:0.50, fill:[239,159,39,0.25], outline:[239,159,39,0.88] },
+      { threshold:0.75, fill:[220,60,48,0.28],  outline:[220,60,48,0.92]  },
+    ];
+
+    function destPt(lon,lat,brg,dist){
+      const δ=dist/EARTH_R,θ=brg*Math.PI/180;
+      const φ1=lat*Math.PI/180,λ1=lon*Math.PI/180;
+      const φ2=Math.asin(Math.sin(φ1)*Math.cos(δ)+Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+      const λ2=λ1+Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1),Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+      return{longitude:λ2*180/Math.PI,latitude:φ2*180/Math.PI};
+    }
+    function geoDist(lon1,lat1,lon2,lat2){
+      const φ1=lat1*Math.PI/180,φ2=lat2*Math.PI/180,Δλ=(lon2-lon1)*Math.PI/180;
+      return EARTH_R*Math.acos(Math.min(1,Math.sin(φ1)*Math.sin(φ2)+Math.cos(φ1)*Math.cos(φ2)*Math.cos(Δλ)));
+    }
+    function geoBrg(lon1,lat1,lon2,lat2){
+      const φ1=lat1*Math.PI/180,φ2=lat2*Math.PI/180,Δλ=(lon2-lon1)*Math.PI/180;
+      return((Math.atan2(Math.sin(Δλ)*Math.cos(φ2),Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ))*180/Math.PI)+360)%360;
+    }
+    function densify(waypoints,intervalM=50){
+      if(waypoints.length<2)return waypoints;
+      const dense=[waypoints[0]];
+      for(let i=0;i<waypoints.length-1;i++){
+        const[a,b]=[waypoints[i],waypoints[i+1]];
+        const dist=geoDist(a.longitude,a.latitude,b.longitude,b.latitude);
+        const steps=Math.ceil(dist/intervalM);
+        for(let s=1;s<steps;s++){
+          const brg=geoBrg(a.longitude,a.latitude,b.longitude,b.latitude);
+          dense.push(destPt(a.longitude,a.latitude,brg,dist*s/steps));
+        }
+        dense.push(b);
+      }
+      return dense;
+    }
+
+    function buildStack(densePath, corridorM, standoffM, exclusionM){
+      const polyline=new Polyline({paths:[densePath.map(p=>[p.longitude,p.latitude])],spatialReference:{wkid:4326}});
+      let dl=polyline;
+      try{dl=geometryEngine.geodesicDensify(polyline,50,'meters')}catch(_){}
+      const corridor  = geometryEngine.geodesicBuffer(dl, corridorM,                          'meters');
+      const standoff  = standoffM >0 ? geometryEngine.geodesicBuffer(dl, corridorM+standoffM, 'meters') : null;
+      const exclusion = exclusionM>0 ? geometryEngine.geodesicBuffer(dl, corridorM+standoffM+exclusionM,'meters') : null;
+      return{
+        polyline:dl,
+        corridor,
+        standoffRing:  (standoff  && corridor)  ? geometryEngine.difference(standoff,corridor)   : standoff,
+        exclusionRing: (exclusion && standoff)   ? geometryEngine.difference(exclusion,standoff)  :
+                       (exclusion && corridor)   ? geometryEngine.difference(exclusion,corridor)  : exclusion,
+      };
+    }
+
+    function scoreSegments(dense, corridorM, threatGeoms, segmentLenM){
+      const segs=[];
+      let cursor=0, distFromStart=0;
+      while(cursor<dense.length-1){
+        const segPts=[dense[cursor]];
+        let segDist=0, j=cursor+1;
+        while(j<dense.length){
+          const d=geoDist(dense[j-1].longitude,dense[j-1].latitude,dense[j].longitude,dense[j].latitude);
+          segDist+=d; segPts.push(dense[j]); j++;
+          if(segDist>=segmentLenM)break;
+        }
+        if(segPts.length>=2){
+          const pl=new Polyline({paths:[segPts.map(p=>[p.longitude,p.latitude])],spatialReference:{wkid:4326}});
+          const buf=geometryEngine.geodesicBuffer(pl,corridorM,'meters');
+          const bufArea=buf?Math.abs(geometryEngine.planarArea(buf,'square-meters')):0;
+          let overlap=0;
+          if(bufArea>0&&threatGeoms.length>0){
+            for(const tg of threatGeoms){
+              try{
+                const ix=geometryEngine.intersect(buf,tg);
+                if(ix)overlap+=Math.abs(geometryEngine.planarArea(ix,'square-meters'));
+              }catch(_){}
+            }
+          }
+          segs.push({polyline:pl,buffer:buf,score:Math.min(1,bufArea>0?overlap/bufArea:0),distFromStartM:distFromStart,length:segDist});
+          distFromStart+=segDist;
+        }
+        cursor=j-1;
+        if(cursor>=dense.length-1)break;
+      }
+      return segs;
+    }
+
+    function expColor(score){
+      return EXPOSURE_COLORS.slice().reverse().find(b=>score>=b.threshold)??EXPOSURE_COLORS[0];
+    }
+
+    // ── LAYERS ────────────────────────────────────────────────────────────
+    const corridorLayer  = new GraphicsLayer({ title:'Corridor — stack',    elevationInfo:{mode:'on-the-ground'} });
+    const heatmapLayer   = new GraphicsLayer({ title:'Corridor — heatmap',  elevationInfo:{mode:'on-the-ground'} });
+    const centreLayer    = new GraphicsLayer({ title:'Corridor — centreline',elevationInfo:{mode:'on-the-ground'} });
+    const labelLayer     = new GraphicsLayer({ title:'Corridor — labels',   elevationInfo:{mode:'on-the-ground'} });
+    const chokeLayer     = new GraphicsLayer({ title:'Corridor — chokes',   elevationInfo:{mode:'on-the-ground'} });
+    const threatLayer    = new GraphicsLayer({ title:'Threats',             elevationInfo:{mode:'on-the-ground'} });
+    const committedLayer = new GraphicsLayer({ title:'Corridor — committed',elevationInfo:{mode:'on-the-ground'} });
+    const previewLayer   = new GraphicsLayer({ title:'Corridor — preview',  elevationInfo:{mode:'on-the-ground'} });
+
+    const map = new Map({
+      basemap:'topo-3d', ground:'world-elevation',
+      layers:[committedLayer,corridorLayer,heatmapLayer,centreLayer,labelLayer,chokeLayer,threatLayer,previewLayer],
+    });
+
+    const view = new SceneView({
+      container:'viewDiv', map,
+      camera:{ position:{longitude:73.06,latitude:33.65,z:20000}, heading:0, tilt:55 },
+      environment:{ atmosphere:{quality:'high'}, lighting:{date:new Date()} },
+      popup:{
+        dockEnabled:true,
+        dockOptions:{position:'bottom-right',breakpoint:false},
+        defaultPopupTemplateEnabled:true,
+      },
+    });
+
+    // Popup templates
+    [committedLayer,heatmapLayer].forEach(l=>{
+      l.popupTemplate={ title:'{type}', content:'<b>{label}</b><br>Exposure: {score}%<br>Dist from start: {distFromStartM} m' };
+    });
+    chokeLayer.popupTemplate={ title:'Chokepoint', content:'Narrow terrain passage at waypoint {index}' };
+
+    // ── ELEVATION PROFILE WIDGET ──────────────────────────────────────────
+    // Placed in the bottom bar; input is updated when route is drawn.
+    let elevProfileWidget = null;
+    view.when(() => {
+      elevProfileWidget = new ElevationProfile({
+        view,
+        container: 'elev-profile-widget',
+        profiles: [{ type:'ground' }, { type:'view' }],
+        visibleElements:{ legend:false, clearButton:false, settingsButton:false },
+      });
+    });
+
+    // ── COORDINATE CONVERSION (in view corner) ───────────────────────────
+    view.when(() => {
+      const cc = new CoordinateConversion({ view });
+      view.ui.add(cc, 'bottom-right');
+    });
+
+    // ── STATE ──────────────────────────────────────────────────────────────
+    let waypoints   = [];   // { longitude, latitude }
+    let threatGeoms = [];   // raw ArcGIS Polygon geometries
+    let threatMeta  = [];   // { radiusM, lon, lat, id }
+    let routeDrawn  = false;
+    let placingThreat = false;
+    let analysisGraphics = [];
+
+    const $ = id => document.getElementById(id);
+
+    // ── PRESET → field values ─────────────────────────────────────────────
+    function applyPreset(key){
+      const p = PRESETS[key]; if(!p)return;
+      $('inp-corridor').value  = p.corridorM;
+      $('inp-standoff').value  = p.standoffM;
+      $('inp-exclusion').value = p.exclusionM;
+      $('inp-seglen').value    = p.segmentLenM;
+      if(routeDrawn) redrawCorridor();
+    }
+    $('inp-preset').addEventListener('change', () => applyPreset($('inp-preset').value));
+    ['inp-corridor','inp-standoff','inp-exclusion','inp-seglen']
+      .forEach(id => $(id).addEventListener('change', () => { if(routeDrawn) redrawCorridor(); }));
+    ['opt-heatmap','opt-choke','opt-leglabels','opt-excl','opt-profile']
+      .forEach(id => $(id).addEventListener('change', () => { if(routeDrawn) redrawCorridor(); }));
+
+    // ── WAYPOINT LIST ─────────────────────────────────────────────────────
+    function renderWPList(){
+      const list=$('wp-list'); list.innerHTML='';
+      waypoints.forEach((wp,i)=>{
+        const row=document.createElement('div'); row.className='wp-row';
+        const label=i===0?'S':i===waypoints.length-1?'E':String(i);
+        row.innerHTML=`
+          <div class="wp-idx">${label}</div>
+          <div class="wp-coords">${wp.latitude.toFixed(4)}°N ${wp.longitude.toFixed(4)}°E</div>
+          <button class="wp-del" data-i="${i}">✕</button>`;
+        list.appendChild(row);
+      });
+      list.querySelectorAll('.wp-del').forEach(btn=>btn.addEventListener('click',()=>{
+        waypoints.splice(Number(btn.dataset.i),1);
+        renderWPList(); renderLegTable();
+        updateStats(); drawPreview();
+        if(waypoints.length<2){ routeDrawn=false; clearAnalysis(); }
+        else if(routeDrawn) redrawCorridor();
+      }));
+      $('st-wps').textContent=waypoints.length;
+      $('btn-undo').disabled=waypoints.length===0;
+      $('btn-analyze').disabled=waypoints.length<2;
+    }
+
+    // ── LEG TABLE ─────────────────────────────────────────────────────────
+    function renderLegTable(){
+      const tbl=$('leg-table'); tbl.innerHTML='';
+      let totalDist=0;
+      for(let i=0;i<waypoints.length-1;i++){
+        const a=waypoints[i],b=waypoints[i+1];
+        const dist=geoDist(a.longitude,a.latitude,b.longitude,b.latitude);
+        const brg=geoBrg(a.longitude,a.latitude,b.longitude,b.latitude);
+        totalDist+=dist;
+        const row=document.createElement('div'); row.className='leg-row';
+        const ds=dist>=1000?(dist/1000).toFixed(2)+' km':Math.round(dist)+' m';
+        row.innerHTML=`<div class="leg-num">L${i+1}</div><div class="leg-dist">${ds}</div><div class="leg-brg">${Math.round(brg).toString().padStart(3,'0')}°</div>`;
+        tbl.appendChild(row);
+      }
+      $('st-dist').textContent = totalDist>=1000?(totalDist/1000).toFixed(2)+' km':Math.round(totalDist)+' m';
+    }
+
+    function updateStats(){
+      $('st-threats').textContent=threatMeta.length;
+    }
+
+    // ── LIVE PREVIEW — draws the centreline while placing waypoints ────────
+    function drawPreview(){
+      previewLayer.removeAll();
+      if(waypoints.length<2)return;
+      const dense=densify(waypoints,100);
+      previewLayer.add(new Graphic({
+        geometry:new Polyline({paths:[dense.map(p=>[p.longitude,p.latitude])],spatialReference:{wkid:4326}}),
+        symbol:{ type:'line-3d', symbolLayers:[{ type:'line', size:1.8,
+          material:{color:[29,158,117,0.55]}, pattern:{type:'style',style:'dash'} }] },
+      }));
+    }
+
+    // ── MAIN ANALYSIS REDRAW ──────────────────────────────────────────────
+    function redrawCorridor(){
+      if(waypoints.length<2)return;
+      setStatus('busy');
+      [corridorLayer,heatmapLayer,centreLayer,labelLayer,chokeLayer].forEach(l=>l.removeAll());
+      previewLayer.removeAll();
+      analysisGraphics=[];
+
+      const corridorM  = Math.max(1,Number($('inp-corridor').value));
+      const standoffM  = Math.max(0,Number($('inp-standoff').value));
+      const exclusionM = Math.max(0,Number($('inp-exclusion').value));
+      const segmentLenM= Math.max(50,Number($('inp-seglen').value));
+      const preset     = PRESETS[$('inp-preset').value]??PRESETS.vehicle_patrol;
+      const [r,g,b]    = preset.color;
+
+      const dense = densify(waypoints, 50);
+      const stack = buildStack(dense, corridorM, standoffM, exclusionM);
+
+      // ── Corridor polygon stack ──────────────────────────────────────────
+      if($('opt-excl').checked && stack.exclusionRing){
+        const g_=new Graphic({ geometry:stack.exclusionRing,
+          symbol:{ type:'polygon-3d', symbolLayers:[{ type:'fill',
+            material:{color:[220,60,48,0.06]}, outline:{color:[220,60,48,0.45],size:1.0},
+            pattern:{type:'style',style:'diagonal-cross'} }] },
+          attributes:{type:'Exclusion zone',label:'Exclusion zone',score:0,distFromStartM:0} });
+        corridorLayer.add(g_); analysisGraphics.push(g_);
+      }
+      if(stack.standoffRing){
+        const g_=new Graphic({ geometry:stack.standoffRing,
+          symbol:{ type:'polygon-3d', symbolLayers:[{ type:'fill',
+            material:{color:[r,g,b,0.07]}, outline:{color:[r,g,b,0.45],size:1.1},
+            pattern:{type:'style',style:'diagonal-cross'} }] },
+          attributes:{type:'Standoff zone',label:'Standoff zone',score:0,distFromStartM:0} });
+        corridorLayer.add(g_); analysisGraphics.push(g_);
+      }
+      if(stack.corridor){
+        const g_=new Graphic({ geometry:stack.corridor,
+          symbol:{ type:'polygon-3d', symbolLayers:[{ type:'fill',
+            material:{color:[r,g,b,0.13]}, outline:{color:[r,g,b,0.80],size:1.8} }] },
+          attributes:{type:'Movement corridor',label:'Movement corridor',score:0,distFromStartM:0} });
+        corridorLayer.add(g_); analysisGraphics.push(g_);
+      }
+
+      // ── Threat heat map ─────────────────────────────────────────────────
+      let avgScore=0;
+      if($('opt-heatmap').checked && threatGeoms.length>0){
+        const segs=scoreSegments(dense, corridorM, threatGeoms, segmentLenM);
+        avgScore = segs.length>0 ? segs.reduce((s,sg)=>s+sg.score,0)/segs.length : 0;
+        segs.forEach(seg=>{
+          if(!seg.buffer)return;
+          const c=expColor(seg.score);
+          const g_=new Graphic({ geometry:seg.buffer,
+            symbol:{ type:'polygon-3d', symbolLayers:[{ type:'fill',
+              material:{color:c.fill}, outline:{color:c.outline,size:0.6} }] },
+            attributes:{type:'Segment',label:`Exposure: ${Math.round(seg.score*100)}%`,
+              score:Math.round(seg.score*100), distFromStartM:Math.round(seg.distFromStartM)} });
+          heatmapLayer.add(g_); analysisGraphics.push(g_);
+        });
+        // Update exposure meter
+        $('exp-thumb').style.left = (avgScore*100)+'%';
+      } else {
+        $('exp-thumb').style.left='0%';
+      }
+
+      // ── Centreline + waypoint markers ────────────────────────────────────
+      const clG=new Graphic({
+        geometry:new Polyline({paths:[dense.map(p=>[p.longitude,p.latitude])],spatialReference:{wkid:4326}}),
+        symbol:{ type:'line-3d', symbolLayers:[{ type:'line', size:2.2,
+          material:{color:[r,g,b,0.9]}, pattern:{type:'style',style:'solid'}, cap:'round', join:'round' }] },
+        attributes:{type:'Route centreline',label:'Route centreline',score:0,distFromStartM:0}
+      });
+      centreLayer.add(clG); analysisGraphics.push(clG);
+
+      waypoints.forEach((wp,i)=>{
+        const isEnd=i===0||i===waypoints.length-1;
+        const g_=new Graphic({
+          geometry:new Point({longitude:wp.longitude,latitude:wp.latitude,spatialReference:{wkid:4326}}),
+          symbol:{ type:'point-3d', symbolLayers:[{ type:'object',
+            resource:{primitive:isEnd?'diamond':'sphere'},
+            material:{color:[r,g,b,isEnd?0.95:0.75]},
+            width:isEnd?55:38, height:isEnd?55:38, depth:isEnd?55:38 }],
+            verticalOffset:{screenLength:isEnd?28:18,maxWorldLength:500,minWorldLength:4} },
+          attributes:{type:i===0?'START':i===waypoints.length-1?'END':`WP ${i}`,
+            label:i===0?'START':i===waypoints.length-1?'END':`Waypoint ${i}`,score:0,distFromStartM:0}
+        });
+        centreLayer.add(g_); analysisGraphics.push(g_);
+      });
+
+      // ── Leg labels ────────────────────────────────────────────────────────
+      if($('opt-leglabels').checked){
+        for(let i=0;i<waypoints.length-1;i++){
+          const a=waypoints[i],b=waypoints[i+1];
+          const dist=geoDist(a.longitude,a.latitude,b.longitude,b.latitude);
+          const brg=geoBrg(a.longitude,a.latitude,b.longitude,b.latitude);
+          const mid=destPt(a.longitude,a.latitude,brg,dist/2);
+          const ds=dist>=1000?(dist/1000).toFixed(2)+' km':Math.round(dist)+' m';
+          const g_=new Graphic({
+            geometry:new Point({longitude:mid.longitude,latitude:mid.latitude,spatialReference:{wkid:4326}}),
+            symbol:{ type:'text', color:'#c0bdb4', haloColor:[0,0,0,0.75], haloSize:1.5,
+              text:`${ds}  ${Math.round(brg).toString().padStart(3,'0')}°`,
+              font:{family:'Courier New',size:9.5,weight:'bold'},
+              horizontalAlignment:'center',verticalAlignment:'middle' },
+            attributes:{type:`Leg ${i+1}`,label:`${ds} bearing ${Math.round(brg)}°`,score:0,distFromStartM:0}
+          });
+          labelLayer.add(g_); analysisGraphics.push(g_);
+        }
+      }
+
+      // ── Chokepoint detection ──────────────────────────────────────────────
+      if($('opt-choke').checked && stack.corridor){
+        for(let i=1;i<waypoints.length-1;i++){
+          const wp=waypoints[i];
+          const brg=geoBrg(waypoints[i-1].longitude,waypoints[i-1].latitude,
+                           waypoints[i+1].longitude,waypoints[i+1].latitude);
+          const perp=(brg+90)%360;
+          const t1=destPt(wp.longitude,wp.latitude,perp,corridorM);
+          const t2=destPt(wp.longitude,wp.latitude,(perp+180)%360,corridorM);
+          const p1=new Point({longitude:t1.longitude,latitude:t1.latitude,spatialReference:{wkid:4326}});
+          const p2=new Point({longitude:t2.longitude,latitude:t2.latitude,spatialReference:{wkid:4326}});
+          let isChoke=false;
+          try{ isChoke=!geometryEngine.contains(stack.corridor,p1)||!geometryEngine.contains(stack.corridor,p2); }catch(_){}
+          if(isChoke){
+            const g_=new Graphic({
+              geometry:new Point({longitude:wp.longitude,latitude:wp.latitude,spatialReference:{wkid:4326}}),
+              symbol:{ type:'point-3d', symbolLayers:[{ type:'object',
+                resource:{primitive:'cylinder'}, material:{color:[220,60,48,0.92]},
+                width:50, height:80, depth:50 }],
+                verticalOffset:{screenLength:32,maxWorldLength:600,minWorldLength:5} },
+              attributes:{type:'Chokepoint',label:'Chokepoint — narrow terrain passage',index:i,score:0,distFromStartM:0}
+            });
+            chokeLayer.add(g_); analysisGraphics.push(g_);
+          }
+        }
+      }
+
+      // ── Elevation profile — feed the route polyline into the widget ───────
+      if($('opt-profile').checked && elevProfileWidget){
+        $('elev-profile-widget').style.display='block';
+        elevProfileWidget.input = new Graphic({
+          geometry:new Polyline({paths:[dense.map(p=>[p.longitude,p.latitude])],spatialReference:{wkid:4326}}),
+        });
+      } else {
+        $('elev-profile-widget').style.display='none';
+      }
+
+      routeDrawn=true;
+      $('btn-commit').disabled=false;
+      setStatus('ready');
+    }
+
+    function clearAnalysis(){
+      [corridorLayer,heatmapLayer,centreLayer,labelLayer,chokeLayer,previewLayer].forEach(l=>l.removeAll());
+      analysisGraphics=[];
+      $('btn-commit').disabled=true;
+      $('exp-thumb').style.left='0%';
+      if(elevProfileWidget) elevProfileWidget.input=null;
+    }
+
+    // ── MAP CLICK — add waypoints ──────────────────────────────────────────
+    let dblClickGuard = false;
+    view.on('double-click', async event => {
+      event.stopPropagation();
+      dblClickGuard=true;
+      setTimeout(()=>dblClickGuard=false,400);
+      if(waypoints.length>=2){ redrawCorridor(); $('hint').style.opacity='0'; }
+    });
+
+    view.on('click', async event => {
+      if(dblClickGuard)return;
+
+      // ── Threat placement mode ─────────────────────────────────────────
+      if(placingThreat){
+        const result=await view.hitTest(event,{include:[map.ground]});
+        const gp=result?.ground?.mapPoint??event.mapPoint;
+        const radiusM=Math.max(100,Number($('tp-radius').value));
+        const pt=new Point({longitude:gp.longitude,latitude:gp.latitude,spatialReference:{wkid:4326}});
+        const buf=geometryEngine.geodesicBuffer(pt,radiusM,'meters');
+        if(buf){
+          const id=Date.now();
+          threatGeoms.push(buf);
+          threatMeta.push({radiusM,lon:gp.longitude,lat:gp.latitude,id});
+          threatLayer.add(new Graphic({
+            geometry:buf,
+            symbol:{ type:'polygon-3d', symbolLayers:[{ type:'fill',
+              material:{color:[220,60,48,0.12]},
+              outline:{color:[220,60,48,0.70],size:1.4},
+              pattern:{type:'style',style:'diagonal-cross'} }] },
+            attributes:{type:'Threat zone',label:`Threat r=${radiusM}m`,threatId:id},
+          }));
+          renderThreatList();
+          updateStats();
+          if(routeDrawn) redrawCorridor();
+        }
+        placingThreat=false;
+        $('tp-add').textContent='+ Place';
+        $('tp-add').style.background='';
+        return;
+      }
+
+      // ── Waypoint placement ─────────────────────────────────────────────
+      await new Promise(r=>setTimeout(r,50));
+      if(dblClickGuard)return;
+
+      const result=await view.hitTest(event,{include:[map.ground]});
+      const gp=result?.ground?.mapPoint??event.mapPoint;
+      waypoints.push({longitude:gp.longitude,latitude:gp.latitude});
+      $('coords').textContent=`WP ${waypoints.length}: ${gp.latitude.toFixed(4)}°N  ${gp.longitude.toFixed(4)}°E`;
+      $('hint').style.opacity='0.6';
+      $('hint').textContent='Continue clicking — double-click to finalise';
+
+      renderWPList(); renderLegTable(); drawPreview();
+    });
+
+    // ── THREAT PANEL ──────────────────────────────────────────────────────
+    $('tp-add').addEventListener('click',()=>{
+      placingThreat=!placingThreat;
+      $('tp-add').textContent=placingThreat?'▶ Click map':'+ Place';
+      $('tp-add').style.background=placingThreat?'rgba(220,60,48,0.15)':'';
+    });
+
+    function renderThreatList(){
+      const body=$('tp-body'); body.innerHTML='';
+      if(threatMeta.length===0){
+        body.innerHTML='<div style="font-size:9px;color:#3a3935;letter-spacing:.05em">No threats placed</div>';
+        return;
+      }
+      threatMeta.forEach((tm,i)=>{
+        const row=document.createElement('div'); row.className='tp-row';
+        const r=tm.radiusM>=1000?(tm.radiusM/1000).toFixed(1)+' km':tm.radiusM+' m';
+        row.innerHTML=`
+          <div class="tp-dot" style="background:#DC3C30"></div>
+          <div class="tp-name">Threat ${i+1}</div>
+          <div class="tp-radius">${r}</div>
+          <button class="wp-del" data-id="${tm.id}" style="margin-left:4px">✕</button>`;
+        row.querySelector('.wp-del').addEventListener('click',e=>{
+          e.stopPropagation();
+          const idx=threatMeta.findIndex(t=>t.id===tm.id);
+          if(idx<0)return;
+          threatMeta.splice(idx,1); threatGeoms.splice(idx,1);
+          // Remove from layer
+          const g=threatLayer.graphics.find(g=>g.attributes?.threatId===tm.id);
+          if(g) threatLayer.remove(g);
+          renderThreatList(); updateStats();
+          if(routeDrawn) redrawCorridor();
+        });
+        body.appendChild(row);
+      });
+    }
+    renderThreatList();
+
+    // ── UNDO ──────────────────────────────────────────────────────────────
+    $('btn-undo').addEventListener('click',()=>{
+      if(waypoints.length===0)return;
+      waypoints.pop();
+      renderWPList(); renderLegTable(); drawPreview();
+      if(waypoints.length<2){ clearAnalysis(); routeDrawn=false; }
+      else if(routeDrawn) redrawCorridor();
+    });
+
+    // ── ANALYSE ───────────────────────────────────────────────────────────
+    $('btn-analyze').addEventListener('click',()=>{
+      if(waypoints.length>=2) redrawCorridor();
+    });
+
+    // ── COMMIT ────────────────────────────────────────────────────────────
+    $('btn-commit').addEventListener('click',()=>{
+      const ts=new Date().toISOString();
+      analysisGraphics.forEach(g=>committedLayer.add(new Graphic({
+        geometry:g.geometry.clone(), symbol:g.symbol.clone(),
+        attributes:{...g.attributes, committedAt:ts},
+      })));
+      flashStatus('Committed ✓','ready');
+    });
+
+    // ── CLEAR ─────────────────────────────────────────────────────────────
+    $('btn-clear').addEventListener('click',()=>{
+      waypoints=[]; threatGeoms=[]; threatMeta=[]; routeDrawn=false;
+      [corridorLayer,heatmapLayer,centreLayer,labelLayer,chokeLayer,previewLayer,threatLayer].forEach(l=>l.removeAll());
+      analysisGraphics=[];
+      $('btn-commit').disabled=true; $('btn-analyze').disabled=true; $('btn-undo').disabled=true;
+      $('wp-list').innerHTML=''; $('leg-table').innerHTML='';
+      $('st-dist').textContent='—'; $('st-wps').textContent='0'; $('st-threats').textContent='0';
+      $('exp-thumb').style.left='0%';
+      $('hint').style.opacity='1'; $('hint').textContent='Click map to place waypoints — double-click to finish route';
+      $('coords').textContent='Waypoint: click map to begin route';
+      if(elevProfileWidget) elevProfileWidget.input=null;
+      $('elev-profile-widget').style.display='none';
+      renderThreatList(); setStatus('drawing');
+    });
+
+    // ── HELPERS ───────────────────────────────────────────────────────────
+    function setStatus(s){
+      const M={drawing:['Place waypoints','drawing'],ready:['Ready','ready'],busy:['Computing…','busy']};
+      const[txt,cls]=M[s]??M.drawing;
+      $('status').textContent=txt; $('status').className='ph-status'+(cls?' '+cls:'');
+    }
+    function flashStatus(msg,cls){
+      const prev=$('status').textContent,prevCls=$('status').className;
+      $('status').textContent=msg; $('status').className='ph-status '+cls;
+      setTimeout(()=>{ $('status').textContent=prev; $('status').className=prevCls; },1800);
+    }
+
+    view.when(()=>{ applyPreset('vehicle_patrol'); });
+
+  }); // end require()
+  </script>
+</body>
+</html>

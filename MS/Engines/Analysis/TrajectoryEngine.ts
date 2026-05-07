@@ -1264,6 +1264,14 @@ export class TrajectoryEngine {
           <div class="traj-stat"><div class="traj-stat-val" id="traj-st-alt">—</div><div class="traj-stat-lbl">Apex (m)</div></div>
         </div>
 
+        <div class="traj-legend">
+          <span class="traj-leg-launch">Launch</span>
+          <span class="traj-leg-flight">Flight</span>
+          <span class="traj-leg-terminal">Terminal</span>
+          <span class="traj-leg-apogee">Apogee</span>
+          <span class="traj-leg-impact">Impact / CEP</span>
+        </div>
+
         <div class="traj-btn-row">
           <button class="traj-btn" id="traj-clear-btn">Clear</button>
           <button class="traj-btn" id="traj-animate-btn" disabled>Animate ▶</button>
@@ -1609,6 +1617,23 @@ export class TrajectoryEngine {
         gap: 1px;
         padding: 8px 10px 6px;
       }
+      .traj-legend {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        padding: 0 10px 8px;
+      }
+      .traj-legend span {
+        font-size: 8px;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+      .traj-leg-launch { color: #1D9E75; }
+      .traj-leg-flight { color: #BA7517; }
+      .traj-leg-terminal { color: #DC5A30; }
+      .traj-leg-apogee { color: #EF9F27; }
+      .traj-leg-impact { color: #E24B4A; }
       .traj-stat { display: flex; flex-direction: column; gap: 2px; }
       .traj-stat-val {
         font-size: 13px;

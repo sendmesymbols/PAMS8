@@ -12,6 +12,8 @@ import MeasurementEngine from '../Engines/MeasurementEngine';
 import WeaponEffectEngine from '../Engines/Analysis/WeaponEffectEngine';
 import LOSEngine from '../Engines/Analysis/LOSEngine';
 import TrajectoryEngine from '../Engines/Analysis/TrajectoryEngine';
+import BufferEngine from '../Engines/Analysis/BufferEngine';
+import CorridorEngine from '../Engines/Analysis/CorridorEngine';
 
 export interface ContextMenuItem {
   id: string;
@@ -72,6 +74,8 @@ class ContextMenuManager extends Evented {
   private _weaponEffectEngine: WeaponEffectEngine | null = null;
   private _losEngine: LOSEngine | null = null;
   private _trajectoryEngine: TrajectoryEngine | null = null;
+  private _bufferEngine: BufferEngine | null = null;
+  private _corridorEngine: CorridorEngine | null = null;
 
   // Event handles for cleanup on re-initialization
   private _pointerDownHandle: any = null;
@@ -254,6 +258,22 @@ class ContextMenuManager extends Evented {
   }
 
   /**
+   * Link a BufferEngine so the "Analysis → Buffer abd Threat Rings" item
+   * opens the buffer panel with the right-clicked graphic as source origin.
+   */
+  public linkBufferEngine(engine: BufferEngine): void {
+    this._bufferEngine = engine;
+  }
+
+  /**
+   * Link a CorridorEngine so the "Analysis -> Corridor Analysis" item
+   * opens the corridor panel with the right-clicked graphic as route origin.
+   */
+  public linkCorridorEngine(engine: CorridorEngine): void {
+    this._corridorEngine = engine;
+  }
+
+  /**
    * Register a function that returns extra context menu items dynamically.
    * Called each time the menu opens, so items can depend on runtime state
    * (e.g. the current list of saved templates).
@@ -338,13 +358,23 @@ class ContextMenuManager extends Evented {
         },
         {
           id: 'analysis-buffer',
-          label: 'Buffer & Threat Rings',
+          label: 'Buffer abd Threat Rings',
           icon: `<span style="font-size:14px">⭕</span>`,
+          action: (g: Graphic) => {
+            if (this._bufferEngine && this.view) {
+              this._bufferEngine.open(g, this.view);
+            }
+          },
         },
         {
           id: 'analysis-corridor',
           label: 'Corridor Analysis',
           icon: `<span style="font-size:14px">🛣️</span>`,
+          action: (g: Graphic) => {
+            if (this._corridorEngine && this.view) {
+              this._corridorEngine.open(g, this.view);
+            }
+          },
         },
         {
           id: 'analysis-effects',

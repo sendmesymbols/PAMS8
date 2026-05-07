@@ -38,3 +38,11 @@ Coordinate grid: Military planning requires MGRS. The @mgrs npm package (or coor
 Where to start (practical sequence)
 Start with the 2D/3D view toggle, then LOS analysis, then weapon range arcs — those three together already produce something operationally useful. Symbology and trajectory animation are the natural next additions. MGRS grid and export last.
 The Marsh app's real lesson is: one coherent 3D visualization does more than ten separate analysis panels. Keep your UI minimal — a side panel for parameters, the map for results, and interactive handles on the map itself (drag to reposition weapons, click to read off coordinates and ranges).
+
+
+
+
+`d:\Projects\Web\PAMS8\claude.md` I have added `d:\Projects\Web\PAMS8\MS\Engines\Analysis\corridor-demo.html` and `d:\Projects\Web\PAMS8\MS\Engines\Analysis\corridor-engine.js` which is layouted in `d:\Projects\Web\PAMS8\Features\military_analysis_engine_concept.html`
+create a CorridorEngine.ts file in the same directory and
+You can get inspirtion from `LOSEngine` and `WeaponEffectEngine` and active it using option in `d:\Projects\Web\PAMS8\MS\Managers\ContextMenuManager.ts` "Corridor Analysis"
+if source files HTML and JS add them in TS as well in widget

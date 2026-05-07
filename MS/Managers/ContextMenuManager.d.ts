@@ -7,6 +7,8 @@ import MeasurementEngine from '../Engines/MeasurementEngine';
 import WeaponEffectEngine from '../Engines/Analysis/WeaponEffectEngine';
 import LOSEngine from '../Engines/Analysis/LOSEngine';
 import TrajectoryEngine from '../Engines/Analysis/TrajectoryEngine';
+import BufferEngine from '../Engines/Analysis/BufferEngine';
+import CorridorEngine from '../Engines/Analysis/CorridorEngine';
 export interface ContextMenuItem {
     id: string;
     label: string | ((graphic?: Graphic) => string);
@@ -58,6 +60,8 @@ declare class ContextMenuManager extends Evented {
     private _weaponEffectEngine;
     private _losEngine;
     private _trajectoryEngine;
+    private _bufferEngine;
+    private _corridorEngine;
     private _pointerDownHandle;
     private _contextMenuHandler;
     private _contextMenuContainer;
@@ -127,6 +131,16 @@ declare class ContextMenuManager extends Evented {
      * opens the trajectory panel with the right-clicked graphic as fire origin.
      */
     linkTrajectoryEngine(engine: TrajectoryEngine): void;
+    /**
+     * Link a BufferEngine so the "Analysis → Buffer abd Threat Rings" item
+     * opens the buffer panel with the right-clicked graphic as source origin.
+     */
+    linkBufferEngine(engine: BufferEngine): void;
+    /**
+     * Link a CorridorEngine so the "Analysis → Corridor Analysis" item
+     * opens the corridor panel with the right-clicked graphic as route origin.
+     */
+    linkCorridorEngine(engine: CorridorEngine): void;
     /**
      * Register a function that returns extra context menu items dynamically.
      * Called each time the menu opens, so items can depend on runtime state
