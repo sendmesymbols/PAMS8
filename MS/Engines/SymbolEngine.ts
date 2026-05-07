@@ -1432,7 +1432,8 @@ class SymbolEngine implements Evented {
           e.preventDefault();
           this.redo();
         } else if (e.key === 'c' || e.key === 'C') {
-          const g = this._contextMenuManager.getLastClickedGraphic();
+          const g = this._contextMenuManager.getLastClickedGraphic()
+              ?? (this._selectionEngine.count === 1 ? this._selectionEngine.selectedGraphics[0] : null);
           if (g) {
             e.preventDefault();
             this.copySymbol(g);
@@ -1448,7 +1449,8 @@ class SymbolEngine implements Evented {
         return;
       }
 
-      const graphic = this._contextMenuManager.getLastClickedGraphic();
+      const graphic = this._contextMenuManager.getLastClickedGraphic()
+          ?? (this._selectionEngine.count === 1 ? this._selectionEngine.selectedGraphics[0] : null);
 
       switch (e.key) {
         case 'm':
