@@ -12,7 +12,10 @@
       "PowerShell(fnm env *)",
       "PowerShell(fnm list *)",
       "PowerShell(fnm use *)",
-      "PowerShell(fnm *)"
+      "PowerShell(fnm *)",
+      "Skill(impeccable)",
+      "PowerShell(node .claude/skills/impeccable/scripts/load-context.mjs)",
+      "PowerShell(Select-String *)"
     ]
   }
 }

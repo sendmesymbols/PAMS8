@@ -2311,7 +2311,7 @@ class SymbolEngine implements Evented {
             <input type="number" id="poExpandDist" step="0.1" value="0" style="flex: 1; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; box-sizing: border-box;" />
             <select id="poExpandUnit" style="padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
               <option value="meters">m</option>
-              <option value="kilometers">km</option>
+              <option value="kilometers" selected>km</option>
               <option value="miles">mi</option>
               <option value="nautical-miles">nm</option>
             </select>

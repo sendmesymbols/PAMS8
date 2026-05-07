@@ -241,6 +241,8 @@ class DrawingCueEngine {
       const lyr = this._view.map.findLayerById(id) as GraphicsLayer | undefined;
       if (!lyr) continue;
       lyr.graphics.forEach((g: Graphic) => {
+        // Skip annotation label graphics (they have parentId set by AnnotationEngine)
+        if (g.attributes?.parentId) return;
         const centroid = this._centroid(g);
         if (centroid) this._candidateInfo.push({ original: g, centroid, highlightGraphic: null });
       });
