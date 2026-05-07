@@ -371,9 +371,33 @@ declare class SymbolEngine implements Evented {
     saveToFile(filename?: string): void;
     /** Download a single graphic as a PAMS8 JSON file. */
     saveSymbolToFile(graphic: Graphic): void;
-    /** Stub: download a Plan JSON file structure. */
+    /** Convert an ArcGIS Point (or plain {x,y}) to the Plan PlanPoint format. */
+    private _toPlanPoint;
+    /**
+     * Build the AMPLIFIER block for Area / Line / TacticalPoint symbols.
+     * Includes all fields that symbol classes may attach as extra properties.
+     */
+    private _serializeAmplifierForPlan;
+    /** Build drawEss JSON for UEI / milsymbol (FPoint) graphics. */
+    private _buildFPointPlanDrawEss;
+    /** Build drawEss JSON for Area / Line graphics (including those with BASE_LN_PTS). */
+    private _buildAreaLinePlanDrawEss;
+    /** Build drawEss JSON for TacticalPoint (SYM_GEO_TYPE "Point") graphics. */
+    private _buildPointPlanDrawEss;
+    /**
+     * Dispatch to the correct drawEss serializer based on the graphic's SYM_GEO_TYPE.
+     * Returns null for graphics that cannot be represented in plan format.
+     */
+    private _buildPlanDrawEss;
+    /** Download all graphics as a Plan JSON file. */
     savePlanToFile(filename?: string): void;
-    /** Stub: open a Plan JSON file and load it. */
+    /**
+     * Convert a Plan drawEss JSON string back into the format expected by loadSymbolFromJSON.
+     * PlanPoints ({type, x, y, sp}) are compatible with ArcGIS Point construction (spatialReference
+     * defaults to WGS84 when absent), so no special conversion is needed.
+     */
+    private _loadPlanSymbol;
+    /** Open a Plan JSON file and restore all symbols from it. */
     loadPlanFromFile(): void;
     /** Open a file picker; loads from PAMS8 JSON, template, or GeoJSON file. */
     loadFromFile(): void;
