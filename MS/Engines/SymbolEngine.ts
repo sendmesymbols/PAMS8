@@ -52,6 +52,8 @@ import ProximityEngine from './ProximityEngine.ts';
 import DrawingCueEngine from './DrawingCueEngine.ts';
 import EngineLogger from '../Support/EngineLogger';
 import type { DrawingCueOptions } from './DrawingCueEngine.ts';
+import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
+import LOSEngine from './Analysis/LOSEngine';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -99,6 +101,8 @@ class SymbolEngine implements Evented {
   private _measurementEngine?: MeasurementEngine;
   private _proximityEngine: ProximityEngine | null = null;
   private _drawingCueEngine: DrawingCueEngine | null = null;
+  private _weaponEffectEngine: WeaponEffectEngine | null = null;
+  private _losEngine: LOSEngine | null = null;
   private currentSymbol: any | undefined;
   private sidc: any | undefined;
   private amplifier: Amplifier | undefined;
@@ -250,6 +254,11 @@ class SymbolEngine implements Evented {
 
     // Conditionally load DrawingCueEngine based on Settings.json feature flag
     this._initDrawingCueEngine();
+
+    // Initialise WeaponEffectEngine (always on — activated on demand via context menu)
+    this._initWeaponEffectEngine();
+    // Initialise LOSEngine (always on — activated on demand via context menu)
+    this._initLOSEngine();
 
     // Wire global keyboard shortcuts (if enabled in Settings.json)
     if ((settingsData as any).features?.shortcuts !== false) {
@@ -460,6 +469,10 @@ class SymbolEngine implements Evented {
     // Re-attach drawing cue engine to the new view
     this._drawingCueEngine?.onViewChanged(newView);
 
+    // Re-attach analysis engines to the new view
+    this._weaponEffectEngine?.initialize(newView);
+    this._losEngine?.initialize(newView);
+
     // Re-initialize the ContextMenuManager for the new view so its
     // pointer-down / contextmenu listeners are bound to the active view.
     this._contextMenuManager.initialize(newView, {
@@ -572,6 +585,22 @@ class SymbolEngine implements Evented {
     this._drawingCueEngine.enable();
     this.emitEvent('drawingCueEngineReady', { engine: this._drawingCueEngine });
     console.info('[SymbolEngine] DrawingCueEngine loaded');
+  }
+
+  private _initWeaponEffectEngine(): void {
+    this._weaponEffectEngine = new WeaponEffectEngine();
+    this._weaponEffectEngine.initialize(this.view);
+    this._contextMenuManager.linkWeaponEffectEngine(this._weaponEffectEngine);
+    this.emitEvent('weaponEffectEngineReady', { engine: this._weaponEffectEngine });
+    console.info('[SymbolEngine] WeaponEffectEngine loaded');
+  }
+
+  private _initLOSEngine(): void {
+    this._losEngine = new LOSEngine();
+    this._losEngine.initialize(this.view);
+    this._contextMenuManager.linkLOSEngine(this._losEngine);
+    this.emitEvent('losEngineReady', { engine: this._losEngine });
+    console.info('[SymbolEngine] LOSEngine loaded');
   }
 
   get view() {
@@ -1504,6 +1533,16 @@ class SymbolEngine implements Evented {
   /** Access the DrawingCueEngine — control visual overlays during drawing. */
   public get drawingCueEngine(): DrawingCueEngine | null {
     return this._drawingCueEngine;
+  }
+
+  /** Access the WeaponEffectEngine — open WEZ analysis panels programmatically. */
+  public get weaponEffectEngine(): WeaponEffectEngine | null {
+    return this._weaponEffectEngine;
+  }
+
+  /** Access the LOSEngine — open LOS/viewshed panels programmatically. */
+  public get losEngine(): LOSEngine | null {
+    return this._losEngine;
   }
 
   /** Get current settings data for the control panel */

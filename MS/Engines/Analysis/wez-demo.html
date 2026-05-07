@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WEZ Analysis Module — ArcGIS JS 4.x</title>
+
+  <!-- ArcGIS JS API 4.28 — dark theme matches tactical UI -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" />
+
+  <style>
+    /* ── Layout ────────────────────────────────────────────────────────── */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #viewDiv { width: 100%; height: 100vh; font-family: "Courier New", monospace; }
+
+    /* ── Panel container ────────────────────────────────────────────────── */
+    #wez-panel {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 300px;
+      background: rgba(20, 22, 26, 0.95);
+      border: 1px solid rgba(239, 159, 39, 0.35);
+      border-radius: 4px;
+      color: #c8c5ba;
+      font-size: 12px;
+      z-index: 99;
+      user-select: none;
+    }
+
+    /* ── Panel header ───────────────────────────────────────────────────── */
+    .p-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(239, 159, 39, 0.2);
+      background: rgba(239, 159, 39, 0.08);
+    }
+    .p-title {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #EF9F27;
+      font-weight: 700;
+    }
+    .p-status {
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      color: #5F5E5A;
+      text-transform: uppercase;
+    }
+    .p-status.ready { color: #1D9E75; }
+    .p-status.computing { color: #EF9F27; }
+
+    /* ── Section labels ─────────────────────────────────────────────────── */
+    .p-sec {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #5F5E5A;
+      padding: 10px 12px 5px;
+    }
+
+    /* ── Parameter rows ─────────────────────────────────────────────────── */
+    .p-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 0 12px 10px;
+    }
+    .p-field { display: flex; flex-direction: column; gap: 4px; }
+    .p-field.full { grid-column: 1 / -1; }
+    .p-label {
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #888780;
+    }
+
+    /* ── Inputs ─────────────────────────────────────────────────────────── */
+    .p-field input,
+    .p-field select {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 3px;
+      color: #c8c5ba;
+      font-family: "Courier New", monospace;
+      font-size: 11px;
+      padding: 5px 7px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .p-field input:focus,
+    .p-field select:focus { border-color: rgba(239, 159, 39, 0.6); }
+    .p-field select option { background: #1a1c20; }
+
+    /* ── Range slider ────────────────────────────────────────────────────── */
+    .p-slider-row { display: flex; align-items: center; gap: 8px; padding: 0 12px 10px; }
+    .p-slider-lbl { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #888780; flex: 1; }
+    .p-slider-row input[type=range] { flex: 2; accent-color: #EF9F27; }
+    .p-slider-val { font-size: 10px; color: #EF9F27; min-width: 32px; text-align: right; }
+
+    /* ── Divider ─────────────────────────────────────────────────────────── */
+    .p-div { height: 1px; background: rgba(255,255,255,0.07); margin: 4px 0; }
+
+    /* ── Toggle row ─────────────────────────────────────────────────────── */
+    .p-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 12px;
+    }
+    .p-toggle-row label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #888780; }
+    .p-toggle-row input[type=checkbox] { accent-color: #EF9F27; width: 13px; height: 13px; cursor: pointer; }
+
+    /* ── Action buttons ──────────────────────────────────────────────────── */
+    .p-btn-row { display: flex; gap: 6px; padding: 10px 12px; }
+    .p-btn {
+      flex: 1;
+      padding: 7px;
+      font-family: "Courier New", monospace;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 3px;
+      border: 1px solid rgba(239, 159, 39, 0.4);
+      background: transparent;
+      color: #EF9F27;
+      transition: all 0.15s;
+    }
+    .p-btn:hover { background: rgba(239, 159, 39, 0.12); }
+    .p-btn.primary { background: rgba(239, 159, 39, 0.18); border-color: #EF9F27; }
+    .p-btn.primary:hover { background: rgba(239, 159, 39, 0.32); }
+    .p-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Observer coords readout ─────────────────────────────────────────── */
+    .p-coords {
+      font-size: 9px;
+      color: #378ADD;
+      padding: 0 12px 8px;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Instruction overlay (before observer is placed) ────────────────── */
+    #pick-hint {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 22, 26, 0.92);
+      border: 1px solid rgba(55, 138, 221, 0.4);
+      color: #378ADD;
+      font-family: "Courier New", monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      padding: 8px 18px;
+      border-radius: 3px;
+      pointer-events: none;
+      z-index: 99;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="viewDiv"></div>
+
+  <!-- ── Analysis Panel ───────────────────────────────────────────────── -->
+  <div id="wez-panel">
+
+    <div class="p-header">
+      <div class="p-title">⬡ WEZ Analysis</div>
+      <div class="p-status" id="status-lbl">Awaiting observer</div>
+    </div>
+
+    <!-- Weapon type — drives parameter defaults -->
+    <div class="p-sec">Weapon system</div>
+    <div class="p-grid">
+      <div class="p-field full">
+        <div class="p-label">Type / SIDC function</div>
+        <select id="inp-weapon">
+          <option value="direct_fire">Direct fire</option>
+          <option value="mortar" selected>Mortar</option>
+          <option value="artillery">Artillery</option>
+          <option value="atgm">ATGM</option>
+          <option value="anti_air">Anti-air</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="p-div"></div>
+
+    <!-- Range parameters -->
+    <div class="p-sec">Engagement ranges</div>
+    <div class="p-grid">
+      <div class="p-field">
+        <div class="p-label">Min range (m)</div>
+        <input id="inp-minrange" type="number" value="70" min="0" step="50" />
+      </div>
+      <div class="p-field">
+        <div class="p-label">Max range (m)</div>
+        <input id="inp-maxrange" type="number" value="5600" min="100" step="100" />
+      </div>
+    </div>
+
+    <!-- Azimuth -->
+    <div class="p-sec">Azimuth</div>
+    <div class="p-slider-row">
+      <div class="p-slider-lbl">Centre (°)</div>
+      <input id="inp-azimuth" type="range" min="0" max="359" value="0" step="1" />
+      <div class="p-slider-val" id="az-val">000°</div>
+    </div>
+    <div class="p-slider-row">
+      <div class="p-slider-lbl">Spread (°)</div>
+      <input id="inp-spread" type="range" min="10" max="360" value="360" step="5" />
+      <div class="p-slider-val" id="sp-val">360°</div>
+    </div>
+
+    <!-- Elevation -->
+    <div class="p-sec">Elevation envelope</div>
+    <div class="p-grid">
+      <div class="p-field">
+        <div class="p-label">Min elev (°)</div>
+        <input id="inp-elevmin" type="number" value="45" min="-30" max="89" step="1" />
+      </div>
+      <div class="p-field">
+        <div class="p-label">Max elev (°)</div>
+        <input id="inp-elevmax" type="number" value="85" min="-5" max="90" step="1" />
+      </div>
+    </div>
+
+    <div class="p-div"></div>
+
+    <!-- Options -->
+    <div class="p-sec">Display options</div>
+    <div class="p-toggle-row">
+      <label>Extrude engagement volume</label>
+      <input id="opt-extrude" type="checkbox" checked />
+    </div>
+    <div class="p-toggle-row">
+      <label>Show dead zone ring</label>
+      <input id="opt-deadzone" type="checkbox" checked />
+    </div>
+    <div class="p-toggle-row">
+      <label>Terrain masking (async)</label>
+      <input id="opt-terrain" type="checkbox" />
+    </div>
+
+    <div class="p-div"></div>
+
+    <!-- Observer coords readout -->
+    <div class="p-coords" id="obs-coords">Observer: not placed — click map</div>
+
+    <!-- Action buttons -->
+    <div class="p-btn-row">
+      <button class="p-btn" id="btn-clear">Clear</button>
+      <button class="p-btn" id="btn-terrain-mask" disabled>Run terrain mask</button>
+      <button class="p-btn primary" id="btn-commit" disabled>Commit ↗</button>
+    </div>
+
+  </div>
+
+  <!-- Click-to-place hint -->
+  <div id="pick-hint">Click map to place observer point</div>
+
+  <!-- ── ArcGIS JS API ─────────────────────────────────────────────────── -->
+  <script src="https://js.arcgis.com/4.28/"></script>
+
+  <script>
+  require([
+    "esri/Map",
+    "esri/views/SceneView",
+    "esri/layers/GraphicsLayer",
+    "esri/Graphic",
+    "esri/geometry/Point",
+    "esri/geometry/Polygon",
+    "esri/geometry/geometryEngine",
+    "esri/symbols/PolygonSymbol3D",
+    "esri/symbols/FillSymbol3DLayer",
+    "esri/symbols/ExtrudeSymbol3DLayer",
+    "esri/symbols/LineSymbol3D",
+    "esri/symbols/LineSymbol3DLayer",
+    "esri/symbols/PointSymbol3D",
+    "esri/symbols/ObjectSymbol3DLayer",
+    "esri/core/reactiveUtils",
+  ], function (
+    Map, SceneView, GraphicsLayer, Graphic,
+    Point, Polygon, geometryEngine,
+    PolygonSymbol3D, FillSymbol3DLayer, ExtrudeSymbol3DLayer,
+    LineSymbol3D, LineSymbol3DLayer,
+    PointSymbol3D, ObjectSymbol3DLayer,
+    reactiveUtils
+  ) {
+
+    // ── INLINE ENGINE (mirrors wez-engine.js; paste or import as needed) ─
+
+    const WEAPON_PRESETS = {
+      direct_fire: { minRangeM:50,  maxRangeM:3000,  azimuthSpreadDeg:90,  elevMinDeg:-5, elevMaxDeg:10, color:[220,90,48]  },
+      mortar:      { minRangeM:70,  maxRangeM:5600,  azimuthSpreadDeg:360, elevMinDeg:45, elevMaxDeg:85, color:[186,117,23] },
+      artillery:   { minRangeM:3000,maxRangeM:30000, azimuthSpreadDeg:180, elevMinDeg:15, elevMaxDeg:65, color:[186,117,23] },
+      atgm:        { minRangeM:75,  maxRangeM:5500,  azimuthSpreadDeg:60,  elevMinDeg:-10,elevMaxDeg:20, color:[220,90,48]  },
+      anti_air:    { minRangeM:200, maxRangeM:8000,  azimuthSpreadDeg:360, elevMinDeg:15, elevMaxDeg:90, color:[55,138,221] },
+    };
+
+    function destinationPoint(lon, lat, bearingDeg, distM) {
+      const R = 6_371_008.8, δ = distM / R;
+      const θ = (bearingDeg * Math.PI) / 180;
+      const φ1 = (lat * Math.PI) / 180, λ1 = (lon * Math.PI) / 180;
+      const φ2 = Math.asin(Math.sin(φ1)*Math.cos(δ) + Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+      const λ2 = λ1 + Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1), Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+      return { longitude: λ2*180/Math.PI, latitude: φ2*180/Math.PI };
+    }
+
+    function buildAzimuthWedge(origin, azCenter, azSpread, radiusM) {
+      const steps = Math.max(3, Math.ceil(Math.abs(azSpread)));
+      const ring  = [[origin.longitude, origin.latitude]];
+      for (let i = 0; i <= steps; i++) {
+        const b  = (azCenter - azSpread/2) + (i/steps)*azSpread;
+        const pt = destinationPoint(origin.longitude, origin.latitude, b, radiusM);
+        ring.push([pt.longitude, pt.latitude]);
+      }
+      ring.push([origin.longitude, origin.latitude]);
+      return new Polygon({ rings: [ring], spatialReference: { wkid: 4326 } });
+    }
+
+    function computeWEZ(params) {
+      const { observerPoint, minRangeM, maxRangeM, azimuthCenterDeg, azimuthSpreadDeg, elevMaxDeg } = params;
+      const minRing = geometryEngine.geodesicBuffer(observerPoint, minRangeM,  "meters");
+      const maxRing = geometryEngine.geodesicBuffer(observerPoint, maxRangeM, "meters");
+      const wedge   = buildAzimuthWedge(observerPoint, azimuthCenterDeg, azimuthSpreadDeg, maxRangeM * 1.02);
+      const clipped = azimuthSpreadDeg >= 360 ? maxRing : geometryEngine.intersect(maxRing, wedge);
+      const zone    = minRangeM > 0 ? geometryEngine.difference(clipped, minRing) : clipped;
+      const extrudeM = Math.min(maxRangeM * Math.tan((elevMaxDeg * Math.PI)/180), 50000);
+      return { zone, minRing, maxRing, extrudeM };
+    }
+
+    // ── SCENEVIEW SETUP ────────────────────────────────────────────────
+
+    // Three layers — analysis layer is temporary, committed layer persists
+    const analysisLayer   = new GraphicsLayer({ title: "WEZ — working",   elevationInfo: { mode: "on-the-ground" } });
+    const committedLayer  = new GraphicsLayer({ title: "WEZ — committed",  elevationInfo: { mode: "on-the-ground" } });
+    const observerLayer   = new GraphicsLayer({ title: "WEZ — observer",   elevationInfo: { mode: "on-the-ground" } });
+
+    const map = new Map({
+      basemap: "topo-3d",
+      ground: "world-elevation",
+      layers: [committedLayer, analysisLayer, observerLayer],
+    });
+
+    const view = new SceneView({
+      container: "viewDiv",
+      map,
+      camera: {
+        // Margalla Hills — good terrain for demonstration
+        position: { longitude: 73.06, latitude: 33.65, z: 15000 },
+        heading: 0,
+        tilt: 65,
+      },
+      environment: {
+        atmosphere: { quality: "high" },
+        lighting: { date: new Date() },
+      },
+    });
+
+    // ── SYMBOL DEFINITIONS ─────────────────────────────────────────────
+
+    // Returns a PolygonSymbol3D tuned to the selected weapon and panel options.
+    function buildWEZSymbol(color, extrudeM, useExtrude) {
+      const [r, g, b] = color;
+      const layers = [
+        new FillSymbol3DLayer({
+          material: { color: [r, g, b, 0.22] },
+          outline:  { color: [r, g, b, 0.8], size: 1.5 },
+        }),
+      ];
+      if (useExtrude && extrudeM > 0) {
+        layers.push(
+          new ExtrudeSymbol3DLayer({
+            material: { color: [r, g, b, 0.12] },
+            edges:    { type: "solid", color: [r, g, b, 0.2], size: 0.5 },
+            size: extrudeM,
+          })
+        );
+      }
+      return new PolygonSymbol3D({ symbolLayers: layers });
+    }
+
+    // Dead zone ring — inner boundary
+    const deadZoneSymbol = new PolygonSymbol3D({
+      symbolLayers: [new FillSymbol3DLayer({
+        material: { color: [40, 40, 40, 0.35] },
+        outline:  { color: [150, 150, 150, 0.6], size: 1 },
+      })],
+    });
+
+    // Terrain-masked sector — grey hatched
+    const maskedSymbol = new PolygonSymbol3D({
+      symbolLayers: [new FillSymbol3DLayer({
+        material: { color: [80, 80, 80, 0.45] },
+        outline:  { color: [120, 120, 120, 0.5], size: 1 },
+      })],
+    });
+
+    // Observer point — bright sphere
+    function buildObserverSymbol(color) {
+      const [r, g, b] = color;
+      return new PointSymbol3D({
+        symbolLayers: [new ObjectSymbol3DLayer({
+          resource: { primitive: "sphere" },
+          material: { color: [r, g, b, 0.9] },
+          width: 60, height: 60, depth: 60,
+        })],
+        verticalOffset: { screenLength: 30, maxWorldLength: 500, minWorldLength: 5 },
+      });
+    }
+
+    // ── STATE ──────────────────────────────────────────────────────────
+    let observerPoint = null;
+
+    // ── PANEL ELEMENTS ─────────────────────────────────────────────────
+    const inpWeapon   = document.getElementById("inp-weapon");
+    const inpMinRange = document.getElementById("inp-minrange");
+    const inpMaxRange = document.getElementById("inp-maxrange");
+    const inpAzimuth  = document.getElementById("inp-azimuth");
+    const inpSpread   = document.getElementById("inp-spread");
+    const inpElevMin  = document.getElementById("inp-elevmin");
+    const inpElevMax  = document.getElementById("inp-elevmax");
+    const optExtrude  = document.getElementById("opt-extrude");
+    const optDeadZone = document.getElementById("opt-deadzone");
+    const statusLbl   = document.getElementById("status-lbl");
+    const obsCoordsEl = document.getElementById("obs-coords");
+    const pickHint    = document.getElementById("pick-hint");
+    const btnCommit   = document.getElementById("btn-commit");
+    const btnClear    = document.getElementById("btn-clear");
+    const btnTerrain  = document.getElementById("btn-terrain-mask");
+
+    // Live slider readouts
+    inpAzimuth.addEventListener("input", () => {
+      document.getElementById("az-val").textContent =
+        String(inpAzimuth.value).padStart(3, "0") + "°";
+      redraw();
+    });
+    inpSpread.addEventListener("input", () => {
+      document.getElementById("sp-val").textContent = inpSpread.value + "°";
+      redraw();
+    });
+
+    // When weapon type changes, snap all fields to preset defaults
+    inpWeapon.addEventListener("change", () => {
+      const preset = WEAPON_PRESETS[inpWeapon.value];
+      if (!preset) return;
+      inpMinRange.value = preset.minRangeM;
+      inpMaxRange.value = preset.maxRangeM;
+      inpSpread.value   = preset.azimuthSpreadDeg;
+      document.getElementById("sp-val").textContent = preset.azimuthSpreadDeg + "°";
+      inpElevMin.value  = preset.elevMinDeg;
+      inpElevMax.value  = preset.elevMaxDeg;
+      redraw();
+    });
+
+    // All other inputs trigger a live redraw
+    [inpMinRange, inpMaxRange, inpElevMin, inpElevMax, optExtrude, optDeadZone]
+      .forEach(el => el.addEventListener("change", redraw));
+
+    // ── REDRAW ─────────────────────────────────────────────────────────
+    // Called on every parameter change. Runs synchronously — GeometryEngine
+    // is entirely client-side for rings/buffers/wedges.
+
+    function redraw() {
+      if (!observerPoint) return;
+
+      const preset    = WEAPON_PRESETS[inpWeapon.value] ?? WEAPON_PRESETS.mortar;
+      const minR      = Math.max(0, Number(inpMinRange.value));
+      const maxR      = Math.max(minR + 1, Number(inpMaxRange.value));
+      const azCenter  = Number(inpAzimuth.value);
+      const azSpread  = Math.min(360, Math.max(10, Number(inpSpread.value)));
+      const elevMax   = Number(inpElevMax.value);
+      const useExtrude = optExtrude.checked;
+      const showDead   = optDeadZone.checked;
+
+      setStatus("computing");
+
+      const { zone, minRing, extrudeM } = computeWEZ({
+        observerPoint,
+        minRangeM:       minR,
+        maxRangeM:       maxR,
+        azimuthCenterDeg: azCenter,
+        azimuthSpreadDeg: azSpread,
+        elevMaxDeg:       elevMax,
+      });
+
+      analysisLayer.removeAll();
+
+      // Main WEZ polygon
+      if (zone) {
+        analysisLayer.add(new Graphic({
+          geometry: zone,
+          symbol:   buildWEZSymbol(preset.color, extrudeM, useExtrude),
+          attributes: {
+            type:      "wez_zone",
+            weaponType: inpWeapon.value,
+            minRangeM:  minR,
+            maxRangeM:  maxR,
+            extrudeM,
+          },
+        }));
+      }
+
+      // Inner dead zone
+      if (showDead && minR > 0 && minRing) {
+        analysisLayer.add(new Graphic({
+          geometry: minRing,
+          symbol:   deadZoneSymbol,
+          attributes: { type: "wez_dead_zone" },
+        }));
+      }
+
+      setStatus("ready");
+      btnCommit.disabled = false;
+    }
+
+    // ── CLICK TO PLACE OBSERVER ────────────────────────────────────────
+
+    view.on("click", async (event) => {
+      // Snap z to terrain so the observer sits on the ground
+      const result = await view.hitTest(event, { include: [map.ground] });
+      const groundHit = result?.ground?.mapPoint ?? event.mapPoint;
+
+      observerPoint = new Point({
+        longitude: groundHit.longitude,
+        latitude:  groundHit.latitude,
+        z:         (groundHit.z ?? 0) + Number(2), // + 2m observer height
+        spatialReference: { wkid: 4326 },
+      });
+
+      obsCoordsEl.textContent =
+        `Observer: ${observerPoint.latitude.toFixed(5)}°N  ${observerPoint.longitude.toFixed(5)}°E`;
+
+      pickHint.style.display = "none";
+      btnTerrain.disabled    = false;
+
+      // Refresh observer marker
+      observerLayer.removeAll();
+      const preset = WEAPON_PRESETS[inpWeapon.value] ?? WEAPON_PRESETS.mortar;
+      observerLayer.add(new Graphic({
+        geometry: observerPoint,
+        symbol:   buildObserverSymbol(preset.color),
+      }));
+
+      redraw();
+    });
+
+    // ── TERRAIN MASK (async) ───────────────────────────────────────────
+    // Uses SceneView.createElevationSampler() to cast rays and find
+    // obstructed sectors. Only runs on explicit button press.
+
+    btnTerrain.addEventListener("click", async () => {
+      if (!observerPoint) return;
+      btnTerrain.disabled = true;
+      setStatus("computing");
+
+      try {
+        const maxR   = Math.max(1, Number(inpMaxRange.value));
+        const extent = geometryEngine.geodesicBuffer(observerPoint, maxR, "meters").extent;
+
+        const sampler = await view.createElevationSampler(extent, { noDataValue: 0 });
+
+        const obsGroundZ = sampler.queryElevation(observerPoint)?.z ?? 0;
+        const obsZ = obsGroundZ + 2; // 2m observer height
+
+        const NUM_RAYS  = 72;   // 5° angular resolution
+        const STEP_M    = 50;   // sample every 50 m along each ray
+        const numSteps  = Math.ceil(maxR / STEP_M);
+
+        const maskedRayIndices = [];
+
+        for (let rayIdx = 0; rayIdx < NUM_RAYS; rayIdx++) {
+          const bearing = (rayIdx / NUM_RAYS) * 360;
+          let maxSlopeRad = -Infinity;
+          let isMasked = false;
+
+          for (let s = 1; s <= numSteps; s++) {
+            const dist = s * STEP_M;
+            const { longitude, latitude } = destinationPoint(
+              observerPoint.longitude, observerPoint.latitude, bearing, dist
+            );
+            const samplePt = new Point({ longitude, latitude, spatialReference: { wkid: 4326 } });
+            const terrainZ = sampler.queryElevation(samplePt)?.z ?? 0;
+            const slope    = Math.atan2(terrainZ - obsZ, dist);
+
+            if (slope >= maxSlopeRad) {
+              maxSlopeRad = slope;
+            } else if (maxSlopeRad > 0.017) { // >1° horizon
+              isMasked = true;
+              break;
+            }
+          }
+          if (isMasked) maskedRayIndices.push(rayIdx);
+        }
+
+        // Convert contiguous ray runs to bearing-range objects
+        const degPerRay = 360 / NUM_RAYS;
+        const ranges = [];
+        if (maskedRayIndices.length) {
+          const sorted = [...maskedRayIndices].sort((a,b)=>a-b);
+          let rStart = sorted[0], rEnd = sorted[0];
+          for (let i = 1; i < sorted.length; i++) {
+            if (sorted[i] === rEnd + 1) { rEnd = sorted[i]; }
+            else {
+              ranges.push({ s: rStart * degPerRay, e: (rEnd + 1) * degPerRay });
+              rStart = rEnd = sorted[i];
+            }
+          }
+          ranges.push({ s: rStart * degPerRay, e: (rEnd + 1) * degPerRay });
+        }
+
+        // Draw masked-sector polygons over the WEZ
+        ranges.forEach(({ s, e }) => {
+          const spread = e - s;
+          const center = s + spread / 2;
+          const wedge  = buildAzimuthWedge(
+            observerPoint, center, spread, Number(inpMaxRange.value)
+          );
+          analysisLayer.add(new Graphic({ geometry: wedge, symbol: maskedSymbol,
+            attributes: { type: "wez_masked_sector" }
+          }));
+        });
+
+        setStatus("ready");
+      } catch (err) {
+        console.error("Terrain mask error:", err);
+        setStatus("error");
+      }
+    });
+
+    // ── COMMIT to persistent layer ─────────────────────────────────────
+    // Copies current working graphics to the committed layer with full
+    // attribute set. From here they can be exported as a FeatureLayer.
+
+    btnCommit.addEventListener("click", () => {
+      if (!observerPoint || analysisLayer.graphics.length === 0) return;
+
+      const timestamp = new Date().toISOString();
+      analysisLayer.graphics.forEach(g => {
+        committedLayer.add(
+          new Graphic({
+            geometry:   g.geometry.clone(),
+            symbol:     g.symbol.clone(),
+            attributes: { ...g.attributes, committedAt: timestamp, observerLon: observerPoint.longitude, observerLat: observerPoint.latitude },
+          })
+        );
+      });
+      observerLayer.graphics.forEach(g => observerLayer.add(g.clone()));
+
+      // Flash confirmation
+      const prev = statusLbl.textContent;
+      statusLbl.textContent = "Committed ✓";
+      statusLbl.className   = "p-status ready";
+      setTimeout(() => { statusLbl.textContent = prev; }, 1800);
+    });
+
+    // ── CLEAR ──────────────────────────────────────────────────────────
+    btnClear.addEventListener("click", () => {
+      analysisLayer.removeAll();
+      observerLayer.removeAll();
+      observerPoint  = null;
+      btnCommit.disabled  = true;
+      btnTerrain.disabled = true;
+      obsCoordsEl.textContent = "Observer: not placed — click map";
+      pickHint.style.display  = "block";
+      setStatus("awaiting");
+    });
+
+    // ── HELPERS ────────────────────────────────────────────────────────
+    function setStatus(state) {
+      const map = {
+        awaiting:  ["Awaiting observer",  "p-status"],
+        ready:     ["Ready",              "p-status ready"],
+        computing: ["Computing…",         "p-status computing"],
+        error:     ["Error — see console","p-status"],
+      };
+      const [text, cls]       = map[state] ?? map.awaiting;
+      statusLbl.textContent   = text;
+      statusLbl.className     = cls;
+    }
+
+    // ── WAIT for view to load, then log layer refs for console use ─────
+    view.when(() => {
+      console.log("[WEZ] SceneView ready.");
+      console.log("[WEZ] analysisLayer  →", analysisLayer);
+      console.log("[WEZ] committedLayer →", committedLayer);
+    });
+
+  }); // end require()
+  </script>
+</body>
+</html>

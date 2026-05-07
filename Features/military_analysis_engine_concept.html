@@ -1,0 +1,299 @@
+
+<h2 class="sr-only">Military Symbol Analysis Engine — interactive parameter panel concept with 6 analysis modules</h2>
+<style>
+.ae{display:grid;grid-template-columns:205px 1fr;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);overflow:hidden;min-height:530px}
+.ae-sb{background:var(--color-background-secondary);border-right:0.5px solid var(--color-border-tertiary)}
+.ae-sbhd{padding:11px 14px 9px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:8px}
+.ae-sbhd-lbl{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--color-text-tertiary);font-family:var(--font-mono)}
+.ae-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;border-left:2px solid transparent;transition:all .12s;color:var(--color-text-secondary)}
+.ae-item:hover{background:var(--color-background-primary);color:var(--color-text-primary)}
+.ae-item.sel{border-left-color:#EF9F27;background:var(--color-background-warning);color:#BA7517}
+.ae-item i{font-size:17px;flex-shrink:0}
+.ae-item-name{font-size:12.5px;line-height:1.3}
+.ae-item-sub{font-size:10px;font-family:var(--font-mono);opacity:.65;margin-top:1px}
+.ae-main{padding:18px 20px;background:var(--color-background-primary);overflow-y:auto;max-height:530px}
+.ae-mhd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.ae-mname{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+.ae-mdesc{font-size:12.5px;color:var(--color-text-secondary);line-height:1.65;margin-bottom:12px}
+.ae-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px}
+.ae-tag{font-size:9.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:var(--border-radius-md);font-family:var(--font-mono)}
+.ae-tag.w{background:var(--color-background-warning);color:var(--color-text-warning)}
+.ae-tag.i{background:var(--color-background-info);color:var(--color-text-info)}
+.ae-tag.d{background:var(--color-background-danger);color:var(--color-text-danger)}
+.ae-tag.s{background:var(--color-background-success);color:var(--color-text-success)}
+.ae-sec{font-size:9.5px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--color-text-tertiary);margin:0 0 8px;font-family:var(--font-mono)}
+.ae-pgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-bottom:12px}
+.ae-prow{display:flex;flex-direction:column;gap:4px}
+.ae-prow.full{grid-column:1/-1}
+.ae-plbl{font-size:9.5px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--color-text-secondary);font-family:var(--font-mono)}
+.ae-prow input,.ae-prow select{font-size:12px}
+.ae-div{height:0.5px;background:var(--color-border-tertiary);margin:12px 0}
+.ae-prev{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:12px}
+.ae-prevlbl{font-size:9px;color:var(--color-text-tertiary);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+.ae-run{width:100%;padding:9px;font-size:12.5px;font-family:var(--font-mono);letter-spacing:.04em;cursor:pointer;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;color:var(--color-text-primary);transition:all .12s}
+.ae-run:hover{background:var(--color-background-secondary)}
+</style>
+
+<div class="ae">
+<div class="ae-sb">
+  <div class="ae-sbhd">
+    <i class="ti ti-crosshair" style="font-size:15px;color:var(--color-text-secondary)" aria-hidden="true"></i>
+    <div class="ae-sbhd-lbl">Analysis Engine</div>
+  </div>
+  <div id="ae-list"></div>
+</div>
+<div class="ae-main" id="ae-main"></div>
+</div>
+
+<script>
+const S = (h,vb,w)=>`<svg width="100%" viewBox="0 0 ${w||252} ${vb}" xmlns="http://www.w3.org/2000/svg" style="display:block">${h}</svg>`;
+const am='#EF9F27',ab='#378ADD',ar='#E24B4A',ag='#1D9E75',agy='#888780';
+const terrain='M0,90 L25,87 L50,80 L75,73 L95,70 L110,58 L120,60 L135,55 L155,50 L175,52 L195,60 L215,56 L235,52 L252,50 L252,100 L0,100Z';
+const arrMk=(id,clr)=>`<marker id="${id}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M2 1L8 5L2 9" fill="none" stroke="${clr}" stroke-width="1.5"/></marker>`;
+
+const modules=[
+  {id:'los',icon:'ti-eye',name:'Line of sight',sub:'Visibility / Viewshed',
+   desc:'Compute point-to-point visibility over real 3D terrain. Finds obstruction points, and optionally generates a cumulative viewshed hemisphere — coloured by range and elevation angle, exactly like Marsh\'s solar dome but for sensors and weapons.',
+   tags:[['LOS','i'],['Viewshed','i'],['3D scene','s'],['Terrain aware','w']],
+   params:[
+    {l:'Observer height (m)',t:'number',v:'2',id:'obs_h'},
+    {l:'Max range (m)',t:'number',v:'5000',id:'los_r'},
+    {l:'Target source',t:'select',o:['Selected symbols','Manual pick','Grid pattern'],id:'los_src'},
+    {l:'Output type',t:'select',o:['LOS line only','Viewshed dome','Both'],id:'los_out'},
+   ],
+   adv:[
+    {l:'Elev. min (°)',t:'number',v:'-10',id:'los_emin'},
+    {l:'Elev. max (°)',t:'number',v:'45',id:'los_emax'},
+    {l:'Azimuth sweep (°)',t:'number',v:'360',id:'los_az'},
+    {l:'Colour by',t:'select',o:['Range','Elevation angle','Binary'],id:'los_col'},
+   ],
+   svg:()=>S(`
+    <defs>${arrMk('a1',ag)}${arrMk('a2',ar)}</defs>
+    <path d="${terrain}" fill="${ag}" fill-opacity=".12" stroke="${ag}" stroke-width=".5" stroke-opacity=".4"/>
+    <circle cx="18" cy="78" r="5" fill="none" stroke="${ab}" stroke-width="1.5"/>
+    <text x="18" y="69" text-anchor="middle" font-size="8" fill="${ab}" font-family="monospace">OBS</text>
+    <line x1="23" y1="74" x2="108" y2="53" stroke="${ag}" stroke-width="1.5" stroke-opacity=".9" marker-end="url(#a1)"/>
+    <circle cx="110" cy="58" r="3.5" fill="${ar}" fill-opacity=".85"/>
+    <line x1="113" y1="56" x2="220" y2="52" stroke="${ar}" stroke-width="1" stroke-dasharray="3 2" stroke-opacity=".65" marker-end="url(#a2)"/>
+    <circle cx="234" cy="50" r="4" fill="none" stroke="${ar}" stroke-width="1.5"/>
+    <line x1="230" y1="46" x2="238" y2="54" stroke="${ar}" stroke-width="1.2"/>
+    <line x1="238" y1="46" x2="230" y2="54" stroke="${ar}" stroke-width="1.2"/>
+    <text x="234" y="43" text-anchor="middle" font-size="8" fill="${ar}" font-family="monospace">TGT</text>
+    <line x1="8" y1="10" x2="22" y2="10" stroke="${ag}" stroke-width="1.5"/><text x="26" y="13" font-size="7" fill="${ag}" font-family="monospace">Visible</text>
+    <line x1="75" y1="10" x2="89" y2="10" stroke="${ar}" stroke-width="1" stroke-dasharray="3 2"/><text x="93" y="13" font-size="7" fill="${ar}" font-family="monospace">Masked</text>
+    <circle cx="152" cy="10" r="3" fill="${ar}" fill-opacity=".8"/><text x="158" y="13" font-size="7" fill="${ar}" font-family="monospace">Obstruction</text>
+   `,108)},
+
+  {id:'wez',icon:'ti-target',name:'Weapon engagement zone',sub:'Range arcs / Spherical cap',
+   desc:'Min/max range rings, azimuth sweep wedge, and terrain-masked dead sectors — rendered as a 3D spherical cap. Direct fire, mortars, artillery, and missiles each expose different parameter sets. The closest analogue to Marsh\'s sun-arc hemisphere.',
+   tags:[['Engagement','d'],['Range rings','w'],['Terrain mask','i'],['Indirect fire','w']],
+   params:[
+    {l:'Weapon type',t:'select',o:['Direct fire','Mortar 81mm','Artillery 155mm','ATGM','Anti-air'],id:'wez_typ'},
+    {l:'Min range (m)',t:'number',v:'200',id:'wez_mn'},
+    {l:'Max range (m)',t:'number',v:'3000',id:'wez_mx'},
+    {l:'Azimuth centre (°)',t:'number',v:'045',id:'wez_az'},
+   ],
+   adv:[
+    {l:'Azimuth spread (°)',t:'number',v:'180',id:'wez_sp'},
+    {l:'Elev. min (°)',t:'number',v:'0',id:'wez_em'},
+    {l:'Elev. max (°)',t:'number',v:'75',id:'wez_ex'},
+    {l:'Apply terrain mask',t:'select',o:['Yes','No'],id:'wez_mk'},
+   ],
+   svg:()=>{
+    const cx=80,cy=68,mn=18,mx=56;
+    const a1=-Math.PI/4,a2=Math.PI/4;
+    const c1=Math.cos(a1),s1=Math.sin(a1),c2=Math.cos(a2),s2=Math.sin(a2);
+    const mna=[cx+mn*c1,cy+mn*s1,cx+mn*c2,cy+mn*s2];
+    const mxa=[cx+mx*c1,cy+mx*s1,cx+mx*c2,cy+mx*s2];
+    const wedge=`M${mna[0].toFixed(1)},${mna[1].toFixed(1)} A${mn},${mn} 0 0 1 ${mna[2].toFixed(1)},${mna[3].toFixed(1)} L${mxa[2].toFixed(1)},${mxa[3].toFixed(1)} A${mx},${mx} 0 0 0 ${mxa[0].toFixed(1)},${mxa[1].toFixed(1)}Z`;
+    const ma=.18,mb=.52;
+    const msk=`M${cx+mn*Math.cos(ma).toFixed(2)},${cy+mn*Math.sin(ma).toFixed(2)} A${mn},${mn} 0 0 1 ${(cx+mn*Math.cos(mb)).toFixed(2)},${(cy+mn*Math.sin(mb)).toFixed(2)} L${(cx+mx*Math.cos(mb)).toFixed(2)},${(cy+mx*Math.sin(mb)).toFixed(2)} A${mx},${mx} 0 0 0 ${(cx+mx*Math.cos(ma)).toFixed(2)},${(cy+mx*Math.sin(ma)).toFixed(2)}Z`;
+    return S(`
+     <circle cx="${cx}" cy="${cy}" r="${mn}" fill="none" stroke="${am}" stroke-width=".8" stroke-dasharray="3 2" stroke-opacity=".6"/>
+     <circle cx="${cx}" cy="${cy}" r="${mx}" fill="none" stroke="${am}" stroke-width=".8" stroke-opacity=".4"/>
+     <path d="${wedge}" fill="${ar}" fill-opacity=".1" stroke="${ar}" stroke-width=".8" stroke-opacity=".55"/>
+     <path d="${msk}" fill="${agy}" fill-opacity=".25" stroke="${agy}" stroke-width=".6" stroke-opacity=".5"/>
+     <rect x="${cx-5}" y="${cy-5}" width="10" height="10" fill="none" stroke="${ab}" stroke-width="1.4"/>
+     <text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="7" fill="${ab}" font-family="monospace">GUN</text>
+     <text x="${cx+20}" y="${cy+2}" font-size="7" fill="${am}" font-family="monospace" opacity=".9">MIN</text>
+     <text x="${cx+58}" y="${cy+2}" font-size="7" fill="${am}" font-family="monospace" opacity=".7">MAX</text>
+     <text x="${cx+30}" y="${cy+32}" font-size="7" fill="${agy}" font-family="monospace" opacity=".75">MASKED</text>
+     <text x="145" y="20" font-size="9" fill="var(--color-text-secondary)" font-family="monospace">Viewshed dome view →</text>
+     <ellipse cx="195" cy="62" rx="48" ry="26" fill="none" stroke="var(--color-border-secondary)" stroke-width=".5"/>
+     <ellipse cx="195" cy="62" rx="48" ry="8" fill="none" stroke="${am}" stroke-width=".7" stroke-opacity=".5" stroke-dasharray="3 2"/>
+     <path d="M147,62 A48,48 0 0 1 243,62" fill="${ar}" fill-opacity=".08" stroke="${ar}" stroke-width=".8" stroke-opacity=".4"/>
+     <path d="M160,45 A35,35 0 0 1 230,45" fill="${am}" fill-opacity=".1" stroke="${am}" stroke-width=".7" stroke-opacity=".5"/>
+     <path d="M175,34 A22,22 0 0 1 215,34" fill="${am}" fill-opacity=".15" stroke="${am}" stroke-width=".7" stroke-opacity=".6"/>
+     <circle cx="195" cy="62" r="3" fill="${ab}" stroke-width="0"/>
+     <text x="195" y="88" text-anchor="middle" font-size="7" fill="${am}" font-family="monospace">RANGE ARCS</text>
+    `,115,252)
+   }},
+
+  {id:'traj',icon:'ti-trending-up',name:'Projectile trajectory',sub:'Ballistic arc / Animation',
+   desc:'Animate ballistic arcs in SceneView as 3D polylines. Parametrize muzzle velocity, launch angle, and wind. Each flight phase — launch, apogee, terminal — is a distinct graphic segment. Time-step animation shows the round in flight over real terrain.',
+   tags:[['Ballistics','d'],['Animation','s'],['3D polyline','i'],['Physics','w']],
+   params:[
+    {l:'Projectile type',t:'select',o:['Mortar round','Artillery shell','ATGM','Drone route','RPG'],id:'t_typ'},
+    {l:'Muzzle velocity (m/s)',t:'number',v:'240',id:'t_vel'},
+    {l:'Launch angle (°)',t:'number',v:'45',id:'t_ang'},
+    {l:'Range to target (m)',t:'number',v:'1200',id:'t_rng'},
+   ],
+   adv:[
+    {l:'Wind speed (m/s)',t:'number',v:'5',id:'t_ws'},
+    {l:'Wind bearing (°)',t:'number',v:'270',id:'t_wb'},
+    {l:'Animate flight',t:'select',o:['Yes','No'],id:'t_anim'},
+    {l:'Show CEP',t:'select',o:['Yes','No'],id:'t_cep'},
+   ],
+   svg:()=>{
+    const pts=[];
+    for(let i=0;i<=20;i++){const t=i/20,x=12+t*228,y=86-55*4*t*(1-t);pts.push(`${x.toFixed(1)},${y.toFixed(1)}`)}
+    const arc='M'+pts.join(' L');
+    return S(`
+     <defs>${arrMk('at',ar)}</defs>
+     <path d="${terrain}" fill="${ag}" fill-opacity=".12" stroke="${ag}" stroke-width=".5" stroke-opacity=".4"/>
+     <polyline points="${pts.join(' ')}" fill="none" stroke="${ar}" stroke-width="1.6" stroke-opacity=".85" marker-end="url(#at)"/>
+     ${[4,8,12,16].map(i=>`<circle cx="${pts[i].split(',')[0]}" cy="${pts[i].split(',')[1]}" r="2" fill="${am}" opacity=".75"/>`).join('')}
+     <polygon points="12,87 7,79 17,79" fill="none" stroke="${ab}" stroke-width="1.3"/>
+     <text x="12" y="75" text-anchor="middle" font-size="7" fill="${ab}" font-family="monospace">FIRE</text>
+     <circle cx="240" cy="84" r="7" fill="${ar}" fill-opacity=".15" stroke="${ar}" stroke-width="1"/>
+     <circle cx="240" cy="84" r="3" fill="${ar}" fill-opacity=".6"/>
+     <text x="240" y="76" text-anchor="middle" font-size="7" fill="${ar}" font-family="monospace">CEP</text>
+     <line x1="126" y1="31" x2="126" y2="38" stroke="${am}" stroke-width=".7" stroke-opacity=".7"/>
+     <text x="126" y="28" text-anchor="middle" font-size="7.5" fill="${am}" font-family="monospace">APOGEE</text>
+     <text x="200" y="13" text-anchor="middle" font-size="7" fill="${agy}" font-family="monospace" opacity=".8">↠ WIND 270°/5ms</text>
+    `,108)
+   }},
+
+  {id:'buf',icon:'ti-circles',name:'Buffer & threat rings',sub:'Geodesic rings / Corridors',
+   desc:'Stack multiple geodesic threat rings from any symbol — lethal, injury, and safe-distance. GeometryEngine.geodesicBuffer() handles curvature automatically. Useful for MSDs, exclusion zones, and no-fire areas.',
+   tags:[['Buffer','i'],['Geodesic','s'],['Multi-ring','w'],['No-fire area','d']],
+   params:[
+    {l:'Ring type',t:'select',o:['Threat radius','Exclusion zone','Min safe distance','Coverage area'],id:'b_typ'},
+    {l:'Ring 1 radius (m)',t:'number',v:'500',id:'b_r1'},
+    {l:'Ring 2 radius (m)',t:'number',v:'1500',id:'b_r2'},
+    {l:'Ring 3 radius (m)',t:'number',v:'3000',id:'b_r3'},
+   ],
+   adv:[
+    {l:'Fill opacity',t:'select',o:['Solid fill','Hatched','Outline only'],id:'b_fill'},
+    {l:'Geometry type',t:'select',o:['Geodesic (accurate)','Planar (fast)'],id:'b_geo'},
+    {l:'Label rings',t:'select',o:['Yes — radius','Yes — label','No'],id:'b_lbl'},
+    {l:'Union with adjacent',t:'select',o:['No','Yes'],id:'b_un'},
+   ],
+   svg:()=>{
+    const cx=126,cy=62;
+    return S(`
+     <circle cx="${cx}" cy="${cy}" r="58" fill="${ar}" fill-opacity=".04" stroke="${ar}" stroke-width=".8" stroke-dasharray="4 3" stroke-opacity=".35"/>
+     <circle cx="${cx}" cy="${cy}" r="38" fill="${am}" fill-opacity=".07" stroke="${am}" stroke-width=".8" stroke-dasharray="3 2" stroke-opacity=".5"/>
+     <circle cx="${cx}" cy="${cy}" r="18" fill="${ar}" fill-opacity=".14" stroke="${ar}" stroke-width="1.1" stroke-opacity=".8"/>
+     <rect x="${cx-5}" y="${cy-5}" width="10" height="10" fill="none" stroke="${ab}" stroke-width="1.5"/>
+     <line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy-58}" stroke="var(--color-border-secondary)" stroke-width=".5" stroke-dasharray="2 2" stroke-opacity=".4"/>
+     <line x1="${cx}" y1="${cy}" x2="${cx+50}" y2="${cy+29}" stroke="var(--color-border-secondary)" stroke-width=".5" stroke-dasharray="2 2" stroke-opacity=".4"/>
+     <text x="${cx}" y="${cy-20}" text-anchor="middle" font-size="7.5" fill="${ar}" font-family="monospace" opacity=".9">LETHAL 500m</text>
+     <text x="${cx}" y="${cy-40}" text-anchor="middle" font-size="7.5" fill="${am}" font-family="monospace" opacity=".8">INJURY 1500m</text>
+     <text x="${cx}" y="${cy-61}" text-anchor="middle" font-size="7.5" fill="${ar}" font-family="monospace" opacity=".5">SAFE 3000m</text>
+    `,128)
+   }},
+
+  {id:'corridor',icon:'ti-route',name:'Corridor analysis',sub:'MSR / Flyway / Standoff',
+   desc:'Buffer route polylines via geodesicDensify() to create MSR corridors, drone flyways, and standoff zones. Intersect with viewsheds or weapon ranges to flag high-threat segments along the route. Color segments by exposure score.',
+   tags:[['Route','i'],['Corridor','s'],['MSR','w'],['Threat intersect','d']],
+   params:[
+    {l:'Route source',t:'select',o:['Selected phase line','Drawn route','Waypoints'],id:'c_src'},
+    {l:'Corridor width (m)',t:'number',v:'250',id:'c_w'},
+    {l:'Standoff distance (m)',t:'number',v:'500',id:'c_so'},
+    {l:'Densify interval (m)',t:'number',v:'50',id:'c_den'},
+   ],
+   adv:[
+    {l:'Threat overlay',t:'select',o:['None','Weapon ranges','Viewsheds','Combined'],id:'c_thr'},
+    {l:'Segment scoring',t:'select',o:['No','Per 100m segment','Per leg'],id:'c_seg'},
+    {l:'Colour by exposure',t:'select',o:['Yes','No'],id:'c_col'},
+    {l:'Export as polygon',t:'select',o:['Yes','No'],id:'c_exp'},
+   ],
+   svg:()=>S(`
+    <path d="M12,52 Q55,30 95,48 Q135,66 165,44 Q195,22 244,38 L244,60 Q195,44 165,66 Q133,86 93,70 Q53,52 12,74Z" fill="${ab}" fill-opacity=".08" stroke="${ab}" stroke-width=".8" stroke-opacity=".5"/>
+    <path d="M12,38 Q55,14 95,33 Q137,52 165,29 Q196,8 244,24 L244,76 Q195,60 165,82 Q133,100 93,84 Q51,66 12,88Z" fill="${ar}" fill-opacity=".05" stroke="${ar}" stroke-width=".7" stroke-dasharray="4 3" stroke-opacity=".4"/>
+    <path d="M12,63 Q55,41 95,59 Q135,77 165,55 Q195,33 244,49" fill="none" stroke="${ab}" stroke-width="1.8" stroke-opacity=".85"/>
+    <circle cx="12" cy="63" r="4" fill="${ab}" stroke="var(--color-background-primary)" stroke-width="1"/>
+    <circle cx="95" cy="59" r="3" fill="${ab}" fill-opacity=".7"/>
+    <circle cx="165" cy="55" r="3" fill="${ab}" fill-opacity=".7"/>
+    <circle cx="244" cy="49" r="4" fill="${ab}" stroke="var(--color-background-primary)" stroke-width="1"/>
+    <circle cx="130" cy="65" r="9" fill="${ar}" fill-opacity=".18" stroke="${ar}" stroke-width="1"/>
+    <text x="130" y="69" text-anchor="middle" font-size="9" fill="${ar}" font-family="monospace">!</text>
+    <text x="8" y="54" font-size="7.5" fill="${ab}" font-family="monospace">START</text>
+    <text x="222" y="42" font-size="7.5" fill="${ab}" font-family="monospace">END</text>
+    <text x="62" y="98" font-size="7" fill="${ar}" font-family="monospace" opacity=".75">THREAT INTERSECTION</text>
+    <text x="62" y="108" font-size="7" fill="${ab}" font-family="monospace" opacity=".55">Standoff zone  ·  Corridor</text>
+   `,115)},
+
+  {id:'frag',icon:'ti-atom-2',name:'Effects radius',sub:'Blast / Frag / Pressure',
+   desc:'Compute fragmentation, blast overpressure, and thermal radii from munition impact points. Nested lethal, injury, and safe-distance rings collapse naturally onto a 3D scene. Animate blast wave propagation as a growing sphere.',
+   tags:[['Blast','d'],['Fragmentation','d'],['Safety ring','s'],['3D sphere','i']],
+   params:[
+    {l:'Munition type',t:'select',o:['Artillery 155mm','Mortar 81mm','IED','VBIED','Air-delivered'],id:'f_mun'},
+    {l:'Detonation height (m)',t:'number',v:'0',id:'f_h'},
+    {l:'Lethal radius (m)',t:'number',v:'100',id:'f_lr'},
+    {l:'Injury radius (m)',t:'number',v:'300',id:'f_ir'},
+   ],
+   adv:[
+    {l:'Safe distance (m)',t:'number',v:'600',id:'f_sr'},
+    {l:'Structural factor',t:'select',o:['Open area','Urban reinforced','Urban light'],id:'f_bld'},
+    {l:'Apply terrain',t:'select',o:['Yes','No'],id:'f_terr'},
+    {l:'Animate blast wave',t:'select',o:['Yes','No'],id:'f_anim'},
+   ],
+   svg:()=>{
+    const cx=126,cy=65;
+    const radials=[0,30,60,90,120,150,180,210,240,270,300,330].map(a=>{
+      const r=a*Math.PI/180;
+      return `<line x1="${(cx+6*Math.cos(r)).toFixed(1)}" y1="${(cy+6*Math.sin(r)).toFixed(1)}" x2="${(cx+56*Math.cos(r)).toFixed(1)}" y2="${(cy+56*Math.sin(r)).toFixed(1)}" stroke="${am}" stroke-width=".35" stroke-opacity=".18"/>`;
+    }).join('');
+    const star=`M${cx},${cy-9} L${cx+3},${cy-3} L${cx+9},${cy} L${cx+3},${cy+3} L${cx},${cy+9} L${cx-3},${cy+3} L${cx-9},${cy} L${cx-3},${cy-3}Z`;
+    return S(`
+     <circle cx="${cx}" cy="${cy}" r="56" fill="${ag}" fill-opacity=".05" stroke="${ag}" stroke-width=".8" stroke-dasharray="5 3" stroke-opacity=".4"/>
+     <circle cx="${cx}" cy="${cy}" r="36" fill="${am}" fill-opacity=".07" stroke="${am}" stroke-width=".8" stroke-opacity=".5"/>
+     <circle cx="${cx}" cy="${cy}" r="18" fill="${ar}" fill-opacity=".14" stroke="${ar}" stroke-width="1.2" stroke-opacity=".8"/>
+     ${radials}
+     <path d="${star}" fill="${ar}" fill-opacity=".8"/>
+     <text x="${cx}" y="${cy-20}" text-anchor="middle" font-size="7.5" fill="${ar}" font-family="monospace" opacity=".9">LETHAL</text>
+     <text x="${cx}" y="${cy-38}" text-anchor="middle" font-size="7.5" fill="${am}" font-family="monospace" opacity=".8">INJURY</text>
+     <text x="${cx}" y="${cy-59}" text-anchor="middle" font-size="7.5" fill="${ag}" font-family="monospace" opacity=".7">SAFE DIST</text>
+    `,130)
+   }},
+];
+
+const list=document.getElementById('ae-list');
+modules.forEach((m,i)=>{
+  const el=document.createElement('div');
+  el.className='ae-item'+(i===0?' sel':'');
+  el.dataset.id=m.id;
+  el.innerHTML=`<i class="ti ${m.icon}" aria-hidden="true"></i><div><div class="ae-item-name">${m.name}</div><div class="ae-item-sub">${m.sub}</div></div>`;
+  el.onclick=()=>{
+    document.querySelectorAll('.ae-item').forEach(x=>x.classList.remove('sel'));
+    el.classList.add('sel');
+    renderMain(m);
+  };
+  list.appendChild(el);
+});
+
+function renderMain(m){
+  const tags=m.tags.map(t=>Array.isArray(t)?`<span class="ae-tag ${t[1]}">${t[0]}</span>`:`<span class="ae-tag i">${t}</span>`).join('');
+  const pRow=p=>{
+    const inp=p.t==='select'?`<select id="${p.id}">${p.o.map(o=>`<option>${o}</option>`).join('')}</select>`:`<input type="${p.t}" value="${p.v||''}" id="${p.id}">`;
+    return `<div class="ae-prow"><div class="ae-plbl">${p.l}</div>${inp}</div>`;
+  };
+  document.getElementById('ae-main').innerHTML=`
+    <div class="ae-mhd"><div class="ae-mname">${m.name}</div></div>
+    <div class="ae-mdesc">${m.desc}</div>
+    <div class="ae-tags">${tags}</div>
+    <div class="ae-sec">Parameters — symbol context sets defaults automatically</div>
+    <div class="ae-pgrid">${m.params.map(pRow).join('')}</div>
+    <div class="ae-div"></div>
+    <div class="ae-sec">Advanced options</div>
+    <div class="ae-pgrid">${m.adv.map(pRow).join('')}</div>
+    <div class="ae-div"></div>
+    <div class="ae-sec">Visualization preview — schematic only</div>
+    <div class="ae-prev"><div class="ae-prevlbl">Actual output renders in ArcGIS SceneView or MapView</div>${m.svg()}</div>
+    <button class="ae-run" onclick="sendPrompt('Show me the ArcGIS JS API 4.x implementation code for ${m.name} — including the parameter bindings from the panel, SceneView integration, and the GraphicsLayer setup.')">Run analysis in SceneView ↗</button>
+  `;
+}
+renderMain(modules[0]);
+</script>

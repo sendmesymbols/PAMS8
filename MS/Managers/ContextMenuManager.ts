@@ -9,6 +9,8 @@ import Point from '@arcgis/core/geometry/Point';
 
 import GraphicsLayerManager from './GraphicsLayerManager';
 import MeasurementEngine from '../Engines/MeasurementEngine';
+import WeaponEffectEngine from '../Engines/Analysis/WeaponEffectEngine';
+import LOSEngine from '../Engines/Analysis/LOSEngine';
 
 export interface ContextMenuItem {
   id: string;
@@ -66,6 +68,8 @@ class ContextMenuManager extends Evented {
   private originalEvent: any = null;
   private _measurementEngine: MeasurementEngine | null = null;
   private _symbolEngine: { creationMode: 'single' | 'continuous'; stopContinuousMode(): void } | null = null;
+  private _weaponEffectEngine: WeaponEffectEngine | null = null;
+  private _losEngine: LOSEngine | null = null;
 
   // Event handles for cleanup on re-initialization
   private _pointerDownHandle: any = null;
@@ -223,6 +227,23 @@ class ContextMenuManager extends Evented {
   }
 
   /**
+   * Link a WeaponEffectEngine so the "Analysis → Weapon Engagement Zone"
+   * context menu item opens the WEZ panel with the right-clicked graphic
+   * as the observer origin.
+   */
+  public linkWeaponEffectEngine(engine: WeaponEffectEngine): void {
+    this._weaponEffectEngine = engine;
+  }
+
+  /**
+   * Link a LOSEngine so the "Analysis → Line of Sight" context menu item
+   * opens the LOS panel with the right-clicked graphic as the observer origin.
+   */
+  public linkLOSEngine(engine: LOSEngine): void {
+    this._losEngine = engine;
+  }
+
+  /**
    * Register a function that returns extra context menu items dynamically.
    * Called each time the menu opens, so items can depend on runtime state
    * (e.g. the current list of saved templates).
@@ -267,6 +288,101 @@ class ContextMenuManager extends Evented {
     items = [...items, ...dynamicItems];
 
     this.renderMenuItems(items, this.menuElement, graphic, x, y);
+
+    // ── Analysis section ────────────────────────────────────────────────
+    {
+      const sep = document.createElement('div');
+      sep.className = this.options.menuSeparatorClass || '';
+      this.menuElement.appendChild(sep);
+
+      const analysisItems: ContextMenuItem[] = [
+        {
+          id: 'analysis-los',
+          label: 'Line of Sight',
+          icon: `<span style="font-size:14px">👁️</span>`,
+          action: (g: Graphic) => {
+            if (this._losEngine && this.view) {
+              this._losEngine.open(g, this.view);
+            }
+          },
+        },
+        {
+          id: 'analysis-wez',
+          label: 'Weapon Engagement Zone',
+          icon: `<span style="font-size:14px">🎯</span>`,
+          action: (g: Graphic) => {
+            if (this._weaponEffectEngine && this.view) {
+              this._weaponEffectEngine.open(g, this.view);
+            }
+          },
+        },
+        {
+          id: 'analysis-trajectory',
+          label: 'Projectile Trajectory',
+          icon: `<span style="font-size:14px">📈</span>`,
+        },
+        {
+          id: 'analysis-buffer',
+          label: 'Buffer & Threat Rings',
+          icon: `<span style="font-size:14px">⭕</span>`,
+        },
+        {
+          id: 'analysis-corridor',
+          label: 'Corridor Analysis',
+          icon: `<span style="font-size:14px">🛣️</span>`,
+        },
+        {
+          id: 'analysis-effects',
+          label: 'Effects Radius',
+          icon: `<span style="font-size:14px">💥</span>`,
+        },
+      ];
+
+      const analysisItem = document.createElement('div');
+      analysisItem.className = this.options.menuItemClass || '';
+      analysisItem.classList.add('has-submenu');
+      analysisItem.style.position = 'relative';
+      analysisItem.innerHTML = `<span class="menu-icon" style="font-size:14px">🔭</span><span style="flex:1">Analysis</span>`;
+
+      const submenuEl = document.createElement('div');
+      submenuEl.className = 'arcgis-submenu';
+      this.renderMenuItems(analysisItems, submenuEl, graphic, x, y);
+      analysisItem.appendChild(submenuEl);
+
+      analysisItem.addEventListener('mouseenter', () => {
+        analysisItem.classList.add(this.options.menuItemHoverClass || '');
+        submenuEl.style.display = 'block';
+        requestAnimationFrame(() => {
+          const rect = submenuEl.getBoundingClientRect();
+          if (rect.right > window.innerWidth) {
+            submenuEl.style.left = 'auto';
+            submenuEl.style.right = '100%';
+          } else {
+            submenuEl.style.left = '100%';
+            submenuEl.style.right = 'auto';
+          }
+        });
+      });
+      analysisItem.addEventListener('mouseleave', () => {
+        setTimeout(() => {
+          if (!submenuEl.matches(':hover') && !analysisItem.matches(':hover')) {
+            analysisItem.classList.remove(this.options.menuItemHoverClass || '');
+            submenuEl.style.display = 'none';
+          }
+        }, 100);
+      });
+      submenuEl.addEventListener('mouseleave', () => {
+        setTimeout(() => {
+          if (!submenuEl.matches(':hover') && !analysisItem.matches(':hover')) {
+            analysisItem.classList.remove(this.options.menuItemHoverClass || '');
+            submenuEl.style.display = 'none';
+          }
+        }, 100);
+      });
+
+      this.menuElement.appendChild(analysisItem);
+    }
+    // ────────────────────────────────────────────────────────────────────
 
     // ── Measurement section ──────────────────────────────────────────────
     if (this._measurementEngine) {
