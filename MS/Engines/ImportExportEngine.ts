@@ -7,13 +7,13 @@ import PictureMarkerSymbol from '@arcgis/core/symbols/PictureMarkerSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
+import symbolData from '../Data/Symbols.json';
 
-import GraphicsLayerManager from '../Managers/GraphicsLayerManager';
+import GraphicsLayerManager, { LAYER_NAMES } from '../Managers/GraphicsLayerManager';
 import DrawEssentials from '../Support/DrawEssentials';
 import Amplifier from '../Support/Amplifier';
-import AnnotationEngine from './AnnotationEngine';
-import { LAYER_NAMES } from './SymbolEngine';
-import Plan, { PlanDocument, PlanPoint } from './ImportExport/Plan';
+import AnnotationEngine from './AnnotationEngine.ts';
+import Plan, { PlanDocument, PlanPoint } from './ImportExport/Plan.ts';
 
 const LAYERS = [
   LAYER_NAMES.TACT,
@@ -155,7 +155,7 @@ export default class ImportExportEngine {
     return 'milSymbols';
   }
 
-  private _buildPlanDrawEss(graphic: Graphic): Record<string, unknown> | null {
+private _buildPlanDrawEss(graphic: Graphic): Record<string, unknown> | null {
     const de: any = graphic.attributes?.drawEssentials;
     if (!de) return null;
 
@@ -170,10 +170,32 @@ export default class ImportExportEngine {
     if (drawEss.AMPLIFIER === undefined) {
       drawEss.AMPLIFIER = {};
     }
-    return Plan.normalizeDrawEssForLegacyExport(drawEss);
+
+    const sidc = `${drawEss.SIDC ?? ''}`;
+    if (!drawEss.SYM_NAME && sidc.length >= 16) {
+      const sid = sidc.substring(10, 16);
+      const entry = (symbolData as any)[sid];
+      if (entry?.Name) {
+        drawEss.SYM_NAME = entry.Name;
+      }
+    }
+
+    const geoType = `${drawEss.SYM_GEO_TYPE ?? ''}`;
+    if (geoType === 'Area' || geoType === 'Line') {
+      if (drawEss.HEAD_RATIO !== undefined) {
+        const hr = drawEss.HEAD_RATIO;
+        drawEss.HEAD_RATIO = typeof hr === 'string' ? hr : `${hr}`;
+      }
+      if (drawEss.TAIL_FACTOR !== undefined) {
+        const tf = drawEss.TAIL_FACTOR;
+        drawEss.TAIL_FACTOR = typeof tf === 'string' ? tf : `${tf}`;
+      }
+    }
+
+    return drawEss;
   }
 
-  private _buildRuntimeDrawEss(drawEssRaw: any): { de: DrawEssentials; amplifier: Amplifier } {
+private _buildRuntimeDrawEss(drawEssRaw: any): { de: DrawEssentials; amplifier: Amplifier } {
     const de = new DrawEssentials();
     const drawEss = Plan.normalizeDrawEssForRuntime(
       this._cloneDrawEssForPlan(drawEssRaw),
@@ -202,7 +224,17 @@ export default class ImportExportEngine {
       Object.assign(amplifier, drawEss.AMPLIFIER);
     }
     if ((drawEss as any)?.SIDC && !amplifier.SIDC) amplifier.SIDC = (drawEss as any).SIDC;
+    if ((drawEss as any)?.direction && !amplifier.DIR_OF_MOV_INDICATOR) amplifier.DIR_OF_MOV_INDICATOR = (drawEss as any).direction;
     (de as any).AMPLIFIER = amplifier;
+
+    if (drawEss?.SYM_GEO_TYPE === 'FPoint') {
+      const opts = drawEss.OPTIONS as any;
+      if (opts) {
+        if (!opts.symType) opts.symType = 'FPoint';
+        if (drawEss.SYM_NAME !== undefined && opts.SYM_NAME === undefined) opts.SYM_NAME = drawEss.SYM_NAME;
+      }
+    }
+
     return { de, amplifier };
   }
 

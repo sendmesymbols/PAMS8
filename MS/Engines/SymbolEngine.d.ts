@@ -24,6 +24,7 @@ import MGRSEngine from './MGRSEngine.ts';
 import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
 import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
+import ImportExportEngine from './ImportExportEngine';
 interface Evented {
     on(type: string, listener: Function): {
         remove(): void;
@@ -62,6 +63,7 @@ declare class SymbolEngine implements Evented {
     private _trajectoryEngine;
     private _bufferEngine;
     private _corridorEngine;
+    private _importExportEngine;
     private currentSymbol;
     private sidc;
     private amplifier;
@@ -207,6 +209,8 @@ declare class SymbolEngine implements Evented {
     get trajectoryEngine(): TrajectoryEngine | null;
     /** Get current settings data for the control panel */
     get settings(): typeof settingsData;
+    /** Access the ImportExportEngine for save/load plan operations */
+    get importExportEngine(): ImportExportEngine | null;
     /**
      * Handle runtime setting changes from the control panel.
      * Updates settingsData in memory and applies changes to active engines.

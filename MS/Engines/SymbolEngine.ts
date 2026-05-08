@@ -59,7 +59,9 @@ import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
 import BufferEngine from './Analysis/BufferEngine';
 import CorridorEngine from './Analysis/CorridorEngine';
-import Plan from './ImportExport/Plan';
+import { EffectEngine } from './Analysis/EffectEngine';
+import Plan from './ImportExport/Plan.ts';
+import ImportExportEngine from './ImportExportEngine';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -113,6 +115,8 @@ class SymbolEngine implements Evented {
   private _trajectoryEngine: TrajectoryEngine | null = null;
   private _bufferEngine: BufferEngine | null = null;
   private _corridorEngine: CorridorEngine | null = null;
+  private _effectEngine: EffectEngine | null = null;
+  private _importExportEngine: ImportExportEngine | null = null;
   private currentSymbol: any | undefined;
   private sidc: any | undefined;
   private amplifier: Amplifier | undefined;
@@ -278,6 +282,14 @@ class SymbolEngine implements Evented {
     this._initBufferEngine();
     // Initialise CorridorEngine (always on — activated on demand via context menu)
     this._initCorridorEngine();
+    // Initialise EffectEngine (always on — activated on demand via context menu)
+    this._initEffectEngine();
+
+    // Initialize ImportExportEngine for save/load plan functionality
+    this._importExportEngine = new ImportExportEngine(
+      () => this._layerManager,
+    );
+    this._contextMenuManager.linkImportExportEngine(this._importExportEngine);
 
     // Wire global keyboard shortcuts (if enabled in Settings.json)
     if ((settingsData as any).features?.shortcuts !== false) {
@@ -495,6 +507,7 @@ class SymbolEngine implements Evented {
     this._losEngine?.initialize(newView);
     this._trajectoryEngine?.initialize(newView);
     this._bufferEngine?.initialize(newView);
+    this._effectEngine?.initialize(newView);
 
     // Re-initialize the ContextMenuManager for the new view so its
     // pointer-down / contextmenu listeners are bound to the active view.
@@ -663,6 +676,14 @@ class SymbolEngine implements Evented {
     this._contextMenuManager.linkCorridorEngine(this._corridorEngine);
     this.emitEvent('corridorEngineReady', { engine: this._corridorEngine });
     console.info('[SymbolEngine] CorridorEngine loaded');
+  }
+
+  private _initEffectEngine(): void {
+    this._effectEngine = new EffectEngine();
+    this._effectEngine.initialize(this.view);
+    this._contextMenuManager.linkEffectEngine(this._effectEngine);
+    this.emitEvent('effectEngineReady', { engine: this._effectEngine });
+    console.info('[SymbolEngine] EffectEngine loaded');
   }
 
   get view() {
@@ -1626,6 +1647,11 @@ class SymbolEngine implements Evented {
   /** Get current settings data for the control panel */
   public get settings(): typeof settingsData {
     return settingsData;
+  }
+
+  /** Access the ImportExportEngine for save/load plan operations */
+  public get importExportEngine(): ImportExportEngine | null {
+    return this._importExportEngine;
   }
 
   /**
@@ -3871,8 +3897,9 @@ class SymbolEngine implements Evented {
       MULTI_LINE_LABEL_COLOR: amplifier?.MULTI_LINE_LABEL_COLOR ?? '#000000',
       MULTI_LINE_LABEL_ALIGN: amplifier?.MULTI_LINE_LABEL_ALIGN ?? 'center',
     };
-    if (amplifier?.DTG)   amp.DTG   = amplifier.DTG;
-    if (amplifier?.DTGTO) amp.DTGTO = amplifier.DTGTO;
+    if (amplifier?.DTG)             amp.DTG             = amplifier.DTG;
+    if (amplifier?.DTGTO)            amp.DTGTO           = amplifier.DTGTO;
+    if (amplifier?.TARGET_DESIGNATOR) amp.TARGET_DESIGNATOR = amplifier.TARGET_DESIGNATOR;
     return amp;
   }
 
@@ -3947,12 +3974,21 @@ class SymbolEngine implements Evented {
     // Pass through all optional per-symbol fields that appear in the legacy format
     const optionals = [
       'DRAW_TYPE', 'ECHELON', 'FACE_GAP',
-      'HEAD_RATIO', 'TAIL_FACTOR',
       'ISFHAND', 'FRHNDSZ', 'FRHNDWDTH',
       'drawExtendType',
     ];
     for (const k of optionals) {
       if (de?.[k] !== undefined) result[k] = de[k];
+    }
+
+    // HEAD_RATIO and TAIL_FACTOR must be strings in the legacy export format
+    if (de?.HEAD_RATIO !== undefined) {
+      const hr = de.HEAD_RATIO;
+      result.HEAD_RATIO = typeof hr === 'string' ? hr : `${hr}`;
+    }
+    if (de?.TAIL_FACTOR !== undefined) {
+      const tf = de.TAIL_FACTOR;
+      result.TAIL_FACTOR = typeof tf === 'string' ? tf : `${tf}`;
     }
 
     result.SIDC = sidc;
@@ -4141,11 +4177,11 @@ class SymbolEngine implements Evented {
       return;
     }
 
-    const amplifier = drawEssObj?.AMPLIFIER ?? {};
-    if (drawEssObj?.SIDC && !amplifier.SIDC) amplifier.SIDC = drawEssObj.SIDC;
+    const normalizedDrawEss = Plan.normalizeDrawEssForRuntime(drawEssObj);
+    const amplifier = normalizedDrawEss?.AMPLIFIER ?? {};
+    if (normalizedDrawEss?.SIDC && !amplifier.SIDC) amplifier.SIDC = normalizedDrawEss.SIDC;
 
-    // Patch plan points inside drawEss before passing to loadSymbolFromJSON
-    const de: any = { ...drawEssObj };
+    const de: any = { ...normalizedDrawEss };
 
     if (de.GEOM?.sp === 'WGS1SP') {
       de.GEOM = this._patchPlanPoint(de.GEOM);
@@ -4160,14 +4196,13 @@ class SymbolEngine implements Evented {
         endPt:   this._patchPlanPoint(de.BASE_LN_PTS.endPt),
       };
     }
-    // Also patch GEOM nested inside FPoint OPTIONS
     if (de.OPTIONS?.GEOM?.sp === 'WGS1SP') {
       de.OPTIONS = { ...de.OPTIONS, GEOM: this._patchPlanPoint(de.OPTIONS.GEOM) };
     }
 
     this.loadSymbolFromJSON({
       id: symbolId,
-      sidc: amplifier?.SIDC || drawEssObj?.SIDC,
+      sidc: amplifier?.SIDC || normalizedDrawEss?.SIDC,
       amplifier,
       drawEssentials: de,
     });

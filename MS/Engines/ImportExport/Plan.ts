@@ -348,36 +348,33 @@ export default class Plan {
     };
 
     drawEss.AMPLIFIER = Plan._normalizeAmplifierForExport(drawEss.AMPLIFIER, geoType);
-    drawEss.labelOptions = Plan._normalizeLabelOptionsForExport(
-      drawEss.labelOptions,
-      geoType,
-    );
 
     if (geoType === 'FPoint') {
       const options = Plan._ensureObject(drawEss.OPTIONS);
-      // Handle labelOptions: if it's 0 or not an object, normalize it properly
-      if (
-        options.labelOptions === 0 ||
-        options.labelOptions === undefined ||
-        typeof options.labelOptions !== 'object' ||
-        Array.isArray(options.labelOptions)
-      ) {
-        options.labelOptions = Plan._normalizeLabelOptionsForExport(
-          undefined,
-          geoType,
-        );
-      } else {
-        options.labelOptions = Plan._normalizeLabelOptionsForExport(
-          options.labelOptions,
-          geoType,
-        );
-      }
-      if (options.msn === undefined) options.msn = '';
-      if (options.ph === undefined) options.ph = '';
+      if (options.SYM_NAME === undefined) options.SYM_NAME = '';
       if (options.roa === undefined) options.roa = '';
+      if (options.msn === undefined) options.msn = '';
+      if (options.hfid === undefined) options.hfid = '';
+      if (options.ph === undefined) options.ph = '';
+      if (options.uniqueDesignationID === undefined) options.uniqueDesignationID = '';
+      if (options.direction === undefined) options.direction = '';
+      if (options.quantity === undefined) options.quantity = '';
+      if (options.reinforcedReduced === undefined) options.reinforcedReduced = '';
       const optSize = options.size;
       if (optSize !== undefined) options.size = `${optSize}`;
+      if (options.ANGLE === undefined) options.ANGLE = 0;
+      if (options.ECHELON === undefined) options.ECHELON = '';
+      if (options.alphaNum === undefined) options.alphaNum = 100;
+      if (options.opacity === undefined) options.opacity = 1;
+      if (options.symType === undefined) options.symType = 'FPoint';
+      options.labelOptions = {};
       drawEss.OPTIONS = options;
+      drawEss.labelOptions = {};
+    } else {
+      drawEss.labelOptions = Plan._normalizeLabelOptionsForExport(
+        drawEss.labelOptions,
+        geoType,
+      );
     }
 
     if (geoType === 'Point') {
@@ -442,6 +439,13 @@ export default class Plan {
       if (drawEss.drawExtendType === undefined) drawEss.drawExtendType = 1;
     }
 
+    if (geoType === 'Point') {
+      const amp = Plan._ensureObject(drawEss.AMPLIFIER);
+      if (amp.TARGET_DESIGNATOR !== undefined) {
+        drawEss.TARGET_DESIGNATOR = amp.TARGET_DESIGNATOR;
+      }
+    }
+
     if (geoType === 'FPoint') {
       const options = Plan._ensureObject(drawEss.OPTIONS);
       if (
@@ -451,6 +455,36 @@ export default class Plan {
       ) {
         options.labelOptions = Plan._clone(Plan.LEGACY_LABEL_OPTIONS_DEFAULT);
       }
+      if (options.SYM_NAME === undefined) options.SYM_NAME = '';
+      if (options.roa === undefined) options.roa = '';
+      if (options.msn === undefined) options.msn = '';
+      if (options.hfid === undefined) options.hfid = '';
+      if (options.ph === undefined) options.ph = '';
+      if (options.uniqueDesignationID === undefined) options.uniqueDesignationID = '';
+      if (options.direction === undefined) options.direction = '';
+      if (options.quantity === undefined) options.quantity = '';
+      if (options.reinforcedReduced === undefined) options.reinforcedReduced = '';
+
+      const amp = Plan._ensureObject(drawEss.AMPLIFIER);
+      if (options.uniqueDesignation === undefined) {
+        options.uniqueDesignation = typeof amp.UNIQUE_DESIG === 'string' ? amp.UNIQUE_DESIG.trim() : '';
+      }
+      if (options.higherFormation === undefined) {
+        options.higherFormation = typeof amp.HIGHER_FORM === 'string' ? amp.HIGHER_FORM.trim() : '';
+      }
+      if (options.staffComments === undefined) {
+        options.staffComments = typeof amp.STAFF_COM === 'string' ? amp.STAFF_COM.trim() : '';
+      }
+      if (options.additionalInformation === undefined) {
+        options.additionalInformation = typeof amp.ADDL_INFO === 'string' ? amp.ADDL_INFO.trim() : '';
+      }
+      if (options.dtg === undefined && amp.DTG) {
+        options.dtg = amp.DTG;
+      }
+      if (options.location === undefined && amp.LOC) {
+        options.location = amp.LOC;
+      }
+
       drawEss.OPTIONS = options;
     }
 

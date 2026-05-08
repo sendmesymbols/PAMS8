@@ -82,6 +82,9 @@ export interface PlanDocument {
     poObj: PlanObject;
 }
 export default class Plan {
+    private static readonly LEGACY_LABEL_OPTIONS_DEFAULT;
+    private static readonly LEGACY_AMPLIFIER_DEFAULT;
+    private static readonly LEGACY_EXTRA_SETTINGS_DEFAULT;
     poObj: PlanObject;
     constructor(data?: Partial<PlanObject>);
     toJSON(): PlanDocument;
@@ -91,4 +94,12 @@ export default class Plan {
     static createOverlay(planId: number, overlayId: string, name: string, seqOrdr: number, symbols: PlanSymbol[], creatorId?: number): PlanOverlay;
     static createSymbol(planId: number, overlayId: string, symbolId: string, drawEss: string, creatorId?: number): PlanSymbol;
     static createDefaultObject(planId?: number): PlanObject;
+    private static _toNumber;
+    private static _toStringNumber;
+    private static _clone;
+    private static _ensureObject;
+    private static _normalizeLabelOptionsForExport;
+    private static _normalizeAmplifierForExport;
+    static normalizeDrawEssForLegacyExport(rawDrawEss: unknown): Record<string, unknown>;
+    static normalizeDrawEssForRuntime(rawDrawEss: unknown): Record<string, unknown>;
 }

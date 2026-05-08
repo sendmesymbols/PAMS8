@@ -14,6 +14,7 @@ import LOSEngine from '../Engines/Analysis/LOSEngine';
 import TrajectoryEngine from '../Engines/Analysis/TrajectoryEngine';
 import BufferEngine from '../Engines/Analysis/BufferEngine';
 import CorridorEngine from '../Engines/Analysis/CorridorEngine';
+import { EffectEngine } from '../Engines/Analysis/EffectEngine';
 import ImportExportEngine from '../Engines/ImportExportEngine';
 
 export interface ContextMenuItem {
@@ -77,6 +78,7 @@ class ContextMenuManager extends Evented {
   private _trajectoryEngine: TrajectoryEngine | null = null;
   private _bufferEngine: BufferEngine | null = null;
   private _corridorEngine: CorridorEngine | null = null;
+  private _effectEngine: EffectEngine | null = null;
   private _importExportEngine: ImportExportEngine | null = null;
 
   // Event handles for cleanup on re-initialization
@@ -275,6 +277,14 @@ class ContextMenuManager extends Evented {
     this._corridorEngine = engine;
   }
 
+  /**
+   * Link an EffectEngine so the "Analysis -> Effects Radius" item
+   * opens the effects panel.
+   */
+  public linkEffectEngine(engine: EffectEngine): void {
+    this._effectEngine = engine;
+  }
+
   public linkImportExportEngine(engine: ImportExportEngine): void {
     this._importExportEngine = engine;
   }
@@ -471,8 +481,13 @@ class ContextMenuManager extends Evented {
         },
         {
           id: 'analysis-effects',
-          label: 'Effects Radius',
+          label: 'Effect Analysis',
           icon: `<span style="font-size:14px">💥</span>`,
+          action: (g: Graphic) => {
+            if (this._effectEngine && this.view) {
+              this._effectEngine.open(g, this.view);
+            }
+          },
         },
       ];
 

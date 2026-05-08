@@ -87,32 +87,32 @@ export class UEISymbol {
         
         // Create symbol data using milsymbol library
         //this.createSymbolData(options, sidc);
+        const opts = options.OPTIONS || options;
         const milsymbolOptions = {
             size: Number(options.extraSettings?.size) || 35,
-            uniqueDesignation: options.uniqueDesignation || "",
-            // Add other field properties if they exist in your options
-            quantity: options.quantity || '',
-            reinforcedReduced: options.reinforcedReduced || '',
-            staffComments: options.staffComments || '',
-            additionalInformation: options.additionalInformation || '',
-            evaluationRating: options.evaluationRating || '',
-            combatEffectiveness: options.combatEffectiveness || '',
-            signatureEquipment: options.signatureEquipment || '',
-            higherFormation: options.higherFormation || '',
-            hostile: options.hostile || '',
-            iffSif: options.iffSif || '',
-            direction: options.direction || '',
-            sigint: options.sigint || '',
-            type: options.type || '',
-            dtg: options.dtg || '',
-            altitudeDepth: options.altitudeDepth || '',
-            location: options.location || '',
-            speed: options.speed || '',
-            specialHeadquarters: options.specialHeadquarters || '',
-            platformType: options.platformType || '',
-            equipmentTeardownTime: options.equipmentTeardownTime || '',
-            commonIdentifier: options.commonIdentifier || '',
-            auxiliaryEquipmentIndicator: options.auxiliaryEquipmentIndicator || ''
+            uniqueDesignation: opts.uniqueDesignation || "",
+            quantity: opts.quantity || '',
+            reinforcedReduced: opts.reinforcedReduced || '',
+            staffComments: opts.staffComments || '',
+            additionalInformation: opts.additionalInformation || '',
+            evaluationRating: opts.evaluationRating || '',
+            combatEffectiveness: opts.combatEffectiveness || '',
+            signatureEquipment: opts.signatureEquipment || '',
+            higherFormation: opts.higherFormation || '',
+            hostile: opts.hostile || '',
+            iffSif: opts.iffSif || '',
+            direction: opts.direction || '',
+            sigint: opts.sigint || '',
+            type: opts.type || '',
+            dtg: opts.dtg || '',
+            altitudeDepth: opts.altitudeDepth || '',
+            location: opts.location || '',
+            speed: opts.speed || '',
+            specialHeadquarters: opts.specialHeadquarters || '',
+            platformType: opts.platformType || '',
+            equipmentTeardownTime: opts.equipmentTeardownTime || '',
+            commonIdentifier: opts.commonIdentifier || '',
+            auxiliaryEquipmentIndicator: opts.auxiliaryEquipmentIndicator || ''
         };
 
         this._ueiData = new (window as any).MS.symbol(sidc, milsymbolOptions).getMarker();
