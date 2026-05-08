@@ -170,12 +170,14 @@ export default class ImportExportEngine {
     if (drawEss.AMPLIFIER === undefined) {
       drawEss.AMPLIFIER = {};
     }
-    return drawEss;
+    return Plan.normalizeDrawEssForLegacyExport(drawEss);
   }
 
   private _buildRuntimeDrawEss(drawEssRaw: any): { de: DrawEssentials; amplifier: Amplifier } {
     const de = new DrawEssentials();
-    const drawEss = this._cloneDrawEssForPlan(drawEssRaw);
+    const drawEss = Plan.normalizeDrawEssForRuntime(
+      this._cloneDrawEssForPlan(drawEssRaw),
+    );
     Object.assign(de, drawEss);
 
     const pointGeom = this._planPointToArcGisPoint(drawEss?.GEOM ?? drawEss?.OPTIONS?.GEOM);
@@ -558,17 +560,18 @@ export default class ImportExportEngine {
                   typeof symbol.drawEss === 'string'
                     ? JSON.parse(symbol.drawEss)
                     : symbol.drawEss;
+                const normalizedDrawEss = Plan.normalizeDrawEssForRuntime(drawEss);
                 const symbolId =
                   symbol.plnOrdrSymbolPK?.plnOrdrSymbolId ?? this.generateUUID();
 
                 if (onNeedsInit) {
-                  const { de, amplifier } = this._buildRuntimeDrawEss(drawEss);
+                  const { de, amplifier } = this._buildRuntimeDrawEss(normalizedDrawEss);
                   onNeedsInit(de, amplifier, symbolId);
                 } else {
                   this._loadFallbackGraphicFromDrawEss(
-                    drawEss,
+                    normalizedDrawEss,
                     symbolId,
-                    this._layerIdForDrawEss(drawEss),
+                    this._layerIdForDrawEss(normalizedDrawEss),
                   );
                 }
                 imported++;

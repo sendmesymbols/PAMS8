@@ -1323,6 +1323,7 @@
           type="text"
           id="symbolSearch"
           placeholder="Search symbols by name..."
+          title="Search tactical symbols by name or SIDC code. Autocomplete shows matching MIL-STD-2525D symbols."
           autocomplete="off"
         />
         <div
@@ -1331,7 +1332,7 @@
           style="display: none"
         ></div>
       </div>
-      <select id="drawTypesSelectPre" class="drawTypesSelectPre">
+      <select id="drawTypesSelectPre" class="drawTypesSelectPre" title="Sets symbol draw type (1-4) to control geometry configuration and control point behavior for the selected symbol.">
         <option value="1">1</option>
         <option value="2">2</option>
         <option value="3">3</option>
@@ -1343,6 +1344,7 @@
         type="text"
         id="sidcText"
         value="130610001411000010891000000000"
+        title="Enter 20-character Symbol Identification Code (SIDC) per MIL-STD-2525D to define symbol type, identity, status, and modifiers."
       />
 
       <input
@@ -1350,6 +1352,7 @@
         type="button"
         id="draw-btn"
         value="Draw"
+        title="Start interactive drawing of the selected tactical symbol on the map using current settings."
       />
 
       <input
@@ -1357,20 +1360,21 @@
         type="button"
         id="switch-btn"
         value="2D"
+        title="Toggle between 2D map view and 3D scene view. Updates all engines to use the new view context."
       />
 
-      <button id="drawArrowButton">Draw Arrow</button>
-      <button id="addTextButton">Add Text</button>
-      <button id="createButton">Create</button>
-      <button id="drawBlockSymbolButton">Draw Block Symbol</button>
-      <button id="savePlanButton">Save Plan</button>
-      <button id="loadPlanButton">Load Plan</button>
+      <button id="drawArrowButton" title="Draw a freehand or structured arrow tactical symbol (e.g., direction of attack, movement).">Draw Arrow</button>
+      <button id="addTextButton" title="Add custom text annotations to the map at the clicked location.">Add Text</button>
+      <button id="createButton" title="Programmatically create a symbol with predefined parameters for testing (uses hardcoded SIDC/options).">Create</button>
+      <button id="drawBlockSymbolButton" title="Draw a rectangular block tactical symbol (e.g., unit position area) by defining a bounding box.">Draw Block Symbol</button>
+      <button id="savePlanButton" title="Save current symbol set, annotations, and settings as a reusable plan to local storage via ImportExportEngine.">Save Plan</button>
+      <button id="loadPlanButton" title="Load a previously saved plan from local storage, restoring all symbols, annotations, and settings.">Load Plan</button>
 
       <!-- Measurement toggle button -->
       <button
         id="measureToggleBtn"
         class="esri-component esri-widget--button esri-widget esri-interactive"
-        title="Toggle Measurements  [M]"
+        title="Toggle live measurement panel on/off. Shortcut: M. Shows distance, area, bearing for drawn symbols via MeasurementEngine."
         style="font-size: 16px; min-width: 36px"
       >
         📐
@@ -1476,6 +1480,7 @@
               min="5"
               max="200"
               step="1"
+              title="Default size for all tactical symbols (points, lines, areas) in pixels. Applied to new symbols."
             />
           </div>
           <div class="setting-row">
@@ -1487,6 +1492,7 @@
               min="0.5"
               max="20"
               step="0.5"
+              title="Default line width for symbol strokes, borders, and tactical graphics in pixels."
             />
           </div>
           <div class="setting-row">
@@ -1498,6 +1504,7 @@
               min="1"
               max="50"
               step="1"
+              title="Line width for point-based tactical symbols (e.g., unit equipment symbols) in pixels."
             />
           </div>
           <div class="setting-row">
@@ -1509,6 +1516,7 @@
               min="6"
               max="48"
               step="1"
+              title="Default font size for symbol annotations and labels in pixels."
             />
           </div>
           <div class="setting-row">
@@ -1520,6 +1528,7 @@
               min="6"
               max="48"
               step="1"
+              title="Font size for text added via freehand drawing tools in pixels."
             />
           </div>
           <div class="setting-row">
@@ -1531,6 +1540,7 @@
               min="0.5"
               max="20"
               step="0.5"
+              title="Line width for freehand-drawn tactical graphics in pixels."
             />
           </div>
         </div>
@@ -1540,39 +1550,39 @@
           <div class="section-title">Core Features</div>
           <div class="setting-row">
             <label>Context Menu</label>
-            <input type="checkbox" id="setting-contextMenu" checked />
+            <input type="checkbox" id="setting-contextMenu" checked title="Enable right-click context menu with symbol editing and measurement options (ContextMenuManager)." />
           </div>
           <div class="setting-row">
             <label>Edit Engine</label>
-            <input type="checkbox" id="setting-editEngine" checked />
+            <input type="checkbox" id="setting-editEngine" checked title="Enable interactive editing of existing symbols (move, reshape, delete) via EditEngine." />
           </div>
           <div class="setting-row">
             <label>Annotation</label>
-            <input type="checkbox" id="setting-annotationEngine" checked />
+            <input type="checkbox" id="setting-annotationEngine" checked title="Automatically add labels (unique designation, DTG, etc.) to drawn symbols via AnnotationEngine." />
           </div>
           <div class="setting-row">
             <label>Shortcuts</label>
-            <input type="checkbox" id="setting-shortcuts" checked />
+            <input type="checkbox" id="setting-shortcuts" checked title="Enable keyboard shortcuts: M (measure), L (lasso select), E (edit), Esc (cancel), Del (delete), I (info), C (center)." />
           </div>
           <div class="setting-row">
             <label>Copy/Paste</label>
-            <input type="checkbox" id="setting-copyPaste" checked />
+            <input type="checkbox" id="setting-copyPaste" checked title="Enable copy-paste functionality for selected symbols via SelectionEngine and clipboard." />
           </div>
           <div class="setting-row">
             <label>Save/Load</label>
-            <input type="checkbox" id="setting-saveLoad" checked />
+            <input type="checkbox" id="setting-saveLoad" checked title="Enable saving/loading symbol plans to/from local storage via ImportExportEngine." />
           </div>
           <div class="setting-row">
             <label>Templates</label>
-            <input type="checkbox" id="setting-templates" checked />
+            <input type="checkbox" id="setting-templates" checked title="Enable use of pre-configured symbol templates for rapid deployment via TemplateEngine." />
           </div>
           <div class="setting-row">
             <label>Engine Logs</label>
-            <input type="checkbox" id="setting-logging" checked />
+            <input type="checkbox" id="setting-logging" checked title="Enable logging of engine events (drawing, editing, measurements) to Engine Log panel." />
           </div>
           <div class="setting-row">
             <label>Creation Mode</label>
-            <select id="setting-creationMode">
+            <select id="setting-creationMode" title="Set symbol creation mode: Single (draw one at a time) or Continuous (draw multiple in sequence).">
               <option value="single" selected>Single</option>
               <option value="continuous">Continuous</option>
             </select>
@@ -1583,7 +1593,7 @@
         <div class="feature-panel" id="feature-panel-measurement">
           <div class="feature-header">
             <div class="feature-header-left">
-              <input type="checkbox" id="setting-measurementEngine" checked />
+              <input type="checkbox" id="setting-measurementEngine" checked title="Enable live measurement of drawn symbols (distance, area, bearing, slant range, ETA) via MeasurementEngine." />
               <label>Measurement</label>
             </div>
             <span class="toggle-icon">▼</span>
@@ -1592,7 +1602,7 @@
             <div class="sub-feature-label">Units</div>
             <div class="setting-row">
               <label>Distance</label>
-              <select id="setting-msDistUnit">
+              <select id="setting-msDistUnit" title="Set distance unit for measurements: meters, kilometers, miles, nautical miles.">
                 <option value="meters">meters</option>
                 <option value="kilometers" selected>km</option>
                 <option value="miles">miles</option>
@@ -1601,7 +1611,7 @@
             </div>
             <div class="setting-row">
               <label>Area</label>
-              <select id="setting-msAreaUnit">
+              <select id="setting-msAreaUnit" title="Set area unit for measurements: sq meters, sq km, sq miles, hectares, acres.">
                 <option value="square-meters">sq meters</option>
                 <option value="square-kilometers" selected>sq km</option>
                 <option value="square-miles">sq miles</option>
@@ -1612,23 +1622,23 @@
             <div class="sub-feature-label">Display</div>
             <div class="setting-row">
               <label>Show Bearing</label>
-              <input type="checkbox" id="setting-showBng" checked />
+              <input type="checkbox" id="setting-showBng" checked title="Display bearing (direction) of line and area symbols in measurement panel." />
             </div>
             <div class="setting-row">
               <label>Show Area</label>
-              <input type="checkbox" id="setting-showArea" checked />
+              <input type="checkbox" id="setting-showArea" checked title="Display calculated area of polygon and enclosed symbols in measurement panel." />
             </div>
             <div class="setting-row">
               <label>Show Total</label>
-              <input type="checkbox" id="setting-showTotal" checked />
+              <input type="checkbox" id="setting-showTotal" checked title="Display total cumulative distance for multi-segment line symbols." />
             </div>
             <div class="setting-row">
               <label>Show Segment</label>
-              <input type="checkbox" id="setting-showSegment" checked />
+              <input type="checkbox" id="setting-showSegment" checked title="Display distance of individual segments for multi-segment line symbols." />
             </div>
             <div class="setting-row">
               <label>Show Extent</label>
-              <input type="checkbox" id="setting-showExtent" checked />
+              <input type="checkbox" id="setting-showExtent" checked title="Display width and height (bounding box extent) of area and symbol groups." />
             </div>
             <div class="sub-feature-label">Advanced</div>
             <div class="setting-row">
@@ -1637,28 +1647,28 @@
             </div>
             <div class="setting-row">
               <label>Mag Decl °</label>
-              <input type="number" id="setting-magneticDeclination" value="0" step="0.1" style="width: 60px" />
+              <input type="number" id="setting-magneticDeclination" value="0" step="0.1" style="width: 60px" title="Adjust bearing calculations by local magnetic declination (degrees, positive = east of true north)." />
             </div>
             <div class="setting-row">
               <label>March km/h</label>
-              <input type="number" id="setting-speedKmh" value="5" min="0" step="0.5" style="width: 60px" />
+              <input type="number" id="setting-speedKmh" value="5" min="0" step="0.5" style="width: 60px" title="Set movement speed (km/h) for calculating estimated time of arrival (ETA) for unit symbols." />
             </div>
             <div class="sub-feature-label">Styling</div>
             <div class="setting-row">
               <label>Line Width</label>
-              <input type="number" id="setting-msLineWidth" value="2" min="0.5" max="10" step="0.5" style="width: 50px" />
+              <input type="number" id="setting-msLineWidth" value="2" min="0.5" max="10" step="0.5" style="width: 50px" title="Line width for measurement overlay graphics in pixels." />
             </div>
             <div class="setting-row">
               <label>Line Color</label>
-              <input type="color" id="setting-msLineColor" value="#00ff00" />
+              <input type="color" id="setting-msLineColor" value="#00ff00" title="Color for measurement overlay lines and borders (RGB hex)." />
             </div>
             <div class="setting-row">
               <label>Font Size</label>
-              <input type="number" id="setting-msFontSize" value="12" min="8" max="24" step="1" style="width: 50px" />
+              <input type="number" id="setting-msFontSize" value="12" min="8" max="24" step="1" style="width: 50px" title="Font size for measurement text in panel and map overlays in pixels." />
             </div>
             <div class="setting-row">
               <label>Font Color</label>
-              <input type="color" id="setting-msFontColor" value="#0050c8" />
+              <input type="color" id="setting-msFontColor" value="#0050c8" title="Text color for measurement values in panel and overlays (RGB hex)." />
             </div>
           </div>
         </div>
@@ -1667,7 +1677,7 @@
         <div class="feature-panel" id="feature-panel-proximity">
           <div class="feature-header">
             <div class="feature-header-left">
-              <input type="checkbox" id="setting-proximityEngine" checked />
+              <input type="checkbox" id="setting-proximityEngine" checked title="Enable real-time proximity snap indicators (dot, line, distance label) to nearest existing symbol while drawing (ProximityEngine)." />
               <label>Proximity</label>
             </div>
             <span class="toggle-icon">▼</span>
@@ -1676,15 +1686,15 @@
             <div class="sub-feature-label">Detection</div>
             <div class="setting-row">
               <label>Nearest Vertex</label>
-              <input type="checkbox" id="setting-nearestVertex" checked />
+              <input type="checkbox" id="setting-nearestVertex" checked title="Show proximity indicator to nearest vertex of existing symbols while drawing." />
             </div>
             <div class="setting-row">
               <label>Nearest Coord</label>
-              <input type="checkbox" id="setting-nearestCoordinate" checked />
+              <input type="checkbox" id="setting-nearestCoordinate" checked title="Show proximity indicator to nearest coordinate on existing symbol geometry while drawing." />
             </div>
             <div class="setting-row">
               <label>Show Distance</label>
-              <input type="checkbox" id="setting-showDistance" checked />
+              <input type="checkbox" id="setting-showDistance" checked title="Display distance to the nearest symbol in the proximity indicator." />
             </div>
             <div class="sub-feature-label">Appearance</div>
             <div class="setting-row">
@@ -1697,6 +1707,7 @@
                 step="0.1"
                 value="0.7"
                 style="width: 60px"
+                title="Opacity of the proximity connection line (0 = transparent, 1 = opaque)."
               />
               <span class="value-display" id="lineOpacity-display">0.7</span>
             </div>
@@ -1710,6 +1721,7 @@
                 max="10"
                 step="0.5"
                 style="width: 50px"
+                title="Width of the proximity connection line in pixels."
               />
             </div>
             <div class="setting-row">
@@ -1727,11 +1739,12 @@
                 max="30"
                 step="1"
                 style="width: 50px"
+                title="Size of the proximity snap marker (dot) in pixels."
               />
             </div>
             <div class="setting-row">
               <label>Color</label>
-              <input type="color" id="setting-markerColor" value="#0078ff" />
+              <input type="color" id="setting-markerColor" value="#0078ff" title="Color of the proximity snap marker (RGB hex)." />
             </div>
             <div class="sub-feature-label">Label</div>
             <div class="setting-row">
@@ -1744,11 +1757,12 @@
                 max="24"
                 step="1"
                 style="width: 50px"
+                title="Font size for proximity distance labels in pixels."
               />
             </div>
             <div class="setting-row">
               <label>Font Color</label>
-              <input type="color" id="setting-fontColor" value="#0050c8" />
+              <input type="color" id="setting-fontColor" value="#0050c8" title="Text color for proximity distance labels (RGB hex)." />
             </div>
             <div class="sub-feature-label">Snap</div>
             <div class="setting-row">
@@ -1760,12 +1774,13 @@
                 max="200"
                 value="80"
                 style="width: 60px"
+                title="Snap radius in pixels for detecting nearby symbols (proximity indicator appears when cursor is within this radius)."
               />
               <span class="value-display" id="snapRadius-display">80</span>
             </div>
             <div class="setting-row">
               <label>Distance</label>
-              <select id="setting-distanceUnit" style="width: 75px">
+              <select id="setting-distanceUnit" style="width: 75px" title="Distance unit for proximity indicator labels: meters, kilometers, miles, nautical miles.">
                 <option value="meters" selected>meters</option>
                 <option value="kilometers">km</option>
                 <option value="miles">miles</option>
@@ -1779,7 +1794,7 @@
         <div class="feature-panel" id="feature-panel-drawingCues">
           <div class="feature-header">
             <div class="feature-header-left">
-              <input type="checkbox" id="setting-drawingCues" checked />
+              <input type="checkbox" id="setting-drawingCues" checked title="Enable live drawing cues (rubber band, coordinates, angular guides, distance rings) while drawing symbols (DrawingCueEngine)." />
               <label>Drawing Cues</label>
             </div>
             <span class="toggle-icon">▼</span>
@@ -1789,11 +1804,11 @@
             <div class="sub-feature-label">Rubber Band</div>
             <div class="setting-row">
               <label>Enabled</label>
-              <input type="checkbox" id="setting-rubberBand" data-sf-master="rubberBand" checked />
+              <input type="checkbox" id="setting-rubberBand" data-sf-master="rubberBand" checked title="Show rubber band dashed line with live length/bearing from last control point to cursor." />
             </div>
             <div class="setting-row" data-sf-group="rubberBand">
               <label>Opacity</label>
-              <input type="range" id="setting-rbOpacity" min="0" max="1" step="0.05" value="0.75" style="width: 60px" />
+              <input type="range" id="setting-rbOpacity" min="0" max="1" step="0.05" value="0.75" style="width: 60px" title="Opacity of the rubber band line (0 = transparent, 1 = opaque)." />
               <span class="value-display" id="rbOpacity-display">0.75</span>
             </div>
 
@@ -1801,126 +1816,126 @@
             <div class="sub-feature-label">Coordinates</div>
             <div class="setting-row">
               <label>Show</label>
-              <input type="checkbox" id="setting-coordDisplay" checked />
+              <input type="checkbox" id="setting-coordDisplay" checked title="Show floating cursor coordinate label (lat/lon) while drawing." />
             </div>
 
             <!-- Angular Guides Sub-Feature -->
             <div class="sub-feature-label">Angular Guides</div>
             <div class="setting-row">
               <label>Enabled</label>
-              <input type="checkbox" id="setting-angularGuides" data-sf-master="angularGuides" checked />
+              <input type="checkbox" id="setting-angularGuides" data-sf-master="angularGuides" checked title="Show angular guide lines for snapping to 0°/45°/90°/135°/180°/225°/270°/315° from last control point." />
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Threshold °</label>
-              <input type="number" id="setting-guideThreshold" value="8" min="2" max="30" step="1" style="width: 45px" />
+              <input type="number" id="setting-guideThreshold" value="8" min="2" max="30" step="1" style="width: 45px" title="Angular threshold in degrees: snap to guide line when cursor is within this angle." />
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Color</label>
-              <input type="color" id="setting-guideColor" value="#50c8ff" />
+              <input type="color" id="setting-guideColor" value="#50c8ff" title="Color of angular guide lines (RGB hex)." />
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Opacity</label>
-              <input type="range" id="setting-guideOpacity" min="0" max="1" step="0.05" value="0.75" style="width: 60px" />
+              <input type="range" id="setting-guideOpacity" min="0" max="1" step="0.05" value="0.75" style="width: 60px" title="Opacity of angular guide lines (0 = transparent, 1 = opaque)." />
               <span class="value-display" id="guideOpacity-display">0.75</span>
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Width</label>
-              <input type="number" id="setting-guideWidth" value="1.5" min="0.5" max="10" step="0.5" style="width: 45px" />
+              <input type="number" id="setting-guideWidth" value="1.5" min="0.5" max="10" step="0.5" style="width: 45px" title="Width of angular guide lines in pixels." />
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Snap Interval °</label>
-              <input type="number" id="setting-guideInterval" value="45" min="5" max="90" step="5" style="width: 45px" />
+              <input type="number" id="setting-guideInterval" value="45" min="5" max="90" step="5" style="width: 45px" title="Snap interval in degrees for angular guides (e.g., 45 = snap every 45°)." />
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Show Label</label>
-              <input type="checkbox" id="setting-guideLabel" checked />
+              <input type="checkbox" id="setting-guideLabel" checked title="Show angle labels on angular guide lines." />
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Label Size</label>
-              <input type="number" id="setting-guideLabelSize" value="11" min="8" max="20" step="1" style="width: 45px" />
+              <input type="number" id="setting-guideLabelSize" value="11" min="8" max="20" step="1" style="width: 45px" title="Font size for angular guide labels in pixels." />
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Protractor</label>
-              <input type="checkbox" id="setting-guideArc" checked />
+              <input type="checkbox" id="setting-guideArc" checked title="Show protractor arc for angular guides." />
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Arc Radius km</label>
-              <input type="number" id="setting-guideArcRadius" value="0.5" min="0.1" max="20" step="0.1" style="width: 55px" />
+              <input type="number" id="setting-guideArcRadius" value="0.5" min="0.1" max="20" step="0.1" style="width: 55px" title="Radius of the angular guide protractor arc in kilometers." />
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Fan</label>
-              <input type="checkbox" id="setting-guideFan" checked />
+              <input type="checkbox" id="setting-guideFan" checked title="Show fan-shaped snap zone for angular guides." />
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Snap Point</label>
-              <input type="checkbox" id="setting-guideSnapPoint" checked />
+              <input type="checkbox" id="setting-guideSnapPoint" checked title="Show snap point marker on angular guides." />
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Anchor Cross</label>
-              <input type="checkbox" id="setting-guideAnchor" checked />
+              <input type="checkbox" id="setting-guideAnchor" checked title="Show anchor cross marker at the last placed control point." />
             </div>
             <div class="setting-row" data-sf-group="angularGuides">
               <label>Rel. Segment</label>
-              <input type="checkbox" id="setting-guideRelSeg" />
+              <input type="checkbox" id="setting-guideRelSeg" title="Show relative segment angle guide for the current line segment." />
             </div>
 
             <!-- Distance Rings Sub-Feature -->
             <div class="sub-feature-label">Distance Rings</div>
             <div class="setting-row">
               <label>Enabled</label>
-              <input type="checkbox" id="setting-distanceRings" data-sf-master="distanceRings" checked />
+              <input type="checkbox" id="setting-distanceRings" data-sf-master="distanceRings" checked title="Show distance rings from the last placed control point." />
             </div>
             <div class="setting-row" data-sf-group="distanceRings">
               <label>Interval km</label>
-              <input type="number" id="setting-ringInterval" value="1.0" min="0.1" max="100" step="0.1" style="width: 55px" />
+              <input type="number" id="setting-ringInterval" value="1.0" min="0.1" max="100" step="0.1" style="width: 55px" title="Interval between distance rings in kilometers." />
             </div>
             <div class="setting-row" data-sf-group="distanceRings">
               <label>Count</label>
-              <input type="number" id="setting-ringCount" value="3" min="1" max="10" step="1" style="width: 45px" />
+              <input type="number" id="setting-ringCount" value="3" min="1" max="10" step="1" style="width: 45px" title="Number of distance rings to display." />
             </div>
             <div class="setting-row" data-sf-group="distanceRings">
               <label>Color</label>
-              <input type="color" id="setting-ringColor" value="#50e678" />
+              <input type="color" id="setting-ringColor" value="#50e678" title="Color of distance rings (RGB hex)." />
             </div>
             <div class="setting-row" data-sf-group="distanceRings">
               <label>Opacity</label>
-              <input type="range" id="setting-ringOpacity" min="0" max="1" step="0.05" value="0.7" style="width: 60px" />
+              <input type="range" id="setting-ringOpacity" min="0" max="1" step="0.05" value="0.7" style="width: 60px" title="Opacity of distance rings (0 = transparent, 1 = opaque)." />
               <span class="value-display" id="ringOpacity-display">0.70</span>
             </div>
             <div class="setting-row" data-sf-group="distanceRings">
               <label>Width</label>
-              <input type="number" id="setting-ringWidth" value="1.5" min="0.5" max="10" step="0.5" style="width: 45px" />
+              <input type="number" id="setting-ringWidth" value="1.5" min="0.5" max="10" step="0.5" style="width: 45px" title="Width of distance rings in pixels." />
             </div>
 
             <!-- Nearby Highlight Sub-Feature -->
             <div class="sub-feature-label">Nearby Highlight</div>
             <div class="setting-row">
               <label>Enabled</label>
-              <input type="checkbox" id="setting-nearbyHighlight" data-sf-master="nearbyHighlight" checked />
+              <input type="checkbox" id="setting-nearbyHighlight" data-sf-master="nearbyHighlight" checked title="Highlight nearby symbols with a colored ring when cursor is within proximity radius." />
             </div>
             <div class="setting-row" data-sf-group="nearbyHighlight">
               <label>Radius km</label>
-              <input type="number" id="setting-hlRadius" value="5.0" min="0.1" max="200" step="0.5" style="width: 55px" />
+              <input type="number" id="setting-hlRadius" value="5.0" min="0.1" max="200" step="0.5" style="width: 55px" title="Radius for nearby symbol highlight in kilometers." />
             </div>
             <div class="setting-row" data-sf-group="nearbyHighlight">
               <label>Ring Size km</label>
-              <input type="number" id="setting-hlRingRadius" value="0.5" min="0.1" max="10" step="0.1" style="width: 55px" />
+              <input type="number" id="setting-hlRingRadius" value="0.5" min="0.1" max="10" step="0.1" style="width: 55px" title="Radius of the nearby highlight ring in kilometers." />
             </div>
 
             <!-- Adaptive Control Sub-Feature -->
             <div class="sub-feature-label">Adaptive Control</div>
             <div class="setting-row">
               <label>Adaptive Rings</label>
-              <input type="checkbox" id="setting-adaptive" data-sf-master="adaptive" />
+              <input type="checkbox" id="setting-adaptive" data-sf-master="adaptive" title="Automatically adjust distance ring intervals based on map zoom level for optimal visibility." />
             </div>
             <div class="setting-row" data-sf-group="adaptive">
               <label>Coverage</label>
-              <input type="range" id="setting-adaptiveCoverage" min="0.05" max="0.75" step="0.05" value="0.25" style="width: 60px" />
+              <input type="range" id="setting-adaptiveCoverage" min="0.05" max="0.75" step="0.05" value="0.25" style="width: 60px" title="Fraction of the map view covered by adaptive distance rings (0.05 = 5%, 0.75 = 75%)." />
               <span class="value-display" id="adaptiveCoverage-display">0.25</span>
             </div>
             <div class="setting-row" data-sf-group="adaptive">
               <label>Max Outer km</label>
-              <input type="number" id="setting-adaptiveMaxKm" value="200" min="1" max="10000" step="10" style="width: 55px" />
+              <input type="number" id="setting-adaptiveMaxKm" value="200" min="1" max="10000" step="10" style="width: 55px" title="Maximum outer distance for adaptive rings in kilometers." />
             </div>
           </div>
         </div>
@@ -1929,7 +1944,7 @@
         <div class="feature-panel" id="feature-panel-mgrs">
           <div class="feature-header">
             <div class="feature-header-left">
-              <input type="checkbox" id="setting-mgrsEngine" />
+              <input type="checkbox" id="setting-mgrsEngine" title="Enable on-demand MGRS (Military Grid Reference System) grid overlay for 2D/3D views (MGRSEngine)." />
               <label>MGRS Grid</label>
             </div>
             <span class="toggle-icon">▼</span>
@@ -1938,101 +1953,101 @@
             <div class="sub-feature-label">Grid Types</div>
             <div class="setting-row">
               <label>GZD</label>
-              <input type="checkbox" id="setting-mgrsShowGZD" checked />
+              <input type="checkbox" id="setting-mgrsShowGZD" checked title="Show Grid Zone Designator (GZD) boundaries (e.g., 42S) for MGRS grid." />
             </div>
             <div class="setting-row">
               <label>100km</label>
-              <input type="checkbox" id="setting-mgrsShow100K" checked />
+              <input type="checkbox" id="setting-mgrsShow100K" checked title="Show 100km grid squares (e.g., XD) for MGRS grid." />
             </div>
             <div class="setting-row">
               <label>10km</label>
-              <input type="checkbox" id="setting-mgrsShow10K" />
+              <input type="checkbox" id="setting-mgrsShow10K" title="Show 10km grid squares for MGRS grid." />
             </div>
             <div class="setting-row">
               <label>1km</label>
-              <input type="checkbox" id="setting-mgrsShow1K" />
+              <input type="checkbox" id="setting-mgrsShow1K" title="Show 1km grid squares for MGRS grid." />
             </div>
             <div class="setting-row">
               <label>Auto Zoom</label>
-              <input type="checkbox" id="setting-mgrsAutoZoom" checked />
+              <input type="checkbox" id="setting-mgrsAutoZoom" checked title="Automatically show/hide MGRS grid levels based on map zoom level." />
             </div>
 
             <div class="sub-feature-label">GZD Styling</div>
             <div class="setting-row">
               <label>Line Color</label>
-              <input type="color" id="setting-mgrsGzdColor" value="#ffc832" />
+              <input type="color" id="setting-mgrsGzdColor" value="#ffc832" title="Line color for MGRS GZD boundaries (RGB hex)." />
             </div>
             <div class="setting-row">
               <label>Opacity</label>
-              <input type="range" id="setting-mgrsGzdOpacity" min="0" max="1" step="0.05" value="0.85" style="width: 60px" />
+              <input type="range" id="setting-mgrsGzdOpacity" min="0" max="1" step="0.05" value="0.85" style="width: 60px" title="Opacity of MGRS GZD boundaries (0 = transparent, 1 = opaque)." />
               <span class="value-display" id="mgrsGzdOpacity-display">0.85</span>
             </div>
             <div class="setting-row">
               <label>Width</label>
-              <input type="number" id="setting-mgrsGzdWidth" value="1.5" min="0.1" max="10" step="0.1" style="width: 55px" />
+              <input type="number" id="setting-mgrsGzdWidth" value="1.5" min="0.1" max="10" step="0.1" style="width: 55px" title="Line width for MGRS GZD boundaries in pixels." />
             </div>
 
             <div class="sub-feature-label">100km Styling</div>
             <div class="setting-row">
               <label>Line Color</label>
-              <input type="color" id="setting-mgrs100KColor" value="#ffc832" />
+              <input type="color" id="setting-mgrs100KColor" value="#ffc832" title="Line color for MGRS 100km grid (RGB hex)." />
             </div>
             <div class="setting-row">
               <label>Opacity</label>
-              <input type="range" id="setting-mgrs100KOpacity" min="0" max="1" step="0.05" value="0.55" style="width: 60px" />
+              <input type="range" id="setting-mgrs100KOpacity" min="0" max="1" step="0.05" value="0.55" style="width: 60px" title="Opacity of MGRS 100km grid (0 = transparent, 1 = opaque)." />
               <span class="value-display" id="mgrs100KOpacity-display">0.55</span>
             </div>
             <div class="setting-row">
               <label>Width</label>
-              <input type="number" id="setting-mgrs100KWidth" value="0.8" min="0.1" max="10" step="0.1" style="width: 55px" />
+              <input type="number" id="setting-mgrs100KWidth" value="0.8" min="0.1" max="10" step="0.1" style="width: 55px" title="Line width for MGRS 100km grid in pixels." />
             </div>
 
             <div class="sub-feature-label">10km Styling</div>
             <div class="setting-row">
               <label>Line Color</label>
-              <input type="color" id="setting-mgrs10KColor" value="#ffc832" />
+              <input type="color" id="setting-mgrs10KColor" value="#ffc832" title="Line color for MGRS 10km grid (RGB hex)." />
             </div>
             <div class="setting-row">
               <label>Opacity</label>
-              <input type="range" id="setting-mgrs10KOpacity" min="0" max="1" step="0.05" value="0.35" style="width: 60px" />
+              <input type="range" id="setting-mgrs10KOpacity" min="0" max="1" step="0.05" value="0.35" style="width: 60px" title="Opacity of MGRS 10km grid (0 = transparent, 1 = opaque)." />
               <span class="value-display" id="mgrs10KOpacity-display">0.35</span>
             </div>
             <div class="setting-row">
               <label>Width</label>
-              <input type="number" id="setting-mgrs10KWidth" value="0.5" min="0.1" max="10" step="0.1" style="width: 55px" />
+              <input type="number" id="setting-mgrs10KWidth" value="0.5" min="0.1" max="10" step="0.1" style="width: 55px" title="Line width for MGRS 10km grid in pixels." />
             </div>
 
             <div class="sub-feature-label">1km Styling</div>
             <div class="setting-row">
               <label>Line Color</label>
-              <input type="color" id="setting-mgrs1KColor" value="#ffc832" />
+              <input type="color" id="setting-mgrs1KColor" value="#ffc832" title="Line color for MGRS 1km grid (RGB hex)." />
             </div>
             <div class="setting-row">
               <label>Opacity</label>
-              <input type="range" id="setting-mgrs1KOpacity" min="0" max="1" step="0.05" value="0.25" style="width: 60px" />
+              <input type="range" id="setting-mgrs1KOpacity" min="0" max="1" step="0.05" value="0.25" style="width: 60px" title="Opacity of MGRS 1km grid (0 = transparent, 1 = opaque)." />
               <span class="value-display" id="mgrs1KOpacity-display">0.25</span>
             </div>
             <div class="setting-row">
               <label>Width</label>
-              <input type="number" id="setting-mgrs1KWidth" value="0.35" min="0.1" max="10" step="0.1" style="width: 55px" />
+              <input type="number" id="setting-mgrs1KWidth" value="0.35" min="0.1" max="10" step="0.1" style="width: 55px" title="Line width for MGRS 1km grid in pixels." />
             </div>
 
             <div class="sub-feature-label">Labels</div>
             <div class="setting-row">
               <label>Show Labels</label>
-              <input type="checkbox" id="setting-mgrsShowLabels" checked />
+              <input type="checkbox" id="setting-mgrsShowLabels" checked title="Show MGRS grid coordinate labels on the map." />
             </div>
             <div class="setting-row">
               <label>Size</label>
-              <input type="number" id="setting-mgrsLabelSize" value="11" min="8" max="40" step="1" style="width: 55px" />
+              <input type="number" id="setting-mgrsLabelSize" value="11" min="8" max="40" step="1" style="width: 55px" title="Font size for MGRS grid labels in pixels." />
             </div>
             <div class="setting-row">
               <label>Color</label>
-              <input type="color" id="setting-mgrsLabelColor" value="#ffffff" />
+              <input type="color" id="setting-mgrsLabelColor" value="#ffffff" title="Text color for MGRS grid labels (RGB hex)." />
             </div>
             <div class="setting-row">
               <label>Opacity</label>
-              <input type="range" id="setting-mgrsLabelOpacity" min="0" max="1" step="0.05" value="0.9" style="width: 60px" />
+              <input type="range" id="setting-mgrsLabelOpacity" min="0" max="1" step="0.05" value="0.9" style="width: 60px" title="Opacity of MGRS grid labels (0 = transparent, 1 = opaque)." />
               <span class="value-display" id="mgrsLabelOpacity-display">0.90</span>
             </div>
           </div>
@@ -2050,17 +2065,17 @@
       <div class="api-content">
         <div class="api-section">
           <div class="section-title">SymbolEngine</div>
-          <button class="api-btn" id="api-drawSymbol">Draw Symbol</button>
-          <button class="api-btn" id="api-addSymbol">Add at Center</button>
-          <button class="api-btn" id="api-clearAll">Clear All</button>
-          <button class="api-btn danger" id="api-stop-continuous">Stop Continuous</button>
+          <button class="api-btn" id="api-drawSymbol" title="Draw a test symbol using SymbolEngine with default parameters.">Draw Symbol</button>
+          <button class="api-btn" id="api-addSymbol" title="Add a test symbol at the center of the current view using SymbolEngine.">Add at Center</button>
+          <button class="api-btn" id="api-clearAll" title="Clear all symbols and graphics from all layers via SymbolEngine.">Clear All</button>
+          <button class="api-btn danger" id="api-stop-continuous" title="Stop continuous symbol creation mode in SymbolEngine.">Stop Continuous</button>
           <div class="status-text" id="api-symbol-status">Ready</div>
         </div>
         <div class="api-section">
           <div class="section-title">MeasurementEngine</div>
-          <button class="api-btn success" id="api-me-enable">Enable</button>
-          <button class="api-btn danger" id="api-me-disable">Disable</button>
-          <button class="api-btn" id="api-me-toggle">Toggle</button>
+          <button class="api-btn success" id="api-me-enable" title="Enable MeasurementEngine for live symbol measurements.">Enable</button>
+          <button class="api-btn danger" id="api-me-disable" title="Disable MeasurementEngine to stop live measurements.">Disable</button>
+          <button class="api-btn" id="api-me-toggle" title="Toggle MeasurementEngine on/off.">Toggle</button>
           <div class="setting-row" style="margin-top: 6px">
             <label>Distance:</label>
             <select
@@ -2084,52 +2099,53 @@
           </div>
           <div class="setting-row">
             <label>Slant Range</label>
-            <input type="checkbox" id="api-me-slantRange" />
+              <input type="checkbox" id="api-me-slantRange" title="Toggle 3D slant range calculation for API test measurements." />
           </div>
           <div class="setting-row">
             <label>Mag Decl °</label>
-            <input type="number" id="api-me-magDecl" value="0" step="0.1" style="width: 60px" />
+              <input type="number" id="api-me-magDecl" value="0" step="0.1" style="width: 60px" title="Set magnetic declination for API test measurements." />
           </div>
           <div class="setting-row">
             <label>Speed km/h</label>
-            <input type="number" id="api-me-speed" value="5" step="0.5" style="width: 60px" />
+              <input type="number" id="api-me-speed" value="5" step="0.5" style="width: 60px" title="Set movement speed for ETA calculations in API test." />
           </div>
           <div class="status-text" id="api-me-status">Disabled</div>
         </div>
         <div class="api-section">
           <div class="section-title">ProximityEngine</div>
-          <button class="api-btn success" id="api-prox-enable">Enable</button>
-          <button class="api-btn danger" id="api-prox-disable">Disable</button>
-          <button class="api-btn" id="api-prox-toggle">Toggle</button>
+          <button class="api-btn success" id="api-prox-enable" title="Enable ProximityEngine for real-time snap indicators.">Enable</button>
+          <button class="api-btn danger" id="api-prox-disable" title="Disable ProximityEngine to stop snap indicators.">Disable</button>
+          <button class="api-btn" id="api-prox-toggle" title="Toggle ProximityEngine on/off.">Toggle</button>
           <div class="setting-row" style="margin-top: 6px">
             <label>Snap:</label>
-            <input
-              type="range"
-              id="api-prox-snap"
-              min="0"
-              max="200"
-              value="80"
-              style="width: 60px"
-            />
+              <input
+                type="range"
+                id="api-prox-snap"
+                min="0"
+                max="200"
+                value="80"
+                style="width: 60px"
+                title="Set snap radius for API test proximity detection."
+              />
           </div>
           <div class="status-text" id="api-prox-status">Enabled</div>
         </div>
         <div class="api-section">
           <div class="section-title">SelectionEngine</div>
-          <button class="api-btn" id="api-sel-lasso">Lasso Select</button>
-          <button class="api-btn" id="api-sel-clear">Clear Selection</button>
-          <button class="api-btn" id="api-sel-count">Selection Count</button>
-          <button class="api-btn" id="api-sel-delete">Delete Selected</button>
-          <button class="api-btn" id="api-sel-move">Move Selected</button>
+          <button class="api-btn" id="api-sel-lasso" title="Activate lasso selection tool to select multiple symbols.">Lasso Select</button>
+          <button class="api-btn" id="api-sel-clear" title="Clear current symbol selection.">Clear Selection</button>
+          <button class="api-btn" id="api-sel-count" title="Show count of currently selected symbols.">Selection Count</button>
+          <button class="api-btn" id="api-sel-delete" title="Delete all currently selected symbols.">Delete Selected</button>
+          <button class="api-btn" id="api-sel-move" title="Move selected symbols to clicked location.">Move Selected</button>
           <button class="api-btn" id="api-sel-sim-sidc">Same Code</button>
-          <button class="api-btn" id="api-sel-sim-ech">Same Echelon</button>
-          <button class="api-btn" id="api-sel-own">Own Only</button>
-          <button class="api-btn" id="api-sel-enemy">Enemy</button>
-          <button class="api-btn" id="api-sel-pt">Points</button>
-          <button class="api-btn" id="api-sel-area">Areas</button>
-          <button class="api-btn" id="api-sel-line">Lines</button>
-          <button class="api-btn" id="api-sel-within">Select Within</button>
-          <button class="api-btn" id="api-sel-within-self">Select Within+Self</button>
+          <button class="api-btn" id="api-sel-sim-ech" title="Select all symbols with the same echelon as selected.">Same Echelon</button>
+          <button class="api-btn" id="api-sel-own" title="Select only own (friendly) symbols.">Own Only</button>
+          <button class="api-btn" id="api-sel-enemy" title="Select only enemy symbols.">Enemy</button>
+          <button class="api-btn" id="api-sel-pt" title="Select only point-type symbols.">Points</button>
+          <button class="api-btn" id="api-sel-area" title="Select only area-type symbols.">Areas</button>
+          <button class="api-btn" id="api-sel-line" title="Select only line-type symbols.">Lines</button>
+          <button class="api-btn" id="api-sel-within" title="Select symbols within the drawn polygon.">Select Within</button>
+          <button class="api-btn" id="api-sel-within-self" title="Select symbols within drawn polygon including the drawing.">Select Within+Self</button>
           <div class="setting-row" style="margin-top: 4px">
             <label>Align:</label>
             <select

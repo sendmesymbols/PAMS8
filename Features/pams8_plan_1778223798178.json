@@ -1,0 +1,91 @@
+{
+  "poObj": {
+    "plnOrdrId": 1778223798178,
+    "catCode": "PLAN",
+    "creatorId": 10900,
+    "updateSeqnr": 1,
+    "plns": [
+      {
+        "plnId": 1778223798178,
+        "catCode": "OPLAN",
+        "subCatCode": "Def",
+        "creatorId": 10900,
+        "updateSeqnr": 1,
+        "plnStats": [
+          {
+            "id": {
+              "plnId": 1778223798178,
+              "plnStatIx": 1
+            },
+            "dvlpmStatCode": "NCOMPL",
+            "stateCode": "DRAFT",
+            "dttm": "20260508070318000 ",
+            "creatorId": 10900,
+            "updateSeqnr": 1
+          }
+        ]
+      }
+    ],
+    "ordrs": [],
+    "plnOrdrHdrCntnts": [
+      {
+        "id": {
+          "plnOrdrId": 1778223798178,
+          "plnOrdrHdrCntntIx": 1
+        },
+        "nameTxt": "Sample Name",
+        "nicknameTxt": "Plan",
+        "serialNoTxt": "11-00",
+        "sponsorTypeTxt": "SPO",
+        "timeZoneCode": "Z",
+        "dttm": "20260508070318000 ",
+        "creatorId": 10900,
+        "updateSeqnr": 1,
+        "placeOfIssueTxt": "Office"
+      }
+    ],
+    "orgPoas": [],
+    "plnOrdrOverlay": [
+      {
+        "plnOrdrOverlayPK": {
+          "plnOrdrId": 1778223798178,
+          "plnOrdrOverlayId": "fa53cb39-3f5c-4cb1-8067-c8fd17975d34"
+        },
+        "nameTxt": "ForceSymbolsLayer",
+        "typeTxt": "ForceSymbolsLayer",
+        "seqOrdr": 1,
+        "hierarchyType": "Simple Overlay",
+        "isDelete": "N",
+        "isShared": "N",
+        "creatorId": 10900,
+        "updateSeqnr": 1,
+        "plnOrdrSymbolSet": [
+          {
+            "plnOrdrSymbolPK": {
+              "plnOrdrId": 1778223798178,
+              "plnOrdrSymbolId": "71624130-abd1-4b95-ae63-a8634e7d00e0",
+              "plnOrdrOverlayId": "fa53cb39-3f5c-4cb1-8067-c8fd17975d34"
+            },
+            "isDelete": "N",
+            "isShared": "N",
+            "creatorId": 10900,
+            "updateSeqnr": 1,
+            "drawEss": "{\"SYM_GEO_TYPE\":\"Point\",\"SID\":\"160303\",\"SYM_NAME\":\"Tgt\",\"SIZE\":70,\"ANGLE\":0,\"GEOM\":{\"type\":\"point\",\"x\":61.572102298334585,\"y\":32.234232264518205,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Unique Designation\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"Higher Formation\",\"hfid\":\"\",\"STAFF_COM\":\"Staff Comments\",\"ADDL_INFO\":\"Additional Information\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"SIDC\":\"10062500181603030000\",\"labelOptions\":{\"haloColor\":[255,0,0],\"haloColorSize\":5,\"color\":[0,255,0],\"textSize\":20,\"bold\":1,\"italic\":0,\"uLine\":0,\"oLine\":0,\"tLine\":0},\"opacity\":1}"
+          },
+          {
+            "plnOrdrSymbolPK": {
+              "plnOrdrId": 1778223798178,
+              "plnOrdrSymbolId": "103ffaa9-7e7e-4a13-8f6d-08210c443c0f",
+              "plnOrdrOverlayId": "fa53cb39-3f5c-4cb1-8067-c8fd17975d34"
+            },
+            "isDelete": "N",
+            "isShared": "N",
+            "creatorId": 10900,
+            "updateSeqnr": 1,
+            "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151403\",\"SYM_NAME\":\"Main Attk\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":63.067873343951106,\"y\":30.71042818099781,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":64.35596754843822,\"y\":29.233192039391845,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":66.72268520421721,\"y\":29.461724536118787,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Unique Designation\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"Higher Formation\",\"hfid\":\"\",\"STAFF_COM\":\"Staff Comments\",\"ADDL_INFO\":\"Additional Information\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"\",\"HEAD_RATIO\":0.07,\"TAIL_FACTOR\":0.05,\"SIDC\":\"10062500181514030000\",\"labelOptions\":{\"haloColor\":[255,0,0],\"haloColorSize\":5,\"color\":[0,255,0],\"textSize\":20,\"bold\":1,\"italic\":0,\"uLine\":0,\"oLine\":0,\"tLine\":0},\"opacity\":1}"
+          }
+        ]
+      }
+    ]
+  }
+}

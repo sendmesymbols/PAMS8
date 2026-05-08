@@ -1,0 +1,375 @@
+[
+  {
+    "pams8Version": "2.0",
+    "type": "pams8-symbol",
+    "layerId": "ForceSymbolsLayer",
+    "id": "31d002b6-199c-4fff-85e1-5dc1f274c829",
+    "sidc": "10061000181211000000",
+    "amplifier": {
+      "SYMBOL_ICON": "",
+      "ECHELON": "",
+      "QUANTITY": "",
+      "HOSTILE": "",
+      "DIR_OF_MOV_INDICATOR": "",
+      "OFFSET_LOC_INDICATOR": "",
+      "UNIQUE_DESIG": "Unique Designation",
+      "TYPE": "",
+      "DTG": "",
+      "EDTG": "",
+      "SIZE": 60,
+      "ALTITUDE_DEPTH": "",
+      "SIDC": "10061000181211000000",
+      "LOC": "",
+      "DISTANCE": "",
+      "AZIMUTH": "",
+      "TARGET_DESIGNATOR": "Target Designator",
+      "COUNTRY": "",
+      "HIGHER_FORM": "Higher Formation",
+      "STAFF_COM": "Staff Comments",
+      "ADDL_INFO": "Additional Information"
+    },
+    "drawEssentials": {
+      "BK_LN_DIST_RATIO": 5,
+      "BK_LN_ANGL_RATIO": 5,
+      "FRNT_LN_ANGL_RATIO": 0.8,
+      "FRNT_LN_DIST_RATIO": 1.5,
+      "FLAP_DIST_RATIO": 3,
+      "SID": "",
+      "SYM_NAME": "",
+      "SYM_GEO_TYPE": "",
+      "DRAW_TYPE": 1,
+      "IS_LINE": false,
+      "IS_OBS": 0,
+      "SIZE": 20,
+      "ARROWHEAD_RATIO": 0,
+      "ECHELON": "18",
+      "OFFSET": "0",
+      "SIDC": "10061000181211000000",
+      "labelOptions": {
+        "haloColor": [
+          255,
+          0,
+          0
+        ],
+        "haloColorSize": 5,
+        "color": [
+          0,
+          255,
+          0
+        ],
+        "textSize": 20,
+        "bold": 1,
+        "italic": 0,
+        "uLine": 0,
+        "oLine": 0,
+        "tLine": 0
+      },
+      "extraSettings": {
+        "lineWidth": 3,
+        "size": 20,
+        "textSize": 12,
+        "opacity": 1
+      },
+      "uniqueDesignation": "FORCE 123456",
+      "infoFields": true,
+      "FLAP_ANGLE": 45,
+      "GEOM": {
+        "x": 6914769.182863777,
+        "y": 3893846.324383051,
+        "spatialReference": {
+          "latestWkid": 3857,
+          "wkid": 102100
+        }
+      }
+    }
+  },
+  {
+    "pams8Version": "2.0",
+    "type": "pams8-symbol",
+    "layerId": "ForceSymbolsLayer",
+    "id": "7f195c44-475f-4732-81cc-0fb57d9655bb",
+    "sidc": "10062500181603030000",
+    "amplifier": {
+      "SYMBOL_ICON": "",
+      "ECHELON": "",
+      "QUANTITY": "",
+      "HOSTILE": "",
+      "DIR_OF_MOV_INDICATOR": "",
+      "OFFSET_LOC_INDICATOR": "",
+      "UNIQUE_DESIG": "Unique Designation",
+      "TYPE": "",
+      "DTG": "",
+      "EDTG": "",
+      "SIZE": 60,
+      "ALTITUDE_DEPTH": "",
+      "SIDC": "10062500181603030000",
+      "LOC": "",
+      "DISTANCE": "",
+      "AZIMUTH": "",
+      "TARGET_DESIGNATOR": "Target Designator",
+      "COUNTRY": "",
+      "HIGHER_FORM": "Higher Formation",
+      "STAFF_COM": "Staff Comments",
+      "ADDL_INFO": "Additional Information"
+    },
+    "drawEssentials": {
+      "BK_LN_DIST_RATIO": 5,
+      "BK_LN_ANGL_RATIO": 5,
+      "FRNT_LN_ANGL_RATIO": 0.8,
+      "FRNT_LN_DIST_RATIO": 1.5,
+      "FLAP_DIST_RATIO": 3,
+      "SID": "160303",
+      "SYM_NAME": "Tgt",
+      "SYM_GEO_TYPE": "Point",
+      "IS_LINE": false,
+      "IS_OBS": 0,
+      "SIZE": 70,
+      "ARROWHEAD_RATIO": 0,
+      "ECHELON": "",
+      "OFFSET": "0",
+      "SIDC": "10062500181603030000",
+      "labelOptions": {
+        "haloColor": [
+          255,
+          0,
+          0
+        ],
+        "haloColorSize": 5,
+        "color": [
+          0,
+          255,
+          0
+        ],
+        "textSize": 20,
+        "bold": 1,
+        "italic": 0,
+        "uLine": 0,
+        "oLine": 0,
+        "tLine": 0
+      },
+      "extraSettings": {
+        "lineWidth": 3,
+        "size": 20,
+        "textSize": 12,
+        "opacity": 1
+      },
+      "ANGLE": 0,
+      "GEOM": {
+        "x": 8208330.935915382,
+        "y": 3926140.054870331,
+        "spatialReference": {
+          "latestWkid": 3857,
+          "wkid": 102100
+        }
+      }
+    }
+  },
+  {
+    "pams8Version": "2.0",
+    "type": "pams8-symbol",
+    "layerId": "ForceSymbolsLayer",
+    "id": "68b18a49-8d96-411f-88a0-f8dbdbaabb00",
+    "sidc": "10062500181514030000",
+    "amplifier": {
+      "SYMBOL_ICON": "",
+      "ECHELON": "",
+      "QUANTITY": "",
+      "HOSTILE": "",
+      "DIR_OF_MOV_INDICATOR": "",
+      "OFFSET_LOC_INDICATOR": "",
+      "UNIQUE_DESIG": "Unique Designation",
+      "TYPE": "",
+      "DTG": "",
+      "EDTG": "",
+      "SIZE": 60,
+      "ALTITUDE_DEPTH": "",
+      "SIDC": "10062500181514030000",
+      "LOC": "",
+      "DISTANCE": "",
+      "AZIMUTH": "",
+      "TARGET_DESIGNATOR": "Target Designator",
+      "COUNTRY": "",
+      "HIGHER_FORM": "Higher Formation",
+      "STAFF_COM": "Staff Comments",
+      "ADDL_INFO": "Additional Information"
+    },
+    "drawEssentials": {
+      "BK_LN_DIST_RATIO": 5,
+      "BK_LN_ANGL_RATIO": 5,
+      "FRNT_LN_ANGL_RATIO": 0.8,
+      "FRNT_LN_DIST_RATIO": 1.5,
+      "FLAP_DIST_RATIO": 3,
+      "SID": "151403",
+      "SYM_NAME": "Main Attk",
+      "SYM_GEO_TYPE": "Area",
+      "IS_LINE": false,
+      "IS_OBS": 0,
+      "SIZE": 0,
+      "ARROWHEAD_RATIO": 0,
+      "ECHELON": "",
+      "OFFSET": "0",
+      "SIDC": "10062500181514030000",
+      "labelOptions": {
+        "haloColor": [
+          255,
+          0,
+          0
+        ],
+        "haloColorSize": 5,
+        "color": [
+          0,
+          255,
+          0
+        ],
+        "textSize": 20,
+        "bold": 1,
+        "italic": 0,
+        "uLine": 0,
+        "oLine": 0,
+        "tLine": 0
+      },
+      "extraSettings": {
+        "lineWidth": 3,
+        "size": 20,
+        "textSize": 12,
+        "opacity": 1
+      },
+      "HEAD_RATIO": 0.07,
+      "TAIL_FACTOR": 0.05,
+      "CTRL_PTS": [
+        {
+          "x": 6801878.740264687,
+          "y": 3754421.144170969,
+          "spatialReference": {
+            "latestWkid": 3857,
+            "wkid": 102100
+          }
+        },
+        {
+          "x": 6892198.552550022,
+          "y": 3587910.3909391267,
+          "spatialReference": {
+            "latestWkid": 3857,
+            "wkid": 102100
+          }
+        },
+        {
+          "x": 7052572.731823642,
+          "y": 3504956.677187718,
+          "spatialReference": {
+            "latestWkid": 3857,
+            "wkid": 102100
+          }
+        }
+      ]
+    }
+  },
+  {
+    "pams8Version": "2.0",
+    "type": "pams8-symbol",
+    "layerId": "ForceSymbolsLayer",
+    "id": "064987f7-f7a0-43dd-8c99-d1896422e9b6",
+    "sidc": "10062500181417000000",
+    "amplifier": {
+      "SYMBOL_ICON": "",
+      "ECHELON": "",
+      "QUANTITY": "",
+      "HOSTILE": "",
+      "DIR_OF_MOV_INDICATOR": "",
+      "OFFSET_LOC_INDICATOR": "",
+      "UNIQUE_DESIG": "Unique Designation",
+      "TYPE": "",
+      "DTG": "",
+      "EDTG": "",
+      "SIZE": 60,
+      "ALTITUDE_DEPTH": "",
+      "SIDC": "10062500181417000000",
+      "LOC": "",
+      "DISTANCE": "",
+      "AZIMUTH": "",
+      "TARGET_DESIGNATOR": "Target Designator",
+      "COUNTRY": "",
+      "HIGHER_FORM": "Higher Formation",
+      "STAFF_COM": "Staff Comments",
+      "ADDL_INFO": "Additional Information"
+    },
+    "drawEssentials": {
+      "BK_LN_DIST_RATIO": 5,
+      "BK_LN_ANGL_RATIO": 5,
+      "FRNT_LN_ANGL_RATIO": 0.8,
+      "FRNT_LN_DIST_RATIO": 1.5,
+      "FLAP_DIST_RATIO": 3,
+      "SID": "141700",
+      "SYM_NAME": "Ambush",
+      "SYM_GEO_TYPE": "Area",
+      "IS_LINE": false,
+      "IS_OBS": 0,
+      "SIZE": 0,
+      "ARROWHEAD_RATIO": 0,
+      "ECHELON": "",
+      "OFFSET": "0",
+      "SIDC": "10062500181417000000",
+      "labelOptions": {
+        "haloColor": [
+          255,
+          0,
+          0
+        ],
+        "haloColorSize": 5,
+        "color": [
+          0,
+          255,
+          0
+        ],
+        "textSize": 20,
+        "bold": 1,
+        "italic": 0,
+        "uLine": 0,
+        "oLine": 0,
+        "tLine": 0
+      },
+      "extraSettings": {
+        "lineWidth": 3,
+        "size": 20,
+        "textSize": 12,
+        "opacity": 1
+      },
+      "TEETH_SIZE": 2,
+      "TEETH_GAP": 5,
+      "CTRL_PTS": [
+        {
+          "x": 7198227.894558733,
+          "y": 3678160.240956433,
+          "spatialReference": {
+            "latestWkid": 3857,
+            "wkid": 102100
+          }
+        },
+        {
+          "x": 7226112.437182947,
+          "y": 3553129.3339950256,
+          "spatialReference": {
+            "latestWkid": 3857,
+            "wkid": 102100
+          }
+        },
+        {
+          "x": 7243550.565032905,
+          "y": 3598309.8704219274,
+          "spatialReference": {
+            "latestWkid": 3857,
+            "wkid": 102100
+          }
+        },
+        {
+          "x": 7669591.698778397,
+          "y": 3771324.8172464105,
+          "spatialReference": {
+            "latestWkid": 3857,
+            "wkid": 102100
+          }
+        }
+      ]
+    }
+  }
+]
