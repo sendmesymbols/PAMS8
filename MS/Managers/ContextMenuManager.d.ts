@@ -9,6 +9,7 @@ import LOSEngine from '../Engines/Analysis/LOSEngine';
 import TrajectoryEngine from '../Engines/Analysis/TrajectoryEngine';
 import BufferEngine from '../Engines/Analysis/BufferEngine';
 import CorridorEngine from '../Engines/Analysis/CorridorEngine';
+import { EffectEngine } from '../Engines/Analysis/EffectEngine';
 import ImportExportEngine from '../Engines/ImportExportEngine';
 export interface ContextMenuItem {
     id: string;
@@ -63,6 +64,7 @@ declare class ContextMenuManager extends Evented {
     private _trajectoryEngine;
     private _bufferEngine;
     private _corridorEngine;
+    private _effectEngine;
     private _importExportEngine;
     private _pointerDownHandle;
     private _contextMenuHandler;
@@ -143,6 +145,11 @@ declare class ContextMenuManager extends Evented {
      * opens the corridor panel with the right-clicked graphic as route origin.
      */
     linkCorridorEngine(engine: CorridorEngine): void;
+    /**
+     * Link an EffectEngine so the "Analysis -> Effects Radius" item
+     * opens the effects panel.
+     */
+    linkEffectEngine(engine: EffectEngine): void;
     linkImportExportEngine(engine: ImportExportEngine): void;
     /**
      * Register a function that returns extra context menu items dynamically.

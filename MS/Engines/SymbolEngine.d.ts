@@ -63,6 +63,7 @@ declare class SymbolEngine implements Evented {
     private _trajectoryEngine;
     private _bufferEngine;
     private _corridorEngine;
+    private _effectEngine;
     private _importExportEngine;
     private currentSymbol;
     private sidc;
@@ -115,6 +116,7 @@ declare class SymbolEngine implements Evented {
     private _initTrajectoryEngine;
     private _initBufferEngine;
     private _initCorridorEngine;
+    private _initEffectEngine;
     get view(): MapView | SceneView;
     get layerManager(): GraphicsLayerManager;
     set layerManager(value: GraphicsLayerManager);
