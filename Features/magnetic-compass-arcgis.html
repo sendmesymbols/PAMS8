@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Magnetic Compass — ArcGIS JS 4</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/dark/main.css"/>
+  <script src="https://js.arcgis.com/4.29/"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden;
+      font-family: 'Georgia', 'Times New Roman', serif; background: #050402; }
+    #viewDiv { width: 100%; height: 100%; }
+
+    /* ── Controls bar ── */
+    #controls {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 600; display: flex; gap: 8px; align-items: center;
+      background: rgba(5, 4, 2, 0.88);
+      border: 1px solid rgba(212, 160, 60, 0.28);
+      border-radius: 6px; padding: 8px 14px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.7);
+    }
+    .ctrl-btn {
+      padding: 5px 14px; background: transparent;
+      color: #c09030; border: 1px solid rgba(192,144,48,0.45);
+      border-radius: 3px; cursor: pointer;
+      font-family: 'Georgia', serif; font-size: 11px;
+      letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.2s;
+    }
+    .ctrl-btn:hover { background: rgba(212,160,60,0.15); border-color: #d4a03c; color: #d4a03c; }
+    .ctrl-btn.active { background: rgba(212,160,60,0.22); border-color: #d4a03c; color: #e8c060; }
+    .ctrl-sep { width: 1px; height: 18px; background: rgba(212,160,60,0.18); }
+    #hint { font-size: 11px; color: rgba(172,132,52,0.65); letter-spacing: 1px; white-space: nowrap; }
+
+    /* ── Compass overlay ── */
+    #compassOverlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 300; pointer-events: none;
+    }
+    .compass-anchor {
+      position: absolute; transform: translate(-50%, -50%);
+      pointer-events: all; user-select: none;
+      animation: compassIn 0.32s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes compassIn {
+      from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+      to   { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+    }
+    .compass-wrapper { position: relative; width: 240px; height: 240px; }
+
+    /* Pin dot */
+    .pin-dot {
+      position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #d4a03c; border: 2px solid #0a0800;
+      box-shadow: 0 0 8px rgba(212,160,60,0.8);
+    }
+
+    /* Close button */
+    .compass-close {
+      position: absolute; top: -10px; right: -10px;
+      width: 22px; height: 22px; z-index: 20;
+      background: rgba(8,6,2,0.92); border: 1px solid rgba(212,160,60,0.4);
+      border-radius: 50%; color: #666; font-size: 11px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .compass-close:hover { color: #fff; border-color: #d4a03c; }
+
+    /* Info panel */
+    .compass-panel {
+      position: absolute; bottom: -100px; left: 50%; transform: translateX(-50%);
+      width: 210px; background: rgba(5, 4, 2, 0.94);
+      border: 1px solid rgba(122, 96, 32, 0.55);
+      border-radius: 5px; padding: 10px 14px; text-align: center;
+      box-shadow: 0 6px 28px rgba(0,0,0,0.8);
+    }
+    .panel-cardinal { font-size: 11px; color: #a07828; letter-spacing: 3px; text-transform: uppercase; }
+    .panel-bearing  { font-size: 34px; font-weight: bold; color: #d4a03c; line-height: 1.05;
+                      letter-spacing: 2px; font-variant-numeric: tabular-nums; }
+    .panel-divider  { height: 1px; background: rgba(122,96,32,0.3); margin: 7px 0; }
+    .panel-row      { display: flex; justify-content: space-between; font-size: 10px;
+                      color: #554018; margin: 2px 0; }
+    .panel-row span:last-child { color: #907030; font-variant-numeric: tabular-nums; }
+
+    /* Hint */
+    .compass-hint {
+      position: absolute; top: -22px; left: 50%; transform: translateX(-50%);
+      white-space: nowrap; font-size: 10px; color: rgba(160,120,40,0.55);
+      letter-spacing: 1px; pointer-events: none;
+    }
+
+    /* Reset bearing button inside panel */
+    .panel-reset {
+      margin-top: 8px; padding: 4px 10px; font-size: 10px; letter-spacing: 1.5px;
+      text-transform: uppercase; background: transparent;
+      border: 1px solid rgba(192,144,48,0.3); border-radius: 2px;
+      color: #806020; cursor: pointer; font-family: 'Georgia', serif; transition: all 0.2s;
+    }
+    .panel-reset:hover { color: #d4a03c; border-color: #d4a03c; }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+
+  <div id="controls">
+    <button class="ctrl-btn active" id="btn2D">2D</button>
+    <button class="ctrl-btn"        id="btn3D">3D</button>
+    <div class="ctrl-sep"></div>
+    <span id="hint">📍 Click map to place compass</span>
+    <div class="ctrl-sep"></div>
+    <button class="ctrl-btn" id="btnClear" style="display:none">Clear</button>
+  </div>
+
+  <div id="compassOverlay"></div>
+
+  <script>
+  require([
+    "esri/Map",
+    "esri/views/MapView",
+    "esri/views/SceneView",
+    "esri/geometry/Point"
+  ], function(Map, MapView, SceneView, Point) {
+
+    /* ══════════════════════════════════════════
+       STATE
+    ══════════════════════════════════════════ */
+    let is3D      = false;
+    let view      = null;
+    let clickHdlr = null;
+    let rafId     = null;
+
+    let compassAnchor = null;
+    let mapPoint      = null;
+    let bezelRot      = 0;
+
+    /* ══════════════════════════════════════════
+       ARCGIS VIEW MANAGEMENT
+    ══════════════════════════════════════════ */
+    const esriMap = new Map({ basemap: "dark-gray-vector" });
+
+    function buildContainer() {
+      const c = document.createElement("div");
+      c.style.cssText = "width:100%;height:100%";
+      const vd = document.getElementById("viewDiv");
+      vd.innerHTML = "";
+      vd.appendChild(c);
+      return c;
+    }
+
+    function destroyView() {
+      if (rafId)     { cancelAnimationFrame(rafId); rafId = null; }
+      if (clickHdlr) { clickHdlr.remove(); clickHdlr = null; }
+      if (view)      { view.destroy(); view = null; }
+    }
+
+    function initView(mode) {
+      destroyView();
+      is3D = mode === "3d";
+      const container = buildContainer();
+
+      view = is3D
+        ? new SceneView({
+            container, map: esriMap,
+            camera: { position: { longitude: 73.0, latitude: 33.6, z: 2400000 } }
+          })
+        : new MapView({
+            container, map: esriMap,
+            center: [73.0, 33.6], zoom: 5
+          });
+
+      view.when(() => {
+        clickHdlr = view.on("click", onMapClick);
+        startLoop();
+      });
+    }
+
+    /* ══════════════════════════════════════════
+       RAF POSITION SYNC LOOP
+    ══════════════════════════════════════════ */
+    function startLoop() {
+      if (rafId) cancelAnimationFrame(rafId);
+      function tick() {
+        syncCompass();
+        rafId = requestAnimationFrame(tick);
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function getViewRotation() {
+      if (!view) return 0;
+      if (is3D) return view.camera ? view.camera.heading : 0;
+      return view.rotation || 0;
+    }
+
+    function syncCompass() {
+      if (!compassAnchor || !mapPoint || !view) return;
+      try {
+        const sp = view.toScreen(mapPoint);
+        if (sp) {
+          compassAnchor.style.left = sp.x + "px";
+          compassAnchor.style.top  = sp.y + "px";
+        }
+        // Needle always opposes map rotation → stays on true north
+        const rot = getViewRotation();
+        const needleEl = document.getElementById("c-needle");
+        if (needleEl) needleEl.setAttribute("transform", `rotate(${-rot}, 120, 120)`);
+
+        // Update live readouts
+        setEl("c-coords",  `${mapPoint.latitude.toFixed(4)}°, ${mapPoint.longitude.toFixed(4)}°`);
+        setEl("c-maprot",  rot.toFixed(1) + "°");
+      } catch (_) {}
+    }
+
+    /* ══════════════════════════════════════════
+       MAP CLICK → PLACE COMPASS
+    ══════════════════════════════════════════ */
+    function onMapClick(evt) {
+      placeCompass(evt.mapPoint, evt.screenPoint);
+    }
+
+    function placeCompass(mPoint, sPt) {
+      mapPoint = mPoint;
+      bezelRot = 0;
+      const overlay = document.getElementById("compassOverlay");
+      overlay.innerHTML = "";
+
+      const anchor = document.createElement("div");
+      anchor.className = "compass-anchor";
+      anchor.style.left = sPt.x + "px";
+      anchor.style.top  = sPt.y + "px";
+      anchor.innerHTML  = buildCompassHTML();
+      overlay.appendChild(anchor);
+      compassAnchor = anchor;
+
+      // Prevent map events from propagating through the compass
+      ["pointerdown", "mousedown", "touchstart"].forEach(ev =>
+        anchor.addEventListener(ev, e => e.stopPropagation(), { passive: false })
+      );
+
+      // Wire bezel drag
+      const svg = document.getElementById("compassSvg");
+      svg.addEventListener("mousedown",  e => startBezelDrag(e, svg, false));
+      svg.addEventListener("touchstart", e => startBezelDrag(e, svg, true), { passive: false });
+
+      // Close
+      anchor.querySelector(".compass-close").addEventListener("click", e => {
+        e.stopPropagation(); clearCompass();
+      });
+
+      // Reset bearing
+      anchor.querySelector(".panel-reset").addEventListener("click", e => {
+        e.stopPropagation(); bezelRot = 0; updateBezelDisplay();
+      });
+
+      document.getElementById("btnClear").style.display = "";
+      document.getElementById("hint").textContent = "↻ Drag outer ring · Click map to move";
+    }
+
+    function clearCompass() {
+      document.getElementById("compassOverlay").innerHTML = "";
+      compassAnchor = null; mapPoint = null; bezelRot = 0;
+      document.getElementById("btnClear").style.display = "none";
+      document.getElementById("hint").textContent = "📍 Click map to place compass";
+    }
+
+    /* ══════════════════════════════════════════
+       BEZEL DRAG
+    ══════════════════════════════════════════ */
+    function getAngleFromCenter(e, svg, touch) {
+      const r  = svg.getBoundingClientRect();
+      const cx = r.left + r.width  / 2;
+      const cy = r.top  + r.height / 2;
+      const src = touch ? e.touches[0] : e;
+      return Math.atan2(src.clientY - cy, src.clientX - cx) * 180 / Math.PI;
+    }
+
+    function isOnBezelRing(e, svg, touch) {
+      const r    = svg.getBoundingClientRect();
+      const cx   = r.left + r.width  / 2;
+      const cy   = r.top  + r.height / 2;
+      const src  = touch ? e.touches[0] : e;
+      const dist = Math.hypot(src.clientX - cx, src.clientY - cy);
+      const s    = r.width / 240;           // scale factor
+      return dist > 74 * s && dist < 117 * s;
+    }
+
+    function startBezelDrag(e, svg, touch) {
+      if (!isOnBezelRing(e, svg, touch)) return;
+      e.preventDefault(); e.stopPropagation();
+
+      const startAngle = getAngleFromCenter(e, svg, touch);
+      const startBezel = bezelRot;
+
+      function onMove(ev) {
+        bezelRot = startBezel + (getAngleFromCenter(ev, svg, touch) - startAngle);
+        updateBezelDisplay();
+        ev.preventDefault();
+      }
+      function onEnd() {
+        document.removeEventListener(touch ? "touchmove" : "mousemove", onMove);
+        document.removeEventListener(touch ? "touchend"  : "mouseup",   onEnd);
+      }
+      document.addEventListener(touch ? "touchmove" : "mousemove", onMove, { passive: false });
+      document.addEventListener(touch ? "touchend"  : "mouseup",   onEnd);
+    }
+
+    /* ══════════════════════════════════════════
+       HELPERS
+    ══════════════════════════════════════════ */
+    function norm360(a) { return ((a % 360) + 360) % 360; }
+
+    function toCardinal(d) {
+      const dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE",
+                    "S","SSW","SW","WSW","W","WNW","NW","NNW"];
+      return dirs[Math.round(norm360(d) / 22.5) % 16];
+    }
+
+    function setEl(id, txt) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = txt;
+    }
+
+    function updateBezelDisplay() {
+      const bezelEl = document.getElementById("c-bezel");
+      if (bezelEl) bezelEl.setAttribute("transform", `rotate(${bezelRot}, 120, 120)`);
+      const n = norm360(bezelRot);
+      setEl("c-bearing",     n.toFixed(1) + "°");
+      setEl("c-cardinal",    toCardinal(n));
+      // Approximate magnetic declination for Pakistan ~1.5°W
+      setEl("c-truebearing", norm360(n - 1.5).toFixed(1) + "°");
+    }
+
+    /* ══════════════════════════════════════════
+       SVG / HTML BUILDER
+    ══════════════════════════════════════════ */
+    function buildCompassHTML() {
+      const CX = 120, CY = 120;
+      const RO = 115;   // outer bezel radius
+      const RI = 77;    // inner face radius (RO - 38)
+
+      /* — Tick marks — */
+      let ticks = "";
+      for (let i = 0; i < 360; i += 2) {
+        const rad = i * Math.PI / 180;
+        const isLg  = i % 30 === 0;
+        const isMd  = !isLg && i % 10 === 0;
+        const r1 = RO - 2;
+        const r2 = isLg ? RO - 19 : isMd ? RO - 12 : RO - 7;
+        const sw = isLg ? 1.5 : isMd ? 0.9 : 0.4;
+        const col = isLg ? "#d4a03c" : isMd ? "#8a6420" : "#3e2c0a";
+        const x1 = CX + r1 * Math.sin(rad), y1 = CY - r1 * Math.cos(rad);
+        const x2 = CX + r2 * Math.sin(rad), y2 = CY - r2 * Math.cos(rad);
+        ticks += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${col}" stroke-width="${sw}"/>`;
+      }
+
+      /* — Degree labels every 30° — */
+      let labels = "";
+      for (let i = 0; i < 360; i += 30) {
+        const rad = i * Math.PI / 180;
+        const nr = RO - 28;
+        const x = CX + nr * Math.sin(rad), y = CY - nr * Math.cos(rad);
+        const isCard = i % 90 === 0;
+        const lbl = isCard ? ["N","E","S","W"][i/90] : String(i);
+        const col = isCard ? "#f0d060" : "#c09040";
+        const fs  = isCard ? 12 : 8;
+        const fw  = isCard ? "bold" : "normal";
+        labels += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}"
+          text-anchor="middle" dominant-baseline="middle"
+          fill="${col}" font-size="${fs}" font-weight="${fw}" font-family="Georgia,serif"
+          transform="rotate(${i},${x.toFixed(2)},${y.toFixed(2)})">${lbl}</text>`;
+      }
+
+      /* — 8-point star decoration — */
+      let starPts = "";
+      for (let i = 0; i < 16; i++) {
+        const rad = i * Math.PI / 8;
+        const r = i % 2 === 0 ? 56 : 22;
+        starPts += `${(CX + r * Math.sin(rad)).toFixed(2)},${(CY - r * Math.cos(rad)).toFixed(2)} `;
+      }
+
+      /* — Inter-cardinal labels — */
+      const icLabels = ["NE","SE","SW","NW"].map((d, i) => {
+        const a = (45 + i * 90) * Math.PI / 180;
+        const r = 58;
+        const x = CX + r * Math.sin(a), y = CY - r * Math.cos(a);
+        return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}"
+          text-anchor="middle" dominant-baseline="middle"
+          fill="rgba(160,116,38,0.42)" font-size="9" font-family="Georgia,serif"
+          transform="rotate(${45+i*90},${x.toFixed(2)},${y.toFixed(2)})">${d}</text>`;
+      }).join("");
+
+      /* — Needle paths — */
+      const nN = `M${CX},${CY-66} L${CX-9},${CY} L${CX},${CY-5} L${CX+9},${CY} Z`;
+      const nS = `M${CX},${CY+66} L${CX-9},${CY} L${CX},${CY+5} L${CX+9},${CY} Z`;
+
+      const svg = `
+<svg id="compassSvg" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg"
+     style="width:240px;height:240px;display:block;cursor:default">
+  <defs>
+    <radialGradient id="bgGr" cx="50%" cy="38%" r="65%">
+      <stop offset="0%"   stop-color="#1e1a0e"/>
+      <stop offset="100%" stop-color="#070500"/>
+    </radialGradient>
+    <radialGradient id="bezelGr" cx="50%" cy="28%" r="72%">
+      <stop offset="0%"   stop-color="#3c2e0a"/>
+      <stop offset="100%" stop-color="#100c03"/>
+    </radialGradient>
+    <radialGradient id="redGr" cx="40%" cy="15%" r="85%">
+      <stop offset="0%"   stop-color="#ff5555"/>
+      <stop offset="100%" stop-color="#7a0000"/>
+    </radialGradient>
+    <radialGradient id="whtGr" cx="40%" cy="15%" r="85%">
+      <stop offset="0%"   stop-color="#e8e5d5"/>
+      <stop offset="100%" stop-color="#888070"/>
+    </radialGradient>
+    <filter id="dsh"><feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="rgba(0,0,0,0.95)"/></filter>
+    <filter id="glo"><feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+
+  <!-- Drop shadow -->
+  <circle cx="${CX}" cy="${CY}" r="120" fill="rgba(0,0,0,0.55)" filter="url(#dsh)"/>
+
+  <!-- ═══ BEZEL (rotatable) ═══ -->
+  <g id="c-bezel" transform="rotate(0,${CX},${CY})" style="cursor:grab">
+    <circle cx="${CX}" cy="${CY}" r="${RO}" fill="url(#bezelGr)"/>
+    <circle cx="${CX}" cy="${CY}" r="${RO}" fill="none" stroke="#5a4412" stroke-width="0.8"/>
+    <circle cx="${CX}" cy="${CY}" r="${RI}" fill="none" stroke="#5a4412" stroke-width="0.5"/>
+    ${ticks}
+    ${labels}
+    <!-- Index triangle at top (shows current bearing) -->
+    <polygon points="${CX},${CY-RO+2} ${CX-5.5},${CY-RO+14} ${CX+5.5},${CY-RO+14}"
+             fill="#d03020" opacity="0.92"/>
+  </g>
+  <!-- Outer rim rings -->
+  <circle cx="${CX}" cy="${CY}" r="${RO+1}"  fill="none" stroke="#8a6820" stroke-width="1.8"/>
+  <circle cx="${CX}" cy="${CY}" r="${RO+3.5}" fill="none" stroke="#2e2208" stroke-width="1.2"/>
+
+  <!-- ═══ INNER FACE (fixed) ═══ -->
+  <circle cx="${CX}" cy="${CY}" r="${RI-1}" fill="url(#bgGr)"/>
+
+  <!-- 8-point star -->
+  <polygon points="${starPts}" fill="none" stroke="rgba(212,160,60,0.11)" stroke-width="0.8"/>
+
+  <!-- Decorative rings -->
+  <circle cx="${CX}" cy="${CY}" r="66" fill="none" stroke="rgba(212,160,60,0.09)" stroke-width="0.6"/>
+  <circle cx="${CX}" cy="${CY}" r="44" fill="none" stroke="rgba(212,160,60,0.07)" stroke-width="0.5"/>
+  <circle cx="${CX}" cy="${CY}" r="${RI-6}" fill="none" stroke="rgba(212,160,60,0.07)" stroke-width="0.5"/>
+
+  <!-- Cardinal lines -->
+  <line x1="${CX}" y1="${CY-RI+3}" x2="${CX}" y2="${CY-72}" stroke="rgba(212,160,60,0.22)" stroke-width="1.2"/>
+  <line x1="${CX}" y1="${CY+RI-3}" x2="${CX}" y2="${CY+72}" stroke="rgba(212,160,60,0.13)" stroke-width="0.7"/>
+  <line x1="${CX-RI+3}" y1="${CY}" x2="${CX-72}" y2="${CY}" stroke="rgba(212,160,60,0.13)" stroke-width="0.7"/>
+  <line x1="${CX+RI-3}" y1="${CY}" x2="${CX+72}" y2="${CY}" stroke="rgba(212,160,60,0.13)" stroke-width="0.7"/>
+
+  <!-- Diagonal decorative -->
+  <line x1="${CX-55}" y1="${CY-55}" x2="${CX+55}" y2="${CY+55}" stroke="rgba(212,160,60,0.04)" stroke-width="0.5"/>
+  <line x1="${CX+55}" y1="${CY-55}" x2="${CX-55}" y2="${CY+55}" stroke="rgba(212,160,60,0.04)" stroke-width="0.5"/>
+
+  <!-- Inter-cardinal labels -->
+  ${icLabels}
+
+  <!-- Cardinal labels -->
+  <text x="${CX}" y="${CY-68}" text-anchor="middle" dominant-baseline="auto"
+        fill="#e83030" font-size="16" font-weight="bold" font-family="Georgia,serif"
+        filter="url(#glo)">N</text>
+  <text x="${CX}" y="${CY+82}" text-anchor="middle" dominant-baseline="hanging"
+        fill="#b8b5a8" font-size="13" font-family="Georgia,serif">S</text>
+  <text x="${CX+74}" y="${CY}" text-anchor="start" dominant-baseline="middle"
+        fill="#a08050" font-size="13" font-family="Georgia,serif">E</text>
+  <text x="${CX-74}" y="${CY}" text-anchor="end" dominant-baseline="middle"
+        fill="#a08050" font-size="13" font-family="Georgia,serif">W</text>
+
+  <!-- ═══ NEEDLE (sync'd to map rotation) ═══ -->
+  <g id="c-needle" transform="rotate(0,${CX},${CY})">
+    <!-- shadow -->
+    <g transform="translate(2.5,2.5)" opacity="0.3">
+      <path d="${nN}" fill="black"/>
+      <path d="${nS}" fill="black"/>
+    </g>
+    <path d="${nN}" fill="url(#redGr)"/>
+    <path d="${nS}" fill="url(#whtGr)"/>
+    <path d="${nN}" fill="none" stroke="rgba(0,0,0,0.45)" stroke-width="0.5"/>
+    <path d="${nS}" fill="none" stroke="rgba(0,0,0,0.3)"  stroke-width="0.5"/>
+  </g>
+
+  <!-- Centre cap -->
+  <circle cx="${CX}" cy="${CY}" r="9"   fill="#14100a" stroke="#d4a03c" stroke-width="1.6"/>
+  <circle cx="${CX}" cy="${CY}" r="5"   fill="#d4a03c" opacity="0.82"/>
+  <circle cx="${CX}" cy="${CY}" r="2.5" fill="#fff8e0"/>
+
+  <!-- Fixed lubber line at top -->
+  <line x1="${CX}" y1="${CY-RO-6}" x2="${CX}" y2="${CY-RO+2}"
+        stroke="rgba(255,255,255,0.55)" stroke-width="1.8" stroke-linecap="round"/>
+</svg>`;
+
+      return `
+<div class="compass-hint">↻ drag outer ring to set bearing</div>
+<div class="compass-wrapper">
+  <button class="compass-close" title="Remove compass">✕</button>
+  ${svg}
+  <div class="pin-dot"></div>
+</div>
+<div class="compass-panel">
+  <div class="panel-cardinal" id="c-cardinal">N</div>
+  <div class="panel-bearing"  id="c-bearing">0.0°</div>
+  <div class="panel-divider"></div>
+  <div class="panel-row"><span>TRUE BEARING</span>  <span id="c-truebearing">358.5°</span></div>
+  <div class="panel-row"><span>MAG. DECL.</span>    <span>~1.5° W</span></div>
+  <div class="panel-row"><span>MAP ROTATION</span>  <span id="c-maprot">0.0°</span></div>
+  <div class="panel-row"><span>COORDINATES</span>   <span id="c-coords">—</span></div>
+  <button class="panel-reset">⊕ Reset North</button>
+</div>`;
+    }
+
+    /* ══════════════════════════════════════════
+       UI BUTTONS
+    ══════════════════════════════════════════ */
+    document.getElementById("btn2D").addEventListener("click", function() {
+      if (!is3D) return;
+      clearCompass();
+      this.classList.add("active");
+      document.getElementById("btn3D").classList.remove("active");
+      initView("2d");
+    });
+
+    document.getElementById("btn3D").addEventListener("click", function() {
+      if (is3D) return;
+      clearCompass();
+      this.classList.add("active");
+      document.getElementById("btn2D").classList.remove("active");
+      initView("3d");
+    });
+
+    document.getElementById("btnClear").addEventListener("click", clearCompass);
+
+    /* ══════════════════════════════════════════
+       BOOT
+    ══════════════════════════════════════════ */
+    initView("2d");
+
+  }); // end require
+  </script>
+</body>
+</html>

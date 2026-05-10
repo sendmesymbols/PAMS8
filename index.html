@@ -3241,8 +3241,8 @@
       // Save/Load buttons
       document.getElementById('api-saveAll').addEventListener('click', () => {
         const engine = getEngines();
-        if (engine && engine.saveToFile) {
-          engine.saveToFile();
+        if (engine && engine.serializationEngine) {
+          engine.serializationEngine.saveToFile();
           document.getElementById('api-save-status').textContent =
             'Saved to file';
         }
@@ -3250,8 +3250,8 @@
 
       document.getElementById('api-load').addEventListener('click', () => {
         const engine = getEngines();
-        if (engine && engine.loadFromFile) {
-          engine.loadFromFile();
+        if (engine && engine.serializationEngine) {
+          engine.serializationEngine.loadFromFile();
           document.getElementById('api-save-status').textContent =
             'Load dialog opened';
         }
@@ -3277,8 +3277,8 @@
 
       document.getElementById('api-export').addEventListener('click', () => {
         const engine = getEngines();
-        if (engine && engine.exportLayerToJSON) {
-          const json = engine.exportLayerToJSON();
+        if (engine && engine.serializationEngine) {
+          const json = engine.serializationEngine.exportLayerToJSON();
           console.log('Exported JSON:', json);
           document.getElementById('api-save-status').textContent =
             `Exported ${json.length} graphics to console`;
@@ -3289,10 +3289,10 @@
         const jsonStr = prompt('Paste JSON array to import:');
         if (jsonStr) {
           const engine = getEngines();
-          if (engine && engine.importLayerFromJSON) {
+          if (engine && engine.serializationEngine) {
             try {
               const data = JSON.parse(jsonStr);
-              engine.importLayerFromJSON(data);
+              engine.serializationEngine.importLayerFromJSON(data);
               document.getElementById('api-save-status').textContent =
                 'Imported successfully';
             } catch (e) {
@@ -3307,8 +3307,8 @@
         .getElementById('api-export-geojson')
         .addEventListener('click', () => {
           const engine = getEngines();
-          if (engine && engine.saveToGeoJSONFile) {
-            engine.saveToGeoJSONFile();
+          if (engine && engine.serializationEngine) {
+            engine.serializationEngine.saveToGeoJSONFile();
             document.getElementById('api-save-status').textContent =
               'GeoJSON exported';
           }
@@ -3318,8 +3318,8 @@
         .getElementById('api-import-geojson')
         .addEventListener('click', () => {
           const engine = getEngines();
-          if (engine && engine.loadFromGeoJSONFile) {
-            engine.loadFromGeoJSONFile();
+          if (engine && engine.serializationEngine) {
+            engine.serializationEngine.loadFromGeoJSONFile();
             document.getElementById('api-save-status').textContent =
               'Loading GeoJSON…';
           }

@@ -24,6 +24,51 @@ import SceneView from '@arcgis/core/views/SceneView';
 import SpatialReference from '@arcgis/core/geometry/SpatialReference';
 import EngineLogger from '../Support/EngineLogger';
 
+// ── MGRS encoding (no external dependency) ─────────────────────────────────────
+
+const UTM_LETTERS = 'CDEFGHJKLMNPQRSTUVWX';
+
+function _utmZoneLetter(lat: number, lon: number): string {
+  const zone = Math.floor((lon + 180) / 6) + 1;
+  const latBand = Math.floor((lat + 80) / 8);
+  const band = UTM_LETTERS[latBand] || 'X';
+  let zoneLetter = band;
+  if (zone >= 3 && zone <= 4 && band === 'V') zoneLetter = 'V';
+  if (zone >= 31 && zone <= 37 && band === 'X') zoneLetter = 'X';
+  return `${zone}${zoneLetter}`;
+}
+
+function _formatMGRSLabel(lat: number, lon: number, intervalM: number): string {
+  const zone = Math.floor((lon + 180) / 6) + 1;
+  const latBand = Math.floor((lat + 80) / 8);
+  const band = UTM_LETTERS[latBand] || 'X';
+  const zoneLetter = `${zone}${band}`;
+
+  const zoneOrigin = (zone - 1) * 6 - 180 + 3;
+  const isSouth = lat < 0;
+  const utm = latLonToUTM(lat, lon, zone);
+  const e = utm.e - 100000 * Math.floor(utm.e / 100000);
+  const n = utm.n - (isSouth ? 10000000 : 0);
+  const e100k = Math.floor(e / 100000);
+  const n100k = Math.floor(n / 100000);
+
+  if (intervalM <= 100) {
+    const eVal = Math.floor((e % 100000) / intervalM);
+    const nVal = Math.floor((n % 100000) / intervalM);
+    return `${zoneLetter} ${e100k}${n100k} ${String(eVal).padStart(4, '0')} ${String(nVal).padStart(4, '0')}`;
+  } else if (intervalM <= 1000) {
+    const eVal = Math.floor((e % 100000) / intervalM);
+    const nVal = Math.floor((n % 100000) / intervalM);
+    return `${zoneLetter} ${e100k}${n100k} ${String(eVal).padStart(3, '0')}${String(nVal).padStart(3, '0')}`;
+  } else if (intervalM <= 10000) {
+    const eVal = Math.floor((e % 100000) / intervalM);
+    const nVal = Math.floor((n % 100000) / intervalM);
+    return `${zoneLetter} ${e100k}${n100k} ${String(eVal).padStart(2, '0')}${String(nVal).padStart(2, '0')}`;
+  } else {
+    return `${zoneLetter} ${e100k}${n100k}`;
+  }
+}
+
 // ── Public option types ────────────────────────────────────────────────────────
 
 export interface MGRSEngineOptions {
@@ -367,7 +412,7 @@ export default class MGRSEngine {
 
     this._layer.removeAll();
     this._layer.addMany(graphics);
-    EngineLogger.info('MGRSEngine', `Rebuilt WGS84 grid with ${graphics.length} graphics.`);
+    EngineLogger.log('MGRSEngine', 'info', `Rebuilt WGS84 grid with ${graphics.length} graphics.`);
   }
 
   // ── GZD — pure math ─────────────────────────────────────────────────────────
@@ -427,6 +472,18 @@ export default class MGRSEngine {
     if (3 >= west - 0.01 && 3 <= east + 0.01) {
       const ds = Math.max(56, south), dn = Math.min(64, north);
       if (ds < dn) graphics.push(this._lineGraphic([[3, ds], [3, dn]], sym));
+    }
+
+    // Standard zone 32 meridian (6°E) - omit in band V (Norwegian) and band X (Svalbard)
+    if (6 >= west - 0.01 && 6 <= east + 0.01) {
+      const segs: Array<[number, number]> = [];
+      segs.push([-80, 56]); // Below band V
+      segs.push([64, 72]);  // Band X (Svalbard gap)
+      // Band V (56-64) is omitted - Norwegian exception uses 3°E instead
+      for (const [sS, sN] of segs) {
+        const ds = Math.max(sS, south), dn = Math.min(sN, north);
+        if (ds < dn) graphics.push(this._lineGraphic([[6, ds], [6, dn]], sym));
+      }
     }
 
     // Svalbard special meridians: 9°E, 21°E, 33°E in band X (72–84°N)
@@ -594,7 +651,7 @@ export default class MGRSEngine {
                 center.lon < west || center.lon > east ||
                 center.lat < south || center.lat > north
               ) continue;
-              graphics.push(this._textGraphic(center.lon, center.lat, this._formatSubGridLabel(e, n, intervalM), sym));
+              graphics.push(this._textGraphic(center.lon, center.lat, this._formatSubGridLabel(e, n, intervalM, center.lon, center.lat), sym));
             }
           }
         } catch {
@@ -606,15 +663,8 @@ export default class MGRSEngine {
     return graphics;
   }
 
-  private _formatSubGridLabel(easting: number, northing: number, intervalM: number): string {
-    const digits =
-      intervalM <= 100 ? 4 :
-      intervalM <= 1000 ? 3 :
-      intervalM <= 10000 ? 2 : 1;
-
-    const eVal = Math.floor((easting % 100000) / intervalM);
-    const nVal = Math.floor((northing % 100000) / intervalM);
-    return `${String(eVal).padStart(digits, '0')} ${String(nVal).padStart(digits, '0')}`;
+  private _formatSubGridLabel(easting: number, northing: number, intervalM: number, lon: number, lat: number): string {
+    return _formatMGRSLabel(lat, lon, intervalM);
   }
 
   // ── Graphic factories ──────────────────────────────────────────────────────

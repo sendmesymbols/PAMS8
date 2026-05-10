@@ -200,6 +200,7 @@ class SymbolEngine implements Evented {
     this.serializationEngine.start(
       this._layerManager,
       (data) => this.loadSymbolFromJSON(data as any),
+      (data) => this._applyTemplateData(data),
     );
 
     // Initialize symbol engine
@@ -1193,13 +1194,13 @@ class SymbolEngine implements Evented {
             id: 'save-all-symbols',
             label: 'Save All Symbols',
             icon: '<span style="font-size:14px">🗂️</span>',
-            action: (_graphic) => this.saveToFile(),
+            action: (_graphic) => this.serializationEngine.saveToFile(),
           },
           {
             id: 'load-symbols',
             label: 'Load Symbols',
             icon: '<span style="font-size:14px">📂</span>',
-            action: (_graphic) => this.loadFromFile(),
+            action: (_graphic) => this.serializationEngine.loadFromFile(),
           },
           {
             id: 'save-plan',
@@ -1217,13 +1218,13 @@ class SymbolEngine implements Evented {
             id: 'export-geojson',
             label: 'Export as GeoJSON',
             icon: '<span style="font-size:14px">🌐</span>',
-            action: (_graphic) => this.saveToGeoJSONFile(),
+            action: (_graphic) => this.serializationEngine.saveToGeoJSONFile(),
           },
           {
             id: 'import-geojson',
             label: 'Import GeoJSON',
             icon: '<span style="font-size:14px">🌍</span>',
-            action: (_graphic) => this.loadFromGeoJSONFile(),
+            action: (_graphic) => this.serializationEngine.loadFromGeoJSONFile(),
           },
         ],
       },
@@ -3865,38 +3866,17 @@ class SymbolEngine implements Evented {
 
   /** Serialise every graphic across all symbol layers into an array. */
   public exportLayerToJSON(): object[] {
-    const result: object[] = [];
-    const layerIds = [
-      LAYER_NAMES.TACT,
-      LAYER_NAMES.TACT_PT,
-      LAYER_NAMES.FORCE,
-      'milSymbols',
-    ];
-    for (const layerId of layerIds) {
-      const layer = this._layerManager.getOrCreateLayer(layerId) as any;
-      if (!layer?.graphics) continue;
-      (layer.graphics as any).forEach((g: Graphic) => {
-        try {
-          result.push(this.saveSymbolToJSON(g));
-        } catch {
-          /* skip */
-        }
-      });
-    }
-    return result;
+    return this.serializationEngine.exportLayerToJSON();
   }
 
   /** Reconstruct all graphics from a serialised array. */
   public importLayerFromJSON(data: object[]): void {
-    data.forEach((item) => this.loadSymbolFromJSON(item as any));
-    console.info(`[SaveLoad] Imported ${data.length} symbols`);
+    this.serializationEngine.importLayerFromJSON(data);
   }
 
   /** Download all symbols as a PAMS8 JSON file. */
   public saveToFile(filename?: string): void {
-    const data = this.exportLayerToJSON();
-    this._downloadJSON(data, filename ?? `pams8_symbols_${Date.now()}.json`);
-    console.info(`[SaveLoad] Exported ${data.length} symbols`);
+    this.serializationEngine.saveToFile(filename);
   }
 
   /** Download a single graphic as a PAMS8 JSON file. */
@@ -3917,32 +3897,7 @@ class SymbolEngine implements Evented {
 
   /** Open a file picker; loads from PAMS8 JSON, template, or GeoJSON file. */
   public loadFromFile(): void {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,.geojson,application/json';
-    input.onchange = (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        try {
-          const parsed = JSON.parse(evt.target?.result as string);
-          if (parsed?.type === 'FeatureCollection') {
-            this.importFromGeoJSON(parsed);
-          } else if (parsed?.type === 'pams8-template') {
-            this._applyTemplateData(parsed);
-          } else if (Array.isArray(parsed)) {
-            this.importLayerFromJSON(parsed);
-          } else {
-            this.loadSymbolFromJSON(parsed);
-          }
-        } catch (err) {
-          console.error('[SaveLoad] Failed to parse file:', err);
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
+    this.serializationEngine.loadFromFile();
   }
 
   /**
@@ -4031,188 +3986,22 @@ class SymbolEngine implements Evented {
 
   /** Export all symbol layers as a standard GeoJSON FeatureCollection (WGS84 coordinates). */
   public exportToGeoJSON(): object {
-    const features: any[] = [];
-    const layerIds = [
-      LAYER_NAMES.TACT,
-      LAYER_NAMES.TACT_PT,
-      LAYER_NAMES.FORCE,
-      'milSymbols',
-    ];
-    const sp = (pt: any) => this._serializePoint(pt);
-
-    for (const layerId of layerIds) {
-      const layer = this._layerManager.getOrCreateLayer(layerId) as any;
-      if (!layer?.graphics) continue;
-
-      (layer.graphics as any).forEach((g: Graphic) => {
-        try {
-          const de: any = g.attributes?.drawEssentials;
-          const amplifier = de?.AMPLIFIER;
-
-          // Convert projected geometry to WGS84 for standard GeoJSON
-          let geom: any = g.geometry;
-          const wkid = geom?.spatialReference?.wkid;
-          if (geom && (wkid === 102100 || wkid === 3857)) {
-            geom = webMercatorUtils.webMercatorToGeographic(geom);
-          }
-
-          let geoJsonGeom: any = null;
-          if (geom?.type === 'point') {
-            const pt = geom as Point;
-            geoJsonGeom = {
-              type: 'Point',
-              coordinates: [pt.longitude ?? pt.x, pt.latitude ?? pt.y],
-            };
-          } else if (geom?.type === 'polyline') {
-            geoJsonGeom = {
-              type: 'MultiLineString',
-              coordinates: (geom as any).paths ?? [],
-            };
-          } else if (geom?.type === 'polygon') {
-            geoJsonGeom = {
-              type: 'Polygon',
-              coordinates: (geom as any).rings ?? [],
-            };
-          }
-
-          if (!geoJsonGeom) return;
-
-          const ctrlPts = de?.CTRL_PTS ? de.CTRL_PTS.map(sp) : undefined;
-          const baseLnPts = de?.BASE_LN_PTS
-            ? {
-                startPt: sp(de.BASE_LN_PTS.startPt),
-                midPt: sp(de.BASE_LN_PTS.midPt),
-                endPt: sp(de.BASE_LN_PTS.endPt),
-              }
-            : undefined;
-          const deGeom = de?.GEOM
-            ? sp(de.GEOM)
-            : !ctrlPts && !baseLnPts && g.geometry?.type === 'point'
-              ? sp(g.geometry)
-              : undefined;
-
-          const deJson: any = { ...de };
-          delete deJson.AMPLIFIER;
-          delete deJson.SCOPE;
-          delete deJson.CTRL_PTS;
-          delete deJson.BASE_LN_PTS;
-          delete deJson.GEOM;
-          if (ctrlPts) deJson.CTRL_PTS = ctrlPts;
-          if (baseLnPts) deJson.BASE_LN_PTS = baseLnPts;
-          if (deGeom) deJson.GEOM = deGeom;
-
-          features.push({
-            type: 'Feature',
-            geometry: geoJsonGeom,
-            properties: {
-              pams8: true,
-              id: g.attributes?.id,
-              layerId,
-              sidc: amplifier?.SIDC || de?.SIDC,
-              amplifier: amplifier ? { ...amplifier } : {},
-              drawEssentials: deJson,
-            },
-          });
-        } catch (e) {
-          console.warn('[GeoJSON] Skipping graphic:', e);
-        }
-      });
-    }
-
-    return { type: 'FeatureCollection', features };
+    return this.serializationEngine.exportToGeoJSON();
   }
 
   /** Reconstruct symbols from a pams8 GeoJSON FeatureCollection. */
   public importFromGeoJSON(geojson: any): void {
-    if (
-      geojson?.type !== 'FeatureCollection' ||
-      !Array.isArray(geojson.features)
-    ) {
-      console.error('[GeoJSON] Expected a GeoJSON FeatureCollection');
-      return;
-    }
-
-    let count = 0;
-    for (const feature of geojson.features) {
-      try {
-        const props = feature.properties ?? {};
-        if (!props.pams8) continue;
-
-        const deData = props.drawEssentials ?? {};
-        const ctrlPtsRaw = deData.CTRL_PTS;
-        const baseLnPtsRaw = deData.BASE_LN_PTS;
-        const geomRaw = deData.GEOM;
-        const geoGeom = feature.geometry;
-
-        const de = new DrawEssentials();
-        const { CTRL_PTS, BASE_LN_PTS, GEOM, ...rest } = deData;
-        Object.assign(de, rest);
-
-        if (ctrlPtsRaw?.length > 0) {
-          (de as any).CTRL_PTS = (ctrlPtsRaw as any[])
-            .map((p: any) =>
-              p
-                ? new Point({
-                    x: p.x,
-                    y: p.y,
-                    spatialReference: p.spatialReference,
-                  })
-                : null,
-            )
-            .filter(Boolean);
-        }
-        if (baseLnPtsRaw) {
-          (de as any).BASE_LN_PTS = {
-            startPt: baseLnPtsRaw.startPt
-              ? new Point(baseLnPtsRaw.startPt)
-              : undefined,
-            midPt: baseLnPtsRaw.midPt
-              ? new Point(baseLnPtsRaw.midPt)
-              : undefined,
-            endPt: baseLnPtsRaw.endPt
-              ? new Point(baseLnPtsRaw.endPt)
-              : undefined,
-          };
-        }
-        if (geomRaw) {
-          (de as any).GEOM = new Point({
-            x: geomRaw.x,
-            y: geomRaw.y,
-            spatialReference: geomRaw.spatialReference,
-          });
-        } else if (!ctrlPtsRaw && !baseLnPtsRaw && geoGeom?.type === 'Point') {
-          // Derive GEOM from the standard GeoJSON Point geometry (WGS84)
-          (de as any).GEOM = new Point({
-            longitude: geoGeom.coordinates[0],
-            latitude: geoGeom.coordinates[1],
-            spatialReference: { wkid: 4326 },
-          });
-        }
-
-        const amplifier = new Amplifier();
-        if (props.amplifier) Object.assign(amplifier, props.amplifier);
-        if (props.sidc && !amplifier.SIDC) amplifier.SIDC = props.sidc;
-
-        this._pendingAttrs = { symbolId: props.id };
-        this.initialize(de, amplifier, true);
-        count++;
-      } catch (e) {
-        console.warn('[GeoJSON] Failed to import feature:', e);
-      }
-    }
-    console.info(`[GeoJSON] Imported ${count} symbols`);
+    this.serializationEngine.importFromGeoJSON(geojson);
   }
 
   /** Download all symbols as a standard GeoJSON file. */
   public saveToGeoJSONFile(filename?: string): void {
-    const data = this.exportToGeoJSON();
-    this._downloadJSON(data, filename ?? `pams8_geojson_${Date.now()}.geojson`);
-    console.info('[GeoJSON] Exported GeoJSON file');
+    this.serializationEngine.saveToGeoJSONFile(filename);
   }
 
   /** Open a file picker and load symbols from a GeoJSON or PAMS8 JSON file. */
   public loadFromGeoJSONFile(): void {
-    this.loadFromFile(); // loadFromFile now auto-detects FeatureCollection vs pams8 formats
+    this.serializationEngine.loadFromGeoJSONFile();
   }
 
   private _downloadJSON(data: any, filename: string): void {
