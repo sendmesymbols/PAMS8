@@ -380,6 +380,7 @@ class ContextMenuManager extends Evented {
       saveLoadItem.style.position = 'relative';
       saveLoadItem.innerHTML = `<span class="menu-icon" style="font-size:14px">📁</span><span style="flex:1">Save / Load</span>`;
 
+
       const submenuEl = document.createElement('div');
       submenuEl.className = 'arcgis-submenu';
       this.renderMenuItems(saveLoadItems, submenuEl, graphic, x, y);

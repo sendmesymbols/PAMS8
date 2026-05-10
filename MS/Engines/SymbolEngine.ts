@@ -727,34 +727,34 @@ class SymbolEngine implements Evented {
         id: 'show-details',
         label: 'Show Details',
         shortcut: 'I',
-        icon: '<span style="font-size:14px">â„¹ï¸</span>',
+        icon: '<span style="font-size:14px">ℹ️</span>',
         action: (graphic) => this.showSymbolDetails(graphic),
       },
       {
         id: 'center-on',
         label: 'Center On',
         shortcut: 'C',
-        icon: '<span style="font-size:14px">ðŸŽ¯</span>',
+        icon: '<span style="font-size:14px">🎯</span>',
         action: (graphic) => this.centerOnGraphic(graphic),
       },
       {
         id: 'remove-graphic',
         label: 'Remove',
         shortcut: 'Del',
-        icon: '<span style="font-size:14px">ðŸ—‘ï¸</span>',
+        icon: '<span style="font-size:14px">🗑️</span>',
         action: (graphic) => this.removeGraphic(graphic),
       },
-      // â”€â”€ Edit submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── Edit submenu ────────────────────────────────────────────────
       {
         id: 'edit-submenu',
         label: 'Edit',
-        icon: '<span style="font-size:14px">âœï¸</span>',
+        icon: '<span style="font-size:14px">✍️</span>',
         children: [
           {
             id: 'modify-symbol',
             label: 'Move, Scale, Rotate',
             shortcut: 'M',
-            icon: '<span style="font-size:14px">âœï¸</span>',
+            icon: '<span style="font-size:14px">✍️</span>',
             visible: (_graphic) => !this._editEngine.isModifyingSymbol,
             action: (graphic) => this.modifySymbol(graphic),
           },
@@ -762,7 +762,7 @@ class SymbolEngine implements Evented {
             id: 'disable-modify-symbol',
             label: 'Disable Move, Scale, Rotate',
             shortcut: 'Esc',
-            icon: '<span style="font-size:14px">âœ–</span>',
+            icon: '<span style="font-size:14px">✖</span>',
             visible: (_graphic) => this._editEngine.isModifyingSymbol,
             action: (_graphic) => this.deactivateEdit(),
           },
@@ -770,7 +770,7 @@ class SymbolEngine implements Evented {
             id: 'edit-ctrl-pts',
             label: 'Edit Control Points',
             shortcut: 'E',
-            icon: '<span style="font-size:14px">â¬¡</span>',
+            icon: '<span style="font-size:14px">↕</span>',
             visible: (_graphic) => !this._editEngine.isEditingControlPoints,
             action: (graphic) => this.activateEditControlPoints(graphic),
           },
@@ -778,28 +778,28 @@ class SymbolEngine implements Evented {
             id: 'deactivate-ctrl-pts',
             label: 'Deactivate Control Points',
             shortcut: 'Esc',
-            icon: '<span style="font-size:14px">âœ–</span>',
+            icon: '<span style="font-size:14px">✖</span>',
             visible: (_graphic) => this._editEngine.isEditingControlPoints,
             action: (_graphic) => this.deactivateEdit(),
           },
         ],
       },
-      // â”€â”€ Selection submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── Selection submenu ───────────────────────────────────────────
       {
         id: 'selection-submenu',
         label: 'Selection',
-        icon: '<span style="font-size:14px">â˜‘</span>',
+        icon: '<span style="font-size:14px">☑</span>',
         children: [
           {
             id: 'lasso-select',
             label: () => this._selectionEngine.isLassoActive ? 'Cancel Lasso' : 'Lasso Select',
             shortcut: 'L',
-            icon: '<span style="font-size:14px">ðŸ”²</span>',
+            icon: '<span style="font-size:14px">🔳</span>',
             action: (_graphic) => {
+              this._closeActiveWorkflow();
               if (this._selectionEngine.isLassoActive) {
                 this._selectionEngine.cancelLasso();
               } else {
-                this._closeActiveWorkflow();
                 this._selectionEngine.lassoSelect();
               }
             },
@@ -811,13 +811,13 @@ class SymbolEngine implements Evented {
                 ? 'Deselect'
                 : 'Add to Selection',
             shortcut: 'Shift+Click',
-            icon: '<span style="font-size:14px">â˜‘</span>',
+            icon: '<span style="font-size:14px">☑</span>',
             action: (graphic) => this._selectionEngine.toggleGraphic(graphic),
           },
           {
             id: 'clear-selection',
             label: () => `Clear Selection (${this._selectionEngine.count})`,
-            icon: '<span style="font-size:14px">âœ•</span>',
+            icon: '<span style="font-size:14px">✕</span>',
             visible: () => this._selectionEngine.count > 0,
             action: (_graphic) => this._selectionEngine.clearSelection(),
           },
@@ -825,7 +825,7 @@ class SymbolEngine implements Evented {
             id: 'move-selected',
             label: () => `Move Selected (${this._selectionEngine.count})`,
             shortcut: 'M',
-            icon: '<span style="font-size:14px">â¤¢</span>',
+            icon: '<span style="font-size:14px">✥</span>',
             visible: () => this._selectionEngine.count > 1,
             action: (_graphic) => {
               this._closeActiveWorkflow();
@@ -844,160 +844,160 @@ class SymbolEngine implements Evented {
             id: 'delete-selected',
             label: () => `Delete Selected (${this._selectionEngine.count})`,
             shortcut: 'Del',
-            icon: '<span style="font-size:14px">ðŸ—‘ï¸</span>',
+            icon: '<span style="font-size:14px">🗑️</span>',
             visible: () => this._selectionEngine.count > 1,
             action: (_graphic) =>
               this._selectionEngine.deleteSelected((entry) =>
                 this._pushUndo(entry),
               ),
           },
-          // â”€â”€ Select Similar submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Select Similar submenu ──────────────────────────────
           {
             id: 'select-similar-submenu',
             label: 'Select Similar',
-            icon: '<span style="font-size:14px">ðŸ”</span>',
+            icon: '<span style="font-size:14px">🔍</span>',
             children: [
               {
                 id: 'select-same-sidc',
                 label: 'Same SIDC',
-                icon: '<span style="font-size:14px">âšœ</span>',
+                icon: '<span style="font-size:14px">⚜</span>',
                 action: (graphic) => this._selectionEngine.selectSimilarSameSIDC(graphic),
               },
               {
                 id: 'select-same-echelon',
                 label: 'Same Echelon',
-                icon: '<span style="font-size:14px">â–£</span>',
+                icon: '<span style="font-size:14px">▣</span>',
                 action: (graphic) => this._selectionEngine.selectSimilarSameEchelon(graphic),
               },
               {
                 id: 'select-own-only',
                 label: 'Own Only',
-                icon: '<span style="font-size:14px">ðŸŸ¢</span>',
+                icon: '<span style="font-size:14px">🟢</span>',
                 action: () => this._selectionEngine.selectOwnOnly(),
               },
               {
                 id: 'select-enemy',
                 label: 'Enemy',
-                icon: '<span style="font-size:14px">ðŸ”´</span>',
+                icon: '<span style="font-size:14px">🔴</span>',
                 action: () => this._selectionEngine.selectEnemy(),
               },
             ],
           },
-          // â”€â”€ Select Within submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Select Within submenu ──────────────────────────────
           {
             id: 'select-within-submenu',
             label: 'Select Within',
-            icon: '<span style="font-size:14px">â­•</span>',
+            icon: '<span style="font-size:14px">⭕</span>',
             children: [
               {
                 id: 'select-within',
                 label: 'Within',
-                icon: '<span style="font-size:14px">â­•</span>',
+                icon: '<span style="font-size:14px">⭕</span>',
                 action: (graphic) => this._selectionEngine.selectWithin(graphic, false),
               },
               {
                 id: 'select-within-self',
                 label: 'Within + Self',
-                icon: '<span style="font-size:14px">â—Ž</span>',
+                icon: '<span style="font-size:14px">◎</span>',
                 action: (graphic) => this._selectionEngine.selectWithin(graphic, true),
               },
             ],
           },
-          // â”€â”€ Filter by Type submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Filter by Type submenu ──────────────────────────────
           {
             id: 'filter-type-submenu',
             label: 'Filter by Type',
-            icon: '<span style="font-size:14px">â–¼</span>',
+            icon: '<span style="font-size:14px">▼</span>',
             children: [
               {
                 id: 'select-points',
                 label: 'Points',
-                icon: '<span style="font-size:14px">â—</span>',
+                icon: '<span style="font-size:14px">●</span>',
                 action: () => this._selectionEngine.selectPointSymbols(),
               },
               {
                 id: 'select-areas',
                 label: 'Areas',
-                icon: '<span style="font-size:14px">â– </span>',
+                icon: '<span style="font-size:14px">■</span>',
                 action: () => this._selectionEngine.selectAreaSymbols(),
               },
               {
                 id: 'select-lines',
                 label: 'Lines',
-                icon: '<span style="font-size:14px">â•±</span>',
+                icon: '<span style="font-size:14px">╱</span>',
                 action: () => this._selectionEngine.selectLineSymbols(),
               },
             ],
           },
         ],
       },
-      // â”€â”€ Align parent menu (contains Align, Distribute, Arrange) â”€â”€â”€â”€â”€â”€â”€
+      // ── Align parent menu (contains Align, Distribute, Arrange) ──
       {
         id: 'align-parent',
         label: 'Align',
-        icon: '<span style="font-size:14px">âŠž</span>',
+        icon: '<span style="font-size:14px">⊞</span>',
         visible: () => this._selectionEngine.count > 1,
         children: [
-          // â”€â”€ Align submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Align submenu ──────────────────────────────────────
           {
             id: 'align-submenu',
             label: 'Align',
-            icon: '<span style="font-size:14px">âŠž</span>',
+            icon: '<span style="font-size:14px">⊞</span>',
             children: [
               {
                 id: 'align-left',
                 label: 'Align Left',
-                icon: '<span style="font-size:14px">â¬…</span>',
+                icon: '<span style="font-size:14px">←</span>',
                 action: (_g) =>
                   this._selectionEngine.alignLeft((e) => this._pushUndo(e)),
               },
               {
                 id: 'align-right',
                 label: 'Align Right',
-                icon: '<span style="font-size:14px">âž¡</span>',
+                icon: '<span style="font-size:14px">→</span>',
                 action: (_g) =>
                   this._selectionEngine.alignRight((e) => this._pushUndo(e)),
               },
               {
                 id: 'align-top',
                 label: 'Align Top',
-                icon: '<span style="font-size:14px">â¬†</span>',
+                icon: '<span style="font-size:14px">↑</span>',
                 action: (_g) =>
                   this._selectionEngine.alignTop((e) => this._pushUndo(e)),
               },
               {
                 id: 'align-bottom',
                 label: 'Align Bottom',
-                icon: '<span style="font-size:14px">â¬‡</span>',
+                icon: '<span style="font-size:14px">↓</span>',
                 action: (_g) =>
                   this._selectionEngine.alignBottom((e) => this._pushUndo(e)),
               },
               {
                 id: 'center-on-x',
                 label: 'Center on X',
-                icon: '<span style="font-size:14px">â†•</span>',
+                icon: '<span style="font-size:14px">↕</span>',
                 action: (_g) =>
                   this._selectionEngine.centerOnX((e) => this._pushUndo(e)),
               },
               {
                 id: 'center-on-y',
                 label: 'Center on Y',
-                icon: '<span style="font-size:14px">â†”</span>',
+                icon: '<span style="font-size:14px">↔</span>',
                 action: (_g) =>
                   this._selectionEngine.centerOnY((e) => this._pushUndo(e)),
               },
             ],
           },
-          // â”€â”€ Distribute submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Distribute submenu ──────────────────────────────────
           {
             id: 'distribute-submenu',
             label: 'Distribute',
-            icon: '<span style="font-size:14px">â‡”</span>',
+            icon: '<span style="font-size:14px">⇔</span>',
             children: [
               {
                 id: 'align-horizontal',
                 label: 'Distribute Horizontal',
-                icon: '<span style="font-size:14px">â‡”</span>',
+                icon: '<span style="font-size:14px">⇔</span>',
                 action: (_g) =>
                   this._selectionEngine.alignHorizontal((e) =>
                     this._pushUndo(e),
@@ -1006,22 +1006,22 @@ class SymbolEngine implements Evented {
               {
                 id: 'align-vertical',
                 label: 'Distribute Vertical',
-                icon: '<span style="font-size:14px">â‡•</span>',
+                icon: '<span style="font-size:14px">↕</span>',
                 action: (_g) =>
                   this._selectionEngine.alignVertical((e) => this._pushUndo(e)),
               },
             ],
           },
-          // â”€â”€ Arrange submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // ── Arrange submenu ──────────────────────────────────────
           {
             id: 'arrange-submenu',
             label: 'Arrange',
-            icon: '<span style="font-size:14px">âŠœ</span>',
+            icon: '<span style="font-size:14px">⊞</span>',
             children: [
               {
                 id: 'arrange-line',
                 label: 'Line',
-                icon: '<span style="font-size:14px">â€•</span>',
+                icon: '<span style="font-size:14px">―</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeLine(undefined, (e) =>
                     this._pushUndo(e),
@@ -1039,7 +1039,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-square',
                 label: 'Square Grid',
-                icon: '<span style="font-size:14px">âŠž</span>',
+                icon: '<span style="font-size:14px">⊞</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeSquare(undefined, (e) =>
                     this._pushUndo(e),
@@ -1048,7 +1048,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-triangle',
                 label: 'Triangle',
-                icon: '<span style="font-size:14px">â–²</span>',
+                icon: '<span style="font-size:14px">▲</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeTriangle(undefined, (e) =>
                     this._pushUndo(e),
@@ -1057,7 +1057,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-inv-triangle',
                 label: 'Inverted Triangle',
-                icon: '<span style="font-size:14px">â–½</span>',
+                icon: '<span style="font-size:14px">▽</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeInvertedTriangle(
                     undefined,
@@ -1067,7 +1067,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-wedge',
                 label: 'Wedge',
-                icon: '<span style="font-size:14px">â‹</span>',
+                icon: '<span style="font-size:14px">⋁</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeWedge(undefined, (e) =>
                     this._pushUndo(e),
@@ -1076,7 +1076,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-echelon-left',
                 label: 'Echelon Left',
-                icon: '<span style="font-size:14px">â†™</span>',
+                icon: '<span style="font-size:14px">↙</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeEchelonLeft(undefined, (e) =>
                     this._pushUndo(e),
@@ -1085,7 +1085,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-echelon-right',
                 label: 'Echelon Right',
-                icon: '<span style="font-size:14px">â†˜</span>',
+                icon: '<span style="font-size:14px">↘</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeEchelonRight(undefined, (e) =>
                     this._pushUndo(e),
@@ -1094,7 +1094,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-diamond',
                 label: 'Diamond',
-                icon: '<span style="font-size:14px">â—‡</span>',
+                icon: '<span style="font-size:14px">◇</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeDiamond(undefined, (e) =>
                     this._pushUndo(e),
@@ -1103,7 +1103,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-circle',
                 label: 'Circle',
-                icon: '<span style="font-size:14px">â—‹</span>',
+                icon: '<span style="font-size:14px">○</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeCircle(undefined, (e) =>
                     this._pushUndo(e),
@@ -1113,11 +1113,11 @@ class SymbolEngine implements Evented {
           },
         ],
       },
-      // â”€â”€ Clipboard submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── Clipboard submenu ───────────────────────────────────────────
       {
         id: 'clipboard-submenu',
         label: 'Clipboard',
-        icon: '<span style="font-size:14px">ðŸ“‹</span>',
+        icon: '<span style="font-size:14px">📋</span>',
         visible: () =>
           (settingsData as any).features?.copyPaste !== false ||
           (settingsData as any).features?.shortcuts !== false,
@@ -1126,7 +1126,7 @@ class SymbolEngine implements Evented {
             id: 'copy-symbol',
             label: 'Copy Symbol',
             shortcut: 'Ctrl+C',
-            icon: '<span style="font-size:14px">ðŸ“‹</span>',
+            icon: '<span style="font-size:14px">📋</span>',
             visible: () => (settingsData as any).features?.copyPaste !== false,
             action: (graphic) => this.copySymbol(graphic),
           },
@@ -1134,7 +1134,7 @@ class SymbolEngine implements Evented {
             id: 'paste-symbol',
             label: 'Paste Symbol',
             shortcut: 'Ctrl+V',
-            icon: '<span style="font-size:14px">ðŸ“Œ</span>',
+            icon: '<span style="font-size:14px">📌</span>',
             visible: () =>
               (settingsData as any).features?.copyPaste !== false &&
               this._clipboard !== null,
@@ -1142,9 +1142,9 @@ class SymbolEngine implements Evented {
           },
           {
             id: 'paste-symbol-offset',
-            label: 'Paste with Offsetâ€¦',
+            label: 'Paste with Offset...',
             shortcut: 'Ctrl+Shift+V',
-            icon: '<span style="font-size:14px">ðŸ“</span>',
+            icon: '<span style="font-size:14px">📐</span>',
             visible: () =>
               (settingsData as any).features?.copyPaste !== false &&
               this._clipboard !== null,
@@ -1157,7 +1157,7 @@ class SymbolEngine implements Evented {
                 ? `Undo ${this._undoStack[this._undoStack.length - 1].label}`
                 : 'Undo',
             shortcut: 'Ctrl+Z',
-            icon: '<span style="font-size:14px">â†©</span>',
+            icon: '<span style="font-size:14px">↩</span>',
             enabled: (_graphic) => this._undoStack.length > 0,
             visible: () => (settingsData as any).features?.shortcuts !== false,
             action: (_graphic) => this.undo(),
@@ -1169,92 +1169,92 @@ class SymbolEngine implements Evented {
                 ? `Redo ${this._redoStack[this._redoStack.length - 1].label}`
                 : 'Redo',
             shortcut: 'Ctrl+Y',
-            icon: '<span style="font-size:14px">â†ª</span>',
+            icon: '<span style="font-size:14px">↪</span>',
             enabled: (_graphic) => this._redoStack.length > 0,
             visible: () => (settingsData as any).features?.shortcuts !== false,
             action: (_graphic) => this.redo(),
           },
         ],
       },
-      // â”€â”€ Save / Load submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── Save / Load submenu ─────────────────────────────────────────
       {
         id: 'saveload-submenu',
         label: 'Save / Load',
-        icon: '<span style="font-size:14px">ðŸ’¾</span>',
+        icon: '<span style="font-size:14px">💾</span>',
         visible: () => (settingsData as any).features?.saveLoad !== false,
         children: [
           {
             id: 'save-symbol',
             label: 'Save Symbol',
-            icon: '<span style="font-size:14px">ðŸ’¾</span>',
+            icon: '<span style="font-size:14px">💾</span>',
             action: (graphic) => this.saveSymbolToFile(graphic),
           },
           {
             id: 'save-all-symbols',
             label: 'Save All Symbols',
-            icon: '<span style="font-size:14px">ðŸ—‚ï¸</span>',
+            icon: '<span style="font-size:14px">🗂️</span>',
             action: (_graphic) => this.saveToFile(),
           },
           {
             id: 'load-symbols',
             label: 'Load Symbols',
-            icon: '<span style="font-size:14px">ðŸ“‚</span>',
+            icon: '<span style="font-size:14px">📂</span>',
             action: (_graphic) => this.loadFromFile(),
           },
           {
             id: 'save-plan',
             label: 'Save Plan',
-            icon: '<span style="font-size:14px">ðŸ—ºï¸</span>',
+            icon: '<span style="font-size:14px">🗺️</span>',
             action: (_graphic) => this.serializationEngine.savePlanToFile(),
           },
           {
             id: 'load-plan',
             label: 'Load Plan',
-            icon: '<span style="font-size:14px">ðŸ—‚ï¸</span>',
+            icon: '<span style="font-size:14px">🗂️</span>',
             action: (_graphic) => this.serializationEngine.loadPlanFromFile(),
           },
           {
             id: 'export-geojson',
             label: 'Export as GeoJSON',
-            icon: '<span style="font-size:14px">ðŸŒ</span>',
+            icon: '<span style="font-size:14px">🌐</span>',
             action: (_graphic) => this.saveToGeoJSONFile(),
           },
           {
             id: 'import-geojson',
             label: 'Import GeoJSON',
-            icon: '<span style="font-size:14px">ðŸŒ</span>',
+            icon: '<span style="font-size:14px">🌍</span>',
             action: (_graphic) => this.loadFromGeoJSONFile(),
           },
         ],
       },
     ];
 
-    // Dynamic Templates submenu â€” rebuilt each time the menu opens
+    // Dynamic Templates submenu — rebuilt each time the menu opens
     this._contextMenuManager.addDynamicItemProvider((graphic) => {
       if ((settingsData as any).features?.templates === false) return [];
       const names = this.listTemplates();
       const applyItems: ContextMenuItem[] = names.map((name, i) => ({
         id: `apply-template-${i}`,
         label: name,
-        icon: '<span style="font-size:14px">ðŸ·ï¸</span>',
+        icon: '<span style="font-size:14px">🏷️</span>',
         action: (_g: Graphic) => this.applyTemplate(name, graphic),
       }));
       return [
         {
           id: 'templates-submenu',
           label: 'Templates',
-          icon: '<span style="font-size:14px">ðŸ“Œ</span>',
+          icon: '<span style="font-size:14px">📌</span>',
           children: [
             {
               id: 'save-as-template',
-              label: 'Save as Templateâ€¦',
-              icon: '<span style="font-size:14px">ðŸ“Œ</span>',
+              label: 'Save as Template...',
+              icon: '<span style="font-size:14px">📌</span>',
               action: (g) => this._promptSaveTemplate(g),
             },
             {
               id: 'load-template-file',
               label: 'Load Template From File',
-              icon: '<span style="font-size:14px">ðŸ“‹</span>',
+              icon: '<span style="font-size:14px">📋</span>',
               action: () => this.loadTemplateFromFile(),
             },
             ...applyItems,
@@ -1269,21 +1269,21 @@ class SymbolEngine implements Evented {
         id: 'show-details',
         label: 'Show Details',
         shortcut: 'I',
-        icon: '<span style="font-size:14px">â„¹ï¸</span>',
+        icon: '<span style="font-size:14px">ℹ️</span>',
         action: (graphic) => this.showSymbolDetails(graphic),
       },
       {
         id: 'center-on',
         label: 'Center On',
         shortcut: 'C',
-        icon: '<span style="font-size:14px">ðŸŽ¯</span>',
+        icon: '<span style="font-size:14px">🎯</span>',
         action: (graphic) => this.centerOnGraphic(graphic),
       },
       {
         id: 'remove-graphic',
         label: 'Remove',
         shortcut: 'Del',
-        icon: '<span style="font-size:14px">ðŸ—‘ï¸</span>',
+        icon: '<span style="font-size:14px">🗑️</span>',
         action: (graphic) => this.removeGraphic(graphic),
       },
     ];
@@ -1960,7 +1960,7 @@ class SymbolEngine implements Evented {
     if (!entry) return;
     entry.undo();
     this._redoStack.push(entry);
-    EngineLogger.success('Symbol Engine', `Undo â€” ${entry.label}`);
+    EngineLogger.success('Symbol Engine', `Undo — ${entry.label}`);
     console.info(`[Undo] ${entry.label}`);
   }
 
@@ -1970,7 +1970,7 @@ class SymbolEngine implements Evented {
     if (!entry) return;
     entry.redo();
     this._undoStack.push(entry);
-    EngineLogger.success('Symbol Engine', `Redo â€” ${entry.label}`);
+    EngineLogger.success('Symbol Engine', `Redo — ${entry.label}`);
     console.info(`[Redo] ${entry.label}`);
   }
 
