@@ -25,6 +25,7 @@ import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
 import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
 import ImportExportEngine from './ImportExportEngine';
+import SerializationEngine from './ImportExport/SerializationEngine';
 interface Evented {
     on(type: string, listener: Function): {
         remove(): void;
@@ -65,6 +66,7 @@ declare class SymbolEngine implements Evented {
     private _corridorEngine;
     private _effectEngine;
     private _importExportEngine;
+    readonly serializationEngine: SerializationEngine;
     private currentSymbol;
     private sidc;
     private amplifier;
@@ -153,7 +155,7 @@ declare class SymbolEngine implements Evented {
     private _closeActiveWorkflow;
     /**
      * Activate interactive editing for a graphic.
-     * Point symbols → move.  Poly/polygon symbols → move + rotate + scale.
+     * Point symbols â†’ move.  Poly/polygon symbols â†’ move + rotate + scale.
      * Called automatically from the right-click context menu or M shortcut.
      */
     modifySymbol(graphic: Graphic): void;
@@ -185,29 +187,29 @@ declare class SymbolEngine implements Evented {
      * no input/textarea element has keyboard focus.
      *
      * Shortcut table:
-     *   M        → Move, Scale, Rotate (last right-clicked graphic)
-     *   E        → Edit Control Points (last right-clicked graphic)
-     *   Escape   → Deactivate any active edit session
-     *   Delete   → Remove last right-clicked graphic
-     *   I        → Show Details
-     *   C        → Center On
+     *   M        â†’ Move, Scale, Rotate (last right-clicked graphic)
+     *   E        â†’ Edit Control Points (last right-clicked graphic)
+     *   Escape   â†’ Deactivate any active edit session
+     *   Delete   â†’ Remove last right-clicked graphic
+     *   I        â†’ Show Details
+     *   C        â†’ Center On
      */
     private _setupKeyboardShortcuts;
-    /** Access the MeasurementEngine — configure units or toggle programmatically.
+    /** Access the MeasurementEngine â€” configure units or toggle programmatically.
      *  May be undefined if the feature is disabled in Settings.json or not yet loaded. */
     get measurementEngine(): MeasurementEngine | undefined;
-    /** Access the ProximityEngine — toggle or adjust snap options programmatically.
+    /** Access the ProximityEngine â€” toggle or adjust snap options programmatically.
      *  May be undefined if the feature is disabled in Settings.json or not yet loaded. */
     get proximityEngine(): ProximityEngine | null;
-    /** Access the DrawingCueEngine — control visual overlays during drawing. */
+    /** Access the DrawingCueEngine â€” control visual overlays during drawing. */
     get drawingCueEngine(): DrawingCueEngine | null;
-    /** Access the MGRSEngine — grid overlay controls and runtime configuration. */
+    /** Access the MGRSEngine â€” grid overlay controls and runtime configuration. */
     get mgrsEngine(): MGRSEngine | null;
-    /** Access the WeaponEffectEngine — open WEZ analysis panels programmatically. */
+    /** Access the WeaponEffectEngine â€” open WEZ analysis panels programmatically. */
     get weaponEffectEngine(): WeaponEffectEngine | null;
-    /** Access the LOSEngine — open LOS/viewshed panels programmatically. */
+    /** Access the LOSEngine â€” open LOS/viewshed panels programmatically. */
     get losEngine(): LOSEngine | null;
-    /** Access the TrajectoryEngine — open projectile trajectory analysis panels programmatically. */
+    /** Access the TrajectoryEngine â€” open projectile trajectory analysis panels programmatically. */
     get trajectoryEngine(): TrajectoryEngine | null;
     /** Get current settings data for the control panel */
     get settings(): typeof settingsData;
@@ -321,7 +323,7 @@ declare class SymbolEngine implements Evented {
      * Project a Point to the specified spatial reference.
      * @param point The Point to project
      * @param spatialReference The target spatial reference
-     * @returns The projected Point (returns same as input)
+     * @returns The projected Point
      */
     reProject(point: Point, spatialReference: SpatialReference): Point;
     createSymbolCacheKey(options: SymbolOptions, scaleFactor: number): string;
@@ -365,7 +367,7 @@ declare class SymbolEngine implements Evented {
     /**
      * Reconstruct a graphic from a serialised pams8 object.
      * When CTRL_PTS / BASE_LN_PTS / GEOM are present the symbol is re-rendered
-     * through initialize(isPassive=true) — the same pipeline as interactive drawing.
+     * through initialize(isPassive=true) â€” the same pipeline as interactive drawing.
      * Falls back to direct Graphic construction for milsymbol / legacy format.
      */
     loadSymbolFromJSON(data: any): Graphic | null;
@@ -377,56 +379,9 @@ declare class SymbolEngine implements Evented {
     saveToFile(filename?: string): void;
     /** Download a single graphic as a PAMS8 JSON file. */
     saveSymbolToFile(graphic: Graphic): void;
-    /**
-     * Convert an ArcGIS Point (or plain {x,y}) to the Plan PlanPoint format.
-     * Web Mercator coordinates (wkid 102100 / 3857) are converted to WGS84 geographic
-     * degrees so the Plan file is consumable by the legacy system (sp:"WGS1SP").
-     */
-    private _toPlanPoint;
-    /**
-     * Build the AMPLIFIER block for Area / Line / TacticalPoint symbols.
-     * Always emits all 9 required legacy fields with correct defaults.
-     * SIDC is intentionally excluded — it lives at the top level of drawEss.
-     */
-    private _serializeAmplifierForPlan;
-    /**
-     * Build drawEss JSON for UEI / milsymbol (FPoint) graphics.
-     * OPTIONS uses de.OPTIONS when available (converting any nested GEOM to PlanPoint),
-     * or builds the milsymbol options structure from amplifier/de fields.
-     */
-    private _buildFPointPlanDrawEss;
-    /** Build drawEss JSON for Area / Line graphics (including those with BASE_LN_PTS). */
-    private _buildAreaLinePlanDrawEss;
-    /** Build drawEss JSON for TacticalPoint (SYM_GEO_TYPE "Point") graphics. */
-    private _buildPointPlanDrawEss;
-    /**
-     * Enrich a DrawEssentials object with data that UEI/milsymbol symbol classes may
-     * not store explicitly in drawEssentials but is derivable from the graphic:
-     * - GEOM: falls back to graphic.geometry (milsymbol symbols store position there)
-     * - SID:  derived from SIDC chars 11-16 when absent (maps to Symbols.json key)
-     * - SYM_NAME: looked up in symbolData by SID when absent
-     */
-    private _enrichDe;
-    /**
-     * Dispatch to the correct drawEss serializer based on the graphic's SYM_GEO_TYPE.
-     * Returns null for graphics that cannot be represented in plan format.
-     */
-    private _buildPlanDrawEss;
-    /** Download all graphics as a Plan JSON file. */
+    /** Download all graphics as a Plan JSON file. Delegates to SerializationEngine. */
     savePlanToFile(filename?: string): void;
-    /**
-     * Patch a PlanPoint ({type, x, y, sp:"WGS1SP"}) so that loadSymbolFromJSON's
-     * `new Point({x, y, spatialReference})` receives an explicit WGS84 reference.
-     * Without this ArcGIS defaults to WGS84 but some paths may mishandle it.
-     */
-    private _patchPlanPoint;
-    /**
-     * Convert a Plan drawEss JSON string back into the format expected by loadSymbolFromJSON.
-     * PlanPoints are tagged with sp:"WGS1SP" (WGS84 geographic degrees) and get an explicit
-     * 4326 spatialReference so ArcGIS can project them into the view's coordinate system.
-     */
-    private _loadPlanSymbol;
-    /** Open a Plan JSON file and restore all symbols from it. */
+    /** Open a Plan JSON file and restore all symbols from it. Delegates to SerializationEngine. */
     loadPlanFromFile(): void;
     /** Open a file picker; loads from PAMS8 JSON, template, or GeoJSON file. */
     loadFromFile(): void;

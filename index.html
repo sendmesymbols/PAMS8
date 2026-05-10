@@ -3259,8 +3259,8 @@
 
       document.getElementById('api-save-plan').addEventListener('click', () => {
         const engine = getEngines();
-        if (engine && engine.savePlanToFile) {
-          engine.savePlanToFile();
+        if (engine && engine.serializationEngine) {
+          engine.serializationEngine.savePlanToFile();
           document.getElementById('api-save-status').textContent =
             'Plan saved to file';
         }
@@ -3268,8 +3268,8 @@
 
       document.getElementById('api-load-plan').addEventListener('click', () => {
         const engine = getEngines();
-        if (engine && engine.loadPlanFromFile) {
-          engine.loadPlanFromFile();
+        if (engine && engine.serializationEngine) {
+          engine.serializationEngine.loadPlanFromFile();
           document.getElementById('api-save-status').textContent =
             'Plan load dialog opened';
         }

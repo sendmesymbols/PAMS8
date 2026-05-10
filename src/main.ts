@@ -1362,13 +1362,13 @@ function initializeAutocomplete() {
 (function initDrawingCuesPanel() {
   if (savePlanButton) {
     savePlanButton.addEventListener('click', () => {
-      symbolEngine.savePlanToFile();
+      symbolEngine.serializationEngine.savePlanToFile();
     });
   }
 
   if (loadPlanButton) {
     loadPlanButton.addEventListener('click', () => {
-      symbolEngine.loadPlanFromFile();
+      symbolEngine.serializationEngine.loadPlanFromFile();
     });
   }
 

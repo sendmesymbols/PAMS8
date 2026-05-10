@@ -62,6 +62,7 @@ import CorridorEngine from './Analysis/CorridorEngine';
 import { EffectEngine } from './Analysis/EffectEngine';
 import Plan from './ImportExport/Plan.ts';
 import ImportExportEngine from './ImportExportEngine';
+import SerializationEngine from './ImportExport/SerializationEngine';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -117,6 +118,7 @@ class SymbolEngine implements Evented {
   private _corridorEngine: CorridorEngine | null = null;
   private _effectEngine: EffectEngine | null = null;
   private _importExportEngine: ImportExportEngine | null = null;
+  public readonly serializationEngine = SerializationEngine.getInstance();
   private currentSymbol: any | undefined;
   private sidc: any | undefined;
   private amplifier: Amplifier | undefined;
@@ -140,7 +142,7 @@ class SymbolEngine implements Evented {
     baseLnPts: any;
   } | null = null;
 
-  // Copy/Paste clipboard — stores one or more items for multi-copy
+  // Copy/Paste clipboard â€” stores one or more items for multi-copy
   private _clipboard: Array<{ graphic: Graphic; layerId: string }> | null =
     null;
 
@@ -193,6 +195,12 @@ class SymbolEngine implements Evented {
 
     // Initialize creation mode from settings
     this._creationMode = ((settingsData as any).creationMode as 'single' | 'continuous') || 'single';
+
+    // Start serialization engine â€” provides save/load plan functionality
+    this.serializationEngine.start(
+      this._layerManager,
+      (data) => this.loadSymbolFromJSON(data as any),
+    );
 
     // Initialize symbol engine
     console.log('Symbol Engine initialized');
@@ -272,17 +280,17 @@ class SymbolEngine implements Evented {
     // Conditionally load MGRSEngine based on Settings.json feature flag
     this._initMGRSEngine();
 
-    // Initialise WeaponEffectEngine (always on — activated on demand via context menu)
+    // Initialise WeaponEffectEngine (always on â€” activated on demand via context menu)
     this._initWeaponEffectEngine();
-    // Initialise LOSEngine (always on — activated on demand via context menu)
+    // Initialise LOSEngine (always on â€” activated on demand via context menu)
     this._initLOSEngine();
-    // Initialise TrajectoryEngine (always on — activated on demand via context menu)
+    // Initialise TrajectoryEngine (always on â€” activated on demand via context menu)
     this._initTrajectoryEngine();
-    // Initialise BufferEngine (always on — activated on demand via context menu)
+    // Initialise BufferEngine (always on â€” activated on demand via context menu)
     this._initBufferEngine();
-    // Initialise CorridorEngine (always on — activated on demand via context menu)
+    // Initialise CorridorEngine (always on â€” activated on demand via context menu)
     this._initCorridorEngine();
-    // Initialise EffectEngine (always on — activated on demand via context menu)
+    // Initialise EffectEngine (always on â€” activated on demand via context menu)
     this._initEffectEngine();
 
     // Initialize ImportExportEngine for save/load plan functionality
@@ -421,7 +429,7 @@ class SymbolEngine implements Evented {
       console.log('SymbolEngine caught global onDrawProgress event:');
       console.log('  Event detail:', event.detail);
 
-      // Arm proximity indicator on first progress event (idempotent — no-ops if already active)
+      // Arm proximity indicator on first progress event (idempotent â€” no-ops if already active)
       this._proximityEngine?.activate();
 
       // Arm drawing cue overlays (idempotent)
@@ -444,7 +452,7 @@ class SymbolEngine implements Evented {
 
     });
 
-    // New control point clicked — arm the next segment measurement graphic
+    // New control point clicked â€” arm the next segment measurement graphic
     document.addEventListener('onDrawClick', (event: any) => {
       const detail = event.detail;
       if (detail?.currentPts) {
@@ -719,34 +727,34 @@ class SymbolEngine implements Evented {
         id: 'show-details',
         label: 'Show Details',
         shortcut: 'I',
-        icon: '<span style="font-size:14px">ℹ️</span>',
+        icon: '<span style="font-size:14px">â„¹ï¸</span>',
         action: (graphic) => this.showSymbolDetails(graphic),
       },
       {
         id: 'center-on',
         label: 'Center On',
         shortcut: 'C',
-        icon: '<span style="font-size:14px">🎯</span>',
+        icon: '<span style="font-size:14px">ðŸŽ¯</span>',
         action: (graphic) => this.centerOnGraphic(graphic),
       },
       {
         id: 'remove-graphic',
         label: 'Remove',
         shortcut: 'Del',
-        icon: '<span style="font-size:14px">🗑️</span>',
+        icon: '<span style="font-size:14px">ðŸ—‘ï¸</span>',
         action: (graphic) => this.removeGraphic(graphic),
       },
-      // ── Edit submenu ────────────────────────────────────────────────
+      // â”€â”€ Edit submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       {
         id: 'edit-submenu',
         label: 'Edit',
-        icon: '<span style="font-size:14px">✏️</span>',
+        icon: '<span style="font-size:14px">âœï¸</span>',
         children: [
           {
             id: 'modify-symbol',
             label: 'Move, Scale, Rotate',
             shortcut: 'M',
-            icon: '<span style="font-size:14px">✏️</span>',
+            icon: '<span style="font-size:14px">âœï¸</span>',
             visible: (_graphic) => !this._editEngine.isModifyingSymbol,
             action: (graphic) => this.modifySymbol(graphic),
           },
@@ -754,7 +762,7 @@ class SymbolEngine implements Evented {
             id: 'disable-modify-symbol',
             label: 'Disable Move, Scale, Rotate',
             shortcut: 'Esc',
-            icon: '<span style="font-size:14px">✖</span>',
+            icon: '<span style="font-size:14px">âœ–</span>',
             visible: (_graphic) => this._editEngine.isModifyingSymbol,
             action: (_graphic) => this.deactivateEdit(),
           },
@@ -762,7 +770,7 @@ class SymbolEngine implements Evented {
             id: 'edit-ctrl-pts',
             label: 'Edit Control Points',
             shortcut: 'E',
-            icon: '<span style="font-size:14px">⬡</span>',
+            icon: '<span style="font-size:14px">â¬¡</span>',
             visible: (_graphic) => !this._editEngine.isEditingControlPoints,
             action: (graphic) => this.activateEditControlPoints(graphic),
           },
@@ -770,23 +778,23 @@ class SymbolEngine implements Evented {
             id: 'deactivate-ctrl-pts',
             label: 'Deactivate Control Points',
             shortcut: 'Esc',
-            icon: '<span style="font-size:14px">✖</span>',
+            icon: '<span style="font-size:14px">âœ–</span>',
             visible: (_graphic) => this._editEngine.isEditingControlPoints,
             action: (_graphic) => this.deactivateEdit(),
           },
         ],
       },
-      // ── Selection submenu ───────────────────────────────────────────
+      // â”€â”€ Selection submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       {
         id: 'selection-submenu',
         label: 'Selection',
-        icon: '<span style="font-size:14px">☑</span>',
+        icon: '<span style="font-size:14px">â˜‘</span>',
         children: [
           {
             id: 'lasso-select',
             label: () => this._selectionEngine.isLassoActive ? 'Cancel Lasso' : 'Lasso Select',
             shortcut: 'L',
-            icon: '<span style="font-size:14px">🔲</span>',
+            icon: '<span style="font-size:14px">ðŸ”²</span>',
             action: (_graphic) => {
               if (this._selectionEngine.isLassoActive) {
                 this._selectionEngine.cancelLasso();
@@ -803,13 +811,13 @@ class SymbolEngine implements Evented {
                 ? 'Deselect'
                 : 'Add to Selection',
             shortcut: 'Shift+Click',
-            icon: '<span style="font-size:14px">☑</span>',
+            icon: '<span style="font-size:14px">â˜‘</span>',
             action: (graphic) => this._selectionEngine.toggleGraphic(graphic),
           },
           {
             id: 'clear-selection',
             label: () => `Clear Selection (${this._selectionEngine.count})`,
-            icon: '<span style="font-size:14px">✕</span>',
+            icon: '<span style="font-size:14px">âœ•</span>',
             visible: () => this._selectionEngine.count > 0,
             action: (_graphic) => this._selectionEngine.clearSelection(),
           },
@@ -817,7 +825,7 @@ class SymbolEngine implements Evented {
             id: 'move-selected',
             label: () => `Move Selected (${this._selectionEngine.count})`,
             shortcut: 'M',
-            icon: '<span style="font-size:14px">⤢</span>',
+            icon: '<span style="font-size:14px">â¤¢</span>',
             visible: () => this._selectionEngine.count > 1,
             action: (_graphic) => {
               this._closeActiveWorkflow();
@@ -836,160 +844,160 @@ class SymbolEngine implements Evented {
             id: 'delete-selected',
             label: () => `Delete Selected (${this._selectionEngine.count})`,
             shortcut: 'Del',
-            icon: '<span style="font-size:14px">🗑️</span>',
+            icon: '<span style="font-size:14px">ðŸ—‘ï¸</span>',
             visible: () => this._selectionEngine.count > 1,
             action: (_graphic) =>
               this._selectionEngine.deleteSelected((entry) =>
                 this._pushUndo(entry),
               ),
           },
-          // ── Select Similar submenu ───────────────────────────────
+          // â”€â”€ Select Similar submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           {
             id: 'select-similar-submenu',
             label: 'Select Similar',
-            icon: '<span style="font-size:14px">🔍</span>',
+            icon: '<span style="font-size:14px">ðŸ”</span>',
             children: [
               {
                 id: 'select-same-sidc',
                 label: 'Same SIDC',
-                icon: '<span style="font-size:14px">⚜</span>',
+                icon: '<span style="font-size:14px">âšœ</span>',
                 action: (graphic) => this._selectionEngine.selectSimilarSameSIDC(graphic),
               },
               {
                 id: 'select-same-echelon',
                 label: 'Same Echelon',
-                icon: '<span style="font-size:14px">▣</span>',
+                icon: '<span style="font-size:14px">â–£</span>',
                 action: (graphic) => this._selectionEngine.selectSimilarSameEchelon(graphic),
               },
               {
                 id: 'select-own-only',
                 label: 'Own Only',
-                icon: '<span style="font-size:14px">🟢</span>',
+                icon: '<span style="font-size:14px">ðŸŸ¢</span>',
                 action: () => this._selectionEngine.selectOwnOnly(),
               },
               {
                 id: 'select-enemy',
                 label: 'Enemy',
-                icon: '<span style="font-size:14px">🔴</span>',
+                icon: '<span style="font-size:14px">ðŸ”´</span>',
                 action: () => this._selectionEngine.selectEnemy(),
               },
             ],
           },
-          // ── Select Within submenu ───────────────────────────────
+          // â”€â”€ Select Within submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           {
             id: 'select-within-submenu',
             label: 'Select Within',
-            icon: '<span style="font-size:14px">⭕</span>',
+            icon: '<span style="font-size:14px">â­•</span>',
             children: [
               {
                 id: 'select-within',
                 label: 'Within',
-                icon: '<span style="font-size:14px">⭕</span>',
+                icon: '<span style="font-size:14px">â­•</span>',
                 action: (graphic) => this._selectionEngine.selectWithin(graphic, false),
               },
               {
                 id: 'select-within-self',
                 label: 'Within + Self',
-                icon: '<span style="font-size:14px">◎</span>',
+                icon: '<span style="font-size:14px">â—Ž</span>',
                 action: (graphic) => this._selectionEngine.selectWithin(graphic, true),
               },
             ],
           },
-          // ── Filter by Type submenu ───────────────────────────────
+          // â”€â”€ Filter by Type submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           {
             id: 'filter-type-submenu',
             label: 'Filter by Type',
-            icon: '<span style="font-size:14px">▼</span>',
+            icon: '<span style="font-size:14px">â–¼</span>',
             children: [
               {
                 id: 'select-points',
                 label: 'Points',
-                icon: '<span style="font-size:14px">●</span>',
+                icon: '<span style="font-size:14px">â—</span>',
                 action: () => this._selectionEngine.selectPointSymbols(),
               },
               {
                 id: 'select-areas',
                 label: 'Areas',
-                icon: '<span style="font-size:14px">■</span>',
+                icon: '<span style="font-size:14px">â– </span>',
                 action: () => this._selectionEngine.selectAreaSymbols(),
               },
               {
                 id: 'select-lines',
                 label: 'Lines',
-                icon: '<span style="font-size:14px">╱</span>',
+                icon: '<span style="font-size:14px">â•±</span>',
                 action: () => this._selectionEngine.selectLineSymbols(),
               },
             ],
           },
         ],
       },
-      // ── Align parent menu (contains Align, Distribute, Arrange) ───────
+      // â”€â”€ Align parent menu (contains Align, Distribute, Arrange) â”€â”€â”€â”€â”€â”€â”€
       {
         id: 'align-parent',
         label: 'Align',
-        icon: '<span style="font-size:14px">⊞</span>',
+        icon: '<span style="font-size:14px">âŠž</span>',
         visible: () => this._selectionEngine.count > 1,
         children: [
-          // ── Align submenu ─────────────────────────────────
+          // â”€â”€ Align submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           {
             id: 'align-submenu',
             label: 'Align',
-            icon: '<span style="font-size:14px">⊞</span>',
+            icon: '<span style="font-size:14px">âŠž</span>',
             children: [
               {
                 id: 'align-left',
                 label: 'Align Left',
-                icon: '<span style="font-size:14px">⬅</span>',
+                icon: '<span style="font-size:14px">â¬…</span>',
                 action: (_g) =>
                   this._selectionEngine.alignLeft((e) => this._pushUndo(e)),
               },
               {
                 id: 'align-right',
                 label: 'Align Right',
-                icon: '<span style="font-size:14px">➡</span>',
+                icon: '<span style="font-size:14px">âž¡</span>',
                 action: (_g) =>
                   this._selectionEngine.alignRight((e) => this._pushUndo(e)),
               },
               {
                 id: 'align-top',
                 label: 'Align Top',
-                icon: '<span style="font-size:14px">⬆</span>',
+                icon: '<span style="font-size:14px">â¬†</span>',
                 action: (_g) =>
                   this._selectionEngine.alignTop((e) => this._pushUndo(e)),
               },
               {
                 id: 'align-bottom',
                 label: 'Align Bottom',
-                icon: '<span style="font-size:14px">⬇</span>',
+                icon: '<span style="font-size:14px">â¬‡</span>',
                 action: (_g) =>
                   this._selectionEngine.alignBottom((e) => this._pushUndo(e)),
               },
               {
                 id: 'center-on-x',
                 label: 'Center on X',
-                icon: '<span style="font-size:14px">↕</span>',
+                icon: '<span style="font-size:14px">â†•</span>',
                 action: (_g) =>
                   this._selectionEngine.centerOnX((e) => this._pushUndo(e)),
               },
               {
                 id: 'center-on-y',
                 label: 'Center on Y',
-                icon: '<span style="font-size:14px">↔</span>',
+                icon: '<span style="font-size:14px">â†”</span>',
                 action: (_g) =>
                   this._selectionEngine.centerOnY((e) => this._pushUndo(e)),
               },
             ],
           },
-          // ── Distribute submenu ───────────────────────────────
+          // â”€â”€ Distribute submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           {
             id: 'distribute-submenu',
             label: 'Distribute',
-            icon: '<span style="font-size:14px">⇔</span>',
+            icon: '<span style="font-size:14px">â‡”</span>',
             children: [
               {
                 id: 'align-horizontal',
                 label: 'Distribute Horizontal',
-                icon: '<span style="font-size:14px">⇔</span>',
+                icon: '<span style="font-size:14px">â‡”</span>',
                 action: (_g) =>
                   this._selectionEngine.alignHorizontal((e) =>
                     this._pushUndo(e),
@@ -998,22 +1006,22 @@ class SymbolEngine implements Evented {
               {
                 id: 'align-vertical',
                 label: 'Distribute Vertical',
-                icon: '<span style="font-size:14px">⇕</span>',
+                icon: '<span style="font-size:14px">â‡•</span>',
                 action: (_g) =>
                   this._selectionEngine.alignVertical((e) => this._pushUndo(e)),
               },
             ],
           },
-          // ── Arrange submenu ─────────────────────────────────
+          // â”€â”€ Arrange submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           {
             id: 'arrange-submenu',
             label: 'Arrange',
-            icon: '<span style="font-size:14px">⊜</span>',
+            icon: '<span style="font-size:14px">âŠœ</span>',
             children: [
               {
                 id: 'arrange-line',
                 label: 'Line',
-                icon: '<span style="font-size:14px">―</span>',
+                icon: '<span style="font-size:14px">â€•</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeLine(undefined, (e) =>
                     this._pushUndo(e),
@@ -1031,7 +1039,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-square',
                 label: 'Square Grid',
-                icon: '<span style="font-size:14px">⊞</span>',
+                icon: '<span style="font-size:14px">âŠž</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeSquare(undefined, (e) =>
                     this._pushUndo(e),
@@ -1040,7 +1048,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-triangle',
                 label: 'Triangle',
-                icon: '<span style="font-size:14px">▲</span>',
+                icon: '<span style="font-size:14px">â–²</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeTriangle(undefined, (e) =>
                     this._pushUndo(e),
@@ -1049,7 +1057,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-inv-triangle',
                 label: 'Inverted Triangle',
-                icon: '<span style="font-size:14px">▽</span>',
+                icon: '<span style="font-size:14px">â–½</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeInvertedTriangle(
                     undefined,
@@ -1059,7 +1067,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-wedge',
                 label: 'Wedge',
-                icon: '<span style="font-size:14px">⋁</span>',
+                icon: '<span style="font-size:14px">â‹</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeWedge(undefined, (e) =>
                     this._pushUndo(e),
@@ -1068,7 +1076,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-echelon-left',
                 label: 'Echelon Left',
-                icon: '<span style="font-size:14px">↙</span>',
+                icon: '<span style="font-size:14px">â†™</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeEchelonLeft(undefined, (e) =>
                     this._pushUndo(e),
@@ -1077,7 +1085,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-echelon-right',
                 label: 'Echelon Right',
-                icon: '<span style="font-size:14px">↘</span>',
+                icon: '<span style="font-size:14px">â†˜</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeEchelonRight(undefined, (e) =>
                     this._pushUndo(e),
@@ -1086,7 +1094,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-diamond',
                 label: 'Diamond',
-                icon: '<span style="font-size:14px">◇</span>',
+                icon: '<span style="font-size:14px">â—‡</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeDiamond(undefined, (e) =>
                     this._pushUndo(e),
@@ -1095,7 +1103,7 @@ class SymbolEngine implements Evented {
               {
                 id: 'arrange-circle',
                 label: 'Circle',
-                icon: '<span style="font-size:14px">○</span>',
+                icon: '<span style="font-size:14px">â—‹</span>',
                 action: (_g) =>
                   this._selectionEngine.arrangeCircle(undefined, (e) =>
                     this._pushUndo(e),
@@ -1105,11 +1113,11 @@ class SymbolEngine implements Evented {
           },
         ],
       },
-      // ── Clipboard submenu ───────────────────────────────────────────
+      // â”€â”€ Clipboard submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       {
         id: 'clipboard-submenu',
         label: 'Clipboard',
-        icon: '<span style="font-size:14px">📋</span>',
+        icon: '<span style="font-size:14px">ðŸ“‹</span>',
         visible: () =>
           (settingsData as any).features?.copyPaste !== false ||
           (settingsData as any).features?.shortcuts !== false,
@@ -1118,7 +1126,7 @@ class SymbolEngine implements Evented {
             id: 'copy-symbol',
             label: 'Copy Symbol',
             shortcut: 'Ctrl+C',
-            icon: '<span style="font-size:14px">📋</span>',
+            icon: '<span style="font-size:14px">ðŸ“‹</span>',
             visible: () => (settingsData as any).features?.copyPaste !== false,
             action: (graphic) => this.copySymbol(graphic),
           },
@@ -1126,7 +1134,7 @@ class SymbolEngine implements Evented {
             id: 'paste-symbol',
             label: 'Paste Symbol',
             shortcut: 'Ctrl+V',
-            icon: '<span style="font-size:14px">📌</span>',
+            icon: '<span style="font-size:14px">ðŸ“Œ</span>',
             visible: () =>
               (settingsData as any).features?.copyPaste !== false &&
               this._clipboard !== null,
@@ -1134,9 +1142,9 @@ class SymbolEngine implements Evented {
           },
           {
             id: 'paste-symbol-offset',
-            label: 'Paste with Offset…',
+            label: 'Paste with Offsetâ€¦',
             shortcut: 'Ctrl+Shift+V',
-            icon: '<span style="font-size:14px">📐</span>',
+            icon: '<span style="font-size:14px">ðŸ“</span>',
             visible: () =>
               (settingsData as any).features?.copyPaste !== false &&
               this._clipboard !== null,
@@ -1149,7 +1157,7 @@ class SymbolEngine implements Evented {
                 ? `Undo ${this._undoStack[this._undoStack.length - 1].label}`
                 : 'Undo',
             shortcut: 'Ctrl+Z',
-            icon: '<span style="font-size:14px">↩</span>',
+            icon: '<span style="font-size:14px">â†©</span>',
             enabled: (_graphic) => this._undoStack.length > 0,
             visible: () => (settingsData as any).features?.shortcuts !== false,
             action: (_graphic) => this.undo(),
@@ -1161,92 +1169,92 @@ class SymbolEngine implements Evented {
                 ? `Redo ${this._redoStack[this._redoStack.length - 1].label}`
                 : 'Redo',
             shortcut: 'Ctrl+Y',
-            icon: '<span style="font-size:14px">↪</span>',
+            icon: '<span style="font-size:14px">â†ª</span>',
             enabled: (_graphic) => this._redoStack.length > 0,
             visible: () => (settingsData as any).features?.shortcuts !== false,
             action: (_graphic) => this.redo(),
           },
         ],
       },
-      // ── Save / Load submenu ─────────────────────────────────────────
+      // â”€â”€ Save / Load submenu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       {
         id: 'saveload-submenu',
         label: 'Save / Load',
-        icon: '<span style="font-size:14px">💾</span>',
+        icon: '<span style="font-size:14px">ðŸ’¾</span>',
         visible: () => (settingsData as any).features?.saveLoad !== false,
         children: [
           {
             id: 'save-symbol',
             label: 'Save Symbol',
-            icon: '<span style="font-size:14px">💾</span>',
+            icon: '<span style="font-size:14px">ðŸ’¾</span>',
             action: (graphic) => this.saveSymbolToFile(graphic),
           },
           {
             id: 'save-all-symbols',
             label: 'Save All Symbols',
-            icon: '<span style="font-size:14px">🗂️</span>',
+            icon: '<span style="font-size:14px">ðŸ—‚ï¸</span>',
             action: (_graphic) => this.saveToFile(),
           },
           {
             id: 'load-symbols',
             label: 'Load Symbols',
-            icon: '<span style="font-size:14px">📂</span>',
+            icon: '<span style="font-size:14px">ðŸ“‚</span>',
             action: (_graphic) => this.loadFromFile(),
           },
           {
             id: 'save-plan',
             label: 'Save Plan',
-            icon: '<span style="font-size:14px">🗺️</span>',
-            action: (_graphic) => this.savePlanToFile(),
+            icon: '<span style="font-size:14px">ðŸ—ºï¸</span>',
+            action: (_graphic) => this.serializationEngine.savePlanToFile(),
           },
           {
             id: 'load-plan',
             label: 'Load Plan',
-            icon: '<span style="font-size:14px">🗂️</span>',
-            action: (_graphic) => this.loadPlanFromFile(),
+            icon: '<span style="font-size:14px">ðŸ—‚ï¸</span>',
+            action: (_graphic) => this.serializationEngine.loadPlanFromFile(),
           },
           {
             id: 'export-geojson',
             label: 'Export as GeoJSON',
-            icon: '<span style="font-size:14px">🌐</span>',
+            icon: '<span style="font-size:14px">ðŸŒ</span>',
             action: (_graphic) => this.saveToGeoJSONFile(),
           },
           {
             id: 'import-geojson',
             label: 'Import GeoJSON',
-            icon: '<span style="font-size:14px">🌍</span>',
+            icon: '<span style="font-size:14px">ðŸŒ</span>',
             action: (_graphic) => this.loadFromGeoJSONFile(),
           },
         ],
       },
     ];
 
-    // Dynamic Templates submenu — rebuilt each time the menu opens
+    // Dynamic Templates submenu â€” rebuilt each time the menu opens
     this._contextMenuManager.addDynamicItemProvider((graphic) => {
       if ((settingsData as any).features?.templates === false) return [];
       const names = this.listTemplates();
       const applyItems: ContextMenuItem[] = names.map((name, i) => ({
         id: `apply-template-${i}`,
         label: name,
-        icon: '<span style="font-size:14px">🏷️</span>',
+        icon: '<span style="font-size:14px">ðŸ·ï¸</span>',
         action: (_g: Graphic) => this.applyTemplate(name, graphic),
       }));
       return [
         {
           id: 'templates-submenu',
           label: 'Templates',
-          icon: '<span style="font-size:14px">📌</span>',
+          icon: '<span style="font-size:14px">ðŸ“Œ</span>',
           children: [
             {
               id: 'save-as-template',
-              label: 'Save as Template…',
-              icon: '<span style="font-size:14px">📌</span>',
+              label: 'Save as Templateâ€¦',
+              icon: '<span style="font-size:14px">ðŸ“Œ</span>',
               action: (g) => this._promptSaveTemplate(g),
             },
             {
               id: 'load-template-file',
               label: 'Load Template From File',
-              icon: '<span style="font-size:14px">📋</span>',
+              icon: '<span style="font-size:14px">ðŸ“‹</span>',
               action: () => this.loadTemplateFromFile(),
             },
             ...applyItems,
@@ -1261,21 +1269,21 @@ class SymbolEngine implements Evented {
         id: 'show-details',
         label: 'Show Details',
         shortcut: 'I',
-        icon: '<span style="font-size:14px">ℹ️</span>',
+        icon: '<span style="font-size:14px">â„¹ï¸</span>',
         action: (graphic) => this.showSymbolDetails(graphic),
       },
       {
         id: 'center-on',
         label: 'Center On',
         shortcut: 'C',
-        icon: '<span style="font-size:14px">🎯</span>',
+        icon: '<span style="font-size:14px">ðŸŽ¯</span>',
         action: (graphic) => this.centerOnGraphic(graphic),
       },
       {
         id: 'remove-graphic',
         label: 'Remove',
         shortcut: 'Del',
-        icon: '<span style="font-size:14px">🗑️</span>',
+        icon: '<span style="font-size:14px">ðŸ—‘ï¸</span>',
         action: (graphic) => this.removeGraphic(graphic),
       },
     ];
@@ -1418,7 +1426,7 @@ class SymbolEngine implements Evented {
 
   /**
    * Activate interactive editing for a graphic.
-   * Point symbols → move.  Poly/polygon symbols → move + rotate + scale.
+   * Point symbols â†’ move.  Poly/polygon symbols â†’ move + rotate + scale.
    * Called automatically from the right-click context menu or M shortcut.
    */
   public modifySymbol(graphic: Graphic): void {
@@ -1494,12 +1502,12 @@ class SymbolEngine implements Evented {
    * no input/textarea element has keyboard focus.
    *
    * Shortcut table:
-   *   M        → Move, Scale, Rotate (last right-clicked graphic)
-   *   E        → Edit Control Points (last right-clicked graphic)
-   *   Escape   → Deactivate any active edit session
-   *   Delete   → Remove last right-clicked graphic
-   *   I        → Show Details
-   *   C        → Center On
+   *   M        â†’ Move, Scale, Rotate (last right-clicked graphic)
+   *   E        â†’ Edit Control Points (last right-clicked graphic)
+   *   Escape   â†’ Deactivate any active edit session
+   *   Delete   â†’ Remove last right-clicked graphic
+   *   I        â†’ Show Details
+   *   C        â†’ Center On
    */
   private _setupKeyboardShortcuts(): void {
     document.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -1607,39 +1615,39 @@ class SymbolEngine implements Evented {
     });
   }
 
-  /** Access the MeasurementEngine — configure units or toggle programmatically.
+  /** Access the MeasurementEngine â€” configure units or toggle programmatically.
    *  May be undefined if the feature is disabled in Settings.json or not yet loaded. */
   public get measurementEngine(): MeasurementEngine | undefined {
     return this._measurementEngine;
   }
 
-  /** Access the ProximityEngine — toggle or adjust snap options programmatically.
+  /** Access the ProximityEngine â€” toggle or adjust snap options programmatically.
    *  May be undefined if the feature is disabled in Settings.json or not yet loaded. */
   public get proximityEngine(): ProximityEngine | null {
     return this._proximityEngine;
   }
 
-  /** Access the DrawingCueEngine — control visual overlays during drawing. */
+  /** Access the DrawingCueEngine â€” control visual overlays during drawing. */
   public get drawingCueEngine(): DrawingCueEngine | null {
     return this._drawingCueEngine;
   }
 
-  /** Access the MGRSEngine — grid overlay controls and runtime configuration. */
+  /** Access the MGRSEngine â€” grid overlay controls and runtime configuration. */
   public get mgrsEngine(): MGRSEngine | null {
     return this._mgrsEngine;
   }
 
-  /** Access the WeaponEffectEngine — open WEZ analysis panels programmatically. */
+  /** Access the WeaponEffectEngine â€” open WEZ analysis panels programmatically. */
   public get weaponEffectEngine(): WeaponEffectEngine | null {
     return this._weaponEffectEngine;
   }
 
-  /** Access the LOSEngine — open LOS/viewshed panels programmatically. */
+  /** Access the LOSEngine â€” open LOS/viewshed panels programmatically. */
   public get losEngine(): LOSEngine | null {
     return this._losEngine;
   }
 
-  /** Access the TrajectoryEngine — open projectile trajectory analysis panels programmatically. */
+  /** Access the TrajectoryEngine â€” open projectile trajectory analysis panels programmatically. */
   public get trajectoryEngine(): TrajectoryEngine | null {
     return this._trajectoryEngine;
   }
@@ -1752,7 +1760,7 @@ class SymbolEngine implements Evented {
       if (this._mgrsEngine) {
         value ? this._mgrsEngine.enable() : this._mgrsEngine.disable();
       } else if (value) {
-        // Engine was disabled at startup — initialise it now
+        // Engine was disabled at startup â€” initialise it now
         this._initMGRSEngine();
       }
     }
@@ -1952,7 +1960,7 @@ class SymbolEngine implements Evented {
     if (!entry) return;
     entry.undo();
     this._redoStack.push(entry);
-    EngineLogger.success('Symbol Engine', `Undo — ${entry.label}`);
+    EngineLogger.success('Symbol Engine', `Undo â€” ${entry.label}`);
     console.info(`[Undo] ${entry.label}`);
   }
 
@@ -1962,7 +1970,7 @@ class SymbolEngine implements Evented {
     if (!entry) return;
     entry.redo();
     this._undoStack.push(entry);
-    EngineLogger.success('Symbol Engine', `Redo — ${entry.label}`);
+    EngineLogger.success('Symbol Engine', `Redo â€” ${entry.label}`);
     console.info(`[Redo] ${entry.label}`);
   }
 
@@ -1993,7 +2001,7 @@ class SymbolEngine implements Evented {
     this._lastDrawEssentials = null;
     this._lastAmplifier = null;
     this.emitEvent('creationModeChanged', { mode: 'single' });
-    EngineLogger.success('Symbol Engine', 'Continuous mode stopped — reverted to single');
+    EngineLogger.success('Symbol Engine', 'Continuous mode stopped â€” reverted to single');
   }
 
   /** Number of operations available to redo. */
@@ -2037,7 +2045,7 @@ class SymbolEngine implements Evented {
     this._clipboard = clipboard;
     EngineLogger.nextStep(
       'Symbol Engine',
-      `${clipboard.length} symbol${clipboard.length !== 1 ? 's' : ''} copied — click the map to paste`,
+      `${clipboard.length} symbol${clipboard.length !== 1 ? 's' : ''} copied â€” click the map to paste`,
     );
     console.info(`[CopyPaste] Copied ${clipboard.length} graphic(s)`);
     this.emitEvent('symbolCopied', { graphic, count: clipboard.length });
@@ -2089,7 +2097,7 @@ class SymbolEngine implements Evented {
 
       // Geodesic bearing from target to this item's base position
       const bearing = this._computeBearing(targetPoint.x, targetPoint.y, baseX, baseY);
-      // Positive expandDistance → move away; negative → contract toward center
+      // Positive expandDistance â†’ move away; negative â†’ contract toward center
       const outwardBearing = expandDistance >= 0 ? bearing : (bearing + 180) % 360;
       const basePoint = new Point({ x: baseX, y: baseY, spatialReference: targetPoint.spatialReference });
       const expanded = GeoTools.destination(basePoint, Math.abs(expandDistance), outwardBearing, expandUnit);
@@ -2411,14 +2419,14 @@ class SymbolEngine implements Evented {
           <div>
             <label style="display: block; margin-bottom: 5px;">Direction:</label>
             <select id="poDirection" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
-              <option value="0">North (0°)</option>
-              <option value="45">North East (45°)</option>
-              <option value="90">East (90°)</option>
-              <option value="135">South East (135°)</option>
-              <option value="180">South (180°)</option>
-              <option value="225">South West (225°)</option>
-              <option value="270">West (270°)</option>
-              <option value="315">North West (315°)</option>
+              <option value="0">North (0Â°)</option>
+              <option value="45">North East (45Â°)</option>
+              <option value="90">East (90Â°)</option>
+              <option value="135">South East (135Â°)</option>
+              <option value="180">South (180Â°)</option>
+              <option value="225">South West (225Â°)</option>
+              <option value="270">West (270Â°)</option>
+              <option value="315">North West (315Â°)</option>
             </select>
           </div>
         </div>
@@ -2434,7 +2442,7 @@ class SymbolEngine implements Evented {
               <option value="nautical-miles">nm</option>
             </select>
           </div>
-          <small style="color: #a0b8d8; font-size: 10px; display: block; margin-top: 4px;">&gt; 0 spreads symbols out · &lt; 0 contracts them · only affects multi-symbol paste</small>
+          <small style="color: #a0b8d8; font-size: 10px; display: block; margin-top: 4px;">&gt; 0 spreads symbols out Â· &lt; 0 contracts them Â· only affects multi-symbol paste</small>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
@@ -2503,7 +2511,7 @@ class SymbolEngine implements Evented {
 
     this._closeActiveWorkflow();
     this.emitEvent('pasteMode', { active: true });
-    console.info('[CopyPaste] Paste offset mode active — click map to paste');
+    console.info('[CopyPaste] Paste offset mode active â€” click map to paste');
 
     const clickHandle = this.view.on('click', (evt) => {
       clickHandle.remove();
@@ -2534,8 +2542,8 @@ class SymbolEngine implements Evented {
 
     this._closeActiveWorkflow();
     this.emitEvent('pasteMode', { active: true });
-    EngineLogger.nextStep('Symbol Engine', 'Paste mode active — click the map to place the copied symbol(s). Press Esc to cancel');
-    console.info('[CopyPaste] Paste mode active — click map to paste');
+    EngineLogger.nextStep('Symbol Engine', 'Paste mode active â€” click the map to place the copied symbol(s). Press Esc to cancel');
+    console.info('[CopyPaste] Paste mode active â€” click map to paste');
 
     const clickHandle = this.view.on('click', (evt) => {
       clickHandle.remove();
@@ -3307,7 +3315,7 @@ class SymbolEngine implements Evented {
         type: symbolType || 'symbol',
       };
 
-      // Handle ID assignment — use pending ID from load/paste, else generate new
+      // Handle ID assignment â€” use pending ID from load/paste, else generate new
       if (this._pendingAttrs?.symbolId) {
         attrs.id = this._pendingAttrs.symbolId;
         this._pendingAttrs = null;
@@ -3399,7 +3407,7 @@ class SymbolEngine implements Evented {
 
       EngineLogger.success(
         'Symbol Engine',
-        `Symbol placed — ${symbolType || geometry.type} added to map`,
+        `Symbol placed â€” ${symbolType || geometry.type} added to map`,
       );
       console.log('Graphic added to layer:', {
         id: attrs.id,
@@ -3422,7 +3430,7 @@ class SymbolEngine implements Evented {
         isDone: 'done',
       });
 
-      // Continuous creation mode — re-initialize with same symbol immediately
+      // Continuous creation mode â€” re-initialize with same symbol immediately
       if (
         this._creationMode === 'continuous' &&
         this._lastDrawEssentials &&
@@ -3643,7 +3651,7 @@ class SymbolEngine implements Evented {
   }
 
   // -----------------------------------------------------------------------
-  // Feature 5 — Save / Load Symbol Configurations
+  // Feature 5 â€” Save / Load Symbol Configurations
   // -----------------------------------------------------------------------
 
   private _serializePoint(pt: any): object | null {
@@ -3707,7 +3715,7 @@ class SymbolEngine implements Evented {
   /**
    * Reconstruct a graphic from a serialised pams8 object.
    * When CTRL_PTS / BASE_LN_PTS / GEOM are present the symbol is re-rendered
-   * through initialize(isPassive=true) — the same pipeline as interactive drawing.
+   * through initialize(isPassive=true) â€” the same pipeline as interactive drawing.
    * Falls back to direct Graphic construction for milsymbol / legacy format.
    */
   public loadSymbolFromJSON(data: any): Graphic | null {
@@ -3777,7 +3785,7 @@ class SymbolEngine implements Evented {
         return null; // graphic is added to layer via drawSymEnd
       }
 
-      // Fallback: milsymbol or v1.0 legacy format — direct Graphic construction
+      // Fallback: milsymbol or v1.0 legacy format â€” direct Graphic construction
       let geometry: any;
       if (data.geometry && data.geometryType) {
         if (data.geometryType === 'point') geometry = new Point(data.geometry);
@@ -3897,382 +3905,14 @@ class SymbolEngine implements Evented {
     this._downloadJSON(data, `pams8_symbol_${Date.now()}.json`);
   }
 
-  /**
-   * Convert an ArcGIS Point (or plain {x,y}) to the Plan PlanPoint format.
-   * Web Mercator coordinates (wkid 102100 / 3857) are converted to WGS84 geographic
-   * degrees so the Plan file is consumable by the legacy system (sp:"WGS1SP").
-   */
-  private _toPlanPoint(pt: any): { type: 'point'; x: number; y: number; sp: string } | null {
-    if (!pt || pt.x == null || pt.y == null) return null;
-    let x: number = pt.x;
-    let y: number = pt.y;
-    const wkid = pt.spatialReference?.wkid ?? pt.spatialReference?.latestWkid;
-    if (wkid === 102100 || wkid === 3857) {
-      [x, y] = webMercatorUtils.xyToLngLat(x, y);
-    }
-    return { type: 'point', x, y, sp: 'WGS1SP' };
-  }
-
-  /**
-   * Build the AMPLIFIER block for Area / Line / TacticalPoint symbols.
-   * Always emits all 9 required legacy fields with correct defaults.
-   * SIDC is intentionally excluded — it lives at the top level of drawEss.
-   */
-  private _serializeAmplifierForPlan(amplifier: any): Record<string, any> {
-    const amp: Record<string, any> = {
-      UNIQUE_DESIG:          amplifier?.UNIQUE_DESIG          ?? ' ',
-      UNIQUE_DESIG_ID:       amplifier?.UNIQUE_DESIG_ID       ?? '',
-      HIGHER_FORM:           amplifier?.HIGHER_FORM            ?? '',
-      hfid:                  amplifier?.hfid                   ?? '',
-      STAFF_COM:             amplifier?.STAFF_COM              ?? '',
-      ADDL_INFO:             amplifier?.ADDL_INFO              ?? '',
-      MULTI_LINE_LABEL_TEXT: amplifier?.MULTI_LINE_LABEL_TEXT  ?? '',
-      MULTI_LINE_LABEL_COLOR: amplifier?.MULTI_LINE_LABEL_COLOR ?? '#000000',
-      MULTI_LINE_LABEL_ALIGN: amplifier?.MULTI_LINE_LABEL_ALIGN ?? 'center',
-    };
-    if (amplifier?.DTG)             amp.DTG             = amplifier.DTG;
-    if (amplifier?.DTGTO)            amp.DTGTO           = amplifier.DTGTO;
-    if (amplifier?.TARGET_DESIGNATOR) amp.TARGET_DESIGNATOR = amplifier.TARGET_DESIGNATOR;
-    return amp;
-  }
-
-  /**
-   * Build drawEss JSON for UEI / milsymbol (FPoint) graphics.
-   * OPTIONS uses de.OPTIONS when available (converting any nested GEOM to PlanPoint),
-   * or builds the milsymbol options structure from amplifier/de fields.
-   */
-  private _buildFPointPlanDrawEss(de: any, amplifier: any): Record<string, any> {
-    const geom = this._toPlanPoint(de?.GEOM);
-    const sidc: string = amplifier?.SIDC || de?.SIDC || '';
-
-    // Build or adapt OPTIONS for the legacy system
-    let options: Record<string, any>;
-    const existingOpts = de?.OPTIONS;
-    if (existingOpts && typeof existingOpts === 'object' &&
-        (existingOpts.size !== undefined || existingOpts.symType !== undefined ||
-         existingOpts.uniqueDesignation !== undefined || existingOpts.SIDC !== undefined)) {
-      // de.OPTIONS already has milsymbol configuration — use it, converting nested GEOM
-      options = { ...existingOpts };
-      if (options.GEOM && options.GEOM.x != null) {
-        options.GEOM = this._toPlanPoint(options.GEOM) ?? options.GEOM;
-      }
-    } else {
-      // Build OPTIONS from amplifier / de fields
-      options = {
-        alphaNum: 100,
-        size: String(de?.SIZE ?? 25),
-        ANGLE: de?.ANGLE ?? 0,
-        symType: 'FPoint',
-        SIDC: sidc,
-        uniqueDesignation:    amplifier?.UNIQUE_DESIG    ?? ' ',
-        uniqueDesignationID:  amplifier?.UNIQUE_DESIG_ID ?? '',
-        higherFormation:      amplifier?.HIGHER_FORM      ?? '',
-        hfid:                 amplifier?.hfid             ?? '',
-        staffComments:        amplifier?.STAFF_COM        ?? '',
-        additionalInformation: amplifier?.ADDL_INFO       ?? '',
-        ECHELON:  de?.ECHELON ?? '00',
-        opacity:  de?.opacity ?? 1,
-        labelOptions: de?.labelOptions ?? {},
-      };
-      if (geom) options.GEOM = geom;
-    }
-
-    return {
-      SYM_GEO_TYPE: 'FPoint',
-      SID:      de?.SID      ?? '',
-      SYM_NAME: de?.SYM_NAME ?? '',
-      OPTIONS:  options,
-      GEOM:     geom,
-      AMPLIFIER: {},
-      UEI:  '1',
-      SIDC: sidc,
-      labelOptions: de?.labelOptions ?? {},
-      opacity: de?.opacity ?? 1,
-    };
-  }
-
-  /** Build drawEss JSON for Area / Line graphics (including those with BASE_LN_PTS). */
-  private _buildAreaLinePlanDrawEss(de: any, amplifier: any): Record<string, any> {
-    const geoType: string = de?.SYM_GEO_TYPE ?? 'Area';
-    const ctrlPts = (de?.CTRL_PTS as any[])?.map((p: any) => this._toPlanPoint(p)).filter(Boolean) ?? [];
-    const sidc: string = amplifier?.SIDC || de?.SIDC || '';
-    const result: Record<string, any> = {
-      SYM_GEO_TYPE: geoType,
-      SID:      de?.SID      ?? '',
-      SYM_NAME: de?.SYM_NAME ?? '',
-      CTRL_PTS: ctrlPts,
-      AMPLIFIER: this._serializeAmplifierForPlan(amplifier),
-    };
-
-    // Pass through all optional per-symbol fields that appear in the legacy format
-    const optionals = [
-      'DRAW_TYPE', 'ECHELON', 'FACE_GAP',
-      'ISFHAND', 'FRHNDSZ', 'FRHNDWDTH',
-      'drawExtendType',
-    ];
-    for (const k of optionals) {
-      if (de?.[k] !== undefined) result[k] = de[k];
-    }
-
-    // HEAD_RATIO and TAIL_FACTOR must be strings in the legacy export format
-    if (de?.HEAD_RATIO !== undefined) {
-      const hr = de.HEAD_RATIO;
-      result.HEAD_RATIO = typeof hr === 'string' ? hr : `${hr}`;
-    }
-    if (de?.TAIL_FACTOR !== undefined) {
-      const tf = de.TAIL_FACTOR;
-      result.TAIL_FACTOR = typeof tf === 'string' ? tf : `${tf}`;
-    }
-
-    result.SIDC = sidc;
-    result.labelOptions = de?.labelOptions ?? {};
-    result.opacity = de?.opacity ?? 1;
-
-    // BASE_LN_PTS block (e.g. obstacle belts, minefields)
-    if (de?.BASE_LN_PTS) {
-      const blp = de.BASE_LN_PTS;
-      result.BASE_LN_PTS = {
-        startPt: this._toPlanPoint(blp.startPt),
-        midPt:   this._toPlanPoint(blp.midPt),
-        endPt:   this._toPlanPoint(blp.endPt),
-      };
-      if (de.BK_LN_DIST_RATIO  !== undefined) result.BK_LN_DIST_RATIO   = de.BK_LN_DIST_RATIO;
-      if (de.BK_LN_ANGL_RATIO  !== undefined) result.BK_LN_ANGL_RATIO   = de.BK_LN_ANGL_RATIO;
-      if (de.FRNT_LN_ANGL_RATIO !== undefined) result.FRNT_LN_ANGL_RATIO = de.FRNT_LN_ANGL_RATIO;
-      if (de.drawExtendType !== undefined) result.drawExtendType = de.drawExtendType;
-    }
-
-    return result;
-  }
-
-  /** Build drawEss JSON for TacticalPoint (SYM_GEO_TYPE "Point") graphics. */
-  private _buildPointPlanDrawEss(de: any, amplifier: any): Record<string, any> {
-    const geom = this._toPlanPoint(de?.GEOM);
-    const sidc: string = amplifier?.SIDC || de?.SIDC || '';
-    const result: Record<string, any> = {
-      SYM_GEO_TYPE: 'Point',
-      SID:      de?.SID      ?? '',
-      SYM_NAME: de?.SYM_NAME ?? '',
-    };
-
-    // SIZE and ANGLE are present on non-freehand-only tactical points
-    if (de?.SIZE !== undefined) result.SIZE  = de.SIZE;
-    if (de?.ANGLE !== undefined) result.ANGLE = de.ANGLE;
-
-    result.GEOM = geom;
-    result.AMPLIFIER = this._serializeAmplifierForPlan(amplifier);
-
-    // Freehand rendering parameters
-    if (de?.ISFHAND !== undefined) result.ISFHAND  = de.ISFHAND;
-
-    result.SIDC = sidc;
-    result.labelOptions = de?.labelOptions ?? {};
-
-    if (de?.FRHNDSZ  !== undefined) result.FRHNDSZ  = de.FRHNDSZ;
-    if (de?.FRHNDWDTH !== undefined) result.FRHNDWDTH = de.FRHNDWDTH;
-
-    result.opacity = de?.opacity ?? 1;
-
-    return result;
-  }
-
-  /**
-   * Enrich a DrawEssentials object with data that UEI/milsymbol symbol classes may
-   * not store explicitly in drawEssentials but is derivable from the graphic:
-   * - GEOM: falls back to graphic.geometry (milsymbol symbols store position there)
-   * - SID:  derived from SIDC chars 11-16 when absent (maps to Symbols.json key)
-   * - SYM_NAME: looked up in symbolData by SID when absent
-   */
-  private _enrichDe(de: any, graphic: Graphic): any {
-    let out = de;
-
-    // GEOM fallback — milsymbol symbols keep position in graphic.geometry, not de.GEOM
-    if (!out.GEOM && graphic.geometry?.type === 'point') {
-      out = { ...out, GEOM: graphic.geometry };
-    }
-
-    // SID / SYM_NAME — derive from SIDC when the symbol class left them blank
-    const sidc: string = out.SIDC || out.AMPLIFIER?.SIDC || '';
-    if ((!out.SID || !out.SYM_NAME) && sidc.length >= 16) {
-      const sid = sidc.substring(10, 16);
-      const entry = (symbolData as any)[sid];
-      if (!out.SID)      out = { ...out, SID: sid };
-      if (!out.SYM_NAME && entry?.Name) out = { ...out, SYM_NAME: entry.Name };
-    }
-
-    return out;
-  }
-
-  /**
-   * Dispatch to the correct drawEss serializer based on the graphic's SYM_GEO_TYPE.
-   * Returns null for graphics that cannot be represented in plan format.
-   */
-  private _buildPlanDrawEss(graphic: Graphic): Record<string, any> | null {
-    const rawDe: any = graphic.attributes?.drawEssentials;
-    if (!rawDe) return null;
-    const amplifier: any = rawDe?.AMPLIFIER ?? {};
-    const geoType: string = rawDe?.SYM_GEO_TYPE ?? '';
-
-    if (geoType === 'FPoint') {
-      return this._buildFPointPlanDrawEss(this._enrichDe(rawDe, graphic), amplifier);
-    }
-    if (geoType === 'Area' || geoType === 'Line') {
-      return this._buildAreaLinePlanDrawEss(rawDe, amplifier);
-    }
-    if (geoType === 'Point') {
-      return this._buildPointPlanDrawEss(this._enrichDe(rawDe, graphic), amplifier);
-    }
-    // Fallback: infer type from geometry shape
-    if (rawDe.CTRL_PTS?.length > 0) {
-      return this._buildAreaLinePlanDrawEss(rawDe, amplifier);
-    }
-    if (rawDe.GEOM || graphic.geometry?.type === 'point') {
-      const hasUEI = rawDe.UEI === '1' || amplifier?.SIDC?.length > 10;
-      const enriched = this._enrichDe(rawDe, graphic);
-      if (hasUEI) return this._buildFPointPlanDrawEss(enriched, amplifier);
-      return this._buildPointPlanDrawEss(enriched, amplifier);
-    }
-    return null;
-  }
-
-  /** Download all graphics as a Plan JSON file. */
+  /** Download all graphics as a Plan JSON file. Delegates to SerializationEngine. */
   public savePlanToFile(filename?: string): void {
-    const planId = Date.now();
-    const plan = new Plan(Plan.createDefaultObject(planId));
-    const layerIds = [
-      LAYER_NAMES.TACT,
-      LAYER_NAMES.TACT_PT,
-      LAYER_NAMES.FORCE,
-      'milSymbols',
-    ];
-    let overlaySeq = 1;
-    let totalSymbols = 0;
-
-    for (const layerId of layerIds) {
-      const layer = this._layerManager.getOrCreateLayer(layerId) as any;
-      if (!layer?.graphics?.length) continue;
-
-      const overlayId = this.generateUUID();
-      const symbols: ReturnType<typeof Plan.createSymbol>[] = [];
-
-      (layer.graphics as any).forEach((g: Graphic) => {
-        try {
-          const drawEssObj = this._buildPlanDrawEss(g);
-          if (!drawEssObj) return;
-          const symbolId = g.attributes?.id || this.generateUUID();
-          symbols.push(
-            Plan.createSymbol(planId, overlayId, symbolId, JSON.stringify(drawEssObj)),
-          );
-        } catch (err) {
-          console.warn('[Plan] Could not serialize graphic:', err);
-        }
-      });
-
-      if (!symbols.length) continue;
-      totalSymbols += symbols.length;
-
-      plan.addOverlay(
-        Plan.createOverlay(
-          planId,
-          overlayId,
-          (layer?.title ?? layerId).trim(),
-          overlaySeq++,
-          symbols,
-        ),
-      );
-    }
-
-    this._downloadJSON(plan.toJSON(), filename ?? `pams8_plan_${Date.now()}.json`);
-    console.info(`[Plan] Saved plan with ${totalSymbols} symbols across ${overlaySeq - 1} overlays`);
+    this.serializationEngine.savePlanToFile(filename);
   }
 
-  /**
-   * Patch a PlanPoint ({type, x, y, sp:"WGS1SP"}) so that loadSymbolFromJSON's
-   * `new Point({x, y, spatialReference})` receives an explicit WGS84 reference.
-   * Without this ArcGIS defaults to WGS84 but some paths may mishandle it.
-   */
-  private _patchPlanPoint(p: any): any {
-    if (!p || p.sp !== 'WGS1SP') return p;
-    return { x: p.x, y: p.y, spatialReference: { wkid: 4326 } };
-  }
-
-  /**
-   * Convert a Plan drawEss JSON string back into the format expected by loadSymbolFromJSON.
-   * PlanPoints are tagged with sp:"WGS1SP" (WGS84 geographic degrees) and get an explicit
-   * 4326 spatialReference so ArcGIS can project them into the view's coordinate system.
-   */
-  private _loadPlanSymbol(drawEssRaw: string, symbolId: string): void {
-    let drawEssObj: any;
-    try {
-      drawEssObj = JSON.parse(drawEssRaw);
-    } catch {
-      console.warn('[Plan] Could not parse drawEss for symbol', symbolId);
-      return;
-    }
-
-    const normalizedDrawEss = Plan.normalizeDrawEssForRuntime(drawEssObj);
-    const amplifier = normalizedDrawEss?.AMPLIFIER ?? {};
-    if (normalizedDrawEss?.SIDC && !amplifier.SIDC) amplifier.SIDC = normalizedDrawEss.SIDC;
-
-    const de: any = { ...normalizedDrawEss };
-
-    if (de.GEOM?.sp === 'WGS1SP') {
-      de.GEOM = this._patchPlanPoint(de.GEOM);
-    }
-    if (Array.isArray(de.CTRL_PTS)) {
-      de.CTRL_PTS = de.CTRL_PTS.map((p: any) => this._patchPlanPoint(p));
-    }
-    if (de.BASE_LN_PTS) {
-      de.BASE_LN_PTS = {
-        startPt: this._patchPlanPoint(de.BASE_LN_PTS.startPt),
-        midPt:   this._patchPlanPoint(de.BASE_LN_PTS.midPt),
-        endPt:   this._patchPlanPoint(de.BASE_LN_PTS.endPt),
-      };
-    }
-    if (de.OPTIONS?.GEOM?.sp === 'WGS1SP') {
-      de.OPTIONS = { ...de.OPTIONS, GEOM: this._patchPlanPoint(de.OPTIONS.GEOM) };
-    }
-
-    this.loadSymbolFromJSON({
-      id: symbolId,
-      sidc: amplifier?.SIDC || normalizedDrawEss?.SIDC,
-      amplifier,
-      drawEssentials: de,
-    });
-  }
-
-  /** Open a Plan JSON file and restore all symbols from it. */
+  /** Open a Plan JSON file and restore all symbols from it. Delegates to SerializationEngine. */
   public loadPlanFromFile(): void {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,application/json';
-    input.onchange = (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        try {
-          const parsed = JSON.parse(evt.target?.result as string);
-          if (!Plan.isPlanDocument(parsed)) {
-            console.warn('[Plan] File does not appear to be a valid Plan document');
-            return;
-          }
-          let loaded = 0;
-          for (const overlay of parsed.poObj.plnOrdrOverlay) {
-            for (const sym of overlay.plnOrdrSymbolSet) {
-              if (sym.isDelete === 'Y') continue;
-              this._loadPlanSymbol(sym.drawEss, sym.plnOrdrSymbolPK.plnOrdrSymbolId);
-              loaded++;
-            }
-          }
-          console.info(`[Plan] Loaded ${loaded} symbols from plan`);
-        } catch (err) {
-          console.error('[Plan] Failed to parse plan file:', err);
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
+    this.serializationEngine.loadPlanFromFile();
   }
 
   /** Open a file picker; loads from PAMS8 JSON, template, or GeoJSON file. */
@@ -4381,7 +4021,7 @@ class SymbolEngine implements Evented {
       localStorage.setItem(this._TEMPLATES_KEY, JSON.stringify(store));
     }
 
-    this.initialize(de, amplifier); // interactive — no geometry pre-set
+    this.initialize(de, amplifier); // interactive â€” no geometry pre-set
     console.info(`[Templates] Loaded template "${data.name || '(unnamed)'}"`);
   }
 
@@ -4587,7 +4227,7 @@ class SymbolEngine implements Evented {
   }
 
   // -----------------------------------------------------------------------
-  // Feature 7 — Symbol Templates
+  // Feature 7 â€” Symbol Templates
   // -----------------------------------------------------------------------
 
   private readonly _TEMPLATES_KEY = 'pams8_templates';
