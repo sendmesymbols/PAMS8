@@ -40,9 +40,14 @@ export default class ImportExportEngine {
 
   private _toPlanPoint(pt: any): PlanPoint | null {
     if (!pt) return null;
-    const x = typeof pt.x === 'number' ? pt.x : pt.longitude;
-    const y = typeof pt.y === 'number' ? pt.y : pt.latitude;
+    let x = typeof pt.x === 'number' ? pt.x : pt.longitude;
+    let y = typeof pt.y === 'number' ? pt.y : pt.latitude;
     if (typeof x !== 'number' || typeof y !== 'number') return null;
+    const wkid = pt.spatialReference?.wkid ?? pt.spatialReference?.latestWkid;
+    const looksLikeWebMercator = Math.abs(x) > 180 || Math.abs(y) > 90;
+    if (wkid === 3857 || wkid === 102100 || (!wkid && looksLikeWebMercator)) {
+      [x, y] = webMercatorUtils.xyToLngLat(x, y);
+    }
     return { type: 'point', x, y, sp: 'WGS1SP' };
   }
 
@@ -54,31 +59,53 @@ export default class ImportExportEngine {
     return !!hasXY;
   }
 
-  private _cloneDrawEssForPlan(value: any): any {
+  private _cloneDrawEssForPlan(
+    value: any,
+    seen: WeakSet<object> = new WeakSet<object>(),
+  ): any {
     if (value === null || value === undefined) return value;
-    if (Array.isArray(value)) return value.map((item) => this._cloneDrawEssForPlan(item));
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => this._cloneDrawEssForPlan(item, seen))
+        .filter((item) => item !== undefined);
+    }
     if (typeof value !== 'object') return value;
 
     if (this._isPointLike(value)) {
       return this._toPlanPoint(value);
     }
 
+    if (seen.has(value)) {
+      return undefined;
+    }
+    seen.add(value);
+
     const out: Record<string, any> = {};
     Object.keys(value).forEach((k) => {
-      out[k] = this._cloneDrawEssForPlan(value[k]);
+      const cloned = this._cloneDrawEssForPlan(value[k], seen);
+      if (cloned !== undefined) {
+        out[k] = cloned;
+      }
     });
     return out;
   }
 
   private _planPointToArcGisPoint(raw: any): Point | null {
     if (!raw || typeof raw !== 'object') return null;
-    const x = typeof raw.x === 'number' ? raw.x : undefined;
-    const y = typeof raw.y === 'number' ? raw.y : undefined;
+    let x = typeof raw.x === 'number' ? raw.x : undefined;
+    let y = typeof raw.y === 'number' ? raw.y : undefined;
     if (x === undefined || y === undefined) return null;
+    const isWgsPlanPoint = raw.sp === 'WGS1SP';
+    if (isWgsPlanPoint && (Math.abs(x) > 180 || Math.abs(y) > 90)) {
+      [x, y] = webMercatorUtils.xyToLngLat(x, y);
+    }
+    const spatialReference = isWgsPlanPoint
+      ? { wkid: 4326 }
+      : (raw.spatialReference ?? { wkid: 4326 });
     return new Point({
       x,
       y,
-      spatialReference: raw.spatialReference ?? { wkid: 4326 },
+      spatialReference,
     });
   }
 

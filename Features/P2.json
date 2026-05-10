@@ -1,0 +1,91 @@
+{
+  "poObj": {
+    "plnOrdrId": 1778395790203,
+    "catCode": "PLAN",
+    "creatorId": 10900,
+    "updateSeqnr": 1,
+    "plns": [
+      {
+        "plnId": 1778395790203,
+        "catCode": "OPLAN",
+        "subCatCode": "Def",
+        "creatorId": 10900,
+        "updateSeqnr": 1,
+        "plnStats": [
+          {
+            "id": {
+              "plnId": 1778395790203,
+              "plnStatIx": 1
+            },
+            "dvlpmStatCode": "NCOMPL",
+            "stateCode": "DRAFT",
+            "dttm": "20260510064950000 ",
+            "creatorId": 10900,
+            "updateSeqnr": 1
+          }
+        ]
+      }
+    ],
+    "ordrs": [],
+    "plnOrdrHdrCntnts": [
+      {
+        "id": {
+          "plnOrdrId": 1778395790203,
+          "plnOrdrHdrCntntIx": 1
+        },
+        "nameTxt": "Sample Name",
+        "nicknameTxt": "Plan",
+        "serialNoTxt": "11-00",
+        "sponsorTypeTxt": "SPO",
+        "timeZoneCode": "Z",
+        "dttm": "20260510064950000 ",
+        "creatorId": 10900,
+        "updateSeqnr": 1,
+        "placeOfIssueTxt": "Office"
+      }
+    ],
+    "orgPoas": [],
+    "plnOrdrOverlay": [
+      {
+        "plnOrdrOverlayPK": {
+          "plnOrdrId": 1778395790203,
+          "plnOrdrOverlayId": "5b489020-3fd9-4d8f-a5a9-78f094ca7ddc"
+        },
+        "nameTxt": "ForceSymbolsLayer",
+        "typeTxt": "ForceSymbolsLayer",
+        "seqOrdr": 1778395790203,
+        "hierarchyType": "Simple Overlay",
+        "isDelete": "N",
+        "isShared": "N",
+        "creatorId": 10900,
+        "updateSeqnr": 1,
+        "plnOrdrSymbolSet": [
+          {
+            "plnOrdrSymbolPK": {
+              "plnOrdrId": 1778395790203,
+              "plnOrdrSymbolId": "1b7d50d3-3cca-4e1d-9412-7d6347ba303a",
+              "plnOrdrOverlayId": "5b489020-3fd9-4d8f-a5a9-78f094ca7ddc"
+            },
+            "isDelete": "N",
+            "isShared": "N",
+            "creatorId": 10900,
+            "updateSeqnr": 1,
+            "drawEss": "{\"BK_LN_DIST_RATIO\":5,\"BK_LN_ANGL_RATIO\":5,\"FRNT_LN_ANGL_RATIO\":0.8,\"FRNT_LN_DIST_RATIO\":1.5,\"FLAP_DIST_RATIO\":3,\"SCOPE\":\"\",\"SID\":\"\",\"SYM_NAME\":\"\",\"SYM_GEO_TYPE\":\"\",\"DRAW_TYPE\":1,\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Unique Designation\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"Higher Formation\",\"hfid\":\"\",\"STAFF_COM\":\"Staff Comments\",\"ADDL_INFO\":\"Additional Information\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"SYMBOL_ICON\":\"\",\"ECHELON\":\"\",\"QUANTITY\":\"\",\"HOSTILE\":\"\",\"DIR_OF_MOV_INDICATOR\":\"\",\"OFFSET_LOC_INDICATOR\":\"\",\"TYPE\":\"\",\"DTG\":\"\",\"EDTG\":\"\",\"SIZE\":60,\"ALTITUDE_DEPTH\":\"\",\"SIDC\":\"10061000181211000000\",\"LOC\":\"\",\"DISTANCE\":\"\",\"AZIMUTH\":\"\",\"TARGET_DESIGNATOR\":\"Target Designator\",\"COUNTRY\":\"\"},\"IS_LINE\":false,\"GEOM\":{\"type\":\"point\",\"x\":59.7690832068763,\"y\":33.22945078834701,\"sp\":\"WGS1SP\"},\"IS_OBS\":0,\"SIZE\":20,\"ARROWHEAD_RATIO\":0,\"ECHELON\":\"18\",\"OFFSET\":\"0\",\"SIDC\":\"10061000181211000000\",\"labelOptions\":{\"haloColor\":[255,0,0],\"haloColorSize\":5,\"color\":[0,255,0],\"textSize\":20,\"bold\":1,\"italic\":0,\"uLine\":0,\"oLine\":0,\"tLine\":0},\"uniqueDesignation\":\"FORCE 123456\",\"infoFields\":true,\"FLAP_ANGLE\":45}"
+          },
+          {
+            "plnOrdrSymbolPK": {
+              "plnOrdrId": 1778395790203,
+              "plnOrdrSymbolId": "9d4fc788-ee2c-4636-938b-2787894a58e8",
+              "plnOrdrOverlayId": "5b489020-3fd9-4d8f-a5a9-78f094ca7ddc"
+            },
+            "isDelete": "N",
+            "isShared": "N",
+            "creatorId": 10900,
+            "updateSeqnr": 1,
+            "drawEss": "{\"BK_LN_DIST_RATIO\":5,\"BK_LN_ANGL_RATIO\":5,\"FRNT_LN_ANGL_RATIO\":0.8,\"FRNT_LN_DIST_RATIO\":1.5,\"FLAP_DIST_RATIO\":3,\"SCOPE\":\"\",\"SID\":\"160303\",\"SYM_NAME\":\"Tgt\",\"SYM_GEO_TYPE\":\"Point\",\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Unique Designation\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"Higher Formation\",\"hfid\":\"\",\"STAFF_COM\":\"Staff Comments\",\"ADDL_INFO\":\"Additional Information\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"SYMBOL_ICON\":\"\",\"ECHELON\":\"\",\"QUANTITY\":\"\",\"HOSTILE\":\"\",\"DIR_OF_MOV_INDICATOR\":\"\",\"OFFSET_LOC_INDICATOR\":\"\",\"TYPE\":\"\",\"DTG\":\"\",\"EDTG\":\"\",\"SIZE\":60,\"ALTITUDE_DEPTH\":\"\",\"SIDC\":\"10062500181603030000\",\"LOC\":\"\",\"DISTANCE\":\"\",\"AZIMUTH\":\"\",\"TARGET_DESIGNATOR\":\"Target Designator\",\"COUNTRY\":\"\"},\"IS_LINE\":false,\"GEOM\":{\"type\":\"point\",\"x\":59.866635003843975,\"y\":30.515274510953233,\"sp\":\"WGS1SP\"},\"IS_OBS\":0,\"SIZE\":70,\"ARROWHEAD_RATIO\":0,\"ECHELON\":\"\",\"OFFSET\":\"0\",\"SIDC\":\"10062500181603030000\",\"labelOptions\":{\"haloColor\":[255,0,0],\"haloColorSize\":\"5\",\"color\":[0,255,0],\"textSize\":\"20\",\"bold\":1,\"italic\":0,\"uLine\":0,\"oLine\":0,\"tLine\":0},\"ANGLE\":0,\"ISFHAND\":0,\"FRHNDSZ\":0,\"FRHNDWDTH\":0}"
+          }
+        ]
+      }
+    ]
+  }
+}
