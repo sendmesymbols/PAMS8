@@ -92,12 +92,13 @@ export default class Plan {
     addOverlay(overlay: PlanOverlay): void;
     static isPlanDocument(data: unknown): data is PlanDocument;
     static createOverlay(planId: number, overlayId: string, name: string, seqOrdr: number, symbols: PlanSymbol[], creatorId?: number): PlanOverlay;
-    static createSymbol(planId: number, overlayId: string, symbolId: string, drawEss: string, creatorId?: number): PlanSymbol;
+    static createSymbol(planId: number, overlayId: string, symbolId: string, drawEss: string | Record<string, unknown>, creatorId?: number): PlanSymbol;
     static createDefaultObject(planId?: number): PlanObject;
     private static _toNumber;
     private static _toStringNumber;
     private static _clone;
     private static _ensureObject;
+    private static _toPlanPointForExport;
     private static _normalizeLabelOptionsForExport;
     private static _normalizeAmplifierForExport;
     static normalizeDrawEssForLegacyExport(rawDrawEss: unknown): Record<string, unknown>;

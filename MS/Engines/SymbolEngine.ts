@@ -3194,10 +3194,43 @@ class SymbolEngine implements Evented {
    * Project a Point to the specified spatial reference.
    * @param point The Point to project
    * @param spatialReference The target spatial reference
-   * @returns The projected Point (returns same as input)
+   * @returns The projected Point
    */
   public reProject(point: Point, spatialReference: SpatialReference): Point {
-    return point;
+    if (!point || !spatialReference) return point;
+
+    const srcWkid = point.spatialReference?.wkid ?? point.spatialReference?.latestWkid;
+    const dstWkid = spatialReference.wkid ?? spatialReference.latestWkid;
+
+    // Same SR (or unknown on both) -> keep as-is.
+    if (
+      (srcWkid !== undefined && dstWkid !== undefined && srcWkid === dstWkid) ||
+      (srcWkid === undefined && dstWkid === undefined)
+    ) {
+      return point;
+    }
+
+    // Plan import path is usually WGS84 -> WebMercator.
+    if (srcWkid === 4326 && (dstWkid === 3857 || dstWkid === 102100)) {
+      const projected = webMercatorUtils.geographicToWebMercator(point) as Point;
+      if (projected) return projected;
+    }
+
+    // Handle reverse conversion when needed.
+    if (
+      (srcWkid === 3857 || srcWkid === 102100) &&
+      dstWkid === 4326
+    ) {
+      const projected = webMercatorUtils.webMercatorToGeographic(point) as Point;
+      if (projected) return projected;
+    }
+
+    // Fallback: keep coordinates and retag SR so downstream draw code stays consistent.
+    return new Point({
+      x: point.x,
+      y: point.y,
+      spatialReference,
+    });
   }
 
   createSymbolCacheKey(options: SymbolOptions, scaleFactor: number): string {

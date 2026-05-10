@@ -105,12 +105,12 @@ export default class Plan {
   };
 
   private static readonly LEGACY_AMPLIFIER_DEFAULT = {
-    UNIQUE_DESIG: 'Unique Designation',
+    UNIQUE_DESIG: ' ',
     UNIQUE_DESIG_ID: '',
-    HIGHER_FORM: 'Higher Formation',
+    HIGHER_FORM: '',
     hfid: '',
-    STAFF_COM: 'Staff Comments',
-    ADDL_INFO: 'Additional Information',
+    STAFF_COM: '',
+    ADDL_INFO: '',
     MULTI_LINE_LABEL_TEXT: '',
     MULTI_LINE_LABEL_COLOR: '#000000',
     MULTI_LINE_LABEL_ALIGN: 'center',
@@ -184,9 +184,19 @@ export default class Plan {
     planId: number,
     overlayId: string,
     symbolId: string,
-    drawEss: string,
+    drawEss: string | Record<string, unknown>,
     creatorId = 10900,
   ): PlanSymbol {
+    let parsedDrawEss: unknown = drawEss;
+    if (typeof drawEss === 'string') {
+      try {
+        parsedDrawEss = JSON.parse(drawEss);
+      } catch {
+        parsedDrawEss = {};
+      }
+    }
+    const legacyDrawEss = Plan.normalizeDrawEssForLegacyExport(parsedDrawEss);
+
     return {
       plnOrdrSymbolPK: {
         plnOrdrId: planId,
@@ -197,7 +207,7 @@ export default class Plan {
       isShared: 'N',
       creatorId,
       updateSeqnr: 1,
-      drawEss,
+      drawEss: JSON.stringify(legacyDrawEss),
     };
   }
 
@@ -294,6 +304,14 @@ export default class Plan {
       : {};
   }
 
+  private static _toPlanPointForExport(raw: unknown): unknown {
+    const p = Plan._ensureObject(raw);
+    const x = Plan._toNumber(p.x);
+    const y = Plan._toNumber(p.y);
+    if (x === undefined || y === undefined) return raw;
+    return { type: 'point', x, y, sp: 'WGS1SP' };
+  }
+
   private static _normalizeLabelOptionsForExport(
     raw: unknown,
     geoType: string,
@@ -335,19 +353,22 @@ export default class Plan {
     const drawEss = Plan._ensureObject(Plan._clone(rawDrawEss));
     const geoType = `${drawEss.SYM_GEO_TYPE ?? ''}`;
 
-    if (drawEss.FLAP_ANGLE === undefined) drawEss.FLAP_ANGLE = 45;
-    if (drawEss.BK_LN_DIST_RATIO === undefined) drawEss.BK_LN_DIST_RATIO = 5;
-    if (drawEss.BK_LN_ANGL_RATIO === undefined) drawEss.BK_LN_ANGL_RATIO = 5;
-    if (drawEss.FRNT_LN_ANGL_RATIO === undefined) drawEss.FRNT_LN_ANGL_RATIO = 0.8;
-    if (drawEss.FRNT_LN_DIST_RATIO === undefined) drawEss.FRNT_LN_DIST_RATIO = 1.5;
-    if (drawEss.FLAP_DIST_RATIO === undefined) drawEss.FLAP_DIST_RATIO = 3;
+    delete drawEss.extraSettings;
 
-    drawEss.extraSettings = {
-      ...Plan.LEGACY_EXTRA_SETTINGS_DEFAULT,
-      ...Plan._ensureObject(drawEss.extraSettings),
-    };
-
-    drawEss.AMPLIFIER = Plan._normalizeAmplifierForExport(drawEss.AMPLIFIER, geoType);
+    if (drawEss.GEOM !== undefined) {
+      drawEss.GEOM = Plan._toPlanPointForExport(drawEss.GEOM);
+    }
+    if (Array.isArray(drawEss.CTRL_PTS)) {
+      drawEss.CTRL_PTS = drawEss.CTRL_PTS.map((p) => Plan._toPlanPointForExport(p));
+    }
+    if (drawEss.BASE_LN_PTS !== undefined) {
+      const blp = Plan._ensureObject(drawEss.BASE_LN_PTS);
+      drawEss.BASE_LN_PTS = {
+        startPt: Plan._toPlanPointForExport(blp.startPt),
+        midPt: Plan._toPlanPointForExport(blp.midPt),
+        endPt: Plan._toPlanPointForExport(blp.endPt),
+      };
+    }
 
     if (geoType === 'FPoint') {
       const options = Plan._ensureObject(drawEss.OPTIONS);
@@ -360,17 +381,35 @@ export default class Plan {
       if (options.direction === undefined) options.direction = '';
       if (options.quantity === undefined) options.quantity = '';
       if (options.reinforcedReduced === undefined) options.reinforcedReduced = '';
-      const optSize = options.size;
+      const optSize = Plan._toNumber(options.size);
       if (optSize !== undefined) options.size = `${optSize}`;
+      if (options.size === undefined && drawEss.SIZE !== undefined) {
+        const sizeFromTop = Plan._toNumber(drawEss.SIZE);
+        if (sizeFromTop !== undefined) options.size = `${sizeFromTop}`;
+      }
       if (options.ANGLE === undefined) options.ANGLE = 0;
       if (options.ECHELON === undefined) options.ECHELON = '';
       if (options.alphaNum === undefined) options.alphaNum = 100;
       if (options.opacity === undefined) options.opacity = 1;
       if (options.symType === undefined) options.symType = 'FPoint';
-      options.labelOptions = {};
+      if (options.GEOM === undefined && drawEss.GEOM !== undefined) {
+        options.GEOM = Plan._toPlanPointForExport(drawEss.GEOM);
+      } else if (options.GEOM !== undefined) {
+        options.GEOM = Plan._toPlanPointForExport(options.GEOM);
+      }
+      if (
+        options.labelOptions === undefined ||
+        typeof options.labelOptions !== 'object' ||
+        Array.isArray(options.labelOptions)
+      ) {
+        options.labelOptions = {};
+      }
       drawEss.OPTIONS = options;
       drawEss.labelOptions = {};
+      drawEss.AMPLIFIER = {};
+      drawEss.UEI = '1';
     } else {
+      drawEss.AMPLIFIER = Plan._normalizeAmplifierForExport(drawEss.AMPLIFIER, geoType);
       drawEss.labelOptions = Plan._normalizeLabelOptionsForExport(
         drawEss.labelOptions,
         geoType,
@@ -393,10 +432,6 @@ export default class Plan {
     }
 
     if (geoType === 'Area') {
-      if (drawEss.DRAW_TYPE === undefined) drawEss.DRAW_TYPE = 1;
-      if (drawEss.FACE_GAP === undefined) drawEss.FACE_GAP = 5;
-      if (drawEss.drawExtendType === undefined) drawEss.drawExtendType = 1;
-
       const headRatio = Plan._toStringNumber(drawEss.HEAD_RATIO);
       const tailFactor = Plan._toStringNumber(drawEss.TAIL_FACTOR);
       if (headRatio !== undefined) drawEss.HEAD_RATIO = headRatio;
@@ -430,8 +465,14 @@ export default class Plan {
     drawEss.labelOptions = labelOptions;
 
     if (geoType === 'Area') {
+      const drawType = Plan._toNumber(drawEss.DRAW_TYPE);
+      const faceGap = Plan._toNumber(drawEss.FACE_GAP);
+      const extendType = Plan._toNumber(drawEss.drawExtendType);
       const headRatio = Plan._toNumber(drawEss.HEAD_RATIO);
       const tailFactor = Plan._toNumber(drawEss.TAIL_FACTOR);
+      if (drawType !== undefined) drawEss.DRAW_TYPE = drawType;
+      if (faceGap !== undefined) drawEss.FACE_GAP = faceGap;
+      if (extendType !== undefined) drawEss.drawExtendType = extendType;
       if (headRatio !== undefined) drawEss.HEAD_RATIO = headRatio;
       if (tailFactor !== undefined) drawEss.TAIL_FACTOR = tailFactor;
       if (drawEss.DRAW_TYPE === undefined) drawEss.DRAW_TYPE = 1;
@@ -440,6 +481,17 @@ export default class Plan {
     }
 
     if (geoType === 'Point') {
+      const size = Plan._toNumber(drawEss.SIZE);
+      const angle = Plan._toNumber(drawEss.ANGLE);
+      const isFhand = Plan._toNumber(drawEss.ISFHAND);
+      const frhndsz = Plan._toNumber(drawEss.FRHNDSZ);
+      const frhndwdth = Plan._toNumber(drawEss.FRHNDWDTH);
+      if (size !== undefined) drawEss.SIZE = size;
+      if (angle !== undefined) drawEss.ANGLE = angle;
+      if (isFhand !== undefined) drawEss.ISFHAND = isFhand;
+      if (frhndsz !== undefined) drawEss.FRHNDSZ = frhndsz;
+      if (frhndwdth !== undefined) drawEss.FRHNDWDTH = frhndwdth;
+
       const amp = Plan._ensureObject(drawEss.AMPLIFIER);
       if (amp.TARGET_DESIGNATOR !== undefined) {
         drawEss.TARGET_DESIGNATOR = amp.TARGET_DESIGNATOR;
@@ -448,12 +500,20 @@ export default class Plan {
 
     if (geoType === 'FPoint') {
       const options = Plan._ensureObject(drawEss.OPTIONS);
+      const optionSize = Plan._toNumber(options.size);
+      const optionAlphaNum = Plan._toNumber(options.alphaNum);
+      const optionAngle = Plan._toNumber(options.ANGLE);
+      const optionOpacity = Plan._toNumber(options.opacity);
+      if (optionSize !== undefined) options.size = optionSize;
+      if (optionAlphaNum !== undefined) options.alphaNum = optionAlphaNum;
+      if (optionAngle !== undefined) options.ANGLE = optionAngle;
+      if (optionOpacity !== undefined) options.opacity = optionOpacity;
       if (
         options.labelOptions === undefined ||
         typeof options.labelOptions !== 'object' ||
         Array.isArray(options.labelOptions)
       ) {
-        options.labelOptions = Plan._clone(Plan.LEGACY_LABEL_OPTIONS_DEFAULT);
+        options.labelOptions = {};
       }
       if (options.SYM_NAME === undefined) options.SYM_NAME = '';
       if (options.roa === undefined) options.roa = '';

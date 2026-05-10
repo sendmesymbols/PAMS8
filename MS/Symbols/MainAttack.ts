@@ -70,6 +70,7 @@ export class MainAttack {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
         this.amplifier = new Amplifier();
+        debugger;
         
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
@@ -86,7 +87,7 @@ export class MainAttack {
         
         // Disable map navigation during drawing (handled by view)
         // Note: In ArcGIS 4.x, navigation is handled through view.inputManager
-
+        debugger;
         // Set parameters from options
         this._headPercentage = GeoTools.setDefault(options, "HEAD_RATIO", this._headPercentage);
         this._tailFactor = GeoTools.setDefault(options, "TAIL_FACTOR", this._tailFactor);

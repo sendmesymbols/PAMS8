@@ -1,0 +1,127 @@
+{
+  "poObj": {
+    "plnOrdrId": 1778378547522,
+    "catCode": "PLAN",
+    "creatorId": 10900,
+    "updateSeqnr": 1,
+    "plns": [
+      {
+        "plnId": 1778378547522,
+        "catCode": "OPLAN",
+        "subCatCode": "Def",
+        "creatorId": 10900,
+        "updateSeqnr": 1,
+        "plnStats": [
+          {
+            "id": {
+              "plnId": 1778378547522,
+              "plnStatIx": 1
+            },
+            "dvlpmStatCode": "NCOMPL",
+            "stateCode": "DRAFT",
+            "dttm": "20260510020227000 ",
+            "creatorId": 10900,
+            "updateSeqnr": 1
+          }
+        ]
+      }
+    ],
+    "ordrs": [],
+    "plnOrdrHdrCntnts": [
+      {
+        "id": {
+          "plnOrdrId": 1778378547522,
+          "plnOrdrHdrCntntIx": 1
+        },
+        "nameTxt": "Sample Name",
+        "nicknameTxt": "Plan",
+        "serialNoTxt": "11-00",
+        "sponsorTypeTxt": "SPO",
+        "timeZoneCode": "Z",
+        "dttm": "20260510020227000 ",
+        "creatorId": 10900,
+        "updateSeqnr": 1,
+        "placeOfIssueTxt": "Office"
+      }
+    ],
+    "orgPoas": [],
+    "plnOrdrOverlay": [
+      {
+        "plnOrdrOverlayPK": {
+          "plnOrdrId": 1778378547522,
+          "plnOrdrOverlayId": "cd55c04d-8151-4d9b-be6c-f0d5e45c95ea"
+        },
+        "nameTxt": "ForceSymbolsLayer",
+        "typeTxt": "ForceSymbolsLayer",
+        "seqOrdr": 1,
+        "hierarchyType": "Simple Overlay",
+        "isDelete": "N",
+        "isShared": "N",
+        "creatorId": 10900,
+        "updateSeqnr": 1,
+        "plnOrdrSymbolSet": [
+          {
+            "plnOrdrSymbolPK": {
+              "plnOrdrId": 1778378547522,
+              "plnOrdrSymbolId": "f20c111f-bce7-43d0-b08a-fa440e378f54",
+              "plnOrdrOverlayId": "cd55c04d-8151-4d9b-be6c-f0d5e45c95ea"
+            },
+            "isDelete": "N",
+            "isShared": "N",
+            "creatorId": 10900,
+            "updateSeqnr": 1,
+            "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"121100\",\"SYM_NAME\":\"\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"20\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10061000181211000000\",\"uniqueDesignation\":\"Unique Designation\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"Higher Formation\",\"hfid\":\"\",\"staffComments\":\"Staff Comments\",\"additionalInformation\":\"Additional Information\",\"ECHELON\":\"18\",\"opacity\":1,\"labelOptions\":{\"haloColor\":[255,0,0],\"haloColorSize\":5,\"color\":[0,255,0],\"textSize\":20,\"bold\":1,\"italic\":0,\"uLine\":0,\"oLine\":0,\"tLine\":0},\"GEOM\":{\"type\":\"point\",\"x\":76.94230789643679,\"y\":31.783112550323374,\"sp\":\"WGS1SP\"}},\"GEOM\":{\"type\":\"point\",\"x\":76.94230789643679,\"y\":31.783112550323374,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10061000181211000000\",\"labelOptions\":{\"haloColor\":[255,0,0],\"haloColorSize\":5,\"color\":[0,255,0],\"textSize\":20,\"bold\":1,\"italic\":0,\"uLine\":0,\"oLine\":0,\"tLine\":0},\"opacity\":1}"
+          },
+          {
+            "plnOrdrSymbolPK": {
+              "plnOrdrId": 1778378547522,
+              "plnOrdrSymbolId": "ffd4239b-e80c-4c9c-acd6-2729c9758cbd",
+              "plnOrdrOverlayId": "cd55c04d-8151-4d9b-be6c-f0d5e45c95ea"
+            },
+            "isDelete": "N",
+            "isShared": "N",
+            "creatorId": 10900,
+            "updateSeqnr": 1,
+            "drawEss": "{\"SYM_GEO_TYPE\":\"Point\",\"SID\":\"160303\",\"SYM_NAME\":\"Tgt\",\"SIZE\":70,\"ANGLE\":0,\"GEOM\":{\"type\":\"point\",\"x\":59.498934275805915,\"y\":33.34596704502553,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Unique Designation\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"Higher Formation\",\"hfid\":\"\",\"STAFF_COM\":\"Staff Comments\",\"ADDL_INFO\":\"Additional Information\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"TARGET_DESIGNATOR\":\"Target Designator\"},\"SIDC\":\"10062500181603030000\",\"labelOptions\":{\"haloColor\":[255,0,0],\"haloColorSize\":5,\"color\":[0,255,0],\"textSize\":20,\"bold\":1,\"italic\":0,\"uLine\":0,\"oLine\":0,\"tLine\":0},\"opacity\":1}"
+          },
+          {
+            "plnOrdrSymbolPK": {
+              "plnOrdrId": 1778378547522,
+              "plnOrdrSymbolId": "3e4d2919-364e-4dcd-86a3-986c842c43b1",
+              "plnOrdrOverlayId": "cd55c04d-8151-4d9b-be6c-f0d5e45c95ea"
+            },
+            "isDelete": "N",
+            "isShared": "N",
+            "creatorId": 10900,
+            "updateSeqnr": 1,
+            "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151403\",\"SYM_NAME\":\"Main Attk\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":60.60335659239857,\"y\":31.218503475926486,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":63.90709655978946,\"y\":30.73068561541524,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":66.29258759596624,\"y\":32.342616770020086,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":66.31938820819367,\"y\":32.32837534028023,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":67.47094939233975,\"y\":33.77692278820263,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Unique Designation\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"Higher Formation\",\"hfid\":\"\",\"STAFF_COM\":\"Staff Comments\",\"ADDL_INFO\":\"Additional Information\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"TARGET_DESIGNATOR\":\"Target Designator\"},\"ECHELON\":\"\",\"HEAD_RATIO\":\"0.07\",\"TAIL_FACTOR\":\"0.05\",\"SIDC\":\"10062500181514030000\",\"labelOptions\":{\"haloColor\":[255,0,0],\"haloColorSize\":5,\"color\":[0,255,0],\"textSize\":20,\"bold\":1,\"italic\":0,\"uLine\":0,\"oLine\":0,\"tLine\":0},\"opacity\":1}"
+          },
+          {
+            "plnOrdrSymbolPK": {
+              "plnOrdrId": 1778378547522,
+              "plnOrdrSymbolId": "7fb17489-70f5-4636-bd2f-73647dae6ceb",
+              "plnOrdrOverlayId": "cd55c04d-8151-4d9b-be6c-f0d5e45c95ea"
+            },
+            "isDelete": "N",
+            "isShared": "N",
+            "creatorId": 10900,
+            "updateSeqnr": 1,
+            "drawEss": "{\"SYM_GEO_TYPE\":\"Line\",\"SID\":\"000001\",\"SYM_NAME\":\"Freehand - Line\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":65.1325735412662,\"y\":29.54488238720738,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":69.13860787769626,\"y\":31.49151468084216,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":70.08212694203766,\"y\":34.08266986982325,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Unique Designation\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"Higher Formation\",\"hfid\":\"\",\"STAFF_COM\":\"Staff Comments\",\"ADDL_INFO\":\"Additional Information\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"TARGET_DESIGNATOR\":\"Target Designator\"},\"DRAW_TYPE\":1,\"ECHELON\":\"\",\"ISFHAND\":1,\"SIDC\":\"10060000180000010000\",\"labelOptions\":{\"haloColor\":[255,0,0],\"haloColorSize\":5,\"color\":[0,255,0],\"textSize\":20,\"bold\":1,\"italic\":0,\"uLine\":0,\"oLine\":0,\"tLine\":0},\"opacity\":1}"
+          },
+          {
+            "plnOrdrSymbolPK": {
+              "plnOrdrId": 1778378547522,
+              "plnOrdrSymbolId": "689ceb8a-8016-4a13-a491-52dd616702b4",
+              "plnOrdrOverlayId": "cd55c04d-8151-4d9b-be6c-f0d5e45c95ea"
+            },
+            "isDelete": "N",
+            "isShared": "N",
+            "creatorId": 10900,
+            "updateSeqnr": 1,
+            "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"340100\",\"SYM_NAME\":\"Block\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.11911107665482,\"y\":34.32017363773493,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":70.894488780761,\"y\":36.40302136109039,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Unique Designation\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"Higher Formation\",\"hfid\":\"\",\"STAFF_COM\":\"Staff Comments\",\"ADDL_INFO\":\"Additional Information\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"TARGET_DESIGNATOR\":\"Target Designator\"},\"ECHELON\":\"\",\"SIDC\":\"10062500183401000000\",\"labelOptions\":{\"haloColor\":[255,0,0],\"haloColorSize\":5,\"color\":[0,255,0],\"textSize\":20,\"bold\":1,\"italic\":0,\"uLine\":0,\"oLine\":0,\"tLine\":0},\"opacity\":1,\"BASE_LN_PTS\":{\"startPt\":{\"type\":\"point\",\"x\":71.58793689960538,\"y\":32.36854661978676,\"sp\":\"WGS1SP\"},\"midPt\":{\"type\":\"point\",\"x\":72.07807257719305,\"y\":31.713739346845824,\"sp\":\"WGS1SP\"},\"endPt\":{\"type\":\"point\",\"x\":72.56820825478074,\"y\":31.05427485588744,\"sp\":\"WGS1SP\"}},\"BK_LN_DIST_RATIO\":5,\"BK_LN_ANGL_RATIO\":5,\"FRNT_LN_ANGL_RATIO\":0.8}"
+          }
+        ]
+      }
+    ]
+  }
+}
