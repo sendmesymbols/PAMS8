@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Magnetic Compass — ArcGIS JS 4 Native Symbols</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/dark/main.css"/>
+  <script src="https://js.arcgis.com/4.29/"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #viewDiv { width: 100%; height: 100%; overflow: hidden; }
+    body { font-family: 'Georgia', 'Times New Roman', serif; background: #050402; }
+
+    /* ─── Top control bar ─── */
+    #controls {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 500; display: flex; gap: 8px; align-items: center;
+      background: rgba(5,4,2,0.94);
+      border: 1px solid rgba(212,160,60,0.28);
+      border-radius: 6px; padding: 8px 16px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 28px rgba(0,0,0,0.8), inset 0 1px 0 rgba(212,160,60,0.08);
+    }
+    .btn {
+      padding: 5px 14px; background: transparent; color: #c09030;
+      border: 1px solid rgba(192,144,48,0.38); border-radius: 3px;
+      cursor: pointer; font-family: 'Georgia',serif; font-size: 11px;
+      letter-spacing: 1.6px; text-transform: uppercase; transition: all .18s;
+    }
+    .btn:hover  { background: rgba(212,160,60,0.14); color: #d4a03c; border-color: rgba(212,160,60,0.6); }
+    .btn.active { background: rgba(212,160,60,0.22); color: #e8c060; border-color: #d4a03c; }
+    .sep { width: 1px; height: 20px; background: rgba(212,160,60,0.16); }
+    #hint { font-size: 11px; color: rgba(172,132,52,0.6); letter-spacing: 1px; white-space: nowrap; }
+
+    /* ─── Info panel (HTML UI — NOT a symbol) ─── */
+    #infoPanel {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      z-index: 500; width: 280px; display: none;
+      background: rgba(5,4,2,0.95);
+      border: 1px solid rgba(122,96,32,0.48);
+      border-radius: 6px; padding: 16px 20px;
+      box-shadow: 0 6px 36px rgba(0,0,0,0.88), inset 0 1px 0 rgba(212,160,60,0.06);
+    }
+    #infoPanel.show { display: block; animation: panelIn .22s ease; }
+    @keyframes panelIn { from { opacity:0; transform:translateX(-50%) translateY(8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+
+    .i-cardinal { font-size: 11px; color: #a07828; letter-spacing: 4px;
+      text-align: center; text-transform: uppercase; margin-bottom: 2px; }
+    .i-bearing  { font-size: 46px; font-weight: bold; color: #d4a03c;
+      text-align: center; letter-spacing: 3px; line-height: 1.1;
+      font-variant-numeric: tabular-nums; }
+    .i-div      { height: 1px; background: rgba(122,96,32,0.3); margin: 10px 0; }
+    .i-row      { display: flex; justify-content: space-between;
+      font-size: 11px; color: #4e3810; margin: 4px 0; }
+    .i-row span:last-child { color: #907030; font-variant-numeric: tabular-nums; }
+    .i-hint     { font-size: 10px; color: rgba(160,120,40,0.38);
+      text-align: center; margin-top: 10px; letter-spacing: 1px; }
+
+    /* ─── Legend ─── */
+    #legend {
+      position: fixed; top: 16px; right: 16px; z-index: 500;
+      background: rgba(5,4,2,0.88); border: 1px solid rgba(122,96,32,0.3);
+      border-radius: 5px; padding: 10px 14px; font-size: 10px; color: #6a4e14;
+      letter-spacing: 0.8px; line-height: 1.8;
+    }
+    .leg-item { display: flex; align-items: center; gap: 8px; }
+    .leg-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+
+  <div id="controls">
+    <button class="btn active" id="btn2D">2D</button>
+    <button class="btn"        id="btn3D">3D</button>
+    <div class="sep"></div>
+    <span id="hint">📍 Click map to place compass</span>
+    <div class="sep"></div>
+    <button class="btn" id="btnReset" style="display:none">⊕ Reset N</button>
+    <button class="btn" id="btnClear" style="display:none">✕ Clear</button>
+  </div>
+
+  <div id="infoPanel">
+    <div class="i-cardinal" id="iCardinal">NORTH</div>
+    <div class="i-bearing"  id="iBearing">000.0°</div>
+    <div class="i-div"></div>
+    <div class="i-row"><span>TRUE BEARING</span>    <span id="iTrue">–</span></div>
+    <div class="i-row"><span>MAG. DECLINATION</span><span>~1.5° W</span></div>
+    <div class="i-row"><span>MAP HEADING</span>     <span id="iMapRot">0.0°</span></div>
+    <div class="i-row"><span>COORDINATES</span>     <span id="iCoords">–</span></div>
+    <div class="i-hint">↻ Drag outer brass ring · Click map to move</div>
+  </div>
+
+  <div id="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:#ff5050"></div>North (magnetic)</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#e0dcd0"></div>South</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#d4a03c"></div>Bezel (drag to set bearing)</div>
+    <div class="leg-item" style="color:rgba(106,78,20,0.55)">▲ Lubber line = current bearing</div>
+  </div>
+
+  <script>
+  require([
+    "esri/Map",
+    "esri/views/MapView",
+    "esri/views/SceneView",
+    "esri/layers/GraphicsLayer",
+    "esri/Graphic",
+    "esri/symbols/PictureMarkerSymbol",
+    "esri/symbols/PointSymbol3D",
+    "esri/symbols/IconSymbol3DLayer"
+  ], function(
+    EsriMap, MapView, SceneView,
+    GraphicsLayer, Graphic,
+    PictureMarkerSymbol, PointSymbol3D, IconSymbol3DLayer
+  ) {
+
+    /* ══════════════════════════════════════════════════════════
+       DESIGN CONSTANTS — All coordinates in SVG viewBox space
+    ══════════════════════════════════════════════════════════ */
+    const VB    = 240;       // SVG viewBox: 240×240
+    const CX    = 120;       // Centre X
+    const CY    = 120;       // Centre Y
+    const RO    = 113;       // Bezel outer radius
+    const RM    = 77;        // Bezel inner radius / face outer radius
+    const RI    = 70;        // Inner face decoration radius
+    const SZ    = 210;       // Symbol screen size in CSS points
+    const DECL  = 1.5;       // Magnetic declination, Pakistan (West)
+
+    /* ══════════════════════════════════════════════════════════
+       APPLICATION STATE
+    ══════════════════════════════════════════════════════════ */
+    let view      = null;   // Active ArcGIS view (MapView | SceneView)
+    let is3D      = false;  // Current mode
+    let gLayer    = null;   // GraphicsLayer (recreated on view switch)
+    let mapPoint  = null;   // Where the compass is placed (esri/Point)
+    let bezelDeg  = 0;      // User-set bearing angle on the bezel (degrees CW from N)
+    let faceGfx   = null;   // Graphic: compass face (static)
+    let bezelGfx  = null;   // Graphic: bezel ring (user-rotatable)
+    let needleGfx = null;   // Graphic: magnetic needle (tracks true north)
+    let dragState = null;   // { startAngle, startBezel } while bezel drag active
+
+    /* ══════════════════════════════════════════════════════════
+       SVG → DATA URL HELPER
+    ══════════════════════════════════════════════════════════ */
+    const toDataURL = svg =>
+      "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+
+    /* ══════════════════════════════════════════════════════════
+       SYMBOL FACTORY
+       2D: PictureMarkerSymbol
+       3D: PointSymbol3D + IconSymbol3DLayer (billboard — drapes on terrain)
+    ══════════════════════════════════════════════════════════ */
+    function makeSymbol(url, size) {
+      if (is3D) {
+        return new PointSymbol3D({
+          symbolLayers: [new IconSymbol3DLayer({
+            resource : { href: url },
+            size     : size || SZ,
+            anchor   : "center"
+          })]
+        });
+      }
+      return new PictureMarkerSymbol({
+        url,
+        width  : size || SZ,
+        height : size || SZ
+      });
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       SVG LAYER 1 — COMPASS FACE (static, bottom graphic)
+       ─ Inner face fill, 8-point rose, cardinal letters,
+         compass petal diamonds, intercardinal ticks,
+         lubber line index at top
+    ══════════════════════════════════════════════════════════ */
+    function buildFaceSVG() {
+      /* 8-point star polygon */
+      let star = "";
+      for (let i = 0; i < 16; i++) {
+        const a = i * Math.PI / 8;
+        const r = i % 2 === 0 ? 50 : 16;
+        star += `${(CX + r * Math.sin(a)).toFixed(2)},${(CY - r * Math.cos(a)).toFixed(2)} `;
+      }
+
+      /* Cardinal petal diamonds */
+      const petals = [
+        [0,   "#c83028", 0.30],  // N — red, more prominent
+        [90,  "#b09048", 0.16],  // E
+        [180, "#c83028", 0.14],  // S
+        [270, "#b09048", 0.16],  // W
+      ].map(([deg, col, op]) => {
+        const a  = deg  * Math.PI / 180;
+        const la = (deg + 90) * Math.PI / 180;
+        const tipX = (CX + (RI - 3) * Math.sin(a)).toFixed(1);
+        const tipY = (CY - (RI - 3) * Math.cos(a)).toFixed(1);
+        const lx   = (CX + 9 * Math.sin(la)).toFixed(1);
+        const ly   = (CY - 9 * Math.cos(la)).toFixed(1);
+        const rx   = (CX - 9 * Math.sin(la)).toFixed(1);
+        const ry   = (CY + 9 * Math.cos(la)).toFixed(1);
+        return `<polygon points="${tipX},${tipY} ${lx},${ly} ${CX},${CY} ${rx},${ry}"
+                         fill="${col}" opacity="${op}"/>`;
+      }).join("");
+
+      /* Intercardinal diagonal ticks (45°, 135°, 225°, 315°) */
+      const icTicks = [45, 135, 225, 315].map(deg => {
+        const a  = deg * Math.PI / 180;
+        const r1 = RI - 5, r2 = RI - 22;
+        return `<line x1="${(CX + r1*Math.sin(a)).toFixed(1)}" y1="${(CY - r1*Math.cos(a)).toFixed(1)}"
+                      x2="${(CX + r2*Math.sin(a)).toFixed(1)}" y2="${(CY - r2*Math.cos(a)).toFixed(1)}"
+                      stroke="rgba(212,160,60,0.32)" stroke-width="1.6"/>`;
+      }).join("");
+
+      /* Cardinal axis cross lines */
+      const axes = [0, 90].map(deg => {
+        const a = deg * Math.PI / 180;
+        const r = RI - 2;
+        return `<line x1="${(CX + r*Math.sin(a)).toFixed(1)}" y1="${(CY - r*Math.cos(a)).toFixed(1)}"
+                      x2="${(CX - r*Math.sin(a)).toFixed(1)}" y2="${(CY + r*Math.cos(a)).toFixed(1)}"
+                      stroke="rgba(212,160,60,0.14)" stroke-width="0.7"/>`;
+      }).join("");
+
+      /* Cardinal letter labels */
+      const cardLabels = [
+        ["N", "#e83030", 0,   "bold",   15, true ],
+        ["S", "#b0ada0", 180, "normal", 12, false],
+        ["E", "#c49040", 90,  "normal", 11, false],
+        ["W", "#c49040", 270, "normal", 11, false],
+      ].map(([lbl, col, deg, fw, fs, glow]) => {
+        const a = deg * Math.PI / 180;
+        const r = RI - 16;
+        return `<text x="${(CX + r*Math.sin(a)).toFixed(1)}" y="${(CY - r*Math.cos(a)).toFixed(1)}"
+                  text-anchor="middle" dominant-baseline="middle"
+                  fill="${col}" font-size="${fs}" font-weight="${fw}"
+                  font-family="Georgia,serif" ${glow ? 'filter="url(#glo)"' : ''}>${lbl}</text>`;
+      }).join("");
+
+      /* Intercardinal small letters */
+      const icLabels = ["NE","SE","SW","NW"].map((lbl, i) => {
+        const deg = 45 + i * 90;
+        const a   = deg * Math.PI / 180;
+        const r   = RI - 26;
+        return `<text x="${(CX + r*Math.sin(a)).toFixed(1)}" y="${(CY - r*Math.cos(a)).toFixed(1)}"
+                  text-anchor="middle" dominant-baseline="middle"
+                  fill="rgba(180,140,60,0.28)" font-size="7.5" font-family="Georgia,serif"
+                  transform="rotate(${deg},${(CX + r*Math.sin(a)).toFixed(1)},${(CY - r*Math.cos(a)).toFixed(1)})">${lbl}</text>`;
+      }).join("");
+
+      return `<svg viewBox="0 0 ${VB} ${VB}" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <radialGradient id="faceGrad" cx="50%" cy="40%" r="65%">
+    <stop offset="0%"   stop-color="#201c10" stop-opacity="0.97"/>
+    <stop offset="100%" stop-color="#060501" stop-opacity="0.99"/>
+  </radialGradient>
+  <filter id="dsh" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="5" stdDeviation="18" flood-color="rgba(0,0,0,0.92)"/>
+  </filter>
+  <filter id="glo" x="-30%" y="-30%" width="160%" height="160%">
+    <feGaussianBlur stdDeviation="1.8" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+
+<!-- Drop shadow (invisible fill just carries the filter) -->
+<circle cx="${CX}" cy="${CY}" r="${RO}" fill="rgba(0,0,0,0.01)" filter="url(#dsh)"/>
+
+<!-- Outer rim rings (decorative brass) -->
+<circle cx="${CX}" cy="${CY}" r="${RO+4}"   fill="none" stroke="#1a1606" stroke-width="2.5"/>
+<circle cx="${CX}" cy="${CY}" r="${RO+2}"   fill="none" stroke="#7a6018" stroke-width="1.8"/>
+<circle cx="${CX}" cy="${CY}" r="${RO}"     fill="none" stroke="#4a3810" stroke-width="0.9"/>
+
+<!-- Bezel/face separator -->
+<circle cx="${CX}" cy="${CY}" r="${RM+1}" fill="none" stroke="rgba(212,160,60,0.22)" stroke-width="0.8"/>
+
+<!-- Inner face fill -->
+<circle cx="${CX}" cy="${CY}" r="${RM}" fill="url(#faceGrad)"/>
+
+<!-- Decorative concentric rings on face -->
+<circle cx="${CX}" cy="${CY}" r="${RI}"   fill="none" stroke="rgba(212,160,60,0.2)" stroke-width="0.7"/>
+<circle cx="${CX}" cy="${CY}" r="44"      fill="none" stroke="rgba(212,160,60,0.09)" stroke-width="0.5"/>
+<circle cx="${CX}" cy="${CY}" r="26"      fill="none" stroke="rgba(212,160,60,0.09)" stroke-width="0.5"/>
+
+${axes}
+<polygon points="${star}" fill="none" stroke="rgba(212,160,60,0.15)" stroke-width="0.6"/>
+${petals}
+${icTicks}
+${cardLabels}
+${icLabels}
+
+<!-- Lubber line — fixed index at 12 o'clock that reads bearing off the bezel -->
+<line x1="${CX}" y1="${CY - RO - 7}" x2="${CX}" y2="${CY - RM + 4}"
+      stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round"/>
+<polygon points="${CX},${CY-RO-3} ${CX-5.5},${CY-RO+11} ${CX+5.5},${CY-RO+11}"
+         fill="rgba(255,255,255,0.65)"/>
+</svg>`;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       SVG LAYER 2 — BEZEL RING (rotating, middle graphic)
+       ─ Donut shape via SVG <mask>: transparent in centre so
+         the face layer shows through.
+       ─ Degree tick marks and numeral labels baked on the ring.
+       ─ rotDeg is baked directly into a <g transform="rotate(...)">
+    ══════════════════════════════════════════════════════════ */
+    function buildBezelSVG(rotDeg) {
+      /* Tick marks every 2° */
+      let ticks = "";
+      for (let deg = 0; deg < 360; deg += 2) {
+        const rad      = deg * Math.PI / 180;
+        const isCard   = deg % 90 === 0;
+        const isThird  = deg % 30 === 0;
+        const isTenth  = deg % 10 === 0;
+        const r1 = RO - 1.5;
+        const r2 = isCard  ? RO - 23
+                 : isThird ? RO - 15
+                 : isTenth ? RO - 9
+                 :           RO - 5;
+        const sw  = isCard ? 2 : isThird ? 1.2 : isTenth ? 0.65 : 0.3;
+        const col = isCard ? "#d4a03c"
+                  : isThird ? "#8a6420"
+                  : isTenth ? "#4e380e"
+                  : "#221804";
+        const x1 = (CX + r1*Math.sin(rad)).toFixed(2);
+        const y1 = (CY - r1*Math.cos(rad)).toFixed(2);
+        const x2 = (CX + r2*Math.sin(rad)).toFixed(2);
+        const y2 = (CY - r2*Math.cos(rad)).toFixed(2);
+        ticks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${sw}"/>`;
+      }
+
+      /* Degree numerals every 10° */
+      let labels = "";
+      for (let deg = 0; deg < 360; deg += 10) {
+        const isCard  = deg % 90 === 0;
+        const isThird = deg % 30 === 0;
+        const rad     = deg * Math.PI / 180;
+        const nr      = RO - 33;
+        const lx      = (CX + nr * Math.sin(rad)).toFixed(2);
+        const ly      = (CY - nr * Math.cos(rad)).toFixed(2);
+        const col     = isCard ? "#f0d060" : isThird ? "#c09040" : "#5a4012";
+        const fs      = isCard ? 13.5 : isThird ? 9 : 7;
+        const fw      = isCard ? "bold" : "normal";
+        const lbl     = isCard ? ["N","E","S","W"][deg/90] : String(deg);
+        labels += `<text x="${lx}" y="${ly}"
+          text-anchor="middle" dominant-baseline="middle"
+          fill="${col}" font-size="${fs}" font-weight="${fw}" font-family="Georgia,serif"
+          transform="rotate(${deg},${lx},${ly})">${lbl}</text>`;
+      }
+
+      /* Cardinal dot pips on outer rim */
+      const pips = [0, 90, 180, 270].map(deg => {
+        const a = deg * Math.PI / 180;
+        const r = RO - 2;
+        return `<circle cx="${(CX + r*Math.sin(a)).toFixed(1)}" cy="${(CY - r*Math.cos(a)).toFixed(1)}"
+                        r="2.5" fill="#d4a03c" opacity="0.75"/>`;
+      }).join("");
+
+      /* Red index marker at 0° of bezel (north of the scale) */
+      const idx = `<polygon points="${CX},${CY-RO+1} ${CX-5.5},${CY-RO+14} ${CX+5.5},${CY-RO+14}"
+                             fill="#cc2a18" opacity="0.92"/>`;
+
+      return `<svg viewBox="0 0 ${VB} ${VB}" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <radialGradient id="bezelGrad" cx="50%" cy="28%" r="76%">
+    <stop offset="0%"   stop-color="#3a2c0a"/>
+    <stop offset="100%" stop-color="#0e0b02"/>
+  </radialGradient>
+  <!--
+    Donut mask: white circle (RO) punches the ring,
+    black inner circle (RM) cuts out the transparent centre
+    so the face SVG layer beneath shows through cleanly.
+  -->
+  <mask id="donut">
+    <circle cx="${CX}" cy="${CY}" r="${RO}"   fill="white"/>
+    <circle cx="${CX}" cy="${CY}" r="${RM-1}" fill="black"/>
+  </mask>
+</defs>
+
+<!-- ═══ ENTIRE BEZEL ROTATES AS ONE GROUP ═══ -->
+<g transform="rotate(${rotDeg},${CX},${CY})">
+
+  <!-- Ring body: filled circle clipped to donut by mask → transparent centre -->
+  <circle cx="${CX}" cy="${CY}" r="${RO}" fill="url(#bezelGrad)" mask="url(#donut)"/>
+
+  <!-- Ticks (also masked so they don't bleed into centre) -->
+  <g mask="url(#donut)">${ticks}</g>
+
+  <!-- Numeral labels (outside mask so antialiasing isn't clipped) -->
+  ${labels}
+
+  <!-- Cardinal pips on rim -->
+  ${pips}
+
+  <!-- Index triangle at 0° of scale (always at top before rotation) -->
+  ${idx}
+</g>
+</svg>`;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       SVG LAYER 3 — MAGNETIC NEEDLE (top graphic)
+       ─ Red half points to magnetic north.
+       ─ rotDeg is baked in to counter the map's current rotation
+         so the needle always appears pointing at true north:
+           2D MapView  : rotDeg = view.rotation   (CCW map → CW SVG cancels it)
+           3D SceneView: rotDeg = 0               (IconSymbol3DLayer is a billboard;
+                                                   it always faces the camera screen-up)
+    ══════════════════════════════════════════════════════════ */
+    function buildNeedleSVG(rotDeg) {
+      /* Diamond needle paths */
+      const pathN = `M${CX},${CY-60} L${CX-8},${CY+2} L${CX},${CY-4} L${CX+8},${CY+2} Z`;
+      const pathS = `M${CX},${CY+60} L${CX-8},${CY+2} L${CX},${CY+8} L${CX+8},${CY+2} Z`;
+
+      return `<svg viewBox="0 0 ${VB} ${VB}" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <radialGradient id="nRed" cx="33%" cy="18%" r="82%">
+    <stop offset="0%"   stop-color="#ff5050"/>
+    <stop offset="100%" stop-color="#8a0000"/>
+  </radialGradient>
+  <radialGradient id="nWht" cx="33%" cy="18%" r="82%">
+    <stop offset="0%"   stop-color="#f0ece0"/>
+    <stop offset="100%" stop-color="#787060"/>
+  </radialGradient>
+  <filter id="ndsh" x="-30%" y="-30%" width="160%" height="160%">
+    <feDropShadow dx="1.5" dy="2.5" stdDeviation="3" flood-color="rgba(0,0,0,0.72)"/>
+  </filter>
+</defs>
+
+<!-- Needle (baked rotation counteracts map view rotation in 2D) -->
+<g transform="rotate(${rotDeg},${CX},${CY})" filter="url(#ndsh)">
+  <!-- North half: red -->
+  <path d="${pathN}" fill="url(#nRed)"/>
+  <path d="${pathN}" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="0.5"/>
+  <!-- South half: off-white -->
+  <path d="${pathS}" fill="url(#nWht)"/>
+  <path d="${pathS}" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="0.5"/>
+</g>
+
+<!-- Centre pivot cap (on top of needle, no rotation) -->
+<circle cx="${CX}" cy="${CY}" r="10"  fill="#10100a" stroke="#d4a03c" stroke-width="2"/>
+<circle cx="${CX}" cy="${CY}" r="5.5" fill="#d4a03c"/>
+<circle cx="${CX}" cy="${CY}" r="2.4" fill="#fff8e0"/>
+</svg>`;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       ROTATION HELPERS
+    ══════════════════════════════════════════════════════════ */
+    /** How much to rotate the needle SVG to stay pointing north. */
+    function getNeedleCorrection() {
+      if (!view) return 0;
+      // In 3D: IconSymbol3DLayer is a billboard — always faces screen-up → no correction.
+      // In 2D: PictureMarkerSymbol rotates with the map. A positive view.rotation
+      //        means the map has been rotated CCW. To cancel it, we bake the same
+      //        number of degrees CW into the SVG (SVG rotate(+deg) = clockwise).
+      return is3D ? 0 : (view.rotation || 0);
+    }
+
+    /** Displayed heading in info panel (camera.heading for 3D, view.rotation for 2D). */
+    function getDisplayHeading() {
+      if (!view) return 0;
+      if (is3D) return view.camera ? view.camera.heading : 0;
+      return view.rotation || 0;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       COMPASS PLACEMENT
+       Three stacked Graphics at the same mapPoint on a
+       GraphicsLayer with elevationInfo:"on-the-ground" so
+       the compass drapes correctly on terrain in 3D.
+    ══════════════════════════════════════════════════════════ */
+    function placeCompass(pt) {
+      clearGraphics();
+      mapPoint = pt;
+      // Preserve bezelDeg if user moved compass (don't reset their bearing)
+
+      const faceURL   = toDataURL(buildFaceSVG());
+      const bezelURL  = toDataURL(buildBezelSVG(bezelDeg));
+      const needleURL = toDataURL(buildNeedleSVG(getNeedleCorrection()));
+
+      // ArcGIS z-order: later-added graphics render on top
+      faceGfx   = new Graphic({ geometry: pt, symbol: makeSymbol(faceURL)   });
+      bezelGfx  = new Graphic({ geometry: pt, symbol: makeSymbol(bezelURL)  });
+      needleGfx = new Graphic({ geometry: pt, symbol: makeSymbol(needleURL) });
+
+      gLayer.addMany([faceGfx, bezelGfx, needleGfx]);
+
+      // Show UI
+      document.getElementById("infoPanel").classList.add("show");
+      document.getElementById("btnClear").style.display = "";
+      document.getElementById("btnReset").style.display = "";
+      document.getElementById("hint").textContent = "↻ Drag outer ring · Click map to move";
+      updateInfoPanel();
+    }
+
+    function clearGraphics() {
+      if (gLayer) gLayer.removeAll();
+      faceGfx = bezelGfx = needleGfx = null;
+    }
+
+    function clearCompass() {
+      clearGraphics();
+      mapPoint  = null;
+      bezelDeg  = 0;
+      dragState = null;
+      document.getElementById("infoPanel").classList.remove("show");
+      document.getElementById("btnClear").style.display = "none";
+      document.getElementById("btnReset").style.display = "none";
+      document.getElementById("hint").textContent = "📍 Click map to place compass";
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       SYMBOL REFRESH (regenerate SVG data URL → reassign symbol)
+    ══════════════════════════════════════════════════════════ */
+    function refreshBezel() {
+      if (!bezelGfx) return;
+      bezelGfx.symbol = makeSymbol(toDataURL(buildBezelSVG(bezelDeg)));
+    }
+
+    function refreshNeedle() {
+      if (!needleGfx) return;
+      needleGfx.symbol = makeSymbol(toDataURL(buildNeedleSVG(getNeedleCorrection())));
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       INFO PANEL
+    ══════════════════════════════════════════════════════════ */
+    const norm360 = a => ((a % 360) + 360) % 360;
+
+    function toCardinal(d) {
+      return ["N","NNE","NE","ENE","E","ESE","SE","SSE",
+              "S","SSW","SW","WSW","W","WNW","NW","NNW"]
+             [Math.round(norm360(d) / 22.5) % 16];
+    }
+
+    const CARD_FULL = {
+      N:"NORTH", NNE:"NOR·NORTHEAST", NE:"NORTHEAST",  ENE:"EAST·NORTHEAST",
+      E:"EAST",  ESE:"EAST·SOUTHEAST",SE:"SOUTHEAST",  SSE:"SOU·SOUTHEAST",
+      S:"SOUTH", SSW:"SOU·SOUTHWEST", SW:"SOUTHWEST",  WSW:"WEST·SOUTHWEST",
+      W:"WEST",  WNW:"WEST·NORTHWEST",NW:"NORTHWEST",  NNW:"NOR·NORTHWEST"
+    };
+
+    function updateInfoPanel() {
+      if (!mapPoint) return;
+      const bear = norm360(bezelDeg);
+      const card = toCardinal(bear);
+      const trueB = norm360(bear - DECL);
+      const head  = getDisplayHeading();
+
+      document.getElementById("iBearing").textContent  = bear.toFixed(1) + "°";
+      document.getElementById("iCardinal").textContent = CARD_FULL[card] || card;
+      document.getElementById("iTrue").textContent     = trueB.toFixed(1) + "°";
+      document.getElementById("iMapRot").textContent   = head.toFixed(1) + "°";
+      document.getElementById("iCoords").textContent   =
+        `${mapPoint.latitude.toFixed(4)}°, ${mapPoint.longitude.toFixed(4)}°`;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       BEZEL DRAG — Hit detection and drag handling
+       Uses view.on("drag") with stopPropagation() so the map
+       does not pan while the user is rotating the bezel.
+    ══════════════════════════════════════════════════════════ */
+
+    /** Screen coordinates of the placed compass centre. */
+    function compassScreenPt() {
+      if (!mapPoint || !view) return null;
+      try { return view.toScreen(mapPoint); } catch { return null; }
+    }
+
+    /** Angle (degrees) from the compass screen centre to (sx, sy). */
+    function screenAngleTo(sx, sy) {
+      const sp = compassScreenPt();
+      if (!sp) return 0;
+      return Math.atan2(sy - sp.y, sx - sp.x) * 180 / Math.PI;
+    }
+
+    /**
+     * Returns true if the screen point (sx, sy) falls within the bezel ring.
+     * The symbol is SZ pts on screen, viewBox is VB px → scale = (SZ/2) / (VB/2)
+     */
+    function isOnBezelRing(sx, sy) {
+      const sp = compassScreenPt();
+      if (!sp) return false;
+      const dist  = Math.hypot(sx - sp.x, sy - sp.y);
+      const scale = (SZ / 2) / (VB / 2);          // e.g. 105/120 = 0.875
+      return dist >= RM * scale && dist <= RO * scale;
+    }
+
+    function setupInteraction() {
+      /* Cursor feedback on hover */
+      view.on("pointer-move", evt => {
+        if (!mapPoint) return;
+        view.container.style.cursor = isOnBezelRing(evt.x, evt.y) ? "grab" : "";
+      });
+
+      /* Drag handler — intercepts all drags on the view */
+      view.on("drag", evt => {
+        if (!mapPoint) return;
+
+        if (evt.action === "start") {
+          if (isOnBezelRing(evt.x, evt.y)) {
+            evt.stopPropagation();   // prevent map panning
+            dragState = {
+              startAngle : screenAngleTo(evt.x, evt.y),
+              startBezel : bezelDeg
+            };
+          }
+        }
+        else if (evt.action === "update" && dragState) {
+          evt.stopPropagation();
+          const delta = screenAngleTo(evt.x, evt.y) - dragState.startAngle;
+          bezelDeg    = dragState.startBezel + delta;
+          refreshBezel();
+          updateInfoPanel();
+        }
+        else if (evt.action === "end") {
+          dragState = null;
+          view.container.style.cursor = "";
+        }
+      });
+
+      /* Click to place (or move) compass */
+      view.on("click", evt => {
+        if (!dragState) placeCompass(evt.mapPoint);
+      });
+
+      /* Watch map/camera rotation → refresh needle SVG to stay on north */
+      if (is3D) {
+        // In 3D, IconSymbol3DLayer is billboard — needle correction = 0,
+        // we still watch camera for the info panel heading readout.
+        view.watch("camera", () => updateInfoPanel());
+      } else {
+        view.watch("rotation", () => {
+          refreshNeedle();
+          updateInfoPanel();
+        });
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       VIEW INITIALISATION
+       GraphicsLayer has elevationInfo: "on-the-ground" so symbols
+       are draped onto the terrain surface in 3D SceneView.
+    ══════════════════════════════════════════════════════════ */
+    function initView(mode) {
+      clearCompass();
+      if (view) { view.destroy(); view = null; }
+
+      is3D = mode === "3d";
+
+      // Fresh container
+      const vd = document.getElementById("viewDiv");
+      vd.innerHTML = "";
+      const c = document.createElement("div");
+      c.style.cssText = "width:100%;height:100%";
+      vd.appendChild(c);
+
+      // GraphicsLayer — elevationInfo ensures symbols drape on terrain in 3D
+      gLayer = new GraphicsLayer({
+        elevationInfo: { mode: "on-the-ground" }
+      });
+
+      const map = new EsriMap({
+        basemap : "dark-gray-vector",
+        ...(is3D ? { ground: "world-elevation" } : {})
+      });
+      map.add(gLayer);
+
+      if (is3D) {
+        view = new SceneView({
+          container : c,
+          map,
+          camera : { position: { longitude: 73.0, latitude: 33.6, z: 2200000 } }
+        });
+      } else {
+        view = new MapView({
+          container : c,
+          map,
+          center : [73.0, 33.6],
+          zoom   : 5
+        });
+      }
+
+      view.when(setupInteraction);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       BUTTON WIRING
+    ══════════════════════════════════════════════════════════ */
+    document.getElementById("btn2D").addEventListener("click", function() {
+      if (!is3D) return;
+      this.classList.add("active");
+      document.getElementById("btn3D").classList.remove("active");
+      initView("2d");
+    });
+
+    document.getElementById("btn3D").addEventListener("click", function() {
+      if (is3D) return;
+      this.classList.add("active");
+      document.getElementById("btn2D").classList.remove("active");
+      initView("3d");
+    });
+
+    document.getElementById("btnClear").addEventListener("click", clearCompass);
+
+    document.getElementById("btnReset").addEventListener("click", () => {
+      bezelDeg = 0;
+      refreshBezel();
+      updateInfoPanel();
+    });
+
+    /* ══════════════════════════════════════════════════════════
+       BOOT
+    ══════════════════════════════════════════════════════════ */
+    initView("2d");
+
+  }); // end require([...])
+  </script>
+</body>
+</html>
