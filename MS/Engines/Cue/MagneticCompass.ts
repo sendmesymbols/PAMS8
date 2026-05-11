@@ -1,9 +1,16 @@
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
+import Polygon from '@arcgis/core/geometry/Polygon';
 import PictureMarkerSymbol from '@arcgis/core/symbols/PictureMarkerSymbol';
 import PointSymbol3D from '@arcgis/core/symbols/PointSymbol3D';
 import IconSymbol3DLayer from '@arcgis/core/symbols/IconSymbol3DLayer';
+import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
+import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
+import Color from '@arcgis/core/Color';
+import PolygonSymbol3D from '@arcgis/core/symbols/PolygonSymbol3D';
+import FillSymbol3DLayer from '@arcgis/core/symbols/FillSymbol3DLayer';
+import ExtrudeSymbol3DLayer from '@arcgis/core/symbols/ExtrudeSymbol3DLayer';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 
@@ -18,7 +25,27 @@ export interface MagneticCompassOptions {
   declination?: number;
 }
 
+// ── Public sector types ───────────────────────────────────────────────────────
+
+export interface SectorConeOptions {
+  centerBearingDeg: number;           // 0–359: direction the sector points
+  arcWidthDeg: number;                // 1–360 (360 = full circle)
+  radiusKm: number;                   // extent in kilometres (> 0)
+  color?: [number, number, number];   // RGB, default [255, 165, 0]
+  fillOpacity?: number;               // 0–1, default 0.25
+  outlineOpacity?: number;            // 0–1, default 0.75
+  outlineWidth?: number;              // pixels, default 1.5
+  extrudeHeightM?: number;            // metres, 3D only; 0 or omitted = flat
+  label?: string;
+}
+
 // ── Internal types ────────────────────────────────────────────────────────────
+
+interface SectorConeInstance {
+  id: string;
+  options: SectorConeOptions;
+  graphic: Graphic;
+}
 
 interface CompassInstance {
   id: string;
@@ -29,6 +56,7 @@ interface CompassInstance {
   bezelGfx: Graphic;
   needleGfx: Graphic;
   dragState: { startAngle: number; startBezel: number } | null;
+  sectors: SectorConeInstance[];
 }
 
 // ── SVG Design Constants ──────────────────────────────────────────────────────
@@ -61,6 +89,10 @@ export class MagneticCompass {
   private _activeId: string | null = null;
   private _counter = 0;
   private _instances: CompassInstance[] = [];
+
+  // Sector state
+  private _defaultSectorColor: [number, number, number] = [255, 165, 0];
+  private _activeSectorId: string | null = null;
 
   // Options
   private _size = 210;
@@ -140,6 +172,10 @@ export class MagneticCompass {
       inst.faceGfx.symbol   = this._makeSymbol(faceURL) as any;
       inst.bezelGfx.symbol  = this._makeSymbol(bezelURL) as any;
       inst.needleGfx.symbol = this._makeSymbol(needleURL) as any;
+      // Regenerate sector symbols for the new view type (geometry wkid:4326 renders on both)
+      for (const s of inst.sectors) {
+        s.graphic.symbol = this._makeSectorSymbol(s.options) as any;
+      }
     }
 
     if (this._enabled) this._setupViewEvents();
@@ -175,6 +211,64 @@ export class MagneticCompass {
     }
     this._hoveredInstId = null;
     this._widgetOpen = false;
+  }
+
+  // ── Sector Cone Public API ──────────────────────────────────────────────────
+
+  public addSector(compassId: string, opts: SectorConeOptions): string | null {
+    const inst = this._instances.find(i => i.id === compassId);
+    if (!inst || !this._layer) return null;
+    if (opts.radiusKm <= 0) return null;
+
+    const clamped: SectorConeOptions = {
+      ...opts,
+      arcWidthDeg: Math.max(1, Math.min(360, opts.arcWidthDeg)),
+    };
+
+    this._counter++;
+    const id = `sc_${Date.now()}_${this._counter}`;
+    const polygon = this._buildSectorPolygon(inst.mapPoint, clamped);
+    const symbol  = this._makeSectorSymbol(clamped);
+    const graphic = new Graphic({ geometry: polygon, symbol: symbol as any });
+
+    this._layer.add(graphic);
+    inst.sectors.push({ id, options: clamped, graphic });
+    this._updateWidget();
+    return id;
+  }
+
+  public removeSector(compassId: string, sectorId: string): void {
+    const inst = this._instances.find(i => i.id === compassId);
+    if (!inst) return;
+    const idx = inst.sectors.findIndex(s => s.id === sectorId);
+    if (idx < 0) return;
+    if (this._layer) this._layer.remove(inst.sectors[idx].graphic);
+    inst.sectors.splice(idx, 1);
+    if (this._activeSectorId === sectorId) this._activeSectorId = null;
+    this._updateWidget();
+  }
+
+  public updateSector(compassId: string, sectorId: string, opts: Partial<SectorConeOptions>): void {
+    const inst = this._instances.find(i => i.id === compassId);
+    if (!inst) return;
+    const sector = inst.sectors.find(s => s.id === sectorId);
+    if (!sector) return;
+    sector.options = { ...sector.options, ...opts };
+    if (opts.arcWidthDeg !== undefined)
+      sector.options.arcWidthDeg = Math.max(1, Math.min(360, sector.options.arcWidthDeg));
+    this._refreshSector(inst, sector);
+    this._updateWidget();
+  }
+
+  public clearSectors(compassId: string): void {
+    const inst = this._instances.find(i => i.id === compassId);
+    if (!inst) return;
+    for (const s of inst.sectors) {
+      if (this._layer) this._layer.remove(s.graphic);
+    }
+    inst.sectors = [];
+    this._activeSectorId = null;
+    this._updateWidget();
   }
 
   // ── SVG Generation ──────────────────────────────────────────────────────────
@@ -432,6 +526,86 @@ ${icLabels}
     return new PictureMarkerSymbol({ url, width: this._size, height: this._size });
   }
 
+  // ── Sector geometry & symbols ───────────────────────────────────────────────
+
+  private _geodesicDestination(lon: number, lat: number, bearingDeg: number, distM: number): { lon: number; lat: number } {
+    const R = 6_371_008.8;
+    const δ = distM / R;
+    const θ = (bearingDeg * Math.PI) / 180;
+    const φ1 = (lat * Math.PI) / 180;
+    const λ1 = (lon * Math.PI) / 180;
+    const φ2 = Math.asin(Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(θ));
+    const λ2 = λ1 + Math.atan2(Math.sin(θ) * Math.sin(δ) * Math.cos(φ1), Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2));
+    return { lon: λ2 * 180 / Math.PI, lat: φ2 * 180 / Math.PI };
+  }
+
+  private _buildSectorPolygon(origin: Point, opts: SectorConeOptions): Polygon {
+    const lon = origin.longitude ?? 0;
+    const lat = origin.latitude  ?? 0;
+    const distM = opts.radiusKm * 1000;
+
+    if (opts.arcWidthDeg >= 360) {
+      const N = 72;
+      const ring: number[][] = [];
+      for (let i = 0; i <= N; i++) {
+        const b = (i / N) * 360;
+        const pt = this._geodesicDestination(lon, lat, b, distM);
+        ring.push([pt.lon, pt.lat]);
+      }
+      ring[N] = ring[0];
+      return new Polygon({ rings: [ring], spatialReference: { wkid: 4326 } });
+    }
+
+    const N = Math.max(3, Math.ceil(opts.arcWidthDeg));
+    const halfArc = opts.arcWidthDeg / 2;
+    const ring: number[][] = [[lon, lat]];
+    for (let i = 0; i <= N; i++) {
+      const b = (opts.centerBearingDeg - halfArc) + (i / N) * opts.arcWidthDeg;
+      const pt = this._geodesicDestination(lon, lat, b, distM);
+      ring.push([pt.lon, pt.lat]);
+    }
+    ring.push([lon, lat]);
+    return new Polygon({ rings: [ring], spatialReference: { wkid: 4326 } });
+  }
+
+  private _makeSectorSymbol(opts: SectorConeOptions): SimpleFillSymbol | PolygonSymbol3D {
+    const [r, g, b] = opts.color ?? this._defaultSectorColor;
+    const fillOp    = opts.fillOpacity    ?? 0.25;
+    const outlineOp = opts.outlineOpacity ?? 0.75;
+    const outlineW  = opts.outlineWidth   ?? 1.5;
+
+    if (!this._is3D) {
+      return new SimpleFillSymbol({
+        color: new Color([r, g, b, fillOp]),
+        outline: new SimpleLineSymbol({
+          color: new Color([r, g, b, outlineOp]),
+          width: outlineW,
+        }),
+      });
+    }
+
+    const extrudeM = opts.extrudeHeightM ?? 0;
+    const layers: any[] = [
+      new FillSymbol3DLayer({
+        material: { color: [r, g, b, fillOp] },
+        outline:  { color: [r, g, b, outlineOp], size: outlineW },
+      }),
+    ];
+    if (extrudeM > 0) {
+      layers.push(new ExtrudeSymbol3DLayer({
+        material: { color: [r, g, b, Math.max(0.08, fillOp * 0.5)] },
+        edges:    { color: [r, g, b, 0.2], size: 0.5 },
+        size: extrudeM,
+      }));
+    }
+    return new PolygonSymbol3D({ symbolLayers: layers });
+  }
+
+  private _refreshSector(inst: CompassInstance, sector: SectorConeInstance): void {
+    sector.graphic.geometry = this._buildSectorPolygon(inst.mapPoint, sector.options);
+    sector.graphic.symbol   = this._makeSectorSymbol(sector.options) as any;
+  }
+
   // ── Instance management ─────────────────────────────────────────────────────
 
   private _placeCompass(pt: Point): void {
@@ -454,6 +628,7 @@ ${icLabels}
     const inst: CompassInstance = {
       id, label, mapPoint: pt, bezelDeg: 0,
       faceGfx, bezelGfx, needleGfx, dragState: null,
+      sectors: [],
     };
     this._instances.push(inst);
     this._activeId = id;
@@ -472,6 +647,7 @@ ${icLabels}
       this._layer.remove(inst.faceGfx);
       this._layer.remove(inst.bezelGfx);
       this._layer.remove(inst.needleGfx);
+      for (const s of inst.sectors) this._layer.remove(s.graphic);
     }
     this._instances.splice(idx, 1);
     if (this._activeId === id) this._activeId = this._instances.length > 0 ? this._instances[this._instances.length - 1].id : null;
@@ -486,6 +662,7 @@ ${icLabels}
     if (this._layer) this._layer.removeAll();
     this._instances = [];
     this._activeId = null;
+    this._activeSectorId = null;
     this._updateWidget();
   }
 
@@ -498,6 +675,7 @@ ${icLabels}
       inst.faceGfx.symbol   = this._makeSymbol(faceURL) as any;
       inst.bezelGfx.symbol  = this._makeSymbol(this._toDataURL(this._buildBezelSVG(inst.bezelDeg))) as any;
       inst.needleGfx.symbol = this._makeSymbol(this._toDataURL(this._buildNeedleSVG(needleRot))) as any;
+      for (const s of inst.sectors) this._refreshSector(inst, s);
     }
   }
 
@@ -741,6 +919,38 @@ ${icLabels}
       </div>
     </div>
 
+    <!-- Sector Cones -->
+    <div class="mc-section" id="mc-sector-section" style="display:none">
+      <div class="mc-section-title">SECTOR CONES</div>
+      <div class="mc-setting-row">
+        <label>Center °</label>
+        <input type="number" id="mc-sc-bearing" value="0" min="0" max="359" step="1" style="width:52px" title="Center bearing of the sector in degrees (0=N, 90=E, 180=S, 270=W)"/>
+      </div>
+      <div class="mc-setting-row">
+        <label>Width °</label>
+        <input type="number" id="mc-sc-width" value="45" min="1" max="360" step="1" style="width:52px" title="Angular width of the sector in degrees (360 = full circle)"/>
+      </div>
+      <div class="mc-setting-row">
+        <label>Radius km</label>
+        <input type="number" id="mc-sc-radius" value="2" min="0.1" max="500" step="0.1" style="width:52px" title="Radius of the sector in kilometres"/>
+      </div>
+      <div class="mc-setting-row">
+        <label>Color</label>
+        <input type="color" id="mc-sc-color" value="#ffa500" style="width:44px;height:22px;padding:1px" title="Fill and outline color of the sector"/>
+      </div>
+      <div class="mc-setting-row" id="mc-sc-extrude-row" style="display:none">
+        <label>Height m (3D)</label>
+        <input type="number" id="mc-sc-height" value="0" min="0" max="50000" step="100" style="width:52px" title="Extrusion height in metres for 3D view (0 = flat polygon)"/>
+      </div>
+      <div class="mc-btn-row">
+        <button class="mc-btn mc-btn-add" id="mc-sc-add-btn" title="Add a sector cone to the active compass">＋ Add Sector</button>
+        <button class="mc-btn mc-btn-danger" id="mc-sc-clear-btn" title="Remove all sectors from the active compass">Clear Sectors</button>
+      </div>
+      <div id="mc-sector-list" class="mc-compass-list" style="margin-top:5px">
+        <div class="mc-list-empty" id="mc-sc-list-empty">No sectors — click "Add Sector"</div>
+      </div>
+    </div>
+
     <!-- Appearance -->
     <div class="mc-section">
       <div class="mc-section-title">APPEARANCE</div>
@@ -936,6 +1146,41 @@ ${icLabels}
     if (legN) legN.style.background = this._rgb2hex(this._northColor[0], this._northColor[1], this._northColor[2]);
     const legB = this._widget.querySelector('#mc-leg-bezel') as HTMLElement;
     if (legB) legB.style.background = this._rgb2hex(this._bezelColor[0], this._bezelColor[1], this._bezelColor[2]);
+
+    // Sector: Add
+    this._widget.querySelector('#mc-sc-add-btn')?.addEventListener('click', () => {
+      const activeInst = this._activeId ? this._instances.find(i => i.id === this._activeId) : null;
+      if (!activeInst) return;
+      const bearingEl = this._widget!.querySelector('#mc-sc-bearing') as HTMLInputElement;
+      const widthEl   = this._widget!.querySelector('#mc-sc-width')   as HTMLInputElement;
+      const radiusEl  = this._widget!.querySelector('#mc-sc-radius')  as HTMLInputElement;
+      const colorEl   = this._widget!.querySelector('#mc-sc-color')   as HTMLInputElement;
+      const heightEl  = this._widget!.querySelector('#mc-sc-height')  as HTMLInputElement;
+      this.addSector(activeInst.id, {
+        centerBearingDeg: parseFloat(bearingEl.value),
+        arcWidthDeg:      parseFloat(widthEl.value),
+        radiusKm:         parseFloat(radiusEl.value),
+        color:            this._hex2rgb(colorEl.value),
+        extrudeHeightM:   this._is3D ? parseFloat(heightEl.value) : 0,
+      });
+    });
+
+    // Sector: Clear
+    this._widget.querySelector('#mc-sc-clear-btn')?.addEventListener('click', () => {
+      const activeInst = this._activeId ? this._instances.find(i => i.id === this._activeId) : null;
+      if (activeInst) this.clearSectors(activeInst.id);
+    });
+
+    // Pre-fill bearing from bezel when opening the Add controls
+    this._widget.querySelector('#mc-sc-add-btn')?.addEventListener('mouseenter', () => {
+      const activeInst = this._activeId ? this._instances.find(i => i.id === this._activeId) : null;
+      if (!activeInst) return;
+      const bearingEl = this._widget!.querySelector('#mc-sc-bearing') as HTMLInputElement;
+      if (bearingEl) {
+        const norm = (a: number) => ((a % 360) + 360) % 360;
+        bearingEl.value = norm(activeInst.bezelDeg).toFixed(0);
+      }
+    });
   }
 
   private _updateWidget(): void {
@@ -970,8 +1215,15 @@ ${icLabels}
       if (crdEl)  crdEl.textContent  = `${(inst.mapPoint.latitude ?? 0).toFixed(4)}°, ${(inst.mapPoint.longitude ?? 0).toFixed(4)}°`;
     }
 
+    // Sector cones section — show only when a compass is active
+    const sectorSec  = this._widget.querySelector('#mc-sector-section') as HTMLElement;
+    const extrudeRow = this._widget.querySelector('#mc-sc-extrude-row') as HTMLElement;
+    if (sectorSec)  sectorSec.style.display  = inst ? 'block' : 'none';
+    if (extrudeRow) extrudeRow.style.display = this._is3D ? 'flex' : 'none';
+
     // Compass list
     this._updateCompassList();
+    this._updateSectorList();
   }
 
   private _updateCompassList(): void {
@@ -1021,6 +1273,55 @@ ${icLabels}
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         this._removeInstance((btn as HTMLElement).dataset.id!);
+      });
+    });
+  }
+
+  private _updateSectorList(): void {
+    if (!this._widget) return;
+    const listEl  = this._widget.querySelector('#mc-sector-list')   as HTMLElement;
+    const emptyEl = this._widget.querySelector('#mc-sc-list-empty') as HTMLElement;
+    if (!listEl) return;
+
+    listEl.querySelectorAll('.mc-list-item').forEach(el => el.remove());
+
+    const activeInst = this._activeId ? this._instances.find(i => i.id === this._activeId) : null;
+    if (!activeInst || activeInst.sectors.length === 0) {
+      if (emptyEl) emptyEl.style.display = '';
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    const norm = (a: number) => ((a % 360) + 360) % 360;
+    for (const sector of activeInst.sectors) {
+      const o = sector.options;
+      const [r, g, b] = o.color ?? this._defaultSectorColor;
+      const swatchHex = this._rgb2hex(r, g, b);
+      const extrudeTxt = o.extrudeHeightM && o.extrudeHeightM > 0 ? ` ↑${o.extrudeHeightM}m` : '';
+      const item = document.createElement('div');
+      item.className = 'mc-list-item' + (sector.id === this._activeSectorId ? ' mc-list-item-active' : '');
+      item.innerHTML = `
+        <div class="mc-list-item-info">
+          <div class="mc-leg-dot" style="background:${swatchHex};flex-shrink:0"></div>
+          <span class="mc-list-label">${o.label ?? 'Sector'}</span>
+          <span class="mc-list-bearing">${norm(o.centerBearingDeg).toFixed(0)}°±${(o.arcWidthDeg/2).toFixed(0)}° ${o.radiusKm}km${extrudeTxt}</span>
+        </div>
+        <div class="mc-list-actions">
+          <button class="mc-btn mc-btn-sm mc-btn-del" data-cid="${activeInst.id}" data-sid="${sector.id}" title="Remove sector">✕</button>
+        </div>`;
+      item.addEventListener('click', () => {
+        this._activeSectorId = sector.id;
+        this._updateSectorList();
+      });
+      listEl.appendChild(item);
+    }
+
+    listEl.querySelectorAll('.mc-btn-del').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const cid = (btn as HTMLElement).dataset.cid!;
+        const sid = (btn as HTMLElement).dataset.sid!;
+        this.removeSector(cid, sid);
       });
     });
   }

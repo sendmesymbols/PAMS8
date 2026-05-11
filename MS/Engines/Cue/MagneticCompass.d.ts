@@ -8,6 +8,17 @@ export interface MagneticCompassOptions {
     bezelColor?: [number, number, number];
     declination?: number;
 }
+export interface SectorConeOptions {
+    centerBearingDeg: number;
+    arcWidthDeg: number;
+    radiusKm: number;
+    color?: [number, number, number];
+    fillOpacity?: number;
+    outlineOpacity?: number;
+    outlineWidth?: number;
+    extrudeHeightM?: number;
+    label?: string;
+}
 export declare class MagneticCompass {
     private _view;
     private _layer;
@@ -17,6 +28,8 @@ export declare class MagneticCompass {
     private _activeId;
     private _counter;
     private _instances;
+    private _defaultSectorColor;
+    private _activeSectorId;
     private _size;
     private _opacity;
     private _northColor;
@@ -29,6 +42,8 @@ export declare class MagneticCompass {
     private _widget;
     private _widgetOpen;
     private _styleEl;
+    private _hoveredInstId;
+    private _hoverRingEl;
     start(view: MapView | SceneView): void;
     enable(): void;
     disable(): void;
@@ -37,10 +52,18 @@ export declare class MagneticCompass {
     onViewChanged(view: MapView | SceneView): void;
     setOptions(opts: MagneticCompassOptions): void;
     destroy(): void;
+    addSector(compassId: string, opts: SectorConeOptions): string | null;
+    removeSector(compassId: string, sectorId: string): void;
+    updateSector(compassId: string, sectorId: string, opts: Partial<SectorConeOptions>): void;
+    clearSectors(compassId: string): void;
     private _buildFaceSVG;
     private _buildBezelSVG;
     private _buildNeedleSVG;
     private _makeSymbol;
+    private _geodesicDestination;
+    private _buildSectorPolygon;
+    private _makeSectorSymbol;
+    private _refreshSector;
     private _placeCompass;
     private _removeInstance;
     private _clearAllInstances;
@@ -61,8 +84,14 @@ export declare class MagneticCompass {
     private _bindWidgetEvents;
     private _updateWidget;
     private _updateCompassList;
+    private _updateSectorList;
     private _updateWidgetEnabledState;
     private _injectStyles;
+    private _setBezelHovered;
+    private _createHoverRingEl;
+    private _showHoverRing;
+    private _hideHoverRing;
+    private _updateHoverRingPos;
     private _toDataURL;
     private _rgb2hex;
     private _hex2rgb;
