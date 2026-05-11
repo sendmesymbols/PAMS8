@@ -3400,6 +3400,7 @@ class SymbolEngine implements Evented {
    * On load these are fed back into initialize(isPassive=true) so the symbol is
    * reconstructed through the same rendering pipeline used when it was first drawn.
    */
+  /*
   public saveSymbolToJSON(graphic: Graphic): object {
     const de: any = graphic.attributes?.drawEssentials;
     const amplifier: any = de?.AMPLIFIER;
@@ -3442,6 +3443,7 @@ class SymbolEngine implements Evented {
       drawEssentials: deJson,
     };
   }
+   */
 
   /**
    * Reconstruct a graphic from a serialised pams8 object.
@@ -3449,6 +3451,7 @@ class SymbolEngine implements Evented {
    * through initialize(isPassive=true) â€” the same pipeline as interactive drawing.
    * Falls back to direct Graphic construction for milsymbol / legacy format.
    */
+  /*
   public loadSymbolFromJSON(data: any): Graphic | null {
     try {
       const deData = data.drawEssentials || {};
@@ -3593,6 +3596,8 @@ class SymbolEngine implements Evented {
       return null;
     }
   }
+
+   */
 
   /** Serialise every graphic across all symbol layers into an array. */
   public exportLayerToJSON(): object[] {
