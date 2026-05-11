@@ -585,20 +585,32 @@ ${icLabels}
     }
 
     const extrudeM = opts.extrudeHeightM ?? 0;
-    const layers: any[] = [
-      new FillSymbol3DLayer({
-        material: { color: [r, g, b, fillOp] },
-        outline:  { color: [r, g, b, outlineOp], size: outlineW },
-      }),
-    ];
-    if (extrudeM > 0) {
-      layers.push(new ExtrudeSymbol3DLayer({
-        material: { color: [r, g, b, Math.max(0.08, fillOp * 0.5)] },
-        edges:    { color: [r, g, b, 0.2], size: 0.5 },
-        size: extrudeM,
-      }));
+
+    if (extrudeM <= 0) {
+      // Flat drape on ground — use higher opacity so it reads clearly in 3D
+      return new PolygonSymbol3D({
+        symbolLayers: [new FillSymbol3DLayer({
+          material: { color: [r, g, b, Math.max(0.45, fillOp)] },
+          outline:  { color: [r, g, b, outlineOp], size: outlineW },
+        })],
+      });
     }
-    return new PolygonSymbol3D({ symbolLayers: layers });
+
+    // Extruded volume: FillSymbol3DLayer = top/bottom caps, ExtrudeSymbol3DLayer = side walls
+    return new PolygonSymbol3D({
+      symbolLayers: [
+        new FillSymbol3DLayer({
+          // Top / bottom cap — slightly transparent to see terrain below
+          material: { color: [r, g, b, Math.max(0.35, fillOp)] },
+          outline:  { color: [r, g, b, outlineOp], size: outlineW },
+        }),
+        new ExtrudeSymbol3DLayer({
+          // Side walls — solid enough to read as a 3D volume
+          material: { color: [r, g, b, Math.max(0.55, fillOp)] },
+          size: extrudeM,
+        }),
+      ],
+    });
   }
 
   private _refreshSector(inst: CompassInstance, sector: SectorConeInstance): void {
