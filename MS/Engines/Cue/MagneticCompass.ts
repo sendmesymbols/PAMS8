@@ -80,6 +80,10 @@ export class MagneticCompass {
   private _widgetOpen = false;
   private _styleEl: HTMLStyleElement | null = null;
 
+  // Hover feedback
+  private _hoveredInstId: string | null = null;
+  private _hoverRingEl: HTMLElement | null = null;
+
   // ── Public API ──────────────────────────────────────────────────────────────
 
   public start(view: MapView | SceneView): void {
@@ -165,6 +169,11 @@ export class MagneticCompass {
       this._styleEl.remove();
       this._styleEl = null;
     }
+    if (this._hoverRingEl) {
+      this._hoverRingEl.remove();
+      this._hoverRingEl = null;
+    }
+    this._hoveredInstId = null;
     this._widgetOpen = false;
   }
 
@@ -286,12 +295,16 @@ ${icLabels}
 </svg>`;
   }
 
-  private _buildBezelSVG(rotDeg: number): string {
+  private _buildBezelSVG(rotDeg: number, hovered = false): string {
     const bc = this._bezelColor;
     const bcHex = this._rgb2hex(bc[0], bc[1], bc[2]);
     const bcDim = this._rgb2hex(Math.round(bc[0]*0.55), Math.round(bc[1]*0.55), Math.round(bc[2]*0.55));
     const bcDark = this._rgb2hex(Math.round(bc[0]*0.3), Math.round(bc[1]*0.3), Math.round(bc[2]*0.3));
     const bcFaint = this._rgb2hex(Math.round(bc[0]*0.13), Math.round(bc[1]*0.13), Math.round(bc[2]*0.13));
+
+    // Hover state: brighter cardinal labels and pip opacity
+    const cardLabelCol = hovered ? '#ffed80' : '#f0d060';
+    const pipOpacity   = hovered ? '0.95'    : '0.75';
 
     let ticks = '';
     for (let deg = 0; deg < 360; deg += 2) {
@@ -321,7 +334,7 @@ ${icLabels}
       const nr      = RO - 33;
       const lx      = (CX + nr * Math.sin(rad)).toFixed(2);
       const ly      = (CY - nr * Math.cos(rad)).toFixed(2);
-      const col     = isCard ? '#f0d060' : isThird ? bcHex : bcDark;
+      const col     = isCard ? cardLabelCol : isThird ? bcHex : bcDark;
       const fs      = isCard ? 13.5 : isThird ? 9 : 7;
       const fw      = isCard ? 'bold' : 'normal';
       const lbl     = isCard ? ['N','E','S','W'][deg/90] : String(deg);
@@ -335,17 +348,22 @@ ${icLabels}
       const a = deg * Math.PI / 180;
       const r = RO - 2;
       return `<circle cx="${(CX + r*Math.sin(a)).toFixed(1)}" cy="${(CY - r*Math.cos(a)).toFixed(1)}"
-                      r="2.5" fill="${bcHex}" opacity="0.75"/>`;
+                      r="2.5" fill="${bcHex}" opacity="${pipOpacity}"/>`;
     }).join('');
 
     const idx = `<polygon points="${CX},${CY-RO+1} ${CX-5.5},${CY-RO+14} ${CX+5.5},${CY-RO+14}"
                            fill="#cc2a18" opacity="0.92"/>`;
 
+    // Hover: extra outer rim highlight circle
+    const rimHighlight = hovered
+      ? `<circle cx="${CX}" cy="${CY}" r="115" fill="none" stroke="rgba(255,220,80,0.4)" stroke-width="3"/>`
+      : '';
+
     const op = this._opacity;
     return `<svg viewBox="0 0 ${VB} ${VB}" xmlns="http://www.w3.org/2000/svg" opacity="${op}">
 <defs>
   <radialGradient id="bezelGrad" cx="50%" cy="28%" r="76%">
-    <stop offset="0%"   stop-color="#3a2c0a"/>
+    <stop offset="0%"   stop-color="${hovered ? '#4a380e' : '#3a2c0a'}"/>
     <stop offset="100%" stop-color="#0e0b02"/>
   </radialGradient>
   <mask id="donut">
@@ -359,6 +377,7 @@ ${icLabels}
   ${labels}
   ${pips}
   ${idx}
+  ${rimHighlight}
 </g>
 </svg>`;
   }
@@ -456,6 +475,10 @@ ${icLabels}
     }
     this._instances.splice(idx, 1);
     if (this._activeId === id) this._activeId = this._instances.length > 0 ? this._instances[this._instances.length - 1].id : null;
+    if (this._hoveredInstId === id) {
+      this._hoveredInstId = null;
+      this._hideHoverRing();
+    }
     this._updateWidget();
   }
 
@@ -552,6 +575,28 @@ ${icLabels}
       } else {
         (this._view!.container as HTMLElement).style.cursor = hit ? 'grab' : '';
       }
+
+      // Hover enter / exit logic
+      if (hit && hit.id !== this._hoveredInstId) {
+        // Un-hover previous
+        if (this._hoveredInstId) {
+          const prev = this._instances.find(i => i.id === this._hoveredInstId);
+          if (prev) this._setBezelHovered(prev, false);
+        }
+        this._hoveredInstId = hit.id;
+        this._setBezelHovered(hit, true);
+        this._showHoverRing(hit, false);
+      } else if (!hit && this._hoveredInstId) {
+        const prev = this._instances.find(i => i.id === this._hoveredInstId);
+        if (prev) this._setBezelHovered(prev, false);
+        this._hoveredInstId = null;
+        this._hideHoverRing();
+      }
+
+      // Keep ring centered as cursor moves over the bezel
+      if (hit && this._hoverRingEl?.style.display !== 'none') {
+        this._updateHoverRingPos(hit);
+      }
     });
 
     this._dragHandle = this._view.on('drag', (evt: __esri.ViewDragEvent) => {
@@ -566,6 +611,11 @@ ${icLabels}
             startBezel: hit.bezelDeg,
           };
           this._activeId = hit.id;
+          // Switch hover ring from pulsing to steady glow
+          if (this._hoverRingEl) {
+            this._hoverRingEl.classList.remove('mc-pulsing');
+            this._hoverRingEl.classList.add('mc-dragging');
+          }
         }
       } else if (evt.action === 'update') {
         const dragging = this._instances.find(i => i.dragState !== null);
@@ -579,6 +629,11 @@ ${icLabels}
       } else if (evt.action === 'end') {
         for (const inst of this._instances) inst.dragState = null;
         (this._view!.container as HTMLElement).style.cursor = '';
+        // Switch back to pulsing if still hovering the bezel
+        if (this._hoverRingEl && this._hoveredInstId) {
+          this._hoverRingEl.classList.remove('mc-dragging');
+          this._hoverRingEl.classList.add('mc-pulsing');
+        }
       }
     });
 
@@ -617,6 +672,14 @@ ${icLabels}
     this._clickHandle = null;
     this._watchHandle?.remove();
     this._watchHandle = null;
+
+    // Clean up any active hover state
+    if (this._hoveredInstId) {
+      const prev = this._instances.find(i => i.id === this._hoveredInstId);
+      if (prev) this._setBezelHovered(prev, false);
+      this._hoveredInstId = null;
+    }
+    this._hideHoverRing();
   }
 
   // ── Widget ──────────────────────────────────────────────────────────────────
@@ -1286,9 +1349,75 @@ ${icLabels}
         border-radius: 50%;
         flex-shrink: 0;
       }
+
+      @keyframes mc-ring-pulse {
+        0%   { transform: translate(-50%,-50%) scale(1);    opacity: 0.8; }
+        65%  { transform: translate(-50%,-50%) scale(1.22); opacity: 0.35; }
+        100% { transform: translate(-50%,-50%) scale(1.35); opacity: 0; }
+      }
+
+      #mc-hover-ring {
+        position: fixed;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 1099;
+        display: none;
+        box-sizing: border-box;
+        transform-origin: 50% 50%;
+      }
+
+      #mc-hover-ring.mc-pulsing {
+        animation: mc-ring-pulse 1.3s ease-out infinite;
+        border: 2px solid rgba(212,160,60,0.75);
+        box-shadow: 0 0 14px rgba(212,160,60,0.45), inset 0 0 8px rgba(212,160,60,0.15);
+      }
+
+      #mc-hover-ring.mc-dragging {
+        animation: none;
+        border: 2.5px solid rgba(212,160,60,0.55);
+        box-shadow: 0 0 20px rgba(212,160,60,0.5), inset 0 0 14px rgba(212,160,60,0.2);
+        transform: translate(-50%, -50%);
+      }
     `;
     document.head.appendChild(style);
     this._styleEl = style;
+  }
+
+  // ── Hover feedback helpers ──────────────────────────────────────────────────
+
+  private _setBezelHovered(inst: CompassInstance, hovered: boolean): void {
+    inst.bezelGfx.symbol = this._makeSymbol(
+      this._toDataURL(this._buildBezelSVG(inst.bezelDeg, hovered))
+    ) as any;
+  }
+
+  private _createHoverRingEl(): HTMLElement {
+    const el = document.createElement('div');
+    el.id = 'mc-hover-ring';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  private _showHoverRing(inst: CompassInstance, dragging: boolean): void {
+    if (!this._hoverRingEl) this._hoverRingEl = this._createHoverRingEl();
+    const el = this._hoverRingEl;
+    el.className = dragging ? 'mc-dragging' : 'mc-pulsing';
+    el.style.width  = this._size + 'px';
+    el.style.height = this._size + 'px';
+    el.style.display = 'block';
+    this._updateHoverRingPos(inst);
+  }
+
+  private _hideHoverRing(): void {
+    if (this._hoverRingEl) this._hoverRingEl.style.display = 'none';
+  }
+
+  private _updateHoverRingPos(inst: CompassInstance): void {
+    if (!this._hoverRingEl) return;
+    const sp = this._compassScreenPt(inst);
+    if (!sp) return;
+    this._hoverRingEl.style.left = sp.x + 'px';
+    this._hoverRingEl.style.top  = sp.y + 'px';
   }
 
   // ── Utilities ───────────────────────────────────────────────────────────────
