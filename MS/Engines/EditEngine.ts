@@ -8,6 +8,7 @@ import Color from "@arcgis/core/Color";
 import Point from "@arcgis/core/geometry/Point";
 
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
+import { ContextMenuItem } from "../Managers/ContextMenuManager";
 import AnnotationEngine from "./AnnotationEngine.ts";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
@@ -832,6 +833,73 @@ class EditEngine {
             EngineLogger.success('Edit Engine', 'Symbol updated — edit complete');
         }
         this._eventListeners.get(type)?.forEach(fn => fn(data));
+    }
+
+    // -----------------------------------------------------------------------
+    // Context menu
+    // -----------------------------------------------------------------------
+
+    /**
+     * Returns the Edit submenu item tree.
+     * Call from SymbolEngine.registerContextMenuItems() and spread the result.
+     */
+    public buildContextMenuItems(
+        onModify: (graphic: Graphic) => void,
+        onActivateCtrlPts: (graphic: Graphic) => void,
+        onDeactivate: () => void,
+    ): ContextMenuItem[] {
+        return [
+            {
+                id: 'edit-submenu',
+                label: 'Edit',
+                icon: '<span style="font-size:14px">✍️</span>',
+                visible: () =>
+                    (settingsData as any).features?.editMoveScaleRotate !== false ||
+                    (settingsData as any).features?.editControlPoints !== false,
+                children: [
+                    {
+                        id: 'modify-symbol',
+                        label: 'Move, Scale, Rotate',
+                        shortcut: 'M',
+                        icon: '<span style="font-size:14px">✍️</span>',
+                        visible: (_graphic: Graphic) =>
+                            (settingsData as any).features?.editMoveScaleRotate !== false &&
+                            !this.isModifyingSymbol,
+                        action: (graphic: Graphic) => onModify(graphic),
+                    },
+                    {
+                        id: 'disable-modify-symbol',
+                        label: 'Disable Move, Scale, Rotate',
+                        shortcut: 'Esc',
+                        icon: '<span style="font-size:14px">✖</span>',
+                        visible: (_graphic: Graphic) =>
+                            (settingsData as any).features?.editMoveScaleRotate !== false &&
+                            this.isModifyingSymbol,
+                        action: (_graphic: Graphic) => onDeactivate(),
+                    },
+                    {
+                        id: 'edit-ctrl-pts',
+                        label: 'Edit Control Points',
+                        shortcut: 'E',
+                        icon: '<span style="font-size:14px">↕</span>',
+                        visible: (_graphic: Graphic) =>
+                            (settingsData as any).features?.editControlPoints !== false &&
+                            !this.isEditingControlPoints,
+                        action: (graphic: Graphic) => onActivateCtrlPts(graphic),
+                    },
+                    {
+                        id: 'deactivate-ctrl-pts',
+                        label: 'Deactivate Control Points',
+                        shortcut: 'Esc',
+                        icon: '<span style="font-size:14px">✖</span>',
+                        visible: (_graphic: Graphic) =>
+                            (settingsData as any).features?.editControlPoints !== false &&
+                            this.isEditingControlPoints,
+                        action: (_graphic: Graphic) => onDeactivate(),
+                    },
+                ],
+            },
+        ];
     }
 }
 

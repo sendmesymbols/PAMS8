@@ -772,57 +772,12 @@ class SymbolEngine implements Evented {
         icon: '<span style="font-size:14px">🗑️</span>',
         action: (graphic) => this.removeGraphic(graphic),
       },
-      // ── Edit submenu ────────────────────────────────────────────────
-      {
-        id: 'edit-submenu',
-        label: 'Edit',
-        icon: '<span style="font-size:14px">✍️</span>',
-        visible: () =>
-          (settingsData as any).features?.editMoveScaleRotate !== false ||
-          (settingsData as any).features?.editControlPoints !== false,
-        children: [
-          {
-            id: 'modify-symbol',
-            label: 'Move, Scale, Rotate',
-            shortcut: 'M',
-            icon: '<span style="font-size:14px">✍️</span>',
-            visible: (_graphic) =>
-              (settingsData as any).features?.editMoveScaleRotate !== false &&
-              !this._editEngine.isModifyingSymbol,
-            action: (graphic) => this.modifySymbol(graphic),
-          },
-          {
-            id: 'disable-modify-symbol',
-            label: 'Disable Move, Scale, Rotate',
-            shortcut: 'Esc',
-            icon: '<span style="font-size:14px">✖</span>',
-            visible: (_graphic) =>
-              (settingsData as any).features?.editMoveScaleRotate !== false &&
-              this._editEngine.isModifyingSymbol,
-            action: (_graphic) => this.deactivateEdit(),
-          },
-          {
-            id: 'edit-ctrl-pts',
-            label: 'Edit Control Points',
-            shortcut: 'E',
-            icon: '<span style="font-size:14px">↕</span>',
-            visible: (_graphic) =>
-              (settingsData as any).features?.editControlPoints !== false &&
-              !this._editEngine.isEditingControlPoints,
-            action: (graphic) => this.activateEditControlPoints(graphic),
-          },
-          {
-            id: 'deactivate-ctrl-pts',
-            label: 'Deactivate Control Points',
-            shortcut: 'Esc',
-            icon: '<span style="font-size:14px">✖</span>',
-            visible: (_graphic) =>
-              (settingsData as any).features?.editControlPoints !== false &&
-              this._editEngine.isEditingControlPoints,
-            action: (_graphic) => this.deactivateEdit(),
-          },
-        ],
-      },
+      // ── Edit submenu (owned by EditEngine) ─────────────────────────
+      ...this._editEngine.buildContextMenuItems(
+        (graphic) => this.modifySymbol(graphic),
+        (graphic) => this.activateEditControlPoints(graphic),
+        () => this.deactivateEdit(),
+      ),
       // ── Selection + Align submenus (owned by SelectionEngine) ──────────
       ...this._selectionEngine.buildContextMenuItems(
         (e) => this._pushUndo(e),
