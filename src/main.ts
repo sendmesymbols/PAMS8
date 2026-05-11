@@ -1,6 +1,10 @@
+import esriConfig from '@arcgis/core/config';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import Map from '@arcgis/core/map';
+
+// Serve fonts locally — no internet dependency
+esriConfig.fontsUrl = '/fonts';
 import PlotPoint from '../MS/PlotPoint.ts';
 import SymbolEngine from '../MS/Engines/SymbolEngine.ts';
 //import SymbolEngine from "../dist/MS/Engines/SymbolEngine.min.js";
