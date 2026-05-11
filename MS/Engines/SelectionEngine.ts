@@ -1149,13 +1149,13 @@ class SelectionEngine {
         pushUndo: (e: any) => void,
         closeActiveWorkflow: () => void
     ): ContextMenuItem[] {
-        if ((settingsData as any).features?.selectionMenu === false) return [];
         return [
             // ── Selection submenu ────────────────────────────────────────────────
             {
                 id: 'selection-submenu',
                 label: 'Selection',
                 icon: '<span style="font-size:14px">☑</span>',
+                visible: () => (settingsData as any).features?.selectionMenu !== false,
                 children: [
                     {
                         id: 'lasso-select',
@@ -1297,7 +1297,7 @@ class SelectionEngine {
                 id: 'align-parent',
                 label: 'Align',
                 icon: '<span style="font-size:14px">⊞</span>',
-                visible: () => (settingsData as any).features?.selectionMenu !== false && this.count > 1,
+                visible: () => (settingsData as any).features?.alignMenu !== false && this.count > 1,
                 children: [
                     // ── Align submenu ───────────────────────────────────────────
                     {

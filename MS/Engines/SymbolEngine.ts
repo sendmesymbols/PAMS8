@@ -256,6 +256,9 @@ class SymbolEngine implements Evented {
         'milSymbols',
       ],
     });
+    if ((settingsData as any).features?.contextMenu === false) {
+      this._contextMenuManager.disable();
+    }
     this._contextMenuManager.linkSymbolEngine(this);
 
     // Register context menu items for different graphic types
@@ -774,13 +777,18 @@ class SymbolEngine implements Evented {
         id: 'edit-submenu',
         label: 'Edit',
         icon: '<span style="font-size:14px">✍️</span>',
+        visible: () =>
+          (settingsData as any).features?.editMoveScaleRotate !== false ||
+          (settingsData as any).features?.editControlPoints !== false,
         children: [
           {
             id: 'modify-symbol',
             label: 'Move, Scale, Rotate',
             shortcut: 'M',
             icon: '<span style="font-size:14px">✍️</span>',
-            visible: (_graphic) => !this._editEngine.isModifyingSymbol,
+            visible: (_graphic) =>
+              (settingsData as any).features?.editMoveScaleRotate !== false &&
+              !this._editEngine.isModifyingSymbol,
             action: (graphic) => this.modifySymbol(graphic),
           },
           {
@@ -788,7 +796,9 @@ class SymbolEngine implements Evented {
             label: 'Disable Move, Scale, Rotate',
             shortcut: 'Esc',
             icon: '<span style="font-size:14px">✖</span>',
-            visible: (_graphic) => this._editEngine.isModifyingSymbol,
+            visible: (_graphic) =>
+              (settingsData as any).features?.editMoveScaleRotate !== false &&
+              this._editEngine.isModifyingSymbol,
             action: (_graphic) => this.deactivateEdit(),
           },
           {
@@ -796,7 +806,9 @@ class SymbolEngine implements Evented {
             label: 'Edit Control Points',
             shortcut: 'E',
             icon: '<span style="font-size:14px">↕</span>',
-            visible: (_graphic) => !this._editEngine.isEditingControlPoints,
+            visible: (_graphic) =>
+              (settingsData as any).features?.editControlPoints !== false &&
+              !this._editEngine.isEditingControlPoints,
             action: (graphic) => this.activateEditControlPoints(graphic),
           },
           {
@@ -804,7 +816,9 @@ class SymbolEngine implements Evented {
             label: 'Deactivate Control Points',
             shortcut: 'Esc',
             icon: '<span style="font-size:14px">✖</span>',
-            visible: (_graphic) => this._editEngine.isEditingControlPoints,
+            visible: (_graphic) =>
+              (settingsData as any).features?.editControlPoints !== false &&
+              this._editEngine.isEditingControlPoints,
             action: (_graphic) => this.deactivateEdit(),
           },
         ],
@@ -820,8 +834,9 @@ class SymbolEngine implements Evented {
         label: 'Clipboard',
         icon: '<span style="font-size:14px">📋</span>',
         visible: () =>
-          (settingsData as any).features?.copyPaste !== false ||
-          (settingsData as any).features?.shortcuts !== false,
+          (settingsData as any).features?.clipboard !== false &&
+          ((settingsData as any).features?.copyPaste !== false ||
+           (settingsData as any).features?.shortcuts !== false),
         children: [
           {
             id: 'copy-symbol',
@@ -1177,18 +1192,22 @@ class SymbolEngine implements Evented {
           e.preventDefault();
           this.redo();
         } else if (e.key === 'c' || e.key === 'C') {
-          const g = this._contextMenuManager.getLastClickedGraphic()
-              ?? (this._selectionEngine.count === 1 ? this._selectionEngine.selectedGraphics[0] : null);
-          if (g) {
-            e.preventDefault();
-            this.copySymbol(g);
+          if ((settingsData as any).features?.clipboard !== false) {
+            const g = this._contextMenuManager.getLastClickedGraphic()
+                ?? (this._selectionEngine.count === 1 ? this._selectionEngine.selectedGraphics[0] : null);
+            if (g) {
+              e.preventDefault();
+              this.copySymbol(g);
+            }
           }
         } else if (e.key === 'v' || e.key === 'V') {
-          e.preventDefault();
-          if (e.shiftKey) {
-            this._showPasteOffsetDialog();
-          } else {
-            this._activatePasteMode();
+          if ((settingsData as any).features?.clipboard !== false) {
+            e.preventDefault();
+            if (e.shiftKey) {
+              this._showPasteOffsetDialog();
+            } else {
+              this._activatePasteMode();
+            }
           }
         }
         return;
@@ -1336,6 +1355,12 @@ class SymbolEngine implements Evented {
         value
           ? this._proximityEngine.enable()
           : this._proximityEngine.disable();
+      } else if (feature === 'contextMenu') {
+        value
+          ? this._contextMenuManager.enable()
+          : this._contextMenuManager.disable();
+      } else if (feature === 'clipboard' && !value) {
+        this._clipboard = null;
       } else {
         console.log(`[SymbolEngine] Feature '${feature}' changed to ${value}`);
       }
@@ -1737,6 +1762,7 @@ class SymbolEngine implements Evented {
    * Stores a deep clone of the graphic's geometry, symbol, and drawEssentials.
    */
   public copySymbol(graphic: Graphic): void {
+    if ((settingsData as any).features?.clipboard === false) return;
     // When the right-clicked graphic is part of a multi-selection, copy all selected
     const toCopy =
       this._selectionEngine.isSelected(graphic) &&

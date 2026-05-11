@@ -1578,7 +1578,23 @@
           </div>
           <div class="setting-row">
             <label>Selection Menu</label>
-            <input type="checkbox" id="setting-selectionMenu" checked title="Show Selection and Align/Arrange submenus in the right-click context menu (SelectionEngine)." />
+            <input type="checkbox" id="setting-selectionMenu" checked title="Show Selection submenu (lasso, select similar, filter by type) in the right-click context menu." />
+          </div>
+          <div class="setting-row">
+            <label>Align Menu</label>
+            <input type="checkbox" id="setting-alignMenu" checked title="Show Align/Distribute/Arrange submenu in the right-click context menu (requires 2+ symbols selected)." />
+          </div>
+          <div class="setting-row">
+            <label>Clipboard</label>
+            <input type="checkbox" id="setting-clipboard" checked title="Enable clipboard storage for copy/paste. When disabled, Ctrl+C saves nothing and existing clipboard is cleared (improves performance)." />
+          </div>
+          <div class="setting-row">
+            <label>Edit Move/Scale/Rotate</label>
+            <input type="checkbox" id="setting-editMoveScaleRotate" checked title="Show 'Move, Scale, Rotate' and 'Disable Move, Scale, Rotate' items in the Edit context menu." />
+          </div>
+          <div class="setting-row">
+            <label>Edit Control Points</label>
+            <input type="checkbox" id="setting-editControlPoints" checked title="Show 'Edit Control Points' and 'Deactivate Control Points' items in the Edit context menu." />
           </div>
           <div class="setting-row">
             <label>Engine Logs</label>
@@ -2093,8 +2109,6 @@
               <input type="checkbox" id="setting-analysis-effects" checked title="Enable Effect Analysis engine. When disabled, the Effects item is removed from the Analysis context menu." />
             </div>
           </div>
-        </div>
-
       </div>
       </div>
     </div>
@@ -2477,6 +2491,22 @@
           path: ['features', 'selectionMenu'],
           value: v,
         }),
+        'setting-alignMenu': (v) => ({
+          path: ['features', 'alignMenu'],
+          value: v,
+        }),
+        'setting-clipboard': (v) => ({
+          path: ['features', 'clipboard'],
+          value: v,
+        }),
+        'setting-editMoveScaleRotate': (v) => ({
+          path: ['features', 'editMoveScaleRotate'],
+          value: v,
+        }),
+        'setting-editControlPoints': (v) => ({
+          path: ['features', 'editControlPoints'],
+          value: v,
+        }),
         'setting-proximityEngine': (v) => ({
           path: ['features', 'proximityEngine'],
           value: v,
@@ -2747,6 +2777,14 @@
             features.templates !== false;
           document.getElementById('setting-selectionMenu').checked =
             features.selectionMenu !== false;
+          document.getElementById('setting-alignMenu').checked =
+            features.alignMenu !== false;
+          document.getElementById('setting-clipboard').checked =
+            features.clipboard !== false;
+          document.getElementById('setting-editMoveScaleRotate').checked =
+            features.editMoveScaleRotate !== false;
+          document.getElementById('setting-editControlPoints').checked =
+            features.editControlPoints !== false;
           document.getElementById('setting-proximityEngine').checked =
             features.proximityEngine !== false;
           document.getElementById('setting-drawingCues').checked =

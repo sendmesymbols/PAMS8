@@ -79,6 +79,8 @@ class ContextMenuManager extends Evented {
   private _corridorEngine: CorridorEngine | null = null;
   private _effectEngine: EffectEngine | null = null;
 
+  private _enabled: boolean = true;
+
   // Event handles for cleanup on re-initialization
   private _pointerDownHandle: any = null;
   private _contextMenuHandler: ((e: Event) => void) | null = null;
@@ -155,6 +157,15 @@ class ContextMenuManager extends Evented {
    */
   public configure(options: ContextMenuOptions): void {
     this.options = { ...this.options, ...options };
+  }
+
+  public enable(): void {
+    this._enabled = true;
+  }
+
+  public disable(): void {
+    this._enabled = false;
+    this.hideMenu();
   }
 
   /**
@@ -796,6 +807,8 @@ class ContextMenuManager extends Evented {
         this.hideMenu();
         return;
       }
+
+      if (!this._enabled) return;
 
       // Store original event
       this.originalEvent = event.native;

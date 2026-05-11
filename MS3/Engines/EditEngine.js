@@ -391,6 +391,66 @@ define(["dojo/_base/declare", "esri/toolbars/draw", "esri/toolbars/edit", "dojo/
                 deactivateEngine: function (evt) {
                     this.unWireUpCPEvents();
                     this.unWireUpEditEvents();
+                },
+
+                // ── Edit submenu ───────────────────────────────────────────────────────
+                // Returns context-menu item definitions for the Edit submenu.
+                // Mirrors the structure used by MS/Engines/SymbolEngine.ts so a host
+                // application can wire these up to any right-click menu implementation.
+                getContextMenuItems: function (settings) {
+                    var self = this;
+                    var feat = (settings && settings.features) || {};
+
+                    function mscEnabled() { return feat.editMoveScaleRotate !== false; }
+                    function cpEnabled()  { return feat.editControlPoints  !== false; }
+
+                    return {
+                        id: 'edit-submenu',
+                        label: 'Edit',
+                        visible: function () { return mscEnabled() || cpEnabled(); },
+                        children: [
+                            {
+                                id: 'modify-symbol',
+                                label: 'Move, Scale, Rotate',
+                                shortcut: 'M',
+                                visible: function () { return mscEnabled() && !self.isModifying; },
+                                action: function (graphic) {
+                                    self.isModifying = true;
+                                    self.editToolbar.activate(Edit.MOVE | Edit.SCALE | Edit.ROTATE, graphic);
+                                }
+                            },
+                            {
+                                id: 'disable-modify-symbol',
+                                label: 'Disable Move, Scale, Rotate',
+                                shortcut: 'Esc',
+                                visible: function () { return mscEnabled() && !!self.isModifying; },
+                                action: function () {
+                                    self.isModifying = false;
+                                    self.editToolbar.deactivate();
+                                }
+                            },
+                            {
+                                id: 'edit-ctrl-pts',
+                                label: 'Edit Control Points',
+                                shortcut: 'E',
+                                visible: function () { return cpEnabled() && !self.isEditingCp; },
+                                action: function (graphic) {
+                                    self.isEditingCp = true;
+                                    self.activateEditPts({ graphic: graphic });
+                                }
+                            },
+                            {
+                                id: 'deactivate-ctrl-pts',
+                                label: 'Deactivate Control Points',
+                                shortcut: 'Esc',
+                                visible: function () { return cpEnabled() && !!self.isEditingCp; },
+                                action: function () {
+                                    self.isEditingCp = false;
+                                    self.deactivateEditPts({});
+                                }
+                            }
+                        ]
+                    };
                 }
 
 

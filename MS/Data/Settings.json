@@ -385,6 +385,10 @@
     "templates": true,
     "proximityEngine": true,
     "selectionMenu": true,
+    "alignMenu": true,
+    "clipboard": true,
+    "editMoveScaleRotate": true,
+    "editControlPoints": true,
     "drawingCues": true,
     "mgrsEngine": false,
     "analysisEngines": true

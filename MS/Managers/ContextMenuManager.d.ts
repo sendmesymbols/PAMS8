@@ -64,6 +64,7 @@ declare class ContextMenuManager extends Evented {
     private _bufferEngine;
     private _corridorEngine;
     private _effectEngine;
+    private _enabled;
     private _pointerDownHandle;
     private _contextMenuHandler;
     private _contextMenuContainer;
@@ -81,6 +82,8 @@ declare class ContextMenuManager extends Evented {
      * Configure options
      */
     configure(options: ContextMenuOptions): void;
+    enable(): void;
+    disable(): void;
     /**
      * Register menu items for a specific graphic type
      * @param graphicType The type of graphic these menu items apply to
