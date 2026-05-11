@@ -107,11 +107,6 @@ class ProximityEngine {
   // Parallel array: pre-computed spatial extents for bounding-box pre-filter
   private _candidateExtents: CandidateExtent[] = [];
 
-  // Pre-allocated reusable geometry objects — avoids per-frame heap allocation
-  private _reuseSnapPt: Point | null = null;
-  private _reuseMidPt: Point | null = null;
-  private _reuseLinePl: Polyline | null = null;
-
   // Pre-allocated reusable symbol objects
   private _dotSym: SimpleMarkerSymbol | null = null;
   private _lineSym: SimpleLineSymbol | null = null;
@@ -307,9 +302,6 @@ class ProximityEngine {
     this._isActive = false;
     this._candidateSnapshot = [];
     this._candidateExtents = [];
-    this._reuseSnapPt = null;
-    this._reuseMidPt = null;
-    this._reuseLinePl = null;
     this._clear();
     this._emitHint('Proximity snap ended — drawing complete.', 'idle');
     EngineLogger.success('Proximity Engine', 'Deactivated — drawing complete');
@@ -328,6 +320,7 @@ class ProximityEngine {
     this._lineSym = null;
     this._txtSym = null;
     this._layer = this._getOrCreateLayer();
+
     console.info('[ProximityEngine] view changed');
   }
 
@@ -476,29 +469,16 @@ class ProximityEngine {
   private _renderSnap(cursor: Point, snapPt: Point): void {
     if (!this._view || !this._layer) return;
 
-    // ── Reuse Point geometry objects ──────────────────────────────────────
-    if (!this._reuseSnapPt) {
-      this._reuseSnapPt = new Point({ x: snapPt.x, y: snapPt.y, spatialReference: cursor.spatialReference });
-    } else {
-      this._reuseSnapPt.x = snapPt.x;
-      this._reuseSnapPt.y = snapPt.y;
-      this._reuseSnapPt.spatialReference = cursor.spatialReference;
-    }
-    const snap = this._reuseSnapPt;
-
-    if (!this._reuseMidPt) {
-      this._reuseMidPt = new Point({ x: (cursor.x + snap.x) / 2, y: (cursor.y + snap.y) / 2, spatialReference: cursor.spatialReference });
-    } else {
-      this._reuseMidPt.x = (cursor.x + snap.x) / 2;
-      this._reuseMidPt.y = (cursor.y + snap.y) / 2;
-      this._reuseMidPt.spatialReference = cursor.spatialReference;
-    }
-    const midPt = this._reuseMidPt;
+    // Fresh geometry objects every frame — required so ArcGIS detects a new
+    // reference and re-renders. Mutating the same object in place (previous
+    // approach) left the line stale because the accessor setter saw no change.
+    const snap = new Point({ x: snapPt.x, y: snapPt.y, spatialReference: cursor.spatialReference });
+    const midPt = new Point({ x: (cursor.x + snap.x) / 2, y: (cursor.y + snap.y) / 2, spatialReference: cursor.spatialReference });
+    const linePl = new Polyline({ spatialReference: cursor.spatialReference, paths: [[[cursor.x, cursor.y], [snap.x, snap.y]]] });
 
     // ── Compute bearing and distance once ─────────────────────────────────
     const bearing = this._calcBearing(cursor, snap);
     const bearingStr = `${Math.round(bearing)}°`;
-    // Compute distance label once — reused for both the graphic label and _emitSnap.
     const distLabel = this._calcDist(cursor, snap);
 
     // ── 1. Dot ────────────────────────────────────────────────────────────
@@ -512,19 +492,11 @@ class ProximityEngine {
     }
 
     // ── 2. Dashed line ────────────────────────────────────────────────────
-    if (!this._reuseLinePl) {
-      this._reuseLinePl = new Polyline({ spatialReference: cursor.spatialReference });
-      this._reuseLinePl.addPath([[cursor.x, cursor.y], [snap.x, snap.y]]);
-    } else {
-      this._reuseLinePl.paths = [[[cursor.x, cursor.y], [snap.x, snap.y]]];
-      this._reuseLinePl.spatialReference = cursor.spatialReference;
-    }
-
     if (!this._lineGraphic) {
-      this._lineGraphic = new Graphic({ geometry: this._reuseLinePl, symbol: this._lineSym! });
+      this._lineGraphic = new Graphic({ geometry: linePl, symbol: this._lineSym! });
       this._layer.add(this._lineGraphic);
     } else {
-      this._lineGraphic.geometry = this._reuseLinePl;
+      this._lineGraphic.geometry = linePl;
     }
 
     // ── 3. Distance + Direction label ─────────────────────────────────────
@@ -539,7 +511,7 @@ class ProximityEngine {
         this._layer.add(this._labelGraphic);
       } else {
         this._labelGraphic.geometry = midPt;
-        this._labelGraphic.symbol = this._txtSym; // reassign to trigger re-render
+        this._labelGraphic.symbol = this._txtSym;
       }
     }
 
@@ -706,10 +678,6 @@ class ProximityEngine {
       yoffset: 6,
     });
 
-    // Reset reusable geometry handles so they are recreated for the new SR
-    this._reuseSnapPt = null;
-    this._reuseMidPt = null;
-    this._reuseLinePl = null;
   }
 
   // ── Event helpers ─────────────────────────────────────────────────────────
