@@ -1577,6 +1577,10 @@
             <input type="checkbox" id="setting-templates" checked title="Enable use of pre-configured symbol templates for rapid deployment via TemplateEngine." />
           </div>
           <div class="setting-row">
+            <label>Selection Menu</label>
+            <input type="checkbox" id="setting-selectionMenu" checked title="Show Selection and Align/Arrange submenus in the right-click context menu (SelectionEngine)." />
+          </div>
+          <div class="setting-row">
             <label>Engine Logs</label>
             <input type="checkbox" id="setting-logging" checked title="Enable logging of engine events (drawing, editing, measurements) to Engine Log panel." />
           </div>
@@ -2469,6 +2473,10 @@
           path: ['features', 'templates'],
           value: v,
         }),
+        'setting-selectionMenu': (v) => ({
+          path: ['features', 'selectionMenu'],
+          value: v,
+        }),
         'setting-proximityEngine': (v) => ({
           path: ['features', 'proximityEngine'],
           value: v,
@@ -2737,6 +2745,8 @@
             features.saveLoad !== false;
           document.getElementById('setting-templates').checked =
             features.templates !== false;
+          document.getElementById('setting-selectionMenu').checked =
+            features.selectionMenu !== false;
           document.getElementById('setting-proximityEngine').checked =
             features.proximityEngine !== false;
           document.getElementById('setting-drawingCues').checked =

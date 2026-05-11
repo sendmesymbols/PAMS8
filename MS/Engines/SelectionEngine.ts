@@ -12,9 +12,11 @@ import Polygon from "@arcgis/core/geometry/Polygon";
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
 import GraphicsLayerManager from "../Managers/GraphicsLayerManager";
+import { ContextMenuItem } from "../Managers/ContextMenuManager";
 import AnnotationEngine from "./AnnotationEngine.ts";
 import * as promiseUtils from "@arcgis/core/core/promiseUtils";
 import EngineLogger from "../Support/EngineLogger";
+import settingsData from "../Data/Settings.json";
 
 // ── Proxy bounding-box symbol (used as drag handle for batch move) ───────────
 
@@ -1135,6 +1137,303 @@ class SelectionEngine {
                 });
             },
         });
+    }
+
+    // ── Context menu items ────────────────────────────────────────────────────
+
+    /**
+     * Returns the Selection and Align/Arrange context-menu item trees.
+     * Call from SymbolEngine.registerContextMenuItems() and spread the result.
+     */
+    public buildContextMenuItems(
+        pushUndo: (e: any) => void,
+        closeActiveWorkflow: () => void
+    ): ContextMenuItem[] {
+        if ((settingsData as any).features?.selectionMenu === false) return [];
+        return [
+            // ── Selection submenu ────────────────────────────────────────────────
+            {
+                id: 'selection-submenu',
+                label: 'Selection',
+                icon: '<span style="font-size:14px">☑</span>',
+                children: [
+                    {
+                        id: 'lasso-select',
+                        label: () => this.isLassoActive ? 'Cancel Lasso' : 'Lasso Select',
+                        shortcut: 'L',
+                        icon: '<span style="font-size:14px">🔳</span>',
+                        action: (_graphic: any) => {
+                            closeActiveWorkflow();
+                            if (this.isLassoActive) {
+                                this.cancelLasso();
+                            } else {
+                                this.lassoSelect();
+                            }
+                        },
+                    },
+                    {
+                        id: 'toggle-select',
+                        label: (graphic: any) =>
+                            this.isSelected(graphic) ? 'Deselect' : 'Add to Selection',
+                        shortcut: 'Shift+Click',
+                        icon: '<span style="font-size:14px">☑</span>',
+                        action: (graphic: any) => this.toggleGraphic(graphic),
+                    },
+                    {
+                        id: 'clear-selection',
+                        label: () => `Clear Selection (${this.count})`,
+                        icon: '<span style="font-size:14px">✕</span>',
+                        visible: () => this.count > 0,
+                        action: (_graphic: any) => this.clearSelection(),
+                    },
+                    {
+                        id: 'move-selected',
+                        label: () => `Move Selected (${this.count})`,
+                        shortcut: 'M',
+                        icon: '<span style="font-size:14px">✥</span>',
+                        visible: () => this.count > 1,
+                        action: (_graphic: any) => {
+                            closeActiveWorkflow();
+                            this.moveSelected(({ graphics, dx, dy }) =>
+                                pushUndo({
+                                    label: `Move ${graphics.length} Symbols`,
+                                    undo: () => this._applyDelta(graphics, -dx, -dy),
+                                    redo: () => this._applyDelta(graphics, dx, dy),
+                                })
+                            );
+                        },
+                    },
+                    {
+                        id: 'delete-selected',
+                        label: () => `Delete Selected (${this.count})`,
+                        shortcut: 'Del',
+                        icon: '<span style="font-size:14px">🗑️</span>',
+                        visible: () => this.count > 1,
+                        action: (_graphic: any) =>
+                            this.deleteSelected((entry) => pushUndo(entry)),
+                    },
+                    // ── Select Similar submenu ──────────────────────────────────
+                    {
+                        id: 'select-similar-submenu',
+                        label: 'Select Similar',
+                        icon: '<span style="font-size:14px">🔍</span>',
+                        children: [
+                            {
+                                id: 'select-same-sidc',
+                                label: 'Same SIDC',
+                                icon: '<span style="font-size:14px">⚜</span>',
+                                action: (graphic: any) => this.selectSimilarSameSIDC(graphic),
+                            },
+                            {
+                                id: 'select-same-echelon',
+                                label: 'Same Echelon',
+                                icon: '<span style="font-size:14px">▣</span>',
+                                action: (graphic: any) => this.selectSimilarSameEchelon(graphic),
+                            },
+                            {
+                                id: 'select-own-only',
+                                label: 'Own Only',
+                                icon: '<span style="font-size:14px">🟢</span>',
+                                action: () => this.selectOwnOnly(),
+                            },
+                            {
+                                id: 'select-enemy',
+                                label: 'Enemy',
+                                icon: '<span style="font-size:14px">🔴</span>',
+                                action: () => this.selectEnemy(),
+                            },
+                        ],
+                    },
+                    // ── Select Within submenu ───────────────────────────────────
+                    {
+                        id: 'select-within-submenu',
+                        label: 'Select Within',
+                        icon: '<span style="font-size:14px">⭕</span>',
+                        children: [
+                            {
+                                id: 'select-within',
+                                label: 'Within',
+                                icon: '<span style="font-size:14px">⭕</span>',
+                                action: (graphic: any) => this.selectWithin(graphic, false),
+                            },
+                            {
+                                id: 'select-within-self',
+                                label: 'Within + Self',
+                                icon: '<span style="font-size:14px">◎</span>',
+                                action: (graphic: any) => this.selectWithin(graphic, true),
+                            },
+                        ],
+                    },
+                    // ── Filter by Type submenu ──────────────────────────────────
+                    {
+                        id: 'filter-type-submenu',
+                        label: 'Filter by Type',
+                        icon: '<span style="font-size:14px">▼</span>',
+                        children: [
+                            {
+                                id: 'select-points',
+                                label: 'Points',
+                                icon: '<span style="font-size:14px">●</span>',
+                                action: () => this.selectPointSymbols(),
+                            },
+                            {
+                                id: 'select-areas',
+                                label: 'Areas',
+                                icon: '<span style="font-size:14px">■</span>',
+                                action: () => this.selectAreaSymbols(),
+                            },
+                            {
+                                id: 'select-lines',
+                                label: 'Lines',
+                                icon: '<span style="font-size:14px">╱</span>',
+                                action: () => this.selectLineSymbols(),
+                            },
+                        ],
+                    },
+                ],
+            },
+            // ── Align parent menu (Align, Distribute, Arrange) ───────────────────
+            {
+                id: 'align-parent',
+                label: 'Align',
+                icon: '<span style="font-size:14px">⊞</span>',
+                visible: () => (settingsData as any).features?.selectionMenu !== false && this.count > 1,
+                children: [
+                    // ── Align submenu ───────────────────────────────────────────
+                    {
+                        id: 'align-submenu',
+                        label: 'Align',
+                        icon: '<span style="font-size:14px">⊞</span>',
+                        children: [
+                            {
+                                id: 'align-left',
+                                label: 'Align Left',
+                                icon: '<span style="font-size:14px">←</span>',
+                                action: (_g: any) => this.alignLeft((e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'align-right',
+                                label: 'Align Right',
+                                icon: '<span style="font-size:14px">→</span>',
+                                action: (_g: any) => this.alignRight((e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'align-top',
+                                label: 'Align Top',
+                                icon: '<span style="font-size:14px">↑</span>',
+                                action: (_g: any) => this.alignTop((e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'align-bottom',
+                                label: 'Align Bottom',
+                                icon: '<span style="font-size:14px">↓</span>',
+                                action: (_g: any) => this.alignBottom((e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'center-on-x',
+                                label: 'Center on X',
+                                icon: '<span style="font-size:14px">↕</span>',
+                                action: (_g: any) => this.centerOnX((e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'center-on-y',
+                                label: 'Center on Y',
+                                icon: '<span style="font-size:14px">↔</span>',
+                                action: (_g: any) => this.centerOnY((e) => pushUndo(e)),
+                            },
+                        ],
+                    },
+                    // ── Distribute submenu ──────────────────────────────────────
+                    {
+                        id: 'distribute-submenu',
+                        label: 'Distribute',
+                        icon: '<span style="font-size:14px">⇔</span>',
+                        children: [
+                            {
+                                id: 'align-horizontal',
+                                label: 'Distribute Horizontal',
+                                icon: '<span style="font-size:14px">⇔</span>',
+                                action: (_g: any) => this.alignHorizontal((e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'align-vertical',
+                                label: 'Distribute Vertical',
+                                icon: '<span style="font-size:14px">↕</span>',
+                                action: (_g: any) => this.alignVertical((e) => pushUndo(e)),
+                            },
+                        ],
+                    },
+                    // ── Arrange submenu ─────────────────────────────────────────
+                    {
+                        id: 'arrange-submenu',
+                        label: 'Arrange',
+                        icon: '<span style="font-size:14px">⊞</span>',
+                        children: [
+                            {
+                                id: 'arrange-line',
+                                label: 'Line',
+                                icon: '<span style="font-size:14px">―</span>',
+                                action: (_g: any) => this.arrangeLine(undefined, (e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'arrange-column',
+                                label: 'Column',
+                                icon: '<span style="font-size:14px">|</span>',
+                                action: (_g: any) => this.arrangeColumn(undefined, (e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'arrange-square',
+                                label: 'Square Grid',
+                                icon: '<span style="font-size:14px">⊞</span>',
+                                action: (_g: any) => this.arrangeSquare(undefined, (e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'arrange-triangle',
+                                label: 'Triangle',
+                                icon: '<span style="font-size:14px">▲</span>',
+                                action: (_g: any) => this.arrangeTriangle(undefined, (e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'arrange-inv-triangle',
+                                label: 'Inverted Triangle',
+                                icon: '<span style="font-size:14px">▽</span>',
+                                action: (_g: any) => this.arrangeInvertedTriangle(undefined, (e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'arrange-wedge',
+                                label: 'Wedge',
+                                icon: '<span style="font-size:14px">⋁</span>',
+                                action: (_g: any) => this.arrangeWedge(undefined, (e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'arrange-echelon-left',
+                                label: 'Echelon Left',
+                                icon: '<span style="font-size:14px">↙</span>',
+                                action: (_g: any) => this.arrangeEchelonLeft(undefined, (e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'arrange-echelon-right',
+                                label: 'Echelon Right',
+                                icon: '<span style="font-size:14px">↘</span>',
+                                action: (_g: any) => this.arrangeEchelonRight(undefined, (e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'arrange-diamond',
+                                label: 'Diamond',
+                                icon: '<span style="font-size:14px">◇</span>',
+                                action: (_g: any) => this.arrangeDiamond(undefined, (e) => pushUndo(e)),
+                            },
+                            {
+                                id: 'arrange-circle',
+                                label: 'Circle',
+                                icon: '<span style="font-size:14px">○</span>',
+                                action: (_g: any) => this.arrangeCircle(undefined, (e) => pushUndo(e)),
+                            },
+                        ],
+                    },
+                ],
+            },
+        ];
     }
 
     // ── Event system ──────────────────────────────────────────────────────────

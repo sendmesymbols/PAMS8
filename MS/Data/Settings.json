@@ -384,6 +384,7 @@
     "saveLoad": true,
     "templates": true,
     "proximityEngine": true,
+    "selectionMenu": true,
     "drawingCues": true,
     "mgrsEngine": false,
     "analysisEngines": true

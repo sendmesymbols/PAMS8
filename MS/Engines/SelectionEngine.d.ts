@@ -2,6 +2,7 @@ import Graphic from "@arcgis/core/Graphic";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import GraphicsLayerManager from "../Managers/GraphicsLayerManager";
+import { ContextMenuItem } from "../Managers/ContextMenuManager";
 /**
  * SelectionEngine — manages multi-symbol selection and batch operations.
  *
@@ -198,6 +199,11 @@ declare class SelectionEngine {
     private _addHighlight;
     private _removeHighlight;
     private _pushAlignUndo;
+    /**
+     * Returns the Selection and Align/Arrange context-menu item trees.
+     * Call from SymbolEngine.registerContextMenuItems() and spread the result.
+     */
+    buildContextMenuItems(pushUndo: (e: any) => void, closeActiveWorkflow: () => void): ContextMenuItem[];
     on(type: string, listener: Function): {
         remove(): void;
     };
