@@ -24,7 +24,6 @@ import MGRSEngine from './MGRSEngine.ts';
 import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
 import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
-import ImportExportEngine from './ImportExportEngine';
 import SerializationEngine from './ImportExport/SerializationEngine';
 interface Evented {
     on(type: string, listener: Function): {
@@ -65,7 +64,6 @@ declare class SymbolEngine implements Evented {
     private _bufferEngine;
     private _corridorEngine;
     private _effectEngine;
-    private _importExportEngine;
     readonly serializationEngine: SerializationEngine;
     private currentSymbol;
     private sidc;
@@ -119,6 +117,8 @@ declare class SymbolEngine implements Evented {
     private _initBufferEngine;
     private _initCorridorEngine;
     private _initEffectEngine;
+    /** Destroy all analysis engines and unlink them from the context menu. */
+    private _destroyAnalysisEngines;
     get view(): MapView | SceneView;
     get layerManager(): GraphicsLayerManager;
     set layerManager(value: GraphicsLayerManager);
@@ -213,8 +213,6 @@ declare class SymbolEngine implements Evented {
     get trajectoryEngine(): TrajectoryEngine | null;
     /** Get current settings data for the control panel */
     get settings(): typeof settingsData;
-    /** Access the ImportExportEngine for save/load plan operations */
-    get importExportEngine(): ImportExportEngine | null;
     /**
      * Handle runtime setting changes from the control panel.
      * Updates settingsData in memory and applies changes to active engines.
@@ -377,8 +375,6 @@ declare class SymbolEngine implements Evented {
     importLayerFromJSON(data: object[]): void;
     /** Download all symbols as a PAMS8 JSON file. */
     saveToFile(filename?: string): void;
-    /** Download a single graphic as a PAMS8 JSON file. */
-    saveSymbolToFile(graphic: Graphic): void;
     /** Download all graphics as a Plan JSON file. Delegates to SerializationEngine. */
     savePlanToFile(filename?: string): void;
     /** Open a Plan JSON file and restore all symbols from it. Delegates to SerializationEngine. */

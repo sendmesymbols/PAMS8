@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>FlowRenderer — Wind Field & Ballistic Dispersion</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#060809}
+
+    /* ── Panel shell ─────────────────────────────────────────────────────── */
+    #panel{
+      position:absolute;top:14px;right:14px;width:310px;z-index:99;
+      background:rgba(6,8,9,0.97);
+      border:1px solid rgba(180,40,220,0.30);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh - 28px);overflow-y:auto;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────────── */
+    .ph{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;
+      border-bottom:1px solid rgba(180,40,220,0.15);
+      background:rgba(180,40,220,0.07);
+      position:sticky;top:0;z-index:2;
+    }
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#B428DC;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935;transition:color .2s}
+    .ph-status.ready   {color:#1D9E75}
+    .ph-status.busy    {color:#EF9F27}
+    .ph-status.flowing {color:#B428DC}
+
+    /* ── Mode tabs ───────────────────────────────────────────────────────── */
+    .ptabs{display:flex;gap:0;padding:10px 12px 9px}
+    .ptab{
+      flex:1;padding:6px;font-family:'Courier New',monospace;
+      font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      cursor:pointer;border:1px solid rgba(180,40,220,0.30);
+      background:transparent;color:#888780;transition:all .13s;
+    }
+    .ptab:first-child{border-radius:3px 0 0 3px}
+    .ptab:last-child {border-radius:0 3px 3px 0;border-left:none}
+    .ptab.active{background:rgba(180,40,220,0.18);color:#B428DC;border-color:#B428DC}
+
+    /* ── Section label ───────────────────────────────────────────────────── */
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#3a3935;padding:9px 12px 5px}
+
+    /* ── Grid ────────────────────────────────────────────────────────────── */
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s;
+    }
+    input:focus,select:focus{border-color:rgba(180,40,220,0.55)}
+    select option{background:#141618}
+
+    /* ── Slider rows ─────────────────────────────────────────────────────── */
+    .psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+    .psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;flex:1.4}
+    .psr input[type=range]{flex:2;accent-color:#B428DC;cursor:pointer}
+    .psr-v{font-size:10px;color:#B428DC;min-width:36px;text-align:right}
+
+    /* ── Divider ─────────────────────────────────────────────────────────── */
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+
+    /* ── Toggle ──────────────────────────────────────────────────────────── */
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#B428DC;width:13px;height:13px;cursor:pointer}
+
+    /* ── Info callout ────────────────────────────────────────────────────── */
+    .info-box{
+      margin:0 12px 9px;padding:8px 10px;
+      background:rgba(180,40,220,0.07);border:1px solid rgba(180,40,220,0.20);
+      border-radius:3px;font-size:10px;line-height:1.6;color:#888780;
+    }
+    .info-box b{color:#B428DC}
+    .info-box code{
+      display:block;margin-top:5px;padding:5px 7px;
+      background:rgba(0,0,0,0.40);border-radius:2px;
+      font-size:9.5px;color:#c0bdb4;letter-spacing:.03em;white-space:pre;
+    }
+
+    /* ── Vector field preview canvas ────────────────────────────────────── */
+    #field-preview{
+      display:block;margin:0 12px 9px;border-radius:3px;
+      border:1px solid rgba(255,255,255,0.08);background:#0a0c0e;
+    }
+
+    /* ── Stats strip ─────────────────────────────────────────────────────── */
+    #stats{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;
+      margin:0 12px 8px;
+      background:rgba(180,40,220,0.06);border:1px solid rgba(180,40,220,0.15);
+      border-radius:3px;padding:7px 9px;font-size:10px;
+    }
+    .st{display:flex;flex-direction:column;gap:1px}
+    .st-l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935}
+    .st-v{color:#B428DC}
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .pb-row{display:flex;gap:6px;padding:9px 12px}
+    .pb{
+      flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;
+      border:1px solid rgba(180,40,220,0.35);
+      background:transparent;color:#B428DC;transition:all .14s;
+    }
+    .pb:hover:not(:disabled){background:rgba(180,40,220,0.10)}
+    .pb.primary{background:rgba(180,40,220,0.16);border-color:#B428DC}
+    .pb.primary:hover:not(:disabled){background:rgba(180,40,220,0.30)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+
+    /* ── Section visibility ──────────────────────────────────────────────── */
+    .mode-section{transition:opacity .2s}
+    .mode-section.hidden{display:none}
+
+    /* ── Origin coords ───────────────────────────────────────────────────── */
+    #coords{font-size:9px;color:#B428DC;padding:2px 12px 7px;letter-spacing:.05em;opacity:.75}
+
+    /* ── Hint ────────────────────────────────────────────────────────────── */
+    #hint{
+      position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(6,8,9,0.93);border:1px solid rgba(180,40,220,0.45);
+      color:#B428DC;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase;
+    }
+
+    /* ── Legend ──────────────────────────────────────────────────────────── */
+    #legend{
+      position:absolute;bottom:14px;left:14px;z-index:99;
+      background:rgba(6,8,9,0.93);border:1px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:9px 13px;display:flex;flex-direction:column;gap:5px;
+    }
+    .leg-row{display:flex;align-items:center;gap:8px}
+    .leg-line{width:22px;height:3px;border-radius:2px;flex-shrink:0}
+    .leg-lbl{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#888780}
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<!-- ── PANEL ─────────────────────────────────────────────────────────────── -->
+<div id="panel">
+
+  <div class="ph">
+    <div class="ph-title">≋ Flow / Dispersion</div>
+    <div class="ph-status flowing" id="status">Loading wind field</div>
+  </div>
+
+  <!-- Mode selector -->
+  <div class="ptabs">
+    <button class="ptab active" data-mode="wind">Live wind field</button>
+    <button class="ptab"        data-mode="dispersion">Ballistic dispersion</button>
+  </div>
+
+  <!-- ── WIND MODE ─────────────────────────────────────────────────────── -->
+  <div id="sec-wind" class="mode-section">
+
+    <div class="ps">Wind service</div>
+    <div class="pg">
+      <div class="pf full">
+        <div class="pl">Source</div>
+        <select id="inp-wind-src">
+          <option value="noaa_us">NOAA MRMS — contiguous US</option>
+          <option value="esri_global" selected>Esri global wind (sample)</option>
+          <option value="custom">Custom ImageryTileLayer URL</option>
+        </select>
+      </div>
+      <div class="pf full" id="custom-url-row" style="display:none">
+        <div class="pl">ImageryTileLayer URL</div>
+        <input id="inp-custom-url" type="text" placeholder="https://…/ImageServer"/>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <b>How FlowRenderer works</b><br>
+      The layer must serve a two-band raster: band 1 = U (east) component, band 2 = V (north) component, both in m/s.
+      FlowRenderer animates streamlines from those vectors — no server-side processing required.
+      <code>// Key requirement: U/V bands in m/s
+renderer.flowType = "vector"; // or "magnitude"</code>
+    </div>
+
+    <div class="ps">FlowRenderer parameters</div>
+    <div class="psr">
+      <div class="psr-l">Density</div>
+      <input id="fr-density" type="range" min="0.1" max="1" step="0.05" value="0.6"/>
+      <div class="psr-v" id="fr-density-v">0.6</div>
+    </div>
+    <div class="psr">
+      <div class="psr-l">Flow speed</div>
+      <input id="fr-speed" type="range" min="1" max="100" step="1" value="25"/>
+      <div class="psr-v" id="fr-speed-v">25</div>
+    </div>
+    <div class="psr">
+      <div class="psr-l">Trail length</div>
+      <input id="fr-trail" type="range" min="0" max="1" step="0.05" value="0.5"/>
+      <div class="psr-v" id="fr-trail-v">0.5</div>
+    </div>
+    <div class="psr">
+      <div class="psr-l">Trail width (px)</div>
+      <input id="fr-width" type="range" min="0.5" max="4" step="0.25" value="1.5"/>
+      <div class="psr-v" id="fr-width-v">1.5</div>
+    </div>
+
+    <div class="ps">Colour scheme</div>
+    <div class="pg">
+      <div class="pf full">
+        <div class="pl">Palette</div>
+        <select id="fr-palette">
+          <option value="speed_purple">Speed — purple (tactical)</option>
+          <option value="speed_amber">Speed — amber (threat)</option>
+          <option value="direction_rgb">Direction — RGB compass</option>
+          <option value="mono_white">Mono white</option>
+          <option value="mono_green">Mono green (FLIR)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="ptr"><label>Rotate with view</label>
+      <input id="fr-rotate" type="checkbox" checked/></div>
+    <div class="ptr"><label>Show in 3D (SceneView)</label>
+      <input id="fr-3d" type="checkbox" checked/></div>
+
+  </div><!-- /sec-wind -->
+
+  <!-- ── DISPERSION MODE ────────────────────────────────────────────────── -->
+  <div id="sec-dispersion" class="mode-section hidden">
+
+    <div class="info-box">
+      <b>Substituting your own vector raster</b><br>
+      The <code>pixelFilter</code> function intercepts every pixel block before
+      rendering. Override the U/V values with your own model and FlowRenderer
+      animates your field — no server, no hosted raster required.
+      <code>layer.pixelFilter = ({ pixelBlock, extent }) => {
+  // pixelBlock.pixels[0] = U component array
+  // pixelBlock.pixels[1] = V component array
+  // Write your model output here ↓
+};</code>
+    </div>
+
+    <div class="ps">Dispersion source point</div>
+    <div id="coords">Origin: click map to place source</div>
+    <div class="pg">
+      <div class="pf">
+        <div class="pl">Source lat</div>
+        <input id="inp-src-lat" type="number" value="33.720" step="0.001"/>
+      </div>
+      <div class="pf">
+        <div class="pl">Source lon</div>
+        <input id="inp-src-lon" type="number" value="73.070" step="0.001"/>
+      </div>
+    </div>
+
+    <div class="ps">Wind field parameters</div>
+    <div class="psr">
+      <div class="psr-l">Wind speed (m/s)</div>
+      <input id="inp-wnd-spd" type="range" min="0" max="25" step="0.5" value="8"/>
+      <div class="psr-v" id="wnd-spd-v">8</div>
+    </div>
+    <div class="psr">
+      <div class="psr-l">Wind FROM (°)</div>
+      <input id="inp-wnd-brg" type="range" min="0" max="359" step="1" value="270"/>
+      <div class="psr-v" id="wnd-brg-v">270°</div>
+    </div>
+    <div class="psr">
+      <div class="psr-l">Spread σ (km)</div>
+      <input id="inp-sigma" type="range" min="0.5" max="20" step="0.5" value="5"/>
+      <div class="psr-v" id="sigma-v">5</div>
+    </div>
+
+    <div class="ps">Dispersion model</div>
+    <div class="pg">
+      <div class="pf full">
+        <div class="pl">Model type</div>
+        <select id="inp-model">
+          <option value="gaussian">Gaussian plume (NBC / smoke)</option>
+          <option value="ballistic">Ballistic drift (indirect fire)</option>
+          <option value="radial">Radial fragmentation</option>
+          <option value="uniform">Uniform advection (simple wind)</option>
+        </select>
+      </div>
+      <div class="pf">
+        <div class="pl">Intensity scale</div>
+        <input id="inp-intensity" type="number" value="15" min="1" max="50" step="1"/>
+      </div>
+      <div class="pf">
+        <div class="pl">Field radius (km)</div>
+        <input id="inp-field-radius" type="number" value="20" min="2" max="100" step="1"/>
+      </div>
+    </div>
+
+    <div class="ps">Vector field preview (synthetic U/V)</div>
+    <canvas id="field-preview" width="284" height="120"></canvas>
+
+    <!-- Stats -->
+    <div id="stats">
+      <div class="st"><div class="st-l">Max U (m/s)</div><div class="st-v" id="st-u">—</div></div>
+      <div class="st"><div class="st-l">Max V (m/s)</div><div class="st-v" id="st-v">—</div></div>
+      <div class="st"><div class="st-l">Pixels</div><div class="st-v" id="st-px">—</div></div>
+    </div>
+
+  </div><!-- /sec-dispersion -->
+
+  <div class="pdiv"></div>
+
+  <div class="pb-row">
+    <button class="pb"       id="btn-clear">Clear</button>
+    <button class="pb"       id="btn-toggle-layer">Pause flow</button>
+    <button class="pb primary" id="btn-apply">Apply ↗</button>
+  </div>
+
+</div><!-- /panel -->
+
+<!-- ── LEGEND ─────────────────────────────────────────────────────────────── -->
+<div id="legend">
+  <div class="leg-row"><div class="leg-line" style="background:linear-gradient(to right,#B428DC,#fff)"></div><div class="leg-lbl">Flow streamlines</div></div>
+  <div class="leg-row"><div class="leg-line" style="background:linear-gradient(to right,#1D9E75,#EF9F27,#DC3C30)"></div><div class="leg-lbl">Speed (low → high)</div></div>
+  <div class="leg-row"><div class="leg-line" style="background:#378ADD"></div><div class="leg-lbl">Source / origin point</div></div>
+</div>
+
+<div id="hint" style="display:none">Click map to place dispersion source</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map",
+  "esri/views/SceneView",
+  "esri/layers/ImageryTileLayer",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic",
+  "esri/geometry/Point",
+  "esri/renderers/FlowRenderer",
+  "esri/Color",
+], function(
+  Map, SceneView, ImageryTileLayer, GraphicsLayer,
+  Graphic, Point, FlowRenderer, Color
+) {
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VECTOR FIELD GENERATOR
+  // ─────────────────────────────────────────────────────────────────────────
+  // Produces U/V arrays on a regular lon/lat grid for any of the four
+  // dispersion models. These arrays are then injected into the layer's
+  // pixelFilter to replace (or supplement) real raster pixel data.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Generate a synthetic U/V vector field on a lon/lat grid.
+   * @param {object} cfg
+   *   srcLon, srcLat    — source point (degrees)
+   *   windSpeedMS       — background wind speed (m/s)
+   *   windBearingDeg    — wind FROM direction (met convention)
+   *   sigmaKm           — dispersion spread parameter
+   *   intensity         — output magnitude scale
+   *   radiusKm          — analysis radius around source
+   *   model             — 'gaussian' | 'ballistic' | 'radial' | 'uniform'
+   *   gridW, gridH      — output grid dimensions
+   * @returns { uGrid, vGrid, maxU, maxV } — Float32Arrays
+   */
+  function generateVectorField({
+    srcLon, srcLat, windSpeedMS, windBearingDeg,
+    sigmaKm, intensity, radiusKm,
+    model = 'gaussian', gridW = 128, gridH = 128,
+  }) {
+    // Wind direction: met "FROM" → downwind velocity vector
+    const windToRad = ((windBearingDeg + 180) % 360) * Math.PI / 180;
+    const wU = windSpeedMS * Math.sin(windToRad);  // eastward component
+    const wV = windSpeedMS * Math.cos(windToRad);  // northward component
+    const σ  = sigmaKm * 1000;  // metres
+
+    // Grid extent — ±radiusKm around source in metres
+    const halfM  = radiusKm * 1000;
+    const degPerM = 1 / 111_320;  // rough degrees per metre at equator
+
+    const uGrid = new Float32Array(gridW * gridH);
+    const vGrid = new Float32Array(gridW * gridH);
+    let maxU = 0, maxV = 0;
+
+    for (let row = 0; row < gridH; row++) {
+      for (let col = 0; col < gridW; col++) {
+        // Pixel → metres offset from source in ENU
+        const east  = (col / (gridW - 1) - 0.5) * 2 * halfM;
+        const north = (0.5 - row / (gridH - 1)) * 2 * halfM;  // y flipped
+        const r     = Math.sqrt(east*east + north*north);
+        const theta = Math.atan2(east, north);  // bearing from source
+
+        let u = wU, v = wV;  // baseline: pure advection
+
+        if (model === 'gaussian') {
+          // Gaussian plume: concentration-weighted drift toward wind direction.
+          // The velocity field carries material from source along the plume axis.
+          // Downwind displacement drives flow; crosswind gradient creates curl.
+          const downwind = east * Math.sin(windToRad) + north * Math.cos(windToRad);
+          const crosswind = east * Math.cos(windToRad) - north * Math.sin(windToRad);
+          const plume = downwind > 0
+            ? Math.exp(-0.5 * (crosswind / σ) ** 2) * Math.exp(-0.5 * (downwind / (σ * 3)) ** 2)
+            : 0.05;
+          u = wU * (1 + plume * intensity * 0.4);
+          v = wV * (1 + plume * intensity * 0.4);
+          // Add crosswind convergence toward plume axis
+          u += -crosswind / σ * plume * intensity * 0.2;
+          v +=  crosswind / σ * plume * intensity * 0.05;
+
+        } else if (model === 'ballistic') {
+          // Ballistic drift model: near source, trajectories radiate outward;
+          // at distance, wind deflects them. Models dispersion of rounds
+          // from a single firing position.
+          const nearField = Math.exp(-0.5 * (r / (σ * 0.4)) ** 2);
+          // Radial component: rounds move outward from source
+          const radialU = r > 1 ? (east / r) * intensity * nearField : 0;
+          const radialV = r > 1 ? (north / r) * intensity * nearField : 0;
+          // Coriolis-like deflection: deflect to the right (northern hemisphere)
+          const deflection = 0.3 * (1 - nearField);
+          u = radialU * (1 - deflection) - radialV * deflection + wU;
+          v = radialV * (1 - deflection) + radialU * deflection + wV;
+
+        } else if (model === 'radial') {
+          // Radial fragmentation: velocity vectors point outward from source,
+          // magnitude decays with 1/r² (impulse momentum). Useful for blast
+          // fragment / debris field visualisation.
+          if (r > 1) {
+            const mag = intensity * Math.exp(-0.5 * (r / σ) ** 2);
+            u = (east / r)  * mag + wU * 0.3;
+            v = (north / r) * mag + wV * 0.3;
+          }
+
+        } else {
+          // Uniform advection: pure background wind everywhere (simplest case)
+          u = wU * intensity / 10;
+          v = wV * intensity / 10;
+        }
+
+        const idx = row * gridW + col;
+        uGrid[idx] = u;
+        vGrid[idx] = v;
+        maxU = Math.max(maxU, Math.abs(u));
+        maxV = Math.max(maxV, Math.abs(v));
+      }
+    }
+
+    return { uGrid, vGrid, maxU, maxV, gridW, gridH };
+  }
+
+  // ── Draw the synthetic field on the preview canvas ─────────────────────
+  function drawFieldPreview(fieldData) {
+    const canvas = document.getElementById('field-preview');
+    const ctx    = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const { uGrid, vGrid, gridW, gridH, maxU, maxV } = fieldData;
+    const maxMag = Math.sqrt(maxU*maxU + maxV*maxV) || 1;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0a0c0e';
+    ctx.fillRect(0, 0, W, H);
+
+    // Draw arrow grid (subsample to ~16×8 arrows)
+    const stepsX = 20, stepsY = 10;
+    for (let gy = 0; gy < stepsY; gy++) {
+      for (let gx = 0; gx < stepsX; gx++) {
+        const gi  = Math.round(gy / stepsY * (gridH-1)) * gridW +
+                    Math.round(gx / stepsX * (gridW-1));
+        const u   = uGrid[gi], v = vGrid[gi];
+        const mag = Math.sqrt(u*u + v*v);
+        if (mag < 0.05) continue;
+        const t   = Math.min(1, mag / maxMag);
+
+        // Colour: purple (low) → amber → red (high)
+        const r = Math.round(180 + t * 40);
+        const g = Math.round(40  - t * 40);
+        const b = Math.round(220 - t * 180);
+        const alpha = 0.5 + t * 0.5;
+
+        const cx = (gx / stepsX + 0.5 / stepsX) * W;
+        const cy = H - (gy / stepsY + 0.5 / stepsY) * H;
+        const len = 10 * Math.min(1, mag / (maxMag * 0.5));
+        const angle = Math.atan2(-v, u);  // screen: v flipped
+
+        ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
+        ctx.lineWidth   = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        const tx = cx + Math.cos(angle) * len;
+        const ty = cy + Math.sin(angle) * len;
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+
+        // Arrow head
+        const headLen = 3;
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(tx - Math.cos(angle-0.4)*headLen, ty - Math.sin(angle-0.4)*headLen);
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(tx - Math.cos(angle+0.4)*headLen, ty - Math.sin(angle+0.4)*headLen);
+        ctx.stroke();
+      }
+    }
+
+    // Source point marker
+    ctx.fillStyle = '#378ADD';
+    ctx.beginPath();
+    ctx.arc(W/2, H/2, 4, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COLOUR PALETTES  — each returns a FlowRenderer-compatible color stop array
+  // ═══════════════════════════════════════════════════════════════════════════
+  const PALETTES = {
+    speed_purple: [
+      { value:0,  color:'rgba(30,0,40,0)' },
+      { value:5,  color:'rgba(140,30,180,0.7)' },
+      { value:15, color:'rgba(200,100,240,0.85)' },
+      { value:30, color:'rgba(255,255,255,0.95)' },
+    ],
+    speed_amber: [
+      { value:0,  color:'rgba(0,0,0,0)' },
+      { value:5,  color:'rgba(100,50,0,0.6)' },
+      { value:15, color:'rgba(239,159,39,0.80)' },
+      { value:30, color:'rgba(220,60,48,0.95)' },
+    ],
+    direction_rgb: null,  // handled separately — no magnitude colouring
+    mono_white: [
+      { value:0,  color:'rgba(255,255,255,0)' },
+      { value:30, color:'rgba(255,255,255,0.85)' },
+    ],
+    mono_green: [
+      { value:0,  color:'rgba(0,0,0,0)' },
+      { value:5,  color:'rgba(0,100,50,0.6)' },
+      { value:30, color:'rgba(29,200,120,0.90)' },
+    ],
+  };
+
+  function makeFlowRenderer(params = {}) {
+    const {
+      density     = 0.6,
+      flowSpeed   = 25,
+      trailLength = 0.5,
+      trailWidth  = 1.5,
+      palette     = 'speed_purple',
+    } = params;
+
+    const stops = PALETTES[palette];
+    const renderer = new FlowRenderer({
+      density,
+      flowSpeed,
+      trailLength,
+      trailWidth,
+      // maxPathLength — limits how far a particle travels before recycling
+      maxPathLength: 200,
+      // flowType: 'vector' = U/V components; 'magnitude' = speed + direction bands
+      flowType: 'vector',
+    });
+
+    if (stops) {
+      // Colour particles by wind speed magnitude
+      renderer.color = {
+        type: 'algorithmic',
+        algorithm: 'esriHSVAlgorithm',
+        fromColor: [29, 158, 117, 255],
+        toColor:   [220, 60, 48,  255],
+      };
+      // For proper colour-by-speed, use a visual variable
+      renderer.visualVariables = [{
+        type:  'color',
+        field: 'Magnitude',
+        stops: stops.map(s => ({ value: s.value, color: new Color(s.color) })),
+      }];
+    }
+
+    return renderer;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ARCGIS SETUP
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ─── Wind service URLs ───────────────────────────────────────────────────
+  // These are real Esri / NOAA services that serve U/V vector rasters.
+  // The Esri sample service is permanently public; NOAA requires no auth.
+  const WIND_URLS = {
+    // Esri's hosted global wind sample — two-band U/V, updated 6-hourly
+    esri_global: 'https://tiledimageservices.arcgis.com/jNkVeZnWVJaYVvx/arcgis/rest/services/WindDirection_MainlandUS/ImageServer',
+    // NOAA MRMS surface wind — continental US only
+    noaa_us:     'https://mapservices.weather.noaa.gov/raster/rest/services/obs/mrms_qpe_pass1/ImageServer',
+  };
+
+  const graphicsLayer = new GraphicsLayer({ title:'Dispersion — origin' });
+
+  // ImageryTileLayer is created once and mutated on parameter change
+  let flowLayer = new ImageryTileLayer({
+    url:      WIND_URLS.esri_global,
+    title:    'Wind field',
+    renderer: makeFlowRenderer(),
+    // Important: set opacity so terrain shows through
+    opacity:  0.85,
+  });
+
+  const map = new Map({
+    basemap: 'topo-3d',
+    ground:  'world-elevation',
+    layers:  [flowLayer, graphicsLayer],
+  });
+
+  const view = new SceneView({
+    container: 'viewDiv',
+    map,
+    camera: {
+      position: { longitude: -95, latitude: 38, z: 5_000_000 },
+      heading: 0, tilt: 0,
+    },
+    environment: {
+      atmosphere: { quality: 'high' },
+      lighting:   { date: new Date() },
+    },
+  });
+
+  // Confirm FlowRenderer loaded correctly
+  flowLayer.when(
+    ()  => setStatus('flowing'),
+    err => { console.error('Flow layer error:', err); setStatus('error'); }
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODE STATE
+  // ═══════════════════════════════════════════════════════════════════════════
+  let currentMode    = 'wind';
+  let sourcePoint    = null;
+  let dispersionField = null;
+  let layerPaused    = false;
+
+  const $ = id => document.getElementById(id);
+
+  // ── Mode tab switching ────────────────────────────────────────────────────
+  document.querySelectorAll('.ptab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentMode = tab.dataset.mode;
+      $('sec-wind').classList.toggle('hidden', currentMode !== 'wind');
+      $('sec-dispersion').classList.toggle('hidden', currentMode !== 'dispersion');
+      $('hint').style.display = currentMode === 'dispersion' ? 'block' : 'none';
+
+      if (currentMode === 'wind') {
+        applyWindMode();
+      } else {
+        applyDispersionMode();
+      }
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WIND MODE — wire FlowRenderer sliders to live-update the renderer
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Wire all FlowRenderer parameter sliders
+  const sliders = [
+    { id:'fr-density', key:'density',    display:'fr-density-v', fmt: v=>v },
+    { id:'fr-speed',   key:'flowSpeed',  display:'fr-speed-v',   fmt: v=>v },
+    { id:'fr-trail',   key:'trailLength',display:'fr-trail-v',   fmt: v=>v },
+    { id:'fr-width',   key:'trailWidth', display:'fr-width-v',   fmt: v=>v },
+  ];
+  sliders.forEach(({ id, key, display, fmt }) => {
+    $(id).addEventListener('input', () => {
+      const val = parseFloat($(id).value);
+      $(display).textContent = fmt(val);
+      if (currentMode === 'wind' && flowLayer.renderer) {
+        // Direct property mutation triggers a live re-render — no layer reload needed
+        flowLayer.renderer = new FlowRenderer({
+          ...getFlowParams(),
+          [key]: val,
+        });
+      }
+    });
+  });
+
+  $('fr-palette').addEventListener('change', () => { if (currentMode==='wind') applyWindMode(); });
+  $('inp-wind-src').addEventListener('change', () => {
+    const src = $('inp-wind-src').value;
+    $('custom-url-row').style.display = src === 'custom' ? 'flex' : 'none';
+    if (src !== 'custom') applyWindMode();
+  });
+
+  function getFlowParams() {
+    return {
+      density:     parseFloat($('fr-density').value),
+      flowSpeed:   parseFloat($('fr-speed').value),
+      trailLength: parseFloat($('fr-trail').value),
+      trailWidth:  parseFloat($('fr-width').value),
+      palette:     $('fr-palette').value,
+    };
+  }
+
+  function applyWindMode() {
+    setStatus('busy');
+    const src = $('inp-wind-src').value;
+    const url = src === 'custom'
+      ? $('inp-custom-url').value.trim()
+      : WIND_URLS[src] ?? WIND_URLS.esri_global;
+
+    if (flowLayer.url !== url) {
+      // Swap the URL — ArcGIS automatically reloads the layer
+      flowLayer.url = url;
+    }
+
+    flowLayer.renderer = makeFlowRenderer(getFlowParams());
+    flowLayer.visible  = true;
+    // Remove any pixelFilter that was installed by dispersion mode
+    flowLayer.pixelFilter = null;
+
+    flowLayer.when(() => setStatus('flowing'), () => setStatus('error'));
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DISPERSION MODE
+  // ─────────────────────────────────────────────────────────────────────────
+  // The key mechanism: layer.pixelFilter intercepts every tile's pixel block
+  // and lets you overwrite the U/V values with your own model output.
+  //
+  // The pixelFilter function receives:
+  //   pixelData.pixelBlock.pixels  → array of band arrays [uBand, vBand]
+  //   pixelData.pixelBlock.width   → tile width in pixels
+  //   pixelData.pixelBlock.height  → tile height in pixels
+  //   pixelData.extent             → geographic extent of this tile
+  //
+  // You write into pixelBlock.pixels[0] (U) and pixelBlock.pixels[1] (V)
+  // and the FlowRenderer picks those values up on the next render frame.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function buildPixelFilter(fieldCfg) {
+    return function(pixelData) {
+      const { pixelBlock, extent } = pixelData;
+      if (!pixelBlock || !extent) return;
+
+      const W   = pixelBlock.width;
+      const H   = pixelBlock.height;
+      const lon = extent.xmin, lat = extent.ymax;
+      const dLon = (extent.xmax - extent.xmin) / W;
+      const dLat = (extent.ymax - extent.ymin) / H;
+
+      // Ensure two bands exist
+      if (!pixelBlock.pixels || pixelBlock.pixels.length < 2) {
+        pixelBlock.pixels = [new Float32Array(W*H), new Float32Array(W*H)];
+        pixelBlock.pixelType = 'f32';
+      }
+
+      const uBand = pixelBlock.pixels[0];
+      const vBand = pixelBlock.pixels[1];
+
+      const {
+        srcLon, srcLat, windSpeedMS, windBearingDeg,
+        sigmaKm, intensity, model,
+      } = fieldCfg;
+
+      const windToRad = ((windBearingDeg + 180) % 360) * Math.PI / 180;
+      const wU = windSpeedMS * Math.sin(windToRad);
+      const wV = windSpeedMS * Math.cos(windToRad);
+      const σ  = sigmaKm * 1000;    // metres
+      const mPerDeg = 111_320;
+
+      for (let row = 0; row < H; row++) {
+        for (let col = 0; col < W; col++) {
+          const pixLon = lon + (col + 0.5) * dLon;
+          const pixLat = lat - (row + 0.5) * dLat;
+
+          // ENU offset from source in metres
+          const east  = (pixLon - srcLon) * mPerDeg * Math.cos(srcLat * Math.PI/180);
+          const north = (pixLat - srcLat) * mPerDeg;
+          const r     = Math.sqrt(east*east + north*north);
+
+          let u = wU, v = wV;
+
+          if (model === 'gaussian') {
+            const downwind  = east * Math.sin(windToRad) + north * Math.cos(windToRad);
+            const crosswind = east * Math.cos(windToRad) - north * Math.sin(windToRad);
+            const plume     = downwind > 0
+              ? Math.exp(-0.5*(crosswind/σ)**2) * Math.exp(-0.5*(downwind/(σ*3))**2)
+              : 0.03;
+            u = wU * (1 + plume * intensity * 0.4)
+              + (-crosswind/σ) * plume * intensity * 0.2;
+            v = wV * (1 + plume * intensity * 0.4)
+              + ( crosswind/σ) * plume * intensity * 0.05;
+
+          } else if (model === 'ballistic') {
+            const nearField = Math.exp(-0.5*(r/(σ*0.4))**2);
+            const deflect   = 0.3 * (1 - nearField);
+            const rU = r > 1 ? (east/r)  * intensity * nearField : 0;
+            const rV = r > 1 ? (north/r) * intensity * nearField : 0;
+            u = rU*(1-deflect) - rV*deflect + wU;
+            v = rV*(1-deflect) + rU*deflect + wV;
+
+          } else if (model === 'radial') {
+            if (r > 1) {
+              const mag = intensity * Math.exp(-0.5*(r/σ)**2);
+              u = (east/r)  * mag + wU * 0.3;
+              v = (north/r) * mag + wV * 0.3;
+            }
+
+          } else {
+            // uniform
+            u = wU * intensity / 10;
+            v = wV * intensity / 10;
+          }
+
+          const idx  = row * W + col;
+          uBand[idx] = u;
+          vBand[idx] = v;
+        }
+      }
+
+      // Signal to the renderer that pixel values have changed
+      pixelBlock.statistics = null;   // force recalculation
+    };
+  }
+
+  // Wire dispersion controls
+  const dispInputs = ['inp-wnd-spd','inp-wnd-brg','inp-sigma','inp-model','inp-intensity','inp-field-radius','inp-src-lat','inp-src-lon'];
+  dispInputs.forEach(id => $(id)?.addEventListener('change', () => {
+    if (currentMode === 'dispersion') applyDispersionMode();
+  }));
+  $('inp-wnd-spd').addEventListener('input', () => {
+    $('wnd-spd-v').textContent = $('inp-wnd-spd').value;
+    if (currentMode==='dispersion') applyDispersionMode();
+  });
+  $('inp-wnd-brg').addEventListener('input', () => {
+    $('wnd-brg-v').textContent = $('inp-wnd-brg').value+'°';
+    if (currentMode==='dispersion') applyDispersionMode();
+  });
+  $('inp-sigma').addEventListener('input', () => {
+    $('sigma-v').textContent = $('inp-sigma').value;
+    if (currentMode==='dispersion') applyDispersionMode();
+  });
+
+  function getDispersionCfg() {
+    return {
+      srcLon:        parseFloat($('inp-src-lon').value),
+      srcLat:        parseFloat($('inp-src-lat').value),
+      windSpeedMS:   parseFloat($('inp-wnd-spd').value),
+      windBearingDeg:parseFloat($('inp-wnd-brg').value),
+      sigmaKm:       parseFloat($('inp-sigma').value),
+      intensity:     parseFloat($('inp-intensity').value),
+      radiusKm:      parseFloat($('inp-field-radius').value),
+      model:         $('inp-model').value,
+    };
+  }
+
+  function applyDispersionMode() {
+    setStatus('busy');
+    const cfg = getDispersionCfg();
+
+    // 1. Install pixelFilter — this is the substitution mechanism
+    flowLayer.pixelFilter = buildPixelFilter(cfg);
+
+    // 2. Keep FlowRenderer but use it with the overridden pixel values
+    flowLayer.renderer = makeFlowRenderer({
+      ...getFlowParams(),
+      palette:   'speed_purple',
+      density:   0.7,
+      flowSpeed: 20,
+    });
+    flowLayer.visible = true;
+
+    // 3. Update the local preview canvas (uses the same model, different resolution)
+    dispersionField = generateVectorField({ ...cfg, gridW: 64, gridH: 64 });
+    drawFieldPreview(dispersionField);
+
+    $('st-u').textContent  = dispersionField.maxU.toFixed(2);
+    $('st-v').textContent  = dispersionField.maxV.toFixed(2);
+    $('st-px').textContent = (64*64).toLocaleString();
+
+    // 4. Place source marker
+    if (sourcePoint) {
+      graphicsLayer.removeAll();
+      graphicsLayer.add(buildSourceMarker(sourcePoint));
+    }
+
+    // 5. Fly to source area
+    view.goTo({ center: [cfg.srcLon, cfg.srcLat], zoom: 8 }, { duration: 800 });
+
+    setStatus('flowing');
+  }
+
+  // ── Source marker ───────────────────────────────────────────────────────────
+  function buildSourceMarker(pt) {
+    return new Graphic({
+      geometry: pt,
+      symbol: {
+        type: 'point-3d',
+        symbolLayers: [{
+          type: 'object',
+          resource: { primitive: 'diamond' },
+          material: { color: [55, 138, 221, 0.95] },
+          width: 800, height: 800, depth: 800,
+        }],
+        verticalOffset: { screenLength: 24, maxWorldLength: 50000, minWorldLength: 50 },
+      },
+      attributes: { type: 'Dispersion source' },
+    });
+  }
+
+  // ── Map click — place dispersion source ──────────────────────────────────────
+  view.on('click', async event => {
+    if (currentMode !== 'dispersion') return;
+    const result = await view.hitTest(event, { include: [map.ground] });
+    const gp     = result?.ground?.mapPoint ?? event.mapPoint;
+
+    sourcePoint = new Point({
+      longitude: gp.longitude,
+      latitude:  gp.latitude,
+      spatialReference: { wkid: 4326 },
+    });
+
+    $('inp-src-lat').value = gp.latitude.toFixed(4);
+    $('inp-src-lon').value = gp.longitude.toFixed(4);
+    $('coords').textContent =
+      `Origin: ${gp.latitude.toFixed(4)}°N  ${gp.longitude.toFixed(4)}°E`;
+    $('hint').style.display = 'none';
+
+    graphicsLayer.removeAll();
+    graphicsLayer.add(buildSourceMarker(sourcePoint));
+    applyDispersionMode();
+  });
+
+  // ── Apply button ─────────────────────────────────────────────────────────────
+  $('btn-apply').addEventListener('click', () => {
+    if (currentMode === 'wind') applyWindMode();
+    else applyDispersionMode();
+  });
+
+  // ── Pause / resume flow ───────────────────────────────────────────────────────
+  // FlowRenderer doesn't have a built-in pause — toggle layer visibility
+  // or set flowSpeed to 0 for an effective freeze.
+  $('btn-toggle-layer').addEventListener('click', () => {
+    layerPaused = !layerPaused;
+    if (layerPaused) {
+      // Set flow speed to 0 — particles freeze in place
+      const r = flowLayer.renderer.clone();
+      r.flowSpeed = 0;
+      flowLayer.renderer = r;
+      $('btn-toggle-layer').textContent = 'Resume flow';
+    } else {
+      const r = flowLayer.renderer.clone();
+      r.flowSpeed = parseFloat($('fr-speed').value);
+      flowLayer.renderer = r;
+      $('btn-toggle-layer').textContent = 'Pause flow';
+    }
+  });
+
+  // ── Clear ────────────────────────────────────────────────────────────────────
+  $('btn-clear').addEventListener('click', () => {
+    graphicsLayer.removeAll();
+    flowLayer.pixelFilter = null;
+    flowLayer.visible     = false;
+    sourcePoint           = null;
+    $('coords').textContent = 'Origin: click map to place source';
+    $('hint').style.display = currentMode === 'dispersion' ? 'block' : 'none';
+    setStatus('ready');
+
+    // Clear preview canvas
+    const ctx = document.getElementById('field-preview').getContext('2d');
+    ctx.clearRect(0, 0, 284, 120);
+    ['st-u','st-v','st-px'].forEach(id => $(id).textContent='—');
+  });
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function setStatus(s) {
+    const M = {
+      busy:    ['Computing…', 'busy'],
+      ready:   ['Ready',      'ready'],
+      flowing: ['Flow active','flowing'],
+      error:   ['Layer error',''],
+    };
+    const [txt, cls] = M[s] ?? ['—', ''];
+    $('status').textContent = txt;
+    $('status').className   = 'ph-status' + (cls ? ' '+cls : '');
+  }
+
+  view.when(() => {
+    console.log('[FlowRenderer] SceneView ready.');
+    console.log('[FlowRenderer] flowLayer  →', flowLayer);
+    console.log('[FlowRenderer] Tip: flowLayer.pixelFilter = fn  to inject custom U/V values.');
+  });
+
+}); // end require()
+</script>
+</body>
+</html>

@@ -2052,6 +2052,45 @@
             </div>
           </div>
         </div>
+
+        <!-- ANALYSIS ENGINES FEATURE PANEL -->
+        <div class="feature-panel" id="feature-panel-analysis">
+          <div class="feature-header">
+            <div class="feature-header-left">
+              <input type="checkbox" id="setting-analysisEngines" checked title="Enable Analysis Engines (LOS, WEZ, Trajectory, Buffer, Corridor, Effects). When disabled, no analysis engines are loaded and the Analysis context menu is hidden." />
+              <label>Analysis Engines</label>
+            </div>
+            <span class="toggle-icon">▼</span>
+          </div>
+          <div class="feature-body">
+            <div class="sub-feature-label">Enabled Modules</div>
+            <div class="setting-row">
+              <label>Line of Sight</label>
+              <input type="checkbox" id="setting-analysis-los" checked title="Enable Line of Sight engine. When disabled, the LOS item is removed from the Analysis context menu." />
+            </div>
+            <div class="setting-row">
+              <label>Weapon Engagement Zone</label>
+              <input type="checkbox" id="setting-analysis-wez" checked title="Enable Weapon Engagement Zone engine. When disabled, the WEZ item is removed from the Analysis context menu." />
+            </div>
+            <div class="setting-row">
+              <label>Projectile Trajectory</label>
+              <input type="checkbox" id="setting-analysis-trajectory" checked title="Enable Projectile Trajectory engine. When disabled, the Trajectory item is removed from the Analysis context menu." />
+            </div>
+            <div class="setting-row">
+              <label>Buffer &amp; Threat Rings</label>
+              <input type="checkbox" id="setting-analysis-buffer" checked title="Enable Buffer &amp; Threat Rings engine. When disabled, the Buffer item is removed from the Analysis context menu." />
+            </div>
+            <div class="setting-row">
+              <label>Corridor Analysis</label>
+              <input type="checkbox" id="setting-analysis-corridor" checked title="Enable Corridor Analysis engine. When disabled, the Corridor item is removed from the Analysis context menu." />
+            </div>
+            <div class="setting-row">
+              <label>Effect Analysis</label>
+              <input type="checkbox" id="setting-analysis-effects" checked title="Enable Effect Analysis engine. When disabled, the Effects item is removed from the Analysis context menu." />
+            </div>
+          </div>
+        </div>
+
       </div>
       </div>
     </div>
@@ -2543,6 +2582,13 @@
         'setting-adaptiveCoverage': (v) => ({ path: ['drawingCues', 'adaptive', 'coverageFraction'],  value: +v }),
         'setting-adaptiveMaxKm':    (v) => ({ path: ['drawingCues', 'adaptive', 'maxOuterKm'],         value: +v }),
         // MGRS
+        'setting-analysisEngines':        (v) => ({ path: ['features', 'analysisEngines'], value: v }),
+        'setting-analysis-los':        (v) => ({ path: ['analysis', 'los'],        value: v }),
+        'setting-analysis-wez':        (v) => ({ path: ['analysis', 'wez'],        value: v }),
+        'setting-analysis-trajectory': (v) => ({ path: ['analysis', 'trajectory'], value: v }),
+        'setting-analysis-buffer':     (v) => ({ path: ['analysis', 'buffer'],     value: v }),
+        'setting-analysis-corridor':   (v) => ({ path: ['analysis', 'corridor'],   value: v }),
+        'setting-analysis-effects':    (v) => ({ path: ['analysis', 'effects'],    value: v }),
         'setting-mgrsEngine':     (v) => ({ path: ['features', 'mgrsEngine'], value: v }),
         'setting-mgrsShowGZD':    (v) => ({ path: ['mgrs', 'showGZD'], value: v }),
         'setting-mgrsShow100K':   (v) => ({ path: ['mgrs', 'show100K'], value: v }),
@@ -2697,6 +2743,17 @@
             features.drawingCues !== false;
           document.getElementById('setting-mgrsEngine').checked =
             features.mgrsEngine === true;
+          document.getElementById('setting-analysisEngines').checked =
+            features.analysisEngines !== false;
+
+          // Analysis engine individual flags
+          const analysis = settings.analysis || {};
+          document.getElementById('setting-analysis-los').checked        = analysis.los        !== false;
+          document.getElementById('setting-analysis-wez').checked        = analysis.wez        !== false;
+          document.getElementById('setting-analysis-trajectory').checked = analysis.trajectory !== false;
+          document.getElementById('setting-analysis-buffer').checked     = analysis.buffer     !== false;
+          document.getElementById('setting-analysis-corridor').checked   = analysis.corridor   !== false;
+          document.getElementById('setting-analysis-effects').checked    = analysis.effects    !== false;
 
           if (settings.creationMode) {
             document.getElementById('setting-creationMode').value = settings.creationMode;

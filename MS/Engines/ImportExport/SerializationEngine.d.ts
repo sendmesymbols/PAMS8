@@ -5,7 +5,7 @@
  * Owns savePlanToFile / loadPlanFromFile and every private helper that supports
  * them (geometry conversion, amplifier normalization, drawEss builders, etc.).
  *
- * Inspired by InteropEngine — uses EngineLogger for all log output.
+ * Uses EngineLogger for all log output.
  *
  * Initialize via:
  *   SerializationEngine.getInstance().start(layerManager, loadSymbolCallback);
@@ -16,6 +16,7 @@
  */
 import Graphic from '@arcgis/core/Graphic';
 import GraphicsLayerManager from '../../Managers/GraphicsLayerManager';
+import ContextMenuManager from '../../Managers/ContextMenuManager';
 type LoadSymbolCallback = (data: any) => void;
 type LoadTemplateCallback = (data: any) => void;
 declare class SerializationEngine {
@@ -49,6 +50,8 @@ declare class SerializationEngine {
     saveToGeoJSONFile(filename?: string): void;
     /** Open a file picker and load symbols from a GeoJSON or PAMS8 JSON file. */
     loadFromGeoJSONFile(): void;
+    /** Register Save/Load submenu with the given ContextMenuManager. */
+    registerContextMenuItems(contextMenuManager: ContextMenuManager): void;
     private _serializePoint;
     /**
      * Patch a PlanPoint ({type, x, y, sp:"WGS1SP"}) so that loadSymbolFromJSON's

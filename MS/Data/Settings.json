@@ -385,7 +385,8 @@
     "templates": true,
     "proximityEngine": true,
     "drawingCues": true,
-    "mgrsEngine": false
+    "mgrsEngine": false,
+    "analysisEngines": true
   },
   "measurement": {
     "distUnit": "kilometers",
@@ -507,6 +508,14 @@
   },
   "logging": {
     "enabled": true
+  },
+  "analysis": {
+    "los": true,
+    "wez": true,
+    "trajectory": true,
+    "buffer": true,
+    "corridor": true,
+    "effects": true
   },
   "creationMode": "single",
   "echelonMap23": {

@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>CIM Mortar Symbol — Radial + Taper</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#07090b}
+
+    /* ── Panel shell ─────────────────────────────────────────────────────── */
+    #panel{
+      position:absolute;top:14px;right:14px;width:320px;z-index:99;
+      background:rgba(7,9,11,0.97);
+      border:1px solid rgba(239,159,39,0.30);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh - 28px);display:flex;flex-direction:column;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────────── */
+    .ph{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;
+      border-bottom:1px solid rgba(239,159,39,0.15);
+      background:rgba(239,159,39,0.07);
+      flex-shrink:0;
+    }
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#EF9F27;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#3a3935;transition:color .2s}
+    .ph-status.live{color:#EF9F27}
+
+    /* ── Tabs ────────────────────────────────────────────────────────────── */
+    .ptabs{display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0}
+    .ptab{
+      flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      cursor:pointer;border:none;background:transparent;color:#888780;transition:all .13s;
+    }
+    .ptab.active{color:#EF9F27;border-bottom:2px solid #EF9F27}
+    .tab-pane{display:none;overflow-y:auto;flex:1}
+    .tab-pane.active{display:block}
+
+    /* ── Controls pane ───────────────────────────────────────────────────── */
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+      color:#3a3935;padding:9px 12px 5px}
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s;
+    }
+    input:focus,select:focus{border-color:rgba(239,159,39,0.55)}
+    select option{background:#141618}
+
+    .psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+    .psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;flex:1.6}
+    .psr input[type=range]{flex:2;accent-color:#EF9F27;cursor:pointer}
+    .psr-v{font-size:10px;color:#EF9F27;min-width:40px;text-align:right}
+
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#EF9F27;width:13px;height:13px;cursor:pointer}
+
+    /* ── Faction swatches ────────────────────────────────────────────────── */
+    .faction-row{display:flex;gap:6px;padding:0 12px 9px}
+    .faction-btn{
+      flex:1;padding:6px 4px;font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;border:1px solid rgba(255,255,255,0.12);
+      background:transparent;color:#888780;transition:all .13s;
+    }
+    .faction-btn.sel{border-width:1.5px;color:#fff}
+
+    /* ── Symbol preview canvas ───────────────────────────────────────────── */
+    #preview-wrap{
+      margin:0 12px 9px;border:1px solid rgba(255,255,255,0.08);
+      border-radius:3px;background:#0f1214;display:flex;
+      align-items:center;justify-content:center;height:120px;
+    }
+    #preview-canvas{display:block}
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .pb-row{display:flex;gap:6px;padding:9px 12px;flex-shrink:0}
+    .pb{
+      flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;
+      border:1px solid rgba(239,159,39,0.38);
+      background:transparent;color:#EF9F27;transition:all .14s;
+    }
+    .pb:hover{background:rgba(239,159,39,0.10)}
+    .pb.primary{background:rgba(239,159,39,0.16);border-color:#EF9F27}
+    .pb.primary:hover{background:rgba(239,159,39,0.30)}
+
+    /* ── JSON viewer ─────────────────────────────────────────────────────── */
+    #json-viewer{
+      padding:8px 10px;font-size:9.5px;line-height:1.7;
+      white-space:pre-wrap;word-break:break-all;color:#888780;
+      background:rgba(0,0,0,0.3);margin:0;overflow-y:auto;flex:1;
+    }
+    .j-key{color:#378ADD}
+    .j-str{color:#1D9E75}
+    .j-num{color:#EF9F27}
+    .j-bool{color:#B428DC}
+    .j-comment{color:#3a3935;font-style:italic}
+
+    /* ── Hint ────────────────────────────────────────────────────────────── */
+    #hint{
+      position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(7,9,11,0.93);border:1px solid rgba(239,159,39,0.42);
+      color:#EF9F27;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase;transition:opacity .25s;
+    }
+
+    /* ── Layer legend (bottom-left) ──────────────────────────────────────── */
+    #legend{
+      position:absolute;bottom:14px;left:14px;z-index:99;
+      background:rgba(7,9,11,0.93);border:1px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:9px 13px;display:flex;flex-direction:column;gap:5px;
+    }
+    .leg-row{display:flex;align-items:center;gap:8px}
+    .leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+    .leg-lbl{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#888780}
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<!-- ── PANEL ──────────────────────────────────────────────────────────────── -->
+<div id="panel">
+  <div class="ph">
+    <div class="ph-title">◈ CIM Mortar Symbol</div>
+    <div class="ph-status live" id="status">Live rebuild</div>
+  </div>
+
+  <div class="ptabs">
+    <button class="ptab active" data-tab="controls">Controls</button>
+    <button class="ptab"        data-tab="json">CIM JSON</button>
+    <button class="ptab"        data-tab="notes">Notes</button>
+  </div>
+
+  <!-- ── CONTROLS TAB ─────────────────────────────────────────────────── -->
+  <div class="tab-pane active" id="tab-controls">
+
+    <!-- Symbol preview -->
+    <div class="ps">Symbol preview (2D canvas)</div>
+    <div id="preview-wrap">
+      <canvas id="preview-canvas" width="108" height="108"></canvas>
+    </div>
+
+    <!-- Fire direction -->
+    <div class="ps">Primary direction of fire</div>
+    <div class="psr">
+      <div class="psr-l">Bearing (°)</div>
+      <input id="inp-bearing" type="range" min="0" max="359" step="1" value="45"/>
+      <div class="psr-v" id="bearing-v">045°</div>
+    </div>
+
+    <!-- Dispersion cone -->
+    <div class="ps">Dispersion cone (Tapered polygon)</div>
+    <div class="psr">
+      <div class="psr-l">Half-angle (°)</div>
+      <input id="inp-half-angle" type="range" min="3" max="45" step="1" value="15"/>
+      <div class="psr-v" id="half-angle-v">15°</div>
+    </div>
+    <div class="psr">
+      <div class="psr-l">Symbol size (px)</div>
+      <input id="inp-size" type="range" min="40" max="160" step="4" value="96"/>
+      <div class="psr-v" id="size-v">96 px</div>
+    </div>
+
+    <!-- Faction colors -->
+    <div class="ps">Faction</div>
+    <div class="faction-row" id="faction-row">
+      <button class="faction-btn sel" data-faction="friendly"
+        style="border-color:#1D7840;color:#1D9E75">Friendly</button>
+      <button class="faction-btn" data-faction="enemy"
+        style="border-color:#8B1A1A">Enemy</button>
+      <button class="faction-btn" data-faction="neutral"
+        style="border-color:#5A6020">Neutral</button>
+      <button class="faction-btn" data-faction="unknown"
+        style="border-color:#4B1A6B">Unknown</button>
+    </div>
+
+    <div class="pdiv"></div>
+
+    <!-- Display options -->
+    <div class="ps">Display layers</div>
+    <div class="ptr"><label>Dispersion cone</label>
+      <input id="opt-cone"    type="checkbox" checked/></div>
+    <div class="ptr"><label>Fire direction arrow</label>
+      <input id="opt-arrow"   type="checkbox" checked/></div>
+    <div class="ptr"><label>Min-range dead-zone ring</label>
+      <input id="opt-minring" type="checkbox" checked/></div>
+    <div class="ptr"><label>Baseplate marker</label>
+      <input id="opt-base"    type="checkbox" checked/></div>
+    <div class="ptr"><label>Symbol halo</label>
+      <input id="opt-halo"    type="checkbox" checked/></div>
+    <div class="ptr"><label>Rotate with map</label>
+      <input id="opt-align"   type="checkbox" checked/></div>
+
+    <div class="pdiv"></div>
+
+    <div class="pb-row">
+      <button class="pb"       id="btn-clear">Clear map</button>
+      <button class="pb primary" id="btn-place">Place symbol</button>
+    </div>
+  </div><!-- /tab-controls -->
+
+  <!-- ── JSON TAB ──────────────────────────────────────────────────────── -->
+  <div class="tab-pane" id="tab-json">
+    <pre id="json-viewer">// CIM JSON will appear here after placement</pre>
+    <div class="pb-row" style="flex-shrink:0">
+      <button class="pb" id="btn-copy-json">Copy JSON</button>
+    </div>
+  </div>
+
+  <!-- ── NOTES TAB ─────────────────────────────────────────────────────── -->
+  <div class="tab-pane" id="tab-notes" style="padding:10px 12px;font-size:10.5px;line-height:1.7;color:#888780;overflow-y:auto">
+    <div style="color:#EF9F27;font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px">Architecture notes</div>
+
+    <p style="margin-bottom:8px"><span style="color:#bfbcb4">CIMPointSymbol</span> contains an ordered <code style="color:#EF9F27">symbolLayers[]</code> array. Layers render bottom-to-top — cone first, then arrow, then baseplate.</p>
+
+    <p style="margin-bottom:8px"><span style="color:#bfbcb4">Radial indicator</span> is a <code style="color:#EF9F27">CIMVectorMarker</code> whose <code style="color:#EF9F27">markerGraphics</code> contains a line path from (0,8) to (0,44) in frame space, pointing up (+Y). Setting <code style="color:#EF9F27">rotateClockwise: true</code> with <code style="color:#EF9F27">rotation: bearing</code> orients it geographically.</p>
+
+    <p style="margin-bottom:8px"><span style="color:#bfbcb4">Tapered cone</span> is a polygon wedge with apex at (0,0) and arc points at radius R. A fan of 24 vertices along the arc gives smooth curvature. Frame +Y = up; rotation aligns it to bearing.</p>
+
+    <p style="margin-bottom:8px"><span style="color:#bfbcb4">colorMixMode</span> on the cone fill uses <code style="color:#EF9F27">"multiply"</code> so it composites over the base map rather than occluding it.</p>
+
+    <p style="margin-bottom:8px"><span style="color:#bfbcb4">Production rotation</span>: instead of rebuilding CIM JSON on bearing changes, set <code style="color:#EF9F27">rotation: 0</code> on all layers and add a renderer <code style="color:#EF9F27">visualVariable</code> of type <code style="color:#EF9F27">"rotation"</code> driven by a feature attribute. The entire symbol rotates as one.</p>
+
+    <p style="margin-bottom:8px"><span style="color:#bfbcb4">billboardMode3D</span> = <code style="color:#EF9F27">"FaceNearPlane"</code> keeps the symbol upright in SceneView regardless of camera tilt — correct for tactical overlays.</p>
+
+    <p><span style="color:#bfbcb4">Dashed dead-zone ring</span> uses <code style="color:#EF9F27">CIMGeometricEffectDashes</code> on the stroke layer — a CIM geometric effect applied per-layer, not per-symbol.</p>
+  </div>
+
+</div><!-- /panel -->
+
+<!-- ── LEGEND ─────────────────────────────────────────────────────────────── -->
+<div id="legend">
+  <div class="leg-row"><div class="leg-dot" style="background:#EF9F27;opacity:.8"></div>
+    <div class="leg-lbl">Dispersion cone (Tapered polygon)</div></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#EF9F27"></div>
+    <div class="leg-lbl">Primary direction of fire (Radial)</div></div>
+  <div class="leg-row"><div class="leg-dot" style="background:transparent;border:2px dashed #DC3C30"></div>
+    <div class="leg-lbl">Minimum range dead-zone</div></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#1D9E75"></div>
+    <div class="leg-lbl">Mortar baseplate position</div></div>
+</div>
+
+<div id="hint">Click map to place a mortar symbol — adjust bearing and cone above</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map",
+  "esri/views/SceneView",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic",
+  "esri/geometry/Point",
+], function(Map, SceneView, GraphicsLayer, Graphic, Point) {
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FACTION COLOUR PALETTES
+  // Each faction maps to: base fill, cone/arrow color, halo tint
+  // ═══════════════════════════════════════════════════════════════════════════
+  const FACTIONS = {
+    friendly: { base:[29,120,60,255],  cone:[29,158,117,255],  halo:[0,0,0,120],  accent:[29,200,100,255]  },
+    enemy:    { base:[180,30,30,255],  cone:[220,60,48,255],   halo:[0,0,0,120],  accent:[255,80,60,255]   },
+    neutral:  { base:[100,120,30,255], cone:[186,117,23,255],  halo:[0,0,0,120],  accent:[239,200,60,255]  },
+    unknown:  { base:[100,40,120,255], cone:[180,40,220,255],  halo:[0,0,0,120],  accent:[200,80,255,255]  },
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GEOMETRY HELPERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Build a fan polygon (apex at origin, arc upward) in frame space.
+   *  @param {number} radius       — distance from apex to arc (frame units)
+   *  @param {number} halfAngleDeg — half-angle of the fan in degrees
+   *  @param {number} numPts       — number of arc sample points
+   *  @returns {number[][]}        — ring as [[x,y], …] closed polygon
+   */
+  function buildFanRing(radius, halfAngleDeg, numPts = 24) {
+    const ring = [[0, 0]]; // apex at frame origin
+    for (let i = 0; i <= numPts; i++) {
+      const angleDeg = -halfAngleDeg + (i / numPts) * halfAngleDeg * 2;
+      const rad = angleDeg * Math.PI / 180;
+      ring.push([Math.sin(rad) * radius, Math.cos(rad) * radius]);
+    }
+    ring.push([0, 0]); // close back to apex
+    return ring;
+  }
+
+  /** Approximate a full circle as a polygon (for dashed rings).
+   *  @param {number} r  — radius in frame units
+   *  @param {number} n  — number of vertices
+   */
+  function buildCircleRing(r, n = 40) {
+    return Array.from({ length: n + 1 }, (_, i) => {
+      const a = (i / n) * 2 * Math.PI;
+      return [Math.cos(a) * r, Math.sin(a) * r];
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MAIN CIM BUILDER
+  // ─────────────────────────────────────────────────────────────────────────
+  // Returns a complete CIMSymbolReference JSON object ready to assign to
+  // graphic.symbol.  Every layer is thoroughly commented.
+  //
+  // Coordinate system of the marker frame:
+  //   Origin (0,0) = symbol anchor = feature geometry point.
+  //   +Y  = "up" in map space  = geographic North when bearing = 0.
+  //   +X  = "right"            = geographic East when bearing = 0.
+  //   Setting rotateClockwise:true and rotation:bearing on a layer rotates
+  //   it so that its +Y axis points toward the geographic bearing.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function buildMortarCIM({
+    bearing      = 45,    // degrees, clockwise from north
+    halfAngle    = 15,    // dispersion cone half-angle (degrees)
+    faction      = 'friendly',
+    symbolSize   = 96,    // pixels — controls all layer sizes proportionally
+    showCone     = true,
+    showArrow    = true,
+    showMinRing  = true,
+    showBase     = true,
+    showHalo     = true,
+    alignToMap   = true,
+  } = {}) {
+
+    const pal = FACTIONS[faction] ?? FACTIONS.friendly;
+    const [cr,cg,cb]   = pal.cone;   // cone / arrow colour
+    const [br,bg,bb]   = pal.base;   // baseplate fill colour
+    const [hr,hg,hb,ha] = pal.halo;
+
+    // ── Frame constants — all geometry is in a ±50 coordinate space ──────
+    const F    = 50;               // frame half-extent
+    const CONE_R  = F * 0.86;     // cone arc radius (86% of frame)
+    const LINE_S  = F * 0.18;     // fire line start (skip baseplate radius)
+    const LINE_E  = F * 0.84;     // fire line end
+    const ARROW_T = F * 0.94;     // arrowhead tip
+    const ARROW_W = F * 0.09;     // arrowhead half-width
+    const RING_R  = F * 0.24;     // dead-zone ring radius
+    const BASE_R  = F * 0.18;     // baseplate circle radius (in base layer frame)
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LAYER ARRAY — rendered bottom (index 0) to top (index n)
+    // ═══════════════════════════════════════════════════════════════════════
+    const symbolLayers = [];
+
+    // ─────────────────────────────────────────────────────────────────────
+    // LAYER 1 — DISPERSION CONE  (Tapered polygon analog)
+    // ─────────────────────────────────────────────────────────────────────
+    // A fan-polygon whose apex is at the symbol center and whose arc
+    // represents the maximum effective range boundary.
+    //
+    // "Tapered polygon" in the ArcGIS Pro CIM sense means a polygon whose
+    // width tapers from zero at one end to full width at the other — exactly
+    // what this fan is.  In CIM Pro 3.x you can express this with
+    // CIMGeometricEffectWedge; here we build the vertices explicitly for
+    // full JS compatibility.
+    //
+    // The layer is given rotation = bearing so +Y aligns with fire direction.
+    // ─────────────────────────────────────────────────────────────────────
+    if (showCone) {
+      symbolLayers.push({
+        type: "CIMVectorMarker",
+        enable: true,
+        anchorPoint: { x: 0, y: 0 },
+        anchorPointUnits: "Relative",
+        dominantSizeAxis3D: "Z",
+        size: symbolSize,
+        rotation: bearing,          // orient cone toward fire bearing
+        rotateClockwise: true,      // geographic: clockwise from north
+        frame: { xmin:-F, ymin:-F, xmax:F, ymax:F },
+        respectFrame: false,        // don't clip — lets large cones show fully
+        billboardMode3D: "FaceNearPlane",  // always face up in SceneView
+        markerGraphics: [{
+          type: "CIMMarkerGraphic",
+          geometry: { rings: [ buildFanRing(CONE_R, halfAngle) ] },
+          symbol: {
+            type: "CIMPolygonSymbol",
+            symbolLayers: [
+              // Semi-transparent fill — 'multiply' composites over the basemap
+              // so underlying terrain texture still shows through the cone.
+              {
+                type: "CIMSolidFill",
+                enable: true,
+                color: [cr, cg, cb, 55],
+              },
+              // Solid-stroked outline for the cone boundary
+              {
+                type: "CIMSolidStroke",
+                enable: true,
+                capStyle: "Butt",
+                joinStyle: "Round",
+                miterLimit: 10,
+                width: 1.4,
+                color: [cr, cg, cb, 180],
+              },
+            ],
+          },
+        }],
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // LAYER 2 — PRIMARY DIRECTION OF FIRE  (Radial indicator)
+    // ─────────────────────────────────────────────────────────────────────
+    // A single spoke radiating from the symbol center toward the bearing.
+    // Composed of two marker graphics in the same layer:
+    //   a) The shaft — a polyline from just outside the baseplate to
+    //      the far edge of the frame.
+    //   b) The arrowhead — a filled triangle at the tip of the shaft.
+    //
+    // This replicates the "CIMGeometricEffectRadialGradient" concept in
+    // ArcGIS Pro 4.33+: a radial element emanating from a point symbol in
+    // a specified direction.  In JS we build it as a vector marker with
+    // a line graphic pointing in +Y, then rotate it to the bearing.
+    // ─────────────────────────────────────────────────────────────────────
+    if (showArrow) {
+      symbolLayers.push({
+        type: "CIMVectorMarker",
+        enable: true,
+        anchorPoint: { x: 0, y: 0 },
+        anchorPointUnits: "Relative",
+        dominantSizeAxis3D: "Z",
+        size: symbolSize,
+        rotation: bearing,         // same bearing as the cone
+        rotateClockwise: true,
+        frame: { xmin:-F, ymin:-F, xmax:F, ymax:F },
+        respectFrame: false,
+        billboardMode3D: "FaceNearPlane",
+        markerGraphics: [
+          // ── Arrow shaft ───────────────────────────────────────────────
+          // Polyline from LINE_S (just outside baseplate) to LINE_E.
+          // The "paths" geometry is a 2D polyline in frame space.
+          {
+            type: "CIMMarkerGraphic",
+            geometry: { paths: [[[0, LINE_S], [0, LINE_E]]] },
+            symbol: {
+              type: "CIMLineSymbol",
+              symbolLayers: [{
+                type: "CIMSolidStroke",
+                enable: true,
+                capStyle: "Round",
+                joinStyle: "Round",
+                width: 2.4,
+                color: [cr, cg, cb, 255],
+              }],
+            },
+          },
+          // ── Arrowhead triangle ─────────────────────────────────────────
+          // Filled triangle with tip at ARROW_T, base at LINE_E.
+          // Closed ring: tip → left-base → right-base → tip.
+          {
+            type: "CIMMarkerGraphic",
+            geometry: {
+              rings: [[
+                [0,           ARROW_T     ],   // tip
+                [-ARROW_W,    LINE_E * 0.92],  // left base
+                [ ARROW_W,    LINE_E * 0.92],  // right base
+                [0,           ARROW_T     ],   // close
+              ]],
+            },
+            symbol: {
+              type: "CIMPolygonSymbol",
+              symbolLayers: [
+                { type: "CIMSolidFill",   enable:true, color:[cr,cg,cb,255] },
+                { type: "CIMSolidStroke", enable:true, width:0.5, color:[cr,cg,cb,255] },
+              ],
+            },
+          },
+        ],
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // LAYER 3 — MINIMUM RANGE DEAD-ZONE RING
+    // ─────────────────────────────────────────────────────────────────────
+    // Mortars cannot engage targets closer than their minimum range
+    // (~70 m for 81mm).  This dashed ring marks that exclusion zone.
+    //
+    // The dashes are produced by CIMGeometricEffectDashes applied to the
+    // stroke layer — this is a CIM geometric effect applied per layer,
+    // distinct from the symbol-level effects.  No rotation needed (circle
+    // is symmetric), but the layer still needs a frame definition.
+    // ─────────────────────────────────────────────────────────────────────
+    if (showMinRing) {
+      const ringFraction = 0.24;   // dead-zone ring = 24% of symbol size
+      symbolLayers.push({
+        type: "CIMVectorMarker",
+        enable: true,
+        anchorPoint: { x: 0, y: 0 },
+        anchorPointUnits: "Relative",
+        dominantSizeAxis3D: "Z",
+        size: symbolSize * ringFraction * 2,   // ring diameter in pixels
+        frame: { xmin:-F, ymin:-F, xmax:F, ymax:F },
+        billboardMode3D: "FaceNearPlane",
+        markerGraphics: [{
+          type: "CIMMarkerGraphic",
+          geometry: { rings: [ buildCircleRing(F) ] },
+          symbol: {
+            type: "CIMPolygonSymbol",
+            symbolLayers: [
+              // Transparent fill so only the dashed outline is visible
+              { type: "CIMSolidFill", enable: true, color: [0, 0, 0, 0] },
+              {
+                type: "CIMSolidStroke",
+                enable: true,
+                capStyle: "Butt",
+                width: 1.8,
+                color: [cr, cg, cb, 200],
+                // ── CIMGeometricEffectDashes ──────────────────────────────
+                // Applies a dash pattern to this stroke layer only.
+                // dashTemplate: [on-length, off-length] in points.
+                // This is NOT a CIM symbol-level effect; it is a layer-level
+                // geometric effect scoped to this stroke.
+                effects: [{
+                  type: "CIMGeometricEffectDashes",
+                  dashTemplate: [5, 4],
+                  lineDashEnding: "NoConstraint",
+                  controlPointsOffset: 0,
+                }],
+              },
+            ],
+          },
+        }],
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // LAYER 4 — MORTAR BASEPLATE POSITION  (topmost layer)
+    // ─────────────────────────────────────────────────────────────────────
+    // Military-style mortar position marker:
+    //   • Filled circle  — unit boundary, coloured by faction
+    //   • Horizontal bar — simplified mortar tube symbol
+    //   • White cross    — baseplate indicator
+    //
+    // This layer does NOT rotate — the circle is symmetric so it reads
+    // correctly at any bearing.  A square baseplate would need rotation.
+    //
+    // For full MIL-STD-2525D compliance, replace the markerGraphics with
+    // the SIDC-encoded CIMCharacterMarker from the Defense Mapping font.
+    // ─────────────────────────────────────────────────────────────────────
+    if (showBase) {
+      const baseSize = symbolSize * 0.24;
+      symbolLayers.push({
+        type: "CIMVectorMarker",
+        enable: true,
+        anchorPoint: { x: 0, y: 0 },
+        anchorPointUnits: "Relative",
+        dominantSizeAxis3D: "Z",
+        size: baseSize,
+        frame: { xmin:-10, ymin:-10, xmax:10, ymax:10 },
+        respectFrame: true,
+        billboardMode3D: "FaceNearPlane",
+        markerGraphics: [
+          // Faction-coloured filled circle
+          {
+            type: "CIMMarkerGraphic",
+            geometry: { rings: [ buildCircleRing(9.5, 40) ] },
+            symbol: {
+              type: "CIMPolygonSymbol",
+              symbolLayers: [
+                { type: "CIMSolidFill",   enable:true, color:[br,bg,bb,255] },
+                { type: "CIMSolidStroke", enable:true, width:1.8, color:[20,20,20,255] },
+              ],
+            },
+          },
+          // Horizontal bar (tube cross-section / range indicator)
+          {
+            type: "CIMMarkerGraphic",
+            geometry: { paths: [[[-7,0],[7,0]]] },
+            symbol: {
+              type: "CIMLineSymbol",
+              symbolLayers: [{ type:"CIMSolidStroke", enable:true, width:2.2, color:[255,255,255,255] }],
+            },
+          },
+          // Vertical bar (elevation axis)
+          {
+            type: "CIMMarkerGraphic",
+            geometry: { paths: [[[0,-7],[0,7]]] },
+            symbol: {
+              type: "CIMLineSymbol",
+              symbolLayers: [{ type:"CIMSolidStroke", enable:true, width:2.2, color:[255,255,255,255] }],
+            },
+          },
+        ],
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ASSEMBLE CIMSymbolReference
+    // ═══════════════════════════════════════════════════════════════════════
+    return {
+      type: "CIMSymbolReference",
+      symbol: {
+        type: "CIMPointSymbol",
+        symbolLayers,
+
+        // ── Halo ────────────────────────────────────────────────────────
+        // Thin outline behind the entire symbol improves legibility on
+        // complex basemaps.  Set haloSize:0 or showHalo:false to disable.
+        ...(showHalo ? {
+          haloSymbol: {
+            type: "CIMPolygonSymbol",
+            symbolLayers: [{ type:"CIMSolidFill", enable:true, color:[hr,hg,hb,ha] }],
+          },
+          haloSize: 1.5,
+        } : { haloSize: 0 }),
+
+        scaleX: 1,
+
+        // ── Angle alignment ─────────────────────────────────────────────
+        // "Map"    → symbol +Y always points geographic north; symbol
+        //            appears to rotate as you tilt/pan the camera.
+        // "Screen" → symbol +Y always points screen up; useful for
+        //            UI-facing annotations.
+        angleAlignment: alignToMap ? "Map" : "Screen",
+      },
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRODUCTION PATTERN — visual variable rotation
+  // ─────────────────────────────────────────────────────────────────────────
+  // In production, do NOT rebuild the CIM JSON per symbol.  Instead:
+  //  1. Build the symbol once with rotation:0 on all layers.
+  //  2. Store bearing in a feature attribute (e.g. field "fireBearing").
+  //  3. Apply a renderer visual variable to rotate the whole symbol.
+  //
+  // Example (add to your SimpleRenderer):
+  //
+  //   visualVariables: [{
+  //     type:          "rotation",
+  //     field:         "fireBearing",
+  //     rotationType:  "geographic",   // clockwise from north
+  //   }]
+  //
+  // This approach rotates the ENTIRE symbol (all layers together) from a
+  // single attribute value — far more efficient than per-feature CIM rebuilds.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SCENEVIEW SETUP
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const symbolLayer = new GraphicsLayer({ title: 'Mortar positions' });
+
+  const map = new Map({
+    basemap: 'topo-3d',
+    ground:  'world-elevation',
+    layers:  [symbolLayer],
+  });
+
+  const view = new SceneView({
+    container: 'viewDiv',
+    map,
+    camera: {
+      position: { longitude: 73.06, latitude: 33.68, z: 8000 },
+      heading: 0, tilt: 0,
+    },
+    environment: {
+      atmosphere: { quality: 'high' },
+      lighting:   { date: new Date() },
+    },
+    popup: {
+      dockEnabled: true,
+      dockOptions: { position: 'bottom-left', breakpoint: false },
+      defaultPopupTemplateEnabled: true,
+    },
+  });
+
+  symbolLayer.popupTemplate = {
+    title: 'Mortar position',
+    content: 'Bearing: {fireBearing}°<br>Faction: {faction}<br>Dispersion: ±{halfAngle}°',
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  let currentFaction = 'friendly';
+  let lastCIM        = null;   // cache for JSON viewer
+
+  const $ = id => document.getElementById(id);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PARAMETER READERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function getOpts() {
+    return {
+      bearing:     parseInt($('inp-bearing').value),
+      halfAngle:   parseInt($('inp-half-angle').value),
+      symbolSize:  parseInt($('inp-size').value),
+      faction:     currentFaction,
+      showCone:    $('opt-cone').checked,
+      showArrow:   $('opt-arrow').checked,
+      showMinRing: $('opt-minring').checked,
+      showBase:    $('opt-base').checked,
+      showHalo:    $('opt-halo').checked,
+      alignToMap:  $('opt-align').checked,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PREVIEW CANVAS — 2D canvas rendering so the symbol is visible before
+  // map placement, and updates live as parameters change.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function drawPreview() {
+    const canvas = $('preview-canvas');
+    const ctx    = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const cx = W/2, cy = H/2;
+    const opts  = getOpts();
+    const pal   = FACTIONS[opts.faction] ?? FACTIONS.friendly;
+    const R     = 44;   // preview radius
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0f1214';
+    ctx.fillRect(0, 0, W, H);
+
+    // Transform: screen +Y is down, but we want +Y = up and rotation = clockwise
+    const toScreen = (fx, fy) => {
+      const radBearing = opts.bearing * Math.PI / 180;
+      const cos = Math.cos(radBearing), sin = Math.sin(radBearing);
+      // Rotate point (fx,fy) by bearing (clockwise), flip Y for screen
+      const rx =  fx * cos + fy * sin;   // rotated x
+      const ry = -fx * sin + fy * cos;   // rotated y (before screen flip)
+      // ry flipped: frame +Y → screen -Y
+      return [cx + rx * R / 50, cy - ry * R / 50];
+    };
+
+    // 1. Cone
+    if (opts.showCone) {
+      const ring = buildFanRing(44, opts.halfAngle, 32);
+      ctx.beginPath();
+      ring.forEach(([fx,fy], i) => {
+        const [sx,sy] = toScreen(fx * 50/44, fy * 50/44);
+        i===0 ? ctx.moveTo(sx,sy) : ctx.lineTo(sx,sy);
+      });
+      ctx.closePath();
+      const [cr,cg,cb] = pal.cone;
+      ctx.fillStyle   = `rgba(${cr},${cg},${cb},0.22)`;
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.70)`;
+      ctx.lineWidth   = 1;
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // 2. Arrow shaft
+    if (opts.showArrow) {
+      const [cr,cg,cb] = pal.cone;
+      const [sx1,sy1] = toScreen(0, 50*0.18);
+      const [sx2,sy2] = toScreen(0, 50*0.84);
+      ctx.beginPath();
+      ctx.moveTo(sx1,sy1); ctx.lineTo(sx2,sy2);
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},1)`;
+      ctx.lineWidth   = 2;
+      ctx.stroke();
+      // Arrowhead
+      const [ax, ay] = toScreen(0, 50*0.94);
+      const [lx, ly] = toScreen(-50*0.09, 50*0.78);
+      const [rx, ry] = toScreen( 50*0.09, 50*0.78);
+      ctx.beginPath();
+      ctx.moveTo(ax,ay); ctx.lineTo(lx,ly); ctx.lineTo(rx,ry);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},1)`;
+      ctx.fill();
+    }
+
+    // 3. Dead-zone ring (dashed, no rotation needed)
+    if (opts.showMinRing) {
+      const [cr,cg,cb] = pal.cone;
+      const ringPx = R * 0.24;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringPx, 0, Math.PI*2);
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.7)`;
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 4. Baseplate
+    if (opts.showBase) {
+      const [br,bg,bb] = pal.base;
+      const bpx = R * 0.24;
+      ctx.beginPath();
+      ctx.arc(cx, cy, bpx, 0, Math.PI*2);
+      ctx.fillStyle   = `rgb(${br},${bg},${bb})`;
+      ctx.strokeStyle = '#141414';
+      ctx.lineWidth   = 1.5;
+      ctx.fill();
+      ctx.stroke();
+      // Cross
+      ctx.strokeStyle = 'white'; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(cx-bpx*0.7,cy); ctx.lineTo(cx+bpx*0.7,cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx,cy-bpx*0.7); ctx.lineTo(cx,cy+bpx*0.7); ctx.stroke();
+    }
+
+    // Bearing label
+    ctx.fillStyle = '#3a3935';
+    ctx.font      = '9px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${String(opts.bearing).padStart(3,'0')}° / ±${opts.halfAngle}°`, cx, H-4);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // JSON VIEWER — syntax-highlighted CIM JSON
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function syntaxHighlight(json) {
+    return JSON.stringify(json, null, 2)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+        match => {
+          if (/^"/.test(match)) {
+            if (/:$/.test(match)) return `<span class="j-key">${match}</span>`;
+            return `<span class="j-str">${match}</span>`;
+          }
+          if (/true|false/.test(match)) return `<span class="j-bool">${match}</span>`;
+          return `<span class="j-num">${match}</span>`;
+        });
+  }
+
+  function updateJSONViewer(cimData) {
+    // Show only the symbol portion (skip some verbose geometry arrays)
+    const toShow = {
+      type: cimData.type,
+      symbol: {
+        ...cimData.symbol,
+        symbolLayers: cimData.symbol.symbolLayers.map(layer => ({
+          type:              layer.type,
+          size:              layer.size,
+          rotation:          layer.rotation,
+          rotateClockwise:   layer.rotateClockwise,
+          billboardMode3D:   layer.billboardMode3D,
+          '// markerGraphics': `[…${(layer.markerGraphics||[]).length} graphic(s)]`,
+        })),
+      },
+    };
+    $('json-viewer').innerHTML = syntaxHighlight(toShow);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PANEL WIRING — all inputs rebuild the preview instantly
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  $('inp-bearing').addEventListener('input', () => {
+    $('bearing-v').textContent = String($('inp-bearing').value).padStart(3,'0') + '°';
+    onParamChange();
+  });
+  $('inp-half-angle').addEventListener('input', () => {
+    $('half-angle-v').textContent = $('inp-half-angle').value + '°';
+    onParamChange();
+  });
+  $('inp-size').addEventListener('input', () => {
+    $('size-v').textContent = $('inp-size').value + ' px';
+    onParamChange();
+  });
+
+  ['opt-cone','opt-arrow','opt-minring','opt-base','opt-halo','opt-align']
+    .forEach(id => $(id).addEventListener('change', onParamChange));
+
+  // Faction buttons
+  document.querySelectorAll('.faction-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.faction-btn').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+      currentFaction = btn.dataset.faction;
+      onParamChange();
+    });
+  });
+
+  function onParamChange() {
+    drawPreview();
+    // If JSON tab is visible, keep it updated too
+    if ($('tab-json').classList.contains('active') && lastCIM) {
+      lastCIM = buildMortarCIM(getOpts());
+      updateJSONViewer(lastCIM);
+    }
+  }
+
+  // Tab switching
+  document.querySelectorAll('.ptab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      $('tab-' + tab.dataset.tab).classList.add('active');
+      if (tab.dataset.tab === 'json') {
+        lastCIM = buildMortarCIM(getOpts());
+        updateJSONViewer(lastCIM);
+      }
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MAP CLICK — place mortar symbol at click location
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  view.on('click', async event => {
+    const result = await view.hitTest(event, { include: [map.ground] });
+    const gp     = result?.ground?.mapPoint ?? event.mapPoint;
+    const opts   = getOpts();
+    const cim    = buildMortarCIM(opts);
+    lastCIM      = cim;
+
+    symbolLayer.add(new Graphic({
+      geometry: new Point({
+        longitude: gp.longitude,
+        latitude:  gp.latitude,
+        spatialReference: { wkid: 4326 },
+      }),
+      // ── Assign CIM directly as the symbol ─────────────────────────────
+      // The "type: cim" wrapper tells the API this is a CIMSymbolReference.
+      // From here, .data is the CIMSymbolReference JSON we built above.
+      symbol: { type: 'cim', data: cim },
+      attributes: {
+        fireBearing: opts.bearing,
+        faction:     opts.faction,
+        halfAngle:   opts.halfAngle,
+      },
+    }));
+
+    $('hint').style.opacity = '0';
+    // Update JSON tab if it is open
+    if ($('tab-json').classList.contains('active')) updateJSONViewer(cim);
+  });
+
+  // ── Clear ─────────────────────────────────────────────────────────────────
+  $('btn-clear').addEventListener('click', () => {
+    symbolLayer.removeAll();
+    $('hint').style.opacity = '1';
+  });
+
+  // ── Place via button (centres on current map view) ────────────────────────
+  $('btn-place').addEventListener('click', () => {
+    const c    = view.center;
+    const opts = getOpts();
+    const cim  = buildMortarCIM(opts);
+    lastCIM    = cim;
+    symbolLayer.add(new Graphic({
+      geometry: new Point({ longitude: c.longitude, latitude: c.latitude, spatialReference: { wkid: 4326 } }),
+      symbol:   { type: 'cim', data: cim },
+      attributes: { fireBearing: opts.bearing, faction: opts.faction, halfAngle: opts.halfAngle },
+    }));
+    $('hint').style.opacity = '0';
+  });
+
+  // ── Copy JSON ─────────────────────────────────────────────────────────────
+  $('btn-copy-json').addEventListener('click', () => {
+    const cim = buildMortarCIM(getOpts());
+    navigator.clipboard.writeText(JSON.stringify(cim, null, 2))
+      .then(() => {
+        const btn = $('btn-copy-json');
+        const prev = btn.textContent;
+        btn.textContent = 'Copied ✓';
+        setTimeout(() => { btn.textContent = prev; }, 1500);
+      });
+  });
+
+  // ── Initial preview ───────────────────────────────────────────────────────
+  view.when(() => {
+    drawPreview();
+    console.log('[CIMSymbol] SceneView ready.');
+    console.log('[CIMSymbol] buildMortarCIM() is exposed globally for testing.');
+    window.buildMortarCIM = buildMortarCIM;
+  });
+
+}); // end require()
+</script>
+</body>
+</html>

@@ -1084,7 +1084,7 @@ class SymbolEngine implements Evented {
       // ── Save / Load submenu ─────────────────────────────────────────
       {
         id: 'saveload-submenu',
-        label: 'Save / Load',
+        label: 'Save / Load **',
         icon: '<span style="font-size:14px">💾</span>',
         visible: () => (settingsData as any).features?.saveLoad !== false,
         children: [

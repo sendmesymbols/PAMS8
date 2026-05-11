@@ -1,0 +1,139 @@
+
+<h2 class="sr-only">Interactive formation template preview — select formation, adjust bearing and spacing to see how units arrange on a map</h2>
+<style>
+.frow{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.frow button{font-size:12px;padding:5px 12px;border-radius:99px;cursor:pointer;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);transition:background .12s,color .12s}
+.frow button.on{background:var(--color-background-info);color:var(--color-text-info);border-color:transparent}
+.ctrls{display:flex;gap:24px;flex-wrap:wrap;margin:10px 0 0;align-items:center}
+.cl{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary)}
+.cl input[type=range]{width:130px}
+.cl b{font-size:12px;font-weight:500;color:var(--color-text-primary);min-width:38px}
+#fd{font-size:12px;color:var(--color-text-secondary);margin:0 0 8px;min-height:14px}
+</style>
+<div class="frow" id="frow"></div>
+<p id="fd"></p>
+<canvas id="fc" width="640" height="290" style="width:100%;height:auto;display:block;border-radius:8px"></canvas>
+<div class="ctrls">
+  <div class="cl"><i class="ti ti-compass" aria-hidden="true"></i> Bearing <input type="range" id="sl-b" min="0" max="359" value="30" step="1"> <b id="vb">030°</b></div>
+  <div class="cl"><i class="ti ti-arrows-maximize" aria-hidden="true"></i> Spacing <input type="range" id="sl-s" min="0" max="3" value="1" step="1"> <b id="vs">200m</b></div>
+</div>
+<script>
+const F={
+  line:{n:'Line',d:'Maximum frontage — equal firepower across width. Use for assault or defensive screen.',u:[[-2,0],[-1,0],[0,0],[1,0],[2,0]]},
+  column:{n:'Column',d:'Fast road march — narrow frontage, fast movement. Use on routes or in restricted terrain.',u:[[0,0],[0,-1],[0,-2],[0,-3],[0,-4]]},
+  wedge:{n:'Wedge',d:'Lead element at tip, flanks protected. Flexible — converts to line or vee quickly.',u:[[0,0],[-1,-1],[1,-1],[-2,-2],[2,-2]]},
+  echelonR:{n:'Echelon right',d:'Right flank forward, left refused. Masks left and threatens enemy right.',u:[[0,0],[1,-1],[2,-2],[3,-3],[4,-4]]},
+  echelonL:{n:'Echelon left',d:'Left flank forward, right refused. Masks right and threatens enemy left.',u:[[0,0],[-1,-1],[-2,-2],[-3,-3],[-4,-4]]},
+  vee:{n:'Vee',d:'Two forward wings, reserve rear. Good for moving to contact with flank security.',u:[[0,0],[-1.5,1],[1.5,1],[-3,1.8],[3,1.8]]}
+};
+const SP=[28,44,62,80],SL=['100m','200m','400m','600m'];
+let cur='line',brg=30,spi=1;
+const cv=document.getElementById('fc'),ct=cv.getContext('2d');
+function dark(){return matchMedia('(prefers-color-scheme: dark)').matches}
+function col(){
+  const d=dark();
+  return{
+    uf:d?'#0c2a4a':'#E6F1FB',us:d?'#378ADD':'#185FA5',
+    af:'#185FA5',as_:d?'#B5D4F4':'#0C447C',
+    link:d?'rgba(55,138,221,0.22)':'rgba(24,95,165,0.15)',
+    lbl:d?'#85B7EB':'#0C447C',
+    txt:d?'rgba(194,192,182,0.7)':'rgba(61,61,58,0.7)',
+    arr:d?'#378ADD':'#185FA5',
+    grid:d?'rgba(255,255,255,0.035)':'rgba(0,0,0,0.035)',
+    ring:d?'rgba(55,138,221,0.25)':'rgba(24,95,165,0.18)',
+    fwd:d?'rgba(55,138,221,0.4)':'rgba(24,95,165,0.3)'
+  }
+}
+function scr(lat,fwd,cx,cy,sp,br){
+  return[cx+lat*sp*Math.cos(br)+fwd*sp*Math.sin(br),
+         cy+lat*sp*Math.sin(br)-fwd*sp*Math.cos(br)]
+}
+function rrect(x,y,w,h,r){
+  ct.beginPath();
+  ct.moveTo(x+r,y);ct.lineTo(x+w-r,y);ct.quadraticCurveTo(x+w,y,x+w,y+r);
+  ct.lineTo(x+w,y+h-r);ct.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ct.lineTo(x+r,y+h);ct.quadraticCurveTo(x,y+h,x,y+h-r);
+  ct.lineTo(x,y+r);ct.quadraticCurveTo(x,y,x+r,y);ct.closePath();
+}
+function drawUnit(x,y,br,anchor,c){
+  ct.save();ct.translate(x,y);ct.rotate(br);
+  const w=22,h=16;
+  rrect(-w/2,-h/2,w,h,3);
+  ct.fillStyle=anchor?c.af:c.uf;ct.fill();
+  ct.strokeStyle=anchor?c.as_:c.us;ct.lineWidth=anchor?1.5:1;ct.stroke();
+  ct.strokeStyle=anchor?c.as_:c.us;ct.lineWidth=1.5;ct.lineCap='round';
+  ct.beginPath();ct.moveTo(-5,-h/2);ct.lineTo(5,-h/2);ct.stroke();
+  ct.restore();
+}
+function draw(){
+  const W=cv.width,H=cv.height;
+  const f=F[cur],sp=SP[spi],br=brg*Math.PI/180;
+  const c=col();
+  ct.clearRect(0,0,W,H);
+  ct.strokeStyle=c.grid;ct.lineWidth=0.5;
+  for(let x=0;x<W;x+=40){ct.beginPath();ct.moveTo(x,0);ct.lineTo(x,H);ct.stroke()}
+  for(let y=0;y<H;y+=40){ct.beginPath();ct.moveTo(0,y);ct.lineTo(W,y);ct.stroke()}
+  const clat=f.u.reduce((s,u)=>s+u[0],0)/f.u.length;
+  const cfwd=f.u.reduce((s,u)=>s+u[1],0)/f.u.length;
+  const [ox,oy]=scr(clat,cfwd,0,0,sp,br);
+  const cx=W/2-ox+4,cy=H/2-oy+10;
+  const pos=f.u.map(([la,fw])=>scr(la,fw,cx,cy,sp,br));
+  ct.strokeStyle=c.link;ct.lineWidth=1;ct.setLineDash([4,5]);
+  for(let i=1;i<pos.length;i++){
+    ct.beginPath();ct.moveTo(pos[0][0],pos[0][1]);ct.lineTo(pos[i][0],pos[i][1]);ct.stroke();
+  }
+  ct.setLineDash([]);
+  const fwdLen=36;
+  const fx=pos[0][0]+Math.sin(br)*fwdLen,fy=pos[0][1]-Math.cos(br)*fwdLen;
+  ct.strokeStyle=c.fwd;ct.lineWidth=1.5;ct.setLineDash([3,4]);
+  ct.beginPath();ct.moveTo(pos[0][0],pos[0][1]);ct.lineTo(fx,fy);ct.stroke();
+  ct.setLineDash([]);
+  for(let i=1;i<pos.length;i++) drawUnit(pos[i][0],pos[i][1],br,false,c);
+  drawUnit(pos[0][0],pos[0][1],br,true,c);
+  ct.fillStyle=c.lbl;ct.font='500 10px sans-serif';ct.textAlign='center';
+  ct.fillText('anchor',pos[0][0],pos[0][1]+20);
+  const ax=46,ay=46,ar=22;
+  ct.strokeStyle=c.ring;ct.lineWidth=1;
+  ct.beginPath();ct.arc(ax,ay,ar,0,Math.PI*2);ct.stroke();
+  ct.fillStyle=c.txt;ct.font='10px sans-serif';ct.textAlign='center';
+  ct.fillText('N',ax,ay-ar-5);
+  const atx=ax+Math.sin(br)*ar,aty=ay-Math.cos(br)*ar;
+  ct.strokeStyle=c.arr;ct.lineWidth=2;ct.lineCap='round';
+  ct.beginPath();ct.moveTo(ax,ay);ct.lineTo(atx,aty);ct.stroke();
+  const aa=Math.atan2(aty-ay,atx-ax);
+  ct.fillStyle=c.arr;ct.beginPath();
+  ct.moveTo(atx,aty);
+  ct.lineTo(atx-7*Math.cos(aa-0.45),aty-7*Math.sin(aa-0.45));
+  ct.lineTo(atx-7*Math.cos(aa+0.45),aty-7*Math.sin(aa+0.45));
+  ct.closePath();ct.fill();
+  ct.fillStyle=c.txt;ct.font='11px sans-serif';ct.textAlign='right';
+  ct.fillText(f.u.length+' units · '+SL[spi]+' between units',W-14,H-12);
+}
+const frow=document.getElementById('frow');
+Object.entries(F).forEach(([k,f])=>{
+  const b=document.createElement('button');
+  b.textContent=f.n;
+  b.onclick=()=>{
+    cur=k;
+    frow.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    document.getElementById('fd').textContent=f.d;
+    draw();
+  };
+  if(k===cur)b.classList.add('on');
+  frow.appendChild(b);
+});
+document.getElementById('fd').textContent=F[cur].d;
+document.getElementById('sl-b').oninput=e=>{
+  brg=+e.target.value;
+  document.getElementById('vb').textContent=String(brg).padStart(3,'0')+'°';
+  draw();
+};
+document.getElementById('sl-s').oninput=e=>{
+  spi=+e.target.value;
+  document.getElementById('vs').textContent=SL[spi];
+  draw();
+};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+draw();
+</script>

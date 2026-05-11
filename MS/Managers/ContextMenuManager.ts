@@ -15,7 +15,6 @@ import TrajectoryEngine from '../Engines/Analysis/TrajectoryEngine';
 import BufferEngine from '../Engines/Analysis/BufferEngine';
 import CorridorEngine from '../Engines/Analysis/CorridorEngine';
 import { EffectEngine } from '../Engines/Analysis/EffectEngine';
-import ImportExportEngine from '../Engines/ImportExportEngine';
 
 export interface ContextMenuItem {
   id: string;
@@ -79,7 +78,6 @@ class ContextMenuManager extends Evented {
   private _bufferEngine: BufferEngine | null = null;
   private _corridorEngine: CorridorEngine | null = null;
   private _effectEngine: EffectEngine | null = null;
-  private _importExportEngine: ImportExportEngine | null = null;
 
   // Event handles for cleanup on re-initialization
   private _pointerDownHandle: any = null;
@@ -241,7 +239,7 @@ class ContextMenuManager extends Evented {
    * context menu item opens the WEZ panel with the right-clicked graphic
    * as the observer origin.
    */
-  public linkWeaponEffectEngine(engine: WeaponEffectEngine): void {
+  public linkWeaponEffectEngine(engine: WeaponEffectEngine | null): void {
     this._weaponEffectEngine = engine;
   }
 
@@ -249,7 +247,7 @@ class ContextMenuManager extends Evented {
    * Link a LOSEngine so the "Analysis → Line of Sight" context menu item
    * opens the LOS panel with the right-clicked graphic as the observer origin.
    */
-  public linkLOSEngine(engine: LOSEngine): void {
+  public linkLOSEngine(engine: LOSEngine | null): void {
     this._losEngine = engine;
   }
 
@@ -257,7 +255,7 @@ class ContextMenuManager extends Evented {
    * Link a TrajectoryEngine so the "Analysis → Projectile Trajectory" item
    * opens the trajectory panel with the right-clicked graphic as fire origin.
    */
-  public linkTrajectoryEngine(engine: TrajectoryEngine): void {
+  public linkTrajectoryEngine(engine: TrajectoryEngine | null): void {
     this._trajectoryEngine = engine;
   }
 
@@ -265,7 +263,7 @@ class ContextMenuManager extends Evented {
    * Link a BufferEngine so the "Analysis → Buffer abd Threat Rings" item
    * opens the buffer panel with the right-clicked graphic as source origin.
    */
-  public linkBufferEngine(engine: BufferEngine): void {
+  public linkBufferEngine(engine: BufferEngine | null): void {
     this._bufferEngine = engine;
   }
 
@@ -273,7 +271,7 @@ class ContextMenuManager extends Evented {
    * Link a CorridorEngine so the "Analysis -> Corridor Analysis" item
    * opens the corridor panel with the right-clicked graphic as route origin.
    */
-  public linkCorridorEngine(engine: CorridorEngine): void {
+  public linkCorridorEngine(engine: CorridorEngine | null): void {
     this._corridorEngine = engine;
   }
 
@@ -281,13 +279,20 @@ class ContextMenuManager extends Evented {
    * Link an EffectEngine so the "Analysis -> Effects Radius" item
    * opens the effects panel.
    */
-  public linkEffectEngine(engine: EffectEngine): void {
+  public linkEffectEngine(engine: EffectEngine | null): void {
     this._effectEngine = engine;
   }
 
-  public linkImportExportEngine(engine: ImportExportEngine): void {
-    this._importExportEngine = engine;
+  /** Null out all analysis engine references so the Analysis submenu is hidden. */
+  public unlinkAnalysisEngines(): void {
+    this._weaponEffectEngine = null;
+    this._losEngine = null;
+    this._trajectoryEngine = null;
+    this._bufferEngine = null;
+    this._corridorEngine = null;
+    this._effectEngine = null;
   }
+
 
   /**
    * Register a function that returns extra context menu items dynamically.
@@ -333,163 +338,53 @@ class ContextMenuManager extends Evented {
     const dynamicItems = this._dynamicItemProviders.flatMap((p) => p(graphic));
     items = [...items, ...dynamicItems];
 
-    // ── Save / Load section ───────────────────────────────────────────────
-    if (this._importExportEngine) {
-      const sep = document.createElement('div');
-      sep.className = this.options.menuSeparatorClass || '';
-      this.menuElement.appendChild(sep);
-
-      const saveLoadItems: ContextMenuItem[] = [
-        {
-          id: 'save-symbols',
-          label: 'Save Symbols',
-          icon: `<span style="font-size:14px">💾</span>`,
-          action: () => {
-            this._importExportEngine!.saveToFile();
-          },
-        },
-        {
-          id: 'load-symbols',
-          label: 'Load Symbols',
-          icon: `<span style="font-size:14px">📂</span>`,
-          action: () => {
-            this._importExportEngine!.loadFromFile();
-          },
-        },
-        {
-          id: 'save-as-plan',
-          label: 'Save Plan',
-          icon: `<span style="font-size:14px">💾</span>`,
-          action: () => {
-            this._importExportEngine!.savePlanToFile();
-          },
-        },
-        {
-          id: 'load-plan',
-          label: 'Load Plan',
-          icon: `<span style="font-size:14px">📂</span>`,
-          action: () => {
-            this._importExportEngine!.loadPlanFromFile();
-          },
-        },
-      ];
-
-      const saveLoadItem = document.createElement('div');
-      saveLoadItem.className = this.options.menuItemClass || '';
-      saveLoadItem.classList.add('has-submenu');
-      saveLoadItem.style.position = 'relative';
-      saveLoadItem.innerHTML = `<span class="menu-icon" style="font-size:14px">📁</span><span style="flex:1">Save / Load</span>`;
-
-
-      const submenuEl = document.createElement('div');
-      submenuEl.className = 'arcgis-submenu';
-      this.renderMenuItems(saveLoadItems, submenuEl, graphic, x, y);
-      saveLoadItem.appendChild(submenuEl);
-
-      saveLoadItem.addEventListener('mouseenter', () => {
-        saveLoadItem.classList.add(this.options.menuItemHoverClass || '');
-        submenuEl.style.display = 'block';
-        requestAnimationFrame(() => {
-          const rect = submenuEl.getBoundingClientRect();
-          if (rect.right > window.innerWidth) {
-            submenuEl.style.left = 'auto';
-            submenuEl.style.right = '100%';
-          } else {
-            submenuEl.style.left = '100%';
-            submenuEl.style.right = 'auto';
-          }
-        });
-      });
-      saveLoadItem.addEventListener('mouseleave', () => {
-        setTimeout(() => {
-          if (!submenuEl.matches(':hover') && !saveLoadItem.matches(':hover')) {
-            saveLoadItem.classList.remove(this.options.menuItemHoverClass || '');
-            submenuEl.style.display = 'none';
-          }
-        }, 100);
-      });
-      submenuEl.addEventListener('mouseleave', () => {
-        setTimeout(() => {
-          if (!submenuEl.matches(':hover') && !saveLoadItem.matches(':hover')) {
-            saveLoadItem.classList.remove(this.options.menuItemHoverClass || '');
-            submenuEl.style.display = 'none';
-          }
-        }, 100);
-      });
-
-      this.menuElement.appendChild(saveLoadItem);
-    }
-    // ───────────────────────────────────────────────────────────────────
-
     this.renderMenuItems(items, this.menuElement, graphic, x, y);
 
-    // ── Analysis section ────────────────────────────────────────────────
-    {
+    // ── Analysis section (hidden when all analysis engines are disabled) ──
+    if (this._losEngine || this._weaponEffectEngine || this._trajectoryEngine ||
+        this._bufferEngine || this._corridorEngine || this._effectEngine) {
       const sep = document.createElement('div');
       sep.className = this.options.menuSeparatorClass || '';
       this.menuElement.appendChild(sep);
 
+      // Only include items whose engine is currently loaded
       const analysisItems: ContextMenuItem[] = [
-        {
+        ...(this._losEngine ? [{
           id: 'analysis-los',
           label: 'Line of Sight',
           icon: `<span style="font-size:14px">👁️</span>`,
-          action: (g: Graphic) => {
-            if (this._losEngine && this.view) {
-              this._losEngine.open(g, this.view);
-            }
-          },
-        },
-        {
+          action: (g: Graphic) => { if (this._losEngine && this.view) this._losEngine.open(g, this.view); },
+        }] : []),
+        ...(this._weaponEffectEngine ? [{
           id: 'analysis-wez',
           label: 'Weapon Engagement Zone',
           icon: `<span style="font-size:14px">🎯</span>`,
-          action: (g: Graphic) => {
-            if (this._weaponEffectEngine && this.view) {
-              this._weaponEffectEngine.open(g, this.view);
-            }
-          },
-        },
-        {
+          action: (g: Graphic) => { if (this._weaponEffectEngine && this.view) this._weaponEffectEngine.open(g, this.view); },
+        }] : []),
+        ...(this._trajectoryEngine ? [{
           id: 'analysis-trajectory',
           label: 'Projectile Trajectory',
           icon: `<span style="font-size:14px">📈</span>`,
-          action: (g: Graphic) => {
-            if (this._trajectoryEngine && this.view) {
-              this._trajectoryEngine.open(g, this.view);
-            }
-          },
-        },
-        {
+          action: (g: Graphic) => { if (this._trajectoryEngine && this.view) this._trajectoryEngine.open(g, this.view); },
+        }] : []),
+        ...(this._bufferEngine ? [{
           id: 'analysis-buffer',
-          label: 'Buffer abd Threat Rings',
+          label: 'Buffer & Threat Rings',
           icon: `<span style="font-size:14px">⭕</span>`,
-          action: (g: Graphic) => {
-            if (this._bufferEngine && this.view) {
-              this._bufferEngine.open(g, this.view);
-            }
-          },
-        },
-        {
+          action: (g: Graphic) => { if (this._bufferEngine && this.view) this._bufferEngine.open(g, this.view); },
+        }] : []),
+        ...(this._corridorEngine ? [{
           id: 'analysis-corridor',
           label: 'Corridor Analysis',
           icon: `<span style="font-size:14px">🛣️</span>`,
-          action: (g: Graphic) => {
-            if (this._corridorEngine && this.view) {
-              this._corridorEngine.open(g, this.view);
-            }
-          },
-        },
-        {
+          action: (g: Graphic) => { if (this._corridorEngine && this.view) this._corridorEngine.open(g, this.view); },
+        }] : []),
+        ...(this._effectEngine ? [{
           id: 'analysis-effects',
           label: 'Effect Analysis',
           icon: `<span style="font-size:14px">💥</span>`,
-          action: (g: Graphic) => {
-            if (this._effectEngine && this.view) {
-              this._effectEngine.open(g, this.view);
-            }
-          },
-        },
+          action: (g: Graphic) => { if (this._effectEngine && this.view) this._effectEngine.open(g, this.view); },
+        }] : []),
       ];
 
       const analysisItem = document.createElement('div');
@@ -535,7 +430,7 @@ class ContextMenuManager extends Evented {
       });
 
       this.menuElement.appendChild(analysisItem);
-    }
+    } // end analysis if-block
     // ────────────────────────────────────────────────────────────────────
 
     // ── Measurement section ──────────────────────────────────────────────

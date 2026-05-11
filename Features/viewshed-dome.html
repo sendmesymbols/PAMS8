@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Viewshed Dome — ArcGIS Custom Mesh</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#06080a}
+
+    /* ── Panel ─────────────────────────────────────────────────────────── */
+    #panel{
+      position:absolute;top:14px;right:14px;width:308px;z-index:99;
+      background:rgba(6,8,10,0.97);
+      border:1px solid rgba(29,158,117,0.32);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh - 28px);overflow-y:auto;
+    }
+
+    .ph{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;
+      border-bottom:1px solid rgba(29,158,117,0.15);
+      background:rgba(29,158,117,0.07);
+      position:sticky;top:0;z-index:2;
+    }
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#1D9E75;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935;transition:color .2s}
+    .ph-status.ready   {color:#1D9E75}
+    .ph-status.sampling{color:#EF9F27}
+    .ph-status.building{color:#378ADD}
+    .ph-status.done    {color:#1D9E75}
+
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#3a3935;padding:9px 12px 5px}
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s;
+    }
+    input:focus,select:focus{border-color:rgba(29,158,117,0.55)}
+    select option{background:#141618}
+
+    .psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+    .psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;flex:1.4}
+    .psr input[type=range]{flex:2;accent-color:#1D9E75;cursor:pointer}
+    .psr-v{font-size:10px;color:#1D9E75;min-width:40px;text-align:right}
+
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#1D9E75;width:13px;height:13px;cursor:pointer}
+
+    /* ── Progress bar ───────────────────────────────────────────────────── */
+    #progress-wrap{padding:0 12px 9px}
+    #progress-track{
+      height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;
+    }
+    #progress-fill{
+      height:100%;background:linear-gradient(to right,#1D9E75,#378ADD);
+      border-radius:2px;width:0%;transition:width .1s linear;
+    }
+    #progress-label{
+      font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:4px;
+    }
+
+    /* ── Stats ──────────────────────────────────────────────────────────── */
+    #stats{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;
+      margin:0 12px 8px;
+      background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.15);
+      border-radius:3px;padding:7px 9px;font-size:10px;
+    }
+    .st{display:flex;flex-direction:column;gap:1px}
+    .st-l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935}
+    .st-v{color:#1D9E75}
+
+    /* ── Colour key bar ─────────────────────────────────────────────────── */
+    #colorkey{margin:0 12px 9px}
+    .ck-label{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935;margin-bottom:5px}
+    .ck-bar{
+      height:10px;border-radius:2px;
+      background:linear-gradient(to right,#1a52dc,#1D9E75,#EF9F27,#DC3C30);
+      border:1px solid rgba(255,255,255,0.08);
+    }
+    .ck-legend{display:flex;justify-content:space-between;margin-top:3px;font-size:8px;color:#3a3935}
+
+    /* ── Coords ─────────────────────────────────────────────────────────── */
+    #coords{font-size:9px;color:#1D9E75;padding:2px 12px 7px;letter-spacing:.05em;opacity:.75}
+
+    /* ── Buttons ────────────────────────────────────────────────────────── */
+    .pb-row{display:flex;gap:6px;padding:9px 12px}
+    .pb{
+      flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;
+      border:1px solid rgba(29,158,117,0.38);
+      background:transparent;color:#1D9E75;transition:all .14s;
+    }
+    .pb:hover:not(:disabled){background:rgba(29,158,117,0.10)}
+    .pb.primary{background:rgba(29,158,117,0.16);border-color:#1D9E75}
+    .pb.primary:hover:not(:disabled){background:rgba(29,158,117,0.30)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+
+    /* ── Hint ────────────────────────────────────────────────────────────── */
+    #hint{
+      position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(6,8,10,0.94);border:1px solid rgba(29,158,117,0.45);
+      color:#1D9E75;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase;transition:opacity .25s;
+    }
+
+    /* ── Legend ─────────────────────────────────────────────────────────── */
+    #legend{
+      position:absolute;bottom:14px;left:14px;z-index:99;
+      background:rgba(6,8,10,0.93);border:1px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:9px 13px;display:flex;flex-direction:column;gap:5px;
+    }
+    .leg-row{display:flex;align-items:center;gap:8px}
+    .leg-swatch{width:16px;height:10px;border-radius:2px;flex-shrink:0}
+    .leg-lbl{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#888780}
+
+    /* ── Sweep indicator ─────────────────────────────────────────────────── */
+    #sweep-overlay{
+      position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      font-family:'Courier New',monospace;font-size:11px;letter-spacing:.1em;
+      color:#1D9E75;text-transform:uppercase;
+      pointer-events:none;z-index:98;
+      background:rgba(6,8,10,0.7);padding:6px 14px;border-radius:3px;
+      display:none;
+    }
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<!-- ── PANEL ─────────────────────────────────────────────────────────────── -->
+<div id="panel">
+  <div class="ph">
+    <div class="ph-title">◉ Viewshed Dome</div>
+    <div class="ph-status" id="status">Click map to place observer</div>
+  </div>
+
+  <!-- Observer -->
+  <div class="ps">Observer</div>
+  <div class="pg">
+    <div class="pf">
+      <div class="pl">Height (m AGL)</div>
+      <input id="inp-obs-h" type="number" value="2" min="0.5" max="50" step="0.5"/>
+    </div>
+    <div class="pf">
+      <div class="pl">Max range (m)</div>
+      <input id="inp-range" type="number" value="5000" min="200" max="30000" step="200"/>
+    </div>
+  </div>
+
+  <!-- Azimuth sweep -->
+  <div class="ps">Azimuth sweep</div>
+  <div class="pg">
+    <div class="pf">
+      <div class="pl">Centre (°)</div>
+      <input id="inp-az-ctr" type="number" value="0" min="0" max="359" step="1"/>
+    </div>
+    <div class="pf">
+      <div class="pl">Spread (°)</div>
+      <input id="inp-az-spd" type="number" value="360" min="10" max="360" step="5"/>
+    </div>
+  </div>
+
+  <!-- Elevation range -->
+  <div class="ps">Elevation envelope</div>
+  <div class="psr">
+    <div class="psr-l">Min elev (°)</div>
+    <input id="inp-el-min" type="range" min="-30" max="0" step="1" value="-5"/>
+    <div class="psr-v" id="el-min-v">-5°</div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Max elev (°)</div>
+    <input id="inp-el-max" type="range" min="5" max="89" step="1" value="60"/>
+    <div class="psr-v" id="el-max-v">60°</div>
+  </div>
+
+  <!-- Resolution -->
+  <div class="ps">Resolution</div>
+  <div class="pg">
+    <div class="pf">
+      <div class="pl">Azimuth rays</div>
+      <select id="inp-num-az">
+        <option value="36">36 (10°)</option>
+        <option value="72" selected>72 (5°)</option>
+        <option value="120">120 (3°)</option>
+        <option value="180">180 (2°)</option>
+      </select>
+    </div>
+    <div class="pf">
+      <div class="pl">Elev. slices</div>
+      <select id="inp-num-el">
+        <option value="8">8</option>
+        <option value="16" selected>16</option>
+        <option value="24">24</option>
+        <option value="32">32</option>
+      </select>
+    </div>
+    <div class="pf">
+      <div class="pl">Step dist (m)</div>
+      <input id="inp-step" type="number" value="50" min="10" max="200" step="10"/>
+    </div>
+  </div>
+
+  <!-- Visual options -->
+  <div class="pdiv"></div>
+  <div class="ps">Visualisation</div>
+  <div class="pg">
+    <div class="pf full">
+      <div class="pl">Colour mode</div>
+      <select id="inp-color-mode">
+        <option value="elevation">Elevation angle — blue→amber</option>
+        <option value="binary">Binary — visible / masked</option>
+        <option value="range">Range — near→far</option>
+        <option value="azimuth">Azimuth — compass hue</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="psr">
+    <div class="psr-l">Dome opacity</div>
+    <input id="inp-opacity" type="range" min="0.1" max="1.0" step="0.05" value="0.70"/>
+    <div class="psr-v" id="opacity-v">0.70</div>
+  </div>
+
+  <div class="ptr"><label>Show masked sectors</label>
+    <input id="opt-masked"   type="checkbox" checked/></div>
+  <div class="ptr"><label>Show bottom cap</label>
+    <input id="opt-cap"      type="checkbox" checked/></div>
+  <div class="ptr"><label>Show obstruction ring</label>
+    <input id="opt-horizon"  type="checkbox" checked/></div>
+  <div class="ptr"><label>Double-sided faces</label>
+    <input id="opt-dblside"  type="checkbox" checked/></div>
+
+  <div class="pdiv"></div>
+
+  <!-- Colour key -->
+  <div id="colorkey">
+    <div class="ck-label">Elevation colour key — current mode</div>
+    <div class="ck-bar" id="ck-bar"></div>
+    <div class="ck-legend">
+      <span id="ck-lo">Low elev</span>
+      <span id="ck-hi">High elev</span>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div id="progress-wrap">
+    <div id="progress-track"><div id="progress-fill"></div></div>
+    <div id="progress-label">—</div>
+  </div>
+
+  <!-- Stats -->
+  <div id="stats">
+    <div class="st"><div class="st-l">Vertices</div><div class="st-v" id="st-verts">—</div></div>
+    <div class="st"><div class="st-l">Triangles</div><div class="st-v" id="st-tris">—</div></div>
+    <div class="st"><div class="st-l">% visible</div><div class="st-v" id="st-vis">—</div></div>
+  </div>
+
+  <div id="coords">Observer: click map to place</div>
+
+  <div class="pb-row">
+    <button class="pb"         id="btn-clear">Clear</button>
+    <button class="pb"         id="btn-recolor" disabled>Recolor</button>
+    <button class="pb primary" id="btn-build"   disabled>Build dome ↗</button>
+  </div>
+</div>
+
+<!-- ── LEGEND ────────────────────────────────────────────────────────────── -->
+<div id="legend">
+  <div class="leg-row">
+    <div class="leg-swatch" style="background:linear-gradient(to right,#1a52dc,#1D9E75,#EF9F27)"></div>
+    <div class="leg-lbl">Visible — coloured by elevation</div>
+  </div>
+  <div class="leg-row">
+    <div class="leg-swatch" style="background:rgba(80,20,20,0.7);border:1px solid #DC3C30"></div>
+    <div class="leg-lbl">Terrain-masked sector</div>
+  </div>
+  <div class="leg-row">
+    <div class="leg-swatch" style="background:#EF9F27"></div>
+    <div class="leg-lbl">Horizon / obstruction ring</div>
+  </div>
+  <div class="leg-row">
+    <div class="leg-swatch" style="background:#378ADD"></div>
+    <div class="leg-lbl">Observer position</div>
+  </div>
+</div>
+
+<div id="hint">Click anywhere on the map to place the observer</div>
+<div id="sweep-overlay" id="sweep-overlay">⟳ Casting rays…</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map",
+  "esri/views/SceneView",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic",
+  "esri/geometry/Point",
+  "esri/geometry/Mesh",
+  "esri/geometry/Polyline",
+  "esri/geometry/geometryEngine",
+  "esri/symbols/MeshSymbol3D",
+  "esri/symbols/FillSymbol3DLayer",
+], function(Map, SceneView, GraphicsLayer, Graphic, Point, Mesh, Polyline,
+            geometryEngine, MeshSymbol3D, FillSymbol3DLayer) {
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GEOMETRY UTILITIES
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const M_PER_DEG = 111_320;
+
+  /**
+   * Convert ENU offset (metres) from an origin to WGS-84 lon/lat/z.
+   * Flat-Earth approximation — accurate to <0.1% for ranges under 50 km.
+   */
+  function enuToWGS84(oLon, oLat, oZ, east, north, up) {
+    const lon = oLon + east  / (M_PER_DEG * Math.cos(oLat * Math.PI / 180));
+    const lat = oLat + north / M_PER_DEG;
+    return [lon, lat, oZ + up];
+  }
+
+  /**
+   * Destination point along a geodesic bearing at a given distance.
+   * Used for choosing ray sample points during terrain casting.
+   */
+  function destinationPoint(oLon, oLat, bearingDeg, distM) {
+    const R = 6_371_008.8, δ = distM / R, θ = bearingDeg * Math.PI / 180;
+    const φ1 = oLat * Math.PI / 180, λ1 = oLon * Math.PI / 180;
+    const φ2 = Math.asin(Math.sin(φ1)*Math.cos(δ) + Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+    const λ2 = λ1 + Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1), Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+    return { longitude: λ2*180/Math.PI, latitude: φ2*180/Math.PI };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COLOUR FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Linearly interpolate two [r,g,b] triples by t ∈ [0,1]. */
+  function lerpRGB([r1,g1,b1], [r2,g2,b2], t) {
+    return [r1+(r2-r1)*t|0, g1+(g2-g1)*t|0, b1+(b2-b1)*t|0];
+  }
+
+  /**
+   * Map elevation angle to RGBA colour.
+   *
+   * Colour modes:
+   *  elevation — blue (low) → cyan → green → amber (high)   [Marsh-style]
+   *  binary    — solid green (visible) or dark red (masked)
+   *  range     — dark blue (close) → white (far)
+   *  azimuth   — HSV hue mapped to bearing
+   *
+   * Returns Uint8 [r, g, b, a].
+   */
+  function vertexColor(mode, {
+    elevDeg, elevMin, elevMax,
+    isVisible, isMasked,
+    rangeM, maxRange,
+    azimuthDeg,
+    opacity,
+  }) {
+    const alpha = Math.round((isMasked ? 0.45 : 0.85) * opacity * 255);
+
+    if (isMasked) {
+      if (mode === 'binary') return [90, 20, 20, alpha];
+      return [60, 15, 15, alpha];  // very dark red for all modes
+    }
+
+    switch (mode) {
+
+      case 'elevation': {
+        // 3-stop gradient: blue → green → amber
+        const t = Math.max(0, Math.min(1, (elevDeg - elevMin) / (elevMax - elevMin)));
+        const STOPS = [[26, 82, 220], [29, 158, 117], [239, 159, 39], [220, 90, 48]];
+        const seg  = t * (STOPS.length - 1);
+        const lo   = Math.floor(seg), hi = Math.min(STOPS.length-1, lo+1);
+        const [r,g,b] = lerpRGB(STOPS[lo], STOPS[hi], seg - lo);
+        return [r, g, b, alpha];
+      }
+
+      case 'binary':
+        return [29, 158, 117, alpha];  // flat green
+
+      case 'range': {
+        const t = Math.max(0, Math.min(1, rangeM / maxRange));
+        const [r,g,b] = lerpRGB([29, 82, 180], [200, 220, 255], t);
+        return [r, g, b, alpha];
+      }
+
+      case 'azimuth': {
+        // Compass hue: N=cyan, E=amber, S=red, W=purple
+        const h = ((azimuthDeg % 360) + 360) % 360;
+        const COMP = [
+          [55,138,221],  // N  0°  → blue
+          [239,159,39],  // E  90° → amber
+          [220,60,48],   // S 180° → red
+          [180,40,220],  // W 270° → purple
+          [55,138,221],  // N 360° → blue (wrap)
+        ];
+        const t  = (h / 360) * (COMP.length-1);
+        const lo = Math.floor(t), hi = Math.min(COMP.length-1, lo+1);
+        const [r,g,b] = lerpRGB(COMP[lo], COMP[hi], t-lo);
+        return [r, g, b, alpha];
+      }
+
+      default:
+        return [255, 255, 255, alpha];
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TERRAIN RAY CASTING  — computes per-azimuth horizon angles
+  //
+  // Algorithm (skyline sweep):
+  //  Walk outward along each azimuth in `stepM` increments.
+  //  At each sample: compute slope angle from observer eye to terrain point.
+  //  Track the running maximum slope angle seen so far.
+  //  When slope drops below the running max by >1°, the ray is blocked there.
+  //  The horizon angle for this azimuth = the running maximum at blockage.
+  //
+  // Returns Float32Array[numRays] of horizon angles in degrees.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  async function castRays(view, observerPoint, obsZ, {
+    azCenterDeg, azSpreadDeg, numRays, maxRangeM, stepM,
+    onProgress,
+  }) {
+    // Build analysis extent — square bounding the full analysis radius
+    const halfDeg = (maxRangeM / M_PER_DEG) * 1.05;
+    const extent  = {
+      xmin: observerPoint.longitude - halfDeg / Math.cos(observerPoint.latitude * Math.PI/180),
+      ymin: observerPoint.latitude  - halfDeg,
+      xmax: observerPoint.longitude + halfDeg / Math.cos(observerPoint.latitude * Math.PI/180),
+      ymax: observerPoint.latitude  + halfDeg,
+      spatialReference: { wkid: 4326 },
+    };
+
+    // Download the DEM tile set once; all subsequent queryElevation() calls
+    // are synchronous lookups into the cached tile data.
+    const sampler  = await view.createElevationSampler(extent, { noDataValue: 0 });
+    const numSteps = Math.ceil(maxRangeM / stepM);
+    const halfAz   = azSpreadDeg / 2;
+    const horizonAngles = new Float32Array(numRays);  // degrees
+
+    for (let rayIdx = 0; rayIdx < numRays; rayIdx++) {
+      const bearing = azCenterDeg - halfAz + (rayIdx / (numRays - 1 || 1)) * azSpreadDeg;
+      let maxSlopeDeg = -90;
+
+      for (let s = 1; s <= numSteps; s++) {
+        const dist = s * stepM;
+        const { longitude, latitude } = destinationPoint(
+          observerPoint.longitude, observerPoint.latitude, bearing, dist
+        );
+        const samplePt = new Point({ longitude, latitude, spatialReference: { wkid: 4326 } });
+        const terrainZ = sampler.queryElevation(samplePt)?.z ?? 0;
+        const slopeDeg = Math.atan2(terrainZ - obsZ, dist) * 180 / Math.PI;
+        if (slopeDeg > maxSlopeDeg) maxSlopeDeg = slopeDeg;
+      }
+
+      horizonAngles[rayIdx] = maxSlopeDeg;
+
+      if (onProgress && rayIdx % 8 === 0) {
+        onProgress((rayIdx + 1) / numRays, bearing);
+      }
+    }
+
+    return { horizonAngles, sampler };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MESH BUILDER
+  // ─────────────────────────────────────────────────────────────────────────
+  // Vertex layout:  row = elevation index (0…numEl),  col = azimuth index (0…numAz-1)
+  // Index:          col * (numEl+1) + row
+  // Observer cap:   final vertex at index numAz*(numEl+1)
+  //
+  // All positions in WGS-84 geographic (lon, lat, z_MSL).
+  // Colors are RGBA Uint8 per vertex — material colorMixMode:'replace' so
+  // the mesh renders vertex colors without any lighting modification.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function buildDomeMesh(observerPoint, obsZ, horizonAngles, params) {
+    const {
+      azCenterDeg, azSpreadDeg,
+      elevMinDeg, elevMaxDeg,
+      numAz, numEl,
+      maxRangeM,
+      colorMode, opacity,
+      showMasked, showCap,
+    } = params;
+
+    const oLon = observerPoint.longitude;
+    const oLat = observerPoint.latitude;
+    const halfAz = azSpreadDeg / 2;
+
+    // ── Count vertices and faces ──────────────────────────────────────────
+    // Surface grid:  numAz × (numEl+1) vertices
+    // Observer cap:  1 extra vertex
+    const SURF_VERTS   = numAz * (numEl + 1);
+    const TOTAL_VERTS  = SURF_VERTS + 1;        // +1 for observer
+    const OBS_VIDX     = SURF_VERTS;             // index of observer vertex
+
+    // Surface quads: numAz × numEl × 2 triangles
+    // Bottom cap:    numAz triangles (observer → first elev ring)
+    const SURF_TRIS    = numAz * numEl * 2;
+    const CAP_TRIS     = showCap ? numAz : 0;
+    const TOTAL_TRIS   = SURF_TRIS + CAP_TRIS;
+
+    // ── Allocate typed arrays ─────────────────────────────────────────────
+    // position: Float64 (lon,lat,z) × 3 per vertex   — geographic precision needed
+    // color:    Uint8   (r,g,b,a)   × 4 per vertex
+    // normal:   Float32 (nx,ny,nz)  × 3 per vertex   — for lighting (optional)
+    // faces:    Uint32               × 3 per triangle
+    const positions = new Float64Array(TOTAL_VERTS * 3);
+    const colors    = new Uint8Array(TOTAL_VERTS * 4);
+    const normals   = new Float32Array(TOTAL_VERTS * 3);
+    const faces     = new Uint32Array(TOTAL_TRIS  * 3);
+
+    let visibleCount = 0;
+
+    // ── Fill vertex arrays ────────────────────────────────────────────────
+    for (let azIdx = 0; azIdx < numAz; azIdx++) {
+      const azDeg    = azCenterDeg - halfAz + (azIdx / (numAz - 1 || 1)) * azSpreadDeg;
+      const azRad    = azDeg * Math.PI / 180;
+      const horizDeg = horizonAngles[azIdx];   // terrain horizon for this ray
+
+      for (let elIdx = 0; elIdx <= numEl; elIdx++) {
+        const elevDeg  = elevMinDeg + (elIdx / numEl) * (elevMaxDeg - elevMinDeg);
+        const elevRad  = elevDeg  * Math.PI / 180;
+        const isVisible = elevDeg  >= horizDeg;
+        const isMasked  = !isVisible;
+
+        if (isVisible) visibleCount++;
+
+        // ENU position on the dome surface at (azimuth, elevation, range)
+        const groundDist = maxRangeM * Math.cos(elevRad);
+        const east   = groundDist * Math.sin(azRad);
+        const north  = groundDist * Math.cos(azRad);
+        const up     = maxRangeM  * Math.sin(elevRad);
+
+        // Convert ENU → geographic
+        const [lon, lat, z] = enuToWGS84(oLon, oLat, obsZ, east, north, up);
+
+        const vIdx = azIdx * (numEl + 1) + elIdx;
+
+        // Position
+        positions[vIdx*3]   = lon;
+        positions[vIdx*3+1] = lat;
+        positions[vIdx*3+2] = z;
+
+        // Outward-facing normal (unit vector in ENU, stored as geographic approx)
+        // For a sphere, the normal = the direction to the surface point.
+        const nx = Math.sin(azRad) * Math.cos(elevRad);
+        const ny = Math.cos(azRad) * Math.cos(elevRad);
+        const nz = Math.sin(elevRad);
+        normals[vIdx*3]   = nx;
+        normals[vIdx*3+1] = ny;
+        normals[vIdx*3+2] = nz;
+
+        // Vertex color
+        const rangeM = isVisible ? maxRangeM : groundDist;   // tip range
+        const [r,g,b,a] = vertexColor(colorMode, {
+          elevDeg, elevMin: elevMinDeg, elevMax: elevMaxDeg,
+          isVisible: !isMasked, isMasked: isMasked && showMasked,
+          rangeM, maxRange: maxRangeM,
+          azimuthDeg: azDeg,
+          opacity,
+        });
+
+        // If masked sectors are hidden, make them fully transparent
+        const finalA = (isMasked && !showMasked) ? 0 : a;
+
+        colors[vIdx*4]   = r;
+        colors[vIdx*4+1] = g;
+        colors[vIdx*4+2] = b;
+        colors[vIdx*4+3] = finalA;
+      }
+    }
+
+    // Observer center vertex
+    positions[OBS_VIDX*3]   = oLon;
+    positions[OBS_VIDX*3+1] = oLat;
+    positions[OBS_VIDX*3+2] = obsZ;
+    normals  [OBS_VIDX*3+2] = 1;           // points straight up
+    colors   [OBS_VIDX*4]   = 29;
+    colors   [OBS_VIDX*4+1] = 158;
+    colors   [OBS_VIDX*4+2] = 117;
+    colors   [OBS_VIDX*4+3] = Math.round(opacity * 200);
+
+    // ── Fill face arrays ──────────────────────────────────────────────────
+    let fi = 0;  // face index cursor
+
+    // Surface quads between adjacent elevation rings and adjacent azimuths
+    for (let azIdx = 0; azIdx < numAz; azIdx++) {
+      const azNext = (azIdx + 1) % numAz;
+
+      for (let elIdx = 0; elIdx < numEl; elIdx++) {
+        //  v00──v10
+        //   |  / |
+        //  v01──v11
+        const v00 = azIdx  * (numEl+1) + elIdx;
+        const v10 = azNext * (numEl+1) + elIdx;
+        const v01 = azIdx  * (numEl+1) + elIdx + 1;
+        const v11 = azNext * (numEl+1) + elIdx + 1;
+
+        // Triangle 1: upper-left
+        faces[fi++] = v00; faces[fi++] = v10; faces[fi++] = v01;
+        // Triangle 2: lower-right
+        faces[fi++] = v10; faces[fi++] = v11; faces[fi++] = v01;
+      }
+    }
+
+    // Bottom cap: fan from observer to first (lowest) elevation ring
+    // Closes the dome at the base so it looks solid from below.
+    if (showCap) {
+      for (let azIdx = 0; azIdx < numAz; azIdx++) {
+        const azNext = (azIdx + 1) % numAz;
+        const v0 = azIdx  * (numEl+1) + 0;   // azIdx,  elev_min
+        const v1 = azNext * (numEl+1) + 0;   // azNext, elev_min
+        faces[fi++] = OBS_VIDX;
+        faces[fi++] = v1;           // wound CW from below
+        faces[fi++] = v0;
+      }
+    }
+
+    // ── Create ArcGIS Mesh ─────────────────────────────────────────────────
+    const mesh = new Mesh({
+      vertexAttributes: {
+        position: positions,
+        color:    colors,
+        normal:   normals,
+      },
+      components: [{
+        faces,
+        material: {
+          // 'replace' ignores scene lighting and renders vertex colors directly.
+          // This is the correct mode for analytical visualisations where color
+          // carries data meaning rather than aesthetic shading.
+          colorMixMode: 'replace',
+          doubleSided:  true,
+        },
+      }],
+      spatialReference: { wkid: 4326 },
+    });
+
+    const visPct = numAz > 0
+      ? Math.round(100 * visibleCount / (numAz * (numEl + 1)))
+      : 0;
+
+    return { mesh, totalVerts: TOTAL_VERTS, totalTris: TOTAL_TRIS, visPct };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HORIZON RING BUILDER
+  // ─────────────────────────────────────────────────────────────────────────
+  // Builds a 3D polyline connecting the terrain obstruction points —
+  // the "skyline" ring that sits exactly at the terrain horizon on each ray.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function buildHorizonRing(observerPoint, obsZ, horizonAngles, {
+    azCenterDeg, azSpreadDeg, numAz, maxRangeM,
+  }) {
+    const oLon = observerPoint.longitude, oLat = observerPoint.latitude;
+    const halfAz = azSpreadDeg / 2;
+    const path = [];
+
+    for (let rayIdx = 0; rayIdx <= numAz; rayIdx++) {
+      const azDeg = azCenterDeg - halfAz + (rayIdx % numAz / (numAz - 1 || 1)) * azSpreadDeg;
+      const elevDeg = horizonAngles[rayIdx % numAz];
+      const elevRad = elevDeg  * Math.PI / 180;
+      const azRad   = azDeg   * Math.PI / 180;
+
+      // Range along terrain: clamp to maxRange for display
+      const groundDist = Math.min(maxRangeM, maxRangeM * 0.95);
+      const east  = groundDist * Math.sin(azRad);
+      const north = groundDist * Math.cos(azRad);
+      const up    = groundDist * Math.tan(elevRad);
+
+      const [lon, lat, z] = enuToWGS84(oLon, oLat, obsZ, east, north, up);
+      path.push([lon, lat, z]);
+    }
+
+    return new Graphic({
+      geometry: new Polyline({
+        hasZ: true,
+        paths: [path],
+        spatialReference: { wkid: 4326 },
+      }),
+      symbol: {
+        type: 'line-3d',
+        symbolLayers: [{
+          type: 'line',
+          size: 2.0,
+          material: { color: [239, 159, 39, 0.85] },
+          cap: 'round', join: 'round',
+        }],
+      },
+      attributes: { type: 'viewshed_horizon', label: 'Terrain horizon' },
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OBSERVER MARKER
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function buildObserverMarker(pt) {
+    return new Graphic({
+      geometry: pt,
+      symbol: {
+        type: 'point-3d',
+        symbolLayers: [{
+          type: 'object',
+          resource: { primitive: 'sphere' },
+          material: { color: [55, 138, 221, 0.95] },
+          width: 80, height: 80, depth: 80,
+        }],
+        verticalOffset: { screenLength: 22, maxWorldLength: 600, minWorldLength: 5 },
+      },
+      attributes: { type: 'viewshed_observer', label: 'Observer' },
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ARCGIS SETUP
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Three layers — keep dome, horizon ring, and observer marker separate
+  // so each can be replaced independently without full layer reload.
+  const domeLayer     = new GraphicsLayer({
+    title: 'Viewshed — dome mesh',
+    // absolute-height so the dome floats at real MSL elevations
+    elevationInfo: { mode: 'absolute-height' },
+  });
+  const horizonLayer  = new GraphicsLayer({
+    title: 'Viewshed — horizon ring',
+    elevationInfo: { mode: 'absolute-height' },
+  });
+  const observerLayer = new GraphicsLayer({
+    title: 'Viewshed — observer',
+    elevationInfo: { mode: 'on-the-ground' },
+  });
+
+  const map = new Map({
+    basemap: 'topo-3d',
+    ground:  'world-elevation',
+    layers:  [domeLayer, horizonLayer, observerLayer],
+  });
+
+  const view = new SceneView({
+    container: 'viewDiv',
+    map,
+    camera: {
+      // Margalla Hills — great terrain variety for demonstration
+      position: { longitude: 73.06, latitude: 33.65, z: 18000 },
+      heading: 0, tilt: 60,
+    },
+    environment: {
+      atmosphere: { quality: 'high' },
+      lighting:   { date: new Date() },
+    },
+    popup: {
+      dockEnabled: true,
+      dockOptions: { position: 'bottom-left', breakpoint: false },
+      defaultPopupTemplateEnabled: true,
+    },
+  });
+
+  domeLayer.popupTemplate = {
+    title: '{type}',
+    content: '{label}',
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  let observerPoint = null;
+  let obsZ          = 0;
+  let lastHorizon   = null;   // cached Float32Array so Recolor doesn't re-cast
+  let building      = false;
+
+  const $ = id => document.getElementById(id);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PARAMETER READERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function getParams() {
+    return {
+      observerHeightM: parseFloat($('inp-obs-h').value)    || 2,
+      maxRangeM:       parseFloat($('inp-range').value)    || 5000,
+      azCenterDeg:     parseFloat($('inp-az-ctr').value)   || 0,
+      azSpreadDeg:     parseFloat($('inp-az-spd').value)   || 360,
+      elevMinDeg:      parseFloat($('inp-el-min').value)   || -5,
+      elevMaxDeg:      parseFloat($('inp-el-max').value)   || 60,
+      numAz:           parseInt($('inp-num-az').value)     || 72,
+      numEl:           parseInt($('inp-num-el').value)     || 16,
+      stepM:           parseFloat($('inp-step').value)     || 50,
+      colorMode:       $('inp-color-mode').value,
+      opacity:         parseFloat($('inp-opacity').value)  || 0.7,
+      showMasked:      $('opt-masked').checked,
+      showCap:         $('opt-cap').checked,
+      showHorizon:     $('opt-horizon').checked,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MAIN BUILD SEQUENCE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  async function buildDome() {
+    if (!observerPoint || building) return;
+    building = true;
+    $('btn-build').disabled   = true;
+    $('btn-recolor').disabled = true;
+
+    const params = getParams();
+
+    // ── 1. Get observer ground elevation ───────────────────────────────────
+    setStatus('sampling', 'Querying terrain elevation…');
+    setProgress(0, 'Getting observer elevation');
+    try {
+      const elevResult = await view.map.ground.queryElevation(observerPoint);
+      obsZ = (elevResult?.geometry?.z ?? 0) + params.observerHeightM;
+    } catch (_) {
+      obsZ = params.observerHeightM;
+    }
+
+    // ── 2. Cast terrain rays ───────────────────────────────────────────────
+    setStatus('sampling', 'Sampling elevation…');
+    $('sweep-overlay').style.display = 'block';
+
+    let horizonAngles;
+    try {
+      const result = await castRays(view, observerPoint, obsZ, {
+        ...params,
+        onProgress: (frac, bearing) => {
+          setProgress(frac * 0.7,
+            `Ray ${Math.round(frac * params.numAz)} / ${params.numAz}  brg ${Math.round(bearing).toString().padStart(3,'0')}°`
+          );
+        },
+      });
+      horizonAngles = result.horizonAngles;
+      lastHorizon   = horizonAngles;
+    } catch (err) {
+      console.error('[ViewshedDome] Ray casting failed:', err);
+      // Fallback: flat terrain (horizon = 0° everywhere)
+      horizonAngles = new Float32Array(params.numAz);
+      lastHorizon   = horizonAngles;
+    }
+
+    $('sweep-overlay').style.display = 'none';
+
+    // ── 3. Build the Mesh vertex arrays ────────────────────────────────────
+    setStatus('building', 'Building mesh…');
+    setProgress(0.7, 'Generating vertex arrays');
+
+    const { mesh, totalVerts, totalTris, visPct } = buildDomeMesh(
+      observerPoint, obsZ, horizonAngles, params
+    );
+
+    setProgress(0.9, 'Adding to SceneView');
+
+    // ── 4. Add to layer ───────────────────────────────────────────────────
+    domeLayer.removeAll();
+    domeLayer.add(new Graphic({
+      geometry: mesh,
+      symbol:   new MeshSymbol3D({
+        symbolLayers: [new FillSymbol3DLayer({
+          material: {
+            // White base color with 'replace' mode = vertex colors are shown exactly.
+            // Change to [r,g,b,a] to multiply vertex colors by a tint.
+            color:        [255, 255, 255, 255],
+            colorMixMode: 'replace',
+            doubleSided:  $('opt-dblside').checked,
+          },
+        })],
+      }),
+      attributes: { type: 'Viewshed dome', label: `Observer: ${obsZ.toFixed(1)} m MSL` },
+    }));
+
+    // ── 5. Horizon ring ───────────────────────────────────────────────────
+    horizonLayer.removeAll();
+    if (params.showHorizon) {
+      horizonLayer.add(buildHorizonRing(observerPoint, obsZ, horizonAngles, params));
+    }
+
+    // ── 6. Stats ──────────────────────────────────────────────────────────
+    $('st-verts').textContent = totalVerts.toLocaleString();
+    $('st-tris').textContent  = totalTris.toLocaleString();
+    $('st-vis').textContent   = visPct + '%';
+    setProgress(1.0, `Done — ${visPct}% visible`);
+    setStatus('done', 'Done');
+
+    // Fly to observer with tilt to show dome in 3D
+    view.goTo({
+      target:  observerPoint,
+      zoom:    13,
+      tilt:    65,
+      heading: params.azCenterDeg,
+    }, { duration: 1200, easing: 'ease-in-out' });
+
+    $('btn-recolor').disabled = false;
+    building = false;
+  }
+
+  // ── Recolor without re-casting ─────────────────────────────────────────────
+  // Hot-path: only rebuilds vertex color arrays, no DEM queries.
+  function recolorDome() {
+    if (!observerPoint || !lastHorizon) return;
+    const params = getParams();
+    const { mesh, totalVerts, totalTris, visPct } = buildDomeMesh(
+      observerPoint, obsZ, lastHorizon, params
+    );
+    if (domeLayer.graphics.length > 0) {
+      // Update geometry in place
+      domeLayer.graphics.items[0].geometry = mesh;
+    } else {
+      domeLayer.add(new Graphic({
+        geometry: mesh,
+        symbol:   new MeshSymbol3D({ symbolLayers:[new FillSymbol3DLayer({
+          material:{ color:[255,255,255,255], colorMixMode:'replace', doubleSided:$('opt-dblside').checked },
+        })] }),
+      }));
+    }
+    $('st-verts').textContent = totalVerts.toLocaleString();
+    $('st-tris').textContent  = totalTris.toLocaleString();
+    $('st-vis').textContent   = visPct + '%';
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MAP CLICK — place observer
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  view.on('click', async event => {
+    if (building) return;
+    const result = await view.hitTest(event, { include: [map.ground] });
+    const gp     = result?.ground?.mapPoint ?? event.mapPoint;
+
+    observerPoint = new Point({
+      longitude: gp.longitude,
+      latitude:  gp.latitude,
+      spatialReference: { wkid: 4326 },
+    });
+
+    $('coords').textContent =
+      `Observer: ${gp.latitude.toFixed(5)}°N  ${gp.longitude.toFixed(5)}°E`;
+    $('hint').style.opacity = '0';
+
+    observerLayer.removeAll();
+    observerLayer.add(buildObserverMarker(observerPoint));
+
+    $('btn-build').disabled   = false;
+    $('btn-recolor').disabled = true;
+    lastHorizon = null;
+    setStatus('ready', 'Observer placed — click Build dome');
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PANEL WIRING
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  $('inp-el-min').addEventListener('input', () => {
+    $('el-min-v').textContent = $('inp-el-min').value + '°';
+    updateColorKey();
+  });
+  $('inp-el-max').addEventListener('input', () => {
+    $('el-max-v').textContent = $('inp-el-max').value + '°';
+    updateColorKey();
+  });
+  $('inp-color-mode').addEventListener('change', () => {
+    updateColorKey();
+    if (lastHorizon) recolorDome();
+  });
+  $('inp-opacity').addEventListener('input', () => {
+    $('opacity-v').textContent = parseFloat($('inp-opacity').value).toFixed(2);
+    if (lastHorizon) recolorDome();
+  });
+  ['opt-masked','opt-cap','opt-dblside'].forEach(id =>
+    $(id).addEventListener('change', () => { if (lastHorizon) recolorDome(); })
+  );
+  $('opt-horizon').addEventListener('change', () => {
+    if (!lastHorizon) return;
+    horizonLayer.removeAll();
+    if ($('opt-horizon').checked) {
+      horizonLayer.add(buildHorizonRing(observerPoint, obsZ, lastHorizon, getParams()));
+    }
+  });
+
+  $('btn-build').addEventListener('click', buildDome);
+  $('btn-recolor').addEventListener('click', recolorDome);
+  $('btn-clear').addEventListener('click', () => {
+    [domeLayer, horizonLayer, observerLayer].forEach(l => l.removeAll());
+    observerPoint = null; lastHorizon = null;
+    $('btn-build').disabled   = true;
+    $('btn-recolor').disabled = true;
+    $('hint').style.opacity   = '1';
+    $('coords').textContent   = 'Observer: click map to place';
+    ['st-verts','st-tris','st-vis'].forEach(id => $(id).textContent = '—');
+    setProgress(0, '—');
+    setStatus('ready', 'Click map to place observer');
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COLOUR KEY BAR
+  // Updates the gradient strip at the bottom of the panel to match mode.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function updateColorKey() {
+    const mode  = $('inp-color-mode').value;
+    const elMin = $('inp-el-min').value + '°';
+    const elMax = $('inp-el-max').value + '°';
+    const bar   = $('ck-bar');
+
+    const gradients = {
+      elevation: 'linear-gradient(to right,#1a52dc,#1D9E75,#EF9F27,#DC3C30)',
+      binary:    'linear-gradient(to right,#1D9E75,#1D9E75)',
+      range:     'linear-gradient(to right,#1a52dc,#c8dcff)',
+      azimuth:   'linear-gradient(to right,#378ADD,#EF9F27,#DC3C30,#B428DC,#378ADD)',
+    };
+    const loLabels = { elevation: elMin, binary: 'Visible', range: 'Near', azimuth: 'North' };
+    const hiLabels = { elevation: elMax, binary: 'Masked',  range: 'Far',  azimuth: 'North' };
+
+    bar.style.background   = gradients[mode]  ?? gradients.elevation;
+    $('ck-lo').textContent = loLabels[mode]   ?? '';
+    $('ck-hi').textContent = hiLabels[mode]   ?? '';
+  }
+  updateColorKey();
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HELPERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function setStatus(state, text) {
+    const el = $('status');
+    el.textContent = text ?? state;
+    el.className   = 'ph-status ' + state;
+  }
+
+  function setProgress(frac, label) {
+    $('progress-fill').style.width  = Math.round(frac * 100) + '%';
+    $('progress-label').textContent = label ?? '';
+  }
+
+  view.when(() => {
+    console.log('[ViewshedDome] SceneView ready.');
+    console.log('[ViewshedDome] domeLayer →', domeLayer);
+    console.log('[ViewshedDome] Tip: domeLayer.graphics.items[0].geometry is the Mesh — inspect .vertexAttributes.color for the raw RGBA array.');
+    setStatus('ready', 'Click map to place observer');
+  });
+
+}); // end require()
+</script>
+</body>
+</html>

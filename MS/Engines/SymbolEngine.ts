@@ -61,7 +61,6 @@ import BufferEngine from './Analysis/BufferEngine';
 import CorridorEngine from './Analysis/CorridorEngine';
 import { EffectEngine } from './Analysis/EffectEngine';
 import Plan from './ImportExport/Plan.ts';
-import ImportExportEngine from './ImportExportEngine';
 import SerializationEngine from './ImportExport/SerializationEngine';
 
 interface Evented {
@@ -117,7 +116,6 @@ class SymbolEngine implements Evented {
   private _bufferEngine: BufferEngine | null = null;
   private _corridorEngine: CorridorEngine | null = null;
   private _effectEngine: EffectEngine | null = null;
-  private _importExportEngine: ImportExportEngine | null = null;
   public readonly serializationEngine = SerializationEngine.getInstance();
   private currentSymbol: any | undefined;
   private sidc: any | undefined;
@@ -262,6 +260,7 @@ class SymbolEngine implements Evented {
 
     // Register context menu items for different graphic types
     this.registerContextMenuItems();
+    this.serializationEngine.registerContextMenuItems(this._contextMenuManager);
 
     // Listen for context menu events
     this._contextMenuManager.on(
@@ -294,11 +293,6 @@ class SymbolEngine implements Evented {
     // Initialise EffectEngine (always on â€” activated on demand via context menu)
     this._initEffectEngine();
 
-    // Initialize ImportExportEngine for save/load plan functionality
-    this._importExportEngine = new ImportExportEngine(
-      () => this._layerManager,
-    );
-    this._contextMenuManager.linkImportExportEngine(this._importExportEngine);
 
     // Wire global keyboard shortcuts (if enabled in Settings.json)
     if ((settingsData as any).features?.shortcuts !== false) {
@@ -648,6 +642,8 @@ class SymbolEngine implements Evented {
   }
 
   private _initWeaponEffectEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.wez === false) return;
     this._weaponEffectEngine = new WeaponEffectEngine();
     this._weaponEffectEngine.initialize(this.view);
     this._contextMenuManager.linkWeaponEffectEngine(this._weaponEffectEngine);
@@ -656,6 +652,8 @@ class SymbolEngine implements Evented {
   }
 
   private _initLOSEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.los === false) return;
     this._losEngine = new LOSEngine();
     this._losEngine.initialize(this.view);
     this._contextMenuManager.linkLOSEngine(this._losEngine);
@@ -664,6 +662,8 @@ class SymbolEngine implements Evented {
   }
 
   private _initTrajectoryEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.trajectory === false) return;
     this._trajectoryEngine = new TrajectoryEngine();
     this._trajectoryEngine.initialize(this.view);
     this._contextMenuManager.linkTrajectoryEngine(this._trajectoryEngine);
@@ -672,6 +672,8 @@ class SymbolEngine implements Evented {
   }
 
   private _initBufferEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.buffer === false) return;
     this._bufferEngine = new BufferEngine();
     this._bufferEngine.initialize(this.view);
     this._contextMenuManager.linkBufferEngine(this._bufferEngine);
@@ -680,6 +682,8 @@ class SymbolEngine implements Evented {
   }
 
   private _initCorridorEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.corridor === false) return;
     this._corridorEngine = new CorridorEngine();
     this._corridorEngine.initialize(this.view);
     this._contextMenuManager.linkCorridorEngine(this._corridorEngine);
@@ -688,11 +692,31 @@ class SymbolEngine implements Evented {
   }
 
   private _initEffectEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.effects === false) return;
     this._effectEngine = new EffectEngine();
     this._effectEngine.initialize(this.view);
     this._contextMenuManager.linkEffectEngine(this._effectEngine);
     this.emitEvent('effectEngineReady', { engine: this._effectEngine });
     console.info('[SymbolEngine] EffectEngine loaded');
+  }
+
+  /** Destroy all analysis engines and unlink them from the context menu. */
+  private _destroyAnalysisEngines(): void {
+    this._weaponEffectEngine?.destroy?.();
+    this._weaponEffectEngine = null;
+    this._losEngine?.destroy?.();
+    this._losEngine = null;
+    this._trajectoryEngine?.destroy?.();
+    this._trajectoryEngine = null;
+    this._bufferEngine?.destroy?.();
+    this._bufferEngine = null;
+    this._corridorEngine?.destroy?.();
+    this._corridorEngine = null;
+    this._effectEngine?.destroy?.();
+    this._effectEngine = null;
+    this._contextMenuManager.unlinkAnalysisEngines();
+    console.info('[SymbolEngine] Analysis engines destroyed');
   }
 
   get view() {
@@ -1177,57 +1201,6 @@ class SymbolEngine implements Evented {
           },
         ],
       },
-      // ── Save / Load submenu ─────────────────────────────────────────
-      {
-        id: 'saveload-submenu',
-        label: 'Save / Load',
-        icon: '<span style="font-size:14px">💾</span>',
-        visible: () => (settingsData as any).features?.saveLoad !== false,
-        children: [
-          {
-            id: 'save-symbol',
-            label: 'Save Symbol',
-            icon: '<span style="font-size:14px">💾</span>',
-            action: (graphic) => this.saveSymbolToFile(graphic),
-          },
-          {
-            id: 'save-all-symbols',
-            label: 'Save All Symbols',
-            icon: '<span style="font-size:14px">🗂️</span>',
-            action: (_graphic) => this.serializationEngine.saveToFile(),
-          },
-          {
-            id: 'load-symbols',
-            label: 'Load Symbols',
-            icon: '<span style="font-size:14px">📂</span>',
-            action: (_graphic) => this.serializationEngine.loadFromFile(),
-          },
-          {
-            id: 'save-plan',
-            label: 'Save Plan',
-            icon: '<span style="font-size:14px">🗺️</span>',
-            action: (_graphic) => this.serializationEngine.savePlanToFile(),
-          },
-          {
-            id: 'load-plan',
-            label: 'Load Plan',
-            icon: '<span style="font-size:14px">🗂️</span>',
-            action: (_graphic) => this.serializationEngine.loadPlanFromFile(),
-          },
-          {
-            id: 'export-geojson',
-            label: 'Export as GeoJSON',
-            icon: '<span style="font-size:14px">🌐</span>',
-            action: (_graphic) => this.serializationEngine.saveToGeoJSONFile(),
-          },
-          {
-            id: 'import-geojson',
-            label: 'Import GeoJSON',
-            icon: '<span style="font-size:14px">🌍</span>',
-            action: (_graphic) => this.serializationEngine.loadFromGeoJSONFile(),
-          },
-        ],
-      },
     ];
 
     // Dynamic Templates submenu — rebuilt each time the menu opens
@@ -1658,10 +1631,6 @@ class SymbolEngine implements Evented {
     return settingsData;
   }
 
-  /** Access the ImportExportEngine for save/load plan operations */
-  public get importExportEngine(): ImportExportEngine | null {
-    return this._importExportEngine;
-  }
 
   /**
    * Handle runtime setting changes from the control panel.
@@ -1757,11 +1726,70 @@ class SymbolEngine implements Evented {
       }
     }
 
+    if (fullPath === 'features.analysisEngines') {
+      if (!value) {
+        this._destroyAnalysisEngines();
+      } else {
+        // Master turned on — init any engine whose individual flag is also on
+        if (!this._weaponEffectEngine) this._initWeaponEffectEngine();
+        if (!this._losEngine)          this._initLOSEngine();
+        if (!this._trajectoryEngine)   this._initTrajectoryEngine();
+        if (!this._bufferEngine)       this._initBufferEngine();
+        if (!this._corridorEngine)     this._initCorridorEngine();
+        if (!this._effectEngine)       this._initEffectEngine();
+      }
+    }
+
+    // Individual analysis engine toggles
+    if (fullPath.startsWith('analysis.') && (settingsData as any).features?.analysisEngines !== false) {
+      const key = path[1] as string;
+      if (!value) {
+        switch (key) {
+          case 'los':
+            this._losEngine?.destroy?.(); this._losEngine = null;
+            this._contextMenuManager.linkLOSEngine(null);
+            break;
+          case 'wez':
+            this._weaponEffectEngine?.destroy?.(); this._weaponEffectEngine = null;
+            this._contextMenuManager.linkWeaponEffectEngine(null);
+            break;
+          case 'trajectory':
+            this._trajectoryEngine?.destroy?.(); this._trajectoryEngine = null;
+            this._contextMenuManager.linkTrajectoryEngine(null);
+            break;
+          case 'buffer':
+            this._bufferEngine?.destroy?.(); this._bufferEngine = null;
+            this._contextMenuManager.linkBufferEngine(null);
+            break;
+          case 'corridor':
+            this._corridorEngine?.destroy?.(); this._corridorEngine = null;
+            this._contextMenuManager.linkCorridorEngine(null);
+            break;
+          case 'effects':
+            this._effectEngine?.destroy?.(); this._effectEngine = null;
+            this._contextMenuManager.linkEffectEngine(null);
+            break;
+        }
+        console.info(`[SymbolEngine] Analysis engine '${key}' disabled`);
+      } else {
+        // Re-enable individual engine
+        switch (key) {
+          case 'los':        if (!this._losEngine)          this._initLOSEngine();          break;
+          case 'wez':        if (!this._weaponEffectEngine) this._initWeaponEffectEngine(); break;
+          case 'trajectory': if (!this._trajectoryEngine)   this._initTrajectoryEngine();   break;
+          case 'buffer':     if (!this._bufferEngine)       this._initBufferEngine();       break;
+          case 'corridor':   if (!this._corridorEngine)     this._initCorridorEngine();     break;
+          case 'effects':    if (!this._effectEngine)       this._initEffectEngine();       break;
+        }
+        console.info(`[SymbolEngine] Analysis engine '${key}' enabled`);
+      }
+    }
+
     if (fullPath === 'features.mgrsEngine') {
       if (this._mgrsEngine) {
         value ? this._mgrsEngine.enable() : this._mgrsEngine.disable();
       } else if (value) {
-        // Engine was disabled at startup â€” initialise it now
+        // Engine was disabled at startup — initialise it now
         this._initMGRSEngine();
       }
     }
@@ -3879,11 +3907,6 @@ class SymbolEngine implements Evented {
     this.serializationEngine.saveToFile(filename);
   }
 
-  /** Download a single graphic as a PAMS8 JSON file. */
-  public saveSymbolToFile(graphic: Graphic): void {
-    const data = this.saveSymbolToJSON(graphic);
-    this._downloadJSON(data, `pams8_symbol_${Date.now()}.json`);
-  }
 
   /** Download all graphics as a Plan JSON file. Delegates to SerializationEngine. */
   public savePlanToFile(filename?: string): void {

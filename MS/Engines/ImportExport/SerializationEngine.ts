@@ -5,7 +5,7 @@
  * Owns savePlanToFile / loadPlanFromFile and every private helper that supports
  * them (geometry conversion, amplifier normalization, drawEss builders, etc.).
  *
- * Inspired by InteropEngine — uses EngineLogger for all log output.
+ * Uses EngineLogger for all log output.
  *
  * Initialize via:
  *   SerializationEngine.getInstance().start(layerManager, loadSymbolCallback);
@@ -24,6 +24,8 @@ import GraphicsLayerManager, {
 import EngineLogger from '../../Support/EngineLogger';
 import Plan from './Plan.ts';
 import symbolData from '../../Data/Symbols.json';
+import ContextMenuManager, { ContextMenuItem } from '../../Managers/ContextMenuManager';
+import settingsData from '../../Data/Settings.json';
 
 type LoadSymbolCallback = (data: any) => void;
 type LoadTemplateCallback = (data: any) => void;
@@ -469,6 +471,28 @@ class SerializationEngine {
   /** Open a file picker and load symbols from a GeoJSON or PAMS8 JSON file. */
   public loadFromGeoJSONFile(): void {
     this.loadFromFile();
+  }
+
+  /** Register Save/Load submenu with the given ContextMenuManager. */
+  public registerContextMenuItems(contextMenuManager: ContextMenuManager): void {
+    contextMenuManager.addDynamicItemProvider(() => {
+      if ((settingsData as any).features?.saveLoad === false) return [];
+      return [
+        {
+          id: 'saveload-submenu',
+          label: 'Save / Load',
+          icon: '<span style="font-size:14px">💾</span>',
+          children: [
+            { id: 'save-all-symbols', label: 'Save All Symbols', icon: '<span style="font-size:14px">🗂️</span>', action: () => this.saveToFile() },
+            { id: 'load-symbols', label: 'Load Symbols', icon: '<span style="font-size:14px">📂</span>', action: () => this.loadFromFile() },
+            { id: 'save-plan', label: 'Save Plan', icon: '<span style="font-size:14px">🗺️</span>', action: () => this.savePlanToFile() },
+            { id: 'load-plan', label: 'Load Plan', icon: '<span style="font-size:14px">🗂️</span>', action: () => this.loadPlanFromFile() },
+            { id: 'export-geojson', label: 'Export as GeoJSON', icon: '<span style="font-size:14px">🌐</span>', action: () => this.saveToGeoJSONFile() },
+            { id: 'import-geojson', label: 'Import GeoJSON', icon: '<span style="font-size:14px">🌍</span>', action: () => this.loadFromGeoJSONFile() },
+          ],
+        } as ContextMenuItem,
+      ];
+    });
   }
 
   // ── Private — Plan loading ────────────────────────────────────────────────
