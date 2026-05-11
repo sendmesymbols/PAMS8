@@ -76,6 +76,13 @@ const DIST_ABBR: Record<ProximityDistanceUnit, string> = {
 
 const LAYER_ID = 'ProximityGraphicsLayer';
 
+// Pre-computed spatial data per candidate for bounding-box pre-filter.
+interface CandidateExtent {
+  cx: number;
+  cy: number;
+  halfDiag: number; // half-diagonal of geometry extent in map units (0 for points)
+}
+
 class ProximityEngine {
   private static _instance: ProximityEngine;
 
@@ -95,8 +102,25 @@ class ProximityEngine {
   private _labelGraphic: Graphic | null = null;
 
   private _targetLayerIds: string[] = [];
-  // Snapshot of graphics that existed when drawing started — excludes the symbol being drawn
+  // Snapshot of graphics that existed when drawing started
   private _candidateSnapshot: Graphic[] = [];
+  // Parallel array: pre-computed spatial extents for bounding-box pre-filter
+  private _candidateExtents: CandidateExtent[] = [];
+
+  // Pre-allocated reusable geometry objects — avoids per-frame heap allocation
+  private _reuseSnapPt: Point | null = null;
+  private _reuseMidPt: Point | null = null;
+  private _reuseLinePl: Polyline | null = null;
+
+  // Pre-allocated reusable symbol objects
+  private _dotSym: SimpleMarkerSymbol | null = null;
+  private _lineSym: SimpleLineSymbol | null = null;
+  private _txtSym: TextSymbol | null = null;
+
+  // Event dedup — skip re-emitting when snap coord hasn't changed
+  private _lastSnapX: number = NaN;
+  private _lastSnapY: number = NaN;
+  private _inClearedState: boolean = true;
 
   // Configurable options
   private _nearestVertex: boolean = true;
@@ -104,7 +128,7 @@ class ProximityEngine {
   private _showDistance: boolean = true;
   private _showDirection: boolean = true;
   private _distUnit: ProximityDistanceUnit = 'meters';
-  private _snapRadiusPx: number = 0; // 0 = always show nearest (no threshold)
+  private _snapRadiusPx: number = 0;
   private _lineColor: [number, number, number] = [0, 120, 255];
   private _lineOpacity: number = 0.7;
   private _lineWidth: number = 1.5;
@@ -192,32 +216,37 @@ class ProximityEngine {
     // Snapshot existing graphics now — anything added during this draw session
     // (the symbol being drawn) will not be in this list and won't self-snap.
     this._candidateSnapshot = [];
+    this._candidateExtents = [];
     for (const id of this._targetLayerIds) {
       const lyr = this._view.map.findLayerById(id) as GraphicsLayer | undefined;
       if (lyr) {
         lyr.graphics.forEach((g: Graphic) => {
-          if (g.geometry) this._candidateSnapshot.push(g);
+          if (g.geometry) {
+            this._candidateSnapshot.push(g);
+            this._candidateExtents.push(this._computeCandidateExtent(g));
+          }
         });
       }
     }
 
-    // Resolve the container element — view.container may be a string ID or HTMLElement.
+    // Pre-allocate reusable symbol and geometry objects for this draw session.
+    this._initReuseObjects();
+
     const containerEl = this._resolveContainer();
     if (!containerEl) {
       this._isActive = false;
       return;
     }
 
-    // Register at the window capture phase so we receive pointermove events even
-    // when ArcGIS SketchViewModel intercepts or stops bubbling of pointer events.
+    // Register at window capture phase so ArcGIS SketchViewModel interception
+    // doesn't swallow the events.
     this._boundPointerMove = (e: PointerEvent) => {
       if (!this._isActive || !this._view) return;
 
       const now = Date.now();
-      if (now - this._lastTick < 16) return; // ~60 fps cap
+      if (now - this._lastTick < 33) return; // ~30fps — sufficient for snap UI
       this._lastTick = now;
 
-      // Only process events that land inside the map container.
       const rect = containerEl.getBoundingClientRect();
       if (
         e.clientX < rect.left ||
@@ -240,11 +269,7 @@ class ProximityEngine {
     this._pointerHandle = {
       remove: () => {
         if (this._boundPointerMove) {
-          window.removeEventListener(
-            'pointermove',
-            this._boundPointerMove!,
-            true,
-          );
+          window.removeEventListener('pointermove', this._boundPointerMove!, true);
           this._boundPointerMove = null;
         }
       },
@@ -281,6 +306,10 @@ class ProximityEngine {
     }
     this._isActive = false;
     this._candidateSnapshot = [];
+    this._candidateExtents = [];
+    this._reuseSnapPt = null;
+    this._reuseMidPt = null;
+    this._reuseLinePl = null;
     this._clear();
     this._emitHint('Proximity snap ended — drawing complete.', 'idle');
     EngineLogger.success('Proximity Engine', 'Deactivated — drawing complete');
@@ -295,6 +324,9 @@ class ProximityEngine {
     this._snapGraphic = null;
     this._lineGraphic = null;
     this._labelGraphic = null;
+    this._dotSym = null;
+    this._lineSym = null;
+    this._txtSym = null;
     this._layer = this._getOrCreateLayer();
     console.info('[ProximityEngine] view changed');
   }
@@ -329,54 +361,80 @@ class ProximityEngine {
       return;
     }
 
-    // Find globally nearest point across all candidates using geometryEngine
-    let bestDist = Infinity; // map units
+    // ── Spatial pre-filter ────────────────────────────────────────────────
+    // When a snap radius is set, skip candidates whose geometry extent center
+    // is farther away (in map units) than the screen-pixel threshold allows.
+    // This avoids running expensive geometry engine calls on distant graphics.
+    let activeIndices: number[];
+    if (this._snapRadiusPx > 0 && this._view) {
+      const resolution = (this._view as any).resolution as number;
+      if (resolution > 0) {
+        const threshMapUnits = (this._snapRadiusPx + 50) * resolution; // 50px buffer
+        activeIndices = [];
+        for (let i = 0; i < candidates.length; i++) {
+          const e = this._candidateExtents[i];
+          if (!e || Math.hypot(mapPt.x - e.cx, mapPt.y - e.cy) <= threshMapUnits + e.halfDiag) {
+            activeIndices.push(i);
+          }
+        }
+      } else {
+        activeIndices = candidates.map((_, i) => i);
+      }
+    } else {
+      activeIndices = candidates.map((_, i) => i);
+    }
+
+    // ── Find nearest point across filtered candidates ─────────────────────
+    let bestDist = Infinity;
     let bestCoord: Point | null = null;
 
-    for (const g of candidates) {
+    for (const i of activeIndices) {
+      const g = candidates[i];
       if (!g.geometry) continue;
 
-      if (this._nearestVertex) {
-        try {
-          const r = geometryEngine.nearestVertex(g.geometry, mapPt);
-          if (r && r.coordinate && !r.isEmpty) {
-            const d = this._mapDist(mapPt, r.coordinate);
-            if (d < bestDist) {
-              bestDist = d;
-              bestCoord = r.coordinate;
-            }
-          }
-        } catch {
-          /* unsupported geometry type */
+      const gtype = g.geometry.type;
+
+      // Point geometry: use the coordinate directly — no engine call needed.
+      if (gtype === 'point') {
+        if (this._nearestVertex || this._nearestCoordinate) {
+          const pt = g.geometry as Point;
+          const d = this._mapDist(mapPt, pt);
+          if (d < bestDist) { bestDist = d; bestCoord = pt; }
         }
+        continue;
       }
 
+      // Non-point geometry: nearestCoordinate subsumes nearestVertex
+      // (every vertex is a coordinate on the geometry, so nearestCoordinate
+      // will find a result at least as close). Only fall back to nearestVertex
+      // when the user explicitly wants vertex-only snapping.
       if (this._nearestCoordinate) {
         try {
           const r = geometryEngine.nearestCoordinate(g.geometry, mapPt);
-          if (r && r.coordinate && !r.isEmpty) {
+          if (r?.coordinate && !r.isEmpty) {
             const d = this._mapDist(mapPt, r.coordinate);
-            if (d < bestDist) {
-              bestDist = d;
-              bestCoord = r.coordinate;
-            }
+            if (d < bestDist) { bestDist = d; bestCoord = r.coordinate; }
           }
-        } catch {
-          /* unsupported geometry type */
-        }
+        } catch { /* unsupported geometry type */ }
+      } else if (this._nearestVertex) {
+        try {
+          const r = geometryEngine.nearestVertex(g.geometry, mapPt);
+          if (r?.coordinate && !r.isEmpty) {
+            const d = this._mapDist(mapPt, r.coordinate);
+            if (d < bestDist) { bestDist = d; bestCoord = r.coordinate; }
+          }
+        } catch { /* unsupported geometry type */ }
       }
     }
 
     if (!bestCoord) {
       this._clear();
-      if (this._candidateSnapshot.length > 0) {
-        this._emitHint('No nearby symbols within snap range.', 'no-targets');
-      }
+      // candidates.length > 0 is guaranteed here (checked above)
+      this._emitHint('No nearby symbols within snap range.', 'no-targets');
       return;
     }
 
-    // If snapRadiusPx > 0, hide the indicator when the nearest symbol is farther
-    // away than the configured screen-pixel radius.
+    // Hide indicator when nearest symbol exceeds the configured screen-pixel radius.
     if (this._snapRadiusPx > 0) {
       const distPx = this._screenDist(mapPt, bestCoord);
       if (distPx > this._snapRadiusPx) {
@@ -411,101 +469,81 @@ class ProximityEngine {
    *   1. Dot at bestCoord
    *   2. Dashed line from cursor → bestCoord
    *   3. Distance label at midpoint
+   *
+   * Symbol objects are pre-allocated once in _initReuseObjects() and reused
+   * each frame — only their mutable text/color properties are updated.
    */
   private _renderSnap(cursor: Point, snapPt: Point): void {
     if (!this._view || !this._layer) return;
 
-    const snap = new Point({
-      x: snapPt.x,
-      y: snapPt.y,
-      spatialReference: cursor.spatialReference,
-    });
-    const midPt = new Point({
-      x: (cursor.x + snap.x) / 2,
-      y: (cursor.y + snap.y) / 2,
-      spatialReference: cursor.spatialReference,
-    });
+    // ── Reuse Point geometry objects ──────────────────────────────────────
+    if (!this._reuseSnapPt) {
+      this._reuseSnapPt = new Point({ x: snapPt.x, y: snapPt.y, spatialReference: cursor.spatialReference });
+    } else {
+      this._reuseSnapPt.x = snapPt.x;
+      this._reuseSnapPt.y = snapPt.y;
+      this._reuseSnapPt.spatialReference = cursor.spatialReference;
+    }
+    const snap = this._reuseSnapPt;
+
+    if (!this._reuseMidPt) {
+      this._reuseMidPt = new Point({ x: (cursor.x + snap.x) / 2, y: (cursor.y + snap.y) / 2, spatialReference: cursor.spatialReference });
+    } else {
+      this._reuseMidPt.x = (cursor.x + snap.x) / 2;
+      this._reuseMidPt.y = (cursor.y + snap.y) / 2;
+      this._reuseMidPt.spatialReference = cursor.spatialReference;
+    }
+    const midPt = this._reuseMidPt;
+
+    // ── Compute bearing and distance once ─────────────────────────────────
     const bearing = this._calcBearing(cursor, snap);
     const bearingStr = `${Math.round(bearing)}°`;
+    // Compute distance label once — reused for both the graphic label and _emitSnap.
+    const distLabel = this._calcDist(cursor, snap);
 
     // ── 1. Dot ────────────────────────────────────────────────────────────
-    const dotSym = new SimpleMarkerSymbol({
-      style: 'circle',
-      color: new Color([255, 255, 255, 1.0]),
-      size: this._markerSize,
-      outline: { color: new Color([...this._markerColor, 1.0]), width: 2.5 },
-    });
-
     if (!this._snapGraphic) {
-      this._snapGraphic = new Graphic({ geometry: snap, symbol: dotSym });
+      this._snapGraphic = new Graphic({ geometry: snap, symbol: this._dotSym! });
       this._layer.add(this._snapGraphic);
-      this._emitHint(
-        'Snapped to nearest symbol — click to place point at snap target.',
-        'snapped',
-      );
+      this._emitHint('Snapped to nearest symbol — click to place point at snap target.', 'snapped');
       EngineLogger.nextStep('Proximity Engine', 'Snapped to nearest symbol — click to confirm position');
     } else {
       this._snapGraphic.geometry = snap;
-      this._snapGraphic.symbol = dotSym;
     }
 
     // ── 2. Dashed line ────────────────────────────────────────────────────
-    const lineSym = new SimpleLineSymbol({
-      style: 'short-dash',
-      color: new Color([...this._lineColor, this._lineOpacity]),
-      width: this._lineWidth + 0.5,
-    });
-    const linePl = new Polyline({ spatialReference: cursor.spatialReference });
-    linePl.addPath([
-      [cursor.x, cursor.y],
-      [snap.x, snap.y],
-    ]);
+    if (!this._reuseLinePl) {
+      this._reuseLinePl = new Polyline({ spatialReference: cursor.spatialReference });
+      this._reuseLinePl.addPath([[cursor.x, cursor.y], [snap.x, snap.y]]);
+    } else {
+      this._reuseLinePl.paths = [[[cursor.x, cursor.y], [snap.x, snap.y]]];
+      this._reuseLinePl.spatialReference = cursor.spatialReference;
+    }
 
     if (!this._lineGraphic) {
-      this._lineGraphic = new Graphic({ geometry: linePl, symbol: lineSym });
+      this._lineGraphic = new Graphic({ geometry: this._reuseLinePl, symbol: this._lineSym! });
       this._layer.add(this._lineGraphic);
     } else {
-      this._lineGraphic.geometry = linePl;
-      this._lineGraphic.symbol = lineSym;
+      this._lineGraphic.geometry = this._reuseLinePl;
     }
 
     // ── 3. Distance + Direction label ─────────────────────────────────────
     const labelParts: string[] = [];
-    if (this._showDistance) {
-      labelParts.push(this._calcDist(cursor, snap));
-    }
-    if (this._showDirection) {
-      labelParts.push(bearingStr);
-    }
+    if (this._showDistance) labelParts.push(distLabel);
+    if (this._showDirection) labelParts.push(bearingStr);
 
-    if (labelParts.length > 0) {
-      const combinedLabel = labelParts.join(' | ');
-      const font = new Font({
-        size: this._fontSize,
-        style: 'italic',
-        weight: 'bold',
-        family: 'Helvetica',
-      });
-      const txtSym = new TextSymbol({
-        text: combinedLabel,
-        font,
-        color: new Color([...this._fontColor, 1]),
-        haloColor: new Color([0, 0, 0, 1]),
-        haloSize: 3,
-        xoffset: 6,
-        yoffset: 6,
-      });
-
+    if (labelParts.length > 0 && this._txtSym) {
+      this._txtSym.text = labelParts.join(' | ');
       if (!this._labelGraphic) {
-        this._labelGraphic = new Graphic({ geometry: midPt, symbol: txtSym });
+        this._labelGraphic = new Graphic({ geometry: midPt, symbol: this._txtSym });
         this._layer.add(this._labelGraphic);
       } else {
         this._labelGraphic.geometry = midPt;
-        this._labelGraphic.symbol = txtSym;
+        this._labelGraphic.symbol = this._txtSym; // reassign to trigger re-render
       }
     }
 
-    this._emitSnap(snap, this._calcDist(cursor, snap));
+    this._emitSnap(snap, distLabel);
   }
 
   /** Remove all indicator graphics from the layer. Re-created lazily on next snap. */
@@ -547,39 +585,37 @@ class ProximityEngine {
   private _calcBearing(a: Point, b: Point): number {
     try {
       if (this._isGeodesic) {
-        const pt1 = new Point({
-          x: a.x,
-          y: a.y,
-          spatialReference: a.spatialReference,
-        });
-        const pt2 = new Point({
-          x: b.x,
-          y: b.y,
-          spatialReference: b.spatialReference,
-        });
-        const geoPt1 = geometryEngine.project(pt1, {
-          wkid: 4326,
-        }) as Point | null;
-        const geoPt2 = geometryEngine.project(pt2, {
-          wkid: 4326,
-        }) as Point | null;
-        if (!geoPt1 || !geoPt2) return 0;
-        const dLon = (geoPt2.x - geoPt1.x) * (Math.PI / 180);
-        const lat1 = geoPt1.y * (Math.PI / 180);
-        const lat2 = geoPt2.y * (Math.PI / 180);
-        const y = Math.sin(dLon) * Math.cos(lat2);
+        // When the view is already WGS84 (wkid 4326), coordinates are lon/lat —
+        // no reprojection needed. Skip the two geometryEngine.project() calls.
+        let lon1: number, lat1: number, lon2: number, lat2: number;
+        if (a.spatialReference?.wkid === 4326) {
+          lon1 = a.x; lat1 = a.y;
+          lon2 = b.x; lat2 = b.y;
+        } else {
+          const geoPt1 = geometryEngine.project(
+            new Point({ x: a.x, y: a.y, spatialReference: a.spatialReference }),
+            { wkid: 4326 },
+          ) as Point | null;
+          const geoPt2 = geometryEngine.project(
+            new Point({ x: b.x, y: b.y, spatialReference: b.spatialReference }),
+            { wkid: 4326 },
+          ) as Point | null;
+          if (!geoPt1 || !geoPt2) return 0;
+          lon1 = geoPt1.x; lat1 = geoPt1.y;
+          lon2 = geoPt2.x; lat2 = geoPt2.y;
+        }
+        const dLon = (lon2 - lon1) * (Math.PI / 180);
+        const rlat1 = lat1 * (Math.PI / 180);
+        const rlat2 = lat2 * (Math.PI / 180);
+        const y = Math.sin(dLon) * Math.cos(rlat2);
         const x =
-          Math.cos(lat1) * Math.sin(lat2) -
-          Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-        let bearing = Math.atan2(y, x) * (180 / Math.PI);
-        bearing = (bearing + 360) % 360;
-        return bearing;
+          Math.cos(rlat1) * Math.sin(rlat2) -
+          Math.sin(rlat1) * Math.cos(rlat2) * Math.cos(dLon);
+        return (Math.atan2(y, x) * (180 / Math.PI) + 360) % 360;
       } else {
         const dx = b.x - a.x;
         const dy = b.y - a.y;
-        let bearing = Math.atan2(dx, dy) * (180 / Math.PI);
-        bearing = (bearing + 360) % 360;
-        return bearing;
+        return (Math.atan2(dx, dy) * (180 / Math.PI) + 360) % 360;
       }
     } catch {
       return 0;
@@ -588,7 +624,6 @@ class ProximityEngine {
 
   private _resolveGeodesic(): void {
     const sr = this._view?.spatialReference;
-    // Use geodesic for geographic CRS (WGS84 = 4326); planar for projected.
     this._isGeodesic = sr?.wkid === 4326;
   }
 
@@ -619,6 +654,64 @@ class ProximityEngine {
     return layer;
   }
 
+  /**
+   * Pre-compute bounding-box center and half-diagonal for a candidate graphic.
+   * Used each frame to cull distant candidates before running geometry engine calls.
+   */
+  private _computeCandidateExtent(g: Graphic): CandidateExtent {
+    try {
+      const geom = g.geometry;
+      if (!geom) return { cx: 0, cy: 0, halfDiag: 0 };
+      if (geom.type === 'point') {
+        const pt = geom as Point;
+        return { cx: pt.x, cy: pt.y, halfDiag: 0 };
+      }
+      const ext = geom.extent;
+      if (!ext) return { cx: 0, cy: 0, halfDiag: 0 };
+      return {
+        cx: (ext.xmin + ext.xmax) / 2,
+        cy: (ext.ymin + ext.ymax) / 2,
+        halfDiag: Math.hypot(ext.xmax - ext.xmin, ext.ymax - ext.ymin) / 2,
+      };
+    } catch {
+      return { cx: 0, cy: 0, halfDiag: 0 };
+    }
+  }
+
+  /**
+   * Pre-allocate reusable symbol objects for the current draw session.
+   * Subsequent frames mutate these in place rather than constructing new instances.
+   */
+  private _initReuseObjects(): void {
+    this._dotSym = new SimpleMarkerSymbol({
+      style: 'circle',
+      color: new Color([255, 255, 255, 1.0]),
+      size: this._markerSize,
+      outline: { color: new Color([...this._markerColor, 1.0]), width: 2.5 },
+    });
+
+    this._lineSym = new SimpleLineSymbol({
+      style: 'short-dash',
+      color: new Color([...this._lineColor, this._lineOpacity]),
+      width: this._lineWidth + 0.5,
+    });
+
+    this._txtSym = new TextSymbol({
+      text: '',
+      font: new Font({ size: this._fontSize, style: 'italic', weight: 'bold', family: 'Helvetica' }),
+      color: new Color([...this._fontColor, 1]),
+      haloColor: new Color([0, 0, 0, 1]),
+      haloSize: 3,
+      xoffset: 6,
+      yoffset: 6,
+    });
+
+    // Reset reusable geometry handles so they are recreated for the new SR
+    this._reuseSnapPt = null;
+    this._reuseMidPt = null;
+    this._reuseLinePl = null;
+  }
+
   // ── Event helpers ─────────────────────────────────────────────────────────
 
   private _emitStateChange(state: 'enabled' | 'disabled'): void {
@@ -630,7 +723,15 @@ class ProximityEngine {
     );
   }
 
+  /** Only dispatches when the snap coordinate has moved by at least 1 map unit. */
   private _emitSnap(coordinate: Point, distance: string): void {
+    const dx = coordinate.x - this._lastSnapX;
+    const dy = coordinate.y - this._lastSnapY;
+    if (Math.hypot(dx, dy) < 1) return; // sub-unit movement — skip
+    this._lastSnapX = coordinate.x;
+    this._lastSnapY = coordinate.y;
+    this._inClearedState = false;
+
     document.dispatchEvent(
       new CustomEvent('proximity-snap', {
         detail: {
@@ -643,7 +744,12 @@ class ProximityEngine {
     );
   }
 
+  /** Only dispatches once per cleared state — avoids flooding listeners each frame. */
   private _emitClear(): void {
+    if (this._inClearedState) return;
+    this._inClearedState = true;
+    this._lastSnapX = NaN;
+    this._lastSnapY = NaN;
     document.dispatchEvent(
       new CustomEvent('proximity-clear', { bubbles: true }),
     );
@@ -708,7 +814,6 @@ class ProximityEngine {
     if (config.fontSize !== undefined) this._fontSize = config.fontSize;
     if (config.fontColor !== undefined) this._fontColor = config.fontColor;
 
-    // Refresh graphics with new styles if active
     if (this._isActive && this._isEnabled) {
       this._refreshIndicatorGraphics();
     }
@@ -717,35 +822,32 @@ class ProximityEngine {
   private _refreshIndicatorGraphics(): void {
     if (!this._layer) return;
 
-    // Update marker
-    if (this._snapGraphic) {
-      this._snapGraphic.symbol = new SimpleMarkerSymbol({
-        style: 'circle',
-        color: new Color([255, 255, 255, 1.0]),
-        size: this._markerSize,
-        outline: new SimpleLineSymbol({
-          color: new Color([...this._markerColor, 1.0]),
-          width: 2.5,
-        }),
+    // Update pre-allocated symbols in place
+    if (this._dotSym) {
+      this._dotSym.size = this._markerSize;
+      this._dotSym.outline = new SimpleLineSymbol({
+        color: new Color([...this._markerColor, 1.0]),
+        width: 2.5,
       });
     }
-
-    // Update line
-    if (this._lineGraphic) {
-      this._lineGraphic.symbol = new SimpleLineSymbol({
-        color: new Color([...this._lineColor, this._lineOpacity]),
-        width: this._lineWidth + 0.5,
-        style: 'short-dash',
-      });
+    if (this._snapGraphic && this._dotSym) {
+      this._snapGraphic.symbol = this._dotSym;
     }
 
-    // Update label
-    if (this._labelGraphic) {
-      const textSym = this._labelGraphic.symbol as TextSymbol;
-      textSym.font = new Font({ size: this._fontSize, family: 'Helvetica', style: 'italic', weight: 'bold' });
-      textSym.color = new Color([...this._fontColor, 1]);
-      textSym.haloColor = new Color([0, 0, 0, 1]);
-      textSym.haloSize = 3;
+    if (this._lineSym) {
+      this._lineSym.color = new Color([...this._lineColor, this._lineOpacity]);
+      this._lineSym.width = this._lineWidth + 0.5;
+    }
+    if (this._lineGraphic && this._lineSym) {
+      this._lineGraphic.symbol = this._lineSym;
+    }
+
+    if (this._txtSym) {
+      this._txtSym.font = new Font({ size: this._fontSize, family: 'Helvetica', style: 'italic', weight: 'bold' });
+      this._txtSym.color = new Color([...this._fontColor, 1]);
+    }
+    if (this._labelGraphic && this._txtSym) {
+      this._labelGraphic.symbol = this._txtSym;
     }
   }
 }

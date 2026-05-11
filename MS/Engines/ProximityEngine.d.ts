@@ -55,6 +55,16 @@ declare class ProximityEngine {
     private _labelGraphic;
     private _targetLayerIds;
     private _candidateSnapshot;
+    private _candidateExtents;
+    private _reuseSnapPt;
+    private _reuseMidPt;
+    private _reuseLinePl;
+    private _dotSym;
+    private _lineSym;
+    private _txtSym;
+    private _lastSnapX;
+    private _lastSnapY;
+    private _inClearedState;
     private _nearestVertex;
     private _nearestCoordinate;
     private _showDistance;
@@ -102,6 +112,9 @@ declare class ProximityEngine {
      *   1. Dot at bestCoord
      *   2. Dashed line from cursor → bestCoord
      *   3. Distance label at midpoint
+     *
+     * Symbol objects are pre-allocated once in _initReuseObjects() and reused
+     * each frame — only their mutable text/color properties are updated.
      */
     private _renderSnap;
     /** Remove all indicator graphics from the layer. Re-created lazily on next snap. */
@@ -112,8 +125,20 @@ declare class ProximityEngine {
     /** Safely resolve view.container, which may be a string ID or an HTMLElement. */
     private _resolveContainer;
     private _getOrCreateLayer;
+    /**
+     * Pre-compute bounding-box center and half-diagonal for a candidate graphic.
+     * Used each frame to cull distant candidates before running geometry engine calls.
+     */
+    private _computeCandidateExtent;
+    /**
+     * Pre-allocate reusable symbol objects for the current draw session.
+     * Subsequent frames mutate these in place rather than constructing new instances.
+     */
+    private _initReuseObjects;
     private _emitStateChange;
+    /** Only dispatches when the snap coordinate has moved by at least 1 map unit. */
     private _emitSnap;
+    /** Only dispatches once per cleared state — avoids flooding listeners each frame. */
     private _emitClear;
     private _emitHint;
     /**

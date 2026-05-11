@@ -24,13 +24,8 @@ declare class SelectionEngine {
     private _highlights;
     private _clickHandle;
     private _pointerMoveHandle;
+    private _hoverHandle;
     private _hoverGraphic;
-    private _hoverEnabled;
-    private _hoverColor;
-    private _hoverAlpha;
-    private _selectionHighlightEnabled;
-    private _selectedColor;
-    private _selectedAlpha;
     private _isDrawing;
     private _targetLayerIds;
     private _sketchVM;
@@ -203,16 +198,6 @@ declare class SelectionEngine {
     private _bboxToPolygon;
     private _addHighlight;
     private _removeHighlight;
-    private _createOverlaySymbol;
-    /** Update hover / selection highlight colors and enabled flags at runtime. */
-    updateSelectionColors(opts: {
-        hoverEnabled?: boolean;
-        hoverColor?: number[];
-        hoverAlpha?: number;
-        selectionHighlightEnabled?: boolean;
-        selectedColor?: number[];
-        selectedAlpha?: number;
-    }): void;
     private _pushAlignUndo;
     /**
      * Returns the Selection and Align/Arrange context-menu item trees.
