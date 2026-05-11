@@ -196,3 +196,6 @@ Duplicates across sources have been collapsed into single entries.
 | **2 — Workflow multipliers** | A1–A6, B1–B3, E10–E12, J1–J3, K1–K6 | Plan templates and productivity tools cut click count for every planning session |
 | **3 — Visual & annotation polish** | H1–H4, I1–I4, G1–G4, L1–L7 | Important for readability at scale; depends on Phase 1 data |
 | **4 — Advanced** | B4–B5, M1–M4 | High value but significant standalone scope |
+
+
+before improvement
