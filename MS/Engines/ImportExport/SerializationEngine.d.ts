@@ -32,6 +32,23 @@ declare class SerializationEngine {
     savePlanToFile(filename?: string): void;
     /** Open a Plan JSON file and restore all symbols from it. */
     loadPlanFromFile(): void;
+    /**
+     * Load symbols from a pre-parsed PlanDocument, applying an optional coordinate
+     * transform to every point. Used by DeploymentBuilderEngine to offset/rotate
+     * plan symbols to a chosen anchor position without touching the file-picker flow.
+     *
+     * @param planDoc  - Already-parsed JSON matching Plan.isPlanDocument()
+     * @param coordTransform - Optional function called for every {x, y} coordinate
+     *   (in WGS84 degrees). Return a new {x, y} to apply offset / rotation.
+     * @returns Number of symbols loaded, or -1 if the document is invalid.
+     */
+    loadPlanSymbolsFromData(planDoc: any, coordTransform?: (pt: {
+        x: number;
+        y: number;
+    }) => {
+        x: number;
+        y: number;
+    }): number;
     /** Serialize a single graphic to a plain JSON-safe PAMS8 object. */
     saveSymbolToJSON(graphic: Graphic): object;
     /** Serialise every graphic across all symbol layers into a JSON array. */

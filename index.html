@@ -1601,6 +1601,10 @@
             <input type="checkbox" id="setting-logging" checked title="Enable logging of engine events (drawing, editing, measurements) to Engine Log panel." />
           </div>
           <div class="setting-row">
+            <label>Deployment Builder</label>
+            <input type="checkbox" id="setting-deploymentBuilder" title="Enable the Deployment Builder widget — place pre-built tactical plans from the context menu (DeploymentBuilderEngine)." />
+          </div>
+          <div class="setting-row">
             <label>Creation Mode</label>
             <select id="setting-creationMode" title="Set symbol creation mode: Single (draw one at a time) or Continuous (draw multiple in sequence).">
               <option value="single" selected>Single</option>
@@ -2601,6 +2605,8 @@
         }),
         // Logging
         'setting-logging': (v) => ({ path: ['logging', 'enabled'], value: v }),
+        // Deployment Builder
+        'setting-deploymentBuilder': (v) => ({ path: ['features', 'deploymentBuilder'], value: v }),
         // Drawing Cues
         'setting-drawingCues': (v) => ({ path: ['features', 'drawingCues'], value: v }),
         'setting-rubberBand':  (v) => ({ path: ['drawingCues', 'rubberBand', 'enabled'], value: v }),
@@ -2810,6 +2816,8 @@
             features.mgrsEngine === true;
           document.getElementById('setting-analysisEngines').checked =
             features.analysisEngines !== false;
+          document.getElementById('setting-deploymentBuilder').checked =
+            features.deploymentBuilder === true;
 
           // Analysis engine individual flags
           const analysis = settings.analysis || {};

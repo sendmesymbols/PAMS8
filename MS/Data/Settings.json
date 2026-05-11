@@ -391,7 +391,8 @@
     "editControlPoints": true,
     "drawingCues": true,
     "mgrsEngine": false,
-    "analysisEngines": true
+    "analysisEngines": true,
+    "deploymentBuilder": false
   },
   "measurement": {
     "distUnit": "kilometers",

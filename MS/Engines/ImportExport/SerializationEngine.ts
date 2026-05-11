@@ -182,6 +182,88 @@ class SerializationEngine {
     input.click();
   }
 
+  /**
+   * Load symbols from a pre-parsed PlanDocument, applying an optional coordinate
+   * transform to every point. Used by DeploymentBuilderEngine to offset/rotate
+   * plan symbols to a chosen anchor position without touching the file-picker flow.
+   *
+   * @param planDoc  - Already-parsed JSON matching Plan.isPlanDocument()
+   * @param coordTransform - Optional function called for every {x, y} coordinate
+   *   (in WGS84 degrees). Return a new {x, y} to apply offset / rotation.
+   * @returns Number of symbols loaded, or -1 if the document is invalid.
+   */
+  public loadPlanSymbolsFromData(
+    planDoc: any,
+    coordTransform?: (pt: { x: number; y: number }) => { x: number; y: number },
+  ): number {
+    if (!this._onLoadSymbol) {
+      EngineLogger.error(SerializationEngine.ENGINE_NAME, 'loadPlanSymbolsFromData: engine not initialized');
+      return -1;
+    }
+    if (!Plan.isPlanDocument(planDoc)) {
+      EngineLogger.error(SerializationEngine.ENGINE_NAME, 'loadPlanSymbolsFromData: not a valid Plan document');
+      return -1;
+    }
+
+    const applyTransform = (p: any): any => {
+      if (!p || p.x == null || p.y == null || !coordTransform) return p;
+      const moved = coordTransform({ x: p.x, y: p.y });
+      return { ...p, x: moved.x, y: moved.y };
+    };
+
+    let loaded = 0;
+    for (const overlay of planDoc.poObj.plnOrdrOverlay) {
+      for (const sym of overlay.plnOrdrSymbolSet) {
+        if (sym.isDelete === 'Y') continue;
+        try {
+          const drawEssObj = JSON.parse(sym.drawEss);
+          const normalizedDrawEss = Plan.normalizeDrawEssForRuntime(drawEssObj);
+          const amplifier = normalizedDrawEss?.AMPLIFIER ?? {};
+          if (normalizedDrawEss?.SIDC && !amplifier.SIDC) amplifier.SIDC = normalizedDrawEss.SIDC;
+
+          const de: any = { ...normalizedDrawEss };
+
+          // Patch WGS1SP tags → explicit wkid 4326, then apply caller's transform
+          if (de.GEOM?.sp === 'WGS1SP') {
+            de.GEOM = applyTransform(this._patchPlanPoint(de.GEOM));
+          }
+          if (Array.isArray(de.CTRL_PTS)) {
+            de.CTRL_PTS = de.CTRL_PTS.map((p: any) => applyTransform(this._patchPlanPoint(p)));
+          }
+          if (de.BASE_LN_PTS) {
+            de.BASE_LN_PTS = {
+              startPt: applyTransform(this._patchPlanPoint(de.BASE_LN_PTS.startPt)),
+              midPt:   applyTransform(this._patchPlanPoint(de.BASE_LN_PTS.midPt)),
+              endPt:   applyTransform(this._patchPlanPoint(de.BASE_LN_PTS.endPt)),
+            };
+          }
+          if (de.OPTIONS?.GEOM?.sp === 'WGS1SP') {
+            de.OPTIONS = { ...de.OPTIONS, GEOM: applyTransform(this._patchPlanPoint(de.OPTIONS.GEOM)) };
+          }
+
+          this._onLoadSymbol!({
+            id: sym.plnOrdrSymbolPK.plnOrdrSymbolId,
+            sidc: amplifier?.SIDC || normalizedDrawEss?.SIDC,
+            amplifier,
+            drawEssentials: de,
+          });
+          loaded++;
+        } catch (err) {
+          EngineLogger.error(
+            SerializationEngine.ENGINE_NAME,
+            `loadPlanSymbolsFromData: failed for symbol ${sym.plnOrdrSymbolPK?.plnOrdrSymbolId}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+    }
+
+    EngineLogger.success(
+      SerializationEngine.ENGINE_NAME,
+      `Deployment: placed ${loaded} symbols from plan`,
+    );
+    return loaded;
+  }
+
   /** Serialize a single graphic to a plain JSON-safe PAMS8 object. */
   public saveSymbolToJSON(graphic: Graphic): object {
     const de: any = graphic.attributes?.drawEssentials;

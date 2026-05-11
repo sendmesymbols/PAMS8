@@ -1,0 +1,46 @@
+{
+  "plans": [
+    {
+      "id": "own-attack-1",
+      "name": "Attack Plan",
+      "category": "own",
+      "file": "Plans/Own/AttackPlan.json",
+      "description": "Maneuver attack with combined arms"
+    },
+    {
+      "id": "own-def-1",
+      "name": "Defence Plan",
+      "category": "own",
+      "file": "Plans/Own/DefPlan.json",
+      "description": "Defensive posture with depth"
+    },
+    {
+      "id": "en-log-1",
+      "name": "Logistic Plan",
+      "category": "logistic",
+      "file": "Plans/En/Logistic Plan.json",
+      "description": "Supply chain and logistics layout"
+    },
+    {
+      "id": "ex-ambush",
+      "name": "Ambush Exercise",
+      "category": "exercises",
+      "file": "../../../../Templates/Ex/ambush.json",
+      "description": "Kill zone with ambush positions and sector arcs"
+    },
+    {
+      "id": "ex-convoy",
+      "name": "Logistic Convoy",
+      "category": "exercises",
+      "file": "../../../../Templates/Ex/logistic-convoy.json",
+      "description": "Route convoy with security elements"
+    },
+    {
+      "id": "ex-route",
+      "name": "Route Planning",
+      "category": "exercises",
+      "file": "../../../../Templates/Ex/route-planning.json",
+      "description": "Route planning and axis of advance"
+    }
+  ]
+}

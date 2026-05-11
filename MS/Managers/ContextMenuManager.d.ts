@@ -64,6 +64,7 @@ declare class ContextMenuManager extends Evented {
     private _bufferEngine;
     private _corridorEngine;
     private _effectEngine;
+    private _deploymentBuilderEngine;
     private _enabled;
     private _pointerDownHandle;
     private _contextMenuHandler;
@@ -151,6 +152,13 @@ declare class ContextMenuManager extends Evented {
      * opens the effects panel.
      */
     linkEffectEngine(engine: EffectEngine | null): void;
+    /**
+     * Link a DeploymentBuilderEngine so the "Open Deployment Builder" item
+     * appears in all graphic right-click menus when set.
+     */
+    linkDeploymentBuilderEngine(engine: {
+        openWidget(): void;
+    } | null): void;
     /** Null out all analysis engine references so the Analysis submenu is hidden. */
     unlinkAnalysisEngines(): void;
     /**

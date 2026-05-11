@@ -64,6 +64,7 @@ declare class SymbolEngine implements Evented {
     private _bufferEngine;
     private _corridorEngine;
     private _effectEngine;
+    private _deploymentBuilderEngine;
     readonly serializationEngine: SerializationEngine;
     private currentSymbol;
     private sidc;
@@ -111,6 +112,7 @@ declare class SymbolEngine implements Evented {
     private _initProximityEngine;
     private _initDrawingCueEngine;
     private _initMGRSEngine;
+    private _initDeploymentBuilderEngine;
     private _initWeaponEffectEngine;
     private _initLOSEngine;
     private _initTrajectoryEngine;
@@ -367,6 +369,7 @@ declare class SymbolEngine implements Evented {
      * through initialize(isPassive=true) â€” the same pipeline as interactive drawing.
      * Falls back to direct Graphic construction for milsymbol / legacy format.
      */
+    loadSymbolFromJSON(data: any): Graphic | null;
     /** Serialise every graphic across all symbol layers into an array. */
     exportLayerToJSON(): object[];
     /** Reconstruct all graphics from a serialised array. */

@@ -1,0 +1,230 @@
+
+<h2 class="sr-only">Military planning analysis modules — 18 practical capabilities organized by planning phase, each with ArcGIS API driver, decision value, and criticality rating</h2>
+<style>
+:root{--amber:#BA7517;--amberBg:rgba(186,117,23,0.08);--amberBorder:rgba(186,117,23,0.25);--teal:#1D9E75;--tealBg:rgba(29,158,117,0.08);--coral:#D85A30;--coralBg:rgba(216,90,48,0.08);--blue:#185FA5;--blueBg:rgba(24,95,165,0.08);--purple:#534AB7;--purpleBg:rgba(83,74,183,0.08);--red:#A32D2D;--redBg:rgba(163,45,45,0.08)}
+body{margin:0;font-family:var(--font-sans,system-ui)}
+.wrap{padding:4px 0 16px}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.f{font-size:12px;padding:5px 11px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer;transition:all .12s}
+.f.on{border-color:var(--color-border-primary);background:var(--color-background-secondary);color:var(--color-text-primary)}
+.meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:12px;color:var(--color-text-tertiary)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:13px 14px 11px;display:flex;flex-direction:column;gap:8px;cursor:default;transition:border-color .15s}
+.card:hover{border-color:var(--color-border-secondary)}
+.card.hidden{display:none}
+.ctop{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
+.cicon{font-size:19px;color:var(--color-text-secondary);flex-shrink:0;margin-top:1px}
+.cbadges{display:flex;flex-wrap:wrap;gap:3px;margin-left:auto}
+.cb{font-size:9px;font-weight:500;padding:2px 6px;border-radius:var(--border-radius-md);letter-spacing:.04em;white-space:nowrap}
+.cb.terrain{background:var(--tealBg);color:var(--teal)}
+.cb.threat{background:var(--coralBg);color:var(--coral)}
+.cb.movement{background:var(--blueBg);color:var(--blue)}
+.cb.defence{background:var(--purpleBg);color:var(--purple)}
+.cb.attack{background:var(--redBg);color:var(--red)}
+.cb.situation{background:var(--amberBg);color:var(--amber)}
+.cb.d2{background:var(--color-background-success);color:var(--color-text-success)}
+.cb.d3{background:var(--color-background-info);color:var(--color-text-info)}
+.cname{font-size:13px;font-weight:500;color:var(--color-text-primary);line-height:1.3}
+.capi{font-size:10px;font-family:var(--font-mono);color:var(--color-text-tertiary);margin-top:1px}
+.cdesc{font-size:12px;color:var(--color-text-secondary);line-height:1.55;flex:1}
+.cval{font-size:11px;color:var(--color-text-tertiary);border-top:0.5px solid var(--color-border-tertiary);padding-top:7px;margin-top:2px;line-height:1.5}
+.cval strong{color:var(--color-text-secondary);font-weight:500}
+.cbtn{font-size:11px;color:var(--color-text-info);background:none;border:none;padding:0;cursor:pointer;text-align:left;margin-top:2px}
+.cbtn:hover{text-decoration:underline}
+.verdict{display:flex;align-items:center;gap:4px;margin-top:2px}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot.critical{background:#D85A30}
+.dot.high{background:#BA7517}
+.dot.medium{background:#1D9E75}
+.vlbl{font-size:9px;color:var(--color-text-tertiary);letter-spacing:.04em;text-transform:uppercase}
+</style>
+
+<div class="wrap">
+<div class="filters" id="fbar">
+  <button class="f on"  data-c="all">All (18)</button>
+  <button class="f" data-c="terrain">Terrain</button>
+  <button class="f" data-c="threat">Fires & threat</button>
+  <button class="f" data-c="movement">Movement</button>
+  <button class="f" data-c="defence">Defence</button>
+  <button class="f" data-c="attack">Attack</button>
+  <button class="f" data-c="situation">Situation</button>
+</div>
+<div class="meta"><span id="cnt">18 modules</span><span>Click any card to generate code ↗</span></div>
+<div class="grid" id="grid"></div>
+</div>
+
+<script>
+const M=[
+{cat:'terrain',icon:'ti-eye-off',name:'Dead ground mapper',
+api:'ElevationSampler + inverse viewshed',dim:['2D','3D'],
+desc:'Inverse of LOS — paints every square metre the observer CANNOT see or engage. Run from a single enemy position to find your hidden approach. Run from your own position to find your blind spots.',
+decision:'Which route keeps you unseen the longest. Where to place an ambush that the enemy cannot see forming.',
+verdict:'critical',
+prompt:'Show me the dead ground mapper — ElevationSampler inverse viewshed, coloured by depth-of-dead-ground, 2D heatmap overlay and 3D mesh, click to place observer.'},
+
+{cat:'terrain',icon:'ti-mountain',name:'Key terrain identifier',
+api:'ElevationSampler + curvature analysis',dim:['2D','3D'],
+desc:'Automatically finds dominant ground, natural choke points, re-entrants, and inter-visibility lines from raw DEM — the terrain features that control movement and observation.',
+decision:'Which ground to seize, hold, or deny first. Avenues of approach the enemy will use regardless of intent.',
+verdict:'critical',
+prompt:'Show me key terrain identifier — DEM curvature, prominence and viewshed scoring to auto-rank terrain features, with markers and ranked list panel.'},
+
+{cat:'terrain',icon:'ti-car',name:'Trafficability overlay',
+api:'ImageryTileLayer + slope + ElevationSampler',dim:['2D'],
+desc:'Classifies every part of the AO as: tracked cross-country, wheeled cross-country, wheeled road-only, dismount-only, or impassable — per vehicle class. Based on slope thresholds and terrain type.',
+decision:'Where heavy vehicles can and cannot go. Which avenues are genuinely available to the enemy. MSR alternates.',
+verdict:'critical',
+prompt:'Show me trafficability overlay — slope-derived mobility classes per vehicle type, colour-coded 2D raster, with class toggles and slope threshold inputs.'},
+
+{cat:'terrain',icon:'ti-shield-half',name:'Hull-down position finder',
+api:'ElevationSampler + micro-terrain analysis',dim:['3D'],
+desc:'Given a direction of threat, finds positions where a vehicle body is masked by terrain but the weapon system still has line of fire. Scores candidate positions by coverage and egress routes.',
+decision:'Where to place tanks/IFVs for a defensive screen. Firing positions that minimise exposure to enemy direct fire.',
+verdict:'critical',
+prompt:'Show me hull-down position finder — ElevationSampler micro-terrain, test elevation above observer masked by ground crest, score and display candidate positions with LOS to threat axis.'},
+
+{cat:'terrain',icon:'ti-route-alt-left',name:'Natural line of drift',
+api:'DEM flow direction + geometryEngine valleys',dim:['2D'],
+desc:'Extracts the paths any force — friendly or enemy — will naturally follow due to terrain: valley floors, re-entrants, gaps between high ground. Not MSRs. Unnested terrain channels.',
+decision:'Where enemy dismounts will move at night without map or GPS. Where to position observation posts and claymores.',
+verdict:'high',
+prompt:'Show me natural line of drift analysis — DEM-derived flow accumulation valleys and re-entrants as 2D polylines, with width and depth scoring for each channel.'},
+
+{cat:'terrain',icon:'ti-layers-intersect',name:'Observation post ranker',
+api:'ElevationSampler + viewshed union coverage',dim:['2D','3D'],
+desc:'Given N candidate OP positions (placed as symbols), ranks them by: area observed, overlap with neighbouring OPs, dead ground behind, egress options. Selects the optimal set for full-AO coverage.',
+decision:'Which 3 of 8 candidate OPs gives you the most coverage with the least blind spots. Where your observation has gaps.',
+verdict:'high',
+prompt:'Show me OP ranker — place candidate points, compute viewshed per point, union and difference to score unique coverage contribution, rank and display with gap polygon.'},
+
+{cat:'threat',icon:'ti-circles-relation',name:'Mutual fire coverage mesh',
+api:'geometryEngine union + intersection + difference',dim:['2D','3D'],
+desc:'Given all friendly weapon positions, computes: ground covered by 2+ weapons (mutual support), ground covered by only 1 (single coverage), and uncovered ground (gap). The planning gap map.',
+decision:'Where your defence has holes an enemy can exploit. Whether a proposed position adds coverage or duplicates existing fires.',
+verdict:'critical',
+prompt:'Show me mutual fire coverage mesh — place multiple WEZ polygons, compute pairwise intersections, colour by coverage count 0/1/2+, highlight gap polygons explicitly.'},
+
+{cat:'threat',icon:'ti-target-arrow',name:'Fire support deconfliction',
+api:'geometryEngine + GraphicsLayer time-aware',dim:['2D'],
+desc:'No-fire areas, restricted fire areas, target reference points, fire support coordination lines, and boundaries — drawn and enforced as geometry. Checks whether a target falls inside any restricted zone before it is engaged.',
+decision:'Whether you can legally and safely engage a target. Where the boundaries are between your fires and adjacent unit fires.',
+verdict:'critical',
+prompt:'Show me fire support coordination — draw NFAs and RFAs as polygons, FSCL as polyline, snap targets, run geometryEngine.contains() check and flag violations with popup.'},
+
+{cat:'threat',icon:'ti-clock-bolt',name:'Time-space / reaction window',
+api:'geometryEngine geodesicLength + speed inputs',dim:['2D'],
+desc:'Given enemy position, speed, and route — computes where they will be at T+5, T+15, T+30 minutes. Shows the window in which friendly forces can intercept, block, or withdraw before contact.',
+decision:'Can your reserve reach the threatened point before the enemy does. When to initiate withdrawal to avoid being cut off.',
+verdict:'critical',
+prompt:'Show me time-space analysis — enemy route polyline, speed input, generate position rings at configurable time intervals, show friendly force position and reaction window overlap.'},
+
+{cat:'movement',icon:'ti-route',name:'Route comparison scorer',
+api:'geodesicDensify + multi-criteria scoring',dim:['2D'],
+desc:'Draws 2–5 candidate routes. Scores each on: terrain masking percentage, stream/obstacle crossings, observed by known enemy positions, distance, estimated time. Ranks them. Not just a buffer — a decision.',
+decision:'Which of three approach routes has the best balance of speed, cover, and enemy exposure. Brief answer: Route B.',
+verdict:'critical',
+prompt:'Show me route comparison scorer — draw multiple routes, score each against threat geometries, obstacle layers, terrain masking, output ranked table and colour-coded route lines.'},
+
+{cat:'movement',icon:'ti-barrier-block',name:'Obstacle / breach planner',
+api:'GraphicsLayer + geometryEngine + ElevationSampler',dim:['2D','3D'],
+desc:'Place linear obstacles (minefields, wire, ditches, berms). Identifies gaps, computes breaching lanes, shows which obstacles are covered by fire from enemy positions and which are not.',
+decision:'Where to breach with least exposure. Which obstacles are defended and which are blind spots. Engineer task planning.',
+verdict:'high',
+prompt:'Show me obstacle breach planner — draw obstacle lines, compute gaps via difference, check LOS from enemy positions to each segment, colour by covered/uncovered, show breach lane options.'},
+
+{cat:'movement',icon:'ti-clock',name:'Golden hour / CASEVAC reach',
+api:'geometryEngine geodesicBuffer + time rings',dim:['2D'],
+desc:'From a planned HLS or medical post, draws time-distance rings: 10 min, 30 min, 60 min reach by ground or air. Shows which parts of the AO are inside or outside the golden hour for a casualty.',
+decision:'Where to position the RAP or request a forward HLS. Which positions are beyond medical reach with current assets.',
+verdict:'high',
+prompt:'Show me CASEVAC reach analysis — place HLS or RAP, input speed/mode, draw time-distance rings, highlight AO areas outside 60min reach, flag positions with distance to nearest reachable point.'},
+
+{cat:'defence',icon:'ti-layout-grid',name:'Engagement area designer',
+api:'geometryEngine + CIMSymbol + GraphicsLayer',dim:['2D'],
+desc:'Design a kill zone: place linear obstacle, position weapon systems on flanks, draw trigger lines, final protective fires, and dead ground inside the EA. Shows fields of fire from each position with overlap.',
+decision:'Whether your EA design has dead ground the enemy can hide in. Where your triggers should be placed for maximum time in the kill zone.',
+verdict:'critical',
+prompt:'Show me engagement area designer — draw obstacle line, place weapon positions, compute fields of fire per position, show overlap mesh, place trigger and FPF lines with doctrinal symbology.'},
+
+{cat:'defence',icon:'ti-arrows-split',name:'Defence gap analyser',
+api:'geometryEngine difference + LOS',dim:['2D'],
+desc:'Given all defensive positions and their weapon ranges, computes the ground not covered by any friendly direct fire. Draws the gaps explicitly as red polygons. No interpretation needed.',
+decision:'Where your defence can be penetrated without being engaged. Where to place reserves or additional positions to close gaps.',
+verdict:'critical',
+prompt:'Show me defence gap analyser — union all friendly WEZ polygons, difference against AO boundary, display uncovered polygons as explicit gaps with area and width statistics.'},
+
+{cat:'defence',icon:'ti-star',name:'Position defensibility score',
+api:'ElevationSampler + viewshed + geometryEngine',dim:['3D'],
+desc:'For any point placed on the map, scores it across six factors: observation arc, fields of fire, cover from direct fire, cover from view, dead ground behind, egress options. Single composite score out of 100.',
+decision:'Is this the right position to dig in, or is the next ridge 200m back actually better. Objective score, not gut feel.',
+verdict:'high',
+prompt:'Show me position defensibility scorer — place a point, run viewshed, slope check, LOS to egress routes, score each factor 0-20, display radar chart and composite score with factor breakdown.'},
+
+{cat:'attack',icon:'ti-trending-up',name:'Approach analysis (OCOKA)',
+api:'ElevationSampler + FlowRenderer + geometryEngine',dim:['2D','3D'],
+desc:'Terrain-driven analysis of avenues of approach: width, depth, masking, trafficability, observation from enemy positions, and obstacles. Produces a ranked list of COAs the enemy will consider — and that you must plan against.',
+decision:'Which axis the enemy main effort will use. Where to orient your anti-armour assets. Which avenue to use for your own assault.',
+verdict:'critical',
+prompt:'Show me OCOKA approach analysis — auto-extract terrain corridors from DEM, score each for width/masking/trafficability/observation, display ranked list with corridor polygons and heat scores.'},
+
+{cat:'attack',icon:'ti-focus',name:'Assault position selector',
+api:'ElevationSampler + geometryEngine + LOS',dim:['2D','3D'],
+desc:'Finds positions that are: inside the line of departure, masked from enemy observation, within direct-fire range of the objective, large enough to hold the assaulting element, with covered approach from the FUP.',
+decision:'Where to site the assault position without being observed before H-hour. Objective, geometry-based, not eyeballed.',
+verdict:'high',
+prompt:'Show me assault position selector — place objective and FUP, compute masked areas at assault range, filter by size, show candidate assault positions with LOS check to objective.'},
+
+{cat:'situation',icon:'ti-chart-bubble',name:'Force density / ORBAT heatmap',
+api:'GraphicsLayer clustering + density kernel',dim:['2D'],
+desc:'Aggregates all placed symbols by type and faction. Shows density heatmap — where forces are concentrated, where the line is thin. Computes force ratio at any clicked point from surrounding symbols.',
+decision:'Where your line is dangerously thin. Where the enemy has mass. Whether the proposed main effort is actually where the mass is.',
+verdict:'high',
+prompt:'Show me force density heatmap — aggregate placed military symbols by faction, compute kernel density, display as colour-coded 2D overlay, click any point to get local force ratio within configurable radius.'},
+];
+
+const grid=document.getElementById('grid');
+const cnt=document.getElementById('cnt');
+
+function render(cat){
+  const vis=M.filter(m=>cat==='all'||m.cat===cat);
+  cnt.textContent=vis.length+' module'+(vis.length!==1?'s':'');
+  grid.innerHTML='';
+  vis.forEach(m=>{
+    const d=document.createElement('div');
+    d.className='card';
+    const dimBadges=m.dim.map(x=>`<span class="cb ${x==='3D'?'d3':'d2'}">${x}</span>`).join('');
+    const catLabel={terrain:'Terrain',threat:'Fires',movement:'Movement',defence:'Defence',attack:'Attack',situation:'Situation'}[m.cat];
+    const vdot={critical:'critical',high:'high',medium:'medium'}[m.verdict];
+    const vlbl={critical:'Build first',high:'High value',medium:'Useful'}[m.verdict];
+    d.innerHTML=`
+      <div class="ctop">
+        <i class="ti ${m.icon} cicon" aria-hidden="true"></i>
+        <div class="cbadges">
+          <span class="cb ${m.cat}">${catLabel}</span>
+          ${dimBadges}
+        </div>
+      </div>
+      <div class="cname">${m.name}</div>
+      <div class="capi">${m.api}</div>
+      <div class="cdesc">${m.desc}</div>
+      <div class="cval"><strong>Decision supported:</strong> ${m.decision}</div>
+      <div class="verdict">
+        <div class="dot ${vdot}"></div>
+        <div class="vlbl">${vlbl}</div>
+      </div>
+      <button class="cbtn" onclick="sendPrompt('${m.prompt.replace(/'/g,"\\'")}')">Implement this ↗</button>
+    `;
+    grid.appendChild(d);
+  });
+}
+
+document.getElementById('fbar').addEventListener('click',e=>{
+  const btn=e.target.closest('.f');
+  if(!btn)return;
+  document.querySelectorAll('.f').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  render(btn.dataset.c);
+});
+
+render('all');
+</script>

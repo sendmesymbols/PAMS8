@@ -48,6 +48,8 @@ import EditEngine from './EditEngine.ts';
 import SelectionEngine from './SelectionEngine.ts';
 // MeasurementEngine is loaded dynamically based on Settings.json features.measurementEngine
 import type MeasurementEngine from './MeasurementEngine.ts';
+// DeploymentBuilderEngine is loaded dynamically based on Settings.json features.deploymentBuilder
+import type DeploymentBuilderEngine from './DeploymentBuilder/DeploymentBuilderEngine.ts';
 import ProximityEngine from './ProximityEngine.ts';
 import DrawingCueEngine from './DrawingCueEngine.ts';
 import MGRSEngine from './MGRSEngine.ts';
@@ -116,6 +118,7 @@ class SymbolEngine implements Evented {
   private _bufferEngine: BufferEngine | null = null;
   private _corridorEngine: CorridorEngine | null = null;
   private _effectEngine: EffectEngine | null = null;
+  private _deploymentBuilderEngine: DeploymentBuilderEngine | null = null;
   public readonly serializationEngine = SerializationEngine.getInstance();
   private currentSymbol: any | undefined;
   private sidc: any | undefined;
@@ -282,6 +285,9 @@ class SymbolEngine implements Evented {
 
     // Conditionally load MGRSEngine based on Settings.json feature flag
     this._initMGRSEngine();
+
+    // Conditionally load DeploymentBuilderEngine based on Settings.json feature flag
+    this._initDeploymentBuilderEngine();
 
     // Initialise WeaponEffectEngine (always on â€” activated on demand via context menu)
     this._initWeaponEffectEngine();
@@ -508,6 +514,9 @@ class SymbolEngine implements Evented {
     // Re-attach MGRS engine to the new view
     this._mgrsEngine?.onViewChanged(newView);
 
+    // Re-attach DeploymentBuilderEngine to the new view
+    this._deploymentBuilderEngine?.onViewChanged(newView);
+
     // Re-attach analysis engines to the new view
     this._weaponEffectEngine?.initialize(newView);
     this._losEngine?.initialize(newView);
@@ -642,6 +651,26 @@ class SymbolEngine implements Evented {
     this._mgrsEngine.enable();
     this.emitEvent('mgrsEngineReady', { engine: this._mgrsEngine });
     console.info('[SymbolEngine] MGRSEngine loaded');
+  }
+
+  private async _initDeploymentBuilderEngine(): Promise<void> {
+    const features = (settingsData as any).features ?? {};
+    if (features.deploymentBuilder !== true) {
+      console.info('[SymbolEngine] DeploymentBuilderEngine disabled via Settings.json');
+      return;
+    }
+    try {
+      const { default: DBE } = await import('./DeploymentBuilder/DeploymentBuilderEngine.ts');
+      this._deploymentBuilderEngine = DBE.getInstance();
+      this._deploymentBuilderEngine!.start(this.view, this.serializationEngine);
+      this._deploymentBuilderEngine!.enable();
+      this._contextMenuManager.linkDeploymentBuilderEngine(this._deploymentBuilderEngine!);
+      (window as any).deploymentBuilderEngine = this._deploymentBuilderEngine;
+      this.emitEvent('deploymentBuilderEngineReady', { engine: this._deploymentBuilderEngine });
+      console.info('[SymbolEngine] DeploymentBuilderEngine loaded');
+    } catch (err) {
+      console.error('[SymbolEngine] Failed to load DeploymentBuilderEngine:', err);
+    }
   }
 
   private _initWeaponEffectEngine(): void {
@@ -1467,6 +1496,18 @@ class SymbolEngine implements Evented {
 
     if (fullPath === 'logging.enabled') {
       EngineLogger.setEnabled(!!value);
+    }
+
+    if (fullPath === 'features.deploymentBuilder') {
+      if (value && !this._deploymentBuilderEngine) {
+        this._initDeploymentBuilderEngine();
+      } else if (!value && this._deploymentBuilderEngine) {
+        this._deploymentBuilderEngine.disable();
+        this._contextMenuManager.linkDeploymentBuilderEngine(null);
+      } else if (value && this._deploymentBuilderEngine) {
+        this._deploymentBuilderEngine.enable();
+        this._contextMenuManager.linkDeploymentBuilderEngine(this._deploymentBuilderEngine);
+      }
     }
 
     if (fullPath === 'creationMode') {
@@ -3406,7 +3447,7 @@ class SymbolEngine implements Evented {
    * through initialize(isPassive=true) â€” the same pipeline as interactive drawing.
    * Falls back to direct Graphic construction for milsymbol / legacy format.
    */
-  /*
+
   public loadSymbolFromJSON(data: any): Graphic | null {
     try {
       const deData = data.drawEssentials || {};
@@ -3552,7 +3593,7 @@ class SymbolEngine implements Evented {
     }
   }
 
-   */
+
 
   /** Serialise every graphic across all symbol layers into an array. */
   public exportLayerToJSON(): object[] {

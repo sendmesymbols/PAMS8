@@ -1,6 +1,7 @@
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
+import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import PictureMarkerSymbol from '@arcgis/core/symbols/PictureMarkerSymbol';
 import PointSymbol3D from '@arcgis/core/symbols/PointSymbol3D';
@@ -55,7 +56,10 @@ interface CompassInstance {
   faceGfx: Graphic;
   bezelGfx: Graphic;
   needleGfx: Graphic;
+  bearingLineGfx: Graphic | null;
+  bearingBackGfx: Graphic | null;
   dragState: { startAngle: number; startBezel: number } | null;
+  moveState: { startPt: Point } | null;
   sectors: SectorConeInstance[];
 }
 
@@ -100,6 +104,15 @@ export class MagneticCompass {
   private _northColor: [number, number, number] = [255, 80, 80];
   private _bezelColor: [number, number, number] = [212, 160, 60];
   private _declination = 1.5;
+
+  // Bearing line options
+  private _showBearingLine = true;
+  private _showBackAzimuth = true;
+  private _bearingLineKm = 15;
+  private _useMils = false;
+
+  // Intersection markers
+  private _intersectionGfxList: Graphic[] = [];
 
   // View event handles
   private _dragHandle: { remove(): void } | null = null;
@@ -164,7 +177,6 @@ export class MagneticCompass {
     this._is3D = view.type === '3d';
     this._layer = this._getOrCreateLayer();
 
-    // Regenerate symbols for all existing instances to match new view type
     for (const inst of this._instances) {
       const faceURL   = this._toDataURL(this._buildFaceSVG());
       const bezelURL  = this._toDataURL(this._buildBezelSVG(inst.bezelDeg));
@@ -172,10 +184,12 @@ export class MagneticCompass {
       inst.faceGfx.symbol   = this._makeSymbol(faceURL) as any;
       inst.bezelGfx.symbol  = this._makeSymbol(bezelURL) as any;
       inst.needleGfx.symbol = this._makeSymbol(needleURL) as any;
-      // Regenerate sector symbols for the new view type (geometry wkid:4326 renders on both)
       for (const s of inst.sectors) {
         s.graphic.symbol = this._makeSectorSymbol(s.options) as any;
       }
+      // Regenerate bearing lines with correct symbol type
+      if (inst.bearingLineGfx) inst.bearingLineGfx.symbol = this._makeBearingLineSymbol(false) as any;
+      if (inst.bearingBackGfx) inst.bearingBackGfx.symbol = this._makeBearingLineSymbol(true)  as any;
     }
 
     if (this._enabled) this._setupViewEvents();
@@ -191,6 +205,125 @@ export class MagneticCompass {
       this._declination = opts.declination;
       this._updateWidget();
     }
+  }
+
+  // ── Save / Load ─────────────────────────────────────────────────────────────
+
+  public exportToJSON(): string {
+    const data = {
+      version: 1,
+      settings: {
+        size: this._size,
+        opacity: this._opacity,
+        northColor: this._northColor,
+        bezelColor: this._bezelColor,
+        declination: this._declination,
+        showBearingLine: this._showBearingLine,
+        showBackAzimuth: this._showBackAzimuth,
+        bearingLineKm: this._bearingLineKm,
+        useMils: this._useMils,
+      },
+      compasses: this._instances.map(inst => ({
+        id: inst.id,
+        label: inst.label,
+        longitude: inst.mapPoint.longitude,
+        latitude: inst.mapPoint.latitude,
+        bezelDeg: inst.bezelDeg,
+        sectors: inst.sectors.map(s => ({ ...s.options })),
+      })),
+    };
+    return JSON.stringify(data, null, 2);
+  }
+
+  public saveToFile(): void {
+    const json = this.exportToJSON();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'magnetic-compasses.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  public loadFromFile(): void {
+    const input = document.createElement('input');
+    input.type   = 'file';
+    input.accept = '.json,application/json';
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const json = e.target?.result as string;
+          this.importFromJSON(json);
+        } catch {
+          console.warn('[MagneticCompass] Failed to parse JSON');
+        }
+      };
+      reader.readAsText(file);
+    });
+    input.click();
+  }
+
+  public importFromJSON(json: string): void {
+    const data = JSON.parse(json);
+    if (!data || data.version !== 1) throw new Error('Unsupported format');
+
+    // Restore settings
+    const s = data.settings || {};
+    if (s.size           !== undefined) this._size           = s.size;
+    if (s.opacity        !== undefined) this._opacity        = s.opacity;
+    if (s.northColor     !== undefined) this._northColor     = s.northColor;
+    if (s.bezelColor     !== undefined) this._bezelColor     = s.bezelColor;
+    if (s.declination    !== undefined) this._declination    = s.declination;
+    if (s.showBearingLine!== undefined) this._showBearingLine= s.showBearingLine;
+    if (s.showBackAzimuth!== undefined) this._showBackAzimuth= s.showBackAzimuth;
+    if (s.bearingLineKm  !== undefined) this._bearingLineKm  = s.bearingLineKm;
+    if (s.useMils        !== undefined) this._useMils        = s.useMils;
+
+    // Clear existing
+    this._clearAllInstances();
+
+    // Restore compasses
+    if (!this._view) return;
+    for (const c of data.compasses || []) {
+      const pt = new Point({ longitude: c.longitude, latitude: c.latitude, spatialReference: { wkid: 4326 } });
+      const inst = this._placeCompass(pt, c.label);
+      inst.id      = c.id;
+      inst.bezelDeg = c.bezelDeg;
+      this._refreshBezel(inst);
+      for (const sec of c.sectors || []) this.addSector(inst.id, sec);
+    }
+    this._counter = Math.max(0, ...this._instances.map(i => parseInt(i.id.replace('mc-', '')) || 0));
+
+    // Sync widget controls with loaded settings
+    this._syncWidgetToSettings();
+    this._updateWidget();
+  }
+
+  private _syncWidgetToSettings(): void {
+    if (!this._widget) return;
+    const q = <T extends HTMLElement>(id: string) => this._widget!.querySelector<T>(`#${id}`);
+    const opEl   = q<HTMLInputElement>('mc-opacity');
+    const szEl   = q<HTMLInputElement>('mc-size');
+    const ncEl   = q<HTMLInputElement>('mc-north-color');
+    const bcEl   = q<HTMLInputElement>('mc-bezel-color');
+    const declEl = q<HTMLInputElement>('mc-decl-input');
+    const blEl   = q<HTMLInputElement>('mc-bl-show');
+    const baEl   = q<HTMLInputElement>('mc-bl-back');
+    const kmEl   = q<HTMLInputElement>('mc-bl-km');
+    const unitsEl = q<HTMLSelectElement>('mc-units');
+    if (opEl)    { opEl.value   = String(this._opacity); const d = q<HTMLElement>('mc-opacity-display'); if (d) d.textContent = this._opacity.toFixed(2); }
+    if (szEl)    { szEl.value   = String(this._size);    const d = q<HTMLElement>('mc-size-display');    if (d) d.textContent = String(this._size); }
+    if (ncEl)    ncEl.value     = this._rgb2hex(this._northColor[0], this._northColor[1], this._northColor[2]);
+    if (bcEl)    bcEl.value     = this._rgb2hex(this._bezelColor[0], this._bezelColor[1], this._bezelColor[2]);
+    if (declEl)  declEl.value   = String(this._declination);
+    if (blEl)    blEl.checked   = this._showBearingLine;
+    if (baEl)    baEl.checked   = this._showBackAzimuth;
+    if (kmEl)    kmEl.value     = String(this._bearingLineKm);
+    if (unitsEl) unitsEl.value  = this._useMils ? 'mils' : 'deg';
   }
 
   public destroy(): void {
@@ -352,6 +485,11 @@ export class MagneticCompass {
                 transform="rotate(${deg},${(CX + r*Math.sin(a)).toFixed(1)},${(CY - r*Math.cos(a)).toFixed(1)})">${lbl}</text>`;
     }).join('');
 
+    /* Move-cursor hint — small cross in center face */
+    const moveCross = `
+<line x1="${CX-8}" y1="${CY}" x2="${CX+8}" y2="${CY}" stroke="rgba(212,160,60,0.22)" stroke-width="1"/>
+<line x1="${CX}" y1="${CY-8}" x2="${CX}" y2="${CY+8}" stroke="rgba(212,160,60,0.22)" stroke-width="1"/>`;
+
     const op = this._opacity;
     return `<svg viewBox="0 0 ${VB} ${VB}" xmlns="http://www.w3.org/2000/svg" opacity="${op}">
 <defs>
@@ -382,6 +520,7 @@ ${petals}
 ${icTicks}
 ${cardLabels}
 ${icLabels}
+${moveCross}
 <line x1="${CX}" y1="${CY - RO - 7}" x2="${CX}" y2="${CY - RM + 4}"
       stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round"/>
 <polygon points="${CX},${CY-RO-3} ${CX-5.5},${CY-RO+11} ${CX+5.5},${CY-RO+11}"
@@ -396,7 +535,6 @@ ${icLabels}
     const bcDark = this._rgb2hex(Math.round(bc[0]*0.3), Math.round(bc[1]*0.3), Math.round(bc[2]*0.3));
     const bcFaint = this._rgb2hex(Math.round(bc[0]*0.13), Math.round(bc[1]*0.13), Math.round(bc[2]*0.13));
 
-    // Hover state: brighter cardinal labels and pip opacity
     const cardLabelCol = hovered ? '#ffed80' : '#f0d060';
     const pipOpacity   = hovered ? '0.95'    : '0.75';
 
@@ -429,9 +567,16 @@ ${icLabels}
       const lx      = (CX + nr * Math.sin(rad)).toFixed(2);
       const ly      = (CY - nr * Math.cos(rad)).toFixed(2);
       const col     = isCard ? cardLabelCol : isThird ? bcHex : bcDark;
-      const fs      = isCard ? 13.5 : isThird ? 9 : 7;
+      const fs      = isCard ? 13.5 : isThird ? (this._useMils ? 7.5 : 9) : 7;
       const fw      = isCard ? 'bold' : 'normal';
-      const lbl     = isCard ? ['N','E','S','W'][deg/90] : String(deg);
+      let lbl: string;
+      if (isCard) {
+        lbl = ['N','E','S','W'][deg / 90];
+      } else if (this._useMils) {
+        lbl = String(Math.round(deg * 6400 / 360)).padStart(4, '0');
+      } else {
+        lbl = String(deg);
+      }
       labels += `<text x="${lx}" y="${ly}"
         text-anchor="middle" dominant-baseline="middle"
         fill="${col}" font-size="${fs}" font-weight="${fw}" font-family="Georgia,serif"
@@ -448,7 +593,6 @@ ${icLabels}
     const idx = `<polygon points="${CX},${CY-RO+1} ${CX-5.5},${CY-RO+14} ${CX+5.5},${CY-RO+14}"
                            fill="#cc2a18" opacity="0.92"/>`;
 
-    // Hover: extra outer rim highlight circle
     const rimHighlight = hovered
       ? `<circle cx="${CX}" cy="${CY}" r="115" fill="none" stroke="rgba(255,220,80,0.4)" stroke-width="3"/>`
       : '';
@@ -526,6 +670,163 @@ ${icLabels}
     return new PictureMarkerSymbol({ url, width: this._size, height: this._size });
   }
 
+  // ── Bearing line ────────────────────────────────────────────────────────────
+
+  private _makeBearingLineSymbol(dashed: boolean): SimpleLineSymbol {
+    const bc = this._bezelColor;
+    return new SimpleLineSymbol({
+      color: new Color([bc[0], bc[1], bc[2], dashed ? 0.45 : 0.85]),
+      width: dashed ? 1.5 : 2.5,
+      style: dashed ? 'dash' : 'solid',
+    });
+  }
+
+  private _buildBearingLinePolyline(inst: CompassInstance): Polyline {
+    const norm = (a: number) => ((a % 360) + 360) % 360;
+    const lon = inst.mapPoint.longitude ?? 0;
+    const lat = inst.mapPoint.latitude  ?? 0;
+    const end = this._geodesicDestination(lon, lat, norm(inst.bezelDeg), this._bearingLineKm * 1000);
+    return new Polyline({ paths: [[[lon, lat], [end.lon, end.lat]]], spatialReference: { wkid: 4326 } });
+  }
+
+  private _buildBackAzimuthPolyline(inst: CompassInstance): Polyline {
+    const norm = (a: number) => ((a % 360) + 360) % 360;
+    const lon = inst.mapPoint.longitude ?? 0;
+    const lat = inst.mapPoint.latitude  ?? 0;
+    const back = norm(inst.bezelDeg + 180);
+    const end  = this._geodesicDestination(lon, lat, back, this._bearingLineKm * 1000);
+    return new Polyline({ paths: [[[lon, lat], [end.lon, end.lat]]], spatialReference: { wkid: 4326 } });
+  }
+
+  private _refreshBearingLine(inst: CompassInstance): void {
+    if (!this._layer) return;
+
+    if (this._showBearingLine) {
+      if (!inst.bearingLineGfx) {
+        inst.bearingLineGfx = new Graphic({
+          geometry: this._buildBearingLinePolyline(inst),
+          symbol: this._makeBearingLineSymbol(false) as any,
+        });
+        this._layer.add(inst.bearingLineGfx);
+      } else {
+        inst.bearingLineGfx.geometry = this._buildBearingLinePolyline(inst);
+        inst.bearingLineGfx.symbol   = this._makeBearingLineSymbol(false) as any;
+      }
+    } else if (inst.bearingLineGfx) {
+      this._layer.remove(inst.bearingLineGfx);
+      inst.bearingLineGfx = null;
+    }
+
+    if (this._showBackAzimuth) {
+      if (!inst.bearingBackGfx) {
+        inst.bearingBackGfx = new Graphic({
+          geometry: this._buildBackAzimuthPolyline(inst),
+          symbol: this._makeBearingLineSymbol(true) as any,
+        });
+        this._layer.add(inst.bearingBackGfx);
+      } else {
+        inst.bearingBackGfx.geometry = this._buildBackAzimuthPolyline(inst);
+        inst.bearingBackGfx.symbol   = this._makeBearingLineSymbol(true) as any;
+      }
+    } else if (inst.bearingBackGfx) {
+      this._layer.remove(inst.bearingBackGfx);
+      inst.bearingBackGfx = null;
+    }
+
+    this._updateIntersections();
+  }
+
+  // ── Intersection detection ──────────────────────────────────────────────────
+
+  private _geodesicIntersection(
+    p1: Point, bearing1Deg: number,
+    p2: Point, bearing2Deg: number,
+  ): { lon: number; lat: number; dist1Km: number; dist2Km: number } | null {
+    const R   = 111111; // metres per degree
+    const rad = (d: number) => d * Math.PI / 180;
+    const midLat  = ((p1.latitude ?? 0) + (p2.latitude ?? 0)) / 2;
+    const cosLat  = Math.cos(rad(midLat));
+
+    const x1 = (p1.longitude ?? 0) * R * cosLat,  y1 = (p1.latitude ?? 0) * R;
+    const x2 = (p2.longitude ?? 0) * R * cosLat,  y2 = (p2.latitude ?? 0) * R;
+
+    const b1r = rad(bearing1Deg), b2r = rad(bearing2Deg);
+    const dx1 = Math.sin(b1r), dy1 = Math.cos(b1r);
+    const dx2 = Math.sin(b2r), dy2 = Math.cos(b2r);
+
+    // det of the 2×2 system
+    const det = dx1 * (-dy2) - (-dx2) * dy1;
+    if (Math.abs(det) < 1e-8) return null; // parallel
+
+    const dX = x2 - x1, dY = y2 - y1;
+    const t  = (dX * (-dy2) - dY * (-dx2)) / det; // metres along ray 1
+    const s  = (dx1 * dY - dy1 * dX) / det;       // metres along ray 2
+
+    if (t < 0 || s < 0) return null; // intersection is behind a ray
+
+    return {
+      lon:      (x1 + t * dx1) / (R * cosLat),
+      lat:      (y1 + t * dy1) / R,
+      dist1Km:  t / 1000,
+      dist2Km:  s / 1000,
+    };
+  }
+
+  private _buildIntersectionSVG(): string {
+    const bc = this._bezelColor;
+    const col = `rgba(${bc[0]},${bc[1]},${bc[2]},0.9)`;
+    const fill = `rgba(${bc[0]},${bc[1]},${bc[2]},0.2)`;
+    return `<svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="14" cy="14" r="9" fill="${fill}" stroke="${col}" stroke-width="2"/>
+  <line x1="14" y1="5"  x2="14" y2="23" stroke="${col}" stroke-width="1.5"/>
+  <line x1="5"  y1="14" x2="23" y2="14" stroke="${col}" stroke-width="1.5"/>
+</svg>`;
+  }
+
+  private _updateIntersections(): void {
+    if (!this._layer) return;
+
+    for (const g of this._intersectionGfxList) this._layer.remove(g);
+    this._intersectionGfxList = [];
+
+    if (!this._showBearingLine || this._instances.length < 2) {
+      this._updateWidget();
+      return;
+    }
+
+    const norm = (a: number) => ((a % 360) + 360) % 360;
+
+    for (let i = 0; i < this._instances.length; i++) {
+      for (let j = i + 1; j < this._instances.length; j++) {
+        const a  = this._instances[i];
+        const b  = this._instances[j];
+        const ix = this._geodesicIntersection(
+          a.mapPoint, norm(a.bezelDeg),
+          b.mapPoint, norm(b.bezelDeg),
+        );
+        if (!ix) continue;
+
+        const pt  = new Point({ longitude: ix.lon, latitude: ix.lat, spatialReference: { wkid: 4326 } });
+        const sym = new PictureMarkerSymbol({
+          url: this._toDataURL(this._buildIntersectionSVG()),
+          width: 22, height: 22,
+        });
+        const gfx = new Graphic({
+          geometry: pt,
+          symbol:   sym as any,
+          attributes: {
+            compassA: a.id, compassB: b.id,
+            dist1Km: ix.dist1Km, dist2Km: ix.dist2Km,
+          },
+        });
+        this._layer.add(gfx);
+        this._intersectionGfxList.push(gfx);
+      }
+    }
+
+    this._updateWidget();
+  }
+
   // ── Sector geometry & symbols ───────────────────────────────────────────────
 
   private _geodesicDestination(lon: number, lat: number, bearingDeg: number, distM: number): { lon: number; lat: number } {
@@ -587,7 +888,6 @@ ${icLabels}
     const extrudeM = opts.extrudeHeightM ?? 0;
 
     if (extrudeM <= 0) {
-      // Flat drape on ground — use higher opacity so it reads clearly in 3D
       return new PolygonSymbol3D({
         symbolLayers: [new FillSymbol3DLayer({
           material: { color: [r, g, b, Math.max(0.45, fillOp)] },
@@ -596,16 +896,13 @@ ${icLabels}
       });
     }
 
-    // Extruded volume: FillSymbol3DLayer = top/bottom caps, ExtrudeSymbol3DLayer = side walls
     return new PolygonSymbol3D({
       symbolLayers: [
         new FillSymbol3DLayer({
-          // Top / bottom cap — slightly transparent to see terrain below
           material: { color: [r, g, b, Math.max(0.35, fillOp)] },
           outline:  { color: [r, g, b, outlineOp], size: outlineW },
         }),
         new ExtrudeSymbol3DLayer({
-          // Side walls — solid enough to read as a 3D volume
           material: { color: [r, g, b, Math.max(0.55, fillOp)] },
           size: extrudeM,
         }),
@@ -620,12 +917,12 @@ ${icLabels}
 
   // ── Instance management ─────────────────────────────────────────────────────
 
-  private _placeCompass(pt: Point): void {
-    if (!this._layer) return;
+  private _placeCompass(pt: Point, labelOverride?: string): CompassInstance {
+    if (!this._layer) throw new Error('No layer');
 
     this._counter++;
-    const id = `mc_${Date.now()}_${this._counter}`;
-    const label = `Compass ${this._counter}`;
+    const id    = `mc_${Date.now()}_${this._counter}`;
+    const label = labelOverride ?? `Compass ${this._counter}`;
 
     const faceURL   = this._toDataURL(this._buildFaceSVG());
     const bezelURL  = this._toDataURL(this._buildBezelSVG(0));
@@ -635,20 +932,41 @@ ${icLabels}
     const bezelGfx  = new Graphic({ geometry: pt, symbol: this._makeSymbol(bezelURL) as any });
     const needleGfx = new Graphic({ geometry: pt, symbol: this._makeSymbol(needleURL) as any });
 
-    this._layer.addMany([faceGfx, bezelGfx, needleGfx]);
-
     const inst: CompassInstance = {
       id, label, mapPoint: pt, bezelDeg: 0,
-      faceGfx, bezelGfx, needleGfx, dragState: null,
+      faceGfx, bezelGfx, needleGfx,
+      bearingLineGfx: null, bearingBackGfx: null,
+      dragState: null, moveState: null,
       sectors: [],
     };
     this._instances.push(inst);
-    this._activeId = id;
 
-    this._placing = false;
+    // Build bearing line graphics below compass in z-order
+    const toAdd: Graphic[] = [];
+
+    if (this._showBearingLine) {
+      inst.bearingLineGfx = new Graphic({
+        geometry: this._buildBearingLinePolyline(inst),
+        symbol:   this._makeBearingLineSymbol(false) as any,
+      });
+      toAdd.push(inst.bearingLineGfx);
+    }
+    if (this._showBackAzimuth) {
+      inst.bearingBackGfx = new Graphic({
+        geometry: this._buildBackAzimuthPolyline(inst),
+        symbol:   this._makeBearingLineSymbol(true) as any,
+      });
+      toAdd.push(inst.bearingBackGfx);
+    }
+    toAdd.push(faceGfx, bezelGfx, needleGfx);
+    this._layer.addMany(toAdd);
+
+    this._activeId = id;
+    this._placing  = false;
     if (this._view) (this._view.container as HTMLElement).style.cursor = '';
 
     this._updateWidget();
+    return inst;
   }
 
   private _removeInstance(id: string): void {
@@ -659,6 +977,8 @@ ${icLabels}
       this._layer.remove(inst.faceGfx);
       this._layer.remove(inst.bezelGfx);
       this._layer.remove(inst.needleGfx);
+      if (inst.bearingLineGfx) this._layer.remove(inst.bearingLineGfx);
+      if (inst.bearingBackGfx) this._layer.remove(inst.bearingBackGfx);
       for (const s of inst.sectors) this._layer.remove(s.graphic);
     }
     this._instances.splice(idx, 1);
@@ -667,6 +987,7 @@ ${icLabels}
       this._hoveredInstId = null;
       this._hideHoverRing();
     }
+    this._updateIntersections();
     this._updateWidget();
   }
 
@@ -675,24 +996,47 @@ ${icLabels}
     this._instances = [];
     this._activeId = null;
     this._activeSectorId = null;
+    this._intersectionGfxList = [];
+    this._updateWidget();
+  }
+
+  // ── Move compass ────────────────────────────────────────────────────────────
+
+  private _moveCompassTo(inst: CompassInstance, newPt: Point): void {
+    inst.mapPoint       = newPt;
+    inst.faceGfx.geometry   = newPt;
+    inst.bezelGfx.geometry  = newPt;
+    inst.needleGfx.geometry = newPt;
+
+    if (inst.bearingLineGfx) inst.bearingLineGfx.geometry = this._buildBearingLinePolyline(inst);
+    if (inst.bearingBackGfx) inst.bearingBackGfx.geometry = this._buildBackAzimuthPolyline(inst);
+
+    for (const s of inst.sectors) {
+      s.graphic.geometry = this._buildSectorPolygon(newPt, s.options);
+    }
+
+    this._updateIntersections();
     this._updateWidget();
   }
 
   // ── Refresh helpers ─────────────────────────────────────────────────────────
 
   private _refreshAll(): void {
-    const faceURL = this._toDataURL(this._buildFaceSVG());
+    const faceURL   = this._toDataURL(this._buildFaceSVG());
     const needleRot = this._getNeedleCorrection();
     for (const inst of this._instances) {
       inst.faceGfx.symbol   = this._makeSymbol(faceURL) as any;
       inst.bezelGfx.symbol  = this._makeSymbol(this._toDataURL(this._buildBezelSVG(inst.bezelDeg))) as any;
       inst.needleGfx.symbol = this._makeSymbol(this._toDataURL(this._buildNeedleSVG(needleRot))) as any;
+      if (inst.bearingLineGfx) inst.bearingLineGfx.symbol = this._makeBearingLineSymbol(false) as any;
+      if (inst.bearingBackGfx) inst.bearingBackGfx.symbol = this._makeBearingLineSymbol(true)  as any;
       for (const s of inst.sectors) this._refreshSector(inst, s);
     }
   }
 
   private _refreshBezel(inst: CompassInstance): void {
     inst.bezelGfx.symbol = this._makeSymbol(this._toDataURL(this._buildBezelSVG(inst.bezelDeg))) as any;
+    this._refreshBearingLine(inst);
   }
 
   private _refreshNeedles(): void {
@@ -720,6 +1064,17 @@ ${icLabels}
     return (this._view as MapView).rotation || 0;
   }
 
+  // ── Bearing display with optional Mils ─────────────────────────────────────
+
+  private _displayBearing(deg: number): string {
+    const norm = ((deg % 360) + 360) % 360;
+    if (this._useMils) {
+      const mils = Math.round(norm * (6400 / 360));
+      return String(mils).padStart(4, '0') + ' mil';
+    }
+    return norm.toFixed(1) + '°';
+  }
+
   // ── Interaction helpers ─────────────────────────────────────────────────────
 
   private _compassScreenPt(inst: CompassInstance): { x: number; y: number } | null {
@@ -744,9 +1099,25 @@ ${icLabels}
     return dist >= RM * scale && dist <= RO * scale;
   }
 
+  private _isOnCompassFace(inst: CompassInstance, sx: number, sy: number): boolean {
+    const sp = this._compassScreenPt(inst);
+    if (!sp) return false;
+    const dist  = Math.hypot(sx - sp.x, sy - sp.y);
+    const scale = (this._size / 2) / (VB / 2);
+    return dist < RM * scale;
+  }
+
   private _findHitInstance(sx: number, sy: number): CompassInstance | null {
     for (let i = this._instances.length - 1; i >= 0; i--) {
       if (this._isOnBezelRing(this._instances[i], sx, sy)) return this._instances[i];
+    }
+    return null;
+  }
+
+  private _findAnyHitInstance(sx: number, sy: number): CompassInstance | null {
+    for (let i = this._instances.length - 1; i >= 0; i--) {
+      const inst = this._instances[i];
+      if (this._isOnBezelRing(inst, sx, sy) || this._isOnCompassFace(inst, sx, sy)) return inst;
     }
     return null;
   }
@@ -759,16 +1130,21 @@ ${icLabels}
 
     this._pointerMoveHandle = this._view.on('pointer-move', (evt: __esri.ViewPointerMoveEvent) => {
       if (!this._enabled) return;
-      const hit = this._findHitInstance(evt.x, evt.y);
+      const onBezel = this._findHitInstance(evt.x, evt.y);
+      const onFace  = !onBezel ? this._instances.find(i => this._isOnCompassFace(i, evt.x, evt.y)) ?? null : null;
+      const hit     = onBezel ?? onFace;
+
       if (this._placing) {
         (this._view!.container as HTMLElement).style.cursor = 'crosshair';
+      } else if (onBezel) {
+        (this._view!.container as HTMLElement).style.cursor = 'grab';
+      } else if (onFace) {
+        (this._view!.container as HTMLElement).style.cursor = 'move';
       } else {
-        (this._view!.container as HTMLElement).style.cursor = hit ? 'grab' : '';
+        (this._view!.container as HTMLElement).style.cursor = '';
       }
 
-      // Hover enter / exit logic
       if (hit && hit.id !== this._hoveredInstId) {
-        // Un-hover previous
         if (this._hoveredInstId) {
           const prev = this._instances.find(i => i.id === this._hoveredInstId);
           if (prev) this._setBezelHovered(prev, false);
@@ -783,7 +1159,6 @@ ${icLabels}
         this._hideHoverRing();
       }
 
-      // Keep ring centered as cursor moves over the bezel
       if (hit && this._hoverRingEl?.style.display !== 'none') {
         this._updateHoverRingPos(hit);
       }
@@ -793,33 +1168,57 @@ ${icLabels}
       if (!this._enabled) return;
 
       if (evt.action === 'start') {
-        const hit = this._findHitInstance(evt.x, evt.y);
+        const hit = this._findAnyHitInstance(evt.x, evt.y);
         if (hit) {
           evt.stopPropagation();
-          hit.dragState = {
-            startAngle: this._screenAngleTo(hit, evt.x, evt.y),
-            startBezel: hit.bezelDeg,
-          };
           this._activeId = hit.id;
-          // Switch hover ring from pulsing to steady glow
-          if (this._hoverRingEl) {
-            this._hoverRingEl.classList.remove('mc-pulsing');
-            this._hoverRingEl.classList.add('mc-dragging');
+
+          if (this._isOnCompassFace(hit, evt.x, evt.y)) {
+            // Move the whole compass
+            hit.moveState = { startPt: hit.mapPoint.clone() };
+            (this._view!.container as HTMLElement).style.cursor = 'grabbing';
+            if (this._hoverRingEl) {
+              this._hoverRingEl.classList.remove('mc-pulsing');
+              this._hoverRingEl.classList.add('mc-dragging');
+            }
+          } else {
+            // Rotate the bezel
+            hit.dragState = {
+              startAngle: this._screenAngleTo(hit, evt.x, evt.y),
+              startBezel: hit.bezelDeg,
+            };
+            if (this._hoverRingEl) {
+              this._hoverRingEl.classList.remove('mc-pulsing');
+              this._hoverRingEl.classList.add('mc-dragging');
+            }
           }
         }
       } else if (evt.action === 'update') {
-        const dragging = this._instances.find(i => i.dragState !== null);
-        if (dragging) {
+        const rotating = this._instances.find(i => i.dragState !== null);
+        const moving   = this._instances.find(i => i.moveState !== null);
+
+        if (rotating) {
           evt.stopPropagation();
-          const delta = this._screenAngleTo(dragging, evt.x, evt.y) - dragging.dragState!.startAngle;
-          dragging.bezelDeg = dragging.dragState!.startBezel + delta;
-          this._refreshBezel(dragging);
+          const delta = this._screenAngleTo(rotating, evt.x, evt.y) - rotating.dragState!.startAngle;
+          rotating.bezelDeg = rotating.dragState!.startBezel + delta;
+          this._refreshBezel(rotating);
           this._updateWidget();
+        } else if (moving) {
+          evt.stopPropagation();
+          if (this._view) {
+            const newPt = (this._view as any).toMap({ x: evt.x, y: evt.y });
+            if (newPt) {
+              this._moveCompassTo(moving, newPt);
+              this._updateHoverRingPos(moving);
+            }
+          }
         }
       } else if (evt.action === 'end') {
-        for (const inst of this._instances) inst.dragState = null;
+        for (const inst of this._instances) {
+          inst.dragState = null;
+          inst.moveState = null;
+        }
         (this._view!.container as HTMLElement).style.cursor = '';
-        // Switch back to pulsing if still hovering the bezel
         if (this._hoverRingEl && this._hoveredInstId) {
           this._hoverRingEl.classList.remove('mc-dragging');
           this._hoverRingEl.classList.add('mc-pulsing');
@@ -829,7 +1228,7 @@ ${icLabels}
 
     this._clickHandle = this._view.on('click', (evt: __esri.ViewClickEvent) => {
       if (!this._enabled) return;
-      const anyDragging = this._instances.some(i => i.dragState !== null);
+      const anyDragging = this._instances.some(i => i.dragState !== null || i.moveState !== null);
       if (anyDragging) return;
       if (this._placing && evt.mapPoint) {
         this._placeCompass(evt.mapPoint);
@@ -863,7 +1262,6 @@ ${icLabels}
     this._watchHandle?.remove();
     this._watchHandle = null;
 
-    // Clean up any active hover state
     if (this._hoveredInstId) {
       const prev = this._instances.find(i => i.id === this._hoveredInstId);
       if (prev) this._setBezelHovered(prev, false);
@@ -905,6 +1303,7 @@ ${icLabels}
       <div class="mc-info-bearing" id="mc-info-bearing">000.0°</div>
       <div class="mc-info-divider"></div>
       <div class="mc-info-row"><span>TRUE BEARING</span><span id="mc-true-bearing">–</span></div>
+      <div class="mc-info-row"><span>BACK AZIMUTH</span><span id="mc-back-azimuth">–</span></div>
       <div class="mc-info-row"><span>MAG. DECLINATION</span><span id="mc-decl-display">~1.5° W</span></div>
       <div class="mc-info-row"><span>MAP HEADING</span><span id="mc-map-heading">0.0°</span></div>
       <div class="mc-info-row"><span>COORDINATES</span><span id="mc-coords">–</span></div>
@@ -921,6 +1320,10 @@ ${icLabels}
       <div class="mc-btn-row">
         <button class="mc-btn" id="mc-reset-all-btn" title="Reset bearing on all compasses to 0°">Reset All Bearings</button>
       </div>
+      <div class="mc-btn-row" style="margin-top:4px">
+        <button class="mc-btn" id="mc-save-btn" title="Save all compasses, sectors and settings to a JSON file" style="flex:1">💾 Save</button>
+        <button class="mc-btn" id="mc-load-btn" title="Load compasses, sectors and settings from a JSON file"  style="flex:1">📂 Load</button>
+      </div>
     </div>
 
     <!-- Compass List -->
@@ -936,7 +1339,7 @@ ${icLabels}
       <div class="mc-section-title">SECTOR CONES</div>
       <div class="mc-setting-row">
         <label>Center °</label>
-        <input type="number" id="mc-sc-bearing" value="0" min="0" max="359" step="1" style="width:52px" title="Center bearing of the sector in degrees (0=N, 90=E, 180=S, 270=W)"/>
+        <input type="number" id="mc-sc-bearing" value="0" min="0" max="359" step="1" style="width:52px" title="Center bearing of the sector in degrees"/>
       </div>
       <div class="mc-setting-row">
         <label>Width °</label>
@@ -961,6 +1364,29 @@ ${icLabels}
       <div id="mc-sector-list" class="mc-compass-list" style="margin-top:5px">
         <div class="mc-list-empty" id="mc-sc-list-empty">No sectors — click "Add Sector"</div>
       </div>
+    </div>
+
+    <!-- Bearing Line -->
+    <div class="mc-section" id="mc-bearing-section" style="display:none">
+      <div class="mc-section-title">BEARING LINE</div>
+      <div class="mc-setting-row">
+        <label>Show Line</label>
+        <input type="checkbox" id="mc-bl-show" checked title="Draw bearing line on the map from compass centre"/>
+      </div>
+      <div class="mc-setting-row">
+        <label>Back Azimuth</label>
+        <input type="checkbox" id="mc-bl-back" checked title="Draw the reciprocal (back-azimuth) as a dashed line"/>
+      </div>
+      <div class="mc-setting-row">
+        <label>Length km</label>
+        <input type="number" id="mc-bl-km" value="15" min="0.5" max="2000" step="0.5" style="width:52px" title="Length of the bearing line in kilometres"/>
+      </div>
+    </div>
+
+    <!-- Intersections -->
+    <div class="mc-section" id="mc-intersect-section" style="display:none">
+      <div class="mc-section-title">INTERSECTIONS</div>
+      <div id="mc-intersect-list" class="mc-compass-list"></div>
     </div>
 
     <!-- Appearance -->
@@ -988,6 +1414,13 @@ ${icLabels}
         <label>Declination °</label>
         <input type="number" id="mc-decl-input" value="1.5" step="0.1" style="width:55px"/>
       </div>
+      <div class="mc-setting-row">
+        <label>Units</label>
+        <select id="mc-units" style="width:88px">
+          <option value="deg">Degrees (°)</option>
+          <option value="mils">Mils (NATO)</option>
+        </select>
+      </div>
     </div>
 
     <!-- Legend -->
@@ -995,7 +1428,8 @@ ${icLabels}
       <div class="mc-section-title">LEGEND</div>
       <div class="mc-legend-item"><div class="mc-leg-dot" id="mc-leg-north"></div><span>North (magnetic)</span></div>
       <div class="mc-legend-item"><div class="mc-leg-dot" style="background:#e0dcd0"></div><span>South</span></div>
-      <div class="mc-legend-item"><div class="mc-leg-dot" id="mc-leg-bezel"></div><span>Bezel (drag to set bearing)</span></div>
+      <div class="mc-legend-item"><div class="mc-leg-dot" id="mc-leg-bezel"></div><span>Bezel ring — drag to set bearing</span></div>
+      <div class="mc-legend-item" style="opacity:0.6"><div class="mc-leg-dot" style="background:rgba(255,255,255,0.4)"></div><span>Centre cross — drag to move</span></div>
       <div class="mc-legend-item" style="opacity:0.5"><div class="mc-leg-dot" style="background:rgba(255,255,255,0.4)"></div><span>Lubber line = current bearing</span></div>
     </div>
 
@@ -1033,7 +1467,6 @@ ${icLabels}
 
     document.addEventListener('mouseup', () => { dragging = false; });
 
-    // Header collapse (only on click, not after drag)
     let movedDuringDown = false;
     header.addEventListener('mousemove', () => { if (dragging) movedDuringDown = true; });
     header.addEventListener('mousedown', () => { movedDuringDown = false; });
@@ -1153,6 +1586,47 @@ ${icLabels}
       });
     }
 
+    // Units (degrees / mils)
+    const unitsEl = this._widget.querySelector('#mc-units') as HTMLSelectElement;
+    if (unitsEl) {
+      unitsEl.addEventListener('change', () => {
+        this._useMils = unitsEl.value === 'mils';
+        this._refreshAll();   // redraw bezel SVGs with new labels
+        this._updateWidget();
+      });
+    }
+
+    // Bearing line — show
+    const blShowEl = this._widget.querySelector('#mc-bl-show') as HTMLInputElement;
+    if (blShowEl) {
+      blShowEl.addEventListener('change', () => {
+        this._showBearingLine = blShowEl.checked;
+        for (const inst of this._instances) this._refreshBearingLine(inst);
+      });
+    }
+
+    // Bearing line — back azimuth
+    const blBackEl = this._widget.querySelector('#mc-bl-back') as HTMLInputElement;
+    if (blBackEl) {
+      blBackEl.addEventListener('change', () => {
+        this._showBackAzimuth = blBackEl.checked;
+        for (const inst of this._instances) this._refreshBearingLine(inst);
+      });
+    }
+
+    // Bearing line — length
+    const blKmEl = this._widget.querySelector('#mc-bl-km') as HTMLInputElement;
+    if (blKmEl) {
+      blKmEl.addEventListener('change', () => {
+        this._bearingLineKm = Math.max(0.5, parseFloat(blKmEl.value));
+        for (const inst of this._instances) this._refreshBearingLine(inst);
+      });
+    }
+
+    // Save / Load
+    this._widget.querySelector('#mc-save-btn')?.addEventListener('click', () => this.saveToFile());
+    this._widget.querySelector('#mc-load-btn')?.addEventListener('click', () => this.loadFromFile());
+
     // Init legend dot colors
     const legN = this._widget.querySelector('#mc-leg-north') as HTMLElement;
     if (legN) legN.style.background = this._rgb2hex(this._northColor[0], this._northColor[1], this._northColor[2]);
@@ -1183,7 +1657,7 @@ ${icLabels}
       if (activeInst) this.clearSectors(activeInst.id);
     });
 
-    // Pre-fill bearing from bezel when opening the Add controls
+    // Pre-fill bearing from bezel when hovering Add Sector
     this._widget.querySelector('#mc-sc-add-btn')?.addEventListener('mouseenter', () => {
       const activeInst = this._activeId ? this._instances.find(i => i.id === this._activeId) : null;
       if (!activeInst) return;
@@ -1206,22 +1680,25 @@ ${icLabels}
     if (infoSec) infoSec.style.display = inst ? 'block' : 'none';
 
     if (inst) {
-      const norm = (a: number) => ((a % 360) + 360) % 360;
-      const bear = norm(inst.bezelDeg);
-      const cardKey = CARD_SHORT[Math.round(norm(bear) / 22.5) % 16];
-      const trueB   = norm(bear - this._declination);
+      const norm   = (a: number) => ((a % 360) + 360) % 360;
+      const bear   = norm(inst.bezelDeg);
+      const cardKey = CARD_SHORT[Math.round(bear / 22.5) % 16];
+      const trueB  = norm(bear - this._declination);
+      const backB  = norm(bear + 180);
       const heading = this._getDisplayHeading();
 
-      const cardEl = this._widget.querySelector('#mc-info-cardinal') as HTMLElement;
-      const bearEl = this._widget.querySelector('#mc-info-bearing')  as HTMLElement;
-      const trueEl = this._widget.querySelector('#mc-true-bearing')  as HTMLElement;
-      const declEl = this._widget.querySelector('#mc-decl-display')  as HTMLElement;
-      const headEl = this._widget.querySelector('#mc-map-heading')   as HTMLElement;
-      const crdEl  = this._widget.querySelector('#mc-coords')        as HTMLElement;
+      const cardEl  = this._widget.querySelector('#mc-info-cardinal') as HTMLElement;
+      const bearEl  = this._widget.querySelector('#mc-info-bearing')  as HTMLElement;
+      const trueEl  = this._widget.querySelector('#mc-true-bearing')  as HTMLElement;
+      const backEl  = this._widget.querySelector('#mc-back-azimuth')  as HTMLElement;
+      const declEl  = this._widget.querySelector('#mc-decl-display')  as HTMLElement;
+      const headEl  = this._widget.querySelector('#mc-map-heading')   as HTMLElement;
+      const crdEl   = this._widget.querySelector('#mc-coords')        as HTMLElement;
 
       if (cardEl) cardEl.textContent = CARD_FULL[cardKey] || cardKey;
-      if (bearEl) bearEl.textContent = bear.toFixed(1) + '°';
-      if (trueEl) trueEl.textContent = trueB.toFixed(1) + '°';
+      if (bearEl) bearEl.textContent = this._displayBearing(bear);
+      if (trueEl) trueEl.textContent = this._displayBearing(trueB);
+      if (backEl) backEl.textContent = this._displayBearing(backB);
       if (declEl) declEl.textContent = `~${Math.abs(this._declination).toFixed(1)}° ${this._declination >= 0 ? 'E' : 'W'}`;
       if (headEl) headEl.textContent = heading.toFixed(1) + '°';
       if (crdEl)  crdEl.textContent  = `${(inst.mapPoint.latitude ?? 0).toFixed(4)}°, ${(inst.mapPoint.longitude ?? 0).toFixed(4)}°`;
@@ -1233,18 +1710,70 @@ ${icLabels}
     if (sectorSec)  sectorSec.style.display  = inst ? 'block' : 'none';
     if (extrudeRow) extrudeRow.style.display = this._is3D ? 'flex' : 'none';
 
-    // Compass list
+    // Bearing line section — show when there's at least one compass
+    const blSec = this._widget.querySelector('#mc-bearing-section') as HTMLElement;
+    if (blSec) blSec.style.display = inst ? 'block' : 'none';
+
+    // Intersections section
+    this._updateIntersectionList();
+
+    // Compass list and sector list
     this._updateCompassList();
     this._updateSectorList();
   }
 
+  private _updateIntersectionList(): void {
+    if (!this._widget) return;
+    const sec     = this._widget.querySelector('#mc-intersect-section') as HTMLElement;
+    const listEl  = this._widget.querySelector('#mc-intersect-list')    as HTMLElement;
+    if (!sec || !listEl) return;
+
+    const norm = (a: number) => ((a % 360) + 360) % 360;
+
+    // Rebuild the list from current intersection graphics
+    listEl.innerHTML = '';
+    const pairs: string[] = [];
+
+    for (let i = 0; i < this._instances.length; i++) {
+      for (let j = i + 1; j < this._instances.length; j++) {
+        const a  = this._instances[i];
+        const b  = this._instances[j];
+        const ix = this._geodesicIntersection(
+          a.mapPoint, norm(a.bezelDeg),
+          b.mapPoint, norm(b.bezelDeg),
+        );
+        if (!ix) continue;
+
+        const row = document.createElement('div');
+        row.className = 'mc-list-item';
+        row.style.flexDirection = 'column';
+        row.style.alignItems    = 'flex-start';
+        row.style.gap           = '2px';
+        row.innerHTML = `
+          <div style="display:flex;align-items:center;gap:5px;width:100%">
+            <div class="mc-leg-dot" style="background:rgba(212,160,60,0.8)"></div>
+            <span class="mc-list-label" style="flex:1">${a.label} × ${b.label}</span>
+          </div>
+          <div class="mc-list-bearing" style="padding-left:13px">
+            ${ix.lat.toFixed(4)}°, ${ix.lon.toFixed(4)}°
+          </div>
+          <div class="mc-list-bearing" style="padding-left:13px;color:rgba(212,160,60,0.4)">
+            ${ix.dist1Km.toFixed(2)} km from ${a.label} · ${ix.dist2Km.toFixed(2)} km from ${b.label}
+          </div>`;
+        listEl.appendChild(row);
+        pairs.push(`${a.id}:${b.id}`);
+      }
+    }
+
+    sec.style.display = pairs.length > 0 ? 'block' : 'none';
+  }
+
   private _updateCompassList(): void {
     if (!this._widget) return;
-    const listEl = this._widget.querySelector('#mc-compass-list') as HTMLElement;
-    const emptyEl = this._widget.querySelector('#mc-list-empty')  as HTMLElement;
+    const listEl  = this._widget.querySelector('#mc-compass-list') as HTMLElement;
+    const emptyEl = this._widget.querySelector('#mc-list-empty')   as HTMLElement;
     if (!listEl) return;
 
-    // Remove old items (keep empty placeholder)
     listEl.querySelectorAll('.mc-list-item').forEach(el => el.remove());
 
     if (this._instances.length === 0) {
@@ -1261,18 +1790,54 @@ ${icLabels}
       item.className = 'mc-list-item' + (inst.id === this._activeId ? ' mc-list-item-active' : '');
       item.innerHTML = `
         <div class="mc-list-item-info">
-          <span class="mc-list-label">${inst.label}</span>
-          <span class="mc-list-bearing">${bear.toFixed(1)}°</span>
+          <span class="mc-list-label" title="Double-click to rename">${inst.label}</span>
+          <span class="mc-list-bearing">${this._displayBearing(bear)}</span>
         </div>
         <div class="mc-list-actions">
           <button class="mc-btn mc-btn-sm mc-btn-reset" data-id="${inst.id}" title="Reset bearing to 0°">⊕</button>
-          <button class="mc-btn mc-btn-sm mc-btn-del" data-id="${inst.id}" title="Remove compass">✕</button>
+          <button class="mc-btn mc-btn-sm mc-btn-del"   data-id="${inst.id}" title="Remove compass">✕</button>
         </div>`;
-      item.addEventListener('click', () => { this._activeId = inst.id; this._updateWidget(); });
+
+      // Debounced click: wait 230 ms so a dblclick can cancel before DOM is rebuilt
+      let singleClickTimer: ReturnType<typeof setTimeout> | null = null;
+      item.addEventListener('click', () => {
+        if (singleClickTimer) clearTimeout(singleClickTimer);
+        singleClickTimer = setTimeout(() => {
+          this._activeId = inst.id;
+          this._updateWidget();
+          singleClickTimer = null;
+        }, 230);
+      });
+
+      // Editable label on double-click — cancel the pending click rebuild first
+      const labelSpan = item.querySelector('.mc-list-label') as HTMLElement;
+      labelSpan.addEventListener('dblclick', (e) => {
+        if (singleClickTimer) { clearTimeout(singleClickTimer); singleClickTimer = null; }
+        e.stopPropagation();
+        this._activeId = inst.id;   // make sure this compass is active
+
+        const inp = document.createElement('input');
+        inp.value     = inst.label;
+        inp.className = 'mc-label-edit';
+        labelSpan.replaceWith(inp);
+        inp.focus();
+        inp.select();
+
+        const commit = () => {
+          inst.label = inp.value.trim() || inst.label;
+          this._updateWidget();
+        };
+        inp.addEventListener('blur',    commit);
+        inp.addEventListener('keydown', (ke) => {
+          if (ke.key === 'Enter')  { commit(); inp.blur(); }
+          if (ke.key === 'Escape') { this._updateWidget(); }
+          ke.stopPropagation();
+        });
+      });
+
       listEl.appendChild(item);
     }
 
-    // Bind per-item buttons
     listEl.querySelectorAll('.mc-btn-reset').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1445,7 +2010,7 @@ ${icLabels}
       }
 
       .mc-info-bearing {
-        font-size: 38px;
+        font-size: 36px;
         font-weight: bold;
         color: var(--mc-gold);
         text-align: center;
@@ -1590,6 +2155,19 @@ ${icLabels}
         color: rgba(212,160,60,0.8);
         font-size: 10.5px;
         white-space: nowrap;
+        cursor: text;
+      }
+
+      .mc-label-edit {
+        background: rgba(0,0,0,0.4);
+        border: 1px solid var(--mc-gold);
+        border-radius: 3px;
+        color: var(--mc-gold);
+        font-size: 10.5px;
+        padding: 1px 4px;
+        width: 90px;
+        font-family: inherit;
+        outline: none;
       }
 
       .mc-list-bearing {
@@ -1620,7 +2198,8 @@ ${icLabels}
         font-size: 10.5px;
       }
 
-      .mc-setting-row input[type='number'] {
+      .mc-setting-row input[type='number'],
+      .mc-setting-row select {
         background: rgba(0,0,0,0.25);
         border: 1px solid rgba(212,160,60,0.2);
         border-radius: 4px;
@@ -1630,10 +2209,13 @@ ${icLabels}
         font-family: inherit;
       }
 
-      .mc-setting-row input[type='number']:focus {
+      .mc-setting-row input[type='number']:focus,
+      .mc-setting-row select:focus {
         outline: none;
         border-color: var(--mc-gold);
       }
+
+      .mc-setting-row select option { background: #1a1606; }
 
       .mc-setting-row input[type='range'] {
         accent-color: var(--mc-gold);
