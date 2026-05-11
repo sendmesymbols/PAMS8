@@ -149,10 +149,10 @@ declare class DrawingCueEngine {
     private _adaptiveMaxOuterKm;
     private _compass;
     private constructor();
+    get compassEngine(): MagneticCompass | null;
     static getInstance(): DrawingCueEngine;
     get isEnabled(): boolean;
     get isActive(): boolean;
-    get compassEngine(): MagneticCompass | null;
     start(view: MapView | SceneView): void;
     openCompassWidget(): void;
     closeCompassWidget(): void;

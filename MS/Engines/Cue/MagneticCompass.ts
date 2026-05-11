@@ -724,9 +724,37 @@ ${icLabels}
     // Close button
     this._widget.querySelector('#mc-close-btn')?.addEventListener('click', () => this.closeWidget());
 
-    // Header collapse
-    this._widget.querySelector('#mc-header')?.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).id === 'mc-close-btn') return;
+    // Header drag-to-move
+    const header = this._widget.querySelector('#mc-header') as HTMLElement;
+    let dragX = 0, dragY = 0, dragging = false;
+
+    header.addEventListener('mousedown', (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest('#mc-close-btn')) return;
+      dragging = true;
+      const rect = this._widget!.getBoundingClientRect();
+      dragX = e.clientX - rect.left;
+      dragY = e.clientY - rect.top;
+      this._widget!.style.transform = 'none';
+      this._widget!.style.left = rect.left + 'px';
+      this._widget!.style.top  = rect.top  + 'px';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e: MouseEvent) => {
+      if (!dragging || !this._widget) return;
+      this._widget.style.left = (e.clientX - dragX) + 'px';
+      this._widget.style.top  = (e.clientY - dragY) + 'px';
+    });
+
+    document.addEventListener('mouseup', () => { dragging = false; });
+
+    // Header collapse (only on click, not after drag)
+    let movedDuringDown = false;
+    header.addEventListener('mousemove', () => { if (dragging) movedDuringDown = true; });
+    header.addEventListener('mousedown', () => { movedDuringDown = false; });
+    header.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('#mc-close-btn')) return;
+      if (movedDuringDown) return;
       const body = this._widget!.querySelector('#mc-body') as HTMLElement;
       const icon = this._widget!.querySelector('#mc-toggle-icon') as HTMLElement;
       const collapsed = body.style.display === 'none';
@@ -975,7 +1003,7 @@ ${icLabels}
         padding: 10px 12px;
         background: linear-gradient(135deg, rgba(212,160,60,0.09) 0%, rgba(160,110,30,0.05) 100%);
         border-bottom: 1px solid var(--mc-gold-dim);
-        cursor: pointer;
+        cursor: move;
         user-select: none;
       }
 
