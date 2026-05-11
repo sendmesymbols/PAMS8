@@ -42,6 +42,7 @@ import BOPFreehand from "../Symbols/BOPFreehand.ts"; //Fixed
 import Boundary from "../Symbols/Boundary.ts"; //Fixed
 import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";  //Fixed
 import MainAttack from "../Symbols/MainAttack.ts";  //Fixed
+import MultiHeadMainAttack from "../Symbols/MultiHeadMainAttack.ts";  //Fixed
 import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts"; //Fixed
 import Clear from "../Symbols/Clear.ts"; //Fixed
 import BattlePosition from "../Symbols/BattlePosition.ts"; //Fixed
@@ -166,6 +167,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "TacticalPoint": TacticalPoint,
     "UEISymbol": UEISymbol,
     "MainAttack": MainAttack,
+    "MultiHeadMainAttack": MultiHeadMainAttack,
     "AttackByFirePosition": AttackByFirePosition,
     "Clear": Clear,
     "BattlePosition": BattlePosition,

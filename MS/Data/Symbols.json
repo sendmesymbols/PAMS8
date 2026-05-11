@@ -9904,6 +9904,31 @@
         "Cat": ["attk", "def"],
         "Grp": ["Control Measures","Funnel" ]
     },
+    "25151408": {
+        "Class": "MultiHeadMainAttack",
+        "Description": "The principal multi Head attack or effort into which the commander throws the full weight of the offensive power at his disposal.",
+        "Name": "Multi Head Main Attk",
+        "Parameters": [{
+            "Name": "Arrowhead Ratio",
+            "default": "0.07",
+            "description": "Arrowhead Ratio",
+            "paramThumbnail": "",
+            "value": "HEAD_RATIO"
+        },
+            {
+                "Name": "Tail Ratio",
+                "default": "0.05",
+                "description": "Tail Ratio",
+                "paramThumbnail": "",
+                "value": "TAIL_FACTOR"
+            }
+        ],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk"],
+        "Grp": ["Control Measures","Multi Head Main Attk" ]
+    },
     "25151600": {
         "Class": "AttackPosition",
         "Description": "",
