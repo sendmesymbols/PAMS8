@@ -488,8 +488,8 @@ appConfig.sceneView.when(() => {
 appConfig.mapView.when(() => {
   console.log('2D Map is loaded');
   // Instantiate the PlotPoint class
-  const plotter = new PlotPoint(appConfig.mapView);
-  plotter.plotAtCenter();
+  //const plotter = new PlotPoint(appConfig.mapView);
+  //plotter.plotAtCenter();
 });
 
 if (switchButton) {

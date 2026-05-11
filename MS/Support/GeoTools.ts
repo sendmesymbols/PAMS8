@@ -352,6 +352,21 @@ export class GeoTools {
         return 0;
     }
 
+    /** Legacy alias used by ObstacleBypassEasy / min bundles - Euclidean distance between two points. */
+    static B(pt1: Point, pt2: Point): number {
+        return this._2PtLen(pt1, pt2);
+    }
+
+    /** Legacy alias used by CounterAttack min bundles - Euclidean distance between two points. */
+    static k(pt1: Point, pt2: Point): number {
+        return this._2PtLen(pt1, pt2);
+    }
+
+    /** Legacy alias used by BaseLine / min bundles - Euclidean distance between two points. */
+    static R(pt1: Point, pt2: Point): number {
+        return this._2PtLen(pt1, pt2);
+    }
+
     /**
      * Determine relationship between two points (quadrant)
      */
@@ -555,6 +570,32 @@ export class GeoTools {
         };
     }
 
+    /** Legacy alias used by BaseLine / Bypass min bundles for `_fracturePts`. */
+    static P(startPt: Point, endPoint: Point, gapLen: number, spatialReference: SpatialReference): any {
+        return this._fracturePts(startPt, endPoint, gapLen, spatialReference);
+    }
+
+    /** Legacy alias used by older min bundles for either `_fracturePts` or `_vertexAngle`. */
+    static S(startPt: Point, endPoint: Point, gapLen: number, spatialReference: SpatialReference): any;
+    static S(ptc: Array<{ x: number, y: number }>): number[];
+    static S(
+        startPtOrPtc: Point | Array<{ x: number, y: number }>,
+        endPoint?: Point,
+        gapLen?: number,
+        spatialReference?: SpatialReference
+    ): any {
+        if (Array.isArray(startPtOrPtc) && endPoint === undefined) {
+            return this._vertexAngle(startPtOrPtc);
+        }
+
+        return this._fracturePts(
+            startPtOrPtc as Point,
+            endPoint as Point,
+            gapLen as number,
+            spatialReference as SpatialReference
+        );
+    }
+
     /**
      * Fracture consecutive segments defined by points with given gap length
      * Returns a polyline containing fractured paths and an array of midPoints info
@@ -584,6 +625,21 @@ export class GeoTools {
             geometry: result,
             midPoints: midPts
         };
+    }
+
+    /** Legacy alias used by older min bundles for either `_fracture` or Euclidean distance. */
+    static _(points: Point[], gapLen: number, spatialReference: SpatialReference): { geometry: Polyline, midPoints: Array<{ midPt: Point, len: number }> };
+    static _(pt1: Point, pt2: Point): number;
+    static _(
+        pointsOrPt1: Point[] | Point,
+        gapLenOrPt2: number | Point,
+        spatialReference?: SpatialReference
+    ): { geometry: Polyline, midPoints: Array<{ midPt: Point, len: number }> } | number {
+        if (Array.isArray(pointsOrPt1)) {
+            return this._fracture(pointsOrPt1, gapLenOrPt2 as number, spatialReference as SpatialReference);
+        }
+
+        return this._2PtLen(pointsOrPt1, gapLenOrPt2 as Point);
     }
 
     /**
@@ -682,6 +738,11 @@ export class GeoTools {
         return vertexAngle;
     }
 
+    /** Legacy alias used by CounterAttack min bundles for `_vertexAngle`. */
+    static v(ptc: Array<{ x: number, y: number }>): number[] {
+        return this._vertexAngle(ptc);
+    }
+
     /**
      * Calculate total length of point collection from start index
      */
@@ -694,6 +755,41 @@ export class GeoTools {
             );
         }
         return len;
+    }
+
+    /** Legacy alias used by CounterAttack min bundles for `_ptCollectionLen`. */
+    static A(ptc: Array<{ x: number, y: number }>, startIndex: number): number {
+        return this._ptCollectionLen(ptc, startIndex);
+    }
+
+    /** Legacy alias used by older min bundles for distance, `_fracture`, or `_fracturePts`. */
+    static D(pt1: Point, pt2: Point): number;
+    static D(points: Point[], gapLen: number, spatialReference: SpatialReference): { geometry: Polyline, midPoints: Array<{ midPt: Point, len: number }> };
+    static D(startPt: Point, endPoint: Point, gapLen: number, spatialReference: SpatialReference): any;
+    static D(
+        ptOrPoints: Point | Point[],
+        ptOrGapLen: Point | number,
+        gapLenOrSpatialReference?: number | SpatialReference,
+        spatialReference?: SpatialReference
+    ): number | { geometry: Polyline, midPoints: Array<{ midPt: Point, len: number }> } | any {
+        if (spatialReference !== undefined) {
+            return this._fracturePts(
+                ptOrPoints as Point,
+                ptOrGapLen as Point,
+                gapLenOrSpatialReference as number,
+                spatialReference
+            );
+        }
+
+        if (Array.isArray(ptOrPoints)) {
+            return this._fracture(
+                ptOrPoints,
+                ptOrGapLen as number,
+                gapLenOrSpatialReference as SpatialReference
+            );
+        }
+
+        return this._2PtLen(ptOrPoints, ptOrGapLen as Point);
     }
 
     /**

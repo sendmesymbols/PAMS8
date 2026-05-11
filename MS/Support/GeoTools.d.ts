@@ -114,6 +114,12 @@ export declare class GeoTools {
      * Calculate distance between two points (simple Euclidean)
      */
     static _2PtLen(pt1: Point, pt2: Point): number;
+    /** Legacy alias used by ObstacleBypassEasy / min bundles - Euclidean distance between two points. */
+    static B(pt1: Point, pt2: Point): number;
+    /** Legacy alias used by CounterAttack min bundles - Euclidean distance between two points. */
+    static k(pt1: Point, pt2: Point): number;
+    /** Legacy alias used by BaseLine / min bundles - Euclidean distance between two points. */
+    static R(pt1: Point, pt2: Point): number;
     /**
      * Determine relationship between two points (quadrant)
      */
@@ -154,6 +160,14 @@ export declare class GeoTools {
      * Fracture line between two points with gap
      */
     static _fracturePts(startPt: Point, endPoint: Point, gapLen: number, spatialReference: SpatialReference): any;
+    /** Legacy alias used by BaseLine / Bypass min bundles for `_fracturePts`. */
+    static P(startPt: Point, endPoint: Point, gapLen: number, spatialReference: SpatialReference): any;
+    /** Legacy alias used by older min bundles for either `_fracturePts` or `_vertexAngle`. */
+    static S(startPt: Point, endPoint: Point, gapLen: number, spatialReference: SpatialReference): any;
+    static S(ptc: Array<{
+        x: number;
+        y: number;
+    }>): number[];
     /**
      * Fracture consecutive segments defined by points with given gap length
      * Returns a polyline containing fractured paths and an array of midPoints info
@@ -165,6 +179,15 @@ export declare class GeoTools {
             len: number;
         }>;
     };
+    /** Legacy alias used by older min bundles for either `_fracture` or Euclidean distance. */
+    static _(points: Point[], gapLen: number, spatialReference: SpatialReference): {
+        geometry: Polyline;
+        midPoints: Array<{
+            midPt: Point;
+            len: number;
+        }>;
+    };
+    static _(pt1: Point, pt2: Point): number;
     /**
      * Get centroid of points
      */
@@ -196,6 +219,11 @@ export declare class GeoTools {
         x: number;
         y: number;
     }>): number[];
+    /** Legacy alias used by CounterAttack min bundles for `_vertexAngle`. */
+    static v(ptc: Array<{
+        x: number;
+        y: number;
+    }>): number[];
     /**
      * Calculate total length of point collection from start index
      */
@@ -203,6 +231,21 @@ export declare class GeoTools {
         x: number;
         y: number;
     }>, startIndex: number): number;
+    /** Legacy alias used by CounterAttack min bundles for `_ptCollectionLen`. */
+    static A(ptc: Array<{
+        x: number;
+        y: number;
+    }>, startIndex: number): number;
+    /** Legacy alias used by older min bundles for distance, `_fracture`, or `_fracturePts`. */
+    static D(pt1: Point, pt2: Point): number;
+    static D(points: Point[], gapLen: number, spatialReference: SpatialReference): {
+        geometry: Polyline;
+        midPoints: Array<{
+            midPt: Point;
+            len: number;
+        }>;
+    };
+    static D(startPt: Point, endPoint: Point, gapLen: number, spatialReference: SpatialReference): any;
     /**
      * Calculate arrow flanks length for attack by fire position
      */
