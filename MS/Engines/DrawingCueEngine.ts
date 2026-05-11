@@ -28,6 +28,7 @@ import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtil
 import EngineLogger from '../Support/EngineLogger';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
+import { MagneticCompass, MagneticCompassOptions } from './Cue/MagneticCompass';
 
 // ── Public option types ───────────────────────────────────────────────────────
 
@@ -62,6 +63,7 @@ export interface DrawingCueOptions {
     showSnapPoint?: boolean;
     showAnchor?: boolean;
     relativeSegment?: boolean;
+    protractorDetail?: 'full' | 'reduced';
   };
   distanceRings?: {
     enabled?: boolean;
@@ -89,6 +91,7 @@ export interface DrawingCueOptions {
     coverageFraction?: number;
     maxOuterKm?: number;
   };
+  magneticCompass?: MagneticCompassOptions;
 }
 
 // ── Internal candidate record ─────────────────────────────────────────────────
@@ -162,7 +165,14 @@ class DrawingCueEngine {
   private _guidesShowSnapPoint: boolean = true;
   private _guidesShowAnchor: boolean = true;
   private _guidesRelativeSegment: boolean = false;
+  private _guidesProtractorDetail: 'full' | 'reduced' = 'reduced';
   private _prevSegBearing: number | null = null;
+
+  // ── Cache fields — protractor & distance ring rebuild guards ──────────────
+  private _lastProtractorCenter: Point | null = null;
+  private _lastProtractorRadius: number = 0;
+  private _lastRingsCenter: Point | null = null;
+  private _lastRingsRadius: number = 0;
 
   // ── Option fields — distance rings ────────────────────────────────────────
   private _ringsEnabled: boolean = true;
@@ -190,7 +200,12 @@ class DrawingCueEngine {
   private _adaptiveCoverageFraction: number = 0.25;
   private _adaptiveMaxOuterKm: number = 200;
 
+  // ── Magnetic compass child engine ──────────────────────────────────────────
+  private _compass: MagneticCompass | null = null;
+
   private constructor() {}
+
+  get compassEngine(): MagneticCompass | null { return this._compass; }
 
   public static getInstance(): DrawingCueEngine {
     if (!DrawingCueEngine._instance) {
@@ -208,7 +223,13 @@ class DrawingCueEngine {
     this._view = view;
     this._resolveGeodesic();
     this._layer = this._getOrCreateLayer();
+
+    if (!this._compass) this._compass = new MagneticCompass();
+    this._compass.start(view);
   }
+
+  public openCompassWidget(): void { this._compass?.openWidget(); }
+  public closeCompassWidget(): void { this._compass?.closeWidget(); }
 
   public enable(): void {
     this._isEnabled = true;
@@ -325,6 +346,10 @@ class DrawingCueEngine {
     this._lastCtrlPt = null;
     this._prevCtrlPtCount = 0;
     this._prevSegBearing = null;
+    this._lastProtractorCenter = null;
+    this._lastProtractorRadius = 0;
+    this._lastRingsCenter = null;
+    this._lastRingsRadius = 0;
 
     this._pointerHandle?.remove();
     this._pointerHandle = null;
@@ -343,6 +368,7 @@ class DrawingCueEngine {
   }
 
   public onViewChanged(view: MapView | SceneView): void {
+    this._compass?.onViewChanged(view);
     this.deactivate();
     this._view = view;
     this._resolveGeodesic();
@@ -354,6 +380,10 @@ class DrawingCueEngine {
     this._protractorGs = [];
     this._needleGs = [];
     this._prevSegBearing = null;
+    this._lastProtractorCenter = null;
+    this._lastProtractorRadius = 0;
+    this._lastRingsCenter = null;
+    this._lastRingsRadius = 0;
     this._layer = this._getOrCreateLayer();
   }
 
@@ -388,12 +418,23 @@ class DrawingCueEngine {
       if (ag.lineWidth          !== undefined) this._guidesLineWidth         = ag.lineWidth;
       if (ag.showLabel          !== undefined) this._guidesShowLabel         = ag.showLabel;
       if (ag.fontSize           !== undefined) this._guidesLabelFontSize     = ag.fontSize;
-      if (ag.showArc            !== undefined) this._guidesShowArc           = ag.showArc;
+      if (ag.showArc !== undefined) {
+        this._guidesShowArc = ag.showArc;
+        if (!ag.showArc) {
+          for (const g of this._protractorGs) this._removeGraphic(g);
+          this._protractorGs = [];
+          for (const g of this._needleGs) this._removeGraphic(g);
+          this._needleGs = [];
+          this._lastProtractorCenter = null;
+          this._lastProtractorRadius = 0;
+        }
+      }
       if (ag.arcRadiusKm        !== undefined) this._guidesArcRadiusKm       = ag.arcRadiusKm;
       if (ag.showFan            !== undefined) this._guidesShowFan           = ag.showFan;
       if (ag.showSnapPoint      !== undefined) this._guidesShowSnapPoint      = ag.showSnapPoint;
       if (ag.showAnchor         !== undefined) this._guidesShowAnchor        = ag.showAnchor;
       if (ag.relativeSegment    !== undefined) this._guidesRelativeSegment   = ag.relativeSegment;
+      if (ag.protractorDetail   !== undefined) this._guidesProtractorDetail  = ag.protractorDetail;
     }
 
     const dr = opts.distanceRings;
@@ -426,6 +467,10 @@ class DrawingCueEngine {
       if (ad.enabled          !== undefined) this._adaptiveEnabled          = ad.enabled;
       if (ad.coverageFraction !== undefined) this._adaptiveCoverageFraction = ad.coverageFraction;
       if (ad.maxOuterKm       !== undefined) this._adaptiveMaxOuterKm       = ad.maxOuterKm;
+    }
+
+    if (opts.magneticCompass !== undefined) {
+      this._compass?.setOptions(opts.magneticCompass);
     }
   }
 
@@ -757,15 +802,25 @@ class DrawingCueEngine {
 
   private _updateDistanceRings(center: Point): void {
     if (!this._view || !this._layer) return;
-
-    for (const g of this._ringGs) this._removeGraphic(g);
-    this._ringGs = [];
-
     if (!this._ringsEnabled || this._ringsCount < 1 || this._ringsIntervalKm <= 0) return;
 
     const intervalKm = this._adaptiveEnabled
       ? this._computeAdaptiveIntervalKm(center)
       : this._ringsIntervalKm;
+
+    // Skip rebuild when center hasn't moved more than ~2% of the outer ring radius
+    const outerKm = this._ringsCount * intervalKm;
+    const outerMapUnits = this._kmToMapUnits(outerKm, center);
+    const isSameCenter = this._lastRingsCenter !== null
+      && Math.abs(this._lastRingsCenter.x - center.x) < outerMapUnits * 0.02
+      && Math.abs(this._lastRingsCenter.y - center.y) < outerMapUnits * 0.02;
+    const isSameRadius = Math.abs(outerMapUnits - this._lastRingsRadius) < outerMapUnits * 0.01;
+    if (isSameCenter && isSameRadius && this._ringGs.length > 0) return;
+
+    for (const g of this._ringGs) this._removeGraphic(g);
+    this._ringGs = [];
+    this._lastRingsCenter = center;
+    this._lastRingsRadius = outerMapUnits;
 
     for (let i = 1; i <= this._ringsCount; i++) {
       const distKm = i * intervalKm;
@@ -814,8 +869,6 @@ class DrawingCueEngine {
   // ── Protractor ring ───────────────────────────────────────────────────────
 
   private _updateProtractorRing(center: Point): void {
-    for (const g of this._protractorGs) this._removeGraphic(g);
-    this._protractorGs = [];
     if (!this._guidesShowArc || !this._layer || !this._view) return;
 
     const intervalKm = this._adaptiveEnabled
@@ -826,6 +879,19 @@ class DrawingCueEngine {
       : this._guidesArcRadiusKm;
     const r = this._kmToMapUnits(outerKm, center);
     if (r <= 0) return;
+
+    // Skip rebuild when center and radius are effectively unchanged
+    const isSameCenter = this._lastProtractorCenter !== null
+      && Math.abs(this._lastProtractorCenter.x - center.x) < r * 0.02
+      && Math.abs(this._lastProtractorCenter.y - center.y) < r * 0.02;
+    const isSameRadius = Math.abs(r - this._lastProtractorRadius) < r * 0.01;
+    if (isSameCenter && isSameRadius && this._protractorGs.length > 0) return;
+
+    // Rebuild — clear stale graphics first
+    for (const g of this._protractorGs) this._removeGraphic(g);
+    this._protractorGs = [];
+    this._lastProtractorCenter = center;
+    this._lastProtractorRadius = r;
 
     const sr  = center.spatialReference;
     const col = this._guidesLineColor;            // [R, G, B] = cyan-blue
@@ -911,7 +977,8 @@ class DrawingCueEngine {
       180: 'S', 225: 'SW', 270: 'W', 315: 'NW',
     };
 
-    for (let deg = 0; deg < 360; deg += 5) {
+    const tickStep = this._guidesProtractorDetail === 'reduced' ? 10 : 5;
+    for (let deg = 0; deg < 360; deg += tickStep) {
       const rad = deg * Math.PI / 180;
       const sx  = Math.sin(rad);
       const sy  = Math.cos(rad);
@@ -997,8 +1064,6 @@ class DrawingCueEngine {
    *  • a halo label showing the numeric bearing
    */
   private _updateProtractorNeedle(center: Point, cursor: Point): void {
-    for (const g of this._needleGs) this._removeGraphic(g);
-    this._needleGs = [];
     if (!this._guidesShowArc || !this._layer) return;
 
     const intervalKm = this._adaptiveEnabled
@@ -1010,12 +1075,11 @@ class DrawingCueEngine {
     const r = this._kmToMapUnits(outerKm, center);
     if (r <= 0) return;
 
-    const dx  = cursor.x - center.x;
-    const dy  = cursor.y - center.y;
+    const dx = cursor.x - center.x;
+    const dy = cursor.y - center.y;
     if (Math.hypot(dx, dy) < r * 0.01) return;   // cursor too close to center
 
-    const sr  = center.spatialReference;
-    const addN = (g: Graphic) => { this._layer!.add(g); this._needleGs.push(g); };
+    const sr = center.spatialReference;
 
     // Bearing in degrees (0° = North, clockwise)
     const bearingDeg = ((Math.atan2(dx, dy) * 180 / Math.PI) + 360) % 360;
@@ -1023,53 +1087,57 @@ class DrawingCueEngine {
     const nsx = Math.sin(bearingRad);
     const nsy = Math.cos(bearingRad);
 
-    // Needle tip: point on the outer ring perimeter
     const tipX = center.x + nsx * r;
     const tipY = center.y + nsy * r;
 
-    // Needle shaft: center → tip
+    // Initialise the 3 needle graphics once; mutate geometry + symbol each tick
+    if (this._needleGs.length === 0) {
+      const shaftG = new Graphic();
+      const dotG   = new Graphic();
+      const labelG = new Graphic();
+      this._layer.add(shaftG);
+      this._layer.add(dotG);
+      this._layer.add(labelG);
+      this._needleGs = [shaftG, dotG, labelG];
+    }
+    const [shaftG, dotG, labelG] = this._needleGs;
+
+    // Shaft
     const needlePl = new Polyline({ spatialReference: sr });
     needlePl.addPath([[center.x, center.y], [tipX, tipY]]);
-    addN(new Graphic({
-      geometry: needlePl,
-      symbol: new SimpleLineSymbol({
-        style:  'solid',
-        color:  new Color([255, 220, 60, 0.85]),   // warm amber needle
-        width:  1.6,
-      }),
-    }));
+    shaftG.geometry = needlePl;
+    shaftG.symbol   = new SimpleLineSymbol({
+      style: 'solid',
+      color: new Color([255, 220, 60, 0.85]),
+      width: 1.6,
+    });
 
-    // Arrowhead dot at the tip (on the ring)
-    addN(new Graphic({
-      geometry: new Point({ x: tipX, y: tipY, spatialReference: sr }),
-      symbol: new SimpleMarkerSymbol({
-        style:   'circle',
-        color:   new Color([255, 220, 60, 1.0]),
-        size:    9,
-        outline: new SimpleLineSymbol({ color: new Color([0, 0, 0, 0.9]), width: 1.5 }),
-      }),
-    }));
+    // Arrowhead dot
+    dotG.geometry = new Point({ x: tipX, y: tipY, spatialReference: sr });
+    dotG.symbol   = new SimpleMarkerSymbol({
+      style:   'circle',
+      color:   new Color([255, 220, 60, 1.0]),
+      size:    9,
+      outline: new SimpleLineSymbol({ color: new Color([0, 0, 0, 0.9]), width: 1.5 }),
+    });
 
-    // Bearing label just outside the tip
-    const labelDist = r * 1.16;
-    const labelPt   = new Point({
+    // Bearing label
+    const labelDist  = r * 1.16;
+    const bearingStr = `${Math.round(bearingDeg).toString().padStart(3, '0')}°`;
+    labelG.geometry = new Point({
       x: center.x + nsx * labelDist,
       y: center.y + nsy * labelDist,
       spatialReference: sr,
     });
-    const bearingStr = `${Math.round(bearingDeg).toString().padStart(3, '0')}°`;
-    addN(new Graphic({
-      geometry: labelPt,
-      symbol: new TextSymbol({
-        text:      bearingStr,
-        font:      new Font({ size: 11, weight: 'bold', family: 'Courier New' }),
-        color:     new Color([255, 220, 60, 1.0]),
-        haloColor: new Color([0, 0, 0, 1]),
-        haloSize:  3,
-        xoffset:   0,
-        yoffset:   0,
-      }),
-    }));
+    labelG.symbol = new TextSymbol({
+      text:      bearingStr,
+      font:      new Font({ size: 11, weight: 'bold', family: 'Courier New' }),
+      color:     new Color([255, 220, 60, 1.0]),
+      haloColor: new Color([0, 0, 0, 1]),
+      haloSize:  3,
+      xoffset:   0,
+      yoffset:   0,
+    });
   }
 
   // ── Nearby highlight ──────────────────────────────────────────────────────

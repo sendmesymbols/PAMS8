@@ -15,6 +15,7 @@
 import Point from '@arcgis/core/geometry/Point';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
+import { MagneticCompass, MagneticCompassOptions } from './Cue/MagneticCompass';
 export interface DrawingCueOptions {
     enabled?: boolean;
     rubberBand?: {
@@ -46,6 +47,7 @@ export interface DrawingCueOptions {
         showSnapPoint?: boolean;
         showAnchor?: boolean;
         relativeSegment?: boolean;
+        protractorDetail?: 'full' | 'reduced';
     };
     distanceRings?: {
         enabled?: boolean;
@@ -73,6 +75,7 @@ export interface DrawingCueOptions {
         coverageFraction?: number;
         maxOuterKm?: number;
     };
+    magneticCompass?: MagneticCompassOptions;
 }
 declare class DrawingCueEngine {
     private static _instance;
@@ -118,7 +121,12 @@ declare class DrawingCueEngine {
     private _guidesShowSnapPoint;
     private _guidesShowAnchor;
     private _guidesRelativeSegment;
+    private _guidesProtractorDetail;
     private _prevSegBearing;
+    private _lastProtractorCenter;
+    private _lastProtractorRadius;
+    private _lastRingsCenter;
+    private _lastRingsRadius;
     private _ringsEnabled;
     private _ringsIntervalKm;
     private _ringsCount;
@@ -139,11 +147,15 @@ declare class DrawingCueEngine {
     private _adaptiveEnabled;
     private _adaptiveCoverageFraction;
     private _adaptiveMaxOuterKm;
+    private _compass;
     private constructor();
     static getInstance(): DrawingCueEngine;
     get isEnabled(): boolean;
     get isActive(): boolean;
+    get compassEngine(): MagneticCompass | null;
     start(view: MapView | SceneView): void;
+    openCompassWidget(): void;
+    closeCompassWidget(): void;
     enable(): void;
     disable(): void;
     toggle(): boolean;

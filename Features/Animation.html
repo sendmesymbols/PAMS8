@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>ArcGIS Pulsating Symbols 2D/3D</title>
+
+  <link
+    rel="stylesheet"
+    href="https://js.arcgis.com/4.30/esri/themes/light/main.css"
+  />
+
+  <script src="https://js.arcgis.com/4.30/"></script>
+
+  <style>
+    html,
+    body,
+    #viewDiv {
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    .panel {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      z-index: 99;
+
+      background: rgba(255,255,255,0.95);
+      padding: 14px;
+      border-radius: 10px;
+
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+
+      width: 220px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 8px;
+
+      border: none;
+      padding: 10px;
+
+      border-radius: 6px;
+
+      cursor: pointer;
+
+      background: #0079c1;
+      color: white;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #005e95;
+    }
+
+    .title {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="panel">
+  <div class="title">ArcGIS Pulsating Animations</div>
+
+  <button id="btn2d">Switch to 2D</button>
+  <button id="btn3d">Switch to 3D</button>
+
+  <hr />
+
+  <div>
+    ✔ Pulsating point<br/>
+    ✔ Pulsating picture marker<br/>
+    ✔ Pulsating line<br/>
+    ✔ Pulsating polygon<br/>
+    ✔ Expanding radar ring<br/>
+    ✔ 2D + 3D compatible
+  </div>
+</div>
+
+<div id="viewDiv"></div>
+
+<script>
+
+require([
+  "esri/Map",
+  "esri/views/MapView",
+  "esri/views/SceneView",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic"
+], function(
+  Map,
+  MapView,
+  SceneView,
+  GraphicsLayer,
+  Graphic
+) {
+
+  // =====================================================
+  // MAP
+  // =====================================================
+
+  const graphicsLayer = new GraphicsLayer();
+
+  const map = new Map({
+    basemap: "streets-night-vector",
+    ground: "world-elevation",
+    layers: [graphicsLayer]
+  });
+
+  // =====================================================
+  // VIEW
+  // =====================================================
+
+  let view;
+
+  function createView(type) {
+
+    let viewpoint = null;
+
+    if (view) {
+      viewpoint = view.viewpoint.clone();
+      view.container = null;
+    }
+
+    if (type === "2d") {
+
+      view = new MapView({
+        container: "viewDiv",
+        map,
+        center: [-118.805, 34.027],
+        zoom: 14
+      });
+
+    } else {
+
+      view = new SceneView({
+        container: "viewDiv",
+        map,
+
+        camera: {
+          position: {
+            longitude: -118.805,
+            latitude: 34.027,
+            z: 5000
+          },
+          tilt: 70
+        }
+      });
+    }
+
+    if (viewpoint) {
+      view.when(() => {
+        view.viewpoint = viewpoint;
+      });
+    }
+  }
+
+  createView("2d");
+
+  // =====================================================
+  // GEOMETRIES
+  // =====================================================
+
+  const centerPoint = {
+    type: "point",
+    longitude: -118.805,
+    latitude: 34.027,
+    z: 150
+  };
+
+  // =====================================================
+  // POINT
+  // =====================================================
+
+  const pointGraphic = new Graphic({
+    geometry: centerPoint,
+
+    symbol: {
+      type: "simple-marker",
+      style: "circle",
+      size: 12,
+
+      color: [0,255,255,1],
+
+      outline: {
+        color: [255,255,255,1],
+        width: 2
+      }
+    }
+  });
+
+  // =====================================================
+  // RING
+  // =====================================================
+
+  const ringGraphic = new Graphic({
+    geometry: centerPoint,
+
+    symbol: {
+      type: "simple-marker",
+      style: "circle",
+
+      size: 20,
+
+      color: [255,255,255,0],
+
+      outline: {
+        color: [0,255,255,1],
+        width: 3
+      }
+    }
+  });
+
+  // =====================================================
+  // PICTURE MARKER
+  // =====================================================
+
+  const pictureGraphic = new Graphic({
+    geometry: {
+      type: "point",
+      longitude: -118.79,
+      latitude: 34.025,
+      z: 150
+    },
+
+    symbol: {
+      type: "picture-marker",
+
+      url:
+        "https://static.arcgis.com/images/Symbols/Shapes/BluePin1LargeB.png",
+
+      width: "40px",
+      height: "40px"
+    }
+  });
+
+  // =====================================================
+  // LINE
+  // =====================================================
+
+  const lineGraphic = new Graphic({
+    geometry: {
+      type: "polyline",
+
+      paths: [
+        [-118.83, 34.02],
+        [-118.81, 34.04],
+        [-118.78, 34.03]
+      ]
+    },
+
+    symbol: {
+      type: "simple-line",
+
+      color: [255,165,0,1],
+      width: 4
+    }
+  });
+
+  // =====================================================
+  // POLYGON
+  // =====================================================
+
+  const polygonGraphic = new Graphic({
+
+    geometry: {
+      type: "polygon",
+
+      rings: [[
+        [-118.82,34.02],
+        [-118.79,34.02],
+        [-118.79,34.045],
+        [-118.82,34.045],
+        [-118.82,34.02]
+      ]]
+    },
+
+    symbol: {
+      type: "simple-fill",
+
+      color: [255,0,255,0.15],
+
+      outline: {
+        color: [255,0,255,1],
+        width: 3
+      }
+    }
+  });
+
+  graphicsLayer.addMany([
+    polygonGraphic,
+    lineGraphic,
+    ringGraphic,
+    pointGraphic,
+    pictureGraphic
+  ]);
+
+  // =====================================================
+  // BUTTONS
+  // =====================================================
+
+  document
+    .getElementById("btn2d")
+    .onclick = () => createView("2d");
+
+  document
+    .getElementById("btn3d")
+    .onclick = () => createView("3d");
+
+  // =====================================================
+  // ANIMATION LOOP
+  // =====================================================
+
+  const duration = 1800;
+
+  let start = null;
+
+  function animate(timestamp) {
+
+    if (!start) {
+      start = timestamp;
+    }
+
+    const elapsed = timestamp - start;
+
+    const t =
+      (elapsed % duration) / duration;
+
+    const wave =
+      (Math.sin(t * Math.PI * 2 - Math.PI/2) + 1) / 2;
+
+    // =================================================
+    // POINT
+    // =================================================
+
+    const pointSymbol =
+      pointGraphic.symbol.clone();
+
+    pointSymbol.size =
+      10 + wave * 12;
+
+    pointSymbol.color = [
+      0,
+      255,
+      255,
+      0.4 + wave * 0.6
+    ];
+
+    pointGraphic.symbol =
+      pointSymbol;
+
+    // =================================================
+    // RING
+    // =================================================
+
+    const ringSymbol =
+      ringGraphic.symbol.clone();
+
+    ringSymbol.size =
+      20 + wave * 60;
+
+    ringSymbol.outline.width =
+      2 + wave * 3;
+
+    ringSymbol.outline.color = [
+      0,
+      255,
+      255,
+      1 - wave
+    ];
+
+    ringGraphic.symbol =
+      ringSymbol;
+
+    // =================================================
+    // LINE
+    // =================================================
+
+    const lineSymbol =
+      lineGraphic.symbol.clone();
+
+    lineSymbol.width =
+      2 + wave * 8;
+
+    lineSymbol.color = [
+      255,
+      165,
+      0,
+      0.2 + wave * 0.8
+    ];
+
+    lineGraphic.symbol =
+      lineSymbol;
+
+    // =================================================
+    // POLYGON
+    // =================================================
+
+    const polySymbol =
+      polygonGraphic.symbol.clone();
+
+    polySymbol.color = [
+      255,
+      0,
+      255,
+      0.05 + wave * 0.25
+    ];
+
+    polySymbol.outline.width =
+      1 + wave * 6;
+
+    polySymbol.outline.color = [
+      255,
+      0,
+      255,
+      0.3 + wave * 0.7
+    ];
+
+    polygonGraphic.symbol =
+      polySymbol;
+
+    // =================================================
+    // PICTURE SYMBOL
+    // =================================================
+
+    const picSymbol =
+      pictureGraphic.symbol.clone();
+
+    const size =
+      35 + wave * 25;
+
+    picSymbol.width =
+      size + "px";
+
+    picSymbol.height =
+      size + "px";
+
+    pictureGraphic.symbol =
+      picSymbol;
+
+    // =================================================
+    // FLOATING EFFECT IN 3D
+    // =================================================
+
+    if (view && view.type === "3d") {
+
+      const z =
+        150 + Math.sin(t * Math.PI * 2) * 40;
+
+      pointGraphic.geometry.z = z;
+      ringGraphic.geometry.z = z;
+      pictureGraphic.geometry.z = z;
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  requestAnimationFrame(animate);
+
+});
+
+</script>
+
+</body>
+</html>

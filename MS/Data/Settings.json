@@ -472,6 +472,14 @@
       "enabled": false,
       "coverageFraction": 0.25,
       "maxOuterKm": 200
+    },
+    "magneticCompass": {
+      "enabled": false,
+      "size": 210,
+      "opacity": 1.0,
+      "northColor": [255, 80, 80],
+      "bezelColor": [212, 160, 60],
+      "declination": 1.5
     }
   },
   "mgrs": {

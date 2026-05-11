@@ -56,9 +56,6 @@ declare class ProximityEngine {
     private _targetLayerIds;
     private _candidateSnapshot;
     private _candidateExtents;
-    private _reuseSnapPt;
-    private _reuseMidPt;
-    private _reuseLinePl;
     private _dotSym;
     private _lineSym;
     private _txtSym;

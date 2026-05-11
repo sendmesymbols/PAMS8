@@ -361,14 +361,12 @@ declare class SymbolEngine implements Evented {
      * On load these are fed back into initialize(isPassive=true) so the symbol is
      * reconstructed through the same rendering pipeline used when it was first drawn.
      */
-    saveSymbolToJSON(graphic: Graphic): object;
     /**
      * Reconstruct a graphic from a serialised pams8 object.
      * When CTRL_PTS / BASE_LN_PTS / GEOM are present the symbol is re-rendered
      * through initialize(isPassive=true) â€” the same pipeline as interactive drawing.
      * Falls back to direct Graphic construction for milsymbol / legacy format.
      */
-    loadSymbolFromJSON(data: any): Graphic | null;
     /** Serialise every graphic across all symbol layers into an array. */
     exportLayerToJSON(): object[];
     /** Reconstruct all graphics from a serialised array. */

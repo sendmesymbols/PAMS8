@@ -123,6 +123,10 @@ const symbolEngine = new SymbolEngine(() => appConfig.activeView);
 // Expose symbolEngine globally so the settings panel can communicate with it
 (window as any).symbolEngine = symbolEngine;
 
+// Expose DrawingCueEngine singleton so index.html plain JS can call openCompassWidget() etc.
+import DrawingCueEngine from '../MS/Engines/DrawingCueEngine';
+(window as any).drawingCueEngine = DrawingCueEngine.getInstance();
+
 // ── Engine log listener ───────────────────────────────────────────────────────
 // Engines emit 'engine-log' events — the client application decides how to
 // display them.  The log panel in index.html renders them visually; this

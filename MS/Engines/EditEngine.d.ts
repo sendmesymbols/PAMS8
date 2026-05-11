@@ -2,6 +2,7 @@ import Graphic from "@arcgis/core/Graphic";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import GraphicsLayerManager from "../Managers/GraphicsLayerManager";
+import { ContextMenuItem } from "../Managers/ContextMenuManager";
 /**
  * EditEngine — interactive move / rotate / scale / reshape for drawn military symbols.
  *
@@ -150,5 +151,10 @@ declare class EditEngine {
     /** Deep-clone BASE_LN_PTS ({ startPt, midPt, endPt }). */
     private _cloneBaseLnPts;
     private _emit;
+    /**
+     * Returns the Edit submenu item tree.
+     * Call from SymbolEngine.registerContextMenuItems() and spread the result.
+     */
+    buildContextMenuItems(onModify: (graphic: Graphic) => void, onActivateCtrlPts: (graphic: Graphic) => void, onDeactivate: () => void): ContextMenuItem[];
 }
 export default EditEngine;
