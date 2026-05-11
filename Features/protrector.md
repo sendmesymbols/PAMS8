@@ -46,3 +46,17 @@ The Marsh app's real lesson is: one coherent 3D visualization does more than ten
 create a CorridorEngine.ts file in the same directory and
 You can get inspirtion from `LOSEngine` and `WeaponEffectEngine` and active it using option in `d:\Projects\Web\PAMS8\MS\Managers\ContextMenuManager.ts` "Corridor Analysis"
 if source files HTML and JS add them in TS as well in widget
+
+
+
+I am looking to create high quality personal assistant like openCLaw with interface like paperclip https://github.com/paperclipai/paperclip and knowledge base https://github.com/getzep/graphiti like Andrew Wiki, interface like obesedian https://obsidian.md/, management like paperclip, which scans chosen folder my chosen documents and creates a knowledge graph https://github.com/getzep/graphiti,  writes docs, creates presentations and briefs. Maps companies, owners, strong like graffitti, strong memory system, hermes https://github.com/nousresearch/hermes-agent
+Karpathy’s LLM Wiki
+can be based on https://github.com/holaboss-ai/holaOS  -  Might be a good base to start with
+These are also candidates https://github.com/multica-ai/multica
+https://github.com/bytedance/deer-flow
+For office files editing https://github.com/iOfficeAI/OfficeCLI
+Something like this https://github.com/safishamsi/graphify but for documents, scans, images, sound files, a true detective that answers, understands, makes connections, clarifies, understands previous correspondance with the firm and suggest way forward,
+here is another one
+https://github.com/swarmclawai/swarmvault
+I want best of all
+orgaize my thoughst, dont miss any project or detail. Clarify and strong my requirements
