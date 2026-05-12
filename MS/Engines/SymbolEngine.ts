@@ -53,9 +53,11 @@ import type DeploymentBuilderEngine from './DeploymentBuilder/DeploymentBuilderE
 import ProximityEngine from './ProximityEngine.ts';
 import DrawingCueEngine from './DrawingCueEngine.ts';
 import MGRSEngine from './MGRSEngine.ts';
+import VisualizationEngine from './Visualization/VisualizationEngine.ts';
 import EngineLogger from '../Support/EngineLogger';
 import type { DrawingCueOptions } from './DrawingCueEngine.ts';
 import type { MGRSEngineOptions } from './MGRSEngine.ts';
+import type { VisualizationOptions } from './Visualization/VisualizationEngine.ts';
 import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
 import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
@@ -65,6 +67,7 @@ import { EffectEngine } from './Analysis/EffectEngine';
 import Plan from './ImportExport/Plan.ts';
 import SerializationEngine from './ImportExport/SerializationEngine';
 import ThemeManager from '../Managers/ThemeManager';
+import DeclutterEngine from './Declutter/DeclutterEngine';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -113,6 +116,7 @@ class SymbolEngine implements Evented {
   private _proximityEngine: ProximityEngine | null = null;
   private _drawingCueEngine: DrawingCueEngine | null = null;
   private _mgrsEngine: MGRSEngine | null = null;
+  private _visualizationEngine: VisualizationEngine | null = null;
   private _weaponEffectEngine: WeaponEffectEngine | null = null;
   private _losEngine: LOSEngine | null = null;
   private _trajectoryEngine: TrajectoryEngine | null = null;
@@ -120,6 +124,7 @@ class SymbolEngine implements Evented {
   private _corridorEngine: CorridorEngine | null = null;
   private _effectEngine: EffectEngine | null = null;
   private _deploymentBuilderEngine: DeploymentBuilderEngine | null = null;
+  private _declutterEngine: DeclutterEngine | null = null;
   public readonly serializationEngine = SerializationEngine.getInstance();
   private currentSymbol: any | undefined;
   private sidc: any | undefined;
@@ -241,13 +246,7 @@ class SymbolEngine implements Evented {
       },
     );
 
-    reactiveUtils.watch(
-      () => this._getView()?.zoom,
-      (newType: Number) => {
-        //console.log("SymbolEngine detected activeView type change:", newType);
-        // Potentially re-initialize or update SymbolEngine based on new view type
-      },
-    );
+    // Zoom-based declutter is handled by DeclutterEngine (see _initDeclutterEngine)
 
     // Initialize the ContextMenuManager
     this._contextMenuManager = ContextMenuManager.getInstance();
@@ -290,6 +289,9 @@ class SymbolEngine implements Evented {
     // Conditionally load MGRSEngine based on Settings.json feature flag
     this._initMGRSEngine();
 
+    // Conditionally load VisualizationEngine based on Settings.json feature flag
+    this._initVisualizationEngine();
+
     // Conditionally load DeploymentBuilderEngine based on Settings.json feature flag
     this._initDeploymentBuilderEngine();
 
@@ -305,6 +307,9 @@ class SymbolEngine implements Evented {
     this._initCorridorEngine();
     // Initialise EffectEngine (always on â€” activated on demand via context menu)
     this._initEffectEngine();
+
+    // Initialise DeclutterEngine â€” manages annotation and symbol zoom/echelon visibility
+    this._initDeclutterEngine();
 
 
     // Wire global keyboard shortcuts (if enabled in Settings.json)
@@ -517,9 +522,13 @@ class SymbolEngine implements Evented {
     this._drawingCueEngine?.onViewChanged(newView);
     // Re-attach MGRS engine to the new view
     this._mgrsEngine?.onViewChanged(newView);
+    // Re-attach visualization engine to the new view
+    this._visualizationEngine?.onViewChanged(newView);
 
     // Re-attach DeploymentBuilderEngine to the new view
     this._deploymentBuilderEngine?.onViewChanged(newView);
+    // Re-attach DeclutterEngine to the new view
+    this._declutterEngine?.onViewChanged(newView);
 
     // Re-attach analysis engines to the new view
     this._weaponEffectEngine?.initialize(newView);
@@ -655,6 +664,21 @@ class SymbolEngine implements Evented {
     this._mgrsEngine.enable();
     this.emitEvent('mgrsEngineReady', { engine: this._mgrsEngine });
     console.info('[SymbolEngine] MGRSEngine loaded');
+  }
+
+  private _initVisualizationEngine(): void {
+    const features = (settingsData as any).features ?? {};
+    if (features.visualizationEngine !== true) {
+      console.info('[SymbolEngine] VisualizationEngine disabled via Settings.json');
+      return;
+    }
+    const vizCfg = (settingsData as any).visualization ?? {};
+    this._visualizationEngine = VisualizationEngine.getInstance();
+    this._visualizationEngine.start(this.view);
+    this._visualizationEngine.setOptions(vizCfg as VisualizationOptions);
+    this._visualizationEngine.enable();
+    this.emitEvent('visualizationEngineReady', { engine: this._visualizationEngine });
+    console.info('[SymbolEngine] VisualizationEngine loaded');
   }
 
   private async _initDeploymentBuilderEngine(): Promise<void> {
@@ -1294,6 +1318,11 @@ class SymbolEngine implements Evented {
     return this._mgrsEngine;
   }
 
+  /** Access the VisualizationEngine â€” force overlays (rings, hull, grid, effects). */
+  public get visualizationEngine(): VisualizationEngine | null {
+    return this._visualizationEngine;
+  }
+
   /** Access the WeaponEffectEngine â€” open WEZ analysis panels programmatically. */
   public get weaponEffectEngine(): WeaponEffectEngine | null {
     return this._weaponEffectEngine;
@@ -1488,6 +1517,19 @@ class SymbolEngine implements Evented {
       this._mgrsEngine.setOptions(mgrsCfg as MGRSEngineOptions);
     }
 
+    if (fullPath === 'features.visualizationEngine') {
+      if (this._visualizationEngine) {
+        value ? this._visualizationEngine.enable() : this._visualizationEngine.disable();
+      } else if (value) {
+        this._initVisualizationEngine();
+      }
+    }
+
+    if (fullPath.startsWith('visualization.') && this._visualizationEngine) {
+      const vizCfg = (settingsData as any).visualization ?? {};
+      this._visualizationEngine.setOptions(vizCfg as VisualizationOptions);
+    }
+
     if (fullPath === 'features.drawingCues' && this._drawingCueEngine) {
       value ? this._drawingCueEngine.enable() : this._drawingCueEngine.disable();
     }
@@ -1522,8 +1564,27 @@ class SymbolEngine implements Evented {
       ThemeManager.getInstance().setTheme(value);
     }
 
+    if (fullPath === 'declutter.enabled') {
+      if (value) this._declutterEngine?.enable();
+      else this._declutterEngine?.disable();
+    }
+
+    if (fullPath.startsWith('declutter.') && fullPath !== 'declutter.enabled') {
+      this._declutterEngine?.refresh();
+    }
+
     // Emit event so other parts of the app can react
     this.emitEvent('settingChanged', { path: path.join('.'), value });
+  }
+
+  // -----------------------------------------------------------------------
+  // DeclutterEngine
+  // -----------------------------------------------------------------------
+
+  private _initDeclutterEngine(): void {
+    this._declutterEngine = new DeclutterEngine(this._getView, this._layerManager);
+    const d = (settingsData as any).declutter;
+    if (d?.enabled === true) this._declutterEngine.enable();
   }
 
   // -----------------------------------------------------------------------

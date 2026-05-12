@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>OP Ranker — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#060809}
+
+    /* ── LEFT — ranked OP list ──────────────────────────────────────────── */
+    #list-panel{
+      position:absolute;top:14px;left:14px;width:268px;z-index:99;
+      background:rgba(6,8,9,0.97);
+      border:1px solid rgba(55,138,221,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh - 28px);display:flex;flex-direction:column;
+    }
+    .lph{
+      padding:9px 12px 8px;border-bottom:1px solid rgba(55,138,221,0.15);
+      background:rgba(55,138,221,0.07);flex-shrink:0;
+    }
+    .lph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#378ADD;font-weight:700}
+    .lph-sub{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:2px}
+
+    /* Summary strip */
+    #summary-strip{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:0;
+      border-bottom:1px solid rgba(55,138,221,0.12);flex-shrink:0;
+    }
+    .ss-cell{
+      padding:7px 10px;display:flex;flex-direction:column;gap:2px;
+      border-right:0.5px solid rgba(55,138,221,0.10);
+    }
+    .ss-cell:last-child{border-right:none}
+    .ss-l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935}
+    .ss-v{font-size:13px;font-weight:600;color:#378ADD}
+
+    /* OP cards */
+    #op-list{overflow-y:auto;flex:1;padding:6px}
+    .op-card{
+      background:rgba(255,255,255,0.02);
+      border:0.5px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:8px 10px;margin-bottom:5px;
+      cursor:pointer;transition:all .12s;position:relative;
+    }
+    .op-card:hover{background:rgba(55,138,221,0.07);border-color:rgba(55,138,221,0.35)}
+    .op-card.selected{border-color:#378ADD;background:rgba(55,138,221,0.12)}
+    .op-card.in-optimal{border-left:3px solid #1D9E75}
+    .op-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+    .op-num{
+      width:24px;height:24px;border-radius:3px;display:flex;align-items:center;
+      justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;
+      background:rgba(55,138,221,0.15);color:#378ADD;border:1px solid rgba(55,138,221,0.35);
+    }
+    .op-num.optimal{background:rgba(29,158,117,0.15);color:#1D9E75;border-color:rgba(29,158,117,0.5)}
+    .op-name{font-size:12px;font-weight:500;color:var(--color-text-primary);flex:1}
+    .op-coords{font-size:9px;color:#3a3935;letter-spacing:.04em;margin-top:1px}
+    .op-badge{
+      font-size:12px;font-weight:700;position:absolute;top:8px;right:8px;
+    }
+
+    /* Metric bars */
+    .op-bars{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-bottom:6px}
+    .ob{display:flex;flex-direction:column;gap:2px}
+    .ob-lbl{font-size:8px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935}
+    .ob-track{height:3px;background:rgba(255,255,255,0.06);border-radius:2px}
+    .ob-fill{height:100%;border-radius:2px}
+    .ob-val{font-size:9px;color:var(--color-text-secondary)}
+    .op-note{font-size:10px;color:var(--color-text-tertiary);line-height:1.5;
+      border-top:0.5px solid rgba(255,255,255,0.06);padding-top:5px}
+    .op-actions{display:flex;gap:5px;margin-top:6px}
+    .op-action-btn{
+      font-size:9px;letter-spacing:.05em;text-transform:uppercase;padding:3px 7px;
+      border-radius:2px;border:0.5px solid rgba(255,255,255,0.12);
+      background:transparent;color:#888780;cursor:pointer;font-family:'Courier New',monospace;
+      transition:all .12s;
+    }
+    .op-action-btn:hover{background:rgba(255,255,255,0.06);color:var(--color-text-primary)}
+    .op-action-btn.remove{border-color:rgba(220,60,48,0.3);color:rgba(220,60,48,0.7)}
+    .op-action-btn.remove:hover{background:rgba(220,60,48,0.1);color:#DC3C30}
+
+    #list-empty{
+      padding:20px 12px;font-size:10px;color:#3a3935;text-align:center;line-height:1.8;
+    }
+
+    /* ── RIGHT — controls ───────────────────────────────────────────────── */
+    #ctrl-panel{
+      position:absolute;top:14px;right:14px;width:288px;z-index:99;
+      background:rgba(6,8,9,0.97);
+      border:1px solid rgba(55,138,221,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh - 28px);overflow-y:auto;
+    }
+    .ph{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;border-bottom:1px solid rgba(55,138,221,0.15);
+      background:rgba(55,138,221,0.07);position:sticky;top:0;z-index:2;
+    }
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#378ADD;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#3a3935;transition:color .2s}
+    .ph-status.placing {color:#378ADD}
+    .ph-status.computing{color:#EF9F27}
+    .ph-status.done    {color:#1D9E75}
+
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+      color:#3a3935;padding:9px 12px 5px}
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s;
+    }
+    input:focus,select:focus{border-color:rgba(55,138,221,0.55)}
+    select option{background:#141618}
+    .psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+    .psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;flex:1.8}
+    .psr input[type=range]{flex:2;accent-color:#378ADD;cursor:pointer}
+    .psr-v{font-size:10px;color:#378ADD;min-width:38px;text-align:right}
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#378ADD;width:13px;height:13px;cursor:pointer}
+
+    /* Overlay toggles */
+    .ov-row{display:flex;gap:5px;padding:0 12px 9px}
+    .ov-btn{
+      flex:1;padding:5px 3px;font-size:9px;letter-spacing:.05em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;border:1px solid rgba(255,255,255,0.10);
+      background:transparent;color:#888780;font-family:'Courier New',monospace;transition:all .13s;
+    }
+    .ov-btn.on{border-color:rgba(55,138,221,0.55);color:#378ADD;background:rgba(55,138,221,0.10)}
+    .ov-btn.gap-on{border-color:rgba(220,60,48,0.55);color:#DC3C30;background:rgba(220,60,48,0.10)}
+
+    /* Progress */
+    #prog-wrap{padding:0 12px 9px}
+    #prog-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+    #prog-fill{height:100%;background:linear-gradient(to right,#378ADD,#1D9E75);
+      border-radius:2px;width:0%;transition:width .12s}
+    #prog-label{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:4px}
+
+    /* Optimal selector */
+    .optimal-strip{
+      margin:0 12px 9px;padding:8px 10px;
+      background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.20);
+      border-radius:3px;
+    }
+    .opt-label{font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+      color:#1D9E75;margin-bottom:5px}
+    .opt-body{font-size:10px;color:var(--color-text-secondary);line-height:1.6}
+
+    /* Buttons */
+    .pb-row{display:flex;gap:6px;padding:9px 12px}
+    .pb{
+      flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;
+      border:1px solid rgba(55,138,221,0.38);
+      background:transparent;color:#378ADD;transition:all .14s;
+    }
+    .pb:hover:not(:disabled){background:rgba(55,138,221,0.10)}
+    .pb.primary{background:rgba(55,138,221,0.16);border-color:#378ADD}
+    .pb.primary:hover:not(:disabled){background:rgba(55,138,221,0.28)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+
+    /* Hint overlay */
+    #hint{
+      position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(6,8,9,0.94);border:1px solid rgba(55,138,221,0.45);
+      color:#378ADD;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase;
+    }
+
+    /* Per-OP colour band */
+    .colour-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0}
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<!-- ── LEFT PANEL ─────────────────────────────────────────────────────── -->
+<div id="list-panel">
+  <div class="lph">
+    <div class="lph-title">◉ Observation Post Ranker</div>
+    <div class="lph-sub" id="lph-sub">Place OPs on map — then run analysis</div>
+  </div>
+
+  <div id="summary-strip">
+    <div class="ss-cell">
+      <div class="ss-l">OPs placed</div>
+      <div class="ss-v" id="ss-ops">0</div>
+    </div>
+    <div class="ss-cell">
+      <div class="ss-l">AO coverage</div>
+      <div class="ss-v" id="ss-cov">—</div>
+    </div>
+    <div class="ss-cell">
+      <div class="ss-l">Gap area</div>
+      <div class="ss-v" id="ss-gap">—</div>
+    </div>
+  </div>
+
+  <div id="op-list">
+    <div id="list-empty">
+      Click the map to place candidate<br>
+      <strong style="color:#378ADD">Observation Post</strong> positions.<br><br>
+      Place 2–8 candidates, then click<br>
+      <strong style="color:#378ADD">Run Analysis</strong> to rank them<br>
+      by unique coverage contribution.
+    </div>
+  </div>
+</div>
+
+<!-- ── RIGHT PANEL ────────────────────────────────────────────────────── -->
+<div id="ctrl-panel">
+  <div class="ph">
+    <div class="ph-title">⬡ OP Analysis</div>
+    <div class="ph-status placing" id="status">Place OPs on map</div>
+  </div>
+
+  <!-- OP parameters -->
+  <div class="ps">Observer parameters</div>
+  <div class="pg">
+    <div class="pf">
+      <div class="pl">Eye height (m)</div>
+      <input id="inp-eye" type="number" value="1.8" min="0.5" max="10" step="0.1"/>
+    </div>
+    <div class="pf">
+      <div class="pl">Max obs range (m)</div>
+      <input id="inp-range" type="number" value="5000" min="500" max="20000" step="200"/>
+    </div>
+  </div>
+
+  <!-- AO boundary -->
+  <div class="ps">Area of observation (AO)</div>
+  <div class="pg">
+    <div class="pf full">
+      <div class="pl">AO radius (m) — defines coverage scoring area</div>
+      <select id="inp-ao">
+        <option value="2000">2 km</option>
+        <option value="4000" selected>4 km</option>
+        <option value="6000">6 km</option>
+        <option value="10000">10 km</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Resolution -->
+  <div class="ps">Grid resolution</div>
+  <div class="pg">
+    <div class="pf full">
+      <div class="pl">Cell size (m)</div>
+      <select id="inp-cell">
+        <option value="30">30 m — fine</option>
+        <option value="50" selected>50 m — balanced</option>
+        <option value="80">80 m — fast</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Optimal set finder -->
+  <div class="ps">Optimal OP set</div>
+  <div class="pg">
+    <div class="pf full">
+      <div class="pl">How many OPs to recommend</div>
+      <select id="inp-optimal">
+        <option value="1">Best single OP</option>
+        <option value="2">Best 2 OPs</option>
+        <option value="3" selected>Best 3 OPs</option>
+        <option value="4">Best 4 OPs</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Overlays -->
+  <div class="pdiv"/>
+  <div class="ps">Overlays</div>
+  <div class="ov-row">
+    <button class="ov-btn on"  data-ov="combined">Coverage</button>
+    <button class="ov-btn on"  data-ov="counts">Count heatmap</button>
+    <button class="ov-btn gap-on" data-ov="gap">Gap zones</button>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Overlay opacity</div>
+    <input id="inp-opa" type="range" min="0.2" max="1.0" step="0.05" value="0.70"/>
+    <div class="psr-v" id="opa-v">0.70</div>
+  </div>
+  <div class="ptr"><label>Show individual viewsheds</label>
+    <input id="opt-individual" type="checkbox"/></div>
+  <div class="ptr"><label>Show OP–OP overlap extent</label>
+    <input id="opt-overlap" type="checkbox" checked/></div>
+
+  <div class="pdiv"/>
+
+  <!-- Optimal result -->
+  <div class="optimal-strip" id="optimal-strip" style="display:none">
+    <div class="opt-label">Recommended set</div>
+    <div class="opt-body" id="optimal-body">—</div>
+  </div>
+
+  <!-- Progress -->
+  <div id="prog-wrap">
+    <div id="prog-track"><div id="prog-fill"></div></div>
+    <div id="prog-label">—</div>
+  </div>
+
+  <div class="pb-row">
+    <button class="pb"         id="btn-clear">Clear all</button>
+    <button class="pb primary" id="btn-run"   disabled>Run Analysis ↗</button>
+  </div>
+</div>
+
+<div id="hint">Click map to place a candidate OP — place 2–8 then Run Analysis</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map",
+  "esri/views/SceneView",
+  "esri/layers/GraphicsLayer",
+  "esri/layers/MediaLayer",
+  "esri/layers/support/ExtentAndRotationGeoreference",
+  "esri/layers/support/ImageElement",
+  "esri/Graphic",
+  "esri/geometry/Point",
+  "esri/geometry/Extent",
+  "esri/geometry/Polyline",
+], function(
+  Map, SceneView, GraphicsLayer, MediaLayer,
+  ExtentAndRotationGeoreference, ImageElement,
+  Graphic, Point, Extent, Polyline
+) {
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PER-OP COLOUR PALETTE  (distinct hues, readable on dark map)
+  // ═══════════════════════════════════════════════════════════════════════
+  const OP_COLORS = [
+    [55,  138, 221],   // blue
+    [239, 159,  39],   // amber
+    [180,  40, 220],   // purple
+    [29,  158, 117],   // teal
+    [220,  60,  48],   // coral
+    [245, 240,  64],   // yellow
+    [100, 200, 100],   // lime
+    [255, 120, 180],   // pink
+  ];
+
+  const HEX_COLORS = [
+    '#378ADD','#EF9F27','#B428DC','#1D9E75',
+    '#DC3C30','#F5F040','#64C864','#FF78B4',
+  ];
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // GEODETIC HELPERS
+  // ═══════════════════════════════════════════════════════════════════════
+  const EARTH_R   = 6_371_008.8;
+  const M_PER_DEG = 111_320;
+
+  function destPt(lon, lat, brg, dist) {
+    const δ=dist/EARTH_R, θ=brg*Math.PI/180;
+    const φ1=lat*Math.PI/180, λ1=lon*Math.PI/180;
+    const φ2=Math.asin(Math.sin(φ1)*Math.cos(δ)+Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+    const λ2=λ1+Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1),Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+    return { longitude:λ2*180/Math.PI, latitude:φ2*180/Math.PI };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // VIEWSHED RASTER  — returns Uint8Array[gridCells] (1=visible, 0=not)
+  //
+  // Uses the same horizon-sweep algorithm as Dead Ground Mapper.
+  // For each grid cell, compute the bearing from the OP, look up the
+  // pre-computed horizon angle for that bearing, and test whether the
+  // cell's slope angle exceeds the horizon (= visible).
+  //
+  // The horizon is cached at 2° resolution (180 unique rays).
+  // ═══════════════════════════════════════════════════════════════════════
+  async function computeViewshedRaster(view, opPt, obsZ, extent, cols, rows, cellM, maxRangeM) {
+    const sampler = await view.createElevationSampler(extent, { noDataValue:0 });
+    const dLon    = (extent.xmax - extent.xmin) / cols;
+    const dLat    = (extent.ymax - extent.ymin) / rows;
+    const STEP_M  = Math.max(cellM * 0.6, 20);
+    const numSteps= Math.ceil(maxRangeM / STEP_M);
+    const cosLat  = Math.cos(opPt.latitude * Math.PI / 180);
+
+    // Pre-compute horizon at 2° resolution (180 rays)
+    const HORIZON_RES = 2;
+    const horizons = new Float32Array(360 / HORIZON_RES);
+
+    for (let di = 0; di < horizons.length; di++) {
+      const brg = di * HORIZON_RES;
+      let maxSlope = -90;
+      for (let s = 1; s <= numSteps; s++) {
+        const dist = s * STEP_M;
+        const { longitude, latitude } = destPt(opPt.longitude, opPt.latitude, brg, dist);
+        const z    = sampler.queryElevation(new Point({longitude,latitude,spatialReference:{wkid:4326}}))?.z ?? 0;
+        const slp  = Math.atan2(z - obsZ, dist) * 180 / Math.PI;
+        if (slp > maxSlope) maxSlope = slp;
+      }
+      horizons[di] = maxSlope;
+    }
+
+    // Score each grid cell
+    const raster = new Uint8Array(cols * rows);
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const lon   = extent.xmin + (col + 0.5) * dLon;
+        const lat   = extent.ymax - (row + 0.5) * dLat;
+        const east  = (lon - opPt.longitude) * M_PER_DEG * cosLat;
+        const north = (lat - opPt.latitude)  * M_PER_DEG;
+        const dist  = Math.sqrt(east*east + north*north);
+
+        if (dist < 2 || dist > maxRangeM) {
+          raster[row*cols+col] = 0;
+          continue;
+        }
+
+        const brg    = ((Math.atan2(east, north) * 180 / Math.PI) + 360) % 360;
+        const bKey   = Math.round(brg / HORIZON_RES) % (360 / HORIZON_RES);
+        const terrZ  = sampler.queryElevation(new Point({longitude:lon,latitude:lat,spatialReference:{wkid:4326}}))?.z ?? 0;
+        const slp    = Math.atan2(terrZ - obsZ, dist) * 180 / Math.PI;
+
+        raster[row*cols+col] = slp >= horizons[bKey] ? 1 : 0;
+      }
+    }
+
+    return { raster, sampler };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // COVERAGE ANALYSIS
+  // ─────────────────────────────────────────────────────────────────────
+  // Given N viewshed rasters, compute per-cell:
+  //   coverCount[i] = number of OPs that can see cell i
+  //   uniqueContrib[op] = cells seen ONLY by this OP
+  //   gapCells = cells seen by no OP and inside AO radius
+  //
+  // This is the set-theoretic core:
+  //   unique(OP_k) = |{i : raster_k[i]=1}| - |{i : raster_k[i]=1 AND any other raster[i]=1}|
+  //
+  // Equivalently (and more efficiently):
+  //   unique(OP_k) = cells where coverCount[i]=1 AND raster_k[i]=1
+  // ═══════════════════════════════════════════════════════════════════════
+  function analyseCoverage(rasters, aoCells, cols, rows, opPts, aoRadiusM, extent) {
+    const N      = rasters.length;
+    const total  = cols * rows;
+    const dLon   = (extent.xmax - extent.xmin) / cols;
+    const dLat   = (extent.ymax - extent.ymin) / rows;
+    const cLon   = (extent.xmax + extent.xmin) / 2;
+    const cLat   = (extent.ymax + extent.ymin) / 2;
+    const cosLat = Math.cos(cLat * Math.PI / 180);
+
+    // Count how many OPs see each cell
+    const coverCount = new Uint8Array(total);
+    for (let k = 0; k < N; k++) {
+      for (let i = 0; i < total; i++) {
+        if (rasters[k][i]) coverCount[i]++;
+      }
+    }
+
+    // AO mask — only cells inside the AO radius count
+    const aoMask = new Uint8Array(total);
+    let aoTotal  = 0;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const lon   = extent.xmin + (col+0.5)*dLon;
+        const lat   = extent.ymax - (row+0.5)*dLat;
+        const east  = (lon-cLon)*M_PER_DEG*cosLat;
+        const north = (lat-cLat)*M_PER_DEG;
+        if (Math.sqrt(east*east+north*north) <= aoRadiusM) {
+          aoMask[row*cols+col] = 1;
+          aoTotal++;
+        }
+      }
+    }
+
+    // Per-OP metrics
+    const opStats = rasters.map((r, k) => {
+      let totalSeen  = 0;
+      let uniqueSeen = 0;
+      for (let i = 0; i < total; i++) {
+        if (!aoMask[i]) continue;
+        if (r[i]) {
+          totalSeen++;
+          if (coverCount[i] === 1) uniqueSeen++;
+        }
+      }
+      return {
+        totalSeen,
+        uniqueSeen,
+        totalPct:  aoTotal > 0 ? (totalSeen  / aoTotal * 100) : 0,
+        uniquePct: aoTotal > 0 ? (uniqueSeen / aoTotal * 100) : 0,
+      };
+    });
+
+    // Gap cells — inside AO, not seen by any OP
+    let gapCount = 0;
+    for (let i = 0; i < total; i++) {
+      if (aoMask[i] && coverCount[i] === 0) gapCount++;
+    }
+
+    // Combined coverage
+    let combinedSeen = 0;
+    for (let i = 0; i < total; i++) {
+      if (aoMask[i] && coverCount[i] > 0) combinedSeen++;
+    }
+
+    return { coverCount, aoMask, aoTotal, opStats, gapCount, combinedSeen };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // OPTIMAL SET SELECTION  — greedy submodular maximisation
+  // ─────────────────────────────────────────────────────────────────────
+  // Finds the K-subset of OPs that maximises total coverage.
+  // This is the maximum coverage problem — NP-hard in general but the
+  // greedy algorithm guarantees (1 - 1/e) ≈ 63% of optimal.
+  //
+  // At each iteration: pick the OP that adds the most NEW coverage cells
+  // (marginal gain) to the set of already-selected OPs.
+  // ═══════════════════════════════════════════════════════════════════════
+  function selectOptimalSet(rasters, aoCells, K, aoMask, total) {
+    const selected   = [];
+    const alreadySeen = new Uint8Array(total);  // union of selected rasters
+
+    for (let iter = 0; iter < Math.min(K, rasters.length); iter++) {
+      let bestIdx = -1, bestGain = -1;
+
+      for (let k = 0; k < rasters.length; k++) {
+        if (selected.includes(k)) continue;
+        // Marginal gain: new cells this OP adds
+        let gain = 0;
+        for (let i = 0; i < total; i++) {
+          if (aoMask[i] && rasters[k][i] && !alreadySeen[i]) gain++;
+        }
+        if (gain > bestGain) { bestGain = gain; bestIdx = k; }
+      }
+
+      if (bestIdx < 0) break;
+      selected.push(bestIdx);
+      // Update alreadySeen
+      for (let i = 0; i < total; i++) {
+        if (rasters[bestIdx][i]) alreadySeen[i] = 1;
+      }
+    }
+
+    return selected;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // HEATMAP CANVAS
+  // ─────────────────────────────────────────────────────────────────────
+  // Renders the coverCount grid to a MediaLayer canvas:
+  //   0 (gap)  → dark red (only if inside AO)
+  //   1        → blue (one OP)
+  //   2        → cyan
+  //   3+       → green (redundant coverage)
+  //
+  // Also used for individual OP viewshed overlays (single raster, blue tint)
+  // ═══════════════════════════════════════════════════════════════════════
+  function buildHeatmapLayer(coverCount, aoMask, cols, rows, extent, opacity, showGap, showCounts) {
+    const canvas  = document.createElement('canvas');
+    canvas.width  = cols; canvas.height = rows;
+    const ctx     = canvas.getContext('2d');
+    const imgData = ctx.createImageData(cols, rows);
+
+    for (let i = 0; i < cols*rows; i++) {
+      const px  = i*4;
+      const cnt = coverCount[i];
+      const inAO= aoMask[i];
+
+      if (!inAO) { imgData.data[px+3]=0; continue; }
+
+      if (cnt === 0 && showGap) {
+        imgData.data[px]=180; imgData.data[px+1]=25; imgData.data[px+2]=25;
+        imgData.data[px+3]=Math.round(opacity*180);
+      } else if (cnt === 1 && showCounts) {
+        imgData.data[px]=55; imgData.data[px+1]=138; imgData.data[px+2]=221;
+        imgData.data[px+3]=Math.round(opacity*160);
+      } else if (cnt === 2 && showCounts) {
+        imgData.data[px]=55; imgData.data[px+1]=200; imgData.data[px+2]=200;
+        imgData.data[px+3]=Math.round(opacity*150);
+      } else if (cnt >= 3 && showCounts) {
+        imgData.data[px]=29; imgData.data[px+1]=158; imgData.data[px+2]=117;
+        imgData.data[px+3]=Math.round(opacity*140);
+      } else {
+        imgData.data[px+3]=0;
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    return new MediaLayer({
+      source:[new ImageElement({
+        image: canvas.toDataURL('image/png'),
+        georeference: new ExtentAndRotationGeoreference({ extent }),
+      })],
+      title:'OP coverage heatmap', opacity:1,
+    });
+  }
+
+  function buildIndividualViewshedLayer(raster, cols, rows, extent, color, opacity) {
+    const [r,g,b] = color;
+    const canvas  = document.createElement('canvas');
+    canvas.width  = cols; canvas.height = rows;
+    const ctx     = canvas.getContext('2d');
+    const imgData = ctx.createImageData(cols, rows);
+    for (let i=0; i<cols*rows; i++) {
+      if (!raster[i]) continue;
+      const px=i*4;
+      imgData.data[px]=r; imgData.data[px+1]=g; imgData.data[px+2]=b;
+      imgData.data[px+3]=Math.round(opacity*120);
+    }
+    ctx.putImageData(imgData,0,0);
+    return new MediaLayer({
+      source:[new ImageElement({
+        image: canvas.toDataURL('image/png'),
+        georeference: new ExtentAndRotationGeoreference({ extent }),
+      })],
+      title:'Individual viewshed', opacity:1,
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // AO BOUNDARY CIRCLE GRAPHIC
+  // ═══════════════════════════════════════════════════════════════════════
+  function buildAOBoundary(cLon, cLat, aoRadiusM) {
+    const pts = [];
+    for (let i=0; i<=72; i++) {
+      const { longitude, latitude } = destPt(cLon, cLat, (i/72)*360, aoRadiusM);
+      pts.push([longitude, latitude]);
+    }
+    return new Graphic({
+      geometry:{ type:'polygon', rings:[pts], spatialReference:{wkid:4326} },
+      symbol:{
+        type:'simple-fill',
+        color:[0,0,0,0],
+        outline:{ color:[55,138,221,160], width:1.5, style:'dash' },
+      },
+      attributes:{ type:'AO boundary' },
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // OP MARKERS
+  // ═══════════════════════════════════════════════════════════════════════
+  function buildOPMarker(pt, index, isOptimal) {
+    const [r,g,b] = OP_COLORS[index % OP_COLORS.length];
+    return new Graphic({
+      geometry: pt,
+      symbol:{
+        type:'point-3d',
+        symbolLayers:[{
+          type:'object',
+          resource:{ primitive: isOptimal ? 'diamond' : 'sphere' },
+          material:{ color:[r,g,b,0.95] },
+          width:  isOptimal ? 100 : 70,
+          height: isOptimal ? 100 : 70,
+          depth:  isOptimal ? 100 : 70,
+        }],
+        verticalOffset:{ screenLength:24, maxWorldLength:600, minWorldLength:5 },
+      },
+      attributes:{
+        type:`OP ${index+1}`,
+        label:`OP ${index+1} — ${pt.latitude.toFixed(4)}°N ${pt.longitude.toFixed(4)}°E`,
+        opIndex: index,
+      },
+    });
+  }
+
+  function buildOPLabel(pt, index) {
+    const hex = HEX_COLORS[index % HEX_COLORS.length];
+    return new Graphic({
+      geometry: pt,
+      symbol:{
+        type:'text', text:`${index+1}`,
+        color:[255,255,255,255],
+        haloColor: OP_COLORS[index%OP_COLORS.length].concat([255]),
+        haloSize:2.5,
+        font:{ family:'Courier New', size:10, weight:'bold' },
+        horizontalAlignment:'center', verticalAlignment:'middle',
+        yoffset:16,
+      },
+    });
+  }
+
+  // LOS spoke from OP to horizon ring (shows max obs range)
+  function buildRangeRing(pt, radiusM, color) {
+    const [r,g,b] = color;
+    const ring = [];
+    for (let i=0; i<=48; i++) {
+      const { longitude, latitude } = destPt(pt.longitude, pt.latitude, (i/48)*360, radiusM);
+      ring.push([longitude, latitude]);
+    }
+    return new Graphic({
+      geometry:{ type:'polygon', rings:[ring], spatialReference:{wkid:4326} },
+      symbol:{
+        type:'simple-fill', color:[0,0,0,0],
+        outline:{ color:[r,g,b,80], width:1, style:'dash' },
+      },
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // ARCGIS SETUP
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const opLayer       = new GraphicsLayer({ title:'OP markers',      elevationInfo:{mode:'on-the-ground'} });
+  const rangeLayer    = new GraphicsLayer({ title:'OP range rings',   elevationInfo:{mode:'on-the-ground'} });
+  const aoLayer       = new GraphicsLayer({ title:'AO boundary',      elevationInfo:{mode:'on-the-ground'} });
+  const mediaLayers   = [];  // MediaLayer references, managed manually
+
+  const map = new Map({
+    basemap:'topo-3d', ground:'world-elevation',
+    layers:[aoLayer, rangeLayer, opLayer],
+  });
+
+  const view = new SceneView({
+    container:'viewDiv', map,
+    camera:{ position:{longitude:73.06, latitude:33.68, z:20000}, heading:0, tilt:45 },
+    environment:{ atmosphere:{quality:'high'}, lighting:{date:new Date()} },
+    popup:{
+      dockEnabled:true,
+      dockOptions:{position:'bottom-right',breakpoint:false},
+      defaultPopupTemplateEnabled:true,
+    },
+  });
+
+  opLayer.popupTemplate = { title:'{type}', content:'{label}' };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════════════════════════════════
+
+  let ops     = [];    // [{ pt: Point, index, raster, stats, isOptimal }]
+  let running = false;
+  let analysed = false;
+  const ovState = { combined:true, counts:true, gap:true, individual:false, overlap:true };
+
+  const $ = id => document.getElementById(id);
+
+  // ── Overlay toggle buttons ────────────────────────────────────────────
+  document.querySelectorAll('.ov-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const ov = btn.dataset.ov;
+      ovState[ov] = !ovState[ov];
+      // Gap button uses separate 'gap-on' class
+      if (ov === 'gap') btn.classList.toggle('gap-on', ovState[ov]);
+      else              btn.classList.toggle('on', ovState[ov]);
+    });
+  });
+
+  $('inp-opa').addEventListener('input', () => {
+    $('opa-v').textContent = parseFloat($('inp-opa').value).toFixed(2);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // MAP CLICK — place OP
+  // ═══════════════════════════════════════════════════════════════════════
+  view.on('click', async event => {
+    if (running) return;
+    const result = await view.hitTest(event, { include:[map.ground] });
+    const gp     = result?.ground?.mapPoint ?? event.mapPoint;
+    if (!gp) return;
+
+    if (ops.length >= 8) {
+      $('prog-label').textContent = 'Maximum 8 OPs — remove one first';
+      return;
+    }
+
+    const pt  = new Point({ longitude:gp.longitude, latitude:gp.latitude, spatialReference:{wkid:4326} });
+    const idx = ops.length;
+    const col = OP_COLORS[idx % OP_COLORS.length];
+    const maxR= parseInt($('inp-range').value);
+
+    ops.push({ pt, index:idx, raster:null, stats:null, isOptimal:false });
+
+    // Add marker and range ring
+    opLayer.add(buildOPMarker(pt, idx, false));
+    opLayer.add(buildOPLabel(pt, idx));
+    rangeLayer.add(buildRangeRing(pt, maxR, col));
+
+    $('ss-ops').textContent = ops.length;
+    $('btn-run').disabled   = ops.length < 2;
+    $('hint').textContent   = ops.length < 2
+      ? 'Place one more OP, then Run Analysis'
+      : `${ops.length} OPs placed — click Run Analysis`;
+
+    renderOPListPre();
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PRE-ANALYSIS LIST  (shows coords before viewsheds computed)
+  // ═══════════════════════════════════════════════════════════════════════
+  function renderOPListPre() {
+    const list = document.getElementById('op-list');
+    list.innerHTML = '';
+    ops.forEach((op, k) => {
+      const hex = HEX_COLORS[k % HEX_COLORS.length];
+      const card = document.createElement('div');
+      card.className = 'op-card';
+      card.innerHTML = `
+        <div class="op-top">
+          <div class="op-num">${k+1}</div>
+          <div>
+            <div class="op-name">
+              <span class="colour-dot" style="background:${hex};margin-right:5px"></span>
+              OP ${k+1}
+            </div>
+            <div class="op-coords">${op.pt.latitude.toFixed(4)}°N  ${op.pt.longitude.toFixed(4)}°E</div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:#3a3935;padding-top:4px">Run analysis to compute viewshed</div>
+        <div class="op-actions">
+          <button class="op-action-btn remove" data-k="${k}">Remove</button>
+          <button class="op-action-btn" onclick="flyTo(${k})">Fly to</button>
+        </div>
+      `;
+      card.querySelector('.op-action-btn.remove').addEventListener('click', () => removeOP(k));
+      list.appendChild(card);
+    });
+  }
+
+  window.flyTo = (k) => {
+    if (ops[k]) view.goTo({ center:[ops[k].pt.longitude,ops[k].pt.latitude], zoom:14, tilt:55 }, { duration:800 });
+  };
+
+  function removeOP(k) {
+    ops.splice(k, 1);
+    // Rebuild markers
+    opLayer.removeAll(); rangeLayer.removeAll();
+    const maxR = parseInt($('inp-range').value);
+    ops.forEach((op, i) => {
+      op.index = i;
+      opLayer.add(buildOPMarker(op.pt, i, op.isOptimal));
+      opLayer.add(buildOPLabel(op.pt, i));
+      rangeLayer.add(buildRangeRing(op.pt, maxR, OP_COLORS[i%OP_COLORS.length]));
+    });
+    $('ss-ops').textContent = ops.length;
+    $('btn-run').disabled   = ops.length < 2;
+    if (analysed) clearMedia();
+    renderOPListPre();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // MAIN ANALYSIS
+  // ═══════════════════════════════════════════════════════════════════════
+  $('btn-run').addEventListener('click', async () => {
+    if (running || ops.length < 2) return;
+    running = true;
+    $('btn-run').disabled = true;
+    clearMedia();
+
+    const eyeH    = parseFloat($('inp-eye').value);
+    const maxRangeM = parseInt($('inp-range').value);
+    const aoRadiusM = parseInt($('inp-ao').value);
+    const cellM   = parseInt($('inp-cell').value);
+    const K       = parseInt($('inp-optimal').value);
+    const opacity = parseFloat($('inp-opa').value);
+
+    // Derive AO centre from centroid of placed OPs
+    const cLon = ops.reduce((s,o)=>s+o.pt.longitude,0)/ops.length;
+    const cLat = ops.reduce((s,o)=>s+o.pt.latitude,0)/ops.length;
+    const cosLat = Math.cos(cLat*Math.PI/180);
+
+    // AO extent — large enough to contain all OP viewsheds
+    const padM  = Math.max(aoRadiusM, maxRangeM) * 1.1;
+    const padDeg = padM / M_PER_DEG;
+    const extent = new Extent({
+      xmin: cLon - padDeg/cosLat, ymin: cLat - padDeg,
+      xmax: cLon + padDeg/cosLat, ymax: cLat + padDeg,
+      spatialReference:{ wkid:4326 },
+    });
+    const cols = Math.ceil((padM*2)/cellM);
+    const rows = Math.ceil((padM*2)/cellM);
+
+    // Draw AO boundary ring
+    aoLayer.removeAll();
+    aoLayer.add(buildAOBoundary(cLon, cLat, aoRadiusM));
+
+    // ── 1. Compute viewshed raster per OP ──────────────────────────────
+    setStatus('computing','Computing viewsheds…');
+    for (let k=0; k<ops.length; k++) {
+      setProgress((k/ops.length)*0.65, `Viewshed ${k+1}/${ops.length} — OP ${k+1}`);
+      await tick();
+
+      // Get terrain elevation at OP
+      let opZ = eyeH;
+      try {
+        const elR = await view.map.ground.queryElevation(ops[k].pt);
+        opZ = (elR?.geometry?.z ?? 0) + eyeH;
+      } catch(_) {}
+
+      const { raster } = await computeViewshedRaster(
+        view, ops[k].pt, opZ, extent, cols, rows, cellM, maxRangeM
+      );
+      ops[k].raster = raster;
+      ops[k].obsZ   = opZ;
+    }
+
+    // ── 2. Coverage analysis ────────────────────────────────────────────
+    setProgress(0.66,'Analysing coverage & gaps…');
+    await tick();
+
+    const rasters  = ops.map(o=>o.raster);
+    const { coverCount, aoMask, aoTotal, opStats, gapCount, combinedSeen } =
+      analyseCoverage(rasters, null, cols, rows, ops.map(o=>o.pt), aoRadiusM, extent);
+
+    // Attach stats to each OP
+    ops.forEach((op, k) => { op.stats = opStats[k]; });
+
+    // ── 3. Optimal set selection ───────────────────────────────────────
+    setProgress(0.72,'Selecting optimal OP set…');
+    await tick();
+
+    const optimalIndices = selectOptimalSet(rasters, null, K, aoMask, cols*rows);
+    ops.forEach(op => op.isOptimal = false);
+    optimalIndices.forEach(k => { if(ops[k]) ops[k].isOptimal = true; });
+
+    // Rebuild markers with optimal styling
+    opLayer.removeAll();
+    ops.forEach((op,k) => {
+      opLayer.add(buildOPMarker(op.pt, k, op.isOptimal));
+      opLayer.add(buildOPLabel(op.pt, k));
+    });
+
+    // ── 4. Rank by unique coverage contribution ────────────────────────
+    setProgress(0.78,'Ranking OPs…');
+    await tick();
+
+    const ranked = [...ops].sort((a,b) => b.stats.uniqueSeen - a.stats.uniqueSeen);
+    ranked.forEach((op,i) => { op.rank = i+1; });
+
+    // ── 5. Build overlays ──────────────────────────────────────────────
+    setProgress(0.82,'Rendering overlays…');
+    await tick();
+
+    // Coverage heatmap + gap layer
+    const heatmap = buildHeatmapLayer(
+      coverCount, aoMask, cols, rows, extent, opacity,
+      ovState.gap, ovState.counts
+    );
+    addMediaLayer(heatmap);
+
+    // Individual viewsheds (optional)
+    if (ovState.individual) {
+      for (let k=0; k<ops.length; k++) {
+        const il = buildIndividualViewshedLayer(
+          ops[k].raster, cols, rows, extent, OP_COLORS[k%OP_COLORS.length], opacity
+        );
+        addMediaLayer(il);
+      }
+    }
+
+    // ── 6. Render results ──────────────────────────────────────────────
+    setProgress(0.90,'Building ranked list…');
+    await tick();
+
+    const covPct = aoTotal > 0 ? Math.round(100*combinedSeen/aoTotal) : 0;
+    const gapPct = aoTotal > 0 ? Math.round(100*gapCount/aoTotal)     : 0;
+    const gapKm2 = (gapCount * cellM * cellM / 1e6).toFixed(2);
+
+    $('ss-cov').textContent = covPct + '%';
+    $('ss-gap').textContent = gapKm2 + ' km²';
+
+    renderRankedList(ranked, covPct, gapPct, aoTotal, cellM);
+    renderOptimalResult(optimalIndices, optimalIndices.length, ops, aoTotal, combinedSeen);
+
+    setProgress(1.0, `Done — ${ops.length} OPs ranked, ${covPct}% AO covered`);
+    setStatus('done','Done');
+
+    // Fly to AO
+    view.goTo({ target:extent, tilt:50 }, { duration:1100 });
+    analysed = true;
+    running  = false;
+    $('btn-run').disabled = false;
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // RANKED LIST RENDER
+  // ═══════════════════════════════════════════════════════════════════════
+  function renderRankedList(ranked, covPct, gapPct, aoTotal, cellM) {
+    const list = document.getElementById('op-list');
+    list.innerHTML = '';
+    $('lph-sub').textContent = `${ranked.length} OPs ranked by unique coverage`;
+
+    const maxUnique = Math.max(1, ...ranked.map(op=>op.stats.uniqueSeen));
+
+    ranked.forEach((op, ri) => {
+      const hex    = HEX_COLORS[op.index % HEX_COLORS.length];
+      const col    = OP_COLORS[op.index % OP_COLORS.length];
+      const s      = op.stats;
+      const uniquePct = Math.round(s.uniquePct);
+      const totalPct  = Math.round(s.totalPct);
+      const uniqueBar = Math.round(s.uniqueSeen/maxUnique*100);
+      const uniqueKm2 = (s.uniqueSeen * cellM * cellM / 1e6).toFixed(2);
+
+      // Tactical assessment
+      let note = '';
+      if (uniquePct > 25)     note = `Highest unique contribution — ${uniqueKm2} km² seen by no other OP. Essential.`;
+      else if (uniquePct > 10) note = `Good unique coverage. Removes it leaves ${uniqueKm2} km² blind.`;
+      else if (uniquePct > 3)  note = `Moderate contribution. Worth keeping if manpower allows.`;
+      else                     note = `Minimal unique coverage — viewshed largely duplicated by other OPs.`;
+      if (op.isOptimal) note += ' ✓ In recommended set.';
+
+      const card = document.createElement('div');
+      card.className = 'op-card' + (op.isOptimal?' in-optimal':'');
+      card.dataset.opidx = op.index;
+      card.innerHTML = `
+        <div class="op-badge" style="color:${hex}">${s.uniqueSeen>0 ? uniquePct+'%' : '0%'}</div>
+        <div class="op-top">
+          <div class="op-num${op.isOptimal?' optimal':''}">${op.rank}</div>
+          <div style="flex:1">
+            <div class="op-name">
+              <span class="colour-dot" style="background:${hex};margin-right:5px"></span>
+              OP ${op.index+1}${op.isOptimal?' ★':''}
+            </div>
+            <div class="op-coords">
+              ${op.pt.latitude.toFixed(4)}°N  ${op.pt.longitude.toFixed(4)}°E
+            </div>
+          </div>
+        </div>
+        <div class="op-bars">
+          <div class="ob">
+            <div class="ob-lbl">Unique coverage</div>
+            <div class="ob-track"><div class="ob-fill" style="width:${uniqueBar}%;background:${hex}"></div></div>
+            <div class="ob-val">${uniquePct}% (${uniqueKm2} km²)</div>
+          </div>
+          <div class="ob">
+            <div class="ob-lbl">Total viewshed</div>
+            <div class="ob-track"><div class="ob-fill" style="width:${totalPct}%;background:#378ADD"></div></div>
+            <div class="ob-val">${totalPct}% of AO</div>
+          </div>
+        </div>
+        <div class="op-note">${note}</div>
+        <div class="op-actions">
+          <button class="op-action-btn" onclick="flyTo(${op.index})">Fly to</button>
+          <button class="op-action-btn remove" data-k="${op.index}">Remove</button>
+        </div>
+      `;
+
+      card.addEventListener('click', e => {
+        if (e.target.tagName==='BUTTON') return;
+        document.querySelectorAll('.op-card').forEach(c=>c.classList.remove('selected'));
+        card.classList.add('selected');
+        view.goTo({ center:[op.pt.longitude,op.pt.latitude], zoom:14, tilt:60 }, { duration:800 });
+      });
+      card.querySelector('.op-action-btn.remove').addEventListener('click', ()=>removeOP(op.index));
+
+      list.appendChild(card);
+    });
+  }
+
+  function renderOptimalResult(indices, K, ops, aoTotal, combinedSeen) {
+    const strip = $('optimal-strip');
+    const body  = $('optimal-body');
+    strip.style.display = 'block';
+
+    if (indices.length === 0) { body.textContent='No OPs available.'; return; }
+
+    const names   = indices.map(k=>`<strong style="color:${HEX_COLORS[k%HEX_COLORS.length]}">OP ${k+1}</strong>`);
+    const covPct  = aoTotal>0 ? Math.round(100*combinedSeen/aoTotal) : 0;
+
+    body.innerHTML = `Use ${names.join(', ')} for optimal ${K}-OP coverage.<br>
+      Combined AO coverage with this set: <strong>${covPct}%</strong>.<br>
+      Greedy set maximises total observable ground.`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CLEAR
+  // ═══════════════════════════════════════════════════════════════════════
+  $('btn-clear').addEventListener('click', () => {
+    ops = []; running = false; analysed = false;
+    [opLayer, rangeLayer, aoLayer].forEach(l=>l.removeAll());
+    clearMedia();
+    $('ss-ops').textContent='0'; $('ss-cov').textContent='—'; $('ss-gap').textContent='—';
+    $('btn-run').disabled=true;
+    $('hint').textContent='Click map to place a candidate OP — place 2–8 then Run Analysis';
+    document.getElementById('op-list').innerHTML='<div id="list-empty" style="padding:20px 12px;font-size:10px;color:#3a3935;text-align:center;line-height:1.8">Click map to place candidate OPs</div>';
+    $('lph-sub').textContent='Place OPs on map — then run analysis';
+    $('optimal-strip').style.display='none';
+    setProgress(0,'—');
+    setStatus('placing','Place OPs on map');
+  });
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  function addMediaLayer(layer) {
+    map.add(layer, 0);  // insert below other layers
+    mediaLayers.push(layer);
+  }
+  function clearMedia() {
+    mediaLayers.forEach(l=>{ try{ map.remove(l); }catch(_){} });
+    mediaLayers.length = 0;
+  }
+  function setStatus(s, text){
+    const el=$('status');
+    el.textContent=text??s; el.className='ph-status '+s;
+  }
+  function setProgress(frac, label){
+    $('prog-fill').style.width=Math.round(frac*100)+'%';
+    $('prog-label').textContent=label??'';
+  }
+  function tick(){ return new Promise(r=>setTimeout(r,0)); }
+
+  view.when(()=>{
+    console.log('[OPRanker] SceneView ready.');
+    console.log('[OPRanker] Click map to place OPs, then Run Analysis.');
+    console.log('[OPRanker] Greedy optimal set: selectOptimalSet() guarantees (1-1/e)≈63% of optimum.');
+  });
+
+}); // end require()
+</script>
+</body>
+</html>

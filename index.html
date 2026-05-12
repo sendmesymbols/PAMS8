@@ -1988,6 +1988,58 @@
           </div>
         </div>
 
+        <!-- DECLUTTER FEATURE PANEL -->
+        <div class="feature-panel" id="feature-panel-declutter">
+          <div class="feature-header">
+            <div class="feature-header-left">
+              <input type="checkbox" id="setting-declutter" title="Enable Declutter — automatically hide labels and/or symbols when zoomed out to reduce map clutter." />
+              <label>Declutter</label>
+            </div>
+            <span class="toggle-icon">▼</span>
+          </div>
+          <div class="feature-body">
+            <div class="sub-feature-label">Annotations</div>
+            <div class="setting-row">
+              <label>Mode</label>
+              <select id="setting-declutterMode" title="How annotations are hidden when zoomed out." style="width:100px">
+                <option value="off">Off</option>
+                <option value="zoom" selected>Zoom Threshold</option>
+                <option value="minscale">ArcGIS minScale</option>
+                <option value="density">Per-Symbol Density</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Label hide zoom</label>
+              <input type="number" id="setting-declutterLabelZoom" value="8" min="1" max="22" step="1" style="width:55px" title="Labels are hidden when map zoom is below this level (1=world, 22=street)." />
+            </div>
+            <div class="setting-row" id="row-declutterDensityPx">
+              <label>Min symbol px</label>
+              <input type="number" id="setting-declutterDensityPx" value="30" min="5" max="200" step="5" style="width:55px" title="Density mode: hide a label if another label already occupies the same NxN pixel cell on screen." />
+            </div>
+            <div class="setting-row">
+              <label>Annot fade ms</label>
+              <input type="number" id="setting-declutterAnnotFadeMs" value="400" min="0" max="2000" step="50" style="width:55px" title="Duration of the annotation fade animation in milliseconds (0 = instant)." />
+            </div>
+            <div class="sub-feature-label">Symbols</div>
+            <div class="setting-row">
+              <label>Hide symbols too</label>
+              <input type="checkbox" id="setting-declutterHideSymbols" title="Also hide symbol graphics (not just labels) when zoomed below the symbol threshold." />
+            </div>
+            <div class="setting-row">
+              <label>Symbol hide zoom</label>
+              <input type="number" id="setting-declutterSymbolZoom" value="5" min="1" max="22" step="1" style="width:55px" title="Symbols are hidden when map zoom is below this level. Should be lower than Label hide zoom." />
+            </div>
+            <div class="setting-row">
+              <label>Echelon-based</label>
+              <input type="checkbox" id="setting-declutterEchelon" title="Show/hide symbols by echelon as you zoom — Army/Corps visible at low zoom, Platoon/Squad only at high zoom." />
+            </div>
+            <div class="setting-row">
+              <label>Symbol fade ms</label>
+              <input type="number" id="setting-declutterSymFadeMs" value="300" min="0" max="2000" step="50" style="width:55px" title="Duration of symbol fade/flash animation in milliseconds (0 = instant)." />
+            </div>
+          </div>
+        </div>
+
         <!-- MGRS FEATURE PANEL -->
         <div class="feature-panel" id="feature-panel-mgrs">
           <div class="feature-header">
@@ -2138,6 +2190,111 @@
             </div>
           </div>
       </div>
+      </div>
+
+        <!-- VISUALIZATION ENGINE FEATURE PANEL -->
+        <div class="feature-panel" id="feature-panel-visualization">
+          <div class="feature-header">
+            <div class="feature-header-left">
+              <input type="checkbox" id="setting-visualizationEngine" title="Enable VisualizationEngine — tactical overlays: coverage rings, force ratio grid, convex hull footprints, and layer glow effects." />
+              <label>Visualization</label>
+            </div>
+            <span class="toggle-icon">▼</span>
+          </div>
+          <div class="feature-body">
+            <!-- Layer Effects -->
+            <div class="sub-feature-label">Layer Effects (Glow / Shadow)</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-vizLayerEffects" data-sf-master="vizLayerEffects" title="Apply CSS-filter glow/shadow effects to symbol layers for visual emphasis." />
+            </div>
+            <div class="setting-row" data-sf-group="vizLayerEffects">
+              <label>Force Effect</label>
+              <select id="setting-vizForceEffect" style="width:100px" title="Glow/shadow effect for UEI (Force) symbols.">
+                <option value="bloom(1, 0.5px, 0.1)">Bloom soft</option>
+                <option value="bloom(1.8, 1px, 0.1)">Bloom strong</option>
+                <option value="drop-shadow(0px, 0px, 8px, #0050ff, 0.8)">Blue shadow</option>
+                <option value="drop-shadow(0px, 0px, 8px, #ffffff, 0.6)">White glow</option>
+                <option value="saturate(200%) brightness(1.2)">Vivid</option>
+              </select>
+            </div>
+            <div class="setting-row" data-sf-group="vizLayerEffects">
+              <label>Tact Pt Effect</label>
+              <select id="setting-vizTactPtEffect" style="width:100px" title="Effect for tactical point symbols.">
+                <option value="bloom(0.8, 0.5px, 0.05)">Bloom soft</option>
+                <option value="bloom(1.5, 1px, 0.1)">Bloom strong</option>
+                <option value="drop-shadow(0px, 0px, 6px, #50c8ff, 0.7)">Cyan glow</option>
+                <option value="saturate(180%)">Vivid</option>
+              </select>
+            </div>
+            <div class="setting-row" data-sf-group="vizLayerEffects">
+              <label>Tact Effect</label>
+              <select id="setting-vizTactEffect" style="width:100px" title="Effect for tactical line/area graphics.">
+                <option value="drop-shadow(0px, 0px, 6px, #0050ff, 0.7)">Blue shadow</option>
+                <option value="drop-shadow(0px, 0px, 8px, #ff5000, 0.7)">Orange glow</option>
+                <option value="bloom(0.8, 0.5px, 0.08)">Bloom</option>
+                <option value="saturate(180%) brightness(1.1)">Vivid</option>
+              </select>
+            </div>
+
+            <!-- Coverage Rings -->
+            <div class="sub-feature-label">Coverage Rings</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-vizCoverageRings" data-sf-master="vizCoverageRings" title="Draw geodesic coverage rings around point symbols. Overlap zone shown in a warning colour." />
+            </div>
+            <div class="setting-row" data-sf-group="vizCoverageRings">
+              <label>Radius km</label>
+              <input type="number" id="setting-vizRingRadius" value="5" min="0.5" max="500" step="0.5" style="width:55px" title="Buffer radius in km for coverage rings." />
+            </div>
+            <div class="setting-row" data-sf-group="vizCoverageRings">
+              <label>Show Overlap</label>
+              <input type="checkbox" id="setting-vizShowOverlap" checked title="Highlight contested zones where friendly and enemy rings overlap." />
+            </div>
+            <div class="setting-row" data-sf-group="vizCoverageRings">
+              <label>Fill Opacity</label>
+              <input type="range" id="setting-vizRingOpacity" min="0" max="0.5" step="0.01" value="0.12" style="width:60px" title="Fill opacity for coverage ring polygons." />
+              <span class="value-display" id="vizRingOpacity-display">0.12</span>
+            </div>
+            <div class="setting-row" data-sf-group="vizCoverageRings">
+              <label>Outline Width</label>
+              <input type="number" id="setting-vizRingOutline" value="1.5" min="0.5" max="8" step="0.5" style="width:50px" title="Outline width for coverage ring polygons in pixels." />
+            </div>
+
+            <!-- Force Ratio Grid -->
+            <div class="sub-feature-label">Force Ratio Grid</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-vizForceGrid" data-sf-master="vizForceGrid" title="Overlay a grid coloured by the friendly:enemy ratio — blue=favorable, grey=parity, red=unfavorable." />
+            </div>
+            <div class="setting-row" data-sf-group="vizForceGrid">
+              <label>Cell km</label>
+              <input type="number" id="setting-vizGridCellKm" value="20" min="1" max="500" step="1" style="width:55px" title="Approximate grid cell side-length in km." />
+            </div>
+            <div class="setting-row" data-sf-group="vizForceGrid">
+              <label>Fill Opacity</label>
+              <input type="range" id="setting-vizGridOpacity" min="0" max="0.6" step="0.01" value="0.25" style="width:60px" title="Fill opacity for grid cells." />
+              <span class="value-display" id="vizGridOpacity-display">0.25</span>
+            </div>
+
+            <!-- Convex Hull -->
+            <div class="sub-feature-label">Force Footprint (Hull)</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-vizConvexHull" data-sf-master="vizConvexHull" title="Draw a convex hull around all friendly and enemy point symbols to show force footprints." />
+            </div>
+            <div class="setting-row" data-sf-group="vizConvexHull">
+              <label>Fill Opacity</label>
+              <input type="range" id="setting-vizHullOpacity" min="0" max="0.5" step="0.01" value="0.1" style="width:60px" title="Fill opacity for convex hull polygons." />
+              <span class="value-display" id="vizHullOpacity-display">0.10</span>
+            </div>
+            <div class="setting-row" data-sf-group="vizConvexHull">
+              <label>Outline Width</label>
+              <input type="number" id="setting-vizHullOutline" value="2" min="0.5" max="8" step="0.5" style="width:50px" title="Outline width for hull polygons in pixels." />
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -2661,6 +2818,15 @@
         'setting-analysis-buffer':     (v) => ({ path: ['analysis', 'buffer'],     value: v }),
         'setting-analysis-corridor':   (v) => ({ path: ['analysis', 'corridor'],   value: v }),
         'setting-analysis-effects':    (v) => ({ path: ['analysis', 'effects'],    value: v }),
+        'setting-declutter':              (v) => ({ path: ['declutter', 'enabled'],                        value: v }),
+        'setting-declutterMode':          (v) => ({ path: ['declutter', 'annotations', 'mode'],            value: v }),
+        'setting-declutterLabelZoom':     (v) => ({ path: ['declutter', 'annotations', 'zoomThreshold'],   value: +v }),
+        'setting-declutterDensityPx':     (v) => ({ path: ['declutter', 'annotations', 'densityMinPx'],    value: +v }),
+        'setting-declutterAnnotFadeMs':   (v) => ({ path: ['declutter', 'annotations', 'fadeMs'],          value: +v }),
+        'setting-declutterHideSymbols':   (v) => ({ path: ['declutter', 'symbols', 'hideBelow'],           value: v }),
+        'setting-declutterSymbolZoom':    (v) => ({ path: ['declutter', 'symbols', 'zoomThreshold'],       value: +v }),
+        'setting-declutterEchelon':       (v) => ({ path: ['declutter', 'symbols', 'echelonBased'],        value: v }),
+        'setting-declutterSymFadeMs':     (v) => ({ path: ['declutter', 'symbols', 'fadeMs'],              value: +v }),
         'setting-mgrsEngine':     (v) => ({ path: ['features', 'mgrsEngine'], value: v }),
         'setting-mgrsShowGZD':    (v) => ({ path: ['mgrs', 'showGZD'], value: v }),
         'setting-mgrsShow100K':   (v) => ({ path: ['mgrs', 'show100K'], value: v }),
@@ -2683,6 +2849,23 @@
         'setting-mgrsLabelSize':   (v) => ({ path: ['mgrs', 'labelSize'], value: +v }),
         'setting-mgrsLabelColor':  (v) => ({ path: ['mgrs', 'labelColor'], value: hexToRgb(v) }),
         'setting-mgrsLabelOpacity':(v) => ({ path: ['mgrs', 'labelOpacity'], value: +v }),
+        // Visualization Engine
+        'setting-visualizationEngine':  (v) => ({ path: ['features', 'visualizationEngine'],           value: v }),
+        'setting-vizLayerEffects':       (v) => ({ path: ['visualization', 'layerEffects', 'enabled'],  value: v }),
+        'setting-vizForceEffect':        (v) => ({ path: ['visualization', 'layerEffects', 'forceEffect'],   value: v }),
+        'setting-vizTactPtEffect':       (v) => ({ path: ['visualization', 'layerEffects', 'tactPtEffect'],  value: v }),
+        'setting-vizTactEffect':         (v) => ({ path: ['visualization', 'layerEffects', 'tactEffect'],    value: v }),
+        'setting-vizCoverageRings':      (v) => ({ path: ['visualization', 'coverageRings', 'enabled'], value: v }),
+        'setting-vizRingRadius':         (v) => ({ path: ['visualization', 'coverageRings', 'radiusKm'], value: +v }),
+        'setting-vizShowOverlap':        (v) => ({ path: ['visualization', 'coverageRings', 'showOverlap'], value: v }),
+        'setting-vizRingOpacity':        (v) => ({ path: ['visualization', 'coverageRings', 'fillOpacity'], value: +v }),
+        'setting-vizRingOutline':        (v) => ({ path: ['visualization', 'coverageRings', 'outlineWidth'], value: +v }),
+        'setting-vizForceGrid':          (v) => ({ path: ['visualization', 'forceRatioGrid', 'enabled'], value: v }),
+        'setting-vizGridCellKm':         (v) => ({ path: ['visualization', 'forceRatioGrid', 'cellSizeKm'], value: +v }),
+        'setting-vizGridOpacity':        (v) => ({ path: ['visualization', 'forceRatioGrid', 'fillOpacity'], value: +v }),
+        'setting-vizConvexHull':         (v) => ({ path: ['visualization', 'convexHull', 'enabled'], value: v }),
+        'setting-vizHullOpacity':        (v) => ({ path: ['visualization', 'convexHull', 'fillOpacity'], value: +v }),
+        'setting-vizHullOutline':        (v) => ({ path: ['visualization', 'convexHull', 'outlineWidth'], value: +v }),
       };
 
       // Color conversion helpers
@@ -2825,10 +3008,55 @@
             features.drawingCues !== false;
           document.getElementById('setting-mgrsEngine').checked =
             features.mgrsEngine === true;
+
+          // Declutter settings
+          const dc = settings.declutter ?? {};
+          document.getElementById('setting-declutter').checked = dc.enabled === true;
+          document.getElementById('setting-declutterMode').value = dc.annotations?.mode ?? 'zoom';
+          document.getElementById('setting-declutterLabelZoom').value = dc.annotations?.zoomThreshold ?? 8;
+          document.getElementById('setting-declutterDensityPx').value = dc.annotations?.densityMinPx ?? 30;
+          document.getElementById('setting-declutterAnnotFadeMs').value = dc.annotations?.fadeMs ?? 400;
+          document.getElementById('setting-declutterHideSymbols').checked = dc.symbols?.hideBelow === true;
+          document.getElementById('setting-declutterSymbolZoom').value = dc.symbols?.zoomThreshold ?? 5;
+          document.getElementById('setting-declutterEchelon').checked = dc.symbols?.echelonBased === true;
+          document.getElementById('setting-declutterSymFadeMs').value = dc.symbols?.fadeMs ?? 300;
           document.getElementById('setting-analysisEngines').checked =
             features.analysisEngines !== false;
           document.getElementById('setting-deploymentBuilder').checked =
             features.deploymentBuilder === true;
+          document.getElementById('setting-visualizationEngine').checked =
+            features.visualizationEngine === true;
+
+          // Visualization engine sub-settings
+          const viz = settings.visualization ?? {};
+          const vizLfx = viz.layerEffects ?? {};
+          document.getElementById('setting-vizLayerEffects').checked     = vizLfx.enabled === true;
+          document.getElementById('setting-vizForceEffect').value        = vizLfx.forceEffect  || 'bloom(1, 0.5px, 0.1)';
+          document.getElementById('setting-vizTactPtEffect').value       = vizLfx.tactPtEffect || 'bloom(0.8, 0.5px, 0.05)';
+          document.getElementById('setting-vizTactEffect').value         = vizLfx.tactEffect   || 'drop-shadow(0px, 0px, 6px, #0050ff, 0.7)';
+
+          const vizCR = viz.coverageRings ?? {};
+          document.getElementById('setting-vizCoverageRings').checked    = vizCR.enabled === true;
+          document.getElementById('setting-vizRingRadius').value         = vizCR.radiusKm    ?? 5;
+          document.getElementById('setting-vizShowOverlap').checked      = vizCR.showOverlap !== false;
+          const ringOp = vizCR.fillOpacity ?? 0.12;
+          document.getElementById('setting-vizRingOpacity').value        = ringOp;
+          document.getElementById('vizRingOpacity-display').textContent  = String(ringOp);
+          document.getElementById('setting-vizRingOutline').value        = vizCR.outlineWidth ?? 1.5;
+
+          const vizFG = viz.forceRatioGrid ?? {};
+          document.getElementById('setting-vizForceGrid').checked        = vizFG.enabled === true;
+          document.getElementById('setting-vizGridCellKm').value         = vizFG.cellSizeKm ?? 20;
+          const gridOp = vizFG.fillOpacity ?? 0.25;
+          document.getElementById('setting-vizGridOpacity').value        = gridOp;
+          document.getElementById('vizGridOpacity-display').textContent  = String(gridOp);
+
+          const vizCH = viz.convexHull ?? {};
+          document.getElementById('setting-vizConvexHull').checked       = vizCH.enabled === true;
+          const hullOp = vizCH.fillOpacity ?? 0.1;
+          document.getElementById('setting-vizHullOpacity').value        = hullOp;
+          document.getElementById('vizHullOpacity-display').textContent  = Number(hullOp).toFixed(2);
+          document.getElementById('setting-vizHullOutline').value        = vizCH.outlineWidth ?? 2;
 
           // Analysis engine individual flags
           const analysis = settings.analysis || {};
