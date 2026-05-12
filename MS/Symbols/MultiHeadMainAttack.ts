@@ -54,7 +54,7 @@ export class MultiHeadMainAttack {
     private _points: Point[] = [];
     private _headerCollection: (Polygon | null)[] = [];
     private _newHead: boolean = false;
-    // Snapshot of each head's points at the moment it was sealed — used for save/load only.
+    // Snapshot of each head's points at the moment it was sealed — used for save/load only..
     private _savedHeadPoints: Point[][] = [];
 
     private isDrawing: boolean = false;
