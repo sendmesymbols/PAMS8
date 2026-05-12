@@ -46,7 +46,7 @@ export class MultiHeadMainAttack {
     private _headPercentage: number = 0.07;
     private _arrowHeadRatio: number = 1.07;
 
-    // Drawing state — mirrors the original Draw.js MULTIHEAD logic exactly:
+    // Drawing state — mirrors the original Draw.js MULTIHEAD logic exactly: - SHIFT+CLICK
     // _points is mutated in-place by both click and pointer-move.
     // All heads share _points[0] as their common root.
     // _headerCollection holds one Polygon slot per head (null = placeholder).
