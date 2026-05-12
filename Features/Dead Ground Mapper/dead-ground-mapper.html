@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Dead Ground Mapper — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#060809}
+
+    /* ── Panel ─────────────────────────────────────────────────────────── */
+    #panel{
+      position:absolute;top:14px;right:14px;width:306px;z-index:99;
+      background:rgba(6,8,9,0.97);
+      border:1px solid rgba(220,60,48,0.30);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh - 28px);overflow-y:auto;
+    }
+    .ph{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;
+      border-bottom:1px solid rgba(220,60,48,0.15);
+      background:rgba(220,60,48,0.07);
+      position:sticky;top:0;z-index:2;
+    }
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#DC3C30;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935;transition:color .2s}
+    .ph-status.sampling {color:#EF9F27}
+    .ph-status.building {color:#378ADD}
+    .ph-status.done     {color:#1D9E75}
+    .ph-status.place    {color:#DC3C30}
+
+    /* View mode tabs */
+    .vtabs{display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.07)}
+    .vtab{
+      flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      cursor:pointer;border:none;background:transparent;color:#888780;transition:all .13s;
+    }
+    .vtab.active{color:#DC3C30;border-bottom:2px solid #DC3C30}
+
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#3a3935;padding:9px 12px 5px}
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s;
+    }
+    input:focus,select:focus{border-color:rgba(220,60,48,0.55)}
+    select option{background:#141618}
+
+    .psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+    .psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;flex:1.6}
+    .psr input[type=range]{flex:2;accent-color:#DC3C30;cursor:pointer}
+    .psr-v{font-size:10px;color:#DC3C30;min-width:40px;text-align:right}
+
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#DC3C30;width:13px;height:13px;cursor:pointer}
+
+    /* Progress */
+    #progress-wrap{padding:0 12px 9px}
+    #progress-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+    #progress-fill{height:100%;background:linear-gradient(to right,#DC3C30,#EF9F27);border-radius:2px;width:0%;transition:width .12s}
+    #progress-label{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:4px}
+
+    /* Stats */
+    #stats{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;
+      margin:0 12px 8px;
+      background:rgba(220,60,48,0.06);border:1px solid rgba(220,60,48,0.15);
+      border-radius:3px;padding:7px 9px;font-size:10px;
+    }
+    .st{display:flex;flex-direction:column;gap:1px}
+    .st-l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935}
+    .st-v{color:#DC3C30}
+
+    /* Depth key */
+    #depthkey{margin:0 12px 9px}
+    .dk-label{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935;margin-bottom:5px}
+    .dk-bar{height:10px;border-radius:2px;background:linear-gradient(to right,#3a1a1a,#8B1A1A,#DC3C30,#EF9F27,#F5F040);border:1px solid rgba(255,255,255,0.08)}
+    .dk-legend{display:flex;justify-content:space-between;margin-top:3px;font-size:8px;color:#3a3935}
+
+    /* Coords */
+    #coords{font-size:9px;color:#DC3C30;padding:2px 12px 7px;letter-spacing:.05em;opacity:.75}
+
+    /* Buttons */
+    .pb-row{display:flex;gap:6px;padding:9px 12px}
+    .pb{
+      flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;
+      border:1px solid rgba(220,60,48,0.38);
+      background:transparent;color:#DC3C30;transition:all .14s;
+    }
+    .pb:hover:not(:disabled){background:rgba(220,60,48,0.10)}
+    .pb.primary{background:rgba(220,60,48,0.16);border-color:#DC3C30}
+    .pb.primary:hover:not(:disabled){background:rgba(220,60,48,0.28)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+
+    /* Hint */
+    #hint{
+      position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(6,8,9,0.94);border:1px solid rgba(220,60,48,0.45);
+      color:#DC3C30;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase;transition:opacity .25s;
+    }
+
+    /* Legend */
+    #legend{
+      position:absolute;bottom:14px;left:14px;z-index:99;
+      background:rgba(6,8,9,0.93);border:1px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:9px 13px;display:flex;flex-direction:column;gap:5px;
+    }
+    .leg-row{display:flex;align-items:center;gap:8px}
+    .leg-swatch{width:28px;height:10px;border-radius:2px;flex-shrink:0}
+    .leg-lbl{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#888780}
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<!-- ── PANEL ─────────────────────────────────────────────────────────────── -->
+<div id="panel">
+  <div class="ph">
+    <div class="ph-title">⊘ Dead Ground Mapper</div>
+    <div class="ph-status place" id="status">Place observer</div>
+  </div>
+
+  <!-- View mode tabs: 2D heatmap vs 3D mesh -->
+  <div class="vtabs">
+    <button class="vtab active" data-view="2d">2D Heatmap</button>
+    <button class="vtab"        data-view="3d">3D Mesh</button>
+    <button class="vtab"        data-view="both">Both</button>
+  </div>
+
+  <!-- Observer -->
+  <div class="ps">Observer</div>
+  <div class="pg">
+    <div class="pf">
+      <div class="pl">Eye height (m)</div>
+      <input id="inp-eye" type="number" value="1.8" min="0.5" max="20" step="0.1"/>
+    </div>
+    <div class="pf">
+      <div class="pl">Analysis radius (m)</div>
+      <input id="inp-radius" type="number" value="3000" min="200" max="15000" step="100"/>
+    </div>
+  </div>
+
+  <!-- Grid resolution -->
+  <div class="ps">Grid resolution</div>
+  <div class="pg">
+    <div class="pf full">
+      <div class="pl">Cell size (m) — finer = slower</div>
+      <select id="inp-cell">
+        <option value="20">20 m — fine (slow)</option>
+        <option value="35" selected>35 m — balanced</option>
+        <option value="50">50 m — fast</option>
+        <option value="80">80 m — preview</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Depth colour scale -->
+  <div class="ps">Depth colour scale</div>
+  <div class="psr">
+    <div class="psr-l">Max depth (m)</div>
+    <input id="inp-maxdepth" type="range" min="5" max="200" step="5" value="50"/>
+    <div class="psr-v" id="maxdepth-v">50 m</div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Heatmap opacity</div>
+    <input id="inp-opacity" type="range" min="0.2" max="1.0" step="0.05" value="0.75"/>
+    <div class="psr-v" id="opacity-v">0.75</div>
+  </div>
+
+  <!-- Display options -->
+  <div class="pdiv"/>
+  <div class="ps">Display options</div>
+  <div class="ptr"><label>Show visible ground</label>
+    <input id="opt-visible" type="checkbox"/></div>
+  <div class="ptr"><label>Show observer LOS spokes</label>
+    <input id="opt-spokes" type="checkbox"/></div>
+  <div class="ptr"><label>Show depth contours</label>
+    <input id="opt-contours" type="checkbox" checked/></div>
+  <div class="ptr"><label>Snap to terrain elevation</label>
+    <input id="opt-snap" type="checkbox" checked/></div>
+
+  <div class="pdiv"/>
+
+  <!-- Depth key -->
+  <div id="depthkey">
+    <div class="dk-label">Dead ground depth key</div>
+    <div class="dk-bar"></div>
+    <div class="dk-legend">
+      <span>0 m (shallow)</span>
+      <span id="dk-max">50 m (deep)</span>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div id="progress-wrap">
+    <div id="progress-track"><div id="progress-fill"></div></div>
+    <div id="progress-label">—</div>
+  </div>
+
+  <!-- Stats -->
+  <div id="stats">
+    <div class="st"><div class="st-l">Dead ground</div><div class="st-v" id="st-dead">—</div></div>
+    <div class="st"><div class="st-l">Max depth</div><div class="st-v" id="st-depth">—</div></div>
+    <div class="st"><div class="st-l">Cells</div><div class="st-v" id="st-cells">—</div></div>
+  </div>
+
+  <div id="coords">Observer: click map to place</div>
+
+  <div class="pb-row">
+    <button class="pb"         id="btn-clear">Clear</button>
+    <button class="pb primary" id="btn-run"   disabled>Run analysis ↗</button>
+  </div>
+</div>
+
+<!-- ── LEGEND ─────────────────────────────────────────────────────────────── -->
+<div id="legend">
+  <div class="leg-row">
+    <div class="leg-swatch" style="background:linear-gradient(to right,#3a1a1a,#DC3C30,#EF9F27,#F5F040)"></div>
+    <div class="leg-lbl">Dead ground — shallow → deep</div>
+  </div>
+  <div class="leg-row">
+    <div class="leg-swatch" style="background:rgba(29,158,117,0.35);border:1px solid #1D9E75"></div>
+    <div class="leg-lbl">Visible ground (if enabled)</div>
+  </div>
+  <div class="leg-row">
+    <div class="leg-swatch" style="background:#378ADD"></div>
+    <div class="leg-lbl">Observer position</div>
+  </div>
+</div>
+
+<div id="hint">Click anywhere on the map to place the observer</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map",
+  "esri/views/SceneView",
+  "esri/views/MapView",
+  "esri/layers/GraphicsLayer",
+  "esri/layers/MediaLayer",
+  "esri/layers/support/ExtentAndRotationGeoreference",
+  "esri/layers/support/VideoElement",
+  "esri/layers/support/ImageElement",
+  "esri/Graphic",
+  "esri/geometry/Point",
+  "esri/geometry/Extent",
+  "esri/geometry/Mesh",
+  "esri/geometry/Polyline",
+], function(
+  Map, SceneView, MapView, GraphicsLayer, MediaLayer,
+  ExtentAndRotationGeoreference, VideoElement, ImageElement,
+  Graphic, Point, Extent, Mesh, Polyline
+) {
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CONSTANTS & HELPERS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const M_PER_DEG = 111_320;
+  const EARTH_R   = 6_371_008.8;
+
+  function destPt(lon, lat, bearingDeg, distM) {
+    const δ = distM / EARTH_R, θ = bearingDeg * Math.PI / 180;
+    const φ1 = lat * Math.PI / 180, λ1 = lon * Math.PI / 180;
+    const φ2 = Math.asin(Math.sin(φ1)*Math.cos(δ) + Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+    const λ2 = λ1 + Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1), Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+    return { longitude: λ2*180/Math.PI, latitude: φ2*180/Math.PI };
+  }
+
+  function geoDist(lon1, lat1, lon2, lat2) {
+    const φ1 = lat1*Math.PI/180, φ2 = lat2*Math.PI/180;
+    const Δλ = (lon2-lon1)*Math.PI/180;
+    return EARTH_R * Math.acos(Math.min(1, Math.sin(φ1)*Math.sin(φ2) + Math.cos(φ1)*Math.cos(φ2)*Math.cos(Δλ)));
+  }
+
+  function geoBrg(lon1, lat1, lon2, lat2) {
+    const φ1=lat1*Math.PI/180, φ2=lat2*Math.PI/180, Δλ=(lon2-lon1)*Math.PI/180;
+    return ((Math.atan2(Math.sin(Δλ)*Math.cos(φ2), Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ))*180/Math.PI)+360)%360;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DEPTH → COLOUR
+  // Palette: very dark red (shallow) → red → amber → yellow (deep)
+  // Visible ground: semi-transparent green (optional)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function depthToRGBA(depth, maxDepth, opacity) {
+    if (depth <= 0) return null;  // visible — caller handles this
+
+    const t = Math.min(1, depth / maxDepth);
+
+    // 4-stop: dark red → red → amber → bright yellow
+    const STOPS = [
+      [30,  10,  10],   // t=0  barely dead
+      [140, 28,  28],   // t=0.2
+      [220, 60,  48],   // t=0.5
+      [239, 159, 39],   // t=0.75
+      [245, 240, 64],   // t=1.0  very deep dead ground
+    ];
+
+    const seg  = t * (STOPS.length - 1);
+    const lo   = Math.floor(seg);
+    const hi   = Math.min(STOPS.length - 1, lo + 1);
+    const frac = seg - lo;
+    const [r1,g1,b1] = STOPS[lo];
+    const [r2,g2,b2] = STOPS[hi];
+    return [
+      Math.round(r1 + (r2-r1)*frac),
+      Math.round(g1 + (g2-g1)*frac),
+      Math.round(b1 + (b2-b1)*frac),
+      Math.round(opacity * 255),
+    ];
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CORE ALGORITHM — dead ground depth computation
+  //
+  // For every grid cell:
+  //   1. Compute bearing and range from observer.
+  //   2. Walk outward along that bearing, tracking the running maximum
+  //      slope angle (the "horizon" as seen from the observer's eye).
+  //   3. When we reach the cell's range, the "line-of-sight elevation"
+  //      at that point = obsZ + range × tan(horizonAngle).
+  //   4. depth = LOS_elevation - terrain_elevation at that cell.
+  //      If depth > 0 → dead ground (terrain is below the LOS).
+  //      If depth ≤ 0 → visible (terrain breaks through the LOS).
+  //
+  // This gives the VERTICAL DEPTH of dead ground in metres — how far
+  // below the observer's line of sight the terrain sits.  Deep dead
+  // ground = good cover.  Shallow dead ground = marginal concealment.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  async function computeDeadGround(view, observerPt, obsZ, {
+    radiusM, cellM, onProgress,
+  }) {
+    // Build analysis extent with slight padding
+    const pad    = radiusM * 1.05;
+    const cosLat = Math.cos(observerPt.latitude * Math.PI / 180);
+    const extent = new Extent({
+      xmin: observerPt.longitude - pad / (M_PER_DEG * cosLat),
+      ymin: observerPt.latitude  - pad / M_PER_DEG,
+      xmax: observerPt.longitude + pad / (M_PER_DEG * cosLat),
+      ymax: observerPt.latitude  + pad / M_PER_DEG,
+      spatialReference: { wkid: 4326 },
+    });
+
+    // Single async call — downloads DEM tiles once.
+    // All queryElevation() calls after this are synchronous cache hits.
+    const sampler = await view.createElevationSampler(extent, { noDataValue: 0 });
+
+    // Grid dimensions
+    const cols = Math.ceil((radiusM * 2) / cellM);
+    const rows = Math.ceil((radiusM * 2) / cellM);
+    const N    = cols * rows;
+
+    // Output: depth grid in metres.  NaN = outside radius (no analysis).
+    const depthGrid = new Float32Array(N).fill(NaN);
+
+    // For each azimuth, we need to know the maximum slope angle
+    // encountered so far at each radial step.  We use a per-azimuth
+    // horizon cache keyed by quantised bearing (1° resolution).
+    // This avoids recomputing the full ray for every cell.
+    const STEP_M    = Math.max(10, cellM * 0.5);    // terrain sample step
+    const horizonCache = new Map();                  // bearing (int deg) → horizonAngleDeg
+
+    function getHorizon(bearing) {
+      const bKey = Math.round(bearing) % 360;
+      if (horizonCache.has(bKey)) return horizonCache.get(bKey);
+
+      // Walk the ray outward, tracking running max slope
+      let maxSlopeDeg = -90;
+      for (let d = STEP_M; d <= radiusM; d += STEP_M) {
+        const { longitude, latitude } = destPt(
+          observerPt.longitude, observerPt.latitude, bKey, d
+        );
+        const pt      = new Point({ longitude, latitude, spatialReference: { wkid: 4326 } });
+        const terrZ   = sampler.queryElevation(pt)?.z ?? 0;
+        const slopeDeg = Math.atan2(terrZ - obsZ, d) * 180 / Math.PI;
+        if (slopeDeg > maxSlopeDeg) maxSlopeDeg = slopeDeg;
+      }
+
+      horizonCache.set(bKey, maxSlopeDeg);
+      return maxSlopeDeg;
+    }
+
+    let processed = 0;
+    let deadCount = 0;
+    let maxDepth  = 0;
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        // Cell centre in metres east/north from observer
+        const east  = (col - cols/2 + 0.5) * cellM;
+        const north = (row - rows/2 + 0.5) * cellM;   // NB: row 0 = top = north
+        const range = Math.sqrt(east*east + north*north);
+
+        const idx = row * cols + col;
+        processed++;
+
+        // Skip cells outside the analysis radius
+        if (range > radiusM || range < 2) {
+          depthGrid[idx] = NaN;
+          continue;
+        }
+
+        // Convert ENU offsets → geographic
+        const cellLon = observerPt.longitude + east  / (M_PER_DEG * cosLat);
+        const cellLat = observerPt.latitude  + north / M_PER_DEG;
+        const cellPt  = new Point({ longitude: cellLon, latitude: cellLat, spatialReference: { wkid: 4326 } });
+        const terrZ   = sampler.queryElevation(cellPt)?.z ?? 0;
+
+        // Bearing from observer to this cell
+        const bearing    = Math.atan2(east, north) * 180 / Math.PI;
+        const horizonDeg = getHorizon(bearing);
+
+        // LOS elevation at this range = obsZ + range × tan(horizonAngle)
+        // Dead ground depth = LOS_Z - terrain_Z
+        const losZ  = obsZ + range * Math.tan(horizonDeg * Math.PI / 180);
+        const depth = losZ - terrZ;
+
+        depthGrid[idx] = depth;  // positive = dead ground, negative = visible
+
+        if (depth > 0) {
+          deadCount++;
+          if (depth > maxDepth) maxDepth = depth;
+        }
+      }
+
+      // Yield progress every 4 rows to keep UI responsive
+      if (row % 4 === 0) {
+        onProgress?.((row + 1) / rows, `Row ${row+1}/${rows}`);
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+
+    return { depthGrid, cols, rows, extent, deadCount, maxDepth, totalCells: N };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 2D HEATMAP — renders depthGrid onto an offscreen canvas,
+  // then wraps it in a MediaLayer with ExtentAndRotationGeoreference.
+  //
+  // Why MediaLayer?
+  //   It accepts a georeferenced ImageElement (canvas → data URL) and
+  //   places it over the map precisely.  No need for a raster tile
+  //   service.  The image stays fixed to the analysis extent regardless
+  //   of pan/zoom.  Opacity is controlled on the layer, not baked in.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function buildHeatmapLayer(depthGrid, cols, rows, extent, {
+    maxDepth, opacity, showVisible, radiusM, observerPt,
+  }) {
+    const canvas = document.createElement('canvas');
+    canvas.width  = cols;
+    canvas.height = rows;
+    const ctx     = canvas.getContext('2d');
+    const imgData = ctx.createImageData(cols, rows);
+
+    const cosLat = Math.cos(observerPt.latitude * Math.PI / 180);
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const i     = row * cols + col;
+        const depth = depthGrid[i];
+        const px    = i * 4;
+
+        if (isNaN(depth)) {
+          // outside radius — fully transparent
+          imgData.data[px+3] = 0;
+          continue;
+        }
+
+        if (depth > 0) {
+          // Dead ground — colour by depth
+          const rgba = depthToRGBA(depth, maxDepth, opacity);
+          imgData.data[px]   = rgba[0];
+          imgData.data[px+1] = rgba[1];
+          imgData.data[px+2] = rgba[2];
+          imgData.data[px+3] = rgba[3];
+        } else if (showVisible) {
+          // Visible ground — semi-transparent green
+          imgData.data[px]   = 29;
+          imgData.data[px+1] = 158;
+          imgData.data[px+2] = 117;
+          imgData.data[px+3] = Math.round(opacity * 0.35 * 255);
+        } else {
+          imgData.data[px+3] = 0;
+        }
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+
+    // Wrap canvas as a data URL for ImageElement
+    const dataURL = canvas.toDataURL('image/png');
+
+    const imageElement = new ImageElement({
+      image: dataURL,
+      georeference: new ExtentAndRotationGeoreference({ extent }),
+    });
+
+    return new MediaLayer({
+      source: [imageElement],
+      title: 'Dead ground heatmap',
+      opacity: 1,  // opacity already baked into pixels above
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DEPTH CONTOURS — finds depth level crossings and builds polylines.
+  // Simple marching-squares-lite: for each contour level, walk the grid
+  // and connect cells where depth crosses that value.
+  // Produces clean contour rings at configurable depth intervals.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function buildContourGraphics(depthGrid, cols, rows, extent, { maxDepth, observerPt }) {
+    const graphics   = [];
+    const levels     = [5, 10, 20, 35, 50, 75, 100].filter(l => l <= maxDepth * 1.1);
+    const cosLat     = Math.cos(observerPt.latitude * Math.PI / 180);
+    const dLon       = (extent.xmax - extent.xmin) / cols;
+    const dLat       = (extent.ymax - extent.ymin) / rows;
+
+    levels.forEach(level => {
+      const t   = Math.min(1, level / maxDepth);
+      const stops = [[140,28,28],[220,60,48],[239,159,39],[245,240,64]];
+      const si  = t * (stops.length-1);
+      const lo  = Math.floor(si), hi = Math.min(stops.length-1, lo+1);
+      const f   = si-lo;
+      const [r1,g1,b1] = stops[lo]; const [r2,g2,b2] = stops[hi];
+      const col = [Math.round(r1+(r2-r1)*f), Math.round(g1+(g2-g1)*f), Math.round(b1+(b2-b1)*f)];
+
+      const segments = [];
+
+      for (let row = 0; row < rows-1; row++) {
+        for (let c = 0; c < cols-1; c++) {
+          const d00 = depthGrid[ row    * cols + c    ];
+          const d10 = depthGrid[ row    * cols + c + 1];
+          const d01 = depthGrid[(row+1) * cols + c    ];
+          const d11 = depthGrid[(row+1) * cols + c + 1];
+
+          if (isNaN(d00)||isNaN(d10)||isNaN(d01)||isNaN(d11)) continue;
+
+          // Cell corners in geographic coords
+          const lon0 = extent.xmin + c       * dLon;
+          const lon1 = extent.xmin + (c+1)   * dLon;
+          const lat0 = extent.ymax - row     * dLat;
+          const lat1 = extent.ymax - (row+1) * dLat;
+
+          // Find edge crossings
+          const crossings = [];
+          const checkEdge = (va, vb, la, lb) => {
+            if ((va < level) !== (vb < level)) {
+              const frac = (level - va) / (vb - va);
+              crossings.push([la[0]+(lb[0]-la[0])*frac, la[1]+(lb[1]-la[1])*frac]);
+            }
+          };
+          checkEdge(d00, d10, [lon0,lat0], [lon1,lat0]);  // top
+          checkEdge(d10, d11, [lon1,lat0], [lon1,lat1]);  // right
+          checkEdge(d11, d01, [lon1,lat1], [lon0,lat1]);  // bottom
+          checkEdge(d01, d00, [lon0,lat1], [lon0,lat0]);  // left
+
+          if (crossings.length === 2) {
+            segments.push([[crossings[0][0],crossings[0][1]], [crossings[1][0],crossings[1][1]]]);
+          }
+        }
+      }
+
+      if (segments.length > 10) {
+        graphics.push(new Graphic({
+          geometry: new Polyline({
+            paths: segments,
+            spatialReference: { wkid: 4326 },
+          }),
+          symbol: {
+            type: 'simple-line',
+            color: [...col, 180],
+            width: 1.0,
+            style: 'solid',
+          },
+          attributes: { type: 'contour', label: `${level} m depth contour` },
+        }));
+      }
+    });
+
+    return graphics;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 3D MESH — builds a Mesh geometry sitting on the terrain surface,
+  // each vertex coloured by dead ground depth.
+  //
+  // Key insight: the mesh sits AT terrain elevation (absolute-height),
+  // coloured by depth.  Where there is visible ground the mesh is
+  // transparent (or green).  The result looks like paint sprayed onto
+  // the real terrain surface — you can tilt the 3D view and see exactly
+  // which hillsides hide from the observer.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  async function buildTerrainMesh(view, depthGrid, cols, rows, extent, {
+    maxDepth, opacity, showVisible, observerPt,
+  }) {
+    const cosLat = Math.cos(observerPt.latitude * Math.PI / 180);
+    const dLon   = (extent.xmax - extent.xmin) / cols;
+    const dLat   = (extent.ymax - extent.ymin) / rows;
+
+    // Get terrain elevation for every vertex
+    const sampler = await view.createElevationSampler(extent, { noDataValue: 0 });
+
+    const N        = cols * rows;
+    const positions = new Float64Array(N * 3);
+    const colors    = new Uint8Array(N * 4);
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const i     = row * cols + col;
+        const depth = depthGrid[i];
+        const lon   = extent.xmin + (col + 0.5) * dLon;
+        const lat   = extent.ymax - (row + 0.5) * dLat;
+        const pt    = new Point({ longitude: lon, latitude: lat, spatialReference: { wkid: 4326 } });
+        const z     = (sampler.queryElevation(pt)?.z ?? 0) + 0.5;  // +0.5m off terrain
+
+        positions[i*3]   = lon;
+        positions[i*3+1] = lat;
+        positions[i*3+2] = z;
+
+        if (isNaN(depth)) {
+          colors[i*4+3] = 0;  // outside radius — invisible
+          continue;
+        }
+
+        if (depth > 0) {
+          const rgba = depthToRGBA(depth, maxDepth, opacity);
+          colors[i*4]   = rgba[0];
+          colors[i*4+1] = rgba[1];
+          colors[i*4+2] = rgba[2];
+          colors[i*4+3] = rgba[3];
+        } else if (showVisible) {
+          colors[i*4]   = 29;
+          colors[i*4+1] = 158;
+          colors[i*4+2] = 117;
+          colors[i*4+3] = Math.round(opacity * 0.30 * 255);
+        } else {
+          colors[i*4+3] = 0;
+        }
+      }
+    }
+
+    // Build quad mesh faces
+    const numFaces = (cols-1) * (rows-1) * 2;
+    const faces    = new Uint32Array(numFaces * 3);
+    let fi = 0;
+
+    for (let row = 0; row < rows-1; row++) {
+      for (let col = 0; col < cols-1; col++) {
+        const v00 =  row    * cols + col;
+        const v10 =  row    * cols + col + 1;
+        const v01 = (row+1) * cols + col;
+        const v11 = (row+1) * cols + col + 1;
+        faces[fi++] = v00; faces[fi++] = v10; faces[fi++] = v01;
+        faces[fi++] = v10; faces[fi++] = v11; faces[fi++] = v01;
+      }
+    }
+
+    const mesh = new Mesh({
+      vertexAttributes: { position: positions, color: colors },
+      components: [{ faces, material: { colorMixMode: 'replace', doubleSided: true } }],
+      spatialReference: { wkid: 4326 },
+    });
+
+    return new Graphic({
+      geometry: mesh,
+      symbol: {
+        type: 'mesh-3d',
+        symbolLayers: [{ type: 'fill', material: { color: [255,255,255,255], colorMixMode: 'replace' } }],
+      },
+      attributes: { type: 'dead_ground_mesh', label: 'Dead ground depth mesh' },
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // LOS SPOKES (optional)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function buildSpokeGraphics(observerPt, obsZ, { radiusM }) {
+    const NUM = 36;
+    const graphics = [];
+    for (let i = 0; i < NUM; i++) {
+      const brg = (i / NUM) * 360;
+      const tip = destPt(observerPt.longitude, observerPt.latitude, brg, radiusM);
+      graphics.push(new Graphic({
+        geometry: new Polyline({
+          paths: [[
+            [observerPt.longitude, observerPt.latitude],
+            [tip.longitude, tip.latitude],
+          ]],
+          spatialReference: { wkid: 4326 },
+        }),
+        symbol: { type: 'simple-line', color: [220,60,48,30], width: 0.5 },
+      }));
+    }
+    return graphics;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // ARCGIS SETUP — SceneView for 3D, 2D handled via MediaLayer in same view
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const heatmapHolder  = { layer: null };   // MediaLayer reference
+  const meshLayer      = new GraphicsLayer({ title:'Dead ground — 3D mesh',    elevationInfo:{ mode:'absolute-height' } });
+  const contourLayer   = new GraphicsLayer({ title:'Dead ground — contours',   elevationInfo:{ mode:'on-the-ground' } });
+  const spokeLayer     = new GraphicsLayer({ title:'Dead ground — spokes',     elevationInfo:{ mode:'on-the-ground' } });
+  const observerLayer  = new GraphicsLayer({ title:'Dead ground — observer',   elevationInfo:{ mode:'on-the-ground' } });
+
+  const map = new Map({
+    basemap: 'topo-3d',
+    ground:  'world-elevation',
+    layers:  [meshLayer, contourLayer, spokeLayer, observerLayer],
+  });
+
+  const view = new SceneView({
+    container: 'viewDiv',
+    map,
+    camera: {
+      position: { longitude: 73.06, latitude: 33.68, z: 14000 },
+      heading: 0, tilt: 50,
+    },
+    environment: {
+      atmosphere: { quality: 'high' },
+      lighting:   { date: new Date() },
+    },
+    popup: {
+      dockEnabled: true,
+      dockOptions: { position: 'bottom-left', breakpoint: false },
+      defaultPopupTemplateEnabled: true,
+    },
+  });
+
+  [meshLayer, contourLayer].forEach(l => {
+    l.popupTemplate = { title:'{type}', content:'{label}' };
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════════════════════════════════
+
+  let observerPt  = null;
+  let obsZ        = 0;
+  let running     = false;
+  let currentView = '2d';   // '2d' | '3d' | 'both'
+
+  const $ = id => document.getElementById(id);
+
+  // ── View mode tabs ──────────────────────────────────────────────────────
+  document.querySelectorAll('.vtab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.vtab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentView = tab.dataset.view;
+    });
+  });
+
+  // ── Parameter sliders ───────────────────────────────────────────────────
+  $('inp-maxdepth').addEventListener('input', () => {
+    const v = $('inp-maxdepth').value;
+    $('maxdepth-v').textContent = v + ' m';
+    $('dk-max').textContent     = v + ' m (deep)';
+  });
+  $('inp-opacity').addEventListener('input', () => {
+    $('opacity-v').textContent = parseFloat($('inp-opacity').value).toFixed(2);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // MAP CLICK — place observer
+  // ═══════════════════════════════════════════════════════════════════════
+
+  view.on('click', async event => {
+    if (running) return;
+    const result = await view.hitTest(event, { include: [map.ground] });
+    const gp     = result?.ground?.mapPoint ?? event.mapPoint;
+
+    observerPt = new Point({
+      longitude: gp.longitude, latitude: gp.latitude,
+      spatialReference: { wkid: 4326 },
+    });
+
+    $('coords').textContent =
+      `Observer: ${gp.latitude.toFixed(5)}°N  ${gp.longitude.toFixed(5)}°E`;
+    $('hint').style.opacity = '0';
+    $('btn-run').disabled   = false;
+    setStatus('place', 'Observer placed — click Run');
+
+    // Place observer marker
+    observerLayer.removeAll();
+    observerLayer.add(new Graphic({
+      geometry: observerPt,
+      symbol: {
+        type: 'point-3d',
+        symbolLayers: [{
+          type: 'object', resource: { primitive: 'sphere' },
+          material: { color: [55, 138, 221, 0.95] },
+          width: 60, height: 60, depth: 60,
+        }],
+        verticalOffset: { screenLength: 22, maxWorldLength: 500, minWorldLength: 4 },
+      },
+      attributes: { type:'Observer', label:'Observer position' },
+    }));
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // RUN ANALYSIS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  $('btn-run').addEventListener('click', async () => {
+    if (!observerPt || running) return;
+    running = true;
+    $('btn-run').disabled = true;
+
+    const radiusM    = Math.max(200, parseFloat($('inp-radius').value));
+    const cellM      = parseInt($('inp-cell').value);
+    const eyeH       = parseFloat($('inp-eye').value);
+    const maxDepth   = parseFloat($('inp-maxdepth').value);
+    const opacity    = parseFloat($('inp-opacity').value);
+    const showVis    = $('opt-visible').checked;
+    const showSpokes = $('opt-spokes').checked;
+    const showConts  = $('opt-contours').checked;
+    const snapTerr   = $('opt-snap').checked;
+    const show2D     = currentView === '2d' || currentView === 'both';
+    const show3D     = currentView === '3d' || currentView === 'both';
+
+    // 1. Get observer terrain elevation
+    setStatus('sampling', 'Getting terrain elevation…');
+    setProgress(0, 'Querying observer elevation');
+
+    try {
+      const elevR = await view.map.ground.queryElevation(observerPt);
+      obsZ = (elevR?.geometry?.z ?? 0) + eyeH;
+    } catch(_) {
+      obsZ = eyeH;
+    }
+
+    // 2. Compute dead ground grid
+    setStatus('sampling', 'Casting rays…');
+
+    const { depthGrid, cols, rows, extent, deadCount, maxDepth: actualMax, totalCells } =
+      await computeDeadGround(view, observerPt, obsZ, {
+        radiusM, cellM,
+        onProgress: (frac, label) => {
+          setProgress(frac * 0.70, label);
+        },
+      });
+
+    const realMaxDepth = Math.min(maxDepth, actualMax > 0 ? actualMax : maxDepth);
+    const deadPct      = totalCells > 0
+      ? Math.round(100 * deadCount / totalCells.filter ? 0
+        : 100 * depthGrid.filter(d => d > 0).length /
+          depthGrid.filter(d => !isNaN(d)).length)
+      : 0;
+
+    // Count properly
+    let validCells = 0, deadCells = 0;
+    for (let i = 0; i < depthGrid.length; i++) {
+      if (!isNaN(depthGrid[i])) {
+        validCells++;
+        if (depthGrid[i] > 0) deadCells++;
+      }
+    }
+    const pct = validCells > 0 ? Math.round(100 * deadCells / validCells) : 0;
+
+    // 3. Clear previous results
+    [meshLayer, contourLayer, spokeLayer].forEach(l => l.removeAll());
+    if (heatmapHolder.layer) {
+      map.remove(heatmapHolder.layer);
+      heatmapHolder.layer = null;
+    }
+
+    const sharedOpts = { maxDepth: realMaxDepth, opacity, showVisible: showVis, observerPt };
+
+    // 4. 2D heatmap (MediaLayer)
+    if (show2D) {
+      setProgress(0.72, 'Rendering 2D heatmap…');
+      await new Promise(r => setTimeout(r, 0));
+      const mediaLayer = buildHeatmapLayer(
+        depthGrid, cols, rows, extent, { ...sharedOpts, radiusM }
+      );
+      map.add(mediaLayer);
+      heatmapHolder.layer = mediaLayer;
+    }
+
+    // 5. 3D terrain mesh
+    if (show3D) {
+      setProgress(0.80, 'Building 3D mesh…');
+      await new Promise(r => setTimeout(r, 0));
+      const meshGraphic = await buildTerrainMesh(view, depthGrid, cols, rows, extent, sharedOpts);
+      meshLayer.add(meshGraphic);
+    }
+
+    // 6. Depth contours
+    if (showConts) {
+      setProgress(0.90, 'Drawing contours…');
+      await new Promise(r => setTimeout(r, 0));
+      buildContourGraphics(depthGrid, cols, rows, extent, { maxDepth: realMaxDepth, observerPt })
+        .forEach(g => contourLayer.add(g));
+    }
+
+    // 7. LOS spokes
+    if (showSpokes) {
+      buildSpokeGraphics(observerPt, obsZ, { radiusM })
+        .forEach(g => spokeLayer.add(g));
+    }
+
+    // 8. Stats
+    $('st-dead').textContent  = pct + '%';
+    $('st-depth').textContent = Math.round(actualMax) + ' m';
+    $('st-cells').textContent = (cols * rows).toLocaleString();
+    setProgress(1.0, `Done — ${pct}% dead ground`);
+    setStatus('done', 'Done');
+
+    // Fly to analysis area
+    view.goTo({ target: extent, tilt: show3D ? 65 : 0 }, { duration: 1000 });
+
+    running = false;
+    $('btn-run').disabled = false;
+  });
+
+  // ── Clear ───────────────────────────────────────────────────────────────
+  $('btn-clear').addEventListener('click', () => {
+    [meshLayer, contourLayer, spokeLayer, observerLayer].forEach(l => l.removeAll());
+    if (heatmapHolder.layer) { map.remove(heatmapHolder.layer); heatmapHolder.layer = null; }
+    observerPt = null; obsZ = 0;
+    $('btn-run').disabled = true;
+    $('hint').style.opacity = '1';
+    $('coords').textContent = 'Observer: click map to place';
+    ['st-dead','st-depth','st-cells'].forEach(id => $(id).textContent='—');
+    setProgress(0, '—');
+    setStatus('place', 'Place observer');
+  });
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  function setStatus(state, text) {
+    const el = $('status');
+    el.textContent = text ?? state;
+    el.className   = 'ph-status ' + state;
+  }
+  function setProgress(frac, label) {
+    $('progress-fill').style.width  = Math.round(frac * 100) + '%';
+    $('progress-label').textContent = label ?? '';
+  }
+
+  view.when(() => {
+    console.log('[DeadGround] SceneView ready.');
+    console.log('[DeadGround] Algorithm: inverse viewshed via ElevationSampler horizon sweep.');
+    console.log('[DeadGround] depthGrid: positive = dead (terrain below LOS), negative = visible.');
+  });
+
+}); // end require()
+</script>
+</body>
+</html>

@@ -49,7 +49,7 @@ class DeploymentBuilderEngine {
   private _selectedPlanEntry: PlanEntry | null = null;
   private _anchorPoint: Point | null = null;
   private _formationType: string = 'as-is';
-  private _spacingMeters: number = 200;
+  private _spacingMeters: number = 0;
 
   // Event handles
   private _pointerMoveHandle: any = null;
@@ -243,12 +243,12 @@ class DeploymentBuilderEngine {
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
               <label style="color:#8ab0d8;font-size:10.5px">Spacing</label>
               <div style="display:flex;gap:4px">
-                ${[100,200,400,600].map(m =>
+                ${([{m:0,label:'None'},{m:100,label:'100m'},{m:200,label:'200m'},{m:400,label:'400m'},{m:600,label:'600m'}]).map(({m,label}) =>
                   `<button class="db-spacing-btn" data-m="${m}" style="
                     padding:2px 7px;font-size:10px;cursor:pointer;
                     background:rgba(80,110,160,0.15);border:1px solid rgba(90,140,220,0.25);
                     border-radius:4px;color:#90b8d8;
-                  ">${m}m</button>`
+                  ">${label}</button>`
                 ).join('')}
               </div>
             </div>
@@ -317,8 +317,8 @@ class DeploymentBuilderEngine {
         (btn as HTMLElement).style.color = '#e8f4ff';
       });
     });
-    // Highlight default spacing (200m)
-    const defaultBtn = el.querySelector('[data-m="200"]') as HTMLElement;
+    // Highlight default spacing (None)
+    const defaultBtn = el.querySelector('[data-m="0"]') as HTMLElement;
     if (defaultBtn) {
       defaultBtn.style.background = 'rgba(100,160,230,0.3)';
       defaultBtn.style.borderColor = 'rgba(100,180,255,0.6)';
@@ -591,31 +591,27 @@ class DeploymentBuilderEngine {
     this._removePointerHandles();
     if (this._view) (this._view.container as HTMLElement).style.cursor = '';
 
-    // Extract plan symbol positions for centroid computation
-    const planPoints = this._extractPlanPoints(this._selectedPlanData);
-    const centroid = this._computeCentroid(planPoints);
-
     const formSlots = FORMATIONS[this._formationType];
     const anchor = this._anchorPoint;
 
-    let slotIndex = 0;
-
-    const coordTransform = (pt: { x: number; y: number }): { x: number; y: number } => {
-      if (formSlots === null) {
-        // As-Is: just offset by (anchor - centroid)
-        return this._offsetPoint(pt, anchor, centroid);
-      }
-      // Formation: map slotIndex to formation slot
-      const slot = formSlots[slotIndex % formSlots.length] ?? [0, 0];
-      slotIndex++;
-      const [lat, fwd] = slot;
-      return this._computeFormationPoint(anchor, lat, fwd, bearing, this._spacingMeters);
-    };
-
-    const count = this._serializationEngine.loadPlanSymbolsFromData(
-      this._selectedPlanData,
-      coordTransform,
-    );
+    let count: number;
+    if (formSlots === null) {
+      // As-Is: apply a single uniform offset (anchor − plan centroid) to every point.
+      // Because it's the same delta for all points, each symbol's shape is preserved.
+      const planPoints = this._extractPlanPoints(this._selectedPlanData);
+      const centroid = this._computeCentroid(planPoints);
+      const coordTransform = (pt: { x: number; y: number }): { x: number; y: number } => {
+        const projPt = this._offsetPoint(pt, anchor, centroid);
+        const wgsPt = this._toWGS84(projPt.x, projPt.y);
+        return wgsPt ? { x: wgsPt.x, y: wgsPt.y } : pt;
+      };
+      count = this._serializationEngine.loadPlanSymbolsFromData(this._selectedPlanData, coordTransform);
+    } else {
+      // Formation: each symbol gets its own slot.  Pre-process the whole plan so that
+      // every symbol's centroid moves to its assigned slot while its internal shape is kept.
+      const formationPlan = this._applyFormationToPlan(bearing);
+      count = this._serializationEngine.loadPlanSymbolsFromData(formationPlan);
+    }
 
     if (count > 0) {
       EngineLogger.success(ENGINE_NAME, `Placed ${count} symbols from "${this._selectedPlanEntry?.name}"`);
@@ -642,46 +638,44 @@ class DeploymentBuilderEngine {
     if (!this._ghostLayer || !this._anchorPoint || !this._selectedPlanData) return;
     this._clearGhostGraphics();
 
-    const planPoints = this._extractPlanPoints(this._selectedPlanData);
-    const centroid = this._computeCentroid(planPoints);
     const formSlots = FORMATIONS[this._formationType];
     const anchor = this._anchorPoint;
-
-    planPoints.forEach((pt, i) => {
-      let ghostPt: { x: number; y: number };
-      if (formSlots === null) {
-        ghostPt = this._offsetPoint(pt, anchor, centroid);
-      } else {
-        const slot = formSlots[i % formSlots.length] ?? [0, 0];
-        ghostPt = this._computeFormationPoint(anchor, slot[0], slot[1], bearing, this._spacingMeters);
-      }
-
-      const wgsPt = this._toWGS84(ghostPt.x, ghostPt.y, anchor);
+    const ghostDot = (projPt: { x: number; y: number }) => {
+      const wgsPt = this._toWGS84(projPt.x, projPt.y);
       if (!wgsPt) return;
-
-      const ghostGraphic = new Graphic({
+      this._ghostLayer!.add(new Graphic({
         geometry: wgsPt,
         symbol: new SimpleMarkerSymbol({
-          style: 'circle',
-          size: 10,
+          style: 'circle', size: 10,
           color: [100, 180, 255, 0.4],
           outline: { color: [100, 200, 255, 0.7], width: 1.5 },
         }),
-      });
-      this._ghostLayer!.add(ghostGraphic);
-    });
+      }));
+    };
 
-    // Draw anchor indicator
-    const anchorGraphic = new Graphic({
+    if (formSlots === null) {
+      // As-Is: one dot per plan point, shifted to the anchor
+      const planPoints = this._extractPlanPoints(this._selectedPlanData);
+      const centroid = this._computeCentroid(planPoints);
+      planPoints.forEach(pt => ghostDot(this._offsetPoint(pt, anchor, centroid)));
+    } else {
+      // Formation: one dot per symbol at its assigned slot position
+      const symCount = this._countPlanSymbols(this._selectedPlanData);
+      for (let i = 0; i < symCount; i++) {
+        const slot = formSlots[i % formSlots.length] ?? [0, 0];
+        ghostDot(this._computeFormationPoint(anchor, slot[0], slot[1], bearing, this._spacingMeters));
+      }
+    }
+
+    // Anchor indicator
+    this._ghostLayer.add(new Graphic({
       geometry: anchor,
       symbol: new SimpleMarkerSymbol({
-        style: 'cross',
-        size: 14,
+        style: 'cross', size: 14,
         color: [255, 220, 60, 0.8],
         outline: { color: [255, 220, 60, 1], width: 2 },
       }),
-    });
-    this._ghostLayer.add(anchorGraphic);
+    }));
   }
 
   private _clearGhostGraphics(): void {
@@ -718,10 +712,12 @@ class DeploymentBuilderEngine {
     anchor: Point,
     centroid: { x: number; y: number },
   ): { x: number; y: number } {
+    // pt is WGS84 (from _extractPlanPoints); project it to match centroid's space
+    const ptProj = this._toProjected(new Point({ x: pt.x, y: pt.y, spatialReference: { wkid: 4326 } }));
     const anchorProj = this._toProjected(anchor);
     return {
-      x: anchorProj.x + (pt.x - centroid.x),
-      y: anchorProj.y + (pt.y - centroid.y),
+      x: anchorProj.x + (ptProj.x - centroid.x),
+      y: anchorProj.y + (ptProj.y - centroid.y),
     };
   }
 
@@ -770,24 +766,95 @@ class DeploymentBuilderEngine {
     return wkid === 102100 || wkid === 3857;
   }
 
-  private _toWGS84(
-    projX: number,
-    projY: number,
-    referenceAnchor: Point,
-  ): Point | null {
+  private _toWGS84(projX: number, projY: number): Point | null {
     try {
-      const wkid = this._isProjected() ? 102100 : (this._view?.spatialReference?.wkid ?? 4326);
-      const pt = new Point({ x: projX, y: projY, spatialReference: { wkid } });
-      if (this._isProjected()) {
-        return webMercatorUtils.webMercatorToGeographic(pt) as Point;
-      }
-      return pt;
+      const pt = new Point({ x: projX, y: projY, spatialReference: { wkid: 102100 } });
+      return webMercatorUtils.webMercatorToGeographic(pt) as Point;
     } catch {
       return null;
     }
   }
 
   // ── Plan Helpers ───────────────────────────────────────────────────────────
+
+  /**
+   * Deep-clone the plan and shift every symbol so its centroid lands on its
+   * assigned formation slot.  All control points within a symbol are offset by
+   * the same (slotPos − symbolCentroid) delta, preserving the symbol's shape.
+   */
+  private _applyFormationToPlan(bearing: number): any {
+    const plan = JSON.parse(JSON.stringify(this._selectedPlanData));
+    const formSlots = FORMATIONS[this._formationType]!;
+    const anchor = this._anchorPoint!;
+    let slotIndex = 0;
+
+    const projPt = (p: any): { x: number; y: number } =>
+      this._toProjected(new Point({ x: p.x, y: p.y, spatialReference: { wkid: 4326 } }));
+
+    const shiftPt = (p: any, dx: number, dy: number): any => {
+      if (!p || p.x == null) return p;
+      const pp = projPt(p);
+      const wgs = this._toWGS84(pp.x + dx, pp.y + dy);
+      return wgs ? { ...p, x: wgs.x, y: wgs.y } : p;
+    };
+
+    for (const overlay of plan.poObj?.plnOrdrOverlay ?? []) {
+      for (const sym of overlay.plnOrdrSymbolSet ?? []) {
+        if (sym.isDelete === 'Y') continue;
+        try {
+          const de = JSON.parse(sym.drawEss);
+
+          // Collect all WGS84 points that define this symbol's geometry
+          const pts: { x: number; y: number }[] = [];
+          const push = (p: any) => { if (p?.x != null) pts.push({ x: p.x, y: p.y }); };
+          push(de.GEOM);
+          push(de.OPTIONS?.GEOM);
+          (de.CTRL_PTS ?? []).forEach(push);
+          if (de.BASE_LN_PTS) {
+            push(de.BASE_LN_PTS.startPt);
+            push(de.BASE_LN_PTS.midPt);
+            push(de.BASE_LN_PTS.endPt);
+          }
+          if (pts.length === 0) continue;
+
+          // Symbol centroid in projected space
+          const symCentroid = this._computeCentroid(pts);
+
+          // Assign one slot per symbol, compute target projected position
+          const slot = formSlots[slotIndex % formSlots.length] ?? [0, 0];
+          slotIndex++;
+          const slotProj = this._computeFormationPoint(anchor, slot[0], slot[1], bearing, this._spacingMeters);
+
+          const dx = slotProj.x - symCentroid.x;
+          const dy = slotProj.y - symCentroid.y;
+
+          if (de.GEOM?.x != null) de.GEOM = shiftPt(de.GEOM, dx, dy);
+          if (de.OPTIONS?.GEOM?.x != null) de.OPTIONS = { ...de.OPTIONS, GEOM: shiftPt(de.OPTIONS.GEOM, dx, dy) };
+          if (Array.isArray(de.CTRL_PTS)) de.CTRL_PTS = de.CTRL_PTS.map((p: any) => shiftPt(p, dx, dy));
+          if (de.BASE_LN_PTS) {
+            de.BASE_LN_PTS = {
+              startPt: shiftPt(de.BASE_LN_PTS.startPt, dx, dy),
+              midPt:   shiftPt(de.BASE_LN_PTS.midPt,   dx, dy),
+              endPt:   shiftPt(de.BASE_LN_PTS.endPt,   dx, dy),
+            };
+          }
+
+          sym.drawEss = JSON.stringify(de);
+        } catch { /* skip malformed symbols */ }
+      }
+    }
+    return plan;
+  }
+
+  private _countPlanSymbols(planDoc: any): number {
+    let n = 0;
+    try {
+      for (const overlay of planDoc?.poObj?.plnOrdrOverlay ?? [])
+        for (const sym of overlay?.plnOrdrSymbolSet ?? [])
+          if (sym.isDelete !== 'Y') n++;
+    } catch {}
+    return n;
+  }
 
   private _extractPlanPoints(planDoc: any): { x: number; y: number }[] {
     const points: { x: number; y: number }[] = [];
