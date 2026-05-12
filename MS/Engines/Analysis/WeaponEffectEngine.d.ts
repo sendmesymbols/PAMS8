@@ -66,7 +66,7 @@ export declare class WeaponEffectEngine {
     private _runTerrainMask;
     private _showPanel;
     private _hidePanel;
-    /** Hide panel but keep working graphics + observer intact for later resume. */
+    /** Collapse panel body, keep graphics alive. */
     private _minimizePanel;
     private _buildPanelHTML;
     private _bindPanelEvents;

@@ -3,10 +3,10 @@ import SceneView from '@arcgis/core/views/SceneView';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
+import Polyline from '@arcgis/core/geometry/Polyline';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
-import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
 
 import SerializationEngine from '../ImportExport/SerializationEngine';
 import EngineLogger from '../../Support/EngineLogger';
@@ -55,7 +55,12 @@ class DeploymentBuilderEngine {
   private _pointerMoveHandle: any = null;
   private _pointerDownHandle: any = null;  // placement click handler
   private _bgClickHandle: any = null;       // background right-click handler (persistent)
+  private _rightClickHandle: any = null;    // bearing-phase right-click to reset anchor
   private _keyDownHandler: ((e: KeyboardEvent) => void) | null = null;
+
+  // Placement overlay UI
+  private _bearingHUD: HTMLElement | null = null;
+  private _placementInstructions: HTMLElement | null = null;
 
   // Background right-click popup
   private _bgPopup: HTMLElement | null = null;
@@ -225,7 +230,7 @@ class DeploymentBuilderEngine {
         <div class="db-right" style="flex:1;display:flex;flex-direction:column;padding:12px;">
           <div class="db-info" style="flex:1;">
             <div style="color:var(--ms-text-label);font-size:var(--ms-fs-xs);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">⚙ Formation Options</div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
               <label style="color:var(--ms-text-dim);font-size:var(--ms-fs-sm)">Formation</label>
               <select class="db-formation" style="
                 background:var(--ms-bg-input);border:1px solid var(--ms-border);
@@ -240,16 +245,28 @@ class DeploymentBuilderEngine {
                 <option value="vee">Vee</option>
               </select>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="db-formation-hint" style="
+              display:block;font-size:var(--ms-fs-xs);color:var(--ms-text-label);
+              background:rgba(100,180,255,0.07);border:1px solid var(--ms-border);
+              border-radius:4px;padding:5px 8px;margin-bottom:6px;line-height:1.5;
+            "></div>
+            <div class="db-spacing-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;opacity:0.4;">
               <label style="color:var(--ms-text-dim);font-size:var(--ms-fs-sm)">Spacing</label>
-              <div style="display:flex;gap:4px">
-                ${([{m:0,label:'None'},{m:100,label:'100m'},{m:200,label:'200m'},{m:400,label:'400m'},{m:600,label:'600m'}]).map(({m,label}) =>
-                  `<button class="db-spacing-btn" data-m="${m}" style="
-                    padding:2px 7px;font-size:var(--ms-fs-xs);cursor:pointer;
-                    background:var(--ms-bg-input);border:1px solid var(--ms-border);
-                    border-radius:4px;color:var(--ms-text-dim);
-                  ">${label}</button>`
-                ).join('')}
+              <div style="display:flex;gap:5px;align-items:center">
+                <input class="db-spacing-val" type="number" value="0" min="0" step="1" style="
+                  width:64px;background:var(--ms-bg-input);border:1px solid var(--ms-border);
+                  border-radius:4px;color:var(--ms-text);font-size:var(--ms-fs-sm);
+                  padding:3px 6px;outline:none;box-sizing:border-box;
+                " />
+                <select class="db-spacing-unit" style="
+                  background:var(--ms-bg-input);border:1px solid var(--ms-border);
+                  border-radius:4px;color:var(--ms-text);font-size:var(--ms-fs-sm);padding:3px 5px;cursor:pointer;
+                ">
+                  <option value="m">m</option>
+                  <option value="km">km</option>
+                  <option value="mi">mi</option>
+                  <option value="nm">nm</option>
+                </select>
               </div>
             </div>
 
@@ -297,33 +314,49 @@ class DeploymentBuilderEngine {
       this._renderPlanList();
     });
 
-    // Formation
-    const formEl = el.querySelector('.db-formation') as HTMLSelectElement;
-    formEl.addEventListener('change', () => {
-      this._formationType = formEl.value;
-    });
+    // Formation descriptions (shown for non-as-is)
+    const FORMATION_HINTS: Record<string, string> = {
+      'as-is':    '📌 Symbols placed at their original relative positions around the anchor. Spacing and bearing have no effect.',
+      'line':     '🧭 Symbols arranged side-by-side along the bearing direction. Spacing controls the gap between each unit.',
+      'column':   '🧭 Symbols arranged one behind the other along the bearing direction. Spacing controls the gap between each unit.',
+      'wedge':    '🧭 Lead unit at anchor, two flanks spread behind. Spacing controls how far apart the units are.',
+      'echelonR': '🧭 Units step diagonally to the right and rear. Spacing controls the step distance between each unit.',
+      'echelonL': '🧭 Units step diagonally to the left and rear. Spacing controls the step distance between each unit.',
+      'vee':      '🧭 Lead unit at anchor, two arms fan out to the rear. Spacing controls the spread of the arms.',
+    };
 
-    // Spacing buttons
-    el.querySelectorAll('.db-spacing-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this._spacingMeters = parseInt((btn as HTMLElement).dataset.m || '200');
-        el.querySelectorAll('.db-spacing-btn').forEach(b => {
-          (b as HTMLElement).style.background = 'var(--ms-bg-input)';
-          (b as HTMLElement).style.borderColor = 'var(--ms-border)';
-          (b as HTMLElement).style.color = 'var(--ms-text-dim)';
-        });
-        (btn as HTMLElement).style.background = 'var(--ms-accent-dim)';
-        (btn as HTMLElement).style.borderColor = 'var(--ms-accent)';
-        (btn as HTMLElement).style.color = 'var(--ms-text)';
-      });
-    });
-    // Highlight default spacing (None)
-    const defaultBtn = el.querySelector('[data-m="0"]') as HTMLElement;
-    if (defaultBtn) {
-      defaultBtn.style.background = 'var(--ms-accent-dim)';
-      defaultBtn.style.borderColor = 'var(--ms-accent)';
-      defaultBtn.style.color = 'var(--ms-text)';
-    }
+    const formEl = el.querySelector('.db-formation') as HTMLSelectElement;
+    const formHint = el.querySelector('.db-formation-hint') as HTMLElement;
+    const spacingRow = el.querySelector('.db-spacing-row') as HTMLElement;
+
+    const syncFormationUI = () => {
+      const val = formEl.value;
+      this._formationType = val;
+      const isAsIs = val === 'as-is';
+      // Always show hint — describes what the formation does
+      formHint.textContent = FORMATION_HINTS[val] ?? '';
+      formHint.style.display = 'block';
+      formHint.style.borderColor = isAsIs ? 'var(--ms-border)' : 'rgba(100,180,255,0.3)';
+      formHint.style.color = isAsIs ? 'var(--ms-text-label)' : 'rgba(160,210,255,0.9)';
+      // Spacing only applies to non-as-is
+      spacingRow.style.opacity = isAsIs ? '0.4' : '1';
+      spacingRow.style.pointerEvents = isAsIs ? 'none' : '';
+    };
+
+    formEl.addEventListener('change', syncFormationUI);
+    syncFormationUI(); // apply initial state immediately
+
+    // Spacing: numeric input + unit select
+    const spacingValEl = el.querySelector('.db-spacing-val') as HTMLInputElement;
+    const spacingUnitEl = el.querySelector('.db-spacing-unit') as HTMLSelectElement;
+    const UNIT_TO_M: Record<string, number> = { m: 1, km: 1000, mi: 1609.344, nm: 1852 };
+
+    const updateSpacing = () => {
+      const val = parseFloat(spacingValEl.value) || 0;
+      this._spacingMeters = val * (UNIT_TO_M[spacingUnitEl.value] ?? 1);
+    };
+    spacingValEl.addEventListener('input', updateSpacing);
+    spacingUnitEl.addEventListener('change', updateSpacing);
 
     // Place / Cancel
     el.querySelector('.db-btn-place')!.addEventListener('click', () => this._onPlaceClicked());
@@ -544,21 +577,34 @@ class DeploymentBuilderEngine {
     if (!this._minimized) this._minimizeWidget();
   }
 
-  private _startPlacement(planData: any): void {
+  private _startPlacement(_planData: any): void {
     if (!this._view) return;
     this._phase = 'anchor';
     this._clearGhostGraphics();
     this._removePointerHandles();
 
-    // Change cursor
-    (this._view.container as HTMLElement).style.cursor = 'crosshair';
+    (this._view.container as HTMLElement).style.cursor = 'none';
+
+    // Live crosshair follows cursor during anchor phase
+    this._pointerMoveHandle = this._view.on('pointer-move', (evt) => {
+      if (this._phase !== 'anchor') return;
+      const mapPt = this._view!.toMap({ x: evt.x, y: evt.y });
+      if (!mapPt) return;
+      this._updateAnchorHover(mapPt);
+    });
 
     this._pointerDownHandle = this._view.on('click', (evt) => {
       if (this._phase === 'anchor') {
         const pt = evt.mapPoint;
         if (!pt) return;
         this._anchorPoint = pt;
-        this._startBearingPhase(pt);
+        if (this._pointerMoveHandle) { this._pointerMoveHandle.remove(); this._pointerMoveHandle = null; }
+        if (this._formationType === 'as-is') {
+          // Bearing is irrelevant for As-Is — commit immediately
+          this._commitFormation(0);
+        } else {
+          this._startBearingPhase(pt);
+        }
       } else if (this._phase === 'bearing') {
         const bearing = this._computeBearing(this._anchorPoint!, evt.mapPoint);
         this._commitFormation(bearing);
@@ -569,19 +615,46 @@ class DeploymentBuilderEngine {
       if (e.key === 'Escape') this._cancelPlacement();
     };
     document.addEventListener('keydown', this._keyDownHandler);
+
+    this._showPlacementInstructions(this._formationType === 'as-is' ? 'anchor-asIs' : 'anchor');
+    this._setStatus(this._formationType === 'as-is'
+      ? 'Click on map to place — no bearing needed for As-Is'
+      : 'Click on map to set anchor point…');
   }
 
   private _startBearingPhase(anchor: Point): void {
     if (!this._view) return;
     this._phase = 'bearing';
+    this._showPlacementInstructions('bearing');
     this._setStatus('Move cursor to set bearing — click to place');
 
     this._pointerMoveHandle = this._view.on('pointer-move', (evt) => {
-      const screenPt = { x: evt.x, y: evt.y };
-      const mapPt = this._view!.toMap(screenPt);
+      const mapPt = this._view!.toMap({ x: evt.x, y: evt.y });
       if (!mapPt) return;
       const bearing = this._computeBearing(anchor, mapPt);
-      this._updateGhostPreview(bearing);
+      const bearingDeg = this._radiansToDegrees(bearing);
+      this._updateGhostPreview(bearing, mapPt);
+      this._showBearingHUD(evt.x, evt.y, bearingDeg);
+      this._setStatus(`Bearing: ${Math.round(bearingDeg).toString().padStart(3, '0')}° ${this._bearingToCardinal(bearingDeg)} — click to place`);
+    });
+
+    // Right-click during bearing phase resets to anchor selection
+    this._rightClickHandle = this._view.on('pointer-down', (evt) => {
+      if (evt.button !== 2) return;
+      this._phase = 'anchor';
+      this._anchorPoint = null;
+      this._clearGhostGraphics();
+      this._removeBearingHUD();
+      if (this._pointerMoveHandle) { this._pointerMoveHandle.remove(); this._pointerMoveHandle = null; }
+      if (this._rightClickHandle) { this._rightClickHandle.remove(); this._rightClickHandle = null; }
+      this._showPlacementInstructions('anchor');
+      this._setStatus('Click on map to set anchor point…');
+      this._pointerMoveHandle = this._view!.on('pointer-move', (evt2) => {
+        if (this._phase !== 'anchor') return;
+        const mapPt = this._view!.toMap({ x: evt2.x, y: evt2.y });
+        if (!mapPt) return;
+        this._updateAnchorHover(mapPt);
+      });
     });
   }
 
@@ -591,6 +664,8 @@ class DeploymentBuilderEngine {
     this._clearGhostGraphics();
     this._removePointerHandles();
     if (this._view) (this._view.container as HTMLElement).style.cursor = '';
+    this._removeBearingHUD();
+    this._removePlacementInstructions();
 
     const formSlots = FORMATIONS[this._formationType];
     const anchor = this._anchorPoint;
@@ -630,37 +705,71 @@ class DeploymentBuilderEngine {
     this._removePointerHandles();
     if (this._view) (this._view.container as HTMLElement).style.cursor = '';
     this._setStatus('');
+    this._removeBearingHUD();
+    this._removePlacementInstructions();
     if (this._minimized) this._minimizeWidget();
   }
 
   // ── Ghost Preview ──────────────────────────────────────────────────────────
 
-  private _updateGhostPreview(bearing: number): void {
+  private _updateAnchorHover(mapPt: Point): void {
+    if (!this._ghostLayer) return;
+    this._clearGhostGraphics();
+    // Outer ring
+    this._ghostLayer.add(new Graphic({
+      geometry: mapPt,
+      symbol: new SimpleMarkerSymbol({
+        style: 'circle', size: 28,
+        color: [0, 0, 0, 0],
+        outline: { color: [100, 200, 255, 0.35], width: 1 },
+      }),
+    }));
+    // Inner ring
+    this._ghostLayer.add(new Graphic({
+      geometry: mapPt,
+      symbol: new SimpleMarkerSymbol({
+        style: 'circle', size: 16,
+        color: [0, 0, 0, 0],
+        outline: { color: [100, 200, 255, 0.65], width: 1.5 },
+      }),
+    }));
+    // Cross hair
+    this._ghostLayer.add(new Graphic({
+      geometry: mapPt,
+      symbol: new SimpleMarkerSymbol({
+        style: 'cross', size: 22,
+        color: [100, 200, 255, 1],
+        outline: { color: [100, 200, 255, 1], width: 2 },
+      }),
+    }));
+  }
+
+  private _updateGhostPreview(bearing: number, cursorPt?: Point): void {
     if (!this._ghostLayer || !this._anchorPoint || !this._selectedPlanData) return;
     this._clearGhostGraphics();
 
+    const bearingDeg = this._radiansToDegrees(bearing);
     const formSlots = FORMATIONS[this._formationType];
     const anchor = this._anchorPoint;
+
     const ghostDot = (projPt: { x: number; y: number }) => {
       const wgsPt = this._toWGS84(projPt.x, projPt.y);
       if (!wgsPt) return;
       this._ghostLayer!.add(new Graphic({
         geometry: wgsPt,
         symbol: new SimpleMarkerSymbol({
-          style: 'circle', size: 10,
-          color: [100, 180, 255, 0.4],
-          outline: { color: [100, 200, 255, 0.7], width: 1.5 },
+          style: 'circle', size: 12,
+          color: [100, 180, 255, 0.3],
+          outline: { color: [100, 200, 255, 0.85], width: 1.5 },
         }),
       }));
     };
 
     if (formSlots === null) {
-      // As-Is: one dot per plan point, shifted to the anchor
       const planPoints = this._extractPlanPoints(this._selectedPlanData);
       const centroid = this._computeCentroid(planPoints);
       planPoints.forEach(pt => ghostDot(this._offsetPoint(pt, anchor, centroid)));
     } else {
-      // Formation: one dot per symbol at its assigned slot position
       const symCount = this._countPlanSymbols(this._selectedPlanData);
       for (let i = 0; i < symCount; i++) {
         const slot = formSlots[i % formSlots.length] ?? [0, 0];
@@ -668,19 +777,178 @@ class DeploymentBuilderEngine {
       }
     }
 
-    // Anchor indicator
+    // Anchor indicator: concentric rings + cross
     this._ghostLayer.add(new Graphic({
       geometry: anchor,
       symbol: new SimpleMarkerSymbol({
-        style: 'cross', size: 14,
-        color: [255, 220, 60, 0.8],
-        outline: { color: [255, 220, 60, 1], width: 2 },
+        style: 'circle', size: 34,
+        color: [0, 0, 0, 0],
+        outline: { color: [255, 220, 60, 0.3], width: 1 },
       }),
     }));
+    this._ghostLayer.add(new Graphic({
+      geometry: anchor,
+      symbol: new SimpleMarkerSymbol({
+        style: 'circle', size: 20,
+        color: [0, 0, 0, 0],
+        outline: { color: [255, 220, 60, 0.6], width: 1.5 },
+      }),
+    }));
+    this._ghostLayer.add(new Graphic({
+      geometry: anchor,
+      symbol: new SimpleMarkerSymbol({
+        style: 'cross', size: 22,
+        color: [255, 220, 60, 1],
+        outline: { color: [255, 220, 60, 1], width: 2.5 },
+      }),
+    }));
+
+    // Bearing arrow from anchor to cursor
+    if (cursorPt) {
+      const anchorWGS = this._pointToWGS84(anchor);
+      const cursorWGS = this._pointToWGS84(cursorPt);
+      const bearingLine = new Polyline({
+        paths: [[[anchorWGS.x, anchorWGS.y], [cursorWGS.x, cursorWGS.y]]],
+        spatialReference: { wkid: 4326 },
+      });
+      this._ghostLayer.add(new Graphic({
+        geometry: bearingLine,
+        symbol: new SimpleLineSymbol({
+          color: [255, 200, 50, 0.8],
+          width: 2,
+          style: 'short-dash',
+        }),
+      }));
+      // Arrowhead at cursor — triangle rotated to bearing direction
+      this._ghostLayer.add(new Graphic({
+        geometry: cursorPt,
+        symbol: new SimpleMarkerSymbol({
+          style: 'triangle',
+          size: 14,
+          color: [255, 200, 50, 0.9],
+          outline: { color: [255, 230, 120, 1], width: 1.5 },
+          angle: -bearingDeg, // ArcGIS CCW; negate to rotate CW from north
+        }),
+      }));
+    }
   }
 
   private _clearGhostGraphics(): void {
     this._ghostLayer?.removeAll();
+  }
+
+  // ── Bearing HUD & Instructions ─────────────────────────────────────────────
+
+  private _showBearingHUD(screenX: number, screenY: number, bearingDeg: number): void {
+    if (!this._bearingHUD) {
+      const el = document.createElement('div');
+      el.style.cssText = `
+        position: fixed;
+        background: rgba(14,18,28,0.93);
+        border: 1px solid rgba(100,180,255,0.55);
+        border-radius: 7px;
+        padding: 5px 12px 5px 10px;
+        font-family: 'SF Mono','Consolas','Monaco',monospace;
+        font-size: 12.5px;
+        pointer-events: none;
+        z-index: 1500;
+        white-space: nowrap;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.55);
+        display: flex; align-items: center; gap: 8px;
+      `;
+      document.body.appendChild(el);
+      this._bearingHUD = el;
+    }
+    const cardinal = this._bearingToCardinal(bearingDeg);
+    const deg = Math.round(bearingDeg).toString().padStart(3, '0');
+    this._bearingHUD.innerHTML = `
+      <span style="color:#7eb4e8;font-size:9.5px;text-transform:uppercase;letter-spacing:1px">BRG</span>
+      <span style="font-weight:800;color:#fff;font-size:14px">${deg}°</span>
+      <span style="color:#80d8a0;font-size:11px;font-weight:600">${cardinal}</span>
+    `;
+    // Offset so HUD sits just above-right of cursor
+    this._bearingHUD.style.left = `${screenX + 20}px`;
+    this._bearingHUD.style.top = `${screenY - 40}px`;
+  }
+
+  private _removeBearingHUD(): void {
+    if (this._bearingHUD) {
+      this._bearingHUD.remove();
+      this._bearingHUD = null;
+    }
+  }
+
+  private _showPlacementInstructions(phase: 'anchor' | 'anchor-asIs' | 'bearing'): void {
+    if (!this._placementInstructions) {
+      const el = document.createElement('div');
+      el.style.cssText = `
+        position: fixed;
+        bottom: 70px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(14,18,28,0.92);
+        border: 1px solid rgba(90,140,220,0.4);
+        border-radius: 9px;
+        padding: 8px 20px;
+        font-family: 'Inter','Segoe UI',sans-serif;
+        font-size: 11.5px;
+        color: #a8c4e0;
+        z-index: 1500;
+        pointer-events: none;
+        white-space: nowrap;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+        display: flex; gap: 14px; align-items: center;
+      `;
+      document.body.appendChild(el);
+      this._placementInstructions = el;
+    }
+    const sep = `<span style="color:#334455">|</span>`;
+    const key = (label: string, color = '#64b4ff') =>
+      `<kbd style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:4px;padding:1px 6px;font-size:10.5px;color:${color};font-family:inherit">${label}</kbd>`;
+
+    if (phase === 'anchor-asIs') {
+      this._placementInstructions.innerHTML = `
+        <span>📍 <strong style="color:#c8dff5">As-Is placement</strong></span>
+        ${sep}
+        <span>${key('Click')} to place at anchor — no bearing step</span>
+        ${sep}
+        <span>${key('Esc', '#f08060')} cancel</span>
+      `;
+    } else if (phase === 'anchor') {
+      this._placementInstructions.innerHTML = `
+        <span>🎯 <strong style="color:#c8dff5">Step 1 of 2 — Anchor</strong></span>
+        ${sep}
+        <span>${key('Click')} to set anchor point</span>
+        ${sep}
+        <span>${key('Esc', '#f08060')} cancel</span>
+      `;
+    } else {
+      this._placementInstructions.innerHTML = `
+        <span>🧭 <strong style="color:#c8dff5">Step 2 of 2 — Bearing</strong></span>
+        ${sep}
+        <span>${key('Click')} to place formation</span>
+        ${sep}
+        <span>${key('Right-click', '#90d890')} reset anchor</span>
+        ${sep}
+        <span>${key('Esc', '#f08060')} cancel</span>
+      `;
+    }
+  }
+
+  private _removePlacementInstructions(): void {
+    if (this._placementInstructions) {
+      this._placementInstructions.remove();
+      this._placementInstructions = null;
+    }
+  }
+
+  private _radiansToDegrees(radians: number): number {
+    return ((radians * 180) / Math.PI + 360) % 360;
+  }
+
+  private _bearingToCardinal(deg: number): string {
+    const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    return dirs[Math.round(deg / 22.5) % 16];
   }
 
   // ── Formation Math ─────────────────────────────────────────────────────────
@@ -902,6 +1170,7 @@ class DeploymentBuilderEngine {
     this._bgClickHandle = this._view.on('pointer-down', async (evt) => {
       if (evt.button !== 2) return;
       if (!this._enabled) return;
+      if (this._phase !== 'idle') return; // placement mode handles its own right-click
 
       const results = await this._view!.hitTest(evt);
       if (results.results.length > 0) return; // graphic hit — let ContextMenuManager handle it
@@ -976,6 +1245,10 @@ class DeploymentBuilderEngine {
     if (this._pointerDownHandle) {
       this._pointerDownHandle.remove();
       this._pointerDownHandle = null;
+    }
+    if (this._rightClickHandle) {
+      this._rightClickHandle.remove();
+      this._rightClickHandle = null;
     }
     if (this._keyDownHandler) {
       document.removeEventListener('keydown', this._keyDownHandler);
