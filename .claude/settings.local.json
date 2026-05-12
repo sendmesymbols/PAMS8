@@ -15,7 +15,10 @@
       "PowerShell(fnm *)",
       "Skill(impeccable)",
       "PowerShell(node .claude/skills/impeccable/scripts/load-context.mjs)",
-      "PowerShell(Select-String *)"
+      "PowerShell(Select-String *)",
+      "Bash(npx vite *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }

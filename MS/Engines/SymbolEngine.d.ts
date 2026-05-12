@@ -21,6 +21,7 @@ import type MeasurementEngine from './MeasurementEngine.ts';
 import ProximityEngine from './ProximityEngine.ts';
 import DrawingCueEngine from './DrawingCueEngine.ts';
 import MGRSEngine from './MGRSEngine.ts';
+import VisualizationEngine from './Visualization/VisualizationEngine.ts';
 import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
 import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
@@ -58,6 +59,7 @@ declare class SymbolEngine implements Evented {
     private _proximityEngine;
     private _drawingCueEngine;
     private _mgrsEngine;
+    private _visualizationEngine;
     private _weaponEffectEngine;
     private _losEngine;
     private _trajectoryEngine;
@@ -112,6 +114,7 @@ declare class SymbolEngine implements Evented {
     private _initProximityEngine;
     private _initDrawingCueEngine;
     private _initMGRSEngine;
+    private _initVisualizationEngine;
     private _initDeploymentBuilderEngine;
     private _initWeaponEffectEngine;
     private _initLOSEngine;
@@ -207,6 +210,8 @@ declare class SymbolEngine implements Evented {
     get drawingCueEngine(): DrawingCueEngine | null;
     /** Access the MGRSEngine â€” grid overlay controls and runtime configuration. */
     get mgrsEngine(): MGRSEngine | null;
+    /** Access the VisualizationEngine â€” force overlays (rings, hull, grid, effects). */
+    get visualizationEngine(): VisualizationEngine | null;
     /** Access the WeaponEffectEngine â€” open WEZ analysis panels programmatically. */
     get weaponEffectEngine(): WeaponEffectEngine | null;
     /** Access the LOSEngine â€” open LOS/viewshed panels programmatically. */
@@ -220,6 +225,13 @@ declare class SymbolEngine implements Evented {
      * Updates settingsData in memory and applies changes to active engines.
      */
     onSettingChanged(path: string[], value: any): void;
+    private _applyDeclutter;
+    private _declutterZoomThreshold;
+    private _declutterMinScale;
+    private _declutterDensity;
+    private _declutterOff;
+    private _declutterSymbols;
+    private _restoreSymbolLayerVisibility;
     /** Push an undo entry and clear the redo stack. */
     _pushUndo(entry: UndoEntry): void;
     /** Snapshot the graphic's current geometry and CTRL_PTS before an edit begins. */
