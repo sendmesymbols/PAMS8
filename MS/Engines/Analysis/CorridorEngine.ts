@@ -247,7 +247,8 @@ export class CorridorEngine {
         <span class="corr-header-title">Corridor Analysis</span>
         <span class="corr-status-dot" id="corr-status-dot"></span>
         <span class="corr-status-lbl" id="corr-status-lbl">Awaiting route</span>
-        <button class="corr-close-btn" id="corr-close-btn" title="Minimise">–</button>
+        <button class="corr-minimize-btn" id="corr-minimize-btn" title="Minimize">▼</button>
+        <button class="corr-close-btn" id="corr-close-btn" title="Close (keeps graphics)">✕</button>
       </div>
       <div class="corr-body">
         <div class="corr-sec">Route Type</div>
@@ -347,6 +348,15 @@ export class CorridorEngine {
   private _bindPanelEvents(): void {
     if (!this._panelEl) return;
     const p = this._panelEl;
+
+    p.querySelector('#corr-minimize-btn')?.addEventListener('click', () => {
+      const body = p.querySelector<HTMLElement>('.corr-body');
+      const btn  = p.querySelector<HTMLElement>('#corr-minimize-btn');
+      if (!body || !btn) return;
+      const minimized = body.style.display === 'none';
+      body.style.display = minimized ? '' : 'none';
+      btn.textContent = minimized ? '▼' : '▶';
+    });
 
     p.querySelector('#corr-close-btn')?.addEventListener('click', () => this._hidePanel());
 
@@ -1039,15 +1049,15 @@ export class CorridorEngine {
         top: 60px;
         left: 910px;
         width: 302px;
-        background: rgba(16, 18, 24, 0.97);
-        border: 1px solid rgba(29, 158, 117, 0.38);
-        border-radius: 6px;
-        color: #b8c5d8;
-        font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
-        font-size: 11px;
+        background: var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius);
+        color: var(--ms-text);
+        font-family: var(--ms-font);
+        font-size: var(--ms-fs);
         z-index: 1100;
         user-select: none;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(255,255,255,0.04);
+        box-shadow: var(--ms-shadow);
         display: none;
       }
       .corr-header {
@@ -1055,17 +1065,17 @@ export class CorridorEngine {
         align-items: center;
         gap: 7px;
         padding: 9px 10px 8px;
-        border-bottom: 1px solid rgba(255,255,255,0.07);
-        background: rgba(29, 158, 117, 0.09);
-        border-radius: 5px 5px 0 0;
+        border-bottom: 1px solid var(--ms-divider);
+        background: var(--ms-bg-header);
+        border-radius: calc(var(--ms-radius) - 1px) calc(var(--ms-radius) - 1px) 0 0;
         cursor: grab;
       }
       .corr-header:active { cursor: grabbing; }
       .corr-header-title {
-        font-size: 10px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: #1D9E75;
+        color: var(--ms-success);
         font-weight: 700;
         flex: 1;
       }
@@ -1076,33 +1086,33 @@ export class CorridorEngine {
         background: #555;
       }
       .corr-status-lbl {
-        font-size: 8.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #5a6a80;
+        color: var(--ms-text-dim);
         min-width: 58px;
       }
-      .corr-close-btn {
+      .corr-minimize-btn, .corr-close-btn {
         background: none;
         border: none;
-        color: #4a5a78;
-        font-size: 13px;
+        color: var(--ms-text-dim);
+        font-size: 12px;
         cursor: pointer;
         padding: 0 2px;
         line-height: 1;
       }
-      .corr-close-btn:hover { color: #c0c8e0; }
+      .corr-minimize-btn:hover, .corr-close-btn:hover { color: var(--ms-text); }
       .corr-body { padding: 0 0 6px; }
       .corr-sec {
-        font-size: 8.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #3a5070;
+        color: var(--ms-text-label);
         padding: 9px 12px 4px;
       }
       .corr-divider {
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+        background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
         margin: 4px 0;
       }
       .corr-grid {
@@ -1115,24 +1125,24 @@ export class CorridorEngine {
       .corr-field-full { padding: 0 10px 8px; }
       .corr-field-btn { justify-content: flex-end; }
       .corr-label {
-        font-size: 8.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.07em;
         text-transform: uppercase;
-        color: #5a7090;
+        color: var(--ms-text-label);
       }
       .corr-input, .corr-select {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
+        background: var(--ms-bg-input);
+        border: 1px solid var(--ms-border);
         border-radius: 3px;
-        color: #c0cce0;
+        color: var(--ms-text);
         font-family: inherit;
-        font-size: 11px;
+        font-size: var(--ms-fs);
         padding: 5px 7px;
         width: 100%;
         outline: none;
       }
-      .corr-input:focus, .corr-select:focus { border-color: #1D9E75; }
-      .corr-select option { background: #12141a; }
+      .corr-input:focus, .corr-select:focus { border-color: var(--ms-success); }
+      .corr-select option { background: var(--ms-bg); }
       .corr-toggle-row {
         display: flex;
         align-items: center;
@@ -1140,7 +1150,7 @@ export class CorridorEngine {
         padding: 4px 12px;
       }
       .corr-check {
-        accent-color: #1D9E75;
+        accent-color: var(--ms-success);
         width: 13px;
         height: 13px;
         cursor: pointer;
@@ -1154,8 +1164,8 @@ export class CorridorEngine {
         padding: 0 10px 6px;
       }
       .corr-list-empty {
-        font-size: 9px;
-        color: #4b5b70;
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-text-dim);
         font-style: italic;
         padding: 2px 2px;
       }
@@ -1170,14 +1180,14 @@ export class CorridorEngine {
         align-items: center;
         gap: 7px;
         width: 100%;
-        background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.08);
-        color: #b8c5d8;
+        background: var(--ms-bg-input);
+        border: 1px solid var(--ms-border);
+        color: var(--ms-text);
         border-radius: 3px;
         padding: 5px 6px;
         cursor: pointer;
         font-family: inherit;
-        font-size: 9px;
+        font-size: var(--ms-fs-xs);
         text-align: left;
       }
       .corr-overlay-row:hover {
@@ -1195,33 +1205,33 @@ export class CorridorEngine {
         flex-shrink: 0;
       }
       .corr-overlay-name {
-        font-size: 9px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.04em;
-        color: #c6d0e2;
+        color: var(--ms-text);
         flex: 1;
       }
       .corr-overlay-radius {
-        font-size: 8px;
-        color: #7b8da8;
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-text-dim);
       }
       .corr-list-row {
         display: flex;
         align-items: center;
         gap: 6px;
         padding: 3px 6px;
-        background: rgba(29, 158, 117, 0.06);
-        border: 1px solid rgba(29, 158, 117, 0.18);
+        background: var(--ms-bg-input);
+        border: 1px solid var(--ms-border);
         border-radius: 3px;
       }
       .corr-row-tag {
-        font-size: 9px;
-        color: #1D9E75;
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-success);
         font-weight: 700;
         min-width: 18px;
       }
       .corr-row-text {
-        font-size: 9px;
-        color: #8ea4c3;
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-text-dim);
         flex: 1;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -1230,13 +1240,13 @@ export class CorridorEngine {
       .corr-row-del {
         background: none;
         border: none;
-        color: #E24B4A;
+        color: var(--ms-danger);
         cursor: pointer;
         font-size: 10px;
       }
       .corr-coords {
-        font-size: 9px;
-        color: #1D9E75;
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-success);
         padding: 2px 12px 7px;
         letter-spacing: 0.04em;
       }
@@ -1252,14 +1262,14 @@ export class CorridorEngine {
         gap: 2px;
       }
       .corr-stat-lbl {
-        font-size: 8px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #506078;
+        color: var(--ms-text-label);
       }
       .corr-stat-val {
-        font-size: 11px;
-        color: #1D9E75;
+        font-size: var(--ms-fs);
+        color: var(--ms-success);
         font-weight: 700;
       }
       .corr-exp-track {
@@ -1267,7 +1277,7 @@ export class CorridorEngine {
         height: 6px;
         border-radius: 3px;
         position: relative;
-        border: 1px solid rgba(255,255,255,0.08);
+        border: 1px solid var(--ms-divider);
         background: linear-gradient(to right, #1D9E75, #78C840, #EF9F27, #DC3C30);
       }
       .corr-exp-thumb {
@@ -1278,7 +1288,7 @@ export class CorridorEngine {
         width: 14px;
         height: 14px;
         border-radius: 50%;
-        border: 2px solid #0a0b0d;
+        border: 2px solid var(--ms-bg);
         background: #fff;
       }
       .corr-legend {
@@ -1299,10 +1309,10 @@ export class CorridorEngine {
         flex-shrink: 0;
       }
       .corr-legend-label {
-        font-size: 8.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: #8ea0bc;
+        color: var(--ms-text-dim);
       }
       .corr-btn-row {
         display: flex;
@@ -1313,30 +1323,30 @@ export class CorridorEngine {
         flex: 1;
         padding: 6px 4px;
         font-family: inherit;
-        font-size: 9.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.05em;
         text-transform: uppercase;
         cursor: pointer;
         border-radius: 3px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(255,255,255,0.04);
-        color: #8a9ab8;
+        border: 1px solid var(--ms-border);
+        background: var(--ms-bg-input);
+        color: var(--ms-text-dim);
       }
-      .corr-btn:hover { background: rgba(255,255,255,0.1); color: #d0daf0; }
+      .corr-btn:hover { background: var(--ms-accent-dim); color: var(--ms-text); }
       .corr-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-      .corr-btn-sm { flex: 0 0 auto; padding: 4px 8px; font-size: 9px; }
+      .corr-btn-sm { flex: 0 0 auto; padding: 4px 8px; font-size: var(--ms-fs-xs); }
       .corr-btn-primary {
-        border-color: rgba(29, 158, 117, 0.55);
-        color: #1D9E75;
-        background: rgba(29, 158, 117, 0.1);
+        border-color: var(--ms-success);
+        color: var(--ms-success);
+        background: var(--ms-bg-input);
       }
-      .corr-btn-primary:hover { background: rgba(29, 158, 117, 0.2); color: #fff; }
+      .corr-btn-primary:hover { background: var(--ms-success); color: var(--ms-bg); }
       .corr-btn-danger {
-        border-color: rgba(226, 75, 74, 0.55);
-        color: #E24B4A;
-        background: rgba(226, 75, 74, 0.08);
+        border-color: var(--ms-danger);
+        color: var(--ms-danger);
+        background: var(--ms-bg-input);
       }
-      .corr-btn-danger:hover { background: rgba(226, 75, 74, 0.2); color: #fff; }
+      .corr-btn-danger:hover { background: var(--ms-danger); color: #fff; }
     `;
     document.head.appendChild(style);
   }

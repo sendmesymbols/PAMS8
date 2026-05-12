@@ -1174,7 +1174,8 @@ export class TrajectoryEngine {
         <span class="traj-header-title">Trajectory Analysis${isEdit ? ' — Re-edit' : ''}</span>
         <span class="traj-status-dot" id="traj-status-dot"></span>
         <span class="traj-status-lbl" id="traj-status-lbl">${isEdit ? 'Restored' : 'Awaiting fire point'}</span>
-        <button class="traj-close-btn" id="traj-close-btn" title="Minimise (keeps working graphics)">–</button>
+        <button class="traj-minimize-btn" id="traj-minimize-btn" title="Minimize">▼</button>
+        <button class="traj-close-btn" id="traj-close-btn" title="Close (keeps graphics)">✕</button>
       </div>
 
       <div class="traj-body">
@@ -1291,6 +1292,15 @@ export class TrajectoryEngine {
   private _bindPanelEvents(): void {
     if (!this._panelEl) return;
     const p = this._panelEl;
+
+    p.querySelector('#traj-minimize-btn')?.addEventListener('click', () => {
+      const body = p.querySelector<HTMLElement>('.traj-body');
+      const btn  = p.querySelector<HTMLElement>('#traj-minimize-btn');
+      if (!body || !btn) return;
+      const minimized = body.style.display === 'none';
+      body.style.display = minimized ? '' : 'none';
+      btn.textContent = minimized ? '▼' : '▶';
+    });
 
     p.querySelector('#traj-close-btn')?.addEventListener('click', () => {
       this._hidePanel();
@@ -1471,15 +1481,15 @@ export class TrajectoryEngine {
         top: 60px;
         left: 602px;
         width: 292px;
-        background: rgba(16, 18, 24, 0.97);
-        border: 1px solid color-mix(in srgb, var(--traj-accent, #BA7517) 42%, transparent);
-        border-radius: 6px;
-        color: #b8c5d8;
-        font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
-        font-size: 11px;
+        background: var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius);
+        color: var(--ms-text);
+        font-family: var(--ms-font);
+        font-size: var(--ms-fs);
         z-index: 1100;
         user-select: none;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+        box-shadow: var(--ms-shadow);
         display: none;
         animation: trajPanelIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
@@ -1492,18 +1502,18 @@ export class TrajectoryEngine {
         align-items: center;
         gap: 7px;
         padding: 9px 10px 8px;
-        border-bottom: 1px solid rgba(255,255,255,0.07);
-        background: rgba(255,255,255,0.04);
+        border-bottom: 1px solid var(--ms-divider);
+        background: var(--ms-bg-header);
         border-radius: 5px 5px 0 0;
         cursor: grab;
       }
       .traj-header:active { cursor: grabbing; }
       .traj-header-icon { font-size: 15px; flex-shrink: 0; }
       .traj-header-title {
-        font-size: 10px;
+        font-size: var(--ms-fs-sm);
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: var(--traj-accent, #BA7517);
+        color: var(--ms-warning);
         font-weight: 700;
         flex: 1;
       }
@@ -1515,33 +1525,35 @@ export class TrajectoryEngine {
         transition: background 0.3s, box-shadow 0.3s;
       }
       .traj-status-lbl {
-        font-size: 8.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #5a6a80;
+        color: var(--ms-text-dim);
         min-width: 62px;
       }
-      .traj-close-btn {
+      .traj-minimize-btn, .traj-close-btn {
         background: none;
         border: none;
-        color: #4a5a78;
-        font-size: 13px;
+        color: var(--ms-text-dim);
+        font-size: var(--ms-fs-sm);
         cursor: pointer;
         padding: 0 2px;
         line-height: 1;
+        transition: color 0.15s;
+        flex-shrink: 0;
       }
-      .traj-close-btn:hover { color: #c0c8e0; }
+      .traj-minimize-btn:hover, .traj-close-btn:hover { color: var(--ms-text); }
       .traj-body { padding: 0 0 6px; }
       .traj-sec {
-        font-size: 8.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #3a5070;
+        color: var(--ms-text-label);
         padding: 9px 12px 4px;
       }
       .traj-divider {
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+        background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
         margin: 4px 0;
       }
       .traj-grid {
@@ -1553,25 +1565,25 @@ export class TrajectoryEngine {
       .traj-field { display: flex; flex-direction: column; gap: 3px; }
       .traj-field-full { padding: 0 10px 8px; }
       .traj-label {
-        font-size: 8.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.07em;
         text-transform: uppercase;
-        color: #5a7090;
+        color: var(--ms-text-dim);
       }
       .traj-input, .traj-select {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
+        background: var(--ms-bg-input);
+        border: 1px solid var(--ms-border);
         border-radius: 3px;
-        color: #c0cce0;
+        color: var(--ms-text);
         font-family: inherit;
-        font-size: 11px;
+        font-size: var(--ms-fs);
         padding: 5px 7px;
         width: 100%;
         outline: none;
         transition: border-color 0.15s;
       }
-      .traj-input:focus, .traj-select:focus { border-color: var(--traj-accent, #BA7517); }
-      .traj-select option { background: #12141a; }
+      .traj-input:focus, .traj-select:focus { border-color: var(--ms-accent); }
+      .traj-select option { background: var(--ms-bg); }
       .traj-slider-row {
         display: flex;
         align-items: center;
@@ -1581,12 +1593,12 @@ export class TrajectoryEngine {
       .traj-slider-row .traj-label { flex: 1; }
       .traj-slider {
         flex: 2;
-        accent-color: var(--traj-accent, #BA7517);
+        accent-color: var(--ms-warning);
         cursor: pointer;
       }
       .traj-slider-val {
-        font-size: 10px;
-        color: var(--traj-accent, #BA7517);
+        font-size: var(--ms-fs-sm);
+        color: var(--ms-warning);
         min-width: 40px;
         text-align: right;
       }
@@ -1597,14 +1609,14 @@ export class TrajectoryEngine {
         padding: 4px 12px;
       }
       .traj-check {
-        accent-color: var(--traj-accent, #BA7517);
+        accent-color: var(--ms-warning);
         width: 13px;
         height: 13px;
         cursor: pointer;
       }
       .traj-coords {
-        font-size: 9px;
-        color: #378ADD;
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-accent);
         padding: 1px 12px 5px;
         letter-spacing: 0.04em;
         white-space: nowrap;
@@ -1625,27 +1637,27 @@ export class TrajectoryEngine {
         padding: 0 10px 8px;
       }
       .traj-legend span {
-        font-size: 8px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.07em;
         text-transform: uppercase;
       }
-      .traj-leg-launch { color: #1D9E75; }
-      .traj-leg-flight { color: #BA7517; }
-      .traj-leg-terminal { color: #DC5A30; }
-      .traj-leg-apogee { color: #EF9F27; }
-      .traj-leg-impact { color: #E24B4A; }
+      .traj-leg-launch { color: var(--ms-success); }
+      .traj-leg-flight { color: var(--ms-warning); }
+      .traj-leg-terminal { color: var(--ms-danger); }
+      .traj-leg-apogee { color: var(--ms-accent); }
+      .traj-leg-impact { color: var(--ms-danger); }
       .traj-stat { display: flex; flex-direction: column; gap: 2px; }
       .traj-stat-val {
         font-size: 13px;
         font-weight: 700;
         letter-spacing: 0.03em;
-        color: var(--traj-accent, #BA7517);
+        color: var(--ms-warning);
       }
       .traj-stat-lbl {
-        font-size: 8.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #506078;
+        color: var(--ms-text-dim);
       }
       .traj-btn-row {
         display: flex;
@@ -1656,28 +1668,28 @@ export class TrajectoryEngine {
         flex: 1;
         padding: 6px 4px;
         font-family: inherit;
-        font-size: 9.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.05em;
         text-transform: uppercase;
         cursor: pointer;
         border-radius: 3px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(255,255,255,0.04);
-        color: #8a9ab8;
+        border: 1px solid var(--ms-border);
+        background: var(--ms-bg-input);
+        color: var(--ms-text-dim);
         transition: all 0.14s;
       }
-      .traj-btn:hover { background: rgba(255,255,255,0.1); color: #d0daf0; }
+      .traj-btn:hover { background: var(--ms-bg-header); color: var(--ms-text); }
       .traj-btn:disabled { opacity: 0.3; cursor: not-allowed; }
       .traj-btn-primary {
-        border-color: var(--traj-accent, #BA7517);
-        color: var(--traj-accent, #BA7517);
-        background: rgba(186,117,23,0.1);
+        border-color: var(--ms-warning);
+        color: var(--ms-warning);
+        background: var(--ms-bg-input);
       }
-      .traj-btn-primary:hover { background: rgba(186,117,23,0.22); color: #fff; }
+      .traj-btn-primary:hover { background: var(--ms-bg-header); color: var(--ms-text); }
       .traj-btn-sm {
         flex: 0 0 auto;
         padding: 4px 8px;
-        font-size: 9px;
+        font-size: var(--ms-fs-xs);
       }
       .traj-scrub-wrap {
         display: none;

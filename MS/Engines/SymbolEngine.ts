@@ -64,6 +64,7 @@ import CorridorEngine from './Analysis/CorridorEngine';
 import { EffectEngine } from './Analysis/EffectEngine';
 import Plan from './ImportExport/Plan.ts';
 import SerializationEngine from './ImportExport/SerializationEngine';
+import ThemeManager from '../Managers/ThemeManager';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -273,6 +274,9 @@ class SymbolEngine implements Evented {
       'menu-item-click',
       this.handleContextMenuAction.bind(this),
     );
+
+    // Initialize ThemeManager with the configured theme
+    ThemeManager.getInstance().init((settingsData as any).ui?.theme ?? 'ops-dark');
 
     // Conditionally load MeasurementEngine based on Settings.json feature flag
     this._initMeasurementEngine();
@@ -1512,6 +1516,10 @@ class SymbolEngine implements Evented {
 
     if (fullPath === 'creationMode') {
       this._creationMode = value as 'single' | 'continuous';
+    }
+
+    if (fullPath === 'ui.theme') {
+      ThemeManager.getInstance().setTheme(value);
     }
 
     // Emit event so other parts of the app can react

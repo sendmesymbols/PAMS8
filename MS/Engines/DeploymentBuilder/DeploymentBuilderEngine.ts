@@ -160,7 +160,7 @@ class DeploymentBuilderEngine {
     const body = this._widget.querySelector('.db-body') as HTMLElement | null;
     const minBtn = this._widget.querySelector('.db-btn-min') as HTMLElement | null;
     if (body) body.style.display = this._minimized ? 'none' : 'flex';
-    if (minBtn) minBtn.textContent = this._minimized ? '□' : '─';
+    if (minBtn) minBtn.textContent = this._minimized ? '▶' : '▼';
   }
 
   private _buildWidget(): void {
@@ -171,14 +171,14 @@ class DeploymentBuilderEngine {
       top: 110px;
       left: 60px;
       width: 520px;
-      background: rgba(16, 20, 30, 0.97);
-      border: 1px solid rgba(90, 140, 220, 0.4);
-      border-radius: 10px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      background: var(--ms-bg);
+      border: 1px solid var(--ms-border);
+      border-radius: var(--ms-radius);
+      box-shadow: var(--ms-shadow);
       z-index: 1200;
-      font-family: 'Inter', 'Segoe UI', sans-serif;
-      font-size: 11.5px;
-      color: #d0dcf0;
+      font-family: var(--ms-font);
+      font-size: var(--ms-fs);
+      color: var(--ms-text);
       user-select: none;
       display: block;
     `;
@@ -186,20 +186,20 @@ class DeploymentBuilderEngine {
     el.innerHTML = `
       <div class="db-header" style="
         display:flex;align-items:center;justify-content:space-between;
-        padding:9px 12px;background:rgba(80,130,200,0.1);
-        border-bottom:1px solid rgba(90,140,220,0.25);
-        border-radius:10px 10px 0 0;cursor:grab;
+        padding:9px 12px;background:var(--ms-bg-header);
+        border-bottom:1px solid var(--ms-divider);
+        border-radius:var(--ms-radius) var(--ms-radius) 0 0;cursor:grab;
       ">
-        <span style="font-weight:700;color:#8ec4ff;font-size:13px">🗺️ Deployment Builder</span>
+        <span style="font-weight:700;color:var(--ms-accent);font-size:13px">🗺️ Deployment Builder</span>
         <div style="display:flex;gap:6px">
           <button class="db-btn-min" style="
-            background:none;border:1px solid rgba(100,160,230,0.3);border-radius:4px;
-            color:#7eb8ff;width:22px;height:22px;cursor:pointer;font-size:12px;
+            background:none;border:1px solid var(--ms-border);border-radius:4px;
+            color:var(--ms-text-dim);width:22px;height:22px;cursor:pointer;font-size:12px;
             display:flex;align-items:center;justify-content:center;
-          " title="Minimize">─</button>
+          " title="Minimize">▼</button>
           <button class="db-btn-close" style="
-            background:none;border:1px solid rgba(220,80,80,0.3);border-radius:4px;
-            color:#f08080;width:22px;height:22px;cursor:pointer;font-size:12px;
+            background:none;border:1px solid var(--ms-border);border-radius:4px;
+            color:var(--ms-text-dim);width:22px;height:22px;cursor:pointer;font-size:12px;
             display:flex;align-items:center;justify-content:center;
           " title="Close">✕</button>
         </div>
@@ -208,14 +208,14 @@ class DeploymentBuilderEngine {
       <div class="db-body" style="display:flex;height:340px;">
         <!-- Left column: plan list -->
         <div class="db-left" style="
-          width:220px;flex-shrink:0;border-right:1px solid rgba(90,140,220,0.2);
+          width:220px;flex-shrink:0;border-right:1px solid var(--ms-divider);
           display:flex;flex-direction:column;
         ">
-          <div style="padding:8px 10px;border-bottom:1px solid rgba(90,140,220,0.15)">
+          <div style="padding:8px 10px;border-bottom:1px solid var(--ms-divider)">
             <input class="db-search" type="text" placeholder="🔍 Search plans..." style="
-              width:100%;box-sizing:border-box;background:rgba(0,0,0,0.3);
-              border:1px solid rgba(90,140,220,0.25);border-radius:5px;
-              color:#d0dcf0;font-size:11px;padding:5px 8px;outline:none;
+              width:100%;box-sizing:border-box;background:var(--ms-bg-input);
+              border:1px solid var(--ms-border);border-radius:5px;
+              color:var(--ms-text);font-size:var(--ms-fs-sm);padding:5px 8px;outline:none;
             " />
           </div>
           <div class="db-plan-list" style="flex:1;overflow-y:auto;padding:4px 0;"></div>
@@ -224,12 +224,12 @@ class DeploymentBuilderEngine {
         <!-- Right column: info + placement -->
         <div class="db-right" style="flex:1;display:flex;flex-direction:column;padding:12px;">
           <div class="db-info" style="flex:1;">
-            <div style="color:#5a7aa8;font-size:10px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">⚙ Formation Options</div>
+            <div style="color:var(--ms-text-label);font-size:var(--ms-fs-xs);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">⚙ Formation Options</div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-              <label style="color:#8ab0d8;font-size:10.5px">Formation</label>
+              <label style="color:var(--ms-text-dim);font-size:var(--ms-fs-sm)">Formation</label>
               <select class="db-formation" style="
-                background:rgba(0,0,0,0.3);border:1px solid rgba(90,140,220,0.25);
-                border-radius:4px;color:#d0dcf0;font-size:10.5px;padding:3px 6px;cursor:pointer;
+                background:var(--ms-bg-input);border:1px solid var(--ms-border);
+                border-radius:4px;color:var(--ms-text);font-size:var(--ms-fs-sm);padding:3px 6px;cursor:pointer;
               ">
                 <option value="as-is">As-Is (Original)</option>
                 <option value="line">Line</option>
@@ -241,39 +241,39 @@ class DeploymentBuilderEngine {
               </select>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-              <label style="color:#8ab0d8;font-size:10.5px">Spacing</label>
+              <label style="color:var(--ms-text-dim);font-size:var(--ms-fs-sm)">Spacing</label>
               <div style="display:flex;gap:4px">
                 ${([{m:0,label:'None'},{m:100,label:'100m'},{m:200,label:'200m'},{m:400,label:'400m'},{m:600,label:'600m'}]).map(({m,label}) =>
                   `<button class="db-spacing-btn" data-m="${m}" style="
-                    padding:2px 7px;font-size:10px;cursor:pointer;
-                    background:rgba(80,110,160,0.15);border:1px solid rgba(90,140,220,0.25);
-                    border-radius:4px;color:#90b8d8;
+                    padding:2px 7px;font-size:var(--ms-fs-xs);cursor:pointer;
+                    background:var(--ms-bg-input);border:1px solid var(--ms-border);
+                    border-radius:4px;color:var(--ms-text-dim);
                   ">${label}</button>`
                 ).join('')}
               </div>
             </div>
 
-            <div style="border-top:1px solid rgba(90,140,220,0.15);padding-top:10px;">
-              <div class="db-selected-name" style="font-weight:700;color:#8ec4ff;margin-bottom:4px;font-size:12px">No plan selected</div>
-              <div class="db-selected-desc" style="color:#6a8ab0;font-size:10.5px;min-height:32px;"></div>
-              <div class="db-selected-count" style="color:#5a7098;font-size:10px;margin-top:4px;"></div>
+            <div style="border-top:1px solid var(--ms-divider);padding-top:10px;">
+              <div class="db-selected-name" style="font-weight:700;color:var(--ms-accent);margin-bottom:4px;font-size:var(--ms-fs)">No plan selected</div>
+              <div class="db-selected-desc" style="color:var(--ms-text-dim);font-size:var(--ms-fs-sm);min-height:32px;"></div>
+              <div class="db-selected-count" style="color:var(--ms-text-label);font-size:var(--ms-fs-xs);margin-top:4px;"></div>
             </div>
           </div>
 
           <div class="db-status" style="
-            font-size:10.5px;color:#e5a540;min-height:18px;margin-bottom:8px;
+            font-size:var(--ms-fs-sm);color:var(--ms-warning);min-height:18px;margin-bottom:8px;
           "></div>
 
           <div style="display:flex;gap:8px">
             <button class="db-btn-place" disabled style="
-              flex:1;padding:7px 0;background:rgba(80,130,200,0.18);
-              border:1px solid rgba(80,130,200,0.35);border-radius:6px;
-              color:#90b8d8;font-size:11px;cursor:not-allowed;font-weight:600;
+              flex:1;padding:7px 0;background:var(--ms-bg-input);
+              border:1px solid var(--ms-border);border-radius:6px;
+              color:var(--ms-text-dim);font-size:var(--ms-fs);cursor:not-allowed;font-weight:600;
             ">Place on Map</button>
             <button class="db-btn-cancel" style="
-              padding:7px 14px;background:rgba(220,80,80,0.1);
-              border:1px solid rgba(220,80,80,0.25);border-radius:6px;
-              color:#e08080;font-size:11px;cursor:pointer;
+              padding:7px 14px;background:var(--ms-bg-input);
+              border:1px solid var(--ms-danger);border-radius:6px;
+              color:var(--ms-danger);font-size:var(--ms-fs);cursor:pointer;
             ">Cancel</button>
           </div>
         </div>
@@ -308,21 +308,21 @@ class DeploymentBuilderEngine {
       btn.addEventListener('click', () => {
         this._spacingMeters = parseInt((btn as HTMLElement).dataset.m || '200');
         el.querySelectorAll('.db-spacing-btn').forEach(b => {
-          (b as HTMLElement).style.background = 'rgba(80,110,160,0.15)';
-          (b as HTMLElement).style.borderColor = 'rgba(90,140,220,0.25)';
-          (b as HTMLElement).style.color = '#90b8d8';
+          (b as HTMLElement).style.background = 'var(--ms-bg-input)';
+          (b as HTMLElement).style.borderColor = 'var(--ms-border)';
+          (b as HTMLElement).style.color = 'var(--ms-text-dim)';
         });
-        (btn as HTMLElement).style.background = 'rgba(100,160,230,0.3)';
-        (btn as HTMLElement).style.borderColor = 'rgba(100,180,255,0.6)';
-        (btn as HTMLElement).style.color = '#e8f4ff';
+        (btn as HTMLElement).style.background = 'var(--ms-accent-dim)';
+        (btn as HTMLElement).style.borderColor = 'var(--ms-accent)';
+        (btn as HTMLElement).style.color = 'var(--ms-text)';
       });
     });
     // Highlight default spacing (None)
     const defaultBtn = el.querySelector('[data-m="0"]') as HTMLElement;
     if (defaultBtn) {
-      defaultBtn.style.background = 'rgba(100,160,230,0.3)';
-      defaultBtn.style.borderColor = 'rgba(100,180,255,0.6)';
-      defaultBtn.style.color = '#e8f4ff';
+      defaultBtn.style.background = 'var(--ms-accent-dim)';
+      defaultBtn.style.borderColor = 'var(--ms-accent)';
+      defaultBtn.style.color = 'var(--ms-text)';
     }
 
     // Place / Cancel
@@ -339,29 +339,30 @@ class DeploymentBuilderEngine {
     style.textContent = `
       #deploymentBuilderWidget .db-plan-list::-webkit-scrollbar { width: 5px; }
       #deploymentBuilderWidget .db-plan-list::-webkit-scrollbar-track { background: transparent; }
-      #deploymentBuilderWidget .db-plan-list::-webkit-scrollbar-thumb { background: rgba(90,140,220,0.3); border-radius: 3px; }
+      #deploymentBuilderWidget .db-plan-list::-webkit-scrollbar-thumb { background: var(--ms-border); border-radius: 3px; }
       #deploymentBuilderWidget .db-category-header {
         padding: 6px 10px 4px;
-        font-size: 9.5px; font-weight: 700;
-        color: #5a7aa8; text-transform: uppercase; letter-spacing: 1px;
+        font-size: var(--ms-fs-xs); font-weight: 700;
+        color: var(--ms-text-label); text-transform: uppercase; letter-spacing: 1px;
         cursor: pointer; display: flex; align-items: center; gap: 4px;
       }
-      #deploymentBuilderWidget .db-category-header:hover { color: #7aa0d0; }
+      #deploymentBuilderWidget .db-category-header:hover { color: var(--ms-text-dim); }
       #deploymentBuilderWidget .db-plan-item {
         padding: 5px 14px;
-        font-size: 11px; color: #90b0d8; cursor: pointer;
+        font-size: var(--ms-fs); color: var(--ms-text-dim); cursor: pointer;
         transition: background 0.1s;
       }
-      #deploymentBuilderWidget .db-plan-item:hover { background: rgba(80,130,200,0.15); color: #d0e8ff; }
+      #deploymentBuilderWidget .db-plan-item:hover { background: var(--ms-accent-dim); color: var(--ms-text); }
       #deploymentBuilderWidget .db-plan-item.active {
-        background: rgba(100,160,230,0.2);
-        color: #e8f4ff;
-        border-left: 2px solid #64b4ff;
+        background: var(--ms-accent-dim);
+        color: var(--ms-text);
+        border-left: 2px solid var(--ms-accent);
       }
       #deploymentBuilderWidget .db-search:focus {
-        border-color: rgba(100,180,255,0.5) !important;
-        box-shadow: 0 0 0 2px rgba(100,180,255,0.1);
+        border-color: var(--ms-accent) !important;
+        box-shadow: 0 0 0 2px var(--ms-accent-dim);
       }
+      #deploymentBuilderWidget .db-formation option { background: var(--ms-bg); }
     `;
     document.head.appendChild(style);
   }
@@ -430,7 +431,7 @@ class DeploymentBuilderEngine {
 
   private async _loadRegistryIntoWidget(): Promise<void> {
     const list = this._widget?.querySelector('.db-plan-list') as HTMLElement | null;
-    if (list) list.innerHTML = '<div style="padding:12px;color:#5a7098;font-size:10.5px">Loading plans…</div>';
+    if (list) list.innerHTML = '<div style="padding:12px;color:var(--ms-text-label);font-size:var(--ms-fs-sm)">Loading plans…</div>';
     const plans = await this._loadRegistry();
     console.log('[DeploymentBuilder] Registry loaded:', plans.length, 'plans from', this._registryBaseUrl + 'Deployemets.json');
     this._renderPlanList(plans);
@@ -453,7 +454,7 @@ class DeploymentBuilderEngine {
 
     list.innerHTML = '';
     if (filtered.length === 0) {
-      list.innerHTML = '<div style="padding:12px;color:#445566;font-style:italic;font-size:10.5px">No plans found</div>';
+      list.innerHTML = '<div style="padding:12px;color:var(--ms-text-dim);font-style:italic;font-size:var(--ms-fs-sm)">No plans found</div>';
       return;
     }
 
@@ -527,9 +528,9 @@ class DeploymentBuilderEngine {
     if (placeBtn && count > 0) {
       placeBtn.disabled = false;
       placeBtn.style.cursor = 'pointer';
-      placeBtn.style.background = 'rgba(80,130,200,0.3)';
-      placeBtn.style.borderColor = 'rgba(80,160,230,0.55)';
-      placeBtn.style.color = '#d0e8ff';
+      placeBtn.style.background = 'var(--ms-accent-dim)';
+      placeBtn.style.borderColor = 'var(--ms-accent)';
+      placeBtn.style.color = 'var(--ms-text)';
     }
   }
 

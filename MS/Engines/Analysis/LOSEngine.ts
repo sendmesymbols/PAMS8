@@ -768,7 +768,8 @@ export class LOSEngine {
         <span class="los-header-title">LOS Analysis${isEdit ? ' — Re-edit' : ''}</span>
         <span class="los-status-dot" id="los-status-dot"></span>
         <span class="los-status-lbl" id="los-status-lbl">${isEdit ? 'Restored' : 'Awaiting'}</span>
-        <button class="los-close-btn" id="los-close-btn" title="Minimise (keeps graphics)">–</button>
+        <button class="los-minimize-btn" id="los-minimize-btn" title="Minimize">▼</button>
+        <button class="los-close-btn" id="los-close-btn" title="Close (keeps graphics)">✕</button>
       </div>
 
       <div class="los-body">
@@ -870,6 +871,15 @@ export class LOSEngine {
     p.querySelector('#los-close-btn')?.addEventListener('click', () => {
       this._hidePanel();
       this._cancelPick();
+    });
+
+    p.querySelector('#los-minimize-btn')?.addEventListener('click', () => {
+      const body = p.querySelector<HTMLElement>('.los-body');
+      const btn  = p.querySelector<HTMLElement>('#los-minimize-btn');
+      if (!body || !btn) return;
+      const minimized = body.style.display === 'none';
+      body.style.display = minimized ? '' : 'none';
+      btn.textContent = minimized ? '▼' : '▶';
     });
 
     p.querySelector('#los-obs-pick-btn')?.addEventListener('click', () => this._startPick('observer'));
@@ -982,15 +992,15 @@ export class LOSEngine {
         top: 60px;
         left: 310px;
         width: 284px;
-        background: rgba(16, 18, 24, 0.97);
-        border: 1px solid rgba(55, 138, 221, 0.4);
-        border-radius: 6px;
-        color: #b8c5d8;
-        font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
-        font-size: 11px;
+        background: var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius);
+        color: var(--ms-text);
+        font-family: var(--ms-font);
+        font-size: var(--ms-fs);
         z-index: 1100;
         user-select: none;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(255,255,255,0.04);
+        box-shadow: var(--ms-shadow);
         display: none;
         animation: losPanelIn 0.18s cubic-bezier(0.34,1.56,0.64,1);
       }
@@ -1001,39 +1011,39 @@ export class LOSEngine {
       .los-header {
         display:flex; align-items:center; gap:7px;
         padding:9px 10px 8px;
-        border-bottom:1px solid rgba(255,255,255,0.07);
-        background:rgba(55,138,221,0.08);
+        border-bottom:1px solid var(--ms-divider);
+        background:var(--ms-bg-header);
         border-radius:5px 5px 0 0;
         cursor:grab;
       }
       .los-header:active { cursor:grabbing; }
       .los-header-icon { font-size:15px; flex-shrink:0; }
       .los-header-title {
-        font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
-        color:#378ADD; font-weight:700; flex:1;
+        font-size:var(--ms-fs-sm); letter-spacing:0.12em; text-transform:uppercase;
+        color:var(--ms-accent); font-weight:700; flex:1;
       }
       .los-status-dot {
         width:7px; height:7px; border-radius:50%; background:#555; flex-shrink:0;
         transition:background 0.3s, box-shadow 0.3s;
       }
       .los-status-lbl {
-        font-size:8.5px; letter-spacing:0.08em; text-transform:uppercase;
-        color:#5a6a80; min-width:52px;
+        font-size:var(--ms-fs-xs); letter-spacing:0.08em; text-transform:uppercase;
+        color:var(--ms-text-dim); min-width:52px;
       }
-      .los-close-btn {
-        background:none; border:none; color:#4a5a78; font-size:13px;
+      .los-minimize-btn, .los-close-btn {
+        background:none; border:none; color:var(--ms-text-dim); font-size:var(--ms-fs-sm);
         cursor:pointer; padding:0 2px; line-height:1; transition:color 0.15s; flex-shrink:0;
       }
-      .los-close-btn:hover { color:#c0c8e0; }
+      .los-minimize-btn:hover, .los-close-btn:hover { color:var(--ms-text); }
       .los-body { padding:0 0 6px; }
       .los-sec {
-        font-size:8.5px; letter-spacing:0.1em; text-transform:uppercase;
-        color:#3a5070; padding:9px 12px 4px;
+        font-size:var(--ms-fs-xs); letter-spacing:0.1em; text-transform:uppercase;
+        color:var(--ms-text-label); padding:9px 12px 4px;
       }
-      .los-sec-note { font-size:7.5px; opacity:0.6; text-transform:none; letter-spacing:0; }
+      .los-sec-note { font-size:var(--ms-fs-xs); opacity:0.6; text-transform:none; letter-spacing:0; }
       .los-divider {
         height:1px;
-        background:linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+        background:linear-gradient(90deg, transparent, var(--ms-divider), transparent);
         margin:4px 0;
       }
       .los-grid {
@@ -1043,25 +1053,25 @@ export class LOSEngine {
       .los-field-full { padding:0 10px 8px; }
       .los-field-btn { justify-content:flex-end; }
       .los-label {
-        font-size:8.5px; letter-spacing:0.07em; text-transform:uppercase; color:#5a7090;
+        font-size:var(--ms-fs-xs); letter-spacing:0.07em; text-transform:uppercase; color:var(--ms-text-dim);
       }
       .los-input, .los-select {
-        background:rgba(255,255,255,0.05);
-        border:1px solid rgba(255,255,255,0.1);
-        border-radius:3px; color:#c0cce0;
-        font-family:inherit; font-size:11px; padding:5px 7px;
+        background:var(--ms-bg-input);
+        border:1px solid var(--ms-border);
+        border-radius:3px; color:var(--ms-text);
+        font-family:inherit; font-size:var(--ms-fs); padding:5px 7px;
         width:100%; outline:none; transition:border-color 0.15s;
       }
-      .los-input:focus, .los-select:focus { border-color:#378ADD; }
-      .los-select option { background:#12141a; }
+      .los-input:focus, .los-select:focus { border-color:var(--ms-accent); }
+      .los-select option { background:var(--ms-bg); }
       .los-slider-row {
         display:flex; align-items:center; gap:8px; padding:2px 10px 6px;
       }
       .los-slider-row .los-label { flex:1; }
-      .los-slider { flex:2; accent-color:#378ADD; cursor:pointer; }
-      .los-slider-val { font-size:10px; color:#378ADD; min-width:34px; text-align:right; }
+      .los-slider { flex:2; accent-color:var(--ms-accent); cursor:pointer; }
+      .los-slider-val { font-size:var(--ms-fs-sm); color:var(--ms-accent); min-width:34px; text-align:right; }
       .los-coords {
-        font-size:9px; color:#378ADD; padding:2px 12px 6px;
+        font-size:var(--ms-fs-xs); color:var(--ms-accent); padding:2px 12px 6px;
         letter-spacing:0.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       }
       .los-target-list {
@@ -1069,51 +1079,51 @@ export class LOSEngine {
         max-height:88px; overflow-y:auto;
       }
       .los-target-list::-webkit-scrollbar { width:4px; }
-      .los-target-list::-webkit-scrollbar-thumb { background:rgba(55,138,221,0.3); border-radius:2px; }
-      .los-no-targets { font-size:9px; color:#3a4a60; font-style:italic; padding:4px 2px; }
+      .los-target-list::-webkit-scrollbar-thumb { background:var(--ms-border); border-radius:2px; }
+      .los-no-targets { font-size:var(--ms-fs-xs); color:var(--ms-text-label); font-style:italic; padding:4px 2px; }
       .los-target-item {
-        display:flex; align-items:center; gap:5px; font-size:9.5px;
+        display:flex; align-items:center; gap:5px; font-size:var(--ms-fs-sm);
         padding:3px 6px;
-        background:rgba(55,138,221,0.08);
-        border:1px solid rgba(55,138,221,0.15);
+        background:var(--ms-bg-input);
+        border:1px solid var(--ms-border);
         border-radius:3px;
       }
-      .los-ti-label { color:#378ADD; font-weight:700; min-width:18px; }
+      .los-ti-label { color:var(--ms-accent); font-weight:700; min-width:18px; }
       .los-ti-coords {
-        flex:1; color:#7a9ab8; font-size:8.5px;
+        flex:1; color:var(--ms-text-dim); font-size:var(--ms-fs-xs);
         overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
       }
       .los-ti-remove {
-        background:none; border:none; color:#E24B4A; cursor:pointer;
-        font-size:10px; padding:0 2px; opacity:0.7; flex-shrink:0;
+        background:none; border:none; color:var(--ms-danger); cursor:pointer;
+        font-size:var(--ms-fs-sm); padding:0 2px; opacity:0.7; flex-shrink:0;
       }
       .los-ti-remove:hover { opacity:1; }
       .los-btn-row { display:flex; gap:5px; padding:8px 10px 4px; }
       .los-btn {
         flex:1; padding:6px 4px;
-        font-family:inherit; font-size:9.5px; letter-spacing:0.05em; text-transform:uppercase;
+        font-family:inherit; font-size:var(--ms-fs-xs); letter-spacing:0.05em; text-transform:uppercase;
         cursor:pointer; border-radius:3px;
-        border:1px solid rgba(255,255,255,0.12);
-        background:rgba(255,255,255,0.04); color:#8a9ab8; transition:all 0.14s;
+        border:1px solid var(--ms-border);
+        background:var(--ms-bg-input); color:var(--ms-text-dim); transition:all 0.14s;
       }
-      .los-btn:hover { background:rgba(255,255,255,0.1); color:#d0daf0; }
+      .los-btn:hover { background:var(--ms-bg-header); color:var(--ms-text); }
       .los-btn:disabled { opacity:0.3; cursor:not-allowed; }
-      .los-btn-sm { flex:0 0 auto; padding:4px 8px; font-size:9px; }
+      .los-btn-sm { flex:0 0 auto; padding:4px 8px; font-size:var(--ms-fs-xs); }
       .los-btn-run {
-        border-color:rgba(55,138,221,0.5); color:#378ADD; background:rgba(55,138,221,0.1);
+        border-color:var(--ms-accent); color:var(--ms-accent); background:var(--ms-bg-input);
       }
-      .los-btn-run:hover { background:rgba(55,138,221,0.2); color:#fff; }
+      .los-btn-run:hover { background:var(--ms-bg-header); color:var(--ms-text); }
       .los-btn-primary {
-        border-color:rgba(29,158,117,0.5); color:#1D9E75; background:rgba(29,158,117,0.1);
+        border-color:var(--ms-success); color:var(--ms-success); background:var(--ms-bg-input);
       }
-      .los-btn-primary:hover { background:rgba(29,158,117,0.22); color:#fff; }
+      .los-btn-primary:hover { background:var(--ms-bg-header); color:var(--ms-text); }
       .los-legend {
         display:flex; gap:10px; padding:2px 12px 4px; flex-wrap:wrap;
       }
-      .los-legend span { font-size:8.5px; }
-      .los-leg-visible { color:#1D9E75; }
-      .los-leg-masked  { color:#E24B4A; }
-      .los-leg-obstr   { color:#E24B4A; opacity:0.75; }
+      .los-legend span { font-size:var(--ms-fs-xs); }
+      .los-leg-visible { color:var(--ms-success); }
+      .los-leg-masked  { color:var(--ms-danger); }
+      .los-leg-obstr   { color:var(--ms-danger); opacity:0.75; }
     `;
     document.head.appendChild(style);
   }

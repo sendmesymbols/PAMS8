@@ -1605,6 +1605,16 @@
             <input type="checkbox" id="setting-deploymentBuilder" title="Enable the Deployment Builder widget — place pre-built tactical plans from the context menu (DeploymentBuilderEngine)." />
           </div>
           <div class="setting-row">
+            <label>UI Theme</label>
+            <select id="setting-uiTheme" title="Switch the UI color theme for all engine widgets and menus. Does not affect map symbols.">
+              <option value="ops-dark" selected>Ops Dark</option>
+              <option value="night-vision">Night Vision</option>
+              <option value="sandstorm">Sandstorm</option>
+              <option value="arctic">Arctic</option>
+              <option value="sipr">SIPR Red</option>
+            </select>
+          </div>
+          <div class="setting-row">
             <label>Creation Mode</label>
             <select id="setting-creationMode" title="Set symbol creation mode: Single (draw one at a time) or Continuous (draw multiple in sequence).">
               <option value="single" selected>Single</option>
@@ -2529,6 +2539,7 @@
           path: ['features', 'proximityEngine'],
           value: v,
         }),
+        'setting-uiTheme': (v) => ({ path: ['ui', 'theme'], value: v }),
         'setting-creationMode': (v) => ({ path: ['creationMode'], value: v }),
         // Measurement
         'setting-msDistUnit': (v) => ({ path: ['measurement', 'distUnit'], value: v }),
@@ -2830,6 +2841,10 @@
 
           if (settings.creationMode) {
             document.getElementById('setting-creationMode').value = settings.creationMode;
+          }
+
+          if (settings.ui?.theme) {
+            document.getElementById('setting-uiTheme').value = settings.ui.theme;
           }
 
           // Update measurement settings

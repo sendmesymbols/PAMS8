@@ -678,7 +678,8 @@ export class BufferEngine {
         <span class="buffer-header-title">Buffer abd Threat Rings</span>
         <span class="buffer-status-dot" id="buffer-status-dot"></span>
         <span class="buffer-status-lbl" id="buffer-status-lbl">Awaiting source</span>
-        <button class="buffer-close-btn" id="buffer-close-btn" title="Minimise">–</button>
+        <button class="buffer-minimize-btn" id="buffer-minimize-btn" title="Minimize">▼</button>
+        <button class="buffer-close-btn" id="buffer-close-btn" title="Close (keeps graphics)">✕</button>
       </div>
 
       <div class="buffer-body">
@@ -763,6 +764,15 @@ export class BufferEngine {
   private _bindPanelEvents(): void {
     if (!this._panelEl) return;
     const p = this._panelEl;
+
+    p.querySelector('#buffer-minimize-btn')?.addEventListener('click', () => {
+      const body = p.querySelector<HTMLElement>('.buffer-body');
+      const btn  = p.querySelector<HTMLElement>('#buffer-minimize-btn');
+      if (!body || !btn) return;
+      const minimized = body.style.display === 'none';
+      body.style.display = minimized ? '' : 'none';
+      btn.textContent = minimized ? '▼' : '▶';
+    });
 
     p.querySelector('#buffer-close-btn')?.addEventListener('click', () => {
       this._hidePanel();
@@ -902,15 +912,15 @@ export class BufferEngine {
         top: 60px;
         left: 902px;
         width: 292px;
-        background: rgba(16, 18, 24, 0.97);
-        border: 1px solid rgba(55, 138, 221, 0.4);
-        border-radius: 6px;
-        color: #b8c5d8;
-        font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
-        font-size: 11px;
+        background: var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius);
+        color: var(--ms-text);
+        font-family: var(--ms-font);
+        font-size: var(--ms-fs);
         z-index: 1100;
         user-select: none;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(255,255,255,0.04);
+        box-shadow: var(--ms-shadow);
         display: none;
       }
       .buffer-header {
@@ -918,17 +928,17 @@ export class BufferEngine {
         align-items: center;
         gap: 7px;
         padding: 9px 10px 8px;
-        border-bottom: 1px solid rgba(255,255,255,0.07);
-        background: rgba(55,138,221,0.08);
+        border-bottom: 1px solid var(--ms-divider);
+        background: var(--ms-bg-header);
         border-radius: 5px 5px 0 0;
         cursor: grab;
       }
       .buffer-header:active { cursor: grabbing; }
       .buffer-header-title {
-        font-size: 10px;
+        font-size: var(--ms-fs-sm);
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: #378ADD;
+        color: var(--ms-accent);
         font-weight: 700;
         flex: 1;
       }
@@ -936,18 +946,18 @@ export class BufferEngine {
         width: 7px; height: 7px; border-radius: 50%; background: #555; flex-shrink: 0;
       }
       .buffer-status-lbl {
-        font-size: 8.5px; letter-spacing: 0.08em; text-transform: uppercase;
-        color: #5a6a80; min-width: 58px;
+        font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase;
+        color: var(--ms-text-dim); min-width: 58px;
       }
-      .buffer-close-btn {
-        background: none; border: none; color: #4a5a78; font-size: 13px;
-        cursor: pointer; padding: 0 2px; line-height: 1;
+      .buffer-minimize-btn, .buffer-close-btn {
+        background: none; border: none; color: var(--ms-text-dim); font-size: var(--ms-fs-sm);
+        cursor: pointer; padding: 0 2px; line-height: 1; transition: color 0.15s; flex-shrink: 0;
       }
-      .buffer-close-btn:hover { color: #c0c8e0; }
+      .buffer-minimize-btn:hover, .buffer-close-btn:hover { color: var(--ms-text); }
       .buffer-body { padding: 0 0 6px; }
       .buffer-sec {
-        font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase;
-        color: #3a5070; padding: 9px 12px 4px;
+        font-size: var(--ms-fs-xs); letter-spacing: 0.1em; text-transform: uppercase;
+        color: var(--ms-text-label); padding: 9px 12px 4px;
       }
       .buffer-field-full { padding: 0 10px 8px; }
       .buffer-grid {
@@ -955,23 +965,23 @@ export class BufferEngine {
       }
       .buffer-field { display: flex; flex-direction: column; gap: 3px; }
       .buffer-label {
-        font-size: 8.5px; letter-spacing: 0.07em; text-transform: uppercase; color: #5a7090;
+        font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim);
       }
       .buffer-input, .buffer-select {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 3px; color: #c0cce0;
-        font-family: inherit; font-size: 11px; padding: 5px 7px; width: 100%;
+        background: var(--ms-bg-input);
+        border: 1px solid var(--ms-border);
+        border-radius: 3px; color: var(--ms-text);
+        font-family: inherit; font-size: var(--ms-fs); padding: 5px 7px; width: 100%;
         outline: none;
       }
-      .buffer-select option { background: #12141a; }
+      .buffer-select option { background: var(--ms-bg); }
       .buffer-toggle-row {
         display: flex; align-items: center; justify-content: space-between; padding: 4px 12px;
       }
-      .buffer-check { accent-color: #378ADD; width: 13px; height: 13px; cursor: pointer; }
+      .buffer-check { accent-color: var(--ms-accent); width: 13px; height: 13px; cursor: pointer; }
       .buffer-divider {
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+        background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
         margin: 4px 0;
       }
       .buffer-stats {
@@ -996,37 +1006,38 @@ export class BufferEngine {
         flex-shrink: 0;
       }
       .buffer-legend-label {
-        font-size: 8px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.07em;
         text-transform: uppercase;
-        color: #6f7f95;
+        color: var(--ms-text-dim);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
       .buffer-stat { display: flex; flex-direction: column; gap: 2px; }
       .buffer-stat-lbl {
-        font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: #506078;
+        font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ms-text-dim);
       }
       .buffer-stat-val {
-        font-size: 11px; color: #378ADD; font-weight: 700;
+        font-size: var(--ms-fs); color: var(--ms-accent); font-weight: 700;
       }
       .buffer-btn-row {
         display: flex; gap: 6px; padding: 6px 10px 2px;
       }
       .buffer-btn {
-        flex: 1; padding: 6px 4px; font-family: inherit; font-size: 9.5px;
+        flex: 1; padding: 6px 4px; font-family: inherit; font-size: var(--ms-fs-xs);
         letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer;
-        border-radius: 3px; border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(255,255,255,0.04); color: #8a9ab8;
+        border-radius: 3px; border: 1px solid var(--ms-border);
+        background: var(--ms-bg-input); color: var(--ms-text-dim);
+        transition: all 0.14s;
       }
-      .buffer-btn:hover { background: rgba(255,255,255,0.1); color: #d0daf0; }
+      .buffer-btn:hover { background: var(--ms-bg-header); color: var(--ms-text); }
       .buffer-btn:disabled { opacity: 0.35; cursor: not-allowed; }
       .buffer-btn-primary {
-        border-color: rgba(55,138,221,0.6); color: #378ADD; background: rgba(55,138,221,0.1);
+        border-color: var(--ms-accent); color: var(--ms-accent); background: var(--ms-bg-input);
       }
       .buffer-btn-danger {
-        border-color: rgba(226,75,74,0.55); color: #E24B4A; background: rgba(226,75,74,0.08);
+        border-color: var(--ms-danger); color: var(--ms-danger); background: var(--ms-bg-input);
       }
     `;
     document.head.appendChild(style);

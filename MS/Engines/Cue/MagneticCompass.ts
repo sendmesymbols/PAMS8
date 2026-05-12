@@ -1924,15 +1924,15 @@ ${moveCross}
         left: 12px;
         z-index: 1100;
         width: 248px;
-        font-family: var(--font-sans, 'Inter', sans-serif);
-        font-size: 11px;
+        font-family: var(--ms-font, 'Inter', sans-serif);
+        font-size: var(--ms-fs, 12px);
       }
 
       .mc-panel {
-        background: var(--bg-surface, rgba(22,27,38,0.96));
+        background: var(--ms-bg);
         border: 1px solid var(--mc-gold-dim);
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.25) inset;
+        border-radius: var(--ms-radius);
+        box-shadow: var(--ms-shadow);
         backdrop-filter: blur(10px);
         overflow: hidden;
       }
@@ -1942,7 +1942,7 @@ ${moveCross}
         align-items: center;
         justify-content: space-between;
         padding: 10px 12px;
-        background: linear-gradient(135deg, rgba(212,160,60,0.09) 0%, rgba(160,110,30,0.05) 100%);
+        background: var(--ms-bg-header);
         border-bottom: 1px solid var(--mc-gold-dim);
         cursor: move;
         user-select: none;
@@ -1955,7 +1955,7 @@ ${moveCross}
       .mc-title {
         font-weight: 700;
         color: var(--mc-gold);
-        font-size: 12px;
+        font-size: var(--ms-fs);
         letter-spacing: 0.3px;
       }
 
@@ -1966,7 +1966,7 @@ ${moveCross}
       }
 
       .mc-toggle-icon {
-        font-size: 9px;
+        font-size: var(--ms-fs-xs);
         color: rgba(212,160,60,0.6);
         transition: transform 0.2s ease;
       }
@@ -1975,7 +1975,7 @@ ${moveCross}
         background: none;
         border: none;
         color: rgba(212,160,60,0.5);
-        font-size: 12px;
+        font-size: var(--ms-fs);
         cursor: pointer;
         padding: 0 2px;
         line-height: 1;
@@ -1996,12 +1996,12 @@ ${moveCross}
 
       .mc-info-section {
         padding: 8px 14px 4px;
-        border-bottom: 1px solid rgba(212,160,60,0.12);
+        border-bottom: 1px solid var(--ms-divider);
         margin-bottom: 4px;
       }
 
       .mc-info-cardinal {
-        font-size: 9px;
+        font-size: var(--ms-fs-xs);
         color: #a07828;
         letter-spacing: 4px;
         text-align: center;
@@ -2021,32 +2021,32 @@ ${moveCross}
 
       .mc-info-divider {
         height: 1px;
-        background: rgba(212,160,60,0.15);
+        background: var(--ms-divider);
         margin: 8px 0;
       }
 
       .mc-info-row {
         display: flex;
         justify-content: space-between;
-        font-size: 10px;
-        color: rgba(180,140,60,0.5);
+        font-size: var(--ms-fs-sm);
+        color: var(--ms-text-dim);
         margin: 3px 0;
       }
 
       .mc-info-row span:last-child {
-        color: rgba(212,160,60,0.8);
+        color: var(--mc-gold);
         font-variant-numeric: tabular-nums;
       }
 
       .mc-section {
         padding: 6px 12px;
-        border-bottom: 1px solid rgba(212,160,60,0.08);
+        border-bottom: 1px solid var(--ms-divider);
       }
 
       .mc-section:last-child { border-bottom: none; }
 
       .mc-section-title {
-        font-size: 9px;
+        font-size: var(--ms-fs-xs);
         font-weight: 700;
         color: rgba(212,160,60,0.55);
         text-transform: uppercase;
@@ -2067,8 +2067,8 @@ ${moveCross}
         border: 1px solid rgba(212,160,60,0.25);
         border-radius: 5px;
         color: rgba(212,160,60,0.85);
-        font-size: 10px;
-        font-family: inherit;
+        font-size: var(--ms-fs-sm);
+        font-family: var(--ms-font);
         cursor: pointer;
         transition: all 0.14s;
         white-space: nowrap;
@@ -2095,19 +2095,20 @@ ${moveCross}
       .mc-btn-danger {
         background: rgba(180,50,50,0.12);
         border-color: rgba(180,50,50,0.3);
-        color: rgba(220,120,120,0.8);
+        color: var(--ms-danger);
       }
 
       .mc-btn-danger:hover {
         background: rgba(180,50,50,0.22);
         border-color: rgba(220,80,80,0.5);
-        color: #f08080;
+        color: var(--ms-danger);
+        filter: brightness(1.2);
       }
 
       .mc-btn-sm {
         flex: 0 0 auto;
         padding: 3px 7px;
-        font-size: 10px;
+        font-size: var(--ms-fs-sm);
       }
 
       .mc-compass-list {
@@ -2119,8 +2120,8 @@ ${moveCross}
       .mc-compass-list::-webkit-scrollbar-thumb { background: rgba(212,160,60,0.2); }
 
       .mc-list-empty {
-        font-size: 10px;
-        color: rgba(212,160,60,0.3);
+        font-size: var(--ms-fs-sm);
+        color: var(--ms-text-label);
         font-style: italic;
         padding: 4px 2px;
       }
@@ -2137,7 +2138,7 @@ ${moveCross}
         border: 1px solid transparent;
       }
 
-      .mc-list-item:hover { background: rgba(212,160,60,0.06); }
+      .mc-list-item:hover { background: var(--ms-bg-input); }
 
       .mc-list-item-active {
         background: rgba(212,160,60,0.1);
@@ -2152,27 +2153,27 @@ ${moveCross}
       }
 
       .mc-list-label {
-        color: rgba(212,160,60,0.8);
-        font-size: 10.5px;
+        color: var(--mc-gold);
+        font-size: var(--ms-fs-sm);
         white-space: nowrap;
         cursor: text;
       }
 
       .mc-label-edit {
-        background: rgba(0,0,0,0.4);
+        background: var(--ms-bg-input);
         border: 1px solid var(--mc-gold);
         border-radius: 3px;
         color: var(--mc-gold);
-        font-size: 10.5px;
+        font-size: var(--ms-fs-sm);
         padding: 1px 4px;
         width: 90px;
-        font-family: inherit;
+        font-family: var(--ms-font);
         outline: none;
       }
 
       .mc-list-bearing {
-        font-size: 10px;
-        color: rgba(212,160,60,0.5);
+        font-size: var(--ms-fs-sm);
+        color: var(--ms-text-dim);
         font-variant-numeric: tabular-nums;
       }
 
@@ -2183,7 +2184,7 @@ ${moveCross}
       }
 
       .mc-btn-reset { color: rgba(212,160,60,0.65); }
-      .mc-btn-del   { color: rgba(200,80,80,0.7); border-color: rgba(180,50,50,0.2); background: rgba(180,50,50,0.07); }
+      .mc-btn-del   { color: var(--ms-danger); border-color: rgba(180,50,50,0.2); background: rgba(180,50,50,0.07); }
 
       .mc-setting-row {
         display: flex;
@@ -2194,19 +2195,19 @@ ${moveCross}
 
       .mc-setting-row label {
         flex: 1;
-        color: rgba(160,140,90,0.7);
-        font-size: 10.5px;
+        color: var(--ms-text-dim);
+        font-size: var(--ms-fs-sm);
       }
 
       .mc-setting-row input[type='number'],
       .mc-setting-row select {
-        background: rgba(0,0,0,0.25);
+        background: var(--ms-bg-input);
         border: 1px solid rgba(212,160,60,0.2);
         border-radius: 4px;
-        color: rgba(212,160,60,0.9);
-        font-size: 10.5px;
+        color: var(--mc-gold);
+        font-size: var(--ms-fs-sm);
         padding: 3px 6px;
-        font-family: inherit;
+        font-family: var(--ms-font);
       }
 
       .mc-setting-row input[type='number']:focus,
@@ -2215,15 +2216,15 @@ ${moveCross}
         border-color: var(--mc-gold);
       }
 
-      .mc-setting-row select option { background: #1a1606; }
+      .mc-setting-row select option { background: var(--ms-bg); }
 
       .mc-setting-row input[type='range'] {
         accent-color: var(--mc-gold);
       }
 
       .mc-val-display {
-        font-size: 9.5px;
-        color: rgba(212,160,60,0.55);
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-text-dim);
         min-width: 28px;
         text-align: right;
         margin-left: 5px;
@@ -2233,8 +2234,8 @@ ${moveCross}
         display: flex;
         align-items: center;
         gap: 8px;
-        font-size: 10px;
-        color: rgba(180,140,60,0.6);
+        font-size: var(--ms-fs-sm);
+        color: var(--ms-text-dim);
         margin-bottom: 4px;
       }
 

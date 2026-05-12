@@ -895,16 +895,17 @@ class ContextMenuManager extends Evented {
     const style = document.createElement('style');
     style.textContent = `
       .arcgis-context-menu {
-        background-color: rgba(22, 27, 38, 0.97);
-        border: 1px solid rgba(90, 130, 200, 0.3);
-        border-radius: 10px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+        background-color: var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius);
+        box-shadow: var(--ms-shadow);
         padding: 6px 0;
         min-width: 180px;
         max-width: 320px;
         user-select: none;
         backdrop-filter: blur(12px);
         animation: contextMenuFadeIn 0.15s ease-out;
+        font-family: var(--ms-font);
       }
 
       @keyframes contextMenuFadeIn {
@@ -923,9 +924,9 @@ class ContextMenuManager extends Evented {
         cursor: pointer;
         display: flex;
         align-items: center;
-        color: #b8c8e0;
-        font-size: 12px;
-        font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+        color: var(--ms-text);
+        font-size: var(--ms-fs);
+        font-family: var(--ms-font);
         transition: all 0.1s ease;
         border-left: 2px solid transparent;
         margin: 0 4px;
@@ -934,32 +935,34 @@ class ContextMenuManager extends Evented {
 
       .arcgis-context-menu-item:hover,
       .arcgis-context-menu-item-hover {
-        background-color: rgba(80, 130, 200, 0.2);
-        border-left-color: #64b4ff;
-        color: #ffffff;
+        background-color: var(--ms-bg-input);
+        border-left-color: var(--ms-accent);
+        color: var(--ms-text);
+        filter: brightness(1.3);
         padding-left: 16px;
       }
 
       .arcgis-context-menu-item.disabled {
-        color: #4a5a78;
+        color: var(--ms-text-label);
         cursor: default;
       }
 
       .arcgis-context-menu-item.disabled:hover {
         background-color: inherit;
         border-left-color: transparent;
+        filter: none;
       }
 
       .arcgis-context-menu-group {
         margin-top: 6px;
         padding-top: 6px;
-        border-top: 1px solid rgba(80, 120, 180, 0.15);
+        border-top: 1px solid var(--ms-divider);
       }
 
       .arcgis-context-menu-group-title {
         padding: 6px 14px;
-        font-size: 10px;
-        color: #5a8ad0;
+        font-size: var(--ms-fs-sm);
+        color: var(--ms-accent-dim);
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 1px;
@@ -967,7 +970,7 @@ class ContextMenuManager extends Evented {
 
       .arcgis-context-menu-separator {
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(80, 120, 180, 0.2), transparent);
+        background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
         margin: 6px 12px;
       }
 
@@ -981,10 +984,10 @@ class ContextMenuManager extends Evented {
 
       .menu-shortcut {
         margin-left: 16px;
-        font-size: 10px;
-        color: #5a7aa8;
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-text-dim);
         white-space: nowrap;
-        font-family: 'SF Mono', 'Consolas', monospace;
+        font-family: var(--ms-font);
         background: rgba(0, 0, 0, 0.2);
         padding: 2px 5px;
         border-radius: 3px;
@@ -997,8 +1000,8 @@ class ContextMenuManager extends Evented {
       .arcgis-context-menu-item.has-submenu::after {
         content: '▸';
         margin-left: auto;
-        font-size: 10px;
-        color: #5a8ad0;
+        font-size: var(--ms-fs-sm);
+        color: var(--ms-accent-dim);
         flex-shrink: 0;
       }
 
@@ -1007,10 +1010,10 @@ class ContextMenuManager extends Evented {
         position: absolute;
         left: calc(100% + 4px);
         top: -4px;
-        background-color: rgba(22, 27, 38, 0.98);
-        border: 1px solid rgba(90, 130, 200, 0.3);
-        border-radius: 10px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        background-color: var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius);
+        box-shadow: var(--ms-shadow);
         padding: 6px 0;
         min-width: 180px;
         max-width: 300px;

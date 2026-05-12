@@ -532,6 +532,9 @@
     "effects": true
   },
   "creationMode": "single",
+  "ui": {
+    "theme": "ops-dark"
+  },
   "echelonMap23": {
     "0": ["23", "00"],
     "1": ["23", "22", "00"],

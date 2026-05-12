@@ -730,10 +730,15 @@ export class WeaponEffectEngine {
     if (this._panelEl) this._panelEl.style.display = 'none';
   }
 
-  /** Hide panel but keep working graphics + observer intact for later resume. */
+  /** Collapse panel body, keep graphics alive. */
   private _minimizePanel(): void {
-    this._hidePanel();
-    this._cancelReposition();
+    if (!this._panelEl) return;
+    const body = this._panelEl.querySelector<HTMLElement>('.wez-body');
+    const btn  = this._panelEl.querySelector<HTMLElement>('#wez-minimize-btn');
+    if (!body || !btn) return;
+    const minimized = body.style.display === 'none';
+    body.style.display = minimized ? '' : 'none';
+    btn.textContent = minimized ? '▼' : '▶';
   }
 
   private _buildPanelHTML(weaponKey: string, preset: WeaponPreset, override?: WEZPanelOverride): string {
@@ -758,7 +763,8 @@ export class WeaponEffectEngine {
         <span class="wez-header-title">WEZ Analysis${isEdit ? ' — Re-edit' : ''}</span>
         <span class="wez-status-dot" id="wez-status-dot"></span>
         <span class="wez-status-lbl" id="wez-status-lbl">${isEdit ? 'Restored' : 'Awaiting'}</span>
-        <button class="wez-close-btn" id="wez-close-btn" title="Minimise (keeps working graphics)">–</button>
+        <button class="wez-minimize-btn" id="wez-minimize-btn" title="Minimize">▼</button>
+        <button class="wez-close-btn" id="wez-close-btn" title="Close (keeps graphics)">✕</button>
       </div>
 
       <div class="wez-body">
@@ -861,8 +867,11 @@ export class WeaponEffectEngine {
     if (!this._panelEl) return;
     const p = this._panelEl;
 
-    // Minimise (hides panel, keeps working graphics alive for resume)
-    p.querySelector('#wez-close-btn')?.addEventListener('click', () => this._minimizePanel());
+    p.querySelector('#wez-minimize-btn')?.addEventListener('click', () => this._minimizePanel());
+    p.querySelector('#wez-close-btn')?.addEventListener('click', () => {
+      this._hidePanel();
+      this._cancelReposition();
+    });
 
     // Weapon preset change → snap all fields
     p.querySelector('#wez-weapon')?.addEventListener('change', () => {
@@ -1113,16 +1122,15 @@ export class WeaponEffectEngine {
         top: 60px;
         left: 14px;
         width: 282px;
-        background: rgba(16, 18, 24, 0.97);
-        border: 1px solid rgba(var(--wez-accent, #EF9F27), 0.35);
-        border: 1px solid color-mix(in srgb, var(--wez-accent, #EF9F27) 40%, transparent);
-        border-radius: 6px;
-        color: #b8c5d8;
-        font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
-        font-size: 11px;
+        background: var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius);
+        color: var(--ms-text);
+        font-family: var(--ms-font);
+        font-size: var(--ms-fs);
         z-index: 1100;
         user-select: none;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(255,255,255,0.04);
+        box-shadow: var(--ms-shadow);
         display: none;
         animation: wezPanelIn 0.18s cubic-bezier(0.34,1.56,0.64,1);
       }
@@ -1135,18 +1143,18 @@ export class WeaponEffectEngine {
         align-items: center;
         gap: 7px;
         padding: 9px 10px 8px;
-        border-bottom: 1px solid rgba(255,255,255,0.07);
-        background: rgba(255,255,255,0.04);
+        border-bottom: 1px solid var(--ms-divider);
+        background: var(--ms-bg-header);
         border-radius: 5px 5px 0 0;
         cursor: grab;
       }
       .wez-header:active { cursor: grabbing; }
       .wez-header-icon { font-size: 15px; flex-shrink: 0; }
       .wez-header-title {
-        font-size: 10px;
+        font-size: var(--ms-fs-sm);
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: var(--wez-accent, #EF9F27);
+        color: var(--ms-warning);
         font-weight: 700;
         flex: 1;
       }
@@ -1158,37 +1166,37 @@ export class WeaponEffectEngine {
         transition: background 0.3s, box-shadow 0.3s;
       }
       .wez-status-lbl {
-        font-size: 8.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #5a6a80;
+        color: var(--ms-text-dim);
         min-width: 50px;
       }
-      .wez-close-btn {
+      .wez-minimize-btn, .wez-close-btn {
         background: none;
         border: none;
-        color: #4a5a78;
-        font-size: 13px;
+        color: var(--ms-text-dim);
+        font-size: var(--ms-fs-sm);
         cursor: pointer;
         padding: 0 2px;
         line-height: 1;
         transition: color 0.15s;
         flex-shrink: 0;
       }
-      .wez-close-btn:hover { color: #c0c8e0; }
+      .wez-minimize-btn:hover, .wez-close-btn:hover { color: var(--ms-text); }
 
       .wez-body { padding: 0 0 6px; }
 
       .wez-sec {
-        font-size: 8.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #3a5070;
+        color: var(--ms-text-label);
         padding: 9px 12px 4px;
       }
       .wez-divider {
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+        background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
         margin: 4px 0;
       }
       .wez-grid {
@@ -1201,27 +1209,25 @@ export class WeaponEffectEngine {
       .wez-field-full { padding: 0 10px 8px; }
       .wez-field-btn { justify-content: flex-end; }
       .wez-label {
-        font-size: 8.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.07em;
         text-transform: uppercase;
-        color: #5a7090;
+        color: var(--ms-text-dim);
       }
       .wez-input, .wez-select {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
+        background: var(--ms-bg-input);
+        border: 1px solid var(--ms-border);
         border-radius: 3px;
-        color: #c0cce0;
+        color: var(--ms-text);
         font-family: inherit;
-        font-size: 11px;
+        font-size: var(--ms-fs);
         padding: 5px 7px;
         width: 100%;
         outline: none;
         transition: border-color 0.15s;
       }
-      .wez-input:focus, .wez-select:focus {
-        border-color: var(--wez-accent, #EF9F27);
-      }
-      .wez-select option { background: #12141a; }
+      .wez-input:focus, .wez-select:focus { border-color: var(--ms-accent); }
+      .wez-select option { background: var(--ms-bg); }
 
       .wez-slider-row {
         display: flex;
@@ -1232,12 +1238,12 @@ export class WeaponEffectEngine {
       .wez-slider-row .wez-label { flex: 1; }
       .wez-slider {
         flex: 2;
-        accent-color: var(--wez-accent, #EF9F27);
+        accent-color: var(--ms-warning);
         cursor: pointer;
       }
       .wez-slider-val {
-        font-size: 10px;
-        color: var(--wez-accent, #EF9F27);
+        font-size: var(--ms-fs-sm);
+        color: var(--ms-warning);
         min-width: 34px;
         text-align: right;
       }
@@ -1249,14 +1255,14 @@ export class WeaponEffectEngine {
         padding: 4px 12px;
       }
       .wez-check {
-        accent-color: var(--wez-accent, #EF9F27);
+        accent-color: var(--ms-warning);
         width: 13px; height: 13px;
         cursor: pointer;
       }
 
       .wez-coords {
-        font-size: 9px;
-        color: #378ADD;
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-accent);
         padding: 2px 12px 6px;
         letter-spacing: 0.04em;
         white-space: nowrap;
@@ -1273,31 +1279,31 @@ export class WeaponEffectEngine {
         flex: 1;
         padding: 6px 4px;
         font-family: inherit;
-        font-size: 9.5px;
+        font-size: var(--ms-fs-xs);
         letter-spacing: 0.05em;
         text-transform: uppercase;
         cursor: pointer;
         border-radius: 3px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(255,255,255,0.04);
-        color: #8a9ab8;
+        border: 1px solid var(--ms-border);
+        background: var(--ms-bg-input);
+        color: var(--ms-text-dim);
         transition: all 0.14s;
       }
-      .wez-btn:hover { background: rgba(255,255,255,0.1); color: #d0daf0; }
+      .wez-btn:hover { background: var(--ms-bg-header); color: var(--ms-text); }
       .wez-btn:disabled { opacity: 0.3; cursor: not-allowed; }
       .wez-btn-primary {
-        border-color: var(--wez-accent, #EF9F27);
-        color: var(--wez-accent, #EF9F27);
-        background: rgba(239,159,39,0.1);
+        border-color: var(--ms-warning);
+        color: var(--ms-warning);
+        background: var(--ms-bg-input);
       }
-      .wez-btn-primary:hover { background: rgba(239,159,39,0.22); color: #fff; }
-      .wez-btn-sm { flex: 0 0 auto; padding: 4px 8px; font-size: 9px; }
+      .wez-btn-primary:hover { background: var(--ms-bg-header); color: var(--ms-text); }
+      .wez-btn-sm { flex: 0 0 auto; padding: 4px 8px; font-size: var(--ms-fs-xs); }
       .wez-btn-terrain {
-        border-color: rgba(55,138,221,0.5);
-        color: #378ADD;
-        background: rgba(55,138,221,0.08);
+        border-color: var(--ms-accent);
+        color: var(--ms-accent);
+        background: var(--ms-bg-input);
       }
-      .wez-btn-terrain:hover { background: rgba(55,138,221,0.2); }
+      .wez-btn-terrain:hover { background: var(--ms-bg-header); color: var(--ms-text); }
     `;
     document.head.appendChild(style);
   }
