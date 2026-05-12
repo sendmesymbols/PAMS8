@@ -58,6 +58,11 @@ class DeploymentBuilderEngine {
   private _rightClickHandle: any = null;    // bearing-phase right-click to reset anchor
   private _keyDownHandler: ((e: KeyboardEvent) => void) | null = null;
 
+  // RAF throttle for ghost-preview redraws
+  private _ghostRafId: number | null = null;
+  private _pendingGhostBearing: number = 0;
+  private _pendingGhostCursor: Point | null = null;
+
   // Placement overlay UI
   private _bearingHUD: HTMLElement | null = null;
   private _placementInstructions: HTMLElement | null = null;
@@ -585,12 +590,18 @@ class DeploymentBuilderEngine {
 
     (this._view.container as HTMLElement).style.cursor = 'none';
 
-    // Live crosshair follows cursor during anchor phase
+    // Live crosshair follows cursor during anchor phase (RAF-throttled)
     this._pointerMoveHandle = this._view.on('pointer-move', (evt) => {
       if (this._phase !== 'anchor') return;
       const mapPt = this._view!.toMap({ x: evt.x, y: evt.y });
       if (!mapPt) return;
-      this._updateAnchorHover(mapPt);
+      this._pendingGhostCursor = mapPt;
+      if (this._ghostRafId === null) {
+        this._ghostRafId = requestAnimationFrame(() => {
+          this._ghostRafId = null;
+          if (this._pendingGhostCursor) this._updateAnchorHover(this._pendingGhostCursor);
+        });
+      }
     });
 
     this._pointerDownHandle = this._view.on('click', (evt) => {
@@ -633,9 +644,18 @@ class DeploymentBuilderEngine {
       if (!mapPt) return;
       const bearing = this._computeBearing(anchor, mapPt);
       const bearingDeg = this._radiansToDegrees(bearing);
-      this._updateGhostPreview(bearing, mapPt);
+      // HUD and status are lightweight — update immediately for responsive feel
       this._showBearingHUD(evt.x, evt.y, bearingDeg);
       this._setStatus(`Bearing: ${Math.round(bearingDeg).toString().padStart(3, '0')}° ${this._bearingToCardinal(bearingDeg)} — click to place`);
+      // Ghost redraw is expensive — throttle to one frame at a time
+      this._pendingGhostBearing = bearing;
+      this._pendingGhostCursor = mapPt;
+      if (this._ghostRafId === null) {
+        this._ghostRafId = requestAnimationFrame(() => {
+          this._ghostRafId = null;
+          this._updateGhostPreview(this._pendingGhostBearing, this._pendingGhostCursor ?? undefined);
+        });
+      }
     });
 
     // Right-click during bearing phase resets to anchor selection
@@ -653,7 +673,13 @@ class DeploymentBuilderEngine {
         if (this._phase !== 'anchor') return;
         const mapPt = this._view!.toMap({ x: evt2.x, y: evt2.y });
         if (!mapPt) return;
-        this._updateAnchorHover(mapPt);
+        this._pendingGhostCursor = mapPt;
+        if (this._ghostRafId === null) {
+          this._ghostRafId = requestAnimationFrame(() => {
+            this._ghostRafId = null;
+            if (this._pendingGhostCursor) this._updateAnchorHover(this._pendingGhostCursor);
+          });
+        }
       });
     });
   }
@@ -770,10 +796,23 @@ class DeploymentBuilderEngine {
       const centroid = this._computeCentroid(planPoints);
       planPoints.forEach(pt => ghostDot(this._offsetPoint(pt, anchor, centroid)));
     } else {
+      // Pre-compute once — avoids per-slot calls to _toProjected, _isProjected, and Math.cos/sin
+      const anchorProj = this._toProjected(anchor);
+      const isProj = this._isProjected();
+      const mpLat = 111320;
+      const mpLon = isProj ? 1 : 111320 * Math.cos((anchorProj.y * Math.PI) / 180);
+      const cosB = Math.cos(bearing);
+      const sinB = Math.sin(bearing);
+      const spacingM = this._spacingMeters;
+
       const symCount = this._countPlanSymbols(this._selectedPlanData);
       for (let i = 0; i < symCount; i++) {
         const slot = formSlots[i % formSlots.length] ?? [0, 0];
-        ghostDot(this._computeFormationPoint(anchor, slot[0], slot[1], bearing, this._spacingMeters));
+        const eM = (slot[0] * cosB + slot[1] * sinB) * spacingM;
+        const nM = (-slot[0] * sinB + slot[1] * cosB) * spacingM;
+        ghostDot(isProj
+          ? { x: anchorProj.x + eM, y: anchorProj.y + nM }
+          : { x: anchorProj.x + eM / mpLon, y: anchorProj.y + nM / mpLat });
       }
     }
 
@@ -1057,6 +1096,15 @@ class DeploymentBuilderEngine {
     const anchor = this._anchorPoint!;
     let slotIndex = 0;
 
+    // Pre-compute anchor projection, trig, and unit-conversion factors once for the whole loop
+    const anchorProj = this._toProjected(anchor);
+    const isProj = this._isProjected();
+    const mpLat = 111320;
+    const mpLon = isProj ? 1 : 111320 * Math.cos((anchorProj.y * Math.PI) / 180);
+    const cosB = Math.cos(bearing);
+    const sinB = Math.sin(bearing);
+    const spacingM = this._spacingMeters;
+
     const projPt = (p: any): { x: number; y: number } =>
       this._toProjected(new Point({ x: p.x, y: p.y, spatialReference: { wkid: 4326 } }));
 
@@ -1092,7 +1140,11 @@ class DeploymentBuilderEngine {
           // Assign one slot per symbol, compute target projected position
           const slot = formSlots[slotIndex % formSlots.length] ?? [0, 0];
           slotIndex++;
-          const slotProj = this._computeFormationPoint(anchor, slot[0], slot[1], bearing, this._spacingMeters);
+          const eM = (slot[0] * cosB + slot[1] * sinB) * spacingM;
+          const nM = (-slot[0] * sinB + slot[1] * cosB) * spacingM;
+          const slotProj = isProj
+            ? { x: anchorProj.x + eM, y: anchorProj.y + nM }
+            : { x: anchorProj.x + eM / mpLon, y: anchorProj.y + nM / mpLat };
 
           const dx = slotProj.x - symCentroid.x;
           const dy = slotProj.y - symCentroid.y;
@@ -1238,6 +1290,10 @@ class DeploymentBuilderEngine {
   // ── Cleanup ────────────────────────────────────────────────────────────────
 
   private _removePointerHandles(): void {
+    if (this._ghostRafId !== null) {
+      cancelAnimationFrame(this._ghostRafId);
+      this._ghostRafId = null;
+    }
     if (this._pointerMoveHandle) {
       this._pointerMoveHandle.remove();
       this._pointerMoveHandle = null;
