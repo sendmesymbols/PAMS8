@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Key Terrain Identifier — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#070809}
+
+    /* ── Left panel — ranked list ─────────────────────────────────────── */
+    #list-panel{
+      position:absolute;top:14px;left:14px;width:272px;z-index:99;
+      background:rgba(7,8,9,0.97);
+      border:1px solid rgba(239,159,39,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh - 28px);display:flex;flex-direction:column;
+    }
+    .lph{
+      padding:9px 12px 8px;
+      border-bottom:1px solid rgba(239,159,39,0.15);
+      background:rgba(239,159,39,0.07);
+      flex-shrink:0;
+    }
+    .lph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#EF9F27;font-weight:700;margin-bottom:1px}
+    .lph-sub{font-size:9px;color:#3a3935;letter-spacing:.05em}
+
+    /* Feature cards in list */
+    #feature-list{overflow-y:auto;flex:1;padding:6px}
+    .fc{
+      background:rgba(255,255,255,0.02);
+      border:0.5px solid var(--color-border-tertiary);
+      border-radius:4px;padding:8px 10px;margin-bottom:5px;
+      cursor:pointer;transition:all .12s;position:relative;
+    }
+    .fc:hover{background:rgba(239,159,39,0.07);border-color:rgba(239,159,39,0.35)}
+    .fc.selected{border-color:#EF9F27;background:rgba(239,159,39,0.10)}
+    .fc-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px}
+    .fc-rank{
+      width:22px;height:22px;border-radius:3px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:11px;font-weight:700;flex-shrink:0;
+    }
+    .fc-name{font-size:12px;font-weight:500;color:var(--color-text-primary);line-height:1.3;flex:1}
+    .fc-type{font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+      color:var(--color-text-tertiary);margin-top:1px}
+    .fc-bars{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:5px}
+    .fc-bar{display:flex;flex-direction:column;gap:2px}
+    .fc-bar-label{font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:#3a3935}
+    .fc-bar-track{height:3px;background:rgba(255,255,255,0.06);border-radius:2px}
+    .fc-bar-fill{height:100%;border-radius:2px;transition:width .3s}
+    .fc-bar-val{font-size:9px;color:var(--color-text-secondary)}
+    .fc-assessment{font-size:10px;color:var(--color-text-tertiary);line-height:1.5;
+      border-top:0.5px solid rgba(255,255,255,0.06);padding-top:5px;margin-top:2px}
+    .fc-score-badge{
+      position:absolute;top:8px;right:8px;
+      font-size:13px;font-weight:700;
+    }
+
+    #list-empty{
+      padding:20px 12px;font-size:10px;color:#3a3935;letter-spacing:.06em;
+      text-align:center;line-height:1.7;
+    }
+
+    /* ── Right panel — controls ───────────────────────────────────────── */
+    #ctrl-panel{
+      position:absolute;top:14px;right:14px;width:290px;z-index:99;
+      background:rgba(7,8,9,0.97);
+      border:1px solid rgba(239,159,39,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh - 28px);overflow-y:auto;
+    }
+    .ph{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;
+      border-bottom:1px solid rgba(239,159,39,0.15);
+      background:rgba(239,159,39,0.07);
+      position:sticky;top:0;z-index:2;
+    }
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#EF9F27;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#3a3935;transition:color .2s}
+    .ph-status.sampling{color:#EF9F27}
+    .ph-status.scoring {color:#378ADD}
+    .ph-status.done    {color:#1D9E75}
+    .ph-status.ready   {color:#EF9F27}
+
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+      color:#3a3935;padding:9px 12px 5px}
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s;
+    }
+    input:focus,select:focus{border-color:rgba(239,159,39,0.55)}
+    select option{background:#141618}
+
+    .psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+    .psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;flex:1.8}
+    .psr input[type=range]{flex:2;accent-color:#EF9F27;cursor:pointer}
+    .psr-v{font-size:10px;color:#EF9F27;min-width:36px;text-align:right}
+
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#EF9F27;width:13px;height:13px;cursor:pointer}
+
+    /* Overlay display toggles */
+    .overlay-row{display:flex;gap:5px;padding:0 12px 9px}
+    .ov-btn{
+      flex:1;padding:5px 4px;font-size:9px;letter-spacing:.05em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;border:1px solid rgba(255,255,255,0.12);
+      background:transparent;color:#888780;font-family:'Courier New',monospace;
+      transition:all .13s;
+    }
+    .ov-btn.on{border-color:rgba(239,159,39,0.6);color:#EF9F27;
+      background:rgba(239,159,39,0.10)}
+
+    /* Progress */
+    #prog-wrap{padding:0 12px 9px}
+    #prog-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+    #prog-fill{height:100%;background:linear-gradient(to right,#EF9F27,#378ADD);
+      border-radius:2px;width:0%;transition:width .1s}
+    #prog-label{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:4px}
+
+    /* Score breakdown */
+    #score-grid{
+      display:grid;grid-template-columns:1fr 1fr;gap:5px 8px;
+      margin:0 12px 8px;
+      background:rgba(239,159,39,0.05);border:1px solid rgba(239,159,39,0.15);
+      border-radius:3px;padding:7px 9px;font-size:10px;
+    }
+    .sg{display:flex;flex-direction:column;gap:1px}
+    .sg-l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935}
+    .sg-v{color:#EF9F27}
+
+    /* Buttons */
+    .pb-row{display:flex;gap:6px;padding:9px 12px}
+    .pb{
+      flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;
+      border:1px solid rgba(239,159,39,0.38);
+      background:transparent;color:#EF9F27;transition:all .14s;
+    }
+    .pb:hover:not(:disabled){background:rgba(239,159,39,0.10)}
+    .pb.primary{background:rgba(239,159,39,0.16);border-color:#EF9F27}
+    .pb.primary:hover:not(:disabled){background:rgba(239,159,39,0.28)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+
+    /* Hint */
+    #hint{
+      position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(7,8,9,0.94);border:1px solid rgba(239,159,39,0.45);
+      color:#EF9F27;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase;
+    }
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<!-- ── LEFT — ranked feature list ─────────────────────────────────────── -->
+<div id="list-panel">
+  <div class="lph">
+    <div class="lph-title">▲ Key Terrain — Ranked</div>
+    <div class="lph-sub" id="list-sub">Run analysis to identify features</div>
+  </div>
+  <div id="feature-list">
+    <div id="list-empty">
+      Set the analysis area in the right panel, then click<br>
+      <strong style="color:#EF9F27">Run Analysis</strong><br><br>
+      Features are ranked by composite score:<br>
+      elevation prominence + viewshed coverage<br>+ tactical type weight
+    </div>
+  </div>
+</div>
+
+<!-- ── RIGHT — controls ───────────────────────────────────────────────── -->
+<div id="ctrl-panel">
+  <div class="ph">
+    <div class="ph-title">⬡ Key Terrain Identifier</div>
+    <div class="ph-status ready" id="status">Ready</div>
+  </div>
+
+  <!-- Analysis area -->
+  <div class="ps">Analysis area</div>
+  <div class="pg">
+    <div class="pf">
+      <div class="pl">Centre lat</div>
+      <input id="inp-lat" type="number" value="33.680" step="0.001"/>
+    </div>
+    <div class="pf">
+      <div class="pl">Centre lon</div>
+      <input id="inp-lon" type="number" value="73.060" step="0.001"/>
+    </div>
+    <div class="pf full">
+      <div class="pl">Radius (m)</div>
+      <select id="inp-radius">
+        <option value="2000">2 km — position-level</option>
+        <option value="4000" selected>4 km — company-level</option>
+        <option value="8000">8 km — battalion-level</option>
+        <option value="15000">15 km — brigade-level</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Grid resolution -->
+  <div class="ps">Resolution & sensitivity</div>
+  <div class="pg">
+    <div class="pf full">
+      <div class="pl">Grid cell size (m)</div>
+      <select id="inp-cell">
+        <option value="20">20 m — fine (slower)</option>
+        <option value="40" selected>40 m — balanced</option>
+        <option value="70">70 m — fast</option>
+      </select>
+    </div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Peak sensitivity</div>
+    <input id="inp-sens" type="range" min="1" max="10" step="1" value="5"/>
+    <div class="psr-v" id="sens-v">5</div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Max features</div>
+    <input id="inp-maxfeat" type="range" min="5" max="30" step="1" value="15"/>
+    <div class="psr-v" id="maxfeat-v">15</div>
+  </div>
+
+  <!-- Feature types to find -->
+  <div class="ps">Feature types</div>
+  <div class="ptr"><label>Dominant ground (hilltops)</label>
+    <input id="opt-hills" type="checkbox" checked/></div>
+  <div class="ptr"><label>Saddles / passes</label>
+    <input id="opt-saddles" type="checkbox" checked/></div>
+  <div class="ptr"><label>Re-entrants / avenues</label>
+    <input id="opt-reents" type="checkbox" checked/></div>
+  <div class="ptr"><label>Spurs / flank positions</label>
+    <input id="opt-spurs" type="checkbox" checked/></div>
+
+  <!-- Overlay display -->
+  <div class="pdiv"/>
+  <div class="ps">Overlay</div>
+  <div class="overlay-row">
+    <button class="ov-btn on" data-ov="curvature">Curvature</button>
+    <button class="ov-btn on" data-ov="markers">Markers</button>
+    <button class="ov-btn"    data-ov="viewshed">Top viewshed</button>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Overlay opacity</div>
+    <input id="inp-opa" type="range" min="0.2" max="1.0" step="0.05" value="0.65"/>
+    <div class="psr-v" id="opa-v">0.65</div>
+  </div>
+
+  <div class="pdiv"/>
+
+  <!-- Score breakdown -->
+  <div id="score-grid">
+    <div class="sg"><div class="sg-l">Features found</div><div class="sg-v" id="sg-found">—</div></div>
+    <div class="sg"><div class="sg-l">Area (km²)</div><div class="sg-v" id="sg-area">—</div></div>
+    <div class="sg"><div class="sg-l">Highest elev</div><div class="sg-v" id="sg-elev">—</div></div>
+    <div class="sg"><div class="sg-l">Relief (m)</div><div class="sg-v" id="sg-relief">—</div></div>
+  </div>
+
+  <!-- Progress -->
+  <div id="prog-wrap">
+    <div id="prog-track"><div id="prog-fill"></div></div>
+    <div id="prog-label">—</div>
+  </div>
+
+  <div class="pb-row">
+    <button class="pb"         id="btn-clear">Clear</button>
+    <button class="pb primary" id="btn-run">Run Analysis ↗</button>
+  </div>
+
+</div>
+
+<div id="hint" style="display:none">Click map to re-centre the analysis area</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map",
+  "esri/views/SceneView",
+  "esri/layers/GraphicsLayer",
+  "esri/layers/MediaLayer",
+  "esri/layers/support/ExtentAndRotationGeoreference",
+  "esri/layers/support/ImageElement",
+  "esri/Graphic",
+  "esri/geometry/Point",
+  "esri/geometry/Extent",
+  "esri/geometry/Polyline",
+  "esri/geometry/Polygon",
+  "esri/geometry/geometryEngine",
+], function(
+  Map, SceneView, GraphicsLayer, MediaLayer,
+  ExtentAndRotationGeoreference, ImageElement,
+  Graphic, Point, Extent, Polyline, Polygon, geometryEngine
+) {
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // FEATURE TYPE DEFINITIONS
+  // Each type has: tactical weight, colour, icon char, descriptor
+  // ═══════════════════════════════════════════════════════════════════════
+  const FEATURE_TYPES = {
+    dominant_ground: {
+      label:'Dominant ground', short:'DOMGND',
+      weight:1.0, color:[220,60,48],
+      icon:'▲', hexColor:'#DC3C30',
+      assessment: pt => `Controls ${Math.round(pt.viewshedPct)}% of AO. Seizure gives observation and fires over all lower ground. Must be held or denied.`,
+    },
+    ridge: {
+      label:'Ridge / crest', short:'RIDGE',
+      weight:0.85, color:[239,159,39],
+      icon:'≡', hexColor:'#EF9F27',
+      assessment: pt => `Linear high ground ${Math.round(pt.elevation)}m. Good defensive line — perpendicular to likely axis of advance. Enfilade fires along ${Math.round(pt.ridgeBearing ?? 0)}°.`,
+    },
+    saddle: {
+      label:'Saddle / pass', short:'SADDLE',
+      weight:0.90, color:[55,138,221],
+      icon:'⊓', hexColor:'#378ADD',
+      assessment: pt => `Gap in high ground at ${Math.round(pt.elevation)}m. Controls movement through the terrain mass. Blocking position here affects all movement in sector.`,
+    },
+    re_entrant: {
+      label:'Re-entrant / avenue', short:'REENT',
+      weight:0.80, color:[29,158,117],
+      icon:'↓', hexColor:'#1D9E75',
+      assessment: pt => `Concave terrain channel — ${Math.round(pt.depth)}m deep. Natural avenue of approach. Enemy dismounts will use this at night. Requires observation or obstacles.`,
+    },
+    spur: {
+      label:'Spur / finger', short:'SPUR',
+      weight:0.70, color:[180,40,220],
+      icon:'↗', hexColor:'#B428DC',
+      assessment: pt => `Spur extending from high ground at ${Math.round(pt.elevation)}m. Flanking fire position. Screens dead ground on both sides of feature.`,
+    },
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // GEODETIC HELPERS
+  // ═══════════════════════════════════════════════════════════════════════
+  const EARTH_R   = 6_371_008.8;
+  const M_PER_DEG = 111_320;
+
+  function destPt(lon, lat, brg, dist) {
+    const δ=dist/EARTH_R, θ=brg*Math.PI/180;
+    const φ1=lat*Math.PI/180, λ1=lon*Math.PI/180;
+    const φ2=Math.asin(Math.sin(φ1)*Math.cos(δ)+Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+    const λ2=λ1+Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1),Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+    return { longitude:λ2*180/Math.PI, latitude:φ2*180/Math.PI };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STEP 1 — SAMPLE DEM INTO GRID
+  // Returns Float32Array[rows×cols] of elevation values (m MSL)
+  // ═══════════════════════════════════════════════════════════════════════
+  async function sampleGrid(view, extent, cols, rows) {
+    const sampler = await view.createElevationSampler(extent, { noDataValue: 0 });
+    const dLon = (extent.xmax - extent.xmin) / cols;
+    const dLat = (extent.ymax - extent.ymin) / rows;
+    const grid  = new Float32Array(cols * rows);
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const lon = extent.xmin + (c + 0.5) * dLon;
+        const lat = extent.ymax - (r + 0.5) * dLat;
+        const z   = sampler.queryElevation(
+          new Point({ longitude:lon, latitude:lat, spatialReference:{wkid:4326} })
+        )?.z ?? 0;
+        grid[r*cols+c] = z;
+      }
+    }
+    return { grid, sampler };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STEP 2 — GAUSSIAN SMOOTH (5×5 kernel)
+  // Reduces noise before curvature and peak detection.
+  // Sigma ≈ 1.0 — smooths over ~3–5 cells without losing major features.
+  // ═══════════════════════════════════════════════════════════════════════
+  function gaussianSmooth(grid, cols, rows) {
+    // 5×5 Gaussian kernel, σ=1.0, normalised
+    const K = [
+      0.003, 0.013, 0.022, 0.013, 0.003,
+      0.013, 0.059, 0.097, 0.059, 0.013,
+      0.022, 0.097, 0.159, 0.097, 0.022,
+      0.013, 0.059, 0.097, 0.059, 0.013,
+      0.003, 0.013, 0.022, 0.013, 0.003,
+    ];
+    const smooth = new Float32Array(cols * rows);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        let v = 0, w = 0;
+        for (let kr = -2; kr <= 2; kr++) {
+          for (let kc = -2; kc <= 2; kc++) {
+            const rr = r+kr, cc = c+kc;
+            if (rr<0||rr>=rows||cc<0||cc>=cols) continue;
+            const ki = (kr+2)*5+(kc+2);
+            v += K[ki] * grid[rr*cols+cc];
+            w += K[ki];
+          }
+        }
+        smooth[r*cols+c] = w > 0 ? v/w : grid[r*cols+c];
+      }
+    }
+    return smooth;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STEP 3 — LAPLACIAN CURVATURE
+  // ∇²f ≈ (f[r-1,c] + f[r+1,c] + f[r,c-1] + f[r,c+1] - 4·f[r,c]) / h²
+  //
+  // Positive curvature → convex surface (hilltop, ridge)
+  // Negative curvature → concave surface (valley, re-entrant)
+  // Near-zero curvature → planar slope
+  //
+  // We also compute plan vs profile curvature to distinguish
+  // elongated ridges from point peaks:
+  //   plan curvature  = curvature in the horizontal direction (ridge vs round hill)
+  //   profile curvature = curvature along the slope direction
+  // ═══════════════════════════════════════════════════════════════════════
+  function computeCurvature(smooth, cols, rows, cellM) {
+    const h2 = cellM * cellM;
+    const laplacian   = new Float32Array(cols * rows);
+    const planCurv    = new Float32Array(cols * rows);  // positive = ridge
+    const profileCurv = new Float32Array(cols * rows);  // positive = convex slope
+
+    for (let r = 1; r < rows-1; r++) {
+      for (let c = 1; c < cols-1; c++) {
+        const i   = r*cols+c;
+        const fN  = smooth[(r-1)*cols+c];
+        const fS  = smooth[(r+1)*cols+c];
+        const fE  = smooth[r*cols+c+1];
+        const fW  = smooth[r*cols+c-1];
+        const fC  = smooth[i];
+        const fNE = smooth[(r-1)*cols+c+1];
+        const fNW = smooth[(r-1)*cols+c-1];
+        const fSE = smooth[(r+1)*cols+c+1];
+        const fSW = smooth[(r+1)*cols+c-1];
+
+        // Standard Laplacian
+        laplacian[i] = (fN + fS + fE + fW - 4*fC) / h2;
+
+        // Slope components
+        const dZdx = (fE - fW) / (2 * cellM);
+        const dZdy = (fN - fS) / (2 * cellM);
+        const slope2 = dZdx*dZdx + dZdy*dZdy;
+
+        // Second derivatives
+        const d2Zdx2 = (fE + fW - 2*fC) / h2;
+        const d2Zdy2 = (fN + fS - 2*fC) / h2;
+        const d2Zdxy = (fNE - fNW - fSE + fSW) / (4*h2);
+
+        if (slope2 > 1e-8) {
+          // Plan curvature (across slope): positive = concave across, ridge-like
+          planCurv[i] = -(dZdx*dZdx*d2Zdy2 - 2*dZdx*dZdy*d2Zdxy + dZdy*dZdy*d2Zdx2)
+                        / Math.pow(slope2, 1.5);
+          // Profile curvature (down slope): positive = convex downslope
+          profileCurv[i] = -(dZdx*dZdx*d2Zdx2 + 2*dZdx*dZdy*d2Zdxy + dZdy*dZdy*d2Zdy2)
+                           / (slope2 * Math.sqrt(1 + slope2));
+        }
+      }
+    }
+    return { laplacian, planCurv, profileCurv };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STEP 4 — LOCAL RELIEF / PROMINENCE
+  // For each cell, compute:
+  //   prominence = elevation - min(elevation in R-cell neighbourhood)
+  // This measures how much a point stands above its surroundings.
+  // High prominence = significant terrain feature, not just a slope.
+  // Uses a ring-shaped neighbourhood to avoid the cell's own elevation
+  // dominating the result.
+  // ═══════════════════════════════════════════════════════════════════════
+  function computeProminence(grid, cols, rows, radiusCells) {
+    const prominence = new Float32Array(cols * rows);
+    const rc = Math.max(2, Math.round(radiusCells));
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const elev = grid[r*cols+c];
+        let minSurr = Infinity;
+
+        for (let dr = -rc; dr <= rc; dr++) {
+          for (let dc = -rc; dc <= rc; dc++) {
+            const dist = Math.sqrt(dr*dr+dc*dc);
+            if (dist < rc*0.5 || dist > rc) continue; // ring only
+            const rr = r+dr, cc = c+dc;
+            if (rr<0||rr>=rows||cc<0||cc>=cols) continue;
+            const v = grid[rr*cols+cc];
+            if (v < minSurr) minSurr = v;
+          }
+        }
+        prominence[r*cols+c] = minSurr < Infinity ? elev - minSurr : 0;
+      }
+    }
+    return prominence;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STEP 5 — PEAK & FEATURE DETECTION
+  // ─────────────────────────────────────────────────────────────────────
+  // Find local maxima in the smoothed elevation grid using non-maximum
+  // suppression within a suppression radius.
+  // Also detect saddle points (local minima along one axis, maxima along
+  // the other) and re-entrant heads (concave curvature local minima).
+  // ─────────────────────────────────────────────────────────────────────
+  // Classification logic:
+  //   HIGH elevation + HIGH laplacian + HIGH prominence
+  //     → dominant_ground (hilltop) or spur (elongated ridge direction)
+  //   HIGH prominence + NEGATIVE laplacian in one direction
+  //     → saddle (local min in col or row but surrounded by higher)
+  //   LOW elevation local min + NEGATIVE laplacian
+  //     → re_entrant (valley head)
+  //   Positive plan curvature (linear ridge)
+  //     → ridge
+  // ═══════════════════════════════════════════════════════════════════════
+  function detectFeatures(smooth, grid, laplacian, planCurv, profileCurv,
+                          prominence, cols, rows, cellM, opts) {
+    const { sensitivity, maxFeatures, wantHills, wantSaddles, wantReents, wantSpurs } = opts;
+
+    const suppRadius = Math.max(3, Math.round(8 / sensitivity * 3));
+    const features   = [];
+    const suppressed = new Uint8Array(cols * rows);
+
+    // ── Helper: suppressed? ─────────────────────────────────────────────
+    const isSuppressed = (r, c) => suppressed[r*cols+c] === 1;
+    const suppress = (r, c, rad) => {
+      for (let dr=-rad; dr<=rad; dr++)
+        for (let dc=-rad; dc<=rad; dc++) {
+          if (Math.sqrt(dr*dr+dc*dc) > rad) continue;
+          const rr=r+dr, cc=c+dc;
+          if (rr>=0&&rr<rows&&cc>=0&&cc<cols)
+            suppressed[rr*cols+cc] = 1;
+        }
+    };
+
+    // ── Normalise arrays for comparisons ────────────────────────────────
+    let maxProm=0, minElev=Infinity, maxElev=-Infinity;
+    for (let i=0; i<cols*rows; i++) {
+      if (prominence[i]>maxProm) maxProm=prominence[i];
+      if (grid[i]<minElev) minElev=grid[i];
+      if (grid[i]>maxElev) maxElev=grid[i];
+    }
+    const relief     = maxElev - minElev || 1;
+    const promThresh = maxProm * (0.12 / sensitivity * 5);  // sensitivity scales threshold
+
+    // ── Collect candidate peaks (local maxima in smooth grid) ───────────
+    const candidates = [];
+
+    for (let r = suppRadius; r < rows-suppRadius; r++) {
+      for (let c = suppRadius; c < cols-suppRadius; c++) {
+        const i    = r*cols+c;
+        const elev = smooth[i];
+        const prom = prominence[i];
+        const lap  = laplacian[i];
+        const plan = planCurv[i];
+        const prof = profileCurv[i];
+
+        // Skip border and low-prominence cells
+        if (prom < promThresh) continue;
+
+        // Is this a local maximum in smooth elevation?
+        let isLocalMax = true;
+        for (let dr=-2; dr<=2&&isLocalMax; dr++)
+          for (let dc=-2; dc<=2&&isLocalMax; dc++) {
+            if (dr===0&&dc===0) continue;
+            if (smooth[(r+dr)*cols+(c+dc)] > elev) isLocalMax = false;
+          }
+
+        // Is this a local minimum (saddle/re-entrant)?
+        let isLocalMin = true;
+        for (let dr=-2; dr<=2&&isLocalMin; dr++)
+          for (let dc=-2; dc<=2&&isLocalMin; dc++) {
+            if (dr===0&&dc===0) continue;
+            if (smooth[(r+dr)*cols+(c+dc)] < elev) isLocalMin = false;
+          }
+
+        let type = null;
+        let typeScore = 0;
+
+        if (isLocalMax && wantHills) {
+          // Check if it's elongated (ridge/spur) or round (dominant ground)
+          // Ridge: high positive plan curvature in a particular direction
+          // Round peak: high prominence, low plan curvature magnitude
+          const absElev   = (elev - minElev) / relief;
+          const absProm   = prom / (maxProm || 1);
+          const planAbs   = Math.abs(plan);
+
+          if (absElev > 0.60 && absProm > 0.4) {
+            type      = 'dominant_ground';
+            typeScore = absElev * 0.5 + absProm * 0.5;
+          } else if (planAbs > 0.001 && absProm > 0.25 && wantSpurs) {
+            type      = plan > 0 ? 'ridge' : 'spur';
+            typeScore = absProm * 0.6 + (elev-minElev)/relief * 0.4;
+          } else if (wantSpurs) {
+            type      = 'spur';
+            typeScore = absProm * 0.5 + (elev-minElev)/relief * 0.5;
+          }
+        }
+
+        // Saddle: local min in one direction, max in other
+        if (!type && wantSaddles) {
+          const minN = smooth[(r-1)*cols+c], minS = smooth[(r+1)*cols+c];
+          const minE = smooth[r*cols+c+1],   minW = smooth[r*cols+c-1];
+          const isMinNS = elev < minN && elev < minS;
+          const isMinEW = elev < minE && elev < minW;
+          const isMaxNS = elev > minN && elev > minS;
+          const isMaxEW = elev > minE && elev > minW;
+
+          if ((isMinNS && isMaxEW) || (isMinEW && isMaxNS)) {
+            type      = 'saddle';
+            typeScore = 0.5 + (elev - minElev)/relief * 0.5;
+          }
+        }
+
+        // Re-entrant: local minimum, concave curvature (negative laplacian)
+        if (!type && isLocalMin && lap < -0.0005 && wantReents) {
+          type      = 're_entrant';
+          typeScore = 0.3 + prom/maxProm * 0.4;
+        }
+
+        if (type) {
+          candidates.push({ r, c, type, typeScore, elev, prom, lap, plan, prof });
+        }
+      }
+    }
+
+    // ── Sort by type score × type weight, apply NMS ─────────────────────
+    candidates.sort((a,b) => {
+      const sa = a.typeScore * (FEATURE_TYPES[a.type]?.weight ?? 0.5);
+      const sb = b.typeScore * (FEATURE_TYPES[b.type]?.weight ?? 0.5);
+      return sb - sa;
+    });
+
+    for (const cand of candidates) {
+      if (features.length >= maxFeatures) break;
+      if (isSuppressed(cand.r, cand.c)) continue;
+      features.push(cand);
+      suppress(cand.r, cand.c, suppRadius);
+    }
+
+    return { features, minElev, maxElev, relief };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STEP 6 — PER-FEATURE VIEWSHED SCORING
+  // ─────────────────────────────────────────────────────────────────────
+  // For each feature, cast 36 rays at 10° intervals out to the analysis
+  // radius.  Count cells visible vs total.  This is the fast horizon-sweep
+  // algorithm (same as Dead Ground Mapper) but applied from each feature
+  // rather than from a user-placed observer.
+  //
+  // Score = visible cells / (numRays × numSteps)
+  //
+  // The score is normalised against the highest-scoring feature to give
+  // relative rather than absolute viewshed values.  A dominant_ground
+  // feature that sees 70% of the AO should score higher than a re-entrant
+  // that sees 15%.
+  // ═══════════════════════════════════════════════════════════════════════
+  async function scoreViewsheds(features, sampler, extent, cols, rows, cellM, radiusM) {
+    const dLon  = (extent.xmax - extent.xmin) / cols;
+    const dLat  = (extent.ymax - extent.ymin) / rows;
+    const NUM_RAYS = 36;
+    const STEP_M   = Math.max(cellM, 40);
+    const numSteps = Math.ceil(radiusM / STEP_M);
+
+    for (const feat of features) {
+      const lon = extent.xmin + (feat.c + 0.5) * dLon;
+      const lat = extent.ymax - (feat.r + 0.5) * dLat;
+      const obsZ = feat.elev + 1.5;    // 1.5m eye height
+
+      let visible = 0, total = 0;
+
+      for (let ri = 0; ri < NUM_RAYS; ri++) {
+        const bearing    = (ri / NUM_RAYS) * 360;
+        let maxSlopeDeg  = -90;
+
+        for (let s = 1; s <= numSteps; s++) {
+          const dist = s * STEP_M;
+          const { longitude, latitude } = destPt(lon, lat, bearing, dist);
+          const pt  = new Point({ longitude, latitude, spatialReference:{wkid:4326} });
+          const z   = sampler.queryElevation(pt)?.z ?? 0;
+          const slp = Math.atan2(z - obsZ, dist) * 180 / Math.PI;
+          total++;
+          if (slp >= maxSlopeDeg) { visible++; maxSlopeDeg = slp; }
+        }
+      }
+
+      feat.lon          = lon;
+      feat.lat          = lat;
+      feat.viewshedRaw  = total > 0 ? visible / total : 0;
+      feat.viewshedPct  = Math.round(feat.viewshedRaw * 100);
+
+      // Re-entrant depth (negative prominence)
+      if (feat.type === 're_entrant') {
+        feat.depth = Math.abs(feat.prom);
+      }
+    }
+
+    // Normalise viewshed scores (0–1) relative to best feature
+    const maxVs = Math.max(0.01, ...features.map(f => f.viewshedRaw));
+    features.forEach(f => {
+      f.viewshedNorm = f.viewshedRaw / maxVs;
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STEP 7 — COMPOSITE SCORE
+  // weights: prominence 35%, viewshed 40%, elevation 15%, type 10%
+  // ═══════════════════════════════════════════════════════════════════════
+  function scoreFeatures(features, minElev, maxElev) {
+    const maxProm = Math.max(1, ...features.map(f => f.prom));
+    const relief  = Math.max(1, maxElev - minElev);
+
+    features.forEach(f => {
+      const promScore  = f.prom / maxProm;
+      const vsScore    = f.viewshedNorm;
+      const elevScore  = (f.elev - minElev) / relief;
+      const typeWeight = FEATURE_TYPES[f.type]?.weight ?? 0.5;
+
+      f.compositeScore = Math.round(100 * (
+        promScore  * 0.35 +
+        vsScore    * 0.40 +
+        elevScore  * 0.15 +
+        typeWeight * 0.10
+      ));
+    });
+
+    features.sort((a,b) => b.compositeScore - a.compositeScore);
+    features.forEach((f,i) => f.rank = i + 1);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CURVATURE HEATMAP — MediaLayer canvas, same pattern as Dead Ground
+  // Blue = concave (valleys), neutral = planar, amber/red = convex (peaks)
+  // ═══════════════════════════════════════════════════════════════════════
+  function buildCurvatureHeatmap(laplacian, cols, rows, extent, opacity) {
+    // Normalise laplacian to [-1, 1]
+    let maxAbs = 0;
+    for (let i=0; i<laplacian.length; i++) {
+      if (Math.abs(laplacian[i]) > maxAbs) maxAbs = Math.abs(laplacian[i]);
+    }
+    maxAbs = maxAbs || 1;
+
+    const canvas  = document.createElement('canvas');
+    canvas.width  = cols; canvas.height = rows;
+    const ctx     = canvas.getContext('2d');
+    const imgData = ctx.createImageData(cols, rows);
+
+    for (let i=0; i<cols*rows; i++) {
+      const t   = laplacian[i] / maxAbs;  // -1 to +1
+      const px  = i * 4;
+      if (Math.abs(t) < 0.05) {
+        imgData.data[px+3] = 0;  // planar — transparent
+        continue;
+      }
+      if (t > 0) {
+        // Convex (peaks, ridges): amber → dark red
+        const tt = Math.min(1, t * 3);
+        imgData.data[px]   = Math.round(220 - tt*40);
+        imgData.data[px+1] = Math.round(60  - tt*40);
+        imgData.data[px+2] = Math.round(48  - tt*30);
+      } else {
+        // Concave (valleys): blue → cyan
+        const tt = Math.min(1, -t * 3);
+        imgData.data[px]   = Math.round(24  + tt*31);
+        imgData.data[px+1] = Math.round(95  + tt*43);
+        imgData.data[px+2] = Math.round(165 + tt*56);
+      }
+      imgData.data[px+3] = Math.round(opacity * 200 * Math.min(1, Math.abs(t)*4));
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    const dataURL = canvas.toDataURL('image/png');
+
+    return new MediaLayer({
+      source: [new ImageElement({
+        image: dataURL,
+        georeference: new ExtentAndRotationGeoreference({ extent }),
+      })],
+      title: 'Terrain curvature',
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // FEATURE MARKERS — numbered 3D sphere + label in GraphicsLayer
+  // ═══════════════════════════════════════════════════════════════════════
+  function buildFeatureMarkers(features) {
+    const graphics = [];
+
+    features.forEach(feat => {
+      const ft  = FEATURE_TYPES[feat.type];
+      const [r,g,b] = ft.color;
+
+      // 3D sphere marker
+      graphics.push(new Graphic({
+        geometry: new Point({
+          longitude: feat.lon, latitude: feat.lat,
+          spatialReference: { wkid:4326 },
+        }),
+        symbol: {
+          type: 'point-3d',
+          symbolLayers: [{
+            type: 'object',
+            resource: { primitive: feat.type==='saddle'?'cylinder':feat.type==='re_entrant'?'diamond':'sphere' },
+            material: { color:[r,g,b,0.95] },
+            width:  feat.rank===1 ? 120 : 80,
+            height: feat.rank===1 ? 120 : 80,
+            depth:  feat.rank===1 ? 120 : 80,
+          }],
+          verticalOffset: {
+            screenLength: feat.rank===1 ? 36 : 24,
+            maxWorldLength: 2000, minWorldLength: 8,
+          },
+        },
+        attributes: {
+          type:  `#${feat.rank} — ${ft.label}`,
+          label: `Score: ${feat.compositeScore}  |  Elev: ${Math.round(feat.elev)}m  |  Viewshed: ${feat.viewshedPct}%`,
+          rank:  feat.rank,
+          feat:  feat.type,
+        },
+      }));
+
+      // Rank number label
+      graphics.push(new Graphic({
+        geometry: new Point({
+          longitude: feat.lon, latitude: feat.lat, spatialReference:{ wkid:4326 },
+        }),
+        symbol: {
+          type: 'text',
+          text: String(feat.rank),
+          color: [255,255,255,255],
+          haloColor: [r,g,b,255],
+          haloSize: 2.5,
+          font: { family:'Courier New', size:11, weight:'bold' },
+          horizontalAlignment: 'center',
+          verticalAlignment: 'middle',
+          yoffset: feat.rank===1 ? 24 : 16,
+        },
+        attributes: { type:'rank_label', rank:feat.rank },
+      }));
+    });
+
+    return graphics;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // FAST VIEWSHED GRAPHIC for the top-ranked feature
+  // (same colour scheme as Dead Ground Mapper — quick visible/invisible fill)
+  // ═══════════════════════════════════════════════════════════════════════
+  function buildTopViewshedGraphic(topFeat, extent, cols, rows, grid, sampler, cellM) {
+    const dLon  = (extent.xmax - extent.xmin) / cols;
+    const dLat  = (extent.ymax - extent.ymin) / rows;
+    const STEP  = Math.max(cellM, 40);
+    const obsZ  = topFeat.elev + 1.5;
+    const canvas= document.createElement('canvas');
+    canvas.width=cols; canvas.height=rows;
+    const ctx   = canvas.getContext('2d');
+    const imgD  = ctx.createImageData(cols, rows);
+
+    // Pre-compute horizon per bearing at 2° resolution
+    const horizons = {};
+    for (let deg = 0; deg < 360; deg += 2) {
+      let maxSlope = -90;
+      for (let d = STEP; d <= 12000; d += STEP) {
+        const { longitude, latitude } = destPt(topFeat.lon, topFeat.lat, deg, d);
+        const z   = sampler.queryElevation(new Point({longitude,latitude,spatialReference:{wkid:4326}}))?.z ?? 0;
+        const slp = Math.atan2(z - obsZ, d) * 180 / Math.PI;
+        if (slp > maxSlope) maxSlope = slp;
+      }
+      horizons[deg] = maxSlope;
+    }
+
+    for (let row=0; row<rows; row++) {
+      for (let col=0; col<cols; col++) {
+        const lon   = extent.xmin + (col+0.5)*dLon;
+        const lat   = extent.ymax - (row+0.5)*dLat;
+        const east  = (lon-topFeat.lon)*M_PER_DEG*Math.cos(topFeat.lat*Math.PI/180);
+        const north = (lat-topFeat.lat)*M_PER_DEG;
+        const dist  = Math.sqrt(east*east+north*north);
+        if (dist < 5 || dist > 12000) continue;
+        const brg   = ((Math.atan2(east,north)*180/Math.PI)+360)%360;
+        const bKey  = Math.round(brg/2)*2 % 360;
+        const terrZ = grid[row*cols+col];
+        const slp   = Math.atan2(terrZ - obsZ, dist) * 180 / Math.PI;
+        const px    = (row*cols+col)*4;
+        if (slp >= (horizons[bKey]??-90)) {
+          imgD.data[px]=29; imgD.data[px+1]=158; imgD.data[px+2]=117; imgD.data[px+3]=70;
+        }
+      }
+    }
+    ctx.putImageData(imgD,0,0);
+
+    return new MediaLayer({
+      source:[new ImageElement({
+        image: canvas.toDataURL('image/png'),
+        georeference: new ExtentAndRotationGeoreference({ extent }),
+      })],
+      title:'Top feature viewshed',
+      opacity:0.7,
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // RANKED LIST UI
+  // ═══════════════════════════════════════════════════════════════════════
+  function renderFeatureList(features, minElev, maxElev) {
+    const list = document.getElementById('feature-list');
+    list.innerHTML = '';
+    const relief  = Math.max(1, maxElev - minElev);
+    const maxProm = Math.max(1, ...features.map(f=>f.prom));
+
+    document.getElementById('list-sub').textContent =
+      `${features.length} features ranked by tactical value`;
+
+    features.forEach(feat => {
+      const ft   = FEATURE_TYPES[feat.type];
+      const card = document.createElement('div');
+      card.className = 'fc';
+      card.dataset.rank = feat.rank;
+
+      const promPct = Math.round(feat.prom / maxProm * 100);
+      const elevPct = Math.round((feat.elev - minElev) / relief * 100);
+
+      card.innerHTML = `
+        <div class="fc-score-badge" style="color:${ft.hexColor}">${feat.compositeScore}</div>
+        <div class="fc-top">
+          <div class="fc-rank" style="background:${ft.hexColor}22;color:${ft.hexColor};border:1px solid ${ft.hexColor}55">
+            ${feat.rank}
+          </div>
+          <div>
+            <div class="fc-name">${ft.icon} ${ft.label}</div>
+            <div class="fc-type">${Math.round(feat.elev)} m MSL &nbsp;·&nbsp; ${feat.viewshedPct}% visible</div>
+          </div>
+        </div>
+        <div class="fc-bars">
+          <div class="fc-bar">
+            <div class="fc-bar-label">Prominence</div>
+            <div class="fc-bar-track"><div class="fc-bar-fill" style="width:${promPct}%;background:${ft.hexColor}"></div></div>
+            <div class="fc-bar-val">${Math.round(feat.prom)}m</div>
+          </div>
+          <div class="fc-bar">
+            <div class="fc-bar-label">Viewshed</div>
+            <div class="fc-bar-track"><div class="fc-bar-fill" style="width:${feat.viewshedPct}%;background:#378ADD"></div></div>
+            <div class="fc-bar-val">${feat.viewshedPct}%</div>
+          </div>
+          <div class="fc-bar">
+            <div class="fc-bar-label">Elevation</div>
+            <div class="fc-bar-track"><div class="fc-bar-fill" style="width:${elevPct}%;background:#1D9E75"></div></div>
+            <div class="fc-bar-val">${Math.round(feat.elev)}m</div>
+          </div>
+        </div>
+        <div class="fc-assessment">${ft.assessment(feat)}</div>
+      `;
+
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.fc').forEach(c=>c.classList.remove('selected'));
+        card.classList.add('selected');
+        view.goTo({
+          center:[feat.lon, feat.lat],
+          zoom: 14, tilt: 60,
+        }, { duration:900 });
+      });
+
+      list.appendChild(card);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // ARCGIS SETUP
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const markerLayer   = new GraphicsLayer({ title:'Key terrain — markers',   elevationInfo:{mode:'on-the-ground'} });
+  const curvHolder    = { layer:null };
+  const vsHolder      = { layer:null };
+
+  const map = new Map({
+    basemap:'topo-3d', ground:'world-elevation',
+    layers:[markerLayer],
+  });
+
+  const view = new SceneView({
+    container:'viewDiv', map,
+    camera:{ position:{longitude:73.06, latitude:33.68, z:22000}, heading:0, tilt:48 },
+    environment:{ atmosphere:{quality:'high'}, lighting:{date:new Date()} },
+    popup:{
+      dockEnabled:true,
+      dockOptions:{position:'bottom-right', breakpoint:false},
+      defaultPopupTemplateEnabled:true,
+    },
+  });
+
+  markerLayer.popupTemplate = {
+    title:'{type}',
+    content:'{label}',
+  };
+
+  const $ = id => document.getElementById(id);
+  let running = false;
+  const M_PER_DEG = 111_320;
+
+  // Overlay toggles
+  const overlayState = { curvature:true, markers:true, viewshed:false };
+  document.querySelectorAll('.ov-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const ov = btn.dataset.ov;
+      overlayState[ov] = !overlayState[ov];
+      btn.classList.toggle('on', overlayState[ov]);
+      if (ov==='curvature' && curvHolder.layer) curvHolder.layer.visible = overlayState.curvature;
+      if (ov==='markers')   markerLayer.visible = overlayState.markers;
+      if (ov==='viewshed' && vsHolder.layer) vsHolder.layer.visible = overlayState.viewshed;
+    });
+  });
+
+  // Sliders
+  $('inp-sens').addEventListener('input',    ()=>$('sens-v').textContent   = $('inp-sens').value);
+  $('inp-maxfeat').addEventListener('input', ()=>$('maxfeat-v').textContent= $('inp-maxfeat').value);
+  $('inp-opa').addEventListener('input',     ()=>$('opa-v').textContent    = parseFloat($('inp-opa').value).toFixed(2));
+
+  // Click map to re-centre
+  view.on('click', async event => {
+    if (running) return;
+    const result = await view.hitTest(event,{include:[map.ground]});
+    const gp = result?.ground?.mapPoint ?? event.mapPoint;
+    $('inp-lat').value = gp.latitude.toFixed(4);
+    $('inp-lon').value = gp.longitude.toFixed(4);
+  });
+
+  // ── MAIN RUN ───────────────────────────────────────────────────────────
+  $('btn-run').addEventListener('click', async () => {
+    if (running) return;
+    running = true;
+    $('btn-run').disabled = true;
+
+    const centreLat = parseFloat($('inp-lat').value);
+    const centreLon = parseFloat($('inp-lon').value);
+    const radiusM   = parseInt($('inp-radius').value);
+    const cellM     = parseInt($('inp-cell').value);
+    const opacity   = parseFloat($('inp-opa').value);
+    const maxFeat   = parseInt($('inp-maxfeat').value);
+    const sens      = parseInt($('inp-sens').value);
+
+    const opts = {
+      sensitivity: sens, maxFeatures: maxFeat,
+      wantHills:   $('opt-hills').checked,
+      wantSaddles: $('opt-saddles').checked,
+      wantReents:  $('opt-reents').checked,
+      wantSpurs:   $('opt-spurs').checked,
+    };
+
+    // Compute extent
+    const cosLat = Math.cos(centreLat * Math.PI/180);
+    const padDeg = (radiusM*1.05) / M_PER_DEG;
+    const extent = new Extent({
+      xmin: centreLon - padDeg/cosLat, ymin: centreLat - padDeg,
+      xmax: centreLon + padDeg/cosLat, ymax: centreLat + padDeg,
+      spatialReference:{ wkid:4326 },
+    });
+
+    const cols = Math.ceil((radiusM*2) / cellM);
+    const rows = Math.ceil((radiusM*2) / cellM);
+
+    // Clear previous
+    markerLayer.removeAll();
+    if (curvHolder.layer){ map.remove(curvHolder.layer); curvHolder.layer=null; }
+    if (vsHolder.layer)  { map.remove(vsHolder.layer);   vsHolder.layer=null;   }
+
+    // ── 1. Sample DEM ────────────────────────────────────────────────────
+    setStatus('sampling','Sampling DEM…');
+    setProgress(0,'Downloading elevation tiles');
+    const { grid, sampler } = await sampleGrid(view, extent, cols, rows);
+    let minElev=Infinity, maxElev=-Infinity;
+    for (let i=0;i<grid.length;i++){
+      if(grid[i]<minElev)minElev=grid[i];
+      if(grid[i]>maxElev)maxElev=grid[i];
+    }
+
+    // ── 2. Smooth ────────────────────────────────────────────────────────
+    setProgress(0.15,'Smoothing elevation surface');
+    await tick();
+    const smooth = gaussianSmooth(grid, cols, rows);
+
+    // ── 3. Curvature ────────────────────────────────────────────────────
+    setProgress(0.25,'Computing Laplacian curvature');
+    await tick();
+    const { laplacian, planCurv, profileCurv } = computeCurvature(smooth, cols, rows, cellM);
+
+    // ── 4. Prominence ────────────────────────────────────────────────────
+    setProgress(0.35,'Computing topographic prominence');
+    await tick();
+    const prominenceRadius = Math.max(3, Math.round(radiusM / cellM / 8));
+    const prominence = computeProminence(smooth, cols, rows, prominenceRadius);
+
+    // ── 5. Detect features ───────────────────────────────────────────────
+    setProgress(0.45,'Detecting terrain features');
+    await tick();
+    const { features, relief } = detectFeatures(
+      smooth, grid, laplacian, planCurv, profileCurv,
+      prominence, cols, rows, cellM, opts
+    );
+
+    if (features.length === 0) {
+      setStatus('done','No features found — try higher sensitivity');
+      document.getElementById('list-empty').innerHTML =
+        'No features detected.<br>Try increasing sensitivity or switching cell size.';
+      running=false; $('btn-run').disabled=false;
+      return;
+    }
+
+    // ── 6. Viewshed scoring ──────────────────────────────────────────────
+    setStatus('scoring','Scoring viewsheds…');
+    let scored=0;
+    for (const feat of features) {
+      setProgress(0.50 + 0.35*(scored/features.length),
+        `Viewshed ${scored+1}/${features.length}: ${FEATURE_TYPES[feat.type]?.label}`);
+      await tick();
+      await scoreViewsheds([feat], sampler, extent, cols, rows, cellM, radiusM);
+      scored++;
+    }
+
+    // ── 7. Composite score & rank ────────────────────────────────────────
+    setProgress(0.87,'Ranking features');
+    await tick();
+    scoreFeatures(features, minElev, maxElev);
+
+    // ── 8. Curvature heatmap ─────────────────────────────────────────────
+    if (overlayState.curvature) {
+      setProgress(0.90,'Building curvature overlay');
+      await tick();
+      const curvLayer = buildCurvatureHeatmap(laplacian, cols, rows, extent, opacity);
+      map.add(curvLayer);
+      curvHolder.layer = curvLayer;
+    }
+
+    // ── 9. Markers ───────────────────────────────────────────────────────
+    setProgress(0.93,'Placing markers');
+    await tick();
+    buildFeatureMarkers(features).forEach(g => markerLayer.add(g));
+
+    // ── 10. Top viewshed overlay (on demand) ─────────────────────────────
+    if (overlayState.viewshed && features.length > 0) {
+      setProgress(0.95,'Computing top feature viewshed');
+      await tick();
+      const vsLayer = buildTopViewshedGraphic(features[0], extent, cols, rows, grid, sampler, cellM);
+      map.add(vsLayer);
+      vsHolder.layer = vsLayer;
+    }
+
+    // ── 11. Render list ──────────────────────────────────────────────────
+    setProgress(0.98,'Rendering ranked list');
+    renderFeatureList(features, minElev, maxElev);
+
+    // Stats
+    $('sg-found').textContent = features.length;
+    $('sg-area').textContent  = (Math.PI * (radiusM/1000)**2).toFixed(1) + ' km²';
+    $('sg-elev').textContent  = Math.round(maxElev) + ' m';
+    $('sg-relief').textContent= Math.round(relief) + ' m';
+
+    setProgress(1.0, `Done — ${features.length} features identified`);
+    setStatus('done','Done');
+
+    // Fly to analysis area
+    view.goTo({ target:extent, tilt:55 }, { duration:1200 });
+
+    // Auto-select #1 in list
+    setTimeout(()=>{
+      const first = document.querySelector('.fc');
+      if(first){ first.click(); }
+    }, 1400);
+
+    running=false; $('btn-run').disabled=false;
+  });
+
+  $('btn-clear').addEventListener('click', () => {
+    markerLayer.removeAll();
+    if (curvHolder.layer){ map.remove(curvHolder.layer); curvHolder.layer=null; }
+    if (vsHolder.layer)  { map.remove(vsHolder.layer);   vsHolder.layer=null;   }
+    document.getElementById('feature-list').innerHTML =
+      '<div id="list-empty" style="padding:20px 12px;font-size:10px;color:#3a3935;text-align:center;line-height:1.7">Run analysis to identify features</div>';
+    document.getElementById('list-sub').textContent = 'Run analysis to identify features';
+    ['sg-found','sg-area','sg-elev','sg-relief'].forEach(id=>$(id).textContent='—');
+    setProgress(0,'—');
+    setStatus('ready','Ready');
+  });
+
+  function setStatus(s, text){
+    const el=$('status');
+    el.textContent=text??s;
+    el.className='ph-status '+s;
+  }
+  function setProgress(frac, label){
+    $('prog-fill').style.width=Math.round(frac*100)+'%';
+    $('prog-label').textContent=label??'';
+  }
+  function tick(){ return new Promise(r=>setTimeout(r,0)); }
+
+  view.when(()=>{
+    console.log('[KeyTerrain] SceneView ready.');
+    console.log('[KeyTerrain] Click the map to re-centre, adjust radius, then Run Analysis.');
+  });
+
+}); // end require()
+</script>
+</body>
+</html>
