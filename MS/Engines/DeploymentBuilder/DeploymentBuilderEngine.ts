@@ -585,7 +585,8 @@ class DeploymentBuilderEngine {
     this._clearGhostGraphics();
     this._removePointerHandles();
 
-    (this._view.container as HTMLElement).style.cursor = 'none';
+    const container = this._getViewContainer();
+    if (container) container.style.cursor = 'none';
 
     // Live crosshair follows cursor during anchor phase (RAF-throttled)
     this._pointerMoveHandle = this._view.on('pointer-move', (evt) => {
@@ -686,7 +687,8 @@ class DeploymentBuilderEngine {
     this._phase = 'idle';
     this._clearGhostGraphics();
     this._removePointerHandles();
-    if (this._view) (this._view.container as HTMLElement).style.cursor = '';
+    const container = this._getViewContainer();
+    if (container) container.style.cursor = '';
     this._removeBearingHUD();
     this._removePlacementInstructions();
 
@@ -726,7 +728,8 @@ class DeploymentBuilderEngine {
     this._phase = 'idle';
     this._clearGhostGraphics();
     this._removePointerHandles();
-    if (this._view) (this._view.container as HTMLElement).style.cursor = '';
+    const container = this._getViewContainer();
+    if (container) container.style.cursor = '';
     this._setStatus('');
     this._removeBearingHUD();
     this._removePlacementInstructions();
@@ -1242,6 +1245,22 @@ class DeploymentBuilderEngine {
       this._bgClickHandle.remove();
       this._bgClickHandle = null;
     }
+  }
+
+  private _removeBgPopup(): void {
+    if (this._bgPopup) {
+      this._bgPopup.remove();
+      this._bgPopup = null;
+    }
+  }
+
+  private _getViewContainer(): HTMLElement | null {
+    const container = this._view?.container;
+    if (!container) return null;
+    if (typeof container === 'string') {
+      return document.getElementById(container);
+    }
+    return container as HTMLElement;
   }
 
   private _setStatus(msg: string): void {
