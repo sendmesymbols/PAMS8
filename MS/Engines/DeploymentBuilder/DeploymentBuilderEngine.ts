@@ -22,7 +22,7 @@ const FORMATIONS: Record<string, [number, number][] | null> = {
   'vee':      [[0,0],[-1.5,1],[1.5,1],[-3,1.8],[3,1.8]],
 };
 
-const ENGINE_NAME = 'DeploymentBuilder';
+const ENGINE_NAME = 'DeploymentManager';
 
 interface PlanEntry {
   id: string;
@@ -95,7 +95,6 @@ class DeploymentBuilderEngine {
     this._serializationEngine = serialEngine;
     this._ghostLayer = new GraphicsLayer({ listMode: 'hide' });
     view.map.add(this._ghostLayer);
-    this._attachBackgroundRightClick();
     this._registryBaseUrl = this._resolveRegistryBase();
     EngineLogger.success(ENGINE_NAME, 'DeploymentBuilderEngine started');
   }
@@ -109,9 +108,7 @@ class DeploymentBuilderEngine {
     this._ghostLayer = new GraphicsLayer({ listMode: 'hide' });
     view.map.add(this._ghostLayer);
     this._removePointerHandles();
-    this._removeBgClickHandle();
     this._removeBgPopup();
-    this._attachBackgroundRightClick();
     this._registryBaseUrl = this._resolveRegistryBase();
   }
 
@@ -200,7 +197,7 @@ class DeploymentBuilderEngine {
         border-bottom:1px solid var(--ms-divider);
         border-radius:var(--ms-radius) var(--ms-radius) 0 0;cursor:grab;
       ">
-        <span style="font-weight:700;color:var(--ms-accent);font-size:13px">🗺️ Deployment Builder</span>
+        <span style="font-weight:700;color:var(--ms-accent);font-size:13px">🗺️ Deployment Manager</span>
         <div style="display:flex;gap:6px">
           <button class="db-btn-min" style="
             background:none;border:1px solid var(--ms-border);border-radius:4px;
@@ -1212,79 +1209,6 @@ class DeploymentBuilderEngine {
     const sumX = projected.reduce((s, p) => s + p.x, 0);
     const sumY = projected.reduce((s, p) => s + p.y, 0);
     return { x: sumX / projected.length, y: sumY / projected.length };
-  }
-
-  // ── Background Right-Click ─────────────────────────────────────────────────
-
-  private _attachBackgroundRightClick(): void {
-    if (!this._view) return;
-    if (this._bgClickHandle) { this._bgClickHandle.remove(); this._bgClickHandle = null; }
-    this._bgClickHandle = this._view.on('pointer-down', async (evt) => {
-      if (evt.button !== 2) return;
-      if (!this._enabled) return;
-      if (this._phase !== 'idle') return; // placement mode handles its own right-click
-
-      const results = await this._view!.hitTest(evt);
-      if (results.results.length > 0) return; // graphic hit — let ContextMenuManager handle it
-
-      this._showBgPopup(evt.x, evt.y);
-    });
-  }
-
-  private _showBgPopup(screenX: number, screenY: number): void {
-    this._removeBgPopup();
-    const popup = document.createElement('div');
-    popup.style.cssText = `
-      position: fixed;
-      left: ${screenX}px;
-      top: ${screenY}px;
-      background: rgba(16,20,30,0.97);
-      border: 1px solid rgba(90,140,220,0.35);
-      border-radius: 6px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-      z-index: 1300;
-      font-family: 'Inter','Segoe UI',sans-serif;
-      font-size: 11.5px;
-      overflow: hidden;
-      min-width: 180px;
-    `;
-
-    const item = document.createElement('div');
-    item.style.cssText = `
-      padding: 8px 14px;
-      cursor: pointer;
-      color: #90b0d8;
-      display: flex; align-items: center; gap: 8px;
-    `;
-    item.innerHTML = `<span style="font-size:14px">🗺️</span><span>Open Deployment Builder</span>`;
-    item.addEventListener('mouseenter', () => { item.style.background = 'rgba(80,130,200,0.2)'; item.style.color = '#d0e8ff'; });
-    item.addEventListener('mouseleave', () => { item.style.background = ''; item.style.color = '#90b0d8'; });
-    item.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.openWidget();
-      this._removeBgPopup();
-    });
-    popup.appendChild(item);
-    document.body.appendChild(popup);
-    this._bgPopup = popup;
-
-    // Close on outside click
-    setTimeout(() => {
-      const closer = (e: MouseEvent) => {
-        if (!popup.contains(e.target as Node)) {
-          this._removeBgPopup();
-          document.removeEventListener('click', closer);
-        }
-      };
-      document.addEventListener('click', closer);
-    }, 0);
-  }
-
-  private _removeBgPopup(): void {
-    if (this._bgPopup) {
-      this._bgPopup.remove();
-      this._bgPopup = null;
-    }
   }
 
   // ── Cleanup ────────────────────────────────────────────────────────────────

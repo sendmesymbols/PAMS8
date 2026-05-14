@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Force Density Heatmap</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" />
+  <script src="https://js.arcgis.com/4.28/"></script>
+
+  <style>
+    html, body, #viewDiv {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #060709;
+      font-family: monospace;
+    }
+
+    #panel {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 999;
+      width: 290px;
+      background: rgba(6,7,9,0.96);
+      border: 1px solid rgba(55,138,221,0.45);
+      border-radius: 6px;
+      padding: 12px;
+      color: #d7d7d7;
+      backdrop-filter: blur(8px);
+    }
+
+    #panel h2 {
+      margin: 0 0 12px;
+      font-size: 14px;
+      letter-spacing: 0.1em;
+      color: #378ADD;
+      text-transform: uppercase;
+    }
+
+    .label {
+      font-size: 11px;
+      margin-top: 10px;
+      margin-bottom: 4px;
+      color: #8d8d8d;
+      text-transform: uppercase;
+    }
+
+    select, input, button {
+      width: 100%;
+      box-sizing: border-box;
+      background: #111;
+      color: #ddd;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 8px;
+      font-family: monospace;
+    }
+
+    button {
+      margin-top: 10px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: rgba(55,138,221,0.18);
+      border-color: #378ADD;
+    }
+
+    #status {
+      margin-top: 12px;
+      color: #1D9E75;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    #ratio {
+      margin-top: 12px;
+      padding: 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 4px;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+
+<div id="viewDiv"></div>
+
+<div id="panel">
+  <h2>◎ Force Density</h2>
+
+  <div class="label">Faction</div>
+  <select id="faction">
+    <option value="friendly">Friendly</option>
+    <option value="enemy">Enemy</option>
+    <option value="neutral">Neutral</option>
+  </select>
+
+  <div class="label">Bandwidth</div>
+  <input type="range" id="bandwidth" min="1" max="20" value="5" />
+
+  <button id="buildBtn">Build Heatmap</button>
+  <button id="clearBtn">Clear All</button>
+
+  <div id="status">Ready — click map to place units</div>
+
+  <div id="ratio">
+    CTRL+Click map to query force ratio
+  </div>
+</div>
+
+<script>
+require([
+  "esri/Map",
+  "esri/views/MapView",
+  "esri/Graphic",
+  "esri/layers/GraphicsLayer",
+  "esri/geometry/Circle",
+  "esri/geometry/Point"
+], function(
+  Map,
+  MapView,
+  Graphic,
+  GraphicsLayer,
+  Circle,
+  Point
+) {
+
+  const unitLayer = new GraphicsLayer();
+  const heatLayer = new GraphicsLayer();
+  const queryLayer = new GraphicsLayer();
+
+  const map = new Map({
+    basemap: "dark-gray-vector",
+    layers: [heatLayer, queryLayer, unitLayer]
+  });
+
+  const view = new MapView({
+    container: "viewDiv",
+    map,
+    center: [73.06, 33.68],
+    zoom: 11
+  });
+
+  const units = [];
+
+  const COLORS = {
+    friendly: [29,158,117],
+    enemy: [220,60,48],
+    neutral: [239,159,39]
+  };
+
+  function setStatus(text, color = '#1D9E75') {
+    const el = document.getElementById('status');
+    el.innerText = text;
+    el.style.color = color;
+  }
+
+  function geoDist(lon1, lat1, lon2, lat2) {
+    const R = 6371000;
+    const toRad = d => d * Math.PI / 180;
+
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function placeUnit(lon, lat, faction) {
+
+    const graphic = new Graphic({
+      geometry: new Point({ longitude: lon, latitude: lat }),
+      symbol: {
+        type: 'simple-marker',
+        style: 'circle',
+        color: COLORS[faction],
+        size: 10,
+        outline: {
+          color: [255,255,255],
+          width: 1
+        }
+      }
+    });
+
+    unitLayer.add(graphic);
+
+    units.push({ lon, lat, faction });
+
+    setStatus(`${units.length} units placed`);
+  }
+
+  function queryRatio(lon, lat) {
+
+    let friendly = 0;
+    let enemy = 0;
+
+    const radius = 3000;
+
+    queryLayer.removeAll();
+
+    for (const u of units) {
+      const d = geoDist(lon, lat, u.lon, u.lat);
+
+      if (d < radius) {
+        if (u.faction === 'friendly') friendly++;
+        if (u.faction === 'enemy') enemy++;
+      }
+    }
+
+    const ratio = enemy === 0
+      ? (friendly > 0 ? '∞' : '0')
+      : (friendly / enemy).toFixed(2);
+
+    document.getElementById('ratio').innerHTML = `
+      Friendly: ${friendly}<br>
+      Enemy: ${enemy}<br>
+      Ratio F:E = ${ratio}:1
+    `;
+
+    const circle = new Circle({
+      center: [lon, lat],
+      radius,
+      radiusUnit: 'meters'
+    });
+
+    queryLayer.add(new Graphic({
+      geometry: circle,
+      symbol: {
+        type: 'simple-fill',
+        color: [0,0,0,0],
+        outline: {
+          color: [239,159,39],
+          width: 2
+        }
+      }
+    }));
+  }
+
+  function buildHeatmap() {
+
+    heatLayer.removeAll();
+
+    if (units.length < 2) {
+      setStatus('Need at least 2 units', '#EF9F27');
+      return;
+    }
+
+    const bandwidth = parseFloat(document.getElementById('bandwidth').value);
+
+    for (const u of units) {
+
+      const size = bandwidth * 18;
+
+      heatLayer.add(new Graphic({
+        geometry: new Point({
+          longitude: u.lon,
+          latitude: u.lat
+        }),
+        symbol: {
+          type: 'simple-marker',
+          style: 'circle',
+          size,
+          color: [...COLORS[u.faction], 0.14],
+          outline: {
+            color: [...COLORS[u.faction], 0.4],
+            width: 1
+          }
+        }
+      }));
+    }
+
+    setStatus('Heatmap generated successfully');
+  }
+
+  // FIXED CLICK HANDLER
+  view.on('click', function(event) {
+
+    const lon = event.mapPoint.longitude;
+    const lat = event.mapPoint.latitude;
+
+    // FIX: Ctrl+Click only queries
+    if (event.native?.ctrlKey) {
+      queryRatio(lon, lat);
+      return;
+    }
+
+    const faction = document.getElementById('faction').value;
+
+    placeUnit(lon, lat, faction);
+  });
+
+  document.getElementById('buildBtn')
+    .addEventListener('click', buildHeatmap);
+
+  document.getElementById('clearBtn')
+    .addEventListener('click', () => {
+
+      units.length = 0;
+
+      unitLayer.removeAll();
+      heatLayer.removeAll();
+      queryLayer.removeAll();
+
+      document.getElementById('ratio').innerHTML =
+        'CTRL+Click map to query force ratio';
+
+      setStatus('All cleared');
+    });
+
+  // SAFE NORMALIZATION FIX
+  function safeNormalize(arr) {
+
+    let max = 1e-9;
+
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i] > max) {
+        max = arr[i];
+      }
+    }
+
+    const out = new Float32Array(arr.length);
+
+    for (let i = 0; i < arr.length; i++) {
+      out[i] = arr[i] / max;
+    }
+
+    return out;
+  }
+
+  console.log('Force Density Heatmap Ready');
+
+});
+</script>
+
+</body>
+</html>

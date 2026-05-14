@@ -23,6 +23,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import { ElevationUtils } from '../../Support/Elevation/ElevationUtils';
 
 // ─── Geodetic helpers ────────────────────────────────────────────────────────
 
@@ -290,8 +291,8 @@ export class LOSEngine {
         : (extentGeom as Polygon | null)?.extent;
       if (!extent) { this._setStatus('error'); return; }
 
-      const sampler = await (this._view as any).createElevationSampler(extent, { noDataValue: 0 });
-      const obsGroundZ = sampler.queryElevation(this._observerPoint)?.z ?? 0;
+      const sampler = await ElevationUtils.createSampler(this._view, extent, { noDataValue: 0 });
+      const obsGroundZ = ElevationUtils.queryPointElevation(sampler, this._observerPoint);
       const obsZ = obsGroundZ + obsH;
 
       // ── Point-to-point LOS lines ───────────────────────────────────────────
@@ -314,7 +315,7 @@ export class LOSEngine {
             const dist = (s / numSteps) * tDist;
             const pt = _destPt(this._observerPoint.longitude, this._observerPoint.latitude, tBearing, dist);
             const samplePt = { longitude: pt.longitude, latitude: pt.latitude };
-            const terrZ = sampler.queryElevation(samplePt)?.z ?? 0;
+            const terrZ = ElevationUtils.queryPointElevation(sampler, samplePt);
             const slope = Math.atan2(terrZ - obsZ, dist);
 
             if (slope >= maxSlope) {
@@ -376,7 +377,10 @@ export class LOSEngine {
           for (let s = 1; s <= numSteps; s++) {
             const dist = s * STEP_M;
             const pt = _destPt(obsLon, obsLat, bearing, dist);
-            const terrZ = sampler.queryElevation({ longitude: pt.longitude, latitude: pt.latitude })?.z ?? 0;
+            const terrZ = ElevationUtils.queryPointElevation(sampler, {
+              longitude: pt.longitude,
+              latitude: pt.latitude,
+            });
             const slopeRad = Math.atan2(terrZ - obsZ, dist);
 
             if (slopeRad >= maxSlopeRad) {

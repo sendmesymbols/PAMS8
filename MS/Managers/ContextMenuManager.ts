@@ -560,7 +560,7 @@ class ContextMenuManager extends Evented {
     }
     // ────────────────────────────────────────────────────────────────────
 
-    // ── Deployment Builder section ──────────────────────────────────────
+    // ── Deployment Manager section ──────────────────────────────────────
     if (this._deploymentBuilderEngine) {
       const sep3 = document.createElement('div');
       sep3.className = this.options.menuSeparatorClass || '';
@@ -568,7 +568,7 @@ class ContextMenuManager extends Evented {
 
       const dbItem = document.createElement('div');
       dbItem.className = this.options.menuItemClass || '';
-      dbItem.innerHTML = `<span class="menu-icon" style="font-size:14px">🗺️</span><span>Open Deployment Builder</span>`;
+      dbItem.innerHTML = `<span class="menu-icon" style="font-size:14px">🗺️</span><span>Open Deployment Manager</span>`;
       dbItem.addEventListener('click', (e) => {
         e.stopPropagation();
         this._deploymentBuilderEngine!.openWidget();

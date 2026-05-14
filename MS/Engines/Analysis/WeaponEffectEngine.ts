@@ -20,6 +20,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import { ElevationUtils } from '../../Support/Elevation/ElevationUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -638,8 +639,8 @@ export class WeaponEffectEngine {
       const extent = Array.isArray(extentGeom) ? extentGeom[0]?.extent : (extentGeom as Polygon | null)?.extent;
       if (!extent) return;
 
-      const sampler = await (view as any).createElevationSampler(extent, { noDataValue: 0 });
-      const obsZ = (sampler.queryElevation(this._observerPoint)?.z ?? 0) + 2;
+      const sampler = await ElevationUtils.createSampler(view, extent, { noDataValue: 0 });
+      const obsZ = ElevationUtils.queryPointElevation(sampler, this._observerPoint) + 2;
       const NUM_RAYS = 72;
       const STEP_M   = Math.max(25, maxR / 200);
       const numSteps = Math.ceil(maxR / STEP_M);
@@ -658,7 +659,7 @@ export class WeaponEffectEngine {
             bearing, dist
           );
           const samplePt = new Point({ longitude, latitude, spatialReference: { wkid: 4326 } });
-          const terrainZ = sampler.queryElevation(samplePt)?.z ?? 0;
+          const terrainZ = ElevationUtils.queryPointElevation(sampler, samplePt);
           const slope = Math.atan2(terrainZ - obsZ, dist);
 
           if (slope >= maxSlope) {

@@ -67,6 +67,7 @@ declare class SymbolEngine implements Evented {
     private _corridorEngine;
     private _effectEngine;
     private _deploymentBuilderEngine;
+    private _declutterEngine;
     readonly serializationEngine: SerializationEngine;
     private currentSymbol;
     private sidc;
@@ -225,13 +226,7 @@ declare class SymbolEngine implements Evented {
      * Updates settingsData in memory and applies changes to active engines.
      */
     onSettingChanged(path: string[], value: any): void;
-    private _applyDeclutter;
-    private _declutterZoomThreshold;
-    private _declutterMinScale;
-    private _declutterDensity;
-    private _declutterOff;
-    private _declutterSymbols;
-    private _restoreSymbolLayerVisibility;
+    private _initDeclutterEngine;
     /** Push an undo entry and clear the redo stack. */
     _pushUndo(entry: UndoEntry): void;
     /** Snapshot the graphic's current geometry and CTRL_PTS before an edit begins. */

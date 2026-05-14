@@ -81,9 +81,6 @@ declare class DeploymentBuilderEngine {
     private _countPlanSymbols;
     private _extractPlanPoints;
     private _computeCentroid;
-    private _attachBackgroundRightClick;
-    private _showBgPopup;
-    private _removeBgPopup;
     private _removePointerHandles;
     private _removeBgClickHandle;
     private _setStatus;

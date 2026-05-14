@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Force Density / ORBAT Heatmap — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#060709}
+
+    /* ══ Split view containers ══════════════════════════════════════ */
+    #view-2d,#view-3d{
+      position:absolute;top:0;bottom:0;transition:width .3s,left .3s;
+    }
+    /* Full 2D */
+    body.mode-2d #view-2d{left:0;width:100%}
+    body.mode-2d #view-3d{left:100%;width:0;overflow:hidden}
+    /* Full 3D */
+    body.mode-3d #view-2d{left:0;width:0;overflow:hidden}
+    body.mode-3d #view-3d{left:0;width:100%}
+    /* Split */
+    body.mode-split #view-2d{left:0;width:50%}
+    body.mode-split #view-3d{left:50%;width:50%}
+    /* Split divider */
+    #split-divider{
+      position:absolute;top:0;bottom:0;width:3px;
+      background:rgba(55,138,221,0.5);z-index:50;
+      display:none;cursor:col-resize;
+    }
+    body.mode-split #split-divider{display:block;left:calc(50% - 1px)}
+    /* View labels */
+    .view-label{
+      position:absolute;bottom:12px;font-size:9px;letter-spacing:.1em;
+      text-transform:uppercase;color:rgba(55,138,221,0.6);
+      pointer-events:none;z-index:40;font-family:'Courier New',monospace;
+    }
+    #label-2d{left:12px}
+    #label-3d{right:12px;text-align:right}
+
+    /* ══ LEFT PANEL — ORBAT / symbol list ══════════════════════════ */
+    #left-panel{
+      position:absolute;top:14px;left:14px;width:258px;z-index:99;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(55,138,221,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh-28px);display:flex;flex-direction:column;
+    }
+    .lph{padding:9px 12px 8px;border-bottom:1px solid rgba(55,138,221,0.15);
+      background:rgba(55,138,221,0.07);flex-shrink:0}
+    .lph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#378ADD;font-weight:700}
+    .lph-sub{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:2px}
+
+    /* faction tabs */
+    .ftabs{display:flex;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0}
+    .ftab{flex:1;padding:7px;font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      cursor:pointer;border:none;background:transparent;color:#888780;transition:all .13s;
+      font-family:'Courier New',monospace}
+    .ftab.on{color:#378ADD;border-bottom:2px solid #378ADD}
+    .ftab.on.friendly{color:#1D9E75;border-color:#1D9E75}
+    .ftab.on.enemy   {color:#DC3C30;border-color:#DC3C30}
+    .ftab.on.neutral {color:#EF9F27;border-color:#EF9F27}
+
+    /* summary strips */
+    #sum-strip{display:grid;grid-template-columns:repeat(3,1fr);
+      border-bottom:1px solid rgba(55,138,221,0.10);flex-shrink:0}
+    .ss{padding:6px 7px;display:flex;flex-direction:column;gap:2px;
+      border-right:0.5px solid rgba(55,138,221,0.08)}
+    .ss:last-child{border-right:none}
+    .ss-l{font-size:7.5px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935}
+    .ss-v{font-size:12px;font-weight:600}
+
+    /* unit type grid */
+    .unit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:8px}
+    .unit-btn{
+      padding:7px 4px;border-radius:3px;cursor:pointer;
+      border:0.5px solid rgba(255,255,255,0.10);
+      background:rgba(255,255,255,0.02);transition:all .13s;
+      display:flex;flex-direction:column;align-items:center;gap:3px;
+    }
+    .unit-btn:hover{background:rgba(55,138,221,0.10);border-color:rgba(55,138,221,0.35)}
+    .unit-btn.sel{background:rgba(55,138,221,0.16);border-color:#378ADD}
+    .unit-icon{font-size:16px}
+    .unit-name{font-size:8px;letter-spacing:.05em;text-transform:uppercase;
+      color:#888780;text-align:center}
+    .unit-weight{font-size:8px;color:#3a3935}
+
+    /* symbol list */
+    #sym-list{overflow-y:auto;flex:1}
+    .sym-row{display:flex;align-items:center;gap:7px;padding:6px 10px;
+      border-bottom:0.5px solid rgba(255,255,255,0.04);cursor:pointer;
+      transition:background .12s}
+    .sym-row:hover{background:rgba(255,255,255,0.03)}
+    .sym-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .sym-info{flex:1;display:flex;flex-direction:column;gap:1px}
+    .sym-type{font-size:10px;color:var(--color-text-secondary)}
+    .sym-coords{font-size:8.5px;color:#3a3935;letter-spacing:.04em}
+    .sym-del{font-size:10px;color:#3a3935;cursor:pointer;padding:2px 4px;
+      border:none;background:transparent;transition:color .12s}
+    .sym-del:hover{color:#DC3C30}
+
+    #sym-empty{padding:16px 12px;font-size:10px;color:#3a3935;
+      text-align:center;line-height:1.8}
+
+    /* ══ RIGHT PANEL — controls & force ratio ═══════════════════════ */
+    #right-panel{
+      position:absolute;top:14px;right:14px;width:284px;z-index:99;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(55,138,221,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh-28px);overflow-y:auto;
+    }
+    .ph{display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;border-bottom:1px solid rgba(55,138,221,0.15);
+      background:rgba(55,138,221,0.07);position:sticky;top:0;z-index:2}
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#378ADD;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#3a3935;transition:color .2s}
+    .ph-status.live{color:#1D9E75}
+
+    /* View mode selector */
+    .view-mode-row{display:flex;gap:5px;padding:9px 12px}
+    .vm-btn{flex:1;padding:6px;font-size:9px;letter-spacing:.05em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;border:1px solid rgba(55,138,221,0.25);
+      background:transparent;color:#888780;font-family:'Courier New',monospace;transition:all .13s}
+    .vm-btn.on{border-color:#378ADD;color:#378ADD;background:rgba(55,138,221,0.12)}
+
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+      color:#3a3935;padding:9px 12px 5px}
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s}
+    input:focus,select:focus{border-color:rgba(55,138,221,0.55)}
+    select option{background:#141618}
+    .psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+    .psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;flex:1.8}
+    .psr input[type=range]{flex:2;accent-color:#378ADD;cursor:pointer}
+    .psr-v{font-size:10px;color:#378ADD;min-width:38px;text-align:right}
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#378ADD;width:13px;height:13px;cursor:pointer}
+
+    /* Force ratio readout */
+    #ratio-card{
+      margin:0 12px 9px;padding:10px 11px;
+      background:rgba(55,138,221,0.06);border:1px solid rgba(55,138,221,0.20);
+      border-radius:4px;
+    }
+    .rc-title{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+      color:#378ADD;margin-bottom:7px}
+    .rc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+    .rc-cell{display:flex;flex-direction:column;gap:2px}
+    .rc-l{font-size:8px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935}
+    .rc-v{font-size:15px;font-weight:700}
+    .rc-v.friendly{color:#1D9E75}
+    .rc-v.enemy   {color:#DC3C30}
+    .rc-v.ratio   {color:#EF9F27}
+    .rc-v.neutral {color:#888780}
+    .rc-verdict{margin-top:7px;font-size:10px;line-height:1.55;
+      padding:5px 8px;border-radius:3px;color:var(--color-text-secondary)}
+    .rc-verdict.danger{background:rgba(220,60,48,0.10);border:0.5px solid rgba(220,60,48,0.25)}
+    .rc-verdict.caution{background:rgba(239,159,39,0.09);border:0.5px solid rgba(239,159,39,0.22)}
+    .rc-verdict.ok{background:rgba(29,158,117,0.08);border:0.5px solid rgba(29,158,117,0.22)}
+    .rc-hint{font-size:9px;color:#3a3935;margin-top:5px;letter-spacing:.04em}
+
+    /* Heatmap colour key */
+    #heatmap-key{margin:0 12px 9px}
+    .hk-title{font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+      color:#3a3935;margin-bottom:5px}
+    .hk-bars{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+    .hk-item{display:flex;flex-direction:column;gap:3px}
+    .hk-item-label{font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:#3a3935}
+    .hk-bar{height:8px;border-radius:2px;border:0.5px solid rgba(255,255,255,0.08)}
+
+    /* progress */
+    #prog-wrap{padding:0 12px 9px}
+    #prog-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+    #prog-fill{height:100%;background:linear-gradient(to right,#1D9E75,#378ADD);
+      border-radius:2px;width:0%;transition:width .12s}
+    #prog-label{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:4px}
+
+    /* buttons */
+    .pb-row{display:flex;gap:6px;padding:9px 12px}
+    .pb{flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;border:1px solid rgba(55,138,221,0.38);
+      background:transparent;color:#378ADD;transition:all .14s}
+    .pb:hover:not(:disabled){background:rgba(55,138,221,0.10)}
+    .pb.primary{background:rgba(55,138,221,0.16);border-color:#378ADD}
+    .pb.primary:hover:not(:disabled){background:rgba(55,138,221,0.28)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+
+    /* hint */
+    #hint{position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(6,7,9,0.94);border:1px solid rgba(55,138,221,0.45);
+      color:#378ADD;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase}
+  </style>
+</head>
+<body class="mode-2d">
+
+<div id="view-2d"><div id="map-div" style="width:100%;height:100%"></div></div>
+<div id="view-3d"><div id="scene-div" style="width:100%;height:100%"></div></div>
+<div id="split-divider"></div>
+<div class="view-label" id="label-2d">2D — MapView</div>
+<div class="view-label" id="label-3d">SceneView — 3D</div>
+
+<!-- ══ LEFT PANEL ════════════════════════════════════════════════════ -->
+<div id="left-panel">
+  <div class="lph">
+    <div class="lph-title">◎ ORBAT Force Density</div>
+    <div class="lph-sub" id="lph-sub">Select faction then click map to place units</div>
+  </div>
+
+  <!-- Faction tabs -->
+  <div class="ftabs">
+    <button class="ftab on friendly" data-f="friendly">Friendly</button>
+    <button class="ftab"             data-f="enemy">Enemy</button>
+    <button class="ftab"             data-f="neutral">Neutral</button>
+  </div>
+
+  <!-- Summary strip -->
+  <div id="sum-strip">
+    <div class="ss"><div class="ss-l">Friendly</div>
+      <div class="ss-v" id="ss-f" style="color:#1D9E75">0</div></div>
+    <div class="ss"><div class="ss-l">Enemy</div>
+      <div class="ss-v" id="ss-e" style="color:#DC3C30">0</div></div>
+    <div class="ss"><div class="ss-l">Neutral</div>
+      <div class="ss-v" id="ss-n" style="color:#EF9F27">0</div></div>
+  </div>
+
+  <!-- Unit type picker -->
+  <div class="unit-grid" id="unit-grid"></div>
+
+  <!-- Placed symbol list -->
+  <div id="sym-list">
+    <div id="sym-empty">
+      Select faction & unit type above,<br>
+      then click the map to place units.<br><br>
+      Click <strong style="color:#378ADD">Build Heatmap</strong> after placing<br>
+      2+ units to see density and ratio.
+    </div>
+  </div>
+</div>
+
+<!-- ══ RIGHT PANEL ════════════════════════════════════════════════════ -->
+<div id="right-panel">
+  <div class="ph">
+    <div class="ph-title">⬡ Density Analysis</div>
+    <div class="ph-status live" id="status">Place units on map</div>
+  </div>
+
+  <!-- View mode -->
+  <div class="ps">View mode</div>
+  <div class="view-mode-row">
+    <button class="vm-btn on" data-vm="2d">2D map</button>
+    <button class="vm-btn"    data-vm="split">Split</button>
+    <button class="vm-btn"    data-vm="3d">3D scene</button>
+  </div>
+
+  <!-- KDE parameters -->
+  <div class="ps">Kernel density parameters</div>
+  <div class="psr">
+    <div class="psr-l">Bandwidth (km)</div>
+    <input id="inp-bw" type="range" min="0.5" max="20" step="0.5" value="3"/>
+    <div class="psr-v" id="bw-v">3 km</div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Grid cell (m)</div>
+    <input id="inp-cell" type="range" min="100" max="1000" step="100" value="300"/>
+    <div class="psr-v" id="cell-v">300 m</div>
+  </div>
+
+  <!-- Force ratio radius -->
+  <div class="ps">Force ratio query</div>
+  <div class="psr">
+    <div class="psr-l">Query radius (km)</div>
+    <input id="inp-qr" type="range" min="0.5" max="15" step="0.5" value="3"/>
+    <div class="psr-v" id="qr-v">3 km</div>
+  </div>
+
+  <!-- Display options -->
+  <div class="pdiv"/>
+  <div class="ps">Display options</div>
+  <div class="ptr"><label>Friendly heatmap</label>
+    <input id="opt-friend" type="checkbox" checked/></div>
+  <div class="ptr"><label>Enemy heatmap</label>
+    <input id="opt-enemy"  type="checkbox" checked/></div>
+  <div class="ptr"><label>Force ratio overlay</label>
+    <input id="opt-ratio"  type="checkbox" checked/></div>
+  <div class="ptr"><label>Unit markers</label>
+    <input id="opt-markers" type="checkbox" checked/></div>
+  <div class="ptr"><label>Thin-line alert zones</label>
+    <input id="opt-thin"   type="checkbox" checked/></div>
+  <div class="psr">
+    <div class="psr-l">Heatmap opacity</div>
+    <input id="inp-opa" type="range" min="0.2" max="1.0" step="0.05" value="0.75"/>
+    <div class="psr-v" id="opa-v">0.75</div>
+  </div>
+
+  <div class="pdiv"/>
+
+  <!-- Force ratio readout -->
+  <div id="ratio-card">
+    <div class="rc-title">◎ Force ratio — click map</div>
+    <div class="rc-grid">
+      <div class="rc-cell"><div class="rc-l">Friendly</div>
+        <div class="rc-v friendly" id="rc-f">—</div></div>
+      <div class="rc-cell"><div class="rc-l">Enemy</div>
+        <div class="rc-v enemy" id="rc-e">—</div></div>
+      <div class="rc-cell"><div class="rc-l">Ratio F:E</div>
+        <div class="rc-v ratio" id="rc-r">—</div></div>
+      <div class="rc-cell"><div class="rc-l">Query r.</div>
+        <div class="rc-v neutral" id="rc-qr">—</div></div>
+    </div>
+    <div class="rc-verdict" id="rc-verdict" style="display:none"></div>
+    <div class="rc-hint" id="rc-hint">Click any map to query force ratio at that point</div>
+  </div>
+
+  <!-- Heatmap key -->
+  <div id="heatmap-key">
+    <div class="hk-title">Heatmap colour key</div>
+    <div class="hk-bars">
+      <div class="hk-item">
+        <div class="hk-item-label">Friendly density</div>
+        <div class="hk-bar" style="background:linear-gradient(to right,transparent,#1D9E75)"></div>
+      </div>
+      <div class="hk-item">
+        <div class="hk-item-label">Enemy density</div>
+        <div class="hk-bar" style="background:linear-gradient(to right,transparent,#DC3C30)"></div>
+      </div>
+      <div class="hk-item">
+        <div class="hk-item-label">F dominates</div>
+        <div class="hk-bar" style="background:linear-gradient(to right,transparent,#1D9E75)"></div>
+      </div>
+      <div class="hk-item">
+        <div class="hk-item-label">E dominates</div>
+        <div class="hk-bar" style="background:linear-gradient(to right,transparent,#DC3C30)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div id="prog-wrap">
+    <div id="prog-track"><div id="prog-fill"></div></div>
+    <div id="prog-label">—</div>
+  </div>
+
+  <div class="pb-row">
+    <button class="pb"         id="btn-clear">Clear all</button>
+    <button class="pb"         id="btn-undo">Undo last</button>
+    <button class="pb primary" id="btn-run" disabled>Build Heatmap ↗</button>
+  </div>
+</div>
+
+<div id="hint">Select faction & unit type — then click the map to place units</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map","esri/views/MapView","esri/views/SceneView",
+  "esri/layers/GraphicsLayer","esri/layers/MediaLayer",
+  "esri/layers/support/ExtentAndRotationGeoreference",
+  "esri/layers/support/ImageElement",
+  "esri/Graphic","esri/geometry/Point","esri/geometry/Extent",
+  "esri/geometry/Mesh","esri/geometry/geometryEngine",
+], function(
+  Map, MapView, SceneView, GraphicsLayer, MediaLayer,
+  ExtentAndRotationGeoreference, ImageElement,
+  Graphic, Point, Extent, Mesh, geometryEngine
+) {
+
+  // ═══════════════════════════════════════════════════════════════════
+  // UNIT TYPE DEFINITIONS
+  // Each unit has: icon, label, weight (tactical combat power equivalent)
+  // Weight is used in KDE so a tank (10) contributes more density than
+  // a rifle squad (1) — force density reflects combat power, not headcount.
+  // ═══════════════════════════════════════════════════════════════════
+  const UNIT_TYPES = [
+    { id:'infantry',   icon:'🪖', label:'Infantry',   weight:1,  desc:'Rifle squad / platoon' },
+    { id:'armour',     icon:'⬛', label:'Armour',      weight:10, desc:'Tank platoon / company' },
+    { id:'mechanised', icon:'🔲', label:'Mech. Inf.',  weight:4,  desc:'IFV-mounted infantry' },
+    { id:'artillery',  icon:'◈',  label:'Artillery',   weight:6,  desc:'Tube or rocket artillery' },
+    { id:'atgm',       icon:'⟹',  label:'ATGM',        weight:5,  desc:'Anti-tank guided missile' },
+    { id:'engineer',   icon:'⚙',  label:'Engineer',    weight:2,  desc:'Combat engineers' },
+    { id:'recon',      icon:'◉',  label:'Recon',       weight:1,  desc:'Scouts / surveillance' },
+    { id:'logistics',  icon:'⬟',  label:'Logistics',   weight:0.5,desc:'Supply / support' },
+    { id:'hq',         icon:'★',  label:'HQ',          weight:2,  desc:'Command element' },
+  ];
+
+  const FACTION_COLORS = {
+    friendly: { r:29,  g:158, b:117, hex:'#1D9E75', light:[29,158,117] },
+    enemy:    { r:220, g:60,  b:48,  hex:'#DC3C30', light:[220,60,48]  },
+    neutral:  { r:239, g:159, b:39,  hex:'#EF9F27', light:[239,159,39] },
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GEODETIC HELPERS
+  // ═══════════════════════════════════════════════════════════════════
+  const EARTH_R   = 6_371_008.8;
+  const M_PER_DEG = 111_320;
+
+  function geoDist(lon1,lat1,lon2,lat2) {
+    const φ1=lat1*Math.PI/180,φ2=lat2*Math.PI/180,Δλ=(lon2-lon1)*Math.PI/180;
+    return EARTH_R*Math.acos(Math.min(1,Math.sin(φ1)*Math.sin(φ2)+Math.cos(φ1)*Math.cos(φ2)*Math.cos(Δλ)));
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // KERNEL DENSITY ESTIMATION
+  // ─────────────────────────────────────────────────────────────────
+  // Gaussian kernel: K(d,h) = exp(-0.5 * (d/h)²)
+  // where d = distance from unit to grid cell, h = bandwidth in metres.
+  // Each unit contributes weight * K(d,h) to every cell within 3h.
+  //
+  // Running weighted KDE for both factions simultaneously on the same
+  // grid means the force ratio at any cell is simply density_F / density_E.
+  //
+  // Returns: { fGrid, eGrid, nGrid, cols, rows, extent }
+  //   fGrid[i] = friendly KDE value at cell i (0–1 normalised)
+  //   eGrid[i] = enemy KDE value at cell i (0–1 normalised)
+  // ═══════════════════════════════════════════════════════════════════
+  function computeKDE(units, extent, cols, rows, bandwidthM) {
+    const fGrid = new Float32Array(cols*rows);
+    const eGrid = new Float32Array(cols*rows);
+    const nGrid = new Float32Array(cols*rows);
+    const dLon  = (extent.xmax-extent.xmin)/cols;
+    const dLat  = (extent.ymax-extent.ymin)/rows;
+    const cLat  = (extent.ymax+extent.ymin)/2;
+    const cosLat= Math.cos(cLat*Math.PI/180);
+    const cutoff = 3*bandwidthM; // only compute within 3σ (99.7%)
+
+    for (const u of units) {
+      // Grid cell range to check for this unit
+      const cutoffLon = cutoff/(M_PER_DEG*cosLat);
+      const cutoffLat = cutoff/M_PER_DEG;
+      const minCol = Math.max(0, Math.floor((u.longitude-extent.xmin-cutoffLon)/dLon));
+      const maxCol = Math.min(cols-1, Math.ceil((u.longitude-extent.xmin+cutoffLon)/dLon));
+      const minRow = Math.max(0, Math.floor((extent.ymax-u.latitude-cutoffLat)/dLat));
+      const maxRow = Math.min(rows-1, Math.ceil((extent.ymax-u.latitude+cutoffLat)/dLat));
+
+      const grid = u.faction==='friendly'?fGrid:u.faction==='enemy'?eGrid:nGrid;
+
+      for (let r=minRow; r<=maxRow; r++) {
+        for (let c=minCol; c<=maxCol; c++) {
+          const lon = extent.xmin+(c+0.5)*dLon;
+          const lat = extent.ymax-(r+0.5)*dLat;
+          const d   = geoDist(u.longitude,u.latitude,lon,lat);
+          if (d>cutoff) continue;
+          const k   = Math.exp(-0.5*(d/bandwidthM)**2);
+          grid[r*cols+c] += u.weight * k;
+        }
+      }
+    }
+
+    // Normalise each faction's grid to 0–1
+    const normalise = arr => {
+      const max = Math.max(...arr, 1e-9);
+      return arr.map(v=>v/max);
+    };
+    const fNorm = normalise(fGrid);
+    const eNorm = normalise(eGrid);
+    const nNorm = normalise(nGrid);
+
+    return { fGrid:fNorm, eGrid:eNorm, nGrid:nNorm, cols, rows };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // HEATMAP CANVAS BUILDER
+  // ─────────────────────────────────────────────────────────────────
+  // Renders four layers in one pass:
+  //  1. Friendly density — green tint, intensity = fGrid value
+  //  2. Enemy density    — red tint, intensity = eGrid value
+  //  3. Force ratio zone — where E > F, deeper red wash; where F > E, green
+  //  4. Thin-line alert  — yellow where friendly density < threshold
+  //     AND enemy density > threshold (friendly line is thin vs enemy mass)
+  //
+  // Colours are additive — cells with both factions show mixed hues.
+  // This gives the "contested zone" a brownish-amber appearance naturally.
+  // ═══════════════════════════════════════════════════════════════════
+  function buildHeatmapCanvas(fGrid, eGrid, cols, rows, opts) {
+    const { showFriend, showEnemy, showRatio, showThin, opacity } = opts;
+    const canvas  = document.createElement('canvas');
+    canvas.width  = cols; canvas.height = rows;
+    const ctx     = canvas.getContext('2d');
+    const imgData = ctx.createImageData(cols, rows);
+    const THIN_THRESHOLD = 0.15; // friendly < this AND enemy > this = thin line
+
+    for (let i=0; i<cols*rows; i++) {
+      const f   = fGrid[i];
+      const e   = eGrid[i];
+      const px  = i*4;
+      if (f < 0.02 && e < 0.02) { imgData.data[px+3]=0; continue; }
+
+      let R=0,G=0,B=0,A=0;
+
+      if (showFriend && f > 0.02) {
+        // Friendly: transparent → green
+        R+=29*f; G+=158*f; B+=117*f;
+        A=Math.max(A, f*opacity);
+      }
+      if (showEnemy && e > 0.02) {
+        // Enemy: transparent → red (additive over friendly)
+        R+=220*e; G+=60*e*0.3; B+=48*e*0.3;
+        A=Math.max(A, e*opacity);
+      }
+      if (showRatio && f > 0.02 && e > 0.02) {
+        // Contested zone — blend toward dominant colour
+        const dom = e-f;
+        if (dom > 0.1) { R+=60*dom; G-=20*dom; A=Math.max(A,dom*opacity*0.6); }
+        else if (dom < -0.1) { G+=40*(-dom); A=Math.max(A,(-dom)*opacity*0.4); }
+      }
+      if (showThin && f < THIN_THRESHOLD && e > THIN_THRESHOLD) {
+        // Thin-line alert — bright yellow flash
+        R+=239; G+=200; B+=10;
+        A=Math.max(A, 0.55*opacity);
+      }
+
+      imgData.data[px]   = Math.min(255,Math.round(R));
+      imgData.data[px+1] = Math.min(255,Math.round(G));
+      imgData.data[px+2] = Math.min(255,Math.round(B));
+      imgData.data[px+3] = Math.min(255,Math.round(A*255));
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    return canvas;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 3D MESH — drapes the heatmap onto a flat elevation plane.
+  // Each vertex carries an RGBA colour from the same KDE canvas.
+  // The mesh sits 30m above the terrain (absolute-height) so it floats
+  // just above the 3D scene without clipping into hillsides.
+  // ═══════════════════════════════════════════════════════════════════
+  function buildKDEMesh(canvas, cols, rows, extent, altM) {
+    const ctx    = canvas.getContext('2d');
+    const imgData= ctx.getImageData(0,0,cols,rows);
+    const dLon   = (extent.xmax-extent.xmin)/cols;
+    const dLat   = (extent.ymax-extent.ymin)/rows;
+    const N      = cols*rows;
+    const positions = new Float64Array(N*3);
+    const colors    = new Uint8Array(N*4);
+
+    for (let r=0; r<rows; r++) {
+      for (let c=0; c<cols; c++) {
+        const i   = r*cols+c;
+        const px  = i*4;
+        positions[i*3]   = extent.xmin+(c+0.5)*dLon;
+        positions[i*3+1] = extent.ymax-(r+0.5)*dLat;
+        positions[i*3+2] = altM;
+        colors[px]   = imgData.data[px];
+        colors[px+1] = imgData.data[px+1];
+        colors[px+2] = imgData.data[px+2];
+        colors[px+3] = imgData.data[px+3];
+      }
+    }
+
+    // Quad mesh faces
+    const numFaces = (cols-1)*(rows-1)*2;
+    const faces    = new Uint32Array(numFaces*3);
+    let fi=0;
+    for (let r=0; r<rows-1; r++) {
+      for (let c=0; c<cols-1; c++) {
+        const v00=r*cols+c, v10=r*cols+c+1;
+        const v01=(r+1)*cols+c, v11=(r+1)*cols+c+1;
+        faces[fi++]=v00;faces[fi++]=v10;faces[fi++]=v01;
+        faces[fi++]=v10;faces[fi++]=v11;faces[fi++]=v01;
+      }
+    }
+
+    return new Mesh({
+      vertexAttributes:{ position:positions, color:colors },
+      components:[{ faces, material:{ colorMixMode:'replace', doubleSided:true } }],
+      spatialReference:{ wkid:4326 },
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // FORCE RATIO QUERY  — point query within a given radius
+  // ─────────────────────────────────────────────────────────────────
+  // Counts weighted unit strength for each faction within queryRadiusM
+  // of the clicked point, then returns the F:E ratio.
+  // ═══════════════════════════════════════════════════════════════════
+  function queryForceRatio(units, lon, lat, radiusM) {
+    let friendly=0, enemy=0, neutral=0;
+    for (const u of units) {
+      const d = geoDist(lon,lat,u.longitude,u.latitude);
+      if (d > radiusM) continue;
+      // Weight falls off linearly with distance (not gaussian here — simpler to brief)
+      const proximity = 1-(d/radiusM);
+      if (u.faction==='friendly') friendly += u.weight*proximity;
+      else if (u.faction==='enemy') enemy   += u.weight*proximity;
+      else                           neutral += u.weight*proximity;
+    }
+    const ratio = enemy > 0 ? (friendly/enemy).toFixed(2) : friendly>0?'∞':'—';
+    return { friendly:Math.round(friendly*10)/10, enemy:Math.round(enemy*10)/10,
+             neutral:Math.round(neutral*10)/10, ratio };
+  }
+
+  function ratioVerdict(friendly, enemy) {
+    if (enemy === 0 && friendly > 0) return { cls:'ok', text:'No enemy presence in radius. Friendly force dominates this area.' };
+    if (friendly === 0 && enemy > 0) return { cls:'danger', text:'No friendly force in radius. Enemy operates without opposition.' };
+    const r = friendly/enemy;
+    if (r >= 3.0) return { cls:'ok',     text:`F:E ${r.toFixed(1)}:1 — Friendly mass. Favourable for offensive action in this sector.` };
+    if (r >= 1.5) return { cls:'ok',     text:`F:E ${r.toFixed(1)}:1 — Friendly advantage. Adequate for deliberate attack or firm defence.` };
+    if (r >= 0.9) return { cls:'caution',text:`F:E ${r.toFixed(1)}:1 — Near parity. Outcome depends on terrain and initiative.` };
+    if (r >= 0.5) return { cls:'caution',text:`F:E ${r.toFixed(1)}:1 — Enemy advantage. Limit to defensive tasks. Reinforcement needed.` };
+    return              { cls:'danger', text:`F:E ${r.toFixed(1)}:1 — Dangerously thin. Enemy mass here can penetrate. Priority for reserves.` };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // UNIT MARKER BUILDER
+  // ═══════════════════════════════════════════════════════════════════
+  function buildUnitMarker(unit, for3D) {
+    const fc = FACTION_COLORS[unit.faction];
+    const ut = UNIT_TYPES.find(t=>t.id===unit.type);
+    const [r,g,b] = fc.light;
+
+    if (for3D) {
+      return new Graphic({
+        geometry: new Point({longitude:unit.longitude,latitude:unit.latitude,z:50,
+          spatialReference:{wkid:4326}}),
+        symbol:{
+          type:'point-3d',
+          symbolLayers:[{type:'object',resource:{primitive:'sphere'},
+            material:{color:[r,g,b,0.9]},width:60,height:60,depth:60}],
+          verticalOffset:{screenLength:18,maxWorldLength:500,minWorldLength:4},
+        },
+        attributes:{type:`${unit.faction} ${ut?.label}`,
+          label:`${ut?.label} — weight ${unit.weight}`},
+      });
+    } else {
+      return new Graphic({
+        geometry: new Point({longitude:unit.longitude,latitude:unit.latitude,
+          spatialReference:{wkid:4326}}),
+        symbol:{
+          type:'text',
+          text:ut?.icon ?? '●',
+          color:[r,g,b,255],
+          haloColor:[0,0,0,220],
+          haloSize:1.5,
+          font:{family:'Arial Unicode MS',size:14},
+          horizontalAlignment:'center',yoffset:0,
+        },
+        attributes:{type:`${unit.faction} ${ut?.label}`,
+          label:`Weight ${unit.weight} — ${unit.faction}`},
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ARCGIS MAP & SCENE SETUP
+  // ─────────────────────────────────────────────────────────────────
+  // Two views share the same Map object.  Layers added to the Map
+  // appear in both views.  The MediaLayer goes into the Map so it
+  // renders in 2D.  The Mesh GraphicsLayer uses absolute-height so
+  // it floats above terrain in the SceneView.
+  // ═══════════════════════════════════════════════════════════════════
+
+  const unitLayer2D   = new GraphicsLayer({ title:'Units — 2D' });
+  const unitLayer3D   = new GraphicsLayer({ title:'Units — 3D', elevationInfo:{mode:'absolute-height'} });
+  const meshLayer     = new GraphicsLayer({ title:'KDE mesh',   elevationInfo:{mode:'absolute-height'} });
+  const ratioLayer    = new GraphicsLayer({ title:'Force ratio query' });
+  const mediaLayers   = [];   // MediaLayer instances managed manually
+
+  const sharedMap = new Map({
+    basemap:'topo-3d', ground:'world-elevation',
+    layers:[meshLayer, unitLayer2D, unitLayer3D, ratioLayer],
+  });
+
+  // 2D MapView
+  const mapView = new MapView({
+    container:'map-div', map:sharedMap,
+    center:[73.06,33.68], zoom:11,
+    popup:{ dockEnabled:true, dockOptions:{position:'bottom-left',breakpoint:false},
+      defaultPopupTemplateEnabled:true },
+  });
+
+  // 3D SceneView
+  const sceneView = new SceneView({
+    container:'scene-div', map:sharedMap,
+    camera:{ position:{longitude:73.06,latitude:33.60,z:22000}, heading:0, tilt:55 },
+    environment:{ atmosphere:{quality:'high'}, lighting:{date:new Date()} },
+    popup:{ dockEnabled:true, dockOptions:{position:'bottom-right',breakpoint:false},
+      defaultPopupTemplateEnabled:true },
+  });
+
+  [unitLayer2D,unitLayer3D,meshLayer].forEach(l=>{
+    l.popupTemplate={ title:'{type}', content:'{label}' };
+  });
+
+  // Keep views synchronised (centre/zoom)
+  let syncing=false;
+  function syncViews(src, dst) {
+    if(syncing) return;
+    syncing=true;
+    try{ dst.center=src.center; }catch(_){}
+    syncing=false;
+  }
+  mapView.watch('center',  ()=>syncViews(mapView, sceneView));
+  sceneView.watch('center',()=>syncViews(sceneView, mapView));
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════════════════════════════
+  let units          = [];   // [{ longitude, latitude, faction, type, weight }]
+  let currentFaction = 'friendly';
+  let currentType    = 'infantry';
+  let running        = false;
+
+  const $ = id => document.getElementById(id);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // UI INIT — unit type grid, faction tabs
+  // ═══════════════════════════════════════════════════════════════════
+  function buildUnitGrid() {
+    const grid = $('unit-grid');
+    grid.innerHTML = '';
+    UNIT_TYPES.forEach(ut => {
+      const btn = document.createElement('button');
+      btn.className = 'unit-btn' + (ut.id===currentType?' sel':'');
+      btn.innerHTML = `<div class="unit-icon">${ut.icon}</div>
+        <div class="unit-name">${ut.label}</div>
+        <div class="unit-weight">×${ut.weight}</div>`;
+      btn.addEventListener('click', ()=>{
+        currentType = ut.id;
+        document.querySelectorAll('.unit-btn').forEach(b=>b.classList.remove('sel'));
+        btn.classList.add('sel');
+      });
+      grid.appendChild(btn);
+    });
+  }
+  buildUnitGrid();
+
+  document.querySelectorAll('.ftab').forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      document.querySelectorAll('.ftab').forEach(t=>t.classList.remove('on','friendly','enemy','neutral'));
+      tab.classList.add('on', tab.dataset.f);
+      currentFaction = tab.dataset.f;
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SLIDER WIRING
+  // ═══════════════════════════════════════════════════════════════════
+  $('inp-bw').addEventListener('input',   ()=>$('bw-v').textContent   = $('inp-bw').value+' km');
+  $('inp-cell').addEventListener('input', ()=>$('cell-v').textContent = $('inp-cell').value+' m');
+  $('inp-qr').addEventListener('input',   ()=>$('qr-v').textContent   = $('inp-qr').value+' km');
+  $('inp-opa').addEventListener('input',  ()=>$('opa-v').textContent  = parseFloat($('inp-opa').value).toFixed(2));
+
+  // ═══════════════════════════════════════════════════════════════════
+  // VIEW MODE SWITCHER
+  // ═══════════════════════════════════════════════════════════════════
+  document.querySelectorAll('.vm-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.vm-btn').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      const vm = btn.dataset.vm;
+      document.body.className = 'mode-'+vm;
+      // Resize both views after transition
+      setTimeout(()=>{
+        try{ mapView.resize(); }catch(_){}
+        try{ sceneView.resize(); }catch(_){}
+      },350);
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MAP CLICK — place unit on BOTH views (same underlying Map)
+  // ═══════════════════════════════════════════════════════════════════
+  function placeUnit(lon, lat) {
+    const ut     = UNIT_TYPES.find(t=>t.id===currentType);
+    const unit   = { longitude:lon, latitude:lat, faction:currentFaction,
+                     type:currentType, weight:ut?.weight??1, id:Date.now() };
+    units.push(unit);
+
+    if ($('opt-markers').checked) {
+      unitLayer2D.add(buildUnitMarker(unit, false));
+      unitLayer3D.add(buildUnitMarker(unit, true));
+    }
+
+    updateSumStrip();
+    renderSymbolList();
+    $('btn-run').disabled = units.length < 2;
+    $('hint').textContent = `${units.length} units placed — adjust params and click Build Heatmap`;
+  }
+
+  mapView.on('click', async event=>{
+    const gp = event.mapPoint;
+    if (!gp) return;
+    placeUnit(gp.longitude, gp.latitude);
+  });
+
+  sceneView.on('click', async event=>{
+    const result = await sceneView.hitTest(event,{include:[sharedMap.ground]});
+    const gp     = result?.ground?.mapPoint ?? event.mapPoint;
+    if (!gp) return;
+    placeUnit(gp.longitude, gp.latitude);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // FORCE RATIO CLICK  (works on both views)
+  // ═══════════════════════════════════════════════════════════════════
+  function handleRatioQuery(lon, lat) {
+    if (units.length < 2) return;
+    const radiusM = parseFloat($('inp-qr').value)*1000;
+    const { friendly, enemy, neutral, ratio } = queryForceRatio(units, lon, lat, radiusM);
+    $('rc-f').textContent   = friendly || 0;
+    $('rc-e').textContent   = enemy    || 0;
+    $('rc-r').textContent   = ratio;
+    $('rc-qr').textContent  = parseFloat($('inp-qr').value)+' km';
+    $('rc-hint').style.display='none';
+
+    const verdict = $('rc-verdict');
+    verdict.style.display='block';
+    if (enemy===0&&friendly===0) {
+      verdict.className='rc-verdict'; verdict.textContent='No units within query radius.';
+    } else {
+      const v=ratioVerdict(friendly,enemy);
+      verdict.className='rc-verdict '+v.cls; verdict.textContent=v.text;
+    }
+
+    // Place a query ring marker on both layers
+    ratioLayer.removeAll();
+    const ring=[];
+    for(let i=0;i<=48;i++){
+      const bRad=(i/48)*2*Math.PI;
+      const cosLat=Math.cos(lat*Math.PI/180);
+      ring.push([lon+Math.cos(bRad)*radiusM/(M_PER_DEG*cosLat),
+                 lat+Math.sin(bRad)*radiusM/M_PER_DEG]);
+    }
+    ratioLayer.add(new Graphic({
+      geometry:{type:'polygon',rings:[ring],spatialReference:{wkid:4326}},
+      symbol:{type:'simple-fill',color:[0,0,0,0],
+        outline:{color:[239,159,39,200],width:2,style:'dash'}},
+    }));
+    ratioLayer.add(new Graphic({
+      geometry:new Point({longitude:lon,latitude:lat,spatialReference:{wkid:4326}}),
+      symbol:{type:'simple-marker',color:[239,159,39,180],size:8,
+        outline:{color:[255,255,255,200],width:1}},
+    }));
+  }
+
+  // Both views: Ctrl+Click = force ratio query
+  mapView.on('click', event=>{
+    if(!event.native.ctrlKey) return;
+    handleRatioQuery(event.mapPoint.longitude,event.mapPoint.latitude);
+  });
+  sceneView.on('click', async event=>{
+    if(!event.native.ctrlKey) return;
+    const result=await sceneView.hitTest(event,{include:[sharedMap.ground]});
+    const gp=result?.ground?.mapPoint??event.mapPoint;
+    handleRatioQuery(gp.longitude,gp.latitude);
+  });
+  $('rc-hint').textContent='Ctrl+Click any map to query force ratio';
+
+  // ═══════════════════════════════════════════════════════════════════
+  // BUILD HEATMAP  — main analysis
+  // ═══════════════════════════════════════════════════════════════════
+  $('btn-run').addEventListener('click', async ()=>{
+    if (running || units.length<2) return;
+    running=true; $('btn-run').disabled=true;
+    clearMedia();
+
+    const bwM    = parseFloat($('inp-bw').value)*1000;
+    const cellM  = parseInt($('inp-cell').value);
+    const opacity= parseFloat($('inp-opa').value);
+
+    // Analysis extent from unit bounding box + 1.5× bandwidth padding
+    const lons = units.map(u=>u.longitude);
+    const lats = units.map(u=>u.latitude);
+    const pad  = bwM*2/M_PER_DEG;
+    const cLat = (Math.min(...lats)+Math.max(...lats))/2;
+    const cosLat=Math.cos(cLat*Math.PI/180);
+    const extent = new Extent({
+      xmin:Math.min(...lons)-pad/cosLat, ymin:Math.min(...lats)-pad,
+      xmax:Math.max(...lons)+pad/cosLat, ymax:Math.max(...lats)+pad,
+      spatialReference:{wkid:4326},
+    });
+    const cols = Math.ceil((extent.xmax-extent.xmin)*M_PER_DEG*cosLat/cellM);
+    const rows = Math.ceil((extent.ymax-extent.ymin)*M_PER_DEG/cellM);
+
+    setProgress(0.10,'Computing kernel density…');
+    await tick();
+
+    const { fGrid, eGrid, nGrid } = computeKDE(units, extent, cols, rows, bwM);
+
+    setProgress(0.45,'Rendering heatmap canvas…');
+    await tick();
+
+    const canvasOpts = {
+      showFriend: $('opt-friend').checked,
+      showEnemy:  $('opt-enemy').checked,
+      showRatio:  $('opt-ratio').checked,
+      showThin:   $('opt-thin').checked,
+      opacity,
+    };
+    const canvas = buildHeatmapCanvas(fGrid, eGrid, cols, rows, canvasOpts);
+
+    // ── 2D MediaLayer ───────────────────────────────────────────────
+    setProgress(0.60,'Building 2D MediaLayer…');
+    await tick();
+
+    const mediaLayer = new MediaLayer({
+      source:[new ImageElement({
+        image: canvas.toDataURL('image/png'),
+        georeference: new ExtentAndRotationGeoreference({ extent }),
+      })],
+      title:'Force density heatmap',
+    });
+    sharedMap.add(mediaLayer, 0);
+    mediaLayers.push(mediaLayer);
+
+    // ── 3D Mesh ─────────────────────────────────────────────────────
+    setProgress(0.75,'Building 3D mesh…');
+    await tick();
+
+    // Get representative terrain elevation for mesh altitude
+    let meshAltM = 800; // sensible fallback
+    try {
+      const midPt = new Point({ longitude:(extent.xmin+extent.xmax)/2,
+        latitude:(extent.ymin+extent.ymax)/2, spatialReference:{wkid:4326} });
+      const elevR = await sceneView.map.ground.queryElevation(midPt);
+      meshAltM = (elevR?.geometry?.z ?? 800) + 50; // 50m above terrain
+    } catch(_){}
+
+    meshLayer.removeAll();
+    const mesh = buildKDEMesh(canvas, cols, rows, extent, meshAltM);
+    meshLayer.add(new Graphic({
+      geometry: mesh,
+      symbol:{ type:'mesh-3d', symbolLayers:[{ type:'fill',
+        material:{color:[255,255,255,255],colorMixMode:'replace',doubleSided:true} }] },
+      attributes:{ type:'Force density mesh', label:'KDE heatmap — 3D' },
+    }));
+
+    setProgress(0.90,'Rebuilding markers…');
+    await tick();
+
+    // Rebuild markers if toggled
+    if ($('opt-markers').checked) {
+      unitLayer2D.removeAll(); unitLayer3D.removeAll();
+      units.forEach(u=>{
+        unitLayer2D.add(buildUnitMarker(u,false));
+        unitLayer3D.add(buildUnitMarker(u,true));
+      });
+    }
+
+    setProgress(1.0,`Done — ${units.length} units, ${cols}×${rows} grid`);
+    setStatus('live','Heatmap live');
+
+    // Fly both views to the analysis extent
+    mapView.goTo({ target:extent }, { duration:900 });
+    sceneView.goTo({ target:extent, tilt:55 }, { duration:900 });
+
+    running=false; $('btn-run').disabled=false;
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SYMBOL LIST UI
+  // ═══════════════════════════════════════════════════════════════════
+  function renderSymbolList() {
+    const list = $('sym-list');
+    list.innerHTML='';
+    if (units.length===0) {
+      list.innerHTML='<div id="sym-empty" style="padding:16px 12px;font-size:10px;color:#3a3935;text-align:center;line-height:1.8">Select faction & unit type above,<br>then click the map to place units.</div>';
+      return;
+    }
+    [...units].reverse().forEach((u,ri)=>{
+      const fc  = FACTION_COLORS[u.faction];
+      const ut  = UNIT_TYPES.find(t=>t.id===u.type);
+      const row = document.createElement('div');
+      row.className='sym-row';
+      row.innerHTML=`
+        <div class="sym-dot" style="background:${fc.hex}"></div>
+        <div class="sym-info">
+          <div class="sym-type">${ut?.icon} ${ut?.label} — ${u.faction}</div>
+          <div class="sym-coords">${u.latitude.toFixed(4)}°N  ${u.longitude.toFixed(4)}°E  ·  ×${u.weight}</div>
+        </div>
+        <button class="sym-del" data-id="${u.id}">✕</button>
+      `;
+      row.querySelector('.sym-del').addEventListener('click',()=>removeUnit(u.id));
+      list.appendChild(row);
+    });
+  }
+
+  function updateSumStrip() {
+    $('ss-f').textContent = units.filter(u=>u.faction==='friendly').length;
+    $('ss-e').textContent = units.filter(u=>u.faction==='enemy').length;
+    $('ss-n').textContent = units.filter(u=>u.faction==='neutral').length;
+    $('lph-sub').textContent = `${units.length} units placed`;
+  }
+
+  function removeUnit(id) {
+    units = units.filter(u=>u.id!==id);
+    rebuildMarkers();
+    updateSumStrip();
+    renderSymbolList();
+    $('btn-run').disabled = units.length<2;
+    clearMedia();
+  }
+
+  function rebuildMarkers() {
+    unitLayer2D.removeAll(); unitLayer3D.removeAll();
+    units.forEach(u=>{
+      unitLayer2D.add(buildUnitMarker(u,false));
+      unitLayer3D.add(buildUnitMarker(u,true));
+    });
+  }
+
+  // ── Undo / Clear ────────────────────────────────────────────────────
+  $('btn-undo').addEventListener('click', ()=>{
+    if (!units.length) return;
+    removeUnit(units.at(-1).id);
+  });
+  $('btn-clear').addEventListener('click', ()=>{
+    units=[];
+    [unitLayer2D,unitLayer3D,meshLayer,ratioLayer].forEach(l=>l.removeAll());
+    clearMedia();
+    updateSumStrip();
+    renderSymbolList();
+    $('btn-run').disabled=true;
+    $('rc-verdict').style.display='none';
+    $('rc-hint').style.display='block';
+    ['rc-f','rc-e','rc-r','rc-qr'].forEach(id=>$(id).textContent='—');
+    setProgress(0,'—');
+    setStatus('live','Place units on map');
+    $('hint').textContent='Select faction & unit type — then click the map to place units';
+  });
+
+  // ── Helpers ─────────────────────────────────────────────────────────
+  function clearMedia() {
+    mediaLayers.forEach(l=>{ try{ sharedMap.remove(l); }catch(_){} });
+    mediaLayers.length=0;
+    meshLayer.removeAll();
+  }
+  function setStatus(s,text){const el=$('status');el.textContent=text??s;el.className='ph-status '+s}
+  function setProgress(f,label){$('prog-fill').style.width=Math.round(f*100)+'%';$('prog-label').textContent=label??''}
+  function tick(){return new Promise(r=>setTimeout(r,0))}
+
+  Promise.all([mapView.when(), sceneView.when()]).then(()=>{
+    console.log('[ForceDensity] Both views ready.');
+    console.log('[ForceDensity] Ctrl+Click = force ratio query. Units shared between 2D and 3D.');
+    console.log('[ForceDensity] KDE bandwidth controls smoothing. High BW = strategic picture. Low BW = tactical.');
+  });
+
+}); // end require()
+</script>
+</body>
+</html>

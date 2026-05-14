@@ -39,6 +39,7 @@ const drawBlockSymbolButton = document.getElementById('drawBlockSymbolButton');
 const drawAmbushButton = document.getElementById('drawAmbushButton');
 const savePlanButton = document.getElementById('savePlanButton');
 const loadPlanButton = document.getElementById('loadPlanButton');
+const deploymentManagerBtn = document.getElementById('deployment-manager-btn');
 
 // Autocomplete elements
 const symbolSearchInput = document.getElementById(
@@ -1377,6 +1378,17 @@ function initializeAutocomplete() {
   if (loadPlanButton) {
     loadPlanButton.addEventListener('click', () => {
       symbolEngine.serializationEngine.loadPlanFromFile();
+    });
+  }
+
+  if (deploymentManagerBtn) {
+    deploymentManagerBtn.addEventListener('click', () => {
+      const dbe = (window as any).deploymentBuilderEngine;
+      if (dbe) {
+        dbe.openWidget();
+      } else {
+        console.warn('Deployment Manager not ready yet');
+      }
     });
   }
 
