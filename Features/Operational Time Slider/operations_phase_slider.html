@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Operations Phase Slider - TimeSlider Integration</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.34/"></script>
+  <style>
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #sidebar {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      width: 360px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      padding: 20px;
+      z-index: 99;
+      font-size: 13px;
+    }
+    .title {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 15px;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .phase-indicator {
+      background: linear-gradient(135deg, #185FA5 0%, #0C447C 100%);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .phase-name {
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+    .phase-duration {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    .info-box {
+      background: #E6F1FB;
+      border-left: 3px solid #185FA5;
+      padding: 10px 12px;
+      border-radius: 3px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #0C447C;
+      margin-bottom: 15px;
+    }
+    .section {
+      margin-bottom: 18px;
+    }
+    .section-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #333;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .phase-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 15px;
+    }
+    .phase-tab {
+      padding: 8px;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      text-align: center;
+      cursor: pointer;
+      background: #f8f8f8;
+      font-size: 11px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .phase-tab:hover {
+      border-color: #185FA5;
+    }
+    .phase-tab.active {
+      background: #185FA5;
+      color: white;
+      border-color: #185FA5;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #185FA5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      transition: background 0.2s;
+      margin-bottom: 8px;
+    }
+    button:hover {
+      background: #0C447C;
+    }
+    button.secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    button.secondary:hover {
+      background: #e0e0e0;
+    }
+    .unit-list {
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      max-height: 300px;
+      overflow-y: auto;
+      background: #fafafa;
+    }
+    .unit-item {
+      padding: 8px 10px;
+      border-bottom: 0.5px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .unit-item:last-child {
+      border-bottom: none;
+    }
+    .unit-info {
+      flex: 1;
+    }
+    .unit-name {
+      font-weight: 500;
+      color: #333;
+      font-size: 12px;
+    }
+    .unit-type {
+      font-size: 10px;
+      color: #999;
+      margin-top: 2px;
+    }
+    .unit-symbol {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+    .control-group {
+      margin-bottom: 12px;
+    }
+    .control-group label {
+      display: block;
+      margin-bottom: 4px;
+      color: #666;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    input[type="checkbox"] {
+      margin-right: 6px;
+      cursor: pointer;
+    }
+    .toggle-option {
+      display: flex;
+      align-items: center;
+      padding: 6px 0;
+      cursor: pointer;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    .stat-card {
+      background: #f8f8f8;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: #185FA5;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: #999;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .timeline-viz {
+      position: relative;
+      height: 60px;
+      background: #f8f8f8;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+    .phase-bar {
+      position: absolute;
+      height: 100%;
+      opacity: 0.7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .phase-bar.p1 { background: #4285F4; }
+    .phase-bar.p2 { background: #EA4335; }
+    .phase-bar.p3 { background: #FBBC04; }
+    .phase-bar.p4 { background: #34A853; }
+    .wez-legend {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #ddd;
+    }
+    .legend-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+      font-size: 12px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 6px 0;
+      font-size: 11px;
+    }
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .legend-item.polygon {
+      align-items: flex-start;
+    }
+    .legend-color.polygon {
+      width: 18px;
+      height: 18px;
+      border-radius: 2px;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+  
+  <div id="sidebar">
+    <div class="title">
+      <i class="ti ti-timeline" aria-hidden="true"></i>
+      Operations Phase Controller
+    </div>
+    
+    <div id="phaseIndicator" class="phase-indicator">
+      <div class="phase-name">Phase 1: Positioning</div>
+      <div class="phase-duration">T+0:00 to T+1:00</div>
+    </div>
+    
+    <div class="info-box">
+      ✓ Use TimeSlider to navigate phases<br/>
+      ✓ Units and WEZs update per phase<br/>
+      ✓ Track force composition changes
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Phase Timeline</div>
+      <div class="timeline-viz" id="timelineViz"></div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Quick Navigation</div>
+      <div class="phase-tabs" id="phaseTabs"></div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Display Options</div>
+      <div class="toggle-option">
+        <input type="checkbox" id="showUnits" checked onchange="updateDisplay()" />
+        <label for="showUnits" style="margin: 0;">Show unit symbols</label>
+      </div>
+      <div class="toggle-option">
+        <input type="checkbox" id="showWEZ" checked onchange="updateDisplay()" />
+        <label for="showWEZ" style="margin: 0;">Show WEZ coverage</label>
+      </div>
+      <div class="toggle-option">
+        <input type="checkbox" id="showLabels" checked onchange="updateDisplay()" />
+        <label for="showLabels" style="margin: 0;">Show unit labels</label>
+      </div>
+    </div>
+    
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="unitCount">0</div>
+        <div class="stat-label">Units</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="wezCount">0</div>
+        <div class="stat-label">WEZ Zones</div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Active Units This Phase</div>
+      <div id="unitListContainer" class="unit-list"></div>
+    </div>
+    
+    <div class="wez-legend">
+      <div class="legend-title">Legend</div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #4285F4;"></div>
+        <span>Infantry platoon</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #EA4335;"></div>
+        <span>Tank squad</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #FBBC04;"></div>
+        <span>Support team</span>
+      </div>
+      <div class="legend-item polygon">
+        <div class="legend-color polygon" style="background: rgba(66,133,244,0.25); border: 1px solid #4285F4;"></div>
+        <span>Direct fire engagement zone</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer",
+      "esri/layers/GraphicsLayer",
+      "esri/Graphic",
+      "esri/geometry/Point",
+      "esri/geometry/Circle",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/symbols/TextSymbol",
+      "esri/Color",
+      "esri/widgets/TimeSlider",
+      "esri/layers/support/TimeInfo"
+    ], (
+      Map, MapView, FeatureLayer, GraphicsLayer, Graphic, Point, Circle,
+      SimpleMarkerSymbol, SimpleFillSymbol, SimpleLineSymbol, TextSymbol, 
+      Color, TimeSlider, TimeInfo
+    ) => {
+
+      const map = new Map({ basemap: "streets-v2" });
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-80, 35],
+        zoom: 9
+      });
+
+      const wezLayer = new GraphicsLayer({ title: "WEZ Coverage" });
+      const labelLayer = new GraphicsLayer({ title: "Unit Labels" });
+      map.addMany([wezLayer, labelLayer]);
+
+      // Define operational phases (in milliseconds since epoch)
+      const phases = [
+        {
+          name: "Phase 1: Positioning",
+          shortName: "P1",
+          color: "#4285F4",
+          startTime: new Date("2024-01-15T08:00:00Z").getTime(),
+          endTime: new Date("2024-01-15T09:00:00Z").getTime(),
+          description: "Initial force deployment and reconnaissance"
+        },
+        {
+          name: "Phase 2: Assault",
+          shortName: "P2",
+          color: "#EA4335",
+          startTime: new Date("2024-01-15T09:00:00Z").getTime(),
+          endTime: new Date("2024-01-15T10:30:00Z").getTime(),
+          description: "Main attack with full firepower"
+        },
+        {
+          name: "Phase 3: Consolidation",
+          shortName: "P3",
+          color: "#FBBC04",
+          startTime: new Date("2024-01-15T10:30:00Z").getTime(),
+          endTime: new Date("2024-01-15T11:30:00Z").getTime(),
+          description: "Hold objective and reinforce position"
+        },
+        {
+          name: "Phase 4: Exploitation",
+          shortName: "P4",
+          color: "#34A853",
+          startTime: new Date("2024-01-15T11:30:00Z").getTime(),
+          endTime: new Date("2024-01-15T13:00:00Z").getTime(),
+          description: "Pursue enemy and secure AO"
+        }
+      ];
+
+      // Generate sample military units with time fields
+      const militaryUnits = [
+        // Phase 1 & 2 units
+        {
+          id: 1,
+          name: "Alpha-1",
+          type: "Infantry",
+          symbol: "circle",
+          color: [66, 133, 244],
+          x: -80.1,
+          y: 35.1,
+          fireRange: 3,
+          phases: [0, 1, 2, 3]
+        },
+        {
+          id: 2,
+          name: "Bravo-2",
+          type: "Infantry",
+          symbol: "circle",
+          color: [66, 133, 244],
+          x: -80.2,
+          y: 35.15,
+          fireRange: 3,
+          phases: [0, 1, 2, 3]
+        },
+        // Tank units - Phase 2 onwards
+        {
+          id: 3,
+          name: "Charlie-3",
+          type: "Tank",
+          symbol: "diamond",
+          color: [234, 67, 53],
+          x: -80.05,
+          y: 35.05,
+          fireRange: 8,
+          phases: [1, 2, 3]
+        },
+        {
+          id: 4,
+          name: "Delta-4",
+          type: "Tank",
+          symbol: "diamond",
+          color: [234, 67, 53],
+          x: -80.15,
+          y: 35.0,
+          fireRange: 8,
+          phases: [1, 2, 3]
+        },
+        // Support units - Phase 3 onwards
+        {
+          id: 5,
+          name: "Echo-Support",
+          type: "Support",
+          symbol: "square",
+          color: [251, 188, 4],
+          x: -80.25,
+          y: 35.25,
+          fireRange: 5,
+          phases: [2, 3]
+        },
+        // Reserve - Phase 4 only
+        {
+          id: 6,
+          name: "Foxtrot-Reserve",
+          type: "Infantry",
+          symbol: "circle",
+          color: [52, 168, 83],
+          x: -80.35,
+          y: 35.35,
+          fireRange: 3,
+          phases: [3]
+        }
+      ];
+
+      let currentPhaseIndex = 0;
+
+      // Initialize TimeSlider
+      function initTimeSlider() {
+        const timeSlider = new TimeSlider({
+          container: "timeSliderDiv",
+          mode: "instant",
+          fullTimeExtent: {
+            start: new Date(phases[0].startTime),
+            end: new Date(phases[phases.length - 1].endTime)
+          },
+          timeVisible: true,
+          playRate: 500
+        });
+
+        view.ui.add(timeSlider, "bottom-left");
+
+        timeSlider.watch("timeExtent", () => {
+          const selectedTime = timeSlider.timeExtent.start.getTime();
+          
+          // Determine current phase
+          for (let i = 0; i < phases.length; i++) {
+            if (selectedTime >= phases[i].startTime && selectedTime <= phases[i].endTime) {
+              currentPhaseIndex = i;
+              break;
+            }
+          }
+
+          updatePhaseDisplay();
+          updateUnitsAndWEZ();
+        });
+
+        // Set initial time to start of Phase 1
+        timeSlider.timeExtent = {
+          start: new Date(phases[0].startTime),
+          end: new Date(phases[0].startTime)
+        };
+      }
+
+      function updatePhaseDisplay() {
+        const phase = phases[currentPhaseIndex];
+        
+        // Update phase indicator
+        document.getElementById("phaseIndicator").innerHTML = `
+          <div class="phase-name">${phase.shortName}: ${phase.name.split(": ")[1]}</div>
+          <div class="phase-duration">${new Date(phase.startTime).toLocaleTimeString()} - ${new Date(phase.endTime).toLocaleTimeString()}</div>
+        `;
+
+        // Update active tab
+        document.querySelectorAll(".phase-tab").forEach((tab, i) => {
+          tab.classList.toggle("active", i === currentPhaseIndex);
+        });
+
+        // Update phase visualization
+        updatePhaseVisualization();
+      }
+
+      function updatePhaseVisualization() {
+        const viz = document.getElementById("timelineViz");
+        const totalDuration = phases[phases.length - 1].endTime - phases[0].startTime;
+
+        viz.innerHTML = phases.map((phase, idx) => {
+          const duration = phase.endTime - phase.startTime;
+          const left = ((phase.startTime - phases[0].startTime) / totalDuration) * 100;
+          const width = (duration / totalDuration) * 100;
+          const isActive = idx === currentPhaseIndex;
+
+          return `
+            <div class="phase-bar p${idx + 1}" 
+                 style="left: ${left}%; width: ${width}%; 
+                        border: ${isActive ? '2px solid #333' : 'none'};"
+                 onclick="jumpToPhase(${idx})">
+              ${phase.shortName}
+            </div>
+          `;
+        }).join("");
+      }
+
+      function updateUnitsAndWEZ() {
+        const phase = phases[currentPhaseIndex];
+        const activeUnits = militaryUnits.filter(u => u.phases.includes(currentPhaseIndex));
+
+        // Clear existing graphics
+        wezLayer.removeAll();
+        labelLayer.removeAll();
+
+        let wezCount = 0;
+
+        // Draw WEZ circles if enabled
+        if (document.getElementById("showWEZ").checked) {
+          activeUnits.forEach(unit => {
+            const wezCircle = new Circle({
+              center: new Point({ x: unit.x, y: unit.y }),
+              radius: unit.fireRange * 1000,
+              radiusUnit: "meters"
+            });
+
+            const wezGraphic = new Graphic({
+              geometry: wezCircle,
+              symbol: new SimpleFillSymbol({
+                color: new Color([...unit.color, 0.15]),
+                outline: new SimpleLineSymbol({
+                  color: new Color(unit.color),
+                  width: 1.5,
+                  style: "dash"
+                })
+              }),
+              attributes: { unitId: unit.id, unitName: unit.name }
+            });
+
+            wezLayer.add(wezGraphic);
+            wezCount++;
+          });
+        }
+
+        // Draw unit markers if enabled
+        if (document.getElementById("showUnits").checked) {
+          activeUnits.forEach(unit => {
+            const markerGraphic = new Graphic({
+              geometry: new Point({ x: unit.x, y: unit.y }),
+              symbol: new SimpleMarkerSymbol({
+                style: unit.symbol,
+                size: 10,
+                color: new Color(unit.color),
+                outline: {
+                  color: new Color([255, 255, 255]),
+                  width: 2
+                }
+              }),
+              attributes: { name: unit.name, type: unit.type }
+            });
+
+            wezLayer.add(markerGraphic);
+
+            // Add labels if enabled
+            if (document.getElementById("showLabels").checked) {
+              const labelGraphic = new Graphic({
+                geometry: new Point({ x: unit.x, y: unit.y + 0.02 }),
+                symbol: new TextSymbol({
+                  text: unit.name,
+                  font: {
+                    size: 10,
+                    weight: "bold"
+                  },
+                  color: new Color(unit.color),
+                  haloColor: new Color([255, 255, 255]),
+                  haloSize: 1
+                })
+              });
+
+              labelLayer.add(labelGraphic);
+            }
+          });
+        }
+
+        // Update stats
+        document.getElementById("unitCount").textContent = activeUnits.length;
+        document.getElementById("wezCount").textContent = wezCount;
+
+        // Update unit list
+        const unitListHTML = activeUnits.map(unit => `
+          <div class="unit-item">
+            <div class="unit-info">
+              <div class="unit-name">${unit.name}</div>
+              <div class="unit-type">${unit.type} • Range: ${unit.fireRange}km</div>
+            </div>
+            <div class="unit-symbol" style="background: rgb(${unit.color.join(',')});"></div>
+          </div>
+        `).join("");
+
+        document.getElementById("unitListContainer").innerHTML = 
+          unitListHTML || '<div style="padding: 10px; text-align: center; color: #999;">No units active</div>';
+      }
+
+      // Initialize phase tabs
+      function initPhaseTabs() {
+        const tabsContainer = document.getElementById("phaseTabs");
+        tabsContainer.innerHTML = phases.map((phase, idx) => `
+          <div class="phase-tab ${idx === 0 ? 'active' : ''}" 
+               style="border-color: ${phase.color}; background: ${idx === 0 ? phase.color : '#f8f8f8'}; color: ${idx === 0 ? 'white' : '#333'};"
+               onclick="jumpToPhase(${idx})">
+            ${phase.shortName}
+          </div>
+        `).join("");
+      }
+
+      window.jumpToPhase = function(phaseIdx) {
+        if (phaseIdx >= 0 && phaseIdx < phases.length) {
+          currentPhaseIndex = phaseIdx;
+          updatePhaseDisplay();
+          updateUnitsAndWEZ();
+        }
+      };
+
+      window.updateDisplay = function() {
+        updateUnitsAndWEZ();
+      };
+
+      // Initialize
+      initTimeSlider();
+      initPhaseTabs();
+      updatePhaseDisplay();
+      updateUnitsAndWEZ();
+
+      // Create div for TimeSlider
+      const timeSliderDiv = document.createElement("div");
+      timeSliderDiv.id = "timeSliderDiv";
+      timeSliderDiv.style.width = "400px";
+      document.body.appendChild(timeSliderDiv);
+
+      console.log("Operations Phase Controller initialized");
+    });
+  </script>
+</body>
+</html>

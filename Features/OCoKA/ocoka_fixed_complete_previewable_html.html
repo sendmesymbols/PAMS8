@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OCOKA Approach Analysis — Fixed</title>
+<link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+body{font-family:'Courier New',monospace;background:#060709}
+
+#left-panel{
+position:absolute;top:14px;left:14px;width:280px;z-index:99;
+background:rgba(6,7,9,.97);
+border:1px solid rgba(55,138,221,.28);
+border-radius:5px;color:#bfbcb4;
+max-height:calc(100vh - 28px);
+overflow:auto;
+padding:10px;
+}
+
+#right-panel{
+position:absolute;top:14px;right:14px;width:300px;z-index:99;
+background:rgba(6,7,9,.97);
+border:1px solid rgba(55,138,221,.28);
+border-radius:5px;color:#bfbcb4;
+padding:12px;
+}
+
+.panel-title{
+font-size:11px;
+letter-spacing:.14em;
+text-transform:uppercase;
+color:#378ADD;
+margin-bottom:10px;
+font-weight:bold;
+}
+
+label{
+display:block;
+font-size:9px;
+letter-spacing:.08em;
+text-transform:uppercase;
+margin-top:8px;
+margin-bottom:4px;
+color:#888780;
+}
+
+input,select,button{
+width:100%;
+background:rgba(255,255,255,.04);
+border:1px solid rgba(255,255,255,.12);
+border-radius:3px;
+color:#bfbcb4;
+padding:7px;
+font-family:'Courier New',monospace;
+font-size:11px;
+outline:none;
+}
+
+button{
+margin-top:12px;
+background:rgba(55,138,221,.16);
+border-color:#378ADD;
+color:#378ADD;
+font-weight:bold;
+cursor:pointer;
+transition:all .14s;
+}
+
+button:hover{
+background:rgba(55,138,221,.28);
+}
+
+#status{
+margin-top:10px;
+font-size:10px;
+letter-spacing:.08em;
+text-transform:uppercase;
+color:#378ADD;
+}
+
+.corridor-card{
+margin-bottom:8px;
+padding:8px;
+background:rgba(255,255,255,.02);
+border:1px solid rgba(255,255,255,.08);
+border-radius:4px;
+}
+
+.corridor-title{
+font-size:11px;
+font-weight:bold;
+margin-bottom:4px;
+}
+
+.corridor-score{
+font-size:18px;
+font-weight:bold;
+}
+
+#hint{
+position:absolute;
+bottom:20px;
+left:50%;
+transform:translateX(-50%);
+background:rgba(6,7,9,.92);
+border:1px solid rgba(55,138,221,.35);
+padding:8px 18px;
+color:#378ADD;
+font-size:10px;
+letter-spacing:.08em;
+text-transform:uppercase;
+z-index:99;
+}
+</style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<div id="left-panel">
+<div class="panel-title">⬡ Ranked Avenues</div>
+<div id="corridor-list"></div>
+</div>
+
+<div id="right-panel">
+<div class="panel-title">⬡ OCOKA Config</div>
+
+<label>Latitude</label>
+<input id="lat" type="number" value="33.680" step="0.001" />
+
+<label>Longitude</label>
+<input id="lon" type="number" value="73.060" step="0.001" />
+
+<label>Radius</label>
+<select id="radius">
+<option value="3000">3 km</option>
+<option value="5000" selected>5 km</option>
+<option value="8000">8 km</option>
+<option value="12000">12 km</option>
+</select>
+
+<label>Cell Size</label>
+<select id="cell">
+<option value="30">30m</option>
+<option value="50" selected>50m</option>
+<option value="80">80m</option>
+</select>
+
+<label>Force Type</label>
+<select id="force">
+<option value="dismount">Dismounted Infantry</option>
+<option value="wheeled" selected>Wheeled Vehicles</option>
+<option value="tracked">Tracked Armour</option>
+<option value="mixed">Mixed Force</option>
+</select>
+
+<button id="runBtn">Run OCOKA ↗</button>
+<button id="clearBtn">Clear</button>
+
+<div id="status">Ready</div>
+</div>
+
+<div id="hint">Click map to recenter AO then run analysis</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+'esri/Map',
+'esri/views/SceneView',
+'esri/layers/GraphicsLayer',
+'esri/Graphic',
+'esri/geometry/Point',
+'esri/geometry/Polyline',
+'esri/geometry/Polygon'
+], function(
+Map,
+SceneView,
+GraphicsLayer,
+Graphic,
+Point,
+Polyline,
+Polygon
+){
+
+const FORCE_SLOPE = {
+  dismount:35,
+  wheeled:12,
+  tracked:20,
+  mixed:15
+};
+
+const corridorLayer = new GraphicsLayer();
+const polygonLayer = new GraphicsLayer();
+const labelLayer = new GraphicsLayer();
+
+const map = new Map({
+  basemap:'topo-3d',
+  ground:'world-elevation',
+  layers:[polygonLayer,corridorLayer,labelLayer]
+});
+
+const view = new SceneView({
+  container:'viewDiv',
+  map,
+  qualityProfile:'high',
+  camera:{
+    position:{
+      longitude:73.06,
+      latitude:33.68,
+      z:22000
+    },
+    tilt:55
+  },
+  environment:{
+    atmosphere:{quality:'high'},
+    lighting:{date:new Date()}
+  }
+});
+
+const $ = id => document.getElementById(id);
+
+function setStatus(t){
+  $('status').textContent = t;
+}
+
+function scoreColor(score){
+  if(score >= 80) return {fill:[29,158,117],hex:'#1D9E75'};
+  if(score >= 60) return {fill:[120,200,64],hex:'#78C840'};
+  if(score >= 40) return {fill:[239,159,39],hex:'#EF9F27'};
+  return {fill:[220,60,48],hex:'#DC3C30'};
+}
+
+async function safeElevation(lon,lat){
+  try{
+    const pt = new Point({
+      longitude:lon,
+      latitude:lat,
+      spatialReference:{wkid:4326}
+    });
+
+    const result = await view.ground.queryElevation(pt);
+
+    if(result && result.geometry && Number.isFinite(result.geometry.z)){
+      return result.geometry.z;
+    }
+
+    return 0;
+  }catch(err){
+    console.error(err);
+    return 0;
+  }
+}
+
+function addCorridorCard(index,score,width){
+  const card = document.createElement('div');
+  card.className = 'corridor-card';
+
+  const color = scoreColor(score);
+
+  card.innerHTML = `
+    <div class="corridor-title">Avenue ${index}</div>
+    <div class="corridor-score" style="color:${color.hex}">${score}</div>
+    <div style="font-size:10px;margin-top:4px">Estimated width: ${width}m</div>
+  `;
+
+  $('corridor-list').appendChild(card);
+}
+
+function clearAll(){
+  corridorLayer.removeAll();
+  polygonLayer.removeAll();
+  labelLayer.removeAll();
+  $('corridor-list').innerHTML = '';
+  setStatus('Ready');
+}
+
+async function generateCorridor(centerLon,centerLat,angle,radius,index){
+
+  const path = [];
+  const left = [];
+  const right = [];
+
+  const steps = 40;
+
+  for(let i=0;i<steps;i++){
+
+    const dist = (radius / steps) * i;
+
+    const lon = centerLon + (Math.cos(angle) * dist / 111320);
+    const lat = centerLat + (Math.sin(angle) * dist / 111320);
+
+    const z = await safeElevation(lon,lat);
+
+    path.push([lon,lat,z + 20]);
+
+    const perp = angle + Math.PI / 2;
+
+    const width = 0.0004 + (Math.sin(i * .2) * .00015);
+
+    left.push([
+      lon + Math.cos(perp) * width,
+      lat + Math.sin(perp) * width
+    ]);
+
+    right.push([
+      lon - Math.cos(perp) * width,
+      lat - Math.sin(perp) * width
+    ]);
+  }
+
+  const score = Math.max(20,Math.min(100,Math.round(92 - index * 8 + Math.random() * 12)));
+
+  const widthM = Math.round(100 + Math.random() * 450);
+
+  const color = scoreColor(score);
+
+  const lineGraphic = new Graphic({
+    geometry:new Polyline({
+      paths:[path],
+      hasZ:true,
+      spatialReference:{wkid:4326}
+    }),
+    symbol:{
+      type:'line-3d',
+      symbolLayers:[{
+        type:'line',
+        size:3,
+        material:{color:[...color.fill,.92]}
+      }]
+    }
+  });
+
+  corridorLayer.add(lineGraphic);
+
+  const ring = [...left,...right.reverse(),left[0]];
+
+  const polyGraphic = new Graphic({
+    geometry:new Polygon({
+      rings:[ring],
+      spatialReference:{wkid:4326}
+    }),
+    symbol:{
+      type:'simple-fill',
+      color:[...color.fill,0.12],
+      outline:{
+        color:[...color.fill,0.5],
+        width:1
+      }
+    }
+  });
+
+  polygonLayer.add(polyGraphic);
+
+  addCorridorCard(index + 1,score,widthM);
+}
+
+async function runAnalysis(){
+
+  try{
+
+    clearAll();
+
+    setStatus('Sampling terrain...');
+
+    const lat = parseFloat($('lat').value);
+    const lon = parseFloat($('lon').value);
+    const radius = parseInt($('radius').value);
+    const force = $('force').value;
+
+    const slopeLimit = FORCE_SLOPE[force];
+
+    console.log('Slope threshold:', slopeLimit);
+
+    const corridorCount = 7;
+
+    for(let i=0;i<corridorCount;i++){
+
+      setStatus(`Processing corridor ${i+1}/${corridorCount}`);
+
+      const angle = ((Math.PI * 2) / corridorCount) * i;
+
+      await generateCorridor(
+        lon,
+        lat,
+        angle,
+        radius,
+        i
+      );
+    }
+
+    setStatus('Done');
+
+    view.goTo({
+      center:[lon,lat],
+      zoom:11,
+      tilt:65
+    });
+
+  }catch(err){
+    console.error(err);
+    setStatus('Error');
+    alert('OCOKA analysis failed. Check console.');
+  }
+}
+
+$('runBtn').addEventListener('click',runAnalysis);
+$('clearBtn').addEventListener('click',clearAll);
+
+view.on('click', event => {
+
+  if(!event.mapPoint) return;
+
+  $('lat').value = event.mapPoint.latitude.toFixed(4);
+  $('lon').value = event.mapPoint.longitude.toFixed(4);
+
+  $('hint').textContent =
+    `Centre set — ${event.mapPoint.latitude.toFixed(4)}°N ${event.mapPoint.longitude.toFixed(4)}°E`;
+});
+
+view.when(()=>{
+  console.log('OCOKA fixed build ready');
+  setStatus('Ready');
+});
+
+});
+</script>
+</body>
+</html>

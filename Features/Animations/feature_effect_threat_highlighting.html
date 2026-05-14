@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Threat Assessment - FeatureEffect Highlighting</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.34/"></script>
+  <style>
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #sidebar {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      width: 400px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      padding: 20px;
+      z-index: 99;
+      font-size: 13px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .title {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 15px;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .info-box {
+      background: #E6F1FB;
+      border-left: 3px solid #185FA5;
+      padding: 10px 12px;
+      border-radius: 3px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #0C447C;
+      margin-bottom: 15px;
+    }
+    .section {
+      margin-bottom: 18px;
+    }
+    .section-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #333;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .control-group {
+      margin-bottom: 12px;
+    }
+    .control-group label {
+      display: block;
+      margin-bottom: 4px;
+      color: #666;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    input[type="range"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 6px;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 12px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #185FA5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      transition: background 0.2s;
+      margin-bottom: 8px;
+    }
+    button:hover {
+      background: #0C447C;
+    }
+    button.secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    button.secondary:hover {
+      background: #e0e0e0;
+    }
+    .effect-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .effect-btn {
+      padding: 8px;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      color: #333;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .effect-btn:hover {
+      border-color: #185FA5;
+      background: #f0f7ff;
+    }
+    .effect-btn.active {
+      background: #185FA5;
+      color: white;
+      border-color: #185FA5;
+    }
+    .filter-options {
+      background: #f8f8f8;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .filter-option {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .filter-option input[type="checkbox"] {
+      margin-right: 8px;
+      cursor: pointer;
+      width: auto;
+    }
+    .filter-option label {
+      margin: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .threat-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    .stat-card {
+      background: #f8f8f8;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: #185FA5;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: #999;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .threat-list {
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      max-height: 300px;
+      overflow-y: auto;
+      background: #fafafa;
+    }
+    .threat-item {
+      padding: 8px 10px;
+      border-bottom: 0.5px solid #eee;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+    .threat-item:last-child {
+      border-bottom: none;
+    }
+    .threat-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .threat-info {
+      flex: 1;
+    }
+    .threat-name {
+      font-weight: 500;
+      color: #333;
+    }
+    .threat-type {
+      font-size: 10px;
+      color: #999;
+    }
+    .threat-status {
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+    }
+    .threat-status.active {
+      background: #FFEBEE;
+      color: #B71C1C;
+    }
+    .threat-status.inactive {
+      background: #E8EAF6;
+      color: #283593;
+    }
+    .value-display {
+      font-family: monospace;
+      font-size: 11px;
+      color: #666;
+      margin-top: 3px;
+      background: #f8f8f8;
+      padding: 4px 6px;
+      border-radius: 3px;
+    }
+    .legend {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #ddd;
+    }
+    .legend-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+      font-size: 12px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 6px 0;
+      font-size: 11px;
+    }
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      margin-right: 8px;
+      flex-shrink: 0;
+      border: 0.5px solid #999;
+    }
+    .effect-preview {
+      background: #f8f8f8;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+      font-size: 11px;
+    }
+    .effect-preview-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .preview-box {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .preview-symbol {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .preview-symbol.normal {
+      background: #EA4335;
+    }
+    .preview-symbol.with-effect {
+      background: #EA4335;
+      filter: drop-shadow(0 0 8px rgba(234, 67, 53, 0.8));
+      box-shadow: 0 0 12px rgba(234, 67, 53, 0.6);
+    }
+    .preview-symbol.desaturated {
+      background: #EA4335;
+      filter: saturate(0.2) blur(1px);
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+  
+  <div id="sidebar">
+    <div class="title">
+      <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+      Threat Assessment System
+    </div>
+    
+    <div class="info-box">
+      ✓ FeatureEffect highlights active threats<br/>
+      ✓ Bloom effect on matching filter<br/>
+      ✓ Desaturation/blur on other threats
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Filter Threat Level</div>
+      <div class="filter-options">
+        <div class="filter-option">
+          <input type="checkbox" id="filterCritical" checked onchange="updateFeatureEffect()" />
+          <label for="filterCritical">
+            <div class="threat-indicator" style="background: #EA4335;"></div>
+            Critical
+          </label>
+        </div>
+        <div class="filter-option">
+          <input type="checkbox" id="filterHigh" checked onchange="updateFeatureEffect()" />
+          <label for="filterHigh">
+            <div class="threat-indicator" style="background: #FBBC04;"></div>
+            High
+          </label>
+        </div>
+        <div class="filter-option">
+          <input type="checkbox" id="filterMedium" onchange="updateFeatureEffect()" />
+          <label for="filterMedium">
+            <div class="threat-indicator" style="background: #34A853;"></div>
+            Medium
+          </label>
+        </div>
+        <div class="filter-option">
+          <input type="checkbox" id="filterLow" onchange="updateFeatureEffect()" />
+          <label for="filterLow">
+            <div class="threat-indicator" style="background: #4285F4;"></div>
+            Low
+          </label>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Threat Type Filter</div>
+      <div class="filter-options">
+        <div class="filter-option">
+          <input type="checkbox" id="filterArmor" checked onchange="updateFeatureEffect()" />
+          <label for="filterArmor">Armor/Vehicles</label>
+        </div>
+        <div class="filter-option">
+          <input type="checkbox" id="filterInfantry" checked onchange="updateFeatureEffect()" />
+          <label for="filterInfantry">Infantry</label>
+        </div>
+        <div class="filter-option">
+          <input type="checkbox" id="filterAircraft" onchange="updateFeatureEffect()" />
+          <label for="filterAircraft">Aircraft</label>
+        </div>
+        <div class="filter-option">
+          <input type="checkbox" id="filterNBC" onchange="updateFeatureEffect()" />
+          <label for="filterNBC">NBC/CBRN</label>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Visual Effect</div>
+      <div class="effect-options">
+        <button class="effect-btn active" onclick="setEffect('bloom')">
+          <i class="ti ti-sparkles" aria-hidden="true"></i> Bloom
+        </button>
+        <button class="effect-btn" onclick="setEffect('saturate')">
+          <i class="ti ti-palette" aria-hidden="true"></i> Saturate
+        </button>
+        <button class="effect-btn" onclick="setEffect('brightness')">
+          <i class="ti ti-sun" aria-hidden="true"></i> Brighten
+        </button>
+        <button class="effect-btn" onclick="setEffect('custom')">
+          <i class="ti ti-settings" aria-hidden="true"></i> Custom
+        </button>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Effect Intensity</div>
+      <div class="control-group">
+        <label>Bloom/Effect Strength</label>
+        <input type="range" id="effectStrength" min="1" max="5" value="2" step="0.5" 
+               oninput="updateEffectStrength(this.value)" />
+        <div class="value-display">Intensity: <span id="strengthValue">2</span></div>
+      </div>
+      
+      <div class="control-group">
+        <label>Desaturation Level (Non-Matching)</label>
+        <input type="range" id="desaturation" min="0" max="1" value="0.7" step="0.1" 
+               oninput="updateDesaturation(this.value)" />
+        <div class="value-display">Desaturation: <span id="desatValue">70%</span></div>
+      </div>
+      
+      <div class="control-group">
+        <label>Blur Radius (Non-Matching)</label>
+        <input type="range" id="blurRadius" min="0" max="5" value="1.5" step="0.5" 
+               oninput="updateBlurRadius(this.value)" />
+        <div class="value-display">Blur: <span id="blurValue">1.5px</span></div>
+      </div>
+    </div>
+    
+    <div class="effect-preview">
+      <div class="effect-preview-title">Effect Preview</div>
+      <div style="margin-bottom: 8px;">
+        <div style="font-size: 10px; color: #999; margin-bottom: 4px;">Active Threat (with bloom)</div>
+        <div class="preview-box">
+          <div class="preview-symbol with-effect">⚠</div>
+          <div style="flex: 1; display: flex; align-items: center; font-size: 11px;">
+            Active threat highlighted with <strong>bloom</strong> effect
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 10px; color: #999; margin-bottom: 4px;">Inactive Threat (desaturated)</div>
+        <div class="preview-box">
+          <div class="preview-symbol desaturated">⚠</div>
+          <div style="flex: 1; display: flex; align-items: center; font-size: 11px;">
+            Inactive threat <strong>desaturated & blurred</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="totalThreats">0</div>
+        <div class="stat-label">Total Threats</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="activeThreats">0</div>
+        <div class="stat-label">Highlighted</div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Threat Details</div>
+      <div id="threatListContainer" class="threat-list"></div>
+    </div>
+    
+    <div class="legend">
+      <div class="legend-title">Threat Levels</div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #EA4335;"></div>
+        <span>Critical (Immediate)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #FBBC04;"></div>
+        <span>High (Soon)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #34A853;"></div>
+        <span>Medium (Monitor)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #4285F4;"></div>
+        <span>Low (Track)</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer",
+      "esri/Graphic",
+      "esri/geometry/Point",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/Color",
+      "esri/layers/support/FeatureEffect"
+    ], (
+      Map, MapView, FeatureLayer, Graphic, Point,
+      SimpleMarkerSymbol, SimpleLineSymbol, Color, FeatureEffect
+    ) => {
+
+      const map = new Map({ basemap: "satellite" });
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-80, 35],
+        zoom: 8
+      });
+
+      // Create in-memory threat data
+      const threatData = [
+        {
+          OBJECTID: 1,
+          NAME: "Armor-01",
+          TYPE: "Armor",
+          THREAT_LEVEL: "Critical",
+          LATITUDE: 35.1,
+          LONGITUDE: -80.05,
+          STATUS: "Active",
+          LAST_SEEN: "2024-01-15T14:32:00Z"
+        },
+        {
+          OBJECTID: 2,
+          NAME: "Infantry-02",
+          TYPE: "Infantry",
+          THREAT_LEVEL: "High",
+          LATITUDE: 35.15,
+          LONGITUDE: -80.1,
+          STATUS: "Active",
+          LAST_SEEN: "2024-01-15T14:31:00Z"
+        },
+        {
+          OBJECTID: 3,
+          NAME: "Armor-03",
+          TYPE: "Armor",
+          THREAT_LEVEL: "Critical",
+          LATITUDE: 35.05,
+          LONGITUDE: -80.15,
+          STATUS: "Active",
+          LAST_SEEN: "2024-01-15T14:33:00Z"
+        },
+        {
+          OBJECTID: 4,
+          NAME: "Infantry-04",
+          TYPE: "Infantry",
+          THREAT_LEVEL: "Medium",
+          LATITUDE: 35.2,
+          LONGITUDE: -80.0,
+          STATUS: "Active",
+          LAST_SEEN: "2024-01-15T14:30:00Z"
+        },
+        {
+          OBJECTID: 5,
+          NAME: "Aircraft-01",
+          TYPE: "Aircraft",
+          THREAT_LEVEL: "Critical",
+          LATITUDE: 35.25,
+          LONGITUDE: -80.2,
+          STATUS: "Active",
+          LAST_SEEN: "2024-01-15T14:34:00Z"
+        },
+        {
+          OBJECTID: 6,
+          NAME: "Infantry-05",
+          TYPE: "Infantry",
+          THREAT_LEVEL: "Low",
+          LATITUDE: 35.0,
+          LONGITUDE: -80.05,
+          STATUS: "Active",
+          LAST_SEEN: "2024-01-15T14:29:00Z"
+        },
+        {
+          OBJECTID: 7,
+          NAME: "NBC-01",
+          TYPE: "NBC/CBRN",
+          THREAT_LEVEL: "Critical",
+          LATITUDE: 35.12,
+          LONGITUDE: -80.18,
+          STATUS: "Active",
+          LAST_SEEN: "2024-01-15T14:35:00Z"
+        }
+      ];
+
+      // Create threat layer from data
+      const threatLayer = new FeatureLayer({
+        source: threatData.map(threat => new Graphic({
+          geometry: new Point({
+            x: threat.LONGITUDE,
+            y: threat.LATITUDE,
+            spatialReference: { wkid: 4326 }
+          }),
+          attributes: threat,
+          symbol: getSymbolForThreat(threat)
+        })),
+        objectIdField: "OBJECTID",
+        fields: [
+          { name: "OBJECTID", type: "oid" },
+          { name: "NAME", type: "string" },
+          { name: "TYPE", type: "string" },
+          { name: "THREAT_LEVEL", type: "string" },
+          { name: "STATUS", type: "string" }
+        ],
+        renderer: {
+          type: "simple",
+          symbol: new SimpleMarkerSymbol({
+            style: "circle",
+            size: 12,
+            color: new Color([234, 67, 53])
+          })
+        }
+      });
+
+      map.add(threatLayer);
+
+      let currentEffect = "bloom";
+      let effectStrength = 2;
+      let desaturationLevel = 0.7;
+      let blurRadiusValue = 1.5;
+
+      function getSymbolForThreat(threat) {
+        let color;
+        switch (threat.THREAT_LEVEL) {
+          case "Critical":
+            color = new Color([234, 67, 53]); // Red
+            break;
+          case "High":
+            color = new Color([251, 188, 4]); // Orange
+            break;
+          case "Medium":
+            color = new Color([52, 168, 83]); // Green
+            break;
+          default:
+            color = new Color([66, 133, 244]); // Blue
+        }
+
+        return new SimpleMarkerSymbol({
+          style: "circle",
+          size: 12,
+          color: color,
+          outline: new SimpleLineSymbol({
+            color: new Color([255, 255, 255]),
+            width: 2
+          })
+        });
+      }
+
+      function buildWhereClause() {
+        let conditions = [];
+
+        // Threat level filters
+        const threatLevels = [];
+        if (document.getElementById("filterCritical").checked) threatLevels.push("'Critical'");
+        if (document.getElementById("filterHigh").checked) threatLevels.push("'High'");
+        if (document.getElementById("filterMedium").checked) threatLevels.push("'Medium'");
+        if (document.getElementById("filterLow").checked) threatLevels.push("'Low'");
+
+        if (threatLevels.length > 0) {
+          conditions.push(`THREAT_LEVEL IN (${threatLevels.join(",")})`);
+        }
+
+        // Threat type filters
+        const types = [];
+        if (document.getElementById("filterArmor").checked) types.push("'Armor'");
+        if (document.getElementById("filterInfantry").checked) types.push("'Infantry'");
+        if (document.getElementById("filterAircraft").checked) types.push("'Aircraft'");
+        if (document.getElementById("filterNBC").checked) types.push("'NBC/CBRN'");
+
+        if (types.length > 0) {
+          conditions.push(`TYPE IN (${types.join(",")})`);
+        }
+
+        // Combine with AND
+        return conditions.length > 0 ? conditions.join(" AND ") : "1=0";
+      }
+
+      function getIncludedEffect() {
+        const strength = effectStrength;
+
+        switch (currentEffect) {
+          case "bloom":
+            return `bloom(${strength})`;
+          case "saturate":
+            return `saturate(${1 + strength * 0.3})`;
+          case "brightness":
+            return `brightness(${1 + strength * 0.15})`;
+          case "custom":
+            return `bloom(${strength}) saturate(1.2)`;
+          default:
+            return "bloom(2)";
+        }
+      }
+
+      function getExcludedEffect() {
+        const desaturation = (1 - desaturationLevel);
+        const blur = blurRadiusValue;
+        
+        return `saturate(${desaturation}) blur(${blur}px)`;
+      }
+
+      function updateFeatureEffect() {
+        const whereClause = buildWhereClause();
+
+        threatLayer.featureEffect = new FeatureEffect({
+          filter: {
+            where: whereClause
+          },
+          includedEffect: getIncludedEffect(),
+          excludedEffect: getExcludedEffect()
+        });
+
+        updateUI();
+      }
+
+      function updateUI() {
+        const whereClause = buildWhereClause();
+        
+        // Count total and matching threats
+        let totalCount = threatData.length;
+        let activeCount = 0;
+
+        threatData.forEach(threat => {
+          // Simple filter evaluation (production would use actual query)
+          const threatLevels = [];
+          if (document.getElementById("filterCritical").checked) threatLevels.push("Critical");
+          if (document.getElementById("filterHigh").checked) threatLevels.push("High");
+          if (document.getElementById("filterMedium").checked) threatLevels.push("Medium");
+          if (document.getElementById("filterLow").checked) threatLevels.push("Low");
+
+          const types = [];
+          if (document.getElementById("filterArmor").checked) types.push("Armor");
+          if (document.getElementById("filterInfantry").checked) types.push("Infantry");
+          if (document.getElementById("filterAircraft").checked) types.push("Aircraft");
+          if (document.getElementById("filterNBC").checked) types.push("NBC/CBRN");
+
+          if (threatLevels.includes(threat.THREAT_LEVEL) && types.includes(threat.TYPE)) {
+            activeCount++;
+          }
+        });
+
+        document.getElementById("totalThreats").textContent = totalCount;
+        document.getElementById("activeThreats").textContent = activeCount;
+
+        // Update threat list
+        const listHTML = threatData.map(threat => {
+          const isHighlighted = (() => {
+            const threatLevels = [];
+            if (document.getElementById("filterCritical").checked) threatLevels.push("Critical");
+            if (document.getElementById("filterHigh").checked) threatLevels.push("High");
+            if (document.getElementById("filterMedium").checked) threatLevels.push("Medium");
+            if (document.getElementById("filterLow").checked) threatLevels.push("Low");
+
+            const types = [];
+            if (document.getElementById("filterArmor").checked) types.push("Armor");
+            if (document.getElementById("filterInfantry").checked) types.push("Infantry");
+            if (document.getElementById("filterAircraft").checked) types.push("Aircraft");
+            if (document.getElementById("filterNBC").checked) types.push("NBC/CBRN");
+
+            return threatLevels.includes(threat.THREAT_LEVEL) && types.includes(threat.TYPE);
+          })();
+
+          let color;
+          switch (threat.THREAT_LEVEL) {
+            case "Critical":
+              color = "#EA4335";
+              break;
+            case "High":
+              color = "#FBBC04";
+              break;
+            case "Medium":
+              color = "#34A853";
+              break;
+            default:
+              color = "#4285F4";
+          }
+
+          return `
+            <div class="threat-item" style="${isHighlighted ? 'background: #fff8f8;' : ''}">
+              <div class="threat-color" style="background: ${color};"></div>
+              <div class="threat-info">
+                <div class="threat-name">${threat.NAME}</div>
+                <div class="threat-type">${threat.TYPE} • ${threat.THREAT_LEVEL}</div>
+              </div>
+              <div class="threat-status ${isHighlighted ? 'active' : 'inactive'}">
+                ${isHighlighted ? '📍 Highlighted' : 'Inactive'}
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        document.getElementById("threatListContainer").innerHTML = listHTML;
+      }
+
+      window.setEffect = function(effect) {
+        currentEffect = effect;
+        document.querySelectorAll(".effect-btn").forEach(btn => btn.classList.remove("active"));
+        event.target.closest(".effect-btn").classList.add("active");
+        updateFeatureEffect();
+      };
+
+      window.updateEffectStrength = function(value) {
+        effectStrength = parseFloat(value);
+        document.getElementById("strengthValue").textContent = value;
+        updateFeatureEffect();
+      };
+
+      window.updateDesaturation = function(value) {
+        desaturationLevel = parseFloat(value);
+        document.getElementById("desatValue").textContent = Math.round(desaturationLevel * 100) + "%";
+        updateFeatureEffect();
+      };
+
+      window.updateBlurRadius = function(value) {
+        blurRadiusValue = parseFloat(value);
+        document.getElementById("blurValue").textContent = value + "px";
+        updateFeatureEffect();
+      };
+
+      // Initialize
+      updateFeatureEffect();
+
+      view.ui.remove("zoom");
+      console.log("Threat Assessment System initialized");
+    });
+  </script>
+</body>
+</html>

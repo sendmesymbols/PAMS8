@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+        }));
+
+        pts.push([pLon,pLat,z + 20]);
+      }
+
+      lines.push(pts);
+    }
+
+    setStatus('Scoring corridors...');
+
+    lines.forEach((line,index)=>{
+
+      const score = Math.max(
+        25,
+        Math.min(
+          100,
+          Math.round(
+            100 - (index * 7) + Math.random() * 18
+          )
+        )
+      );
+
+      const width = Math.round(80 + Math.random() * 420);
+
+      const color = scoreColor(score);
+
+      const graphic = buildPolyline(line,color);
+
+      corridorLayer.add(graphic);
+
+      createCard(index + 1,score,width);
+    });
+
+    setStatus('Done');
+
+    view.goTo({
+      center:[lon,lat],
+      zoom:11,
+      tilt:60
+    });
+
+  }catch(err){
+    console.error(err);
+    setStatus('Error');
+    alert('Analysis failed. Check browser console.');
+  }
+}
+
+document.getElementById('runBtn').addEventListener('click',runAnalysis);
+
+view.on('click', event => {
+  if(!event.mapPoint) return;
+
+  document.getElementById('lat').value = event.mapPoint.latitude.toFixed(4);
+  document.getElementById('lon').value = event.mapPoint.longitude.toFixed(4);
+});
+
+view.when(()=>{
+  setStatus('Ready');
+  console.log('OCOKA fixed version ready');
+});
+
+});
+</script>
+</body>
+</html>

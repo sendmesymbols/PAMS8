@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>OCOKA Approach Analysis — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#060709}
+
+    /* ══ LEFT — ranked approach list ═══════════════════════════════════ */
+    #left-panel{
+      position:absolute;top:14px;left:14px;width:272px;z-index:99;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(55,138,221,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh-28px);display:flex;flex-direction:column;
+    }
+    .lph{padding:9px 12px 8px;border-bottom:1px solid rgba(55,138,221,0.15);
+      background:rgba(55,138,221,0.07);flex-shrink:0}
+    .lph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#378ADD;font-weight:700}
+    .lph-sub{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:2px}
+
+    /* summary strip */
+    #sum-strip{display:grid;grid-template-columns:repeat(3,1fr);
+      border-bottom:1px solid rgba(55,138,221,0.10);flex-shrink:0}
+    .ss{padding:6px 8px;display:flex;flex-direction:column;gap:2px;
+      border-right:0.5px solid rgba(55,138,221,0.08)}
+    .ss:last-child{border-right:none}
+    .ss-l{font-size:7.5px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935}
+    .ss-v{font-size:12px;font-weight:600;color:#378ADD}
+
+    /* approach cards */
+    #approach-list{overflow-y:auto;flex:1;padding:6px}
+    .acard{
+      background:rgba(255,255,255,0.02);
+      border:0.5px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:9px 10px;margin-bottom:5px;
+      cursor:pointer;transition:all .12s;position:relative;
+    }
+    .acard:hover{border-color:rgba(55,138,221,0.40);background:rgba(55,138,221,0.06)}
+    .acard.sel{border-color:#378ADD;background:rgba(55,138,221,0.12)}
+    .acard-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+    .anum{width:24px;height:24px;border-radius:3px;display:flex;align-items:center;
+      justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+    .aname{font-size:12px;font-weight:500;color:var(--color-text-primary);flex:1}
+    .atype{font-size:9px;color:#3a3935;letter-spacing:.04em;margin-top:1px}
+    .ascore{position:absolute;top:9px;right:9px;font-size:14px;font-weight:700}
+    /* scoring bars */
+    .abars{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:6px}
+    .ab{display:flex;flex-direction:column;gap:2px}
+    .ab-l{font-size:7.5px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935}
+    .ab-track{height:3px;background:rgba(255,255,255,0.06);border-radius:2px}
+    .ab-fill{height:100%;border-radius:2px}
+    .ab-v{font-size:9px;color:var(--color-text-secondary)}
+    .anote{font-size:10px;color:var(--color-text-tertiary);line-height:1.55;
+      border-top:0.5px solid rgba(255,255,255,0.06);padding-top:5px}
+    .athreat{font-size:9px;font-weight:500;margin-top:4px;padding:3px 6px;
+      border-radius:2px;display:inline-block}
+    .athreat.high{background:rgba(220,60,48,0.15);color:#DC3C30}
+    .athreat.medium{background:rgba(239,159,39,0.12);color:#EF9F27}
+    .athreat.low{background:rgba(29,158,117,0.12);color:#1D9E75}
+
+    #list-empty{padding:20px 12px;font-size:10px;color:#3a3935;
+      text-align:center;line-height:1.8}
+
+    /* ══ RIGHT — controls ════════════════════════════════════════════════ */
+    #right-panel{
+      position:absolute;top:14px;right:14px;width:292px;z-index:99;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(55,138,221,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh-28px);overflow-y:auto;
+    }
+    .ph{display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;border-bottom:1px solid rgba(55,138,221,0.15);
+      background:rgba(55,138,221,0.07);position:sticky;top:0;z-index:2}
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#378ADD;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#3a3935;transition:color .2s}
+    .ph-status.ready    {color:#378ADD}
+    .ph-status.sampling {color:#EF9F27}
+    .ph-status.computing{color:#EF9F27}
+    .ph-status.done     {color:#1D9E75}
+
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+      color:#3a3935;padding:9px 12px 5px}
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s}
+    input:focus,select:focus{border-color:rgba(55,138,221,0.55)}
+    select option{background:#141618}
+    .psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+    .psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;flex:1.8}
+    .psr input[type=range]{flex:2;accent-color:#378ADD;cursor:pointer}
+    .psr-v{font-size:10px;color:#378ADD;min-width:38px;text-align:right}
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#378ADD;width:13px;height:13px;cursor:pointer}
+
+    /* Weight sliders */
+    .wt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;padding:0 12px 9px}
+    .wt-item{display:flex;flex-direction:column;gap:3px}
+    .wt-label{font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:#888780}
+    .wt-row{display:flex;align-items:center;gap:5px}
+    .wt-row input[type=range]{flex:1;accent-color:#378ADD;cursor:pointer}
+    .wt-val{font-size:9px;color:#378ADD;min-width:24px;text-align:right}
+
+    /* Score key */
+    #score-key{margin:0 12px 9px}
+    .sk-title{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935;margin-bottom:6px}
+    .sk-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+    .sk-sw{width:28px;height:9px;border-radius:2px;flex-shrink:0}
+    .sk-lbl{font-size:9.5px;color:#888780}
+
+    /* progress */
+    #prog-wrap{padding:0 12px 9px}
+    #prog-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+    #prog-fill{height:100%;background:linear-gradient(to right,#378ADD,#1D9E75);
+      border-radius:2px;width:0%;transition:width .12s}
+    #prog-label{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:4px}
+
+    /* buttons */
+    .pb-row{display:flex;gap:6px;padding:9px 12px}
+    .pb{flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;border:1px solid rgba(55,138,221,0.38);
+      background:transparent;color:#378ADD;transition:all .14s}
+    .pb:hover:not(:disabled){background:rgba(55,138,221,0.10)}
+    .pb.primary{background:rgba(55,138,221,0.16);border-color:#378ADD}
+    .pb.primary:hover:not(:disabled){background:rgba(55,138,221,0.28)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+
+    #hint{position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(6,7,9,0.94);border:1px solid rgba(55,138,221,0.45);
+      color:#378ADD;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase}
+
+    /* bottom legend */
+    #map-legend{
+      position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:99;
+      background:rgba(6,7,9,0.93);border:1px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:7px 14px;display:flex;gap:16px;align-items:center}
+    .ml{display:flex;align-items:center;gap:7px}
+    .ml-sw{width:26px;height:9px;border-radius:2px}
+    .ml-lbl{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#888780}
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<!-- ══ LEFT PANEL ════════════════════════════════════════════════════ -->
+<div id="left-panel">
+  <div class="lph">
+    <div class="lph-title">⬡ OCOKA — Avenues of Approach</div>
+    <div class="lph-sub" id="lph-sub">Set AO then run analysis</div>
+  </div>
+  <div id="sum-strip">
+    <div class="ss"><div class="ss-l">Corridors</div><div class="ss-v" id="ss-n">—</div></div>
+    <div class="ss"><div class="ss-l">Best avenue</div><div class="ss-v" id="ss-best">—</div></div>
+    <div class="ss"><div class="ss-l">Worst score</div><div class="ss-v" id="ss-worst">—</div></div>
+  </div>
+  <div id="approach-list">
+    <div id="list-empty">
+      Set the analysis area centre and radius<br>in the right panel, then click<br>
+      <strong style="color:#378ADD">Run OCOKA Analysis</strong>.<br><br>
+      Corridors are auto-extracted from<br>terrain topology and scored on:<br>
+      width · masking · trafficability · observation
+    </div>
+  </div>
+</div>
+
+<!-- ══ RIGHT PANEL ════════════════════════════════════════════════════ -->
+<div id="right-panel">
+  <div class="ph">
+    <div class="ph-title">⬡ OCOKA Config</div>
+    <div class="ph-status ready" id="status">Ready</div>
+  </div>
+
+  <div class="ps">Analysis area</div>
+  <div class="pg">
+    <div class="pf"><div class="pl">Centre lat</div>
+      <input id="inp-lat" type="number" value="33.680" step="0.001"/></div>
+    <div class="pf"><div class="pl">Centre lon</div>
+      <input id="inp-lon" type="number" value="73.060" step="0.001"/></div>
+    <div class="pf full"><div class="pl">Analysis radius</div>
+      <select id="inp-radius">
+        <option value="3000">3 km — position level</option>
+        <option value="5000" selected>5 km — company level</option>
+        <option value="8000">8 km — battalion level</option>
+        <option value="12000">12 km — brigade level</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="ps">Corridor extraction</div>
+  <div class="pg">
+    <div class="pf full"><div class="pl">Grid cell size (m)</div>
+      <select id="inp-cell">
+        <option value="30">30 m — fine (slower)</option>
+        <option value="50" selected>50 m — balanced</option>
+        <option value="80">80 m — fast</option>
+      </select>
+    </div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Max corridors</div>
+    <input id="inp-maxcorr" type="range" min="3" max="12" step="1" value="7"/>
+    <div class="psr-v" id="maxcorr-v">7</div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Slope threshold (°)</div>
+    <input id="inp-slope" type="range" min="5" max="25" step="1" value="12"/>
+    <div class="psr-v" id="slope-v">12°</div>
+  </div>
+
+  <div class="ps">Force type</div>
+  <div class="pg">
+    <div class="pf full"><div class="pl">Trafficability standard</div>
+      <select id="inp-force">
+        <option value="dismount">Dismounted infantry</option>
+        <option value="wheeled" selected>Wheeled vehicles</option>
+        <option value="tracked">Tracked / armour</option>
+        <option value="mixed">Mixed force</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="pdiv"/>
+  <div class="ps">Scoring weights (drag to adjust)</div>
+  <div class="wt-grid">
+    <div class="wt-item">
+      <div class="wt-label">Width</div>
+      <div class="wt-row"><input type="range" id="wt-width" min="0" max="10" step="1" value="3"/>
+        <div class="wt-val" id="wv-width">3</div></div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-label">Masking</div>
+      <div class="wt-row"><input type="range" id="wt-mask" min="0" max="10" step="1" value="4"/>
+        <div class="wt-val" id="wv-mask">4</div></div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-label">Trafficability</div>
+      <div class="wt-row"><input type="range" id="wt-traf" min="0" max="10" step="1" value="3"/>
+        <div class="wt-val" id="wv-traf">3</div></div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-label">Observation</div>
+      <div class="wt-row"><input type="range" id="wt-obs" min="0" max="10" step="1" value="4"/>
+        <div class="wt-val" id="wv-obs">4</div></div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-label">Cover & concealment</div>
+      <div class="wt-row"><input type="range" id="wt-cc" min="0" max="10" step="1" value="3"/>
+        <div class="wt-val" id="wv-cc">3</div></div>
+    </div>
+    <div class="wt-item">
+      <div class="wt-label">Obstacle</div>
+      <div class="wt-row"><input type="range" id="wt-obs2" min="0" max="10" step="1" value="3"/>
+        <div class="wt-val" id="wv-obs2">3</div></div>
+    </div>
+  </div>
+
+  <div class="pdiv"/>
+
+  <div class="ps">Display options</div>
+  <div class="ptr"><label>Slope heatmap overlay</label>
+    <input id="opt-slope" type="checkbox" checked/></div>
+  <div class="ptr"><label>Corridor centrelines</label>
+    <input id="opt-lines" type="checkbox" checked/></div>
+  <div class="ptr"><label>Width polygons</label>
+    <input id="opt-width" type="checkbox" checked/></div>
+  <div class="ptr"><label>Chokepoint markers</label>
+    <input id="opt-choke" type="checkbox" checked/></div>
+
+  <div class="pdiv"/>
+
+  <!-- Score key -->
+  <div id="score-key">
+    <div class="sk-title">Score colour key</div>
+    <div class="sk-row"><div class="sk-sw" style="background:#1D9E75"></div>
+      <div class="sk-lbl">80–100 — Primary avenue of approach</div></div>
+    <div class="sk-row"><div class="sk-sw" style="background:#78C840"></div>
+      <div class="sk-lbl">60–79 — Secondary avenue</div></div>
+    <div class="sk-row"><div class="sk-sw" style="background:#EF9F27"></div>
+      <div class="sk-lbl">40–59 — Restricted / limited use</div></div>
+    <div class="sk-row"><div class="sk-sw" style="background:#DC3C30"></div>
+      <div class="sk-lbl">0–39 — Unlikely / obstacle-rich</div></div>
+  </div>
+
+  <div id="prog-wrap">
+    <div id="prog-track"><div id="prog-fill"></div></div>
+    <div id="prog-label">—</div>
+  </div>
+
+  <div class="pb-row">
+    <button class="pb"         id="btn-clear">Clear</button>
+    <button class="pb primary" id="btn-run">Run OCOKA ↗</button>
+  </div>
+</div>
+
+<div id="hint">Click map to re-centre analysis area, then Run OCOKA Analysis</div>
+
+<div id="map-legend">
+  <div class="ml"><div class="ml-sw" style="background:#1D9E75"></div><div class="ml-lbl">Primary</div></div>
+  <div class="ml"><div class="ml-sw" style="background:#78C840"></div><div class="ml-lbl">Secondary</div></div>
+  <div class="ml"><div class="ml-sw" style="background:#EF9F27"></div><div class="ml-lbl">Restricted</div></div>
+  <div class="ml"><div class="ml-sw" style="background:#DC3C30"></div><div class="ml-lbl">Unlikely</div></div>
+  <div class="ml"><div class="ml-sw" style="background:transparent;border:2px solid #EF9F27"></div>
+    <div class="ml-lbl">Chokepoint</div></div>
+</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map","esri/views/SceneView",
+  "esri/layers/GraphicsLayer","esri/layers/MediaLayer",
+  "esri/layers/support/ExtentAndRotationGeoreference",
+  "esri/layers/support/ImageElement",
+  "esri/Graphic","esri/geometry/Point","esri/geometry/Extent",
+  "esri/geometry/Polygon","esri/geometry/Polyline","esri/geometry/geometryEngine",
+], function(
+  Map, SceneView, GraphicsLayer, MediaLayer,
+  ExtentAndRotationGeoreference, ImageElement,
+  Graphic, Point, Extent, Polygon, Polyline, geometryEngine
+) {
+
+  // ═══════════════════════════════════════════════════════════════════
+  // FORCE TRAFFICABILITY THRESHOLDS (max slope degrees by force type)
+  // ═══════════════════════════════════════════════════════════════════
+  const FORCE_SLOPE = {
+    dismount: 35,   // infantry can move up ~35° slopes
+    wheeled:  12,   // wheeled vehicles 12° practical limit
+    tracked:  20,   // tracked armour 20°
+    mixed:    15,   // mixed force — conservative
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SCORE → COLOUR
+  // ═══════════════════════════════════════════════════════════════════
+  function scoreColor(score) {
+    if (score >= 80) return { fill:[29,158,117],  hex:'#1D9E75', label:'Primary avenue' };
+    if (score >= 60) return { fill:[120,200,64],  hex:'#78C840', label:'Secondary avenue' };
+    if (score >= 40) return { fill:[239,159,39],  hex:'#EF9F27', label:'Restricted' };
+    return              { fill:[220,60,48],   hex:'#DC3C30', label:'Unlikely' };
+  }
+
+  function threatLabel(score) {
+    if (score >= 80) return { cls:'high',   text:'HIGH THREAT — likely enemy main axis' };
+    if (score >= 60) return { cls:'medium', text:'MEDIUM — probable supporting attack' };
+    if (score >= 40) return { cls:'low',    text:'LOW — flank probe / dismount only' };
+    return                   { cls:'low',   text:'UNLIKELY — terrain too restrictive' };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GEODETIC HELPERS
+  // ═══════════════════════════════════════════════════════════════════
+  const EARTH_R   = 6_371_008.8;
+  const M_PER_DEG = 111_320;
+
+  function destPt(lon, lat, brg, dist) {
+    const δ=dist/EARTH_R, θ=brg*Math.PI/180;
+    const φ1=lat*Math.PI/180, λ1=lon*Math.PI/180;
+    const φ2=Math.asin(Math.sin(φ1)*Math.cos(δ)+Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+    const λ2=λ1+Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1),Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+    return { longitude:λ2*180/Math.PI, latitude:φ2*180/Math.PI };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STEP 1 — SAMPLE DEM GRID  (reusable across all analyses)
+  // ═══════════════════════════════════════════════════════════════════
+  async function sampleDEM(view, extent, cols, rows) {
+    const sampler = await view.createElevationSampler(extent, { noDataValue:0 });
+    const dLon    = (extent.xmax-extent.xmin)/cols;
+    const dLat    = (extent.ymax-extent.ymin)/rows;
+    const grid    = new Float32Array(cols*rows);
+    let min=Infinity, max=-Infinity;
+    for (let r=0; r<rows; r++) {
+      for (let c=0; c<cols; c++) {
+        const lon = extent.xmin+(c+0.5)*dLon;
+        const lat = extent.ymax-(r+0.5)*dLat;
+        const z   = sampler.queryElevation(new Point({longitude:lon,latitude:lat,spatialReference:{wkid:4326}}))?.z??0;
+        grid[r*cols+c]=z;
+        if(z<min)min=z; if(z>max)max=z;
+      }
+    }
+    return { grid, sampler, minElev:min, maxElev:max };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STEP 2 — SLOPE GRID  (degrees, 0–90)
+  // ─────────────────────────────────────────────────────────────────
+  // dZ/dx and dZ/dy via central finite differences.
+  // slope = atan(sqrt((dZ/dx)² + (dZ/dy)²)) in degrees.
+  // ═══════════════════════════════════════════════════════════════════
+  function computeSlopeGrid(grid, cols, rows, cellM) {
+    const slope = new Float32Array(cols*rows);
+    for (let r=1; r<rows-1; r++) {
+      for (let c=1; c<cols-1; c++) {
+        const dzdx = (grid[r*cols+c+1]-grid[r*cols+c-1])/(2*cellM);
+        const dzdy = (grid[(r+1)*cols+c]-grid[(r-1)*cols+c])/(2*cellM);
+        slope[r*cols+c] = Math.atan(Math.sqrt(dzdx*dzdx+dzdy*dzdy))*180/Math.PI;
+      }
+    }
+    return slope;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STEP 3 — FLOW ACCUMULATION  (D8 single-direction flow routing)
+  // ─────────────────────────────────────────────────────────────────
+  // D8 algorithm: each cell drains to the steepest of its 8 neighbours.
+  // Flow accumulation = number of cells that drain through each cell.
+  // High accumulation → valley floor → natural avenue of approach.
+  //
+  // Why D8 for military corridors?
+  //   Valley floors and re-entrants are the paths water takes when it
+  //   flows downhill. They are also the paths dismounted soldiers and
+  //   vehicles take when following terrain of least resistance at night
+  //   or under fire. The two phenomena share the same geometric driver:
+  //   gravity pulls both water and forces toward topographic lows.
+  // ═══════════════════════════════════════════════════════════════════
+  function computeFlowAccumulation(grid, cols, rows, cellM) {
+    // D8 direction offsets: [row, col, distance_weight]
+    const D8 = [
+      [-1, 0,1],[-1, 1,1.414],[ 0, 1,1],[ 1, 1,1.414],
+      [ 1, 0,1],[ 1,-1,1.414],[ 0,-1,1],[-1,-1,1.414],
+    ];
+
+    // Compute flow direction for each cell
+    const flowDir  = new Int8Array(cols*rows).fill(-1);
+    const accum    = new Float32Array(cols*rows).fill(1);
+
+    for (let r=1; r<rows-1; r++) {
+      for (let c=1; c<cols-1; c++) {
+        const z    = grid[r*cols+c];
+        let maxDrop = 0, bestDir = -1;
+        for (let d=0; d<8; d++) {
+          const [dr,dc,dist]=D8[d];
+          const rr=r+dr, cc=c+dc;
+          if(rr<0||rr>=rows||cc<0||cc>=cols) continue;
+          const drop = (z-grid[rr*cols+cc])/(dist*cellM);
+          if(drop>maxDrop){ maxDrop=drop; bestDir=d; }
+        }
+        flowDir[r*cols+c]=bestDir;
+      }
+    }
+
+    // Topological sort by elevation (highest → lowest), propagate accumulation
+    const indices = Array.from({length:cols*rows},(_, i)=>i)
+      .sort((a,b)=>grid[b]-grid[a]);
+
+    for (const i of indices) {
+      const d = flowDir[i];
+      if (d<0) continue;
+      const r=Math.floor(i/cols), c=i%cols;
+      const [dr,dc]=D8[d];
+      const rr=r+dr, cc=c+dc;
+      if(rr>=0&&rr<rows&&cc>=0&&cc<cols) {
+        accum[rr*cols+cc]+=accum[i];
+      }
+    }
+
+    return { accum, flowDir };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STEP 4 — CORRIDOR SKELETON EXTRACTION
+  // ─────────────────────────────────────────────────────────────────
+  // Strategy:
+  //  1. Mask out cells where slope > forceThreshold  → impassable.
+  //  2. Apply flow accumulation threshold to find valley floors.
+  //  3. Extract seed points (local maxima of accumulation that are
+  //     also local minima of elevation → valley heads & channel axes).
+  //  4. Trace corridors from each seed toward the AO boundary by
+  //     following the direction of highest accumulation downhill.
+  //  5. Buffer each corridor centreline by a width proportional to
+  //     the local accumulation value (wider corridor = more flow = broader avenue).
+  // ═══════════════════════════════════════════════════════════════════
+  function extractCorridors(grid, slope, accum, flowDir, cols, rows, cellM, {
+    forceSlope, accumThreshold, maxCorridors, radiusM, extent,
+  }) {
+    const dLon   = (extent.xmax-extent.xmin)/cols;
+    const dLat   = (extent.ymax-extent.ymin)/rows;
+    const cLon   = (extent.xmax+extent.xmin)/2;
+    const cLat   = (extent.ymax+extent.ymin)/2;
+    const cosLat = Math.cos(cLat*Math.PI/180);
+
+    // Build passability mask
+    const passable = new Uint8Array(cols*rows);
+    let maxAccum = 0;
+    for (let i=0; i<cols*rows; i++) {
+      if (slope[i]<=forceSlope && accum[i]>=accumThreshold) {
+        passable[i]=1;
+        if(accum[i]>maxAccum) maxAccum=accum[i];
+      }
+    }
+
+    // Find local-maxima of accumulation in passable cells (corridor seeds)
+    const seeds = [];
+    for (let r=4; r<rows-4; r++) {
+      for (let c=4; c<cols-4; c++) {
+        const i = r*cols+c;
+        if (!passable[i]) continue;
+        const a = accum[i];
+        if (a < maxAccum*0.05) continue;  // weak channels ignored
+
+        // Local maximum in 5x5 window
+        let isMax = true;
+        for (let dr=-2; dr<=2&&isMax; dr++)
+          for (let dc=-2; dc<=2&&isMax; dc++) {
+            if(dr===0&&dc===0) continue;
+            if(accum[(r+dr)*cols+(c+dc)]>a) isMax=false;
+          }
+        if (!isMax) continue;
+
+        // Must be inside AO radius
+        const lon   = extent.xmin+(c+0.5)*dLon;
+        const lat   = extent.ymax-(r+0.5)*dLat;
+        const east  = (lon-cLon)*M_PER_DEG*cosLat;
+        const north = (lat-cLat)*M_PER_DEG;
+        if (Math.sqrt(east*east+north*north)>radiusM*0.9) continue;
+
+        seeds.push({ r, c, accum:a, lon, lat, elev:grid[i] });
+      }
+    }
+
+    // Sort seeds by accumulation descending
+    seeds.sort((a,b)=>b.accum-a.accum);
+
+    // Suppress seeds too close to each other
+    const suppressed = new Set();
+    const suppRadius = Math.round(radiusM/(cellM*6));
+    for (let i=0; i<seeds.length; i++) {
+      if (suppressed.has(i)) continue;
+      for (let j=i+1; j<seeds.length; j++) {
+        if (suppressed.has(j)) continue;
+        const dr=seeds[i].r-seeds[j].r, dc=seeds[i].c-seeds[j].c;
+        if (Math.sqrt(dr*dr+dc*dc)<suppRadius) suppressed.add(j);
+      }
+    }
+    const validSeeds = seeds.filter((_,i)=>!suppressed.has(i)).slice(0,maxCorridors);
+
+    // ── Trace corridor paths ────────────────────────────────────────
+    // From each seed, trace downhill following the flow direction until
+    // we reach the AO boundary or run out of passable cells.
+    const D8 = [[-1,0],[-1,1],[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1]];
+
+    function tracePath(seed) {
+      const pts   = [{ r:seed.r, c:seed.c, lon:seed.lon, lat:seed.lat, elev:seed.elev }];
+      const visited = new Set([seed.r*cols+seed.c]);
+      let r=seed.r, c=seed.c;
+      let maxSteps = Math.ceil(radiusM*2/cellM);
+
+      while (maxSteps-- > 0) {
+        // Follow flow direction first
+        const d = flowDir[r*cols+c];
+        let nextR=-1, nextC=-1;
+
+        if (d>=0) {
+          const [dr,dc]=D8[d];
+          const rr=r+dr, cc=c+dc;
+          if (rr>=0&&rr<rows&&cc>=0&&cc<cols&&passable[rr*cols+cc]&&!visited.has(rr*cols+cc)) {
+            nextR=rr; nextC=cc;
+          }
+        }
+
+        // If flow direction blocked, find steepest passable descent
+        if (nextR<0) {
+          let minZ=grid[r*cols+c], bestR=-1, bestC=-1;
+          for (const [dr,dc] of D8) {
+            const rr=r+dr, cc=c+dc;
+            if(rr<0||rr>=rows||cc<0||cc>=cols) continue;
+            if(!passable[rr*cols+cc]||visited.has(rr*cols+cc)) continue;
+            if(grid[rr*cols+cc]<minZ){ minZ=grid[rr*cols+cc]; bestR=rr; bestC=cc; }
+          }
+          nextR=bestR; nextC=bestC;
+        }
+
+        if (nextR<0) break;
+
+        const lon = extent.xmin+(nextC+0.5)*dLon;
+        const lat = extent.ymax-(nextR+0.5)*dLat;
+        const east  = (lon-cLon)*M_PER_DEG*cosLat;
+        const north = (lat-cLat)*M_PER_DEG;
+        if (Math.sqrt(east*east+north*north)>radiusM) break;
+
+        pts.push({ r:nextR, c:nextC, lon, lat, elev:grid[nextR*cols+nextC] });
+        visited.add(nextR*cols+nextC);
+        r=nextR; c=nextC;
+      }
+
+      return pts;
+    }
+
+    // Build corridor objects
+    const corridors = validSeeds.map((seed, idx) => {
+      const path    = tracePath(seed);
+      const lengths = path.map(p=>({
+        ...p,
+        accumVal: accum[p.r*cols+p.c],
+        slopeVal: slope[p.r*cols+p.c],
+      }));
+
+      return {
+        id:      idx,
+        seed,
+        path:    lengths,
+        maxAccum: Math.max(...lengths.map(p=>p.accumVal)),
+      };
+    });
+
+    return corridors;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STEP 5 — SCORE EACH CORRIDOR
+  // ─────────────────────────────────────────────────────────────────
+  // Five OCOKA-derived sub-scores, each 0–100:
+  //
+  //  WIDTH (trafficability proxy):
+  //    Effective width = median accumulation along path scaled to metres.
+  //    High accumulation → broad valley → wide avenue → HIGH score.
+  //    (forces score their preferred wide avenues higher)
+  //
+  //  MASKING (cover & concealment):
+  //    Average slope along corridor sides (flanking terrain).
+  //    High flanking slope = steep walls = good masking = HIGH score.
+  //    Flat corridors have no masking from observation.
+  //
+  //  TRAFFICABILITY:
+  //    Fraction of path cells below the force's slope threshold.
+  //    100% passable = 100 score. Any cells above threshold reduce score.
+  //
+  //  OBSERVATION (from the corridor):
+  //    Viewshed cast from the midpoint of the corridor.
+  //    HIGH observation from the corridor = HIGH tactical control.
+  //    (from an attacker's view: you can see where you are going)
+  //
+  //  COVER & CONCEALMENT:
+  //    Inverse of exposure — how much of the corridor is in terrain
+  //    dead ground relative to the surrounding high ground.
+  //    Estimated via mean depth of corridor below surrounding ridge.
+  //
+  //  OBSTACLE RATING:
+  //    Based on slope variability along path (high variance = obstacle-rich).
+  //    Low variance = smooth, consistent avenue = HIGH score.
+  // ═══════════════════════════════════════════════════════════════════
+  async function scoreCorridor(corridor, grid, slope, accum, extent,
+                               cols, rows, cellM, forceSlope, sampler,
+                               weights, maxAccumGlobal) {
+    const path    = corridor.path;
+    if (path.length < 3) return { ...corridor, scores:{}, composite:0 };
+
+    // ── Width score ─────────────────────────────────────────────────
+    // Map max accumulation to an effective width in metres.
+    // log scale because very large basins shouldn't dominate.
+    const normAccum   = Math.log(1+corridor.maxAccum)/Math.log(1+maxAccumGlobal);
+    const widthScore  = Math.round(normAccum*100);
+
+    // ── Trafficability score ────────────────────────────────────────
+    const passCount   = path.filter(p=>p.slopeVal<=forceSlope).length;
+    const trafScore   = Math.round(100*passCount/path.length);
+
+    // ── Masking score (flanking terrain height) ─────────────────────
+    // Sample cells perpendicular to path at each waypoint,
+    // measure how high the flanking terrain is above the corridor floor.
+    const dLon   = (extent.xmax-extent.xmin)/cols;
+    const dLat   = (extent.ymax-extent.ymin)/rows;
+    let   totalMask = 0, maskCount = 0;
+    for (let pi=1; pi<path.length-1; pi+=3) {
+      const p = path[pi];
+      // Perpendicular direction (rotate path tangent by 90°)
+      const prev = path[pi-1], next = path[pi+1];
+      const dx = next.lon-prev.lon, dy = next.lat-prev.lat;
+      const perp = { lon:dy, lat:-dx };
+      const scale = 3*cellM/Math.sqrt(dx*dx+dy*dy+1e-9);
+      // Sample 3 cells to each flank
+      for (const sign of [-1,1]) {
+        const fLon = p.lon+sign*perp.lon*scale;
+        const fLat = p.lat+sign*perp.lat*scale;
+        const fc   = Math.round((fLon-extent.xmin)/dLon);
+        const fr   = Math.round((extent.ymax-fLat)/dLat);
+        if(fc>=0&&fc<cols&&fr>=0&&fr<rows) {
+          const flankZ = grid[fr*cols+fc];
+          const rise   = flankZ-p.elev;
+          totalMask+=Math.max(0,rise); maskCount++;
+        }
+      }
+    }
+    const avgRise   = maskCount>0?totalMask/maskCount:0;
+    const maskScore = Math.round(Math.min(100, avgRise/20*100)); // 20m+ rise = max masking
+
+    // ── Cover & concealment score ────────────────────────────────────
+    // How much lower is the corridor floor than surrounding terrain?
+    // Sample a ring of cells at 3× corridor width, average the excess elevation.
+    const midPt    = path[Math.floor(path.length/2)];
+    const ringDist = cellM*8;
+    let   totalCC=0, ccCount=0;
+    for (let angle=0; angle<360; angle+=20) {
+      const { longitude, latitude } = destPt(midPt.lon, midPt.lat, angle, ringDist);
+      const rc = Math.round((longitude-extent.xmin)/dLon);
+      const rr = Math.round((extent.ymax-latitude)/dLat);
+      if(rc>=0&&rc<cols&&rr>=0&&rr<rows) {
+        totalCC+=Math.max(0,grid[rr*cols+rc]-midPt.elev);
+        ccCount++;
+      }
+    }
+    const avgCC  = ccCount>0?totalCC/ccCount:0;
+    const ccScore= Math.round(Math.min(100,avgCC/15*100)); // 15m+ depression = good CC
+
+    // ── Observation score ────────────────────────────────────────────
+    // Fast 12-ray viewshed from corridor midpoint.
+    // Score = fraction of rays that are unobstructed to AO edge.
+    const obsZ   = midPt.elev+1.5;
+    const STEP   = Math.max(cellM,40);
+    const farR   = Math.sqrt((extent.xmax-extent.xmin)**2+(extent.ymax-extent.ymin)**2)*M_PER_DEG/2;
+    let   visRays=0, totalRays=0;
+    for (let ri=0; ri<12; ri++) {
+      const brg = (ri/12)*360;
+      let   maxSlope=-90, blocked=false;
+      for (let d=STEP; d<=farR*0.5; d+=STEP) {
+        const { longitude, latitude } = destPt(midPt.lon, midPt.lat, brg, d);
+        const rc = Math.round((longitude-extent.xmin)/dLon);
+        const rr = Math.round((extent.ymax-latitude)/dLat);
+        if(rc<0||rc>=cols||rr<0||rr>=rows) break;
+        const z   = grid[rr*cols+rc];
+        const slp = Math.atan2(z-obsZ,d)*180/Math.PI;
+        if(slp>maxSlope) maxSlope=slp;
+      }
+      visRays+=maxSlope<15?1:0;
+      totalRays++;
+    }
+    const obsScore = Math.round(100*visRays/(totalRays||1));
+
+    // ── Obstacle score ───────────────────────────────────────────────
+    // Low slope variance along path = smooth corridor = low obstacle density.
+    const slopes   = path.map(p=>p.slopeVal);
+    const mean     = slopes.reduce((s,v)=>s+v,0)/slopes.length;
+    const variance = slopes.reduce((s,v)=>s+(v-mean)**2,0)/slopes.length;
+    const obstScore= Math.round(Math.max(0,100-Math.sqrt(variance)*5));
+
+    // ── Chokepoints ──────────────────────────────────────────────────
+    // A chokepoint is a segment where the effective width drops sharply
+    // (local minimum of accumulation value along the path).
+    const chokePts = [];
+    for (let pi=2; pi<path.length-2; pi++) {
+      const a=path[pi].accumVal;
+      if (a<path[pi-1].accumVal*0.4 && a<path[pi+1].accumVal*0.4
+          && path[pi].slopeVal>forceSlope*0.8) {
+        chokePts.push({ lon:path[pi].lon, lat:path[pi].lat, elev:path[pi].elev });
+      }
+    }
+
+    // ── Composite score ──────────────────────────────────────────────
+    const w = weights;
+    const wTotal = w.width+w.mask+w.traf+w.obs+w.cc+w.obs2;
+    const composite = wTotal > 0 ? Math.round(
+      (widthScore*w.width + maskScore*w.mask + trafScore*w.traf +
+       obsScore*w.obs + ccScore*w.cc + obstScore*w.obs2) / wTotal
+    ) : 0;
+
+    return {
+      ...corridor,
+      scores: { width:widthScore, mask:maskScore, traf:trafScore,
+                obs:obsScore, cc:ccScore, obst:obstScore },
+      composite,
+      chokePts,
+      widthM: Math.round(normAccum*500+50), // display width estimate
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // CORRIDOR WIDTH POLYGON
+  // Buffer the centreline proportionally to the local accumulation
+  // so the polygon visually conveys "wide valley" vs "narrow channel".
+  // ═══════════════════════════════════════════════════════════════════
+  function buildCorridorPolygon(corridor, cellM) {
+    const path = corridor.path;
+    if (path.length < 2) return null;
+
+    const leftRing  = [];
+    const rightRing = [];
+    const maxAccLocal = Math.max(1,...path.map(p=>p.accumVal));
+
+    for (let pi=0; pi<path.length; pi++) {
+      const p    = path[pi];
+      const prev = path[Math.max(0,pi-1)];
+      const next = path[Math.min(path.length-1,pi+1)];
+      const dx   = next.lon-prev.lon;
+      const dy   = next.lat-prev.lat;
+      const len  = Math.sqrt(dx*dx+dy*dy)||1;
+      // Perpendicular unit vector
+      const px = -dy/len, py = dx/len;
+
+      // Width proportional to local accumulation (50m–400m)
+      const localNorm = Math.min(1,p.accumVal/maxAccLocal);
+      const widthDeg  = (50+localNorm*350)/(M_PER_DEG);
+
+      leftRing.push([p.lon+px*widthDeg, p.lat+py*widthDeg]);
+      rightRing.push([p.lon-px*widthDeg, p.lat-py*widthDeg]);
+    }
+
+    const ring = [...leftRing, ...[...rightRing].reverse(), leftRing[0]];
+    try {
+      return new Polygon({ rings:[ring], spatialReference:{wkid:4326} });
+    } catch(_) { return null; }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SLOPE HEATMAP  (MediaLayer canvas)
+  // Green = gentle (passable), amber = moderate, red = steep (impassable)
+  // ═══════════════════════════════════════════════════════════════════
+  function buildSlopeHeatmap(slope, aoMask, cols, rows, extent, forceSlope, opacity) {
+    const canvas  = document.createElement('canvas');
+    canvas.width  = cols; canvas.height = rows;
+    const ctx     = canvas.getContext('2d');
+    const imgData = ctx.createImageData(cols, rows);
+
+    for (let i=0; i<cols*rows; i++) {
+      if (!aoMask[i]) { imgData.data[i*4+3]=0; continue; }
+      const s  = slope[i];
+      const t  = Math.min(1, s/(forceSlope*2));
+      const px = i*4;
+      if (s > forceSlope) {
+        // Impassable — red
+        imgData.data[px]=180; imgData.data[px+1]=30; imgData.data[px+2]=30;
+        imgData.data[px+3]=Math.round(opacity*180*Math.min(1,(s-forceSlope)/forceSlope));
+      } else {
+        // Passable — transparent green tint
+        imgData.data[px]=29; imgData.data[px+1]=158; imgData.data[px+2]=117;
+        imgData.data[px+3]=Math.round(opacity*60*(1-t));
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return new MediaLayer({
+      source:[new ImageElement({ image:canvas.toDataURL('image/png'),
+        georeference:new ExtentAndRotationGeoreference({ extent }) })],
+      title:'Slope trafficability',
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GRAPHIC BUILDERS
+  // ═══════════════════════════════════════════════════════════════════
+  function buildCorridorPolylineGraphic(corridor, color) {
+    const [r,g,b]=color;
+    if (corridor.path.length<2) return null;
+    return new Graphic({
+      geometry: new Polyline({
+        paths:[corridor.path.map(p=>[p.lon,p.lat,p.elev+8])],
+        hasZ:true, spatialReference:{wkid:4326},
+      }),
+      symbol:{ type:'line-3d', symbolLayers:[{ type:'line', size:2.4,
+        material:{color:[r,g,b,0.9]}, cap:'round', join:'round' }] },
+      attributes:{ type:`Corridor ${corridor.id+1}`, label:`Avenue of approach ${corridor.id+1}` },
+    });
+  }
+
+  function buildCorridorPolygonGraphic(poly, color, score) {
+    if(!poly) return null;
+    const [r,g,b]=color;
+    const alpha = 0.08+0.12*(score/100);
+    return new Graphic({
+      geometry:poly,
+      symbol:{ type:'polygon-3d', symbolLayers:[{ type:'fill',
+        material:{color:[r,g,b,alpha]},
+        outline:{color:[r,g,b,0.60],size:1.0} }] },
+      attributes:{ type:'Corridor width polygon', label:`Width estimate — score ${score}` },
+    });
+  }
+
+  function buildChokepointMarker(pt) {
+    return new Graphic({
+      geometry: new Point({ longitude:pt.lon, latitude:pt.lat, z:pt.elev+15, spatialReference:{wkid:4326} }),
+      symbol:{ type:'point-3d', symbolLayers:[{ type:'object', resource:{primitive:'cylinder'},
+        material:{color:[239,159,39,0.92]}, width:40, height:60, depth:40 }],
+        verticalOffset:{screenLength:20,maxWorldLength:400,minWorldLength:4} },
+      attributes:{ type:'Chokepoint', label:'Narrow terrain passage — potential obstacle or blocking position' },
+    });
+  }
+
+  function buildSeedMarker(seed, rank) {
+    return new Graphic({
+      geometry: new Point({ longitude:seed.lon, latitude:seed.lat, spatialReference:{wkid:4326} }),
+      symbol:{ type:'text', text:`A${rank+1}`,
+        color:[255,255,255,220],
+        haloColor:[0,0,0,200], haloSize:2,
+        font:{family:'Courier New',size:10,weight:'bold'},
+        horizontalAlignment:'center' },
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // RANKED LIST RENDER
+  // ═══════════════════════════════════════════════════════════════════
+  function renderRankedList(corridors) {
+    const list = document.getElementById('approach-list');
+    list.innerHTML = '';
+    if (!corridors.length) {
+      list.innerHTML = '<div id="list-empty" style="padding:18px 12px;font-size:10px;color:#3a3935;text-align:center">No corridors found — try larger radius or lower slope threshold</div>';
+      return;
+    }
+
+    corridors.forEach((c, ri) => {
+      const sc   = c.scores;
+      const col  = scoreColor(c.composite);
+      const thr  = threatLabel(c.composite);
+      const card = document.createElement('div');
+      card.className = 'acard';
+      card.dataset.id = c.id;
+
+      const barHtml = (label, val, color) => `
+        <div class="ab"><div class="ab-l">${label}</div>
+        <div class="ab-track"><div class="ab-fill" style="width:${val}%;background:${color}"></div></div>
+        <div class="ab-v">${val}</div></div>`;
+
+      card.innerHTML = `
+        <div class="ascore" style="color:${col.hex}">${c.composite}</div>
+        <div class="acard-top">
+          <div class="anum" style="background:${col.hex}22;color:${col.hex};border:1px solid ${col.hex}55">
+            ${ri+1}
+          </div>
+          <div style="flex:1">
+            <div class="aname">Avenue ${ri+1}</div>
+            <div class="atype">${col.label}  ·  ~${c.widthM}m wide  ·  ${c.path.length} cells</div>
+          </div>
+        </div>
+        <div class="abars">
+          ${barHtml('Width',     sc.width,  '#378ADD')}
+          ${barHtml('Masking',   sc.mask,   '#B428DC')}
+          ${barHtml('Traff.',    sc.traf,   '#1D9E75')}
+          ${barHtml('Observ.',   sc.obs,    '#EF9F27')}
+          ${barHtml('Cover',     sc.cc,     '#78C840')}
+          ${barHtml('Obstacle',  sc.obst,   '#DC3C30')}
+        </div>
+        <div class="anote">
+          ${c.chokePts.length>0
+            ? `<strong>${c.chokePts.length} chokepoint${c.chokePts.length>1?'s':''}</strong> — potential blocking positions.<br>`
+            : 'No terrain chokepoints detected along this avenue.<br>'}
+          ${c.composite>=60
+            ? `Mask score ${sc.mask} — ${sc.mask>50?'good concealment from flanking observation':'limited terrain masking, exposure risk'}.`
+            : `Trafficability ${sc.traf}% — ${sc.traf<60?'terrain restricts movement for this force type':'movement feasible on most of route'}.`}
+        </div>
+        <div class="athreat ${thr.cls}">${thr.text}</div>
+      `;
+
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.acard').forEach(x=>x.classList.remove('sel'));
+        card.classList.add('sel');
+        if (c.path.length > 0) {
+          const mid = c.path[Math.floor(c.path.length/2)];
+          view.goTo({ center:[mid.lon,mid.lat], zoom:13, tilt:60 }, { duration:900 });
+        }
+      });
+
+      list.appendChild(card);
+    });
+
+    document.getElementById('lph-sub').textContent =
+      `${corridors.length} avenues ranked by composite score`;
+    document.getElementById('ss-n').textContent   = corridors.length;
+    document.getElementById('ss-best').textContent = corridors[0]?.composite ?? '—';
+    document.getElementById('ss-worst').textContent = corridors.at(-1)?.composite ?? '—';
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ARCGIS SETUP
+  // ═══════════════════════════════════════════════════════════════════
+  const corridorLayer  = new GraphicsLayer({ title:'OCOKA — corridors',  elevationInfo:{mode:'absolute-height'} });
+  const widthLayer     = new GraphicsLayer({ title:'OCOKA — widths',     elevationInfo:{mode:'on-the-ground'} });
+  const chokeLayer     = new GraphicsLayer({ title:'OCOKA — chokepoints',elevationInfo:{mode:'absolute-height'} });
+  const labelLayer     = new GraphicsLayer({ title:'OCOKA — labels',     elevationInfo:{mode:'on-the-ground'} });
+  const aoLayer        = new GraphicsLayer({ title:'OCOKA — AO',         elevationInfo:{mode:'on-the-ground'} });
+  const mediaLayers    = [];
+
+  const map = new Map({
+    basemap:'topo-3d', ground:'world-elevation',
+    layers:[aoLayer, widthLayer, corridorLayer, chokeLayer, labelLayer],
+  });
+
+  const view = new SceneView({
+    container:'viewDiv', map,
+    camera:{ position:{longitude:73.06,latitude:33.68,z:22000}, heading:0, tilt:50 },
+    environment:{ atmosphere:{quality:'high'}, lighting:{date:new Date()} },
+    popup:{ dockEnabled:true, dockOptions:{position:'bottom-right',breakpoint:false},
+      defaultPopupTemplateEnabled:true },
+  });
+
+  [corridorLayer,chokeLayer,widthLayer].forEach(l=>{
+    l.popupTemplate={ title:'{type}', content:'{label}' };
+  });
+
+  const $ = id => document.getElementById(id);
+  let running = false;
+
+  // ── Slider wiring ─────────────────────────────────────────────────
+  $('inp-maxcorr').addEventListener('input', () => $('maxcorr-v').textContent = $('inp-maxcorr').value);
+  $('inp-slope').addEventListener('input', () => $('slope-v').textContent = $('inp-slope').value+'°');
+  [['wt-width','wv-width'],['wt-mask','wv-mask'],['wt-traf','wv-traf'],
+   ['wt-obs','wv-obs'],['wt-cc','wv-cc'],['wt-obs2','wv-obs2']]
+    .forEach(([id,vid])=>$(id).addEventListener('input',()=>$(vid).textContent=$(id).value));
+
+  // ── Map click — re-centre ─────────────────────────────────────────
+  view.on('click', async event => {
+    if (running) return;
+    const result = await view.hitTest(event,{include:[map.ground]});
+    const gp = result?.ground?.mapPoint??event.mapPoint;
+    $('inp-lat').value = gp.latitude.toFixed(4);
+    $('inp-lon').value = gp.longitude.toFixed(4);
+    $('hint').textContent = `Centre set — ${gp.latitude.toFixed(4)}°N ${gp.longitude.toFixed(4)}°E — click Run OCOKA`;
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MAIN RUN
+  // ═══════════════════════════════════════════════════════════════════
+  $('btn-run').addEventListener('click', async () => {
+    if (running) return;
+    running = true;
+    $('btn-run').disabled = true;
+    clearAll();
+
+    const cLat   = parseFloat($('inp-lat').value);
+    const cLon   = parseFloat($('inp-lon').value);
+    const radiusM= parseInt($('inp-radius').value);
+    const cellM  = parseInt($('inp-cell').value);
+    const maxC   = parseInt($('inp-maxcorr').value);
+    const slopeT = parseInt($('inp-slope').value);
+    const force  = $('inp-force').value;
+    const forceSlope = FORCE_SLOPE[force]??12;
+    const weights = {
+      width: parseInt($('wt-width').value), mask: parseInt($('wt-mask').value),
+      traf:  parseInt($('wt-traf').value),  obs:  parseInt($('wt-obs').value),
+      cc:    parseInt($('wt-cc').value),    obs2: parseInt($('wt-obs2').value),
+    };
+
+    const cosLat = Math.cos(cLat*Math.PI/180);
+    const padM   = radiusM*1.08;
+    const padDeg = padM/M_PER_DEG;
+    const extent = new Extent({
+      xmin:cLon-padDeg/cosLat, ymin:cLat-padDeg,
+      xmax:cLon+padDeg/cosLat, ymax:cLat+padDeg,
+      spatialReference:{wkid:4326},
+    });
+    const cols = Math.ceil(padM*2/cellM);
+    const rows = Math.ceil(padM*2/cellM);
+
+    // AO ring
+    const aoPts=[];
+    for(let i=0;i<=60;i++){
+      const{longitude,latitude}=destPt(cLon,cLat,(i/60)*360,radiusM);
+      aoPts.push([longitude,latitude]);
+    }
+    aoLayer.removeAll();
+    aoLayer.add(new Graphic({
+      geometry:{type:'polygon',rings:[aoPts],spatialReference:{wkid:4326}},
+      symbol:{type:'simple-fill',color:[0,0,0,0],
+        outline:{color:[55,138,221,120],width:1.5,style:'short-dash'}},
+    }));
+
+    // ── 1. Sample DEM ───────────────────────────────────────────────
+    setStatus('sampling','Downloading elevation tiles…');
+    setProgress(0.05,'Sampling DEM');
+    await tick();
+    const { grid, sampler, minElev, maxElev } = await sampleDEM(view, extent, cols, rows);
+
+    // AO mask
+    const dLon=((extent.xmax-extent.xmin)/cols);
+    const dLat=((extent.ymax-extent.ymin)/rows);
+    const aoMask=new Uint8Array(cols*rows);
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const lon=extent.xmin+(c+0.5)*dLon;
+        const lat=extent.ymax-(r+0.5)*dLat;
+        const e=(lon-cLon)*M_PER_DEG*cosLat;
+        const n=(lat-cLat)*M_PER_DEG;
+        if(Math.sqrt(e*e+n*n)<=radiusM) aoMask[r*cols+c]=1;
+      }
+    }
+
+    // ── 2. Slope grid ───────────────────────────────────────────────
+    setProgress(0.15,'Computing slope grid');
+    await tick();
+    const slope = computeSlopeGrid(grid, cols, rows, cellM);
+
+    // ── 3. Flow accumulation (D8) ───────────────────────────────────
+    setProgress(0.28,'Running D8 flow accumulation');
+    await tick();
+    const { accum, flowDir } = computeFlowAccumulation(grid, cols, rows, cellM);
+
+    // ── 4. Slope heatmap overlay ────────────────────────────────────
+    if ($('opt-slope').checked) {
+      setProgress(0.38,'Rendering slope overlay');
+      await tick();
+      const slopeMedia = buildSlopeHeatmap(slope, aoMask, cols, rows, extent, forceSlope, 0.70);
+      addMedia(slopeMedia);
+    }
+
+    // ── 5. Extract corridor seeds & trace paths ─────────────────────
+    setProgress(0.45,'Extracting terrain corridors');
+    await tick();
+    const accumThreshold = Math.max(10, cols*rows*0.003);
+    let corridors = extractCorridors(grid, slope, accum, flowDir, cols, rows, cellM, {
+      forceSlope, accumThreshold, maxCorridors:maxC, radiusM, extent,
+    });
+
+    if (corridors.length === 0) {
+      setStatus('done','No corridors found — try lower slope threshold');
+      running=false; $('btn-run').disabled=false;
+      return;
+    }
+
+    // ── 6. Score each corridor ──────────────────────────────────────
+    const maxAccumGlobal = Math.max(1,...accum);
+    setStatus('computing','Scoring corridors…');
+    const scored = [];
+    for (let i=0; i<corridors.length; i++) {
+      setProgress(0.50+0.35*(i/corridors.length), `Scoring corridor ${i+1}/${corridors.length}`);
+      await tick();
+      const s = await scoreCorridor(corridors[i], grid, slope, accum, extent,
+        cols, rows, cellM, forceSlope, sampler, weights, maxAccumGlobal);
+      scored.push(s);
+    }
+    scored.sort((a,b)=>b.composite-a.composite);
+
+    // ── 7. Draw graphics ────────────────────────────────────────────
+    setProgress(0.87,'Drawing corridor graphics');
+    await tick();
+
+    scored.forEach((c, rank) => {
+      const col = scoreColor(c.composite);
+
+      // Width polygon (background)
+      if ($('opt-width').checked) {
+        const poly = buildCorridorPolygon(c, cellM);
+        const pg   = buildCorridorPolygonGraphic(poly, col.fill, c.composite);
+        if (pg) widthLayer.add(pg);
+      }
+
+      // Centreline
+      if ($('opt-lines').checked) {
+        const lg = buildCorridorPolylineGraphic(c, col.fill);
+        if (lg) corridorLayer.add(lg);
+      }
+
+      // Chokepoints
+      if ($('opt-choke').checked) {
+        c.chokePts.forEach(cp => chokeLayer.add(buildChokepointMarker(cp)));
+      }
+
+      // Rank label at seed
+      labelLayer.add(buildSeedMarker(c.seed, rank));
+    });
+
+    // ── 8. Render ranked list ───────────────────────────────────────
+    renderRankedList(scored);
+
+    setProgress(1.0, `Done — ${scored.length} avenues, best score ${scored[0]?.composite}`);
+    setStatus('done','Done');
+
+    view.goTo({ target:extent, tilt:55 }, { duration:1100 });
+
+    // Auto-select top corridor
+    setTimeout(()=>{
+      const first=document.querySelector('.acard');
+      if(first) first.click();
+    }, 1400);
+
+    running=false; $('btn-run').disabled=false;
+  });
+
+  // ── Clear ─────────────────────────────────────────────────────────
+  $('btn-clear').addEventListener('click', clearAll);
+  function clearAll() {
+    [corridorLayer,widthLayer,chokeLayer,labelLayer,aoLayer].forEach(l=>l.removeAll());
+    mediaLayers.forEach(l=>{ try{map.remove(l);}catch(_){} });
+    mediaLayers.length=0;
+    document.getElementById('approach-list').innerHTML =
+      '<div id="list-empty" style="padding:20px 12px;font-size:10px;color:#3a3935;text-align:center;line-height:1.8">Set AO then run analysis</div>';
+    ['ss-n','ss-best','ss-worst'].forEach(id=>$(id).textContent='—');
+    document.getElementById('lph-sub').textContent='Set AO then run analysis';
+    setProgress(0,'—');
+    if(!running){ $('btn-run').disabled=false; setStatus('ready','Ready'); }
+  }
+
+  function addMedia(l){ map.add(l,0); mediaLayers.push(l); }
+  function setStatus(s,text){ const el=$('status'); el.textContent=text??s; el.className='ph-status '+s; }
+  function setProgress(f,label){ $('prog-fill').style.width=Math.round(f*100)+'%'; $('prog-label').textContent=label??''; }
+  function tick(){ return new Promise(r=>setTimeout(r,0)); }
+
+  view.when(()=>{
+    console.log('[OCOKA] SceneView ready.');
+    console.log('[OCOKA] Algorithm: D8 flow accumulation → corridor seeds → path tracing → 6-factor scoring.');
+    console.log('[OCOKA] Click map to re-centre, adjust weights, then Run OCOKA Analysis.');
+  });
+
+}); // end require()
+</script>
+</body>
+</html>

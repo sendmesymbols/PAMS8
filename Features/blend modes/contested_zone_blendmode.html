@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Contested Zone Visualization - Blend Mode Compositing</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.34/"></script>
+  <style>
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #controlPanel {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      width: 380px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      padding: 20px;
+      z-index: 99;
+      font-size: 13px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .panel-title {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 15px;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .info-box {
+      background: #E6F1FB;
+      border-left: 3px solid #185FA5;
+      padding: 10px 12px;
+      border-radius: 3px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #0C447C;
+      margin-bottom: 15px;
+    }
+    .section {
+      margin-bottom: 18px;
+    }
+    .section-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #333;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .control-group {
+      margin-bottom: 12px;
+    }
+    .control-group label {
+      display: block;
+      margin-bottom: 4px;
+      color: #666;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    input[type="range"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 6px;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 12px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #185FA5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      transition: background 0.2s;
+      margin-bottom: 8px;
+    }
+    button:hover {
+      background: #0C447C;
+    }
+    button.secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    button.secondary:hover {
+      background: #e0e0e0;
+    }
+    .layer-control {
+      background: #f8f8f8;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .layer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-weight: 500;
+    }
+    .layer-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .layer-color-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 0.5px solid #999;
+    }
+    .toggle-checkbox {
+      margin-right: 6px;
+      cursor: pointer;
+    }
+    .blend-mode-group {
+      margin-bottom: 12px;
+    }
+    .blend-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .blend-option {
+      padding: 8px;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      text-align: center;
+      cursor: pointer;
+      background: white;
+      font-size: 11px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .blend-option:hover {
+      border-color: #185FA5;
+    }
+    .blend-option.active {
+      background: #185FA5;
+      color: white;
+      border-color: #185FA5;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    .stat-card {
+      background: #f8f8f8;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: #185FA5;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: #999;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .value-display {
+      font-family: monospace;
+      font-size: 11px;
+      color: #666;
+      margin-top: 3px;
+      background: #f8f8f8;
+      padding: 4px 6px;
+      border-radius: 3px;
+    }
+    .legend {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #ddd;
+    }
+    .legend-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+      font-size: 12px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 6px 0;
+      font-size: 11px;
+    }
+    .legend-box {
+      width: 18px;
+      height: 18px;
+      border-radius: 2px;
+      margin-right: 8px;
+      flex-shrink: 0;
+      border: 0.5px solid #999;
+    }
+    .opacity-slider-group {
+      margin-bottom: 10px;
+    }
+    .opacity-value {
+      font-size: 10px;
+      color: #999;
+      margin-top: 2px;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+    .input-row input {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+  
+  <div id="controlPanel">
+    <div class="panel-title">
+      <i class="ti ti-shield" aria-hidden="true"></i>
+      Contested Zone Analyzer
+    </div>
+    
+    <div class="info-box">
+      ✓ Click to add friendly WEZ positions<br/>
+      ✓ Blend mode shows contested zones<br/>
+      ✓ Darker areas = mutual fire coverage
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Setup</div>
+      <button onclick="setFriendlyMode()">
+        <i class="ti ti-circle-plus" aria-hidden="true"></i> Add Friendly Position
+      </button>
+      <button onclick="setEnemyMode()" class="secondary">
+        <i class="ti ti-circle-plus" aria-hidden="true"></i> Add Enemy Position
+      </button>
+      <button onclick="clearAll()" class="secondary">
+        <i class="ti ti-trash" aria-hidden="true"></i> Clear All
+      </button>
+      <div class="value-display" id="modeStatus">Click mode: Awaiting selection</div>
+    </div>
+    
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="friendlyCount">0</div>
+        <div class="stat-label">Friendly</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="enemyCount">0</div>
+        <div class="stat-label">Enemy</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="contestedArea">0</div>
+        <div class="stat-label">Contested %</div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Friendly Forces WEZ</div>
+      <div class="layer-control">
+        <div class="layer-header">
+          <div class="layer-label">
+            <input type="checkbox" id="friendlyVisible" class="toggle-checkbox" checked onchange="updateLayerVisibility()" />
+            <div class="layer-color-dot" style="background: rgba(66, 133, 244, 0.6);"></div>
+            <span>Friendly WEZ Layer</span>
+          </div>
+        </div>
+        
+        <div class="control-group">
+          <label>WEZ Radius (km)</label>
+          <input type="range" id="friendlyRadius" min="2" max="20" value="8" step="1" 
+                 oninput="updateFriendlyRadius(this.value)" />
+          <div class="value-display"><span id="friendlyRadiusValue">8</span> km</div>
+        </div>
+        
+        <div class="control-group">
+          <label>Layer Opacity</label>
+          <input type="range" id="friendlyOpacity" min="0.1" max="1" value="0.6" step="0.1" 
+                 oninput="updateFriendlyOpacity(this.value)" />
+          <div class="opacity-value"><span id="friendlyOpacityValue">60</span>%</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Enemy Forces WEZ</div>
+      <div class="layer-control">
+        <div class="layer-header">
+          <div class="layer-label">
+            <input type="checkbox" id="enemyVisible" class="toggle-checkbox" checked onchange="updateLayerVisibility()" />
+            <div class="layer-color-dot" style="background: rgba(234, 67, 53, 0.6);"></div>
+            <span>Enemy WEZ Layer</span>
+          </div>
+        </div>
+        
+        <div class="control-group">
+          <label>WEZ Radius (km)</label>
+          <input type="range" id="enemyRadius" min="2" max="20" value="10" step="1" 
+                 oninput="updateEnemyRadius(this.value)" />
+          <div class="value-display"><span id="enemyRadiusValue">10</span> km</div>
+        </div>
+        
+        <div class="control-group">
+          <label>Layer Opacity</label>
+          <input type="range" id="enemyOpacity" min="0.1" max="1" value="0.6" step="0.1" 
+                 oninput="updateEnemyOpacity(this.value)" />
+          <div class="opacity-value"><span id="enemyOpacityValue">60</span>%</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Blend Mode Compositing</div>
+      <div class="control-group">
+        <label>Composite Effect</label>
+        <div class="blend-options">
+          <div class="blend-option active" onclick="setBlendMode('multiply')">
+            Multiply<br/><span style="font-size: 9px;">(Darken overlap)</span>
+          </div>
+          <div class="blend-option" onclick="setBlendMode('screen')">
+            Screen<br/><span style="font-size: 9px;">(Lighten overlap)</span>
+          </div>
+          <div class="blend-option" onclick="setBlendMode('overlay')">
+            Overlay<br/><span style="font-size: 9px;">(Contrast)</span>
+          </div>
+          <div class="blend-option" onclick="setBlendMode('lighten')">
+            Lighten<br/><span style="font-size: 9px;">(Max color)</span>
+          </div>
+        </div>
+        <div class="value-display" style="margin-top: 8px;">Current: <strong id="blendModeLabel">multiply</strong></div>
+      </div>
+      
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="showContestedZones" checked onchange="toggleContestedVisualization()" />
+          Highlight contested zones (red overlay)
+        </label>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Analysis</div>
+      <button onclick="generateAnalysisReport()">
+        <i class="ti ti-download" aria-hidden="true"></i> Generate Report
+      </button>
+    </div>
+    
+    <div class="legend">
+      <div class="legend-title">Legend</div>
+      <div class="legend-item">
+        <div class="legend-box" style="background: rgba(66, 133, 244, 0.6); border-color: #4285F4;"></div>
+        <span>Friendly WEZ (Blue)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background: rgba(234, 67, 53, 0.6); border-color: #EA4335;"></div>
+        <span>Enemy WEZ (Red)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background: rgba(0, 0, 0, 0.8); border-color: #333;"></div>
+        <span>Contested Zone (Dark overlap)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background: rgba(255, 0, 0, 0.4); border-color: #FF0000;"></div>
+        <span>Contested Highlight</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer",
+      "esri/layers/GraphicsLayer",
+      "esri/Graphic",
+      "esri/geometry/Point",
+      "esri/geometry/Circle",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/Color"
+    ], (
+      Map, MapView, FeatureLayer, GraphicsLayer, Graphic, Point, Circle,
+      SimpleMarkerSymbol, SimpleFillSymbol, SimpleLineSymbol, Color
+    ) => {
+
+      const map = new Map({ basemap: "streets-v2" });
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-80, 35],
+        zoom: 9
+      });
+
+      // Create WEZ layers with blend mode support
+      const friendlyLayer = new GraphicsLayer({ 
+        title: "Friendly WEZ",
+        blendMode: "multiply"
+      });
+      
+      const enemyLayer = new GraphicsLayer({ 
+        title: "Enemy WEZ",
+        blendMode: "multiply"
+      });
+      
+      const markersLayer = new GraphicsLayer({ title: "Positions" });
+      const contestedLayer = new GraphicsLayer({ title: "Contested Zones" });
+
+      map.addMany([friendlyLayer, enemyLayer, contestedLayer, markersLayer]);
+
+      let mode = null;
+      let friendlyPositions = [];
+      let enemyPositions = [];
+      let friendlyRadiusKm = 8;
+      let enemyRadiusKm = 10;
+      let currentBlendMode = "multiply";
+
+      // Colors for layers
+      const friendlyColor = new Color([66, 133, 244, 153]); // Semi-transparent blue
+      const enemyColor = new Color([234, 67, 53, 153]);     // Semi-transparent red
+
+      const markerSymbol = {
+        friendly: new SimpleMarkerSymbol({
+          style: "circle",
+          size: 10,
+          color: new Color([66, 133, 244]),
+          outline: { color: new Color([255, 255, 255]), width: 2 }
+        }),
+        enemy: new SimpleMarkerSymbol({
+          style: "circle",
+          size: 10,
+          color: new Color([234, 67, 53]),
+          outline: { color: new Color([255, 255, 255]), width: 2 }
+        })
+      };
+
+      function createWEZPolygon(point, radiusKm) {
+        const circle = new Circle({
+          center: point,
+          radius: radiusKm * 1000,
+          radiusUnit: "meters"
+        });
+        return circle.toPolygon(32);
+      }
+
+      function redrawLayers() {
+        // Clear layers
+        friendlyLayer.removeAll();
+        enemyLayer.removeAll();
+        contestedLayer.removeAll();
+        markersLayer.removeAll();
+
+        // Draw friendly WEZ
+        friendlyPositions.forEach(pos => {
+          const polygon = createWEZPolygon(pos.point, friendlyRadiusKm);
+          const graphic = new Graphic({
+            geometry: polygon,
+            symbol: new SimpleFillSymbol({
+              color: friendlyColor,
+              outline: new SimpleLineSymbol({
+                color: new Color([66, 133, 244]),
+                width: 1.5,
+                style: "dash"
+              })
+            })
+          });
+          friendlyLayer.add(graphic);
+
+          // Add marker
+          const marker = new Graphic({
+            geometry: pos.point,
+            symbol: markerSymbol.friendly
+          });
+          markersLayer.add(marker);
+        });
+
+        // Draw enemy WEZ
+        enemyPositions.forEach(pos => {
+          const polygon = createWEZPolygon(pos.point, enemyRadiusKm);
+          const graphic = new Graphic({
+            geometry: polygon,
+            symbol: new SimpleFillSymbol({
+              color: enemyColor,
+              outline: new SimpleLineSymbol({
+                color: new Color([234, 67, 53]),
+                width: 1.5,
+                style: "dash"
+              })
+            })
+          });
+          enemyLayer.add(graphic);
+
+          // Add marker
+          const marker = new Graphic({
+            geometry: pos.point,
+            symbol: markerSymbol.enemy
+          });
+          markersLayer.add(marker);
+        });
+
+        // Compute and visualize contested zones if checkbox is enabled
+        if (document.getElementById("showContestedZones").checked) {
+          computeContestedZones();
+        }
+
+        updateStats();
+      }
+
+      function computeContestedZones() {
+        // This is a simplified visualization
+        // In production, use geometryEngine.intersection() for actual overlap
+        
+        contestedLayer.removeAll();
+
+        if (friendlyPositions.length === 0 || enemyPositions.length === 0) {
+          return;
+        }
+
+        // Draw red overlay where zones would overlap (approximate)
+        for (let f = 0; f < friendlyPositions.length; f++) {
+          for (let e = 0; e < enemyPositions.length; e++) {
+            const fp = friendlyPositions[f].point;
+            const ep = enemyPositions[e].point;
+
+            // Distance between positions
+            const dx = ep.x - fp.x;
+            const dy = ep.y - fp.y;
+            const distDegrees = Math.sqrt(dx * dx + dy * dy);
+            const distKm = distDegrees * 111; // Rough conversion
+
+            // Check if WEZ circles overlap
+            const sumRadii = friendlyRadiusKm + enemyRadiusKm;
+            if (distKm < sumRadii) {
+              // Compute overlap circle center and radius (simplified)
+              const midpoint = new Point({
+                x: (fp.x + ep.x) / 2,
+                y: (fp.y + ep.y) / 2
+              });
+
+              // Approximate overlap radius
+              const overlapRadius = Math.max(
+                Math.min(friendlyRadiusKm, enemyRadiusKm) * 0.7,
+                (sumRadii - distKm) * 0.3
+              );
+
+              const overlapCircle = new Circle({
+                center: midpoint,
+                radius: overlapRadius * 1000,
+                radiusUnit: "meters"
+              });
+
+              const overlapGraphic = new Graphic({
+                geometry: overlapCircle.toPolygon(16),
+                symbol: new SimpleFillSymbol({
+                  color: new Color([255, 0, 0, 100]), // Red highlight
+                  outline: new SimpleLineSymbol({
+                    color: new Color([255, 0, 0]),
+                    width: 1.5
+                  })
+                })
+              });
+
+              contestedLayer.add(overlapGraphic);
+            }
+          }
+        }
+      }
+
+      function updateStats() {
+        document.getElementById("friendlyCount").textContent = friendlyPositions.length;
+        document.getElementById("enemyCount").textContent = enemyPositions.length;
+
+        // Estimate contested area percentage (simplified)
+        let contestedPercent = 0;
+        if (friendlyPositions.length > 0 && enemyPositions.length > 0) {
+          const overlappingPairs = 0;
+          for (let f = 0; f < friendlyPositions.length; f++) {
+            for (let e = 0; e < enemyPositions.length; e++) {
+              const fp = friendlyPositions[f].point;
+              const ep = enemyPositions[e].point;
+              const dx = ep.x - fp.x;
+              const dy = ep.y - fp.y;
+              const distDegrees = Math.sqrt(dx * dx + dy * dy);
+              const distKm = distDegrees * 111;
+              if (distKm < friendlyRadiusKm + enemyRadiusKm) {
+                contestedPercent += 20;
+              }
+            }
+          }
+          contestedPercent = Math.min(100, contestedPercent);
+        }
+
+        document.getElementById("contestedArea").textContent = Math.round(contestedPercent);
+      }
+
+      window.setFriendlyMode = function() {
+        mode = "friendly";
+        document.getElementById("modeStatus").textContent = "Click map to place friendly WEZ position";
+      };
+
+      window.setEnemyMode = function() {
+        mode = "enemy";
+        document.getElementById("modeStatus").textContent = "Click map to place enemy WEZ position";
+      };
+
+      window.clearAll = function() {
+        friendlyPositions = [];
+        enemyPositions = [];
+        mode = null;
+        redrawLayers();
+        document.getElementById("modeStatus").textContent = "Cleared all positions";
+      };
+
+      window.updateFriendlyRadius = function(value) {
+        friendlyRadiusKm = parseFloat(value);
+        document.getElementById("friendlyRadiusValue").textContent = value;
+        redrawLayers();
+      };
+
+      window.updateEnemyRadius = function(value) {
+        enemyRadiusKm = parseFloat(value);
+        document.getElementById("enemyRadiusValue").textContent = value;
+        redrawLayers();
+      };
+
+      window.updateFriendlyOpacity = function(value) {
+        const opacity = parseFloat(value);
+        document.getElementById("friendlyOpacityValue").textContent = Math.round(opacity * 100);
+        friendlyColor.a = opacity;
+        redrawLayers();
+      };
+
+      window.updateEnemyOpacity = function(value) {
+        const opacity = parseFloat(value);
+        document.getElementById("enemyOpacityValue").textContent = Math.round(opacity * 100);
+        enemyColor.a = opacity;
+        redrawLayers();
+      };
+
+      window.setBlendMode = function(blendMode) {
+        currentBlendMode = blendMode;
+        friendlyLayer.blendMode = blendMode;
+        enemyLayer.blendMode = blendMode;
+
+        // Update UI
+        document.querySelectorAll(".blend-option").forEach(opt => {
+          opt.classList.remove("active");
+        });
+        event.target.closest(".blend-option").classList.add("active");
+        document.getElementById("blendModeLabel").textContent = blendMode;
+      };
+
+      window.toggleContestedVisualization = function() {
+        redrawLayers();
+      };
+
+      window.updateLayerVisibility = function() {
+        friendlyLayer.visible = document.getElementById("friendlyVisible").checked;
+        enemyLayer.visible = document.getElementById("enemyVisible").checked;
+      };
+
+      window.generateAnalysisReport = function() {
+        const report = `
+=== CONTESTED ZONE ANALYSIS REPORT ===
+
+Friendly Forces:
+  - WEZ Positions: ${friendlyPositions.length}
+  - Coverage Radius: ${friendlyRadiusKm} km
+  - Layer Opacity: ${Math.round(friendlyColor.a * 100)}%
+
+Enemy Forces:
+  - WEZ Positions: ${enemyPositions.length}
+  - Coverage Radius: ${enemyRadiusKm} km
+  - Layer Opacity: ${Math.round(enemyColor.a * 100)}%
+
+Blend Mode: ${currentBlendMode.toUpperCase()}
+
+Contested Area Analysis:
+  - Overlapping zones indicate mutual fire coverage
+  - Darkened areas (with multiply mode) show contested regions
+  - High contest risk = consider repositioning or reinforcement
+
+Recommendations:
+  - Use contested zone awareness for casualty/CASEVAC planning
+  - Position support assets outside contested zones when possible
+  - Counter-fire planning: target enemy positions in contested areas first
+        `;
+        console.log(report);
+        alert(report);
+      };
+
+      // Map click handler
+      view.on("click", (event) => {
+        if (!mode) return;
+
+        const point = new Point({
+          x: event.mapPoint.x,
+          y: event.mapPoint.y,
+          spatialReference: { wkid: 4326 }
+        });
+
+        if (mode === "friendly") {
+          friendlyPositions.push({ point });
+          document.getElementById("modeStatus").textContent = 
+            `Friendly position added (${friendlyPositions.length} total)`;
+        } else if (mode === "enemy") {
+          enemyPositions.push({ point });
+          document.getElementById("modeStatus").textContent = 
+            `Enemy position added (${enemyPositions.length} total)`;
+        }
+
+        mode = null;
+        redrawLayers();
+      });
+
+      view.ui.remove("zoom");
+      console.log("Contested Zone Analyzer initialized - Blend mode: multiply");
+    });
+  </script>
+</body>
+</html>

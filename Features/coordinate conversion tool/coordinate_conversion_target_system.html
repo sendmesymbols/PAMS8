@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Target Designation - CoordinateConversion Analysis</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.34/"></script>
+  <style>
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #analysisPanel {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      width: 420px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+      z-index: 99;
+    }
+    .panel-header {
+      background: linear-gradient(135deg, #185FA5 0%, #0C447C 100%);
+      color: white;
+      padding: 16px;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .panel-content {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+      font-size: 13px;
+    }
+    .section {
+      margin-bottom: 18px;
+    }
+    .section-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #333;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .info-box {
+      background: #E6F1FB;
+      border-left: 3px solid #185FA5;
+      padding: 10px 12px;
+      border-radius: 3px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #0C447C;
+      margin-bottom: 15px;
+    }
+    .coord-display {
+      background: #f8f8f8;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .coord-format {
+      margin-bottom: 10px;
+    }
+    .coord-format-label {
+      font-size: 10px;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 3px;
+    }
+    .coord-value {
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: #333;
+      padding: 6px;
+      background: white;
+      border-radius: 3px;
+      border: 0.5px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .copy-btn {
+      background: none;
+      border: none;
+      color: #185FA5;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      transition: background 0.2s;
+    }
+    .copy-btn:hover {
+      background: #f0f0f0;
+    }
+    #coordConversionDiv {
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 15px;
+      background: #fafafa;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    #coordConversionDiv ::-webkit-scrollbar {
+      width: 6px;
+    }
+    #coordConversionDiv ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #coordConversionDiv ::-webkit-scrollbar-thumb {
+      background: #ccc;
+      border-radius: 3px;
+    }
+    .target-form {
+      background: #f8f8f8;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 15px;
+    }
+    .form-group {
+      margin-bottom: 10px;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: #333;
+      font-size: 12px;
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 6px;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 12px;
+      font-family: monospace;
+    }
+    .form-group textarea {
+      resize: vertical;
+      min-height: 50px;
+      font-family: monospace;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #185FA5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      transition: background 0.2s;
+      margin-bottom: 8px;
+    }
+    button:hover {
+      background: #0C447C;
+    }
+    button.secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    button.secondary:hover {
+      background: #e0e0e0;
+    }
+    .target-list {
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      max-height: 300px;
+      overflow-y: auto;
+      background: #fafafa;
+    }
+    .target-item {
+      padding: 10px;
+      border-bottom: 0.5px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+    .target-item:last-child {
+      border-bottom: none;
+    }
+    .target-info {
+      flex: 1;
+    }
+    .target-name {
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 2px;
+    }
+    .target-mgrs {
+      font-family: monospace;
+      color: #666;
+      font-size: 10px;
+    }
+    .target-actions {
+      display: flex;
+      gap: 4px;
+    }
+    .target-btn {
+      padding: 4px 6px;
+      font-size: 10px;
+      background: #185FA5;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .target-btn:hover {
+      background: #0C447C;
+    }
+    .target-btn.delete {
+      background: #EA4335;
+    }
+    .target-btn.delete:hover {
+      background: #C5221F;
+    }
+    .status-message {
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-bottom: 10px;
+      display: none;
+    }
+    .status-message.show {
+      display: block;
+    }
+    .status-message.info {
+      background: #E6F1FB;
+      color: #0C447C;
+      border-left: 3px solid #185FA5;
+    }
+    .status-message.success {
+      background: #E8F5E9;
+      color: #1B5E20;
+      border-left: 3px solid #4CAF50;
+    }
+    .status-message.error {
+      background: #FFEBEE;
+      color: #B71C1C;
+      border-left: 3px solid #F44336;
+    }
+    .mode-indicator {
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .mode-indicator.active {
+      background: #4CAF50;
+      color: white;
+    }
+    .mode-indicator.inactive {
+      background: #f0f0f0;
+      color: #999;
+    }
+    .format-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .format-btn {
+      padding: 6px;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      color: #333;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .format-btn:hover {
+      border-color: #185FA5;
+    }
+    .format-btn.active {
+      background: #185FA5;
+      color: white;
+      border-color: #185FA5;
+    }
+    .empty-state {
+      text-align: center;
+      color: #999;
+      padding: 20px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+  
+  <div id="analysisPanel">
+    <div class="panel-header">
+      <i class="ti ti-crosshair" aria-hidden="true"></i>
+      Target Designation System
+    </div>
+    
+    <div class="panel-content">
+      <div class="info-box">
+        ✓ Click on map to capture coordinates<br/>
+        ✓ MGRS auto-populated in grid reference field<br/>
+        ✓ Add description and designate target
+      </div>
+      
+      <div class="section">
+        <div class="section-title">
+          <i class="ti ti-target-arrow" aria-hidden="true"></i>
+          Capture Mode
+        </div>
+        <div id="modeIndicator" class="mode-indicator inactive">
+          Click mode inactive — Enable below
+        </div>
+        <button onclick="toggleCaptureMode()">
+          <i class="ti ti-player-record" aria-hidden="true"></i> 
+          <span id="modeButtonText">Enable Click Capture</span>
+        </button>
+        <div id="statusMessage" class="status-message"></div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">
+          <i class="ti ti-map-2" aria-hidden="true"></i>
+          Current Position
+        </div>
+        <div class="coord-display">
+          <div class="coord-format">
+            <div class="coord-format-label">MGRS (Military Grid Reference)</div>
+            <div class="coord-value">
+              <span id="mgrsCoord" style="flex: 1;">—</span>
+              <button class="copy-btn" onclick="copyToClipboard('mgrsCoord')" title="Copy to clipboard">
+                <i class="ti ti-copy" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="coord-format">
+            <div class="coord-format-label">WGS-84 (Decimal Degrees)</div>
+            <div class="coord-value">
+              <span id="wgs84Coord" style="flex: 1;">—</span>
+              <button class="copy-btn" onclick="copyToClipboard('wgs84Coord')" title="Copy to clipboard">
+                <i class="ti ti-copy" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="coord-format">
+            <div class="coord-format-label">UTM</div>
+            <div class="coord-value">
+              <span id="utmCoord" style="flex: 1;">—</span>
+              <button class="copy-btn" onclick="copyToClipboard('utmCoord')" title="Copy to clipboard">
+                <i class="ti ti-copy" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">
+          <i class="ti ti-forms" aria-hidden="true"></i>
+          Target Designation
+        </div>
+        <div class="target-form">
+          <div class="form-group">
+            <label for="targetName">Target Name / Designation</label>
+            <input type="text" id="targetName" placeholder="e.g., TGT-001, Enemy HQ, etc." />
+          </div>
+          
+          <div class="form-group">
+            <label for="targetMGRS">Grid Reference (MGRS)</label>
+            <input type="text" id="targetMGRS" placeholder="Auto-filled from map click" readonly style="background: #f5f5f5;" />
+          </div>
+          
+          <div class="form-group">
+            <label for="targetType">Target Type</label>
+            <select id="targetType">
+              <option value="unknown">Unknown</option>
+              <option value="personnel">Personnel</option>
+              <option value="vehicle">Vehicle</option>
+              <option value="armor">Armor</option>
+              <option value="structure">Structure</option>
+              <option value="installation">Installation</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="targetDescription">Description / Remarks</label>
+            <textarea id="targetDescription" placeholder="Target details, threat level, notes..."></textarea>
+          </div>
+          
+          <button onclick="designateTarget()">
+            <i class="ti ti-map-pin" aria-hidden="true"></i> Designate Target
+          </button>
+          <button onclick="clearTargetForm()" class="secondary">
+            <i class="ti ti-trash" aria-hidden="true"></i> Clear Form
+          </button>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">
+          <i class="ti ti-list" aria-hidden="true"></i>
+          Designated Targets
+        </div>
+        <div id="targetListContainer" class="target-list">
+          <div class="empty-state">No targets designated yet</div>
+        </div>
+        <button onclick="exportTargetList()" class="secondary" style="margin-top: 10px;">
+          <i class="ti ti-download" aria-hidden="true"></i> Export Target List
+        </button>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">
+          <i class="ti ti-tools" aria-hidden="true"></i>
+          CoordinateConversion Widget
+        </div>
+        <p style="font-size: 11px; color: #999; margin-bottom: 8px;">
+          Use the widget below to convert coordinates manually, or paste MGRS strings to find targets.
+        </p>
+        <div id="coordConversionDiv"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/GraphicsLayer",
+      "esri/Graphic",
+      "esri/geometry/Point",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/TextSymbol",
+      "esri/Color",
+      "esri/widgets/CoordinateConversion",
+      "esri/widgets/CoordinateConversion/support/formats/mgrs",
+      "esri/widgets/CoordinateConversion/support/formats/dms",
+      "esri/widgets/CoordinateConversion/support/formats/utm",
+      "esri/widgets/CoordinateConversion/support/formats/decimal"
+    ], (
+      Map, MapView, GraphicsLayer, Graphic, Point,
+      SimpleMarkerSymbol, TextSymbol, Color,
+      CoordinateConversion, mgrs, dms, utm, decimal
+    ) => {
+
+      const map = new Map({ basemap: "satellite" });
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-80, 35],
+        zoom: 9
+      });
+
+      const targetMarkerLayer = new GraphicsLayer({ title: "Target Markers" });
+      const labelLayer = new GraphicsLayer({ title: "Target Labels" });
+      map.addMany([targetMarkerLayer, labelLayer]);
+
+      let captureMode = false;
+      let currentCoordinates = null;
+      let designatedTargets = [];
+      let targetIdCounter = 1;
+
+      // Initialize CoordinateConversion widget
+      const ccWidget = new CoordinateConversion({
+        view: view,
+        formats: [
+          {
+            name: "mgrs",
+            label: "MGRS",
+            format: mgrs
+          },
+          {
+            name: "decimal",
+            label: "Decimal Degrees",
+            format: decimal
+          },
+          {
+            name: "utm",
+            label: "UTM",
+            format: utm
+          },
+          {
+            name: "dms",
+            label: "DMS",
+            format: dms
+          }
+        ]
+      });
+
+      // Add widget to custom container
+      const coordConversionDiv = document.getElementById("coordConversionDiv");
+      ccWidget.container = coordConversionDiv;
+
+      // Watch for coordinate conversion changes (manual entry)
+      ccWidget.watch("currentLocation", (location) => {
+        if (location) {
+          currentCoordinates = {
+            x: location.x,
+            y: location.y,
+            z: location.z || 0
+          };
+          updateCoordinateDisplay(location);
+        }
+      });
+
+      function toggleCaptureMode() {
+        captureMode = !captureMode;
+        
+        const modeIndicator = document.getElementById("modeIndicator");
+        const modeButtonText = document.getElementById("modeButtonText");
+
+        if (captureMode) {
+          modeIndicator.textContent = "✓ Click capture ACTIVE";
+          modeIndicator.className = "mode-indicator active";
+          modeButtonText.textContent = "Disable Click Capture";
+          showStatus("Click capture enabled — Click on map to designate targets", "info");
+        } else {
+          modeIndicator.textContent = "Click mode inactive — Enable below";
+          modeIndicator.className = "mode-indicator inactive";
+          modeButtonText.textContent = "Enable Click Capture";
+          showStatus("Click capture disabled", "info");
+        }
+      }
+
+      function updateCoordinateDisplay(location) {
+        const point = new Point({
+          x: location.x || currentCoordinates.x,
+          y: location.y || currentCoordinates.y,
+          spatialReference: { wkid: 4326 }
+        });
+
+        // Get MGRS coordinate
+        const mgrsCoord = mgrs.fromPoint(point);
+        document.getElementById("mgrsCoord").textContent = mgrsCoord;
+
+        // Update target MGRS field
+        document.getElementById("targetMGRS").value = mgrsCoord;
+
+        // WGS-84 Decimal
+        const wgs84Coord = `${location.y.toFixed(6)}°, ${location.x.toFixed(6)}°`;
+        document.getElementById("wgs84Coord").textContent = wgs84Coord;
+
+        // UTM coordinate
+        const utmCoord = utm.fromPoint(point);
+        document.getElementById("utmCoord").textContent = utmCoord;
+
+        // Update current coordinates
+        currentCoordinates = {
+          x: location.x,
+          y: location.y,
+          z: location.z || 0
+        };
+      }
+
+      // Map click handler for target designation
+      view.on("click", (event) => {
+        if (!captureMode) return;
+
+        const point = new Point({
+          x: event.mapPoint.x,
+          y: event.mapPoint.y,
+          z: event.mapPoint.z || 0,
+          spatialReference: { wkid: 4326 }
+        });
+
+        // Update coordinate displays
+        updateCoordinateDisplay({
+          x: event.mapPoint.x,
+          y: event.mapPoint.y,
+          z: event.mapPoint.z || 0
+        });
+
+        // Pre-populate target name if not set
+        if (!document.getElementById("targetName").value) {
+          document.getElementById("targetName").value = `TGT-${String(targetIdCounter).padStart(3, '0')}`;
+        }
+
+        showStatus("✓ Coordinates captured from map click", "success");
+      });
+
+      function designateTarget() {
+        const name = document.getElementById("targetName").value.trim();
+        const mgrs = document.getElementById("targetMGRS").value.trim();
+        const type = document.getElementById("targetType").value;
+        const description = document.getElementById("targetDescription").value.trim();
+
+        if (!name) {
+          showStatus("Please enter a target name/designation", "error");
+          return;
+        }
+
+        if (!mgrs || mgrs === "—") {
+          showStatus("Capture a coordinate first (click on map with capture mode enabled)", "error");
+          return;
+        }
+
+        // Add target to list
+        const target = {
+          id: targetIdCounter++,
+          name,
+          mgrs,
+          type,
+          description,
+          coordinates: currentCoordinates,
+          timestamp: new Date().toLocaleString()
+        };
+
+        designatedTargets.push(target);
+
+        // Draw marker on map
+        drawTargetMarker(target);
+
+        // Update target list UI
+        updateTargetList();
+
+        // Clear form
+        clearTargetForm();
+
+        showStatus(`✓ Target "${name}" designated at ${mgrs}`, "success");
+      }
+
+      function drawTargetMarker(target) {
+        const marker = new Graphic({
+          geometry: new Point({
+            x: target.coordinates.x,
+            y: target.coordinates.y,
+            z: target.coordinates.z,
+            spatialReference: { wkid: 4326 }
+          }),
+          symbol: new SimpleMarkerSymbol({
+            style: "circle",
+            size: 12,
+            color: new Color([255, 0, 0]),
+            outline: {
+              color: new Color([255, 255, 255]),
+              width: 2
+            }
+          }),
+          attributes: { targetId: target.id, targetName: target.name }
+        });
+
+        targetMarkerLayer.add(marker);
+
+        // Add label
+        const label = new Graphic({
+          geometry: new Point({
+            x: target.coordinates.x,
+            y: target.coordinates.y + 0.01,
+            spatialReference: { wkid: 4326 }
+          }),
+          symbol: new TextSymbol({
+            text: target.name,
+            font: { size: 10, weight: "bold" },
+            color: new Color([255, 0, 0]),
+            haloColor: new Color([255, 255, 255]),
+            haloSize: 1
+          })
+        });
+
+        labelLayer.add(label);
+      }
+
+      function updateTargetList() {
+        const container = document.getElementById("targetListContainer");
+
+        if (designatedTargets.length === 0) {
+          container.innerHTML = '<div class="empty-state">No targets designated yet</div>';
+          return;
+        }
+
+        container.innerHTML = designatedTargets.map(target => `
+          <div class="target-item">
+            <div class="target-info">
+              <div class="target-name">${target.name}</div>
+              <div class="target-mgrs">${target.mgrs}</div>
+            </div>
+            <div class="target-actions">
+              <button class="target-btn" onclick="showTargetDetail(${target.id})" title="View details">
+                <i class="ti ti-eye" aria-hidden="true"></i>
+              </button>
+              <button class="target-btn delete" onclick="deleteTarget(${target.id})" title="Delete">
+                <i class="ti ti-trash" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      window.deleteTarget = function(id) {
+        const index = designatedTargets.findIndex(t => t.id === id);
+        if (index > -1) {
+          const target = designatedTargets[index];
+          designatedTargets.splice(index, 1);
+
+          // Remove markers from map
+          targetMarkerLayer.graphics = targetMarkerLayer.graphics.filter(
+            g => g.attributes?.targetId !== id
+          );
+          labelLayer.graphics = labelLayer.graphics.filter(
+            g => g.attributes?.targetId !== id
+          );
+
+          updateTargetList();
+          showStatus(`Target "${target.name}" deleted`, "info");
+        }
+      };
+
+      window.showTargetDetail = function(id) {
+        const target = designatedTargets.find(t => t.id === id);
+        if (target) {
+          document.getElementById("targetName").value = target.name;
+          document.getElementById("targetMGRS").value = target.mgrs;
+          document.getElementById("targetType").value = target.type;
+          document.getElementById("targetDescription").value = target.description;
+          currentCoordinates = target.coordinates;
+          
+          // Scroll to form
+          document.querySelector(".target-form").scrollIntoView({ behavior: "smooth" });
+          showStatus(`Loaded target "${target.name}" — Edit and re-designate to update`, "info");
+        }
+      };
+
+      function clearTargetForm() {
+        document.getElementById("targetName").value = "";
+        document.getElementById("targetMGRS").value = "";
+        document.getElementById("targetType").value = "unknown";
+        document.getElementById("targetDescription").value = "";
+      }
+
+      function exportTargetList() {
+        if (designatedTargets.length === 0) {
+          alert("No targets to export");
+          return;
+        }
+
+        let report = "=== TARGET DESIGNATION LIST ===\n\n";
+        report += `Generated: ${new Date().toLocaleString()}\n`;
+        report += `Total Targets: ${designatedTargets.length}\n\n`;
+
+        designatedTargets.forEach((target, idx) => {
+          report += `${idx + 1}. ${target.name}\n`;
+          report += `   MGRS: ${target.mgrs}\n`;
+          report += `   Coordinates: ${target.coordinates.y.toFixed(6)}°, ${target.coordinates.x.toFixed(6)}°\n`;
+          report += `   Type: ${target.type}\n`;
+          report += `   Description: ${target.description || "N/A"}\n`;
+          report += `   Designated: ${target.timestamp}\n\n`;
+        });
+
+        console.log(report);
+        alert(report);
+      }
+
+      function showStatus(message, type = "info") {
+        const statusEl = document.getElementById("statusMessage");
+        statusEl.textContent = message;
+        statusEl.className = `status-message ${type} show`;
+        
+        setTimeout(() => {
+          statusEl.classList.remove("show");
+        }, 5000);
+      }
+
+      window.copyToClipboard = function(elementId) {
+        const element = document.getElementById(elementId);
+        const text = element.textContent;
+
+        if (text === "—") {
+          showStatus("No coordinate to copy", "error");
+          return;
+        }
+
+        navigator.clipboard.writeText(text).then(() => {
+          showStatus(`✓ Copied: ${text}`, "success");
+        }).catch(err => {
+          showStatus("Failed to copy", "error");
+        });
+      };
+
+      window.clearTargetForm = clearTargetForm;
+
+      view.ui.remove("zoom");
+      console.log("Target Designation System initialized");
+    });
+  </script>
+</body>
+</html>
