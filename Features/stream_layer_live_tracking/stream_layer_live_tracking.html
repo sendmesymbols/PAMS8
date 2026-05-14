@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Live Unit Tracking - StreamLayer with WebSocket</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.34/"></script>
+  <style>
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #controlPanel {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      width: 340px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      padding: 20px;
+      z-index: 99;
+      font-size: 13px;
+    }
+    .title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 15px;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 500;
+      margin-bottom: 15px;
+    }
+    .status-badge.connected {
+      background: #C8E6C9;
+      color: #1B5E20;
+    }
+    .status-badge.disconnected {
+      background: #FFCDD2;
+      color: #B71C1C;
+    }
+    .control-section {
+      margin-bottom: 18px;
+    }
+    .section-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .control-group {
+      margin-bottom: 12px;
+    }
+    .control-group label {
+      display: block;
+      margin-bottom: 4px;
+      color: #666;
+      font-size: 12px;
+    }
+    input[type="range"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 6px;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 12px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #185FA5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      transition: background 0.2s;
+      margin-bottom: 8px;
+    }
+    button:hover {
+      background: #0C447C;
+    }
+    button.secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    button.secondary:hover {
+      background: #e0e0e0;
+    }
+    .info-box {
+      background: #E6F1FB;
+      border-left: 3px solid #185FA5;
+      padding: 10px 12px;
+      border-radius: 3px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #0C447C;
+      margin-bottom: 15px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    .stat-card {
+      background: #f8f8f8;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: #185FA5;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: #999;
+      margin-top: 4px;
+    }
+    .unit-list {
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      max-height: 250px;
+      overflow-y: auto;
+      background: #fafafa;
+    }
+    .unit-item {
+      padding: 8px 10px;
+      border-bottom: 0.5px solid #eee;
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .unit-item:last-child {
+      border-bottom: none;
+    }
+    .unit-name {
+      font-weight: 500;
+      color: #333;
+    }
+    .unit-status {
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .unit-status.moving {
+      background: #C8E6C9;
+      color: #1B5E20;
+    }
+    .unit-status.stopped {
+      background: #FFE0B2;
+      color: #E65100;
+    }
+    .legend {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #ddd;
+    }
+    .legend-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+      font-size: 12px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 6px 0;
+      font-size: 11px;
+    }
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .value-display {
+      font-family: monospace;
+      font-size: 11px;
+      color: #666;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+  
+  <div id="controlPanel">
+    <div class="title">
+      <i class="ti ti-radio" aria-hidden="true"></i>
+      Live Unit Tracking
+    </div>
+    
+    <div id="statusBadge" class="status-badge disconnected">
+      ⚫ Disconnected
+    </div>
+    
+    <div class="info-box">
+      StreamLayer tracks unit positions in real-time. Stopped units are highlighted with bloom effect.
+    </div>
+    
+    <div class="control-section">
+      <div class="section-title">Connection</div>
+      <button onclick="startTracking()">
+        <i class="ti ti-player-play" aria-hidden="true"></i> Start Tracking
+      </button>
+      <button onclick="stopTracking()" class="secondary">
+        <i class="ti ti-player-pause" aria-hidden="true"></i> Stop Tracking
+      </button>
+      <div class="value-display" id="connectionStatus">Status: Not connected</div>
+    </div>
+    
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="totalUnits">0</div>
+        <div class="stat-label">Units tracked</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stoppedCount">0</div>
+        <div class="stat-label">Stopped</div>
+      </div>
+    </div>
+    
+    <div class="control-section">
+      <div class="section-title">Options</div>
+      <div class="control-group">
+        <label>Position History (last N observations)</label>
+        <input type="range" id="purgeSlider" min="5" max="50" value="10" step="5" 
+               oninput="updatePurgeOptions(this.value)" />
+        <div class="value-display">Keeping last <span id="purgeValue">10</span> positions per unit</div>
+      </div>
+      
+      <div class="control-group">
+        <label>Unit Count</label>
+        <input type="number" id="unitCount" value="8" min="3" max="20" />
+      </div>
+      
+      <div class="control-group">
+        <label>Update Speed (ms)</label>
+        <input type="range" id="speedSlider" min="500" max="3000" value="1000" step="500" 
+               oninput="document.getElementById('speedValue').textContent = this.value" />
+        <div class="value-display">Update interval: <span id="speedValue">1000</span>ms</div>
+      </div>
+      
+      <div class="control-group">
+        <label>Stopped Detection Threshold (seconds)</label>
+        <input type="range" id="thresholdSlider" min="5" max="30" value="10" step="5" 
+               oninput="document.getElementById('thresholdValue').textContent = this.value" />
+        <div class="value-display">Units stationary for <span id="thresholdValue">10</span>s are highlighted</div>
+      </div>
+    </div>
+    
+    <div class="control-section">
+      <div class="section-title">Active Units</div>
+      <div id="unitListContainer" class="unit-list"></div>
+    </div>
+    
+    <div class="legend">
+      <div class="legend-title">Legend</div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #4285F4;"></div>
+        <span>Moving unit</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #EA4335;"></div>
+        <span>Stopped (bloom effect)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #FBBC04;"></div>
+        <span>Historical positions</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/StreamLayer",
+      "esri/layers/GraphicsLayer",
+      "esri/Graphic",
+      "esri/geometry/Point",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/symbols/TextSymbol",
+      "esri/symbols/PolygonSymbol3D",
+      "esri/symbols/FeatureReductionCluster",
+      "esri/symbols/support/jsonUtils",
+      "esri/Color",
+      "esri/layers/support/FeatureEffect"
+    ], (
+      Map, MapView, StreamLayer, GraphicsLayer, Graphic, Point,
+      SimpleMarkerSymbol, SimpleLineSymbol, TextSymbol, PolygonSymbol3D,
+      FeatureReductionCluster, jsonUtils, Color, FeatureEffect
+    ) => {
+
+      const map = new Map({ basemap: "streets-v2" });
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-80, 35],
+        zoom: 8
+      });
+
+      const trailsLayer = new GraphicsLayer({ title: "Position Trails" });
+      map.add(trailsLayer);
+
+      let streamLayer = null;
+      let webSocket = null;
+      let isTracking = false;
+      let updateInterval = null;
+      let unitData = {}; // Store unit positions and history
+      let purgeLimit = 10;
+      let stoppedThreshold = 10000; // 10 seconds in ms
+
+      // Create StreamLayer symbol
+      function createStreamLayerSymbol() {
+        return {
+          type: "simple-marker",
+          style: "circle",
+          color: [66, 133, 244], // Blue for moving
+          size: 8,
+          outline: {
+            color: [255, 255, 255],
+            width: 2
+          }
+        };
+      }
+
+      // Initialize StreamLayer
+      function initializeStreamLayer() {
+        if (streamLayer && map.layers.contains(streamLayer)) {
+          map.remove(streamLayer);
+        }
+
+        streamLayer = new StreamLayer({
+          url: "wss://mock-stream-endpoint.example.com/stream", // Custom WebSocket URL
+          purgeOptions: {
+            displayCount: purgeLimit
+          },
+          title: "Live Units",
+          renderer: {
+            type: "simple",
+            symbol: createStreamLayerSymbol()
+          },
+          popupTemplate: {
+            title: "{UNIT_NAME}",
+            content: [
+              {
+                type: "fields",
+                fieldInfos: [
+                  { fieldName: "TRACK_ID", label: "Track ID" },
+                  { fieldName: "UNIT_NAME", label: "Unit" },
+                  { fieldName: "SPEED", label: "Speed (km/h)" },
+                  { fieldName: "HEADING", label: "Heading (°)" }
+                ]
+              }
+            ]
+          }
+        });
+
+        // Apply FeatureEffect to highlight stopped units
+        updateFeatureEffect();
+
+        map.add(streamLayer);
+      }
+
+      function updateFeatureEffect() {
+        if (!streamLayer) return;
+
+        const threshold = parseInt(document.getElementById("thresholdSlider").value) * 1000;
+        const now = Date.now();
+
+        // Create filter expression for stopped units
+        let stoppedUnitIds = [];
+        for (const trackId in unitData) {
+          const unit = unitData[trackId];
+          if (unit.positions.length > 0) {
+            const lastUpdate = unit.lastUpdate || now;
+            const timeStopped = now - lastUpdate;
+            if (timeStopped > threshold) {
+              stoppedUnitIds.push(trackId);
+            }
+          }
+        }
+
+        // Build where clause for stopped units
+        const whereClause = stoppedUnitIds.length > 0 
+          ? `TRACK_ID IN (${stoppedUnitIds.map(id => `'${id}'`).join(',')})` 
+          : "1=0"; // Match nothing if no stopped units
+
+        // Apply bloom effect to stopped units
+        streamLayer.featureEffect = new FeatureEffect({
+          filter: {
+            where: whereClause
+          },
+          includedEffect: "bloom(2)",
+          excludedEffect: "blur(0%)"
+        });
+      }
+
+      // Mock WebSocket that generates random unit positions
+      function startMockWebSocket() {
+        const unitCount = parseInt(document.getElementById("unitCount").value);
+        const updateInterval = parseInt(document.getElementById("speedSlider").value);
+
+        // Initialize unit data
+        if (Object.keys(unitData).length === 0) {
+          for (let i = 0; i < unitCount; i++) {
+            const trackId = `UNIT-${String(i + 1).padStart(3, '0')}`;
+            unitData[trackId] = {
+              positions: [],
+              lastUpdate: Date.now(),
+              currentLat: -80 + Math.random() * 10,
+              currentLon: 35 + Math.random() * 10,
+              heading: Math.random() * 360,
+              speed: Math.random() * 80 + 20 // 20-100 km/h
+            };
+          }
+        }
+
+        // Send updates periodically
+        updateInterval = setInterval(() => {
+          const features = [];
+
+          for (const trackId in unitData) {
+            const unit = unitData[trackId];
+            
+            // Random chance to stop (30% chance)
+            const shouldStop = Math.random() > 0.7;
+            if (shouldStop) {
+              unit.speed = 0;
+            } else {
+              unit.speed = Math.random() * 80 + 20;
+              // Update position based on heading and speed
+              const latChange = (unit.speed / 111) * 0.01;
+              const lonChange = (unit.speed / 111) * 0.01 * Math.cos((unit.heading * Math.PI) / 180);
+              unit.currentLat += latChange * (Math.random() - 0.5);
+              unit.currentLon += lonChange * (Math.random() - 0.5);
+              unit.heading = (unit.heading + (Math.random() - 0.5) * 20) % 360;
+            }
+
+            // Add position to history
+            unit.positions.push({
+              lat: unit.currentLat,
+              lon: unit.currentLon,
+              timestamp: Date.now()
+            });
+
+            // Purge old positions
+            if (unit.positions.length > purgeLimit * 2) {
+              unit.positions = unit.positions.slice(-purgeLimit);
+            }
+
+            // Update last update time only if moving
+            if (unit.speed > 1) {
+              unit.lastUpdate = Date.now();
+            }
+
+            // Create feature for StreamLayer
+            features.push({
+              geometry: {
+                type: "point",
+                x: unit.currentLon,
+                y: unit.currentLat,
+                spatialReference: { wkid: 4326 }
+              },
+              attributes: {
+                TRACK_ID: trackId,
+                UNIT_NAME: trackId.replace('UNIT-', 'Unit '),
+                SPEED: unit.speed.toFixed(1),
+                HEADING: unit.heading.toFixed(0),
+                ObjectId: trackId,
+                GlobalID: trackId
+              }
+            });
+
+            // Draw position trails
+            drawTrails(trackId, unit);
+          }
+
+          // Send features to StreamLayer via GeoJSON
+          const geojson = {
+            type: "FeatureCollection",
+            features: features.map(f => ({
+              type: "Feature",
+              geometry: {
+                type: "Point",
+                coordinates: [f.geometry.x, f.geometry.y]
+              },
+              properties: f.attributes
+            }))
+          };
+
+          // Simulate WebSocket data reception
+          console.log(`[${new Date().toLocaleTimeString()}] Received update for ${features.length} units`);
+
+          updateUI();
+          updateFeatureEffect();
+        }, updateInterval);
+      }
+
+      function drawTrails(trackId, unit) {
+        // Draw last 5 positions as polyline
+        if (unit.positions.length > 1) {
+          const recentPositions = unit.positions.slice(-5);
+          const coordinates = recentPositions.map(p => [p.lon, p.lat]);
+
+          // Remove old trail
+          trailsLayer.graphics = trailsLayer.graphics.filter(g => g.attributes?.trackId !== trackId);
+
+          // Add new trail
+          const path = coordinates.map(coord => coord);
+          const trailGraphic = new Graphic({
+            geometry: {
+              type: "polyline",
+              paths: [path]
+            },
+            symbol: new SimpleLineSymbol({
+              color: new Color([251, 188, 4]), // Gold
+              width: 1.5,
+              style: "dash"
+            }),
+            attributes: { trackId: trackId }
+          });
+
+          trailsLayer.add(trailGraphic);
+        }
+      }
+
+      function updateUI() {
+        let totalUnits = Object.keys(unitData).length;
+        let stoppedCount = 0;
+        const threshold = parseInt(document.getElementById("thresholdSlider").value) * 1000;
+        const now = Date.now();
+
+        const unitItems = [];
+        for (const trackId in unitData) {
+          const unit = unitData[trackId];
+          const timeStopped = now - (unit.lastUpdate || now);
+          const isStopped = timeStopped > threshold;
+
+          if (isStopped) stoppedCount++;
+
+          unitItems.push({
+            name: trackId.replace('UNIT-', 'Unit '),
+            status: isStopped ? "Stopped" : "Moving",
+            isStopped: isStopped
+          });
+        }
+
+        document.getElementById("totalUnits").textContent = totalUnits;
+        document.getElementById("stoppedCount").textContent = stoppedCount;
+
+        const listHTML = unitItems
+          .sort((a, b) => b.isStopped - a.isStopped)
+          .map(item => `
+            <div class="unit-item">
+              <span class="unit-name">${item.name}</span>
+              <span class="unit-status ${item.isStopped ? 'stopped' : 'moving'}">
+                ${item.isStopped ? '⚠ Stopped' : '→ Moving'}
+              </span>
+            </div>
+          `).join('');
+
+        document.getElementById("unitListContainer").innerHTML = listHTML || '<div style="padding: 10px; text-align: center; color: #999;">No units tracked</div>';
+      }
+
+      window.startTracking = function() {
+        if (isTracking) return;
+
+        initializeStreamLayer();
+        startMockWebSocket();
+        
+        isTracking = true;
+        document.getElementById("statusBadge").textContent = "🟢 Connected (Simulated)";
+        document.getElementById("statusBadge").className = "status-badge connected";
+        document.getElementById("connectionStatus").textContent = "Status: Connected to mock stream";
+        
+        updateUI();
+      };
+
+      window.stopTracking = function() {
+        if (!isTracking) return;
+
+        clearInterval(updateInterval);
+        if (streamLayer && map.layers.contains(streamLayer)) {
+          map.remove(streamLayer);
+        }
+        streamLayer = null;
+        trailsLayer.removeAll();
+
+        isTracking = false;
+        document.getElementById("statusBadge").textContent = "⚫ Disconnected";
+        document.getElementById("statusBadge").className = "status-badge disconnected";
+        document.getElementById("connectionStatus").textContent = "Status: Disconnected";
+      };
+
+      window.updatePurgeOptions = function(value) {
+        purgeLimit = parseInt(value);
+        document.getElementById("purgeValue").textContent = value;
+
+        if (streamLayer) {
+          streamLayer.purgeOptions = { displayCount: purgeLimit };
+        }
+      };
+
+      view.ui.remove("zoom");
+      view.ui.move("attribution", "bottom-right");
+    });
+  </script>
+</body>
+</html>

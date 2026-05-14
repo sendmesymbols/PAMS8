@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Combined Threat Envelope - Convex Hull Analysis</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.34/"></script>
+  <style>
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #sidebar {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      width: 360px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+      z-index: 99;
+    }
+    .header {
+      background: #185FA5;
+      color: white;
+      padding: 16px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .content {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+      font-size: 13px;
+    }
+    .info-banner {
+      background: #E6F1FB;
+      border-left: 3px solid #185FA5;
+      padding: 10px 12px;
+      margin-bottom: 15px;
+      border-radius: 3px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #0C447C;
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    button {
+      flex: 1;
+      padding: 8px 12px;
+      background: #185FA5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #0C447C;
+    }
+    button.secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    button.secondary:hover {
+      background: #e0e0e0;
+    }
+    .weapon-list {
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .weapon-item {
+      padding: 10px 12px;
+      border-bottom: 0.5px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .weapon-item:last-child {
+      border-bottom: none;
+    }
+    .weapon-label {
+      flex: 1;
+    }
+    .weapon-name {
+      font-weight: 500;
+      color: #333;
+    }
+    .weapon-coords {
+      font-size: 11px;
+      color: #999;
+      margin-top: 2px;
+    }
+    .weapon-btn {
+      padding: 4px 8px;
+      font-size: 11px;
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .weapon-btn:hover {
+      background: #e63946;
+    }
+    .stats-panel {
+      background: #f8f8f8;
+      border: 0.5px solid #ddd;
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 15px;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 6px 0;
+      font-size: 12px;
+    }
+    .stat-label {
+      color: #666;
+    }
+    .stat-value {
+      font-weight: 500;
+      color: #333;
+      font-family: monospace;
+    }
+    .color-legend {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #ddd;
+    }
+    .legend-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 6px 0;
+      font-size: 12px;
+    }
+    .legend-box {
+      width: 16px;
+      height: 16px;
+      margin-right: 8px;
+      border-radius: 2px;
+      border: 0.5px solid #999;
+    }
+    .empty-state {
+      text-align: center;
+      color: #999;
+      padding: 20px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+  
+  <div id="sidebar">
+    <div class="header">
+      <i class="ti ti-target-arrow" style="font-size: 16px; vertical-align: -2px; margin-right: 6px;" aria-hidden="true"></i>
+      Threat Envelope Analyzer
+    </div>
+    <div class="content">
+      <div class="info-banner">
+        Click on map to add weapon positions. Convex hull computes the combined engagement boundary.
+      </div>
+      
+      <div class="controls">
+        <button onclick="clearAllWeapons()" class="secondary">
+          <i class="ti ti-trash" aria-hidden="true"></i> Clear All
+        </button>
+        <button onclick="generateReport()">
+          <i class="ti ti-download" aria-hidden="true"></i> Export
+        </button>
+      </div>
+      
+      <div>
+        <div style="font-weight: 600; margin-bottom: 8px; color: #333;">
+          Weapons Positioned (<span id="weaponCount">0</span>)
+        </div>
+        <div id="weaponListContainer" class="weapon-list"></div>
+      </div>
+      
+      <div class="stats-panel">
+        <div style="font-weight: 600; margin-bottom: 10px; color: #333;">Combined Envelope</div>
+        <div class="stat-row">
+          <span class="stat-label">Coverage area:</span>
+          <span class="stat-value" id="statArea">-</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Perimeter:</span>
+          <span class="stat-value" id="statPerimeter">-</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Vertices:</span>
+          <span class="stat-value" id="statVertices">-</span>
+        </div>
+      </div>
+      
+      <div class="color-legend">
+        <div class="legend-title">Legend</div>
+        <div class="legend-item">
+          <div class="legend-box" style="background: rgba(216, 90, 48, 0.3); border-color: #D85A30;"></div>
+          <span>Individual WEZ</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box" style="background: none; border: 2px solid #0C447C;"></div>
+          <span>Combined envelope</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box" style="background: #ff0000; width: 8px; height: 8px; border-radius: 50%; border: none;"></div>
+          <span>Weapon position</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/GraphicsLayer",
+      "esri/Graphic",
+      "esri/geometry/Point",
+      "esri/geometry/Polygon",
+      "esri/geometry/Circle",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/Color",
+      "esri/geometry/operators/convexHullOperator"
+    ], (
+      Map, MapView, GraphicsLayer, Graphic, Point, Polygon, Circle, 
+      SimpleMarkerSymbol, SimpleFillSymbol, SimpleLineSymbol, Color, 
+      convexHullOperator
+    ) => {
+
+      const map = new Map({ basemap: "satellite" });
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [0, 45],
+        zoom: 8
+      });
+
+      const weaponsLayer = new GraphicsLayer({ title: "Weapons" });
+      const wezLayer = new GraphicsLayer({ title: "WEZ Polygons" });
+      const envelopeLayer = new GraphicsLayer({ title: "Combined Envelope" });
+
+      map.addMany([weaponsLayer, wezLayer, envelopeLayer]);
+
+      let weapons = []; // Array of {id, position, radius}
+      let weaponIdCounter = 1;
+
+      // WEZ polygon styles
+      const wezSymbol = new SimpleFillSymbol({
+        color: new Color([216, 90, 48, 0.25]),
+        outline: new SimpleLineSymbol({
+          color: new Color([216, 90, 48, 0.8]),
+          width: 1.5
+        })
+      });
+
+      // Weapon marker symbol
+      const weaponMarker = new SimpleMarkerSymbol({
+        style: "circle",
+        size: 10,
+        color: new Color([255, 0, 0]),
+        outline: new SimpleLineSymbol({
+          color: new Color([255, 255, 255]),
+          width: 2
+        })
+      });
+
+      // Convex hull envelope symbol
+      const envelopeSymbol = new SimpleFillSymbol({
+        color: new Color([12, 68, 124, 0.08]),
+        outline: new SimpleLineSymbol({
+          color: new Color([12, 68, 124]),
+          width: 2.5,
+          style: "dash"
+        })
+      });
+
+      function createWEZPolygon(centerPoint, radiusKm) {
+        const circle = new Circle({
+          center: centerPoint,
+          radius: radiusKm * 1000,
+          radiusUnit: "meters"
+        });
+        return circle.toPolygon(32); // Convert circle to polygon
+      }
+
+      function updateUI() {
+        document.getElementById("weaponCount").textContent = weapons.length;
+        
+        const container = document.getElementById("weaponListContainer");
+        if (weapons.length === 0) {
+          container.innerHTML = '<div class="empty-state">No weapons positioned. Click on map to add.</div>';
+        } else {
+          container.innerHTML = weapons.map(w => `
+            <div class="weapon-item">
+              <div class="weapon-label">
+                <div class="weapon-name">Weapon ${w.id}</div>
+                <div class="weapon-coords">${w.position.x.toFixed(2)}°, ${w.position.y.toFixed(2)}°</div>
+              </div>
+              <button class="weapon-btn" onclick="removeWeapon(${w.id})">Remove</button>
+            </div>
+          `).join('');
+        }
+        
+        updateEnvelope();
+      }
+
+      function updateEnvelope() {
+        if (weapons.length < 3) {
+          document.getElementById("statArea").textContent = "-";
+          document.getElementById("statPerimeter").textContent = "-";
+          document.getElementById("statVertices").textContent = "-";
+          envelopeLayer.removeAll();
+          return;
+        }
+
+        // Collect all WEZ polygons
+        const wezPolygons = weapons.map(w => createWEZPolygon(w.position, w.radius));
+
+        // Compute convex hull
+        try {
+          const hull = convexHullOperator(wezPolygons);
+          
+          // Add envelope graphic
+          envelopeLayer.removeAll();
+          const envelopeGraphic = new Graphic({
+            geometry: hull,
+            symbol: envelopeSymbol
+          });
+          envelopeLayer.add(envelopeGraphic);
+
+          // Calculate statistics
+          const rings = hull.rings[0];
+          const vertices = rings.length - 1; // Last point is duplicate of first
+          
+          // Area in square km
+          const area = computePolygonArea(hull);
+          
+          // Perimeter in km
+          let perimeter = 0;
+          for (let i = 0; i < rings.length - 1; i++) {
+            const p1 = rings[i];
+            const p2 = rings[(i + 1) % (rings.length - 1)];
+            perimeter += haversineDistance(p1[0], p1[1], p2[0], p2[1]);
+          }
+
+          document.getElementById("statArea").textContent = area.toFixed(0) + " km²";
+          document.getElementById("statPerimeter").textContent = perimeter.toFixed(1) + " km";
+          document.getElementById("statVertices").textContent = vertices;
+        } catch (error) {
+          console.error("Convex hull error:", error);
+        }
+      }
+
+      function computePolygonArea(polygon) {
+        // Approximate area using Shoelace formula (for small areas, treating as planar)
+        const ring = polygon.rings[0];
+        let area = 0;
+        for (let i = 0; i < ring.length - 1; i++) {
+          const j = (i + 1) % (ring.length - 1);
+          area += ring[i][0] * ring[j][1] - ring[j][0] * ring[i][1];
+        }
+        // Convert degrees² to km² (rough approximation: 1° ≈ 111 km at equator)
+        return Math.abs(area) / 2 * (111 * 111) / 100;
+      }
+
+      function haversineDistance(lon1, lat1, lon2, lat2) {
+        const R = 6371; // Earth radius in km
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLon = ((lon2 - lon1) * Math.PI) / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      }
+
+      function addWeapon(position) {
+        const wezRadius = 15; // Default 15 km WEZ radius
+        
+        weapons.push({
+          id: weaponIdCounter++,
+          position: position,
+          radius: wezRadius
+        });
+
+        // Add weapon marker
+        const markerGraphic = new Graphic({
+          geometry: position,
+          symbol: weaponMarker,
+          attributes: { type: "weapon" }
+        });
+        weaponsLayer.add(markerGraphic);
+
+        // Add WEZ polygon
+        const wezPolygon = createWEZPolygon(position, wezRadius);
+        const wezGraphic = new Graphic({
+          geometry: wezPolygon,
+          symbol: wezSymbol,
+          attributes: { type: "wez" }
+        });
+        wezLayer.add(wezGraphic);
+
+        updateUI();
+      }
+
+      window.removeWeapon = function(id) {
+        weapons = weapons.filter(w => w.id !== id);
+        
+        // Clear and rebuild graphics
+        weaponsLayer.removeAll();
+        wezLayer.removeAll();
+        
+        weapons.forEach(w => {
+          const marker = new Graphic({ geometry: w.position, symbol: weaponMarker });
+          weaponsLayer.add(marker);
+          
+          const wez = createWEZPolygon(w.position, w.radius);
+          const wezGraphic = new Graphic({ geometry: wez, symbol: wezSymbol });
+          wezLayer.add(wezGraphic);
+        });
+        
+        updateUI();
+      };
+
+      window.clearAllWeapons = function() {
+        weapons = [];
+        weaponIdCounter = 1;
+        weaponsLayer.removeAll();
+        wezLayer.removeAll();
+        envelopeLayer.removeAll();
+        updateUI();
+      };
+
+      window.generateReport = function() {
+        if (weapons.length === 0) {
+          alert("No weapons positioned.");
+          return;
+        }
+        
+        let report = "=== THREAT ENVELOPE ANALYSIS REPORT ===\n\n";
+        report += `Weapons Positioned: ${weapons.length}\n`;
+        report += `Date: ${new Date().toLocaleString()}\n\n`;
+        
+        report += "WEAPON POSITIONS:\n";
+        weapons.forEach(w => {
+          report += `  Weapon ${w.id}: ${w.position.x.toFixed(4)}°, ${w.position.y.toFixed(4)}° (${w.radius}km WEZ)\n`;
+        });
+        
+        report += "\nCOMBINED ENVELOPE:\n";
+        report += `  Area: ${document.getElementById("statArea").textContent}\n`;
+        report += `  Perimeter: ${document.getElementById("statPerimeter").textContent}\n`;
+        report += `  Vertices: ${document.getElementById("statVertices").textContent}\n`;
+        
+        console.log(report);
+        alert(report);
+      };
+
+      // Map click handler
+      view.on("click", (event) => {
+        const point = new Point({
+          x: event.mapPoint.x,
+          y: event.mapPoint.y,
+          spatialReference: view.spatialReference
+        });
+        addWeapon(point);
+      });
+
+      updateUI();
+    });
+  </script>
+</body>
+</html>

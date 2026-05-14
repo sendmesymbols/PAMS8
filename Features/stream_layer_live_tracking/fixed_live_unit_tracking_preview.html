@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live Unit Tracking - Fixed Preview</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.34/"></script>
+
+  <style>
+    html, body, #viewDiv {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    #panel {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      width: 340px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+      padding: 16px;
+      z-index: 99;
+    }
+
+    .title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      margin-bottom: 14px;
+      background: #f1f1f1;
+    }
+
+    .connected {
+      background: #d7f3dc;
+      color: #0b6b26;
+    }
+
+    .disconnected {
+      background: #ffd9d9;
+      color: #8f1111;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 8px;
+      border: none;
+      border-radius: 6px;
+      background: #185FA5;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0d447c;
+    }
+
+    .secondary {
+      background: #e5e5e5;
+      color: #333;
+    }
+
+    .secondary:hover {
+      background: #d5d5d5;
+    }
+
+    .control {
+      margin-top: 12px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .card {
+      background: #f8f8f8;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #185FA5;
+    }
+
+    .label {
+      font-size: 11px;
+      color: #777;
+    }
+
+    #unitList {
+      margin-top: 14px;
+      max-height: 240px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+
+    .unit {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-bottom: 1px solid #eee;
+      font-size: 12px;
+    }
+
+    .moving {
+      color: #1565c0;
+      font-weight: bold;
+    }
+
+    .stopped {
+      color: #c62828;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<div id="viewDiv"></div>
+
+<div id="panel">
+  <div class="title">Live Unit Tracking</div>
+
+  <div id="status" class="status disconnected">
+    Disconnected
+  </div>
+
+  <button onclick="startTracking()">Start Tracking</button>
+  <button class="secondary" onclick="stopTracking()">Stop Tracking</button>
+
+  <div class="control">
+    <label>Unit Count</label>
+    <input type="range" id="unitCount" min="3" max="20" value="8" oninput="unitCountValue.textContent=this.value">
+    <div id="unitCountValue">8</div>
+  </div>
+
+  <div class="control">
+    <label>Update Speed (ms)</label>
+    <input type="range" id="speed" min="300" max="3000" step="100" value="1000" oninput="speedValue.textContent=this.value">
+    <div id="speedValue">1000</div>
+  </div>
+
+  <div class="stats">
+    <div class="card">
+      <div id="totalUnits" class="value">0</div>
+      <div class="label">Units</div>
+    </div>
+
+    <div class="card">
+      <div id="stoppedUnits" class="value">0</div>
+      <div class="label">Stopped</div>
+    </div>
+  </div>
+
+  <div id="unitList"></div>
+</div>
+
+<script>
+
+require([
+  "esri/Map",
+  "esri/views/MapView",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic",
+  "esri/geometry/Point",
+  "esri/geometry/Polyline",
+  "esri/symbols/SimpleMarkerSymbol",
+  "esri/symbols/SimpleLineSymbol"
+], function(
+  Map,
+  MapView,
+  GraphicsLayer,
+  Graphic,
+  Point,
+  Polyline,
+  SimpleMarkerSymbol,
+  SimpleLineSymbol
+) {
+
+  const map = new Map({
+    basemap: "streets-navigation-vector"
+  });
+
+  const view = new MapView({
+    container: "viewDiv",
+    map,
+    center: [-80, 35],
+    zoom: 7
+  });
+
+  const trailLayer = new GraphicsLayer();
+  const unitLayer = new GraphicsLayer();
+
+  map.addMany([trailLayer, unitLayer]);
+
+  let units = {};
+  let timer = null;
+  let tracking = false;
+
+  function createUnits(count) {
+
+    units = {};
+
+    for (let i = 0; i < count; i++) {
+
+      const id = `UNIT-${i + 1}`;
+
+      units[id] = {
+        id,
+        lon: -84 + Math.random() * 8,
+        lat: 32 + Math.random() * 6,
+        heading: Math.random() * 360,
+        speed: 20 + Math.random() * 80,
+        stopped: false,
+        history: []
+      };
+    }
+  }
+
+  function updateUnits() {
+
+    unitLayer.removeAll();
+    trailLayer.removeAll();
+
+    let stoppedCount = 0;
+
+    Object.values(units).forEach(unit => {
+
+      const stopChance = Math.random();
+
+      unit.stopped = stopChance > 0.75;
+
+      if (!unit.stopped) {
+
+        const dx = (Math.random() - 0.5) * 0.1;
+        const dy = (Math.random() - 0.5) * 0.1;
+
+        unit.lon += dx;
+        unit.lat += dy;
+
+      } else {
+        stoppedCount++;
+      }
+
+      unit.history.push([unit.lon, unit.lat]);
+
+      if (unit.history.length > 10) {
+        unit.history.shift();
+      }
+
+      const point = new Point({
+        longitude: unit.lon,
+        latitude: unit.lat
+      });
+
+      const symbol = new SimpleMarkerSymbol({
+        style: "circle",
+        size: unit.stopped ? 14 : 10,
+        color: unit.stopped ? [234,67,53,0.95] : [66,133,244,0.95],
+        outline: {
+          color: [255,255,255],
+          width: 2
+        }
+      });
+
+      const graphic = new Graphic({
+        geometry: point,
+        symbol
+      });
+
+      unitLayer.add(graphic);
+
+      if (unit.history.length > 1) {
+
+        const trail = new Polyline({
+          paths: [unit.history],
+          spatialReference: { wkid: 4326 }
+        });
+
+        const trailGraphic = new Graphic({
+          geometry: trail,
+          symbol: new SimpleLineSymbol({
+            color: [251,188,4,0.8],
+            width: 2,
+            style: "dash"
+          })
+        });
+
+        trailLayer.add(trailGraphic);
+      }
+
+    });
+
+    document.getElementById("totalUnits").textContent = Object.keys(units).length;
+    document.getElementById("stoppedUnits").textContent = stoppedCount;
+
+    renderList();
+  }
+
+  function renderList() {
+
+    const html = Object.values(units)
+      .map(unit => `
+        <div class="unit">
+          <span>${unit.id}</span>
+          <span class="${unit.stopped ? 'stopped' : 'moving'}">
+            ${unit.stopped ? 'STOPPED' : 'MOVING'}
+          </span>
+        </div>
+      `)
+      .join('');
+
+    document.getElementById("unitList").innerHTML = html;
+  }
+
+  window.startTracking = function() {
+
+    if (tracking) {
+      return;
+    }
+
+    const count = Number(document.getElementById("unitCount").value);
+    const speed = Number(document.getElementById("speed").value);
+
+    createUnits(count);
+
+    updateUnits();
+
+    timer = setInterval(updateUnits, speed);
+
+    tracking = true;
+
+    const status = document.getElementById("status");
+    status.textContent = "Connected";
+    status.className = "status connected";
+  };
+
+  window.stopTracking = function() {
+
+    clearInterval(timer);
+
+    tracking = false;
+
+    const status = document.getElementById("status");
+    status.textContent = "Disconnected";
+    status.className = "status disconnected";
+  };
+
+});
+
+</script>
+
+</body>
+</html>

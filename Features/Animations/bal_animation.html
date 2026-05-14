@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Fixed Ballistic Arc Animation</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.34/"></script>
+
+  <style>
+      html, body, #viewDiv {
+          padding: 0;
+          margin: 0;
+          height: 100%;
+          width: 100%;
+          overflow: hidden;
+          font-family: Arial, sans-serif;
+      }
+
+      #panel {
+          position: absolute;
+          top: 15px;
+          left: 15px;
+          width: 320px;
+          z-index: 100;
+          background: rgba(255,255,255,0.96);
+          padding: 16px;
+          border-radius: 10px;
+          box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+      }
+
+      h2 {
+          margin-top: 0;
+          margin-bottom: 10px;
+          font-size: 18px;
+      }
+
+      label {
+          display: block;
+          margin-top: 12px;
+          font-size: 13px;
+          font-weight: bold;
+      }
+
+      input[type=range], input[type=number] {
+          width: 100%;
+      }
+
+      button {
+          width: 100%;
+          margin-top: 10px;
+          padding: 10px;
+          border: none;
+          border-radius: 6px;
+          background: #1565c0;
+          color: white;
+          cursor: pointer;
+          font-weight: bold;
+      }
+
+      button:hover {
+          background: #0d47a1;
+      }
+
+      button.secondary {
+          background: #777;
+      }
+
+      #status {
+          margin-top: 12px;
+          padding: 8px;
+          background: #f1f1f1;
+          border-radius: 6px;
+          font-size: 12px;
+      }
+
+      #progressContainer {
+          margin-top: 10px;
+      }
+
+      #progressBar {
+          height: 10px;
+          background: #ddd;
+          border-radius: 5px;
+          overflow: hidden;
+      }
+
+      #progressFill {
+          width: 0%;
+          height: 100%;
+          background: #1565c0;
+      }
+
+      .value {
+          font-size: 12px;
+          color: #444;
+      }
+  </style>
+</head>
+<body>
+
+<div id="viewDiv"></div>
+
+<div id="panel">
+  <h2>Ballistic Arc</h2>
+
+  <button onclick="setLaunchMode()">Set Launch Point</button>
+  <button class="secondary" onclick="setTargetMode()">Set Target Point</button>
+
+  <label>Launch Angle</label>
+  <input type="range" id="angle" min="10" max="85" value="45">
+  <div class="value"><span id="angleValue">45</span>°</div>
+
+  <label>Velocity (m/s)</label>
+  <input type="range" id="velocity" min="50" max="1000" value="250">
+  <div class="value"><span id="velocityValue">250</span> m/s</div>
+
+  <label>Gravity</label>
+  <input type="number" id="gravity" value="9.81" step="0.1">
+
+  <label>Animation Duration (seconds)</label>
+  <input type="range" id="duration" min="2" max="30" value="10">
+  <div class="value"><span id="durationValue">10</span> sec</div>
+
+  <button id="fireBtn" onclick="fireProjectile()" disabled>
+    FIRE
+  </button>
+
+  <button class="secondary" onclick="resetAnimation()">
+    RESET
+  </button>
+
+  <div id="progressContainer">
+    <div id="progressBar">
+      <div id="progressFill"></div>
+    </div>
+  </div>
+
+  <div id="status">
+    Waiting for launch point.
+  </div>
+</div>
+
+<script>
+  require([
+    "esri/Map",
+    "esri/views/SceneView",
+    "esri/layers/GraphicsLayer",
+    "esri/Graphic",
+    "esri/geometry/Point",
+    "esri/geometry/Polyline",
+    "esri/symbols/SimpleMarkerSymbol",
+    "esri/symbols/SimpleLineSymbol",
+    "esri/symbols/PointSymbol3D",
+    "esri/symbols/IconSymbol3DLayer",
+    "esri/geometry/support/webMercatorUtils",
+    "esri/Color"
+  ], function(
+    Map,
+    SceneView,
+    GraphicsLayer,
+    Graphic,
+    Point,
+    Polyline,
+    SimpleMarkerSymbol,
+    SimpleLineSymbol,
+    PointSymbol3D,
+    IconSymbol3DLayer,
+    webMercatorUtils,
+    Color
+  ) {
+
+    const map = new Map({
+      basemap: "satellite",
+      ground: "world-elevation"
+    });
+
+    const view = new SceneView({
+      container: "viewDiv",
+      map,
+      qualityProfile: "high",
+      camera: {
+        position: {
+          longitude: 73.0479,
+          latitude: 33.6844,
+          z: 25000
+        },
+        tilt: 65,
+        heading: 0
+      }
+    });
+
+    const markerLayer = new GraphicsLayer();
+    const trajectoryLayer = new GraphicsLayer();
+    const projectileLayer = new GraphicsLayer();
+    const trailLayer = new GraphicsLayer();
+
+    map.addMany([
+      trajectoryLayer,
+      trailLayer,
+      projectileLayer,
+      markerLayer
+    ]);
+
+    let launchPoint = null;
+    let targetPoint = null;
+    let mode = null;
+    let animationFrame = null;
+    let animating = false;
+
+    const statusEl = document.getElementById("status");
+
+    function setStatus(msg) {
+      statusEl.innerHTML = msg;
+    }
+
+    document.getElementById("angle").oninput = e => {
+      document.getElementById("angleValue").textContent = e.target.value;
+    };
+
+    document.getElementById("velocity").oninput = e => {
+      document.getElementById("velocityValue").textContent = e.target.value;
+    };
+
+    document.getElementById("duration").oninput = e => {
+      document.getElementById("durationValue").textContent = e.target.value;
+    };
+
+    window.setLaunchMode = function() {
+      mode = "launch";
+      setStatus("Click on map to set launch point.");
+    };
+
+    window.setTargetMode = function() {
+      if (!launchPoint) {
+        alert("Set launch point first.");
+        return;
+      }
+
+      mode = "target";
+      setStatus("Click on map to set target point.");
+    };
+
+    view.on("click", function(event) {
+
+      const geoPoint = webMercatorUtils.webMercatorToGeographic(event.mapPoint);
+
+      const point = {
+        x: geoPoint.longitude,
+        y: geoPoint.latitude,
+        z: geoPoint.z || 0
+      };
+
+      if (mode === "launch") {
+
+        launchPoint = point;
+
+        markerLayer.removeAll();
+
+        markerLayer.add(new Graphic({
+          geometry: new Point({
+            longitude: point.x,
+            latitude: point.y,
+            z: point.z
+          }),
+          symbol: new SimpleMarkerSymbol({
+            style: "square",
+            color: [255,0,0],
+            size: 12,
+            outline: {
+              color: [255,255,255],
+              width: 2
+            }
+          })
+        }));
+
+        setStatus("Launch point set.");
+        mode = null;
+
+      } else if (mode === "target") {
+
+        targetPoint = point;
+
+        markerLayer.add(new Graphic({
+          geometry: new Point({
+            longitude: point.x,
+            latitude: point.y,
+            z: point.z
+          }),
+          symbol: new SimpleMarkerSymbol({
+            style: "diamond",
+            color: [0,255,0],
+            size: 12,
+            outline: {
+              color: [255,255,255],
+              width: 2
+            }
+          })
+        }));
+
+        setStatus("Target point set. Ready to fire.");
+        document.getElementById("fireBtn").disabled = false;
+
+        mode = null;
+      }
+    });
+
+    function calculateTrajectory() {
+
+      const angleDeg = Number(document.getElementById("angle").value);
+      const velocity = Number(document.getElementById("velocity").value);
+      const gravity = Number(document.getElementById("gravity").value);
+
+      const angle = angleDeg * Math.PI / 180;
+
+      const dx = targetPoint.x - launchPoint.x;
+      const dy = targetPoint.y - launchPoint.y;
+
+      const distanceMeters = Math.sqrt(dx*dx + dy*dy) * 111000;
+
+      const flightTime = Math.max(
+        (2 * velocity * Math.sin(angle)) / gravity,
+        0.1
+      );
+
+      const maxHeight =
+        (velocity * velocity * Math.pow(Math.sin(angle), 2)) /
+        (2 * gravity);
+
+      const points = [];
+
+      const STEPS = 120;
+
+      for (let i = 0; i <= STEPS; i++) {
+
+        const t = i / STEPS;
+        const time = t * flightTime;
+
+        const hDist = velocity * Math.cos(angle) * time;
+
+        const ratio = distanceMeters > 0
+          ? Math.min(hDist / distanceMeters, 1)
+          : 0;
+
+        const z =
+          launchPoint.z +
+          velocity * Math.sin(angle) * time -
+          0.5 * gravity * time * time;
+
+        points.push({
+          x: launchPoint.x + dx * ratio,
+          y: launchPoint.y + dy * ratio,
+          z: Math.max(z, 0)
+        });
+      }
+
+      return {
+        points,
+        flightTime,
+        maxHeight
+      };
+    }
+
+    function drawTrajectory(points) {
+
+      trajectoryLayer.removeAll();
+
+      const polyline = new Polyline({
+        hasZ: true,
+        paths: [
+          points.map(p => [p.x, p.y, p.z])
+        ],
+        spatialReference: {
+          wkid: 4326
+        }
+      });
+
+      trajectoryLayer.add(new Graphic({
+        geometry: polyline,
+        symbol: new SimpleLineSymbol({
+          color: [255,170,0,0.9],
+          width: 3
+        })
+      }));
+    }
+
+    function interpolate(points, t) {
+
+      if (!points.length) return null;
+
+      const scaled = t * (points.length - 1);
+
+      const index = Math.floor(scaled);
+
+      const next = Math.min(index + 1, points.length - 1);
+
+      const local = scaled - index;
+
+      const a = points[index];
+      const b = points[next];
+
+      return {
+        x: a.x + (b.x - a.x) * local,
+        y: a.y + (b.y - a.y) * local,
+        z: a.z + (b.z - a.z) * local
+      };
+    }
+
+    function drawProjectile(pos) {
+
+      projectileLayer.removeAll();
+
+      projectileLayer.add(new Graphic({
+        geometry: new Point({
+          longitude: pos.x,
+          latitude: pos.y,
+          z: pos.z
+        }),
+        symbol: new PointSymbol3D({
+          symbolLayers: [
+            new IconSymbol3DLayer({
+              resource: {
+                primitive: "circle"
+              },
+              size: 10,
+              material: {
+                color: [255,0,0]
+              }
+            })
+          ]
+        })
+      }));
+    }
+
+    function drawTrail(trail) {
+
+      if (trail.length < 2) return;
+
+      trailLayer.removeAll();
+
+      const polyline = new Polyline({
+        hasZ: true,
+        paths: [trail.map(p => [p.x, p.y, p.z])],
+        spatialReference: {
+          wkid: 4326
+        }
+      });
+
+      trailLayer.add(new Graphic({
+        geometry: polyline,
+        symbol: new SimpleLineSymbol({
+          color: [255,80,0,0.7],
+          width: 2
+        })
+      }));
+    }
+
+    window.fireProjectile = function() {
+
+      if (!launchPoint || !targetPoint || animating) {
+        return;
+      }
+
+      const result = calculateTrajectory();
+
+      drawTrajectory(result.points);
+
+      animating = true;
+
+      const duration =
+        Number(document.getElementById("duration").value) * 1000;
+
+      const start = performance.now();
+
+      const trail = [];
+
+      function animate(now) {
+
+        const elapsed = now - start;
+
+        const progress = Math.min(elapsed / duration, 1);
+
+        const pos = interpolate(result.points, progress);
+
+        if (pos) {
+
+          drawProjectile(pos);
+
+          trail.push(pos);
+
+          if (trail.length > 50) {
+            trail.shift();
+          }
+
+          drawTrail(trail);
+        }
+
+        document.getElementById("progressFill").style.width =
+          (progress * 100) + "%";
+
+        if (progress < 1) {
+          animationFrame = requestAnimationFrame(animate);
+        } else {
+          animating = false;
+          setStatus(
+            `Impact complete. Max height: ${Math.round(result.maxHeight)} m`
+          );
+        }
+      }
+
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+
+      animationFrame = requestAnimationFrame(animate);
+    };
+
+    window.resetAnimation = function() {
+
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+
+      animating = false;
+
+      trajectoryLayer.removeAll();
+      projectileLayer.removeAll();
+      trailLayer.removeAll();
+
+      document.getElementById("progressFill").style.width = "0%";
+
+      setStatus("Animation reset.");
+    };
+
+    view.ui.remove("zoom");
+
+    setStatus("Ready. Set launch point.");
+  });
+</script>
+
+</body>
+</html>

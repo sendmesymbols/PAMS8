@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Viewshed Dome Mesh - Elevation Angle Coloring</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.34/"></script>
+  <style>
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 340px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      padding: 20px;
+      z-index: 99;
+      font-size: 13px;
+    }
+    .control-group {
+      margin-bottom: 18px;
+    }
+    .control-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #333;
+    }
+    .control-group input[type="range"],
+    .control-group input[type="number"] {
+      width: 100%;
+      padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .control-group button {
+      width: 100%;
+      padding: 10px;
+      background: #0079c1;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+    .control-group button:hover {
+      background: #005a96;
+    }
+    .legend {
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid #ddd;
+    }
+    .legend-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #333;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 6px 0;
+      font-size: 12px;
+    }
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 2px;
+      margin-right: 8px;
+    }
+    .info-text {
+      background: #f0f8ff;
+      border-left: 3px solid #0079c1;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 3px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #333;
+    }
+    .observer-info {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      margin-bottom: 10px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+  
+  <div id="panel">
+    <div class="info-text">
+      ✓ Click on the map to place observer<br/>
+      ✓ Dome updates in real-time<br/>
+      ✓ Colors show elevation angle
+    </div>
+    
+    <div class="control-group">
+      <label>Dome Radius (km)</label>
+      <input type="range" id="radiusSlider" min="1" max="50" value="10" step="1" />
+      <div style="text-align: center; color: #666; font-size: 12px; margin-top: 4px;">
+        <span id="radiusValue">10</span> km
+      </div>
+    </div>
+    
+    <div class="control-group">
+      <label>Observer Height (m above terrain)</label>
+      <input type="range" id="heightSlider" min="0" max="100" value="2" step="1" />
+      <div style="text-align: center; color: #666; font-size: 12px; margin-top: 4px;">
+        <span id="heightValue">2</span> m
+      </div>
+    </div>
+    
+    <div class="control-group">
+      <label>Mesh Resolution</label>
+      <select id="resolutionSelect" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+        <option value="8">Low (8°)</option>
+        <option value="5" selected>Medium (5°)</option>
+        <option value="3">High (3°)</option>
+      </select>
+    </div>
+    
+    <div class="control-group">
+      <button onclick="generateDome()">Regenerate Dome</button>
+    </div>
+    
+    <div class="observer-info" id="observerInfo">
+      Observer: Click to place
+    </div>
+    
+    <div class="legend">
+      <div class="legend-title">Elevation Angle</div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #e74c3c;"></div>
+        <span>90° (Vertical)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #e8900c;"></div>
+        <span>60° (Steep)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #f39c12;"></div>
+        <span>30° (Medium)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #27ae60;"></div>
+        <span>0° (Horizon)</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/SceneView",
+      "esri/layers/GraphicsLayer",
+      "esri/Graphic",
+      "esri/geometry/Point",
+      "esri/geometry/Mesh",
+      "esri/symbols/MeshSymbol3D",
+      "esri/symbols/edges/SketchEdges3D",
+      "esri/symbols/FillSymbol3D",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/Color",
+      "esri/widgets/BasemapToggle"
+    ], (Map, SceneView, GraphicsLayer, Graphic, Point, Mesh, MeshSymbol3D, SketchEdges3D, FillSymbol3D, SimpleMarkerSymbol, SimpleLineSymbol, Color, BasemapToggle) => {
+
+      // Initialize map and view
+      const map = new Map({ basemap: "satellite" });
+      const view = new SceneView({
+        container: "viewDiv",
+        map: map,
+        camera: {
+          position: {
+            x: 0,
+            y: 45,
+            z: 150000
+          },
+          heading: 0,
+          tilt: 45
+        }
+      });
+
+      const graphicsLayer = new GraphicsLayer({ title: "Analysis" });
+      map.add(graphicsLayer);
+
+      let observerPosition = null;
+      let domeGraphic = null;
+
+      // Color mapping function: elevation angle (0-90°) to RGB
+      function getColorForElevationAngle(angle) {
+        // angle: 0° (horizon) = green, 90° (vertical) = red
+        const normalized = angle / 90; // 0 to 1
+        
+        if (normalized < 0.33) {
+          // Green to yellow (0° to 30°)
+          const t = normalized / 0.33;
+          return [
+            Math.floor(39 + (243 - 39) * t),    // R: 39 -> 243
+            Math.floor(174 + (156 - 174) * t),  // G: 174 -> 156
+            Math.floor(96 + (12 - 96) * t)      // B: 96 -> 12
+          ];
+        } else if (normalized < 0.67) {
+          // Yellow to orange (30° to 60°)
+          const t = (normalized - 0.33) / 0.34;
+          return [
+            Math.floor(243 + (232 - 243) * t),  // R: 243 -> 232
+            Math.floor(156 + (144 - 156) * t),  // G: 156 -> 144
+            Math.floor(12 + (12 - 12) * t)      // B: 12 -> 12
+          ];
+        } else {
+          // Orange to red (60° to 90°)
+          const t = (normalized - 0.67) / 0.33;
+          return [
+            Math.floor(232 + (231 - 232) * t),  // R: 232 -> 231
+            Math.floor(144 + (76 - 144) * t),   // G: 144 -> 76
+            Math.floor(12 + (60 - 12) * t)      // B: 12 -> 60
+          ];
+        }
+      }
+
+      // Generate hemisphere vertices
+      function generateHemisphereVertices(radiusKm, resolution) {
+        const radiusM = radiusKm * 1000;
+        const vertices = [];
+        const indices = [];
+        const colors = [];
+
+        // Azimuth and elevation step sizes (in degrees)
+        const azStep = resolution;
+        const elStep = resolution;
+
+        let vertexIndex = 0;
+
+        // Add apex vertex (straight up)
+        vertices.push(0, 0, radiusM);
+        colors.push(255, 0, 0, 255); // Red (90°)
+        
+        // Generate hemisphere by rings
+        for (let el = 90 - elStep; el > 0; el -= elStep) {
+          const elevRad = (el * Math.PI) / 180;
+          const radiusAtEl = radiusM * Math.cos(elevRad);
+          const heightAtEl = radiusM * Math.sin(elevRad);
+
+          for (let az = 0; az < 360; az += azStep) {
+            const azRad = (az * Math.PI) / 180;
+            const x = radiusAtEl * Math.cos(azRad);
+            const y = radiusAtEl * Math.sin(azRad);
+            const z = heightAtEl;
+
+            vertices.push(x, y, z);
+            
+            // Color by elevation angle
+            const [r, g, b] = getColorForElevationAngle(el);
+            colors.push(r, g, b, 255);
+          }
+        }
+
+        // Add horizon ring
+        for (let az = 0; az < 360; az += azStep) {
+          const azRad = (az * Math.PI) / 180;
+          const x = radiusM * Math.cos(azRad);
+          const y = radiusM * Math.sin(azRad);
+          vertices.push(x, y, 0);
+          const [r, g, b] = getColorForElevationAngle(0);
+          colors.push(r, g, b, 255);
+        }
+
+        // Generate triangle indices
+        const vertsPerRing = Math.floor(360 / azStep);
+        
+        // Connect apex to first ring
+        for (let i = 0; i < vertsPerRing; i++) {
+          const next = (i + 1) % vertsPerRing;
+          indices.push(0, i + 1, next + 1);
+        }
+
+        // Connect rings
+        let ringStart = 1;
+        const numRings = Math.floor(90 / elStep) - 1;
+        
+        for (let ring = 0; ring < numRings; ring++) {
+          const nextRingStart = ringStart + vertsPerRing;
+          
+          for (let i = 0; i < vertsPerRing; i++) {
+            const next = (i + 1) % vertsPerRing;
+            
+            // Two triangles per quad
+            indices.push(ringStart + i, ringStart + next, nextRingStart + i);
+            indices.push(ringStart + next, nextRingStart + next, nextRingStart + i);
+          }
+          
+          ringStart = nextRingStart;
+        }
+
+        return { vertices, indices, colors };
+      }
+
+      function generateDome() {
+        if (!observerPosition) {
+          alert("Please click on the map to place the observer first.");
+          return;
+        }
+
+        const radius = parseFloat(document.getElementById("radiusSlider").value);
+        const resolution = parseInt(document.getElementById("resolutionSelect").value);
+
+        // Generate mesh
+        const { vertices, indices, colors } = generateHemisphereVertices(radius, resolution);
+
+        // Create Mesh geometry
+        const mesh = new Mesh({
+          vertexAttributes: {
+            position: vertices,
+            color: colors
+          },
+          indices: indices
+        });
+
+        // Create mesh symbol with edge rendering
+        const meshSymbol = new MeshSymbol3D({
+          symbolLayers: [
+            {
+              type: "fill",
+              material: {
+                color: [255, 255, 255, 0.9],
+                colorMixMode: "replace" // Use vertex colors
+              },
+              edges: new SketchEdges3D({
+                type: "sketch",
+                size: 1,
+                color: [0, 0, 0, 0.3]
+              })
+            }
+          ]
+        });
+
+        // Position mesh at observer location
+        const positionAtObserver = new Point({
+          x: observerPosition.x,
+          y: observerPosition.y,
+          z: observerPosition.z,
+          spatialReference: observerPosition.spatialReference
+        });
+
+        // Create graphic
+        if (domeGraphic) {
+          graphicsLayer.remove(domeGraphic);
+        }
+
+        domeGraphic = new Graphic({
+          geometry: mesh.transform(positionAtObserver),
+          symbol: meshSymbol
+        });
+
+        graphicsLayer.add(domeGraphic);
+      }
+
+      // Handle map clicks to place observer
+      view.on("click", async (event) => {
+        const screenPoint = {
+          x: event.x,
+          y: event.y
+        };
+
+        try {
+          const hitTest = await view.hitTest(screenPoint);
+          
+          if (hitTest.results.length > 0) {
+            const result = hitTest.results[0];
+            const mapPoint = result.mapPoint;
+
+            // Add observer height
+            const height = parseFloat(document.getElementById("heightSlider").value);
+            observerPosition = new Point({
+              x: mapPoint.x,
+              y: mapPoint.y,
+              z: (mapPoint.z || 0) + height,
+              spatialReference: mapPoint.spatialReference
+            });
+
+            // Remove previous observer marker
+            graphicsLayer.graphics.forEach(g => {
+              if (g.symbol && g.symbol.type === "simple-marker") {
+                graphicsLayer.remove(g);
+              }
+            });
+
+            // Add observer marker
+            const markerSymbol = new SimpleMarkerSymbol({
+              style: "circle",
+              color: [255, 0, 0],
+              size: 8,
+              outline: {
+                color: [255, 255, 255],
+                width: 2
+              }
+            });
+
+            const markerGraphic = new Graphic({
+              geometry: observerPosition,
+              symbol: markerSymbol
+            });
+
+            graphicsLayer.add(markerGraphic);
+
+            // Update info display
+            const lat = mapPoint.y.toFixed(4);
+            const lon = mapPoint.x.toFixed(4);
+            const elev = (mapPoint.z || 0).toFixed(0);
+            document.getElementById("observerInfo").innerHTML = 
+              `<strong>Observer Position</strong><br/>` +
+              `Lat: ${lat}°<br/>` +
+              `Lon: ${lon}°<br/>` +
+              `Elevation: ${elev}m<br/>` +
+              `+ ${height}m observer height`;
+
+            // Auto-generate dome
+            generateDome();
+          }
+        } catch (error) {
+          console.error("Hit test error:", error);
+        }
+      });
+
+      // Update slider values
+      document.getElementById("radiusSlider").addEventListener("input", (e) => {
+        document.getElementById("radiusValue").textContent = e.target.value;
+      });
+
+      document.getElementById("heightSlider").addEventListener("input", (e) => {
+        document.getElementById("heightValue").textContent = e.target.value;
+      });
+
+      // Center on starting location (you can change this)
+      view.goTo({
+        center: [0, 45],
+        zoom: 10
+      });
+    });
+  </script>
+</body>
+</html>

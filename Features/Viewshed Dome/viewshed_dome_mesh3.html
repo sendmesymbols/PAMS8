@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+const point = await view.toMap({
+x: event.x,
+y: event.y
+});
+
+if (!point) {
+return;
+}
+
+const height = Number(document.getElementById("heightSlider").value);
+
+observerPosition = new Point({
+x: point.x,
+y: point.y,
+z: (point.z || 0) + height,
+spatialReference: point.spatialReference
+});
+
+graphicsLayer.graphics.removeAll();
+
+const marker = new Graphic({
+geometry: observerPosition,
+symbol: new SimpleMarkerSymbol({
+style: "circle",
+color: [255,0,0],
+size: 10,
+outline: {
+color: [255,255,255],
+width: 2
+}
+})
+});
+
+graphicsLayer.add(marker);
+
+document.getElementById("observerInfo").innerHTML = `
+<b>Observer Position</b><br>
+X: ${observerPosition.x.toFixed(2)}<br>
+Y: ${observerPosition.y.toFixed(2)}<br>
+Z: ${observerPosition.z.toFixed(2)}
+`;
+
+generateDome();
+});
+
+document.getElementById("radiusSlider").addEventListener("input", e => {
+document.getElementById("radiusValue").textContent = e.target.value;
+});
+
+document.getElementById("heightSlider").addEventListener("input", e => {
+document.getElementById("heightValue").textContent = e.target.value;
+});
+
+view.goTo({
+center: [0, 45],
+zoom: 9
+});
+
+});
+
+</script>
+
+</body>
+</html>

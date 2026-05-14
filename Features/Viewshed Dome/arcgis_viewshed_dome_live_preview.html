@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Viewshed Dome Mesh - Fixed ArcGIS 4.34</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.34/"></script>
+
+  <style>
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    #panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 320px;
+      background: white;
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+      z-index: 99;
+    }
+
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      background: #0079c1;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #005e95;
+    }
+
+    #observerInfo {
+      margin-top: 10px;
+      font-size: 12px;
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="viewDiv"></div>
+
+<div id="panel">
+
+  <div class="control-group">
+    <label>Dome Radius (km)</label>
+    <input type="range" id="radiusSlider" min="1" max="50" value="10" step="1" />
+    <div>
+      <span id="radiusValue">10</span> km
+    </div>
+  </div>
+
+  <div class="control-group">
+    <label>Observer Height (m)</label>
+    <input type="range" id="heightSlider" min="1" max="100" value="2" step="1" />
+    <div>
+      <span id="heightValue">2</span> m
+    </div>
+  </div>
+
+  <div class="control-group">
+    <label>Mesh Resolution</label>
+    <select id="resolutionSelect">
+      <option value="8">Low</option>
+      <option value="5" selected>Medium</option>
+      <option value="3">High</option>
+    </select>
+  </div>
+
+  <div class="control-group">
+    <button onclick="generateDome()">Generate Dome</button>
+  </div>
+
+  <div id="observerInfo">
+    Click map to place observer
+  </div>
+
+</div>
+
+<script>
+
+require([
+  "esri/Map",
+  "esri/views/SceneView",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic",
+  "esri/geometry/Point",
+  "esri/geometry/Mesh",
+  "esri/symbols/MeshSymbol3D",
+  "esri/symbols/FillSymbol3DLayer",
+  "esri/symbols/edges/SketchEdges3D",
+  "esri/symbols/SimpleMarkerSymbol"
+], function (
+  Map,
+  SceneView,
+  GraphicsLayer,
+  Graphic,
+  Point,
+  Mesh,
+  MeshSymbol3D,
+  FillSymbol3DLayer,
+  SketchEdges3D,
+  SimpleMarkerSymbol
+) {
+
+  const map = new Map({
+    basemap: "satellite",
+    ground: "world-elevation"
+  });
+
+  const view = new SceneView({
+    container: "viewDiv",
+    map: map,
+    qualityProfile: "high",
+    camera: {
+      position: {
+        longitude: 0,
+        latitude: 45,
+        z: 120000
+      },
+      tilt: 45
+    }
+  });
+
+  const graphicsLayer = new GraphicsLayer();
+  map.add(graphicsLayer);
+
+  let observerPosition = null;
+  let domeGraphic = null;
+
+  function getColorForElevationAngle(angle) {
+    const t = angle / 90;
+
+    let r, g, b;
+
+    if (t < 0.5) {
+      r = Math.floor(50 + 400 * t);
+      g = 255;
+      b = 50;
+    } else {
+      r = 255;
+      g = Math.floor(255 - 400 * (t - 0.5));
+      b = 50;
+    }
+
+    return [
+      Math.min(255, r),
+      Math.max(0, g),
+      b,
+      255
+    ];
+  }
+
+  function generateHemisphereMesh(observer, radiusKm, resolution) {
+
+    const radius = radiusKm * 1000;
+
+    const positions = [];
+    const colors = [];
+    const faces = [];
+
+    const azStep = resolution;
+    const elStep = resolution;
+
+    const vertsPerRing = Math.floor(360 / azStep);
+
+    positions.push(
+      observer.x,
+      observer.y,
+      observer.z + radius
+    );
+
+    colors.push(255, 0, 0, 255);
+
+    for (let el = 90 - elStep; el >= 0; el -= elStep) {
+
+      const elevRad = el * Math.PI / 180;
+
+      const ringRadius = radius * Math.cos(elevRad);
+      const z = radius * Math.sin(elevRad);
+
+      for (let az = 0; az < 360; az += azStep) {
+
+        const azRad = az * Math.PI / 180;
+
+        const x = observer.x + ringRadius * Math.cos(azRad);
+        const y = observer.y + ringRadius * Math.sin(azRad);
+        const zz = observer.z + z;
+
+        positions.push(x, y, zz);
+
+        const color = getColorForElevationAngle(el);
+        colors.push(...color);
+      }
+    }
+
+    for (let i = 0; i < vertsPerRing; i++) {
+      const next = (i + 1) % vertsPerRing;
+
+      faces.push(0, i + 1, next + 1);
+    }
+
+    const totalRings = Math.floor(90 / elStep);
+
+    for (let ring = 0; ring < totalRings - 1; ring++) {
+
+      const ringStart = 1 + ring * vertsPerRing;
+      const nextRingStart = ringStart + vertsPerRing;
+
+      for (let i = 0; i < vertsPerRing; i++) {
+
+        const next = (i + 1) % vertsPerRing;
+
+        faces.push(
+          ringStart + i,
+          ringStart + next,
+          nextRingStart + i
+        );
+
+        faces.push(
+          ringStart + next,
+          nextRingStart + next,
+          nextRingStart + i
+        );
+      }
+    }
+
+    return new Mesh({
+      vertexAttributes: {
+        position: positions,
+        color: colors
+      },
+      components: [{
+        faces: faces,
+        material: {
+          color: [255,255,255,0.7]
+        }
+      }],
+      spatialReference: observer.spatialReference
+    });
+  }
+
+  window.generateDome = function () {
+
+    if (!observerPosition) {
+      alert("Click on map first");
+      return;
+    }
+
+    const radius = Number(document.getElementById("radiusSlider").value);
+    const resolution = Number(document.getElementById("resolutionSelect").value);
+
+    const mesh = generateHemisphereMesh(
+      observerPosition,
+      radius,
+      resolution
+    );
+
+    const symbol = new MeshSymbol3D({
+      symbolLayers: [
+        new FillSymbol3DLayer({
+          material: {
+            colorMixMode: "replace"
+          },
+          edges: new SketchEdges3D({
+            color: [0,0,0,0.4],
+            size: 1
+          })
+        })
+      ]
+    });
+
+    if (domeGraphic) {
+      graphicsLayer.remove(domeGraphic);
+    }
+
+    domeGraphic = new Graphic({
+      geometry: mesh,
+      symbol: symbol
+    });
+
+    graphicsLayer.add(domeGraphic);
+  };
+
+  view.on("click", async function(event) {
+
+    const point = await view.toMap({
+      x: event.x,
+      y: event.y
+    });
+
+    if (!point) {
+      return;
+    }
+
+    const height = Number(document.getElementById("heightSlider").value);
+
+    observerPosition = new Point({
+      x: point.x,
+      y: point.y,
+      z: (point.z || 0) + height,
+      spatialReference: point.spatialReference
+    });
+
+    graphicsLayer.removeAll();
+
+    const marker = new Graphic({
+      geometry: observerPosition,
+      symbol: new SimpleMarkerSymbol({
+        style: "circle",
+        color: [255,0,0],
+        size: 10,
+        outline: {
+          color: [255,255,255],
+          width: 2
+        }
+      })
+    });
+
+    graphicsLayer.add(marker);
+
+    document.getElementById("observerInfo").innerHTML = `
+      <b>Observer Position</b><br>
+      X: ${observerPosition.x.toFixed(2)}<br>
+      Y: ${observerPosition.y.toFixed(2)}<br>
+      Z: ${observerPosition.z.toFixed(2)}
+    `;
+
+    generateDome();
+  });
+
+  document.getElementById("radiusSlider").addEventListener("input", e => {
+    document.getElementById("radiusValue").textContent = e.target.value;
+  });
+
+  document.getElementById("heightSlider").addEventListener("input", e => {
+    document.getElementById("heightValue").textContent = e.target.value;
+  });
+
+  view.goTo({
+    center: [0, 45],
+    zoom: 9
+  });
+
+});
+
+</script>
+
+</body>
+</html>
