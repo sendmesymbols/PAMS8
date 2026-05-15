@@ -65,10 +65,10 @@ interface CompassInstance {
 
 // ── SVG Design Constants ──────────────────────────────────────────────────────
 
-const VB = 240;
-const CX = 120;
-const CY = 120;
-const RO = 113;
+const VB = 260;
+const CX = 130;
+const CY = 130;
+const RO = 118;
 const RM = 77;
 const RI = 70;
 
@@ -563,7 +563,7 @@ ${moveCross}
       const isCard  = deg % 90 === 0;
       const isThird = deg % 30 === 0;
       const rad     = deg * Math.PI / 180;
-      const nr      = RO - 33;
+      const nr      = RO - 36;
       const lx      = (CX + nr * Math.sin(rad)).toFixed(2);
       const ly      = (CY - nr * Math.cos(rad)).toFixed(2);
       const col     = isCard ? cardLabelCol : isThird ? bcHex : bcDark;
