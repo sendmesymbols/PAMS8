@@ -83,6 +83,8 @@ declare class DeploymentBuilderEngine {
     private _computeCentroid;
     private _removePointerHandles;
     private _removeBgClickHandle;
+    private _removeBgPopup;
+    private _getViewContainer;
     private _setStatus;
 }
 export default DeploymentBuilderEngine;

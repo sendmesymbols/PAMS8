@@ -19,7 +19,10 @@ export class ElevationUtils {
   static async createSampler(
     view: MapView | SceneView,
     extent: Extent,
-    options: { noDataValue?: number } = {}
+    options: {
+      noDataValue?: number;
+      demResolution?: number | 'auto' | 'finest-contiguous';
+    } = {}
   ): Promise<ElevationSamplerLike> {
     const ground = (view.map as any)?.ground;
     if (ground?.load) {

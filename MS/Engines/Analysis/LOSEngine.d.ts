@@ -3,7 +3,7 @@
  * Line-of-Sight / Viewshed analysis engine.
  *
  * 3D SceneView → Uses ArcGIS LineOfSightAnalysis for direct-target LOS
- *                + ElevationSampler terrain ray-casting for viewshed dome.
+ *                + ArcGIS ViewshedAnalysis for viewshed dome.
  * 2D MapView   → ElevationSampler terrain ray-casting only.
  *
  * Integrated with ContextMenuManager via linkLOSEngine().
@@ -31,6 +31,12 @@ export declare class LOSEngine {
     private _pickHandle;
     private _pickMode;
     private _losAnalysis;
+    private _losAnalysisView;
+    private _losResultsWatch;
+    private _losObserverPoint;
+    private _viewshedAnalysis;
+    private _viewshedAnalysisView;
+    private _committedViewshedAnalysis;
     private _isDragging;
     private _dragOffsetX;
     private _dragOffsetY;
@@ -41,7 +47,14 @@ export declare class LOSEngine {
     destroy(): void;
     private _createLayers;
     private _clearLOSAnalysis;
+    private _clearCommittedViewshedAnalysis;
+    private _engineMode;
+    private _useArcGIS3D;
+    private _setCommitEnabled;
     private _runLOS3D;
+    private _updateLOS3DResults;
+    private _runViewshed3D;
+    private _ensureCommittedViewshedAnalysis;
     private _runTerrain;
     private _run;
     private _drawObserver;

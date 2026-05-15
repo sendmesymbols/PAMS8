@@ -3,7 +3,7 @@
  * Line-of-Sight / Viewshed analysis engine.
  *
  * 3D SceneView → Uses ArcGIS LineOfSightAnalysis for direct-target LOS
- *                + ElevationSampler terrain ray-casting for viewshed dome.
+ *                + ArcGIS ViewshedAnalysis for viewshed dome.
  * 2D MapView   → ElevationSampler terrain ray-casting only.
  *
  * Integrated with ContextMenuManager via linkLOSEngine().
@@ -23,6 +23,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import { ElevationUtils } from '../../Support/Elevation/ElevationUtils';
 
 // ─── Geodetic helpers ────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ interface LOSPanelOverride {
   elevMax?: number;
   outputType?: string;
   colorBy?: string;
+  analysisMode?: string;
 }
 
 // ─── Engine ──────────────────────────────────────────────────────────────────
@@ -98,6 +100,12 @@ export class LOSEngine {
   private _pickHandle: any = null;
   private _pickMode: 'observer' | 'target' | null = null;
   private _losAnalysis: any = null;
+  private _losAnalysisView: any = null;
+  private _losResultsWatch: any = null;
+  private _losObserverPoint: Point | null = null;
+  private _viewshedAnalysis: any = null;
+  private _viewshedAnalysisView: any = null;
+  private _committedViewshedAnalysis: any = null;
 
   // Draggable state
   private _isDragging = false;
@@ -115,8 +123,17 @@ export class LOSEngine {
     if (this._view === view) return;
     this._view = view;
     const map = view.map as any;
-    if (map && !map.findLayerById(this._analysisLayer.id)) {
+    if (map && typeof map.findLayerById === 'function' && !map.findLayerById(this._analysisLayer.id)) {
       map.addMany([this._committedLayer, this._analysisLayer, this._observerLayer]);
+    }
+    if (view.type === '3d' && this._committedViewshedAnalysis) {
+      try {
+        const analyses = (view as any).analyses;
+        const alreadyAdded = typeof analyses?.includes === 'function'
+          ? analyses.includes(this._committedViewshedAnalysis)
+          : false;
+        if (!alreadyAdded) analyses?.add?.(this._committedViewshedAnalysis);
+      } catch { /* ignore */ }
     }
     this._clearLOSAnalysis();
   }
@@ -148,6 +165,7 @@ export class LOSEngine {
         elevMax:    attrs.elevMax    ?? undefined,
         outputType: attrs.outputType ?? undefined,
         colorBy:    attrs.colorBy    ?? undefined,
+        analysisMode: attrs.analysisMode ?? undefined,
       };
 
       this._showPanel(override);
@@ -187,7 +205,9 @@ export class LOSEngine {
   }
 
   destroy(): void {
+    this._onDragEnd();
     this.close();
+    this._clearCommittedViewshedAnalysis();
     const map = this._view?.map as any;
     if (map) {
       map.remove(this._analysisLayer);
@@ -222,6 +242,12 @@ export class LOSEngine {
   // ─── Private: 3D LineOfSightAnalysis ─────────────────────────────────────────
 
   private _clearLOSAnalysis(): void {
+    if (this._losResultsWatch) {
+      this._losResultsWatch.remove();
+      this._losResultsWatch = null;
+    }
+    this._losObserverPoint = null;
+    this._losAnalysisView = null;
     if (this._losAnalysis && this._view?.type === '3d') {
       const sv = this._view as SceneView;
       try {
@@ -229,6 +255,38 @@ export class LOSEngine {
       } catch { /* ignore */ }
       this._losAnalysis = null;
     }
+
+    this._viewshedAnalysisView = null;
+    if (this._viewshedAnalysis && this._view?.type === '3d') {
+      const sv = this._view as SceneView;
+      try {
+        (sv as any).analyses?.remove(this._viewshedAnalysis);
+      } catch { /* ignore */ }
+      this._viewshedAnalysis = null;
+    }
+  }
+
+  private _clearCommittedViewshedAnalysis(): void {
+    if (this._committedViewshedAnalysis && this._view?.type === '3d') {
+      const sv = this._view as SceneView;
+      try {
+        (sv as any).analyses?.remove(this._committedViewshedAnalysis);
+      } catch { /* ignore */ }
+    }
+    this._committedViewshedAnalysis = null;
+  }
+
+  private _engineMode(): string {
+    return this._sel('los-analysis-mode')?.value ?? 'Auto';
+  }
+
+  private _useArcGIS3D(): boolean {
+    return this._view?.type === '3d' && this._engineMode() !== 'Terrain ray trace';
+  }
+
+  private _setCommitEnabled(enabled: boolean): void {
+    const commitBtn = this._panelEl?.querySelector<HTMLButtonElement>('#los-commit-btn');
+    if (commitBtn) commitBtn.disabled = !enabled;
   }
 
   private async _runLOS3D(): Promise<boolean> {
@@ -257,41 +315,170 @@ export class LOSEngine {
         z: (this._observerPoint.z ?? 0) + obsH,
         spatialReference: { wkid: 4326 },
       });
+      this._losObserverPoint = observerPt;
 
       const observer = new LineOfSightAnalysisObserver({ position: observerPt });
       const targets  = this._targets.map(t => new LineOfSightAnalysisTarget({ position: t.point }));
 
       this._losAnalysis = new LineOfSightAnalysis({ observer, targets });
       (sv as any).analyses.add(this._losAnalysis);
+
+      this._losAnalysisView = await (sv as any).whenAnalysisView(this._losAnalysis);
+      this._losResultsWatch = reactiveUtils.watch(
+        () => this._losAnalysisView?.results.map((r: any) => r?.intersectedLocation),
+        () => this._updateLOS3DResults()
+      );
+
       return true;
 
-    } catch {
+    } catch (err) {
+      console.error('[LOSEngine] 3D LOS error:', err);
       return false;
     }
   }
 
+  private _updateLOS3DResults(): void {
+    if (!this._losAnalysisView || !this._analysisLayer) return;
+
+    const results = this._losAnalysisView.results ?? [];
+    const obsPt = this._losObserverPoint ?? this._observerPoint;
+    if (!obsPt) return;
+
+    const oldLines = this._analysisLayer.graphics.filter((g: Graphic) =>
+      ['los_visible', 'los_masked', 'los_obstruction'].includes(g.attributes?.type)
+    );
+    oldLines.forEach((g: Graphic) => this._analysisLayer.remove(g));
+
+    results.forEach((result: any, idx: number) => {
+      const target = this._targets[idx];
+      if (!target) return;
+
+      const visible = !result?.intersectedLocation;
+      const tgtPt = target.point;
+
+      if (visible) {
+        this._analysisLayer.add(this._makeLOSLine(obsPt, tgtPt, true));
+      } else {
+        const interPt = result.intersectedLocation;
+        if (interPt) {
+          this._analysisLayer.add(this._makeLOSLine(obsPt, interPt, true));
+          this._analysisLayer.add(this._makeLOSLine(interPt, tgtPt, false));
+          this._analysisLayer.add(new Graphic({
+            geometry: interPt,
+            symbol: this._obstructionSymbol(),
+            attributes: { type: 'los_obstruction' },
+          }));
+        } else {
+          this._analysisLayer.add(this._makeLOSLine(obsPt, tgtPt, false));
+        }
+      }
+    });
+  }
+
+  private async _runViewshed3D(): Promise<boolean> {
+    if (!this._observerPoint || !this._view || this._view.type !== '3d') return false;
+
+    const sv = this._view as SceneView;
+    const obsH = Number(this._inp('los-obsheight')?.value ?? 2);
+    const maxR = Math.max(100, Number(this._inp('los-maxrange')?.value ?? 5000));
+    const azStart = Number(this._inp('los-az-start')?.value ?? 0);
+    const azEnd = Number(this._inp('los-az-end')?.value ?? 360);
+    const elevMin = Number(this._inp('los-elevmin')?.value ?? -10);
+    const elevMax = Number(this._inp('los-elevmax')?.value ?? 45);
+    const azSweep = ((azEnd - azStart) + 360) % 360 || 360;
+    const heading = (azStart + azSweep / 2) % 360;
+    const horizontalFieldOfView = Math.min(360, Math.max(1, azSweep));
+    const verticalFieldOfView = Math.min(180, Math.max(1, elevMax - elevMin));
+    const tilt = Math.min(180, Math.max(0, 90 + ((elevMin + elevMax) / 2)));
+
+    try {
+      const [
+        { default: Viewshed },
+        { default: ViewshedAnalysis },
+      ] = await Promise.all([
+        import('@arcgis/core/analysis/Viewshed'),
+        import('@arcgis/core/analysis/ViewshedAnalysis'),
+      ]);
+
+      const observerPt = new Point({
+        longitude: this._observerPoint.longitude,
+        latitude: this._observerPoint.latitude,
+        z: (this._observerPoint.z ?? 0) + obsH,
+        spatialReference: { wkid: 4326 },
+      });
+
+      const viewshed = new Viewshed({
+        observer: observerPt,
+        farDistance: maxR,
+        heading,
+        tilt,
+        horizontalFieldOfView,
+        verticalFieldOfView,
+      });
+
+      this._viewshedAnalysis = new ViewshedAnalysis({ viewsheds: [viewshed] });
+      (sv as any).analyses.add(this._viewshedAnalysis);
+      this._viewshedAnalysisView = await (sv as any).whenAnalysisView(this._viewshedAnalysis);
+      return true;
+    } catch (err) {
+      console.error('[LOSEngine] 3D viewshed error:', err);
+      return false;
+    }
+  }
+
+  private async _ensureCommittedViewshedAnalysis(): Promise<any> {
+    if (!this._view || this._view.type !== '3d') return null;
+
+    const sv = this._view as SceneView;
+    if (!this._committedViewshedAnalysis) {
+      const { default: ViewshedAnalysis } = await import('@arcgis/core/analysis/ViewshedAnalysis');
+      this._committedViewshedAnalysis = new ViewshedAnalysis();
+    }
+
+    const analyses = (sv as any).analyses;
+    try {
+      const alreadyAdded = typeof analyses?.includes === 'function'
+        ? analyses.includes(this._committedViewshedAnalysis)
+        : false;
+      if (!alreadyAdded) analyses?.add?.(this._committedViewshedAnalysis);
+    } catch { /* ignore */ }
+
+    return this._committedViewshedAnalysis;
+  }
+
   // ─── Private: Terrain ray-cast LOS + Viewshed ────────────────────────────────
 
-  private async _runTerrain(): Promise<void> {
+private async _runTerrain(skipLines: boolean = false): Promise<void> {
     if (!this._observerPoint || !this._view) return;
 
     const obsH  = Number(this._inp('los-obsheight')?.value ?? 2);
     const maxR  = Math.max(100, Number(this._inp('los-maxrange')?.value ?? 5000));
     const out   = this._sel('los-output')?.value ?? 'Both';
-    const doLines  = out !== 'Viewshed dome';
+    const doLines  = !skipLines && out !== 'Viewshed dome';
     const doDome   = out !== 'LOS line only';
 
     this._setStatus('computing');
 
     try {
-      // Build extent for sampler
-      const extentGeom = geometryEngine.geodesicBuffer(this._observerPoint, maxR, 'meters');
+      // Build extent for sampler - expand to include targets
+      let maxTargetDist = 0;
+      for (const { point: tgt } of this._targets) {
+        const d = _haversineM(this._observerPoint.longitude, this._observerPoint.latitude, tgt.longitude, tgt.latitude);
+        if (d > maxTargetDist) maxTargetDist = d;
+      }
+      const sampleExtent = Math.max(maxR, maxTargetDist * 1.1);
+
+      const extentGeom = geometryEngine.geodesicBuffer(this._observerPoint, sampleExtent, 'meters');
       const extent = Array.isArray(extentGeom)
         ? extentGeom[0]?.extent
         : (extentGeom as Polygon | null)?.extent;
       if (!extent) { this._setStatus('error'); return; }
 
-      const sampler = await ElevationUtils.createSampler(this._view, extent, { noDataValue: 0 });
+      const sampler = await ElevationUtils.createSampler(this._view, extent, {
+        noDataValue: 0,
+        // Use a fixed DEM resolution so navigation does not change LOS output.
+        demResolution: 30,
+      });
       const obsGroundZ = ElevationUtils.queryPointElevation(sampler, this._observerPoint);
       const obsZ = obsGroundZ + obsH;
 
@@ -306,27 +493,25 @@ export class LOSEngine {
             this._observerPoint.longitude, this._observerPoint.latitude,
             tgt.longitude, tgt.latitude
           );
-          const stepM = Math.max(10, tDist / 120);
+          const stepM = Math.max(10, tDist / 180);
           const numSteps = Math.ceil(tDist / stepM);
-          let maxSlope = -Infinity;
           let obstrPt: Point | null = null;
+          const tGroundZ = ElevationUtils.queryPointElevation(sampler, { longitude: tgt.longitude, latitude: tgt.latitude });
+          const tZ = (tgt.z ?? 0) !== 0 ? (tgt.z ?? tGroundZ) : tGroundZ;
 
           for (let s = 1; s <= numSteps && !obstrPt; s++) {
             const dist = (s / numSteps) * tDist;
             const pt = _destPt(this._observerPoint.longitude, this._observerPoint.latitude, tBearing, dist);
             const samplePt = { longitude: pt.longitude, latitude: pt.latitude };
             const terrZ = ElevationUtils.queryPointElevation(sampler, samplePt);
-            const slope = Math.atan2(terrZ - obsZ, dist);
+            const losZ = obsZ + ((tZ - obsZ) * dist) / tDist;
 
-            if (slope >= maxSlope) {
-              maxSlope = slope;
-            } else if (maxSlope > 0.017) {
+            // Compare terrain directly against the observer-to-target ray.
+            if (terrZ > losZ + 1) {
               obstrPt = new Point({ longitude: pt.longitude, latitude: pt.latitude, spatialReference: { wkid: 4326 } });
             }
           }
-
-          const tgtSlopeRad = Math.atan2((tgt.z ?? obsZ) - obsZ, tDist);
-          const visible = !obstrPt && maxSlope <= tgtSlopeRad + 0.012;
+          const visible = !obstrPt;
 
           if (visible) {
             this._analysisLayer.add(this._makeLOSLine(this._observerPoint, tgt, true));
@@ -358,21 +543,20 @@ export class LOSEngine {
         const numSteps = Math.ceil(maxR / STEP_M);
         const azSweep  = ((azEnd - azStart) + 360) % 360 || 360;
         const numRays  = Math.max(4, Math.ceil(azSweep / azStep));
+        const elevMinRad = (elevMin * Math.PI) / 180;
+        const elevMaxRad = (elevMax * Math.PI) / 180;
 
         const obsLon = this._observerPoint.longitude;
         const obsLat = this._observerPoint.latitude;
 
-        // Visible sector: horizon points keyed by ray index
+        // Visible sector: one horizon/limit point per azimuth ray
         const visibleRing: number[][] = [[obsLon, obsLat]];
-        const maskedRanges: { start: number; end: number }[] = [];
-        let inMasked = false;
-        let maskedStart = 0;
+        let visibleRayCount = 0;
 
-        for (let i = 0; i <= numRays; i++) {
-          const bearing = (azStart + (i / numRays) * azSweep) % 360;
+        for (let i = 0; i < numRays; i++) {
+          const bearing = (azStart + (i / (numRays - 1 || 1)) * azSweep) % 360;
           let maxSlopeRad = -Infinity;
-          let horizonDist  = maxR;
-          let blocked = false;
+          let visibleDist = 0;
 
           for (let s = 1; s <= numSteps; s++) {
             const dist = s * STEP_M;
@@ -385,29 +569,28 @@ export class LOSEngine {
 
             if (slopeRad >= maxSlopeRad) {
               maxSlopeRad = slopeRad;
-            } else if (maxSlopeRad > 0.017) {
-              horizonDist = dist - STEP_M;
-              blocked = true;
+            }
+
+            if (maxSlopeRad >= elevMinRad && maxSlopeRad <= elevMaxRad) {
+              visibleDist = dist;
+            }
+
+            if (maxSlopeRad > elevMaxRad) {
               break;
             }
           }
 
-          const elDeg = (maxSlopeRad * 180) / Math.PI;
-          const inEnvelope = elDeg >= elevMin && elDeg <= elevMax;
-
-          if (!inEnvelope || blocked) {
-            if (!inMasked) { inMasked = true; maskedStart = i; }
+          if (visibleDist <= 0) {
             visibleRing.push([obsLon, obsLat]);
           } else {
-            if (inMasked) { maskedRanges.push({ start: maskedStart, end: i }); inMasked = false; }
-            const dest = _destPt(obsLon, obsLat, bearing, horizonDist);
+            const dest = _destPt(obsLon, obsLat, bearing, visibleDist);
             visibleRing.push([dest.longitude, dest.latitude]);
+            visibleRayCount++;
           }
         }
-        if (inMasked) maskedRanges.push({ start: maskedStart, end: numRays });
         visibleRing.push([obsLon, obsLat]);
 
-        if (visibleRing.length > 3) {
+        if (visibleRing.length > 3 && visibleRayCount > 0) {
           this._analysisLayer.add(new Graphic({
             geometry: new Polygon({ rings: [visibleRing], spatialReference: { wkid: 4326 } }),
             symbol: this._viewshedSymbol(colorBy),
@@ -423,7 +606,7 @@ export class LOSEngine {
         // Range rings for context
         [0.33, 0.66, 1].forEach(frac => {
           const r = maxR * frac;
-          const ringRaw = geometryEngine.geodesicBuffer(this._observerPoint!, r, 'meters');
+          const ringRaw = geometryEngine.geodesicBuffer(this._observerPoint, r, 'meters');
           const ring = Array.isArray(ringRaw) ? ringRaw[0] : ringRaw;
           if (ring) {
             this._analysisLayer.add(new Graphic({
@@ -440,8 +623,7 @@ export class LOSEngine {
       }
 
       this._setStatus('ready');
-      const commitBtn = this._panelEl?.querySelector<HTMLButtonElement>('#los-commit-btn');
-      if (commitBtn) commitBtn.disabled = false;
+      this._setCommitEnabled(true);
 
     } catch (err) {
       console.error('[LOSEngine] Terrain computation error:', err);
@@ -454,24 +636,30 @@ export class LOSEngine {
   private async _run(): Promise<void> {
     if (!this._observerPoint || !this._view) return;
     this._analysisLayer.removeAll();
+    this._drawTargetMarkers();
     this._clearLOSAnalysis();
     this._setStatus('computing');
+    this._setCommitEnabled(false);
 
     const out = this._sel('los-output')?.value ?? 'Both';
+    let usedNative3D = false;
 
-    // 3D direct-target LOS via ArcGIS LineOfSightAnalysis
-    if (this._view.type === '3d' && this._targets.length > 0 && out !== 'Viewshed dome') {
-      const used3D = await this._runLOS3D();
-      if (used3D && out === 'LOS line only') {
+    if (this._useArcGIS3D()) {
+      if (this._targets.length > 0 && out !== 'Viewshed dome') {
+        usedNative3D = await this._runLOS3D() || usedNative3D;
+      }
+      if (out !== 'LOS line only') {
+        usedNative3D = await this._runViewshed3D() || usedNative3D;
+      }
+      if (usedNative3D) {
         this._setStatus('ready');
-        const commitBtn = this._panelEl?.querySelector<HTMLButtonElement>('#los-commit-btn');
-        if (commitBtn) commitBtn.disabled = false;
+        this._setCommitEnabled(true);
         return;
       }
     }
 
-    // Terrain ray-cast (always for viewshed, fallback for LOS lines)
-    await this._runTerrain();
+    // Terrain ray-cast (for 2D or fallback when 3D native analysis is unavailable)
+    await this._runTerrain(false);
   }
 
   // ─── Private: Observer / Target drawing ─────────────────────────────────────
@@ -604,8 +792,10 @@ export class LOSEngine {
 
   // ─── Private: Commit ────────────────────────────────────────────────────────
 
-  private _commit(): void {
-    if (!this._observerPoint || this._analysisLayer.graphics.length === 0) return;
+  private async _commit(): Promise<void> {
+    const hasGraphicResults = this._analysisLayer.graphics.length > 0;
+    const hasViewshedAnalysis = !!this._viewshedAnalysis?.viewsheds?.length;
+    if (!this._observerPoint || (!hasGraphicResults && !hasViewshedAnalysis)) return;
     const ts = new Date().toISOString();
     const meta = {
       committedAt:  ts,
@@ -619,22 +809,41 @@ export class LOSEngine {
       elevMax:      Number(this._inp('los-elevmax')?.value    ?? 45),
       outputType:   this._sel('los-output')?.value,
       colorBy:      this._sel('los-colorby')?.value,
+      analysisMode: this._engineMode(),
     };
+
+    if (hasViewshedAnalysis && this._view?.type === '3d') {
+      const committedViewshedAnalysis = await this._ensureCommittedViewshedAnalysis();
+      const viewsheds = this._viewshedAnalysis.viewsheds;
+      const count = typeof viewsheds?.length === 'number'
+        ? viewsheds.length
+        : typeof viewsheds?.getItemAt === 'function'
+          ? viewsheds.length
+          : 0;
+      for (let i = 0; i < count; i++) {
+        const viewshed = typeof viewsheds.getItemAt === 'function' ? viewsheds.getItemAt(i) : viewsheds[i];
+        committedViewshedAnalysis?.viewsheds?.add?.(viewshed?.clone?.() ?? viewshed);
+      }
+    }
 
     this._analysisLayer.graphics.forEach((g: Graphic) => {
       if (!g.geometry) return;
+      const symbol = (g as any).symbol;
+      const clonedSymbol = symbol && typeof symbol.clone === 'function' ? symbol.clone() : symbol ?? undefined;
       this._committedLayer.add(new Graphic({
         geometry:   g.geometry.clone(),
-        symbol:     (g as any).symbol?.clone(),
+        symbol:     clonedSymbol,
         attributes: { ...g.attributes, ...meta },
       }));
     });
     this._observerLayer.graphics.forEach((g: Graphic) => {
       if (!g.geometry) return;
+      const symbol = (g as any).symbol;
+      const clonedSymbol = symbol && typeof symbol.clone === 'function' ? symbol.clone() : symbol ?? undefined;
       this._committedLayer.add(new Graphic({
         geometry:   g.geometry.clone(),
-        symbol:     (g as any).symbol?.clone(),
-        attributes: { ...g.attributes, committedAt: ts },
+        symbol:     clonedSymbol,
+        attributes: hasViewshedAnalysis ? { ...g.attributes, ...meta, type: 'los_viewshed' } : { ...g.attributes, committedAt: ts },
       }));
     });
 
@@ -659,12 +868,40 @@ export class LOSEngine {
       let pt: Point;
 
       if (this._is3D()) {
-        const hit = await (this._view as any).hitTest(event, { include: [(this._view as any).map.ground] });
-        const gp = hit?.ground?.mapPoint ?? event.mapPoint;
+        const sv = this._view as SceneView;
+        const hit = await sv.hitTest(event);
+        let gp = event.mapPoint;
+
+        if (hit?.results?.length) {
+          for (const r of hit.results) {
+            if (r.graphic?.layer?.type === 'ground' || (r.graphic?.layer as any)?.id === 'ground') {
+              gp = r.mapPoint;
+              break;
+            }
+            if (!gp.z && r.mapPoint?.z) {
+              gp = r.mapPoint;
+            }
+          }
+        }
+
+        if (!gp.z || gp.z === 0) {
+          try {
+            const ptWithZ = ElevationUtils.queryPointElevation(null, { longitude: gp.longitude, latitude: gp.latitude });
+            if (ptWithZ != null) {
+              gp = new Point({
+                longitude: gp.longitude,
+                latitude: gp.latitude,
+                z: ptWithZ,
+                spatialReference: { wkid: 4326 },
+              });
+            }
+          } catch { gp = new Point({ longitude: gp.longitude, latitude: gp.latitude, z: 0, spatialReference: { wkid: 4326 } }); }
+        }
+
         pt = new Point({
           longitude: gp.longitude,
           latitude:  gp.latitude,
-          z: (gp.z ?? 0) + (mode === 'observer' ? obsH : 2),
+          z: gp.z + (mode === 'observer' ? obsH : 2),
           spatialReference: { wkid: 4326 },
         });
       } else {
@@ -718,17 +955,27 @@ export class LOSEngine {
       </div>
     `).join('');
 
-    listEl.querySelectorAll('.los-ti-remove').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const idx = parseInt((e.currentTarget as HTMLElement).dataset.idx ?? '0');
-        this._targets.splice(idx, 1);
-        // Re-label remaining targets
-        this._targets.forEach((t, j) => { t.label = `T${j + 1}`; });
-        this._drawTargetMarkers();
-        this._updateTargetList();
-        if (this._observerPoint && this._targets.length > 0) await this._run();
-      });
-    });
+    listEl.onclick = async (e) => {
+      const btn = (e.target as HTMLElement)?.closest('.los-ti-remove');
+      if (!btn) return;
+      const idx = parseInt((btn as HTMLElement).dataset.idx ?? '0');
+      this._targets.splice(idx, 1);
+      this._targets.forEach((t, j) => { t.label = `T${j + 1}`; });
+      this._drawTargetMarkers();
+      this._updateTargetList();
+      if (this._observerPoint) {
+        const out = this._sel('los-output')?.value ?? 'Both';
+        if (this._targets.length > 0 || out !== 'LOS line only') {
+          await this._run();
+        } else {
+          this._analysisLayer.removeAll();
+          this._drawTargetMarkers();
+          this._clearLOSAnalysis();
+          this._setStatus('ready');
+          this._setCommitEnabled(false);
+        }
+      }
+    };
   }
 
   // ─── Private: Panel ──────────────────────────────────────────────────────────
@@ -761,10 +1008,12 @@ export class LOSEngine {
     const elevMax = v.elevMax     ?? 45;
     const output  = v.outputType  ?? 'Both';
     const colorBy = v.colorBy     ?? 'Range';
+    const analysisMode = v.analysisMode ?? 'Auto';
     const isEdit  = override != null;
 
     const outputOpts = ['LOS line only', 'Viewshed dome', 'Both'];
     const colorOpts  = ['Range', 'Elevation angle', 'Binary'];
+    const analysisOpts = ['Auto', 'ArcGIS native 3D', 'Terrain ray trace'];
 
     return `
       <div class="los-header" id="los-drag-handle">
@@ -782,6 +1031,12 @@ export class LOSEngine {
         <div class="los-field-full">
           <select id="los-output" class="los-select">
             ${outputOpts.map(o => `<option value="${o}"${o===output?' selected':''}>${o}</option>`).join('')}
+          </select>
+        </div>
+        <div class="los-field-full">
+          <div class="los-label">Analysis Engine</div>
+          <select id="los-analysis-mode" class="los-select">
+            ${analysisOpts.map(o => `<option value="${o}"${o===analysisMode?' selected':''}>${o}</option>`).join('')}
           </select>
         </div>
 
@@ -911,8 +1166,7 @@ export class LOSEngine {
       this._observerPoint = null;
       const coordsEl = p.querySelector<HTMLElement>('#los-coords');
       if (coordsEl) coordsEl.textContent = 'Observer: click map to place';
-      const commitBtn = p.querySelector<HTMLButtonElement>('#los-commit-btn');
-      if (commitBtn) commitBtn.disabled = true;
+      this._setCommitEnabled(false);
       this._updateTargetList();
       this._setStatus('awaiting');
     });

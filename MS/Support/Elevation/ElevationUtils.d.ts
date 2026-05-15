@@ -13,6 +13,7 @@ type PointLike = Point | {
 export declare class ElevationUtils {
     static createSampler(view: MapView | SceneView, extent: Extent, options?: {
         noDataValue?: number;
+        demResolution?: number | 'auto' | 'finest-contiguous';
     }): Promise<ElevationSamplerLike>;
     static queryPointElevation(sampler: ElevationSamplerLike, point: PointLike): number;
     private static toPoint;
