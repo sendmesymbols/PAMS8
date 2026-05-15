@@ -37,6 +37,7 @@ export declare class LOSEngine {
     private _viewshedAnalysis;
     private _viewshedAnalysisView;
     private _committedViewshedAnalysis;
+    private _nativeStateWatches;
     private _isDragging;
     private _dragOffsetX;
     private _dragOffsetY;
@@ -49,8 +50,20 @@ export declare class LOSEngine {
     private _clearLOSAnalysis;
     private _clearCommittedViewshedAnalysis;
     private _engineMode;
+    private _nativeInteractiveEnabled;
     private _useArcGIS3D;
     private _setCommitEnabled;
+    private _clearNativeStateWatches;
+    private _round;
+    private _normalizeDeg;
+    private _setNumericInput;
+    private _setSliderInput;
+    private _updateNativeInteractivityUI;
+    private _applyNativeInteractivity;
+    private _syncObserverFromNative;
+    private _syncTargetsFromNative;
+    private _syncViewshedFromNative;
+    private _watchNativeAnalysisState;
     private _runLOS3D;
     private _updateLOS3DResults;
     private _runViewshed3D;
