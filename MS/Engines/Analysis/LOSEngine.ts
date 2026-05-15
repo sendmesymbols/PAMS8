@@ -79,6 +79,7 @@ interface LOSPanelOverride {
   outputType?: string;
   colorBy?: string;
   analysisMode?: string;
+  nativeInteractive?: boolean;
 }
 
 // ─── Engine ──────────────────────────────────────────────────────────────────
@@ -106,6 +107,7 @@ export class LOSEngine {
   private _viewshedAnalysis: any = null;
   private _viewshedAnalysisView: any = null;
   private _committedViewshedAnalysis: any = null;
+  private _nativeStateWatches: any[] = [];
 
   // Draggable state
   private _isDragging = false;
@@ -166,6 +168,7 @@ export class LOSEngine {
         outputType: attrs.outputType ?? undefined,
         colorBy:    attrs.colorBy    ?? undefined,
         analysisMode: attrs.analysisMode ?? undefined,
+        nativeInteractive: attrs.nativeInteractive ?? undefined,
       };
 
       this._showPanel(override);
@@ -246,6 +249,7 @@ export class LOSEngine {
       this._losResultsWatch.remove();
       this._losResultsWatch = null;
     }
+    this._clearNativeStateWatches();
     this._losObserverPoint = null;
     this._losAnalysisView = null;
     if (this._losAnalysis && this._view?.type === '3d') {
@@ -280,6 +284,10 @@ export class LOSEngine {
     return this._sel('los-analysis-mode')?.value ?? 'Auto';
   }
 
+  private _nativeInteractiveEnabled(): boolean {
+    return this._panelEl?.querySelector<HTMLInputElement>('#los-native-interactive')?.checked ?? true;
+  }
+
   private _useArcGIS3D(): boolean {
     return this._view?.type === '3d' && this._engineMode() !== 'Terrain ray trace';
   }
@@ -287,6 +295,187 @@ export class LOSEngine {
   private _setCommitEnabled(enabled: boolean): void {
     const commitBtn = this._panelEl?.querySelector<HTMLButtonElement>('#los-commit-btn');
     if (commitBtn) commitBtn.disabled = !enabled;
+  }
+
+  private _clearNativeStateWatches(): void {
+    this._nativeStateWatches.forEach((handle) => {
+      try {
+        handle?.remove?.();
+      } catch { /* ignore */ }
+    });
+    this._nativeStateWatches = [];
+  }
+
+  private _round(value: number, digits: number = 1): number {
+    const factor = 10 ** digits;
+    return Math.round(value * factor) / factor;
+  }
+
+  private _normalizeDeg(value: number): number {
+    return ((value % 360) + 360) % 360;
+  }
+
+  private _setNumericInput(id: string, value: number, digits: number = 1): void {
+    const input = this._inp(id);
+    if (input) input.value = String(this._round(value, digits));
+  }
+
+  private _setSliderInput(id: string, value: number, labelId: string): void {
+    const rounded = Math.round(value);
+    const input = this._inp(id);
+    const label = this._panelEl?.querySelector<HTMLElement>(`#${labelId}`);
+    if (input) input.value = String(rounded);
+    if (label) label.textContent = String(rounded).padStart(3, '0') + '°';
+  }
+
+  private _updateNativeInteractivityUI(): void {
+    const checkbox = this._panelEl?.querySelector<HTMLInputElement>('#los-native-interactive');
+    const note = this._panelEl?.querySelector<HTMLElement>('#los-native-interactive-note');
+    if (!checkbox || !note) return;
+    const enabled = this._useArcGIS3D();
+    checkbox.disabled = !enabled;
+    note.textContent = enabled
+      ? 'Drag native 3D handles to edit LOS and viewshed in scene'
+      : 'Native 3D handles are available only in SceneView native mode';
+  }
+
+  private _applyNativeInteractivity(): void {
+    const interactive = this._useArcGIS3D() && this._nativeInteractiveEnabled();
+    if (this._losAnalysisView) {
+      this._losAnalysisView.interactive = interactive;
+    }
+    if (this._viewshedAnalysisView) {
+      this._viewshedAnalysisView.interactive = interactive;
+      const selectedViewshed = this._viewshedAnalysis?.viewsheds?.getItemAt?.(0)
+        ?? this._viewshedAnalysis?.viewsheds?.[0]
+        ?? null;
+      this._viewshedAnalysisView.selectedViewshed = selectedViewshed;
+    }
+  }
+
+  private _syncObserverFromNative(position: Point | null | undefined): void {
+    if (!position) return;
+
+    const groundZ = ElevationUtils.queryPointElevation(null, {
+      longitude: position.longitude,
+      latitude: position.latitude,
+    });
+    const input = this._inp('los-obsheight');
+    const derivedHeight = position.z != null && groundZ != null
+      ? Math.max(0, position.z - groundZ)
+      : Number(input?.value ?? 2);
+
+    if (input) input.value = String(this._round(derivedHeight, 1));
+    this._observerPoint = new Point({
+      longitude: position.longitude,
+      latitude: position.latitude,
+      z: groundZ ?? position.z ?? 0,
+      spatialReference: { wkid: 4326 },
+    });
+    this._drawObserver();
+  }
+
+  private _syncTargetsFromNative(): void {
+    const targets = this._losAnalysis?.targets;
+    if (!targets) return;
+
+    const count = typeof targets.length === 'number' ? targets.length : 0;
+    this._targets = [];
+    for (let i = 0; i < count; i++) {
+      const target = typeof targets.getItemAt === 'function' ? targets.getItemAt(i) : targets[i];
+      const pos = target?.position;
+      if (!pos) continue;
+      this._targets.push({
+        point: new Point({
+          longitude: pos.longitude,
+          latitude: pos.latitude,
+          z: pos.z ?? 0,
+          spatialReference: { wkid: 4326 },
+        }),
+        label: `T${this._targets.length + 1}`,
+      });
+    }
+    this._drawTargetMarkers();
+    this._updateTargetList();
+  }
+
+  private _syncViewshedFromNative(): void {
+    const viewshed = this._viewshedAnalysisView?.selectedViewshed
+      ?? this._viewshedAnalysis?.viewsheds?.getItemAt?.(0)
+      ?? this._viewshedAnalysis?.viewsheds?.[0]
+      ?? null;
+    if (!viewshed) return;
+
+    this._syncObserverFromNative(viewshed.observer ?? null);
+    this._setNumericInput('los-maxrange', viewshed.farDistance ?? 5000, 0);
+
+    const horizontalFieldOfView = viewshed.horizontalFieldOfView ?? 360;
+    if (horizontalFieldOfView >= 359.5) {
+      this._setSliderInput('los-az-start', 0, 'los-az-start-val');
+      this._setSliderInput('los-az-end', 360, 'los-az-end-val');
+    } else {
+      const azStart = this._normalizeDeg((viewshed.heading ?? 0) - horizontalFieldOfView / 2);
+      let azEnd = this._normalizeDeg((viewshed.heading ?? 0) + horizontalFieldOfView / 2);
+      if (azEnd === 0) azEnd = 360;
+      this._setSliderInput('los-az-start', azStart, 'los-az-start-val');
+      this._setSliderInput('los-az-end', azEnd, 'los-az-end-val');
+    }
+
+    const verticalFieldOfView = viewshed.verticalFieldOfView ?? 45;
+    const elevCenter = (viewshed.tilt ?? 90) - 90;
+    const elevMin = elevCenter - verticalFieldOfView / 2;
+    const elevMax = elevCenter + verticalFieldOfView / 2;
+    this._setNumericInput('los-elevmin', elevMin, 1);
+    this._setNumericInput('los-elevmax', elevMax, 1);
+  }
+
+  private _watchNativeAnalysisState(): void {
+    this._clearNativeStateWatches();
+
+    if (this._losAnalysis) {
+      this._nativeStateWatches.push(reactiveUtils.watch(
+        () => [
+          this._losAnalysis?.observer?.position?.longitude ?? null,
+          this._losAnalysis?.observer?.position?.latitude ?? null,
+          this._losAnalysis?.observer?.position?.z ?? null,
+          ...(this._losAnalysis?.targets?.map((target: any) => {
+            const pos = target?.position;
+            return pos ? [pos.longitude, pos.latitude, pos.z ?? null].join('|') : 'null';
+          }) ?? []),
+        ],
+        () => {
+          this._syncObserverFromNative(this._losAnalysis?.observer?.position ?? null);
+          this._syncTargetsFromNative();
+          this._updateLOS3DResults();
+          this._setCommitEnabled(true);
+        }
+      ));
+    }
+
+    if (this._viewshedAnalysisView) {
+      this._nativeStateWatches.push(reactiveUtils.watch(
+        () => {
+          const viewshed = this._viewshedAnalysisView?.selectedViewshed
+            ?? this._viewshedAnalysis?.viewsheds?.getItemAt?.(0)
+            ?? this._viewshedAnalysis?.viewsheds?.[0]
+            ?? null;
+          return viewshed ? [
+            viewshed.observer?.longitude ?? null,
+            viewshed.observer?.latitude ?? null,
+            viewshed.observer?.z ?? null,
+            viewshed.farDistance ?? null,
+            viewshed.heading ?? null,
+            viewshed.tilt ?? null,
+            viewshed.horizontalFieldOfView ?? null,
+            viewshed.verticalFieldOfView ?? null,
+          ] : null;
+        },
+        () => {
+          this._syncViewshedFromNative();
+          this._setCommitEnabled(true);
+        }
+      ));
+    }
   }
 
   private async _runLOS3D(): Promise<boolean> {
@@ -324,10 +513,12 @@ export class LOSEngine {
       (sv as any).analyses.add(this._losAnalysis);
 
       this._losAnalysisView = await (sv as any).whenAnalysisView(this._losAnalysis);
+      this._applyNativeInteractivity();
       this._losResultsWatch = reactiveUtils.watch(
         () => this._losAnalysisView?.results.map((r: any) => r?.intersectedLocation),
         () => this._updateLOS3DResults()
       );
+      this._watchNativeAnalysisState();
 
       return true;
 
@@ -419,6 +610,8 @@ export class LOSEngine {
       this._viewshedAnalysis = new ViewshedAnalysis({ viewsheds: [viewshed] });
       (sv as any).analyses.add(this._viewshedAnalysis);
       this._viewshedAnalysisView = await (sv as any).whenAnalysisView(this._viewshedAnalysis);
+      this._applyNativeInteractivity();
+      this._watchNativeAnalysisState();
       return true;
     } catch (err) {
       console.error('[LOSEngine] 3D viewshed error:', err);
@@ -810,6 +1003,7 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
       outputType:   this._sel('los-output')?.value,
       colorBy:      this._sel('los-colorby')?.value,
       analysisMode: this._engineMode(),
+      nativeInteractive: this._nativeInteractiveEnabled(),
     };
 
     if (hasViewshedAnalysis && this._view?.type === '3d') {
@@ -901,7 +1095,7 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
         pt = new Point({
           longitude: gp.longitude,
           latitude:  gp.latitude,
-          z: gp.z + (mode === 'observer' ? obsH : 2),
+          z: mode === 'observer' ? gp.z : gp.z + 2,
           spatialReference: { wkid: 4326 },
         });
       } else {
@@ -1009,6 +1203,7 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
     const output  = v.outputType  ?? 'Both';
     const colorBy = v.colorBy     ?? 'Range';
     const analysisMode = v.analysisMode ?? 'Auto';
+    const nativeInteractive = v.nativeInteractive ?? true;
     const isEdit  = override != null;
 
     const outputOpts = ['LOS line only', 'Viewshed dome', 'Both'];
@@ -1038,6 +1233,13 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
           <select id="los-analysis-mode" class="los-select">
             ${analysisOpts.map(o => `<option value="${o}"${o===analysisMode?' selected':''}>${o}</option>`).join('')}
           </select>
+        </div>
+        <div class="los-field-full">
+          <label class="los-toggle">
+            <input id="los-native-interactive" type="checkbox"${nativeInteractive ? ' checked' : ''} />
+            <span>Enable native 3D edit handles</span>
+          </label>
+          <div class="los-inline-note" id="los-native-interactive-note"></div>
         </div>
 
         <div class="los-divider"></div>
@@ -1143,6 +1345,11 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
 
     p.querySelector('#los-obs-pick-btn')?.addEventListener('click', () => this._startPick('observer'));
     p.querySelector('#los-add-target-btn')?.addEventListener('click', () => this._startPick('target'));
+    p.querySelector('#los-native-interactive')?.addEventListener('change', () => this._applyNativeInteractivity());
+    p.querySelector('#los-analysis-mode')?.addEventListener('change', () => {
+      this._updateNativeInteractivityUI();
+      this._applyNativeInteractivity();
+    });
 
     p.querySelector('#los-clear-targets-btn')?.addEventListener('click', () => {
       this._targets = [];
@@ -1181,6 +1388,9 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
       const v = (e.target as HTMLInputElement).value;
       (p.querySelector('#los-az-end-val') as HTMLElement).textContent = v.padStart(3,'0') + '°';
     });
+
+    this._updateNativeInteractivityUI();
+    this._applyNativeInteractivity();
   }
 
   private _makeDraggable(): void {
@@ -1322,6 +1532,18 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
       }
       .los-input:focus, .los-select:focus { border-color:var(--ms-accent); }
       .los-select option { background:var(--ms-bg); }
+      .los-toggle {
+        display:flex; align-items:center; gap:8px;
+        color:var(--ms-text); font-size:var(--ms-fs-sm);
+        padding:2px 0 4px;
+      }
+      .los-toggle input { accent-color: var(--ms-accent); }
+      .los-inline-note {
+        color:var(--ms-text-dim);
+        font-size:var(--ms-fs-xs);
+        line-height:1.35;
+        padding-bottom:4px;
+      }
       .los-slider-row {
         display:flex; align-items:center; gap:8px; padding:2px 10px 6px;
       }
