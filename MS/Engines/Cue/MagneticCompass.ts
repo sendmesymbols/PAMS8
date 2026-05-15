@@ -471,7 +471,7 @@ export class MagneticCompass {
       return `<text x="${(CX + r*Math.sin(a)).toFixed(1)}" y="${(CY - r*Math.cos(a)).toFixed(1)}"
                 text-anchor="middle" dominant-baseline="middle"
                 fill="${col}" font-size="${fs}" font-weight="${fw}"
-                font-family="Georgia,serif" ${glow ? 'filter="url(#glo)"' : ''}>${lbl}</text>`;
+                font-family="Arial,Helvetica,sans-serif" ${glow ? 'filter="url(#glo)"' : ''}>${lbl}</text>`;
     }).join('');
 
     /* Intercardinal small letters */
@@ -481,7 +481,7 @@ export class MagneticCompass {
       const r   = RI - 26;
       return `<text x="${(CX + r*Math.sin(a)).toFixed(1)}" y="${(CY - r*Math.cos(a)).toFixed(1)}"
                 text-anchor="middle" dominant-baseline="middle"
-                fill="rgba(180,140,60,0.28)" font-size="7.5" font-family="Georgia,serif"
+                fill="rgba(180,140,60,0.28)" font-size="7.5" font-family="Arial,Helvetica,sans-serif"
                 transform="rotate(${deg},${(CX + r*Math.sin(a)).toFixed(1)},${(CY - r*Math.cos(a)).toFixed(1)})">${lbl}</text>`;
     }).join('');
 
@@ -491,7 +491,7 @@ export class MagneticCompass {
 <line x1="${CX}" y1="${CY-8}" x2="${CX}" y2="${CY+8}" stroke="rgba(212,160,60,0.22)" stroke-width="1"/>`;
 
     const op = this._opacity;
-    return `<svg viewBox="0 0 ${VB} ${VB}" xmlns="http://www.w3.org/2000/svg" opacity="${op}">
+    return `<svg viewBox="0 0 ${VB} ${VB}" xmlns="http://www.w3.org/2000/svg" opacity="${op}" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality">
 <defs>
   <radialGradient id="faceGrad" cx="50%" cy="40%" r="65%">
     <stop offset="0%"   stop-color="#201c10" stop-opacity="0.97"/>
@@ -512,8 +512,8 @@ export class MagneticCompass {
 <circle cx="${CX}" cy="${CY}" r="${RM+1}" fill="none" stroke="rgba(212,160,60,0.22)" stroke-width="0.8"/>
 <circle cx="${CX}" cy="${CY}" r="${RM}" fill="url(#faceGrad)"/>
 <circle cx="${CX}" cy="${CY}" r="${RI}"   fill="none" stroke="rgba(212,160,60,0.2)" stroke-width="0.7"/>
-<circle cx="${CX}" cy="${CY}" r="44"      fill="none" stroke="rgba(212,160,60,0.09)" stroke-width="0.5"/>
-<circle cx="${CX}" cy="${CY}" r="26"      fill="none" stroke="rgba(212,160,60,0.09)" stroke-width="0.5"/>
+<circle cx="${CX}" cy="${CY}" r="44"      fill="none" stroke="rgba(212,160,60,0.09)" stroke-width="1.2"/>
+<circle cx="${CX}" cy="${CY}" r="26"      fill="none" stroke="rgba(212,160,60,0.09)" stroke-width="1.2"/>
 ${axes}
 <polygon points="${star}" fill="none" stroke="rgba(212,160,60,0.15)" stroke-width="0.6"/>
 ${petals}
@@ -567,8 +567,8 @@ ${moveCross}
       const lx      = (CX + nr * Math.sin(rad)).toFixed(2);
       const ly      = (CY - nr * Math.cos(rad)).toFixed(2);
       const col     = isCard ? cardLabelCol : isThird ? bcHex : bcDark;
-      const fs      = isCard ? 13.5 : isThird ? (this._useMils ? 7.5 : 9) : 7;
-      const fw      = isCard ? 'bold' : 'normal';
+      const fs      = isCard ? 18 : isThird ? (this._useMils ? 10 : 12) : 9;
+      const fw      = isCard || isThird ? 'bold' : 'normal';
       let lbl: string;
       if (isCard) {
         lbl = ['N','E','S','W'][deg / 90];
@@ -579,7 +579,7 @@ ${moveCross}
       }
       labels += `<text x="${lx}" y="${ly}"
         text-anchor="middle" dominant-baseline="middle"
-        fill="${col}" font-size="${fs}" font-weight="${fw}" font-family="Georgia,serif"
+        fill="${col}" font-size="${fs}" font-weight="${fw}" font-family="Arial,Helvetica,sans-serif"
         transform="rotate(${deg},${lx},${ly})">${lbl}</text>`;
     }
 
@@ -598,7 +598,7 @@ ${moveCross}
       : '';
 
     const op = this._opacity;
-    return `<svg viewBox="0 0 ${VB} ${VB}" xmlns="http://www.w3.org/2000/svg" opacity="${op}">
+    return `<svg viewBox="0 0 ${VB} ${VB}" xmlns="http://www.w3.org/2000/svg" opacity="${op}" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality">
 <defs>
   <radialGradient id="bezelGrad" cx="50%" cy="28%" r="76%">
     <stop offset="0%"   stop-color="${hovered ? '#4a380e' : '#3a2c0a'}"/>
@@ -629,7 +629,7 @@ ${moveCross}
     const pathS = `M${CX},${CY+60} L${CX-8},${CY+2} L${CX},${CY+8} L${CX+8},${CY+2} Z`;
 
     const op = this._opacity;
-    return `<svg viewBox="0 0 ${VB} ${VB}" xmlns="http://www.w3.org/2000/svg" opacity="${op}">
+    return `<svg viewBox="0 0 ${VB} ${VB}" xmlns="http://www.w3.org/2000/svg" opacity="${op}" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality">
 <defs>
   <radialGradient id="nRed" cx="33%" cy="18%" r="82%">
     <stop offset="0%"   stop-color="${ncHex}"/>
@@ -645,9 +645,9 @@ ${moveCross}
 </defs>
 <g transform="rotate(${rotDeg},${CX},${CY})" filter="url(#ndsh)">
   <path d="${pathN}" fill="url(#nRed)"/>
-  <path d="${pathN}" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="0.5"/>
+  <path d="${pathN}" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="1.2"/>
   <path d="${pathS}" fill="url(#nWht)"/>
-  <path d="${pathS}" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="0.5"/>
+  <path d="${pathS}" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/>
 </g>
 <circle cx="${CX}" cy="${CY}" r="10"  fill="#10100a" stroke="#d4a03c" stroke-width="2"/>
 <circle cx="${CX}" cy="${CY}" r="5.5" fill="#d4a03c"/>
@@ -776,7 +776,7 @@ ${moveCross}
     const bc = this._bezelColor;
     const col = `rgba(${bc[0]},${bc[1]},${bc[2]},0.9)`;
     const fill = `rgba(${bc[0]},${bc[1]},${bc[2]},0.2)`;
-    return `<svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+    return `<svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality">
   <circle cx="14" cy="14" r="9" fill="${fill}" stroke="${col}" stroke-width="2"/>
   <line x1="14" y1="5"  x2="14" y2="23" stroke="${col}" stroke-width="1.5"/>
   <line x1="5"  y1="14" x2="23" y2="14" stroke="${col}" stroke-width="1.5"/>

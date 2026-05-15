@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Assault Position Selector — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#060709}
+
+    /* ══ LEFT — candidate list ═══════════════════════════════════════ */
+    #left-panel{
+      position:absolute;top:14px;left:14px;width:268px;z-index:99;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(180,40,220,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh-28px);display:flex;flex-direction:column;
+    }
+    .lph{padding:9px 12px 8px;border-bottom:1px solid rgba(180,40,220,0.15);
+      background:rgba(180,40,220,0.07);flex-shrink:0}
+    .lph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#B428DC;font-weight:700}
+    .lph-sub{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:2px}
+
+    #sum-strip{display:grid;grid-template-columns:repeat(3,1fr);
+      border-bottom:1px solid rgba(180,40,220,0.10);flex-shrink:0}
+    .ss{padding:6px 8px;display:flex;flex-direction:column;gap:2px;
+      border-right:0.5px solid rgba(180,40,220,0.08)}
+    .ss:last-child{border-right:none}
+    .ss-l{font-size:7.5px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935}
+    .ss-v{font-size:12px;font-weight:600;color:#B428DC}
+
+    #cand-list{overflow-y:auto;flex:1;padding:5px}
+    .ccard{background:rgba(255,255,255,0.02);
+      border:0.5px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:9px 10px;margin-bottom:5px;
+      cursor:pointer;transition:all .12s;position:relative}
+    .ccard:hover{border-color:rgba(180,40,220,0.38);background:rgba(180,40,220,0.06)}
+    .ccard.sel{border-color:#B428DC;background:rgba(180,40,220,0.12)}
+    .ccard.best{border-left:3px solid #1D9E75}
+    .cc-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+    .cc-rank{width:24px;height:24px;border-radius:3px;display:flex;align-items:center;
+      justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+    .cc-name{font-size:12px;font-weight:500;color:var(--color-text-primary);flex:1}
+    .cc-sub{font-size:9px;color:#3a3935;letter-spacing:.04em;margin-top:1px}
+    .cc-score{position:absolute;top:9px;right:9px;font-size:14px;font-weight:700}
+    .cc-bars{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:6px}
+    .cb{display:flex;flex-direction:column;gap:2px}
+    .cb-l{font-size:7.5px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935}
+    .cb-track{height:3px;background:rgba(255,255,255,0.06);border-radius:2px}
+    .cb-fill{height:100%;border-radius:2px}
+    .cb-v{font-size:9px;color:var(--color-text-secondary)}
+    .cc-note{font-size:10px;color:var(--color-text-tertiary);line-height:1.55;
+      border-top:0.5px solid rgba(255,255,255,0.06);padding-top:5px}
+    .los-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;
+      border-radius:2px;margin-top:4px}
+    .los-badge.clear{background:rgba(29,158,117,0.15);color:#1D9E75}
+    .los-badge.partial{background:rgba(239,159,39,0.13);color:#EF9F27}
+    .los-badge.blocked{background:rgba(220,60,48,0.13);color:#DC3C30}
+    #list-empty{padding:18px 12px;font-size:10px;color:#3a3935;
+      text-align:center;line-height:1.8}
+
+    /* ══ RIGHT — controls ════════════════════════════════════════════ */
+    #right-panel{
+      position:absolute;top:14px;right:14px;width:288px;z-index:99;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(180,40,220,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh-28px);overflow-y:auto;
+    }
+    .ph{display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;border-bottom:1px solid rgba(180,40,220,0.15);
+      background:rgba(180,40,220,0.07);position:sticky;top:0;z-index:2}
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#B428DC;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#3a3935;transition:color .2s}
+    .ph-status.place  {color:#B428DC}
+    .ph-status.sampling{color:#EF9F27}
+    .ph-status.computing{color:#EF9F27}
+    .ph-status.done   {color:#1D9E75}
+
+    /* Step indicator */
+    #step-row{display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0}
+    .step-btn{flex:1;padding:8px 4px;font-size:9px;letter-spacing:.05em;
+      text-transform:uppercase;cursor:pointer;border:none;
+      background:transparent;color:#3a3935;transition:all .13s;
+      font-family:'Courier New',monospace;text-align:center;position:relative}
+    .step-btn.active{color:#B428DC}
+    .step-btn.done-step{color:#1D9E75}
+    .step-btn .step-num{display:block;font-size:14px;font-weight:700;margin-bottom:2px}
+    .step-btn.active .step-num{color:#B428DC}
+    .step-btn.done-step .step-num{color:#1D9E75}
+
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+      color:#3a3935;padding:9px 12px 5px}
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s}
+    input:focus,select:focus{border-color:rgba(180,40,220,0.55)}
+    select option{background:#141618}
+    .psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+    .psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;flex:1.8}
+    .psr input[type=range]{flex:2;accent-color:#B428DC;cursor:pointer}
+    .psr-v{font-size:10px;color:#B428DC;min-width:38px;text-align:right}
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#B428DC;width:13px;height:13px;cursor:pointer}
+
+    /* Placed points summary */
+    #pts-summary{margin:0 12px 9px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .pt-card{padding:7px 9px;border-radius:3px;border:0.5px solid rgba(255,255,255,0.08);
+      background:rgba(255,255,255,0.02)}
+    .pt-card.set{border-color:rgba(180,40,220,0.35);background:rgba(180,40,220,0.07)}
+    .pt-label{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935;margin-bottom:3px}
+    .pt-value{font-size:10px;color:var(--color-text-secondary);letter-spacing:.03em}
+    .pt-value.set{color:#B428DC}
+
+    /* progress */
+    #prog-wrap{padding:0 12px 9px}
+    #prog-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+    #prog-fill{height:100%;background:linear-gradient(to right,#B428DC,#378ADD);
+      border-radius:2px;width:0%;transition:width .12s}
+    #prog-label{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:4px}
+
+    /* buttons */
+    .pb-row{display:flex;gap:6px;padding:9px 12px}
+    .pb{flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;border:1px solid rgba(180,40,220,0.38);
+      background:transparent;color:#B428DC;transition:all .14s}
+    .pb:hover:not(:disabled){background:rgba(180,40,220,0.10)}
+    .pb.primary{background:rgba(180,40,220,0.16);border-color:#B428DC}
+    .pb.primary:hover:not(:disabled){background:rgba(180,40,220,0.28)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+
+    /* hint */
+    #hint{position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(6,7,9,0.94);border:1px solid rgba(180,40,220,0.45);
+      color:#B428DC;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase}
+
+    /* legend */
+    #legend{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:99;
+      background:rgba(6,7,9,0.93);border:1px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:7px 14px;display:flex;gap:16px;align-items:center}
+    .ml{display:flex;align-items:center;gap:7px}
+    .ml-sw{width:24px;height:9px;border-radius:2px;flex-shrink:0}
+    .ml-lbl{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#888780}
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<!-- ══ LEFT PANEL ════════════════════════════════════════════════════ -->
+<div id="left-panel">
+  <div class="lph">
+    <div class="lph-title">◉ Assault Position Selector</div>
+    <div class="lph-sub" id="lph-sub">Place objective then FUP to begin</div>
+  </div>
+  <div id="sum-strip">
+    <div class="ss"><div class="ss-l">Candidates</div><div class="ss-v" id="ss-n">—</div></div>
+    <div class="ss"><div class="ss-l">Best score</div><div class="ss-v" id="ss-best">—</div></div>
+    <div class="ss"><div class="ss-l">LOS clear</div><div class="ss-v" id="ss-los">—</div></div>
+  </div>
+  <div id="cand-list">
+    <div id="list-empty">
+      Step 1: Click map to place the<br>
+      <strong style="color:#DC3C30">Objective</strong> (enemy position)<br><br>
+      Step 2: Click to place the<br>
+      <strong style="color:#378ADD">FUP</strong> (forming-up point)<br><br>
+      Step 3: <strong style="color:#B428DC">Run Analysis</strong>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RIGHT PANEL ════════════════════════════════════════════════════ -->
+<div id="right-panel">
+  <div class="ph">
+    <div class="ph-title">⬡ Assault Config</div>
+    <div class="ph-status place" id="status">Place objective</div>
+  </div>
+
+  <!-- Step indicators -->
+  <div id="step-row">
+    <button class="step-btn active" data-step="0">
+      <span class="step-num">1</span>Objective
+    </button>
+    <button class="step-btn" data-step="1">
+      <span class="step-num">2</span>FUP
+    </button>
+    <button class="step-btn" data-step="2">
+      <span class="step-num">3</span>Analyse
+    </button>
+  </div>
+
+  <!-- Placed points -->
+  <div class="ps">Placed positions</div>
+  <div id="pts-summary">
+    <div class="pt-card" id="obj-card">
+      <div class="pt-label">Objective</div>
+      <div class="pt-value" id="obj-val">Not placed</div>
+    </div>
+    <div class="pt-card" id="fup-card">
+      <div class="pt-label">FUP</div>
+      <div class="pt-value" id="fup-val">Not placed</div>
+    </div>
+  </div>
+
+  <!-- Assault parameters -->
+  <div class="ps">Assault parameters</div>
+  <div class="psr">
+    <div class="psr-l">Assault range (m)</div>
+    <input id="inp-assrange" type="range" min="100" max="2000" step="50" value="600"/>
+    <div class="psr-v" id="assrange-v">600 m</div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Min AP size (m²)</div>
+    <input id="inp-minsize" type="range" min="500" max="10000" step="500" value="2000"/>
+    <div class="psr-v" id="minsize-v">2000</div>
+  </div>
+  <div class="pg">
+    <div class="pf">
+      <div class="pl">Force size</div>
+      <select id="inp-force">
+        <option value="fireteam">Fire team (4)</option>
+        <option value="section">Section (8)</option>
+        <option value="platoon" selected>Platoon (30)</option>
+        <option value="company">Company (120)</option>
+      </select>
+    </div>
+    <div class="pf">
+      <div class="pl">Observer height (m)</div>
+      <input id="inp-eye" type="number" value="1.8" min="0.5" max="5" step="0.1"/>
+    </div>
+  </div>
+
+  <!-- LOS parameters -->
+  <div class="ps">LOS to objective</div>
+  <div class="psr">
+    <div class="psr-l">LOS ray count</div>
+    <input id="inp-rays" type="range" min="4" max="24" step="4" value="12"/>
+    <div class="psr-v" id="rays-v">12</div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Grid cell (m)</div>
+    <input id="inp-cell" type="range" min="20" max="100" step="10" value="40"/>
+    <div class="psr-v" id="cell-v">40 m</div>
+  </div>
+
+  <!-- Approach corridor -->
+  <div class="ps">Covered approach</div>
+  <div class="psr">
+    <div class="psr-l">Corridor width (m)</div>
+    <input id="inp-corr" type="range" min="50" max="500" step="50" value="200"/>
+    <div class="psr-v" id="corr-v">200 m</div>
+  </div>
+
+  <div class="pdiv"/>
+  <div class="ps">Display</div>
+  <div class="ptr"><label>Dead ground overlay</label>
+    <input id="opt-dg"   type="checkbox" checked/></div>
+  <div class="ptr"><label>LOS spokes</label>
+    <input id="opt-los"  type="checkbox" checked/></div>
+  <div class="ptr"><label>Assault range ring</label>
+    <input id="opt-ring" type="checkbox" checked/></div>
+  <div class="ptr"><label>Approach corridors</label>
+    <input id="opt-app"  type="checkbox" checked/></div>
+
+  <div class="pdiv"/>
+  <div id="prog-wrap">
+    <div id="prog-track"><div id="prog-fill"></div></div>
+    <div id="prog-label">—</div>
+  </div>
+
+  <div class="pb-row">
+    <button class="pb"         id="btn-clear">Clear</button>
+    <button class="pb"         id="btn-back">← Back</button>
+    <button class="pb primary" id="btn-run"  disabled>Run Analysis ↗</button>
+  </div>
+</div>
+
+<div id="hint">Step 1 — click map to place the OBJECTIVE (enemy position)</div>
+
+<div id="legend">
+  <div class="ml"><div class="ml-sw" style="background:rgba(220,60,48,0.5)"></div>
+    <div class="ml-lbl">Objective</div></div>
+  <div class="ml"><div class="ml-sw" style="background:rgba(55,138,221,0.5)"></div>
+    <div class="ml-lbl">FUP</div></div>
+  <div class="ml"><div class="ml-sw" style="background:rgba(80,20,20,0.55)"></div>
+    <div class="ml-lbl">Enemy LOS (dead ground)</div></div>
+  <div class="ml"><div class="ml-sw" style="background:rgba(180,40,220,0.5)"></div>
+    <div class="ml-lbl">Candidate assault position</div></div>
+  <div class="ml"><div class="ml-sw" style="background:rgba(29,158,117,0.5)"></div>
+    <div class="ml-lbl">Best candidate</div></div>
+</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map","esri/views/SceneView",
+  "esri/layers/GraphicsLayer","esri/layers/MediaLayer",
+  "esri/layers/support/ExtentAndRotationGeoreference",
+  "esri/layers/support/ImageElement",
+  "esri/Graphic","esri/geometry/Point","esri/geometry/Extent",
+  "esri/geometry/Polygon","esri/geometry/Polyline","esri/geometry/geometryEngine",
+], function(
+  Map, SceneView, GraphicsLayer, MediaLayer,
+  ExtentAndRotationGeoreference, ImageElement,
+  Graphic, Point, Extent, Polygon, Polyline, geometryEngine
+) {
+
+  // ═══════════════════════════════════════════════════════════════════
+  // FORCE SIZE → minimum assault position area (m²)
+  // A platoon in assault formation needs ~30m × 60m = 1800m².
+  // ═══════════════════════════════════════════════════════════════════
+  const FORCE_AREA = {
+    fireteam: 400,
+    section:  800,
+    platoon:  2000,
+    company:  8000,
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GEODETIC HELPERS
+  // ═══════════════════════════════════════════════════════════════════
+  const EARTH_R   = 6_371_008.8;
+  const M_PER_DEG = 111_320;
+
+  function destPt(lon, lat, brg, dist) {
+    const δ=dist/EARTH_R, θ=brg*Math.PI/180;
+    const φ1=lat*Math.PI/180, λ1=lon*Math.PI/180;
+    const φ2=Math.asin(Math.sin(φ1)*Math.cos(δ)+Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+    const λ2=λ1+Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1),Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+    return { longitude:λ2*180/Math.PI, latitude:φ2*180/Math.PI };
+  }
+
+  function geoDist(lon1,lat1,lon2,lat2) {
+    const φ1=lat1*Math.PI/180,φ2=lat2*Math.PI/180,Δλ=(lon2-lon1)*Math.PI/180;
+    return EARTH_R*Math.acos(Math.min(1,Math.sin(φ1)*Math.sin(φ2)+Math.cos(φ1)*Math.cos(φ2)*Math.cos(Δλ)));
+  }
+
+  function geoBrg(lon1,lat1,lon2,lat2) {
+    const φ1=lat1*Math.PI/180,φ2=lat2*Math.PI/180,Δλ=(lon2-lon1)*Math.PI/180;
+    return((Math.atan2(Math.sin(Δλ)*Math.cos(φ2),Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ))*180/Math.PI)+360)%360;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // CORE ALGORITHM OVERVIEW
+  // ─────────────────────────────────────────────────────────────────
+  // 1. Sample DEM grid across the analysis extent.
+  // 2. Cast rays from OBJECTIVE (enemy observer) outward at 2° resolution.
+  //    Track horizon angle per ray (same as Dead Ground Mapper).
+  // 3. For every grid cell: if the cell's slope angle from the Objective
+  //    is BELOW the horizon → it is in dead ground = NOT visible from OBJ.
+  //    This gives us the "enemy dead ground" raster.
+  // 4. Filter dead-ground cells to those within assault range of OBJ
+  //    (the assault ring band: assaultRangeM ± 20%).
+  // 5. Run connected-component labelling on the filtered raster to find
+  //    contiguous dead-ground patches.
+  // 6. Filter patches by minimum size (force size requirement).
+  // 7. For each surviving patch: score it on:
+  //    - Distance from FUP (closer = faster assembly)
+  //    - LOS from patch centroid to OBJ (partial LOS = can observe target
+  //      on final bound, blocked = cannot; both have uses)
+  //    - Coverage of the approach from FUP (how much of route is masked)
+  //    - Proximity to assault bearing axis (on the direct line FUP → OBJ)
+  // 8. Rank patches, display as coloured polygons, top N listed in panel.
+  // ═══════════════════════════════════════════════════════════════════
+
+  async function computeEnemyDeadGround(view, objPt, obsZ, extent, cols, rows, cellM) {
+    const sampler  = await view.createElevationSampler(extent, { noDataValue:0 });
+    const dLon     = (extent.xmax-extent.xmin)/cols;
+    const dLat     = (extent.ymax-extent.ymin)/rows;
+    const cosLat   = Math.cos(objPt.latitude*Math.PI/180);
+    const STEP_M   = Math.max(cellM*0.5, 15);
+    const maxRange = Math.max(
+      (extent.xmax-extent.xmin)*M_PER_DEG*cosLat,
+      (extent.ymax-extent.ymin)*M_PER_DEG
+    );
+    const numSteps = Math.ceil(maxRange/STEP_M);
+
+    // Pre-compute horizon at 2° resolution from Objective
+    const HRES     = 2;
+    const horizons = new Float32Array(360/HRES);
+
+    for (let di=0; di<horizons.length; di++) {
+      const brg = di*HRES;
+      let maxSlope = -90;
+      for (let s=1; s<=numSteps; s++) {
+        const dist = s*STEP_M;
+        const { longitude, latitude } = destPt(objPt.longitude, objPt.latitude, brg, dist);
+        if (longitude<extent.xmin||longitude>extent.xmax||
+            latitude<extent.ymin||latitude>extent.ymax) break;
+        const z   = sampler.queryElevation(new Point({longitude,latitude,spatialReference:{wkid:4326}}))?.z??0;
+        const slp = Math.atan2(z-obsZ,dist)*180/Math.PI;
+        if (slp>maxSlope) maxSlope=slp;
+      }
+      horizons[di] = maxSlope;
+    }
+
+    // Score each grid cell
+    const deadGrid  = new Uint8Array(cols*rows);  // 1 = in dead ground
+    const depthGrid = new Float32Array(cols*rows); // depth below LOS (m)
+    const elevGrid  = new Float32Array(cols*rows); // terrain elevation
+
+    for (let row=0; row<rows; row++) {
+      for (let col=0; col<cols; col++) {
+        const lon   = extent.xmin+(col+0.5)*dLon;
+        const lat   = extent.ymax-(row+0.5)*dLat;
+        const east  = (lon-objPt.longitude)*M_PER_DEG*cosLat;
+        const north = (lat-objPt.latitude)*M_PER_DEG;
+        const dist  = Math.sqrt(east*east+north*north);
+        const i     = row*cols+col;
+
+        if (dist<10) { elevGrid[i]=obsZ; continue; }
+
+        const cellPt = new Point({longitude:lon,latitude:lat,spatialReference:{wkid:4326}});
+        const terrZ  = sampler.queryElevation(cellPt)?.z??0;
+        elevGrid[i]  = terrZ;
+
+        const brg    = ((Math.atan2(east,north)*180/Math.PI)+360)%360;
+        const bKey   = Math.round(brg/HRES)%(360/HRES);
+        const losZ   = obsZ + dist*Math.tan(horizons[bKey]*Math.PI/180);
+        const depth  = losZ - terrZ;
+
+        if (depth>0) { deadGrid[i]=1; depthGrid[i]=depth; }
+      }
+    }
+
+    return { deadGrid, depthGrid, elevGrid, sampler, horizons };
+  }
+
+  // ── Connected-component labelling (4-connectivity) ──────────────────
+  function labelComponents(deadGrid, cols, rows) {
+    const labels  = new Int32Array(cols*rows).fill(-1);
+    let   nextLabel = 0;
+
+    function flood(startRow, startCol, label) {
+      const stack = [[startRow, startCol]];
+      while (stack.length) {
+        const [r,c] = stack.pop();
+        const i = r*cols+c;
+        if (r<0||r>=rows||c<0||c>=cols) continue;
+        if (deadGrid[i]===0 || labels[i]>=0) continue;
+        labels[i] = label;
+        stack.push([r-1,c],[r+1,c],[r,c-1],[r,c+1]);
+      }
+    }
+
+    for (let r=0; r<rows; r++) {
+      for (let c=0; c<cols; c++) {
+        const i = r*cols+c;
+        if (deadGrid[i]===1 && labels[i]<0) {
+          flood(r, c, nextLabel++);
+        }
+      }
+    }
+    return { labels, numLabels:nextLabel };
+  }
+
+  // ── Extract component metadata ───────────────────────────────────────
+  function extractComponents(labels, depthGrid, elevGrid, numLabels,
+                             cols, rows, extent, objPt, fupPt, assaultRangeM, cellM) {
+    const dLon     = (extent.xmax-extent.xmin)/cols;
+    const dLat     = (extent.ymax-extent.ymin)/rows;
+    const cosLat   = Math.cos(objPt.latitude*Math.PI/180);
+
+    // Per-component accumulators
+    const counts    = new Int32Array(numLabels);
+    const sumLon    = new Float64Array(numLabels);
+    const sumLat    = new Float64Array(numLabels);
+    const sumDepth  = new Float64Array(numLabels);
+    const minRow    = new Int32Array(numLabels).fill(rows);
+    const maxRow    = new Int32Array(numLabels).fill(0);
+    const minCol    = new Int32Array(numLabels).fill(cols);
+    const maxCol    = new Int32Array(numLabels).fill(0);
+    const insideRing = new Uint8Array(numLabels); // flag: any cell in assault ring?
+
+    const assaultBand = { min: assaultRangeM*0.55, max: assaultRangeM*1.45 };
+
+    for (let row=0; row<rows; row++) {
+      for (let col=0; col<cols; col++) {
+        const i = row*cols+col;
+        const L = labels[i];
+        if (L<0) continue;
+        const lon   = extent.xmin+(col+0.5)*dLon;
+        const lat   = extent.ymax-(row+0.5)*dLat;
+        const dist  = geoDist(lon,lat,objPt.longitude,objPt.latitude);
+
+        // Only keep cells within the assault ring
+        if (dist<assaultBand.min||dist>assaultBand.max) continue;
+
+        counts[L]++;
+        sumLon[L]  += lon;
+        sumLat[L]  += lat;
+        sumDepth[L] += depthGrid[i];
+        insideRing[L] = 1;
+        if (row<minRow[L]) minRow[L]=row;
+        if (row>maxRow[L]) maxRow[L]=row;
+        if (col<minCol[L]) minCol[L]=col;
+        if (col>maxCol[L]) maxCol[L]=col;
+      }
+    }
+
+    // Compute metrics per component
+    const components = [];
+    const areaCellM2 = cellM*cellM;
+
+    for (let L=0; L<numLabels; L++) {
+      if (!insideRing[L] || counts[L]<4) continue;
+      const areaM2 = counts[L]*areaCellM2;
+      const centLon = sumLon[L]/counts[L];
+      const centLat = sumLat[L]/counts[L];
+      const avgDepth = sumDepth[L]/counts[L];
+      const distToObj = geoDist(centLon,centLat,objPt.longitude,objPt.latitude);
+      const distToFup = fupPt ? geoDist(centLon,centLat,fupPt.longitude,fupPt.latitude) : 0;
+
+      // Axis alignment: how close is this to the FUP→OBJ bearing?
+      let axisAngle = 0;
+      if (fupPt) {
+        const fupObjBrg = geoBrg(fupPt.longitude,fupPt.latitude,objPt.longitude,objPt.latitude);
+        const centObjBrg= geoBrg(centLon,centLat,objPt.longitude,objPt.latitude);
+        axisAngle = Math.abs(fupObjBrg-centObjBrg);
+        if (axisAngle>180) axisAngle=360-axisAngle;
+      }
+
+      // Build bounding polygon for this component
+      components.push({
+        label:L, counts:counts[L], areaM2,
+        centLon, centLat, avgDepth,
+        distToObj, distToFup, axisAngle,
+        minRow:minRow[L], maxRow:maxRow[L],
+        minCol:minCol[L], maxCol:maxCol[L],
+      });
+    }
+
+    return components;
+  }
+
+  // ── Compute LOS from candidate centroid to Objective ────────────────
+  async function checkLOS(candidateLon, candidateLat, candidateZ,
+                          objLon, objLat, objZ, sampler, numRays) {
+    const dist = geoDist(candidateLon,candidateLat,objLon,objLat);
+    const STEP = Math.max(20, dist/40);
+    const baseBrg = geoBrg(candidateLon,candidateLat,objLon,objLat);
+    let clearRays = 0;
+
+    for (let ri=0; ri<numRays; ri++) {
+      // Spread rays ±15° around direct bearing to OBJ
+      const spread = (ri/(numRays-1||1)-0.5)*30;
+      const brg    = (baseBrg+spread+360)%360;
+      let   maxSlope=-90, blocked=false;
+
+      for (let d=STEP; d<=dist; d+=STEP) {
+        const { longitude, latitude } = destPt(candidateLon,candidateLat,brg,d);
+        const z = sampler.queryElevation(new Point({longitude,latitude,spatialReference:{wkid:4326}}))?.z??0;
+        const slp = Math.atan2(z-candidateZ,d)*180/Math.PI;
+        if (slp>maxSlope) maxSlope=slp;
+      }
+
+      // Check if objective elevation is above the horizon
+      const objSlp = Math.atan2(objZ-candidateZ,dist)*180/Math.PI;
+      if (objSlp>=maxSlope) clearRays++;
+    }
+
+    const frac = clearRays/numRays;
+    return { frac, clearRays, numRays,
+      status: frac>=0.7?'clear':frac>=0.3?'partial':'blocked' };
+  }
+
+  // ── Score each candidate ─────────────────────────────────────────────
+  function scoreCandidate(c, fupPt, objPt, assaultRangeM, maxArea, maxDepth, maxFupDist) {
+    // 1. Area score (bigger = better for assembly)
+    const areaScore = Math.min(100, Math.round(c.areaM2/maxArea*100));
+
+    // 2. Depth score (deeper dead ground = better concealment)
+    const depthScore = Math.min(100, Math.round(c.avgDepth/maxDepth*100));
+
+    // 3. FUP proximity score (closer to FUP = shorter assembly march)
+    const fupScore = fupPt && maxFupDist>0
+      ? Math.round(100*(1-c.distToFup/maxFupDist))
+      : 50;
+
+    // 4. Assault range score (penalty if far from ideal assault range)
+    const rangeDelta = Math.abs(c.distToObj-assaultRangeM);
+    const rangeScore = Math.max(0, Math.round(100-rangeDelta/assaultRangeM*120));
+
+    // 5. Axis alignment score (on the direct attack axis = good)
+    const axisScore = Math.max(0, Math.round(100-c.axisAngle*2));
+
+    // 6. LOS score (partial LOS = you can observe the objective = best;
+    //    clear LOS = exposed; blocked = cannot observe)
+    const losScore = c.los?.status==='partial' ? 80
+                   : c.los?.status==='clear'   ? 40
+                   : 30; // blocked — cannot observe but also fully masked
+
+    const composite = Math.round(
+      areaScore  * 0.20 +
+      depthScore * 0.15 +
+      fupScore   * 0.20 +
+      rangeScore * 0.20 +
+      axisScore  * 0.10 +
+      losScore   * 0.15
+    );
+
+    return { ...c, scores:{ area:areaScore, depth:depthScore, fup:fupScore,
+      range:rangeScore, axis:axisScore, los:losScore }, composite };
+  }
+
+  // ── Build assault position polygon from component cells ──────────────
+  function buildCandidatePolygon(comp, labels, cols, rows, extent, cellM) {
+    const dLon = (extent.xmax-extent.xmin)/cols;
+    const dLat = (extent.ymax-extent.ymin)/rows;
+    // Build a convex-hull-like outline using the bounding cells
+    // For performance, use a rectangular approximation plus a few hull points
+    const pts = [];
+    for (let row=comp.minRow; row<=comp.maxRow; row+=2) {
+      let firstCol=-1, lastCol=-1;
+      for (let col=comp.minCol; col<=comp.maxCol; col++) {
+        if (labels[row*cols+col]===comp.label) {
+          if (firstCol<0) firstCol=col;
+          lastCol=col;
+        }
+      }
+      if (firstCol<0) continue;
+      const lat = extent.ymax-(row+0.5)*dLat;
+      pts.push([extent.xmin+(firstCol+0.5)*dLon, lat]);
+      if (lastCol!==firstCol) pts.push([extent.xmin+(lastCol+0.5)*dLon, lat]);
+    }
+    // Reverse second half for polygon winding
+    const half = Math.ceil(pts.length/2);
+    const ring = [...pts.slice(0,half), ...[...pts.slice(half)].reverse(), pts[0]];
+    if (ring.length<4) return null;
+    try { return new Polygon({ rings:[ring], spatialReference:{wkid:4326} }); }
+    catch(_) { return null; }
+  }
+
+  // ── Approach corridor from FUP to candidate centroid ────────────────
+  function buildApproachCorridor(fupPt, centLon, centLat, corrWidthM) {
+    if (!fupPt) return null;
+    const brg  = geoBrg(fupPt.longitude,fupPt.latitude,centLon,centLat);
+    const perp = (brg+90)%360;
+    const dist = geoDist(fupPt.longitude,fupPt.latitude,centLon,centLat);
+    const cosLat = Math.cos(fupPt.latitude*Math.PI/180);
+    const wDeg = corrWidthM/(M_PER_DEG*cosLat);
+    const pts  = [
+      destPt(fupPt.longitude,fupPt.latitude,perp, corrWidthM/2),
+      destPt(centLon,centLat,perp, corrWidthM/2),
+      destPt(centLon,centLat,(perp+180)%360, corrWidthM/2),
+      destPt(fupPt.longitude,fupPt.latitude,(perp+180)%360, corrWidthM/2),
+    ];
+    const ring = pts.map(p=>[p.longitude,p.latitude]).concat([[pts[0].longitude,pts[0].latitude]]);
+    try { return new Polygon({ rings:[ring], spatialReference:{wkid:4326} }); }
+    catch(_) { return null; }
+  }
+
+  // ── Dead ground MediaLayer canvas ────────────────────────────────────
+  function buildDeadGroundCanvas(deadGrid, depthGrid, aoMask, cols, rows, opacity) {
+    const canvas = document.createElement('canvas');
+    canvas.width=cols; canvas.height=rows;
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(cols,rows);
+    for (let i=0; i<cols*rows; i++) {
+      const px = i*4;
+      if (!aoMask[i]||!deadGrid[i]) { img.data[px+3]=0; continue; }
+      const t = Math.min(1, depthGrid[i]/30);
+      img.data[px]   = Math.round(60+t*80);
+      img.data[px+1] = 10;
+      img.data[px+2] = 10;
+      img.data[px+3] = Math.round((0.25+t*0.30)*opacity*255);
+    }
+    ctx.putImageData(img,0,0);
+    return canvas;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ARCGIS SETUP
+  // ═══════════════════════════════════════════════════════════════════
+  const deadGroundLayer  = new GraphicsLayer({ title:'Dead ground',        elevationInfo:{mode:'on-the-ground'} });
+  const ringLayer        = new GraphicsLayer({ title:'Assault range ring',  elevationInfo:{mode:'on-the-ground'} });
+  const candidateLayer   = new GraphicsLayer({ title:'Candidate APs',      elevationInfo:{mode:'on-the-ground'} });
+  const approachLayer    = new GraphicsLayer({ title:'Approach corridors',  elevationInfo:{mode:'on-the-ground'} });
+  const losLayer         = new GraphicsLayer({ title:'LOS checks',          elevationInfo:{mode:'on-the-ground'} });
+  const markerLayer      = new GraphicsLayer({ title:'Markers',             elevationInfo:{mode:'on-the-ground'} });
+  const mediaLayers      = [];
+
+  const map = new Map({
+    basemap:'topo-3d', ground:'world-elevation',
+    layers:[deadGroundLayer,approachLayer,ringLayer,candidateLayer,losLayer,markerLayer],
+  });
+
+  const view = new SceneView({
+    container:'viewDiv', map,
+    camera:{ position:{longitude:73.06,latitude:33.68,z:14000}, heading:0, tilt:58 },
+    environment:{ atmosphere:{quality:'high'}, lighting:{date:new Date()} },
+    popup:{
+      dockEnabled:true,
+      dockOptions:{position:'bottom-right',breakpoint:false},
+      defaultPopupTemplateEnabled:true,
+    },
+  });
+
+  [candidateLayer,approachLayer].forEach(l=>{
+    l.popupTemplate={ title:'{type}', content:'{label}' };
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STATE & UI
+  // ═══════════════════════════════════════════════════════════════════
+  let objectivePt = null;
+  let fupPt       = null;
+  let placingStep = 0;   // 0=objective, 1=FUP, 2=done
+  let running     = false;
+
+  const $ = id => document.getElementById(id);
+
+  // Sliders
+  $('inp-assrange').addEventListener('input',()=>$('assrange-v').textContent=$('inp-assrange').value+' m');
+  $('inp-minsize').addEventListener('input',()=>$('minsize-v').textContent=$('inp-minsize').value);
+  $('inp-rays').addEventListener('input',()=>$('rays-v').textContent=$('inp-rays').value);
+  $('inp-cell').addEventListener('input',()=>$('cell-v').textContent=$('inp-cell').value+' m');
+  $('inp-corr').addEventListener('input',()=>$('corr-v').textContent=$('inp-corr').value+' m');
+
+  // Step indicators
+  function updateSteps() {
+    document.querySelectorAll('.step-btn').forEach((btn,i)=>{
+      btn.className='step-btn'+(i===placingStep?' active':i<placingStep?' done-step':'');
+    });
+  }
+
+  function updatePtCards() {
+    const oc=$('obj-card'), fc=$('fup-card');
+    if (objectivePt) {
+      oc.classList.add('set');
+      $('obj-val').className='pt-value set';
+      $('obj-val').textContent=`${objectivePt.latitude.toFixed(4)}°N`;
+    }
+    if (fupPt) {
+      fc.classList.add('set');
+      $('fup-val').className='pt-value set';
+      $('fup-val').textContent=`${fupPt.latitude.toFixed(4)}°N`;
+    }
+  }
+
+  function buildPointMarker(pt, color, icon, label) {
+    const [r,g,b]=color;
+    markerLayer.add(new Graphic({
+      geometry:pt,
+      symbol:{ type:'point-3d', symbolLayers:[{ type:'object',
+        resource:{primitive:'diamond'}, material:{color:[r,g,b,0.95]},
+        width:90,height:90,depth:90 }],
+        verticalOffset:{screenLength:28,maxWorldLength:800,minWorldLength:6} },
+      attributes:{ type:label, label },
+    }));
+    markerLayer.add(new Graphic({
+      geometry:pt,
+      symbol:{ type:'text', text:icon,
+        color:[r,g,b,255], haloColor:[0,0,0,200], haloSize:2,
+        font:{family:'Courier New',size:10,weight:'bold'},
+        horizontalAlignment:'center', yoffset:22 },
+    }));
+  }
+
+  function buildAssaultRing(objPt, assaultRangeM) {
+    const pts=[];
+    for(let i=0;i<=72;i++){
+      const{longitude,latitude}=destPt(objPt.longitude,objPt.latitude,(i/72)*360,assaultRangeM);
+      pts.push([longitude,latitude]);
+    }
+    return new Graphic({
+      geometry:{type:'polygon',rings:[pts],spatialReference:{wkid:4326}},
+      symbol:{ type:'simple-fill', color:[220,60,48,0],
+        outline:{color:[220,60,48,160],width:2,style:'dash'} },
+      attributes:{ type:'Assault range ring', label:`Assault range — ${assaultRangeM} m from OBJ` },
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MAP CLICK  — step-through placement
+  // ═══════════════════════════════════════════════════════════════════
+  view.on('click', async event => {
+    if (running) return;
+    const result = await view.hitTest(event,{include:[map.ground]});
+    const gp     = result?.ground?.mapPoint ?? event.mapPoint;
+    if (!gp) return;
+
+    if (placingStep === 0) {
+      // Place objective
+      objectivePt = new Point({longitude:gp.longitude,latitude:gp.latitude,spatialReference:{wkid:4326}});
+      buildPointMarker(objectivePt,[220,60,48],'OBJ','Objective (enemy position)');
+      placingStep = 1;
+      setStatus('place','Place FUP');
+      $('hint').textContent='Step 2 — click map to place the FUP (forming-up point)';
+      updateSteps(); updatePtCards();
+
+    } else if (placingStep === 1) {
+      // Place FUP
+      fupPt = new Point({longitude:gp.longitude,latitude:gp.latitude,spatialReference:{wkid:4326}});
+      buildPointMarker(fupPt,[55,138,221],'FUP','FUP — forming-up point');
+      placingStep = 2;
+      $('btn-run').disabled = false;
+      setStatus('place','Ready — run analysis');
+      $('hint').textContent='Step 3 — adjust parameters then click Run Analysis';
+      updateSteps(); updatePtCards();
+
+      // Draw FUP→OBJ line
+      markerLayer.add(new Graphic({
+        geometry: new Polyline({paths:[[
+          [fupPt.longitude,fupPt.latitude],
+          [objectivePt.longitude,objectivePt.latitude]
+        ]],spatialReference:{wkid:4326}}),
+        symbol:{type:'simple-line',color:[55,138,221,120],width:1.5,style:'dash'},
+      }));
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // BACK BUTTON  — re-place last point
+  // ═══════════════════════════════════════════════════════════════════
+  $('btn-back').addEventListener('click', ()=>{
+    if (placingStep===0) return;
+    if (placingStep===2) {
+      fupPt=null; placingStep=1;
+      setStatus('place','Place FUP');
+      $('hint').textContent='Step 2 — click map to place the FUP';
+      $('btn-run').disabled=true;
+      $('fup-card').classList.remove('set');
+      $('fup-val').className='pt-value'; $('fup-val').textContent='Not placed';
+    } else if (placingStep===1) {
+      objectivePt=null; placingStep=0;
+      setStatus('place','Place objective');
+      $('hint').textContent='Step 1 — click map to place the OBJECTIVE';
+      $('obj-card').classList.remove('set');
+      $('obj-val').className='pt-value'; $('obj-val').textContent='Not placed';
+    }
+    markerLayer.removeAll();
+    clearAnalysis();
+    updateSteps();
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MAIN ANALYSIS
+  // ═══════════════════════════════════════════════════════════════════
+  $('btn-run').addEventListener('click', async ()=>{
+    if (running||!objectivePt||!fupPt) return;
+    running=true; $('btn-run').disabled=true;
+    clearAnalysis();
+
+    const assaultRangeM = parseInt($('inp-assrange').value);
+    const cellM         = parseInt($('inp-cell').value);
+    const minSizeM2     = Math.max(parseInt($('inp-minsize').value),
+                            FORCE_AREA[$('inp-force').value]??2000);
+    const numRays       = parseInt($('inp-rays').value);
+    const eyeH          = parseFloat($('inp-eye').value);
+    const corrWidth     = parseInt($('inp-corr').value);
+
+    // Analysis extent: centred between OBJ and FUP, radius = assault range × 2
+    const midLon   = (objectivePt.longitude+fupPt.longitude)/2;
+    const midLat   = (objectivePt.latitude+fupPt.latitude)/2;
+    const sepDist  = geoDist(objectivePt.longitude,objectivePt.latitude,fupPt.longitude,fupPt.latitude);
+    const radiusM  = Math.max(assaultRangeM*1.8, sepDist*0.8);
+    const cosLat   = Math.cos(midLat*Math.PI/180);
+    const padDeg   = radiusM/M_PER_DEG;
+    const extent   = new Extent({
+      xmin:midLon-padDeg/cosLat, ymin:midLat-padDeg,
+      xmax:midLon+padDeg/cosLat, ymax:midLat+padDeg,
+      spatialReference:{wkid:4326},
+    });
+    const cols = Math.ceil(radiusM*2/cellM);
+    const rows = Math.ceil(radiusM*2/cellM);
+    const dLon = (extent.xmax-extent.xmin)/cols;
+    const dLat = (extent.ymax-extent.ymin)/rows;
+
+    // AO mask (circle around analysis centre)
+    const aoMask = new Uint8Array(cols*rows);
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const lon=extent.xmin+(c+0.5)*dLon, lat=extent.ymax-(r+0.5)*dLat;
+      const e=(lon-midLon)*M_PER_DEG*cosLat, n=(lat-midLat)*M_PER_DEG;
+      if(Math.sqrt(e*e+n*n)<=radiusM) aoMask[r*cols+c]=1;
+    }
+
+    // ── 1. Objective terrain elevation ───────────────────────────────
+    setStatus('sampling','Getting terrain elevation…');
+    setProgress(0.05,'Observer elevation at OBJ');
+    let objZ = eyeH;
+    try{
+      const er=await view.map.ground.queryElevation(objectivePt);
+      objZ=(er?.geometry?.z??0)+eyeH;
+    }catch(_){}
+
+    // ── 2. Enemy dead ground from OBJ ────────────────────────────────
+    setStatus('sampling','Casting enemy LOS rays…');
+    setProgress(0.10,'Computing enemy viewshed');
+    const { deadGrid, depthGrid, elevGrid, sampler, horizons } =
+      await computeEnemyDeadGround(view, objectivePt, objZ, extent, cols, rows, cellM);
+
+    // ── 3. Filter to assault ring band ───────────────────────────────
+    setProgress(0.45,'Filtering to assault range band');
+    const ringMask   = new Uint8Array(cols*rows);
+    const assMin     = assaultRangeM*0.55;
+    const assMax     = assaultRangeM*1.45;
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const i=r*cols+c;
+      if(!aoMask[i]||!deadGrid[i]) continue;
+      const lon=extent.xmin+(c+0.5)*dLon, lat=extent.ymax-(r+0.5)*dLat;
+      const d=geoDist(lon,lat,objectivePt.longitude,objectivePt.latitude);
+      if(d>=assMin&&d<=assMax) ringMask[i]=1;
+    }
+
+    // ── 4. Connected component labelling ────────────────────────────
+    setProgress(0.52,'Labelling dead-ground patches');
+    await tick();
+    const { labels, numLabels } = labelComponents(ringMask, cols, rows);
+
+    // ── 5. Extract component metadata ───────────────────────────────
+    setProgress(0.58,'Extracting patch geometry');
+    const comps = extractComponents(labels, depthGrid, elevGrid, numLabels,
+      cols, rows, extent, objectivePt, fupPt, assaultRangeM, cellM);
+
+    // Filter by minimum size
+    const large = comps.filter(c=>c.areaM2>=minSizeM2);
+    if (large.length===0) {
+      setStatus('done','No candidate positions found — try larger assault range or smaller min size');
+      renderCandidateList([]);
+      running=false; $('btn-run').disabled=false;
+      return;
+    }
+
+    // ── 6. LOS check from each candidate centroid ────────────────────
+    setStatus('computing','Checking LOS to objective…');
+    let fupZ=eyeH;
+    try{ const er=await view.map.ground.queryElevation(fupPt);
+      fupZ=(er?.geometry?.z??0)+eyeH; }catch(_){}
+
+    for(let i=0;i<large.length;i++){
+      const comp=large[i];
+      setProgress(0.62+0.22*(i/large.length),`LOS ${i+1}/${large.length}`);
+      await tick();
+      const candZ = elevGrid[
+        Math.round((extent.ymax-comp.centLat)/dLat)*cols+
+        Math.round((comp.centLon-extent.xmin)/dLon)
+      ] + eyeH;
+      const losResult = await checkLOS(
+        comp.centLon,comp.centLat,candZ,
+        objectivePt.longitude,objectivePt.latitude,objZ,
+        sampler, numRays
+      );
+      large[i].los=losResult;
+      large[i].candZ=candZ;
+    }
+
+    // ── 7. Score & rank ──────────────────────────────────────────────
+    setProgress(0.86,'Scoring candidates');
+    const maxArea     = Math.max(...large.map(c=>c.areaM2));
+    const maxDepth    = Math.max(...large.map(c=>c.avgDepth),1);
+    const maxFupDist  = Math.max(...large.map(c=>c.distToFup),1);
+    const scored      = large
+      .map(c=>scoreCandidate(c,fupPt,objectivePt,assaultRangeM,maxArea,maxDepth,maxFupDist))
+      .sort((a,b)=>b.composite-a.composite)
+      .slice(0,10);
+    scored.forEach((c,i)=>c.rank=i+1);
+
+    // ── 8. Dead ground overlay ───────────────────────────────────────
+    if ($('opt-dg').checked) {
+      setProgress(0.90,'Rendering dead ground overlay');
+      await tick();
+      const canvas = buildDeadGroundCanvas(deadGrid,depthGrid,aoMask,cols,rows,0.80);
+      const ml = new MediaLayer({
+        source:[new ImageElement({ image:canvas.toDataURL('image/png'),
+          georeference:new ExtentAndRotationGeoreference({ extent }) })],
+        title:'Enemy dead ground',
+      });
+      map.add(ml,0); mediaLayers.push(ml);
+    }
+
+    // ── 9. Assault range ring ────────────────────────────────────────
+    if ($('opt-ring').checked) {
+      ringLayer.add(buildAssaultRing(objectivePt, assaultRangeM));
+    }
+
+    // ── 10. Draw candidate polygons & approaches ─────────────────────
+    setProgress(0.93,'Drawing candidate positions');
+    await tick();
+
+    scored.forEach((c, ri) => {
+      const isTop = ri===0;
+      const [r,g,b] = isTop ? [29,158,117] : [180,40,220];
+      const alpha = isTop ? 0.35 : 0.18;
+
+      // Candidate polygon
+      const poly = buildCandidatePolygon(c, labels, cols, rows, extent, cellM);
+      if (poly) {
+        candidateLayer.add(new Graphic({
+          geometry:poly,
+          symbol:{ type:'polygon-3d', symbolLayers:[{ type:'fill',
+            material:{color:[r,g,b,alpha]},
+            outline:{color:[r,g,b,isTop?0.90:0.65],size:isTop?2.0:1.4} }] },
+          attributes:{ type:`AP ${c.rank} — Score ${c.composite}`,
+            label:`Area ${Math.round(c.areaM2)} m²  ·  Depth ${c.avgDepth.toFixed(1)} m  ·  LOS ${c.los.status}` },
+        }));
+      }
+
+      // Rank label
+      markerLayer.add(new Graphic({
+        geometry:new Point({longitude:c.centLon,latitude:c.centLat,spatialReference:{wkid:4326}}),
+        symbol:{ type:'point-3d', symbolLayers:[{ type:'object',
+          resource:{primitive:isTop?'diamond':'sphere'},
+          material:{color:[r,g,b,0.95]},
+          width:isTop?80:55, height:isTop?80:55, depth:isTop?80:55 }],
+          verticalOffset:{screenLength:isTop?26:18,maxWorldLength:600,minWorldLength:4} },
+        attributes:{ type:`AP ${c.rank}`, label:`Assault position ${c.rank}` },
+      }));
+      markerLayer.add(new Graphic({
+        geometry:new Point({longitude:c.centLon,latitude:c.centLat,spatialReference:{wkid:4326}}),
+        symbol:{ type:'text', text:`${c.rank}`,
+          color:[255,255,255,255], haloColor:[r,g,b,255], haloSize:2.5,
+          font:{family:'Courier New',size:10,weight:'bold'},
+          horizontalAlignment:'center', yoffset:16 },
+      }));
+
+      // LOS line to objective
+      if ($('opt-los').checked) {
+        const losColor = c.los.status==='clear'?[29,158,117]:c.los.status==='partial'?[239,159,39]:[220,60,48];
+        losLayer.add(new Graphic({
+          geometry:new Polyline({ paths:[[[c.centLon,c.centLat],[objectivePt.longitude,objectivePt.latitude]]], spatialReference:{wkid:4326} }),
+          symbol:{ type:'simple-line', color:[...losColor,120], width:1.2,
+            style:c.los.status==='blocked'?'dash':'solid' },
+        }));
+      }
+
+      // Approach corridor
+      if ($('opt-app').checked) {
+        const corrPoly = buildApproachCorridor(fupPt,c.centLon,c.centLat,corrWidth);
+        if (corrPoly) {
+          approachLayer.add(new Graphic({
+            geometry:corrPoly,
+            symbol:{ type:'polygon-3d', symbolLayers:[{ type:'fill',
+              material:{color:[55,138,221,0.08]},
+              outline:{color:[55,138,221,isTop?0.60:0.30],size:1.0,style:'dash'} }] },
+            attributes:{ type:`Approach to AP ${c.rank}`, label:`Covered approach from FUP to AP ${c.rank}` },
+          }));
+        }
+      }
+    });
+
+    // ── 11. Stats & list ─────────────────────────────────────────────
+    const losClearCount = scored.filter(c=>c.los.status==='clear'||c.los.status==='partial').length;
+    $('ss-n').textContent    = scored.length;
+    $('ss-best').textContent = scored[0]?.composite??'—';
+    $('ss-los').textContent  = losClearCount;
+    $('lph-sub').textContent = `${scored.length} positions — best score ${scored[0]?.composite}`;
+
+    renderCandidateList(scored);
+    setProgress(1.0,`Done — ${scored.length} assault positions identified`);
+    setStatus('done','Done');
+
+    view.goTo({ target:extent, tilt:62 }, { duration:1100 });
+    setTimeout(()=>{
+      const first=document.querySelector('.ccard');
+      if(first) first.click();
+    }, 1400);
+
+    running=false; $('btn-run').disabled=false;
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // RANKED LIST RENDER
+  // ═══════════════════════════════════════════════════════════════════
+  function renderCandidateList(candidates) {
+    const list=$('cand-list');
+    list.innerHTML='';
+    if (!candidates.length) {
+      list.innerHTML='<div id="list-empty" style="padding:16px 12px;font-size:10px;color:#3a3935;text-align:center;line-height:1.8">No candidates found.<br>Try adjusting assault range<br>or reducing minimum size.</div>';
+      return;
+    }
+
+    candidates.forEach((c,ri)=>{
+      const isTop = ri===0;
+      const hexColor = isTop?'#1D9E75':'#B428DC';
+      const card = document.createElement('div');
+      card.className = 'ccard'+(isTop?' best':'');
+      const s = c.scores;
+      const bar=(label,val,color)=>`
+        <div class="cb"><div class="cb-l">${label}</div>
+        <div class="cb-track"><div class="cb-fill" style="width:${val}%;background:${color}"></div></div>
+        <div class="cb-v">${val}</div></div>`;
+      const losBadge = `<span class="los-badge ${c.los.status}">${
+        c.los.status==='clear'?'LOS CLEAR':c.los.status==='partial'?'PARTIAL LOS':'LOS BLOCKED'
+      }</span>`;
+      const areaHa = (c.areaM2/10000).toFixed(2);
+      const distKm = (c.distToObj/1000).toFixed(2);
+      const fupKm  = (c.distToFup/1000).toFixed(2);
+      card.innerHTML=`
+        <div class="cc-score" style="color:${hexColor}">${c.composite}</div>
+        <div class="cc-top">
+          <div class="cc-rank" style="background:${hexColor}22;color:${hexColor};border:1px solid ${hexColor}55">
+            ${c.rank}
+          </div>
+          <div style="flex:1">
+            <div class="cc-name">AP ${c.rank}${isTop?' ★':''}</div>
+            <div class="cc-sub">${areaHa} ha  ·  ${distKm} km from OBJ  ·  ${fupKm} km from FUP</div>
+          </div>
+        </div>
+        <div class="cc-bars">
+          ${bar('Size',    s.area, '#B428DC')}
+          ${bar('Masking', s.depth,'#DC3C30')}
+          ${bar('FUP prox',s.fup,  '#378ADD')}
+          ${bar('Range',   s.range,'#EF9F27')}
+          ${bar('Axis',    s.axis, '#1D9E75')}
+          ${bar('LOS',     s.los,  '#78C840')}
+        </div>
+        <div class="cc-note">
+          ${losBadge}
+          <br>
+          ${c.los.status==='partial'
+            ? 'Can observe objective on final bound. Maintain fire control.'
+            : c.los.status==='clear'
+            ? 'Exposed to observation from objective. Use smoke before departure.'
+            : 'Fully masked from OBJ — cannot directly observe during assault. Use comms.'}
+          ${c.axisAngle<20?' On direct attack axis.':c.axisAngle<45?' Near attack axis.':' Off main axis — longer final bound.'}
+        </div>
+      `;
+      card.addEventListener('click',()=>{
+        document.querySelectorAll('.ccard').forEach(x=>x.classList.remove('sel'));
+        card.classList.add('sel');
+        view.goTo({ center:[c.centLon,c.centLat], zoom:14, tilt:65 }, { duration:800 });
+      });
+      list.appendChild(card);
+    });
+  }
+
+  // ── Clear ─────────────────────────────────────────────────────────
+  $('btn-clear').addEventListener('click', ()=>{
+    objectivePt=null; fupPt=null; placingStep=0;
+    [markerLayer,ringLayer,candidateLayer,approachLayer,losLayer].forEach(l=>l.removeAll());
+    clearAnalysis();
+    $('btn-run').disabled=true;
+    $('obj-card').classList.remove('set'); $('fup-card').classList.remove('set');
+    $('obj-val').className='pt-value'; $('obj-val').textContent='Not placed';
+    $('fup-val').className='pt-value'; $('fup-val').textContent='Not placed';
+    ['ss-n','ss-best','ss-los'].forEach(id=>$(id).textContent='—');
+    $('lph-sub').textContent='Place objective then FUP to begin';
+    $('hint').textContent='Step 1 — click map to place the OBJECTIVE (enemy position)';
+    renderCandidateList([]);
+    setProgress(0,'—');
+    setStatus('place','Place objective');
+    updateSteps();
+  });
+
+  function clearAnalysis() {
+    [ringLayer,candidateLayer,approachLayer,losLayer].forEach(l=>l.removeAll());
+    mediaLayers.forEach(l=>{ try{map.remove(l);}catch(_){} });
+    mediaLayers.length=0;
+  }
+  function setStatus(s,t){const el=$('status');el.textContent=t??s;el.className='ph-status '+s}
+  function setProgress(f,l){$('prog-fill').style.width=Math.round(f*100)+'%';$('prog-label').textContent=l??''}
+  function tick(){return new Promise(r=>setTimeout(r,0))}
+
+  view.when(()=>{
+    console.log('[AssaultPos] SceneView ready.');
+    console.log('[AssaultPos] Step 1: click OBJ → Step 2: click FUP → Step 3: Run Analysis.');
+    console.log('[AssaultPos] Algorithm: enemy dead ground → assault ring filter → components → LOS → score.');
+  });
+
+}); // end require()
+</script>
+</body>
+</html>
