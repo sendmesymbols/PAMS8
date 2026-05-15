@@ -773,9 +773,8 @@ ${moveCross}
   }
 
   private _buildIntersectionSVG(): string {
-    const bc = this._bezelColor;
-    const col = `rgba(${bc[0]},${bc[1]},${bc[2]},0.9)`;
-    const fill = `rgba(${bc[0]},${bc[1]},${bc[2]},0.2)`;
+    const col = 'rgba(220, 40, 40, 0.9)';
+    const fill = 'rgba(220, 40, 40, 0.25)';
     return `<svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality">
   <circle cx="14" cy="14" r="9" fill="${fill}" stroke="${col}" stroke-width="2"/>
   <line x1="14" y1="5"  x2="14" y2="23" stroke="${col}" stroke-width="1.5"/>
