@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Engagement Area Designer — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#060709}
+
+    /* ══ TOOLBAR — mode buttons across the top ══════════════════════ */
+    #toolbar{
+      position:absolute;top:14px;left:50%;transform:translateX(-50%);
+      z-index:99;display:flex;gap:0;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:5px;overflow:hidden;
+    }
+    .tb-btn{
+      padding:9px 14px;font-family:'Courier New',monospace;font-size:9.5px;
+      letter-spacing:.07em;text-transform:uppercase;cursor:pointer;
+      border:none;border-right:1px solid rgba(255,255,255,0.08);
+      background:transparent;color:#888780;transition:all .13s;
+      display:flex;flex-direction:column;align-items:center;gap:3px;
+    }
+    .tb-btn:last-child{border-right:none}
+    .tb-btn:hover{background:rgba(255,255,255,0.05);color:var(--color-text-primary)}
+    .tb-btn.active{color:#EF9F27;background:rgba(239,159,39,0.12);border-bottom:2px solid #EF9F27}
+    .tb-btn.active.weapon{color:#DC3C30;background:rgba(220,60,48,0.10);border-bottom-color:#DC3C30}
+    .tb-btn.active.trigger{color:#378ADD;background:rgba(55,138,221,0.10);border-bottom-color:#378ADD}
+    .tb-btn.active.fpf{color:#B428DC;background:rgba(180,40,220,0.10);border-bottom-color:#B428DC}
+    .tb-btn.active.obstacle{color:#EF9F27;background:rgba(239,159,39,0.10);border-bottom-color:#EF9F27}
+    .tb-icon{font-size:16px}
+    .tb-label{font-size:8px}
+
+    /* ══ LEFT — layer list & EA summary ════════════════════════════ */
+    #left-panel{
+      position:absolute;top:66px;left:14px;width:252px;z-index:99;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(239,159,39,0.25);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh-80px);display:flex;flex-direction:column;
+    }
+    .lph{padding:8px 11px 7px;border-bottom:1px solid rgba(239,159,39,0.12);
+      background:rgba(239,159,39,0.07);flex-shrink:0}
+    .lph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#EF9F27;font-weight:700}
+    .lph-sub{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:1px}
+
+    #ea-stats{display:grid;grid-template-columns:repeat(3,1fr);
+      border-bottom:1px solid rgba(239,159,39,0.10);flex-shrink:0}
+    .es{padding:5px 7px;display:flex;flex-direction:column;gap:2px;
+      border-right:0.5px solid rgba(239,159,39,0.08)}
+    .es:last-child{border-right:none}
+    .es-l{font-size:7.5px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935}
+    .es-v{font-size:12px;font-weight:600;color:#EF9F27}
+
+    /* ltabs */
+    .ltabs{display:flex;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0}
+    .ltab{flex:1;padding:6px;font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border:none;background:transparent;color:#888780;transition:all .12s;
+      font-family:'Courier New',monospace}
+    .ltab.on{color:#EF9F27;border-bottom:2px solid #EF9F27}
+
+    #layer-list{overflow-y:auto;flex:1;padding:5px}
+    .layer-item{display:flex;align-items:center;gap:8px;padding:6px 8px;
+      border-radius:3px;border:0.5px solid rgba(255,255,255,0.06);
+      margin-bottom:4px;background:rgba(255,255,255,0.02)}
+    .li-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+    .li-info{flex:1;display:flex;flex-direction:column;gap:1px}
+    .li-name{font-size:10.5px;color:var(--color-text-secondary)}
+    .li-sub{font-size:8.5px;color:#3a3935;letter-spacing:.04em}
+    .li-del{font-size:10px;color:#3a3935;cursor:pointer;padding:2px 4px;
+      border:none;background:transparent;transition:color .12s}
+    .li-del:hover{color:#DC3C30}
+
+    /* Gap analysis tab */
+    #gap-content{overflow-y:auto;flex:1;padding:8px}
+    .gap-item{margin-bottom:8px;padding:7px 9px;border-radius:3px;
+      border:0.5px solid rgba(220,60,48,0.25);background:rgba(220,60,48,0.06)}
+    .gap-title{font-size:10px;font-weight:500;color:#DC3C30;margin-bottom:3px}
+    .gap-note{font-size:9.5px;color:var(--color-text-tertiary);line-height:1.5}
+
+    #no-gaps{padding:14px;font-size:10px;color:#3a3935;text-align:center;line-height:1.8}
+
+    /* ══ RIGHT — weapon / mode config ════════════════════════════════ */
+    #right-panel{
+      position:absolute;top:66px;right:14px;width:280px;z-index:99;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(239,159,39,0.25);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh-80px);overflow-y:auto;
+    }
+    .ph{display:flex;align-items:center;justify-content:space-between;
+      padding:8px 12px 7px;border-bottom:1px solid rgba(239,159,39,0.12);
+      background:rgba(239,159,39,0.07);position:sticky;top:0;z-index:2}
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#EF9F27;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935}
+    .ph-status.live{color:#1D9E75}
+
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+      color:#3a3935;padding:8px 12px 4px}
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;padding:0 12px 8px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s}
+    input:focus,select:focus{border-color:rgba(239,159,39,0.55)}
+    select option{background:#141618}
+    .psr{display:flex;align-items:center;gap:8px;padding:0 12px 7px}
+    .psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;flex:1.8}
+    .psr input[type=range]{flex:2;accent-color:#EF9F27;cursor:pointer}
+    .psr-v{font-size:10px;color:#EF9F27;min-width:38px;text-align:right}
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:3px 0}
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:4px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#EF9F27;width:13px;height:13px;cursor:pointer}
+
+    /* Weapon preview canvas */
+    #wez-wrap{margin:0 12px 8px;border:1px solid rgba(255,255,255,0.07);
+      border-radius:3px;background:#0a0b0e;display:flex;align-items:center;
+      justify-content:center;height:90px}
+    #wez-canvas{display:block}
+
+    /* Coverage key */
+    #cov-key{margin:0 12px 8px}
+    .ck-title{font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+      color:#3a3935;margin-bottom:5px}
+    .ck-row{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+    .ck-sw{width:24px;height:8px;border-radius:2px;flex-shrink:0}
+    .ck-lbl{font-size:9.5px;color:#888780}
+
+    /* progress */
+    #prog-wrap{padding:0 12px 8px}
+    #prog-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+    #prog-fill{height:100%;background:linear-gradient(to right,#EF9F27,#1D9E75);
+      border-radius:2px;width:0%;transition:width .12s}
+    #prog-label{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:3px}
+
+    /* buttons */
+    .pb-row{display:flex;gap:5px;padding:8px 12px}
+    .pb{flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;border:1px solid rgba(239,159,39,0.38);
+      background:transparent;color:#EF9F27;transition:all .14s}
+    .pb:hover:not(:disabled){background:rgba(239,159,39,0.10)}
+    .pb.primary{background:rgba(239,159,39,0.16);border-color:#EF9F27}
+    .pb.primary:hover:not(:disabled){background:rgba(239,159,39,0.28)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+
+    /* hint */
+    #hint{position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(6,7,9,0.94);border:1px solid rgba(239,159,39,0.45);
+      color:#EF9F27;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase;transition:opacity .25s}
+
+    /* bottom legend */
+    #legend{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:99;
+      background:rgba(6,7,9,0.93);border:1px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:7px 14px;display:flex;gap:14px;align-items:center}
+    .ml{display:flex;align-items:center;gap:6px}
+    .ml-sw{width:22px;height:8px;border-radius:2px;flex-shrink:0}
+    .ml-lbl{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#888780}
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<!-- ══ TOOLBAR ═══════════════════════════════════════════════════════ -->
+<div id="toolbar">
+  <button class="tb-btn active obstacle" data-mode="obstacle">
+    <span class="tb-icon">▬</span><span class="tb-label">Obstacle</span>
+  </button>
+  <button class="tb-btn weapon" data-mode="weapon">
+    <span class="tb-icon">◈</span><span class="tb-label">Weapon</span>
+  </button>
+  <button class="tb-btn trigger" data-mode="trigger">
+    <span class="tb-icon">─</span><span class="tb-label">Trigger line</span>
+  </button>
+  <button class="tb-btn fpf" data-mode="fpf">
+    <span class="tb-icon">≡</span><span class="tb-label">FPF line</span>
+  </button>
+  <button class="tb-btn" data-mode="select">
+    <span class="tb-icon">↖</span><span class="tb-label">Select</span>
+  </button>
+  <button class="tb-btn" id="btn-mesh-tb" data-mode="mesh">
+    <span class="tb-icon">⊞</span><span class="tb-label">Build mesh</span>
+  </button>
+</div>
+
+<!-- ══ LEFT PANEL ════════════════════════════════════════════════════ -->
+<div id="left-panel">
+  <div class="lph">
+    <div class="lph-title">⬡ Engagement Area</div>
+    <div class="lph-sub" id="lph-sub">Draw obstacle then place weapons</div>
+  </div>
+  <div id="ea-stats">
+    <div class="es"><div class="es-l">Weapons</div><div class="es-v" id="stat-w">0</div></div>
+    <div class="es"><div class="es-l">Coverage</div><div class="es-v" id="stat-c">—</div></div>
+    <div class="es"><div class="es-l">Gaps</div><div class="es-v" id="stat-g">—</div></div>
+  </div>
+  <div class="ltabs">
+    <button class="ltab on" data-lt="layers">Elements</button>
+    <button class="ltab" data-lt="gaps">Gap analysis</button>
+  </div>
+  <div class="ltab-pane on" id="lt-layers" style="overflow-y:auto;flex:1">
+    <div id="layer-list">
+      <div style="padding:14px 10px;font-size:10px;color:#3a3935;text-align:center;line-height:1.8">
+        Draw an obstacle line first,<br>then place weapon positions
+      </div>
+    </div>
+  </div>
+  <div class="ltab-pane" id="lt-gaps" style="overflow-y:auto;flex:1;display:none">
+    <div id="gap-content">
+      <div id="no-gaps" style="padding:14px;font-size:10px;color:#3a3935;text-align:center;line-height:1.8">
+        Build mesh to analyse gaps
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RIGHT PANEL ════════════════════════════════════════════════════ -->
+<div id="right-panel">
+  <div class="ph">
+    <div class="ph-title" id="rp-title">Obstacle options</div>
+    <div class="ph-status live" id="status">Drawing mode</div>
+  </div>
+
+  <!-- OBSTACLE CONFIG -->
+  <div id="sec-obstacle">
+    <div class="ps">Obstacle type</div>
+    <div class="pg">
+      <div class="pf full">
+        <div class="pl">Type</div>
+        <select id="obs-type">
+          <option value="minefield">Minefield (AP/AT)</option>
+          <option value="wire">Concertina wire</option>
+          <option value="berm">Earthen berm</option>
+          <option value="ditch">Anti-tank ditch</option>
+          <option value="abatis">Abatis</option>
+        </select>
+      </div>
+      <div class="pf">
+        <div class="pl">Depth (m)</div>
+        <input id="obs-depth" type="number" value="30" min="5" max="200" step="5"/>
+      </div>
+      <div class="pf">
+        <div class="pl">Lane gaps</div>
+        <input id="obs-gaps" type="number" value="0" min="0" max="5" step="1"/>
+      </div>
+    </div>
+    <div class="ps" style="padding-top:4px">Drawing</div>
+    <div style="padding:0 12px 8px;font-size:10px;color:#888780;line-height:1.6">
+      Click to add vertices · Double-click to finish<br>
+      ESC to cancel current line
+    </div>
+    <div class="pb-row">
+      <button class="pb" id="btn-obs-undo">Undo vertex</button>
+      <button class="pb primary" id="btn-obs-finish">Finish line</button>
+    </div>
+  </div>
+
+  <!-- WEAPON CONFIG -->
+  <div id="sec-weapon" style="display:none">
+    <div class="ps">Weapon system</div>
+    <div class="pg">
+      <div class="pf full">
+        <div class="pl">Type</div>
+        <select id="wpn-type">
+          <option value="mg_m240">MG M240 (7.62mm)</option>
+          <option value="mg_heavy">HMG .50cal</option>
+          <option value="atgm">ATGM</option>
+          <option value="direct_fire">Direct fire (25mm)</option>
+          <option value="tank_120mm">Tank 120mm</option>
+          <option value="mortar_60mm">Mortar 60mm</option>
+        </select>
+      </div>
+    </div>
+    <div class="ps">Primary sector</div>
+    <div class="psr">
+      <div class="psr-l">Bearing (°)</div>
+      <input id="wpn-bearing" type="range" min="0" max="359" step="1" value="270"/>
+      <div class="psr-v" id="wpn-brg-v">270°</div>
+    </div>
+    <div class="psr">
+      <div class="psr-l">Arc (°)</div>
+      <input id="wpn-arc" type="range" min="15" max="180" step="5" value="60"/>
+      <div class="psr-v" id="wpn-arc-v">60°</div>
+    </div>
+    <div class="ps" style="padding-top:4px">WEZ preview</div>
+    <div id="wez-wrap"><canvas id="wez-canvas" width="80" height="80"></canvas></div>
+    <div style="padding:0 12px 7px;font-size:9.5px;color:#888780;line-height:1.6"
+         id="wpn-stats-text">Click map to place weapon</div>
+  </div>
+
+  <!-- TRIGGER CONFIG -->
+  <div id="sec-trigger" style="display:none">
+    <div class="ps">Trigger line</div>
+    <div class="pg">
+      <div class="pf full">
+        <div class="pl">Label / reference</div>
+        <input id="trig-label" type="text" value="TRP-1" placeholder="e.g. TRP-1"/>
+      </div>
+      <div class="pf full">
+        <div class="pl">Weapon systems triggered</div>
+        <select id="trig-weapons">
+          <option value="all">All weapons</option>
+          <option value="direct">Direct fire only</option>
+          <option value="indirect">Indirect fire only</option>
+        </select>
+      </div>
+    </div>
+    <div style="padding:0 12px 8px;font-size:10px;color:#888780;line-height:1.6">
+      Click to draw trigger line · Double-click to finish.<br>
+      Trigger lines define when fires are initiated.<br>
+      Placed perpendicular to enemy approach axis.
+    </div>
+    <div class="pb-row">
+      <button class="pb" id="btn-trig-undo">Undo vertex</button>
+      <button class="pb primary" id="btn-trig-finish">Place line</button>
+    </div>
+  </div>
+
+  <!-- FPF CONFIG -->
+  <div id="sec-fpf" style="display:none">
+    <div class="ps">Final Protective Fire (FPF)</div>
+    <div class="pg">
+      <div class="pf full">
+        <div class="pl">Weapon</div>
+        <select id="fpf-weapon">
+          <option value="mg_m240">MG M240 — FPF along obstacle</option>
+          <option value="mg_heavy">HMG .50cal</option>
+          <option value="mortar_60mm">Mortar 60mm — FPF barrage</option>
+        </select>
+      </div>
+    </div>
+    <div style="padding:0 12px 8px;font-size:10px;color:#888780;line-height:1.6">
+      FPF is pre-registered fires laid along the obstacle line<br>
+      when the enemy is at the wire. Click to place.<br><br>
+      <strong style="color:#B428DC">Doctrinal note:</strong> FPF is initiated by the individual<br>
+      weapon without further orders — last resort fires.
+    </div>
+    <div class="pb-row">
+      <button class="pb primary" id="btn-fpf-place">Click map to place</button>
+    </div>
+  </div>
+
+  <!-- MESH CONFIG (always visible below mode sections) -->
+  <div class="pdiv"/>
+  <div class="ps">Mesh options</div>
+  <div class="ptr"><label>Show coverage count heatmap</label>
+    <input id="opt-heatmap" type="checkbox" checked/></div>
+  <div class="ptr"><label>Show WEZ outlines</label>
+    <input id="opt-wez-out" type="checkbox" checked/></div>
+  <div class="ptr"><label>Highlight EA interior</label>
+    <input id="opt-ea-int" type="checkbox" checked/></div>
+  <div class="ptr"><label>Show dead ground inside EA</label>
+    <input id="opt-dg" type="checkbox" checked/></div>
+
+  <div class="pdiv"/>
+  <div id="cov-key">
+    <div class="ck-title">Coverage count</div>
+    <div class="ck-row"><div class="ck-sw" style="background:#8B1A1A"></div>
+      <div class="ck-lbl">0 — Gap (no weapon covers)</div></div>
+    <div class="ck-row"><div class="ck-sw" style="background:#378ADD"></div>
+      <div class="ck-lbl">1 — Single coverage</div></div>
+    <div class="ck-row"><div class="ck-sw" style="background:#78C840"></div>
+      <div class="ck-lbl">2 — Mutual support</div></div>
+    <div class="ck-row"><div class="ck-sw" style="background:#1D9E75"></div>
+      <div class="ck-lbl">3+ — Redundant coverage</div></div>
+    <div class="ck-row"><div class="ck-sw" style="background:transparent;border:2px dashed #DC3C30"></div>
+      <div class="ck-lbl">Gap zone boundary</div></div>
+  </div>
+
+  <div class="pdiv"/>
+  <div id="prog-wrap">
+    <div id="prog-track"><div id="prog-fill"></div></div>
+    <div id="prog-label">—</div>
+  </div>
+
+  <div class="pb-row">
+    <button class="pb"         id="btn-clear">Clear all</button>
+    <button class="pb"         id="btn-undo-last">Undo last</button>
+    <button class="pb primary" id="btn-mesh">Build mesh ↗</button>
+  </div>
+</div>
+
+<div id="hint">Select mode from toolbar — draw obstacle first, then place weapons</div>
+
+<div id="legend">
+  <div class="ml"><div class="ml-sw" style="background:repeating-linear-gradient(90deg,#EF9F27 0,#EF9F27 4px,transparent 4px,transparent 8px)"></div>
+    <div class="ml-lbl">Obstacle</div></div>
+  <div class="ml"><div class="ml-sw" style="background:#DC3C30"></div>
+    <div class="ml-lbl">Weapon WEZ</div></div>
+  <div class="ml"><div class="ml-sw" style="background:rgba(55,138,221,0.6)"></div>
+    <div class="ml-lbl">Trigger line</div></div>
+  <div class="ml"><div class="ml-sw" style="background:rgba(180,40,220,0.7)"></div>
+    <div class="ml-lbl">FPF</div></div>
+  <div class="ml"><div class="ml-sw" style="background:rgba(220,60,48,0.35)"></div>
+    <div class="ml-lbl">Gap zone</div></div>
+</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map","esri/views/SceneView",
+  "esri/layers/GraphicsLayer","esri/layers/MediaLayer",
+  "esri/layers/support/ExtentAndRotationGeoreference",
+  "esri/layers/support/ImageElement",
+  "esri/Graphic","esri/geometry/Point","esri/geometry/Extent",
+  "esri/geometry/Polygon","esri/geometry/Polyline","esri/geometry/geometryEngine",
+], function(
+  Map, SceneView, GraphicsLayer, MediaLayer,
+  ExtentAndRotationGeoreference, ImageElement,
+  Graphic, Point, Extent, Polygon, Polyline, geometryEngine
+) {
+
+  // ═══════════════════════════════════════════════════════════════════
+  // WEAPON PRESETS — engagement envelopes for EA weapons
+  // ═══════════════════════════════════════════════════════════════════
+  const WEAPONS = {
+    mg_m240:    { label:'MG M240',    minR:0,    maxR:1800, color:[220,60,48],  hex:'#DC3C30', defaultArc:60, symbol:'MG'   },
+    mg_heavy:   { label:'HMG .50cal', minR:0,    maxR:2500, color:[220,60,48],  hex:'#DC3C30', defaultArc:45, symbol:'HMG'  },
+    atgm:       { label:'ATGM',       minR:75,   maxR:4500, color:[239,159,39], hex:'#EF9F27', defaultArc:45, symbol:'ATGM' },
+    direct_fire:{ label:'25mm Cannon',minR:0,    maxR:2800, color:[239,159,39], hex:'#EF9F27', defaultArc:60, symbol:'IFV'  },
+    tank_120mm: { label:'Tank 120mm', minR:0,    maxR:4000, color:[186,117,23], hex:'#BA7517', defaultArc:45, symbol:'TK'   },
+    mortar_60mm:{ label:'Mortar 60mm',minR:70,   maxR:3500, color:[180,40,220], hex:'#B428DC', defaultArc:360,symbol:'MOR'  },
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // OBSTACLE TYPE SYMBOLOGY
+  // ═══════════════════════════════════════════════════════════════════
+  const OBSTACLES = {
+    minefield:   { label:'Minefield',   color:[239,159,39], dash:[4,3],  width:3   },
+    wire:        { label:'Concertina wire', color:[220,200,60], dash:[8,4], width:2.5 },
+    berm:        { label:'Earthen berm',color:[186,117,23], dash:[],    width:4   },
+    ditch:       { label:'AT ditch',    color:[100,80,20],  dash:[6,2], width:3   },
+    abatis:      { label:'Abatis',      color:[29,158,117], dash:[3,3], width:2.5 },
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GEODETIC HELPERS
+  // ═══════════════════════════════════════════════════════════════════
+  const EARTH_R=6_371_008.8, M_PER_DEG=111_320;
+
+  function destPt(lon,lat,brg,dist){
+    const δ=dist/EARTH_R,θ=brg*Math.PI/180;
+    const φ1=lat*Math.PI/180,λ1=lon*Math.PI/180;
+    const φ2=Math.asin(Math.sin(φ1)*Math.cos(δ)+Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+    const λ2=λ1+Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1),Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+    return{longitude:λ2*180/Math.PI,latitude:φ2*180/Math.PI};
+  }
+
+  function geoDist(lon1,lat1,lon2,lat2){
+    const φ1=lat1*Math.PI/180,φ2=lat2*Math.PI/180,Δλ=(lon2-lon1)*Math.PI/180;
+    return EARTH_R*Math.acos(Math.min(1,Math.sin(φ1)*Math.sin(φ2)+Math.cos(φ1)*Math.cos(φ2)*Math.cos(Δλ)));
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // WEZ BUILDER — engagement sector polygon
+  // ═══════════════════════════════════════════════════════════════════
+  function buildWEZPolygon(pt, minR, maxR, bearingDeg, arcDeg) {
+    const minRing = minR>0?geometryEngine.geodesicBuffer(pt,minR,'meters'):null;
+    const maxRing = geometryEngine.geodesicBuffer(pt,maxR,'meters');
+    let zone = maxRing;
+    if (arcDeg<360) {
+      const half=arcDeg/2, steps=Math.max(3,Math.ceil(arcDeg));
+      const ring=[[pt.longitude,pt.latitude]];
+      for(let i=0;i<=steps;i++){
+        const b=(bearingDeg-half)+(i/steps)*arcDeg;
+        const tp=destPt(pt.longitude,pt.latitude,b,maxR*1.02);
+        ring.push([tp.longitude,tp.latitude]);
+      }
+      ring.push([pt.longitude,pt.latitude]);
+      const wedge=new Polygon({rings:[ring],spatialReference:{wkid:4326}});
+      zone=geometryEngine.intersect(maxRing,wedge);
+    }
+    if (minRing&&zone) zone=geometryEngine.difference(zone,minRing);
+    return zone;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // COVERAGE MESH — rasterise all WEZ polygons, build MediaLayer canvas
+  // ═══════════════════════════════════════════════════════════════════
+  function buildCoverageRaster(wezPolygons, eaPolygon, extent, cols, rows, cellM) {
+    const dLon=((extent.xmax-extent.xmin)/cols);
+    const dLat=((extent.ymax-extent.ymin)/rows);
+    const coverGrid=new Uint8Array(cols*rows);
+    const eaMask=new Uint8Array(cols*rows);
+
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const lon=extent.xmin+(c+0.5)*dLon;
+        const lat=extent.ymax-(r+0.5)*dLat;
+        const pt=new Point({longitude:lon,latitude:lat,spatialReference:{wkid:4326}});
+        const i=r*cols+c;
+        if(eaPolygon&&geometryEngine.contains(eaPolygon,pt)) eaMask[i]=1;
+        let cnt=0;
+        for(const z of wezPolygons){
+          if(z&&geometryEngine.contains(z,pt)) cnt++;
+        }
+        coverGrid[i]=cnt;
+      }
+    }
+    return{coverGrid,eaMask};
+  }
+
+  function buildCoverageCanvas(coverGrid,eaMask,cols,rows,opacity){
+    const canvas=document.createElement('canvas');
+    canvas.width=cols;canvas.height=rows;
+    const ctx=canvas.getContext('2d');
+    const img=ctx.createImageData(cols,rows);
+    const PAL={
+      0:[139,26,26,0.55],1:[55,138,221,0.45],
+      2:[120,200,64,0.50],3:[29,158,117,0.55],
+    };
+    for(let i=0;i<cols*rows;i++){
+      const px=i*4;
+      if(!eaMask[i]){img.data[px+3]=0;continue;}
+      const cnt=Math.min(3,coverGrid[i]);
+      const p=PAL[cnt];
+      img.data[px]=p[0];img.data[px+1]=p[1];img.data[px+2]=p[2];
+      img.data[px+3]=Math.round(p[3]*opacity*255);
+    }
+    ctx.putImageData(img,0,0);
+    return canvas;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GAP DETECTION — cells with coverGrid=0 inside EA
+  // Build contiguous gap polygons via marching-square edge tracing
+  // ═══════════════════════════════════════════════════════════════════
+  function detectGaps(coverGrid,eaMask,cols,rows,extent,cellM){
+    const dLon=(extent.xmax-extent.xmin)/cols;
+    const dLat=(extent.ymax-extent.ymin)/rows;
+    const gapMask=new Uint8Array(cols*rows);
+    let gapCells=0,totalEACells=0;
+    for(let i=0;i<cols*rows;i++){
+      if(!eaMask[i])continue;
+      totalEACells++;
+      if(coverGrid[i]===0){gapMask[i]=1;gapCells++;}
+    }
+
+    // Simple connected components for gaps
+    const labels=new Int32Array(cols*rows).fill(-1);
+    let next=0;
+    function flood(sr,sc,lbl){
+      const stack=[[sr,sc]];
+      while(stack.length){
+        const[r,c]=stack.pop();
+        const i=r*cols+c;
+        if(r<0||r>=rows||c<0||c>=cols||!gapMask[i]||labels[i]>=0)continue;
+        labels[i]=lbl;
+        stack.push([r-1,c],[r+1,c],[r,c-1],[r,c+1]);
+      }
+    }
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      if(gapMask[r*cols+c]&&labels[r*cols+c]<0)flood(r,c,next++);
+    }
+
+    // Count each component
+    const counts=new Int32Array(next);
+    const sumLon=new Float64Array(next);
+    const sumLat=new Float64Array(next);
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const i=r*cols+c;
+      const L=labels[i];
+      if(L<0)continue;
+      counts[L]++;
+      sumLon[L]+=extent.xmin+(c+0.5)*dLon;
+      sumLat[L]+=extent.ymax-(r+0.5)*dLat;
+    }
+
+    const gaps=[];
+    for(let L=0;L<next;L++){
+      if(counts[L]<3)continue;
+      const areaM2=counts[L]*cellM*cellM;
+      gaps.push({label:L,areaM2,centLon:sumLon[L]/counts[L],centLat:sumLat[L]/counts[L]});
+    }
+    gaps.sort((a,b)=>b.areaM2-a.areaM2);
+
+    const gapPct=totalEACells>0?Math.round(100*gapCells/totalEACells):0;
+    return{gaps,gapPct,gapCells,totalEACells,labels,gapMask};
+  }
+
+  // Gap outline graphic — dashed red
+  function buildGapOutlineGraphic(labels, gapLabel, cols, rows, extent, cellM){
+    const dLon=(extent.xmax-extent.xmin)/cols;
+    const dLat=(extent.ymax-extent.ymin)/rows;
+    const pts=[];
+    for(let r=0;r<rows;r++){
+      let fc=-1,lc=-1;
+      for(let c=0;c<cols;c++){
+        if(labels[r*cols+c]===gapLabel){if(fc<0)fc=c;lc=c;}
+      }
+      if(fc<0)continue;
+      const lat=extent.ymax-(r+0.5)*dLat;
+      pts.push([extent.xmin+(fc+0.5)*dLon,lat]);
+      if(lc!==fc)pts.push([extent.xmin+(lc+0.5)*dLon,lat]);
+    }
+    if(pts.length<3)return null;
+    const half=Math.ceil(pts.length/2);
+    const ring=[...pts.slice(0,half),...[...pts.slice(half)].reverse(),pts[0]];
+    try{
+      return new Graphic({
+        geometry:new Polygon({rings:[ring],spatialReference:{wkid:4326}}),
+        symbol:{type:'polygon-3d',symbolLayers:[{type:'fill',
+          material:{color:[220,60,48,0.15]},
+          outline:{color:[220,60,48,0.80],size:1.8},
+          pattern:{type:'style',style:'diagonal-cross'}}]},
+        attributes:{type:'Gap zone',label:'Unengaged area inside EA'},
+      });
+    }catch(_){return null;}
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // OBSTACLE LINE GRAPHIC (doctrinal dashed line + depth buffer)
+  // ═══════════════════════════════════════════════════════════════════
+  function buildObstacleGraphic(pts, type, depth){
+    const obs=OBSTACLES[type]??OBSTACLES.wire;
+    const[r,g,b]=obs.color;
+    const graphics=[];
+
+    // Main obstacle line
+    graphics.push(new Graphic({
+      geometry:new Polyline({paths:[pts],spatialReference:{wkid:4326}}),
+      symbol:{type:'simple-line',color:[r,g,b,220],width:obs.width,
+        style:obs.dash.length?'short-dash':'solid'},
+      attributes:{type:`Obstacle — ${obs.label}`,label:`${obs.label}  depth: ${depth}m`},
+    }));
+
+    // Depth buffer (enemy side — hatched polygon)
+    if(depth>5&&pts.length>=2){
+      try{
+        const pl=new Polyline({paths:[pts],spatialReference:{wkid:4326}});
+        let dense=pl;
+        try{dense=geometryEngine.geodesicDensify(pl,30,'meters');}catch(_){}
+        const buf=geometryEngine.geodesicBuffer(dense,depth,'meters');
+        if(buf){
+          graphics.push(new Graphic({
+            geometry:buf,
+            symbol:{type:'simple-fill',color:[r,g,b,0.07],
+              outline:{color:[r,g,b,0.35],width:0.8,style:'dash'}},
+            attributes:{type:`${obs.label} hazard zone`,label:`${depth}m obstacle belt`},
+          }));
+        }
+      }catch(_){}
+    }
+    return graphics;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // TRIGGER LINE — doctrinal dashed blue, labelled
+  // ═══════════════════════════════════════════════════════════════════
+  function buildTriggerGraphic(pts, label, weapons){
+    if(pts.length<2)return null;
+    const graphics=[];
+    // Bold blue dashed line
+    graphics.push(new Graphic({
+      geometry:new Polyline({paths:[pts],spatialReference:{wkid:4326}}),
+      symbol:{type:'simple-line',color:[55,138,221,210],width:2.5,style:'short-dash'},
+      attributes:{type:`Trigger line — ${label}`,label:`${label}  (${weapons})`},
+    }));
+    // Label at midpoint
+    const mid=pts[Math.floor(pts.length/2)];
+    graphics.push(new Graphic({
+      geometry:new Point({longitude:mid[0],latitude:mid[1],spatialReference:{wkid:4326}}),
+      symbol:{type:'text',text:label,color:[55,138,221,255],
+        haloColor:[0,0,0,200],haloSize:1.5,
+        font:{family:'Courier New',size:10,weight:'bold'},
+        horizontalAlignment:'center',yoffset:8},
+    }));
+    return graphics;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // FPF LINE — thick purple, bold doctrinal marker
+  // FPF is drawn along the obstacle at the weapon's designated sector
+  // ═══════════════════════════════════════════════════════════════════
+  function buildFPFGraphic(pt, wpnKey, obsLine){
+    const wpn=WEAPONS[wpnKey]??WEAPONS.mg_m240;
+    const[r,g,b]=wpn.color;
+    const FPF_LEN=300;
+    const graphics=[];
+
+    // If obstacle line exists, project FPF along it
+    let fpfPts=[];
+    if(obsLine&&obsLine.length>=2){
+      // Find nearest point on obstacle, draw ±FPF_LEN/2 along it
+      let minD=Infinity,nearIdx=0;
+      obsLine.forEach((p,i)=>{
+        const d=Math.sqrt((p[0]-pt.longitude)**2+(p[1]-pt.latitude)**2);
+        if(d<minD){minD=d;nearIdx=i;}
+      });
+      const a=obsLine[Math.max(0,nearIdx-1)],b_=obsLine[Math.min(obsLine.length-1,nearIdx+1)];
+      const brg=(Math.atan2(b_[0]-a[0],b_[1]-a[1])*180/Math.PI+360)%360;
+      const start=destPt(pt.longitude,pt.latitude,(brg+180)%360,FPF_LEN/2);
+      const end  =destPt(pt.longitude,pt.latitude,brg,FPF_LEN/2);
+      fpfPts=[[start.longitude,start.latitude],[end.longitude,end.latitude]];
+    } else {
+      const start=destPt(pt.longitude,pt.latitude,270,FPF_LEN/2);
+      const end  =destPt(pt.longitude,pt.latitude,90,FPF_LEN/2);
+      fpfPts=[[start.longitude,start.latitude],[end.longitude,end.latitude]];
+    }
+
+    // FPF line — thick solid
+    graphics.push(new Graphic({
+      geometry:new Polyline({paths:[fpfPts],spatialReference:{wkid:4326}}),
+      symbol:{type:'simple-line',color:[180,40,220,230],width:4,style:'solid'},
+      attributes:{type:`FPF — ${wpn.label}`,label:'Final Protective Fire — no further orders required'},
+    }));
+    // FPF tick marks (doctrinal short perpendicular lines)
+    fpfPts.forEach(p=>{
+      const tp1=destPt(p[0],p[1],0,15),tp2=destPt(p[0],p[1],180,15);
+      graphics.push(new Graphic({
+        geometry:new Polyline({paths:[[[tp1.longitude,tp1.latitude],[tp2.longitude,tp2.latitude]]],spatialReference:{wkid:4326}}),
+        symbol:{type:'simple-line',color:[180,40,220,200],width:3,style:'solid'},
+      }));
+    });
+    // FPF label
+    const mid=fpfPts[0];
+    graphics.push(new Graphic({
+      geometry:new Point({longitude:mid[0],latitude:mid[1],spatialReference:{wkid:4326}}),
+      symbol:{type:'text',text:`FPF\n${wpn.symbol}`,color:[180,40,220,255],
+        haloColor:[0,0,0,200],haloSize:1.5,
+        font:{family:'Courier New',size:9,weight:'bold'},
+        horizontalAlignment:'center',yoffset:12},
+    }));
+    return graphics;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // WEAPON POSITION MARKER — CIM-style tactical symbol
+  // ═══════════════════════════════════════════════════════════════════
+  function buildWeaponMarker(pt, wpnKey, idx){
+    const wpn=WEAPONS[wpnKey]??WEAPONS.mg_m240;
+    const[r,g,b]=wpn.color;
+    return[
+      new Graphic({
+        geometry:pt,
+        symbol:{type:'point-3d',symbolLayers:[{type:'object',
+          resource:{primitive:'diamond'},material:{color:[r,g,b,0.95]},
+          width:65,height:65,depth:65}],
+          verticalOffset:{screenLength:22,maxWorldLength:600,minWorldLength:4}},
+        attributes:{type:`W${idx+1} — ${wpn.label}`,
+          label:`${wpn.label}  max range ${wpn.maxR}m`},
+      }),
+      new Graphic({
+        geometry:pt,
+        symbol:{type:'text',text:wpn.symbol,color:[255,255,255,220],
+          haloColor:[r,g,b,255],haloSize:2,
+          font:{family:'Courier New',size:9,weight:'bold'},
+          horizontalAlignment:'center',yoffset:18},
+      }),
+    ];
+  }
+
+  // WEZ outline graphic
+  function buildWEZOutlineGraphic(zone, wpnKey, idx){
+    const wpn=WEAPONS[wpnKey]??WEAPONS.mg_m240;
+    const[r,g,b]=wpn.color;
+    if(!zone)return null;
+    return new Graphic({
+      geometry:zone,
+      symbol:{type:'polygon-3d',symbolLayers:[{type:'fill',
+        material:{color:[r,g,b,0.06]},
+        outline:{color:[r,g,b,0.70],size:1.4},
+        pattern:{type:'style',style:'none'}}]},
+      attributes:{type:`WEZ W${idx+1}`,label:`${wpn.label} engagement zone`},
+    });
+  }
+
+  // WEZ preview canvas (right panel)
+  function drawWEZPreview(wpnKey,arcDeg,brg){
+    const canvas=document.getElementById('wez-canvas');
+    const ctx=canvas.getContext('2d');
+    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,R=30;
+    const wpn=WEAPONS[wpnKey]??WEAPONS.mg_m240;
+    const[r,g,b]=wpn.color;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0a0b0e';ctx.fillRect(0,0,W,H);
+    if(arcDeg>=360){
+      ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${r},${g},${b},0.18)`;
+      ctx.strokeStyle=`rgba(${r},${g},${b},0.75)`;
+      ctx.lineWidth=1.5;ctx.fill();ctx.stroke();
+    } else {
+      const ha=(arcDeg/2)*Math.PI/180;
+      const rot=(brg-90)*Math.PI/180;
+      ctx.beginPath();ctx.moveTo(cx,cy);
+      ctx.arc(cx,cy,R,rot-ha,rot+ha);ctx.closePath();
+      ctx.fillStyle=`rgba(${r},${g},${b},0.18)`;
+      ctx.strokeStyle=`rgba(${r},${g},${b},0.75)`;
+      ctx.lineWidth=1.5;ctx.fill();ctx.stroke();
+    }
+    if(wpn.minR>0){
+      const mf=Math.max(0.05,wpn.minR/wpn.maxR);
+      ctx.beginPath();ctx.arc(cx,cy,R*mf,0,Math.PI*2);
+      ctx.fillStyle='#0a0b0e';ctx.fill();
+      ctx.strokeStyle=`rgba(${r},${g},${b},0.35)`;
+      ctx.setLineDash([3,2]);ctx.stroke();ctx.setLineDash([]);
+    }
+    // Arrow
+    const aRad=(brg-90)*Math.PI/180;
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+Math.cos(aRad)*(R+5),cy+Math.sin(aRad)*(R+5));
+    ctx.strokeStyle=`rgba(${r},${g},${b},0.9)`;ctx.lineWidth=1.5;ctx.stroke();
+    document.getElementById('wpn-stats-text').textContent=
+      `${wpn.label}  ·  Range ${wpn.maxR}m  ·  Arc ${arcDeg}°`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ARCGIS SETUP
+  // ═══════════════════════════════════════════════════════════════════
+  const obstacleLayer = new GraphicsLayer({title:'Obstacles',     elevationInfo:{mode:'on-the-ground'}});
+  const wezLayer      = new GraphicsLayer({title:'WEZ outlines',  elevationInfo:{mode:'on-the-ground'}});
+  const meshLayer     = new GraphicsLayer({title:'Coverage mesh',  elevationInfo:{mode:'on-the-ground'}});
+  const markerLayer   = new GraphicsLayer({title:'Weapon markers', elevationInfo:{mode:'on-the-ground'}});
+  const triggerLayer  = new GraphicsLayer({title:'Trigger lines',  elevationInfo:{mode:'on-the-ground'}});
+  const fpfLayer      = new GraphicsLayer({title:'FPF',            elevationInfo:{mode:'on-the-ground'}});
+  const drawLayer     = new GraphicsLayer({title:'Draw preview',   elevationInfo:{mode:'on-the-ground'}});
+  const mediaLayers   = [];
+
+  const map=new Map({basemap:'topo-3d',ground:'world-elevation',
+    layers:[obstacleLayer,meshLayer,wezLayer,markerLayer,triggerLayer,fpfLayer,drawLayer]});
+
+  const view=new SceneView({
+    container:'viewDiv',map,
+    camera:{position:{longitude:73.06,latitude:33.68,z:10000},heading:0,tilt:45},
+    environment:{atmosphere:{quality:'high'},lighting:{date:new Date()}},
+    popup:{dockEnabled:true,dockOptions:{position:'bottom-right',breakpoint:false},
+      defaultPopupTemplateEnabled:true},
+  });
+
+  [obstacleLayer,wezLayer,meshLayer,triggerLayer,fpfLayer].forEach(l=>{
+    l.popupTemplate={title:'{type}',content:'{label}'};
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════════════════════════════
+  let mode          = 'obstacle'; // obstacle|weapon|trigger|fpf|select
+  let drawPts       = [];         // vertices being drawn
+  let drawActive    = false;
+  let obstacles     = [];         // [{pts, type, depth, graphics:[]}]
+  let weapons       = [];         // [{pt, wpnKey, bearing, arc, zone, graphics:[]}]
+  let triggers      = [];
+  let fpfs          = [];
+  let running       = false;
+  const $ = id=>document.getElementById(id);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MODE SWITCHING
+  // ═══════════════════════════════════════════════════════════════════
+  document.querySelectorAll('.tb-btn[data-mode]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(btn.id==='btn-mesh-tb'){buildMesh();return;}
+      document.querySelectorAll('.tb-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      mode=btn.dataset.mode;
+      cancelDraw();
+      ['obstacle','weapon','trigger','fpf'].forEach(s=>{
+        $(`sec-${s}`).style.display=s===mode?'block':'none';
+      });
+      $('rp-title').textContent={obstacle:'Obstacle options',weapon:'Weapon config',
+        trigger:'Trigger line',fpf:'FPF config',select:'Select mode'}[mode]??mode;
+      const hints={
+        obstacle:'Click to add obstacle vertices — double-click to finish',
+        weapon:'Configure weapon in right panel — click map to place',
+        trigger:'Click to draw trigger line — double-click to finish',
+        fpf:'Click map to place Final Protective Fire position',
+        select:'Click an element to select and inspect it',
+      };
+      $('hint').textContent=hints[mode]??'';
+    });
+  });
+
+  // Tab switching
+  document.querySelectorAll('.ltab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.querySelectorAll('.ltab').forEach(x=>x.classList.remove('on'));
+      t.classList.add('on');
+      ['lt-layers','lt-gaps'].forEach(id=>{
+        $(id).style.display=$(id).id==='lt-'+t.dataset.lt?'flex':'none';
+        if($(id).style.display==='flex') $(id).style.flexDirection='column';
+      });
+    });
+  });
+
+  // Weapon sliders → update preview
+  $('wpn-type').addEventListener('change',()=>updateWpnPreview());
+  $('wpn-bearing').addEventListener('input',()=>{
+    $('wpn-brg-v').textContent=$('wpn-bearing').value+'°';updateWpnPreview();});
+  $('wpn-arc').addEventListener('input',()=>{
+    $('wpn-arc-v').textContent=$('wpn-arc').value+'°';updateWpnPreview();});
+  function updateWpnPreview(){
+    drawWEZPreview($('wpn-type').value,parseInt($('wpn-arc').value),parseInt($('wpn-bearing').value));
+  }
+  updateWpnPreview();
+
+  // ═══════════════════════════════════════════════════════════════════
+  // DRAWING — live polyline preview
+  // ═══════════════════════════════════════════════════════════════════
+  function updateDrawPreview(){
+    drawLayer.removeAll();
+    if(drawPts.length<1)return;
+    const lineColor=mode==='trigger'?[55,138,221,180]:mode==='fpf'?[180,40,220,180]:[239,159,39,180];
+    // Dots at each vertex
+    drawPts.forEach(p=>{
+      drawLayer.add(new Graphic({
+        geometry:new Point({longitude:p[0],latitude:p[1],spatialReference:{wkid:4326}}),
+        symbol:{type:'simple-marker',color:lineColor,size:6,outline:{color:[255,255,255,150],width:1}},
+      }));
+    });
+    // Preview line
+    if(drawPts.length>=2){
+      drawLayer.add(new Graphic({
+        geometry:new Polyline({paths:[drawPts],spatialReference:{wkid:4326}}),
+        symbol:{type:'simple-line',color:lineColor,width:1.8,style:'dash'},
+      }));
+    }
+  }
+
+  function cancelDraw(){
+    drawActive=false;drawPts=[];drawLayer.removeAll();
+  }
+
+  // Double-click finish handlers
+  $('btn-obs-finish').addEventListener('click',finishObstacle);
+  $('btn-trig-finish').addEventListener('click',finishTrigger);
+  $('btn-obs-undo').addEventListener('click',()=>{drawPts.pop();updateDrawPreview();});
+  $('btn-trig-undo').addEventListener('click',()=>{drawPts.pop();updateDrawPreview();});
+
+  function finishObstacle(){
+    if(drawPts.length<2)return;
+    const type=$('obs-type').value;
+    const depth=parseInt($('obs-depth').value);
+    const gfx=buildObstacleGraphic(drawPts,type,depth);
+    gfx.forEach(g=>obstacleLayer.add(g));
+    obstacles.push({pts:[...drawPts],type,depth,graphics:gfx});
+    cancelDraw();
+    renderLayerList();
+    $('hint').textContent='Obstacle placed — place weapons next';
+  }
+
+  function finishTrigger(){
+    if(drawPts.length<2)return;
+    const label=$('trig-label').value||`TRP-${triggers.length+1}`;
+    const weapons_=$('trig-weapons').value;
+    const gfx=buildTriggerGraphic(drawPts,label,weapons_);
+    if(gfx)gfx.forEach(g=>triggerLayer.add(g));
+    triggers.push({pts:[...drawPts],label,weapons:weapons_,graphics:gfx??[]});
+    cancelDraw();
+    renderLayerList();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MAP CLICK HANDLER
+  // ═══════════════════════════════════════════════════════════════════
+  let lastClickTime=0;
+  view.on('click',async event=>{
+    if(running)return;
+    const now=Date.now();
+    const isDbl=now-lastClickTime<350;
+    lastClickTime=now;
+
+    const result=await view.hitTest(event,{include:[map.ground]});
+    const gp=result?.ground?.mapPoint??event.mapPoint;
+    if(!gp)return;
+
+    if(mode==='obstacle'||mode==='trigger'){
+      if(isDbl){
+        mode==='obstacle'?finishObstacle():finishTrigger();
+        return;
+      }
+      drawPts.push([gp.longitude,gp.latitude]);
+      drawActive=true;
+      updateDrawPreview();
+
+    } else if(mode==='weapon'){
+      const wpnKey=$('wpn-type').value;
+      const brg=parseInt($('wpn-bearing').value);
+      const arc=parseInt($('wpn-arc').value);
+      const wpn=WEAPONS[wpnKey];
+      const pt=new Point({longitude:gp.longitude,latitude:gp.latitude,spatialReference:{wkid:4326}});
+      const zone=buildWEZPolygon(pt,wpn.minR,wpn.maxR,brg,arc);
+      const idx=weapons.length;
+      const gfx=[...buildWeaponMarker(pt,wpnKey,idx)];
+      gfx.forEach(g=>markerLayer.add(g));
+      if($('opt-wez-out').checked&&zone) wezLayer.add(buildWEZOutlineGraphic(zone,wpnKey,idx));
+      weapons.push({pt,wpnKey,bearing:brg,arc,zone,graphics:gfx});
+      $('stat-w').textContent=weapons.length;
+      renderLayerList();
+      $('hint').textContent=`W${idx+1} placed — add more weapons or build mesh`;
+
+    } else if(mode==='fpf'){
+      const wpnKey=$('fpf-weapon').value;
+      const pt=new Point({longitude:gp.longitude,latitude:gp.latitude,spatialReference:{wkid:4326}});
+      // Find nearest obstacle line
+      const nearestObs=obstacles.length>0?obstacles[0].pts:null;
+      const gfx=buildFPFGraphic(pt,wpnKey,nearestObs);
+      gfx.forEach(g=>fpfLayer.add(g));
+      fpfs.push({pt,wpnKey,graphics:gfx});
+      renderLayerList();
+      $('hint').textContent='FPF placed — build mesh to check coverage';
+    }
+  });
+
+  // ESC to cancel draw
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')cancelDraw();});
+
+  // ═══════════════════════════════════════════════════════════════════
+  // BUILD MESH — main coverage analysis
+  // ═══════════════════════════════════════════════════════════════════
+  async function buildMesh(){
+    if(running||weapons.length<1)return;
+    running=true;
+    $('btn-mesh').disabled=true;
+
+    // Clear existing mesh
+    meshLayer.removeAll();
+    mediaLayers.forEach(l=>{try{map.remove(l);}catch(_){}});
+    mediaLayers.length=0;
+
+    setProgress(0.05,'Computing EA boundary');
+    await tick();
+
+    // Derive EA polygon from obstacle line(s) + weapon positions
+    // Strategy: convex hull of all relevant points
+    const allPts=[];
+    obstacles.forEach(o=>o.pts.forEach(p=>allPts.push([p[0],p[1]])));
+    weapons.forEach(w=>allPts.push([w.pt.longitude,w.pt.latitude]));
+
+    if(allPts.length<3){
+      setProgress(0,'Need obstacle + weapons to build mesh');
+      running=false;$('btn-mesh').disabled=false;return;
+    }
+
+    // Build EA polygon: buffer from the obstacle line outward (enemy side) + weapon positions
+    // Use a generous convex extent
+    const lons=allPts.map(p=>p[0]);
+    const lats=allPts.map(p=>p[1]);
+    const cosLat=Math.cos((Math.min(...lats)+Math.max(...lats))/2*Math.PI/180);
+    const padM=Math.max(...weapons.map(w=>WEAPONS[w.wpnKey].maxR))*1.1;
+    const padDeg=padM/M_PER_DEG;
+    const extent=new Extent({
+      xmin:Math.min(...lons)-padDeg/cosLat, ymin:Math.min(...lats)-padDeg,
+      xmax:Math.max(...lons)+padDeg/cosLat, ymax:Math.max(...lats)+padDeg,
+      spatialReference:{wkid:4326},
+    });
+
+    // EA polygon: try to build from obstacle line + max range of weapons
+    let eaPolygon=null;
+    if($('opt-ea-int').checked){
+      // Build EA as the union of all WEZ polygons — this IS the EA
+      const wezGeoms=weapons.map(w=>w.zone).filter(Boolean);
+      if(wezGeoms.length>0){
+        eaPolygon=wezGeoms.length===1?wezGeoms[0]:geometryEngine.union(wezGeoms);
+      }
+    }
+
+    // Grid
+    const cellM=40;
+    const cols=Math.ceil((extent.xmax-extent.xmin)*M_PER_DEG*cosLat/cellM);
+    const rows=Math.ceil((extent.ymax-extent.ymin)*M_PER_DEG/cellM);
+
+    setProgress(0.20,'Rasterising coverage grid');
+    await tick();
+
+    const wezZones=weapons.map(w=>w.zone).filter(Boolean);
+    const{coverGrid,eaMask}=buildCoverageRaster(wezZones,eaPolygon,extent,cols,rows,cellM);
+
+    setProgress(0.55,'Building coverage heatmap');
+    await tick();
+
+    if($('opt-heatmap').checked){
+      const canvas=buildCoverageCanvas(coverGrid,eaMask,cols,rows,0.80);
+      const ml=new MediaLayer({
+        source:[new ImageElement({image:canvas.toDataURL('image/png'),
+          georeference:new ExtentAndRotationGeoreference({extent})})],
+        title:'Coverage heatmap',
+      });
+      map.add(ml,0);mediaLayers.push(ml);
+    }
+
+    setProgress(0.70,'Detecting gap zones');
+    await tick();
+
+    const{gaps,gapPct,labels,gapMask}=detectGaps(coverGrid,eaMask,cols,rows,extent,cellM);
+
+    // Draw gap outlines
+    const labelSet=new Set();
+    for(let i=0;i<labels.length;i++){
+      if(gapMask[i]&&labels[i]>=0&&!labelSet.has(labels[i])){
+        labelSet.add(labels[i]);
+        const g=buildGapOutlineGraphic(labels,labels[i],cols,rows,extent,cellM);
+        if(g)meshLayer.add(g);
+      }
+    }
+
+    // Gap centroids labels
+    gaps.slice(0,6).forEach((gap,i)=>{
+      meshLayer.add(new Graphic({
+        geometry:new Point({longitude:gap.centLon,latitude:gap.centLat,spatialReference:{wkid:4326}}),
+        symbol:{type:'text',text:`GAP ${i+1}\n${(gap.areaM2/10000).toFixed(2)}ha`,
+          color:[220,60,48,220],haloColor:[0,0,0,180],haloSize:1.5,
+          font:{family:'Courier New',size:9.5,weight:'bold'},
+          horizontalAlignment:'center'},
+      }));
+    });
+
+    // Stats
+    const mutualPct=eaMask.reduce((s,v,i)=>s+(v&&coverGrid[i]>=2?1:0),0)/
+      Math.max(1,eaMask.reduce((s,v)=>s+v,0));
+    $('stat-c').textContent=Math.round((1-gapPct/100)*100)+'%';
+    $('stat-g').textContent=gaps.length;
+
+    // Gap analysis panel
+    renderGapPanel(gaps,gapPct);
+
+    setProgress(0.92,'Rebuilding WEZ outlines');
+    wezLayer.removeAll();
+    weapons.forEach((w,i)=>{
+      if($('opt-wez-out').checked&&w.zone){
+        wezLayer.add(buildWEZOutlineGraphic(w.zone,w.wpnKey,i));
+      }
+    });
+
+    setProgress(1.0,`Done — ${gaps.length} gaps, ${gapPct}% uncovered`);
+    view.goTo({target:extent,tilt:50},{duration:1000});
+    running=false;$('btn-mesh').disabled=false;
+  }
+
+  $('btn-mesh').addEventListener('click',buildMesh);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // LAYER LIST RENDER
+  // ═══════════════════════════════════════════════════════════════════
+  function renderLayerList(){
+    const list=$('layer-list');
+    list.innerHTML='';
+    const allElements=[
+      ...obstacles.map((o,i)=>({
+        label:`Obstacle ${i+1} — ${OBSTACLES[o.type]?.label}`,
+        sub:`${o.pts.length} vertices · depth ${o.depth}m`,
+        color:OBSTACLES[o.type]?.color??[239,159,39],
+        remove:()=>{o.graphics.forEach(g=>{try{obstacleLayer.remove(g);}catch(_){}});
+          obstacles.splice(i,1);renderLayerList();},
+      })),
+      ...weapons.map((w,i)=>({
+        label:`W${i+1} — ${WEAPONS[w.wpnKey]?.label}`,
+        sub:`Bearing ${w.bearing}° · Arc ${w.arc}° · Range ${WEAPONS[w.wpnKey]?.maxR}m`,
+        color:WEAPONS[w.wpnKey]?.color??[220,60,48],
+        remove:()=>{w.graphics.forEach(g=>{try{markerLayer.remove(g);}catch(_){}});
+          weapons.splice(i,1);$('stat-w').textContent=weapons.length;renderLayerList();},
+      })),
+      ...triggers.map((t,i)=>({
+        label:`Trigger — ${t.label}`,sub:t.weapons,
+        color:[55,138,221],
+        remove:()=>{t.graphics.forEach(g=>{try{triggerLayer.remove(g);}catch(_){}});
+          triggers.splice(i,1);renderLayerList();},
+      })),
+      ...fpfs.map((f,i)=>({
+        label:`FPF — ${WEAPONS[f.wpnKey]?.label}`,sub:'Final Protective Fire',
+        color:[180,40,220],
+        remove:()=>{f.graphics.forEach(g=>{try{fpfLayer.remove(g);}catch(_){}});
+          fpfs.splice(i,1);renderLayerList();},
+      })),
+    ];
+
+    if(!allElements.length){
+      list.innerHTML='<div style="padding:14px 10px;font-size:10px;color:#3a3935;text-align:center;line-height:1.8">Draw an obstacle line first,<br>then place weapon positions</div>';
+      return;
+    }
+
+    allElements.forEach(el=>{
+      const[r,g,b]=el.color;
+      const row=document.createElement('div');
+      row.className='layer-item';
+      row.innerHTML=`
+        <div class="li-dot" style="background:rgb(${r},${g},${b})"></div>
+        <div class="li-info">
+          <div class="li-name">${el.label}</div>
+          <div class="li-sub">${el.sub}</div>
+        </div>
+        <button class="li-del">✕</button>
+      `;
+      row.querySelector('.li-del').addEventListener('click',el.remove);
+      list.appendChild(row);
+    });
+  }
+
+  function renderGapPanel(gaps,gapPct){
+    const content=$('gap-content');
+    content.innerHTML='';
+    if(!gaps.length){
+      content.innerHTML='<div id="no-gaps" style="padding:14px;font-size:10px;color:#1D9E75;text-align:center;line-height:1.8">✓ No significant gaps detected<br>EA coverage appears complete</div>';
+      return;
+    }
+    const intro=document.createElement('div');
+    intro.style.cssText='padding:8px 9px;font-size:10px;color:#888780;line-height:1.6;border-bottom:0.5px solid rgba(255,255,255,0.07);margin-bottom:6px';
+    intro.innerHTML=`<strong style="color:#DC3C30">${gapPct}%</strong> of EA interior uncovered by any weapon. ${gaps.length} gap zone${gaps.length!==1?'s':''} identified.`;
+    content.appendChild(intro);
+
+    gaps.slice(0,6).forEach((gap,i)=>{
+      const areaHa=(gap.areaM2/10000).toFixed(2);
+      const div=document.createElement('div');
+      div.className='gap-item';
+      div.style.cursor='pointer';
+      const note=gap.areaM2>50000?'Major gap — enemy company+ can manoeuvre unengaged.':
+        gap.areaM2>10000?'Significant gap — platoon-sized element can exploit.':
+        gap.areaM2>2000?'Minor gap — section-sized element at risk.':'Small gap — marginal tactical significance.';
+      div.innerHTML=`
+        <div class="gap-title">Gap zone ${i+1} — ${areaHa} ha</div>
+        <div class="gap-note">${note}<br>
+          Action: reposition W${weapons.length?weapons.length:1} or add weapon system to cover.</div>
+      `;
+      div.addEventListener('click',()=>{
+        view.goTo({center:[gap.centLon,gap.centLat],zoom:14,tilt:55},{duration:700});
+      });
+      content.appendChild(div);
+    });
+  }
+
+  // ── Clear & Undo ─────────────────────────────────────────────────
+  $('btn-clear').addEventListener('click',()=>{
+    obstacles=[];weapons=[];triggers=[];fpfs=[];
+    [obstacleLayer,wezLayer,meshLayer,markerLayer,triggerLayer,fpfLayer,drawLayer]
+      .forEach(l=>l.removeAll());
+    mediaLayers.forEach(l=>{try{map.remove(l);}catch(_){}});
+    mediaLayers.length=0;
+    drawPts=[];drawActive=false;
+    $('stat-w').textContent='0';$('stat-c').textContent='—';$('stat-g').textContent='—';
+    renderLayerList();
+    $('gap-content').innerHTML='<div id="no-gaps" style="padding:14px;font-size:10px;color:#3a3935;text-align:center;line-height:1.8">Build mesh to analyse gaps</div>';
+    setProgress(0,'—');
+    $('hint').textContent='Draw obstacle first, then place weapons';
+  });
+
+  $('btn-undo-last').addEventListener('click',()=>{
+    // Remove the last-placed element of the current mode
+    if(mode==='weapon'&&weapons.length){
+      const w=weapons.pop();
+      w.graphics.forEach(g=>{try{markerLayer.remove(g);}catch(_){}});
+      $('stat-w').textContent=weapons.length;
+    } else if(mode==='obstacle'&&obstacles.length){
+      const o=obstacles.pop();
+      o.graphics.forEach(g=>{try{obstacleLayer.remove(g);}catch(_){}});
+    } else if(mode==='trigger'&&triggers.length){
+      const t=triggers.pop();
+      t.graphics.forEach(g=>{try{triggerLayer.remove(g);}catch(_){}});
+    } else if(mode==='fpf'&&fpfs.length){
+      const f=fpfs.pop();
+      f.graphics.forEach(g=>{try{fpfLayer.remove(g);}catch(_){}});
+    }
+    renderLayerList();
+  });
+
+  function setProgress(f,label){$('prog-fill').style.width=Math.round(f*100)+'%';$('prog-label').textContent=label??'';}
+  function tick(){return new Promise(r=>setTimeout(r,0));}
+
+  view.when(()=>{
+    console.log('[EADesigner] SceneView ready.');
+    console.log('[EADesigner] Workflow: draw obstacle → place weapons → place trigger lines → place FPF → build mesh.');
+    console.log('[EADesigner] ESC cancels active draw. Double-click finishes a line.');
+  });
+
+}); // end require()
+</script>
+</body>
+</html>
