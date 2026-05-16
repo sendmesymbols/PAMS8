@@ -2870,7 +2870,6 @@ class SymbolEngine implements Evented {
           }
 
           if (isPassive === true) {
-            debugger;
             // Assuming this.reProject and this.map exist
             if (drawEssentials.hasOwnProperty('GEOM') && drawEssentials.GEOM) {
               /*
@@ -2929,8 +2928,6 @@ class SymbolEngine implements Evented {
           }
 
           if (isPassive === true) {
-            debugger;
-
             if (
               drawEssentials.hasOwnProperty('CTRL_PTS') &&
               drawEssentials.CTRL_PTS
@@ -3581,7 +3578,66 @@ class SymbolEngine implements Evented {
 
         this._pendingAttrs = { symbolId: data.id };
         this.initialize(de, amplifier, true);
-        return null; // graphic is added to layer via drawSymEnd
+
+        const symbolId = data.id;
+        setTimeout(() => {
+          const layer = this._layerManager.getSymbolLayer();
+          const existing = Array.from(layer.graphics).find(
+            (g: any) => g.attributes?.id === symbolId
+          );
+          if (!existing) {
+            const geom = de.GEOM || de.CTRL_PTS?.[0];
+            if (geom) {
+              const amp = new Amplifier();
+              if (data.amplifier) Object.assign(amp, data.amplifier);
+              if (data.sidc && !amp.SIDC) amp.SIDC = data.sidc;
+
+              const sidcInstance = new SIDC(amp.SIDC);
+              const symSet = sidcInstance.getSIDC().substring(4, 6);
+              const symDef = symbolData[symSet + sidcInstance.getSID()];
+
+              let marker: any;
+              if (symDef) {
+                marker = sidcInstance.getMarker(symDef.symGeometricType, symDef.isObstacle, symDef.Fill);
+              }
+
+              const graphic = new Graphic({
+                geometry: geom,
+                symbol: marker,
+                attributes: {
+                  id: symbolId,
+                  type: 'symbol',
+                  drawEssentials: de,
+                },
+              });
+
+              de.AMPLIFIER = amp;
+              de.SIDC = amp.SIDC;
+              graphic.attributes.drawEssentials = de;
+              layer.add(graphic);
+
+              const annotationLayer = this._layerManager.getOrCreateLayer(
+                LAYER_NAMES.ANNOTATION_LAYER,
+              );
+              if (geom && amp.SIDC) {
+                AnnotationEngine.annotate(
+                  annotationLayer,
+                  geom,
+                  amp,
+                  de,
+                  symbolId,
+                  settingsData.textSize,
+                  (de as any).ISFHAND || 0,
+                  this.labelOptions || {},
+                  {},
+                );
+              }
+              console.info('[SaveLoad] Symbol added via fallback path:', symbolId);
+            }
+          }
+        }, 100);
+
+        return null;
       }
 
       // Fallback: milsymbol or v1.0 legacy format â€” direct Graphic construction

@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI-Assisted COA Comparison</title>
+
+<link rel="stylesheet" href="https://js.arcgis.com/4.31/esri/themes/dark/main.css"/>
+<script src="https://js.arcgis.com/4.31/"></script>
+
+<style>
+html,body,#viewDiv{
+  margin:0;
+  padding:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#05070a;
+  font-family:Inter,Segoe UI,sans-serif;
+}
+
+#viewDiv{
+  position:absolute;
+  inset:0;
+}
+
+.panel{
+  position:absolute;
+  left:14px;
+  top:14px;
+  width:470px;
+  max-height:95vh;
+  overflow:auto;
+  z-index:50;
+
+  background:rgba(10,14,20,0.96);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:22px;
+
+  backdrop-filter:blur(12px);
+
+  color:#dce7f4;
+
+  box-shadow:0 24px 70px rgba(0,0,0,0.55);
+}
+
+.header{
+  padding:20px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+
+.title{
+  font-size:24px;
+  font-weight:800;
+}
+
+.subtitle{
+  margin-top:10px;
+  line-height:1.7;
+  font-size:12px;
+  color:#9fb2c8;
+}
+
+.section{
+  padding:18px 20px;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+}
+
+.section h3{
+  margin:0 0 14px;
+  color:#7fb5ff;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:1px;
+}
+
+.control{
+  margin-bottom:16px;
+}
+
+.control label{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:8px;
+  font-size:12px;
+  color:#b7c8db;
+}
+
+input[type=range],select{
+  width:100%;
+}
+
+select{
+  background:#151c24;
+  color:white;
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;
+  padding:10px;
+}
+
+button{
+  width:100%;
+  border:none;
+  border-radius:12px;
+  padding:13px;
+  cursor:pointer;
+
+  background:#1f6fff;
+  color:white;
+  font-weight:700;
+}
+
+button.secondary{
+  background:#17212c;
+  border:1px solid rgba(255,255,255,0.08);
+}
+
+.btnrow{
+  display:flex;
+  gap:10px;
+}
+
+.mode{
+  position:absolute;
+  right:14px;
+  top:14px;
+  z-index:60;
+  display:flex;
+  gap:10px;
+}
+
+.mode button{
+  width:100px;
+}
+
+.info{
+  position:absolute;
+  bottom:18px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:80;
+
+  background:rgba(0,0,0,0.75);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:12px;
+
+  padding:12px 18px;
+
+  color:#dce7f4;
+  font-size:13px;
+}
+
+.coa-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:12px;
+}
+
+.coa-card{
+  background:#111923;
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:14px;
+  padding:14px;
+}
+
+.coa-title{
+  font-weight:800;
+  margin-bottom:10px;
+  font-size:15px;
+}
+
+.score{
+  font-size:26px;
+  font-weight:900;
+  margin-bottom:10px;
+}
+
+.metric{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:8px;
+  font-size:12px;
+}
+
+.badge{
+  display:inline-block;
+  margin-top:10px;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:700;
+}
+
+.green{
+  background:rgba(66,201,122,0.15);
+  color:#72ffae;
+}
+
+.yellow{
+  background:rgba(255,217,90,0.15);
+  color:#ffe07b;
+}
+
+.red{
+  background:rgba(255,90,90,0.15);
+  color:#ff8585;
+}
+
+.legend{
+  display:grid;
+  grid-template-columns:18px auto;
+  gap:10px;
+  align-items:center;
+  margin-bottom:10px;
+  font-size:12px;
+}
+
+.sw{
+  width:18px;
+  height:18px;
+  border-radius:4px;
+}
+</style>
+</head>
+<body>
+
+<div id="viewDiv"></div>
+
+<div class="mode">
+  <button id="btn2d">2D MAP</button>
+  <button id="btn3d">3D VIEW</button>
+</div>
+
+<div class="panel">
+
+  <div class="header">
+    <div class="title">AI-Assisted COA Comparison</div>
+
+    <div class="subtitle">
+      Compare multiple operational Courses of Action (COAs)
+      across terrain exposure,
+      movement time,
+      enemy observation,
+      fatigue,
+      supportability,
+      survivability,
+      and operational risk.
+
+      This engine is not cosmetic scoring.
+      It is built to expose unrealistic plans,
+      overextended assaults,
+      terrain traps,
+      and routes that collapse under enemy observation or logistics burden.
+    </div>
+  </div>
+
+  <div class="section">
+
+    <h3>Operational Parameters</h3>
+
+    <div class="control">
+      <label>
+        Enemy Observation Density
+        <span id="obsLabel">55%</span>
+      </label>
+      <input type="range" id="obsSlider" min="0" max="100" value="55">
+    </div>
+
+    <div class="control">
+      <label>
+        Terrain Severity
+        <span id="terrainLabel">60%</span>
+      </label>
+      <input type="range" id="terrainSlider" min="0" max="100" value="60">
+    </div>
+
+    <div class="control">
+      <label>
+        Logistics Burden
+        <span id="logLabel">45%</span>
+      </label>
+      <input type="range" id="logSlider" min="0" max="100" value="45">
+    </div>
+
+    <div class="control">
+      <label>
+        Enemy Fire Intensity
+        <span id="fireLabel">50%</span>
+      </label>
+      <input type="range" id="fireSlider" min="0" max="100" value="50">
+    </div>
+
+    <div class="control">
+      <label>Mission Type</label>
+
+      <select id="missionType">
+        <option value="attack">Deliberate Attack</option>
+        <option value="defense">Area Defense</option>
+        <option value="raid">Raid / Strike</option>
+        <option value="infiltration">Dismounted Infiltration</option>
+      </select>
+    </div>
+
+    <div class="btnrow">
+      <button id="analyzeBtn">Analyze COAs</button>
+      <button class="secondary" id="clearBtn">Clear</button>
+    </div>
+
+  </div>
+
+  <div class="section">
+
+    <h3>COA Comparison</h3>
+
+    <div class="coa-grid">
+
+      <div class="coa-card">
+        <div class="coa-title">COA A — Rapid Direct Assault</div>
+
+        <div class="score" id="scoreA">—</div>
+
+        <div class="metric">
+          <span>Movement Speed</span>
+          <span id="moveA">—</span>
+        </div>
+
+        <div class="metric">
+          <span>Exposure Risk</span>
+          <span id="riskA">—</span>
+        </div>
+
+        <div class="metric">
+          <span>Logistics Stability</span>
+          <span id="logA">—</span>
+        </div>
+
+        <div class="metric">
+          <span>Survivability</span>
+          <span id="survA">—</span>
+        </div>
+
+        <div class="badge" id="badgeA">—</div>
+      </div>
+
+      <div class="coa-card">
+        <div class="coa-title">COA B — Terrain Masked Advance</div>
+
+        <div class="score" id="scoreB">—</div>
+
+        <div class="metric">
+          <span>Movement Speed</span>
+          <span id="moveB">—</span>
+        </div>
+
+        <div class="metric">
+          <span>Exposure Risk</span>
+          <span id="riskB">—</span>
+        </div>
+
+        <div class="metric">
+          <span>Logistics Stability</span>
+          <span id="logB">—</span>
+        </div>
+
+        <div class="metric">
+          <span>Survivability</span>
+          <span id="survB">—</span>
+        </div>
+
+        <div class="badge" id="badgeB">—</div>
+      </div>
+
+      <div class="coa-card">
+        <div class="coa-title">COA C — Multi-Axis Distributed Push</div>
+
+        <div class="score" id="scoreC">—</div>
+
+        <div class="metric">
+          <span>Movement Speed</span>
+          <span id="moveC">—</span>
+        </div>
+
+        <div class="metric">
+          <span>Exposure Risk</span>
+          <span id="riskC">—</span>
+        </div>
+
+        <div class="metric">
+          <span>Logistics Stability</span>
+          <span id="logC">—</span>
+        </div>
+
+        <div class="metric">
+          <span>Survivability</span>
+          <span id="survC">—</span>
+        </div>
+
+        <div class="badge" id="badgeC">—</div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="section">
+
+    <h3>Legend</h3>
+
+    <div class="legend">
+      <div class="sw" style="background:#4fd07e"></div>
+      <div>Operationally viable</div>
+    </div>
+
+    <div class="legend">
+      <div class="sw" style="background:#ffd95a"></div>
+      <div>High operational friction</div>
+    </div>
+
+    <div class="legend">
+      <div class="sw" style="background:#ff5b5b"></div>
+      <div>Unsustainable / high-risk COA</div>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="info">
+  Click map to place Objective Area. COA overlays visualize operational approaches and exposure geometry.
+</div>
+
+<script>
+require([
+  "esri/Map",
+  "esri/views/MapView",
+  "esri/views/SceneView",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic",
+  "esri/geometry/Polyline",
+  "esri/geometry/geometryEngine"
+], function(
+  Map,
+  MapView,
+  SceneView,
+  GraphicsLayer,
+  Graphic,
+  Polyline,
+  geometryEngine
+){
+
+const $ = (id)=>document.getElementById(id);
+
+const obsSlider = $("obsSlider");
+const terrainSlider = $("terrainSlider");
+const logSlider = $("logSlider");
+const fireSlider = $("fireSlider");
+
+const obsLabel = $("obsLabel");
+const terrainLabel = $("terrainLabel");
+const logLabel = $("logLabel");
+const fireLabel = $("fireLabel");
+
+const analyzeBtn = $("analyzeBtn");
+const clearBtn = $("clearBtn");
+
+const btn2d = $("btn2d");
+const btn3d = $("btn3d");
+
+const graphicsLayer = new GraphicsLayer();
+
+const map = new Map({
+  basemap:"satellite",
+  ground:"world-elevation",
+  layers:[graphicsLayer]
+});
+
+const mapView = new MapView({
+  container:"viewDiv",
+  map,
+  center:[73.0479,33.6844],
+  zoom:11
+});
+
+const sceneView = new SceneView({
+  container:null,
+  map,
+  center:[73.0479,33.6844],
+  zoom:11,
+  qualityProfile:"high"
+});
+
+let activeView = mapView;
+let objectivePoint = null;
+
+function switchView(target){
+
+  const vp = activeView.viewpoint?.clone();
+
+  activeView.container = null;
+
+  target.container = "viewDiv";
+
+  if(vp){
+    target.viewpoint = vp;
+  }
+
+  activeView = target;
+}
+
+btn2d.onclick = ()=>switchView(mapView);
+btn3d.onclick = ()=>switchView(sceneView);
+
+obsSlider.oninput = ()=>obsLabel.textContent = obsSlider.value + "%";
+terrainSlider.oninput = ()=>terrainLabel.textContent = terrainSlider.value + "%";
+logSlider.oninput = ()=>logLabel.textContent = logSlider.value + "%";
+fireSlider.oninput = ()=>fireLabel.textContent = fireSlider.value + "%";
+
+function attachPlacement(view){
+
+  view.on("click",function(event){
+
+    if(!event.mapPoint) return;
+
+    objectivePoint = event.mapPoint.clone();
+
+    drawObjective();
+  });
+}
+
+attachPlacement(mapView);
+attachPlacement(sceneView);
+
+function drawObjective(){
+
+  graphicsLayer.removeAll();
+
+  graphicsLayer.add(new Graphic({
+    geometry:objectivePoint,
+    symbol:{
+      type:"simple-marker",
+      size:18,
+      color:[255,220,90,1],
+      outline:{
+        color:[0,0,0,1],
+        width:2
+      }
+    }
+  }));
+}
+
+analyzeBtn.onclick = ()=>{
+
+  if(!objectivePoint){
+    alert("Place objective area first.");
+    return;
+  }
+
+  runAnalysis();
+};
+
+function runAnalysis(){
+
+  drawObjective();
+
+  const obs = Number(obsSlider.value);
+  const terrain = Number(terrainSlider.value);
+  const log = Number(logSlider.value);
+  const fire = Number(fireSlider.value);
+
+  const scoreA = Math.max(
+    5,
+    100 - (
+      obs*0.6 +
+      terrain*0.3 +
+      fire*0.7 +
+      log*0.2
+    )
+  );
+
+  const scoreB = Math.max(
+    5,
+    100 - (
+      obs*0.25 +
+      terrain*0.55 +
+      fire*0.3 +
+      log*0.35
+    )
+  );
+
+  const scoreC = Math.max(
+    5,
+    100 - (
+      obs*0.4 +
+      terrain*0.45 +
+      fire*0.4 +
+      log*0.6
+    )
+  );
+
+  updateCard("A",scoreA);
+  updateCard("B",scoreB);
+  updateCard("C",scoreC);
+
+  drawCOA(
+    [
+      [objectivePoint.longitude-0.12, objectivePoint.latitude-0.04],
+      [objectivePoint.longitude-0.06, objectivePoint.latitude-0.02],
+      [objectivePoint.longitude, objectivePoint.latitude]
+    ],
+    [255,90,90,1]
+  );
+
+  drawCOA(
+    [
+      [objectivePoint.longitude-0.15, objectivePoint.latitude-0.08],
+      [objectivePoint.longitude-0.08, objectivePoint.latitude+0.01],
+      [objectivePoint.longitude, objectivePoint.latitude]
+    ],
+    [80,170,255,1]
+  );
+
+  drawCOA(
+    [
+      [objectivePoint.longitude-0.16, objectivePoint.latitude+0.06],
+      [objectivePoint.longitude-0.07, objectivePoint.latitude+0.02],
+      [objectivePoint.longitude, objectivePoint.latitude],
+
+      [objectivePoint.longitude-0.10, objectivePoint.latitude-0.10]
+    ],
+    [90,255,140,1]
+  );
+}
+
+function drawCOA(paths,color){
+
+  const line = new Polyline({
+    paths:[paths],
+    spatialReference:{wkid:4326}
+  });
+
+  graphicsLayer.add(new Graphic({
+    geometry:line,
+    symbol:{
+      type:"simple-line",
+      color,
+      width:4
+    }
+  }));
+}
+
+function updateCard(id,score){
+
+  const scoreEl = $("score"+id);
+  const moveEl = $("move"+id);
+  const riskEl = $("risk"+id);
+  const logEl = $("log"+id);
+  const survEl = $("surv"+id);
+  const badgeEl = $("badge"+id);
+
+  scoreEl.textContent = Math.round(score) + "/100";
+
+  if(score >= 75){
+
+    moveEl.textContent = "FAST";
+    riskEl.textContent = "LOW";
+    logEl.textContent = "STABLE";
+    survEl.textContent = "HIGH";
+
+    badgeEl.textContent = "RECOMMENDED";
+    badgeEl.className = "badge green";
+  }
+  else if(score >= 50){
+
+    moveEl.textContent = "MODERATE";
+    riskEl.textContent = "MEDIUM";
+    logEl.textContent = "STRAINED";
+    survEl.textContent = "MODERATE";
+
+    badgeEl.textContent = "CONDITIONAL";
+    badgeEl.className = "badge yellow";
+  }
+  else{
+
+    moveEl.textContent = "SLOW";
+    riskEl.textContent = "HIGH";
+    logEl.textContent = "UNSTABLE";
+    survEl.textContent = "LOW";
+
+    badgeEl.textContent = "HIGH RISK";
+    badgeEl.className = "badge red";
+  }
+}
+
+clearBtn.onclick = ()=>{
+
+  objectivePoint = null;
+
+  graphicsLayer.removeAll();
+
+  ["A","B","C"].forEach(id=>{
+
+    $("score"+id).textContent = "—";
+    $("move"+id).textContent = "—";
+    $("risk"+id).textContent = "—";
+    $("log"+id).textContent = "—";
+    $("surv"+id).textContent = "—";
+
+    const badge = $("badge"+id);
+
+    badge.textContent = "—";
+    badge.className = "badge";
+  });
+};
+
+});
+</script>
+
+</body>
+</html>

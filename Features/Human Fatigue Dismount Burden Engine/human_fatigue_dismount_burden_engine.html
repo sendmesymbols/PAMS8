@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Human Fatigue / Dismount Burden Engine</title>
+
+<link rel="stylesheet" href="https://js.arcgis.com/4.31/esri/themes/dark/main.css">
+<script src="https://js.arcgis.com/4.31/"></script>
+
+<style>
+html,body,#viewDiv{
+  margin:0;
+  padding:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  font-family:Inter,Segoe UI,sans-serif;
+  background:#05070a;
+}
+
+#viewDiv{
+  position:absolute;
+  inset:0;
+}
+
+.panel{
+  position:absolute;
+  left:14px;
+  top:14px;
+  width:420px;
+  max-height:95vh;
+  overflow:auto;
+  z-index:50;
+
+  background:rgba(10,14,20,0.96);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:20px;
+
+  backdrop-filter:blur(12px);
+
+  color:#d9e7f7;
+
+  box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+
+.header{
+  padding:20px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+
+.title{
+  font-size:22px;
+  font-weight:800;
+}
+
+.subtitle{
+  margin-top:10px;
+  line-height:1.6;
+  font-size:12px;
+  color:#9fb2c7;
+}
+
+.section{
+  padding:18px 20px;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+}
+
+.section h3{
+  margin:0 0 14px;
+  color:#7cb4ff;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:1px;
+}
+
+.control{
+  margin-bottom:16px;
+}
+
+.control label{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:8px;
+  font-size:12px;
+  color:#b9cadb;
+}
+
+input[type=range],select{
+  width:100%;
+}
+
+select{
+  background:#151b24;
+  color:white;
+  border:1px solid rgba(255,255,255,0.08);
+  padding:10px;
+  border-radius:10px;
+}
+
+button{
+  width:100%;
+  border:none;
+  border-radius:12px;
+  padding:13px;
+  cursor:pointer;
+  background:#1d6dff;
+  color:white;
+  font-weight:700;
+}
+
+button.secondary{
+  background:#18212d;
+  border:1px solid rgba(255,255,255,0.08);
+}
+
+.btnrow{
+  display:flex;
+  gap:10px;
+}
+
+.metrics{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.metric{
+  background:#101822;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.06);
+  padding:12px;
+}
+
+.metric .label{
+  color:#90a6c0;
+  font-size:11px;
+}
+
+.metric .value{
+  margin-top:5px;
+  font-size:18px;
+  font-weight:800;
+}
+
+.mode{
+  position:absolute;
+  right:14px;
+  top:14px;
+  z-index:60;
+  display:flex;
+  gap:10px;
+}
+
+.mode button{
+  width:100px;
+}
+
+.info{
+  position:absolute;
+  bottom:16px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:80;
+
+  background:rgba(0,0,0,0.75);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:12px;
+
+  padding:12px 18px;
+
+  color:#dce8f4;
+  font-size:13px;
+}
+
+.timeline{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:110px;
+  z-index:70;
+
+  background:linear-gradient(to top,rgba(5,7,10,0.98),rgba(5,7,10,0.84));
+  border-top:1px solid rgba(255,255,255,0.08);
+
+  padding:14px 24px;
+  box-sizing:border-box;
+}
+
+.timeline-head{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:12px;
+  color:#dbe7f5;
+}
+
+.legend{
+  display:grid;
+  grid-template-columns:18px auto;
+  gap:10px;
+  margin-bottom:10px;
+  align-items:center;
+  font-size:12px;
+}
+
+.sw{
+  width:18px;
+  height:18px;
+  border-radius:4px;
+}
+
+</style>
+</head>
+<body>
+
+<div id="viewDiv"></div>
+
+<div class="mode">
+  <button id="btn2d">2D MAP</button>
+  <button id="btn3d">3D VIEW</button>
+</div>
+
+<div class="panel">
+
+  <div class="header">
+    <div class="title">Human Fatigue / Dismount Burden</div>
+
+    <div class="subtitle">
+      Models combat effectiveness degradation caused by load weight,
+      terrain slope,
+      heat,
+      hydration,
+      movement speed,
+      and time under exertion.
+      
+      Useful for:
+      assault planning,
+      dismounted infiltration,
+      reserve timing,
+      casualty prediction,
+      and determining when forces become combat ineffective.
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Patrol Parameters</h3>
+
+    <div class="control">
+      <label>
+        Combat Load
+        <span id="loadLabel">32 kg</span>
+      </label>
+      <input type="range" id="loadSlider" min="10" max="70" value="32">
+    </div>
+
+    <div class="control">
+      <label>
+        Ambient Temperature
+        <span id="tempLabel">31°C</span>
+      </label>
+      <input type="range" id="tempSlider" min="0" max="52" value="31">
+    </div>
+
+    <div class="control">
+      <label>
+        Movement Speed
+        <span id="speedLabel">4 km/h</span>
+      </label>
+      <input type="range" id="speedSlider" min="1" max="9" step="0.5" value="4">
+    </div>
+
+    <div class="control">
+      <label>
+        Hydration Status
+        <span id="hydLabel">75%</span>
+      </label>
+      <input type="range" id="hydSlider" min="10" max="100" value="75">
+    </div>
+
+    <div class="control">
+      <label>Terrain Type</label>
+      <select id="terrainType">
+        <option value="road">Road / Hard Surface</option>
+        <option value="rolling">Rolling Terrain</option>
+        <option value="mountain">Mountain / Steep</option>
+        <option value="urban">Urban Rubble</option>
+        <option value="sand">Soft Sand</option>
+      </select>
+    </div>
+
+    <div class="btnrow">
+      <button id="runBtn">Run Analysis</button>
+      <button class="secondary" id="clearBtn">Clear</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Fatigue Assessment</h3>
+
+    <div class="metrics">
+
+      <div class="metric">
+        <div class="label">Combat Effectiveness</div>
+        <div class="value" id="effectivenessOut">—</div>
+      </div>
+
+      <div class="metric">
+        <div class="label">Heat Casualty Risk</div>
+        <div class="value" id="heatOut">—</div>
+      </div>
+
+      <div class="metric">
+        <div class="label">Projected March Range</div>
+        <div class="value" id="rangeOut">—</div>
+      </div>
+
+      <div class="metric">
+        <div class="label">Collapse Probability</div>
+        <div class="value" id="collapseOut">—</div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="section">
+    <h3>Legend</h3>
+
+    <div class="legend">
+      <div class="sw" style="background:#61a5ff"></div>
+      <div>Low fatigue mobility corridor</div>
+    </div>
+
+    <div class="legend">
+      <div class="sw" style="background:#ffd65a"></div>
+      <div>Operational strain region</div>
+    </div>
+
+    <div class="legend">
+      <div class="sw" style="background:#ff5656"></div>
+      <div>Combat ineffective / exhaustion zone</div>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="timeline">
+
+  <div class="timeline-head">
+    <div>Fatigue Timeline</div>
+    <div id="timeLabel">T+0 hr</div>
+  </div>
+
+  <input type="range" id="timeSlider" min="0" max="24" value="0">
+
+</div>
+
+<div class="info">
+  Click map to place patrol origin. Timeline evolves exhaustion and movement reach.
+</div>
+
+<script>
+require([
+  "esri/Map",
+  "esri/views/MapView",
+  "esri/views/SceneView",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic",
+  "esri/geometry/Point",
+  "esri/geometry/geometryEngine"
+], function(
+  Map,
+  MapView,
+  SceneView,
+  GraphicsLayer,
+  Graphic,
+  Point,
+  geometryEngine
+){
+
+const $ = (id)=>document.getElementById(id);
+
+const loadSlider = $("loadSlider");
+const tempSlider = $("tempSlider");
+const speedSlider = $("speedSlider");
+const hydSlider = $("hydSlider");
+const terrainType = $("terrainType");
+const runBtn = $("runBtn");
+const clearBtn = $("clearBtn");
+const btn2d = $("btn2d");
+const btn3d = $("btn3d");
+const timeSlider = $("timeSlider");
+
+const loadLabel = $("loadLabel");
+const tempLabel = $("tempLabel");
+const speedLabel = $("speedLabel");
+const hydLabel = $("hydLabel");
+const timeLabel = $("timeLabel");
+
+const effectivenessOut = $("effectivenessOut");
+const heatOut = $("heatOut");
+const rangeOut = $("rangeOut");
+const collapseOut = $("collapseOut");
+
+loadSlider.oninput = ()=>loadLabel.textContent = loadSlider.value + " kg";
+tempSlider.oninput = ()=>tempLabel.textContent = tempSlider.value + "°C";
+speedSlider.oninput = ()=>speedLabel.textContent = speedSlider.value + " km/h";
+hydSlider.oninput = ()=>hydLabel.textContent = hydSlider.value + "%";
+
+const analysisLayer = new GraphicsLayer();
+const unitLayer = new GraphicsLayer();
+
+const map = new Map({
+  basemap:"satellite",
+  ground:"world-elevation",
+  layers:[analysisLayer,unitLayer]
+});
+
+const mapView = new MapView({
+  container:"viewDiv",
+  map,
+  center:[73.0479,33.6844],
+  zoom:11
+});
+
+const sceneView = new SceneView({
+  container:null,
+  map,
+  center:[73.0479,33.6844],
+  zoom:11,
+  qualityProfile:"high"
+});
+
+let activeView = mapView;
+let patrolPoint = null;
+let simulationReady = false;
+
+function switchView(target){
+
+  const vp = activeView.viewpoint?.clone();
+
+  activeView.container = null;
+
+  target.container = "viewDiv";
+
+  if(vp){
+    target.viewpoint = vp;
+  }
+
+  activeView = target;
+}
+
+btn2d.onclick = ()=>switchView(mapView);
+btn3d.onclick = ()=>switchView(sceneView);
+
+function attachPlacement(view){
+
+  view.on("click",function(event){
+
+    if(!event.mapPoint) return;
+
+    patrolPoint = event.mapPoint.clone();
+
+    unitLayer.removeAll();
+
+    unitLayer.add(new Graphic({
+      geometry:patrolPoint,
+      symbol:{
+        type:"simple-marker",
+        size:16,
+        color:[100,180,255,1],
+        outline:{
+          color:[0,0,0,1],
+          width:2
+        }
+      }
+    }));
+  });
+}
+
+attachPlacement(mapView);
+attachPlacement(sceneView);
+
+runBtn.onclick = ()=>{
+
+  if(!patrolPoint){
+    alert("Place patrol origin first.");
+    return;
+  }
+
+  simulationReady = true;
+
+  evolveFatigue(Number(timeSlider.value));
+};
+
+timeSlider.oninput = ()=>{
+
+  timeLabel.textContent = `T+${timeSlider.value} hr`;
+
+  if(simulationReady){
+    evolveFatigue(Number(timeSlider.value));
+  }
+};
+
+function evolveFatigue(hour){
+
+  analysisLayer.removeAll();
+
+  const load = Number(loadSlider.value);
+  const temp = Number(tempSlider.value);
+  const speed = Number(speedSlider.value);
+  const hydration = Number(hydSlider.value);
+
+  const terrainFactor = getTerrainFactor(terrainType.value);
+
+  const fatigueScore = (
+    (load*0.9) +
+    (temp*1.1) +
+    (speed*8) +
+    ((100-hydration)*0.8) +
+    (terrainFactor*12) +
+    (hour*5)
+  );
+
+  const effectiveness = Math.max(5,100 - fatigueScore);
+
+  const heatRisk = calculateHeatRisk(temp,hydration,hour);
+
+  const projectedRange = Math.max(
+    2,
+    ((effectiveness/100)*speed*hour)
+  );
+
+  const collapseProb = Math.min(
+    95,
+    Math.round(fatigueScore*0.7)
+  );
+
+  effectivenessOut.textContent = Math.round(effectiveness) + "%";
+  heatOut.textContent = heatRisk;
+  rangeOut.textContent = projectedRange.toFixed(1) + " km";
+  collapseOut.textContent = collapseProb + "%";
+
+  drawFatigueZones(effectiveness,projectedRange);
+}
+
+function drawFatigueZones(effectiveness,rangeKm){
+
+  if(!patrolPoint) return;
+
+  const lowFatigueRadius = rangeKm * 1000;
+  const strainRadius = lowFatigueRadius * 0.65;
+  const collapseRadius = lowFatigueRadius * 0.3;
+
+  const lowFatigue = geometryEngine.geodesicBuffer(
+    patrolPoint,
+    lowFatigueRadius,
+    "meters"
+  );
+
+  const strain = geometryEngine.geodesicBuffer(
+    patrolPoint,
+    strainRadius,
+    "meters"
+  );
+
+  const collapse = geometryEngine.geodesicBuffer(
+    patrolPoint,
+    collapseRadius,
+    "meters"
+  );
+
+  if(lowFatigue){
+
+    analysisLayer.add(new Graphic({
+      geometry:lowFatigue,
+      symbol:{
+        type:"simple-fill",
+        color:[97,165,255,0.12],
+        outline:{
+          color:[97,165,255,0.5],
+          width:2
+        }
+      }
+    }));
+  }
+
+  if(strain){
+
+    analysisLayer.add(new Graphic({
+      geometry:strain,
+      symbol:{
+        type:"simple-fill",
+        color:[255,214,90,0.18],
+        outline:{
+          color:[255,214,90,0.8],
+          width:2
+        }
+      }
+    }));
+  }
+
+  if(collapse){
+
+    analysisLayer.add(new Graphic({
+      geometry:collapse,
+      symbol:{
+        type:"simple-fill",
+        color:[255,86,86,0.22],
+        outline:{
+          color:[255,86,86,1],
+          width:2
+        }
+      }
+    }));
+  }
+}
+
+function calculateHeatRisk(temp,hydration,hour){
+
+  const score = temp + ((100-hydration)*0.5) + (hour*2);
+
+  if(score < 35) return "LOW";
+  if(score < 60) return "MODERATE";
+  if(score < 85) return "HIGH";
+
+  return "SEVERE";
+}
+
+function getTerrainFactor(type){
+
+  switch(type){
+
+    case "road":
+      return 1;
+
+    case "rolling":
+      return 2;
+
+    case "mountain":
+      return 4;
+
+    case "urban":
+      return 3;
+
+    case "sand":
+      return 5;
+
+    default:
+      return 2;
+  }
+}
+
+clearBtn.onclick = ()=>{
+
+  patrolPoint = null;
+  simulationReady = false;
+
+  analysisLayer.removeAll();
+  unitLayer.removeAll();
+
+  effectivenessOut.textContent = "—";
+  heatOut.textContent = "—";
+  rangeOut.textContent = "—";
+  collapseOut.textContent = "—";
+
+  timeSlider.value = 0;
+  timeLabel.textContent = "T+0 hr";
+};
+
+});
+</script>
+
+</body>
+</html>

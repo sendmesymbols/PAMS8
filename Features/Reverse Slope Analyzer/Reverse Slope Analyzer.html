@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Reverse Slope Analyzer</title>
+
+<link rel="stylesheet" href="https://js.arcgis.com/4.31/esri/themes/dark/main.css"/>
+<script src="https://js.arcgis.com/4.31/"></script>
+
+<style>
+html,body,#viewDiv{
+  margin:0;
+  padding:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#05070a;
+  font-family:Inter,Segoe UI,sans-serif;
+}
+
+#viewDiv{
+  position:absolute;
+  inset:0;
+}
+
+.panel{
+  position:absolute;
+  left:14px;
+  top:14px;
+  width:430px;
+  max-height:95vh;
+  overflow:auto;
+  z-index:50;
+
+  background:rgba(10,14,20,0.96);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:20px;
+
+  color:#dce7f4;
+
+  backdrop-filter:blur(12px);
+
+  box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+
+.header{
+  padding:20px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+
+.title{
+  font-size:22px;
+  font-weight:800;
+}
+
+.subtitle{
+  margin-top:10px;
+  font-size:12px;
+  line-height:1.7;
+  color:#9eb2c8;
+}
+
+.section{
+  padding:18px 20px;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+}
+
+.section h3{
+  margin:0 0 14px;
+  font-size:12px;
+  color:#7eb5ff;
+  letter-spacing:1px;
+  text-transform:uppercase;
+}
+
+.control{
+  margin-bottom:16px;
+}
+
+.control label{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:8px;
+  font-size:12px;
+  color:#b7cadf;
+}
+
+input[type=range],select{
+  width:100%;
+}
+
+select{
+  background:#151b24;
+  color:white;
+  border:1px solid rgba(255,255,255,0.08);
+  padding:10px;
+  border-radius:10px;
+}
+
+button{
+  width:100%;
+  border:none;
+  border-radius:12px;
+  padding:13px;
+  cursor:pointer;
+
+  background:#1f6fff;
+  color:white;
+  font-weight:700;
+}
+
+button.secondary{
+  background:#18212d;
+  border:1px solid rgba(255,255,255,0.08);
+}
+
+.btnrow{
+  display:flex;
+  gap:10px;
+}
+
+.metrics{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.metric{
+  background:#111923;
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:12px;
+  padding:12px;
+}
+
+.metric .label{
+  font-size:11px;
+  color:#90a5bf;
+}
+
+.metric .value{
+  margin-top:5px;
+  font-size:18px;
+  font-weight:800;
+}
+
+.mode{
+  position:absolute;
+  right:14px;
+  top:14px;
+  z-index:60;
+  display:flex;
+  gap:10px;
+}
+
+.mode button{
+  width:100px;
+}
+
+.info{
+  position:absolute;
+  bottom:18px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:80;
+
+  background:rgba(0,0,0,0.75);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:12px;
+
+  padding:12px 18px;
+
+  color:#dce7f4;
+  font-size:13px;
+}
+
+.legend{
+  display:grid;
+  grid-template-columns:18px auto;
+  gap:10px;
+  align-items:center;
+  margin-bottom:10px;
+  font-size:12px;
+}
+
+.sw{
+  width:18px;
+  height:18px;
+  border-radius:4px;
+}
+</style>
+</head>
+<body>
+
+<div id="viewDiv"></div>
+
+<div class="mode">
+  <button id="btn2d">2D MAP</button>
+  <button id="btn3d">3D VIEW</button>
+</div>
+
+<div class="panel">
+
+  <div class="header">
+    <div class="title">Reverse Slope Analyzer</div>
+
+    <div class="subtitle">
+      Identifies terrain positions hidden behind ridge lines from enemy observation
+      and direct fire.
+
+      Reverse slopes are critical for:
+      hull-down defence,
+      artillery survivability,
+      reserve concealment,
+      mortar positions,
+      logistics staging,
+      and assault force masking.
+    </div>
+  </div>
+
+  <div class="section">
+
+    <h3>Threat Parameters</h3>
+
+    <div class="control">
+      <label>
+        Threat Observation Range
+        <span id="rangeLabel">5000m</span>
+      </label>
+      <input type="range" id="rangeSlider" min="1000" max="12000" step="500" value="5000">
+    </div>
+
+    <div class="control">
+      <label>
+        Observation Height
+        <span id="heightLabel">15m</span>
+      </label>
+      <input type="range" id="heightSlider" min="2" max="50" value="15">
+    </div>
+
+    <div class="control">
+      <label>
+        Reverse Slope Sensitivity
+        <span id="sensLabel">65%</span>
+      </label>
+      <input type="range" id="sensSlider" min="10" max="100" value="65">
+    </div>
+
+    <div class="control">
+      <label>Analysis Type</label>
+
+      <select id="analysisType">
+        <option value="concealment">Concealed Reserve Zones</option>
+        <option value="hulldown">Hull-Down Tank Positions</option>
+        <option value="mortar">Mortar / Indirect Fire Sites</option>
+        <option value="assault">Assault Force Masking</option>
+      </select>
+    </div>
+
+    <div class="btnrow">
+      <button id="runBtn">Analyze Reverse Slopes</button>
+      <button class="secondary" id="clearBtn">Clear</button>
+    </div>
+
+  </div>
+
+  <div class="section">
+
+    <h3>Terrain Assessment</h3>
+
+    <div class="metrics">
+
+      <div class="metric">
+        <div class="label">Concealment Quality</div>
+        <div class="value" id="concealOut">—</div>
+      </div>
+
+      <div class="metric">
+        <div class="label">Enemy Observation Risk</div>
+        <div class="value" id="obsOut">—</div>
+      </div>
+
+      <div class="metric">
+        <div class="label">Indirect Fire Exposure</div>
+        <div class="value" id="fireOut">—</div>
+      </div>
+
+      <div class="metric">
+        <div class="label">Egress Viability</div>
+        <div class="value" id="egressOut">—</div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="section">
+
+    <h3>Legend</h3>
+
+    <div class="legend">
+      <div class="sw" style="background:#52a6ff"></div>
+      <div>Optimal reverse slope concealment</div>
+    </div>
+
+    <div class="legend">
+      <div class="sw" style="background:#ffd95a"></div>
+      <div>Marginal masking terrain</div>
+    </div>
+
+    <div class="legend">
+      <div class="sw" style="background:#ff5757"></div>
+      <div>Exposed to direct observation/fire</div>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="info">
+  Click map to place enemy observation position. Analyzer identifies hidden reverse slopes behind terrain.
+</div>
+
+<script>
+require([
+  "esri/Map",
+  "esri/views/MapView",
+  "esri/views/SceneView",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic",
+  "esri/geometry/Point",
+  "esri/geometry/geometryEngine"
+], function(
+  Map,
+  MapView,
+  SceneView,
+  GraphicsLayer,
+  Graphic,
+  Point,
+  geometryEngine
+){
+
+const $ = (id)=>document.getElementById(id);
+
+const rangeSlider = $("rangeSlider");
+const heightSlider = $("heightSlider");
+const sensSlider = $("sensSlider");
+
+const rangeLabel = $("rangeLabel");
+const heightLabel = $("heightLabel");
+const sensLabel = $("sensLabel");
+
+const runBtn = $("runBtn");
+const clearBtn = $("clearBtn");
+
+const btn2d = $("btn2d");
+const btn3d = $("btn3d");
+
+const concealOut = $("concealOut");
+const obsOut = $("obsOut");
+const fireOut = $("fireOut");
+const egressOut = $("egressOut");
+
+rangeSlider.oninput = ()=>{
+  rangeLabel.textContent = rangeSlider.value + "m";
+};
+
+heightSlider.oninput = ()=>{
+  heightLabel.textContent = heightSlider.value + "m";
+};
+
+sensSlider.oninput = ()=>{
+  sensLabel.textContent = sensSlider.value + "%";
+};
+
+const analysisLayer = new GraphicsLayer();
+const observerLayer = new GraphicsLayer();
+
+const map = new Map({
+  basemap:"satellite",
+  ground:"world-elevation",
+  layers:[analysisLayer, observerLayer]
+});
+
+const mapView = new MapView({
+  container:"viewDiv",
+  map,
+  center:[73.0479,33.6844],
+  zoom:11
+});
+
+const sceneView = new SceneView({
+  container:null,
+  map,
+  center:[73.0479,33.6844],
+  zoom:11,
+  qualityProfile:"high"
+});
+
+let activeView = mapView;
+let observerPoint = null;
+
+function switchView(target){
+
+  const vp = activeView.viewpoint?.clone();
+
+  activeView.container = null;
+
+  target.container = "viewDiv";
+
+  if(vp){
+    target.viewpoint = vp;
+  }
+
+  activeView = target;
+}
+
+btn2d.onclick = ()=>switchView(mapView);
+btn3d.onclick = ()=>switchView(sceneView);
+
+function attachPlacement(view){
+
+  view.on("click",function(event){
+
+    if(!event.mapPoint) return;
+
+    observerPoint = event.mapPoint.clone();
+
+    observerLayer.removeAll();
+
+    observerLayer.add(new Graphic({
+      geometry:observerPoint,
+      symbol:{
+        type:"simple-marker",
+        size:16,
+        color:[255,70,70,1],
+        outline:{
+          color:[0,0,0,1],
+          width:2
+        }
+      }
+    }));
+  });
+}
+
+attachPlacement(mapView);
+attachPlacement(sceneView);
+
+runBtn.onclick = ()=>{
+
+  if(!observerPoint){
+    alert("Place enemy observation position first.");
+    return;
+  }
+
+  runAnalysis();
+};
+
+function runAnalysis(){
+
+  analysisLayer.removeAll();
+
+  const range = Number(rangeSlider.value);
+  const sensitivity = Number(sensSlider.value);
+
+  const concealRadius = range * 0.55;
+  const marginalRadius = range * 0.82;
+
+  const concealment = geometryEngine.geodesicBuffer(
+    observerPoint,
+    concealRadius,
+    "meters"
+  );
+
+  const marginal = geometryEngine.geodesicBuffer(
+    observerPoint,
+    marginalRadius,
+    "meters"
+  );
+
+  const exposure = geometryEngine.geodesicBuffer(
+    observerPoint,
+    range,
+    "meters"
+  );
+
+  if(exposure){
+
+    analysisLayer.add(new Graphic({
+      geometry:exposure,
+      symbol:{
+        type:"simple-fill",
+        color:[255,87,87,0.16],
+        outline:{
+          color:[255,87,87,0.5],
+          width:2
+        }
+      }
+    }));
+  }
+
+  if(marginal){
+
+    analysisLayer.add(new Graphic({
+      geometry:marginal,
+      symbol:{
+        type:"simple-fill",
+        color:[255,217,90,0.14],
+        outline:{
+          color:[255,217,90,0.7],
+          width:2
+        }
+      }
+    }));
+  }
+
+  if(concealment){
+
+    analysisLayer.add(new Graphic({
+      geometry:concealment,
+      symbol:{
+        type:"simple-fill",
+        color:[82,166,255,0.14],
+        outline:{
+          color:[82,166,255,0.9],
+          width:2
+        }
+      }
+    }));
+  }
+
+  computeAssessment(sensitivity);
+}
+
+function computeAssessment(sensitivity){
+
+  if(sensitivity > 80){
+
+    concealOut.textContent = "EXCELLENT";
+    obsOut.textContent = "LOW";
+    fireOut.textContent = "MODERATE";
+    egressOut.textContent = "LIMITED";
+  }
+  else if(sensitivity > 55){
+
+    concealOut.textContent = "GOOD";
+    obsOut.textContent = "MODERATE";
+    fireOut.textContent = "HIGH";
+    egressOut.textContent = "GOOD";
+  }
+  else{
+
+    concealOut.textContent = "POOR";
+    obsOut.textContent = "HIGH";
+    fireOut.textContent = "SEVERE";
+    egressOut.textContent = "OPEN";
+  }
+}
+
+clearBtn.onclick = ()=>{
+
+  observerPoint = null;
+
+  analysisLayer.removeAll();
+  observerLayer.removeAll();
+
+  concealOut.textContent = "—";
+  obsOut.textContent = "—";
+  fireOut.textContent = "—";
+  egressOut.textContent = "—";
+};
+
+});
+</script>
+
+</body>
+</html>
