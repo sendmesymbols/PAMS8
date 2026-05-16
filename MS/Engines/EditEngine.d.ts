@@ -31,6 +31,10 @@ declare class EditEngine {
     private _originalCtrlPts;
     private _originalBaseLnPts;
     private _additionalSnapshots;
+    private _isMixedEdit;
+    private _mixedSnapshots;
+    private _mixedProxyGraphic;
+    private _mixedProxyOriginalGeometry;
     private _handleLayer;
     private _handleGraphics;
     private _pointerDownHandle;
@@ -86,6 +90,7 @@ declare class EditEngine {
     };
     private _activatePointEdit;
     private _activatePolyEdit;
+    private _activateMixedEditSession;
     /**
      * After SketchViewModel has updated the graphic's geometry, compute the
      * 2D similarity transform (translate + rotate + uniform scale) that was
@@ -95,8 +100,16 @@ declare class EditEngine {
     private _syncCtrlPts;
     /** Sync CTRL_PTS for an additional graphic using its own pre-edit snapshot. */
     private _syncCtrlPtsFrom;
+    /**
+     * Activate mixed edit mode for heterogeneous selections.
+     * Supports move + rotate; scale is disabled.
+     */
+    activateMixedEdit(graphic: Graphic, additionalGraphics?: Graphic[]): void;
     private _syncPointDrawEssentials;
     private _syncGeometryPoints;
+    private _applyMixedCurrentTransform;
+    private _applySnapshotTransform;
+    private _applyAffineToGeometry;
     /**
      * Derive the exact 2D similarity transform mapping oldGeom → newGeom.
      *
@@ -152,6 +165,10 @@ declare class EditEngine {
     private _cloneCtrlPts;
     /** Deep-clone BASE_LN_PTS ({ startPt, midPt, endPt }). */
     private _cloneBaseLnPts;
+    private _createMixedProxyGraphic;
+    private _restoreMixedSnapshots;
+    private _clearMixedSessionState;
+    private _finalizeMixedEditBeforeDeactivate;
     private _emit;
     /**
      * Returns the Edit submenu item tree.

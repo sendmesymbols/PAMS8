@@ -70,6 +70,11 @@ class EditEngine {
 
     // Additional graphics (from a multi-selection) included in the same transform session.
     private _additionalSnapshots: { graphic: Graphic; geometry: any; ctrlPts: Point[] | null; baseLnPts: any }[] = [];
+    // Mixed-edit session state (Point/FPoint + Line/Area).
+    private _isMixedEdit = false;
+    private _mixedSnapshots: { graphic: Graphic; geometry: any; ctrlPts: Point[] | null; baseLnPts: any }[] = [];
+    private _mixedProxyGraphic: Graphic | null = null;
+    private _mixedProxyOriginalGeometry: any = null;
 
     // Reshape handle state
     private _handleLayer: GraphicsLayer;
@@ -175,6 +180,9 @@ class EditEngine {
      * Safe to call even when no edit is in progress.
      */
     public deactivate(): void {
+        if (this._isMixedEdit) {
+            this._finalizeMixedEditBeforeDeactivate();
+        }
         if (this._sketchVM) {
             // For tool:"transform" (scale/rotate), SketchViewModel "complete" only fires
             // when the user clicks elsewhere — NOT when releasing a transform handle.
@@ -211,6 +219,10 @@ class EditEngine {
         this._additionalSnapshots = [];
         this._isDraggingHandle = false;
         this._activeHandleIndex = -1;
+        this._isMixedEdit = false;
+        this._mixedSnapshots = [];
+        this._mixedProxyGraphic = null;
+        this._mixedProxyOriginalGeometry = null;
     }
 
     /** True while control-point handles are visible on screen. */
@@ -348,6 +360,67 @@ class EditEngine {
         });
     }
 
+    private _activateMixedEditSession(graphic: Graphic, additionalGraphics: Graphic[] = []): void {
+        const allGraphics = [graphic, ...additionalGraphics];
+        this._mixedSnapshots = allGraphics.map(g => {
+            const de = this._getDrawEssentials(g);
+            return {
+                graphic: g,
+                geometry: g.geometry?.clone?.() ?? g.geometry,
+                ctrlPts: this._cloneCtrlPts((de as any)?.CTRL_PTS),
+                baseLnPts: this._cloneBaseLnPts((de as any)?.BASE_LN_PTS),
+            };
+        });
+
+        this._mixedSnapshots.forEach(s => this._deAnnotate(s.graphic));
+
+        const proxy = this._createMixedProxyGraphic(allGraphics);
+        if (!proxy) return;
+        this._mixedProxyGraphic = proxy;
+        this._mixedProxyOriginalGeometry = proxy.geometry?.clone?.() ?? proxy.geometry;
+        this._handleLayer.add(proxy);
+
+        this._sketchVM = new SketchViewModel({
+            view: this.view,
+            layer: this._handleLayer,
+            defaultUpdateOptions: {
+                enableScaling: false,
+                enableRotation: true,
+                toggleToolOnClick: false,
+                tool: "transform",
+            } as any,
+        });
+
+        this._sketchVM.update([proxy], {
+            tool: "transform",
+            enableScaling: false,
+            enableRotation: true,
+            toggleToolOnClick: false,
+        } as any);
+
+        this._sketchVM.on("update", (evt: any) => {
+            switch (evt.state) {
+                case "active":
+                    this._applyMixedCurrentTransform();
+                    break;
+                case "complete":
+                    this._applyMixedCurrentTransform();
+                    this._mixedSnapshots.forEach(s => this._reAnnotate(s.graphic));
+                    this._emit("changeInSymbol", {
+                        graphic,
+                        additionalGraphics: additionalGraphics
+                    });
+                    this._clearMixedSessionState();
+                    break;
+                case "cancel":
+                    this._restoreMixedSnapshots();
+                    this._mixedSnapshots.forEach(s => this._reAnnotate(s.graphic));
+                    this._clearMixedSessionState();
+                    break;
+            }
+        });
+    }
+
     // -----------------------------------------------------------------------
     // CTRL_PTS synchronisation after SketchViewModel transform
     // -----------------------------------------------------------------------
@@ -410,6 +483,18 @@ class EditEngine {
         }
     }
 
+    /**
+     * Activate mixed edit mode for heterogeneous selections.
+     * Supports move + rotate; scale is disabled.
+     */
+    public activateMixedEdit(graphic: Graphic, additionalGraphics: Graphic[] = []): void {
+        this.deactivate();
+        this._activeGraphic = graphic;
+        this._isMixedEdit = true;
+        this._activateMixedEditSession(graphic, additionalGraphics);
+        EngineLogger.nextStep('Edit Engine', 'Mixed edit mode active — drag to move or rotate (scale disabled)');
+    }
+
     private _syncPointDrawEssentials(graphic: Graphic): void {
         const de = this._getDrawEssentials(graphic);
         if (!de || graphic.geometry?.type !== "point") return;
@@ -441,6 +526,65 @@ class EditEngine {
                 ),
             };
         }
+    }
+
+    private _applyMixedCurrentTransform(): void {
+        if (!this._mixedProxyGraphic || this._mixedSnapshots.length === 0) return;
+        if (!this._mixedProxyOriginalGeometry) return;
+        const t = this._computeAffineTransform(this._mixedProxyOriginalGeometry, this._mixedProxyGraphic.geometry);
+        this._mixedSnapshots.forEach(s => this._applySnapshotTransform(s, t));
+    }
+
+    private _applySnapshotTransform(
+        snapshot: { graphic: Graphic; geometry: any; ctrlPts: Point[] | null; baseLnPts: any },
+        t: AffineTransform
+    ): void {
+        snapshot.graphic.geometry = this._applyAffineToGeometry(snapshot.geometry, t);
+        const de = this._getDrawEssentials(snapshot.graphic);
+        if (!de) return;
+
+        this._syncGeometryPoints(de, t);
+        if (snapshot.ctrlPts) {
+            (de as any).CTRL_PTS = snapshot.ctrlPts.map(pt => this._applyAffineToPoint(pt, t));
+        }
+        if (snapshot.baseLnPts) {
+            const result: any = {};
+            if (snapshot.baseLnPts.startPt) result.startPt = this._applyAffineToPoint(snapshot.baseLnPts.startPt, t);
+            if (snapshot.baseLnPts.midPt) result.midPt = this._applyAffineToPoint(snapshot.baseLnPts.midPt, t);
+            if (snapshot.baseLnPts.endPt) result.endPt = this._applyAffineToPoint(snapshot.baseLnPts.endPt, t);
+            (de as any).BASE_LN_PTS = result;
+        }
+    }
+
+    private _applyAffineToGeometry(geometry: any, t: AffineTransform): any {
+        if (!geometry?.clone) return geometry;
+        const g = geometry.clone();
+
+        if (g.type === "point") {
+            const p = this._applyAffineToPoint(g as Point, t);
+            g.x = p.x;
+            g.y = p.y;
+            return g;
+        }
+        if (g.type === "polyline" && g.paths) {
+            g.paths = g.paths.map((path: number[][]) =>
+                path.map(([x, y]: number[]) => {
+                    const p = this._applyAffineToPoint(new Point({ x, y, spatialReference: g.spatialReference }), t);
+                    return [p.x, p.y];
+                })
+            );
+            return g;
+        }
+        if (g.type === "polygon" && g.rings) {
+            g.rings = g.rings.map((ring: number[][]) =>
+                ring.map(([x, y]: number[]) => {
+                    const p = this._applyAffineToPoint(new Point({ x, y, spatialReference: g.spatialReference }), t);
+                    return [p.x, p.y];
+                })
+            );
+            return g;
+        }
+        return g;
     }
 
     /**
@@ -867,6 +1011,80 @@ class EditEngine {
             midPt: clonePt(b.midPt),
             endPt: clonePt(b.endPt),
         };
+    }
+
+    private _createMixedProxyGraphic(graphics: Graphic[]): Graphic | null {
+        const pts: { x: number; y: number }[] = [];
+        graphics.forEach(g => {
+            const ext = g.geometry?.extent;
+            if (ext) {
+                pts.push({ x: ext.xmin, y: ext.ymin }, { x: ext.xmax, y: ext.ymax });
+            } else if (g.geometry?.type === "point") {
+                pts.push({ x: g.geometry.x, y: g.geometry.y });
+            }
+        });
+        if (pts.length === 0) return null;
+
+        const minX = Math.min(...pts.map(p => p.x));
+        const maxX = Math.max(...pts.map(p => p.x));
+        const minY = Math.min(...pts.map(p => p.y));
+        const maxY = Math.max(...pts.map(p => p.y));
+        const padX = (maxX - minX || 1) * 0.05;
+        const padY = (maxY - minY || 1) * 0.05;
+        const ring = [
+            [minX - padX, minY - padY],
+            [maxX + padX, minY - padY],
+            [maxX + padX, maxY + padY],
+            [minX - padX, maxY + padY],
+            [minX - padX, minY - padY],
+        ];
+
+        return new Graphic({
+            geometry: {
+                type: "polygon",
+                rings: [ring],
+                spatialReference: this.view.spatialReference,
+            } as any,
+            symbol: {
+                type: "simple-fill",
+                color: [0, 0, 0, 0],
+                outline: { color: [0, 120, 255, 0.8], width: 1, style: "dash" },
+            } as any,
+            attributes: { isMixedTransformProxy: true },
+        });
+    }
+
+    private _restoreMixedSnapshots(): void {
+        this._mixedSnapshots.forEach(s => {
+            s.graphic.geometry = s.geometry?.clone?.() ?? s.geometry;
+            const de = this._getDrawEssentials(s.graphic);
+            if (!de) return;
+            if (s.ctrlPts) (de as any).CTRL_PTS = this._cloneCtrlPts(s.ctrlPts) ?? s.ctrlPts;
+            if (s.baseLnPts) (de as any).BASE_LN_PTS = this._cloneBaseLnPts(s.baseLnPts);
+        });
+    }
+
+    private _clearMixedSessionState(): void {
+        if (this._mixedProxyGraphic) {
+            this._handleLayer.remove(this._mixedProxyGraphic);
+        }
+        this._mixedProxyGraphic = null;
+        this._mixedProxyOriginalGeometry = null;
+        this._mixedSnapshots = [];
+        this._isMixedEdit = false;
+    }
+
+    private _finalizeMixedEditBeforeDeactivate(): void {
+        if (!this._isMixedEdit || !this._sketchVM || !this._mixedProxyGraphic) return;
+        this._applyMixedCurrentTransform();
+        this._mixedSnapshots.forEach(s => this._reAnnotate(s.graphic));
+        this._emit("changeInSymbol", {
+            graphic: this._activeGraphic,
+            additionalGraphics: this._mixedSnapshots
+                .map(s => s.graphic)
+                .filter(g => g !== this._activeGraphic),
+        });
+        this._clearMixedSessionState();
     }
 
     private _emit(type: string, data: any): void {

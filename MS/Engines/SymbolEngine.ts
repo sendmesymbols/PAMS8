@@ -1117,8 +1117,30 @@ class SymbolEngine implements Evented {
     const additional = isInSelection
       ? selected.filter((g) => g !== graphic)
       : [];
+    const allForEdit = [graphic, ...additional];
+    const getGeomType = (g: Graphic): string => {
+      const deType = g.attributes?.drawEssentials?.SYM_GEO_TYPE;
+      if (deType) return `${deType}`;
+      if (g.geometry?.type === 'point') return 'Point';
+      if (g.geometry?.type === 'polyline') return 'Line';
+      if (g.geometry?.type === 'polygon') return 'Area';
+      return '';
+    };
+    const hasPointFamily = allForEdit.some((g) => {
+      const t = getGeomType(g);
+      return t === 'Point' || t === 'FPoint';
+    });
+    const hasLineAreaFamily = allForEdit.some((g) => {
+      const t = getGeomType(g);
+      return t === 'Line' || t === 'Area' || t === 'Polyline' || t === 'Polygon';
+    });
+    const isMixedSelection = allForEdit.length > 1 && hasPointFamily && hasLineAreaFamily;
     this._capturePreEditSnapshot(graphic, additional, 'Move, Scale, Rotate');
-    this._editEngine.activate(graphic, additional);
+    if (isMixedSelection) {
+      this._editEngine.activateMixedEdit(graphic, additional);
+    } else {
+      this._editEngine.activate(graphic, additional);
+    }
   }
 
   /**
