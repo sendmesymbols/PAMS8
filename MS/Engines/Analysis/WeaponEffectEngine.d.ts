@@ -52,7 +52,7 @@ export declare class WeaponEffectEngine {
     private _buildAzimuthWedge;
     private _computeWEZ;
     private _is3D;
-    /** Returns fill alpha (0-255) from the panel's fill-opacity slider. */
+    /** Returns fill alpha (0-1) from the panel's fill-opacity slider. */
     private _getFillAlpha;
     private _wezZoneSymbol;
     private _deadZoneSymbol;

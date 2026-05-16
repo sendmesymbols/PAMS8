@@ -355,10 +355,10 @@ export class WeaponEffectEngine {
     return this._view?.type === '3d';
   }
 
-  /** Returns fill alpha (0-255) from the panel's fill-opacity slider. */
+  /** Returns fill alpha (0-1) from the panel's fill-opacity slider. */
   private _getFillAlpha(): number {
     const pct = Number(this._inp('wez-fill-opacity')?.value ?? 22);
-    return Math.round((pct / 100) * 255);
+    return Math.max(0, Math.min(1, pct / 100));
   }
 
   private _wezZoneSymbol(color: [number, number, number], extrudeM: number): any {
@@ -368,14 +368,14 @@ export class WeaponEffectEngine {
       const layers: any[] = [{
         type: 'fill',
         material: { color: [r, g, b, alpha] },
-        outline: { color: [r, g, b, 210], size: 1.8 },
+        outline: { color: [r, g, b, 210 / 255], size: 1.8 },
       }];
       if (extrudeM > 0 && this._panelEl) {
         const extrudeCheck = this._panelEl.querySelector<HTMLInputElement>('#wez-opt-extrude');
         if (extrudeCheck?.checked) {
           layers.push({
             type: 'extrude',
-            material: { color: [r, g, b, Math.round(alpha * 0.55)] },
+            material: { color: [r, g, b, alpha * 0.55] },
             edges: { type: 'solid', color: [r, g, b, 60], size: 0.5 },
             size: extrudeM,
           });
@@ -386,7 +386,7 @@ export class WeaponEffectEngine {
     return {
       type: 'simple-fill',
       color: [r, g, b, alpha],
-      outline: { color: [r, g, b, 220], width: 1.8 },
+      outline: { color: [r, g, b, 220 / 255], width: 1.8 },
     } as any;
   }
 

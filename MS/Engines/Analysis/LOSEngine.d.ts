@@ -2,7 +2,7 @@
  * LOSEngine.ts
  * Line-of-Sight / Viewshed analysis engine.
  *
- * 3D SceneView → Uses ArcGIS LineOfSightAnalysis for direct-target LOS
+ * 3D SceneView → Uses fixed-resolution terrain ray-casting for direct-target LOS
  *                + ArcGIS ViewshedAnalysis for viewshed dome.
  * 2D MapView   → ElevationSampler terrain ray-casting only.
  *
@@ -29,14 +29,16 @@ export declare class LOSEngine {
     private _targets;
     private _panelEl;
     private _pickHandle;
-    private _pickMode;
     private _losAnalysis;
     private _losAnalysisView;
     private _losResultsWatch;
-    private _losObserverPoint;
+    private _committedLOSAnalyses;
     private _viewshedAnalysis;
     private _viewshedAnalysisView;
+    private _viewshedLayer;
+    private _viewshedLayerView;
     private _committedViewshedAnalysis;
+    private _committedViewshedLayer;
     private _nativeStateWatches;
     private _isDragging;
     private _dragOffsetX;
@@ -50,6 +52,8 @@ export declare class LOSEngine {
     private _clearLOSAnalysis;
     private _clearCommittedViewshedAnalysis;
     private _engineMode;
+    private _isTerrainMode;
+    private _useViewshedLayerMode;
     private _nativeInteractiveEnabled;
     private _useArcGIS3D;
     private _setCommitEnabled;

@@ -2,7 +2,7 @@
  * LOSEngine.ts
  * Line-of-Sight / Viewshed analysis engine.
  *
- * 3D SceneView → Uses ArcGIS LineOfSightAnalysis for direct-target LOS
+ * 3D SceneView → Uses fixed-resolution terrain ray-casting for direct-target LOS
  *                + ArcGIS ViewshedAnalysis for viewshed dome.
  * 2D MapView   → ElevationSampler terrain ray-casting only.
  *
@@ -99,14 +99,16 @@ export class LOSEngine {
   private _targets: LOSTarget[] = [];
   private _panelEl: HTMLDivElement | null = null;
   private _pickHandle: any = null;
-  private _pickMode: 'observer' | 'target' | null = null;
   private _losAnalysis: any = null;
   private _losAnalysisView: any = null;
   private _losResultsWatch: any = null;
-  private _losObserverPoint: Point | null = null;
+  private _committedLOSAnalyses: any[] = [];
   private _viewshedAnalysis: any = null;
   private _viewshedAnalysisView: any = null;
+  private _viewshedLayer: any = null;
+  private _viewshedLayerView: any = null;
   private _committedViewshedAnalysis: any = null;
+  private _committedViewshedLayer: any = null;
   private _nativeStateWatches: any[] = [];
 
   // Draggable state
@@ -136,6 +138,17 @@ export class LOSEngine {
           : false;
         if (!alreadyAdded) analyses?.add?.(this._committedViewshedAnalysis);
       } catch { /* ignore */ }
+    }
+    if (view.type === '3d' && this._committedLOSAnalyses.length) {
+      const analyses = (view as any).analyses;
+      this._committedLOSAnalyses.forEach((analysis) => {
+        try {
+          const alreadyAdded = typeof analyses?.includes === 'function'
+            ? analyses.includes(analysis)
+            : false;
+          if (!alreadyAdded) analyses?.add?.(analysis);
+        } catch { /* ignore */ }
+      });
     }
     this._clearLOSAnalysis();
   }
@@ -250,7 +263,6 @@ export class LOSEngine {
       this._losResultsWatch = null;
     }
     this._clearNativeStateWatches();
-    this._losObserverPoint = null;
     this._losAnalysisView = null;
     if (this._losAnalysis && this._view?.type === '3d') {
       const sv = this._view as SceneView;
@@ -268,9 +280,25 @@ export class LOSEngine {
       } catch { /* ignore */ }
       this._viewshedAnalysis = null;
     }
+    if (this._viewshedLayer && this._view?.map) {
+      try {
+        (this._view.map as any).remove(this._viewshedLayer);
+      } catch { /* ignore */ }
+      this._viewshedLayer = null;
+      this._viewshedLayerView = null;
+    }
   }
 
   private _clearCommittedViewshedAnalysis(): void {
+    if (this._view?.type === '3d') {
+      const sv = this._view as SceneView;
+      this._committedLOSAnalyses.forEach((analysis) => {
+        try {
+          (sv as any).analyses?.remove(analysis);
+        } catch { /* ignore */ }
+      });
+    }
+    this._committedLOSAnalyses = [];
     if (this._committedViewshedAnalysis && this._view?.type === '3d') {
       const sv = this._view as SceneView;
       try {
@@ -278,10 +306,24 @@ export class LOSEngine {
       } catch { /* ignore */ }
     }
     this._committedViewshedAnalysis = null;
+    if (this._committedViewshedLayer && this._view?.map) {
+      try {
+        (this._view.map as any).remove(this._committedViewshedLayer);
+      } catch { /* ignore */ }
+    }
+    this._committedViewshedLayer = null;
   }
 
   private _engineMode(): string {
     return this._sel('los-analysis-mode')?.value ?? 'Auto';
+  }
+
+  private _isTerrainMode(): boolean {
+    return this._engineMode().startsWith('Terrain ray trace');
+  }
+
+  private _useViewshedLayerMode(): boolean {
+    return this._engineMode() === 'ArcGIS native 3D layer';
   }
 
   private _nativeInteractiveEnabled(): boolean {
@@ -289,7 +331,7 @@ export class LOSEngine {
   }
 
   private _useArcGIS3D(): boolean {
-    return this._view?.type === '3d' && this._engineMode() !== 'Terrain ray trace';
+    return this._view?.type === '3d' && !this._isTerrainMode();
   }
 
   private _setCommitEnabled(enabled: boolean): void {
@@ -351,25 +393,27 @@ export class LOSEngine {
         ?? null;
       this._viewshedAnalysisView.selectedViewshed = selectedViewshed;
     }
+    if (this._viewshedLayerView) {
+      this._viewshedLayerView.interactive = interactive;
+      const selectedViewshed = this._viewshedLayer?.source?.viewsheds?.getItemAt?.(0)
+        ?? this._viewshedLayer?.source?.viewsheds?.[0]
+        ?? null;
+      this._viewshedLayerView.selectedViewshed = selectedViewshed;
+    }
   }
 
   private _syncObserverFromNative(position: Point | null | undefined): void {
     if (!position) return;
 
-    const groundZ = ElevationUtils.queryPointElevation(null, {
-      longitude: position.longitude,
-      latitude: position.latitude,
-    });
     const input = this._inp('los-obsheight');
-    const derivedHeight = position.z != null && groundZ != null
-      ? Math.max(0, position.z - groundZ)
-      : Number(input?.value ?? 2);
+    const currentHeight = Number(input?.value ?? 2);
+    const groundZ = position.z != null ? position.z - currentHeight : 0;
 
-    if (input) input.value = String(this._round(derivedHeight, 1));
+    if (input) input.value = String(this._round(currentHeight, 1));
     this._observerPoint = new Point({
       longitude: position.longitude,
       latitude: position.latitude,
-      z: groundZ ?? position.z ?? 0,
+      z: groundZ,
       spatialReference: { wkid: 4326 },
     });
     this._drawObserver();
@@ -403,6 +447,9 @@ export class LOSEngine {
     const viewshed = this._viewshedAnalysisView?.selectedViewshed
       ?? this._viewshedAnalysis?.viewsheds?.getItemAt?.(0)
       ?? this._viewshedAnalysis?.viewsheds?.[0]
+      ?? this._viewshedLayerView?.selectedViewshed
+      ?? this._viewshedLayer?.source?.viewsheds?.getItemAt?.(0)
+      ?? this._viewshedLayer?.source?.viewsheds?.[0]
       ?? null;
     if (!viewshed) return;
 
@@ -476,6 +523,30 @@ export class LOSEngine {
         }
       ));
     }
+    if (this._viewshedLayerView) {
+      this._nativeStateWatches.push(reactiveUtils.watch(
+        () => {
+          const viewshed = this._viewshedLayerView?.selectedViewshed
+            ?? this._viewshedLayer?.source?.viewsheds?.getItemAt?.(0)
+            ?? this._viewshedLayer?.source?.viewsheds?.[0]
+            ?? null;
+          return viewshed ? [
+            viewshed.observer?.longitude ?? null,
+            viewshed.observer?.latitude ?? null,
+            viewshed.observer?.z ?? null,
+            viewshed.farDistance ?? null,
+            viewshed.heading ?? null,
+            viewshed.tilt ?? null,
+            viewshed.horizontalFieldOfView ?? null,
+            viewshed.verticalFieldOfView ?? null,
+          ] : null;
+        },
+        () => {
+          this._syncViewshedFromNative();
+          this._setCommitEnabled(true);
+        }
+      ));
+    }
   }
 
   private async _runLOS3D(): Promise<boolean> {
@@ -504,8 +575,6 @@ export class LOSEngine {
         z: (this._observerPoint.z ?? 0) + obsH,
         spatialReference: { wkid: 4326 },
       });
-      this._losObserverPoint = observerPt;
-
       const observer = new LineOfSightAnalysisObserver({ position: observerPt });
       const targets  = this._targets.map(t => new LineOfSightAnalysisTarget({ position: t.point }));
 
@@ -515,7 +584,9 @@ export class LOSEngine {
       this._losAnalysisView = await (sv as any).whenAnalysisView(this._losAnalysis);
       this._applyNativeInteractivity();
       this._losResultsWatch = reactiveUtils.watch(
-        () => this._losAnalysisView?.results.map((r: any) => r?.intersectedLocation),
+        () => this._losAnalysisView?.results.map((r: any) =>
+          [r?.visible ?? null, r?.intersectedLocation?.longitude ?? null, r?.intersectedLocation?.latitude ?? null].join('|')
+        ),
         () => this._updateLOS3DResults()
       );
       this._watchNativeAnalysisState();
@@ -532,9 +603,6 @@ export class LOSEngine {
     if (!this._losAnalysisView || !this._analysisLayer) return;
 
     const results = this._losAnalysisView.results ?? [];
-    const obsPt = this._losObserverPoint ?? this._observerPoint;
-    if (!obsPt) return;
-
     const oldLines = this._analysisLayer.graphics.filter((g: Graphic) =>
       ['los_visible', 'los_masked', 'los_obstruction'].includes(g.attributes?.type)
     );
@@ -543,24 +611,17 @@ export class LOSEngine {
     results.forEach((result: any, idx: number) => {
       const target = this._targets[idx];
       if (!target) return;
+      if (!result) return;
 
-      const visible = !result?.intersectedLocation;
-      const tgtPt = target.point;
-
-      if (visible) {
-        this._analysisLayer.add(this._makeLOSLine(obsPt, tgtPt, true));
-      } else {
+      const visible = result?.visible === true;
+      if (!visible) {
         const interPt = result.intersectedLocation;
         if (interPt) {
-          this._analysisLayer.add(this._makeLOSLine(obsPt, interPt, true));
-          this._analysisLayer.add(this._makeLOSLine(interPt, tgtPt, false));
           this._analysisLayer.add(new Graphic({
             geometry: interPt,
             symbol: this._obstructionSymbol(),
             attributes: { type: 'los_obstruction' },
           }));
-        } else {
-          this._analysisLayer.add(this._makeLOSLine(obsPt, tgtPt, false));
         }
       }
     });
@@ -586,9 +647,11 @@ export class LOSEngine {
       const [
         { default: Viewshed },
         { default: ViewshedAnalysis },
+        { default: ViewshedLayer },
       ] = await Promise.all([
         import('@arcgis/core/analysis/Viewshed'),
         import('@arcgis/core/analysis/ViewshedAnalysis'),
+        import('@arcgis/core/layers/ViewshedLayer'),
       ]);
 
       const observerPt = new Point({
@@ -608,8 +671,18 @@ export class LOSEngine {
       });
 
       this._viewshedAnalysis = new ViewshedAnalysis({ viewsheds: [viewshed] });
-      (sv as any).analyses.add(this._viewshedAnalysis);
-      this._viewshedAnalysisView = await (sv as any).whenAnalysisView(this._viewshedAnalysis);
+      if (this._useViewshedLayerMode()) {
+        this._viewshedLayer = new ViewshedLayer({
+          id: 'los-viewshed-working-layer',
+          title: 'LOS Viewshed — Working',
+          source: this._viewshedAnalysis,
+        });
+        (sv.map as any).add(this._viewshedLayer);
+        this._viewshedLayerView = await (sv as any).whenLayerView(this._viewshedLayer);
+      } else {
+        (sv as any).analyses.add(this._viewshedAnalysis);
+        this._viewshedAnalysisView = await (sv as any).whenAnalysisView(this._viewshedAnalysis);
+      }
       this._applyNativeInteractivity();
       this._watchNativeAnalysisState();
       return true;
@@ -623,6 +696,26 @@ export class LOSEngine {
     if (!this._view || this._view.type !== '3d') return null;
 
     const sv = this._view as SceneView;
+    if (this._useViewshedLayerMode()) {
+      if (!this._committedViewshedAnalysis) {
+        const { default: ViewshedAnalysis } = await import('@arcgis/core/analysis/ViewshedAnalysis');
+        this._committedViewshedAnalysis = new ViewshedAnalysis();
+      }
+      if (!this._committedViewshedLayer) {
+        const { default: ViewshedLayer } = await import('@arcgis/core/layers/ViewshedLayer');
+        this._committedViewshedLayer = new ViewshedLayer({
+          id: 'los-viewshed-committed-layer',
+          title: 'LOS Viewshed — Committed',
+          source: this._committedViewshedAnalysis,
+        });
+      }
+      const map = sv.map as any;
+      if (map && !map.layers?.includes?.(this._committedViewshedLayer)) {
+        map.add(this._committedViewshedLayer);
+      }
+      return this._committedViewshedAnalysis;
+    }
+
     if (!this._committedViewshedAnalysis) {
       const { default: ViewshedAnalysis } = await import('@arcgis/core/analysis/ViewshedAnalysis');
       this._committedViewshedAnalysis = new ViewshedAnalysis();
@@ -641,14 +734,17 @@ export class LOSEngine {
 
   // ─── Private: Terrain ray-cast LOS + Viewshed ────────────────────────────────
 
-private async _runTerrain(skipLines: boolean = false): Promise<void> {
-    if (!this._observerPoint || !this._view) return;
+private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false): Promise<void> {
+    const observerPoint = this._observerPoint;
+    if (!observerPoint || !this._view) return;
+    const obsLon = Number(observerPoint.longitude);
+    const obsLat = Number(observerPoint.latitude);
 
     const obsH  = Number(this._inp('los-obsheight')?.value ?? 2);
     const maxR  = Math.max(100, Number(this._inp('los-maxrange')?.value ?? 5000));
     const out   = this._sel('los-output')?.value ?? 'Both';
     const doLines  = !skipLines && out !== 'Viewshed dome';
-    const doDome   = out !== 'LOS line only';
+    const doDome   = !skipDome && out !== 'LOS line only';
 
     this._setStatus('computing');
 
@@ -656,12 +752,14 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
       // Build extent for sampler - expand to include targets
       let maxTargetDist = 0;
       for (const { point: tgt } of this._targets) {
-        const d = _haversineM(this._observerPoint.longitude, this._observerPoint.latitude, tgt.longitude, tgt.latitude);
+        const tgtLon = Number(tgt.longitude);
+        const tgtLat = Number(tgt.latitude);
+        const d = _haversineM(obsLon, obsLat, tgtLon, tgtLat);
         if (d > maxTargetDist) maxTargetDist = d;
       }
       const sampleExtent = Math.max(maxR, maxTargetDist * 1.1);
 
-      const extentGeom = geometryEngine.geodesicBuffer(this._observerPoint, sampleExtent, 'meters');
+      const extentGeom = geometryEngine.geodesicBuffer(observerPoint, sampleExtent, 'meters');
       const extent = Array.isArray(extentGeom)
         ? extentGeom[0]?.extent
         : (extentGeom as Polygon | null)?.extent;
@@ -672,53 +770,72 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
         // Use a fixed DEM resolution so navigation does not change LOS output.
         demResolution: 30,
       });
-      const obsGroundZ = ElevationUtils.queryPointElevation(sampler, this._observerPoint);
+      const obsGroundZ = ElevationUtils.queryPointElevation(sampler, observerPoint);
       const obsZ = obsGroundZ + obsH;
+      const obsEyePoint = new Point({
+        longitude: obsLon,
+        latitude: obsLat,
+        z: obsZ,
+        spatialReference: { wkid: 4326 },
+      });
 
       // ── Point-to-point LOS lines ───────────────────────────────────────────
       if (doLines && this._targets.length > 0) {
         for (const { point: tgt } of this._targets) {
+          const tgtLon = Number(tgt.longitude);
+          const tgtLat = Number(tgt.latitude);
           const tDist = _haversineM(
-            this._observerPoint.longitude, this._observerPoint.latitude,
-            tgt.longitude, tgt.latitude
+            obsLon, obsLat,
+            tgtLon, tgtLat
           );
           const tBearing = _bearing(
-            this._observerPoint.longitude, this._observerPoint.latitude,
-            tgt.longitude, tgt.latitude
+            obsLon, obsLat,
+            tgtLon, tgtLat
           );
           const stepM = Math.max(10, tDist / 180);
           const numSteps = Math.ceil(tDist / stepM);
           let obstrPt: Point | null = null;
-          const tGroundZ = ElevationUtils.queryPointElevation(sampler, { longitude: tgt.longitude, latitude: tgt.latitude });
+          const tGroundZ = ElevationUtils.queryPointElevation(sampler, { longitude: tgtLon, latitude: tgtLat });
           const tZ = (tgt.z ?? 0) !== 0 ? (tgt.z ?? tGroundZ) : tGroundZ;
+          const targetPoint = new Point({
+            longitude: tgtLon,
+            latitude: tgtLat,
+            z: tZ,
+            spatialReference: { wkid: 4326 },
+          });
 
           for (let s = 1; s <= numSteps && !obstrPt; s++) {
             const dist = (s / numSteps) * tDist;
-            const pt = _destPt(this._observerPoint.longitude, this._observerPoint.latitude, tBearing, dist);
+            const pt = _destPt(obsLon, obsLat, tBearing, dist);
             const samplePt = { longitude: pt.longitude, latitude: pt.latitude };
             const terrZ = ElevationUtils.queryPointElevation(sampler, samplePt);
             const losZ = obsZ + ((tZ - obsZ) * dist) / tDist;
 
             // Compare terrain directly against the observer-to-target ray.
             if (terrZ > losZ + 1) {
-              obstrPt = new Point({ longitude: pt.longitude, latitude: pt.latitude, spatialReference: { wkid: 4326 } });
+              obstrPt = new Point({
+                longitude: pt.longitude,
+                latitude: pt.latitude,
+                z: terrZ,
+                spatialReference: { wkid: 4326 },
+              });
             }
           }
           const visible = !obstrPt;
 
           if (visible) {
-            this._analysisLayer.add(this._makeLOSLine(this._observerPoint, tgt, true));
+            this._analysisLayer.add(this._makeLOSLine(obsEyePoint, targetPoint, true));
           } else {
             if (obstrPt) {
-              this._analysisLayer.add(this._makeLOSLine(this._observerPoint, obstrPt, true));
-              this._analysisLayer.add(this._makeLOSLine(obstrPt, tgt, false));
+              this._analysisLayer.add(this._makeLOSLine(obsEyePoint, obstrPt, true));
+              this._analysisLayer.add(this._makeLOSLine(obstrPt, targetPoint, false));
               this._analysisLayer.add(new Graphic({
                 geometry: obstrPt,
                 symbol: this._obstructionSymbol(),
                 attributes: { type: 'los_obstruction' },
               }));
             } else {
-              this._analysisLayer.add(this._makeLOSLine(this._observerPoint, tgt, false));
+              this._analysisLayer.add(this._makeLOSLine(obsEyePoint, targetPoint, false));
             }
           }
         }
@@ -738,9 +855,6 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
         const numRays  = Math.max(4, Math.ceil(azSweep / azStep));
         const elevMinRad = (elevMin * Math.PI) / 180;
         const elevMaxRad = (elevMax * Math.PI) / 180;
-
-        const obsLon = this._observerPoint.longitude;
-        const obsLat = this._observerPoint.latitude;
 
         // Visible sector: one horizon/limit point per azimuth ray
         const visibleRing: number[][] = [[obsLon, obsLat]];
@@ -799,7 +913,7 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
         // Range rings for context
         [0.33, 0.66, 1].forEach(frac => {
           const r = maxR * frac;
-          const ringRaw = geometryEngine.geodesicBuffer(this._observerPoint, r, 'meters');
+          const ringRaw = geometryEngine.geodesicBuffer(observerPoint, r, 'meters');
           const ring = Array.isArray(ringRaw) ? ringRaw[0] : ringRaw;
           if (ring) {
             this._analysisLayer.add(new Graphic({
@@ -835,23 +949,45 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
     this._setCommitEnabled(false);
 
     const out = this._sel('los-output')?.value ?? 'Both';
-    let usedNative3D = false;
+    let usedAnalysis = false;
 
     if (this._useArcGIS3D()) {
+      if (out === 'LOS line only' && this._targets.length === 0) {
+        this._setStatus('error');
+        this._setCommitEnabled(false);
+        return;
+      }
+
       if (this._targets.length > 0 && out !== 'Viewshed dome') {
-        usedNative3D = await this._runLOS3D() || usedNative3D;
+        // Native 3D LOS can flip when pan/zoom changes streamed terrain or scene LOD.
+        // Keep Auto deterministic by using the fixed DEM sampler; explicit native mode remains available.
+        if (this._engineMode() === 'ArcGIS native 3D') {
+          usedAnalysis = await this._runLOS3D();
+          if (!usedAnalysis) {
+            await this._runTerrain(false, true);
+            usedAnalysis = true;
+          }
+        } else {
+          await this._runTerrain(false, true);
+          usedAnalysis = true;
+        }
       }
+
       if (out !== 'LOS line only') {
-        usedNative3D = await this._runViewshed3D() || usedNative3D;
+        usedAnalysis = await this._runViewshed3D() || usedAnalysis;
       }
-      if (usedNative3D) {
+
+      if (usedAnalysis) {
         this._setStatus('ready');
         this._setCommitEnabled(true);
         return;
       }
+      this._setStatus('error');
+      this._setCommitEnabled(false);
+      return;
     }
 
-    // Terrain ray-cast (for 2D or fallback when 3D native analysis is unavailable)
+    // Terrain ray-cast is used for MapView or when explicitly selected.
     await this._runTerrain(false);
   }
 
@@ -938,7 +1074,7 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
   private _makeLOSLine(from: Point, to: Point, visible: boolean): Graphic {
     const color = visible ? [29, 158, 117, 220] : [226, 75, 74, 200];
     const geom = new Polyline({
-      paths: [[[from.longitude, from.latitude, from.z ?? 0], [to.longitude, to.latitude, to.z ?? 0]]],
+      paths: [[[Number(from.longitude), Number(from.latitude), from.z ?? 0], [Number(to.longitude), Number(to.latitude), to.z ?? 0]]],
       spatialReference: { wkid: 4326 },
       hasZ: true,
     });
@@ -1006,6 +1142,16 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
       nativeInteractive: this._nativeInteractiveEnabled(),
     };
 
+    if (this._losAnalysis && this._view?.type === '3d') {
+      try {
+        const clone = this._losAnalysis.clone?.() ?? null;
+        if (clone) {
+          (this._view as any).analyses?.add?.(clone);
+          this._committedLOSAnalyses.push(clone);
+        }
+      } catch { /* ignore */ }
+    }
+
     if (hasViewshedAnalysis && this._view?.type === '3d') {
       const committedViewshedAnalysis = await this._ensureCommittedViewshedAnalysis();
       const viewsheds = this._viewshedAnalysis.viewsheds;
@@ -1050,7 +1196,6 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
   private _startPick(mode: 'observer' | 'target'): void {
     if (!this._view) return;
     this._cancelPick();
-    this._pickMode = mode;
     this._setStatus('picking');
 
     const coordsEl = this._panelEl?.querySelector<HTMLElement>('#los-coords');
@@ -1058,7 +1203,6 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
 
     this._pickHandle = this._view.on('click', async (event: any) => {
       this._cancelPick();
-      const obsH = Number(this._inp('los-obsheight')?.value ?? 2);
       let pt: Point;
 
       if (this._is3D()) {
@@ -1068,28 +1212,25 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
 
         if (hit?.results?.length) {
           for (const r of hit.results) {
-            if (r.graphic?.layer?.type === 'ground' || (r.graphic?.layer as any)?.id === 'ground') {
-              gp = r.mapPoint;
+            const graphic = (r as any).graphic;
+            const mapPoint = (r as any).mapPoint;
+            if (graphic?.layer?.type === 'ground' || graphic?.layer?.id === 'ground') {
+              gp = mapPoint;
               break;
             }
-            if (!gp.z && r.mapPoint?.z) {
-              gp = r.mapPoint;
+            if (!gp.z && mapPoint?.z) {
+              gp = mapPoint;
             }
           }
         }
 
         if (!gp.z || gp.z === 0) {
-          try {
-            const ptWithZ = ElevationUtils.queryPointElevation(null, { longitude: gp.longitude, latitude: gp.latitude });
-            if (ptWithZ != null) {
-              gp = new Point({
-                longitude: gp.longitude,
-                latitude: gp.latitude,
-                z: ptWithZ,
-                spatialReference: { wkid: 4326 },
-              });
-            }
-          } catch { gp = new Point({ longitude: gp.longitude, latitude: gp.latitude, z: 0, spatialReference: { wkid: 4326 } }); }
+          gp = new Point({
+            longitude: gp.longitude,
+            latitude: gp.latitude,
+            z: gp.z ?? 0,
+            spatialReference: { wkid: 4326 },
+          });
         }
 
         pt = new Point({
@@ -1129,7 +1270,6 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
   private _cancelPick(): void {
     this._pickHandle?.remove();
     this._pickHandle = null;
-    this._pickMode = null;
   }
 
   private _updateTargetList(): void {
@@ -1202,13 +1342,16 @@ private async _runTerrain(skipLines: boolean = false): Promise<void> {
     const elevMax = v.elevMax     ?? 45;
     const output  = v.outputType  ?? 'Both';
     const colorBy = v.colorBy     ?? 'Range';
-    const analysisMode = v.analysisMode ?? 'Auto';
+    const analysisModeRaw = v.analysisMode ?? 'Auto';
+    const analysisMode = analysisModeRaw === 'Terrain ray trace'
+      ? 'Terrain ray trace (approx)'
+      : analysisModeRaw;
     const nativeInteractive = v.nativeInteractive ?? true;
     const isEdit  = override != null;
 
     const outputOpts = ['LOS line only', 'Viewshed dome', 'Both'];
     const colorOpts  = ['Range', 'Elevation angle', 'Binary'];
-    const analysisOpts = ['Auto', 'ArcGIS native 3D', 'Terrain ray trace'];
+    const analysisOpts = ['Auto', 'ArcGIS native 3D', 'ArcGIS native 3D layer', 'Terrain ray trace (approx)'];
 
     return `
       <div class="los-header" id="los-drag-handle">
