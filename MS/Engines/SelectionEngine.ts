@@ -251,9 +251,7 @@ class SelectionEngine {
                     if (!layer) return;
                     (layer.graphics as any).forEach((g: Graphic) => {
                         if (!g.geometry || g.layer?.id === "_LassoLayer") return;
-                        const inside = g.geometry.type === "point"
-                            ? geometryEngine.contains(poly, g.geometry)
-                            : geometryEngine.intersects(poly, g.geometry);
+                        const inside = geometryEngine.intersects(poly, g.geometry);
                         if (inside) hit.push(g);
                     });
                 });
@@ -400,9 +398,7 @@ class SelectionEngine {
                 if (!g.geometry || g.layer?.id === "_LassoLayer") return;
                 if (!includeSelf && g === graphic) return;
                 
-                const inside = g.geometry.type === "point"
-                    ? geometryEngine.contains(poly, g.geometry)
-                    : geometryEngine.intersects(poly, g.geometry);
+                const inside = geometryEngine.intersects(poly, g.geometry);
                     
                 if (inside) {
                     hit.push(g);
@@ -1005,7 +1001,13 @@ class SelectionEngine {
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private _graphicId(graphic: Graphic): string | null {
-        return graphic.attributes?.id ?? null;
+        if (!graphic.attributes) graphic.attributes = {};
+        if (!graphic.attributes.id) {
+            graphic.attributes.id =
+                globalThis.crypto?.randomUUID?.() ??
+                `selection-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        }
+        return graphic.attributes.id;
     }
 
     private _centroid(graphic: Graphic): { x: number; y: number } {
@@ -1059,9 +1061,31 @@ class SelectionEngine {
                 });
             }
             if (de?.BASE_LN_PTS) {
-                de.BASE_LN_PTS = de.BASE_LN_PTS.map((p: any) => ({
-                    ...p, x: (p.x ?? 0) + dx, y: (p.y ?? 0) + dy
-                }));
+                const shiftPt = (p: any) => {
+                    if (!p) return p;
+                    const c = p.clone ? p.clone() : { ...p };
+                    c.x = (c.x ?? 0) + dx;
+                    c.y = (c.y ?? 0) + dy;
+                    return c;
+                };
+                de.BASE_LN_PTS = {
+                    ...de.BASE_LN_PTS,
+                    startPt: shiftPt(de.BASE_LN_PTS.startPt),
+                    midPt: shiftPt(de.BASE_LN_PTS.midPt),
+                    endPt: shiftPt(de.BASE_LN_PTS.endPt),
+                };
+            }
+            if (de?.GEOM) {
+                const p = de.GEOM.clone ? de.GEOM.clone() : { ...de.GEOM };
+                p.x += dx;
+                p.y += dy;
+                de.GEOM = p;
+            }
+            if (de?.OPTIONS?.GEOM) {
+                const p = de.OPTIONS.GEOM.clone ? de.OPTIONS.GEOM.clone() : { ...de.OPTIONS.GEOM };
+                p.x += dx;
+                p.y += dy;
+                de.OPTIONS = { ...de.OPTIONS, GEOM: p };
             }
 
             // Refresh annotation label at new position

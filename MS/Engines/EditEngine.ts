@@ -264,6 +264,7 @@ class EditEngine {
                     this._deAnnotate(graphic);
                     break;
                 case "complete":
+                    this._syncPointDrawEssentials(graphic);
                     this._reAnnotate(graphic);
                     this._emit("changeInSymbol", { graphic });
                     break;
@@ -359,9 +360,11 @@ class EditEngine {
      */
     private _syncCtrlPts(graphic: Graphic): void {
         const de = this._getDrawEssentials(graphic);
-        if (!de || !this._originalGeometry || !this._originalCtrlPts) return;
+        if (!de || !this._originalGeometry) return;
 
         const t = this._computeAffineTransform(this._originalGeometry, graphic.geometry);
+
+        this._syncGeometryPoints(de, t);
 
         // Transform CTRL_PTS
         const ctrlPts: Point[] | undefined = (de as any).CTRL_PTS;
@@ -388,9 +391,11 @@ class EditEngine {
     /** Sync CTRL_PTS for an additional graphic using its own pre-edit snapshot. */
     private _syncCtrlPtsFrom(snapshot: { graphic: Graphic; geometry: any; ctrlPts: Point[] | null; baseLnPts: any }): void {
         const de = this._getDrawEssentials(snapshot.graphic);
-        if (!de || !snapshot.geometry || !snapshot.ctrlPts) return;
+        if (!de || !snapshot.geometry) return;
 
         const t = this._computeAffineTransform(snapshot.geometry, snapshot.graphic.geometry);
+
+        this._syncGeometryPoints(de, t);
 
         if (snapshot.ctrlPts) {
             (de as any).CTRL_PTS = snapshot.ctrlPts.map(pt => this._applyAffineToPoint(pt, t));
@@ -402,6 +407,39 @@ class EditEngine {
             if (snapshot.baseLnPts.midPt) result.midPt = this._applyAffineToPoint(snapshot.baseLnPts.midPt, t);
             if (snapshot.baseLnPts.endPt) result.endPt = this._applyAffineToPoint(snapshot.baseLnPts.endPt, t);
             (de as any).BASE_LN_PTS = result;
+        }
+    }
+
+    private _syncPointDrawEssentials(graphic: Graphic): void {
+        const de = this._getDrawEssentials(graphic);
+        if (!de || graphic.geometry?.type !== "point") return;
+
+        const pt = (graphic.geometry as Point).clone();
+        if ((de as any).GEOM) (de as any).GEOM = pt.clone();
+        if ((de as any).OPTIONS?.GEOM) {
+            (de as any).OPTIONS = {
+                ...(de as any).OPTIONS,
+                GEOM: pt.clone(),
+            };
+        }
+    }
+
+    private _syncGeometryPoints(de: DrawEssentials, t: AffineTransform): void {
+        const anyDe = de as any;
+        if (anyDe.GEOM) {
+            anyDe.GEOM = this._applyAffineToPoint(
+                anyDe.GEOM instanceof Point ? anyDe.GEOM : new Point(anyDe.GEOM),
+                t
+            );
+        }
+        if (anyDe.OPTIONS?.GEOM) {
+            anyDe.OPTIONS = {
+                ...anyDe.OPTIONS,
+                GEOM: this._applyAffineToPoint(
+                    anyDe.OPTIONS.GEOM instanceof Point ? anyDe.OPTIONS.GEOM : new Point(anyDe.OPTIONS.GEOM),
+                    t
+                ),
+            };
         }
     }
 
@@ -458,6 +496,9 @@ class EditEngine {
 
     /** Returns the vertex at `index` from the first path/ring of geom, or null. */
     private _getVertex(geom: any, index: number): { x: number; y: number } | null {
+        if (geom.type === "point" && index === 0) {
+            return { x: geom.x, y: geom.y };
+        }
         if (geom.type === "polyline" && geom.paths?.length) {
             const path = geom.paths[0];
             if (path.length > index) return { x: path[index][0], y: path[index][1] };

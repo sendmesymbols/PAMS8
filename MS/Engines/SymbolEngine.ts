@@ -2870,29 +2870,22 @@ class SymbolEngine implements Evented {
           }
 
           if (isPassive === true) {
-            // Assuming this.reProject and this.map exist
-            if (drawEssentials.hasOwnProperty('GEOM') && drawEssentials.GEOM) {
-              /*
-              drawEssentials.GEOM = this.reProject(
-                drawEssentials.GEOM,
+            const deAny = drawEssentials as any;
+            if (deAny.GEOM) {
+              deAny.GEOM = this.reProject(
+                deAny.GEOM,
                 this.view.spatialReference,
-              ); // Changed this.map to this.view
-
-               */
+              );
             }
             if (
-              drawEssentials.hasOwnProperty('OPTIONS') &&
-              drawEssentials.OPTIONS?.hasOwnProperty('GEOM') &&
-              drawEssentials.OPTIONS.GEOM
+              deAny.OPTIONS &&
+              Object.prototype.hasOwnProperty.call(deAny.OPTIONS, 'GEOM') &&
+              deAny.OPTIONS.GEOM
             ) {
-              /*
-              drawEssentials.OPTIONS.GEOM = this.reProject(
-                drawEssentials.OPTIONS.GEOM,
+              deAny.OPTIONS.GEOM = this.reProject(
+                deAny.OPTIONS.GEOM,
                 this.view.spatialReference,
-              ); // Changed this.map to this.view
-              debugger;
-
-               */
+              );
             }
           }
 

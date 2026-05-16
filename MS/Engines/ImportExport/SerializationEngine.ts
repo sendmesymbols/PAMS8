@@ -212,13 +212,15 @@ class SerializationEngine {
     };
 
     let loaded = 0;
+    const placementId = this._generateUUID();
     for (const overlay of planDoc.poObj.plnOrdrOverlay) {
       for (const sym of overlay.plnOrdrSymbolSet) {
         if (sym.isDelete === 'Y') continue;
         try {
+          const sourceSymbolId = sym.plnOrdrSymbolPK.plnOrdrSymbolId;
           const drawEssObj = JSON.parse(sym.drawEss);
           const normalizedDrawEss = Plan.normalizeDrawEssForRuntime(drawEssObj);
-          const amplifier = normalizedDrawEss?.AMPLIFIER ?? {};
+          const amplifier: any = normalizedDrawEss?.AMPLIFIER ?? {};
           if (normalizedDrawEss?.SIDC && !amplifier.SIDC) amplifier.SIDC = normalizedDrawEss.SIDC;
 
           const de: any = { ...normalizedDrawEss };
@@ -242,7 +244,8 @@ class SerializationEngine {
           }
 
           this._onLoadSymbol!({
-            id: sym.plnOrdrSymbolPK.plnOrdrSymbolId,
+            id: `${sourceSymbolId}-${placementId}`,
+            sourceSymbolId,
             sidc: amplifier?.SIDC || normalizedDrawEss?.SIDC,
             amplifier,
             drawEssentials: de,
@@ -614,7 +617,7 @@ class SerializationEngine {
     }
 
     const normalizedDrawEss = Plan.normalizeDrawEssForRuntime(drawEssObj);
-    const amplifier = normalizedDrawEss?.AMPLIFIER ?? {};
+    const amplifier: any = normalizedDrawEss?.AMPLIFIER ?? {};
     if (normalizedDrawEss?.SIDC && !amplifier.SIDC) amplifier.SIDC = normalizedDrawEss.SIDC;
 
     const de: any = { ...normalizedDrawEss };

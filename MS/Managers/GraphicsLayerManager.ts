@@ -80,7 +80,18 @@ class GraphicsLayerManager {
     }
 
     public getLayer(layerName: string): GraphicsLayer | undefined {
-        return this.layers.get(layerName);
+        const cached = this.layers.get(layerName);
+        if (cached) return cached;
+
+        // Allow engines to target layers that were created outside this manager
+        // (for example legacy / external layers already present on the map).
+        const existing = this.view.map.findLayerById(layerName) as GraphicsLayer | null;
+        if (existing) {
+            this.layers.set(layerName, existing);
+            return existing;
+        }
+
+        return undefined;
     }
 
     public listLayers(): string[] {

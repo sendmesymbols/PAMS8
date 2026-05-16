@@ -95,6 +95,8 @@ declare class EditEngine {
     private _syncCtrlPts;
     /** Sync CTRL_PTS for an additional graphic using its own pre-edit snapshot. */
     private _syncCtrlPtsFrom;
+    private _syncPointDrawEssentials;
+    private _syncGeometryPoints;
     /**
      * Derive the exact 2D similarity transform mapping oldGeom → newGeom.
      *

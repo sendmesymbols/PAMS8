@@ -747,7 +747,7 @@ class DeploymentBuilderEngine {
       symbol: new SimpleMarkerSymbol({
         style: 'circle', size: 28,
         color: [0, 0, 0, 0],
-        outline: { color: [100, 200, 255, 0.35], width: 1 },
+        outline: { color: [255, 0, 0, 0.7], width: 2 },
       }),
     }));
     // Inner ring
@@ -756,7 +756,7 @@ class DeploymentBuilderEngine {
       symbol: new SimpleMarkerSymbol({
         style: 'circle', size: 16,
         color: [0, 0, 0, 0],
-        outline: { color: [100, 200, 255, 0.65], width: 1.5 },
+        outline: { color: [255, 0, 0, 0.7], width: 2 },
       }),
     }));
     // Cross hair
@@ -765,7 +765,7 @@ class DeploymentBuilderEngine {
       symbol: new SimpleMarkerSymbol({
         style: 'cross', size: 22,
         color: [100, 200, 255, 1],
-        outline: { color: [100, 200, 255, 1], width: 2 },
+        outline: { color: [255, 0, 0, 7], width: 2 },
       }),
     }));
   }
