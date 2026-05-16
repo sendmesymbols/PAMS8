@@ -455,10 +455,31 @@ require([
     });
 
     // Single DEM download
-    const sampler = await view.createElevationSampler(extent,{noDataValue:0});
+    // Single DEM download
+    const sampler = await view.map.ground.createElevationSampler(extent);
 
-    function getZ(lon,lat){ return sampler.queryElevation(new Point({longitude:lon,latitude:lat,spatialReference:{wkid:4326}}))?.z??0; }
+    function getZ(lon, lat) {
 
+      try {
+
+        const result = sampler.queryElevation(
+          new Point({
+            longitude: lon,
+            latitude: lat,
+            spatialReference: { wkid: 4326 }
+          })
+        );
+
+        return Number.isFinite(result?.z)
+          ? result.z
+          : 0;
+
+      } catch (_) {
+
+        return 0;
+
+      }
+    }
     // ── Pre-compute horizons at rayRes° resolution ────────────────────
     const STEP  = Math.max(20, obsRadius/60);
     const numRays = Math.round(360/rayRes);

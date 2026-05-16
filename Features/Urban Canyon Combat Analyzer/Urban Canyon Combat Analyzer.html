@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Urban Canyon Combat Analyzer</title>
+
+<link rel="stylesheet" href="https://js.arcgis.com/4.31/esri/themes/dark/main.css"/>
+<script src="https://js.arcgis.com/4.31/"></script>
+
+<style>
+html,body,#viewDiv{
+  margin:0;
+  padding:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#04070b;
+  font-family:Inter,Segoe UI,sans-serif;
+}
+
+#viewDiv{
+  position:absolute;
+  inset:0;
+}
+
+.panel{
+  position:absolute;
+  top:14px;
+  left:14px;
+  width:460px;
+  max-height:95vh;
+  overflow:auto;
+  z-index:50;
+
+  background:rgba(10,14,20,0.96);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:22px;
+
+  color:#dce7f5;
+
+  backdrop-filter:blur(12px);
+
+  box-shadow:0 20px 60px rgba(0,0,0,0.55);
+}
+
+.header{
+  padding:20px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+
+.title{
+  font-size:24px;
+  font-weight:800;
+}
+
+.subtitle{
+  margin-top:10px;
+  line-height:1.7;
+  color:#9db1c7;
+  font-size:12px;
+}
+
+.section{
+  padding:18px 20px;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+}
+
+.section h3{
+  margin:0 0 14px;
+  font-size:12px;
+  letter-spacing:1px;
+  text-transform:uppercase;
+  color:#7fb6ff;
+}
+
+.control{
+  margin-bottom:16px;
+}
+
+.control label{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:8px;
+  font-size:12px;
+  color:#bacce0;
+}
+
+input[type=range],select{
+  width:100%;
+}
+
+select{
+  background:#151c24;
+  color:white;
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;
+  padding:10px;
+}
+
+button{
+  width:100%;
+  border:none;
+  border-radius:12px;
+  padding:13px;
+  cursor:pointer;
+
+  background:#1e6fff;
+  color:white;
+  font-weight:700;
+}
+
+button.secondary{
+  background:#18212c;
+  border:1px solid rgba(255,255,255,0.08);
+}
+
+.btnrow{
+  display:flex;
+  gap:10px;
+}
+
+.mode{
+  position:absolute;
+  right:14px;
+  top:14px;
+  z-index:60;
+  display:flex;
+  gap:10px;
+}
+
+.mode button{
+  width:100px;
+}
+
+.metrics{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.metric{
+  background:#111923;
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:12px;
+  padding:12px;
+}
+
+.metric .label{
+  font-size:11px;
+  color:#90a6bf;
+}
+
+.metric .value{
+  margin-top:5px;
+  font-size:18px;
+  font-weight:800;
+}
+
+.info{
+  position:absolute;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%);
+  z-index:70;
+
+  background:rgba(0,0,0,0.75);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:12px;
+
+  padding:12px 18px;
+
+  color:#dce7f4;
+  font-size:13px;
+}
+
+.legend{
+  display:grid;
+  grid-template-columns:18px auto;
+  gap:10px;
+  align-items:center;
+  margin-bottom:10px;
+  font-size:12px;
+}
+
+.sw{
+  width:18px;
+  height:18px;
+  border-radius:4px;
+}
+</style>
+</head>
+<body>
+
+<div id="viewDiv"></div>
+
+<div class="mode">
+  <button id="btn2d">2D MAP</button>
+  <button id="btn3d">3D VIEW</button>
+</div>
+
+<div class="panel">
+
+  <div class="header">
+    <div class="title">Urban Canyon Combat Analyzer</div>
+
+    <div class="subtitle">
+      Models exposure, movement survivability,
+      rooftop dominance,
+      alley dead-space,
+      sniper visibility,
+      and urban fire corridors.
+
+      Designed for dense urban combat,
+      CQB approach planning,
+      convoy survivability,
+      and identifying streets that become fatal engagement funnels.
+    </div>
+  </div>
+
+  <div class="section">
+
+    <h3>Urban Combat Parameters</h3>
+
+    <div class="control">
+      <label>
+        Enemy Observation Density
+        <span id="obsLabel">60%</span>
+      </label>
+      <input type="range" id="obsSlider" min="0" max="100" value="60">
+    </div>
+
+    <div class="control">
+      <label>
+        Rooftop Threat Level
+        <span id="roofLabel">70%</span>
+      </label>
+      <input type="range" id="roofSlider" min="0" max="100" value="70">
+    </div>
+
+    <div class="control">
+      <label>
+        Street Width Compression
+        <span id="streetLabel">55%</span>
+      </label>
+      <input type="range" id="streetSlider" min="0" max="100" value="55">
+    </div>
+
+    <div class="control">
+      <label>
+        Drone Surveillance
+        <span id="droneLabel">45%</span>
+      </label>
+      <input type="range" id="droneSlider" min="0" max="100" value="45">
+    </div>
+
+    <div class="control">
+      <label>Analysis Focus</label>
+
+      <select id="analysisMode">
+        <option value="assault">Assault Corridor</option>
+        <option value="convoy">Convoy Movement</option>
+        <option value="sniper">Sniper Dominance</option>
+        <option value="evac">CASEVAC Corridor</option>
+      </select>
+    </div>
+
+    <div class="btnrow">
+      <button id="runBtn">Run Urban Analysis</button>
+      <button class="secondary" id="clearBtn">Clear</button>
+    </div>
+
+  </div>
+
+  <div class="section">
+
+    <h3>Urban Combat Assessment</h3>
+
+    <div class="metrics">
+
+      <div class="metric">
+        <div class="label">Street Exposure</div>
+        <div class="value" id="exposureOut">—</div>
+      </div>
+
+      <div class="metric">
+        <div class="label">Rooftop Threat</div>
+        <div class="value" id="roofOut">—</div>
+      </div>
+
+      <div class="metric">
+        <div class="label">Movement Viability</div>
+        <div class="value" id="moveOut">—</div>
+      </div>
+
+      <div class="metric">
+        <div class="label">Ambush Probability</div>
+        <div class="value" id="ambushOut">—</div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="section">
+
+    <h3>Visualization Layers</h3>
+
+    <div class="legend">
+      <div class="sw" style="background:#ff5858"></div>
+      <div>Fatal engagement corridors</div>
+    </div>
+
+    <div class="legend">
+      <div class="sw" style="background:#ffd75b"></div>
+      <div>Observed urban exposure ribbons</div>
+    </div>
+
+    <div class="legend">
+      <div class="sw" style="background:#5ea8ff"></div>
+      <div>Masked maneuver corridors</div>
+    </div>
+
+    <div class="legend">
+      <div class="sw" style="background:#70ffb0"></div>
+      <div>Protected CASEVAC movement</div>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="info">
+  Click map to place enemy observation center. Engine generates urban exposure corridors and maneuver survivability geometry.
+</div>
+
+<script>
+require([
+  "esri/Map",
+  "esri/views/MapView",
+  "esri/views/SceneView",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic",
+  "esri/geometry/Polyline",
+  "esri/geometry/Polygon",
+  "esri/geometry/Circle",
+  "esri/geometry/geometryEngine"
+], function(
+  Map,
+  MapView,
+  SceneView,
+  GraphicsLayer,
+  Graphic,
+  Polyline,
+  Polygon,
+  Circle,
+  geometryEngine
+){
+
+const $ = (id)=>document.getElementById(id);
+
+const obsSlider = $("obsSlider");
+const roofSlider = $("roofSlider");
+const streetSlider = $("streetSlider");
+const droneSlider = $("droneSlider");
+
+const obsLabel = $("obsLabel");
+const roofLabel = $("roofLabel");
+const streetLabel = $("streetLabel");
+const droneLabel = $("droneLabel");
+
+const runBtn = $("runBtn");
+const clearBtn = $("clearBtn");
+
+const btn2d = $("btn2d");
+const btn3d = $("btn3d");
+
+const exposureOut = $("exposureOut");
+const roofOut = $("roofOut");
+const moveOut = $("moveOut");
+const ambushOut = $("ambushOut");
+
+obsSlider.oninput = ()=>obsLabel.textContent = obsSlider.value + "%";
+roofSlider.oninput = ()=>roofLabel.textContent = roofSlider.value + "%";
+streetSlider.oninput = ()=>streetLabel.textContent = streetSlider.value + "%";
+droneSlider.oninput = ()=>droneLabel.textContent = droneSlider.value + "%";
+
+const corridorLayer = new GraphicsLayer();
+const waveLayer = new GraphicsLayer();
+const pointLayer = new GraphicsLayer();
+
+const map = new Map({
+  basemap:"satellite",
+  ground:"world-elevation",
+  layers:[corridorLayer,waveLayer,pointLayer]
+});
+
+const mapView = new MapView({
+  container:"viewDiv",
+  map,
+  center:[73.0479,33.6844],
+  zoom:15
+});
+
+const sceneView = new SceneView({
+  container:null,
+  map,
+  center:[73.0479,33.6844],
+  zoom:15,
+  qualityProfile:"high"
+});
+
+sceneView.environment = {
+  lighting:{
+    directShadows:true,
+    ambientOcclusionEnabled:true
+  }
+};
+
+let activeView = mapView;
+let centerPoint = null;
+let waveTimer = null;
+
+function switchView(target){
+
+  const vp = activeView.viewpoint?.clone();
+
+  activeView.container = null;
+
+  target.container = "viewDiv";
+
+  if(vp){
+    target.viewpoint = vp;
+  }
+
+  activeView = target;
+}
+
+btn2d.onclick = ()=>switchView(mapView);
+btn3d.onclick = ()=>switchView(sceneView);
+
+function attachPlacement(view){
+
+  view.on("click",function(event){
+
+    if(!event.mapPoint) return;
+
+    centerPoint = event.mapPoint.clone();
+
+    pointLayer.removeAll();
+
+    pointLayer.add(new Graphic({
+      geometry:centerPoint,
+      symbol:{
+        type:"simple-marker",
+        size:16,
+        color:[255,70,70,1],
+        outline:{
+          color:[0,0,0,1],
+          width:2
+        }
+      }
+    }));
+  });
+}
+
+attachPlacement(mapView);
+attachPlacement(sceneView);
+
+runBtn.onclick = ()=>{
+
+  if(!centerPoint){
+    alert("Place enemy observation center first.");
+    return;
+  }
+
+  runAnalysis();
+};
+
+function runAnalysis(){
+
+  corridorLayer.removeAll();
+  waveLayer.removeAll();
+
+  if(waveTimer){
+    clearInterval(waveTimer);
+  }
+
+  const obs = Number(obsSlider.value);
+  const roof = Number(roofSlider.value);
+  const street = Number(streetSlider.value);
+  const drone = Number(droneSlider.value);
+
+  const exposure = Math.round(
+    (obs*0.45)+(roof*0.35)+(drone*0.2)
+  );
+
+  const movement = Math.max(
+    5,
+    100 - (
+      (street*0.4)+(obs*0.3)+(roof*0.2)
+    )
+  );
+
+  const ambush = Math.round(
+    (roof*0.4)+(street*0.3)+(obs*0.3)
+  );
+
+  exposureOut.textContent = exposure + "%";
+  roofOut.textContent = roof + "%";
+  moveOut.textContent = Math.round(movement) + "%";
+  ambushOut.textContent = ambush + "%";
+
+  drawVolumetricDomes();
+  drawExposureRibbons();
+  drawUrbanCorridors();
+  animateWavefronts();
+}
+
+function drawVolumetricDomes(){
+
+  const dome1 = geometryEngine.geodesicBuffer(
+    centerPoint,
+    350,
+    "meters"
+  );
+
+  const dome2 = geometryEngine.geodesicBuffer(
+    centerPoint,
+    650,
+    "meters"
+  );
+
+  corridorLayer.add(new Graphic({
+    geometry:dome2,
+    symbol:{
+      type:"simple-fill",
+      color:[255,80,80,0.08],
+      outline:{
+        color:[255,90,90,0.25],
+        width:2
+      }
+    }
+  }));
+
+  corridorLayer.add(new Graphic({
+    geometry:dome1,
+    symbol:{
+      type:"simple-fill",
+      color:[255,170,90,0.10],
+      outline:{
+        color:[255,210,120,0.35],
+        width:2
+      }
+    }
+  }));
+}
+
+function drawExposureRibbons(){
+
+  const lon = centerPoint.longitude;
+  const lat = centerPoint.latitude;
+
+  const ribbons = [
+
+    [
+      [lon-0.008,lat-0.002],
+      [lon+0.010,lat+0.001]
+    ],
+
+    [
+      [lon-0.007,lat+0.005],
+      [lon+0.008,lat+0.006]
+    ],
+
+    [
+      [lon-0.003,lat-0.009],
+      [lon+0.004,lat+0.008]
+    ]
+  ];
+
+  ribbons.forEach(path=>{
+
+    corridorLayer.add(new Graphic({
+      geometry:new Polyline({
+        paths:[path],
+        spatialReference:{wkid:4326}
+      }),
+      symbol:{
+        type:"simple-line",
+        color:[255,90,90,0.9],
+        width:8
+      }
+    }));
+
+  });
+}
+
+function drawUrbanCorridors(){
+
+  const lon = centerPoint.longitude;
+  const lat = centerPoint.latitude;
+
+  const safe1 = [
+    [lon-0.011,lat-0.010],
+    [lon-0.007,lat-0.004],
+    [lon-0.003,lat+0.003],
+    [lon+0.002,lat+0.008]
+  ];
+
+  const safe2 = [
+    [lon-0.010,lat+0.009],
+    [lon-0.005,lat+0.005],
+    [lon+0.001,lat+0.001],
+    [lon+0.007,lat-0.004]
+  ];
+
+  [safe1,safe2].forEach(path=>{
+
+    corridorLayer.add(new Graphic({
+      geometry:new Polyline({
+        paths:[path],
+        spatialReference:{wkid:4326}
+      }),
+      symbol:{
+        type:"simple-line",
+        color:[80,170,255,0.95],
+        width:5
+      }
+    }));
+
+  });
+}
+
+function animateWavefronts(){
+
+  let radius = 80;
+
+  waveTimer = setInterval(()=>{
+
+    waveLayer.removeAll();
+
+    const ring = geometryEngine.geodesicBuffer(
+      centerPoint,
+      radius,
+      "meters"
+    );
+
+    waveLayer.add(new Graphic({
+      geometry:ring,
+      symbol:{
+        type:"simple-fill",
+        color:[255,255,255,0.02],
+        outline:{
+          color:[255,120,120,0.45],
+          width:3
+        }
+      }
+    }));
+
+    radius += 40;
+
+    if(radius > 900){
+      radius = 80;
+    }
+
+  },160);
+}
+
+clearBtn.onclick = ()=>{
+
+  centerPoint = null;
+
+  corridorLayer.removeAll();
+  waveLayer.removeAll();
+  pointLayer.removeAll();
+
+  if(waveTimer){
+    clearInterval(waveTimer);
+  }
+
+  exposureOut.textContent = "—";
+  roofOut.textContent = "—";
+  moveOut.textContent = "—";
+  ambushOut.textContent = "—";
+};
+
+});
+</script>
+
+</body>
+</html>
