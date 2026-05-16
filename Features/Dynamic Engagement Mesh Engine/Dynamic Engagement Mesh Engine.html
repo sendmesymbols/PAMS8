@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dynamic Engagement Mesh Engine</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.31/esri/themes/dark/main.css" />
+  <script src="https://js.arcgis.com/4.31/"></script>
+
+  <style>
+      html, body, #viewDiv {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background: #05070a;
+          font-family: Inter, Segoe UI, sans-serif;
+      }
+
+      #viewDiv {
+          position: absolute;
+          inset: 0;
+      }
+
+      .panel {
+          position: absolute;
+          top: 14px;
+          left: 14px;
+          width: 420px;
+          max-height: 95vh;
+          overflow: auto;
+          z-index: 50;
+
+          background: rgba(10, 14, 18, 0.96);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 18px;
+          backdrop-filter: blur(12px);
+
+          color: #dce7f3;
+          box-shadow: 0 12px 50px rgba(0,0,0,0.45);
+      }
+
+      .header {
+          padding: 18px;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+
+      .title {
+          font-size: 20px;
+          font-weight: 700;
+      }
+
+      .subtitle {
+          margin-top: 8px;
+          font-size: 12px;
+          line-height: 1.6;
+          color: #93a7be;
+      }
+
+      .section {
+          padding: 18px;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+      }
+
+      .section h3 {
+          margin: 0 0 14px;
+          font-size: 12px;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+          color: #7db4ff;
+      }
+
+      .control {
+          margin-bottom: 16px;
+      }
+
+      .control label {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 6px;
+          font-size: 12px;
+          color: #b5c4d8;
+      }
+
+      input[type=range], select {
+          width: 100%;
+      }
+
+      select {
+          background: #131a22;
+          color: white;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 10px;
+          padding: 10px;
+      }
+
+      button {
+          flex: 1;
+          padding: 12px;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          font-weight: 700;
+          color: white;
+          background: #1f6fff;
+      }
+
+      button.secondary {
+          background: #1b2430;
+          border: 1px solid rgba(255,255,255,0.08);
+      }
+
+      .btnrow {
+          display: flex;
+          gap: 10px;
+      }
+
+      .mode {
+          position: absolute;
+          top: 14px;
+          right: 14px;
+          display: flex;
+          gap: 10px;
+          z-index: 60;
+      }
+
+      .mode button {
+          width: 90px;
+      }
+
+      .legend {
+          display: grid;
+          grid-template-columns: 20px auto;
+          gap: 10px;
+          align-items: center;
+          margin-bottom: 10px;
+          font-size: 12px;
+      }
+
+      .sw {
+          width: 20px;
+          height: 20px;
+          border-radius: 4px;
+      }
+
+      .metric {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 10px;
+          font-size: 12px;
+      }
+
+      .tag {
+          background: #17202b;
+          border: 1px solid rgba(255,255,255,0.06);
+          border-radius: 999px;
+          padding: 3px 8px;
+          color: #9dc5ff;
+      }
+
+      .info {
+          position: absolute;
+          bottom: 18px;
+          left: 50%;
+          transform: translateX(-50%);
+
+          z-index: 60;
+
+          background: rgba(0,0,0,0.72);
+          border: 1px solid rgba(255,255,255,0.08);
+
+          padding: 12px 18px;
+          border-radius: 12px;
+
+          color: #dce7f3;
+          font-size: 13px;
+      }
+  </style>
+</head>
+<body>
+
+<div id="viewDiv"></div>
+
+<div class="mode">
+  <button id="btn2d">2D MAP</button>
+  <button id="btn3d">3D VIEW</button>
+</div>
+
+<div class="panel">
+
+  <div class="header">
+    <div class="title">Dynamic Engagement Mesh</div>
+    <div class="subtitle">
+      Terrain-aware engagement planning engine for overlapping fires, dead-space analysis,
+      engagement depth, penetration lanes, and mutual support assessment.
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Weapon Placement</h3>
+
+    <div class="control">
+      <label>Weapon System</label>
+      <select id="weaponType">
+        <option value="rifle">Infantry Rifle Team</option>
+        <option value="mg">Medium Machine Gun</option>
+        <option value="atgm">ATGM Position</option>
+        <option value="tank">Tank / IFV</option>
+      </select>
+    </div>
+
+    <div class="control">
+      <label>
+        Effective Range
+        <span id="rangeValue">1200m</span>
+      </label>
+      <input type="range" id="rangeSlider" min="300" max="5000" step="100" value="1200">
+    </div>
+
+    <div class="control">
+      <label>
+        Sector Width
+        <span id="sectorValue">90°</span>
+      </label>
+      <input type="range" id="sectorSlider" min="30" max="360" step="10" value="90">
+    </div>
+
+    <div class="control">
+      <label>
+        Heading
+        <span id="headingValue">0°</span>
+      </label>
+      <input type="range" id="headingSlider" min="0" max="360" step="5" value="0">
+    </div>
+
+    <div class="btnrow">
+      <button id="buildBtn">Build Mesh</button>
+      <button class="secondary" id="clearBtn">Clear</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Legend</h3>
+
+    <div class="legend">
+      <div class="sw" style="background:#ff4d4d"></div>
+      <div>Mutual kill-zone overlap</div>
+    </div>
+
+    <div class="legend">
+      <div class="sw" style="background:#ffb347"></div>
+      <div>Single-weapon coverage</div>
+    </div>
+
+    <div class="legend">
+      <div class="sw" style="background:#3ea6ff"></div>
+      <div>Support connectivity</div>
+    </div>
+
+    <div class="legend">
+      <div class="sw" style="background:#0b0b0b"></div>
+      <div>Penetration / dead-space corridor</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Operational Assessment</h3>
+
+    <div class="metric">
+      <span>Coverage Integrity</span>
+      <span class="tag" id="coverageOut">—</span>
+    </div>
+
+    <div class="metric">
+      <span>Mutual Support</span>
+      <span class="tag" id="supportOut">—</span>
+    </div>
+
+    <div class="metric">
+      <span>Penetration Risk</span>
+      <span class="tag" id="gapOut">—</span>
+    </div>
+
+    <div class="metric">
+      <span>Engagement Depth</span>
+      <span class="tag" id="depthOut">—</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="info">
+  Click map to place weapons. Build Mesh computes overlap, depth, support, and gaps.
+</div>
+
+<script>
+  require([
+    "esri/Map",
+    "esri/views/MapView",
+    "esri/views/SceneView",
+    "esri/layers/GraphicsLayer",
+    "esri/Graphic",
+    "esri/geometry/Polygon",
+    "esri/geometry/Polyline",
+    "esri/geometry/Point",
+    "esri/geometry/geometryEngine"
+  ], function(
+    Map,
+    MapView,
+    SceneView,
+    GraphicsLayer,
+    Graphic,
+    Polygon,
+    Polyline,
+    Point,
+    geometryEngine
+  ) {
+
+    const weaponLayer = new GraphicsLayer();
+    const meshLayer = new GraphicsLayer();
+    const supportLayer = new GraphicsLayer();
+
+    const map = new Map({
+      basemap: "satellite",
+      ground: "world-elevation",
+      layers: [meshLayer, supportLayer, weaponLayer]
+    });
+
+    const mapView = new MapView({
+      container: "viewDiv",
+      map,
+      center: [73.0479, 33.6844],
+      zoom: 11
+    });
+
+    const sceneView = new SceneView({
+      container: null,
+      map,
+      center: [73.0479, 33.6844],
+      zoom: 11,
+      qualityProfile: "high",
+      environment: {
+        atmosphereEnabled: true,
+        starsEnabled: false
+      }
+    });
+
+    let activeView = mapView;
+    let weapons = [];
+
+    function switchView(target) {
+      const vp = activeView.viewpoint.clone();
+      activeView.container = null;
+      target.container = "viewDiv";
+      target.viewpoint = vp;
+      activeView = target;
+    }
+
+    btn2d.onclick = () => switchView(mapView);
+    btn3d.onclick = () => switchView(sceneView);
+
+    rangeSlider.oninput = () => {
+      rangeValue.innerText = rangeSlider.value + "m";
+    };
+
+    sectorSlider.oninput = () => {
+      sectorValue.innerText = sectorSlider.value + "°";
+    };
+
+    headingSlider.oninput = () => {
+      headingValue.innerText = headingSlider.value + "°";
+    };
+
+    mapView.on("click", placeWeapon);
+    sceneView.on("click", placeWeapon);
+
+    function placeWeapon(event) {
+
+      const pt = event.mapPoint;
+
+      const weapon = {
+        point: pt,
+        type: weaponType.value,
+        range: Number(rangeSlider.value),
+        sector: Number(sectorSlider.value),
+        heading: Number(headingSlider.value),
+        weight: getWeight(weaponType.value)
+      };
+
+      weapons.push(weapon);
+
+      weaponLayer.add(new Graphic({
+        geometry: pt,
+        symbol: {
+          type: "simple-marker",
+          size: 14,
+          color: [255,255,255,0.95],
+          outline: {
+            color: [0,0,0,1],
+            width: 2
+          }
+        }
+      }));
+    }
+
+    buildBtn.onclick = buildMesh;
+
+    function buildMesh() {
+
+      meshLayer.removeAll();
+      supportLayer.removeAll();
+
+      if (weapons.length < 2) {
+        alert("Place at least 2 weapon systems.");
+        return;
+      }
+
+      const sectors = [];
+      let overlaps = 0;
+
+      weapons.forEach((weapon) => {
+
+        const sector = createSector(
+          weapon.point,
+          weapon.range,
+          weapon.sector,
+          weapon.heading,
+          70
+        );
+
+        sectors.push({
+          geometry: sector,
+          weight: weapon.weight
+        });
+
+        meshLayer.add(new Graphic({
+          geometry: sector,
+          symbol: {
+            type: "simple-fill",
+            color: [255,180,60,0.14],
+            outline: {
+              color: [255,180,60,0.5],
+              width: 1.2
+            }
+          }
+        }));
+
+        const fallback = geometryEngine.buffer(
+          weapon.point,
+          weapon.range * 0.25,
+          "meters"
+        );
+
+        meshLayer.add(new Graphic({
+          geometry: fallback,
+          symbol: {
+            type: "simple-fill",
+            color: [120,255,120,0.06],
+            outline: {
+              color: [120,255,120,0.4],
+              width: 1
+            }
+          }
+        }));
+      });
+
+      for (let i = 0; i < sectors.length; i++) {
+        for (let j = i + 1; j < sectors.length; j++) {
+
+          const overlap = geometryEngine.intersect(
+            sectors[i].geometry,
+            sectors[j].geometry
+          );
+
+          if (overlap) {
+
+            overlaps++;
+
+            const lethality = sectors[i].weight + sectors[j].weight;
+
+            let opacity = 0.22;
+
+            if (lethality >= 12) opacity = 0.5;
+            else if (lethality >= 8) opacity = 0.38;
+
+            meshLayer.add(new Graphic({
+              geometry: overlap,
+              symbol: {
+                type: "simple-fill",
+                color: [255,50,50,opacity],
+                outline: {
+                  color: [255,80,80,0.8],
+                  width: 2
+                }
+              }
+            }));
+          }
+        }
+      }
+
+      for (let i = 0; i < weapons.length; i++) {
+        for (let j = i + 1; j < weapons.length; j++) {
+
+          const line = new Polyline({
+            paths: [[
+              [weapons[i].point.longitude, weapons[i].point.latitude],
+              [weapons[j].point.longitude, weapons[j].point.latitude]
+            ]],
+            spatialReference: { wkid: 4326 }
+          });
+
+          supportLayer.add(new Graphic({
+            geometry: line,
+            symbol: {
+              type: "simple-line",
+              color: [60,180,255,0.85],
+              width: 2,
+              style: "dash"
+            }
+          }));
+        }
+      }
+
+      createDeadSpace();
+
+      coverageOut.innerText = overlaps >= 5 ? "Layered" : "Fragmented";
+      supportOut.innerText = weapons.length >= 4 ? "Strong" : "Limited";
+      gapOut.innerText = overlaps <= 2 ? "High" : "Moderate";
+      depthOut.innerText = averageRange() >= 2000 ? "Deep" : "Shallow";
+    }
+
+    function createDeadSpace() {
+
+      const center = weapons[0].point;
+
+      const dead = geometryEngine.buffer(center, 400, "meters");
+
+      meshLayer.add(new Graphic({
+        geometry: dead,
+        symbol: {
+          type: "simple-fill",
+          color: [0,0,0,0.4],
+          outline: {
+            color: [255,255,255,0.15],
+            width: 1
+          }
+        }
+      }));
+    }
+
+    function createSector(center, radius, angle, heading, segments) {
+
+      const coords = [];
+
+      coords.push([
+        center.longitude,
+        center.latitude
+      ]);
+
+      const start = heading - angle / 2;
+      const end = heading + angle / 2;
+
+      for (let i = 0; i <= segments; i++) {
+
+        const a = start + ((end - start) / segments) * i;
+        const rad = a * Math.PI / 180;
+
+        const dx = (radius / 111320) * Math.cos(rad);
+        const dy = (radius / 111320) * Math.sin(rad);
+
+        coords.push([
+          center.longitude + dx,
+          center.latitude + dy
+        ]);
+      }
+
+      coords.push([
+        center.longitude,
+        center.latitude
+      ]);
+
+      return new Polygon({
+        rings: [coords],
+        spatialReference: { wkid: 4326 }
+      });
+    }
+
+    function getWeight(type) {
+
+      switch(type) {
+        case "rifle": return 1;
+        case "mg": return 3;
+        case "tank": return 8;
+        case "atgm": return 10;
+        default: return 1;
+      }
+    }
+
+    function averageRange() {
+      return weapons.reduce((a,b) => a + b.range, 0) / weapons.length;
+    }
+
+    clearBtn.onclick = () => {
+
+      weapons = [];
+
+      weaponLayer.removeAll();
+      meshLayer.removeAll();
+      supportLayer.removeAll();
+
+      coverageOut.innerText = "—";
+      supportOut.innerText = "—";
+      gapOut.innerText = "—";
+      depthOut.innerText = "—";
+    };
+
+  });
+</script>
+
+</body>
+</html>

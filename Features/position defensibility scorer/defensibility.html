@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Position Defensibility Scorer — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#060709}
+
+    /* ══ LEFT — score panel ══════════════════════════════════════════ */
+    #left-panel{
+      position:absolute;top:14px;left:14px;width:272px;z-index:99;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(29,158,117,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh-28px);display:flex;flex-direction:column;
+    }
+    .lph{padding:9px 12px 8px;border-bottom:1px solid rgba(29,158,117,0.15);
+      background:rgba(29,158,117,0.07);flex-shrink:0}
+    .lph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#1D9E75;font-weight:700}
+    .lph-sub{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:2px}
+
+    /* composite score ring */
+    #score-ring-wrap{
+      display:flex;align-items:center;justify-content:center;gap:14px;
+      padding:14px 12px;border-bottom:1px solid rgba(29,158,117,0.12);
+      flex-shrink:0;
+    }
+    #score-ring{position:relative;width:90px;height:90px;flex-shrink:0}
+    #score-svg{display:block}
+    #score-num{
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      font-size:26px;font-weight:700;color:#1D9E75;letter-spacing:-.02em;
+      text-align:center;line-height:1;
+    }
+    #score-label{font-size:9px;color:#3a3935;letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
+    #score-meta{flex:1}
+    #score-grade{font-size:18px;font-weight:700;color:#1D9E75;margin-bottom:4px}
+    #score-desc{font-size:10px;color:#888780;line-height:1.5}
+
+    /* radar chart */
+    #radar-wrap{
+      padding:10px 12px;border-bottom:1px solid rgba(29,158,117,0.10);
+      flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    }
+    #radar-canvas{display:block}
+
+    /* factor breakdown */
+    #factors{overflow-y:auto;flex:1;padding:8px 10px}
+    .factor-row{
+      display:grid;grid-template-columns:22px 1fr 80px 32px;
+      align-items:center;gap:6px;margin-bottom:8px;
+    }
+    .fac-icon{font-size:14px;text-align:center}
+    .fac-body{display:flex;flex-direction:column;gap:3px}
+    .fac-name{font-size:10px;font-weight:500;color:var(--color-text-secondary)}
+    .fac-track{height:3px;background:rgba(255,255,255,0.06);border-radius:2px}
+    .fac-fill{height:100%;border-radius:2px;transition:width .6s}
+    .fac-note{font-size:8.5px;color:#3a3935;letter-spacing:.03em}
+    .fac-score{font-size:13px;font-weight:700;text-align:right}
+    .fac-max{font-size:8px;color:#3a3935;text-align:right;margin-top:1px}
+
+    #factor-empty{padding:18px 10px;font-size:10px;color:#3a3935;
+      text-align:center;line-height:1.8}
+
+    /* position history */
+    #pos-history{border-top:1px solid rgba(29,158,117,0.10);flex-shrink:0;max-height:130px;overflow-y:auto}
+    .ph-header{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;
+      color:#3a3935;padding:6px 10px 3px}
+    .ph-row{display:flex;align-items:center;gap:7px;padding:4px 10px;
+      cursor:pointer;transition:background .12s}
+    .ph-row:hover{background:rgba(29,158,117,0.07)}
+    .ph-row.active-pos{background:rgba(29,158,117,0.10)}
+    .ph-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .ph-info{flex:1;font-size:9.5px;color:#888780}
+    .ph-scr{font-size:11px;font-weight:700}
+
+    /* ══ RIGHT — controls ════════════════════════════════════════════ */
+    #right-panel{
+      position:absolute;top:14px;right:14px;width:284px;z-index:99;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(29,158,117,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh-28px);overflow-y:auto;
+    }
+    .ph2{display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;border-bottom:1px solid rgba(29,158,117,0.15);
+      background:rgba(29,158,117,0.07);position:sticky;top:0;z-index:2}
+    .ph2-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#1D9E75;font-weight:700}
+    .ph2-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#3a3935;transition:color .2s}
+    .ph2-status.ready  {color:#1D9E75}
+    .ph2-status.running{color:#EF9F27}
+    .ph2-status.done   {color:#1D9E75}
+
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+      color:#3a3935;padding:9px 12px 5px}
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s}
+    input:focus,select:focus{border-color:rgba(29,158,117,0.55)}
+    select option{background:#141618}
+    .psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+    .psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;flex:1.8}
+    .psr input[type=range]{flex:2;accent-color:#1D9E75;cursor:pointer}
+    .psr-v{font-size:10px;color:#1D9E75;min-width:38px;text-align:right}
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#1D9E75;width:13px;height:13px;cursor:pointer}
+
+    /* Egress route list */
+    #egress-list{padding:0 12px 8px}
+    .eg-row{display:flex;align-items:center;gap:7px;padding:4px 0;
+      border-bottom:0.5px solid rgba(255,255,255,0.05)}
+    .eg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#378ADD}
+    .eg-coords{font-size:9.5px;color:#888780;flex:1;letter-spacing:.03em}
+    .eg-del{font-size:10px;color:#3a3935;cursor:pointer;border:none;background:transparent;
+      padding:2px 4px;transition:color .12s}
+    .eg-del:hover{color:#DC3C30}
+    #eg-add-hint{font-size:9px;color:#3a3935;padding:4px 0;letter-spacing:.04em}
+
+    /* Factor weight sliders */
+    .wt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;padding:0 12px 8px}
+    .wt-item{display:flex;flex-direction:column;gap:3px}
+    .wt-lbl{font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:#888780}
+    .wt-row{display:flex;align-items:center;gap:4px}
+    .wt-row input[type=range]{flex:1;accent-color:#1D9E75}
+    .wt-val{font-size:9px;color:#1D9E75;min-width:18px;text-align:right}
+
+    /* progress */
+    #prog-wrap{padding:0 12px 9px}
+    #prog-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+    #prog-fill{height:100%;background:linear-gradient(to right,#1D9E75,#378ADD);
+      border-radius:2px;width:0%;transition:width .12s}
+    #prog-label{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:4px}
+
+    /* buttons */
+    .pb-row{display:flex;gap:6px;padding:9px 12px}
+    .pb{flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;border:1px solid rgba(29,158,117,0.38);
+      background:transparent;color:#1D9E75;transition:all .14s}
+    .pb:hover:not(:disabled){background:rgba(29,158,117,0.10)}
+    .pb.primary{background:rgba(29,158,117,0.16);border-color:#1D9E75}
+    .pb.primary:hover:not(:disabled){background:rgba(29,158,117,0.28)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+
+    /* hint */
+    #hint{position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(6,7,9,0.94);border:1px solid rgba(29,158,117,0.45);
+      color:#1D9E75;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase}
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<!-- ══ LEFT PANEL — score display ════════════════════════════════════ -->
+<div id="left-panel">
+  <div class="lph">
+    <div class="lph-title">◉ Defensibility Scorer</div>
+    <div class="lph-sub" id="lph-sub">Click map to score a position</div>
+  </div>
+
+  <!-- Composite score ring + grade -->
+  <div id="score-ring-wrap">
+    <div id="score-ring">
+      <svg id="score-svg" width="90" height="90" viewBox="0 0 90 90">
+        <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"/>
+        <circle id="score-arc" cx="45" cy="45" r="38" fill="none"
+          stroke="#1D9E75" stroke-width="7"
+          stroke-dasharray="0 239" stroke-dashoffset="60"
+          stroke-linecap="round" transform="rotate(-90 45 45)"
+          style="transition:stroke-dasharray .8s,stroke .5s"/>
+      </svg>
+      <div id="score-num">—</div>
+    </div>
+    <div id="score-meta">
+      <div id="score-grade">—</div>
+      <div id="score-desc">Place a position<br>on the map to score it</div>
+    </div>
+  </div>
+
+  <!-- Radar chart -->
+  <div id="radar-wrap">
+    <canvas id="radar-canvas" width="248" height="190"></canvas>
+  </div>
+
+  <!-- Factor breakdown -->
+  <div id="factors">
+    <div id="factor-empty">
+      Scores for each factor will<br>appear here after analysis.<br><br>
+      Each factor is scored 0–20.<br>
+      Total composite score: 0–100.
+    </div>
+  </div>
+
+  <!-- Position history -->
+  <div id="pos-history" style="display:none">
+    <div class="ph-header">Previous positions</div>
+    <div id="ph-rows"></div>
+  </div>
+</div>
+
+<!-- ══ RIGHT PANEL — controls ════════════════════════════════════════ -->
+<div id="right-panel">
+  <div class="ph2">
+    <div class="ph2-title">⬡ Analysis Config</div>
+    <div class="ph2-status ready" id="status">Click map to score</div>
+  </div>
+
+  <!-- Position config -->
+  <div class="ps">Observer / position</div>
+  <div class="pg">
+    <div class="pf">
+      <div class="pl">Eye height (m)</div>
+      <input id="inp-eye" type="number" value="1.8" min="0.5" max="10" step="0.1"/>
+    </div>
+    <div class="pf">
+      <div class="pl">Position type</div>
+      <select id="inp-postype">
+        <option value="dismount">Dismount</option>
+        <option value="vehicle" selected>Vehicle</option>
+        <option value="tank">Tank</option>
+        <option value="mg">MG/ATGM</option>
+        <option value="sniper">Sniper</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Analysis radii -->
+  <div class="ps">Analysis ranges</div>
+  <div class="psr">
+    <div class="psr-l">Observation radius (m)</div>
+    <input id="inp-obs-r" type="range" min="500" max="10000" step="250" value="3000"/>
+    <div class="psr-v" id="obs-r-v">3000</div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Slope check radius (m)</div>
+    <input id="inp-slp-r" type="range" min="50" max="500" step="25" value="150"/>
+    <div class="psr-v" id="slp-r-v">150</div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Ray resolution (°)</div>
+    <input id="inp-ray-res" type="range" min="2" max="15" step="1" value="5"/>
+    <div class="psr-v" id="ray-res-v">5°</div>
+  </div>
+
+  <!-- Egress routes -->
+  <div class="ps">Egress routes (optional)</div>
+  <div id="egress-list">
+    <div id="eg-add-hint">Ctrl+Click map to add an egress waypoint</div>
+  </div>
+
+  <!-- Position type expected scores -->
+  <div class="ps">Scoring context</div>
+  <div class="pg">
+    <div class="pf full">
+      <div class="pl">Threat axis (bearing °)</div>
+      <input id="inp-threat-brg" type="number" value="270" min="0" max="359" step="1"/>
+    </div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Slope acceptable (°)</div>
+    <input id="inp-slp-ok" type="range" min="5" max="30" step="1" value="12"/>
+    <div class="psr-v" id="slp-ok-v">12°</div>
+  </div>
+
+  <div class="pdiv"/>
+
+  <!-- Factor weights -->
+  <div class="ps">Factor weights (0–5)</div>
+  <div class="wt-grid">
+    <div class="wt-item"><div class="wt-lbl">Observation</div>
+      <div class="wt-row"><input type="range" id="wt-obs" min="0" max="5" step="1" value="4"/>
+        <div class="wt-val" id="wv-obs">4</div></div></div>
+    <div class="wt-item"><div class="wt-lbl">Fields of fire</div>
+      <div class="wt-row"><input type="range" id="wt-fof" min="0" max="5" step="1" value="4"/>
+        <div class="wt-val" id="wv-fof">4</div></div></div>
+    <div class="wt-item"><div class="wt-lbl">Cover from fire</div>
+      <div class="wt-row"><input type="range" id="wt-cff" min="0" max="5" step="1" value="3"/>
+        <div class="wt-val" id="wv-cff">3</div></div></div>
+    <div class="wt-item"><div class="wt-lbl">Cover from view</div>
+      <div class="wt-row"><input type="range" id="wt-cfv" min="0" max="5" step="1" value="3"/>
+        <div class="wt-val" id="wv-cfv">3</div></div></div>
+    <div class="wt-item"><div class="wt-lbl">Egress routes</div>
+      <div class="wt-row"><input type="range" id="wt-egr" min="0" max="5" step="1" value="3"/>
+        <div class="wt-val" id="wv-egr">3</div></div></div>
+    <div class="wt-item"><div class="wt-lbl">Dead ground</div>
+      <div class="wt-row"><input type="range" id="wt-dg" min="0" max="5" step="1" value="3"/>
+        <div class="wt-val" id="wv-dg">3</div></div></div>
+  </div>
+
+  <div class="pdiv"/>
+
+  <!-- Display options -->
+  <div class="ps">Overlays</div>
+  <div class="ptr"><label>Viewshed overlay</label>
+    <input id="opt-vs"  type="checkbox" checked/></div>
+  <div class="ptr"><label>Dead ground overlay</label>
+    <input id="opt-dg"  type="checkbox" checked/></div>
+  <div class="ptr"><label>Slope overlay</label>
+    <input id="opt-slp" type="checkbox" checked/></div>
+  <div class="ptr"><label>LOS spokes</label>
+    <input id="opt-los" type="checkbox" checked/></div>
+  <div class="ptr"><label>Egress LOS lines</label>
+    <input id="opt-egr" type="checkbox" checked/></div>
+
+  <div class="pdiv"/>
+  <div id="prog-wrap">
+    <div id="prog-track"><div id="prog-fill"></div></div>
+    <div id="prog-label">—</div>
+  </div>
+
+  <div class="pb-row">
+    <button class="pb"         id="btn-clear">Clear</button>
+    <button class="pb"         id="btn-egress-mode" id="btn-egress-mode">+ Egress</button>
+    <button class="pb primary" id="btn-rescore" disabled>Re-score ↗</button>
+  </div>
+</div>
+
+<div id="hint">Click map to score a position — Ctrl+Click to add egress waypoints</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map","esri/views/SceneView",
+  "esri/layers/GraphicsLayer","esri/layers/MediaLayer",
+  "esri/layers/support/ExtentAndRotationGeoreference",
+  "esri/layers/support/ImageElement",
+  "esri/Graphic","esri/geometry/Point","esri/geometry/Extent",
+  "esri/geometry/Polyline","esri/geometry/geometryEngine",
+], function(
+  Map, SceneView, GraphicsLayer, MediaLayer,
+  ExtentAndRotationGeoreference, ImageElement,
+  Graphic, Point, Extent, Polyline, geometryEngine
+) {
+
+  // ═══════════════════════════════════════════════════════════════════
+  // FACTOR DEFINITIONS
+  // Each factor scored 0–20 individually, then composite = weighted sum
+  // normalised to 0–100.
+  // ═══════════════════════════════════════════════════════════════════
+  const FACTORS = [
+    { id:'obs',  label:'Observation arc',    icon:'👁', color:'#1D9E75',
+      desc:(s)=>s>=15?'Excellent — sees most of AO':s>=10?'Good observation':s>=6?'Limited arcs':'Poor — nearly blind' },
+    { id:'fof',  label:'Fields of fire',     icon:'◈',  color:'#378ADD',
+      desc:(s)=>s>=15?'Wide unobstructed fields':s>=10?'Adequate direct fire arcs':s>=6?'Restricted by terrain':'Confined — minimal fire' },
+    { id:'cff',  label:'Cover from fire',    icon:'🛡',  color:'#EF9F27',
+      desc:(s)=>s>=15?'Strong terrain masking':s>=10?'Moderate protection':s>=6?'Partial cover only':'Exposed — no cover' },
+    { id:'cfv',  label:'Cover from view',    icon:'◉',  color:'#B428DC',
+      desc:(s)=>s>=15?'Well concealed':s>=10?'Partial concealment':s>=6?'Marginal concealment':'Fully exposed' },
+    { id:'egr',  label:'Egress routes',      icon:'↗',  color:'#78C840',
+      desc:(s)=>s>=15?'Multiple covered routes':s>=10?'At least one clear route':s>=6?'Limited egress':'Bottleneck — trapped' },
+    { id:'dg',   label:'Dead ground behind', icon:'⬇',  color:'#DC3C30',
+      desc:(s)=>s>=15?'Deep dead ground — safe FUP':s>=10?'Useful dead ground':s>=6?'Shallow dead ground':'No dead ground' },
+  ];
+
+  const GRADE = [
+    { min:85, grade:'A+', label:'Exceptional',  color:'#1D9E75' },
+    { min:75, grade:'A',  label:'Strong',        color:'#1D9E75' },
+    { min:65, grade:'B',  label:'Good',          color:'#78C840' },
+    { min:55, grade:'B−', label:'Acceptable',    color:'#78C840' },
+    { min:45, grade:'C',  label:'Marginal',      color:'#EF9F27' },
+    { min:35, grade:'D',  label:'Poor',          color:'#EF9F27' },
+    { min:0,  grade:'F',  label:'Indefensible',  color:'#DC3C30' },
+  ];
+
+  function getGrade(score){
+    return GRADE.find(g=>score>=g.min)??GRADE.at(-1);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GEODETIC
+  // ═══════════════════════════════════════════════════════════════════
+  const EARTH_R=6_371_008.8, M_PER_DEG=111_320;
+
+  function destPt(lon,lat,brg,dist){
+    const δ=dist/EARTH_R,θ=brg*Math.PI/180;
+    const φ1=lat*Math.PI/180,λ1=lon*Math.PI/180;
+    const φ2=Math.asin(Math.sin(φ1)*Math.cos(δ)+Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+    const λ2=λ1+Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1),Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+    return{longitude:λ2*180/Math.PI,latitude:φ2*180/Math.PI};
+  }
+
+  function geoDist(lon1,lat1,lon2,lat2){
+    const φ1=lat1*Math.PI/180,φ2=lat2*Math.PI/180,Δλ=(lon2-lon1)*Math.PI/180;
+    return EARTH_R*Math.acos(Math.min(1,Math.sin(φ1)*Math.sin(φ2)+Math.cos(φ1)*Math.cos(φ2)*Math.cos(Δλ)));
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // CORE SCORING ALGORITHM
+  // ─────────────────────────────────────────────────────────────────
+  // All six factors run from the same ElevationSampler, downloaded once.
+  //
+  // FACTOR 1 — Observation arc (obs):
+  //   Cast rays at rayRes° intervals through full 360°.
+  //   Count rays that reach the analysis radius without terrain blockage.
+  //   Score = (visible rays / total) × 20
+  //
+  // FACTOR 2 — Fields of fire (fof):
+  //   Same as obs but restricted to the threat axis ±90°.
+  //   Score = (visible rays in threat sector / sector rays) × 20
+  //   Rationale: observation is 360°; fires only need to face the threat.
+  //
+  // FACTOR 3 — Cover from fire (cff):
+  //   Compute the local terrain prominence of the position relative to
+  //   a ring of sample points at slopeRadius.  Positive prominence
+  //   (position is LOWER than surroundings) = cover from direct fire.
+  //   Also check slope steepness of flanking terrain (high walls = cover).
+  //   Score based on combination of depression depth and flanking height.
+  //
+  // FACTOR 4 — Cover from view (cfv):
+  //   Inverse viewshed — how many of a grid of potential observation
+  //   points around the AO perimeter cannot see the position.
+  //   Score = (blocked observer points / total) × 20
+  //
+  // FACTOR 5 — Egress routes (egr):
+  //   LOS check from position to each placed egress waypoint.
+  //   Additional score for routes that are masked (in dead ground from OBJ).
+  //   Score based on fraction of egress waypoints with clear LOS and masking.
+  //
+  // FACTOR 6 — Dead ground behind (dg):
+  //   Measure terrain elevation drop in the 180° sector facing AWAY from
+  //   the threat axis.  Deep dead ground = good FUP / withdrawal route.
+  //   Score based on average depth below the position in the rear sector.
+  // ═══════════════════════════════════════════════════════════════════
+
+  async function scorePosition(view, positionPt, obsZ, params, egressPts) {
+    const {
+      obsRadius, slopeRadius, rayRes, threatBrg, slopeOkDeg,
+      showVS, showDG, showSlp, showLOS, showEgr,
+    } = params;
+
+    // Build analysis extent
+    const cosLat = Math.cos(positionPt.latitude*Math.PI/180);
+    const padM   = obsRadius*1.08, padDeg=padM/M_PER_DEG;
+    const extent  = new Extent({
+      xmin:positionPt.longitude-padDeg/cosLat, ymin:positionPt.latitude-padDeg,
+      xmax:positionPt.longitude+padDeg/cosLat, ymax:positionPt.latitude+padDeg,
+      spatialReference:{wkid:4326},
+    });
+
+    // Single DEM download
+    const sampler = await view.createElevationSampler(extent,{noDataValue:0});
+
+    function getZ(lon,lat){ return sampler.queryElevation(new Point({longitude:lon,latitude:lat,spatialReference:{wkid:4326}}))?.z??0; }
+
+    // ── Pre-compute horizons at rayRes° resolution ────────────────────
+    const STEP  = Math.max(20, obsRadius/60);
+    const numRays = Math.round(360/rayRes);
+    const horizons = new Float32Array(numRays); // max slope angle per ray
+
+    for(let ri=0;ri<numRays;ri++){
+      const brg = (ri/numRays)*360;
+      let maxSlp=-90;
+      for(let d=STEP;d<=obsRadius;d+=STEP){
+        const{longitude,latitude}=destPt(positionPt.longitude,positionPt.latitude,brg,d);
+        const z=getZ(longitude,latitude);
+        const s=Math.atan2(z-obsZ,d)*180/Math.PI;
+        if(s>maxSlp) maxSlp=s;
+      }
+      horizons[ri]=maxSlp;
+    }
+
+    // Helper: is bearing direction visible?
+    function isVisible(brg, testDist=obsRadius){
+      const ri=Math.round(((brg%360)+360)%360/rayRes)%numRays;
+      const{longitude,latitude}=destPt(positionPt.longitude,positionPt.latitude,brg,testDist);
+      const z=getZ(longitude,latitude);
+      const testSlp=Math.atan2(z-obsZ,testDist)*180/Math.PI;
+      return testSlp>=horizons[ri];
+    }
+
+    // ── FACTOR 1: Observation arc ────────────────────────────────────
+    let visRays=0;
+    for(let ri=0;ri<numRays;ri++){
+      const brg=(ri/numRays)*360;
+      const{longitude,latitude}=destPt(positionPt.longitude,positionPt.latitude,brg,obsRadius*0.9);
+      const z=getZ(longitude,latitude);
+      const slp=Math.atan2(z-obsZ,obsRadius*0.9)*180/Math.PI;
+      if(slp>=horizons[ri]) visRays++;
+    }
+    const obsScore=Math.round(Math.min(20,(visRays/numRays)*20));
+
+    // ── FACTOR 2: Fields of fire (threat sector ±90°) ────────────────
+    let fofVis=0, fofTotal=0;
+    for(let ri=0;ri<numRays;ri++){
+      const brg=(ri/numRays)*360;
+      const delta=Math.abs(((brg-threatBrg+540)%360)-180);
+      if(delta>90) continue;
+      fofTotal++;
+      const{longitude,latitude}=destPt(positionPt.longitude,positionPt.latitude,brg,obsRadius*0.85);
+      const z=getZ(longitude,latitude);
+      const slp=Math.atan2(z-obsZ,obsRadius*0.85)*180/Math.PI;
+      if(slp>=horizons[ri]) fofVis++;
+    }
+    const fofScore=fofTotal>0?Math.round(Math.min(20,(fofVis/fofTotal)*20)):10;
+
+    // ── FACTOR 3: Cover from fire ────────────────────────────────────
+    // Sample flanking terrain at slopeRadius — how high are the walls?
+    let totalRise=0, riseCount=0;
+    const numFlank=24;
+    for(let fi=0;fi<numFlank;fi++){
+      const brg=(fi/numFlank)*360;
+      const{longitude,latitude}=destPt(positionPt.longitude,positionPt.latitude,brg,slopeRadius);
+      const flankZ=getZ(longitude,latitude);
+      totalRise+=Math.max(0,flankZ-obsZ+0.5); // how much higher than observer
+      riseCount++;
+    }
+    const avgRise=riseCount>0?totalRise/riseCount:0;
+    // Score: 0m rise=0, 5m=10, 15m=20
+    const cffScore=Math.round(Math.min(20,avgRise/15*20));
+
+    // ── FACTOR 4: Cover from view (inverse viewshed) ──────────────────
+    // Sample 24 observer points on the AO perimeter — can they see us?
+    const numObs=24;
+    let blocked=0;
+    for(let oi=0;oi<numObs;oi++){
+      const brg=(oi/numObs)*360;
+      const{longitude,latitude}=destPt(positionPt.longitude,positionPt.latitude,brg,obsRadius*0.9);
+      const extObsZ=getZ(longitude,latitude)+1.8;
+      const dist=geoDist(positionPt.longitude,positionPt.latitude,longitude,latitude);
+      // Check if observer can see our position
+      const reverseSlp=Math.atan2(obsZ-extObsZ,dist)*180/Math.PI;
+      // Cast ray from perimeter observer toward us, track horizon
+      const reverseBrg=((brg+180)%360);
+      let maxReverseSlp=-90;
+      for(let d=STEP;d<dist*0.95;d+=STEP){
+        const{longitude:il,latitude:ip}=destPt(longitude,latitude,reverseBrg,d);
+        const iz=getZ(il,ip);
+        const rs=Math.atan2(iz-extObsZ,d)*180/Math.PI;
+        if(rs>maxReverseSlp) maxReverseSlp=rs;
+      }
+      if(reverseSlp<maxReverseSlp) blocked++; // our position is below their horizon
+    }
+    const cfvScore=Math.round(Math.min(20,(blocked/numObs)*20));
+
+    // ── FACTOR 5: Egress routes ──────────────────────────────────────
+    let egrScore=10; // baseline if no egress routes placed
+    const egrResults=[];
+    if(egressPts.length>0){
+      let clearEgr=0;
+      for(const ept of egressPts){
+        const dist=geoDist(positionPt.longitude,positionPt.latitude,ept.longitude,ept.latitude);
+        const egrBrg=((Math.atan2((ept.longitude-positionPt.longitude)*cosLat,(ept.latitude-positionPt.latitude))*180/Math.PI)+360)%360;
+        // LOS check: can we reach this egress point?
+        let maxSlpToEgr=-90;
+        for(let d=STEP;d<dist*0.95;d+=STEP){
+          const{longitude,latitude}=destPt(positionPt.longitude,positionPt.latitude,egrBrg,d);
+          const z=getZ(longitude,latitude);
+          const s=Math.atan2(z-obsZ,d)*180/Math.PI;
+          if(s>maxSlpToEgr) maxSlpToEgr=s;
+        }
+        const eptZ=getZ(ept.longitude,ept.latitude);
+        const eptSlp=Math.atan2(eptZ-obsZ,dist)*180/Math.PI;
+        const clear=eptSlp>=maxSlpToEgr;
+        // Is the route masked (in dead ground along the way)?
+        const midBrg=egrBrg;
+        const midDist=dist*0.5;
+        const{longitude:ml,latitude:mp}=destPt(positionPt.longitude,positionPt.latitude,midBrg,midDist);
+        const midZ=getZ(ml,mp);
+        const midSlp=Math.atan2(midZ-obsZ,midDist)*180/Math.PI;
+        const ri=Math.round(egrBrg/rayRes)%numRays;
+        const masked=midSlp<horizons[ri]*0.7; // mid-route below horizon = masked
+        egrResults.push({pt:ept,clear,masked,dist:Math.round(dist)});
+        if(clear) clearEgr++;
+      }
+      // Score: all clear + some masked = 20; none clear = 0
+      const maskedCount=egrResults.filter(r=>r.masked).length;
+      egrScore=Math.round(Math.min(20,
+        (clearEgr/egressPts.length)*12 +
+        (maskedCount/egressPts.length)*8
+      ));
+    }
+
+    // ── FACTOR 6: Dead ground behind ────────────────────────────────
+    // Rear sector = threat axis + 180° ± 60° (away from enemy)
+    const rearBrg=(threatBrg+180)%360;
+    let totalDG=0, dgCount=0;
+    for(let ri=0;ri<numRays;ri++){
+      const brg=(ri/numRays)*360;
+      const delta=Math.abs(((brg-rearBrg+540)%360)-180);
+      if(delta>60) continue;
+      // Depth of dead ground: how far below our position is the rear terrain?
+      for(let d=STEP;d<=slopeRadius*3;d+=STEP){
+        const{longitude,latitude}=destPt(positionPt.longitude,positionPt.latitude,brg,d);
+        const z=getZ(longitude,latitude);
+        const losZ=obsZ+d*Math.tan(horizons[ri]*Math.PI/180);
+        if(z<losZ){ totalDG+=losZ-z; dgCount++; }
+      }
+    }
+    const avgDG=dgCount>0?totalDG/dgCount:0;
+    const dgScore=Math.round(Math.min(20,avgDG/8*20));
+
+    // ── Composite score ──────────────────────────────────────────────
+    const weights=getWeights();
+    const scores={obs:obsScore,fof:fofScore,cff:cffScore,cfv:cfvScore,egr:egrScore,dg:dgScore};
+    const wTotal=Object.values(weights).reduce((s,v)=>s+v,0)||1;
+    const composite=Math.round(
+      FACTORS.reduce((s,f)=>s+(scores[f.id]*(weights[f.id]??1)/20),0)/wTotal*100
+    );
+
+    return{scores,composite,horizons,egrResults,sampler,extent,numRays,rayRes,obsRadius};
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // OVERLAY BUILDERS
+  // ═══════════════════════════════════════════════════════════════════
+
+  function buildViewshedCanvas(horizons,numRays,rayRes,positionPt,obsZ,sampler,extent,obsRadius,opacity){
+    const cols=Math.round(obsRadius*2/40), rows=Math.round(obsRadius*2/40);
+    const dLon=(extent.xmax-extent.xmin)/cols, dLat=(extent.ymax-extent.ymin)/rows;
+    const cosLat=Math.cos(positionPt.latitude*Math.PI/180);
+    const canvas=document.createElement('canvas');
+    canvas.width=cols;canvas.height=rows;
+    const ctx=canvas.getContext('2d');
+    const img=ctx.createImageData(cols,rows);
+
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const lon=extent.xmin+(c+0.5)*dLon;
+        const lat=extent.ymax-(r+0.5)*dLat;
+        const east=(lon-positionPt.longitude)*M_PER_DEG*cosLat;
+        const north=(lat-positionPt.latitude)*M_PER_DEG;
+        const dist=Math.sqrt(east*east+north*north);
+        if(dist<5||dist>obsRadius){continue;}
+        const brg=((Math.atan2(east,north)*180/Math.PI)+360)%360;
+        const ri=Math.round(brg/rayRes)%numRays;
+        const z=sampler.queryElevation(new Point({longitude:lon,latitude:lat,spatialReference:{wkid:4326}}))?.z??0;
+        const slp=Math.atan2(z-obsZ,dist)*180/Math.PI;
+        const px=(r*cols+c)*4;
+        if(slp>=horizons[ri]){
+          img.data[px]=29;img.data[px+1]=158;img.data[px+2]=117;
+          img.data[px+3]=Math.round(0.35*opacity*255);
+        } else {
+          img.data[px]=80;img.data[px+1]=20;img.data[px+2]=20;
+          img.data[px+3]=Math.round(0.25*opacity*255);
+        }
+      }
+    }
+    ctx.putImageData(img,0,0);
+    return canvas;
+  }
+
+  function buildLOSSpokes(positionPt,horizons,numRays,rayRes,obsRadius,sampler){
+    const graphics=[];
+    for(let ri=0;ri<numRays;ri+=3){
+      const brg=(ri/numRays)*360;
+      const{longitude,latitude}=destPt(positionPt.longitude,positionPt.latitude,brg,obsRadius);
+      const z=sampler.queryElevation(new Point({longitude:longitude,latitude:latitude,spatialReference:{wkid:4326}}))?.z??0;
+      const slp=Math.atan2(z-(sampler.queryElevation(positionPt)?.z??0)+2,obsRadius)*180/Math.PI;
+      const visible=slp>=horizons[ri];
+      graphics.push(new Graphic({
+        geometry:new Polyline({paths:[[[positionPt.longitude,positionPt.latitude],[longitude,latitude]]],spatialReference:{wkid:4326}}),
+        symbol:{type:'simple-line',color:visible?[29,158,117,40]:[80,20,20,30],width:0.6},
+      }));
+    }
+    return graphics;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // RADAR CHART — SVG drawn on canvas
+  // ═══════════════════════════════════════════════════════════════════
+  function drawRadar(scores, canvas){
+    const ctx=canvas.getContext('2d');
+    const W=canvas.width,H=canvas.height;
+    const cx=W/2,cy=H/2+8;
+    const R=Math.min(W,H)*0.34;
+    const N=FACTORS.length;
+    ctx.clearRect(0,0,W,H);
+
+    // Background grid rings
+    [0.25,0.5,0.75,1.0].forEach(t=>{
+      ctx.beginPath();
+      for(let i=0;i<N;i++){
+        const a=(i/N)*2*Math.PI-Math.PI/2;
+        const x=cx+Math.cos(a)*R*t, y=cy+Math.sin(a)*R*t;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.closePath();
+      ctx.strokeStyle=`rgba(255,255,255,${t===1?0.12:0.06})`;
+      ctx.lineWidth=t===1?1:0.5;
+      ctx.stroke();
+    });
+
+    // Axis lines
+    for(let i=0;i<N;i++){
+      const a=(i/N)*2*Math.PI-Math.PI/2;
+      ctx.beginPath();
+      ctx.moveTo(cx,cy);
+      ctx.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);
+      ctx.strokeStyle='rgba(255,255,255,0.08)';
+      ctx.lineWidth=0.5;
+      ctx.stroke();
+    }
+
+    // Data polygon
+    const dataPts=FACTORS.map((f,i)=>{
+      const a=(i/N)*2*Math.PI-Math.PI/2;
+      const t=Math.min(1,(scores[f.id]??0)/20);
+      return[cx+Math.cos(a)*R*t, cy+Math.sin(a)*R*t];
+    });
+    ctx.beginPath();
+    dataPts.forEach(([x,y],i)=>i===0?ctx.moveTo(x,y):ctx.lineTo(x,y));
+    ctx.closePath();
+    ctx.fillStyle='rgba(29,158,117,0.18)';
+    ctx.strokeStyle='rgba(29,158,117,0.80)';
+    ctx.lineWidth=1.5;
+    ctx.fill();ctx.stroke();
+
+    // Factor dots + labels
+    FACTORS.forEach((f,i)=>{
+      const a=(i/N)*2*Math.PI-Math.PI/2;
+      const t=Math.min(1,(scores[f.id]??0)/20);
+      const dx=Math.cos(a),dy=Math.sin(a);
+      // Dot on data
+      ctx.beginPath();
+      ctx.arc(cx+dx*R*t,cy+dy*R*t,3.5,0,Math.PI*2);
+      ctx.fillStyle=f.color;
+      ctx.fill();
+      // Label at axis tip
+      const lx=cx+dx*(R+14), ly=cy+dy*(R+14);
+      ctx.font=`700 9px "Courier New"`;
+      ctx.fillStyle=f.color;
+      ctx.textAlign=dx>0.1?'left':dx<-0.1?'right':'center';
+      ctx.textBaseline=dy>0.1?'top':dy<-0.1?'bottom':'middle';
+      ctx.fillText(`${f.icon} ${scores[f.id]??'—'}`,lx,ly);
+    });
+
+    // Centre score
+    const composite=computeComposite(scores);
+    const g=getGrade(composite);
+    ctx.font=`700 20px "Courier New"`;
+    ctx.fillStyle=g.color;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText(String(composite),cx,cy-4);
+    ctx.font=`9px "Courier New"`;
+    ctx.fillStyle='rgba(255,255,255,0.35)';
+    ctx.fillText('/100',cx,cy+12);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SCORE RING + FACTOR BREAKDOWN UI
+  // ═══════════════════════════════════════════════════════════════════
+  function updateScoreUI(scores, composite){
+    const g=getGrade(composite);
+    const arc=document.getElementById('score-arc');
+    const circ=2*Math.PI*38;
+    arc.style.strokeDasharray=`${composite/100*circ} ${circ}`;
+    arc.style.stroke=g.color;
+    document.getElementById('score-num').textContent=composite;
+    document.getElementById('score-num').style.color=g.color;
+    document.getElementById('score-grade').textContent=`${g.grade} — ${g.label}`;
+    document.getElementById('score-grade').style.color=g.color;
+    document.getElementById('score-desc').textContent=gradeDescription(composite,scores);
+
+    // Factor breakdown
+    const wrap=document.getElementById('factors');
+    wrap.innerHTML='';
+    FACTORS.forEach(f=>{
+      const s=scores[f.id]??0;
+      const row=document.createElement('div');
+      row.className='factor-row';
+      row.innerHTML=`
+        <div class="fac-icon">${f.icon}</div>
+        <div class="fac-body">
+          <div class="fac-name">${f.label}</div>
+          <div class="fac-track"><div class="fac-fill" style="width:${s/20*100}%;background:${f.color}"></div></div>
+          <div class="fac-note">${f.desc(s)}</div>
+        </div>
+        <div>
+          <div class="fac-score" style="color:${f.color}">${s}</div>
+          <div class="fac-max">/20</div>
+        </div>
+      `;
+      wrap.appendChild(row);
+    });
+
+    drawRadar(scores, document.getElementById('radar-canvas'));
+  }
+
+  function gradeDescription(score, scores){
+    const weak=FACTORS.filter(f=>(scores[f.id]??0)<8).map(f=>f.label.toLowerCase());
+    if(score>=75) return`Strong position. ${weak.length?'Weakness: '+weak[0]+'.':'All factors adequate.'}`;
+    if(score>=55) return`Acceptable. Improve: ${weak.slice(0,2).join(', ')||'marginal all round'}.`;
+    if(score>=40) return`Marginal. Critical weaknesses in: ${weak.slice(0,2).join(', ')||'multiple factors'}.`;
+    return`Avoid this position. Multiple critical failures: ${weak.slice(0,3).join(', ')}.`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ARCGIS SETUP
+  // ═══════════════════════════════════════════════════════════════════
+  const overlayLayer  = new GraphicsLayer({title:'Viewshed overlay',  elevationInfo:{mode:'on-the-ground'}});
+  const spokesLayer   = new GraphicsLayer({title:'LOS spokes',         elevationInfo:{mode:'on-the-ground'}});
+  const posLayer      = new GraphicsLayer({title:'Position marker',    elevationInfo:{mode:'on-the-ground'}});
+  const egrLayer      = new GraphicsLayer({title:'Egress routes',      elevationInfo:{mode:'on-the-ground'}});
+  const histLayer     = new GraphicsLayer({title:'Previous positions', elevationInfo:{mode:'on-the-ground'}});
+  const mediaLayers   = [];
+
+  const map=new Map({basemap:'topo-3d',ground:'world-elevation',
+    layers:[overlayLayer,spokesLayer,egrLayer,histLayer,posLayer]});
+
+  const view=new SceneView({
+    container:'viewDiv',map,
+    camera:{position:{longitude:73.06,latitude:33.68,z:12000},heading:0,tilt:58},
+    environment:{atmosphere:{quality:'high'},lighting:{date:new Date()}},
+    popup:{dockEnabled:true,dockOptions:{position:'bottom-right',breakpoint:false},
+      defaultPopupTemplateEnabled:true},
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════════════════════════════
+  let currentPos    = null;
+  let egressPts     = [];
+  let history       = [];  // [{pt, scores, composite}]
+  let running       = false;
+  let addingEgress  = false;
+  const $=id=>document.getElementById(id);
+
+  // Sliders
+  [['inp-obs-r','obs-r-v'],['inp-slp-r','slp-r-v'],['inp-ray-res','ray-res-v'],['inp-slp-ok','slp-ok-v']]
+    .forEach(([id,vid])=>$(id).addEventListener('input',()=>$(vid).textContent=$(id).value));
+  [['wt-obs','wv-obs'],['wt-fof','wv-fof'],['wt-cff','wv-cff'],
+   ['wt-cfv','wv-cfv'],['wt-egr','wv-egr'],['wt-dg','wv-dg']]
+    .forEach(([id,vid])=>$(id).addEventListener('input',()=>$(vid).textContent=$(id).value));
+
+  function getWeights(){
+    return{obs:+$('wt-obs').value,fof:+$('wt-fof').value,cff:+$('wt-cff').value,
+      cfv:+$('wt-cfv').value,egr:+$('wt-egr').value,dg:+$('wt-dg').value};
+  }
+
+  function computeComposite(scores){
+    const w=getWeights();
+    const wT=Object.values(w).reduce((s,v)=>s+v,0)||1;
+    return Math.round(FACTORS.reduce((s,f)=>s+(scores[f.id]??0)*(w[f.id]??1)/20,0)/wT*100);
+  }
+
+  // Egress mode button
+  $('btn-egress-mode').addEventListener('click',()=>{
+    addingEgress=!addingEgress;
+    $('btn-egress-mode').textContent=addingEgress?'Cancel egress':'+ Egress';
+    $('btn-egress-mode').style.background=addingEgress?'rgba(55,138,221,0.15)':'';
+    $('hint').textContent=addingEgress
+      ?'Click map to add egress waypoints — click Cancel when done'
+      :'Click map to score a position — Ctrl+Click to add egress waypoints';
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MAP CLICK HANDLER
+  // ═══════════════════════════════════════════════════════════════════
+  view.on('click',async event=>{
+    if(running)return;
+    const result=await view.hitTest(event,{include:[map.ground]});
+    const gp=result?.ground?.mapPoint??event.mapPoint;
+    if(!gp)return;
+
+    if(addingEgress||event.native.ctrlKey){
+      // Add egress waypoint
+      const pt=new Point({longitude:gp.longitude,latitude:gp.latitude,spatialReference:{wkid:4326}});
+      egressPts.push(pt);
+      egrLayer.add(new Graphic({
+        geometry:pt,
+        symbol:{type:'point-3d',symbolLayers:[{type:'object',
+          resource:{primitive:'diamond'},material:{color:[55,138,221,0.9]},
+          width:55,height:55,depth:55}],
+          verticalOffset:{screenLength:18,maxWorldLength:400,minWorldLength:4}},
+        attributes:{type:`Egress point ${egressPts.length}`,label:'Egress route waypoint'},
+      }));
+      egrLayer.add(new Graphic({
+        geometry:pt,
+        symbol:{type:'text',text:`E${egressPts.length}`,
+          color:[55,138,221,220],haloColor:[0,0,0,190],haloSize:2,
+          font:{family:'Courier New',size:9,weight:'bold'},yoffset:14,horizontalAlignment:'center'},
+      }));
+      renderEgressList();
+      return;
+    }
+
+    // Score this position
+    const pt=new Point({longitude:gp.longitude,latitude:gp.latitude,spatialReference:{wkid:4326}});
+    currentPos=pt;
+    await runAnalysis(pt);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MAIN ANALYSIS
+  // ═══════════════════════════════════════════════════════════════════
+  async function runAnalysis(pt){
+    if(running)return;
+    running=true;
+    $('btn-rescore').disabled=true;
+    clearOverlays();
+
+    const eyeH   = parseFloat($('inp-eye').value)||1.8;
+    const obsR   = parseInt($('inp-obs-r').value);
+    const slpR   = parseInt($('inp-slp-r').value);
+    const rayRes = parseInt($('inp-ray-res').value);
+    const threatBrg = parseInt($('inp-threat-brg').value)||270;
+    const slopeOkDeg= parseInt($('inp-slp-ok').value)||12;
+    const opacity   = 0.80;
+
+    setStatus('running','Sampling terrain…');
+    setProgress(0.05,'Getting observer elevation');
+
+    let obsZ=eyeH;
+    try{
+      const er=await view.map.ground.queryElevation(pt);
+      obsZ=(er?.geometry?.z??0)+eyeH;
+    }catch(_){}
+
+    // Place position marker
+    posLayer.removeAll();
+    posLayer.add(new Graphic({
+      geometry:pt,
+      symbol:{type:'point-3d',symbolLayers:[{type:'object',
+        resource:{primitive:'sphere'},material:{color:[29,158,117,0.95]},
+        width:70,height:70,depth:70}],
+        verticalOffset:{screenLength:24,maxWorldLength:600,minWorldLength:5}},
+      attributes:{type:'Scored position',label:`${pt.latitude.toFixed(5)}°N ${pt.longitude.toFixed(5)}°E`},
+    }));
+    posLayer.add(new Graphic({
+      geometry:pt,
+      symbol:{type:'text',text:'POS',color:[29,158,117,220],
+        haloColor:[0,0,0,190],haloSize:2,
+        font:{family:'Courier New',size:9,weight:'bold'},yoffset:18,horizontalAlignment:'center'},
+    }));
+
+    setStatus('running','Casting rays…');
+    setProgress(0.15,'Computing horizons');
+
+    const params={obsRadius:obsR,slopeRadius:slpR,rayRes,threatBrg,slopeOkDeg,
+      showVS:$('opt-vs').checked,showDG:$('opt-dg').checked,
+      showSlp:$('opt-slp').checked,showLOS:$('opt-los').checked,
+      showEgr:$('opt-egr').checked};
+
+    const result=await scorePosition(view,pt,obsZ,params,egressPts);
+    setProgress(0.70,'Building overlays');
+    await tick();
+
+    const{scores,composite,horizons,egrResults,sampler,extent,numRays}=result;
+
+    // Viewshed / dead ground canvas overlay
+    if(params.showVS||params.showDG){
+      const canvas=buildViewshedCanvas(horizons,numRays,rayRes,pt,obsZ,sampler,extent,obsR,opacity);
+      const ml=new MediaLayer({
+        source:[new ImageElement({image:canvas.toDataURL('image/png'),
+          georeference:new ExtentAndRotationGeoreference({extent})})],
+        title:'Viewshed overlay',
+      });
+      map.add(ml,0);mediaLayers.push(ml);
+    }
+
+    // LOS spokes
+    if(params.showLOS){
+      buildLOSSpokes(pt,horizons,numRays,rayRes,obsR,sampler)
+        .forEach(g=>spokesLayer.add(g));
+    }
+
+    // Egress LOS lines
+    if(params.showEgr&&egrResults.length){
+      egrResults.forEach(er=>{
+        const color=er.clear?(er.masked?[78,200,64]:[29,158,117]):[220,60,48];
+        egrLayer.add(new Graphic({
+          geometry:new Polyline({
+            paths:[[[pt.longitude,pt.latitude],[er.pt.longitude,er.pt.latitude]]],
+            spatialReference:{wkid:4326},
+          }),
+          symbol:{type:'simple-line',color:[...color,180],width:2,
+            style:er.masked?'solid':'short-dash'},
+          attributes:{type:`Egress LOS`,
+            label:`${er.clear?'Clear':'Blocked'} — ${er.dist}m${er.masked?' (masked)':''}`},
+        }));
+      });
+    }
+
+    setProgress(0.90,'Rendering score');
+    await tick();
+
+    // Update UI
+    updateScoreUI(scores,composite);
+    const g=getGrade(composite);
+    $('lph-sub').textContent=`${g.label} — Score ${composite}/100`;
+    $('btn-rescore').disabled=false;
+
+    // History
+    history.unshift({pt,scores,composite,obsZ});
+    if(history.length>5) history.pop();
+    renderHistory();
+
+    setProgress(1.0,`Done — composite score ${composite}/100`);
+    setStatus('done','Scored');
+
+    view.goTo({center:[pt.longitude,pt.latitude],zoom:14,tilt:62},{duration:900});
+    running=false;
+  }
+
+  // Re-score button (re-runs with updated weights/params)
+  $('btn-rescore').addEventListener('click',()=>{
+    if(currentPos) runAnalysis(currentPos);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // HISTORY LIST
+  // ═══════════════════════════════════════════════════════════════════
+  function renderHistory(){
+    if(!history.length){$('pos-history').style.display='none';return;}
+    $('pos-history').style.display='block';
+    const rows=$('ph-rows');
+    rows.innerHTML='';
+    history.forEach((h,i)=>{
+      const g=getGrade(h.composite);
+      const row=document.createElement('div');
+      row.className='ph-row'+(i===0?' active-pos':'');
+      row.innerHTML=`
+        <div class="ph-dot" style="background:${g.color}"></div>
+        <div class="ph-info">${h.pt.latitude.toFixed(4)}°N  ${h.pt.longitude.toFixed(4)}°E</div>
+        <div class="ph-scr" style="color:${g.color}">${h.composite}</div>
+      `;
+      row.addEventListener('click',()=>{
+        document.querySelectorAll('.ph-row').forEach(x=>x.classList.remove('active-pos'));
+        row.classList.add('active-pos');
+        view.goTo({center:[h.pt.longitude,h.pt.latitude],zoom:14,tilt:62},{duration:700});
+        updateScoreUI(h.scores,h.composite);
+      });
+      rows.appendChild(row);
+    });
+
+    // History position markers
+    histLayer.removeAll();
+    history.slice(1).forEach(h=>{
+      const g=getGrade(h.composite);
+      const[r,gg,b]=g.color.match(/\w\w/g).map(x=>parseInt(x,16));
+      histLayer.add(new Graphic({
+        geometry:h.pt,
+        symbol:{type:'point-3d',symbolLayers:[{type:'object',
+          resource:{primitive:'sphere'},material:{color:[r,gg,b,0.55]},
+          width:45,height:45,depth:45}],
+          verticalOffset:{screenLength:14,maxWorldLength:400,minWorldLength:3}},
+        attributes:{type:'Previous position',label:`Score ${h.composite}`},
+      }));
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // EGRESS LIST UI
+  // ═══════════════════════════════════════════════════════════════════
+  function renderEgressList(){
+    const list=$('egress-list');
+    list.innerHTML='';
+    if(!egressPts.length){
+      list.innerHTML='<div id="eg-add-hint" style="font-size:9px;color:#3a3935;padding:4px 0;letter-spacing:.04em">Ctrl+Click map to add an egress waypoint</div>';
+      return;
+    }
+    egressPts.forEach((ep,i)=>{
+      const row=document.createElement('div');
+      row.className='eg-row';
+      row.innerHTML=`
+        <div class="eg-dot"></div>
+        <div class="eg-coords">E${i+1}  ${ep.latitude.toFixed(4)}°N  ${ep.longitude.toFixed(4)}°E</div>
+        <button class="eg-del" data-i="${i}">✕</button>
+      `;
+      row.querySelector('.eg-del').addEventListener('click',()=>{
+        egressPts.splice(i,1);
+        // Rebuild egress markers
+        egrLayer.removeAll();
+        egressPts.forEach((p,j)=>{
+          egrLayer.add(new Graphic({geometry:p,
+            symbol:{type:'point-3d',symbolLayers:[{type:'object',
+              resource:{primitive:'diamond'},material:{color:[55,138,221,0.9]},
+              width:55,height:55,depth:55}],
+              verticalOffset:{screenLength:18,maxWorldLength:400,minWorldLength:4}},
+          }));
+        });
+        renderEgressList();
+      });
+      list.appendChild(row);
+    });
+  }
+
+  // ── Clear ─────────────────────────────────────────────────────────
+  $('btn-clear').addEventListener('click',()=>{
+    currentPos=null;egressPts=[];history=[];
+    [overlayLayer,spokesLayer,posLayer,egrLayer,histLayer].forEach(l=>l.removeAll());
+    clearOverlays();
+    $('pos-history').style.display='none';
+    document.getElementById('factor-empty').style.display='block';
+    $('factors').innerHTML='<div id="factor-empty" style="padding:18px 10px;font-size:10px;color:#3a3935;text-align:center;line-height:1.8">Scores for each factor will<br>appear here after analysis.</div>';
+    document.getElementById('score-arc').style.strokeDasharray='0 239';
+    document.getElementById('score-num').textContent='—';
+    document.getElementById('score-grade').textContent='—';
+    document.getElementById('score-desc').textContent='Place a position on the map to score it';
+    drawRadar({obs:0,fof:0,cff:0,cfv:0,egr:0,dg:0},document.getElementById('radar-canvas'));
+    renderEgressList();
+    $('lph-sub').textContent='Click map to score a position';
+    $('btn-rescore').disabled=true;
+    setProgress(0,'—');setStatus('ready','Click map to score');
+    $('hint').textContent='Click map to score a position — Ctrl+Click to add egress waypoints';
+  });
+
+  function clearOverlays(){
+    spokesLayer.removeAll();
+    mediaLayers.forEach(l=>{try{map.remove(l);}catch(_){}});
+    mediaLayers.length=0;
+  }
+  function setStatus(s,t){const el=$('status');el.textContent=t??s;el.className='ph2-status '+s;}
+  function setProgress(f,l){$('prog-fill').style.width=Math.round(f*100)+'%';$('prog-label').textContent=l??'';}
+  function tick(){return new Promise(r=>setTimeout(r,0));}
+
+  view.when(()=>{
+    drawRadar({obs:0,fof:0,cff:0,cfv:0,egr:0,dg:0},document.getElementById('radar-canvas'));
+    console.log('[Defensibility] SceneView ready.');
+    console.log('[Defensibility] Click map to score. Ctrl+Click for egress waypoints.');
+    console.log('[Defensibility] 6 factors × 20 pts each → weighted composite 0–100.');
+  });
+
+}); // end require()
+</script>
+</body>
+</html>

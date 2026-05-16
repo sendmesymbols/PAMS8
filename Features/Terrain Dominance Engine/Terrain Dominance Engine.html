@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+    <title>Terrain Dominance Engine</title>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.31/esri/themes/dark/main.css"/>
+    <script src="https://js.arcgis.com/4.31/"></script>
+
+    <style>
+
+        html,
+        body,
+        #viewDiv{
+            margin:0;
+            padding:0;
+            width:100%;
+            height:100%;
+            overflow:hidden;
+            background:#05070b;
+            font-family:Inter,Segoe UI,sans-serif;
+        }
+
+        #viewDiv{
+            position:absolute;
+            inset:0;
+        }
+
+        .panel{
+            position:absolute;
+            top:14px;
+            left:14px;
+            width:370px;
+            max-height:94vh;
+            overflow:auto;
+            z-index:30;
+
+            background:rgba(10,14,20,0.95);
+            backdrop-filter:blur(10px);
+
+            border:1px solid rgba(255,255,255,0.08);
+            border-radius:18px;
+
+            color:#dce6f2;
+
+            box-shadow:
+              0 10px 40px rgba(0,0,0,0.45);
+        }
+
+        .header{
+            padding:18px;
+            border-bottom:1px solid rgba(255,255,255,0.06);
+        }
+
+        .title{
+            font-size:18px;
+            font-weight:700;
+        }
+
+        .subtitle{
+            margin-top:8px;
+            font-size:12px;
+            line-height:1.55;
+            color:#91a4bd;
+        }
+
+        .section{
+            padding:18px;
+            border-bottom:1px solid rgba(255,255,255,0.05);
+        }
+
+        .section h3{
+            margin:0 0 14px;
+            font-size:12px;
+            letter-spacing:1px;
+            color:#7db4ff;
+            text-transform:uppercase;
+        }
+
+        .control{
+            margin-bottom:16px;
+        }
+
+        .control label{
+            display:flex;
+            justify-content:space-between;
+            margin-bottom:6px;
+            font-size:12px;
+            color:#b7c6d8;
+        }
+
+        input[type=range]{
+            width:100%;
+        }
+
+        .btnrow{
+            display:flex;
+            gap:10px;
+        }
+
+        button{
+            flex:1;
+            padding:12px;
+            border:none;
+            border-radius:10px;
+
+            background:#1f6fff;
+            color:white;
+
+            font-weight:700;
+            cursor:pointer;
+        }
+
+        button.secondary{
+            background:#1c2532;
+            border:1px solid rgba(255,255,255,0.08);
+        }
+
+        .mode{
+            position:absolute;
+            top:16px;
+            right:16px;
+            display:flex;
+            gap:10px;
+            z-index:40;
+        }
+
+        .mode button{
+            width:90px;
+        }
+
+        .legend{
+            display:grid;
+            grid-template-columns:20px auto;
+            gap:10px;
+            align-items:center;
+            margin-bottom:10px;
+            font-size:12px;
+        }
+
+        .sw{
+            width:20px;
+            height:20px;
+            border-radius:5px;
+        }
+
+        .info{
+            position:absolute;
+            bottom:18px;
+            left:50%;
+            transform:translateX(-50%);
+
+            background:rgba(0,0,0,0.72);
+            border:1px solid rgba(255,255,255,0.08);
+
+            color:#dbe7f4;
+
+            padding:12px 18px;
+            border-radius:12px;
+
+            z-index:40;
+            font-size:13px;
+        }
+
+        .stat{
+            display:flex;
+            justify-content:space-between;
+            margin-bottom:10px;
+            font-size:12px;
+        }
+
+        .tag{
+            background:#162130;
+            border:1px solid rgba(255,255,255,0.06);
+
+            padding:3px 8px;
+            border-radius:999px;
+
+            color:#9ec6ff;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div id="viewDiv"></div>
+
+<div class="mode">
+    <button id="btn2d">2D MAP</button>
+    <button id="btn3d">3D VIEW</button>
+</div>
+
+<div class="panel">
+
+    <div class="header">
+        <div class="title">
+            Terrain Dominance Engine
+        </div>
+
+        <div class="subtitle">
+            Detect dominant terrain, observation ridges,
+            reverse slopes, terrain funnels,
+            and movement corridors.
+        </div>
+    </div>
+
+    <div class="section">
+
+        <h3>Analysis Parameters</h3>
+
+        <div class="control">
+            <label>
+                Radius
+                <span id="radiusValue">5 km</span>
+            </label>
+
+            <input
+              type="range"
+              min="2"
+              max="15"
+              value="5"
+              id="radiusSlider"
+            />
+        </div>
+
+        <div class="control">
+            <label>
+                Grid Density
+                <span id="densityValue">28</span>
+            </label>
+
+            <input
+              type="range"
+              min="20"
+              max="60"
+              value="28"
+              id="densitySlider"
+            />
+        </div>
+
+        <div class="btnrow">
+            <button id="runBtn">
+                Run Analysis
+            </button>
+
+            <button
+              class="secondary"
+              id="clearBtn"
+            >
+                Clear
+            </button>
+        </div>
+
+    </div>
+
+    <div class="section">
+
+        <h3>Legend</h3>
+
+        <div class="legend">
+            <div class="sw" style="background:#ff4747"></div>
+            <div>Dominant terrain</div>
+        </div>
+
+        <div class="legend">
+            <div class="sw" style="background:#ffb347"></div>
+            <div>Observation ridges</div>
+        </div>
+
+        <div class="legend">
+            <div class="sw" style="background:#4bc6ff"></div>
+            <div>Movement corridors</div>
+        </div>
+
+        <div class="legend">
+            <div class="sw" style="background:#7dff7d"></div>
+            <div>Reverse slope protection</div>
+        </div>
+
+    </div>
+
+    <div class="section">
+
+        <h3>Operational Assessment</h3>
+
+        <div class="stat">
+            <span>Terrain Control</span>
+            <span class="tag" id="terrainOut">—</span>
+        </div>
+
+        <div class="stat">
+            <span>Observation</span>
+            <span class="tag" id="obsOut">—</span>
+        </div>
+
+        <div class="stat">
+            <span>Movement</span>
+            <span class="tag" id="moveOut">—</span>
+        </div>
+
+        <div class="stat">
+            <span>Defensibility</span>
+            <span class="tag" id="defOut">—</span>
+        </div>
+
+    </div>
+
+</div>
+
+<div class="info">
+    Click terrain to set Area of Tactical Interest
+</div>
+
+<script>
+
+    require([
+
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/views/SceneView",
+
+        "esri/layers/GraphicsLayer",
+        "esri/layers/ElevationLayer",
+
+        "esri/Graphic",
+
+        "esri/geometry/Point",
+        "esri/geometry/Circle",
+        "esri/geometry/Polyline",
+        "esri/geometry/Polygon",
+        "esri/geometry/Multipoint",
+        "esri/geometry/geometryEngine"
+
+    ], function(
+
+      Map,
+      MapView,
+      SceneView,
+
+      GraphicsLayer,
+      ElevationLayer,
+
+      Graphic,
+
+      Point,
+      Circle,
+      Polyline,
+      Polygon,
+      Multipoint,
+      geometryEngine
+
+    ){
+
+        // ---------------------------------------
+        // GRAPHICS
+        // ---------------------------------------
+
+        const graphicsLayer =
+          new GraphicsLayer();
+
+        // ---------------------------------------
+        // ELEVATION LAYER
+        // ---------------------------------------
+
+        const elevationLayer =
+          new ElevationLayer({
+
+              url:
+                "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer"
+          });
+
+        // ---------------------------------------
+        // MAP
+        // ---------------------------------------
+
+        const map = new Map({
+
+            basemap:"satellite",
+
+            ground:"world-elevation",
+
+            layers:[graphicsLayer]
+        });
+
+        // ---------------------------------------
+        // 2D VIEW
+        // ---------------------------------------
+
+        const mapView = new MapView({
+
+            container:"viewDiv",
+
+            map:map,
+
+            center:[73.0479,33.6844],
+
+            zoom:11
+        });
+
+        // ---------------------------------------
+        // 3D VIEW
+        // ---------------------------------------
+
+        const sceneView = new SceneView({
+
+            container:null,
+
+            map:map,
+
+            center:[73.0479,33.6844],
+
+            zoom:11,
+
+            qualityProfile:"high",
+
+            environment:{
+                atmosphereEnabled:true,
+                starsEnabled:false
+            }
+        });
+
+        let activeView =
+          mapView;
+
+        let selectedPoint =
+          null;
+
+        // ---------------------------------------
+        // UI
+        // ---------------------------------------
+
+        radiusSlider.oninput = ()=>{
+
+            radiusValue.innerText =
+              radiusSlider.value + " km";
+        };
+
+        densitySlider.oninput = ()=>{
+
+            densityValue.innerText =
+              densitySlider.value;
+        };
+
+        // ---------------------------------------
+        // VIEW SWITCH
+        // ---------------------------------------
+
+        function switchView(target){
+
+            const vp =
+              activeView.viewpoint.clone();
+
+            activeView.container =
+              null;
+
+            target.container =
+              "viewDiv";
+
+            target.viewpoint =
+              vp;
+
+            activeView =
+              target;
+        }
+
+        btn2d.onclick = ()=>{
+
+            switchView(mapView);
+        };
+
+        btn3d.onclick = ()=>{
+
+            switchView(sceneView);
+        };
+
+        // ---------------------------------------
+        // TERRAIN PICK
+        // ---------------------------------------
+
+        mapView.on(
+          "click",
+          pickTerrain
+        );
+
+        sceneView.on(
+          "click",
+          pickTerrain
+        );
+
+        function pickTerrain(event){
+
+            selectedPoint =
+              event.mapPoint;
+
+            graphicsLayer.removeAll();
+
+            graphicsLayer.add(
+
+              new Graphic({
+
+                  geometry:selectedPoint,
+
+                  symbol:{
+                      type:"simple-marker",
+
+                      size:10,
+
+                      color:"#ffffff",
+
+                      outline:{
+                          color:"#000",
+                          width:2
+                      }
+                  }
+              })
+            );
+        }
+
+        // ---------------------------------------
+        // CLEAR
+        // ---------------------------------------
+
+        clearBtn.onclick = ()=>{
+
+            graphicsLayer.removeAll();
+        };
+
+        // ---------------------------------------
+        // ANALYSIS
+        // ---------------------------------------
+
+        runBtn.onclick =
+          async ()=>{
+
+              try{
+
+                  if(!selectedPoint){
+
+                      alert(
+                        "Select terrain first."
+                      );
+
+                      return;
+                  }
+
+                  graphicsLayer.removeAll();
+
+                  // --------------------------------
+                  // PARAMETERS
+                  // --------------------------------
+
+                  const radiusKm =
+                    Number(
+                      radiusSlider.value
+                    );
+
+                  const density =
+                    Number(
+                      densitySlider.value
+                    );
+
+                  const radiusMeters =
+                    radiusKm * 1000;
+
+                  // --------------------------------
+                  // ANALYSIS AREA
+                  // --------------------------------
+
+                  const analysisCircle =
+                    new Circle({
+
+                        center:selectedPoint,
+
+                        radius:radiusMeters,
+
+                        radiusUnit:"meters"
+                    });
+
+                  graphicsLayer.add(
+
+                    new Graphic({
+
+                        geometry:analysisCircle,
+
+                        symbol:{
+                            type:"simple-fill",
+
+                            color:[0,0,0,0],
+
+                            outline:{
+                                color:[
+                                    100,
+                                    170,
+                                    255,
+                                    0.5
+                                ],
+
+                                width:1.5
+                            }
+                        }
+                    })
+                  );
+
+                  // --------------------------------
+                  // GRID SAMPLE
+                  // --------------------------------
+
+                  const extent =
+                    analysisCircle.extent;
+
+                  const points = [];
+
+                  const step = 2;
+
+                  for(
+                    let x=0;
+                    x<density;
+                    x+=step
+                  ){
+
+                      for(
+                        let y=0;
+                        y<density;
+                        y+=step
+                      ){
+
+                          const lon =
+                            extent.xmin +
+                            (
+                              (
+                                extent.xmax -
+                                extent.xmin
+                              ) / density
+                            ) * x;
+
+                          const lat =
+                            extent.ymin +
+                            (
+                              (
+                                extent.ymax -
+                                extent.ymin
+                              ) / density
+                            ) * y;
+
+                          const pt =
+                            new Point({
+
+                                longitude:lon,
+                                latitude:lat
+                            });
+
+                          if(
+                            geometryEngine.contains(
+                              analysisCircle,
+                              pt
+                            )
+                          ){
+                              points.push(pt);
+                          }
+                      }
+                  }
+
+                  // --------------------------------
+                  // ELEVATION QUERY
+                  // --------------------------------
+
+                  const multipoint =
+                    new Multipoint({
+
+                        points:
+                          points.map(p=>[
+                              p.longitude,
+                              p.latitude
+                          ]),
+
+                        spatialReference:{
+                            wkid:4326
+                        }
+                    });
+
+                  const elevated =
+                    await elevationLayer.queryElevation(
+                      multipoint
+                    );
+
+                  const terrainPoints =
+                    elevated.geometry.points.map(p=>({
+
+                        longitude:p[0],
+                        latitude:p[1],
+                        z:p[2]
+                    }));
+
+                  // --------------------------------
+                  // RENDER
+                  // --------------------------------
+
+                  renderDominantTerrain(
+                    terrainPoints
+                  );
+
+                  renderObservationRidges(
+                    terrainPoints
+                  );
+
+                  renderMovementCorridors(
+                    terrainPoints
+                  );
+
+                  renderReverseSlopes(
+                    terrainPoints
+                  );
+
+                  // --------------------------------
+                  // OUTPUT
+                  // --------------------------------
+
+                  terrainOut.innerText =
+                    "High";
+
+                  obsOut.innerText =
+                    "Dominant";
+
+                  moveOut.innerText =
+                    "Canalized";
+
+                  defOut.innerText =
+                    "Strong";
+
+              }catch(err){
+
+                  console.error(err);
+
+                  alert(
+                    "Analysis failed. " +
+                    "Check browser console."
+                  );
+              }
+          };
+
+        // ---------------------------------------
+        // DOMINANT TERRAIN
+        // ---------------------------------------
+
+        function renderDominantTerrain(
+          points
+        ){
+
+            const mean =
+              points.reduce(
+                (a,b)=>a+b.z,
+                0
+              ) / points.length;
+
+            points.forEach(p=>{
+
+                const prominence =
+                  p.z - mean;
+
+                if(
+                  prominence < 120
+                ) return;
+
+                const strength =
+                  Math.min(
+                    prominence / 500,
+                    1
+                  );
+
+                graphicsLayer.add(
+
+                  new Graphic({
+
+                      geometry:
+                        new Point({
+
+                            longitude:
+                            p.longitude,
+
+                            latitude:
+                            p.latitude,
+
+                            z:p.z
+                        }),
+
+                      symbol:{
+                          type:"simple-marker",
+
+                          size:
+                            10 +
+                            strength*18,
+
+                          color:[
+                              255,
+                              70,
+                              70,
+                              0.18 +
+                              strength*0.6
+                          ],
+
+                          outline:{
+                              color:[
+                                  255,
+                                  255,
+                                  255,
+                                  0.05
+                              ],
+
+                              width:0.5
+                          }
+                      }
+                  })
+                );
+            });
+        }
+
+        // ---------------------------------------
+        // OBSERVATION RIDGES
+        // ---------------------------------------
+
+        function renderObservationRidges(
+          points
+        ){
+
+            const high =
+              [...points]
+                .sort(
+                  (a,b)=>b.z-a.z
+                )
+                .slice(0,8);
+
+            high.forEach(p=>{
+
+                for(
+                  let i=0;
+                  i<6;
+                  i++
+                ){
+
+                    const angle =
+                      (Math.PI*2/6)
+                      * i;
+
+                    const dx =
+                      Math.cos(angle)
+                      * 0.012;
+
+                    const dy =
+                      Math.sin(angle)
+                      * 0.012;
+
+                    graphicsLayer.add(
+
+                      new Graphic({
+
+                          geometry:
+                            new Polyline({
+
+                                paths:[[
+                                    [
+                                        p.longitude,
+                                        p.latitude,
+                                        p.z
+                                    ],
+
+                                    [
+                                        p.longitude+dx,
+                                        p.latitude+dy,
+                                        p.z
+                                    ]
+                                ]]
+                            }),
+
+                          symbol:{
+                              type:"simple-line",
+
+                              color:[
+                                  255,
+                                  180,
+                                  60,
+                                  0.75
+                              ],
+
+                              width:2
+                          }
+                      })
+                    );
+                }
+            });
+        }
+
+        // ---------------------------------------
+        // MOVEMENT CORRIDORS
+        // ---------------------------------------
+
+        function renderMovementCorridors(
+          points
+        ){
+
+            let low =
+              [...points]
+                .sort(
+                  (a,b)=>a.z-b.z
+                )
+                .slice(0,25);
+
+            const corridor =
+              [];
+
+            let current =
+              low.shift();
+
+            corridor.push(current);
+
+            while(low.length){
+
+                let nearestIndex =
+                  0;
+
+                let nearestDist =
+                  Infinity;
+
+                for(
+                  let i=0;
+                  i<low.length;
+                  i++
+                ){
+
+                    const dx =
+                      current.longitude -
+                      low[i].longitude;
+
+                    const dy =
+                      current.latitude -
+                      low[i].latitude;
+
+                    const dist =
+                      dx*dx + dy*dy;
+
+                    if(
+                      dist < nearestDist
+                    ){
+
+                        nearestDist =
+                          dist;
+
+                        nearestIndex =
+                          i;
+                    }
+                }
+
+                current =
+                  low.splice(
+                    nearestIndex,
+                    1
+                  )[0];
+
+                corridor.push(
+                  current
+                );
+            }
+
+            const coords =
+              corridor.map(p=>[
+                  p.longitude,
+                  p.latitude,
+                  p.z
+              ]);
+
+            graphicsLayer.add(
+
+              new Graphic({
+
+                  geometry:
+                    new Polyline({
+
+                        paths:[coords]
+                    }),
+
+                  symbol:{
+                      type:"simple-line",
+
+                      color:[
+                          72,
+                          200,
+                          255,
+                          0.95
+                      ],
+
+                      width:5,
+
+                      style:"short-dot"
+                  }
+              })
+            );
+        }
+
+        // ---------------------------------------
+        // REVERSE SLOPES
+        // ---------------------------------------
+
+        function renderReverseSlopes(
+          points
+        ){
+
+            const high =
+              [...points]
+                .sort(
+                  (a,b)=>b.z-a.z
+                )
+                .slice(0,5);
+
+            high.forEach(p=>{
+
+                const poly =
+                  new Polygon({
+
+                      rings:[[
+                          [
+                              p.longitude-0.006,
+                              p.latitude-0.004
+                          ],
+
+                          [
+                              p.longitude+0.006,
+                              p.latitude-0.004
+                          ],
+
+                          [
+                              p.longitude+0.009,
+                              p.latitude-0.013
+                          ],
+
+                          [
+                              p.longitude-0.009,
+                              p.latitude-0.013
+                          ],
+
+                          [
+                              p.longitude-0.006,
+                              p.latitude-0.004
+                          ]
+                      ]]
+                  });
+
+                graphicsLayer.add(
+
+                  new Graphic({
+
+                      geometry:poly,
+
+                      symbol:{
+                          type:"simple-fill",
+
+                          color:[
+                              120,
+                              255,
+                              120,
+                              0.15
+                          ],
+
+                          outline:{
+                              color:[
+                                  120,
+                                  255,
+                                  120,
+                                  0.7
+                              ],
+
+                              width:1.5
+                          }
+                      }
+                  })
+                );
+            });
+        }
+
+    });
+</script>
+
+</body>
+</html>

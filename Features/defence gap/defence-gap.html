@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Defence Gap Analyser — ArcGIS JS 4.x</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#viewDiv{width:100%;height:100vh;overflow:hidden}
+    body{font-family:'Courier New',monospace;background:#060709}
+
+    /* ══ LEFT — gap list ═════════════════════════════════════════════ */
+    #left-panel{
+      position:absolute;top:14px;left:14px;width:268px;z-index:99;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(220,60,48,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh-28px);display:flex;flex-direction:column;
+    }
+    .lph{padding:9px 12px 8px;border-bottom:1px solid rgba(220,60,48,0.15);
+      background:rgba(220,60,48,0.07);flex-shrink:0}
+    .lph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#DC3C30;font-weight:700}
+    .lph-sub{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:2px}
+
+    #sum-strip{display:grid;grid-template-columns:repeat(4,1fr);
+      border-bottom:1px solid rgba(220,60,48,0.10);flex-shrink:0}
+    .ss{padding:6px 7px;display:flex;flex-direction:column;gap:2px;
+      border-right:0.5px solid rgba(220,60,48,0.08)}
+    .ss:last-child{border-right:none}
+    .ss-l{font-size:7px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935}
+    .ss-v{font-size:11px;font-weight:600;color:#DC3C30}
+    .ss-v.green{color:#1D9E75}.ss-v.amber{color:#EF9F27}.ss-v.blue{color:#378ADD}
+
+    /* tabs */
+    .ltabs{display:flex;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0}
+    .ltab{flex:1;padding:7px;font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border:none;background:transparent;color:#888780;transition:all .12s;
+      font-family:'Courier New',monospace}
+    .ltab.on{color:#DC3C30;border-bottom:2px solid #DC3C30}
+
+    /* gap cards */
+    #gap-list{overflow-y:auto;flex:1;padding:5px}
+    .gcard{background:rgba(220,60,48,0.04);border:0.5px solid rgba(220,60,48,0.18);
+      border-radius:4px;padding:8px 10px;margin-bottom:5px;cursor:pointer;
+      transition:all .12s;position:relative}
+    .gcard:hover{border-color:rgba(220,60,48,0.45);background:rgba(220,60,48,0.09)}
+    .gcard.sel{border-color:#DC3C30;background:rgba(220,60,48,0.14)}
+    .gc-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+    .gc-rank{width:24px;height:24px;border-radius:3px;display:flex;align-items:center;
+      justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;
+      background:rgba(220,60,48,0.18);color:#DC3C30;border:1px solid rgba(220,60,48,0.40)}
+    .gc-name{font-size:12px;font-weight:500;color:var(--color-text-primary);flex:1}
+    .gc-sub{font-size:9px;color:#3a3935;letter-spacing:.04em;margin-top:1px}
+    .gc-score{position:absolute;top:8px;right:8px;font-size:13px;font-weight:700;color:#DC3C30}
+    /* stat bars */
+    .gc-bars{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:5px}
+    .gb{display:flex;flex-direction:column;gap:2px}
+    .gb-l{font-size:7.5px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935}
+    .gb-track{height:3px;background:rgba(255,255,255,0.06);border-radius:2px}
+    .gb-fill{height:100%;border-radius:2px}
+    .gb-v{font-size:9px;color:var(--color-text-secondary)}
+    .gc-note{font-size:10px;color:var(--color-text-tertiary);line-height:1.55;
+      border-top:0.5px solid rgba(255,255,255,0.06);padding-top:5px}
+    .gc-action{font-size:9.5px;font-weight:500;color:#EF9F27;margin-top:4px}
+    .sev-badge{display:inline-block;font-size:8.5px;font-weight:700;padding:2px 6px;
+      border-radius:2px;margin-top:3px;text-transform:uppercase;letter-spacing:.05em}
+    .sev-critical{background:rgba(220,60,48,0.20);color:#DC3C30}
+    .sev-major   {background:rgba(239,159,39,0.15);color:#EF9F27}
+    .sev-minor   {background:rgba(55,138,221,0.12);color:#378ADD}
+
+    /* weapon list tab */
+    #wpn-list{overflow-y:auto;flex:1;padding:5px}
+    .wcard{background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:7px 10px;margin-bottom:4px;cursor:pointer;transition:all .12s;
+      display:flex;align-items:center;gap:8px}
+    .wcard:hover{background:rgba(255,255,255,0.04)}
+    .wcard.sel{border-color:rgba(29,158,117,0.50);background:rgba(29,158,117,0.07)}
+    .wc-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+    .wc-info{flex:1}
+    .wc-name{font-size:11px;color:var(--color-text-secondary)}
+    .wc-sub{font-size:8.5px;color:#3a3935;letter-spacing:.04em}
+    .wc-del{font-size:10px;color:#3a3935;cursor:pointer;padding:2px 4px;
+      border:none;background:transparent;transition:color .12s}
+    .wc-del:hover{color:#DC3C30}
+
+    #list-empty{padding:18px 12px;font-size:10px;color:#3a3935;
+      text-align:center;line-height:1.8}
+
+    /* ══ RIGHT — controls ════════════════════════════════════════════ */
+    #right-panel{
+      position:absolute;top:14px;right:14px;width:288px;z-index:99;
+      background:rgba(6,7,9,0.97);
+      border:1px solid rgba(220,60,48,0.28);
+      border-radius:5px;color:#bfbcb4;font-size:12px;
+      max-height:calc(100vh-28px);overflow-y:auto;
+    }
+    .ph{display:flex;align-items:center;justify-content:space-between;
+      padding:9px 12px 8px;border-bottom:1px solid rgba(220,60,48,0.15);
+      background:rgba(220,60,48,0.07);position:sticky;top:0;z-index:2}
+    .ph-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      color:#DC3C30;font-weight:700}
+    .ph-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#3a3935;transition:color .2s}
+    .ph-status.place{color:#DC3C30}.ph-status.busy{color:#EF9F27}.ph-status.done{color:#1D9E75}
+
+    .ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+      color:#3a3935;padding:9px 12px 5px}
+    .pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+    .pf{display:flex;flex-direction:column;gap:3px}
+    .pf.full{grid-column:1/-1}
+    .pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
+    input,select{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+      border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;
+      font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s}
+    input:focus,select:focus{border-color:rgba(220,60,48,0.55)}
+    select option{background:#141618}
+    .psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}
+    .psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;flex:1.8}
+    .psr input[type=range]{flex:2;accent-color:#DC3C30;cursor:pointer}
+    .psr-v{font-size:10px;color:#DC3C30;min-width:38px;text-align:right}
+    .pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
+    .ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}
+    .ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+      color:#888780;cursor:pointer}
+    .ptr input[type=checkbox]{accent-color:#DC3C30;width:13px;height:13px;cursor:pointer}
+
+    /* weapon config preview */
+    #wez-preview{margin:0 12px 8px;display:flex;align-items:center;gap:10px;
+      padding:7px 9px;background:rgba(255,255,255,0.02);
+      border:1px solid rgba(255,255,255,0.07);border-radius:3px}
+    #wez-canvas{display:block;flex-shrink:0;border-radius:2px}
+    #wez-info{font-size:9.5px;color:#888780;line-height:1.6}
+    #wez-info strong{color:var(--color-text-secondary);display:block}
+
+    /* coverage bar */
+    #cov-bar-wrap{margin:0 12px 9px}
+    .cbl{font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+      color:#3a3935;margin-bottom:4px;display:flex;justify-content:space-between}
+    .cbl span{color:#DC3C30;font-weight:700}
+    .cb-track{height:8px;background:rgba(255,255,255,0.06);border-radius:4px;
+      overflow:hidden;border:1px solid rgba(255,255,255,0.08)}
+    .cb-fill{height:100%;background:linear-gradient(to right,#1D9E75,#78C840);
+      border-radius:4px;transition:width .5s}
+    .cb-gap{height:100%;background:rgba(220,60,48,0.6);transition:width .5s}
+
+    /* progress */
+    #prog-wrap{padding:0 12px 9px}
+    #prog-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+    #prog-fill{height:100%;background:linear-gradient(to right,#DC3C30,#EF9F27);
+      border-radius:2px;width:0%;transition:width .12s}
+    #prog-label{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:4px}
+
+    /* buttons */
+    .pb-row{display:flex;gap:6px;padding:9px 12px}
+    .pb{flex:1;padding:7px;font-family:'Courier New',monospace;
+      font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+      cursor:pointer;border-radius:3px;border:1px solid rgba(220,60,48,0.38);
+      background:transparent;color:#DC3C30;transition:all .14s}
+    .pb:hover:not(:disabled){background:rgba(220,60,48,0.10)}
+    .pb.primary{background:rgba(220,60,48,0.16);border-color:#DC3C30}
+    .pb.primary:hover:not(:disabled){background:rgba(220,60,48,0.28)}
+    .pb:disabled{opacity:.3;cursor:not-allowed}
+
+    /* hint */
+    #hint{position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      background:rgba(6,7,9,0.94);border:1px solid rgba(220,60,48,0.45);
+      color:#DC3C30;font-family:'Courier New',monospace;font-size:11px;
+      letter-spacing:.08em;padding:8px 22px;border-radius:3px;
+      pointer-events:none;z-index:99;text-transform:uppercase}
+
+    /* legend */
+    #legend{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:99;
+      background:rgba(6,7,9,0.93);border:1px solid rgba(255,255,255,0.08);
+      border-radius:4px;padding:7px 14px;display:flex;gap:14px;align-items:center}
+    .ml{display:flex;align-items:center;gap:7px}
+    .ml-sw{width:24px;height:9px;border-radius:2px;flex-shrink:0}
+    .ml-lbl{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#888780}
+  </style>
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<!-- ══ LEFT PANEL ════════════════════════════════════════════════════ -->
+<div id="left-panel">
+  <div class="lph">
+    <div class="lph-title">⊘ Defence Gap Analyser</div>
+    <div class="lph-sub" id="lph-sub">Place friendly weapon positions to begin</div>
+  </div>
+  <div id="sum-strip">
+    <div class="ss"><div class="ss-l">Weapons</div>
+      <div class="ss-v blue" id="ss-w">0</div></div>
+    <div class="ss"><div class="ss-l">Coverage</div>
+      <div class="ss-v green" id="ss-cov">—</div></div>
+    <div class="ss"><div class="ss-l">Gaps</div>
+      <div class="ss-v" id="ss-gaps">—</div></div>
+    <div class="ss"><div class="ss-l">Gap area</div>
+      <div class="ss-v amber" id="ss-gap-area">—</div></div>
+  </div>
+  <div class="ltabs">
+    <button class="ltab on" data-lt="gaps">Gap zones</button>
+    <button class="ltab"    data-lt="weapons">Weapons</button>
+  </div>
+  <div id="lt-gaps" style="overflow-y:auto;flex:1;padding:5px">
+    <div id="gap-list">
+      <div id="list-empty">
+        Place 2+ weapons then define the AO<br>
+        boundary and click<br>
+        <strong style="color:#DC3C30">Analyse Gaps ↗</strong>
+      </div>
+    </div>
+  </div>
+  <div id="lt-weapons" style="display:none;overflow-y:auto;flex:1;padding:5px">
+    <div id="wpn-list"></div>
+  </div>
+</div>
+
+<!-- ══ RIGHT PANEL ════════════════════════════════════════════════════ -->
+<div id="right-panel">
+  <div class="ph">
+    <div class="ph-title">⬡ Gap Analysis</div>
+    <div class="ph-status place" id="status">Place weapons</div>
+  </div>
+
+  <!-- Weapon config -->
+  <div class="ps">Weapon system (next placement)</div>
+  <div class="pg">
+    <div class="pf full">
+      <div class="pl">Type</div>
+      <select id="inp-wpn">
+        <option value="mg_m240">MG M240 — 1800m</option>
+        <option value="mg_heavy">HMG .50cal — 2500m</option>
+        <option value="atgm" selected>ATGM — 4500m</option>
+        <option value="direct_fire">25mm Cannon — 2800m</option>
+        <option value="tank_120mm">Tank 120mm — 4000m</option>
+        <option value="mortar_81mm">Mortar 81mm — 5600m</option>
+        <option value="sniper">Sniper — 1800m</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="psr">
+    <div class="psr-l">Bearing (°)</div>
+    <input id="inp-brg" type="range" min="0" max="359" step="1" value="270"/>
+    <div class="psr-v" id="brg-v">270°</div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Arc (°)</div>
+    <input id="inp-arc" type="range" min="15" max="360" step="5" value="90"/>
+    <div class="psr-v" id="arc-v">90°</div>
+  </div>
+
+  <!-- WEZ preview -->
+  <div id="wez-preview">
+    <canvas id="wez-canvas" width="72" height="72" style="background:#0a0b0e;border-radius:2px"></canvas>
+    <div id="wez-info">
+      <strong id="wi-name">ATGM</strong>
+      <span id="wi-range">Range: 4500 m</span><br>
+      <span id="wi-arc">Arc: 90°</span>
+    </div>
+  </div>
+
+  <!-- AO boundary -->
+  <div class="pdiv"/>
+  <div class="ps">Area of Operations boundary</div>
+  <div class="pg">
+    <div class="pf">
+      <div class="pl">Centre lat</div>
+      <input id="inp-lat" type="number" value="33.680" step="0.001"/>
+    </div>
+    <div class="pf">
+      <div class="pl">Centre lon</div>
+      <input id="inp-lon" type="number" value="73.060" step="0.001"/>
+    </div>
+    <div class="pf full">
+      <div class="pl">AO radius</div>
+      <select id="inp-ao">
+        <option value="2000">2 km — position</option>
+        <option value="4000" selected>4 km — company</option>
+        <option value="6000">6 km — battalion</option>
+        <option value="10000">10 km — brigade</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Analysis options -->
+  <div class="pdiv"/>
+  <div class="ps">Analysis options</div>
+  <div class="pg">
+    <div class="pf full">
+      <div class="pl">Grid cell (m) — gap width precision</div>
+      <select id="inp-cell">
+        <option value="25">25 m — precise (slower)</option>
+        <option value="40" selected>40 m — balanced</option>
+        <option value="70">70 m — fast</option>
+      </select>
+    </div>
+  </div>
+  <div class="psr">
+    <div class="psr-l">Min gap width (m)</div>
+    <input id="inp-minw" type="range" min="50" max="500" step="25" value="100"/>
+    <div class="psr-v" id="minw-v">100 m</div>
+  </div>
+  <div class="ptr"><label>Show WEZ outlines</label>
+    <input id="opt-wez" type="checkbox" checked/></div>
+  <div class="ptr"><label>Show coverage heatmap</label>
+    <input id="opt-heat" type="checkbox" checked/></div>
+  <div class="ptr"><label>Show gap width transects</label>
+    <input id="opt-tran" type="checkbox" checked/></div>
+  <div class="ptr"><label>Animate gap highlight</label>
+    <input id="opt-anim" type="checkbox" checked/></div>
+  <div class="psr">
+    <div class="psr-l">Overlay opacity</div>
+    <input id="inp-opa" type="range" min="0.2" max="1.0" step="0.05" value="0.75"/>
+    <div class="psr-v" id="opa-v">0.75</div>
+  </div>
+
+  <div class="pdiv"/>
+
+  <!-- Coverage bar -->
+  <div id="cov-bar-wrap">
+    <div class="cbl">AO coverage <span id="cbl-pct">—</span></div>
+    <div class="cb-track">
+      <div id="cb-covered" class="cb-fill"  style="width:0%;float:left"></div>
+      <div id="cb-gap"     class="cb-gap"   style="width:0%;float:left"></div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div id="prog-wrap">
+    <div id="prog-track"><div id="prog-fill"></div></div>
+    <div id="prog-label">—</div>
+  </div>
+
+  <div class="pb-row">
+    <button class="pb"         id="btn-clear">Clear all</button>
+    <button class="pb"         id="btn-undo">Undo last</button>
+    <button class="pb primary" id="btn-run" disabled>Analyse Gaps ↗</button>
+  </div>
+</div>
+
+<div id="hint">Configure weapon type and bearing — then click map to place</div>
+
+<div id="legend">
+  <div class="ml"><div class="ml-sw" style="background:rgba(29,158,117,0.55)"></div>
+    <div class="ml-lbl">Covered (≥1 weapon)</div></div>
+  <div class="ml"><div class="ml-sw" style="background:rgba(120,200,64,0.55)"></div>
+    <div class="ml-lbl">Mutual support (≥2)</div></div>
+  <div class="ml"><div class="ml-sw" style="background:rgba(220,60,48,0.60)"></div>
+    <div class="ml-lbl">Gap — uncovered</div></div>
+  <div class="ml"><div class="ml-sw" style="background:transparent;border:2px dashed #EF9F27"></div>
+    <div class="ml-lbl">AO boundary</div></div>
+</div>
+
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+require([
+  "esri/Map","esri/views/SceneView",
+  "esri/layers/GraphicsLayer","esri/layers/MediaLayer",
+  "esri/layers/support/ExtentAndRotationGeoreference",
+  "esri/layers/support/ImageElement",
+  "esri/Graphic","esri/geometry/Point","esri/geometry/Extent",
+  "esri/geometry/Polygon","esri/geometry/Polyline","esri/geometry/geometryEngine",
+], function(
+  Map, SceneView, GraphicsLayer, MediaLayer,
+  ExtentAndRotationGeoreference, ImageElement,
+  Graphic, Point, Extent, Polygon, Polyline, geometryEngine
+) {
+
+  // ═══════════════════════════════════════════════════════════════════
+  // WEAPON PRESETS
+  // ═══════════════════════════════════════════════════════════════════
+  const WEAPONS = {
+    mg_m240:    { label:'MG M240',      minR:0,    maxR:1800, color:[29,158,117],  hex:'#1D9E75', defArc:60  },
+    mg_heavy:   { label:'HMG .50cal',   minR:0,    maxR:2500, color:[29,158,117],  hex:'#1D9E75', defArc:45  },
+    atgm:       { label:'ATGM',         minR:75,   maxR:4500, color:[55,138,221],  hex:'#378ADD', defArc:45  },
+    direct_fire:{ label:'25mm Cannon',  minR:0,    maxR:2800, color:[55,138,221],  hex:'#378ADD', defArc:60  },
+    tank_120mm: { label:'Tank 120mm',   minR:0,    maxR:4000, color:[180,40,220],  hex:'#B428DC', defArc:45  },
+    mortar_81mm:{ label:'Mortar 81mm',  minR:70,   maxR:5600, color:[239,159,39],  hex:'#EF9F27', defArc:360 },
+    sniper:     { label:'Sniper',       minR:300,  maxR:1800, color:[100,200,100], hex:'#64C864', defArc:30  },
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GEODETIC
+  // ═══════════════════════════════════════════════════════════════════
+  const EARTH_R=6_371_008.8, M_PER_DEG=111_320;
+
+  function destPt(lon,lat,brg,dist){
+    const δ=dist/EARTH_R,θ=brg*Math.PI/180;
+    const φ1=lat*Math.PI/180,λ1=lon*Math.PI/180;
+    const φ2=Math.asin(Math.sin(φ1)*Math.cos(δ)+Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+    const λ2=λ1+Math.atan2(Math.sin(θ)*Math.sin(δ)*Math.cos(φ1),Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+    return{longitude:λ2*180/Math.PI,latitude:φ2*180/Math.PI};
+  }
+
+  function geoDist(lon1,lat1,lon2,lat2){
+    const φ1=lat1*Math.PI/180,φ2=lat2*Math.PI/180,Δλ=(lon2-lon1)*Math.PI/180;
+    return EARTH_R*Math.acos(Math.min(1,Math.sin(φ1)*Math.sin(φ2)+Math.cos(φ1)*Math.cos(φ2)*Math.cos(Δλ)));
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // WEZ POLYGON BUILDER
+  // ═══════════════════════════════════════════════════════════════════
+  function buildWEZ(pt, minR, maxR, bearingDeg, arcDeg){
+    const minRing = minR>0?geometryEngine.geodesicBuffer(pt,minR,'meters'):null;
+    const maxRing = geometryEngine.geodesicBuffer(pt,maxR,'meters');
+    let zone = maxRing;
+    if(arcDeg<360){
+      const half=arcDeg/2, steps=Math.max(3,Math.ceil(arcDeg));
+      const ring=[[pt.longitude,pt.latitude]];
+      for(let i=0;i<=steps;i++){
+        const b=(bearingDeg-half)+(i/steps)*arcDeg;
+        const tp=destPt(pt.longitude,pt.latitude,b,maxR*1.02);
+        ring.push([tp.longitude,tp.latitude]);
+      }
+      ring.push([pt.longitude,pt.latitude]);
+      const wedge=new Polygon({rings:[ring],spatialReference:{wkid:4326}});
+      zone=geometryEngine.intersect(maxRing,wedge);
+    }
+    if(minRing&&zone) zone=geometryEngine.difference(zone,minRing);
+    return zone;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GAP WIDTH MEASUREMENT
+  // ─────────────────────────────────────────────────────────────────
+  // For each gap polygon, measure the minimum width by:
+  //  1. Finding the centroid.
+  //  2. Casting rays in 18 directions from the centroid.
+  //  3. For each ray, finding where it exits the gap polygon.
+  //  4. The minimum of (2 × ray length) across all 18 directions
+  //     is the approximate minimum width.
+  //  5. Also record the max width (longest ray pair) for the briefing.
+  //
+  // This gives a practical answer to "can a vehicle column squeeze through?"
+  // ═══════════════════════════════════════════════════════════════════
+  function measureGapWidth(gapPolygon){
+    let minWidth=Infinity, maxWidth=0;
+    const ext=gapPolygon.extent;
+    if(!ext) return{minWidth:0,maxWidth:0};
+
+    const cx=(ext.xmin+ext.xmax)/2;
+    const cy=(ext.ymin+ext.ymax)/2;
+    const cosLat=Math.cos(cy*Math.PI/180);
+    const testDist=Math.max(
+      (ext.xmax-ext.xmin)*M_PER_DEG*cosLat,
+      (ext.ymax-ext.ymin)*M_PER_DEG
+    )*0.6;
+
+    for(let di=0;di<18;di++){
+      const brg=(di/18)*360;
+      const tp=destPt(cx,cy,brg,testDist);
+      const ray=new Polyline({
+        paths:[[[cx,cy],[tp.longitude,tp.latitude]]],
+        spatialReference:{wkid:4326},
+      });
+      // Find intersection length of this ray with the gap polygon
+      try{
+        const clipped=geometryEngine.clip(ray,gapPolygon.extent);
+        if(!clipped) continue;
+        const inGeom=geometryEngine.intersect(clipped,gapPolygon);
+        if(!inGeom) continue;
+        const len=Math.abs(geometryEngine.geodesicLength(inGeom,'meters'));
+        if(len>0){
+          // Paired ray (opposite direction)
+          const opp=destPt(cx,cy,(brg+180)%360,testDist);
+          const rayOpp=new Polyline({
+            paths:[[[cx,cy],[opp.longitude,opp.latitude]]],
+            spatialReference:{wkid:4326},
+          });
+          const inOpp=geometryEngine.intersect(
+            geometryEngine.clip(rayOpp,gapPolygon.extent),gapPolygon);
+          const lenOpp=inOpp?Math.abs(geometryEngine.geodesicLength(inOpp,'meters')):0;
+          const total=len+lenOpp;
+          if(total<minWidth) minWidth=total;
+          if(total>maxWidth) maxWidth=total;
+        }
+      }catch(_){}
+    }
+    return{
+      minWidth:minWidth===Infinity?0:Math.round(minWidth),
+      maxWidth:Math.round(maxWidth),
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // COVERAGE RASTER + GAP EXTRACTION
+  // ═══════════════════════════════════════════════════════════════════
+  function buildCoverageRaster(wezPolygons, aoPolygon, extent, cols, rows){
+    const dLon=(extent.xmax-extent.xmin)/cols;
+    const dLat=(extent.ymax-extent.ymin)/rows;
+    const coverGrid=new Uint8Array(cols*rows);
+    const aoMask=new Uint8Array(cols*rows);
+
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const lon=extent.xmin+(c+0.5)*dLon;
+        const lat=extent.ymax-(r+0.5)*dLat;
+        const pt=new Point({longitude:lon,latitude:lat,spatialReference:{wkid:4326}});
+        const i=r*cols+c;
+        if(aoPolygon&&geometryEngine.contains(aoPolygon,pt)){
+          aoMask[i]=1;
+          let cnt=0;
+          for(const z of wezPolygons) if(z&&geometryEngine.contains(z,pt)) cnt++;
+          coverGrid[i]=cnt;
+        }
+      }
+    }
+    return{coverGrid,aoMask};
+  }
+
+  function buildCoverageCanvas(coverGrid,aoMask,cols,rows,opacity){
+    const canvas=document.createElement('canvas');
+    canvas.width=cols;canvas.height=rows;
+    const ctx=canvas.getContext('2d');
+    const img=ctx.createImageData(cols,rows);
+    for(let i=0;i<cols*rows;i++){
+      const px=i*4;
+      if(!aoMask[i]){img.data[px+3]=0;continue;}
+      const c=Math.min(3,coverGrid[i]);
+      const pal=[
+        [220,60,48,0.60],   // 0 gap
+        [29,158,117,0.45],  // 1 single
+        [120,200,64,0.50],  // 2 mutual
+        [29,158,117,0.55],  // 3+
+      ][c];
+      img.data[px]=pal[0];img.data[px+1]=pal[1];img.data[px+2]=pal[2];
+      img.data[px+3]=Math.round(pal[3]*opacity*255);
+    }
+    ctx.putImageData(img,0,0);
+    return canvas;
+  }
+
+  // Connected-component labelling for gap cells
+  function labelGapComponents(coverGrid,aoMask,cols,rows){
+    const labels=new Int32Array(cols*rows).fill(-1);
+    let next=0;
+    function flood(sr,sc,lbl){
+      const stack=[[sr,sc]];
+      while(stack.length){
+        const[r,c]=stack.pop();
+        const i=r*cols+c;
+        if(r<0||r>=rows||c<0||c>=cols) continue;
+        if(!aoMask[i]||coverGrid[i]>0||labels[i]>=0) continue;
+        labels[i]=lbl;
+        stack.push([r-1,c],[r+1,c],[r,c-1],[r,c+1]);
+      }
+    }
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const i=r*cols+c;
+      if(aoMask[i]&&coverGrid[i]===0&&labels[i]<0) flood(r,c,next++);
+    }
+    return{labels,numLabels:next};
+  }
+
+  // Build gap polygon outline from component cells
+  function buildGapPolygon(label,labels,cols,rows,extent,cellM){
+    const dLon=(extent.xmax-extent.xmin)/cols;
+    const dLat=(extent.ymax-extent.ymin)/rows;
+    const pts=[];
+    for(let r=0;r<rows;r++){
+      let fc=-1,lc=-1;
+      for(let c=0;c<cols;c++){
+        if(labels[r*cols+c]===label){if(fc<0)fc=c;lc=c;}
+      }
+      if(fc<0) continue;
+      const lat=extent.ymax-(r+0.5)*dLat;
+      pts.push([extent.xmin+(fc+0.5)*dLon,lat]);
+      if(lc!==fc) pts.push([extent.xmin+(lc+0.5)*dLon,lat]);
+    }
+    if(pts.length<3) return null;
+    const half=Math.ceil(pts.length/2);
+    const ring=[...pts.slice(0,half),...[...pts.slice(half)].reverse(),pts[0]];
+    try{ return new Polygon({rings:[ring],spatialReference:{wkid:4326}}); }
+    catch(_){ return null; }
+  }
+
+  // Gap width transect graphic — draws the widest transect line across the gap
+  function buildTransectGraphic(gap){
+    if(!gap.polygon||gap.maxWidth<10) return null;
+    const ext=gap.polygon.extent;
+    const cx=(ext.xmin+ext.xmax)/2, cy=(ext.ymin+ext.ymax)/2;
+    const cosLat=Math.cos(cy*Math.PI/180);
+    // Draw horizontal and vertical transects
+    const wH=gap.maxWidth/2/(M_PER_DEG*cosLat);
+    const wV=gap.maxWidth/2/M_PER_DEG;
+    const gfx=[];
+    // Horizontal
+    gfx.push(new Graphic({
+      geometry:new Polyline({paths:[[[cx-wH,cy],[cx+wH,cy]]],spatialReference:{wkid:4326}}),
+      symbol:{type:'simple-line',color:[239,159,39,200],width:1.5,style:'short-dash'},
+    }));
+    // Width label
+    gfx.push(new Graphic({
+      geometry:new Point({longitude:cx,latitude:cy,spatialReference:{wkid:4326}}),
+      symbol:{type:'text',
+        text:`min ${gap.minWidth}m\nmax ${gap.maxWidth}m`,
+        color:[239,159,39,220],haloColor:[0,0,0,180],haloSize:1.5,
+        font:{family:'Courier New',size:9,weight:'bold'},
+        horizontalAlignment:'center',yoffset:4},
+    }));
+    return gfx;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SEVERITY CLASSIFICATION
+  // ═══════════════════════════════════════════════════════════════════
+  function classifyGap(gap, aoAreaM2){
+    const fracAO = gap.areaM2/(aoAreaM2||1);
+    if(gap.minWidth>500||fracAO>0.15)
+      return{cls:'critical',label:'CRITICAL',note:'Enemy armoured formation can penetrate without engagement.'};
+    if(gap.minWidth>200||fracAO>0.05)
+      return{cls:'major',label:'MAJOR',note:'Enemy mechanised element exploitable. Priority for reserve positioning.'};
+    return{cls:'minor',label:'MINOR',note:'Small gap — limits to dismount or vehicle pair. Consider additional direct fire.'};
+  }
+
+  function remediationAction(gap){
+    if(gap.minWidth>400)
+      return`Reposition Tank/ATGM to cover. Gap requires ${Math.round(gap.minWidth/1000*10)/10}km direct fire range.`;
+    if(gap.minWidth>150)
+      return`Add MG or ATGM at grid ${gap.centLat.toFixed(4)}°N. Existing weapons cannot reach gap centreline.`;
+    return`Extend arc of W${Math.ceil(Math.random()*3)} by ${Math.round(gap.minWidth/10)*5}° or emplace AT mines in gap.`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // WEAPON PREVIEW CANVAS
+  // ═══════════════════════════════════════════════════════════════════
+  function drawPreview(wpnKey,arc,brg){
+    const canvas=document.getElementById('wez-canvas');
+    const ctx=canvas.getContext('2d');
+    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,R=28;
+    const wpn=WEAPONS[wpnKey]??WEAPONS.atgm;
+    const[r,g,b]=wpn.color;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0a0b0e';ctx.fillRect(0,0,W,H);
+    if(arc>=360){
+      ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${r},${g},${b},0.20)`;
+      ctx.strokeStyle=`rgba(${r},${g},${b},0.75)`;
+      ctx.lineWidth=1.5;ctx.fill();ctx.stroke();
+    } else {
+      const ha=(arc/2)*Math.PI/180;
+      const rot=(brg-90)*Math.PI/180;
+      ctx.beginPath();ctx.moveTo(cx,cy);
+      ctx.arc(cx,cy,R,rot-ha,rot+ha);ctx.closePath();
+      ctx.fillStyle=`rgba(${r},${g},${b},0.18)`;
+      ctx.strokeStyle=`rgba(${r},${g},${b},0.75)`;
+      ctx.lineWidth=1.5;ctx.fill();ctx.stroke();
+    }
+    if(wpn.minR>0){
+      const mf=Math.max(0.05,wpn.minR/wpn.maxR);
+      ctx.beginPath();ctx.arc(cx,cy,R*mf,0,Math.PI*2);
+      ctx.fillStyle='#0a0b0e';ctx.fill();
+      ctx.strokeStyle=`rgba(${r},${g},${b},0.35)`;
+      ctx.setLineDash([3,2]);ctx.stroke();ctx.setLineDash([]);
+    }
+    document.getElementById('wi-name').textContent=wpn.label;
+    document.getElementById('wi-range').textContent=`Range: ${wpn.maxR} m`;
+    document.getElementById('wi-arc').textContent=`Arc: ${arc}°`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ARCGIS SETUP
+  // ═══════════════════════════════════════════════════════════════════
+  const wezLayer     = new GraphicsLayer({title:'WEZ outlines',   elevationInfo:{mode:'on-the-ground'}});
+  const gapLayer     = new GraphicsLayer({title:'Gap zones',       elevationInfo:{mode:'on-the-ground'}});
+  const transLayer   = new GraphicsLayer({title:'Gap transects',   elevationInfo:{mode:'on-the-ground'}});
+  const markerLayer  = new GraphicsLayer({title:'Weapon markers',  elevationInfo:{mode:'on-the-ground'}});
+  const aoLayer      = new GraphicsLayer({title:'AO boundary',     elevationInfo:{mode:'on-the-ground'}});
+  const mediaLayers  = [];
+
+  const map=new Map({basemap:'topo-3d',ground:'world-elevation',
+    layers:[gapLayer,wezLayer,transLayer,markerLayer,aoLayer]});
+
+  const view=new SceneView({
+    container:'viewDiv',map,
+    camera:{position:{longitude:73.06,latitude:33.68,z:18000},heading:0,tilt:45},
+    environment:{atmosphere:{quality:'high'},lighting:{date:new Date()}},
+    popup:{dockEnabled:true,dockOptions:{position:'bottom-right',breakpoint:false},
+      defaultPopupTemplateEnabled:true},
+  });
+
+  [gapLayer,wezLayer].forEach(l=>{
+    l.popupTemplate={title:'{type}',content:'{label}'};
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════════════════════════════
+  let weapons  = [];   // {pt, wpnKey, bearing, arc, zone, markers:[]}
+  let running  = false;
+  const $=id=>document.getElementById(id);
+
+  // ── Sliders ───────────────────────────────────────────────────────
+  $('inp-wpn').addEventListener('change',()=>{
+    const wpn=WEAPONS[$('inp-wpn').value];
+    if(wpn){$('inp-arc').value=wpn.defArc;$('arc-v').textContent=wpn.defArc+'°';}
+    drawPreview($('inp-wpn').value,parseInt($('inp-arc').value),parseInt($('inp-brg').value));
+  });
+  $('inp-brg').addEventListener('input',()=>{
+    $('brg-v').textContent=$('inp-brg').value+'°';
+    drawPreview($('inp-wpn').value,parseInt($('inp-arc').value),parseInt($('inp-brg').value));
+  });
+  $('inp-arc').addEventListener('input',()=>{
+    $('arc-v').textContent=$('inp-arc').value+'°';
+    drawPreview($('inp-wpn').value,parseInt($('inp-arc').value),parseInt($('inp-brg').value));
+  });
+  $('inp-minw').addEventListener('input',()=>$('minw-v').textContent=$('inp-minw').value+' m');
+  $('inp-opa').addEventListener('input',()=>$('opa-v').textContent=parseFloat($('inp-opa').value).toFixed(2));
+
+  // Tabs
+  document.querySelectorAll('.ltab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.querySelectorAll('.ltab').forEach(x=>x.classList.remove('on'));
+      t.classList.add('on');
+      $('lt-gaps').style.display=t.dataset.lt==='gaps'?'flex':'none';
+      if(t.dataset.lt==='gaps') {$('lt-gaps').style.flexDirection='column';}
+      $('lt-weapons').style.display=t.dataset.lt==='weapons'?'flex':'none';
+      if(t.dataset.lt==='weapons') {$('lt-weapons').style.flexDirection='column';}
+    });
+  });
+
+  // ── Map click — place weapon ───────────────────────────────────────
+  view.on('click',async event=>{
+    if(running)return;
+    const result=await view.hitTest(event,{include:[map.ground]});
+    const gp=result?.ground?.mapPoint??event.mapPoint;
+    if(!gp)return;
+
+    const wpnKey=$('inp-wpn').value;
+    const brg=parseInt($('inp-brg').value);
+    const arc=parseInt($('inp-arc').value);
+    const wpn=WEAPONS[wpnKey];
+    const pt=new Point({longitude:gp.longitude,latitude:gp.latitude,spatialReference:{wkid:4326}});
+    const zone=buildWEZ(pt,wpn.minR,wpn.maxR,brg,arc);
+    const[r,g,b]=wpn.color;
+
+    // Marker
+    const m1=new Graphic({
+      geometry:pt,
+      symbol:{type:'point-3d',symbolLayers:[{type:'object',
+        resource:{primitive:'diamond'},material:{color:[r,g,b,0.95]},
+        width:65,height:65,depth:65}],
+        verticalOffset:{screenLength:22,maxWorldLength:600,minWorldLength:4}},
+      attributes:{type:`W${weapons.length+1} — ${wpn.label}`,
+        label:`${wpn.label}  bearing ${brg}°  arc ${arc}°  max ${wpn.maxR}m`},
+    });
+    const m2=new Graphic({
+      geometry:pt,
+      symbol:{type:'text',text:`W${weapons.length+1}`,
+        color:[255,255,255,220],haloColor:[r,g,b,255],haloSize:2.5,
+        font:{family:'Courier New',size:9,weight:'bold'},
+        horizontalAlignment:'center',yoffset:16},
+    });
+    markerLayer.add(m1);markerLayer.add(m2);
+
+    // WEZ outline (immediate)
+    let wezGfx=null;
+    if($('opt-wez').checked&&zone){
+      wezGfx=new Graphic({
+        geometry:zone,
+        symbol:{type:'polygon-3d',symbolLayers:[{type:'fill',
+          material:{color:[r,g,b,0.08]},
+          outline:{color:[r,g,b,0.65],size:1.5}}]},
+        attributes:{type:`WEZ W${weapons.length+1}`,
+          label:`${wpn.label}  ${wpn.maxR}m  ${arc}°`},
+      });
+      wezLayer.add(wezGfx);
+    }
+
+    weapons.push({pt,wpnKey,bearing:brg,arc,zone,markers:[m1,m2],wezGfx});
+    $('ss-w').textContent=weapons.length;
+    $('btn-run').disabled=weapons.length<1;
+    $('hint').textContent=`W${weapons.length} placed — add more or click Analyse Gaps`;
+    renderWeaponList();
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MAIN ANALYSIS
+  // ═══════════════════════════════════════════════════════════════════
+  $('btn-run').addEventListener('click',async()=>{
+    if(running||weapons.length<1)return;
+    running=true;$('btn-run').disabled=true;
+    clearAnalysis();
+
+    const aoR   =parseInt($('inp-ao').value);
+    const cellM =parseInt($('inp-cell').value);
+    const minW  =parseInt($('inp-minw').value);
+    const opacity=parseFloat($('inp-opa').value);
+    const cLat  =parseFloat($('inp-lat').value);
+    const cLon  =parseFloat($('inp-lon').value);
+    const cosLat=Math.cos(cLat*Math.PI/180);
+
+    // AO polygon
+    const aoPts=[];
+    for(let i=0;i<=72;i++){
+      const{longitude,latitude}=destPt(cLon,cLat,(i/72)*360,aoR);
+      aoPts.push([longitude,latitude]);
+    }
+    const aoPolygon=new Polygon({rings:[aoPts],spatialReference:{wkid:4326}});
+    const aoAreaM2=Math.PI*aoR*aoR;
+
+    // AO boundary ring
+    aoLayer.removeAll();
+    aoLayer.add(new Graphic({
+      geometry:aoPolygon,
+      symbol:{type:'simple-fill',color:[0,0,0,0],
+        outline:{color:[239,159,39,160],width:1.8,style:'short-dash'}},
+      attributes:{type:'AO boundary',label:`Radius ${aoR}m`},
+    }));
+
+    // ── 1. Compute grid ───────────────────────────────────────────
+    const padM=aoR*1.06,padDeg=padM/M_PER_DEG;
+    const extent=new Extent({
+      xmin:cLon-padDeg/cosLat,ymin:cLat-padDeg,
+      xmax:cLon+padDeg/cosLat,ymax:cLat+padDeg,
+      spatialReference:{wkid:4326},
+    });
+    const cols=Math.ceil(padM*2/cellM);
+    const rows=Math.ceil(padM*2/cellM);
+
+    setStatus('busy','Computing coverage grid…');
+    setProgress(0.08,'Rasterising WEZ polygons');
+    await tick();
+
+    const wezZones=weapons.map(w=>w.zone).filter(Boolean);
+    const{coverGrid,aoMask}=buildCoverageRaster(wezZones,aoPolygon,extent,cols,rows);
+
+    // ── 2. Coverage heatmap ───────────────────────────────────────
+    if($('opt-heat').checked){
+      setProgress(0.30,'Rendering coverage heatmap');
+      await tick();
+      const canvas=buildCoverageCanvas(coverGrid,aoMask,cols,rows,opacity);
+      const ml=new MediaLayer({
+        source:[new ImageElement({image:canvas.toDataURL('image/png'),
+          georeference:new ExtentAndRotationGeoreference({extent})})],
+        title:'Coverage heatmap',
+      });
+      map.add(ml,0);mediaLayers.push(ml);
+    }
+
+    // ── 3. Detect gaps ────────────────────────────────────────────
+    setProgress(0.50,'Labelling gap zones');
+    await tick();
+    const{labels,numLabels}=labelGapComponents(coverGrid,aoMask,cols,rows);
+
+    // Count cells per label
+    const counts=new Int32Array(numLabels);
+    const sumLon=new Float64Array(numLabels);
+    const sumLat=new Float64Array(numLabels);
+    const dLon=(extent.xmax-extent.xmin)/cols;
+    const dLat=(extent.ymax-extent.ymin)/rows;
+
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const i=r*cols+c;
+      const L=labels[i];
+      if(L<0) continue;
+      counts[L]++;
+      sumLon[L]+=extent.xmin+(c+0.5)*dLon;
+      sumLat[L]+=extent.ymax-(r+0.5)*dLat;
+    }
+
+    // ── 4. Build gap polygons & measure widths ────────────────────
+    setProgress(0.62,'Measuring gap widths');
+    const gaps=[];
+    for(let L=0;L<numLabels;L++){
+      if(counts[L]<4) continue;
+      const areaM2=counts[L]*cellM*cellM;
+      const centLon=sumLon[L]/counts[L];
+      const centLat=sumLat[L]/counts[L];
+      // Build polygon
+      const poly=buildGapPolygon(L,labels,cols,rows,extent,cellM);
+      if(!poly) continue;
+      // Width measurement
+      const{minWidth,maxWidth}=measureGapWidth(poly);
+      if(minWidth<minW) continue;  // too narrow to be tactically significant
+      gaps.push({label:L,areaM2,centLon,centLat,polygon:poly,minWidth,maxWidth});
+    }
+
+    gaps.sort((a,b)=>b.areaM2-a.areaM2);
+
+    // ── 5. Draw gap polygons ──────────────────────────────────────
+    setProgress(0.75,'Drawing gap zones');
+    await tick();
+
+    gaps.slice(0,12).forEach((gap,ri)=>{
+      const sev=classifyGap(gap,aoAreaM2);
+      gap.severity=sev;
+      gap.rank=ri+1;
+      gap.remediation=remediationAction(gap);
+
+      // Gap fill polygon
+      gapLayer.add(new Graphic({
+        geometry:gap.polygon,
+        symbol:{type:'polygon-3d',symbolLayers:[{type:'fill',
+          material:{color:[220,60,48,0.22]},
+          outline:{color:[220,60,48,0.85],size:2.0},
+          pattern:{type:'style',style:'diagonal-cross'}}]},
+        attributes:{type:`Gap zone ${gap.rank}`,
+          label:`Gap ${gap.rank}  area ${(gap.areaM2/10000).toFixed(2)}ha  min-width ${gap.minWidth}m`},
+      }));
+
+      // Gap centroid label
+      gapLayer.add(new Graphic({
+        geometry:new Point({longitude:gap.centLon,latitude:gap.centLat,spatialReference:{wkid:4326}}),
+        symbol:{type:'text',
+          text:`GAP ${gap.rank}\n${(gap.areaM2/10000).toFixed(1)}ha`,
+          color:[220,60,48,230],haloColor:[0,0,0,190],haloSize:1.5,
+          font:{family:'Courier New',size:9.5,weight:'bold'},
+          horizontalAlignment:'center'},
+        attributes:{type:`Gap zone ${gap.rank}`,
+          label:`Gap ${gap.rank}  min-width ${gap.minWidth}m`},
+      }));
+
+      // Width transects
+      if($('opt-tran').checked){
+        const tg=buildTransectGraphic(gap);
+        if(tg) tg.forEach(g=>transLayer.add(g));
+      }
+    });
+
+    // ── 6. Statistics ─────────────────────────────────────────────
+    let gapCells=0,totalAOCells=0;
+    for(let i=0;i<aoMask.length;i++){
+      if(!aoMask[i])continue;
+      totalAOCells++;
+      if(coverGrid[i]===0)gapCells++;
+    }
+    const covPct=totalAOCells>0?Math.round(100*(1-gapCells/totalAOCells)):0;
+    const gapPct=100-covPct;
+    const totalGapAreaM2=gaps.reduce((s,g)=>s+g.areaM2,0);
+
+    $('ss-cov').textContent=covPct+'%';
+    $('ss-gaps').textContent=gaps.length;
+    $('ss-gap-area').textContent=(totalGapAreaM2/1e6).toFixed(2)+' km²';
+    $('cbl-pct').textContent=covPct+'%';
+    $('cb-covered').style.width=covPct+'%';
+    $('cb-gap').style.width=gapPct+'%';
+    $('lph-sub').textContent=`${gaps.length} gaps  ·  ${covPct}% coverage  ·  ${(totalGapAreaM2/1e6).toFixed(2)} km² uncovered`;
+
+    // ── 7. Render list ─────────────────────────────────────────────
+    renderGapList(gaps);
+
+    setProgress(1.0,`Done — ${gaps.length} gaps, ${covPct}% AO covered`);
+    setStatus('done','Done');
+
+    // Animate gap highlight (pulse opacity)
+    if($('opt-anim').checked&&gaps.length>0){
+      let dir=1,opNow=0.22;
+      const anim=setInterval(()=>{
+        opNow+=dir*0.04;
+        if(opNow>0.45){dir=-1;} if(opNow<0.10){dir=1;}
+        gapLayer.graphics.forEach(g=>{
+          if(g.attributes?.type?.startsWith('Gap zone')){
+            try{
+              const sym=g.symbol.clone();
+              sym.symbolLayers.items[0].material.color[3]=opNow;
+              g.symbol=sym;
+            }catch(_){}
+          }
+        });
+      },80);
+      setTimeout(()=>clearInterval(anim),8000);
+    }
+
+    view.goTo({target:aoPolygon.extent,tilt:50},{duration:1100});
+    setTimeout(()=>{const first=document.querySelector('.gcard');if(first)first.click();},1500);
+    running=false;$('btn-run').disabled=false;
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GAP LIST RENDER
+  // ═══════════════════════════════════════════════════════════════════
+  function renderGapList(gaps){
+    const list=$('gap-list');
+    list.innerHTML='';
+    if(!gaps.length){
+      list.innerHTML='<div id="list-empty" style="padding:16px 12px;font-size:10px;color:#1D9E75;text-align:center;line-height:1.8">✓ No significant gaps detected.<br>AO appears fully covered by<br>current weapon disposition.</div>';
+      return;
+    }
+    gaps.forEach((gap,ri)=>{
+      const sev=gap.severity;
+      const card=document.createElement('div');
+      card.className='gcard';
+      const areaHa=(gap.areaM2/10000).toFixed(2);
+      const maxBar=Math.round(Math.min(100,gap.minWidth/500*100));
+      const areaBar=Math.round(Math.min(100,gap.areaM2/200000*100));
+      card.innerHTML=`
+        <div class="gc-score">${gap.rank}</div>
+        <div class="gc-top">
+          <div class="gc-rank">${gap.rank}</div>
+          <div style="flex:1">
+            <div class="gc-name">Gap zone ${gap.rank}</div>
+            <div class="gc-sub">${areaHa} ha  ·  min-width ${gap.minWidth} m  ·  max ${gap.maxWidth} m</div>
+          </div>
+        </div>
+        <div class="gc-bars">
+          <div class="gb">
+            <div class="gb-l">Area</div>
+            <div class="gb-track"><div class="gb-fill" style="width:${areaBar}%;background:#DC3C30"></div></div>
+            <div class="gb-v">${areaHa} ha</div>
+          </div>
+          <div class="gb">
+            <div class="gb-l">Min width</div>
+            <div class="gb-track"><div class="gb-fill" style="width:${maxBar}%;background:#EF9F27"></div></div>
+            <div class="gb-v">${gap.minWidth} m</div>
+          </div>
+        </div>
+        <div class="gc-note">${sev.note}</div>
+        <div class="gc-action">↗ ${gap.remediation}</div>
+        <span class="sev-badge sev-${sev.cls}">${sev.label}</span>
+      `;
+      card.addEventListener('click',()=>{
+        document.querySelectorAll('.gcard').forEach(x=>x.classList.remove('sel'));
+        card.classList.add('sel');
+        view.goTo({center:[gap.centLon,gap.centLat],zoom:13,tilt:58},{duration:800});
+      });
+      list.appendChild(card);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // WEAPON LIST RENDER
+  // ═══════════════════════════════════════════════════════════════════
+  function renderWeaponList(){
+    const list=$('wpn-list');
+    list.innerHTML='';
+    if(!weapons.length){
+      list.innerHTML='<div style="padding:14px;font-size:10px;color:#3a3935;text-align:center">No weapons placed</div>';
+      return;
+    }
+    weapons.forEach((w,i)=>{
+      const wpn=WEAPONS[w.wpnKey];
+      const[r,g,b]=wpn.color;
+      const card=document.createElement('div');
+      card.className='wcard';
+      card.innerHTML=`
+        <div class="wc-dot" style="background:rgb(${r},${g},${b})"></div>
+        <div class="wc-info">
+          <div class="wc-name">W${i+1} — ${wpn.label}</div>
+          <div class="wc-sub">${w.bearing}°  arc ${w.arc}°  max ${wpn.maxR}m</div>
+        </div>
+        <button class="wc-del" data-i="${i}">✕</button>
+      `;
+      card.querySelector('.wc-del').addEventListener('click',()=>removeWeapon(i));
+      card.addEventListener('click',e=>{
+        if(e.target.tagName==='BUTTON')return;
+        document.querySelectorAll('.wcard').forEach(x=>x.classList.remove('sel'));
+        card.classList.add('sel');
+        view.goTo({center:[w.pt.longitude,w.pt.latitude],zoom:14,tilt:55},{duration:700});
+      });
+      list.appendChild(card);
+    });
+  }
+
+  function removeWeapon(i){
+    const w=weapons[i];
+    [w.markers].flat().forEach(g=>{try{markerLayer.remove(g);}catch(_){}});
+    if(w.wezGfx){try{wezLayer.remove(w.wezGfx);}catch(_){}}
+    weapons.splice(i,1);
+    $('ss-w').textContent=weapons.length;
+    $('btn-run').disabled=weapons.length<1;
+    renderWeaponList();
+    clearAnalysis();
+  }
+
+  // ── Undo / Clear ──────────────────────────────────────────────────
+  $('btn-undo').addEventListener('click',()=>{
+    if(!weapons.length)return;
+    removeWeapon(weapons.length-1);
+  });
+
+  $('btn-clear').addEventListener('click',()=>{
+    weapons.forEach(w=>{
+      [w.markers].flat().forEach(g=>{try{markerLayer.remove(g);}catch(_){}});
+      if(w.wezGfx){try{wezLayer.remove(w.wezGfx);}catch(_){}}
+    });
+    weapons=[];
+    clearAnalysis();
+    aoLayer.removeAll();
+    $('ss-w').textContent='0';
+    ['ss-cov','ss-gaps','ss-gap-area'].forEach(id=>$(id).textContent='—');
+    $('cbl-pct').textContent='—';
+    $('cb-covered').style.width='0%';
+    $('cb-gap').style.width='0%';
+    $('btn-run').disabled=true;
+    $('lph-sub').textContent='Place friendly weapon positions to begin';
+    $('hint').textContent='Configure weapon type and bearing — then click map to place';
+    renderWeaponList();renderGapList([]);
+    setProgress(0,'—');setStatus('place','Place weapons');
+  });
+
+  function clearAnalysis(){
+    [gapLayer,transLayer].forEach(l=>l.removeAll());
+    mediaLayers.forEach(l=>{try{map.remove(l);}catch(_){}});
+    mediaLayers.length=0;
+  }
+  function setStatus(s,t){const el=$('status');el.textContent=t??s;el.className='ph-status '+s;}
+  function setProgress(f,l){$('prog-fill').style.width=Math.round(f*100)+'%';$('prog-label').textContent=l??'';}
+  function tick(){return new Promise(r=>setTimeout(r,0));}
+
+  view.when(()=>{
+    drawPreview('atgm',90,270);
+    console.log('[DefenceGap] SceneView ready.');
+    console.log('[DefenceGap] Algorithm: geodesicBuffer WEZ → rasterise → label components → width rays → severity score.');
+    console.log('[DefenceGap] Click map to place weapons. AO centre set in right panel.');
+  });
+
+}); // end require()
+</script>
+</body>
+</html>
