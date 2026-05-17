@@ -50,6 +50,7 @@ export interface MenuItemEvent {
 declare class ContextMenuManager extends Evented {
     private static instance;
     private menuElement;
+    private paletteElement;
     private view;
     private activeGraphic;
     readonly menuItems: Map<string, ContextMenuItem[]>;
@@ -72,6 +73,9 @@ declare class ContextMenuManager extends Evented {
     private _contextMenuHandler;
     private _contextMenuContainer;
     private _dynamicItemProviders;
+    private _paletteActions;
+    private _paletteFilteredActions;
+    private _paletteSelectedIndex;
     private constructor();
     /**
      * Get the singleton instance
@@ -188,6 +192,21 @@ declare class ContextMenuManager extends Evented {
      * Items with `children` become submenu triggers; others are leaf actions.
      */
     private renderMenuItems;
+    private buildPaletteActions;
+    private flattenMenuItemsForPalette;
+    private buildRuntimePaletteActions;
+    private createPaletteAction;
+    private showActionPalette;
+    private renderPaletteList;
+    private handlePaletteKeyDown;
+    private runPaletteMenuItem;
+    private updatePaletteSelection;
+    private emitPaletteAction;
+    private isMenuItemVisible;
+    private isMenuItemEnabled;
+    private normalizeSearchText;
+    private repositionActionPalette;
+    private hideActionPalette;
     /**
      * Hide the context menu
      */

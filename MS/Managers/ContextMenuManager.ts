@@ -57,6 +57,17 @@ export interface MenuItemEvent {
   originalEvent: any;
 }
 
+interface PaletteAction {
+  id: string;
+  label: string;
+  category: string;
+  shortcut?: string;
+  icon?: string;
+  enabled: boolean;
+  searchText: string;
+  run: () => void;
+}
+
 /**
  * ContextMenuManager - Singleton class to manage right-click context menus for graphics
  * Uses the ArcGIS Evented class for event handling
@@ -64,6 +75,7 @@ export interface MenuItemEvent {
 class ContextMenuManager extends Evented {
   private static instance: ContextMenuManager;
   private menuElement: HTMLDivElement;
+  private paletteElement: HTMLDivElement;
   private view: MapView | SceneView | null = null;
   private activeGraphic: Graphic | null = null;
   public readonly menuItems: Map<string, ContextMenuItem[]> = new Map();
@@ -91,6 +103,9 @@ class ContextMenuManager extends Evented {
   private _dynamicItemProviders: Array<
     (graphic: Graphic) => ContextMenuItem[]
   > = [];
+  private _paletteActions: PaletteAction[] = [];
+  private _paletteFilteredActions: PaletteAction[] = [];
+  private _paletteSelectedIndex = 0;
 
   private constructor() {
     super();
@@ -102,6 +117,14 @@ class ContextMenuManager extends Evented {
     this.menuElement.style.position = 'absolute';
     this.menuElement.style.zIndex = '1000';
     document.body.appendChild(this.menuElement);
+
+    this.paletteElement = document.createElement('div');
+    this.paletteElement.id = 'arcgis-action-palette';
+    this.paletteElement.style.display = 'none';
+    this.paletteElement.style.position = 'absolute';
+    this.paletteElement.style.zIndex = '1002';
+    this.paletteElement.addEventListener('click', (e) => e.stopPropagation());
+    document.body.appendChild(this.paletteElement);
 
     // Default options
     this.options = {
@@ -121,6 +144,8 @@ class ContextMenuManager extends Evented {
 
     // Document click handler to hide menu
     document.addEventListener('click', this.hideMenu.bind(this));
+    document.addEventListener('click', this.hideActionPalette.bind(this));
+    document.addEventListener('keydown', (e) => this.handlePaletteKeyDown(e));
   }
 
   /**
@@ -602,6 +627,28 @@ class ContextMenuManager extends Evented {
     }
     // ────────────────────────────────────────────────────────────────────
 
+    const paletteActions = this.buildPaletteActions(items, graphic, x, y);
+    if (paletteActions.length > 0) {
+      const sep4 = document.createElement('div');
+      sep4.className = this.options.menuSeparatorClass || '';
+      this.menuElement.appendChild(sep4);
+
+      const moreItem = document.createElement('div');
+      moreItem.className = this.options.menuItemClass || '';
+      moreItem.innerHTML = `<span class="menu-icon" style="font-size:14px">+</span><span>More Actions...</span><span class="menu-shortcut">Search</span>`;
+      moreItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showActionPalette(x, y, graphic, paletteActions);
+      });
+      moreItem.addEventListener('mouseenter', () =>
+        moreItem.classList.add(this.options.menuItemHoverClass || ''),
+      );
+      moreItem.addEventListener('mouseleave', () =>
+        moreItem.classList.remove(this.options.menuItemHoverClass || ''),
+      );
+      this.menuElement.appendChild(moreItem);
+    }
+
     this.menuElement.style.left = `${x + (this.options.offsetX || 0)}px`;
     this.menuElement.style.top = `${y + (this.options.offsetY || 0)}px`;
     this.menuElement.style.display = 'block';
@@ -754,11 +801,428 @@ class ContextMenuManager extends Evented {
     });
   }
 
+  private buildPaletteActions(
+    items: ContextMenuItem[],
+    graphic: Graphic,
+    screenX: number,
+    screenY: number,
+  ): PaletteAction[] {
+    const actions = this.flattenMenuItemsForPalette(items, graphic);
+    actions.push(...this.buildRuntimePaletteActions(graphic, screenX, screenY));
+    return actions;
+  }
+
+  private flattenMenuItemsForPalette(
+    items: ContextMenuItem[],
+    graphic: Graphic,
+    path: string[] = [],
+  ): PaletteAction[] {
+    const actions: PaletteAction[] = [];
+
+    items.forEach((item) => {
+      if (!this.isMenuItemVisible(item, graphic)) return;
+
+      const label =
+        typeof item.label === 'function' ? item.label(graphic) : item.label;
+      const category = item.group || path.join(' / ') || 'Common';
+      const nextPath = item.children ? [...path, label] : path;
+
+      if (item.children && item.children.length > 0) {
+        actions.push(
+          ...this.flattenMenuItemsForPalette(item.children, graphic, nextPath),
+        );
+        return;
+      }
+
+      const enabled = this.isMenuItemEnabled(item, graphic);
+      const actionCategory = category || 'Common';
+      actions.push({
+        id: item.id,
+        label,
+        category: actionCategory,
+        shortcut: item.shortcut,
+        icon: item.icon,
+        enabled,
+        searchText: this.normalizeSearchText(
+          `${label} ${actionCategory} ${item.id} ${item.shortcut || ''}`,
+        ),
+        run: () => this.runPaletteMenuItem(item, graphic),
+      });
+    });
+
+    return actions;
+  }
+
+  private buildRuntimePaletteActions(
+    graphic: Graphic,
+    screenX: number,
+    screenY: number,
+  ): PaletteAction[] {
+    const actions: PaletteAction[] = [];
+
+    if (this._losEngine) {
+      actions.push(this.createPaletteAction('analysis-los', 'Line of Sight', 'Analysis', undefined, () => {
+        if (this._losEngine && this.view) this._losEngine.open(graphic, this.view);
+      }));
+    }
+
+    if (this._weaponEffectEngine) {
+      actions.push(this.createPaletteAction('analysis-wez', 'Weapon Engagement Zone', 'Analysis', undefined, () => {
+        if (this._weaponEffectEngine && this.view) this._weaponEffectEngine.open(graphic, this.view);
+      }));
+    }
+
+    if (this._trajectoryEngine) {
+      actions.push(this.createPaletteAction('analysis-trajectory', 'Projectile Trajectory', 'Analysis', undefined, () => {
+        if (this._trajectoryEngine && this.view) this._trajectoryEngine.open(graphic, this.view);
+      }));
+    }
+
+    if (this._bufferEngine) {
+      actions.push(this.createPaletteAction('analysis-buffer', 'Buffer & Threat Rings', 'Analysis', undefined, () => {
+        if (this._bufferEngine && this.view) this._bufferEngine.open(graphic, this.view);
+      }));
+    }
+
+    if (this._corridorEngine) {
+      actions.push(this.createPaletteAction('analysis-corridor', 'Corridor Analysis', 'Analysis', undefined, () => {
+        if (this._corridorEngine && this.view) this._corridorEngine.open(graphic, this.view);
+      }));
+    }
+
+    if (this._flightEngine) {
+      actions.push(this.createPaletteAction('analysis-flight', 'UAV Flight Analysis', 'Analysis', undefined, () => {
+        if (this._flightEngine && this.view) this._flightEngine.open(graphic, this.view);
+      }));
+    }
+
+    if (this._effectEngine) {
+      actions.push(this.createPaletteAction('analysis-effects', 'Effect Analysis', 'Analysis', undefined, () => {
+        if (this._effectEngine && this.view) this._effectEngine.open(graphic, this.view);
+      }));
+    }
+
+    if (this._measurementEngine) {
+      const isOn = this._measurementEngine.isEnabled;
+      const opts = this._measurementEngine.getOptions();
+      actions.push(this.createPaletteAction(
+        'measurement-toggle',
+        isOn ? 'Disable Measurements' : 'Enable Measurements',
+        'Measurements',
+        undefined,
+        () => this._measurementEngine!.toggle(),
+      ));
+
+      if (isOn) {
+        actions.push(this.createPaletteAction(
+          'measurement-slant-range',
+          opts.slant_range ? 'Disable 3D Slant Range' : 'Enable 3D Slant Range',
+          'Measurements',
+          undefined,
+          () => this._measurementEngine!.setOptions({ slant_range: !opts.slant_range }),
+        ));
+        actions.push(this.createPaletteAction(
+          'measurement-measure-symbol',
+          'Measure This Symbol',
+          'Measurements',
+          undefined,
+          () => {
+            const snap = this._measurementEngine!.measureGraphic(graphic);
+            if (snap) {
+              document.dispatchEvent(
+                new CustomEvent('measurement-graphic-measured', {
+                  detail: { ...snap, screenX, screenY },
+                  bubbles: true,
+                }),
+              );
+            }
+          },
+        ));
+      }
+    }
+
+    if (this._symbolEngine?.creationMode === 'continuous') {
+      actions.push(this.createPaletteAction(
+        'stop-continuous-mode',
+        'Stop Continuous Mode',
+        'Runtime',
+        'Esc',
+        () => this._symbolEngine!.stopContinuousMode(),
+      ));
+    }
+
+    if (this._deploymentBuilderEngine) {
+      actions.push(this.createPaletteAction(
+        'deployment-manager',
+        'Open Deployment Manager',
+        'Tools',
+        undefined,
+        () => this._deploymentBuilderEngine!.openWidget(),
+      ));
+    }
+
+    return actions;
+  }
+
+  private createPaletteAction(
+    id: string,
+    label: string,
+    category: string,
+    shortcut: string | undefined,
+    run: () => void,
+    enabled = true,
+  ): PaletteAction {
+    return {
+      id,
+      label,
+      category,
+      shortcut,
+      enabled,
+      searchText: this.normalizeSearchText(`${label} ${category} ${id} ${shortcut || ''}`),
+      run: () => {
+        run();
+        this.emitPaletteAction(id);
+        this.hideActionPalette();
+        this.hideMenu();
+      },
+    };
+  }
+
+  private showActionPalette(
+    x: number,
+    y: number,
+    graphic: Graphic,
+    actions: PaletteAction[],
+  ): void {
+    this.activeGraphic = graphic;
+    this._paletteActions = actions;
+    this._paletteFilteredActions = actions;
+    this._paletteSelectedIndex = 0;
+    this.menuElement.style.display = 'none';
+
+    this.paletteElement.innerHTML = '';
+    this.paletteElement.className = 'arcgis-action-palette';
+    const searchWrap = document.createElement('div');
+    searchWrap.className = 'arcgis-action-palette-search';
+
+    const searchIcon = document.createElement('span');
+    searchIcon.className = 'arcgis-action-palette-search-icon';
+    searchIcon.textContent = 'Search';
+    searchWrap.appendChild(searchIcon);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Search actions';
+    input.setAttribute('aria-label', 'Search actions');
+    searchWrap.appendChild(input);
+    this.paletteElement.appendChild(searchWrap);
+
+    const list = document.createElement('div');
+    list.className = 'arcgis-action-palette-list';
+    this.paletteElement.appendChild(list);
+
+    const hint = document.createElement('div');
+    hint.className = 'arcgis-action-palette-hint';
+    hint.textContent = 'Enter to run  /  Esc to close';
+    this.paletteElement.appendChild(hint);
+
+    const render = () => {
+      const query = this.normalizeSearchText(input.value);
+      this._paletteFilteredActions = query
+        ? this._paletteActions.filter((action) => action.searchText.includes(query))
+        : this._paletteActions;
+      this._paletteSelectedIndex = Math.min(
+        this._paletteSelectedIndex,
+        Math.max(this._paletteFilteredActions.length - 1, 0),
+      );
+      this.renderPaletteList(list);
+    };
+
+    input.addEventListener('input', () => {
+      this._paletteSelectedIndex = 0;
+      render();
+    });
+
+    this.paletteElement.style.left = `${x + 14}px`;
+    this.paletteElement.style.top = `${y + 14}px`;
+    this.paletteElement.style.display = 'block';
+
+    render();
+    this.repositionActionPalette();
+    requestAnimationFrame(() => input.focus());
+  }
+
+  private renderPaletteList(container: HTMLElement): void {
+    container.innerHTML = '';
+
+    if (this._paletteFilteredActions.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'arcgis-action-palette-empty';
+      empty.textContent = 'No matching actions';
+      container.appendChild(empty);
+      return;
+    }
+
+    let currentCategory = '';
+    this._paletteFilteredActions.forEach((action, index) => {
+      if (action.category !== currentCategory) {
+        currentCategory = action.category;
+        const header = document.createElement('div');
+        header.className = 'arcgis-action-palette-category';
+        header.textContent = currentCategory;
+        container.appendChild(header);
+      }
+
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'arcgis-action-palette-row';
+      if (index === this._paletteSelectedIndex) row.classList.add('selected');
+      if (!action.enabled) row.disabled = true;
+
+      if (action.icon) {
+        const icon = document.createElement('span');
+        icon.className = 'arcgis-action-palette-icon';
+        icon.innerHTML = action.icon;
+        row.appendChild(icon);
+      }
+
+      const copy = document.createElement('span');
+      copy.className = 'arcgis-action-palette-copy';
+      const label = document.createElement('span');
+      label.className = 'arcgis-action-palette-label';
+      label.textContent = action.label;
+      const meta = document.createElement('span');
+      meta.className = 'arcgis-action-palette-meta';
+      meta.textContent = action.category;
+      copy.appendChild(label);
+      copy.appendChild(meta);
+      row.appendChild(copy);
+
+      if (action.shortcut) {
+        const shortcut = document.createElement('span');
+        shortcut.className = 'arcgis-action-palette-shortcut';
+        shortcut.textContent = action.shortcut;
+        row.appendChild(shortcut);
+      }
+
+      row.addEventListener('mouseenter', () => {
+        this._paletteSelectedIndex = index;
+        this.updatePaletteSelection(container);
+      });
+      row.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (action.enabled) action.run();
+      });
+      container.appendChild(row);
+    });
+  }
+
+  private handlePaletteKeyDown(e: KeyboardEvent): void {
+    if (this.paletteElement.style.display === 'none') return;
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      this.hideActionPalette();
+      this.hideMenu();
+      return;
+    }
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const direction = e.key === 'ArrowDown' ? 1 : -1;
+      const max = this._paletteFilteredActions.length - 1;
+      if (max < 0) return;
+      this._paletteSelectedIndex =
+        (this._paletteSelectedIndex + direction + this._paletteFilteredActions.length) %
+        this._paletteFilteredActions.length;
+      const list = this.paletteElement.querySelector('.arcgis-action-palette-list');
+      if (list instanceof HTMLElement) this.updatePaletteSelection(list);
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const action = this._paletteFilteredActions[this._paletteSelectedIndex];
+      if (action?.enabled) action.run();
+    }
+  }
+
+  private runPaletteMenuItem(item: ContextMenuItem, graphic: Graphic): void {
+    if (item.action) item.action(graphic);
+    this.emitPaletteAction(item.id);
+    this.hideActionPalette();
+    this.hideMenu();
+  }
+
+  private updatePaletteSelection(container: HTMLElement): void {
+    const rows = container.querySelectorAll('.arcgis-action-palette-row');
+    rows.forEach((row, index) => {
+      row.classList.toggle('selected', index === this._paletteSelectedIndex);
+    });
+  }
+
+  private emitPaletteAction(actionId: string): void {
+    if (!this.activeGraphic || !this.view) return;
+
+    this.emit('menu-item-click', {
+      actionId,
+      graphic: this.activeGraphic,
+      layerId: this.activeGraphic.layer?.id || '',
+      graphicType:
+        this.activeGraphic.attributes?.graphicType || this.activeGraphic.attributes?.type,
+      view: this.view,
+      point: this.clickPoint!,
+      originalEvent: this.originalEvent,
+    } as MenuItemEvent);
+  }
+
+  private isMenuItemVisible(item: ContextMenuItem, graphic: Graphic): boolean {
+    return typeof item.visible === 'function'
+      ? item.visible(graphic)
+      : item.visible !== undefined
+        ? item.visible
+        : true;
+  }
+
+  private isMenuItemEnabled(item: ContextMenuItem, graphic: Graphic): boolean {
+    return typeof item.enabled === 'function'
+      ? item.enabled(graphic)
+      : item.enabled !== undefined
+        ? item.enabled
+        : true;
+  }
+
+  private normalizeSearchText(value: string): string {
+    return value.toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  private repositionActionPalette(): void {
+    const rect = this.paletteElement.getBoundingClientRect();
+    const margin = 12;
+
+    if (rect.right > window.innerWidth - margin) {
+      this.paletteElement.style.left = `${Math.max(margin, window.innerWidth - rect.width - margin)}px`;
+    }
+
+    if (rect.bottom > window.innerHeight - margin) {
+      this.paletteElement.style.top = `${Math.max(margin, window.innerHeight - rect.height - margin)}px`;
+    }
+  }
+
+  private hideActionPalette(): void {
+    this.paletteElement.style.display = 'none';
+    this.paletteElement.innerHTML = '';
+    this._paletteActions = [];
+    this._paletteFilteredActions = [];
+    this._paletteSelectedIndex = 0;
+  }
+
   /**
    * Hide the context menu
    */
   private hideMenu(): void {
     this.menuElement.style.display = 'none';
+    this.hideActionPalette();
     this.activeGraphic = null;
     this.clickPoint = null;
     this.originalEvent = null;
@@ -1050,6 +1514,173 @@ class ContextMenuManager extends Evented {
           transform: translateX(0);
         }
       }
+
+      .arcgis-action-palette {
+        width: min(420px, calc(100vw - 24px));
+        max-height: min(520px, calc(100vh - 24px));
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 110px),
+          var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: 8px;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.36), var(--ms-shadow);
+        color: var(--ms-text);
+        font-family: var(--ms-font);
+        overflow: hidden;
+        user-select: none;
+        backdrop-filter: blur(12px);
+        animation: actionPaletteIn 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      @keyframes actionPaletteIn {
+        from {
+          opacity: 0;
+          transform: translateY(-4px) scale(0.985);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .arcgis-action-palette-search {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--ms-divider);
+      }
+
+      .arcgis-action-palette-search-icon {
+        color: var(--ms-accent-dim);
+        font-size: var(--ms-fs-xs);
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .arcgis-action-palette-search input {
+        width: 100%;
+        min-width: 0;
+        background: var(--ms-bg-input);
+        border: 1px solid var(--ms-border);
+        border-radius: 6px;
+        color: var(--ms-text);
+        font-family: var(--ms-font);
+        font-size: var(--ms-fs);
+        outline: none;
+        padding: 8px 10px;
+      }
+
+      .arcgis-action-palette-search input:focus {
+        border-color: var(--ms-accent);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--ms-accent) 22%, transparent);
+      }
+
+      .arcgis-action-palette-list {
+        max-height: min(390px, calc(100vh - 150px));
+        overflow: auto;
+        padding: 6px;
+      }
+
+      .arcgis-action-palette-category {
+        padding: 8px 8px 5px;
+        color: var(--ms-accent-dim);
+        font-size: var(--ms-fs-xs);
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .arcgis-action-palette-row {
+        width: 100%;
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--ms-text);
+        cursor: pointer;
+        font-family: var(--ms-font);
+        margin: 1px 0;
+        padding: 7px 8px;
+        text-align: left;
+        transition: background-color 0.1s ease, border-color 0.1s ease, transform 0.1s ease;
+      }
+
+      .arcgis-action-palette-row.selected,
+      .arcgis-action-palette-row:hover {
+        background: var(--ms-bg-input);
+        border-color: color-mix(in srgb, var(--ms-accent) 48%, transparent);
+      }
+
+      .arcgis-action-palette-row:active {
+        transform: translateY(1px);
+      }
+
+      .arcgis-action-palette-row:disabled {
+        cursor: default;
+        opacity: 0.48;
+      }
+
+      .arcgis-action-palette-icon {
+        width: 20px;
+        min-width: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.92;
+      }
+
+      .arcgis-action-palette-copy {
+        min-width: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .arcgis-action-palette-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: var(--ms-fs);
+        font-weight: 650;
+      }
+
+      .arcgis-action-palette-meta {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--ms-text-dim);
+        font-size: var(--ms-fs-xs);
+      }
+
+      .arcgis-action-palette-shortcut {
+        color: var(--ms-text-dim);
+        background: rgba(0, 0, 0, 0.18);
+        border: 1px solid var(--ms-divider);
+        border-radius: 4px;
+        font-size: var(--ms-fs-xs);
+        padding: 3px 6px;
+        white-space: nowrap;
+      }
+
+      .arcgis-action-palette-empty {
+        padding: 22px 12px;
+        color: var(--ms-text-dim);
+        font-size: var(--ms-fs);
+        text-align: center;
+      }
+
+      .arcgis-action-palette-hint {
+        border-top: 1px solid var(--ms-divider);
+        color: var(--ms-text-dim);
+        font-size: var(--ms-fs-xs);
+        padding: 8px 12px 10px;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -1080,7 +1711,9 @@ class ContextMenuManager extends Evented {
       }
 
       // Finally sort by label
-      return a.label.localeCompare(b.label);
+      const labelA = typeof a.label === 'function' ? a.id : a.label;
+      const labelB = typeof b.label === 'function' ? b.id : b.label;
+      return labelA.localeCompare(labelB);
     });
   }
 

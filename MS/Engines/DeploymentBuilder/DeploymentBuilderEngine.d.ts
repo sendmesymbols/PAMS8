@@ -11,6 +11,7 @@ declare class DeploymentBuilderEngine {
     private _phase;
     private _selectedPlanData;
     private _selectedPlanEntry;
+    private _selectedPlanMetrics;
     private _anchorPoint;
     private _formationType;
     private _spacingMeters;
@@ -50,6 +51,8 @@ declare class DeploymentBuilderEngine {
     private _loadRegistryIntoWidget;
     private _renderPlanList;
     private _selectPlan;
+    private _importSavedPlanFromFile;
+    private _selectImportedPlan;
     private _onPlaceClicked;
     private _startPlacement;
     private _startBearingPhase;
@@ -76,9 +79,11 @@ declare class DeploymentBuilderEngine {
      * Deep-clone the plan and shift every symbol so its centroid lands on its
      * assigned formation slot.  All control points within a symbol are offset by
      * the same (slotPos − symbolCentroid) delta, preserving the symbol's shape.
-     */
+    */
     private _applyFormationToPlan;
     private _countPlanSymbols;
+    private _getSelectedPlanMetrics;
+    private _buildPlanMetrics;
     private _extractPlanPoints;
     private _computeCentroid;
     private _removePointerHandles;

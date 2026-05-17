@@ -9,6 +9,7 @@ import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 
 import SerializationEngine from '../ImportExport/SerializationEngine';
+import Plan from '../ImportExport/Plan.ts';
 import EngineLogger from '../../Support/EngineLogger';
 
 // ── Formation slot offsets (lateral, forward) ────────────────────────────────
@@ -32,6 +33,12 @@ interface PlanEntry {
   description: string;
 }
 
+interface PlanMetrics {
+  symbolCount: number;
+  points: { x: number; y: number }[];
+  centroid: { x: number; y: number };
+}
+
 type Phase = 'idle' | 'anchor' | 'bearing';
 
 class DeploymentBuilderEngine {
@@ -47,6 +54,7 @@ class DeploymentBuilderEngine {
   private _phase: Phase = 'idle';
   private _selectedPlanData: any = null;
   private _selectedPlanEntry: PlanEntry | null = null;
+  private _selectedPlanMetrics: PlanMetrics | null = null;
   private _anchorPoint: Point | null = null;
   private _formationType: string = 'as-is';
   private _spacingMeters: number = 0;
@@ -224,6 +232,11 @@ class DeploymentBuilderEngine {
               border:1px solid var(--ms-border);border-radius:5px;
               color:var(--ms-text);font-size:var(--ms-fs-sm);padding:5px 8px;outline:none;
             " />
+            <button class="db-btn-import-plan" style="
+              width:100%;margin-top:7px;padding:5px 8px;background:var(--ms-bg-input);
+              border:1px solid var(--ms-border);border-radius:5px;
+              color:var(--ms-text-dim);font-size:var(--ms-fs-sm);cursor:pointer;font-weight:600;
+            " title="Use a local JSON file saved with Save Plan">Use Saved Plan...</button>
           </div>
           <div class="db-plan-list" style="flex:1;overflow-y:auto;padding:4px 0;"></div>
         </div>
@@ -315,6 +328,7 @@ class DeploymentBuilderEngine {
       this._searchText = searchEl.value.toLowerCase();
       this._renderPlanList();
     });
+    el.querySelector('.db-btn-import-plan')!.addEventListener('click', () => this._importSavedPlanFromFile());
 
     // Formation descriptions (shown for non-as-is)
     const FORMATION_HINTS: Record<string, string> = {
@@ -396,6 +410,11 @@ class DeploymentBuilderEngine {
       #deploymentBuilderWidget .db-search:focus {
         border-color: var(--ms-accent) !important;
         box-shadow: 0 0 0 2px var(--ms-accent-dim);
+      }
+      #deploymentBuilderWidget .db-btn-import-plan:hover {
+        border-color: var(--ms-accent);
+        color: var(--ms-text);
+        background: var(--ms-accent-dim);
       }
       #deploymentBuilderWidget .db-formation option { background: var(--ms-bg); }
     `;
@@ -528,6 +547,7 @@ class DeploymentBuilderEngine {
   private async _selectPlan(plan: PlanEntry): Promise<void> {
     this._selectedPlanEntry = plan;
     this._selectedPlanData = null;
+    this._selectedPlanMetrics = null;
 
     // Update UI immediately with loading state
     const nameEl = this._widget?.querySelector('.db-selected-name') as HTMLElement | null;
@@ -548,16 +568,8 @@ class DeploymentBuilderEngine {
       return;
     }
     this._selectedPlanData = data;
-
-    // Count symbols
-    let count = 0;
-    try {
-      for (const overlay of data?.poObj?.plnOrdrOverlay ?? []) {
-        for (const sym of overlay?.plnOrdrSymbolSet ?? []) {
-          if (sym.isDelete !== 'Y') count++;
-        }
-      }
-    } catch {}
+    this._selectedPlanMetrics = this._buildPlanMetrics(data);
+    const count = this._selectedPlanMetrics.symbolCount;
 
     if (countEl) countEl.textContent = `${count} symbol${count !== 1 ? 's' : ''}`;
     if (placeBtn && count > 0) {
@@ -570,6 +582,77 @@ class DeploymentBuilderEngine {
   }
 
   // ── Placement Flow ─────────────────────────────────────────────────────────
+
+  private _importSavedPlanFromFile(): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const parsed = JSON.parse(evt.target?.result as string);
+          if (!Plan.isPlanDocument(parsed)) {
+            this._setStatus('Selected file is not a valid Save Plan JSON');
+            EngineLogger.error(ENGINE_NAME, 'Imported file is not a valid Plan document');
+            return;
+          }
+
+          const metrics = this._buildPlanMetrics(parsed);
+          if (metrics.symbolCount <= 0) {
+            this._setStatus('Selected plan has no placeable symbols');
+            EngineLogger.error(ENGINE_NAME, 'Imported Plan document has no placeable symbols');
+            return;
+          }
+
+          this._selectImportedPlan(file.name, parsed, metrics);
+          this._setStatus(`Imported "${file.name}"`);
+          EngineLogger.success(ENGINE_NAME, `Imported saved plan "${file.name}" with ${metrics.symbolCount} symbols`);
+        } catch (err) {
+          this._setStatus('Could not parse selected plan JSON');
+          EngineLogger.error(
+            ENGINE_NAME,
+            `Failed to import saved plan: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
+  private _selectImportedPlan(fileName: string, data: any, metrics: PlanMetrics): void {
+    this._selectedPlanEntry = {
+      id: `imported-${Date.now()}`,
+      name: fileName.replace(/\.json$/i, ''),
+      category: 'imported',
+      file: '',
+      description: 'Imported saved plan',
+    };
+    this._selectedPlanData = data;
+    this._selectedPlanMetrics = metrics;
+
+    const nameEl = this._widget?.querySelector('.db-selected-name') as HTMLElement | null;
+    const descEl = this._widget?.querySelector('.db-selected-desc') as HTMLElement | null;
+    const countEl = this._widget?.querySelector('.db-selected-count') as HTMLElement | null;
+    const placeBtn = this._widget?.querySelector('.db-btn-place') as HTMLButtonElement | null;
+
+    if (nameEl) nameEl.textContent = this._selectedPlanEntry.name;
+    if (descEl) descEl.textContent = this._selectedPlanEntry.description;
+    if (countEl) countEl.textContent = `${metrics.symbolCount} symbol${metrics.symbolCount !== 1 ? 's' : ''}`;
+    if (placeBtn) {
+      placeBtn.disabled = false;
+      placeBtn.style.cursor = 'pointer';
+      placeBtn.style.background = 'var(--ms-accent-dim)';
+      placeBtn.style.borderColor = 'var(--ms-accent)';
+      placeBtn.style.color = 'var(--ms-text)';
+    }
+
+    this._renderPlanList();
+  }
 
   private _onPlaceClicked(): void {
     if (!this._selectedPlanData) return;
@@ -699,8 +782,7 @@ class DeploymentBuilderEngine {
     if (formSlots === null) {
       // As-Is: apply a single uniform offset (anchor − plan centroid) to every point.
       // Because it's the same delta for all points, each symbol's shape is preserved.
-      const planPoints = this._extractPlanPoints(this._selectedPlanData);
-      const centroid = this._computeCentroid(planPoints);
+      const centroid = this._getSelectedPlanMetrics().centroid;
       const coordTransform = (pt: { x: number; y: number }): { x: number; y: number } => {
         const projPt = this._offsetPoint(pt, anchor, centroid);
         const wgsPt = this._toWGS84(projPt.x, projPt.y);
@@ -792,9 +874,8 @@ class DeploymentBuilderEngine {
     };
 
     if (formSlots === null) {
-      const planPoints = this._extractPlanPoints(this._selectedPlanData);
-      const centroid = this._computeCentroid(planPoints);
-      planPoints.forEach(pt => ghostDot(this._offsetPoint(pt, anchor, centroid)));
+      const metrics = this._getSelectedPlanMetrics();
+      metrics.points.forEach(pt => ghostDot(this._offsetPoint(pt, anchor, metrics.centroid)));
     } else {
       // Pre-compute once — avoids per-slot calls to _toProjected, _isProjected, and Math.cos/sin
       const anchorProj = this._toProjected(anchor);
@@ -805,7 +886,7 @@ class DeploymentBuilderEngine {
       const sinB = Math.sin(bearing);
       const spacingM = this._spacingMeters;
 
-      const symCount = this._countPlanSymbols(this._selectedPlanData);
+      const symCount = this._getSelectedPlanMetrics().symbolCount;
       for (let i = 0; i < symCount; i++) {
         const slot = formSlots[i % formSlots.length] ?? [0, 0];
         const eM = (slot[0] * cosB + slot[1] * sinB) * spacingM;
@@ -1177,6 +1258,22 @@ class DeploymentBuilderEngine {
     return n;
   }
 
+  private _getSelectedPlanMetrics(): PlanMetrics {
+    if (!this._selectedPlanMetrics) {
+      this._selectedPlanMetrics = this._buildPlanMetrics(this._selectedPlanData);
+    }
+    return this._selectedPlanMetrics;
+  }
+
+  private _buildPlanMetrics(planDoc: any): PlanMetrics {
+    const points = this._extractPlanPoints(planDoc);
+    return {
+      symbolCount: this._countPlanSymbols(planDoc),
+      points,
+      centroid: this._computeCentroid(points),
+    };
+  }
+
   private _extractPlanPoints(planDoc: any): { x: number; y: number }[] {
     const points: { x: number; y: number }[] = [];
     try {
@@ -1185,11 +1282,17 @@ class DeploymentBuilderEngine {
           if (sym.isDelete === 'Y') continue;
           try {
             const de = JSON.parse(sym.drawEss);
-            const geom = de.GEOM ?? de.geom;
-            if (geom?.x != null && geom?.y != null) {
-              points.push({ x: geom.x, y: geom.y });
-            } else if (Array.isArray(de.CTRL_PTS) && de.CTRL_PTS.length > 0) {
-              points.push({ x: de.CTRL_PTS[0].x, y: de.CTRL_PTS[0].y });
+            const push = (p: any) => {
+              if (p?.x != null && p?.y != null) points.push({ x: p.x, y: p.y });
+            };
+
+            push(de.GEOM ?? de.geom);
+            push(de.OPTIONS?.GEOM);
+            if (Array.isArray(de.CTRL_PTS)) de.CTRL_PTS.forEach(push);
+            if (de.BASE_LN_PTS) {
+              push(de.BASE_LN_PTS.startPt);
+              push(de.BASE_LN_PTS.midPt);
+              push(de.BASE_LN_PTS.endPt);
             }
           } catch {}
         }

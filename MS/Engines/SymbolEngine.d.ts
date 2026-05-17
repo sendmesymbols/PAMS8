@@ -82,6 +82,7 @@ declare class SymbolEngine implements Evented {
     private _lastDrawEssentials;
     private _lastAmplifier;
     private _continuousTimeoutId;
+    private _suppressDrawLifecycleCount;
     private _undoStack;
     private _redoStack;
     private _preEditSnapshot;

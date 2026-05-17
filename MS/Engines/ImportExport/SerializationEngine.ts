@@ -246,6 +246,7 @@ class SerializationEngine {
           this._onLoadSymbol!({
             id: `${sourceSymbolId}-${placementId}`,
             sourceSymbolId,
+            suppressDrawingLifecycle: true,
             sidc: amplifier?.SIDC || normalizedDrawEss?.SIDC,
             amplifier,
             drawEssentials: de,

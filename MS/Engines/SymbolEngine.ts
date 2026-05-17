@@ -140,6 +140,7 @@ class SymbolEngine implements Evented {
   private _lastDrawEssentials: DrawEssentials | null = null;
   private _lastAmplifier: Amplifier | null = null;
   private _continuousTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private _suppressDrawLifecycleCount = 0;
 
   // Undo / Redo stacks
   private _undoStack: UndoEntry[] = [];
@@ -483,6 +484,11 @@ class SymbolEngine implements Evented {
 
       // Handle the draw end event by creating and adding a graphic
       this.drawSymEnd(event.detail);
+
+      if (this._suppressDrawLifecycleCount > 0) {
+        this._suppressDrawLifecycleCount--;
+        return;
+      }
 
       // Clear measurement overlays when the symbol is finalised
       this._measurementEngine?.wrapUp();
@@ -3582,7 +3588,17 @@ class SymbolEngine implements Evented {
         if (data.sidc && !amplifier.SIDC) amplifier.SIDC = data.sidc;
 
         this._pendingAttrs = { symbolId: data.id };
+        const suppressBefore = this._suppressDrawLifecycleCount;
+        if (data.suppressDrawingLifecycle === true) {
+          this._suppressDrawLifecycleCount++;
+        }
         this.initialize(de, amplifier, true);
+        if (
+          data.suppressDrawingLifecycle === true &&
+          this._suppressDrawLifecycleCount === suppressBefore + 1
+        ) {
+          this._suppressDrawLifecycleCount = suppressBefore;
+        }
 
         const symbolId = data.id;
         setTimeout(() => {
