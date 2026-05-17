@@ -36,6 +36,7 @@ interface PlanEntry {
 interface PlanMetrics {
   symbolCount: number;
   points: { x: number; y: number }[];
+  symbolCentroids: { x: number; y: number }[];
   centroid: { x: number; y: number };
 }
 
@@ -341,6 +342,8 @@ class DeploymentBuilderEngine {
       'vee':      '🧭 Lead unit at anchor, two arms fan out to the rear. Spacing controls the spread of the arms.',
     };
 
+    FORMATION_HINTS['as-is'] = 'Symbols keep their saved layout around the anchor. Spacing adds separation between symbols; 0 keeps the original plan exactly.';
+
     const formEl = el.querySelector('.db-formation') as HTMLSelectElement;
     const formHint = el.querySelector('.db-formation-hint') as HTMLElement;
     const spacingRow = el.querySelector('.db-spacing-row') as HTMLElement;
@@ -354,9 +357,9 @@ class DeploymentBuilderEngine {
       formHint.style.display = 'block';
       formHint.style.borderColor = isAsIs ? 'var(--ms-border)' : 'rgba(100,180,255,0.3)';
       formHint.style.color = isAsIs ? 'var(--ms-text-label)' : 'rgba(160,210,255,0.9)';
-      // Spacing only applies to non-as-is
-      spacingRow.style.opacity = isAsIs ? '0.4' : '1';
-      spacingRow.style.pointerEvents = isAsIs ? 'none' : '';
+      // Spacing applies to every mode; As-Is treats it as extra radial separation.
+      spacingRow.style.opacity = '1';
+      spacingRow.style.pointerEvents = '';
     };
 
     formEl.addEventListener('change', syncFormationUI);
@@ -782,13 +785,8 @@ class DeploymentBuilderEngine {
     if (formSlots === null) {
       // As-Is: apply a single uniform offset (anchor − plan centroid) to every point.
       // Because it's the same delta for all points, each symbol's shape is preserved.
-      const centroid = this._getSelectedPlanMetrics().centroid;
-      const coordTransform = (pt: { x: number; y: number }): { x: number; y: number } => {
-        const projPt = this._offsetPoint(pt, anchor, centroid);
-        const wgsPt = this._toWGS84(projPt.x, projPt.y);
-        return wgsPt ? { x: wgsPt.x, y: wgsPt.y } : pt;
-      };
-      count = this._serializationEngine.loadPlanSymbolsFromData(this._selectedPlanData, coordTransform);
+      const asIsPlan = this._applyAsIsSpacingToPlan(anchor);
+      count = this._serializationEngine.loadPlanSymbolsFromData(asIsPlan);
     } else {
       // Formation: each symbol gets its own slot.  Pre-process the whole plan so that
       // every symbol's centroid moves to its assigned slot while its internal shape is kept.
@@ -850,6 +848,10 @@ class DeploymentBuilderEngine {
         outline: { color: [255, 0, 0, 7], width: 2 },
       }),
     }));
+
+    if (this._selectedPlanData && this._formationType === 'as-is') {
+      this._getAsIsGhostProjectedPoints(mapPt).forEach((pt) => this._addGhostDot(pt));
+    }
   }
 
   private _updateGhostPreview(bearing: number, cursorPt?: Point): void {
@@ -860,22 +862,8 @@ class DeploymentBuilderEngine {
     const formSlots = FORMATIONS[this._formationType];
     const anchor = this._anchorPoint;
 
-    const ghostDot = (projPt: { x: number; y: number }) => {
-      const wgsPt = this._toWGS84(projPt.x, projPt.y);
-      if (!wgsPt) return;
-      this._ghostLayer!.add(new Graphic({
-        geometry: wgsPt,
-        symbol: new SimpleMarkerSymbol({
-          style: 'circle', size: 12,
-          color: [100, 180, 255, 0.3],
-          outline: { color: [100, 200, 255, 0.85], width: 1.5 },
-        }),
-      }));
-    };
-
     if (formSlots === null) {
-      const metrics = this._getSelectedPlanMetrics();
-      metrics.points.forEach(pt => ghostDot(this._offsetPoint(pt, anchor, metrics.centroid)));
+      this._getAsIsGhostProjectedPoints(anchor).forEach((pt) => this._addGhostDot(pt));
     } else {
       // Pre-compute once — avoids per-slot calls to _toProjected, _isProjected, and Math.cos/sin
       const anchorProj = this._toProjected(anchor);
@@ -891,7 +879,7 @@ class DeploymentBuilderEngine {
         const slot = formSlots[i % formSlots.length] ?? [0, 0];
         const eM = (slot[0] * cosB + slot[1] * sinB) * spacingM;
         const nM = (-slot[0] * sinB + slot[1] * cosB) * spacingM;
-        ghostDot(isProj
+        this._addGhostDot(isProj
           ? { x: anchorProj.x + eM, y: anchorProj.y + nM }
           : { x: anchorProj.x + eM / mpLon, y: anchorProj.y + nM / mpLat });
       }
@@ -955,6 +943,38 @@ class DeploymentBuilderEngine {
 
   private _clearGhostGraphics(): void {
     this._ghostLayer?.removeAll();
+  }
+
+  private _addGhostDot(projPt: { x: number; y: number }): void {
+    if (!this._ghostLayer) return;
+    const wgsPt = this._toWGS84(projPt.x, projPt.y);
+    if (!wgsPt) return;
+    this._ghostLayer.add(new Graphic({
+      geometry: wgsPt,
+      symbol: new SimpleMarkerSymbol({
+        style: 'circle', size: 12,
+        color: [100, 180, 255, 0.3],
+        outline: { color: [100, 200, 255, 0.85], width: 1.5 },
+      }),
+    }));
+  }
+
+  private _getAsIsGhostProjectedPoints(anchor: Point): { x: number; y: number }[] {
+    const metrics = this._getSelectedPlanMetrics();
+    const anchorProj = this._toProjected(anchor);
+    const spacingM = this._spacingMeters;
+
+    return metrics.symbolCentroids.map((centroid) => {
+      const relX = centroid.x - metrics.centroid.x;
+      const relY = centroid.y - metrics.centroid.y;
+      const len = Math.hypot(relX, relY);
+      const extraX = len > 0 && spacingM > 0 ? (relX / len) * spacingM : 0;
+      const extraY = len > 0 && spacingM > 0 ? (relY / len) * spacingM : 0;
+      return {
+        x: anchorProj.x + relX + extraX,
+        y: anchorProj.y + relY + extraY,
+      };
+    });
   }
 
   // ── Bearing HUD & Instructions ─────────────────────────────────────────────
@@ -1166,6 +1186,71 @@ class DeploymentBuilderEngine {
 
   // ── Plan Helpers ───────────────────────────────────────────────────────────
 
+  private _applyAsIsSpacingToPlan(anchor: Point): any {
+    const plan = JSON.parse(JSON.stringify(this._selectedPlanData));
+    const metrics = this._getSelectedPlanMetrics();
+    const anchorProj = this._toProjected(anchor);
+    const spacingM = this._spacingMeters;
+
+    const shiftPt = (p: any, dx: number, dy: number): any => {
+      if (!p || p.x == null || p.y == null) return p;
+      const pp = this._toProjected(new Point({ x: p.x, y: p.y, spatialReference: { wkid: 4326 } }));
+      const wgs = this._toWGS84(pp.x + dx, pp.y + dy);
+      return wgs ? { ...p, x: wgs.x, y: wgs.y } : p;
+    };
+
+    for (const overlay of plan.poObj?.plnOrdrOverlay ?? []) {
+      for (const sym of overlay.plnOrdrSymbolSet ?? []) {
+        if (sym.isDelete === 'Y') continue;
+        try {
+          const de = JSON.parse(sym.drawEss);
+          const pts: { x: number; y: number }[] = [];
+          const push = (p: any) => {
+            if (p?.x != null && p?.y != null) pts.push({ x: p.x, y: p.y });
+          };
+
+          push(de.GEOM ?? de.geom);
+          push(de.OPTIONS?.GEOM);
+          if (Array.isArray(de.CTRL_PTS)) de.CTRL_PTS.forEach(push);
+          if (de.BASE_LN_PTS) {
+            push(de.BASE_LN_PTS.startPt);
+            push(de.BASE_LN_PTS.midPt);
+            push(de.BASE_LN_PTS.endPt);
+          }
+          if (pts.length === 0) continue;
+
+          const symCentroid = this._computeCentroid(pts);
+          const relX = symCentroid.x - metrics.centroid.x;
+          const relY = symCentroid.y - metrics.centroid.y;
+          const len = Math.hypot(relX, relY);
+          const extraX = len > 0 && spacingM > 0 ? (relX / len) * spacingM : 0;
+          const extraY = len > 0 && spacingM > 0 ? (relY / len) * spacingM : 0;
+          const target = {
+            x: anchorProj.x + relX + extraX,
+            y: anchorProj.y + relY + extraY,
+          };
+          const dx = target.x - symCentroid.x;
+          const dy = target.y - symCentroid.y;
+
+          if (de.GEOM?.x != null) de.GEOM = shiftPt(de.GEOM, dx, dy);
+          if (de.OPTIONS?.GEOM?.x != null) de.OPTIONS = { ...de.OPTIONS, GEOM: shiftPt(de.OPTIONS.GEOM, dx, dy) };
+          if (Array.isArray(de.CTRL_PTS)) de.CTRL_PTS = de.CTRL_PTS.map((p: any) => shiftPt(p, dx, dy));
+          if (de.BASE_LN_PTS) {
+            de.BASE_LN_PTS = {
+              startPt: shiftPt(de.BASE_LN_PTS.startPt, dx, dy),
+              midPt:   shiftPt(de.BASE_LN_PTS.midPt,   dx, dy),
+              endPt:   shiftPt(de.BASE_LN_PTS.endPt,   dx, dy),
+            };
+          }
+
+          sym.drawEss = JSON.stringify(de);
+        } catch { /* skip malformed symbols */ }
+      }
+    }
+
+    return plan;
+  }
+
   /**
    * Deep-clone the plan and shift every symbol so its centroid lands on its
    * assigned formation slot.  All control points within a symbol are offset by
@@ -1266,24 +1351,31 @@ class DeploymentBuilderEngine {
   }
 
   private _buildPlanMetrics(planDoc: any): PlanMetrics {
-    const points = this._extractPlanPoints(planDoc);
+    const pointGroups = this._extractPlanPointGroups(planDoc);
+    const points = pointGroups.flat();
     return {
       symbolCount: this._countPlanSymbols(planDoc),
       points,
+      symbolCentroids: pointGroups.map((group) => this._computeCentroid(group)),
       centroid: this._computeCentroid(points),
     };
   }
 
   private _extractPlanPoints(planDoc: any): { x: number; y: number }[] {
-    const points: { x: number; y: number }[] = [];
+    return this._extractPlanPointGroups(planDoc).flat();
+  }
+
+  private _extractPlanPointGroups(planDoc: any): { x: number; y: number }[][] {
+    const groups: { x: number; y: number }[][] = [];
     try {
       for (const overlay of planDoc?.poObj?.plnOrdrOverlay ?? []) {
         for (const sym of overlay?.plnOrdrSymbolSet ?? []) {
           if (sym.isDelete === 'Y') continue;
           try {
             const de = JSON.parse(sym.drawEss);
+            const group: { x: number; y: number }[] = [];
             const push = (p: any) => {
-              if (p?.x != null && p?.y != null) points.push({ x: p.x, y: p.y });
+              if (p?.x != null && p?.y != null) group.push({ x: p.x, y: p.y });
             };
 
             push(de.GEOM ?? de.geom);
@@ -1294,11 +1386,12 @@ class DeploymentBuilderEngine {
               push(de.BASE_LN_PTS.midPt);
               push(de.BASE_LN_PTS.endPt);
             }
+            if (group.length > 0) groups.push(group);
           } catch {}
         }
       }
     } catch {}
-    return points;
+    return groups;
   }
 
   private _computeCentroid(points: { x: number; y: number }[]): { x: number; y: number } {

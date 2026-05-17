@@ -61,6 +61,8 @@ declare class DeploymentBuilderEngine {
     private _updateAnchorHover;
     private _updateGhostPreview;
     private _clearGhostGraphics;
+    private _addGhostDot;
+    private _getAsIsGhostProjectedPoints;
     private _showBearingHUD;
     private _removeBearingHUD;
     private _showPlacementInstructions;
@@ -75,16 +77,18 @@ declare class DeploymentBuilderEngine {
     private _pointToWGS84;
     private _isProjected;
     private _toWGS84;
+    private _applyAsIsSpacingToPlan;
     /**
      * Deep-clone the plan and shift every symbol so its centroid lands on its
      * assigned formation slot.  All control points within a symbol are offset by
      * the same (slotPos − symbolCentroid) delta, preserving the symbol's shape.
-    */
+     */
     private _applyFormationToPlan;
     private _countPlanSymbols;
     private _getSelectedPlanMetrics;
     private _buildPlanMetrics;
     private _extractPlanPoints;
+    private _extractPlanPointGroups;
     private _computeCentroid;
     private _removePointerHandles;
     private _removeBgClickHandle;
