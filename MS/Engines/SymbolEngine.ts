@@ -69,6 +69,9 @@ import Plan from './ImportExport/Plan.ts';
 import SerializationEngine from './ImportExport/SerializationEngine';
 import ThemeManager from '../Managers/ThemeManager';
 import DeclutterEngine from './Declutter/DeclutterEngine';
+import MorphixEngine, {
+  MorphixEditedState,
+} from './Morphix/MorphixEngine';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -127,6 +130,7 @@ class SymbolEngine implements Evented {
   private _effectEngine: EffectEngine | null = null;
   private _deploymentBuilderEngine: DeploymentBuilderEngine | null = null;
   private _declutterEngine: DeclutterEngine | null = null;
+  private _morphixEngine: MorphixEngine;
   public readonly serializationEngine = SerializationEngine.getInstance();
   private currentSymbol: any | undefined;
   private sidc: any | undefined;
@@ -141,6 +145,8 @@ class SymbolEngine implements Evented {
   private _lastAmplifier: Amplifier | null = null;
   private _continuousTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private _suppressDrawLifecycleCount = 0;
+  private _suppressNextAddUndoCount = 0;
+  private _lastCreatedGraphic: Graphic | null = null;
 
   // Undo / Redo stacks
   private _undoStack: UndoEntry[] = [];
@@ -266,6 +272,11 @@ class SymbolEngine implements Evented {
       this._contextMenuManager.disable();
     }
     this._contextMenuManager.linkSymbolEngine(this);
+    this._morphixEngine = new MorphixEngine();
+    this._morphixEngine.initialize(this.view, this._layerManager, {
+      applyEdit: (graphic, editedState) =>
+        this.applyMorphixEdit(graphic, editedState),
+    });
 
     // Register context menu items for different graphic types
     this.registerContextMenuItems();
@@ -524,6 +535,10 @@ class SymbolEngine implements Evented {
     this._editEngine = new EditEngine(this._getView, this._layerManager);
     this._wireEditEngineUndo();
     this._selectionEngine.onViewChanged(newView);
+    this._morphixEngine.initialize(newView, this._layerManager, {
+      applyEdit: (graphic, editedState) =>
+        this.applyMorphixEdit(graphic, editedState),
+    });
     // Re-attach measurement engine to the new view
     this._measurementEngine?.onViewChanged(newView);
     // Re-attach proximity engine to the new view
@@ -1008,16 +1023,7 @@ class SymbolEngine implements Evented {
    * Show details for a symbol
    */
   private showSymbolDetails(graphic: Graphic): void {
-    console.log('Showing details for symbol:', graphic.attributes);
-
-    // Example implementation - could show in a panel or dialog
-    if (graphic.attributes?.sidc) {
-      const parsedSidc = parseSIDC(graphic.attributes.sidc);
-      console.log('Symbol details:', parsedSidc);
-
-      // You could show this information in a panel or dialog
-      // For now, just log to console
-    }
+    this._morphixEngine.open(graphic);
   }
 
   /**
@@ -3064,6 +3070,7 @@ class SymbolEngine implements Evented {
 
   private drawSymEnd(event: any): void {
     try {
+      const suppressLifecycle = this._suppressDrawLifecycleCount > 0;
       // Handle both event types - extract common properties
       const { geometry, marker, drawEssentials, symbolType } = event;
 
@@ -3140,6 +3147,7 @@ class SymbolEngine implements Evented {
       // Get the appropriate layer from LayerManager
       const graphicsLayer = this._layerManager.getSymbolLayer();
       graphicsLayer.add(graphic);
+      this._lastCreatedGraphic = graphic;
       console.info('Symbol Added');
 
       // Push undo entry for the Add operation
@@ -3149,29 +3157,33 @@ class SymbolEngine implements Evented {
       const annotationLayer = this._layerManager.getOrCreateLayer(
         LAYER_NAMES.ANNOTATION_LAYER,
       );
-      this._pushUndo({
-        label: `Add ${symLabel}`,
-        undo: () => {
-          graphicsLayer.remove(graphic);
-          AnnotationEngine.deAnnotate(annotationLayer, attrs.id);
-        },
-        redo: () => {
-          graphicsLayer.add(graphic);
-          if (drawEssentials?.AMPLIFIER) {
-            AnnotationEngine.annotate(
-              annotationLayer,
-              geometry,
-              drawEssentials.AMPLIFIER,
-              drawEssentials,
-              attrs.id,
-              settingsData.textSize,
-              drawEssentials.ISFHAND || 0,
-              this.labelOptions || {},
-              {},
-            );
-          }
-        },
-      });
+      if (this._suppressNextAddUndoCount > 0) {
+        this._suppressNextAddUndoCount--;
+      } else {
+        this._pushUndo({
+          label: `Add ${symLabel}`,
+          undo: () => {
+            graphicsLayer.remove(graphic);
+            AnnotationEngine.deAnnotate(annotationLayer, attrs.id);
+          },
+          redo: () => {
+            graphicsLayer.add(graphic);
+            if (drawEssentials?.AMPLIFIER) {
+              AnnotationEngine.annotate(
+                annotationLayer,
+                geometry,
+                drawEssentials.AMPLIFIER,
+                drawEssentials,
+                attrs.id,
+                settingsData.textSize,
+                drawEssentials.ISFHAND || 0,
+                this.labelOptions || {},
+                {},
+              );
+            }
+          },
+        });
+      }
 
       // Clean up event handlers if they exist
       this._endEventHandle?.remove();
@@ -3209,10 +3221,12 @@ class SymbolEngine implements Evented {
         delete drawEssentials.opacity;
       }
 
-      EngineLogger.success(
-        'Symbol Engine',
-        `Symbol placed â€” ${symbolType || geometry.type} added to map`,
-      );
+      if (!suppressLifecycle) {
+        EngineLogger.success(
+          'Symbol Engine',
+          `Symbol placed â€” ${symbolType || geometry.type} added to map`,
+        );
+      }
       console.log('Graphic added to layer:', {
         id: attrs.id,
         geometryType: geometry.type,
@@ -3220,22 +3234,25 @@ class SymbolEngine implements Evented {
       });
 
       // Emit custom events for further processing
-      this.emit('symDrawEnd', {
-        isDone: 'done',
-        drawEssentials: drawEssentials,
-        id: attrs.id,
-        graphic: graphic,
-      });
+      if (!suppressLifecycle) {
+        this.emit('symDrawEnd', {
+          isDone: 'done',
+          drawEssentials: drawEssentials,
+          id: attrs.id,
+          graphic: graphic,
+        });
 
-      this.emitEvent('symbolCreated', {
-        graphic: graphic,
-        id: attrs.id,
-        drawEssentials: drawEssentials,
-        isDone: 'done',
-      });
+        this.emitEvent('symbolCreated', {
+          graphic: graphic,
+          id: attrs.id,
+          drawEssentials: drawEssentials,
+          isDone: 'done',
+        });
+      }
 
       // Continuous creation mode â€” re-initialize with same symbol immediately
       if (
+        !suppressLifecycle &&
         this._creationMode === 'continuous' &&
         this._lastDrawEssentials &&
         this._lastAmplifier
@@ -3247,6 +3264,166 @@ class SymbolEngine implements Evented {
       }
     } catch (error) {
       console.error('Error in drawSymEnd:', error);
+    }
+  }
+
+  public applyMorphixEdit(
+    graphic: Graphic,
+    editedState: MorphixEditedState,
+  ): Graphic | null {
+    const oldLayer = graphic.layer as __esri.GraphicsLayer | null;
+    if (!oldLayer) {
+      throw new Error('Selected symbol is not attached to a graphics layer.');
+    }
+
+    const oldGraphic = graphic;
+    const oldId = oldGraphic.attributes?.id || this.generateUUID();
+    const oldAttrs = { ...(oldGraphic.attributes || {}) };
+    const oldDe = oldAttrs.drawEssentials;
+    const targetLayer = oldLayer;
+    const annotationLayer = this._layerManager.getOrCreateLayer(
+      LAYER_NAMES.ANNOTATION_LAYER,
+    );
+
+    const nextAttrs = {
+      ...oldAttrs,
+      ...editedState.attributes,
+      id: oldId,
+      symbolId: oldAttrs.symbolId,
+      sidc: editedState.sidc,
+      type: oldAttrs.type || 'symbol',
+      drawEssentials: editedState.drawEssentials,
+    };
+    Object.keys(nextAttrs).forEach((key) => {
+      if ((nextAttrs as any)[key] === undefined) delete (nextAttrs as any)[key];
+    });
+
+    const previousAttrs = (this as any).attrs;
+    const previousPendingAttrs = this._pendingAttrs;
+    const suppressBefore = this._suppressDrawLifecycleCount;
+
+    try {
+      AnnotationEngine.deAnnotate(annotationLayer, oldId);
+      oldLayer.remove(oldGraphic);
+
+      this._lastCreatedGraphic = null;
+      this._pendingAttrs = { symbolId: oldId };
+      (this as any).attrs = nextAttrs;
+      this._suppressDrawLifecycleCount++;
+      this._suppressNextAddUndoCount++;
+
+      this.initialize(
+        editedState.drawEssentials,
+        editedState.amplifier,
+        true,
+      );
+
+      const newGraphic =
+        this._lastCreatedGraphic ||
+        Array.from(this._layerManager.getSymbolLayer().graphics).find(
+          (g: any) => g.attributes?.id === oldId,
+        ) ||
+        null;
+
+      this._suppressDrawLifecycleCount = suppressBefore;
+      this._pendingAttrs = previousPendingAttrs;
+      (this as any).attrs = previousAttrs;
+
+      if (!newGraphic) {
+        oldLayer.add(oldGraphic);
+        if (oldDe?.AMPLIFIER) {
+          AnnotationEngine.annotate(
+            annotationLayer,
+            oldGraphic.geometry as any,
+            oldDe.AMPLIFIER,
+            oldDe,
+            oldId,
+            settingsData.textSize,
+            oldDe.ISFHAND || 0,
+            oldDe.labelOptions || this.labelOptions || {},
+            {},
+          );
+        }
+        throw new Error('Edited symbol could not be rendered.');
+      }
+
+      const createdLayer = newGraphic.layer as __esri.GraphicsLayer | null;
+      if (createdLayer && createdLayer !== targetLayer) {
+        createdLayer.remove(newGraphic);
+        targetLayer.add(newGraphic);
+      }
+
+      newGraphic.attributes = nextAttrs;
+      newGraphic.set('id', oldId);
+      if ((editedState.drawEssentials as any)?.AMPLIFIER) {
+        AnnotationEngine.deAnnotate(annotationLayer, oldId);
+        AnnotationEngine.annotate(
+          annotationLayer,
+          newGraphic.geometry as any,
+          (editedState.drawEssentials as any).AMPLIFIER,
+          editedState.drawEssentials,
+          oldId,
+          settingsData.textSize,
+          editedState.drawEssentials.ISFHAND || 0,
+          editedState.drawEssentials.labelOptions || this.labelOptions || {},
+          {},
+        );
+      }
+
+      this._pushUndo({
+        label: 'Edit Symbol Details',
+        undo: () => {
+          targetLayer.remove(newGraphic);
+          AnnotationEngine.deAnnotate(annotationLayer, oldId);
+          oldGraphic.attributes = oldAttrs;
+          targetLayer.add(oldGraphic);
+          if (oldDe?.AMPLIFIER) {
+            AnnotationEngine.annotate(
+              annotationLayer,
+              oldGraphic.geometry as any,
+              oldDe.AMPLIFIER,
+              oldDe,
+              oldId,
+              settingsData.textSize,
+              oldDe.ISFHAND || 0,
+              oldDe.labelOptions || this.labelOptions || {},
+              {},
+            );
+          }
+        },
+        redo: () => {
+          targetLayer.remove(oldGraphic);
+          AnnotationEngine.deAnnotate(annotationLayer, oldId);
+          targetLayer.add(newGraphic);
+          if ((editedState.drawEssentials as any)?.AMPLIFIER) {
+            AnnotationEngine.annotate(
+              annotationLayer,
+              newGraphic.geometry as any,
+              (editedState.drawEssentials as any).AMPLIFIER,
+              editedState.drawEssentials,
+              oldId,
+              settingsData.textSize,
+              editedState.drawEssentials.ISFHAND || 0,
+              editedState.drawEssentials.labelOptions || this.labelOptions || {},
+              {},
+            );
+          }
+        },
+      });
+
+      this.emitEvent('symbolDetailsEdited', {
+        graphic: newGraphic,
+        id: oldId,
+        drawEssentials: editedState.drawEssentials,
+      });
+
+      return newGraphic;
+    } catch (error) {
+      this._suppressDrawLifecycleCount = suppressBefore;
+      this._pendingAttrs = previousPendingAttrs;
+      (this as any).attrs = previousAttrs;
+      if (this._suppressNextAddUndoCount > 0) this._suppressNextAddUndoCount--;
+      throw error;
     }
   }
 

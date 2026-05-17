@@ -26,6 +26,7 @@ import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
 import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
 import SerializationEngine from './ImportExport/SerializationEngine';
+import { MorphixEditedState } from './Morphix/MorphixEngine';
 interface Evented {
     on(type: string, listener: Function): {
         remove(): void;
@@ -69,6 +70,7 @@ declare class SymbolEngine implements Evented {
     private _effectEngine;
     private _deploymentBuilderEngine;
     private _declutterEngine;
+    private _morphixEngine;
     readonly serializationEngine: SerializationEngine;
     private currentSymbol;
     private sidc;
@@ -83,6 +85,8 @@ declare class SymbolEngine implements Evented {
     private _lastAmplifier;
     private _continuousTimeoutId;
     private _suppressDrawLifecycleCount;
+    private _suppressNextAddUndoCount;
+    private _lastCreatedGraphic;
     private _undoStack;
     private _redoStack;
     private _preEditSnapshot;
@@ -338,6 +342,7 @@ declare class SymbolEngine implements Evented {
     reProject(point: Point, spatialReference: SpatialReference): Point;
     createSymbolCacheKey(options: SymbolOptions, scaleFactor: number): string;
     private drawSymEnd;
+    applyMorphixEdit(graphic: Graphic, editedState: MorphixEditedState): Graphic | null;
     private getOpacityValue;
     private symDrawProgress;
     private symDrawClick;
