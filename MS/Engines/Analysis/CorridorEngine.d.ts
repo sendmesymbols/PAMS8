@@ -26,6 +26,7 @@ export declare class CorridorEngine {
     private _activeThreatOverlayId;
     private _mapClickHandle;
     private _workingGraphics;
+    private _lastAvgScore;
     private _dragOffsetX;
     private _dragOffsetY;
     private _isDragging;
@@ -52,12 +53,14 @@ export declare class CorridorEngine {
     private _pickMapPoint;
     private _graphicToPoint;
     private _firstPolygon;
+    private _polygonResult;
     private _is3D;
     private _computeTotalDistance;
     private _currentPreset;
     private _presetKey;
     private _currentThreatOverlay;
     private _setInputVal;
+    private _numInput;
     private _inp;
     private _setText;
     private _setStatus;

@@ -134,6 +134,19 @@ export function scoreSegments(denseRoute, corridorM, threatGeometries, segmentLe
   const segments = [];
   let cursor = 0, distFromStart = 0;
   const pts  = denseRoute;
+  const firstPolygon = (geometry) => Array.isArray(geometry) ? (geometry[0] ?? null) : geometry;
+  const areaSqM = (geometry) => {
+    if (!geometry) return 0;
+    try {
+      return Math.abs(geometryEngine.geodesicArea(geometry, 'square-meters'));
+    } catch (_) {
+      try {
+        return Math.abs(geometryEngine.planarArea(geometry, 'square-meters'));
+      } catch (_) {
+        return 0;
+      }
+    }
+  };
 
   while (cursor < pts.length - 1) {
     // Collect segment points up to segmentLenM total distance
@@ -159,8 +172,8 @@ export function scoreSegments(denseRoute, corridorM, threatGeometries, segmentLe
       });
 
       // Buffer the segment to get an area for intersection
-      const segBuf = geometryEngine.geodesicBuffer(polyline, corridorM, 'meters');
-      const segArea = segBuf ? geometryEngine.planarArea(segBuf, 'square-meters') : 0;
+      const segBuf = firstPolygon(geometryEngine.geodesicBuffer(polyline, corridorM, 'meters'));
+      const segArea = areaSqM(segBuf);
 
       // Score = fraction of segment that overlaps any threat geometry
       let score = 0;
@@ -170,7 +183,7 @@ export function scoreSegments(denseRoute, corridorM, threatGeometries, segmentLe
           try {
             const intersection = geometryEngine.intersect(segBuf, threat);
             if (intersection) {
-              overlapArea += Math.abs(geometryEngine.planarArea(intersection, 'square-meters'));
+              overlapArea += areaSqM(firstPolygon(intersection));
             }
           } catch (_) {}
         }

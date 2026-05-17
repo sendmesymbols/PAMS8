@@ -18,6 +18,7 @@ import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import {
   CORRIDOR_PRESETS,
   EXPOSURE_COLORS,
+  destinationPoint,
   densifyRoute,
   computeLegs,
   scoreSegments,
@@ -99,6 +100,7 @@ export class CorridorEngine {
   private _activeThreatOverlayId = THREAT_OVERLAY_PRESETS[0].id;
   private _mapClickHandle: { remove(): void } | null = null;
   private _workingGraphics: Graphic[] = [];
+  private _lastAvgScore = 0;
 
   private _dragOffsetX = 0;
   private _dragOffsetY = 0;
@@ -166,6 +168,7 @@ export class CorridorEngine {
     this._routeDrawn = false;
     this._waypoints = [];
     this._threats = [];
+    this._lastAvgScore = 0;
     this._cancelPlacement();
   }
 
@@ -226,7 +229,7 @@ export class CorridorEngine {
   }
 
   private _buildPanelHTML(override?: CorridorPanelOverride): string {
-    const presetMap = CORRIDOR_PRESETS as Record<string, CorridorPreset>;
+    const presetMap = CORRIDOR_PRESETS as unknown as Record<string, CorridorPreset>;
     const fallbackPreset = presetMap.vehicle_patrol;
     const initialPreset = override?.presetKey && presetMap[override.presetKey]
       ? override.presetKey
@@ -247,8 +250,53 @@ export class CorridorEngine {
         <span class="corr-header-title">Corridor Analysis</span>
         <span class="corr-status-dot" id="corr-status-dot"></span>
         <span class="corr-status-lbl" id="corr-status-lbl">Awaiting route</span>
+        <button class="corr-help-btn" id="corr-help-btn" title="How corridor analysis works">?</button>
         <button class="corr-minimize-btn" id="corr-minimize-btn" title="Minimize">▼</button>
         <button class="corr-close-btn" id="corr-close-btn" title="Close (keeps graphics)">✕</button>
+      </div>
+      <div class="corr-help-popover" id="corr-help-popover" hidden>
+        <div class="corr-help-head">
+          <div>
+            <div class="corr-help-kicker">Field Guide</div>
+            <div class="corr-help-title">Corridor Analysis</div>
+          </div>
+          <button class="corr-help-close" id="corr-help-close" title="Close">✕</button>
+        </div>
+        <div class="corr-help-body">
+          <p>Builds a movement corridor from two or more waypoints, then scores route exposure against placed threat overlays.</p>
+          <div class="corr-help-block">
+            <h4>Workflow</h4>
+            <ol>
+              <li>Add waypoints to define the route centerline.</li>
+              <li>Select or place threat overlays near the route.</li>
+              <li>Analyze to generate corridor, standoff, exclusion, heat-map, labels, and chokepoint graphics.</li>
+              <li>Commit to keep the current analysis on the map.</li>
+            </ol>
+          </div>
+          <div class="corr-help-block">
+            <h4>Parameters</h4>
+            <dl>
+              <dt>Corridor</dt><dd>Buffer distance on each side of the route centerline.</dd>
+              <dt>Standoff</dt><dd>Outer planning buffer around the movement corridor.</dd>
+              <dt>Exclusion</dt><dd>Outer caution ring beyond standoff, useful for no-go or watch areas.</dd>
+              <dt>Segment</dt><dd>Approximate route slice length used for exposure scoring.</dd>
+            </dl>
+          </div>
+          <div class="corr-help-block">
+            <h4>Exposure Score</h4>
+            <p>Each route segment is buffered by corridor width and intersected with all threat polygons. The segment score is overlap area divided by segment corridor area, clamped from 0 to 100%.</p>
+            <div class="corr-help-formula">score = threat overlap area / segment corridor area</div>
+          </div>
+          <div class="corr-help-block">
+            <h4>Factors And Weights</h4>
+            <ul>
+              <li>Threat overlap: 100% of current heat score.</li>
+              <li>Threat type affects radius and color, not weighting.</li>
+              <li>Segment length controls scoring granularity.</li>
+              <li>Chokepoints are flagged separately at interior waypoints where sampled corridor width is constrained.</li>
+            </ul>
+          </div>
+        </div>
       </div>
       <div class="corr-body">
         <div class="corr-sec">Route Type</div>
@@ -278,10 +326,16 @@ export class CorridorEngine {
 
         <div class="corr-divider"></div>
         <div class="corr-sec">Display</div>
-        <div class="corr-toggle-row"><label class="corr-label">Threat heat map</label><input id="corr-opt-heat" type="checkbox" class="corr-check" checked /></div>
-        <div class="corr-toggle-row"><label class="corr-label">Chokepoints</label><input id="corr-opt-choke" type="checkbox" class="corr-check" checked /></div>
-        <div class="corr-toggle-row"><label class="corr-label">Leg labels</label><input id="corr-opt-legs" type="checkbox" class="corr-check" checked /></div>
-        <div class="corr-toggle-row"><label class="corr-label">Exclusion zone</label><input id="corr-opt-excl" type="checkbox" class="corr-check" checked /></div>
+        <div class="corr-toggle-grid">
+          <div class="corr-toggle-col">
+            <label class="corr-toggle-row"><span class="corr-label">Heat map</span><input id="corr-opt-heat" type="checkbox" class="corr-check" checked /></label>
+            <label class="corr-toggle-row"><span class="corr-label">Leg labels</span><input id="corr-opt-legs" type="checkbox" class="corr-check" checked /></label>
+          </div>
+          <div class="corr-toggle-col">
+            <label class="corr-toggle-row"><span class="corr-label">Chokepoints</span><input id="corr-opt-choke" type="checkbox" class="corr-check" checked /></label>
+            <label class="corr-toggle-row"><span class="corr-label">Exclusion</span><input id="corr-opt-excl" type="checkbox" class="corr-check" checked /></label>
+          </div>
+        </div>
 
         <div class="corr-divider"></div>
         <div class="corr-sec">Threat Overlays</div>
@@ -321,15 +375,11 @@ export class CorridorEngine {
         </div>
 
         <div class="corr-sec">Avg exposure</div>
-        <div class="corr-exp-track"><div id="corr-exp-thumb" class="corr-exp-thumb"></div></div>
-
-        <div class="corr-sec">Legend</div>
-        <div class="corr-legend">
-          <div class="corr-legend-row"><span class="corr-legend-dot" style="background:#1D9E75"></span><span class="corr-legend-label">Safe 0–25%</span></div>
-          <div class="corr-legend-row"><span class="corr-legend-dot" style="background:#78C840"></span><span class="corr-legend-label">Low 25–50%</span></div>
-          <div class="corr-legend-row"><span class="corr-legend-dot" style="background:#EF9F27"></span><span class="corr-legend-label">Caution 50–75%</span></div>
-          <div class="corr-legend-row"><span class="corr-legend-dot" style="background:#DC3C30"></span><span class="corr-legend-label">Danger 75–100%</span></div>
-          <div class="corr-legend-row"><span class="corr-legend-dot" style="background:#DC3C30;border:1px solid #ffffff"></span><span class="corr-legend-label">Chokepoint</span></div>
+        <div class="corr-exp-wrap">
+          <div class="corr-exp-track"><div id="corr-exp-thumb" class="corr-exp-thumb"></div></div>
+          <div class="corr-exp-labels">
+            <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+          </div>
         </div>
 
         <div class="corr-btn-row">
@@ -359,6 +409,15 @@ export class CorridorEngine {
     });
 
     p.querySelector('#corr-close-btn')?.addEventListener('click', () => this._hidePanel());
+    p.querySelector('#corr-help-btn')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const help = p.querySelector<HTMLElement>('#corr-help-popover');
+      if (help) help.hidden = !help.hidden;
+    });
+    p.querySelector('#corr-help-close')?.addEventListener('click', () => {
+      const help = p.querySelector<HTMLElement>('#corr-help-popover');
+      if (help) help.hidden = true;
+    });
 
     p.querySelector('#corr-preset')?.addEventListener('change', () => {
       const preset = this._currentPreset();
@@ -418,6 +477,7 @@ export class CorridorEngine {
       this._threatLayer.removeAll();
       this._previewLayer.removeAll();
       this._workingGraphics = [];
+      this._lastAvgScore = 0;
       this._refreshPanel();
       this._setStatus('awaiting');
     });
@@ -439,7 +499,13 @@ export class CorridorEngine {
 
     this._mapClickHandle = this._view.on('click', async (event: any) => {
       this._cancelPlacement();
-      const pt = await this._pickMapPoint(event);
+      let pt: Point;
+      try {
+        pt = await this._pickMapPoint(event);
+      } catch {
+        this._setStatus('error');
+        return;
+      }
 
       if (mode === 'waypoint') {
         this._waypoints.push({ longitude: pt.longitude, latitude: pt.latitude });
@@ -447,7 +513,7 @@ export class CorridorEngine {
         if (this._routeDrawn) this._redraw();
       } else {
         const overlay = this._currentThreatOverlay();
-        const radiusM = Math.max(100, Number(this._inp('corr-threat-radius')?.value ?? overlay.radiusM));
+        const radiusM = this._numInput('corr-threat-radius', overlay.radiusM, 100);
         const threatGeom = this._firstPolygon(geometryEngine.geodesicBuffer(pt, radiusM, 'meters'));
         if (threatGeom) {
           const item: ThreatItem = {
@@ -497,16 +563,40 @@ export class CorridorEngine {
             type: 'line-3d',
             symbolLayers: [{
               type: 'line',
-              size: 1.7,
-              material: { color: [29, 158, 117, 0.55] },
+              size: 4.2,
+              material: { color: [8, 10, 12, 0.62] },
               pattern: { type: 'style', style: 'dash' },
               cap: 'round',
             }],
           } as any
         : {
             type: 'simple-line',
-            color: [29, 158, 117, 160],
-            width: 2,
+            color: [8, 10, 12, 190],
+            width: 4.8,
+            style: 'short-dash',
+          } as any,
+      attributes: { type: 'corridor_preview_halo' },
+    }));
+    this._previewLayer.add(new Graphic({
+      geometry: new Polyline({
+        paths: [dense.map((p) => [p.longitude, p.latitude])],
+        spatialReference: { wkid: 4326 },
+      }),
+      symbol: this._is3D()
+        ? {
+            type: 'line-3d',
+            symbolLayers: [{
+              type: 'line',
+              size: 2.4,
+              material: { color: [29, 158, 117, 0.92] },
+              pattern: { type: 'style', style: 'dash' },
+              cap: 'round',
+            }],
+          } as any
+        : {
+            type: 'simple-line',
+            color: [29, 158, 117, 240],
+            width: 2.8,
             style: 'short-dash',
           } as any,
       attributes: { type: 'corridor_preview' },
@@ -523,14 +613,14 @@ export class CorridorEngine {
             symbolLayers: [{
               type: 'fill',
               material: { color: [r, g, b, 0.12] },
-              outline: { color: [r, g, b, 0.72], size: 1.2 },
+              outline: { color: [r, g, b, 0.95], size: 2 },
               pattern: { type: 'style', style: 'diagonal-cross' },
             }],
           } as any
         : {
             type: 'simple-fill',
             color: [r, g, b, 38],
-            outline: { color: [r, g, b, 190], width: 1.2 },
+            outline: { color: [r, g, b, 245], width: 2 },
           } as any,
       attributes: {
         type: 'corridor_threat',
@@ -548,10 +638,10 @@ export class CorridorEngine {
     this._previewLayer.removeAll();
     this._workingGraphics = [];
 
-    const corridorM = Math.max(10, Number(this._inp('corr-width')?.value ?? 100));
-    const standoffM = Math.max(0, Number(this._inp('corr-standoff')?.value ?? 500));
-    const exclusionM = Math.max(0, Number(this._inp('corr-exclusion')?.value ?? 1000));
-    const segmentLenM = Math.max(50, Number(this._inp('corr-seglen')?.value ?? 200));
+    const corridorM = this._numInput('corr-width', 100, 10);
+    const standoffM = this._numInput('corr-standoff', 500, 0);
+    const exclusionM = this._numInput('corr-exclusion', 1000, 0);
+    const segmentLenM = this._numInput('corr-seglen', 200, 50);
     const showHeat = this._inp('corr-opt-heat')?.checked ?? true;
     const showChoke = this._inp('corr-opt-choke')?.checked ?? true;
     const showLegs = this._inp('corr-opt-legs')?.checked ?? true;
@@ -574,26 +664,60 @@ export class CorridorEngine {
       densified = route;
     }
 
-    const corridor = this._firstPolygon(geometryEngine.geodesicBuffer(densified, corridorM, 'meters'));
-    const standoff = standoffM > 0
-      ? this._firstPolygon(geometryEngine.geodesicBuffer(densified, corridorM + standoffM, 'meters'))
-      : null;
-    const exclusion = exclusionM > 0
-      ? this._firstPolygon(geometryEngine.geodesicBuffer(densified, corridorM + standoffM + exclusionM, 'meters'))
-      : null;
+    let corridor: Polygon | null = null;
+    let standoffRing: Polygon | null = null;
+    let exclusionRing: Polygon | null = null;
 
-    const standoffRing = standoff && corridor
-      ? (geometryEngine.difference(standoff, corridor) as Polygon | null)
-      : standoff;
-    const exclusionRing = exclusion && standoff
-      ? (geometryEngine.difference(exclusion, standoff) as Polygon | null)
-      : exclusion && corridor
-        ? (geometryEngine.difference(exclusion, corridor) as Polygon | null)
-        : exclusion;
+    try {
+      corridor = this._firstPolygon(geometryEngine.geodesicBuffer(densified, corridorM, 'meters'));
+      const standoff = standoffM > 0
+        ? this._firstPolygon(geometryEngine.geodesicBuffer(densified, corridorM + standoffM, 'meters'))
+        : null;
+      const exclusion = exclusionM > 0
+        ? this._firstPolygon(geometryEngine.geodesicBuffer(densified, corridorM + standoffM + exclusionM, 'meters'))
+        : null;
 
-    if (showExcl && exclusionRing) this._addAnalysisGraphic(this._polygonGraphic(exclusionRing, [220, 60, 48], 0.06, 0.5, true, 'corridor_exclusion', 'Exclusion zone'));
-    if (standoffRing) this._addAnalysisGraphic(this._polygonGraphic(standoffRing, [r, g, b], 0.08, 0.45, true, 'corridor_standoff', 'Standoff zone'));
-    if (corridor) this._addAnalysisGraphic(this._polygonGraphic(corridor, [r, g, b], 0.14, 0.85, false, 'corridor_zone', 'Movement corridor'));
+      standoffRing = standoff && corridor
+        ? this._polygonResult(geometryEngine.difference(standoff, corridor) as Polygon | Polygon[] | null) ?? standoff
+        : standoff;
+      exclusionRing = exclusion && standoff
+        ? this._polygonResult(geometryEngine.difference(exclusion, standoff) as Polygon | Polygon[] | null) ?? exclusion
+        : exclusion && corridor
+          ? this._polygonResult(geometryEngine.difference(exclusion, corridor) as Polygon | Polygon[] | null) ?? exclusion
+          : exclusion;
+    } catch {
+      this._setStatus('error');
+      this._refreshPanel(this._lastAvgScore);
+      return;
+    }
+
+    if (showExcl && exclusionRing) this._addAnalysisGraphic(this._polygonGraphic(exclusionRing, [220, 60, 48], 0.06, 0.82, true, 'corridor_exclusion', 'Exclusion zone'));
+    if (standoffRing) this._addAnalysisGraphic(this._polygonGraphic(standoffRing, [r, g, b], 0.08, 0.68, true, 'corridor_standoff', 'Standoff zone'));
+    if (corridor) this._addAnalysisGraphic(this._polygonGraphic(corridor, [r, g, b], 0.14, 1, false, 'corridor_zone', 'Movement corridor'));
+
+    this._addAnalysisGraphic(new Graphic({
+      geometry: new Polyline({
+        paths: [dense.map((p) => [p.longitude, p.latitude])],
+        spatialReference: { wkid: 4326 },
+      }),
+      symbol: this._is3D()
+        ? {
+            type: 'line-3d',
+            symbolLayers: [{
+              type: 'line',
+              size: 4.4,
+              material: { color: [8, 10, 12, 0.62] },
+              cap: 'round',
+              join: 'round',
+            }],
+          } as any
+        : {
+            type: 'simple-line',
+            color: [8, 10, 12, 190],
+            width: 5,
+          } as any,
+      attributes: { type: 'corridor_centreline_halo', label: 'Route centreline border' },
+    }));
 
     const centrelineGraphic = new Graphic({
       geometry: new Polyline({
@@ -605,16 +729,16 @@ export class CorridorEngine {
             type: 'line-3d',
             symbolLayers: [{
               type: 'line',
-              size: 2.2,
-              material: { color: [r, g, b, 0.9] },
+              size: 3,
+              material: { color: [r, g, b, 1] },
               cap: 'round',
               join: 'round',
             }],
           } as any
         : {
             type: 'simple-line',
-            color: [r, g, b, 230],
-            width: 2.4,
+            color: [r, g, b, 255],
+            width: 3.2,
           } as any,
       attributes: { type: 'corridor_centreline', label: 'Route centreline' },
     });
@@ -642,7 +766,7 @@ export class CorridorEngine {
               style: isEndpoint ? 'diamond' : 'circle',
               color: [r, g, b, 220],
               size: isEndpoint ? 10 : 8,
-              outline: { color: [255, 255, 255, 210], width: 1.2 },
+              outline: { color: [255, 255, 255, 255], width: 2.2 },
             } as any,
         attributes: {
           type: 'corridor_waypoint',
@@ -655,13 +779,18 @@ export class CorridorEngine {
 
     let avgScore = 0;
     if (showHeat && corridor) {
-      const scored = scoreSegments(
-        dense,
-        corridorM,
-        this._threats.map((t) => t.geometry),
-        segmentLenM,
-        { geometryEngine, Polyline, Point },
-      ) as Array<{ buffer: Polygon | null; score: number; distFromStartM: number }>;
+      let scored: Array<{ buffer: Polygon | null; score: number; distFromStartM: number }> = [];
+      try {
+        scored = scoreSegments(
+          dense,
+          corridorM,
+          this._threats.map((t) => t.geometry),
+          segmentLenM,
+          { geometryEngine, Polyline, Point },
+        ) as Array<{ buffer: Polygon | null; score: number; distFromStartM: number }>;
+      } catch {
+        scored = [];
+      }
 
       if (scored.length > 0) {
         avgScore = scored.reduce((sum, seg) => sum + seg.score, 0) / scored.length;
@@ -680,13 +809,13 @@ export class CorridorEngine {
                 symbolLayers: [{
                   type: 'fill',
                   material: { color: [fill[0], fill[1], fill[2], fill[3] + 0.04] },
-                  outline: { color: [outline[0], outline[1], outline[2], outline[3]], size: 0.65 },
+                  outline: { color: [outline[0], outline[1], outline[2], 1], size: 1.4 },
                 }],
               } as any
             : {
                 type: 'simple-fill',
                 color: [fill[0], fill[1], fill[2], Math.round(fill[3] * 255)],
-                outline: { color: [outline[0], outline[1], outline[2], Math.round(outline[3] * 255)], width: 0.8 },
+                outline: { color: [outline[0], outline[1], outline[2], 255], width: 1.4 },
               } as any,
           attributes: {
             type: 'corridor_segment',
@@ -700,8 +829,7 @@ export class CorridorEngine {
 
     if (showLegs) {
       legs.forEach((leg) => {
-        const ratio = leg.distM / 2;
-        const mid = dense.find((_pt, idx) => idx > 0) ?? this._waypoints[0];
+        const mid = destinationPoint(leg.from.longitude, leg.from.latitude, leg.bearingDeg, leg.distM / 2);
         const distStr = leg.distM >= 1000 ? `${(leg.distM / 1000).toFixed(2)} km` : `${Math.round(leg.distM)} m`;
         const text = `${distStr} ${Math.round(leg.bearingDeg).toString().padStart(3, '0')}°`;
         const midPoint = new Point({
@@ -709,7 +837,7 @@ export class CorridorEngine {
           latitude: mid.latitude,
           spatialReference: { wkid: 4326 },
         });
-        if (ratio > 0) {
+        if (leg.distM > 0) {
           this._addAnalysisGraphic(new Graphic({
             geometry: midPoint,
             symbol: {
@@ -764,6 +892,7 @@ export class CorridorEngine {
     }
 
     this._routeDrawn = true;
+    this._lastAvgScore = avgScore;
     this._refreshPanel(avgScore);
     this._setStatus('ready');
   }
@@ -791,14 +920,14 @@ export class CorridorEngine {
             symbolLayers: [{
               type: 'fill',
               material: { color: [r, g, b, fillAlpha] },
-              outline: { color: [r, g, b, outlineAlpha], size: 1.3 },
+              outline: { color: [r, g, b, outlineAlpha], size: 2 },
               ...(patterned ? { pattern: { type: 'style', style: 'diagonal-cross' } } : {}),
             }],
           } as any
         : {
             type: 'simple-fill',
             color: [r, g, b, Math.round(fillAlpha * 255)],
-            outline: { color: [r, g, b, Math.round(outlineAlpha * 255)], width: 1.2 },
+            outline: { color: [r, g, b, Math.round(outlineAlpha * 255)], width: 2 },
           } as any,
       attributes: { type, label },
     });
@@ -811,10 +940,10 @@ export class CorridorEngine {
       committedAt: ts,
       presetKey: this._presetKey(),
       waypoints: [...this._waypoints],
-      corridorM: Math.max(10, Number(this._inp('corr-width')?.value ?? 100)),
-      standoffM: Math.max(0, Number(this._inp('corr-standoff')?.value ?? 500)),
-      exclusionM: Math.max(0, Number(this._inp('corr-exclusion')?.value ?? 1000)),
-      segmentLenM: Math.max(50, Number(this._inp('corr-seglen')?.value ?? 200)),
+      corridorM: this._numInput('corr-width', 100, 10),
+      standoffM: this._numInput('corr-standoff', 500, 0),
+      exclusionM: this._numInput('corr-exclusion', 1000, 0),
+      segmentLenM: this._numInput('corr-seglen', 200, 50),
     };
 
     this._workingGraphics.forEach((g) => {
@@ -830,7 +959,7 @@ export class CorridorEngine {
     setTimeout(() => this._setStatus('ready'), 1800);
   }
 
-  private _refreshPanel(avgScore = 0): void {
+  private _refreshPanel(avgScore = this._lastAvgScore): void {
     const wpList = this._panelEl?.querySelector<HTMLElement>('#corr-wp-list');
     if (wpList) {
       wpList.innerHTML = this._waypoints.length === 0
@@ -915,6 +1044,7 @@ export class CorridorEngine {
     if (this._view.type === '3d') {
       const hit = await (this._view as any).hitTest(event, { include: [(this._view as any).map.ground] });
       const gp = hit?.ground?.mapPoint ?? event.mapPoint;
+      if (!gp) throw new Error('No map point');
       return new Point({
         longitude: gp.longitude,
         latitude: gp.latitude,
@@ -923,6 +1053,7 @@ export class CorridorEngine {
       });
     }
 
+    if (!event.mapPoint) throw new Error('No map point');
     return new Point({
       longitude: event.mapPoint.longitude,
       latitude: event.mapPoint.latitude,
@@ -942,6 +1073,10 @@ export class CorridorEngine {
   private _firstPolygon(geometry: Polygon | Polygon[] | null): Polygon | null {
     if (!geometry) return null;
     return Array.isArray(geometry) ? (geometry[0] ?? null) : geometry;
+  }
+
+  private _polygonResult(geometry: Polygon | Polygon[] | null): Polygon | null {
+    return this._firstPolygon(geometry);
   }
 
   private _is3D(): boolean {
@@ -966,7 +1101,7 @@ export class CorridorEngine {
   }
 
   private _currentPreset(): CorridorPreset {
-    const presets = CORRIDOR_PRESETS as Record<string, CorridorPreset>;
+    const presets = CORRIDOR_PRESETS as unknown as Record<string, CorridorPreset>;
     const key = this._presetKey();
     return presets[key] ?? presets.vehicle_patrol;
   }
@@ -982,6 +1117,12 @@ export class CorridorEngine {
   private _setInputVal(id: string, value: number): void {
     const el = this._inp(id);
     if (el) el.value = String(value);
+  }
+
+  private _numInput(id: string, fallback: number, min: number): number {
+    const raw = Number(this._inp(id)?.value ?? fallback);
+    const value = Number.isFinite(raw) ? raw : fallback;
+    return Math.max(min, value);
   }
 
   private _inp(id: string): HTMLInputElement | null {
@@ -1049,6 +1190,7 @@ export class CorridorEngine {
         top: 60px;
         left: 910px;
         width: 302px;
+        max-height: calc(100vh - 84px);
         background: var(--ms-bg);
         border: 1px solid var(--ms-border);
         border-radius: var(--ms-radius);
@@ -1059,11 +1201,15 @@ export class CorridorEngine {
         user-select: none;
         box-shadow: var(--ms-shadow);
         display: none;
+        overflow: hidden;
+      }
+      .corr-panel, .corr-panel * {
+        box-sizing: border-box;
       }
       .corr-header {
         display: flex;
         align-items: center;
-        gap: 7px;
+        gap: 6px;
         padding: 9px 10px 8px;
         border-bottom: 1px solid var(--ms-divider);
         background: var(--ms-bg-header);
@@ -1078,6 +1224,10 @@ export class CorridorEngine {
         color: var(--ms-success);
         font-weight: 700;
         flex: 1;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .corr-status-dot {
         width: 7px;
@@ -1091,38 +1241,152 @@ export class CorridorEngine {
         text-transform: uppercase;
         color: var(--ms-text-dim);
         min-width: 58px;
+        flex-shrink: 0;
       }
-      .corr-minimize-btn, .corr-close-btn {
+      .corr-help-btn, .corr-minimize-btn, .corr-close-btn {
         background: none;
-        border: none;
+        border: 1px solid transparent;
         color: var(--ms-text-dim);
         font-size: 12px;
         cursor: pointer;
         padding: 0 2px;
         line-height: 1;
+        flex: 0 0 auto;
       }
-      .corr-minimize-btn:hover, .corr-close-btn:hover { color: var(--ms-text); }
-      .corr-body { padding: 0 0 6px; }
+      .corr-help-btn {
+        width: 17px;
+        height: 17px;
+        border-color: var(--ms-border);
+        border-radius: 50%;
+        color: var(--ms-success);
+        font-weight: 700;
+      }
+      .corr-help-btn:hover, .corr-minimize-btn:hover, .corr-close-btn:hover { color: var(--ms-text); }
+      .corr-help-popover {
+        position: absolute;
+        top: 39px;
+        left: 8px;
+        right: 8px;
+        z-index: 1120;
+        max-height: min(520px, calc(100vh - 132px));
+        overflow-y: auto;
+        background: var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: 4px;
+        box-shadow: var(--ms-shadow);
+        color: var(--ms-text);
+      }
+      .corr-help-popover[hidden] { display: none; }
+      .corr-help-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 11px 8px;
+        border-bottom: 1px solid var(--ms-divider);
+        background: var(--ms-bg-header);
+      }
+      .corr-help-kicker {
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-text-label);
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+      .corr-help-title {
+        margin-top: 2px;
+        font-size: 13px;
+        color: var(--ms-success);
+        font-weight: 700;
+      }
+      .corr-help-close {
+        width: 20px;
+        height: 20px;
+        border: 1px solid var(--ms-border);
+        border-radius: 3px;
+        background: var(--ms-bg-input);
+        color: var(--ms-text-dim);
+        cursor: pointer;
+      }
+      .corr-help-close:hover { color: var(--ms-text); }
+      .corr-help-body {
+        padding: 10px 11px 12px;
+        font-size: var(--ms-fs-xs);
+        line-height: 1.45;
+        color: var(--ms-text-dim);
+        user-select: text;
+      }
+      .corr-help-body p {
+        margin: 0 0 9px;
+      }
+      .corr-help-block {
+        margin-top: 10px;
+      }
+      .corr-help-block h4 {
+        margin: 0 0 5px;
+        font-size: var(--ms-fs-xs);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ms-text);
+      }
+      .corr-help-block ol, .corr-help-block ul {
+        margin: 0;
+        padding-left: 17px;
+      }
+      .corr-help-block li {
+        margin: 3px 0;
+      }
+      .corr-help-block dl {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 5px 8px;
+        margin: 0;
+      }
+      .corr-help-block dt {
+        color: var(--ms-success);
+        font-weight: 700;
+      }
+      .corr-help-block dd {
+        margin: 0;
+      }
+      .corr-help-formula {
+        padding: 6px 7px;
+        border: 1px solid var(--ms-border);
+        border-radius: 3px;
+        background: var(--ms-bg-input);
+        color: var(--ms-text);
+        font-family: "Courier New", monospace;
+        white-space: normal;
+      }
+      .corr-body {
+        max-height: calc(100vh - 124px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 0 0 6px;
+      }
       .corr-sec {
         font-size: var(--ms-fs-xs);
         letter-spacing: 0.1em;
         text-transform: uppercase;
         color: var(--ms-text-label);
-        padding: 9px 12px 4px;
+        padding: 7px 12px 3px;
       }
       .corr-divider {
         height: 1px;
         background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
-        margin: 4px 0;
+        margin: 3px 0;
       }
       .corr-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 7px;
-        padding: 0 10px 8px;
+        padding: 0 10px 6px;
       }
-      .corr-field { display: flex; flex-direction: column; gap: 3px; }
-      .corr-field-full { padding: 0 10px 8px; }
+      .corr-field {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+      }
+      .corr-field-full { padding: 0 10px 6px; }
       .corr-field-btn { justify-content: flex-end; }
       .corr-label {
         font-size: var(--ms-fs-xs);
@@ -1139,27 +1403,53 @@ export class CorridorEngine {
         font-size: var(--ms-fs);
         padding: 5px 7px;
         width: 100%;
+        min-width: 0;
         outline: none;
       }
       .corr-input:focus, .corr-select:focus { border-color: var(--ms-success); }
       .corr-select option { background: var(--ms-bg); }
+      .corr-toggle-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+        gap: 8px;
+        padding: 0 10px 6px;
+      }
+      .corr-toggle-grid::before {
+        content: '';
+        grid-column: 2;
+        grid-row: 1;
+        width: 1px;
+        background: var(--ms-divider);
+      }
+      .corr-toggle-col {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+      .corr-toggle-col:first-child { grid-column: 1; }
+      .corr-toggle-col:last-child { grid-column: 3; }
       .corr-toggle-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 4px 12px;
+        gap: 6px;
+        min-height: 18px;
+        min-width: 0;
+        cursor: pointer;
       }
       .corr-check {
         accent-color: var(--ms-success);
         width: 13px;
         height: 13px;
         cursor: pointer;
+        flex-shrink: 0;
       }
       .corr-list {
         display: flex;
         flex-direction: column;
         gap: 4px;
-        max-height: 108px;
+        max-height: 78px;
         overflow-y: auto;
         padding: 0 10px 6px;
       }
@@ -1173,18 +1463,19 @@ export class CorridorEngine {
         display: flex;
         flex-direction: column;
         gap: 4px;
-        padding: 0 10px 8px;
+        padding: 0 10px 6px;
       }
       .corr-overlay-row {
         display: flex;
         align-items: center;
         gap: 7px;
         width: 100%;
+        min-width: 0;
         background: var(--ms-bg-input);
         border: 1px solid var(--ms-border);
         color: var(--ms-text);
         border-radius: 3px;
-        padding: 5px 6px;
+        padding: 4px 6px;
         cursor: pointer;
         font-family: inherit;
         font-size: var(--ms-fs-xs);
@@ -1209,10 +1500,12 @@ export class CorridorEngine {
         letter-spacing: 0.04em;
         color: var(--ms-text);
         flex: 1;
+        min-width: 0;
       }
       .corr-overlay-radius {
         font-size: var(--ms-fs-xs);
         color: var(--ms-text-dim);
+        flex-shrink: 0;
       }
       .corr-list-row {
         display: flex;
@@ -1233,6 +1526,7 @@ export class CorridorEngine {
         font-size: var(--ms-fs-xs);
         color: var(--ms-text-dim);
         flex: 1;
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1243,23 +1537,25 @@ export class CorridorEngine {
         color: var(--ms-danger);
         cursor: pointer;
         font-size: 10px;
+        flex-shrink: 0;
       }
       .corr-coords {
         font-size: var(--ms-fs-xs);
         color: var(--ms-success);
-        padding: 2px 12px 7px;
+        padding: 1px 12px 5px;
         letter-spacing: 0.04em;
       }
       .corr-stats {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
         gap: 8px;
-        padding: 8px 10px 8px;
+        padding: 6px 10px;
       }
       .corr-stat {
         display: flex;
         flex-direction: column;
         gap: 2px;
+        min-width: 0;
       }
       .corr-stat-lbl {
         font-size: var(--ms-fs-xs);
@@ -1271,9 +1567,15 @@ export class CorridorEngine {
         font-size: var(--ms-fs);
         color: var(--ms-success);
         font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .corr-exp-wrap {
+        padding: 0 10px 6px;
       }
       .corr-exp-track {
-        margin: 0 10px 8px;
+        margin: 0;
         height: 6px;
         border-radius: 3px;
         position: relative;
@@ -1291,36 +1593,22 @@ export class CorridorEngine {
         border: 2px solid var(--ms-bg);
         background: #fff;
       }
-      .corr-legend {
+      .corr-exp-labels {
         display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding: 0 10px 8px;
-      }
-      .corr-legend-row {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-      }
-      .corr-legend-dot {
-        width: 9px;
-        height: 9px;
-        border-radius: 50%;
-        flex-shrink: 0;
-      }
-      .corr-legend-label {
+        justify-content: space-between;
+        margin-top: 4px;
         font-size: var(--ms-fs-xs);
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
         color: var(--ms-text-dim);
+        letter-spacing: 0;
       }
       .corr-btn-row {
         display: flex;
         gap: 6px;
-        padding: 6px 10px 2px;
+        padding: 5px 10px 2px;
       }
       .corr-btn {
         flex: 1;
+        min-width: 0;
         padding: 6px 4px;
         font-family: inherit;
         font-size: var(--ms-fs-xs);
