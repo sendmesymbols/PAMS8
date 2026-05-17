@@ -272,7 +272,7 @@ class ContextMenuManager extends Evented {
   }
 
   /**
-   * Link a BufferEngine so the "Analysis → Buffer abd Threat Rings" item
+   * Link a BufferEngine so the "Analysis → Buffer and Threat Rings" item
    * opens the buffer panel with the right-clicked graphic as source origin.
    */
   public linkBufferEngine(engine: BufferEngine | null): void {

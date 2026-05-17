@@ -206,6 +206,9 @@ export class TrajectoryEngine {
   private _animFrame: number | null = null;
   private _animRunning = false;
   private _animGraphic: Graphic | null = null;
+  private _animStartMs = 0;
+  private _animStartIdx = 0;
+  private _animPlaybackRate = 1.5;
 
   // Draggable panel state
   private _dragOffsetX = 0;
@@ -246,6 +249,16 @@ export class TrajectoryEngine {
           spatialReference: { wkid: 4326 },
         });
       }
+      if (attrs.targetLon != null && attrs.targetLat != null) {
+        this._targetPoint = new Point({
+          longitude: attrs.targetLon,
+          latitude: attrs.targetLat,
+          z: attrs.targetZ ?? 0,
+          spatialReference: { wkid: 4326 },
+        });
+      } else {
+        this._targetPoint = null;
+      }
 
       const override: TrajectoryPanelOverride = {
         launchAngle:  attrs.launchAngle  ?? undefined,
@@ -262,18 +275,17 @@ export class TrajectoryEngine {
       this._showPanel(presetKey, override);
       if (this._firePoint) {
         this._drawFireMarker();
+        this._drawTargetMarker();
         this._redraw();
       }
       return;
     }
 
-    // ── Resume mode: panel was minimised (hidden) with working state intact ───
-    if (this._panelEl && this._firePoint && this._panelEl.style.display === 'none') {
-      this._panelEl.style.display = 'block';
-      return;
-    }
-
     // ── Normal mode: new fire point from graphic geometry ─────────────────────
+    this._analysisLayer.removeAll();
+    this._observerLayer.removeAll();
+    this._stopAnimation();
+    this._currentTrajectory = null;
     const geom = graphic.geometry;
     if (geom?.type === 'point') {
       this._firePoint = geom as Point;
@@ -402,6 +414,7 @@ export class TrajectoryEngine {
     originElevM: number;
     bearingDeg: number;
     launchAngleDeg: number;
+    muzzleVelocity?: number;
     windSpeedMs: number;
     windBearingDeg: number;
     targetElevM: number;
@@ -409,15 +422,17 @@ export class TrajectoryEngine {
   }): TrajectoryResult | null {
     const p = PROJECTILE_PRESETS[params.presetKey];
     if (!p) return null;
+    const muzzleVelocity = params.muzzleVelocity ?? p.muzzleVelocity;
 
     const azR = (params.bearingDeg * Math.PI) / 180;
     const elR = (params.launchAngleDeg * Math.PI) / 180;
-    const vH = p.muzzleVelocity * Math.cos(elR);
+    const vH = muzzleVelocity * Math.cos(elR);
     let vE = vH * Math.sin(azR);
     let vN = vH * Math.cos(azR);
-    let vU = p.muzzleVelocity * Math.sin(elR);
+    let vU = muzzleVelocity * Math.sin(elR);
 
-    const wazR = (params.windBearingDeg * Math.PI) / 180;
+    // UI wind bearing is meteorological "from" bearing, while ENU velocity is "toward".
+    const wazR = (((params.windBearingDeg + 180) % 360) * Math.PI) / 180;
     const wE = params.windSpeedMs * Math.sin(wazR);
     const wN = params.windSpeedMs * Math.cos(wazR);
 
@@ -458,15 +473,23 @@ export class TrajectoryEngine {
     }
 
     for (let i = apogeeIdx; i < pts.length; i++) {
-      if (Math.abs(pts[i].vU) >= 0.25 * p.muzzleVelocity) {
+      if (Math.abs(pts[i].vU) >= 0.25 * muzzleVelocity) {
         termIdx = i;
         break;
       }
     }
 
     const last = pts[pts.length - 1];
-    const impact = last
-      ? this._enuToGeo(params.originLon, params.originLat, params.originElevM, last.east, last.north, 0)
+    const impactPoint = last ? this._interpolateImpactPoint(pts, params.targetElevM) : null;
+    const impact = impactPoint
+      ? this._enuToGeo(
+          params.originLon,
+          params.originLat,
+          params.originElevM,
+          impactPoint.east,
+          impactPoint.north,
+          impactPoint.up
+        )
       : null;
     const maxAlt = Math.max(...pts.map(pt => pt.altMSL));
 
@@ -475,10 +498,32 @@ export class TrajectoryEngine {
       apogeeIdx,
       termIdx,
       impact,
-      tof: last?.t ?? 0,
+      tof: impactPoint?.t ?? last?.t ?? 0,
       maxAlt,
-      range: Math.sqrt((last?.east ?? 0) ** 2 + (last?.north ?? 0) ** 2),
+      range: Math.sqrt((impactPoint?.east ?? last?.east ?? 0) ** 2 + (impactPoint?.north ?? last?.north ?? 0) ** 2),
     };
+  }
+
+  private _interpolateImpactPoint(pts: TrajectoryPoint[], targetElevM: number): TrajectoryPoint | null {
+    if (pts.length === 0) return null;
+    const targetUp = targetElevM - pts[0].altMSL;
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1];
+      const curr = pts[i];
+      if (prev.up >= targetUp && curr.up <= targetUp) {
+        const span = prev.up - curr.up || 1e-9;
+        const f = Math.max(0, Math.min(1, (prev.up - targetUp) / span));
+        return {
+          east: prev.east + (curr.east - prev.east) * f,
+          north: prev.north + (curr.north - prev.north) * f,
+          up: targetUp,
+          t: prev.t + (curr.t - prev.t) * f,
+          altMSL: targetElevM,
+          vU: prev.vU + (curr.vU - prev.vU) * f,
+        };
+      }
+    }
+    return pts[pts.length - 1];
   }
 
   private _solveLaunchAngle(
@@ -488,6 +533,8 @@ export class TrajectoryEngine {
       originLon: number;
       originLat: number;
       originElevM: number;
+      bearingDeg: number;
+      muzzleVelocity: number;
       targetElevM: number;
       windSpeedMs: number;
       windBearingDeg: number;
@@ -507,8 +554,9 @@ export class TrajectoryEngine {
         originLon: params.originLon,
         originLat: params.originLat,
         originElevM: params.originElevM,
-        bearingDeg: 0,
+        bearingDeg: params.bearingDeg,
         launchAngleDeg: ang,
+        muzzleVelocity: params.muzzleVelocity,
         windSpeedMs: params.windSpeedMs,
         windBearingDeg: params.windBearingDeg,
         targetElevM: params.targetElevM,
@@ -593,6 +641,8 @@ export class TrajectoryEngine {
         originLon: this._firePoint.longitude ?? 0,
         originLat: this._firePoint.latitude ?? 0,
         originElevM,
+        bearingDeg: solvedAzimuth,
+        muzzleVelocity,
         targetElevM,
         windSpeedMs,
         windBearingDeg,
@@ -616,6 +666,7 @@ export class TrajectoryEngine {
       originElevM,
       bearingDeg: solvedAzimuth,
       launchAngleDeg: solvedAngle,
+      muzzleVelocity,
       windSpeedMs,
       windBearingDeg,
       targetElevM,
@@ -631,7 +682,7 @@ export class TrajectoryEngine {
 
     this._currentTrajectory = result;
     this._analysisLayer.removeAll();
-    this._stopAnimation(false);
+    this._stopAnimation(true);
 
     const toGeo = (pt: TrajectoryPoint): [number, number, number] => {
       const g = this._enuToGeo(
@@ -655,12 +706,30 @@ export class TrajectoryEngine {
     ): void => {
       if (points.length < 2) return;
       const coords = points.map(toGeo);
+      const haloSymbol = this._view?.type === '3d'
+        ? {
+            type: 'line-3d',
+            symbolLayers: [{
+              type: 'line',
+              size: size + 5.5,
+              material: { color: [12, 18, 22, Math.round(opacity * 115)] },
+              pattern: { type: 'style', style },
+              cap: 'round',
+              join: 'round',
+            }],
+          } as any
+        : {
+            type: 'simple-line',
+            color: [12, 18, 22, Math.round(opacity * 120)],
+            width: Math.max(3, Math.round(size + 4)),
+            style: style === 'dash' ? 'short-dash' : 'solid',
+          } as any;
       const symbol = this._view?.type === '3d'
         ? {
             type: 'line-3d',
             symbolLayers: [{
               type: 'line',
-              size,
+              size: size + 0.4,
               material: { color: [...color, Math.round(opacity * 255)] },
               pattern: { type: 'style', style },
               cap: 'round',
@@ -670,10 +739,15 @@ export class TrajectoryEngine {
         : {
             type: 'simple-line',
             color: [...color, Math.round(opacity * 255)],
-            width: Math.max(1, Math.round(size)),
+            width: Math.max(2, Math.round(size + 1)),
             style: style === 'dash' ? 'short-dash' : 'solid',
           } as any;
 
+      this._analysisLayer.add(new Graphic({
+        geometry: new Polyline({ hasZ: true, paths: [coords], spatialReference: { wkid: 4326 } }),
+        symbol: haloSymbol,
+        attributes: { type: `${type}_halo`, interactive: false },
+      }));
       this._analysisLayer.add(new Graphic({
         geometry: new Polyline({ hasZ: true, paths: [coords], spatialReference: { wkid: 4326 } }),
         symbol,
@@ -684,11 +758,11 @@ export class TrajectoryEngine {
     if (usePhases) {
       const a = Math.max(0, Math.min(result.apogeeIdx, result.pts.length - 1));
       const t = Math.max(a, Math.min(result.termIdx, result.pts.length - 1));
-      addPath(result.pts.slice(0, a + 1), [29, 158, 117], 'solid', 2.8, 0.92, 'trajectory_phase');
-      addPath(result.pts.slice(a, t + 1), preset.color, 'solid', 2.6, 0.88, 'trajectory_phase');
-      addPath(result.pts.slice(t), [220, 90, 48], 'dash', 2.2, 0.62, 'trajectory_phase');
+      addPath(result.pts.slice(0, a + 1), [29, 158, 117], 'solid', 2.8, 0.92, 'trajectory_phase_launch');
+      addPath(result.pts.slice(a, t + 1), [239, 159, 39], 'solid', 2.6, 0.88, 'trajectory_phase_flight');
+      addPath(result.pts.slice(t), [220, 90, 48], 'dash', 2.2, 0.62, 'trajectory_phase_terminal');
     } else {
-      addPath(result.pts, preset.color, 'solid', 2.7, 0.9, 'trajectory_arc');
+      addPath(result.pts, [239, 159, 39], 'solid', 2.7, 0.9, 'trajectory_arc');
     }
 
     const ap = result.pts[result.apogeeIdx];
@@ -703,26 +777,7 @@ export class TrajectoryEngine {
       );
       this._analysisLayer.add(new Graphic({
         geometry: new Point({ longitude: g.lon, latitude: g.lat, z: g.z, spatialReference: { wkid: 4326 } }),
-        symbol: this._is3D()
-          ? {
-              type: 'point-3d',
-              symbolLayers: [{
-                type: 'object',
-                resource: { primitive: 'cone' },
-                material: { color: [239, 159, 39, 220] },
-                width: 45,
-                height: 45,
-                depth: 45,
-              }],
-              verticalOffset: { screenLength: 22, maxWorldLength: 400, minWorldLength: 4 },
-            } as any
-          : {
-              type: 'simple-marker',
-              style: 'triangle',
-              color: [239, 159, 39, 220],
-              size: 10,
-              outline: { color: [255, 240, 220, 220], width: 1.2 },
-            } as any,
+        symbol: this._apogeeSymbol(),
         attributes: { type: 'trajectory_apogee' },
       }));
     }
@@ -735,26 +790,7 @@ export class TrajectoryEngine {
           z: targetElevM,
           spatialReference: { wkid: 4326 },
         }),
-        symbol: this._is3D()
-          ? {
-              type: 'point-3d',
-              symbolLayers: [{
-                type: 'object',
-                resource: { primitive: 'sphere' },
-                material: { color: [220, 90, 48, 225] },
-                width: 52,
-                height: 52,
-                depth: 52,
-              }],
-              verticalOffset: { screenLength: 20, maxWorldLength: 360, minWorldLength: 4 },
-            } as any
-          : {
-              type: 'simple-marker',
-              style: 'circle',
-              color: [220, 90, 48, 225],
-              size: 9,
-              outline: { color: [255, 220, 220, 220], width: 1.2 },
-            } as any,
+        symbol: this._impactSymbol(),
         attributes: { type: 'trajectory_impact' },
       }));
     }
@@ -798,6 +834,56 @@ export class TrajectoryEngine {
     return this._view?.type === '3d';
   }
 
+  private _apogeeSymbol(): any {
+    return {
+      type: 'simple-marker',
+      style: 'triangle',
+      color: [239, 159, 39, 220],
+      size: 10,
+      outline: { color: [255, 240, 220, 220], width: 1.2 },
+    } as any;
+  }
+
+  private _impactSymbol(): any {
+    return {
+      type: 'simple-marker',
+      style: 'circle',
+      color: [220, 90, 48, 225],
+      size: 9,
+      outline: { color: [255, 220, 220, 220], width: 1.2 },
+    } as any;
+  }
+
+  private _fireSymbol(color: [number, number, number]): any {
+    return {
+      type: 'simple-marker',
+      style: 'diamond',
+      color: [...color, 235],
+      size: 12,
+      outline: { color: [255, 255, 255, 220], width: 1.2 },
+    } as any;
+  }
+
+  private _targetSymbol(): any {
+    return {
+      type: 'simple-marker',
+      style: 'triangle',
+      color: [220, 90, 48, 235],
+      size: 12,
+      outline: { color: [255, 240, 230, 220], width: 1.2 },
+    } as any;
+  }
+
+  private _projectileSymbol(color: [number, number, number]): any {
+    return {
+      type: 'simple-marker',
+      style: 'circle',
+      color: [...color, 242],
+      size: 8,
+      outline: { color: [255, 255, 255, 200], width: 1.2 },
+    } as any;
+  }
+
   private _drawFireMarker(): void {
     if (!this._firePoint) return;
     this._observerLayer.graphics
@@ -812,26 +898,7 @@ export class TrajectoryEngine {
         z: (this._firePoint.z ?? 0) + 1,
         spatialReference: { wkid: 4326 },
       }),
-      symbol: this._is3D()
-        ? {
-            type: 'point-3d',
-            symbolLayers: [{
-              type: 'object',
-              resource: { primitive: 'diamond' },
-              material: { color: [...preset.color, 235] },
-              width: 56,
-              height: 56,
-              depth: 56,
-            }],
-            verticalOffset: { screenLength: 28, maxWorldLength: 450, minWorldLength: 4 },
-          } as any
-        : {
-            type: 'simple-marker',
-            style: 'diamond',
-            color: [...preset.color, 235],
-            size: 12,
-            outline: { color: [255, 255, 255, 220], width: 1.2 },
-          } as any,
+      symbol: this._fireSymbol(preset.color),
       attributes: { type: 'trajectory_fire', markerRole: 'fire' },
     }));
 
@@ -858,26 +925,7 @@ export class TrajectoryEngine {
         z: (this._targetPoint.z ?? 0) + 1,
         spatialReference: { wkid: 4326 },
       }),
-      symbol: this._is3D()
-        ? {
-            type: 'point-3d',
-            symbolLayers: [{
-              type: 'object',
-              resource: { primitive: 'cone' },
-              material: { color: [220, 90, 48, 235] },
-              width: 56,
-              height: 80,
-              depth: 56,
-            }],
-            verticalOffset: { screenLength: 28, maxWorldLength: 450, minWorldLength: 4 },
-          } as any
-        : {
-            type: 'simple-marker',
-            style: 'triangle',
-            color: [220, 90, 48, 235],
-            size: 12,
-            outline: { color: [255, 240, 230, 220], width: 1.2 },
-          } as any,
+      symbol: this._targetSymbol(),
       attributes: { type: 'trajectory_target', markerRole: 'target' },
     }));
 
@@ -985,25 +1033,7 @@ export class TrajectoryEngine {
         z: (this._firePoint.z ?? 0) + 1,
         spatialReference: { wkid: 4326 },
       }),
-      symbol: this._is3D()
-        ? {
-            type: 'point-3d',
-            symbolLayers: [{
-              type: 'object',
-              resource: { primitive: 'sphere' },
-              material: { color: [...preset.color, 242] },
-              width: 34,
-              height: 34,
-              depth: 34,
-            }],
-          } as any
-        : {
-            type: 'simple-marker',
-            style: 'circle',
-            color: [...preset.color, 242],
-            size: 8,
-            outline: { color: [255, 255, 255, 200], width: 1.2 },
-          } as any,
+      symbol: this._projectileSymbol(preset.color),
       attributes: { type: 'trajectory_projectile' },
     });
     this._observerLayer.add(this._animGraphic);
@@ -1041,17 +1071,25 @@ export class TrajectoryEngine {
 
     this._animRunning = true;
     playBtn.textContent = '■';
-    let idx = Number(scrub.value);
+    this._animStartIdx = Number(scrub.value);
+    this._animStartMs = performance.now();
     const total = this._currentTrajectory.pts.length;
 
-    const step = () => {
-      if (!this._animRunning || idx >= total) {
+    const step = (now: number) => {
+      const elapsedS = ((now - this._animStartMs) / 1000) * this._animPlaybackRate;
+      const baseT = this._currentTrajectory?.pts[this._animStartIdx]?.t ?? 0;
+      const targetT = baseT + elapsedS;
+      let idx = this._animStartIdx;
+      while (idx < total - 1 && (this._currentTrajectory?.pts[idx]?.t ?? 0) < targetT) idx++;
+
+      if (!this._animRunning || idx >= total - 1) {
+        this._seekAnimation(total - 1);
         this._animRunning = false;
         playBtn.textContent = '▶';
         this._animFrame = null;
         return;
       }
-      this._seekAnimation(idx++);
+      this._seekAnimation(idx);
       this._animFrame = requestAnimationFrame(step);
     };
     this._animFrame = requestAnimationFrame(step);
@@ -1255,7 +1293,7 @@ export class TrajectoryEngine {
         </div>
         <div class="traj-toggle-row">
           <label class="traj-label">Auto-solve angle to target</label>
-          <input id="traj-opt-autosolve" type="checkbox" class="traj-check" />
+          <input id="traj-opt-autosolve" type="checkbox" class="traj-check" checked />
         </div>
 
         <div class="traj-divider"></div>
@@ -1582,7 +1620,9 @@ export class TrajectoryEngine {
         outline: none;
         transition: border-color 0.15s;
       }
-      .traj-input:focus, .traj-select:focus { border-color: var(--ms-accent); }
+      .traj-input:focus, .traj-select:focus {
+        border-color: var(--ms-accent);
+      }
       .traj-select option { background: var(--ms-bg); }
       .traj-slider-row {
         display: flex;
@@ -1696,6 +1736,26 @@ export class TrajectoryEngine {
         align-items: center;
         gap: 8px;
         padding: 6px 10px 4px;
+      }
+      @media (max-width: 520px) {
+        .traj-panel {
+          left: 14px;
+          right: 14px;
+          top: 56px;
+          width: auto;
+        }
+        .traj-grid,
+        .traj-stats {
+          grid-template-columns: 1fr;
+        }
+        .traj-slider-row {
+          display: grid;
+          grid-template-columns: 1fr auto;
+        }
+        .traj-slider-row .traj-slider {
+          grid-column: 1 / -1;
+          width: 100%;
+        }
       }
     `;
     document.head.appendChild(style);

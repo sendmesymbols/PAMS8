@@ -45,6 +45,9 @@ export declare class TrajectoryEngine {
     private _animFrame;
     private _animRunning;
     private _animGraphic;
+    private _animStartMs;
+    private _animStartIdx;
+    private _animPlaybackRate;
     private _dragOffsetX;
     private _dragOffsetY;
     private _isDragging;
@@ -61,6 +64,7 @@ export declare class TrajectoryEngine {
     private _enuToGeo;
     private _airDensity;
     private _integrate;
+    private _interpolateImpactPoint;
     private _solveLaunchAngle;
     private _buildCEP;
     private _redraw;

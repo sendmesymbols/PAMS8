@@ -3,7 +3,7 @@
  * Buffer & Threat Rings analysis engine.
  *
  * Integrated with ContextMenuManager via linkBufferEngine().
- * Right-clicking any military symbol -> Analysis -> Buffer abd Threat Rings
+ * Right-clicking any military symbol -> Analysis -> Buffer and Threat Rings
  * opens this panel with the symbol location as source origin.
  */
 
@@ -675,7 +675,7 @@ export class BufferEngine {
     return `
       <div class="buffer-header" id="buffer-drag-handle">
         <span class="buffer-header-icon">⭕</span>
-        <span class="buffer-header-title">Buffer abd Threat Rings</span>
+        <span class="buffer-header-title">Buffer & Threat Rings</span>
         <span class="buffer-status-dot" id="buffer-status-dot"></span>
         <span class="buffer-status-lbl" id="buffer-status-lbl">Awaiting source</span>
         <button class="buffer-minimize-btn" id="buffer-minimize-btn" title="Minimize">▼</button>
