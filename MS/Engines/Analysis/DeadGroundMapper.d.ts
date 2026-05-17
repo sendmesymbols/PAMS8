@@ -37,9 +37,12 @@ export declare class DeadGroundMapper {
     private _buildHeatmapLayer;
     private _buildContourGraphics;
     private _buildTerrainMesh;
+    private _buildObstructionRingGraphics;
     private _buildSpokeGraphics;
     private _destPt;
     private _depthToRGBA;
+    private _cellToRGBA;
+    private _lerpRGBA;
     private _showPanel;
     private _hidePanel;
     private _buildPanelHtml;

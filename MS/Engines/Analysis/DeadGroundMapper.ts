@@ -15,6 +15,7 @@ const EARTH_R = 6_371_008.8;
 const WGS84 = { wkid: 4326 } as any;
 
 type DeadGroundViewMode = '2d' | '3d' | 'both';
+type DeadGroundColorMode = 'depth' | 'binary' | 'range' | 'quadrant';
 
 interface DeadGroundRunResult {
   depthGrid: Float32Array;
@@ -134,8 +135,18 @@ export class DeadGroundMapper {
     if (!this._view || this._pickHandle) return;
     this._pickHandle = this._view.on('click', async (event: any) => {
       if (this._running || !this._panelEl || this._panelEl.style.display === 'none') return;
-      const result: any = await this._view!.hitTest(event, { include: [(this._view!.map as any).ground] as any });
-      const gp = result?.ground?.mapPoint ?? event.mapPoint;
+      let gp: any = event?.mapPoint ?? null;
+      if (!gp && this._view?.type === '3d') {
+        try {
+          const result: any = await this._view.hitTest(event, { include: [(this._view.map as any).ground] as any });
+          gp = result?.ground?.mapPoint ?? null;
+        } catch {
+          gp = null;
+        }
+      }
+      if (!gp && this._view?.toMap && event?.x != null && event?.y != null) {
+        gp = this._view.toMap({ x: event.x, y: event.y } as any);
+      }
       if (!gp) return;
       this._setObserver(new Point({
         longitude: gp.longitude,
@@ -200,6 +211,11 @@ export class DeadGroundMapper {
     const eyeH = Math.max(0.5, this._num('dead-inp-eye', 1.8));
     const maxDepth = Math.max(5, this._num('dead-inp-maxdepth', 50));
     const opacity = Math.max(0.2, Math.min(1, this._num('dead-inp-opacity', 0.75)));
+    const colorMode = this._selectValue('dead-inp-color-mode', 'depth') as DeadGroundColorMode;
+    const showMasked = this._checked('dead-opt-masked', true);
+    const showCap = this._checked('dead-opt-cap', true);
+    const showObstructionRing = this._checked('dead-opt-ring', true);
+    const doubleSided = this._checked('dead-opt-dblside', true);
     const showVisible = this._checked('dead-opt-visible', false);
     const showSpokes = this._checked('dead-opt-spokes', false);
     const showContours = this._checked('dead-opt-contours', true);
@@ -240,7 +256,14 @@ export class DeadGroundMapper {
 
       this._clearResults();
 
-      const shared = { maxDepth: realMaxDepth, opacity, showVisible, observerPt: this._observerPt };
+      const shared = {
+        maxDepth: realMaxDepth,
+        opacity,
+        colorMode,
+        showMasked,
+        showVisible,
+        observerPt: this._observerPt,
+      };
       if (show2D) {
         this._setProgress(0.72, 'Rendering 2D heatmap...');
         this._heatmapLayer = this._buildHeatmapLayer(result.depthGrid, result.cols, result.rows, result.extent, {
@@ -251,7 +274,11 @@ export class DeadGroundMapper {
       }
       if (show3D) {
         this._setProgress(0.8, 'Building 3D mesh...');
-        const meshGraphic = await this._buildTerrainMesh(result.depthGrid, result.cols, result.rows, result.extent, shared);
+        const meshGraphic = await this._buildTerrainMesh(result.depthGrid, result.cols, result.rows, result.extent, {
+          ...shared,
+          showCap,
+          doubleSided,
+        });
         this._meshLayer.add(meshGraphic);
       }
       if (showContours) {
@@ -263,6 +290,9 @@ export class DeadGroundMapper {
       }
       if (showSpokes) {
         this._buildSpokeGraphics(this._observerPt, radiusM).forEach((g) => this._spokeLayer.add(g));
+      }
+      if (showObstructionRing) {
+        this._buildObstructionRingGraphics(result.depthGrid, result.cols, result.rows, result.extent).forEach((g) => this._spokeLayer.add(g));
       }
 
       this._setText('dead-st-dead', `${pct}%`);
@@ -405,7 +435,9 @@ export class DeadGroundMapper {
       if (Number.isNaN(depth)) {
         img.data[px + 3] = 0;
       } else if (depth > 0) {
-        const rgba = this._depthToRGBA(depth, opts.maxDepth, opts.opacity);
+        const rgba = opts.showMasked
+          ? this._cellToRGBA(depth, i % cols, Math.floor(i / cols), cols, rows, opts.maxDepth, opts.opacity, opts.colorMode)
+          : [0, 0, 0, 0] as [number, number, number, number];
         img.data[px] = rgba[0];
         img.data[px + 1] = rgba[1];
         img.data[px + 2] = rgba[2];
@@ -496,14 +528,25 @@ export class DeadGroundMapper {
     cols: number,
     rows: number,
     extent: Extent,
-    opts: { maxDepth: number; opacity: number; showVisible: boolean; observerPt: Point },
+    opts: {
+      maxDepth: number;
+      opacity: number;
+      colorMode: DeadGroundColorMode;
+      showMasked: boolean;
+      showVisible: boolean;
+      showCap: boolean;
+      doubleSided: boolean;
+      observerPt: Point;
+    },
   ): Promise<Graphic> {
     const sampler = await (this._view!.map as any).ground.createElevationSampler(extent, { noDataValue: 0 });
     const dLon = (extent.xmax - extent.xmin) / cols;
     const dLat = (extent.ymax - extent.ymin) / rows;
     const N = cols * rows;
-    const positions = new Float64Array(N * 3);
-    const colors = new Uint8Array(N * 4);
+    const totalVerts = opts.showCap ? N * 2 : N;
+    const positions = new Float64Array(totalVerts * 3);
+    const colors = new Uint8Array(totalVerts * 4);
+    let baseZ = Number.POSITIVE_INFINITY;
 
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
@@ -513,6 +556,7 @@ export class DeadGroundMapper {
         const lat = extent.ymax - (row + 0.5) * dLat;
         const pt = new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 });
         const z = (sampler.queryElevation(pt)?.z ?? 0) + 0.5;
+        if (z < baseZ) baseZ = z;
         positions[i * 3] = lon;
         positions[i * 3 + 1] = lat;
         positions[i * 3 + 2] = z;
@@ -521,7 +565,9 @@ export class DeadGroundMapper {
           continue;
         }
         if (depth > 0) {
-          const rgba = this._depthToRGBA(depth, opts.maxDepth, opts.opacity);
+          const rgba = opts.showMasked
+            ? this._cellToRGBA(depth, col, row, cols, rows, opts.maxDepth, opts.opacity, opts.colorMode)
+            : [0, 0, 0, 0] as [number, number, number, number];
           colors[i * 4] = rgba[0];
           colors[i * 4 + 1] = rgba[1];
           colors[i * 4 + 2] = rgba[2];
@@ -537,7 +583,24 @@ export class DeadGroundMapper {
       }
     }
 
-    const numFaces = (cols - 1) * (rows - 1) * 2;
+    if (opts.showCap && Number.isFinite(baseZ)) {
+      const capZ = baseZ - 2;
+      for (let i = 0; i < N; i++) {
+        const ci = N + i;
+        positions[ci * 3] = positions[i * 3];
+        positions[ci * 3 + 1] = positions[i * 3 + 1];
+        positions[ci * 3 + 2] = capZ;
+        colors[ci * 4] = 220;
+        colors[ci * 4 + 1] = 60;
+        colors[ci * 4 + 2] = 48;
+        colors[ci * 4 + 3] = Math.round(opts.opacity * 68);
+      }
+    }
+
+    const surfaceFaces = (cols - 1) * (rows - 1) * 2;
+    const capFaces = opts.showCap ? surfaceFaces : 0;
+    const skirtFaces = opts.showCap ? ((cols - 1) * 2 + (rows - 1) * 2) * 2 : 0;
+    const numFaces = surfaceFaces + capFaces + skirtFaces;
     const faces = new Uint32Array(numFaces * 3);
     let fi = 0;
     for (let row = 0; row < rows - 1; row++) {
@@ -550,20 +613,80 @@ export class DeadGroundMapper {
         faces[fi++] = v10; faces[fi++] = v11; faces[fi++] = v01;
       }
     }
+    if (opts.showCap) {
+      for (let row = 0; row < rows - 1; row++) {
+        for (let col = 0; col < cols - 1; col++) {
+          const v00 = N + row * cols + col;
+          const v10 = N + row * cols + col + 1;
+          const v01 = N + (row + 1) * cols + col;
+          const v11 = N + (row + 1) * cols + col + 1;
+          faces[fi++] = v00; faces[fi++] = v01; faces[fi++] = v10;
+          faces[fi++] = v10; faces[fi++] = v01; faces[fi++] = v11;
+        }
+      }
+      const addWall = (a: number, b: number) => {
+        const ca = N + a;
+        const cb = N + b;
+        faces[fi++] = a; faces[fi++] = b; faces[fi++] = ca;
+        faces[fi++] = b; faces[fi++] = cb; faces[fi++] = ca;
+      };
+      for (let col = 0; col < cols - 1; col++) addWall(col, col + 1);
+      for (let col = 0; col < cols - 1; col++) addWall((rows - 1) * cols + col + 1, (rows - 1) * cols + col);
+      for (let row = 0; row < rows - 1; row++) addWall((row + 1) * cols, row * cols);
+      for (let row = 0; row < rows - 1; row++) addWall(row * cols + cols - 1, (row + 1) * cols + cols - 1);
+    }
 
     const mesh = new Mesh({
       vertexAttributes: { position: positions, color: colors },
-      components: [{ faces, material: { colorMixMode: 'replace', doubleSided: true } as any }],
+      components: [{ faces, material: { colorMixMode: 'replace', doubleSided: opts.doubleSided } as any }],
       spatialReference: WGS84,
     } as any);
     return new Graphic({
       geometry: mesh,
       symbol: {
         type: 'mesh-3d',
-        symbolLayers: [{ type: 'fill', material: { color: [255, 255, 255, 255], colorMixMode: 'replace' } }],
+        symbolLayers: [{ type: 'fill', material: { color: [255, 255, 255, 255], colorMixMode: 'replace', doubleSided: opts.doubleSided } }],
       } as any,
       attributes: { type: 'dead_ground_mesh', label: 'Dead ground depth mesh' },
     });
+  }
+
+  private _buildObstructionRingGraphics(depthGrid: Float32Array, cols: number, rows: number, extent: Extent): Graphic[] {
+    const segments: number[][][] = [];
+    const dLon = (extent.xmax - extent.xmin) / cols;
+    const dLat = (extent.ymax - extent.ymin) / rows;
+    for (let row = 0; row < rows - 1; row++) {
+      for (let col = 0; col < cols - 1; col++) {
+        const d00 = depthGrid[row * cols + col];
+        const d10 = depthGrid[row * cols + col + 1];
+        const d01 = depthGrid[(row + 1) * cols + col];
+        const d11 = depthGrid[(row + 1) * cols + col + 1];
+        if ([d00, d10, d01, d11].some((d) => Number.isNaN(d))) continue;
+
+        const lon0 = extent.xmin + col * dLon;
+        const lon1 = extent.xmin + (col + 1) * dLon;
+        const lat0 = extent.ymax - row * dLat;
+        const lat1 = extent.ymax - (row + 1) * dLat;
+        const crossings: number[][] = [];
+        const check = (va: number, vb: number, a: number[], b: number[]) => {
+          if ((va <= 0) !== (vb <= 0)) {
+            const frac = (0 - va) / (vb - va);
+            crossings.push([a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac]);
+          }
+        };
+        check(d00, d10, [lon0, lat0], [lon1, lat0]);
+        check(d10, d11, [lon1, lat0], [lon1, lat1]);
+        check(d11, d01, [lon1, lat1], [lon0, lat1]);
+        check(d01, d00, [lon0, lat1], [lon0, lat0]);
+        if (crossings.length === 2) segments.push([crossings[0], crossings[1]]);
+      }
+    }
+    if (segments.length === 0) return [];
+    return [new Graphic({
+      geometry: new Polyline({ paths: segments as any, spatialReference: WGS84 }),
+      symbol: { type: 'simple-line', color: [239, 159, 39, 220], width: 1.5, style: 'short-dash' } as any,
+      attributes: { type: 'obstruction_ring', label: 'Visible/dead-ground obstruction ring' },
+    })];
   }
 
   private _buildSpokeGraphics(observerPt: Point, radiusM: number): Graphic[] {
@@ -607,6 +730,43 @@ export class DeadGroundMapper {
       Math.round(r1 + (r2 - r1) * frac),
       Math.round(g1 + (g2 - g1) * frac),
       Math.round(b1 + (b2 - b1) * frac),
+      Math.round(opacity * 255),
+    ];
+  }
+
+  private _cellToRGBA(
+    depth: number,
+    col: number,
+    row: number,
+    cols: number,
+    rows: number,
+    maxDepth: number,
+    opacity: number,
+    mode: DeadGroundColorMode,
+  ): [number, number, number, number] {
+    if (mode === 'binary') return [220, 60, 48, Math.round(opacity * 255)];
+    if (mode === 'range') {
+      const dx = col - cols / 2;
+      const dy = row - rows / 2;
+      const t = Math.min(1, Math.sqrt(dx * dx + dy * dy) / (Math.sqrt(cols * cols + rows * rows) / 2));
+      return this._lerpRGBA([55, 138, 221], [245, 240, 64], t, opacity);
+    }
+    if (mode === 'quadrant') {
+      const bearing = (Math.atan2(col - cols / 2, rows / 2 - row) * 180 / Math.PI + 360) % 360;
+      const stops = [[55, 138, 221], [29, 158, 117], [239, 159, 39], [220, 60, 48], [55, 138, 221]];
+      const seg = (bearing / 360) * (stops.length - 1);
+      const lo = Math.floor(seg);
+      const hi = Math.min(stops.length - 1, lo + 1);
+      return this._lerpRGBA(stops[lo], stops[hi], seg - lo, opacity);
+    }
+    return this._depthToRGBA(depth, maxDepth, opacity);
+  }
+
+  private _lerpRGBA(a: number[], b: number[], t: number, opacity: number): [number, number, number, number] {
+    return [
+      Math.round(a[0] + (b[0] - a[0]) * t),
+      Math.round(a[1] + (b[1] - a[1]) * t),
+      Math.round(a[2] + (b[2] - a[2]) * t),
       Math.round(opacity * 255),
     ];
   }
@@ -801,6 +961,11 @@ export class DeadGroundMapper {
   private _checked(id: string, fallback: boolean): boolean {
     const el = this._el(id) as HTMLInputElement | null;
     return el ? el.checked : fallback;
+  }
+
+  private _selectValue(id: string, fallback: string): string {
+    const el = this._el(id) as HTMLSelectElement | null;
+    return el?.value || fallback;
   }
 
   private _setText(id: string, text: string): void {
