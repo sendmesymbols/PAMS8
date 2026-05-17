@@ -1178,14 +1178,14 @@ class SelectionEngine {
             {
                 id: 'selection-submenu',
                 label: 'Selection',
-                icon: '<span style="font-size:14px">☑</span>',
+                icon: '<span class="menu-icon-text">◈</span>',
                 visible: () => (settingsData as any).features?.selectionMenu !== false,
                 children: [
                     {
                         id: 'lasso-select',
                         label: () => this.isLassoActive ? 'Cancel Lasso' : 'Lasso Select',
                         shortcut: 'L',
-                        icon: '<span style="font-size:14px">🔳</span>',
+                        icon: '<span class="menu-icon-text">▣</span>',
                         action: (_graphic: any) => {
                             closeActiveWorkflow();
                             if (this.isLassoActive) {
@@ -1200,13 +1200,13 @@ class SelectionEngine {
                         label: (graphic: any) =>
                             this.isSelected(graphic) ? 'Deselect' : 'Add to Selection',
                         shortcut: 'Shift+Click',
-                        icon: '<span style="font-size:14px">☑</span>',
+                        icon: '<span class="menu-icon-text">◈</span>',
                         action: (graphic: any) => this.toggleGraphic(graphic),
                     },
                     {
                         id: 'clear-selection',
                         label: () => `Clear Selection (${this.count})`,
-                        icon: '<span style="font-size:14px">✕</span>',
+                        icon: '<span class="menu-icon-text">✕</span>',
                         visible: () => this.count > 0,
                         action: (_graphic: any) => this.clearSelection(),
                     },
@@ -1214,7 +1214,7 @@ class SelectionEngine {
                         id: 'move-selected',
                         label: () => `Move Selected (${this.count})`,
                         shortcut: 'M',
-                        icon: '<span style="font-size:14px">✥</span>',
+                        icon: '<span class="menu-icon-text">✣</span>',
                         visible: () => this.count > 1,
                         action: (_graphic: any) => {
                             closeActiveWorkflow();
@@ -1231,7 +1231,7 @@ class SelectionEngine {
                         id: 'delete-selected',
                         label: () => `Delete Selected (${this.count})`,
                         shortcut: 'Del',
-                        icon: '<span style="font-size:14px">🗑️</span>',
+                        icon: '<span class="menu-icon-text">×</span>',
                         visible: () => this.count > 1,
                         action: (_graphic: any) =>
                             this.deleteSelected((entry) => pushUndo(entry)),
@@ -1240,30 +1240,30 @@ class SelectionEngine {
                     {
                         id: 'select-similar-submenu',
                         label: 'Select Similar',
-                        icon: '<span style="font-size:14px">🔍</span>',
+                        icon: '<span class="menu-icon-text">⌕</span>',
                         children: [
                             {
                                 id: 'select-same-sidc',
                                 label: 'Same SIDC',
-                                icon: '<span style="font-size:14px">⚜</span>',
+                                icon: '<span class="menu-icon-text">◇</span>',
                                 action: (graphic: any) => this.selectSimilarSameSIDC(graphic),
                             },
                             {
                                 id: 'select-same-echelon',
                                 label: 'Same Echelon',
-                                icon: '<span style="font-size:14px">▣</span>',
+                                icon: '<span class="menu-icon-text">▣</span>',
                                 action: (graphic: any) => this.selectSimilarSameEchelon(graphic),
                             },
                             {
                                 id: 'select-own-only',
                                 label: 'Own Only',
-                                icon: '<span style="font-size:14px">🟢</span>',
+                                icon: '<span class="menu-icon-text">●</span>',
                                 action: () => this.selectOwnOnly(),
                             },
                             {
                                 id: 'select-enemy',
                                 label: 'Enemy',
-                                icon: '<span style="font-size:14px">🔴</span>',
+                                icon: '<span class="menu-icon-text">○</span>',
                                 action: () => this.selectEnemy(),
                             },
                         ],
@@ -1272,18 +1272,18 @@ class SelectionEngine {
                     {
                         id: 'select-within-submenu',
                         label: 'Select Within',
-                        icon: '<span style="font-size:14px">⭕</span>',
+                        icon: '<span class="menu-icon-text">◍</span>',
                         children: [
                             {
                                 id: 'select-within',
                                 label: 'Within',
-                                icon: '<span style="font-size:14px">⭕</span>',
+                                icon: '<span class="menu-icon-text">◍</span>',
                                 action: (graphic: any) => this.selectWithin(graphic, false),
                             },
                             {
                                 id: 'select-within-self',
                                 label: 'Within + Self',
-                                icon: '<span style="font-size:14px">◎</span>',
+                                icon: '<span class="menu-icon-text">◎</span>',
                                 action: (graphic: any) => this.selectWithin(graphic, true),
                             },
                         ],
@@ -1292,24 +1292,24 @@ class SelectionEngine {
                     {
                         id: 'filter-type-submenu',
                         label: 'Filter by Type',
-                        icon: '<span style="font-size:14px">▼</span>',
+                        icon: '<span class="menu-icon-text">▼</span>',
                         children: [
                             {
                                 id: 'select-points',
                                 label: 'Points',
-                                icon: '<span style="font-size:14px">●</span>',
+                                icon: '<span class="menu-icon-text">●</span>',
                                 action: () => this.selectPointSymbols(),
                             },
                             {
                                 id: 'select-areas',
                                 label: 'Areas',
-                                icon: '<span style="font-size:14px">■</span>',
+                                icon: '<span class="menu-icon-text">■</span>',
                                 action: () => this.selectAreaSymbols(),
                             },
                             {
                                 id: 'select-lines',
                                 label: 'Lines',
-                                icon: '<span style="font-size:14px">╱</span>',
+                                icon: '<span class="menu-icon-text">╱</span>',
                                 action: () => this.selectLineSymbols(),
                             },
                         ],
@@ -1320,49 +1320,49 @@ class SelectionEngine {
             {
                 id: 'align-parent',
                 label: 'Align',
-                icon: '<span style="font-size:14px">⊞</span>',
+                icon: '<span class="menu-icon-text">⊞</span>',
                 visible: () => (settingsData as any).features?.alignMenu !== false && this.count > 1,
                 children: [
                     // ── Align submenu ───────────────────────────────────────────
                     {
                         id: 'align-submenu',
                         label: 'Align',
-                        icon: '<span style="font-size:14px">⊞</span>',
+                        icon: '<span class="menu-icon-text">⊞</span>',
                         children: [
                             {
                                 id: 'align-left',
                                 label: 'Align Left',
-                                icon: '<span style="font-size:14px">←</span>',
+                                icon: '<span class="menu-icon-text">←</span>',
                                 action: (_g: any) => this.alignLeft((e) => pushUndo(e)),
                             },
                             {
                                 id: 'align-right',
                                 label: 'Align Right',
-                                icon: '<span style="font-size:14px">→</span>',
+                                icon: '<span class="menu-icon-text">→</span>',
                                 action: (_g: any) => this.alignRight((e) => pushUndo(e)),
                             },
                             {
                                 id: 'align-top',
                                 label: 'Align Top',
-                                icon: '<span style="font-size:14px">↑</span>',
+                                icon: '<span class="menu-icon-text">↑</span>',
                                 action: (_g: any) => this.alignTop((e) => pushUndo(e)),
                             },
                             {
                                 id: 'align-bottom',
                                 label: 'Align Bottom',
-                                icon: '<span style="font-size:14px">↓</span>',
+                                icon: '<span class="menu-icon-text">↓</span>',
                                 action: (_g: any) => this.alignBottom((e) => pushUndo(e)),
                             },
                             {
                                 id: 'center-on-x',
                                 label: 'Center on X',
-                                icon: '<span style="font-size:14px">↕</span>',
+                                icon: '<span class="menu-icon-text">↕</span>',
                                 action: (_g: any) => this.centerOnX((e) => pushUndo(e)),
                             },
                             {
                                 id: 'center-on-y',
                                 label: 'Center on Y',
-                                icon: '<span style="font-size:14px">↔</span>',
+                                icon: '<span class="menu-icon-text">↔</span>',
                                 action: (_g: any) => this.centerOnY((e) => pushUndo(e)),
                             },
                         ],
@@ -1371,18 +1371,18 @@ class SelectionEngine {
                     {
                         id: 'distribute-submenu',
                         label: 'Distribute',
-                        icon: '<span style="font-size:14px">⇔</span>',
+                        icon: '<span class="menu-icon-text">⇔</span>',
                         children: [
                             {
                                 id: 'align-horizontal',
                                 label: 'Distribute Horizontal',
-                                icon: '<span style="font-size:14px">⇔</span>',
+                                icon: '<span class="menu-icon-text">⇔</span>',
                                 action: (_g: any) => this.alignHorizontal((e) => pushUndo(e)),
                             },
                             {
                                 id: 'align-vertical',
                                 label: 'Distribute Vertical',
-                                icon: '<span style="font-size:14px">↕</span>',
+                                icon: '<span class="menu-icon-text">↕</span>',
                                 action: (_g: any) => this.alignVertical((e) => pushUndo(e)),
                             },
                         ],
@@ -1391,66 +1391,66 @@ class SelectionEngine {
                     {
                         id: 'arrange-submenu',
                         label: 'Arrange',
-                        icon: '<span style="font-size:14px">⊞</span>',
+                        icon: '<span class="menu-icon-text">⊞</span>',
                         children: [
                             {
                                 id: 'arrange-line',
                                 label: 'Line',
-                                icon: '<span style="font-size:14px">―</span>',
+                                icon: '<span class="menu-icon-text">―</span>',
                                 action: (_g: any) => this.arrangeLine(undefined, (e) => pushUndo(e)),
                             },
                             {
                                 id: 'arrange-column',
                                 label: 'Column',
-                                icon: '<span style="font-size:14px">|</span>',
+                                icon: '<span class="menu-icon-text">|</span>',
                                 action: (_g: any) => this.arrangeColumn(undefined, (e) => pushUndo(e)),
                             },
                             {
                                 id: 'arrange-square',
                                 label: 'Square Grid',
-                                icon: '<span style="font-size:14px">⊞</span>',
+                                icon: '<span class="menu-icon-text">⊞</span>',
                                 action: (_g: any) => this.arrangeSquare(undefined, (e) => pushUndo(e)),
                             },
                             {
                                 id: 'arrange-triangle',
                                 label: 'Triangle',
-                                icon: '<span style="font-size:14px">▲</span>',
+                                icon: '<span class="menu-icon-text">▲</span>',
                                 action: (_g: any) => this.arrangeTriangle(undefined, (e) => pushUndo(e)),
                             },
                             {
                                 id: 'arrange-inv-triangle',
                                 label: 'Inverted Triangle',
-                                icon: '<span style="font-size:14px">▽</span>',
+                                icon: '<span class="menu-icon-text">▽</span>',
                                 action: (_g: any) => this.arrangeInvertedTriangle(undefined, (e) => pushUndo(e)),
                             },
                             {
                                 id: 'arrange-wedge',
                                 label: 'Wedge',
-                                icon: '<span style="font-size:14px">⋁</span>',
+                                icon: '<span class="menu-icon-text">⋁</span>',
                                 action: (_g: any) => this.arrangeWedge(undefined, (e) => pushUndo(e)),
                             },
                             {
                                 id: 'arrange-echelon-left',
                                 label: 'Echelon Left',
-                                icon: '<span style="font-size:14px">↙</span>',
+                                icon: '<span class="menu-icon-text">↙</span>',
                                 action: (_g: any) => this.arrangeEchelonLeft(undefined, (e) => pushUndo(e)),
                             },
                             {
                                 id: 'arrange-echelon-right',
                                 label: 'Echelon Right',
-                                icon: '<span style="font-size:14px">↘</span>',
+                                icon: '<span class="menu-icon-text">↘</span>',
                                 action: (_g: any) => this.arrangeEchelonRight(undefined, (e) => pushUndo(e)),
                             },
                             {
                                 id: 'arrange-diamond',
                                 label: 'Diamond',
-                                icon: '<span style="font-size:14px">◇</span>',
+                                icon: '<span class="menu-icon-text">◇</span>',
                                 action: (_g: any) => this.arrangeDiamond(undefined, (e) => pushUndo(e)),
                             },
                             {
                                 id: 'arrange-circle',
                                 label: 'Circle',
-                                icon: '<span style="font-size:14px">○</span>',
+                                icon: '<span class="menu-icon-text">○</span>',
                                 action: (_g: any) => this.arrangeCircle(undefined, (e) => pushUndo(e)),
                             },
                         ],

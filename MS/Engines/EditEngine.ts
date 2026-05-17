@@ -1111,7 +1111,7 @@ class EditEngine {
             {
                 id: 'edit-submenu',
                 label: 'Edit',
-                icon: '<span style="font-size:14px">✍️</span>',
+                icon: '<span class="menu-icon-text">✎</span>',
                 visible: () =>
                     (settingsData as any).features?.editMoveScaleRotate !== false ||
                     (settingsData as any).features?.editControlPoints !== false,
@@ -1120,7 +1120,7 @@ class EditEngine {
                         id: 'modify-symbol',
                         label: 'Move, Scale, Rotate',
                         shortcut: 'M',
-                        icon: '<span style="font-size:14px">✍️</span>',
+                        icon: '<span class="menu-icon-text">✎</span>',
                         visible: (_graphic: Graphic) =>
                             (settingsData as any).features?.editMoveScaleRotate !== false &&
                             !this.isModifyingSymbol,
@@ -1130,7 +1130,7 @@ class EditEngine {
                         id: 'disable-modify-symbol',
                         label: 'Disable Move, Scale, Rotate',
                         shortcut: 'Esc',
-                        icon: '<span style="font-size:14px">✖</span>',
+                        icon: '<span class="menu-icon-text">✖</span>',
                         visible: (_graphic: Graphic) =>
                             (settingsData as any).features?.editMoveScaleRotate !== false &&
                             this.isModifyingSymbol,
@@ -1140,7 +1140,7 @@ class EditEngine {
                         id: 'edit-ctrl-pts',
                         label: 'Edit Control Points',
                         shortcut: 'E',
-                        icon: '<span style="font-size:14px">↕</span>',
+                        icon: '<span class="menu-icon-text">↕</span>',
                         visible: (_graphic: Graphic) =>
                             (settingsData as any).features?.editControlPoints !== false &&
                             !this.isEditingControlPoints,
@@ -1150,7 +1150,7 @@ class EditEngine {
                         id: 'deactivate-ctrl-pts',
                         label: 'Deactivate Control Points',
                         shortcut: 'Esc',
-                        icon: '<span style="font-size:14px">✖</span>',
+                        icon: '<span class="menu-icon-text">✖</span>',
                         visible: (_graphic: Graphic) =>
                             (settingsData as any).features?.editControlPoints !== false &&
                             this.isEditingControlPoints,

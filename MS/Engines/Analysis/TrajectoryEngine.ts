@@ -81,7 +81,7 @@ export const PROJECTILE_PRESETS: Record<string, ProjectilePreset> = {
     cepM: 30,
     color: [186, 117, 23],
     accentHex: '#BA7517',
-    icon: '💣',
+    icon: 'BMB',
   },
   mortar_81mm: {
     label: 'Mortar 81 mm',
@@ -94,7 +94,7 @@ export const PROJECTILE_PRESETS: Record<string, ProjectilePreset> = {
     cepM: 35,
     color: [186, 117, 23],
     accentHex: '#BA7517',
-    icon: '💣',
+    icon: 'BMB',
   },
   mortar_120mm: {
     label: 'Mortar 120 mm',
@@ -107,7 +107,7 @@ export const PROJECTILE_PRESETS: Record<string, ProjectilePreset> = {
     cepM: 40,
     color: [186, 117, 23],
     accentHex: '#BA7517',
-    icon: '💣',
+    icon: 'BMB',
   },
   artillery_105: {
     label: 'Artillery 105 mm',
@@ -120,7 +120,7 @@ export const PROJECTILE_PRESETS: Record<string, ProjectilePreset> = {
     cepM: 50,
     color: [220, 90, 48],
     accentHex: '#dc5a30',
-    icon: '🔺',
+    icon: 'AT',
   },
   artillery_155: {
     label: 'Artillery 155 mm',
@@ -133,7 +133,7 @@ export const PROJECTILE_PRESETS: Record<string, ProjectilePreset> = {
     cepM: 70,
     color: [220, 90, 48],
     accentHex: '#dc5a30',
-    icon: '🔺',
+    icon: 'AT',
   },
   atgm: {
     label: 'ATGM',
@@ -146,7 +146,7 @@ export const PROJECTILE_PRESETS: Record<string, ProjectilePreset> = {
     cepM: 1,
     color: [55, 138, 221],
     accentHex: '#378ADD',
-    icon: '🚀',
+    icon: 'RKT',
   },
   rpg7: {
     label: 'RPG-7',
@@ -159,7 +159,7 @@ export const PROJECTILE_PRESETS: Record<string, ProjectilePreset> = {
     cepM: 12,
     color: [220, 90, 48],
     accentHex: '#dc5a30',
-    icon: '🚀',
+    icon: 'RKT',
   },
   drone_loiter: {
     label: 'Loitering munition',
@@ -172,7 +172,7 @@ export const PROJECTILE_PRESETS: Record<string, ProjectilePreset> = {
     cepM: 3,
     color: [55, 138, 221],
     accentHex: '#378ADD',
-    icon: '🛩️',
+    icon: 'AIR',
   },
 };
 
@@ -1208,7 +1208,7 @@ export class TrajectoryEngine {
 
     return `
       <div class="traj-header" id="traj-drag-handle">
-        <span class="traj-header-icon">📈</span>
+        <span class="traj-header-icon">↗</span>
         <span class="traj-header-title">Trajectory Analysis${isEdit ? ' — Re-edit' : ''}</span>
         <span class="traj-status-dot" id="traj-status-dot"></span>
         <span class="traj-status-lbl" id="traj-status-lbl">${isEdit ? 'Restored' : 'Awaiting fire point'}</span>

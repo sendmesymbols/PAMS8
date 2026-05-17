@@ -1355,7 +1355,7 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
 
     return `
       <div class="los-header" id="los-drag-handle">
-        <span class="los-header-icon">👁️</span>
+        <span class="los-header-icon">◉</span>
         <span class="los-header-title">LOS Analysis${isEdit ? ' — Re-edit' : ''}</span>
         <span class="los-status-dot" id="los-status-dot"></span>
         <span class="los-status-lbl" id="los-status-lbl">${isEdit ? 'Restored' : 'Awaiting'}</span>

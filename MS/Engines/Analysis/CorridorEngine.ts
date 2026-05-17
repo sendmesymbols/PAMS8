@@ -246,7 +246,7 @@ export class CorridorEngine {
 
     return `
       <div class="corr-header" id="corr-drag-handle">
-        <span class="corr-header-icon">🛣️</span>
+        <span class="corr-header-icon">⤳</span>
         <span class="corr-header-title">Corridor Analysis</span>
         <span class="corr-status-dot" id="corr-status-dot"></span>
         <span class="corr-status-lbl" id="corr-status-lbl">Awaiting route</span>

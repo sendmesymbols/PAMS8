@@ -206,7 +206,7 @@ class DeploymentBuilderEngine {
         border-bottom:1px solid var(--ms-divider);
         border-radius:var(--ms-radius) var(--ms-radius) 0 0;cursor:grab;
       ">
-        <span style="font-weight:700;color:var(--ms-accent);font-size:13px">🗺️ Deployment Manager</span>
+        <span style="font-weight:700;color:var(--ms-accent);font-size:13px">MAP Deployment Manager</span>
         <div style="display:flex;gap:6px">
           <button class="db-btn-min" style="
             background:none;border:1px solid var(--ms-border);border-radius:4px;
@@ -228,7 +228,7 @@ class DeploymentBuilderEngine {
           display:flex;flex-direction:column;
         ">
           <div style="padding:8px 10px;border-bottom:1px solid var(--ms-divider)">
-            <input class="db-search" type="text" placeholder="🔍 Search plans..." style="
+            <input class="db-search" type="text" placeholder="SRH Search plans..." style="
               width:100%;box-sizing:border-box;background:var(--ms-bg-input);
               border:1px solid var(--ms-border);border-radius:5px;
               color:var(--ms-text);font-size:var(--ms-fs-sm);padding:5px 8px;outline:none;
@@ -333,13 +333,13 @@ class DeploymentBuilderEngine {
 
     // Formation descriptions (shown for non-as-is)
     const FORMATION_HINTS: Record<string, string> = {
-      'as-is':    '📌 Symbols placed at their original relative positions around the anchor. Spacing and bearing have no effect.',
-      'line':     '🧭 Symbols arranged side-by-side along the bearing direction. Spacing controls the gap between each unit.',
-      'column':   '🧭 Symbols arranged one behind the other along the bearing direction. Spacing controls the gap between each unit.',
-      'wedge':    '🧭 Lead unit at anchor, two flanks spread behind. Spacing controls how far apart the units are.',
-      'echelonR': '🧭 Units step diagonally to the right and rear. Spacing controls the step distance between each unit.',
-      'echelonL': '🧭 Units step diagonally to the left and rear. Spacing controls the step distance between each unit.',
-      'vee':      '🧭 Lead unit at anchor, two arms fan out to the rear. Spacing controls the spread of the arms.',
+      'as-is':    'PIN Symbols placed at their original relative positions around the anchor. Spacing and bearing have no effect.',
+      'line':     'BRG Symbols arranged side-by-side along the bearing direction. Spacing controls the gap between each unit.',
+      'column':   'BRG Symbols arranged one behind the other along the bearing direction. Spacing controls the gap between each unit.',
+      'wedge':    'BRG Lead unit at anchor, two flanks spread behind. Spacing controls how far apart the units are.',
+      'echelonR': 'BRG Units step diagonally to the right and rear. Spacing controls the step distance between each unit.',
+      'echelonL': 'BRG Units step diagonally to the left and rear. Spacing controls the step distance between each unit.',
+      'vee':      'BRG Lead unit at anchor, two arms fan out to the rear. Spacing controls the spread of the arms.',
     };
 
     FORMATION_HINTS['as-is'] = 'Symbols keep their saved layout around the anchor. Spacing adds separation between symbols; 0 keeps the original plan exactly.';
@@ -1048,7 +1048,7 @@ class DeploymentBuilderEngine {
 
     if (phase === 'anchor-asIs') {
       this._placementInstructions.innerHTML = `
-        <span>📍 <strong style="color:#c8dff5">As-Is placement</strong></span>
+        <span>LOC <strong style="color:#c8dff5">As-Is placement</strong></span>
         ${sep}
         <span>${key('Click')} to place at anchor — no bearing step</span>
         ${sep}
@@ -1056,7 +1056,7 @@ class DeploymentBuilderEngine {
       `;
     } else if (phase === 'anchor') {
       this._placementInstructions.innerHTML = `
-        <span>🎯 <strong style="color:#c8dff5">Step 1 of 2 — Anchor</strong></span>
+        <span>WEZ <strong style="color:#c8dff5">Step 1 of 2 — Anchor</strong></span>
         ${sep}
         <span>${key('Click')} to set anchor point</span>
         ${sep}
@@ -1064,7 +1064,7 @@ class DeploymentBuilderEngine {
       `;
     } else {
       this._placementInstructions.innerHTML = `
-        <span>🧭 <strong style="color:#c8dff5">Step 2 of 2 — Bearing</strong></span>
+        <span>BRG <strong style="color:#c8dff5">Step 2 of 2 — Bearing</strong></span>
         ${sep}
         <span>${key('Click')} to place formation</span>
         ${sep}

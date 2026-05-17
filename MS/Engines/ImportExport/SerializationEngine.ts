@@ -567,14 +567,14 @@ class SerializationEngine {
         {
           id: 'saveload-submenu',
           label: 'Save / Load',
-          icon: '<span style="font-size:14px">💾</span>',
+          icon: '<span class="menu-icon-text">⬇</span>',
           children: [
-            { id: 'save-all-symbols', label: 'Save All Symbols', icon: '<span style="font-size:14px">🗂️</span>', action: () => this.saveToFile() },
-            { id: 'load-symbols', label: 'Load Symbols', icon: '<span style="font-size:14px">📂</span>', action: () => this.loadFromFile() },
-            { id: 'save-plan', label: 'Save Plan', icon: '<span style="font-size:14px">🗺️</span>', action: () => this.savePlanToFile() },
-            { id: 'load-plan', label: 'Load Plan', icon: '<span style="font-size:14px">🗂️</span>', action: () => this.loadPlanFromFile() },
-            { id: 'export-geojson', label: 'Export as GeoJSON', icon: '<span style="font-size:14px">🌐</span>', action: () => this.saveToGeoJSONFile() },
-            { id: 'import-geojson', label: 'Import GeoJSON', icon: '<span style="font-size:14px">🌍</span>', action: () => this.loadFromGeoJSONFile() },
+            { id: 'save-all-symbols', label: 'Save All Symbols', icon: '<span class="menu-icon-text">▣</span>', action: () => this.saveToFile() },
+            { id: 'load-symbols', label: 'Load Symbols', icon: '<span class="menu-icon-text">⬆</span>', action: () => this.loadFromFile() },
+            { id: 'save-plan', label: 'Save Plan', icon: '<span class="menu-icon-text">⌖</span>', action: () => this.savePlanToFile() },
+            { id: 'load-plan', label: 'Load Plan', icon: '<span class="menu-icon-text">▣</span>', action: () => this.loadPlanFromFile() },
+            { id: 'export-geojson', label: 'Export as GeoJSON', icon: '<span class="menu-icon-text">↥</span>', action: () => this.saveToGeoJSONFile() },
+            { id: 'import-geojson', label: 'Import GeoJSON', icon: '<span class="menu-icon-text">↧</span>', action: () => this.loadFromGeoJSONFile() },
           ],
         } as ContextMenuItem,
       ];

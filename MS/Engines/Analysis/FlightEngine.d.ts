@@ -51,6 +51,13 @@ export declare class FlightEngine {
     private _dragOffsetX;
     private _dragOffsetY;
     private _isDragging;
+    private _animVehicleGraphic;
+    private _animLabelGraphic;
+    private _animWarningGraphic;
+    private _animProgressGraphic;
+    private _animTetherGraphic;
+    private _animSensorGraphic;
+    private _animWeaponGraphic;
     constructor();
     initialize(view: MapView | SceneView): void;
     open(graphic: Graphic, view: MapView | SceneView): void;
@@ -85,9 +92,11 @@ export declare class FlightEngine {
     private _startPick;
     private _cancelPick;
     private _startAnimation;
-    private _animateFrame;
+    private _captureAnimGraphics;
+    private _releaseAnimGraphics;
+    private _updateAnimFrame;
+    private _computeProgressPath;
     private _stopAnimation;
-    private _removeGraphicsByTypes;
     private _commit;
     private _loadCommittedPlan;
     private _applyPendingValues;

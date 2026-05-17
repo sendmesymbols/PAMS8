@@ -409,44 +409,20 @@ class ContextMenuManager extends Evented {
         ...(this._losEngine ? [{
           id: 'analysis-los',
           label: 'Line of Sight',
-          icon: `<span style="font-size:14px">👁️</span>`,
+          icon: `<span class="menu-icon-text">◉</span>`,
           action: (g: Graphic) => { if (this._losEngine && this.view) this._losEngine.open(g, this.view); },
         }] : []),
         ...(this._weaponEffectEngine ? [{
           id: 'analysis-wez',
           label: 'Weapon Engagement Zone',
-          icon: `<span style="font-size:14px">🎯</span>`,
+          icon: `<span class="menu-icon-text">◎</span>`,
           action: (g: Graphic) => { if (this._weaponEffectEngine && this.view) this._weaponEffectEngine.open(g, this.view); },
         }] : []),
         ...(this._trajectoryEngine ? [{
           id: 'analysis-trajectory',
           label: 'Projectile Trajectory',
-          icon: `<span style="font-size:14px">📈</span>`,
+          icon: `<span class="menu-icon-text">↗</span>`,
           action: (g: Graphic) => { if (this._trajectoryEngine && this.view) this._trajectoryEngine.open(g, this.view); },
-        }] : []),
-        ...(this._bufferEngine ? [{
-          id: 'analysis-buffer',
-          label: 'Buffer & Threat Rings',
-          icon: `<span style="font-size:14px">⭕</span>`,
-          action: (g: Graphic) => { if (this._bufferEngine && this.view) this._bufferEngine.open(g, this.view); },
-        }] : []),
-        ...(this._corridorEngine ? [{
-          id: 'analysis-corridor',
-          label: 'Corridor Analysis',
-          icon: `<span style="font-size:14px">🛣️</span>`,
-          action: (g: Graphic) => { if (this._corridorEngine && this.view) this._corridorEngine.open(g, this.view); },
-        }] : []),
-        ...(this._flightEngine ? [{
-          id: 'analysis-flight',
-          label: 'UAV Flight Analysis',
-          icon: `<span style="font-size:11px;font-weight:800">UAV</span>`,
-          action: (g: Graphic) => { if (this._flightEngine && this.view) this._flightEngine.open(g, this.view); },
-        }] : []),
-        ...(this._effectEngine ? [{
-          id: 'analysis-effects',
-          label: 'Effect Analysis',
-          icon: `<span style="font-size:14px">💥</span>`,
-          action: (g: Graphic) => { if (this._effectEngine && this.view) this._effectEngine.open(g, this.view); },
         }] : []),
       ];
 
@@ -454,7 +430,7 @@ class ContextMenuManager extends Evented {
       analysisItem.className = this.options.menuItemClass || '';
       analysisItem.classList.add('has-submenu');
       analysisItem.style.position = 'relative';
-      analysisItem.innerHTML = `<span class="menu-icon" style="font-size:14px">🔭</span><span style="flex:1">Analysis</span>`;
+      analysisItem.innerHTML = `<span class="menu-icon-text">◌</span><span style="flex:1">Analysis</span>`;
 
       const submenuEl = document.createElement('div');
       submenuEl.className = 'arcgis-submenu';
@@ -514,8 +490,8 @@ class ContextMenuManager extends Evented {
       const toggleItem = document.createElement('div');
       toggleItem.className = this.options.menuItemClass || '';
       toggleItem.innerHTML = isOn
-        ? `<span class="menu-icon" style="font-size:14px">🔬</span><span>Disable Measurements <span style="color:#4caf50;font-size:10px;margin-left:6px;background:rgba(76,175,80,0.15);padding:2px 6px;border-radius:3px">● ON</span></span>`
-        : `<span class="menu-icon" style="font-size:14px">📐</span><span>Enable Measurements <span style="color:#5a7aa8;font-size:10px;margin-left:6px;background:rgba(90,122,168,0.15);padding:2px 6px;border-radius:3px">○ OFF</span></span>`;
+        ? `<span class="menu-icon-text">∿</span><span>Disable Measurements <span style="color:#4caf50;font-size:10px;margin-left:6px;background:rgba(76,175,80,0.15);padding:2px 6px;border-radius:3px">● ON</span></span>`
+        : `<span class="menu-icon-text">∠</span><span>Enable Measurements <span style="color:#5a7aa8;font-size:10px;margin-left:6px;background:rgba(90,122,168,0.15);padding:2px 6px;border-radius:3px">○ OFF</span></span>`;
       toggleItem.addEventListener('click', (e) => {
         e.stopPropagation();
         this._measurementEngine!.toggle();
@@ -533,8 +509,8 @@ class ContextMenuManager extends Evented {
         const slantItem = document.createElement('div');
         slantItem.className = this.options.menuItemClass || '';
         slantItem.innerHTML = opts.slant_range
-          ? `<span class="menu-icon" style="font-size:14px">⛰️</span><span>Disable 3D Slant Range</span>`
-          : `<span class="menu-icon" style="font-size:14px">⛰️</span><span>Enable 3D Slant Range</span>`;
+          ? `<span class="menu-icon-text">△</span><span>Disable 3D Slant Range</span>`
+          : `<span class="menu-icon-text">△</span><span>Enable 3D Slant Range</span>`;
         slantItem.addEventListener('click', (e) => {
           e.stopPropagation();
           this._measurementEngine!.setOptions({ slant_range: !opts.slant_range });
@@ -550,7 +526,7 @@ class ContextMenuManager extends Evented {
 
         const measureItem = document.createElement('div');
         measureItem.className = this.options.menuItemClass || '';
-        measureItem.innerHTML = `<span class="menu-icon" style="font-size:14px">📏</span><span>Measure This Symbol</span>`;
+        measureItem.innerHTML = `<span class="menu-icon-text">↔</span><span>Measure This Symbol</span>`;
         measureItem.addEventListener('click', (e) => {
           e.stopPropagation();
           if (this.activeGraphic) {
@@ -587,7 +563,7 @@ class ContextMenuManager extends Evented {
 
       const stopItem = document.createElement('div');
       stopItem.className = this.options.menuItemClass || '';
-      stopItem.innerHTML = `<span class="menu-icon" style="font-size:14px">⏹</span><span>Stop Continuous Mode <span style="color:#e5a540;font-size:10px;margin-left:6px;background:rgba(229,165,64,0.15);padding:2px 6px;border-radius:3px">● LOOP</span></span><span class="menu-shortcut">Esc</span>`;
+      stopItem.innerHTML = `<span class="menu-icon-text">■</span><span>Stop Continuous Mode <span style="color:#e5a540;font-size:10px;margin-left:6px;background:rgba(229,165,64,0.15);padding:2px 6px;border-radius:3px">● LOOP</span></span><span class="menu-shortcut">Esc</span>`;
       stopItem.addEventListener('click', (e) => {
         e.stopPropagation();
         this._symbolEngine!.stopContinuousMode();
@@ -611,7 +587,7 @@ class ContextMenuManager extends Evented {
 
       const dbItem = document.createElement('div');
       dbItem.className = this.options.menuItemClass || '';
-      dbItem.innerHTML = `<span class="menu-icon" style="font-size:14px">🗺️</span><span>Open Deployment Manager</span>`;
+      dbItem.innerHTML = `<span class="menu-icon-text">⌖</span><span>Open Deployment Manager</span>`;
       dbItem.addEventListener('click', (e) => {
         e.stopPropagation();
         this._deploymentBuilderEngine!.openWidget();
@@ -635,7 +611,7 @@ class ContextMenuManager extends Evented {
 
       const moreItem = document.createElement('div');
       moreItem.className = this.options.menuItemClass || '';
-      moreItem.innerHTML = `<span class="menu-icon" style="font-size:14px">+</span><span>More Actions...</span><span class="menu-shortcut">Search</span>`;
+      moreItem.innerHTML = `<span class="menu-icon-text">+</span><span>More Actions...</span><span class="menu-shortcut">Search</span>`;
       moreItem.addEventListener('click', (e) => {
         e.stopPropagation();
         this.showActionPalette(x, y, graphic, paletteActions);
@@ -879,25 +855,25 @@ class ContextMenuManager extends Evented {
     }
 
     if (this._bufferEngine) {
-      actions.push(this.createPaletteAction('analysis-buffer', 'Buffer & Threat Rings', 'Analysis', undefined, () => {
+      actions.push(this.createPaletteAction('analysis-buffer', 'Buffer & Threat Rings', 'Analysis / More Tools', undefined, () => {
         if (this._bufferEngine && this.view) this._bufferEngine.open(graphic, this.view);
       }));
     }
 
     if (this._corridorEngine) {
-      actions.push(this.createPaletteAction('analysis-corridor', 'Corridor Analysis', 'Analysis', undefined, () => {
+      actions.push(this.createPaletteAction('analysis-corridor', 'Corridor Analysis', 'Analysis / More Tools', undefined, () => {
         if (this._corridorEngine && this.view) this._corridorEngine.open(graphic, this.view);
       }));
     }
 
     if (this._flightEngine) {
-      actions.push(this.createPaletteAction('analysis-flight', 'UAV Flight Analysis', 'Analysis', undefined, () => {
+      actions.push(this.createPaletteAction('analysis-flight', 'UAV Flight Analysis', 'Analysis / More Tools', undefined, () => {
         if (this._flightEngine && this.view) this._flightEngine.open(graphic, this.view);
       }));
     }
 
     if (this._effectEngine) {
-      actions.push(this.createPaletteAction('analysis-effects', 'Effect Analysis', 'Analysis', undefined, () => {
+      actions.push(this.createPaletteAction('analysis-effects', 'Effect Analysis', 'Analysis / More Tools', undefined, () => {
         if (this._effectEngine && this.view) this._effectEngine.open(graphic, this.view);
       }));
     }
@@ -1445,7 +1421,7 @@ class ContextMenuManager extends Evented {
         padding: 6px 14px;
         font-size: var(--ms-fs-sm);
         color: var(--ms-accent-dim);
-        font-weight: 700;
+        font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 1px;
       }
@@ -1462,6 +1438,24 @@ class ContextMenuManager extends Evented {
         align-items: center;
         font-size: 14px;
         opacity: 0.9;
+      }
+
+      .menu-icon-text {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 16px;
+        padding: 0 4px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0;
+        color: var(--ms-accent-dim);
+        border: 1px solid var(--ms-border);
+        border-radius: 3px;
+        background: var(--ms-bg-input);
+        line-height: 1;
+        box-sizing: border-box;
       }
 
       .menu-shortcut {
@@ -1734,3 +1728,5 @@ class ContextMenuManager extends Evented {
 }
 
 export default ContextMenuManager;
+
+

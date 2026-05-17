@@ -1288,7 +1288,7 @@ ${moveCross}
     return `
 <div class="mc-panel" id="mc-panel">
   <div class="mc-header" id="mc-header">
-    <span class="mc-title">🧭 Magnetic Compass</span>
+    <span class="mc-title">BRG Magnetic Compass</span>
     <div class="mc-header-actions">
       <span class="mc-toggle-icon" id="mc-toggle-icon">▼</span>
       <button class="mc-close-btn" id="mc-close-btn" title="Close panel">✕</button>
@@ -1320,8 +1320,8 @@ ${moveCross}
         <button class="mc-btn" id="mc-reset-all-btn" title="Reset bearing on all compasses to 0°">Reset All Bearings</button>
       </div>
       <div class="mc-btn-row" style="margin-top:4px">
-        <button class="mc-btn" id="mc-save-btn" title="Save all compasses, sectors and settings to a JSON file" style="flex:1">💾 Save</button>
-        <button class="mc-btn" id="mc-load-btn" title="Load compasses, sectors and settings from a JSON file"  style="flex:1">📂 Load</button>
+        <button class="mc-btn" id="mc-save-btn" title="Save all compasses, sectors and settings to a JSON file" style="flex:1">SAV Save</button>
+        <button class="mc-btn" id="mc-load-btn" title="Load compasses, sectors and settings from a JSON file"  style="flex:1">LOD Load</button>
       </div>
     </div>
 

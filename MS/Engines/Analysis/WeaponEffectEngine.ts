@@ -78,7 +78,7 @@ export const WEAPON_PRESETS: Record<string, WeaponPreset> = {
     extrudeHeightFactor: 0.05,
     color: [220, 90, 48],
     accentHex: '#dc5a30',
-    icon: '🔫',
+    icon: 'GUN',
   },
   mortar: {
     label: 'Mortar',
@@ -90,7 +90,7 @@ export const WEAPON_PRESETS: Record<string, WeaponPreset> = {
     extrudeHeightFactor: 2.75,
     color: [239, 159, 39],
     accentHex: '#EF9F27',
-    icon: '💣',
+    icon: 'BMB',
   },
   artillery: {
     label: 'Artillery 155mm',
@@ -102,7 +102,7 @@ export const WEAPON_PRESETS: Record<string, WeaponPreset> = {
     extrudeHeightFactor: 1.43,
     color: [186, 117, 23],
     accentHex: '#BA7517',
-    icon: '🔺',
+    icon: 'AT',
   },
   atgm: {
     label: 'ATGM',
@@ -114,7 +114,7 @@ export const WEAPON_PRESETS: Record<string, WeaponPreset> = {
     extrudeHeightFactor: 0.18,
     color: [220, 90, 48],
     accentHex: '#dc5a30',
-    icon: '🚀',
+    icon: 'RKT',
   },
   anti_air: {
     label: 'Anti-Air',
@@ -126,7 +126,7 @@ export const WEAPON_PRESETS: Record<string, WeaponPreset> = {
     extrudeHeightFactor: 9.5,
     color: [55, 138, 221],
     accentHex: '#378ADD',
-    icon: '🛡️',
+    icon: 'DEF',
   },
   anti_armor: {
     label: 'Anti-Armor',
