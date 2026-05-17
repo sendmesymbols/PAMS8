@@ -69,6 +69,11 @@ export declare class TrajectoryEngine {
     private _buildCEP;
     private _redraw;
     private _is3D;
+    private _apogeeSymbol;
+    private _impactSymbol;
+    private _fireSymbol;
+    private _targetSymbol;
+    private _projectileSymbol;
     private _drawFireMarker;
     private _drawTargetMarker;
     private _startFirePlacement;

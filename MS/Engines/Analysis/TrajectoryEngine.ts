@@ -1212,8 +1212,51 @@ export class TrajectoryEngine {
         <span class="traj-header-title">Trajectory Analysis${isEdit ? ' — Re-edit' : ''}</span>
         <span class="traj-status-dot" id="traj-status-dot"></span>
         <span class="traj-status-lbl" id="traj-status-lbl">${isEdit ? 'Restored' : 'Awaiting fire point'}</span>
+        <button class="traj-help-btn" id="traj-help-btn" title="How trajectory analysis works">?</button>
         <button class="traj-minimize-btn" id="traj-minimize-btn" title="Minimize">▼</button>
         <button class="traj-close-btn" id="traj-close-btn" title="Close (keeps graphics)">✕</button>
+      </div>
+
+      <div class="traj-help-popover" id="traj-help-popover" hidden>
+        <div class="traj-help-head">
+          <div>
+            <div class="traj-help-kicker">Field Guide</div>
+            <div class="traj-help-title">Trajectory Analysis</div>
+          </div>
+          <button class="traj-help-close" id="traj-help-close" title="Close">✕</button>
+        </div>
+        <div class="traj-help-body">
+          <p>Simulates projectile flight from a fire point using launch geometry, drag, wind, and optional Coriolis correction. It can also animate the path and estimate impact statistics.</p>
+          <div class="traj-help-block">
+            <h4>How It Works</h4>
+            <ol>
+              <li>Place the fire point, then optionally place a target.</li>
+              <li>Pick a projectile preset to load mass, diameter, drag coefficient, and reference CEP.</li>
+              <li>Adjust launch angle, muzzle velocity, azimuth, and wind.</li>
+              <li>Run the integrator to draw the full arc, apogee, terminal segment, impact point, and optional CEP footprint.</li>
+            </ol>
+          </div>
+          <div class="traj-help-block">
+            <h4>Phenomenon</h4>
+            <p>The engine numerically integrates projectile motion in small time steps. Gravity pulls the round down, drag reduces speed, wind shifts the path, and Coriolis can add long-range lateral bias. The result is a flight path rather than a simple straight line or parabola guess.</p>
+          </div>
+          <div class="traj-help-block">
+            <h4>Parameters</h4>
+            <dl>
+              <dt>Projectile</dt><dd>Loads ballistic defaults such as mass, drag coefficient, muzzle velocity, and CEP for the selected round or weapon.</dd>
+              <dt>Angle</dt><dd>Launch elevation above the horizon; this strongly affects range and apogee.</dd>
+              <dt>Velocity</dt><dd>Initial muzzle or departure speed used by the integrator.</dd>
+              <dt>Azimuth</dt><dd>Firing bearing when solving manually or when no target point is set.</dd>
+              <dt>Obs ht</dt><dd>Launch point height above local ground or symbol elevation.</dd>
+              <dt>Wind speed</dt><dd>Wind magnitude applied during flight.</dd>
+              <dt>Wind brg</dt><dd>Meteorological from-bearing, meaning the direction the wind comes from.</dd>
+              <dt>Phases</dt><dd>Colors launch, cruise, and terminal portions of the path separately.</dd>
+              <dt>CEP</dt><dd>Shows an approximate impact dispersion circle around the solved impact point.</dd>
+              <dt>Coriolis</dt><dd>Adds Earth-rotation correction, most noticeable on longer flights.</dd>
+              <dt>Auto-solve</dt><dd>When a target exists, keeps recomputing as inputs change so the firing solution stays current.</dd>
+            </dl>
+          </div>
+        </div>
       </div>
 
       <div class="traj-body">
@@ -1330,6 +1373,16 @@ export class TrajectoryEngine {
   private _bindPanelEvents(): void {
     if (!this._panelEl) return;
     const p = this._panelEl;
+
+    p.querySelector('#traj-help-btn')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const help = p.querySelector<HTMLElement>('#traj-help-popover');
+      if (help) help.hidden = !help.hidden;
+    });
+    p.querySelector('#traj-help-close')?.addEventListener('click', () => {
+      const help = p.querySelector<HTMLElement>('#traj-help-popover');
+      if (help) help.hidden = true;
+    });
 
     p.querySelector('#traj-minimize-btn')?.addEventListener('click', () => {
       const body = p.querySelector<HTMLElement>('.traj-body');
@@ -1569,18 +1622,97 @@ export class TrajectoryEngine {
         color: var(--ms-text-dim);
         min-width: 62px;
       }
-      .traj-minimize-btn, .traj-close-btn {
+      .traj-help-btn, .traj-minimize-btn, .traj-close-btn {
         background: none;
-        border: none;
+        border: 1px solid transparent;
         color: var(--ms-text-dim);
-        font-size: var(--ms-fs-sm);
+        font-size: 12px;
         cursor: pointer;
         padding: 0 2px;
         line-height: 1;
         transition: color 0.15s;
-        flex-shrink: 0;
+        flex: 0 0 auto;
       }
-      .traj-minimize-btn:hover, .traj-close-btn:hover { color: var(--ms-text); }
+      .traj-help-btn {
+        width: 17px;
+        height: 17px;
+        border-color: var(--ms-border);
+        border-radius: 50%;
+        color: var(--ms-success);
+        font-weight: 700;
+      }
+      .traj-help-btn:hover, .traj-minimize-btn:hover, .traj-close-btn:hover { color: var(--ms-text); }
+      .traj-help-popover {
+        position: absolute;
+        top: 39px;
+        left: 8px;
+        right: 8px;
+        z-index: 1120;
+        max-height: min(520px, calc(100vh - 132px));
+        overflow-y: auto;
+        background: var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: 4px;
+        box-shadow: var(--ms-shadow);
+        color: var(--ms-text);
+      }
+      .traj-help-popover[hidden] { display: none; }
+      .traj-help-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 11px 8px;
+        border-bottom: 1px solid var(--ms-divider);
+        background: var(--ms-bg-header);
+      }
+      .traj-help-kicker {
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-text-label);
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+      .traj-help-title {
+        margin-top: 2px;
+        font-size: 13px;
+        color: var(--ms-success);
+        font-weight: 700;
+      }
+      .traj-help-close {
+        width: 20px;
+        height: 20px;
+        border: 1px solid var(--ms-border);
+        border-radius: 3px;
+        background: var(--ms-bg-input);
+        color: var(--ms-text-dim);
+        cursor: pointer;
+      }
+      .traj-help-close:hover { color: var(--ms-text); }
+      .traj-help-body {
+        padding: 10px 11px 12px;
+        font-size: var(--ms-fs-xs);
+        line-height: 1.45;
+        color: var(--ms-text-dim);
+        user-select: text;
+      }
+      .traj-help-body p { margin: 0 0 9px; }
+      .traj-help-block { margin-top: 10px; }
+      .traj-help-block h4 {
+        margin: 0 0 5px;
+        font-size: var(--ms-fs-xs);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ms-text);
+      }
+      .traj-help-block ol, .traj-help-block ul { margin: 0; padding-left: 17px; }
+      .traj-help-block li { margin: 3px 0; }
+      .traj-help-block dl {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 5px 8px;
+        margin: 0;
+      }
+      .traj-help-block dt { color: var(--ms-success); font-weight: 700; }
+      .traj-help-block dd { margin: 0; }
       .traj-body { padding: 0 0 6px; }
       .traj-sec {
         font-size: var(--ms-fs-xs);

@@ -63,6 +63,7 @@ import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
 import BufferEngine from './Analysis/BufferEngine';
 import CorridorEngine from './Analysis/CorridorEngine';
+import FlightEngine from './Analysis/FlightEngine';
 import { EffectEngine } from './Analysis/EffectEngine';
 import Plan from './ImportExport/Plan.ts';
 import SerializationEngine from './ImportExport/SerializationEngine';
@@ -122,6 +123,7 @@ class SymbolEngine implements Evented {
   private _trajectoryEngine: TrajectoryEngine | null = null;
   private _bufferEngine: BufferEngine | null = null;
   private _corridorEngine: CorridorEngine | null = null;
+  private _flightEngine: FlightEngine | null = null;
   private _effectEngine: EffectEngine | null = null;
   private _deploymentBuilderEngine: DeploymentBuilderEngine | null = null;
   private _declutterEngine: DeclutterEngine | null = null;
@@ -307,6 +309,8 @@ class SymbolEngine implements Evented {
     this._initCorridorEngine();
     // Initialise EffectEngine (always on â€” activated on demand via context menu)
     this._initEffectEngine();
+    // Initialise FlightEngine (always on â€” activated on demand via context menu)
+    this._initFlightEngine();
 
     // Initialise DeclutterEngine â€” manages annotation and symbol zoom/echelon visibility
     this._initDeclutterEngine();
@@ -536,6 +540,7 @@ class SymbolEngine implements Evented {
     this._trajectoryEngine?.initialize(newView);
     this._bufferEngine?.initialize(newView);
     this._effectEngine?.initialize(newView);
+    this._flightEngine?.initialize(newView);
 
     // Re-initialize the ContextMenuManager for the new view so its
     // pointer-down / contextmenu listeners are bound to the active view.
@@ -761,6 +766,16 @@ class SymbolEngine implements Evented {
     console.info('[SymbolEngine] EffectEngine loaded');
   }
 
+  private _initFlightEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.flight === false) return;
+    this._flightEngine = new FlightEngine();
+    this._flightEngine.initialize(this.view);
+    this._contextMenuManager.linkFlightEngine(this._flightEngine);
+    this.emitEvent('flightEngineReady', { engine: this._flightEngine });
+    console.info('[SymbolEngine] FlightEngine loaded');
+  }
+
   /** Destroy all analysis engines and unlink them from the context menu. */
   private _destroyAnalysisEngines(): void {
     this._weaponEffectEngine?.destroy?.();
@@ -775,6 +790,8 @@ class SymbolEngine implements Evented {
     this._corridorEngine = null;
     this._effectEngine?.destroy?.();
     this._effectEngine = null;
+    this._flightEngine?.destroy?.();
+    this._flightEngine = null;
     this._contextMenuManager.unlinkAnalysisEngines();
     console.info('[SymbolEngine] Analysis engines destroyed');
   }
@@ -906,39 +923,6 @@ class SymbolEngine implements Evented {
       },
     ];
 
-    // Dynamic Templates submenu — rebuilt each time the menu opens
-    this._contextMenuManager.addDynamicItemProvider((graphic) => {
-      if ((settingsData as any).features?.templates === false) return [];
-      const names = this.listTemplates();
-      const applyItems: ContextMenuItem[] = names.map((name, i) => ({
-        id: `apply-template-${i}`,
-        label: name,
-        icon: '<span style="font-size:14px">🏷️</span>',
-        action: (_g: Graphic) => this.applyTemplate(name, graphic),
-      }));
-      return [
-        {
-          id: 'templates-submenu',
-          label: 'Templates',
-          icon: '<span style="font-size:14px">📌</span>',
-          children: [
-            {
-              id: 'save-as-template',
-              label: 'Save as Template...',
-              icon: '<span style="font-size:14px">📌</span>',
-              action: (g) => this._promptSaveTemplate(g),
-            },
-            {
-              id: 'load-template-file',
-              label: 'Load Template From File',
-              icon: '<span style="font-size:14px">📋</span>',
-              action: () => this.loadTemplateFromFile(),
-            },
-            ...applyItems,
-          ],
-        },
-      ];
-    });
 
     // Register menu items for force symbols
     const forceMenuItems: ContextMenuItem[] = [
@@ -1477,6 +1461,7 @@ class SymbolEngine implements Evented {
         if (!this._bufferEngine)       this._initBufferEngine();
         if (!this._corridorEngine)     this._initCorridorEngine();
         if (!this._effectEngine)       this._initEffectEngine();
+        if (!this._flightEngine)       this._initFlightEngine();
       }
     }
 
@@ -1509,6 +1494,10 @@ class SymbolEngine implements Evented {
             this._effectEngine?.destroy?.(); this._effectEngine = null;
             this._contextMenuManager.linkEffectEngine(null);
             break;
+          case 'flight':
+            this._flightEngine?.destroy?.(); this._flightEngine = null;
+            this._contextMenuManager.linkFlightEngine(null);
+            break;
         }
         console.info(`[SymbolEngine] Analysis engine '${key}' disabled`);
       } else {
@@ -1520,6 +1509,7 @@ class SymbolEngine implements Evented {
           case 'buffer':     if (!this._bufferEngine)       this._initBufferEngine();       break;
           case 'corridor':   if (!this._corridorEngine)     this._initCorridorEngine();     break;
           case 'effects':    if (!this._effectEngine)       this._initEffectEngine();       break;
+          case 'flight':     if (!this._flightEngine)       this._initFlightEngine();       break;
         }
         console.info(`[SymbolEngine] Analysis engine '${key}' enabled`);
       }
@@ -3766,63 +3756,6 @@ class SymbolEngine implements Evented {
     this.serializationEngine.loadFromFile();
   }
 
-  /**
-   * Save a symbol's draw configuration (without geometry) as a template file.
-   * Loading the template triggers interactive placement (no GEOM/CTRL_PTS set).
-   * Also stores to localStorage so the dynamic context-menu "Apply" list stays current.
-   */
-  public saveTemplateToFile(graphic: Graphic): void {
-    const de: any = graphic.attributes?.drawEssentials;
-    const amplifier = de?.AMPLIFIER;
-    const name = window.prompt('Template name:');
-    if (!name?.trim()) return;
-
-    const deClean: any = { ...de };
-    delete deClean.AMPLIFIER;
-    delete deClean.SCOPE;
-    delete deClean.CTRL_PTS;
-    delete deClean.BASE_LN_PTS;
-    delete deClean.GEOM;
-
-    const template = {
-      pams8Version: '1.0',
-      type: 'pams8-template',
-      name: name.trim(),
-      sidc: amplifier?.SIDC || de?.SIDC,
-      amplifier: amplifier ? { ...amplifier } : {},
-      drawEssentials: deClean,
-    };
-
-    this._downloadJSON(
-      template,
-      `pams8_template_${name.trim().replace(/\s+/g, '_')}_${Date.now()}.json`,
-    );
-    this.saveAsTemplate(name.trim(), graphic); // keep localStorage in sync
-    console.info(`[Templates] Template "${name.trim()}" saved to file`);
-  }
-
-  /** Open a file picker; loads a template and starts interactive placement. */
-  public loadTemplateFromFile(): void {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,application/json';
-    input.onchange = (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        try {
-          const data = JSON.parse(evt.target?.result as string);
-          this._applyTemplateData(data);
-        } catch (err) {
-          console.error('[Templates] Failed to load template file:', err);
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-  }
-
   /** Reconstruct DrawEssentials from template data and start interactive placement. */
   private _applyTemplateData(data: any): void {
     const de = new DrawEssentials();
@@ -3834,13 +3767,6 @@ class SymbolEngine implements Evented {
     const amplifier = new Amplifier();
     if (data.amplifier) Object.assign(amplifier, data.amplifier);
     if (data.sidc && !amplifier.SIDC) amplifier.SIDC = data.sidc;
-
-    // Cache in localStorage so the dynamic context-menu "Apply" list shows it
-    if (data.name) {
-      const store = this._loadTemplatesStore();
-      store[data.name] = data;
-      localStorage.setItem(this._TEMPLATES_KEY, JSON.stringify(store));
-    }
 
     this.initialize(de, amplifier); // interactive â€” no geometry pre-set
     console.info(`[Templates] Loaded template "${data.name || '(unnamed)'}"`);
@@ -3870,97 +3796,6 @@ class SymbolEngine implements Evented {
     this.serializationEngine.loadFromGeoJSONFile();
   }
 
-  private _downloadJSON(data: any, filename: string): void {
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  // -----------------------------------------------------------------------
-  // Feature 7 â€” Symbol Templates
-  // -----------------------------------------------------------------------
-
-  private readonly _TEMPLATES_KEY = 'pams8_templates';
-
-  /** Save the amplifier + size of the given graphic as a named template. */
-  public saveAsTemplate(name: string, graphic: Graphic): void {
-    const de: any = graphic.attributes?.drawEssentials;
-    const templates = this._loadTemplatesStore();
-    templates[name] = {
-      name,
-      size: de?.SIZE,
-      amplifier: de?.AMPLIFIER ? { ...de.AMPLIFIER } : {},
-    };
-    localStorage.setItem(this._TEMPLATES_KEY, JSON.stringify(templates));
-    console.info(`[Templates] Saved template: "${name}"`);
-  }
-
-  /** Apply a saved template's amplifier + size to an existing graphic and re-annotate. */
-  public applyTemplate(name: string, graphic: Graphic): void {
-    const t = this._loadTemplatesStore()[name];
-    if (!t) {
-      console.warn(`[Templates] Not found: "${name}"`);
-      return;
-    }
-
-    const de: any = graphic.attributes?.drawEssentials;
-    if (!de) return;
-
-    if (t.size !== undefined) de.SIZE = t.size;
-
-    const amplifier = new Amplifier();
-    Object.assign(amplifier, t.amplifier);
-    de.AMPLIFIER = amplifier;
-
-    const id = graphic.attributes?.id;
-    const annotationLayer = this._layerManager.getOrCreateLayer(
-      LAYER_NAMES.ANNOTATION_LAYER,
-    );
-    if (id) {
-      AnnotationEngine.deAnnotate(annotationLayer, id);
-      if (amplifier.SIDC) {
-        AnnotationEngine.annotate(
-          annotationLayer,
-          graphic.geometry,
-          amplifier,
-          de,
-          id,
-          settingsData.textSize,
-          de.ISFHAND || 0,
-          this.labelOptions || {},
-          {},
-        );
-      }
-    }
-    console.info(`[Templates] Applied template: "${name}"`);
-  }
-
-  public listTemplates(): string[] {
-    return Object.keys(this._loadTemplatesStore());
-  }
-
-  public deleteTemplate(name: string): void {
-    const templates = this._loadTemplatesStore();
-    delete templates[name];
-    localStorage.setItem(this._TEMPLATES_KEY, JSON.stringify(templates));
-  }
-
-  private _loadTemplatesStore(): Record<string, any> {
-    try {
-      return JSON.parse(localStorage.getItem(this._TEMPLATES_KEY) || '{}');
-    } catch {
-      return {};
-    }
-  }
-
-  private _promptSaveTemplate(graphic: Graphic): void {
-    this.saveTemplateToFile(graphic); // saves to file + localStorage
-  }
 }
 
 export default SymbolEngine;

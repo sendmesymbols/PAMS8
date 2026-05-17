@@ -563,8 +563,48 @@ export class EffectEngine {
       <div class="effects-ph" id="effects-drag-handle">
         <div class="effects-ph-title">✕ Effects Radius</div>
         <div class="effects-ph-status" id="effects-status">Awaiting strike point</div>
+        <button class="effects-help-btn" id="effects-help-btn" title="How effects radius works">?</button>
         <button class="effects-minimize-btn" id="effects-minimize-btn" title="Minimize">▼</button>
         <button class="effects-close-btn" id="effects-close-btn" title="Close">✕</button>
+      </div>
+      <div class="effects-help-popover" id="effects-help-popover" hidden>
+        <div class="effects-help-head">
+          <div>
+            <div class="effects-help-kicker">Field Guide</div>
+            <div class="effects-help-title">Effects Radius</div>
+          </div>
+          <button class="effects-help-close" id="effects-help-close" title="Close">✕</button>
+        </div>
+        <div class="effects-help-body">
+          <p>Estimates blast, fragmentation, thermal, and quantity-distance effects from a munition or explosive source, then draws hazard rings around one or more strike points.</p>
+          <div class="effects-help-block">
+            <h4>How It Works</h4>
+            <ol>
+              <li>Place a strike or detonation point on the map.</li>
+              <li>Pick a munition preset or override its TNT equivalent and burst height.</li>
+              <li>Apply a structural environment factor to reduce or preserve blast and fragmentation reach.</li>
+              <li>Draw the computed rings, animate the blast wave if desired, and optionally union several strikes into one footprint.</li>
+            </ol>
+          </div>
+          <div class="effects-help-block">
+            <h4>Phenomenon</h4>
+            <p>The engine combines several hazard models: overpressure for blast injury and safe standoff, fragment decay for casualty distance, thermal scaling for burn effects, and quantity-distance rules for inhabited-building separation. Those results are then converted into map rings.</p>
+          </div>
+          <div class="effects-help-block">
+            <h4>Parameters</h4>
+            <dl>
+              <dt>Type</dt><dd>Loads a munition profile with default TNT equivalent, fragment velocity, casing ratio, and burst height.</dd>
+              <dt>TNT eq</dt><dd>Overrides explosive yield in kilograms TNT equivalent, which drives most radius calculations.</dd>
+              <dt>Det. height</dt><dd>Shifts the burst above ground; this changes the effective ground radius of several effects.</dd>
+              <dt>Structure</dt><dd>Applies attenuation factors for open terrain, urban materials, or protected structures.</dd>
+              <dt>Donut</dt><dd>Draws ring intervals as bands instead of filled disks stacked on top of each other.</dd>
+              <dt>Labels</dt><dd>Shows named hazard categories and computed distances on the map.</dd>
+              <dt>Animation</dt><dd>Plays an expanding blast sphere for visual timing and scale reference.</dd>
+              <dt>Speed</dt><dd>Controls playback rate of the blast-wave animation.</dd>
+              <dt>Union</dt><dd>Merges lethal footprints from multiple strikes into one combined hazard area.</dd>
+            </dl>
+          </div>
+        </div>
       </div>
       <div class="effects-body">
 
@@ -661,6 +701,16 @@ export class EffectEngine {
 
   private _bindPanelEvents(): void {
     if (!this._panelEl) return;
+
+    this._panelEl.querySelector('#effects-help-btn')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const help = this._panelEl!.querySelector<HTMLElement>('#effects-help-popover');
+      if (help) help.hidden = !help.hidden;
+    });
+    this._panelEl.querySelector('#effects-help-close')?.addEventListener('click', () => {
+      const help = this._panelEl!.querySelector<HTMLElement>('#effects-help-popover');
+      if (help) help.hidden = true;
+    });
 
     this._panelEl.querySelector('#effects-minimize-btn')?.addEventListener('click', () => {
       const body = this._panelEl!.querySelector<HTMLElement>('.effects-body');
@@ -878,8 +928,95 @@ export class EffectEngine {
       .effects-ready { color: var(--ms-success); }
       .effects-busy { color: var(--ms-warning); }
       .effects-animating { color: var(--ms-danger); }
-      .effects-minimize-btn, .effects-close-btn { background: transparent; border: none; color: var(--ms-text-dim); font-size: 12px; cursor: pointer; padding: 0 2px; line-height: 1; }
-      .effects-minimize-btn:hover, .effects-close-btn:hover { color: var(--ms-text); }
+      .effects-help-btn, .effects-minimize-btn, .effects-close-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--ms-text-dim);
+        font-size: 12px;
+        cursor: pointer;
+        padding: 0 2px;
+        line-height: 1;
+      }
+      .effects-help-btn {
+        width: 17px;
+        height: 17px;
+        border-color: var(--ms-border);
+        border-radius: 50%;
+        color: var(--ms-success);
+        font-weight: 700;
+      }
+      .effects-help-btn:hover, .effects-minimize-btn:hover, .effects-close-btn:hover { color: var(--ms-text); }
+      .effects-help-popover {
+        position: absolute;
+        top: 39px;
+        left: 8px;
+        right: 8px;
+        z-index: 1120;
+        max-height: min(520px, calc(100vh - 132px));
+        overflow-y: auto;
+        background: var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: 4px;
+        box-shadow: var(--ms-shadow);
+        color: var(--ms-text);
+      }
+      .effects-help-popover[hidden] { display: none; }
+      .effects-help-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 11px 8px;
+        border-bottom: 1px solid var(--ms-divider);
+        background: var(--ms-bg-header);
+      }
+      .effects-help-kicker {
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-text-label);
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+      .effects-help-title {
+        margin-top: 2px;
+        font-size: 13px;
+        color: var(--ms-success);
+        font-weight: 700;
+      }
+      .effects-help-close {
+        width: 20px;
+        height: 20px;
+        border: 1px solid var(--ms-border);
+        border-radius: 3px;
+        background: var(--ms-bg-input);
+        color: var(--ms-text-dim);
+        cursor: pointer;
+      }
+      .effects-help-close:hover { color: var(--ms-text); }
+      .effects-help-body {
+        padding: 10px 11px 12px;
+        font-size: var(--ms-fs-xs);
+        line-height: 1.45;
+        color: var(--ms-text-dim);
+        user-select: text;
+      }
+      .effects-help-body p { margin: 0 0 9px; }
+      .effects-help-block { margin-top: 10px; }
+      .effects-help-block h4 {
+        margin: 0 0 5px;
+        font-size: var(--ms-fs-xs);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ms-text);
+      }
+      .effects-help-block ol, .effects-help-block ul { margin: 0; padding-left: 17px; }
+      .effects-help-block li { margin: 3px 0; }
+      .effects-help-block dl {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 5px 8px;
+        margin: 0;
+      }
+      .effects-help-block dt { color: var(--ms-success); font-weight: 700; }
+      .effects-help-block dd { margin: 0; }
       .effects-body { padding-bottom: 4px; }
       .effects-ps { font-size: var(--ms-fs-xs); letter-spacing: .1em; text-transform: uppercase; color: var(--ms-text-label); padding: 9px 12px 5px; }
       .effects-pg { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 10px; padding: 0 12px 9px; }

@@ -530,6 +530,7 @@
     "trajectory": true,
     "buffer": true,
     "corridor": true,
+    "flight": true,
     "effects": true
   },
   "creationMode": "single",

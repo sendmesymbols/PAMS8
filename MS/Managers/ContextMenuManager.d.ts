@@ -9,6 +9,7 @@ import LOSEngine from '../Engines/Analysis/LOSEngine';
 import TrajectoryEngine from '../Engines/Analysis/TrajectoryEngine';
 import BufferEngine from '../Engines/Analysis/BufferEngine';
 import CorridorEngine from '../Engines/Analysis/CorridorEngine';
+import FlightEngine from '../Engines/Analysis/FlightEngine';
 import { EffectEngine } from '../Engines/Analysis/EffectEngine';
 export interface ContextMenuItem {
     id: string;
@@ -63,6 +64,7 @@ declare class ContextMenuManager extends Evented {
     private _trajectoryEngine;
     private _bufferEngine;
     private _corridorEngine;
+    private _flightEngine;
     private _effectEngine;
     private _deploymentBuilderEngine;
     private _enabled;
@@ -138,7 +140,7 @@ declare class ContextMenuManager extends Evented {
      */
     linkTrajectoryEngine(engine: TrajectoryEngine | null): void;
     /**
-     * Link a BufferEngine so the "Analysis → Buffer abd Threat Rings" item
+     * Link a BufferEngine so the "Analysis → Buffer and Threat Rings" item
      * opens the buffer panel with the right-clicked graphic as source origin.
      */
     linkBufferEngine(engine: BufferEngine | null): void;
@@ -147,6 +149,11 @@ declare class ContextMenuManager extends Evented {
      * opens the corridor panel with the right-clicked graphic as route origin.
      */
     linkCorridorEngine(engine: CorridorEngine | null): void;
+    /**
+     * Link a FlightEngine so the "Analysis -> UAV Flight Analysis" item
+     * opens the UAV mission panel with the right-clicked graphic as origin.
+     */
+    linkFlightEngine(engine: FlightEngine | null): void;
     /**
      * Link an EffectEngine so the "Analysis -> Effects Radius" item
      * opens the effects panel.
@@ -164,7 +171,7 @@ declare class ContextMenuManager extends Evented {
     /**
      * Register a function that returns extra context menu items dynamically.
      * Called each time the menu opens, so items can depend on runtime state
-     * (e.g. the current list of saved templates).
+     * (e.g. menu items that depend on current application state).
      */
     addDynamicItemProvider(provider: (graphic: Graphic) => ContextMenuItem[]): void;
     /**

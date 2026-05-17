@@ -14,6 +14,7 @@ import LOSEngine from '../Engines/Analysis/LOSEngine';
 import TrajectoryEngine from '../Engines/Analysis/TrajectoryEngine';
 import BufferEngine from '../Engines/Analysis/BufferEngine';
 import CorridorEngine from '../Engines/Analysis/CorridorEngine';
+import FlightEngine from '../Engines/Analysis/FlightEngine';
 import { EffectEngine } from '../Engines/Analysis/EffectEngine';
 
 export interface ContextMenuItem {
@@ -77,6 +78,7 @@ class ContextMenuManager extends Evented {
   private _trajectoryEngine: TrajectoryEngine | null = null;
   private _bufferEngine: BufferEngine | null = null;
   private _corridorEngine: CorridorEngine | null = null;
+  private _flightEngine: FlightEngine | null = null;
   private _effectEngine: EffectEngine | null = null;
   private _deploymentBuilderEngine: { openWidget(): void } | null = null;
 
@@ -288,6 +290,14 @@ class ContextMenuManager extends Evented {
   }
 
   /**
+   * Link a FlightEngine so the "Analysis -> UAV Flight Analysis" item
+   * opens the UAV mission panel with the right-clicked graphic as origin.
+   */
+  public linkFlightEngine(engine: FlightEngine | null): void {
+    this._flightEngine = engine;
+  }
+
+  /**
    * Link an EffectEngine so the "Analysis -> Effects Radius" item
    * opens the effects panel.
    */
@@ -310,6 +320,7 @@ class ContextMenuManager extends Evented {
     this._trajectoryEngine = null;
     this._bufferEngine = null;
     this._corridorEngine = null;
+    this._flightEngine = null;
     this._effectEngine = null;
   }
 
@@ -317,7 +328,7 @@ class ContextMenuManager extends Evented {
   /**
    * Register a function that returns extra context menu items dynamically.
    * Called each time the menu opens, so items can depend on runtime state
-   * (e.g. the current list of saved templates).
+   * (e.g. menu items that depend on current application state).
    */
   public addDynamicItemProvider(
     provider: (graphic: Graphic) => ContextMenuItem[],
@@ -362,7 +373,8 @@ class ContextMenuManager extends Evented {
 
     // ── Analysis section (hidden when all analysis engines are disabled) ──
     if (this._losEngine || this._weaponEffectEngine || this._trajectoryEngine ||
-        this._bufferEngine || this._corridorEngine || this._effectEngine) {
+        this._bufferEngine || this._corridorEngine || this._flightEngine ||
+        this._effectEngine) {
       const sep = document.createElement('div');
       sep.className = this.options.menuSeparatorClass || '';
       this.menuElement.appendChild(sep);
@@ -398,6 +410,12 @@ class ContextMenuManager extends Evented {
           label: 'Corridor Analysis',
           icon: `<span style="font-size:14px">🛣️</span>`,
           action: (g: Graphic) => { if (this._corridorEngine && this.view) this._corridorEngine.open(g, this.view); },
+        }] : []),
+        ...(this._flightEngine ? [{
+          id: 'analysis-flight',
+          label: 'UAV Flight Analysis',
+          icon: `<span style="font-size:11px;font-weight:800">UAV</span>`,
+          action: (g: Graphic) => { if (this._flightEngine && this.view) this._flightEngine.open(g, this.view); },
         }] : []),
         ...(this._effectEngine ? [{
           id: 'analysis-effects',

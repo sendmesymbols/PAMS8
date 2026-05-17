@@ -2158,7 +2158,7 @@
         <div class="feature-panel" id="feature-panel-analysis">
           <div class="feature-header">
             <div class="feature-header-left">
-              <input type="checkbox" id="setting-analysisEngines" checked title="Enable Analysis Engines (LOS, WEZ, Trajectory, Buffer, Corridor, Effects). When disabled, no analysis engines are loaded and the Analysis context menu is hidden." />
+              <input type="checkbox" id="setting-analysisEngines" checked title="Enable Analysis Engines (LOS, WEZ, Trajectory, Buffer, Corridor, Flight, Effects). When disabled, no analysis engines are loaded and the Analysis context menu is hidden." />
               <label>Analysis Engines</label>
             </div>
             <span class="toggle-icon">▼</span>
@@ -2184,6 +2184,10 @@
             <div class="setting-row">
               <label>Corridor Analysis</label>
               <input type="checkbox" id="setting-analysis-corridor" checked title="Enable Corridor Analysis engine. When disabled, the Corridor item is removed from the Analysis context menu." />
+            </div>
+            <div class="setting-row">
+              <label>UAV Flight Analysis</label>
+              <input type="checkbox" id="setting-analysis-flight" checked title="Enable UAV Flight Analysis engine. When disabled, the Flight item is removed from the Analysis context menu." />
             </div>
             <div class="setting-row">
               <label>Effect Analysis</label>
@@ -2818,6 +2822,7 @@
         'setting-analysis-trajectory': (v) => ({ path: ['analysis', 'trajectory'], value: v }),
         'setting-analysis-buffer':     (v) => ({ path: ['analysis', 'buffer'],     value: v }),
         'setting-analysis-corridor':   (v) => ({ path: ['analysis', 'corridor'],   value: v }),
+        'setting-analysis-flight':     (v) => ({ path: ['analysis', 'flight'],     value: v }),
         'setting-analysis-effects':    (v) => ({ path: ['analysis', 'effects'],    value: v }),
         'setting-declutter':              (v) => ({ path: ['declutter', 'enabled'],                        value: v }),
         'setting-declutterMode':          (v) => ({ path: ['declutter', 'annotations', 'mode'],            value: v }),
@@ -3066,6 +3071,7 @@
           document.getElementById('setting-analysis-trajectory').checked = analysis.trajectory !== false;
           document.getElementById('setting-analysis-buffer').checked     = analysis.buffer     !== false;
           document.getElementById('setting-analysis-corridor').checked   = analysis.corridor   !== false;
+          document.getElementById('setting-analysis-flight').checked     = analysis.flight     !== false;
           document.getElementById('setting-analysis-effects').checked    = analysis.effects    !== false;
 
           if (settings.creationMode) {

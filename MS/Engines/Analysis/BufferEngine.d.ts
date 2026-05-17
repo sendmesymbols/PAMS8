@@ -3,7 +3,7 @@
  * Buffer & Threat Rings analysis engine.
  *
  * Integrated with ContextMenuManager via linkBufferEngine().
- * Right-clicking any military symbol -> Analysis -> Buffer abd Threat Rings
+ * Right-clicking any military symbol -> Analysis -> Buffer and Threat Rings
  * opens this panel with the symbol location as source origin.
  */
 import MapView from '@arcgis/core/views/MapView';

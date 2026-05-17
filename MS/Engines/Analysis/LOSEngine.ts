@@ -1359,8 +1359,49 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
         <span class="los-header-title">LOS Analysis${isEdit ? ' — Re-edit' : ''}</span>
         <span class="los-status-dot" id="los-status-dot"></span>
         <span class="los-status-lbl" id="los-status-lbl">${isEdit ? 'Restored' : 'Awaiting'}</span>
+        <button class="los-help-btn" id="los-help-btn" title="How LOS analysis works">?</button>
         <button class="los-minimize-btn" id="los-minimize-btn" title="Minimize">▼</button>
         <button class="los-close-btn" id="los-close-btn" title="Close (keeps graphics)">✕</button>
+      </div>
+
+      <div class="los-help-popover" id="los-help-popover" hidden>
+        <div class="los-help-head">
+          <div>
+            <div class="los-help-kicker">Field Guide</div>
+            <div class="los-help-title">Line Of Sight / Viewshed</div>
+          </div>
+          <button class="los-help-close" id="los-help-close" title="Close">✕</button>
+        </div>
+        <div class="los-help-body">
+          <p>Evaluates what an observer can see across terrain. In 2D it samples elevation along rays, and in 3D it can also hand the problem to ArcGIS native LOS or viewshed analysis.</p>
+          <div class="los-help-block">
+            <h4>How It Works</h4>
+            <ol>
+              <li>Set an observer point and eye height above ground.</li>
+              <li>Add target points if you want direct line checks to named locations.</li>
+              <li>Define the azimuth and elevation window for the search volume.</li>
+              <li>Run the analysis to draw visible or masked LOS paths, obstruction markers, and optionally a viewshed footprint.</li>
+            </ol>
+          </div>
+          <div class="los-help-block">
+            <h4>Phenomenon</h4>
+            <p>LOS asks whether the straight path from observer to target stays above terrain and scene obstructions. Viewshed expands that same idea into a sector or full dome by testing many rays inside the chosen horizontal and vertical envelope.</p>
+          </div>
+          <div class="los-help-block">
+            <h4>Parameters</h4>
+            <dl>
+              <dt>Output</dt><dd>Choose LOS lines, viewshed coverage, or both together.</dd>
+              <dt>Engine</dt><dd>"Auto" prefers native 3D tools in SceneView and falls back to terrain ray tracing when needed.</dd>
+              <dt>Obs height</dt><dd>Raises the observer eye above the ground point before casting rays.</dd>
+              <dt>Targets</dt><dd>Each target creates a separate visible or masked LOS test from the observer.</dd>
+              <dt>Max range</dt><dd>Stops ray tests and viewshed generation at this distance from the observer.</dd>
+              <dt>Az start/end</dt><dd>Defines the horizontal bearing sector to search; 0-360 gives all-around coverage.</dd>
+              <dt>Elev min/max</dt><dd>Defines the vertical look envelope, useful for low-angle scans or elevated surveillance.</dd>
+              <dt>Color by</dt><dd>Styles the result by distance, elevation angle, or simple visible vs blocked output.</dd>
+              <dt>3D handles</dt><dd>Lets ArcGIS native analyses stay interactive in SceneView so you can drag them in place.</dd>
+            </dl>
+          </div>
+        </div>
       </div>
 
       <div class="los-body">
@@ -1471,6 +1512,16 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
   private _bindPanelEvents(): void {
     if (!this._panelEl) return;
     const p = this._panelEl;
+
+    p.querySelector('#los-help-btn')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const help = p.querySelector<HTMLElement>('#los-help-popover');
+      if (help) help.hidden = !help.hidden;
+    });
+    p.querySelector('#los-help-close')?.addEventListener('click', () => {
+      const help = p.querySelector<HTMLElement>('#los-help-popover');
+      if (help) help.hidden = true;
+    });
 
     p.querySelector('#los-close-btn')?.addEventListener('click', () => {
       this._hidePanel();
@@ -1641,11 +1692,97 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
         font-size:var(--ms-fs-xs); letter-spacing:0.08em; text-transform:uppercase;
         color:var(--ms-text-dim); min-width:52px;
       }
-      .los-minimize-btn, .los-close-btn {
-        background:none; border:none; color:var(--ms-text-dim); font-size:var(--ms-fs-sm);
-        cursor:pointer; padding:0 2px; line-height:1; transition:color 0.15s; flex-shrink:0;
+      .los-help-btn, .los-minimize-btn, .los-close-btn {
+        background:none;
+        border:1px solid transparent;
+        color:var(--ms-text-dim);
+        font-size:12px;
+        cursor:pointer;
+        padding:0 2px;
+        line-height:1;
+        transition:color 0.15s;
+        flex:0 0 auto;
       }
-      .los-minimize-btn:hover, .los-close-btn:hover { color:var(--ms-text); }
+      .los-help-btn {
+        width:17px;
+        height:17px;
+        border-color:var(--ms-border);
+        border-radius:50%;
+        color:var(--ms-success);
+        font-weight:700;
+      }
+      .los-help-btn:hover, .los-minimize-btn:hover, .los-close-btn:hover { color:var(--ms-text); }
+      .los-help-popover {
+        position:absolute;
+        top:39px;
+        left:8px;
+        right:8px;
+        z-index:1120;
+        max-height:min(520px, calc(100vh - 132px));
+        overflow-y:auto;
+        background:var(--ms-bg);
+        border:1px solid var(--ms-border);
+        border-radius:4px;
+        box-shadow:var(--ms-shadow);
+        color:var(--ms-text);
+      }
+      .los-help-popover[hidden] { display:none; }
+      .los-help-head {
+        display:flex;
+        justify-content:space-between;
+        gap:10px;
+        padding:10px 11px 8px;
+        border-bottom:1px solid var(--ms-divider);
+        background:var(--ms-bg-header);
+      }
+      .los-help-kicker {
+        font-size:var(--ms-fs-xs);
+        color:var(--ms-text-label);
+        letter-spacing:0.09em;
+        text-transform:uppercase;
+      }
+      .los-help-title {
+        margin-top:2px;
+        font-size:13px;
+        color:var(--ms-success);
+        font-weight:700;
+      }
+      .los-help-close {
+        width:20px;
+        height:20px;
+        border:1px solid var(--ms-border);
+        border-radius:3px;
+        background:var(--ms-bg-input);
+        color:var(--ms-text-dim);
+        cursor:pointer;
+      }
+      .los-help-close:hover { color:var(--ms-text); }
+      .los-help-body {
+        padding:10px 11px 12px;
+        font-size:var(--ms-fs-xs);
+        line-height:1.45;
+        color:var(--ms-text-dim);
+        user-select:text;
+      }
+      .los-help-body p { margin:0 0 9px; }
+      .los-help-block { margin-top:10px; }
+      .los-help-block h4 {
+        margin:0 0 5px;
+        font-size:var(--ms-fs-xs);
+        letter-spacing:0.08em;
+        text-transform:uppercase;
+        color:var(--ms-text);
+      }
+      .los-help-block ol, .los-help-block ul { margin:0; padding-left:17px; }
+      .los-help-block li { margin:3px 0; }
+      .los-help-block dl {
+        display:grid;
+        grid-template-columns:72px minmax(0, 1fr);
+        gap:5px 8px;
+        margin:0;
+      }
+      .los-help-block dt { color:var(--ms-success); font-weight:700; }
+      .los-help-block dd { margin:0; }
       .los-body { padding:0 0 6px; }
       .los-sec {
         font-size:var(--ms-fs-xs); letter-spacing:0.1em; text-transform:uppercase;

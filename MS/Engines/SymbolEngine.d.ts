@@ -65,6 +65,7 @@ declare class SymbolEngine implements Evented {
     private _trajectoryEngine;
     private _bufferEngine;
     private _corridorEngine;
+    private _flightEngine;
     private _effectEngine;
     private _deploymentBuilderEngine;
     private _declutterEngine;
@@ -123,6 +124,7 @@ declare class SymbolEngine implements Evented {
     private _initBufferEngine;
     private _initCorridorEngine;
     private _initEffectEngine;
+    private _initFlightEngine;
     /** Destroy all analysis engines and unlink them from the context menu. */
     private _destroyAnalysisEngines;
     get view(): MapView | SceneView;
@@ -389,14 +391,6 @@ declare class SymbolEngine implements Evented {
     loadPlanFromFile(): void;
     /** Open a file picker; loads from PAMS8 JSON, template, or GeoJSON file. */
     loadFromFile(): void;
-    /**
-     * Save a symbol's draw configuration (without geometry) as a template file.
-     * Loading the template triggers interactive placement (no GEOM/CTRL_PTS set).
-     * Also stores to localStorage so the dynamic context-menu "Apply" list stays current.
-     */
-    saveTemplateToFile(graphic: Graphic): void;
-    /** Open a file picker; loads a template and starts interactive placement. */
-    loadTemplateFromFile(): void;
     /** Reconstruct DrawEssentials from template data and start interactive placement. */
     private _applyTemplateData;
     /** Export all symbol layers as a standard GeoJSON FeatureCollection (WGS84 coordinates). */
@@ -407,15 +401,5 @@ declare class SymbolEngine implements Evented {
     saveToGeoJSONFile(filename?: string): void;
     /** Open a file picker and load symbols from a GeoJSON or PAMS8 JSON file. */
     loadFromGeoJSONFile(): void;
-    private _downloadJSON;
-    private readonly _TEMPLATES_KEY;
-    /** Save the amplifier + size of the given graphic as a named template. */
-    saveAsTemplate(name: string, graphic: Graphic): void;
-    /** Apply a saved template's amplifier + size to an existing graphic and re-annotate. */
-    applyTemplate(name: string, graphic: Graphic): void;
-    listTemplates(): string[];
-    deleteTemplate(name: string): void;
-    private _loadTemplatesStore;
-    private _promptSaveTemplate;
 }
 export default SymbolEngine;

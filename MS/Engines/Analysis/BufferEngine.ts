@@ -678,8 +678,48 @@ export class BufferEngine {
         <span class="buffer-header-title">Buffer & Threat Rings</span>
         <span class="buffer-status-dot" id="buffer-status-dot"></span>
         <span class="buffer-status-lbl" id="buffer-status-lbl">Awaiting source</span>
+        <button class="buffer-help-btn" id="buffer-help-btn" title="How buffer analysis works">?</button>
         <button class="buffer-minimize-btn" id="buffer-minimize-btn" title="Minimize">▼</button>
         <button class="buffer-close-btn" id="buffer-close-btn" title="Close (keeps graphics)">✕</button>
+      </div>
+
+      <div class="buffer-help-popover" id="buffer-help-popover" hidden>
+        <div class="buffer-help-head">
+          <div>
+            <div class="buffer-help-kicker">Field Guide</div>
+            <div class="buffer-help-title">Buffer / Threat Rings</div>
+          </div>
+          <button class="buffer-help-close" id="buffer-help-close" title="Close">✕</button>
+        </div>
+        <div class="buffer-help-body">
+          <p>Builds geodesic distance rings, merged threat envelopes, or a simple movement corridor from selected source points. It is best for fast range visualization rather than physics-heavy analysis.</p>
+          <div class="buffer-help-block">
+            <h4>How It Works</h4>
+            <ol>
+              <li>Pick one source for a classic ring set, or add several for a shared footprint.</li>
+              <li>Select a preset to load ring labels, distances, and semantic colors.</li>
+              <li>Switch to corridor mode when you want a buffered path between multiple points instead of circular rings.</li>
+              <li>Turn on labels, donut bands, extrusion, or contested overlap depending on the map product you need.</li>
+            </ol>
+          </div>
+          <div class="buffer-help-block">
+            <h4>Phenomenon</h4>
+            <p>Each ring is a geodesic buffer measured outward from a source point. Union mode merges matching radii from multiple sources, while corridor mode buffers a connecting route line to show movement space and standoff around that line.</p>
+          </div>
+          <div class="buffer-help-block">
+            <h4>Parameters</h4>
+            <dl>
+              <dt>Mode</dt><dd>"Single" draws one set of rings, "Union" merges same-distance rings from multiple sources, and "Corridor" buffers the line through the selected points.</dd>
+              <dt>Preset</dt><dd>Defines ring count, radius values, labels, and meaning such as lethal, warning, safe, or observation.</dd>
+              <dt>Width</dt><dd>In corridor mode, this is the main movement corridor width around the route centerline.</dd>
+              <dt>Standoff</dt><dd>Adds a wider outer caution zone around the corridor.</dd>
+              <dt>Donut</dt><dd>Subtracts inner rings so each band reads as a separate interval instead of stacked filled disks.</dd>
+              <dt>Labels</dt><dd>Places range callouts at reference points around the buffer set.</dd>
+              <dt>Extrude</dt><dd>Adds vertical volume in 3D to improve readability without changing footprint size.</dd>
+              <dt>Contested</dt><dd>Highlights overlap where two source footprints compete or cover the same ground.</dd>
+            </dl>
+          </div>
+        </div>
       </div>
 
       <div class="buffer-body">
@@ -764,6 +804,16 @@ export class BufferEngine {
   private _bindPanelEvents(): void {
     if (!this._panelEl) return;
     const p = this._panelEl;
+
+    p.querySelector('#buffer-help-btn')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const help = p.querySelector<HTMLElement>('#buffer-help-popover');
+      if (help) help.hidden = !help.hidden;
+    });
+    p.querySelector('#buffer-help-close')?.addEventListener('click', () => {
+      const help = p.querySelector<HTMLElement>('#buffer-help-popover');
+      if (help) help.hidden = true;
+    });
 
     p.querySelector('#buffer-minimize-btn')?.addEventListener('click', () => {
       const body = p.querySelector<HTMLElement>('.buffer-body');
@@ -949,11 +999,96 @@ export class BufferEngine {
         font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase;
         color: var(--ms-text-dim); min-width: 58px;
       }
-      .buffer-minimize-btn, .buffer-close-btn {
-        background: none; border: none; color: var(--ms-text-dim); font-size: var(--ms-fs-sm);
-        cursor: pointer; padding: 0 2px; line-height: 1; transition: color 0.15s; flex-shrink: 0;
+      .buffer-help-btn, .buffer-minimize-btn, .buffer-close-btn {
+        background: none;
+        border: 1px solid transparent;
+        color: var(--ms-text-dim);
+        font-size: 12px;
+        cursor: pointer;
+        padding: 0 2px;
+        line-height: 1;
+        flex: 0 0 auto;
       }
-      .buffer-minimize-btn:hover, .buffer-close-btn:hover { color: var(--ms-text); }
+      .buffer-help-btn {
+        width: 17px;
+        height: 17px;
+        border-color: var(--ms-border);
+        border-radius: 50%;
+        color: var(--ms-success);
+        font-weight: 700;
+      }
+      .buffer-help-btn:hover, .buffer-minimize-btn:hover, .buffer-close-btn:hover { color: var(--ms-text); }
+      .buffer-help-popover {
+        position: absolute;
+        top: 39px;
+        left: 8px;
+        right: 8px;
+        z-index: 1120;
+        max-height: min(520px, calc(100vh - 132px));
+        overflow-y: auto;
+        background: var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: 4px;
+        box-shadow: var(--ms-shadow);
+        color: var(--ms-text);
+      }
+      .buffer-help-popover[hidden] { display: none; }
+      .buffer-help-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 11px 8px;
+        border-bottom: 1px solid var(--ms-divider);
+        background: var(--ms-bg-header);
+      }
+      .buffer-help-kicker {
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-text-label);
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+      .buffer-help-title {
+        margin-top: 2px;
+        font-size: 13px;
+        color: var(--ms-success);
+        font-weight: 700;
+      }
+      .buffer-help-close {
+        width: 20px;
+        height: 20px;
+        border: 1px solid var(--ms-border);
+        border-radius: 3px;
+        background: var(--ms-bg-input);
+        color: var(--ms-text-dim);
+        cursor: pointer;
+      }
+      .buffer-help-close:hover { color: var(--ms-text); }
+      .buffer-help-body {
+        padding: 10px 11px 12px;
+        font-size: var(--ms-fs-xs);
+        line-height: 1.45;
+        color: var(--ms-text-dim);
+        user-select: text;
+      }
+      .buffer-help-body p { margin: 0 0 9px; }
+      .buffer-help-block { margin-top: 10px; }
+      .buffer-help-block h4 {
+        margin: 0 0 5px;
+        font-size: var(--ms-fs-xs);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ms-text);
+      }
+      .buffer-help-block ol, .buffer-help-block ul { margin: 0; padding-left: 17px; }
+      .buffer-help-block li { margin: 3px 0; }
+      .buffer-help-block dl {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 5px 8px;
+        margin: 0;
+      }
+      .buffer-help-block dt { color: var(--ms-success); font-weight: 700; }
+      .buffer-help-block dd { margin: 0; }
       .buffer-body { padding: 0 0 6px; }
       .buffer-sec {
         font-size: var(--ms-fs-xs); letter-spacing: 0.1em; text-transform: uppercase;

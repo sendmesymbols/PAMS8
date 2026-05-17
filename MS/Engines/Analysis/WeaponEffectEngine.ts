@@ -764,8 +764,52 @@ export class WeaponEffectEngine {
         <span class="wez-header-title">WEZ Analysis${isEdit ? ' — Re-edit' : ''}</span>
         <span class="wez-status-dot" id="wez-status-dot"></span>
         <span class="wez-status-lbl" id="wez-status-lbl">${isEdit ? 'Restored' : 'Awaiting'}</span>
+        <button class="wez-help-btn" id="wez-help-btn" title="How WEZ analysis works">?</button>
         <button class="wez-minimize-btn" id="wez-minimize-btn" title="Minimize">▼</button>
         <button class="wez-close-btn" id="wez-close-btn" title="Close (keeps graphics)">✕</button>
+      </div>
+
+      <div class="wez-help-popover" id="wez-help-popover" hidden>
+        <div class="wez-help-head">
+          <div>
+            <div class="wez-help-kicker">Field Guide</div>
+            <div class="wez-help-title">Weapon Engagement Zone (WEZ)</div>
+          </div>
+          <button class="wez-help-close" id="wez-help-close" title="Close">✕</button>
+        </div>
+        <div class="wez-help-body">
+          <p>Builds a weapon engagement zone from a firing platform or weapon position. The result is a directional sector clipped by minimum range, maximum range, traverse, and elevation envelope.</p>
+          <div class="wez-help-block">
+            <h4>How It Works</h4>
+            <ol>
+              <li>Choose a weapon preset to load typical engagement values.</li>
+              <li>Set or reposition the observer or firing point.</li>
+              <li>Shape the zone with min/max range, azimuth center, and spread.</li>
+              <li>Use elevation limits and optional terrain masking to show where the weapon can realistically engage.</li>
+            </ol>
+          </div>
+          <div class="wez-help-block">
+            <h4>Phenomenon</h4>
+            <p>A WEZ is not just distance. It is the space a weapon can cover after applying dead space near the launcher, traverse limits left and right, and vertical firing limits for direct-fire, indirect-fire, or anti-air profiles.</p>
+          </div>
+          <div class="wez-help-block">
+            <h4>Parameters</h4>
+            <dl>
+              <dt>Weapon</dt><dd>Loads preset defaults such as range band, spread, elevation limits, and display color for a weapon family.</dd>
+              <dt>Min range</dt><dd>Inner safety or arming distance; this becomes the dead zone when greater than zero.</dd>
+              <dt>Max range</dt><dd>Outer engagement reach of the weapon.</dd>
+              <dt>Azimuth</dt><dd>Center bearing of the sector.</dd>
+              <dt>Spread</dt><dd>Total left-right engagement width in degrees; 360 makes an all-around zone.</dd>
+              <dt>Elev min/max</dt><dd>Vertical firing envelope that helps distinguish flat-fire from high-angle systems.</dd>
+              <dt>Obs height</dt><dd>Raises the firing point above local ground, which matters when masking against terrain.</dd>
+              <dt>Extrude</dt><dd>Shows the zone with depth in 3D so the vertical envelope reads more clearly.</dd>
+              <dt>Deadzone</dt><dd>Displays the interior non-engagement area created by minimum range.</dd>
+              <dt>Rings</dt><dd>Adds min/max reference arcs and radial guides.</dd>
+              <dt>Opacity</dt><dd>Controls fill density without changing the underlying geometry.</dd>
+              <dt>Terrain</dt><dd>Runs a masking pass in 3D to subtract terrain-shadowed portions from the raw sector.</dd>
+            </dl>
+          </div>
+        </div>
       </div>
 
       <div class="wez-body">
@@ -867,6 +911,16 @@ export class WeaponEffectEngine {
   private _bindPanelEvents(): void {
     if (!this._panelEl) return;
     const p = this._panelEl;
+
+    p.querySelector('#wez-help-btn')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const help = p.querySelector<HTMLElement>('#wez-help-popover');
+      if (help) help.hidden = !help.hidden;
+    });
+    p.querySelector('#wez-help-close')?.addEventListener('click', () => {
+      const help = p.querySelector<HTMLElement>('#wez-help-popover');
+      if (help) help.hidden = true;
+    });
 
     p.querySelector('#wez-minimize-btn')?.addEventListener('click', () => this._minimizePanel());
     p.querySelector('#wez-close-btn')?.addEventListener('click', () => {
@@ -1173,18 +1227,97 @@ export class WeaponEffectEngine {
         color: var(--ms-text-dim);
         min-width: 50px;
       }
-      .wez-minimize-btn, .wez-close-btn {
+      .wez-help-btn, .wez-minimize-btn, .wez-close-btn {
         background: none;
-        border: none;
+        border: 1px solid transparent;
         color: var(--ms-text-dim);
-        font-size: var(--ms-fs-sm);
+        font-size: 12px;
         cursor: pointer;
         padding: 0 2px;
         line-height: 1;
         transition: color 0.15s;
-        flex-shrink: 0;
+        flex: 0 0 auto;
       }
-      .wez-minimize-btn:hover, .wez-close-btn:hover { color: var(--ms-text); }
+      .wez-help-btn {
+        width: 17px;
+        height: 17px;
+        border-color: var(--ms-border);
+        border-radius: 50%;
+        color: var(--ms-success);
+        font-weight: 700;
+      }
+      .wez-help-btn:hover, .wez-minimize-btn:hover, .wez-close-btn:hover { color: var(--ms-text); }
+      .wez-help-popover {
+        position: absolute;
+        top: 39px;
+        left: 8px;
+        right: 8px;
+        z-index: 1120;
+        max-height: min(520px, calc(100vh - 132px));
+        overflow-y: auto;
+        background: var(--ms-bg);
+        border: 1px solid var(--ms-border);
+        border-radius: 4px;
+        box-shadow: var(--ms-shadow);
+        color: var(--ms-text);
+      }
+      .wez-help-popover[hidden] { display: none; }
+      .wez-help-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 11px 8px;
+        border-bottom: 1px solid var(--ms-divider);
+        background: var(--ms-bg-header);
+      }
+      .wez-help-kicker {
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-text-label);
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+      .wez-help-title {
+        margin-top: 2px;
+        font-size: 13px;
+        color: var(--ms-success);
+        font-weight: 700;
+      }
+      .wez-help-close {
+        width: 20px;
+        height: 20px;
+        border: 1px solid var(--ms-border);
+        border-radius: 3px;
+        background: var(--ms-bg-input);
+        color: var(--ms-text-dim);
+        cursor: pointer;
+      }
+      .wez-help-close:hover { color: var(--ms-text); }
+      .wez-help-body {
+        padding: 10px 11px 12px;
+        font-size: var(--ms-fs-xs);
+        line-height: 1.45;
+        color: var(--ms-text-dim);
+        user-select: text;
+      }
+      .wez-help-body p { margin: 0 0 9px; }
+      .wez-help-block { margin-top: 10px; }
+      .wez-help-block h4 {
+        margin: 0 0 5px;
+        font-size: var(--ms-fs-xs);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ms-text);
+      }
+      .wez-help-block ol, .wez-help-block ul { margin: 0; padding-left: 17px; }
+      .wez-help-block li { margin: 3px 0; }
+      .wez-help-block dl {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 5px 8px;
+        margin: 0;
+      }
+      .wez-help-block dt { color: var(--ms-success); font-weight: 700; }
+      .wez-help-block dd { margin: 0; }
 
       .wez-body { padding: 0 0 6px; }
 
