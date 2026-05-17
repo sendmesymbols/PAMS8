@@ -68,6 +68,7 @@ declare class SymbolEngine implements Evented {
     private _corridorEngine;
     private _flightEngine;
     private _effectEngine;
+    private _deadGroundMapper;
     private _deploymentBuilderEngine;
     private _declutterEngine;
     private _morphixEngine;
@@ -130,6 +131,7 @@ declare class SymbolEngine implements Evented {
     private _initCorridorEngine;
     private _initEffectEngine;
     private _initFlightEngine;
+    private _initDeadGroundMapper;
     /** Destroy all analysis engines and unlink them from the context menu. */
     private _destroyAnalysisEngines;
     get view(): MapView | SceneView;

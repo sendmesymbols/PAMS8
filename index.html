@@ -2158,7 +2158,7 @@
         <div class="feature-panel" id="feature-panel-analysis">
           <div class="feature-header">
             <div class="feature-header-left">
-              <input type="checkbox" id="setting-analysisEngines" checked title="Enable Analysis Engines (LOS, WEZ, Trajectory, Buffer, Corridor, Flight, Effects). When disabled, no analysis engines are loaded and the Analysis context menu is hidden." />
+              <input type="checkbox" id="setting-analysisEngines" checked title="Enable Analysis Engines (LOS, WEZ, Trajectory, Buffer, Corridor, Flight, Effects, Dead Ground Mapper). When disabled, no analysis engines are loaded and the Analysis context menu is hidden." />
               <label>Analysis Engines</label>
             </div>
             <span class="toggle-icon">▼</span>
@@ -2192,6 +2192,10 @@
             <div class="setting-row">
               <label>Effect Analysis</label>
               <input type="checkbox" id="setting-analysis-effects" checked title="Enable Effect Analysis engine. When disabled, the Effects item is removed from the Analysis context menu." />
+            </div>
+            <div class="setting-row">
+              <label>Dead Ground Mapper</label>
+              <input type="checkbox" id="setting-analysis-deadGround" checked title="Enable Dead Ground Mapper engine. When disabled, the Dead Ground Mapper item is removed from More Actions." />
             </div>
           </div>
       </div>
@@ -2824,6 +2828,7 @@
         'setting-analysis-corridor':   (v) => ({ path: ['analysis', 'corridor'],   value: v }),
         'setting-analysis-flight':     (v) => ({ path: ['analysis', 'flight'],     value: v }),
         'setting-analysis-effects':    (v) => ({ path: ['analysis', 'effects'],    value: v }),
+        'setting-analysis-deadGround': (v) => ({ path: ['analysis', 'deadGround'], value: v }),
         'setting-declutter':              (v) => ({ path: ['declutter', 'enabled'],                        value: v }),
         'setting-declutterMode':          (v) => ({ path: ['declutter', 'annotations', 'mode'],            value: v }),
         'setting-declutterLabelZoom':     (v) => ({ path: ['declutter', 'annotations', 'zoomThreshold'],   value: +v }),
@@ -3073,6 +3078,7 @@
           document.getElementById('setting-analysis-corridor').checked   = analysis.corridor   !== false;
           document.getElementById('setting-analysis-flight').checked     = analysis.flight     !== false;
           document.getElementById('setting-analysis-effects').checked    = analysis.effects    !== false;
+          document.getElementById('setting-analysis-deadGround').checked = analysis.deadGround !== false;
 
           if (settings.creationMode) {
             document.getElementById('setting-creationMode').value = settings.creationMode;

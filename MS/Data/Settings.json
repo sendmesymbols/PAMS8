@@ -531,7 +531,8 @@
     "buffer": true,
     "corridor": true,
     "flight": true,
-    "effects": true
+    "effects": true,
+    "deadGround": true
   },
   "creationMode": "single",
   "ui": {

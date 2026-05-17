@@ -65,6 +65,7 @@ import BufferEngine from './Analysis/BufferEngine';
 import CorridorEngine from './Analysis/CorridorEngine';
 import FlightEngine from './Analysis/FlightEngine';
 import { EffectEngine } from './Analysis/EffectEngine';
+import DeadGroundMapper from './Analysis/DeadGroundMapper';
 import Plan from './ImportExport/Plan.ts';
 import SerializationEngine from './ImportExport/SerializationEngine';
 import ThemeManager from '../Managers/ThemeManager';
@@ -128,6 +129,7 @@ class SymbolEngine implements Evented {
   private _corridorEngine: CorridorEngine | null = null;
   private _flightEngine: FlightEngine | null = null;
   private _effectEngine: EffectEngine | null = null;
+  private _deadGroundMapper: DeadGroundMapper | null = null;
   private _deploymentBuilderEngine: DeploymentBuilderEngine | null = null;
   private _declutterEngine: DeclutterEngine | null = null;
   private _morphixEngine: MorphixEngine;
@@ -323,6 +325,7 @@ class SymbolEngine implements Evented {
     this._initEffectEngine();
     // Initialise FlightEngine (always on â€” activated on demand via context menu)
     this._initFlightEngine();
+    this._initDeadGroundMapper();
 
     // Initialise DeclutterEngine â€” manages annotation and symbol zoom/echelon visibility
     this._initDeclutterEngine();
@@ -562,6 +565,7 @@ class SymbolEngine implements Evented {
     this._bufferEngine?.initialize(newView);
     this._effectEngine?.initialize(newView);
     this._flightEngine?.initialize(newView);
+    this._deadGroundMapper?.initialize(newView);
 
     // Re-initialize the ContextMenuManager for the new view so its
     // pointer-down / contextmenu listeners are bound to the active view.
@@ -797,6 +801,16 @@ class SymbolEngine implements Evented {
     console.info('[SymbolEngine] FlightEngine loaded');
   }
 
+  private _initDeadGroundMapper(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.deadGround === false) return;
+    this._deadGroundMapper = new DeadGroundMapper();
+    this._deadGroundMapper.initialize(this.view);
+    this._contextMenuManager.linkDeadGroundMapper(this._deadGroundMapper);
+    this.emitEvent('deadGroundMapperReady', { engine: this._deadGroundMapper });
+    console.info('[SymbolEngine] DeadGroundMapper loaded');
+  }
+
   /** Destroy all analysis engines and unlink them from the context menu. */
   private _destroyAnalysisEngines(): void {
     this._weaponEffectEngine?.destroy?.();
@@ -813,6 +827,8 @@ class SymbolEngine implements Evented {
     this._effectEngine = null;
     this._flightEngine?.destroy?.();
     this._flightEngine = null;
+    this._deadGroundMapper?.destroy?.();
+    this._deadGroundMapper = null;
     this._contextMenuManager.unlinkAnalysisEngines();
     console.info('[SymbolEngine] Analysis engines destroyed');
   }
@@ -1474,6 +1490,7 @@ class SymbolEngine implements Evented {
         if (!this._corridorEngine)     this._initCorridorEngine();
         if (!this._effectEngine)       this._initEffectEngine();
         if (!this._flightEngine)       this._initFlightEngine();
+        if (!this._deadGroundMapper)   this._initDeadGroundMapper();
       }
     }
 
@@ -1510,6 +1527,10 @@ class SymbolEngine implements Evented {
             this._flightEngine?.destroy?.(); this._flightEngine = null;
             this._contextMenuManager.linkFlightEngine(null);
             break;
+          case 'deadGround':
+            this._deadGroundMapper?.destroy?.(); this._deadGroundMapper = null;
+            this._contextMenuManager.linkDeadGroundMapper(null);
+            break;
         }
         console.info(`[SymbolEngine] Analysis engine '${key}' disabled`);
       } else {
@@ -1522,6 +1543,7 @@ class SymbolEngine implements Evented {
           case 'corridor':   if (!this._corridorEngine)     this._initCorridorEngine();     break;
           case 'effects':    if (!this._effectEngine)       this._initEffectEngine();       break;
           case 'flight':     if (!this._flightEngine)       this._initFlightEngine();       break;
+          case 'deadGround': if (!this._deadGroundMapper)   this._initDeadGroundMapper();   break;
         }
         console.info(`[SymbolEngine] Analysis engine '${key}' enabled`);
       }

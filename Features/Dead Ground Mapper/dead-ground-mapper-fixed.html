@@ -403,8 +403,9 @@ async function computeDeadGround(params){
       const east =
         (col-cols/2+0.5)*cellM;
 
+      // Row 0 is the northern/top row, matching heatmap and mesh rendering.
       const north =
-        (row-rows/2+0.5)*cellM;
+        (rows/2-row-0.5)*cellM;
 
       const range =
         Math.sqrt(east*east+north*north);
@@ -429,7 +430,7 @@ async function computeDeadGround(params){
         await safeElevation(sampler,lon,lat);
 
       const bearing =
-        Math.atan2(east,north)*180/Math.PI;
+        (Math.atan2(east,north)*180/Math.PI+360)%360;
 
       const horizon =
         await getHorizon(bearing,range);

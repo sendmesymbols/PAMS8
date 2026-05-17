@@ -16,6 +16,7 @@ import BufferEngine from '../Engines/Analysis/BufferEngine';
 import CorridorEngine from '../Engines/Analysis/CorridorEngine';
 import FlightEngine from '../Engines/Analysis/FlightEngine';
 import { EffectEngine } from '../Engines/Analysis/EffectEngine';
+import DeadGroundMapper from '../Engines/Analysis/DeadGroundMapper';
 
 export interface ContextMenuItem {
   id: string;
@@ -92,6 +93,7 @@ class ContextMenuManager extends Evented {
   private _corridorEngine: CorridorEngine | null = null;
   private _flightEngine: FlightEngine | null = null;
   private _effectEngine: EffectEngine | null = null;
+  private _deadGroundMapper: DeadGroundMapper | null = null;
   private _deploymentBuilderEngine: { openWidget(): void } | null = null;
 
   private _enabled: boolean = true;
@@ -331,6 +333,14 @@ class ContextMenuManager extends Evented {
   }
 
   /**
+   * Link a DeadGroundMapper engine so "Analysis -> Dead Ground Mapper"
+   * can be opened from More Actions palette.
+   */
+  public linkDeadGroundMapper(engine: DeadGroundMapper | null): void {
+    this._deadGroundMapper = engine;
+  }
+
+  /**
    * Link a DeploymentBuilderEngine so the "Open Deployment Builder" item
    * appears in all graphic right-click menus when set.
    */
@@ -347,6 +357,7 @@ class ContextMenuManager extends Evented {
     this._corridorEngine = null;
     this._flightEngine = null;
     this._effectEngine = null;
+    this._deadGroundMapper = null;
   }
 
 
@@ -875,6 +886,12 @@ class ContextMenuManager extends Evented {
     if (this._effectEngine) {
       actions.push(this.createPaletteAction('analysis-effects', 'Effect Analysis', 'Analysis / More Tools', undefined, () => {
         if (this._effectEngine && this.view) this._effectEngine.open(graphic, this.view);
+      }));
+    }
+
+    if (this._deadGroundMapper) {
+      actions.push(this.createPaletteAction('analysis-dead-ground', 'Dead Ground Mapper', 'Analysis / More Tools', undefined, () => {
+        if (this._deadGroundMapper && this.view) this._deadGroundMapper.open(graphic, this.view);
       }));
     }
 

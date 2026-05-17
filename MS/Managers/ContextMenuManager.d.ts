@@ -11,6 +11,7 @@ import BufferEngine from '../Engines/Analysis/BufferEngine';
 import CorridorEngine from '../Engines/Analysis/CorridorEngine';
 import FlightEngine from '../Engines/Analysis/FlightEngine';
 import { EffectEngine } from '../Engines/Analysis/EffectEngine';
+import DeadGroundMapper from '../Engines/Analysis/DeadGroundMapper';
 export interface ContextMenuItem {
     id: string;
     label: string | ((graphic?: Graphic) => string);
@@ -67,6 +68,7 @@ declare class ContextMenuManager extends Evented {
     private _corridorEngine;
     private _flightEngine;
     private _effectEngine;
+    private _deadGroundMapper;
     private _deploymentBuilderEngine;
     private _enabled;
     private _pointerDownHandle;
@@ -163,6 +165,11 @@ declare class ContextMenuManager extends Evented {
      * opens the effects panel.
      */
     linkEffectEngine(engine: EffectEngine | null): void;
+    /**
+     * Link a DeadGroundMapper engine so "Analysis -> Dead Ground Mapper"
+     * can be opened from More Actions palette.
+     */
+    linkDeadGroundMapper(engine: DeadGroundMapper | null): void;
     /**
      * Link a DeploymentBuilderEngine so the "Open Deployment Builder" item
      * appears in all graphic right-click menus when set.
