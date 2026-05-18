@@ -54,6 +54,7 @@ export declare class DeadGroundMapper {
     private _setProgress;
     private _num;
     private _checked;
+    private _selectValue;
     private _setText;
     private _el;
     private _injectStyles;
