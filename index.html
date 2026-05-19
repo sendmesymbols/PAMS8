@@ -2158,7 +2158,7 @@
         <div class="feature-panel" id="feature-panel-analysis">
           <div class="feature-header">
             <div class="feature-header-left">
-              <input type="checkbox" id="setting-analysisEngines" checked title="Enable Analysis Engines (LOS, WEZ, Trajectory, Buffer, Corridor, Flight, Effects, Dead Ground Mapper). When disabled, no analysis engines are loaded and the Analysis context menu is hidden." />
+              <input type="checkbox" id="setting-analysisEngines" checked title="Enable Analysis Engines (LOS, WEZ, Trajectory, Buffer, Corridor, Flight, Effects, Dead Ground Mapper, Key Terrain Identifier). When disabled, no analysis engines are loaded and the Analysis context menu is hidden." />
               <label>Analysis Engines</label>
             </div>
             <span class="toggle-icon">▼</span>
@@ -2196,6 +2196,30 @@
             <div class="setting-row">
               <label>Dead Ground Mapper</label>
               <input type="checkbox" id="setting-analysis-deadGround" checked title="Enable Dead Ground Mapper engine. When disabled, the Dead Ground Mapper item is removed from More Actions." />
+            </div>
+            <div class="setting-row">
+              <label>Key Terrain Identifier</label>
+              <input type="checkbox" id="setting-analysis-keyTerrain" checked title="Enable Key Terrain Identifier engine. When disabled, the Key Terrain Identifier item is removed from More Actions." />
+            </div>
+            <div class="setting-row">
+              <label>Position Defensibility Scorer</label>
+              <input type="checkbox" id="setting-analysis-positionDefensibility" checked title="Enable Position Defensibility Scorer engine. When disabled, the scorer item is removed from More Actions." />
+            </div>
+            <div class="setting-row">
+              <label>Observation Post Ranker</label>
+              <input type="checkbox" id="setting-analysis-opRanker" checked title="Enable Observation Post Ranker engine. When disabled, the OP Ranker item is removed from More Actions." />
+            </div>
+            <div class="setting-row">
+              <label>Local Peaks</label>
+              <input type="checkbox" id="setting-analysis-localPeaks" checked title="Enable Local Peaks engine. When disabled, the Local Peaks item is removed from More Actions." />
+            </div>
+            <div class="setting-row">
+              <label>Mission Planner Dashboard</label>
+              <input type="checkbox" id="setting-analysis-missionPlanner" checked title="Enable Mission Planner Dashboard. When disabled, the dashboard item is removed from More Actions." />
+            </div>
+            <div class="setting-row">
+              <label>OCOKA - Avenues of Approach</label>
+              <input type="checkbox" id="setting-analysis-ocoka" checked title="Enable OCOKA terrain analysis. When disabled, the OCOKA item is removed from More Actions." />
             </div>
           </div>
       </div>
@@ -2829,6 +2853,12 @@
         'setting-analysis-flight':     (v) => ({ path: ['analysis', 'flight'],     value: v }),
         'setting-analysis-effects':    (v) => ({ path: ['analysis', 'effects'],    value: v }),
         'setting-analysis-deadGround': (v) => ({ path: ['analysis', 'deadGround'], value: v }),
+        'setting-analysis-keyTerrain': (v) => ({ path: ['analysis', 'keyTerrain'], value: v }),
+        'setting-analysis-positionDefensibility': (v) => ({ path: ['analysis', 'positionDefensibility'], value: v }),
+        'setting-analysis-opRanker': (v) => ({ path: ['analysis', 'opRanker'], value: v }),
+        'setting-analysis-localPeaks': (v) => ({ path: ['analysis', 'localPeaks'], value: v }),
+        'setting-analysis-missionPlanner': (v) => ({ path: ['analysis', 'missionPlanner'], value: v }),
+        'setting-analysis-ocoka': (v) => ({ path: ['analysis', 'ocoka'], value: v }),
         'setting-declutter':              (v) => ({ path: ['declutter', 'enabled'],                        value: v }),
         'setting-declutterMode':          (v) => ({ path: ['declutter', 'annotations', 'mode'],            value: v }),
         'setting-declutterLabelZoom':     (v) => ({ path: ['declutter', 'annotations', 'zoomThreshold'],   value: +v }),
@@ -3079,6 +3109,12 @@
           document.getElementById('setting-analysis-flight').checked     = analysis.flight     !== false;
           document.getElementById('setting-analysis-effects').checked    = analysis.effects    !== false;
           document.getElementById('setting-analysis-deadGround').checked = analysis.deadGround !== false;
+          document.getElementById('setting-analysis-keyTerrain').checked = analysis.keyTerrain !== false;
+          document.getElementById('setting-analysis-positionDefensibility').checked = analysis.positionDefensibility !== false;
+          document.getElementById('setting-analysis-opRanker').checked = analysis.opRanker !== false;
+          document.getElementById('setting-analysis-localPeaks').checked = analysis.localPeaks !== false;
+          document.getElementById('setting-analysis-missionPlanner').checked = analysis.missionPlanner !== false;
+          document.getElementById('setting-analysis-ocoka').checked = analysis.ocoka !== false;
 
           if (settings.creationMode) {
             document.getElementById('setting-creationMode').value = settings.creationMode;

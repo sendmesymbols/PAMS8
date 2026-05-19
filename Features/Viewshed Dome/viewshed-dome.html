@@ -300,7 +300,7 @@
 </div>
 
 <div id="hint">Click anywhere on the map to place the observer</div>
-<div id="sweep-overlay" id="sweep-overlay">⟳ Casting rays…</div>
+<div id="sweep-overlay">⟳ Casting rays…</div>
 
 <script src="https://js.arcgis.com/4.28/"></script>
 <script>
@@ -432,11 +432,11 @@ require([
   //  When slope drops below the running max by >1°, the ray is blocked there.
   //  The horizon angle for this azimuth = the running maximum at blockage.
   //
-  // Returns Float32Array[numRays] of horizon angles in degrees.
+  // Returns Float32Array[numAz] of horizon angles in degrees.
   // ═══════════════════════════════════════════════════════════════════════════
 
   async function castRays(view, observerPoint, obsZ, {
-    azCenterDeg, azSpreadDeg, numRays, maxRangeM, stepM,
+    azCenterDeg, azSpreadDeg, numAz, maxRangeM, stepM,
     onProgress,
   }) {
     // Build analysis extent — square bounding the full analysis radius
@@ -451,13 +451,13 @@ require([
 
     // Download the DEM tile set once; all subsequent queryElevation() calls
     // are synchronous lookups into the cached tile data.
-    const sampler  = await view.createElevationSampler(extent, { noDataValue: 0 });
+    const sampler  = await view.map.ground.createElevationSampler(extent, { noDataValue: 0 });
     const numSteps = Math.ceil(maxRangeM / stepM);
     const halfAz   = azSpreadDeg / 2;
-    const horizonAngles = new Float32Array(numRays);  // degrees
+    const horizonAngles = new Float32Array(numAz);  // degrees
 
-    for (let rayIdx = 0; rayIdx < numRays; rayIdx++) {
-      const bearing = azCenterDeg - halfAz + (rayIdx / (numRays - 1 || 1)) * azSpreadDeg;
+    for (let rayIdx = 0; rayIdx < numAz; rayIdx++) {
+      const bearing = azCenterDeg - halfAz + (rayIdx / (numAz - 1 || 1)) * azSpreadDeg;
       let maxSlopeDeg = -90;
 
       for (let s = 1; s <= numSteps; s++) {
@@ -474,7 +474,7 @@ require([
       horizonAngles[rayIdx] = maxSlopeDeg;
 
       if (onProgress && rayIdx % 8 === 0) {
-        onProgress((rayIdx + 1) / numRays, bearing);
+        onProgress((rayIdx + 1) / numAz, bearing);
       }
     }
 
@@ -506,6 +506,8 @@ require([
     const oLon = observerPoint.longitude;
     const oLat = observerPoint.latitude;
     const halfAz = azSpreadDeg / 2;
+    const closedAz = azSpreadDeg >= 359.9;
+    const azSegments = closedAz ? numAz : Math.max(1, numAz - 1);
 
     // ── Count vertices and faces ──────────────────────────────────────────
     // Surface grid:  numAz × (numEl+1) vertices
@@ -516,8 +518,8 @@ require([
 
     // Surface quads: numAz × numEl × 2 triangles
     // Bottom cap:    numAz triangles (observer → first elev ring)
-    const SURF_TRIS    = numAz * numEl * 2;
-    const CAP_TRIS     = showCap ? numAz : 0;
+    const SURF_TRIS    = azSegments * numEl * 2;
+    const CAP_TRIS     = showCap ? azSegments : 0;
     const TOTAL_TRIS   = SURF_TRIS + CAP_TRIS;
 
     // ── Allocate typed arrays ─────────────────────────────────────────────
@@ -605,8 +607,8 @@ require([
     let fi = 0;  // face index cursor
 
     // Surface quads between adjacent elevation rings and adjacent azimuths
-    for (let azIdx = 0; azIdx < numAz; azIdx++) {
-      const azNext = (azIdx + 1) % numAz;
+    for (let azIdx = 0; azIdx < azSegments; azIdx++) {
+      const azNext = closedAz ? (azIdx + 1) % numAz : azIdx + 1;
 
       for (let elIdx = 0; elIdx < numEl; elIdx++) {
         //  v00──v10
@@ -627,8 +629,8 @@ require([
     // Bottom cap: fan from observer to first (lowest) elevation ring
     // Closes the dome at the base so it looks solid from below.
     if (showCap) {
-      for (let azIdx = 0; azIdx < numAz; azIdx++) {
-        const azNext = (azIdx + 1) % numAz;
+      for (let azIdx = 0; azIdx < azSegments; azIdx++) {
+        const azNext = closedAz ? (azIdx + 1) % numAz : azIdx + 1;
         const v0 = azIdx  * (numEl+1) + 0;   // azIdx,  elev_min
         const v1 = azNext * (numEl+1) + 0;   // azNext, elev_min
         faces[fi++] = OBS_VIDX;
@@ -676,11 +678,14 @@ require([
   }) {
     const oLon = observerPoint.longitude, oLat = observerPoint.latitude;
     const halfAz = azSpreadDeg / 2;
+    const closedAz = azSpreadDeg >= 359.9;
+    const count = closedAz ? numAz + 1 : numAz;
     const path = [];
 
-    for (let rayIdx = 0; rayIdx <= numAz; rayIdx++) {
-      const azDeg = azCenterDeg - halfAz + (rayIdx % numAz / (numAz - 1 || 1)) * azSpreadDeg;
-      const elevDeg = horizonAngles[rayIdx % numAz];
+    for (let rayIdx = 0; rayIdx < count; rayIdx++) {
+      const srcIdx = rayIdx % numAz;
+      const azDeg = azCenterDeg - halfAz + (srcIdx / (numAz - 1 || 1)) * azSpreadDeg;
+      const elevDeg = horizonAngles[srcIdx];
       const elevRad = elevDeg  * Math.PI / 180;
       const azRad   = azDeg   * Math.PI / 180;
 

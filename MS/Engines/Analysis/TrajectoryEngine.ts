@@ -19,6 +19,7 @@ import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import Polyline from '@arcgis/core/geometry/Polyline';
+import EngineLogger from '../../Support/EngineLogger';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -181,6 +182,7 @@ export const PROJECTILE_PRESETS: Record<string, ProjectilePreset> = {
 const G = 9.80665;
 const RHO_SL = 1.225;
 const EARTH_OMEGA = 7.2921e-5;
+const ENGINE_NAME = 'TrajectoryEngine';
 
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
@@ -1509,6 +1511,11 @@ export class TrajectoryEngine {
 
   private _setStatus(state: 'awaiting' | 'placing' | 'computing' | 'ready' | 'committed' | 'error'): void {
     const dotEl = this._panelEl?.querySelector<HTMLElement>('#traj-status-dot');
+    const statusTextMap: Record<typeof state, string> = { awaiting: 'Awaiting fire point', placing: this._placeMode === 'target' ? 'Pick target point' : 'Pick fire point', computing: 'Computing', ready: 'Ready', committed: 'Committed', error: 'Error' };
+    const message = statusTextMap[state];
+    if (state === 'ready' || state === 'committed') EngineLogger.success(ENGINE_NAME, message);
+    else if (state === 'error') EngineLogger.error(ENGINE_NAME, message);
+    else EngineLogger.nextStep(ENGINE_NAME, message);
     const lblEl = this._panelEl?.querySelector<HTMLElement>('#traj-status-lbl');
     if (!dotEl || !lblEl) return;
     const map: Record<string, [string, string]> = {
@@ -1895,3 +1902,4 @@ export class TrajectoryEngine {
 }
 
 export default TrajectoryEngine;
+

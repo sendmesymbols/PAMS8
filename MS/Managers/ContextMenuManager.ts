@@ -17,6 +17,12 @@ import CorridorEngine from '../Engines/Analysis/CorridorEngine';
 import FlightEngine from '../Engines/Analysis/FlightEngine';
 import { EffectEngine } from '../Engines/Analysis/EffectEngine';
 import DeadGroundMapper from '../Engines/Analysis/DeadGroundMapper';
+import KeyTerrainIdentificationEngine from '../Engines/Analysis/KeyTerrain/KeyTerrainIdentificationEngine';
+import PosDefScorerEngine from '../Engines/Analysis/PositionDefesibilityScorer/PosDefScorerEngine';
+import OpRankerEngine from '../Engines/Analysis/OpRanker/OpRankerEngine';
+import LocalPeaksEngine from '../Engines/Analysis/Peaks/LocalPeaksEngine';
+import OcokaEngine from '../Engines/OCOKA/Ocoka';
+import MissionPlannerEngine from '../Engines/MissionPlanner/MissionPlannerEngine';
 
 export interface ContextMenuItem {
   id: string;
@@ -94,6 +100,12 @@ class ContextMenuManager extends Evented {
   private _flightEngine: FlightEngine | null = null;
   private _effectEngine: EffectEngine | null = null;
   private _deadGroundMapper: DeadGroundMapper | null = null;
+  private _keyTerrainIdentificationEngine: KeyTerrainIdentificationEngine | null = null;
+  private _posDefScorerEngine: PosDefScorerEngine | null = null;
+  private _opRankerEngine: OpRankerEngine | null = null;
+  private _localPeaksEngine: LocalPeaksEngine | null = null;
+  private _ocokaEngine: OcokaEngine | null = null;
+  private _missionPlannerEngine: MissionPlannerEngine | null = null;
   private _deploymentBuilderEngine: { openWidget(): void } | null = null;
 
   private _enabled: boolean = true;
@@ -341,6 +353,54 @@ class ContextMenuManager extends Evented {
   }
 
   /**
+   * Link a KeyTerrainIdentificationEngine so "Analysis -> Key Terrain Identifier"
+   * can be opened from More Actions palette.
+   */
+  public linkKeyTerrainIdentificationEngine(
+    engine: KeyTerrainIdentificationEngine | null,
+  ): void {
+    this._keyTerrainIdentificationEngine = engine;
+  }
+
+  /**
+   * Link a Position Defensibility Scorer engine so it can be opened from
+   * the More Actions palette.
+   */
+  public linkPosDefScorerEngine(engine: PosDefScorerEngine | null): void {
+    this._posDefScorerEngine = engine;
+  }
+
+  /**
+   * Link an Observation Post Ranker engine so it can be opened from
+   * the More Actions palette.
+   */
+  public linkOpRankerEngine(engine: OpRankerEngine | null): void {
+    this._opRankerEngine = engine;
+  }
+
+  /**
+   * Link a LocalPeaksEngine so it can be opened from
+   * the More Actions palette.
+   */
+  public linkLocalPeaksEngine(engine: LocalPeaksEngine | null): void {
+    this._localPeaksEngine = engine;
+  }
+
+  /**
+   * Link an OCOKA engine so it can be opened from the More Actions palette.
+   */
+  public linkOcokaEngine(engine: OcokaEngine | null): void {
+    this._ocokaEngine = engine;
+  }
+
+  /**
+   * Link a MissionPlannerEngine so it can be opened from the More Actions palette.
+   */
+  public linkMissionPlannerEngine(engine: MissionPlannerEngine | null): void {
+    this._missionPlannerEngine = engine;
+  }
+
+  /**
    * Link a DeploymentBuilderEngine so the "Open Deployment Builder" item
    * appears in all graphic right-click menus when set.
    */
@@ -358,6 +418,12 @@ class ContextMenuManager extends Evented {
     this._flightEngine = null;
     this._effectEngine = null;
     this._deadGroundMapper = null;
+    this._keyTerrainIdentificationEngine = null;
+    this._posDefScorerEngine = null;
+    this._opRankerEngine = null;
+    this._localPeaksEngine = null;
+    this._ocokaEngine = null;
+    this._missionPlannerEngine = null;
   }
 
 
@@ -892,6 +958,54 @@ class ContextMenuManager extends Evented {
     if (this._deadGroundMapper) {
       actions.push(this.createPaletteAction('analysis-dead-ground', 'Dead Ground Mapper', 'Analysis / More Tools', undefined, () => {
         if (this._deadGroundMapper && this.view) this._deadGroundMapper.open(graphic, this.view);
+      }));
+    }
+
+    if (this._keyTerrainIdentificationEngine) {
+      actions.push(this.createPaletteAction('analysis-key-terrain', 'Key Terrain Identifier', 'Analysis / More Tools', undefined, () => {
+        if (this._keyTerrainIdentificationEngine && this.view) {
+          this._keyTerrainIdentificationEngine.open(graphic, this.view);
+        }
+      }));
+    }
+
+    if (this._posDefScorerEngine) {
+      actions.push(this.createPaletteAction('analysis-pos-def-scorer', 'Position Defensibility Scorer', 'Analysis / More Tools', undefined, () => {
+        if (this._posDefScorerEngine && this.view) {
+          this._posDefScorerEngine.open(graphic, this.view);
+        }
+      }));
+    }
+
+    if (this._opRankerEngine) {
+      actions.push(this.createPaletteAction('analysis-op-ranker', 'Observation Post Ranker', 'Analysis / More Tools', undefined, () => {
+        if (this._opRankerEngine && this.view) {
+          this._opRankerEngine.open(graphic, this.view);
+        }
+      }));
+    }
+
+    if (this._localPeaksEngine) {
+      actions.push(this.createPaletteAction('analysis-local-peaks', 'Local Peaks', 'Analysis / More Tools', undefined, () => {
+        if (this._localPeaksEngine && this.view) {
+          this._localPeaksEngine.open(graphic, this.view);
+        }
+      }));
+    }
+
+    if (this._ocokaEngine) {
+      actions.push(this.createPaletteAction('analysis-ocoka', '⬡ OCOKA — Avenues of Approach', 'Analysis / More Tools', undefined, () => {
+        if (this._ocokaEngine && this.view) {
+          this._ocokaEngine.open(graphic, this.view);
+        }
+      }));
+    }
+
+    if (this._missionPlannerEngine) {
+      actions.push(this.createPaletteAction('analysis-mission-planner', 'Mission Planner Dashboard', 'Analysis / Mission Planning', undefined, () => {
+        if (this._missionPlannerEngine && this.view) {
+          this._missionPlannerEngine.open(graphic, this.view);
+        }
       }));
     }
 

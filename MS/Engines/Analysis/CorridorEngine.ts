@@ -14,6 +14,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import EngineLogger from '../../Support/EngineLogger';
 
 import {
   CORRIDOR_PRESETS,
@@ -27,6 +28,7 @@ import {
 
 type Waypoint = { longitude: number; latitude: number };
 type PlacementMode = 'waypoint' | 'threat' | null;
+const ENGINE_NAME = 'CorridorEngine';
 
 interface ThreatOverlayPreset {
   id: string;
@@ -1136,6 +1138,11 @@ export class CorridorEngine {
 
   private _setStatus(state: 'awaiting' | 'picking' | 'computing' | 'ready' | 'committed' | 'error'): void {
     const dot = this._panelEl?.querySelector<HTMLElement>('#corr-status-dot');
+    const statusTextMap: Record<typeof state, string> = { awaiting: 'Awaiting route', picking: 'Click map', computing: 'Computing', ready: 'Ready', committed: 'Committed', error: 'Error' };
+    const message = statusTextMap[state];
+    if (state === 'committed' || state === 'ready') EngineLogger.success(ENGINE_NAME, message);
+    else if (state === 'error') EngineLogger.error(ENGINE_NAME, message);
+    else EngineLogger.nextStep(ENGINE_NAME, message);
     const lbl = this._panelEl?.querySelector<HTMLElement>('#corr-status-lbl');
     if (!dot || !lbl) return;
 
@@ -1641,3 +1648,4 @@ export class CorridorEngine {
 }
 
 export default CorridorEngine;
+

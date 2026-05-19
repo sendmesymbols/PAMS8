@@ -1,13 +1,33 @@
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import Graphic from '@arcgis/core/Graphic';
+import Point from '@arcgis/core/geometry/Point';
+import Extent from '@arcgis/core/geometry/Extent';
+export interface DeadGroundSummary {
+    observer: Point;
+    deadGroundPct: number;
+    deadCount: number;
+    totalCells: number;
+    maxDepth: number;
+    extent: Extent;
+}
+export interface DeadGroundHeadlessOptions {
+    observer: Point;
+    observerHeightM?: number;
+    radiusM?: number;
+    cellM?: number;
+}
 export declare class DeadGroundMapper {
     static readonly MESH_LAYER_ID = "dead-ground-mesh";
+    static readonly DOME_LAYER_ID = "dead-ground-viewshed-dome";
+    static readonly DOME_HORIZON_LAYER_ID = "dead-ground-viewshed-horizon";
     static readonly CONTOUR_LAYER_ID = "dead-ground-contours";
     static readonly SPOKE_LAYER_ID = "dead-ground-spokes";
     static readonly OBSERVER_LAYER_ID = "dead-ground-observer";
     private _view;
     private _meshLayer;
+    private _domeLayer;
+    private _domeHorizonLayer;
     private _contourLayer;
     private _spokeLayer;
     private _observerLayer;
@@ -17,13 +37,13 @@ export declare class DeadGroundMapper {
     private _observerPt;
     private _obsZ;
     private _running;
-    private _currentView;
     private _dragOffsetX;
     private _dragOffsetY;
     private _isDragging;
     constructor();
     initialize(view: MapView | SceneView): void;
     open(graphic: Graphic, view: MapView | SceneView): void;
+    runHeadless(options: DeadGroundHeadlessOptions): Promise<DeadGroundSummary>;
     close(): void;
     destroy(): void;
     private _createLayers;
@@ -37,16 +57,24 @@ export declare class DeadGroundMapper {
     private _buildHeatmapLayer;
     private _buildContourGraphics;
     private _buildTerrainMesh;
+    private _readDomeParams;
+    private _castViewshedDomeRays;
+    private _buildViewshedDome;
+    private _buildViewshedHorizonRing;
     private _buildObstructionRingGraphics;
     private _buildSpokeGraphics;
     private _destPt;
+    private _enuToWGS84;
+    private _viewshedVertexColor;
     private _depthToRGBA;
     private _cellToRGBA;
+    private _lerpRGB;
     private _lerpRGBA;
     private _showPanel;
     private _hidePanel;
     private _buildPanelHtml;
     private _bindPanelEvents;
+    private _syncDomeControls;
     private _makeDraggable;
     private _onDragMove;
     private _onDragEnd;

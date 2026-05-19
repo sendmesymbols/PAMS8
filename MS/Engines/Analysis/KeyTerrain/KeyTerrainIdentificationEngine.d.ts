@@ -1,0 +1,103 @@
+import MapView from '@arcgis/core/views/MapView';
+import SceneView from '@arcgis/core/views/SceneView';
+import Graphic from '@arcgis/core/Graphic';
+import Point from '@arcgis/core/geometry/Point';
+import Extent from '@arcgis/core/geometry/Extent';
+export type FeatureType = 'dominant_ground' | 'ridge' | 'saddle' | 're_entrant' | 'spur';
+export interface FeatureCandidate {
+    r: number;
+    c: number;
+    type: FeatureType;
+    typeScore: number;
+    elev: number;
+    prom: number;
+    lap: number;
+    plan: number;
+    prof: number;
+}
+export interface RankedFeature extends FeatureCandidate {
+    lon: number;
+    lat: number;
+    viewshedRaw: number;
+    viewshedPct: number;
+    viewshedNorm: number;
+    compositeScore: number;
+    rank: number;
+    depth?: number;
+    ridgeBearing?: number;
+}
+export type KeyTerrainFeature = RankedFeature;
+export interface KeyTerrainHeadlessOptions {
+    center?: Point | {
+        longitude: number;
+        latitude: number;
+    };
+    extent?: Extent;
+    radiusM?: number;
+    cellM?: number;
+    maxFeatures?: number;
+    sensitivity?: number;
+    wantHills?: boolean;
+    wantSaddles?: boolean;
+    wantReents?: boolean;
+    wantSpurs?: boolean;
+}
+export declare class KeyTerrainIdentificationEngine {
+    static readonly MARKER_LAYER_ID = "key-terrain-markers";
+    static readonly CENTER_LAYER_ID = "key-terrain-center";
+    private _view;
+    private _markerLayer;
+    private _centerLayer;
+    private _curvatureLayer;
+    private _viewshedLayer;
+    private _controlPanelEl;
+    private _listPanelEl;
+    private _clickHandle;
+    private _running;
+    private _dragOffsetX;
+    private _dragOffsetY;
+    private _isDragging;
+    private _overlayState;
+    constructor();
+    initialize(view: MapView | SceneView): void;
+    open(graphic: Graphic, view: MapView | SceneView): void;
+    close(): void;
+    destroy(): void;
+    runHeadless(options?: KeyTerrainHeadlessOptions): Promise<KeyTerrainFeature[]>;
+    private _createLayers;
+    private _ensurePanels;
+    private _bindPanelEvents;
+    private _showPanels;
+    private _hidePanels;
+    private _bindMapClick;
+    private _unbindMapClick;
+    private _runAnalysis;
+    private _sampleGrid;
+    private _gaussianSmooth;
+    private _computeCurvature;
+    private _computeProminence;
+    private _detectFeatures;
+    private _scoreViewsheds;
+    private _scoreFeatures;
+    private _buildCurvatureHeatmap;
+    private _buildFeatureMarkers;
+    private _buildTopViewshedGraphic;
+    private _renderFeatureList;
+    private _estimateRidgeBearing;
+    private _syncOverlayVisibility;
+    private _clearResults;
+    private _clearAll;
+    private _setAnalysisCentreMarker;
+    private _makeDraggable;
+    private _onDragMove;
+    private _onDragEnd;
+    private _setStatus;
+    private _setProgress;
+    private _tick;
+    private _el;
+    private _input;
+    private _select;
+    private _setText;
+    private _injectStyles;
+}
+export default KeyTerrainIdentificationEngine;

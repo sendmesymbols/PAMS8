@@ -532,7 +532,13 @@
     "corridor": true,
     "flight": true,
     "effects": true,
-    "deadGround": true
+    "deadGround": true,
+    "keyTerrain": true,
+    "positionDefensibility": true,
+    "opRanker": true,
+    "localPeaks": true,
+    "missionPlanner": true,
+    "ocoka": true
   },
   "creationMode": "single",
   "ui": {

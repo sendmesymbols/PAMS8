@@ -66,6 +66,12 @@ import CorridorEngine from './Analysis/CorridorEngine';
 import FlightEngine from './Analysis/FlightEngine';
 import { EffectEngine } from './Analysis/EffectEngine';
 import DeadGroundMapper from './Analysis/DeadGroundMapper';
+import KeyTerrainIdentificationEngine from './Analysis/KeyTerrain/KeyTerrainIdentificationEngine';
+import PosDefScorerEngine from './Analysis/PositionDefesibilityScorer/PosDefScorerEngine';
+import OpRankerEngine from './Analysis/OpRanker/OpRankerEngine';
+import LocalPeaksEngine from './Analysis/Peaks/LocalPeaksEngine';
+import OcokaEngine from './OCOKA/Ocoka';
+import MissionPlannerEngine from './MissionPlanner/MissionPlannerEngine';
 import Plan from './ImportExport/Plan.ts';
 import SerializationEngine from './ImportExport/SerializationEngine';
 import ThemeManager from '../Managers/ThemeManager';
@@ -130,6 +136,12 @@ class SymbolEngine implements Evented {
   private _flightEngine: FlightEngine | null = null;
   private _effectEngine: EffectEngine | null = null;
   private _deadGroundMapper: DeadGroundMapper | null = null;
+  private _keyTerrainIdentificationEngine: KeyTerrainIdentificationEngine | null = null;
+  private _posDefScorerEngine: PosDefScorerEngine | null = null;
+  private _opRankerEngine: OpRankerEngine | null = null;
+  private _localPeaksEngine: LocalPeaksEngine | null = null;
+  private _ocokaEngine: OcokaEngine | null = null;
+  private _missionPlannerEngine: MissionPlannerEngine | null = null;
   private _deploymentBuilderEngine: DeploymentBuilderEngine | null = null;
   private _declutterEngine: DeclutterEngine | null = null;
   private _morphixEngine: MorphixEngine;
@@ -326,6 +338,12 @@ class SymbolEngine implements Evented {
     // Initialise FlightEngine (always on â€” activated on demand via context menu)
     this._initFlightEngine();
     this._initDeadGroundMapper();
+    this._initKeyTerrainIdentificationEngine();
+    this._initPosDefScorerEngine();
+    this._initOpRankerEngine();
+    this._initLocalPeaksEngine();
+    this._initOcokaEngine();
+    this._initMissionPlannerEngine();
 
     // Initialise DeclutterEngine â€” manages annotation and symbol zoom/echelon visibility
     this._initDeclutterEngine();
@@ -566,6 +584,12 @@ class SymbolEngine implements Evented {
     this._effectEngine?.initialize(newView);
     this._flightEngine?.initialize(newView);
     this._deadGroundMapper?.initialize(newView);
+    this._keyTerrainIdentificationEngine?.initialize(newView);
+    this._posDefScorerEngine?.initialize(newView);
+    this._opRankerEngine?.initialize(newView);
+    this._localPeaksEngine?.initialize(newView);
+    this._ocokaEngine?.initialize(newView);
+    this._missionPlannerEngine?.onViewChanged(newView);
 
     // Re-initialize the ContextMenuManager for the new view so its
     // pointer-down / contextmenu listeners are bound to the active view.
@@ -811,6 +835,70 @@ class SymbolEngine implements Evented {
     console.info('[SymbolEngine] DeadGroundMapper loaded');
   }
 
+  private _initKeyTerrainIdentificationEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.keyTerrain === false) return;
+    this._keyTerrainIdentificationEngine = new KeyTerrainIdentificationEngine();
+    this._keyTerrainIdentificationEngine.initialize(this.view);
+    this._contextMenuManager.linkKeyTerrainIdentificationEngine(
+      this._keyTerrainIdentificationEngine,
+    );
+    this.emitEvent('keyTerrainIdentificationEngineReady', {
+      engine: this._keyTerrainIdentificationEngine,
+    });
+    console.info('[SymbolEngine] KeyTerrainIdentificationEngine loaded');
+  }
+
+  private _initPosDefScorerEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.positionDefensibility === false) return;
+    this._posDefScorerEngine = new PosDefScorerEngine();
+    this._posDefScorerEngine.initialize(this.view);
+    this._contextMenuManager.linkPosDefScorerEngine(this._posDefScorerEngine);
+    this.emitEvent('posDefScorerEngineReady', { engine: this._posDefScorerEngine });
+    console.info('[SymbolEngine] PosDefScorerEngine loaded');
+  }
+
+  private _initOpRankerEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.opRanker === false) return;
+    this._opRankerEngine = new OpRankerEngine();
+    this._opRankerEngine.initialize(this.view);
+    this._contextMenuManager.linkOpRankerEngine(this._opRankerEngine);
+    this.emitEvent('opRankerEngineReady', { engine: this._opRankerEngine });
+    console.info('[SymbolEngine] OpRankerEngine loaded');
+  }
+
+  private _initLocalPeaksEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.localPeaks === false) return;
+    this._localPeaksEngine = new LocalPeaksEngine();
+    this._localPeaksEngine.initialize(this.view);
+    this._contextMenuManager.linkLocalPeaksEngine(this._localPeaksEngine);
+    this.emitEvent('localPeaksEngineReady', { engine: this._localPeaksEngine });
+    console.info('[SymbolEngine] LocalPeaksEngine loaded');
+  }
+
+  private _initOcokaEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.ocoka === false) return;
+    this._ocokaEngine = new OcokaEngine();
+    this._ocokaEngine.initialize(this.view);
+    this._contextMenuManager.linkOcokaEngine(this._ocokaEngine);
+    this.emitEvent('ocokaEngineReady', { engine: this._ocokaEngine });
+    console.info('[SymbolEngine] OCOKAEngine loaded');
+  }
+
+  private _initMissionPlannerEngine(): void {
+    if ((settingsData as any).features?.analysisEngines === false) return;
+    if ((settingsData as any).analysis?.missionPlanner === false) return;
+    this._missionPlannerEngine = new MissionPlannerEngine();
+    this._missionPlannerEngine.initialize(this.view);
+    this._contextMenuManager.linkMissionPlannerEngine(this._missionPlannerEngine);
+    this.emitEvent('missionPlannerEngineReady', { engine: this._missionPlannerEngine });
+    console.info('[SymbolEngine] MissionPlannerEngine loaded');
+  }
+
   /** Destroy all analysis engines and unlink them from the context menu. */
   private _destroyAnalysisEngines(): void {
     this._weaponEffectEngine?.destroy?.();
@@ -829,6 +917,18 @@ class SymbolEngine implements Evented {
     this._flightEngine = null;
     this._deadGroundMapper?.destroy?.();
     this._deadGroundMapper = null;
+    this._keyTerrainIdentificationEngine?.destroy?.();
+    this._keyTerrainIdentificationEngine = null;
+    this._posDefScorerEngine?.destroy?.();
+    this._posDefScorerEngine = null;
+    this._opRankerEngine?.destroy?.();
+    this._opRankerEngine = null;
+    this._localPeaksEngine?.destroy?.();
+    this._localPeaksEngine = null;
+    this._ocokaEngine?.destroy?.();
+    this._ocokaEngine = null;
+    this._missionPlannerEngine?.destroy?.();
+    this._missionPlannerEngine = null;
     this._contextMenuManager.unlinkAnalysisEngines();
     console.info('[SymbolEngine] Analysis engines destroyed');
   }
@@ -1372,6 +1472,30 @@ class SymbolEngine implements Evented {
     return this._trajectoryEngine;
   }
 
+  public get keyTerrainIdentificationEngine(): KeyTerrainIdentificationEngine | null {
+    return this._keyTerrainIdentificationEngine;
+  }
+
+  public get posDefScorerEngine(): PosDefScorerEngine | null {
+    return this._posDefScorerEngine;
+  }
+
+  public get opRankerEngine(): OpRankerEngine | null {
+    return this._opRankerEngine;
+  }
+
+  public get localPeaksEngine(): LocalPeaksEngine | null {
+    return this._localPeaksEngine;
+  }
+
+  public get ocokaEngine(): OcokaEngine | null {
+    return this._ocokaEngine;
+  }
+
+  public get missionPlannerEngine(): MissionPlannerEngine | null {
+    return this._missionPlannerEngine;
+  }
+
   /** Get current settings data for the control panel */
   public get settings(): typeof settingsData {
     return settingsData;
@@ -1491,6 +1615,12 @@ class SymbolEngine implements Evented {
         if (!this._effectEngine)       this._initEffectEngine();
         if (!this._flightEngine)       this._initFlightEngine();
         if (!this._deadGroundMapper)   this._initDeadGroundMapper();
+        if (!this._keyTerrainIdentificationEngine) this._initKeyTerrainIdentificationEngine();
+        if (!this._posDefScorerEngine) this._initPosDefScorerEngine();
+        if (!this._opRankerEngine) this._initOpRankerEngine();
+        if (!this._localPeaksEngine) this._initLocalPeaksEngine();
+        if (!this._ocokaEngine) this._initOcokaEngine();
+        if (!this._missionPlannerEngine) this._initMissionPlannerEngine();
       }
     }
 
@@ -1531,6 +1661,30 @@ class SymbolEngine implements Evented {
             this._deadGroundMapper?.destroy?.(); this._deadGroundMapper = null;
             this._contextMenuManager.linkDeadGroundMapper(null);
             break;
+          case 'keyTerrain':
+            this._keyTerrainIdentificationEngine?.destroy?.(); this._keyTerrainIdentificationEngine = null;
+            this._contextMenuManager.linkKeyTerrainIdentificationEngine(null);
+            break;
+          case 'positionDefensibility':
+            this._posDefScorerEngine?.destroy?.(); this._posDefScorerEngine = null;
+            this._contextMenuManager.linkPosDefScorerEngine(null);
+            break;
+          case 'opRanker':
+            this._opRankerEngine?.destroy?.(); this._opRankerEngine = null;
+            this._contextMenuManager.linkOpRankerEngine(null);
+            break;
+          case 'localPeaks':
+            this._localPeaksEngine?.destroy?.(); this._localPeaksEngine = null;
+            this._contextMenuManager.linkLocalPeaksEngine(null);
+            break;
+          case 'ocoka':
+            this._ocokaEngine?.destroy?.(); this._ocokaEngine = null;
+            this._contextMenuManager.linkOcokaEngine(null);
+            break;
+          case 'missionPlanner':
+            this._missionPlannerEngine?.destroy?.(); this._missionPlannerEngine = null;
+            this._contextMenuManager.linkMissionPlannerEngine(null);
+            break;
         }
         console.info(`[SymbolEngine] Analysis engine '${key}' disabled`);
       } else {
@@ -1544,6 +1698,12 @@ class SymbolEngine implements Evented {
           case 'effects':    if (!this._effectEngine)       this._initEffectEngine();       break;
           case 'flight':     if (!this._flightEngine)       this._initFlightEngine();       break;
           case 'deadGround': if (!this._deadGroundMapper)   this._initDeadGroundMapper();   break;
+          case 'keyTerrain': if (!this._keyTerrainIdentificationEngine) this._initKeyTerrainIdentificationEngine(); break;
+          case 'positionDefensibility': if (!this._posDefScorerEngine) this._initPosDefScorerEngine(); break;
+          case 'opRanker': if (!this._opRankerEngine) this._initOpRankerEngine(); break;
+          case 'localPeaks': if (!this._localPeaksEngine) this._initLocalPeaksEngine(); break;
+          case 'ocoka': if (!this._ocokaEngine) this._initOcokaEngine(); break;
+          case 'missionPlanner': if (!this._missionPlannerEngine) this._initMissionPlannerEngine(); break;
         }
         console.info(`[SymbolEngine] Analysis engine '${key}' enabled`);
       }

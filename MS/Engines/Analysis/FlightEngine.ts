@@ -21,6 +21,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import EngineLogger from '../../Support/EngineLogger';
 
 export interface FlightPreset {
   label: string;
@@ -146,6 +147,7 @@ export const UAV_PRESETS: Record<string, FlightPreset> = {
 };
 
 const WGS84 = { wkid: 4326 } as any;
+const ENGINE_NAME = 'FlightEngine';
 const EARTH_RADIUS_M = 6_371_008.8;
 
 function clamp(value: number, min: number, max: number): number {
@@ -1504,6 +1506,9 @@ export class FlightEngine {
 
   private _setStatus(message: string, tone: 'ok' | 'warn' | 'pick' = 'ok'): void {
     const el = this._el('flight-status');
+    if (tone === 'ok') EngineLogger.success(ENGINE_NAME, message);
+    else if (tone === 'warn') EngineLogger.error(ENGINE_NAME, message);
+    else EngineLogger.nextStep(ENGINE_NAME, message);
     if (el) {
       el.textContent = message;
       el.className = `flight-status-msg ${tone}`;
@@ -1862,3 +1867,4 @@ export class FlightEngine {
 }
 
 export default FlightEngine;
+

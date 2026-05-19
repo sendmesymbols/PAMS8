@@ -21,6 +21,7 @@ import Polygon from '@arcgis/core/geometry/Polygon';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import { ElevationUtils } from '../../Support/Elevation/ElevationUtils';
+import EngineLogger from '../../Support/EngineLogger';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -141,6 +142,7 @@ export const WEAPON_PRESETS: Record<string, WeaponPreset> = {
     icon: '⚔️',
   },
 };
+const ENGINE_NAME = 'WeaponEffectEngine';
 
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
@@ -1108,6 +1110,11 @@ export class WeaponEffectEngine {
 
   private _setStatus(state: 'awaiting' | 'picking' | 'computing' | 'ready' | 'committed' | 'error'): void {
     const dotEl = this._panelEl?.querySelector<HTMLElement>('#wez-status-dot');
+    const statusTextMap: Record<typeof state, string> = { awaiting: 'Awaiting observer', picking: 'Click map', computing: 'Computing', ready: 'Ready', committed: 'Committed', error: 'Error' };
+    const message = statusTextMap[state];
+    if (state === 'ready' || state === 'committed') EngineLogger.success(ENGINE_NAME, message);
+    else if (state === 'error') EngineLogger.error(ENGINE_NAME, message);
+    else EngineLogger.nextStep(ENGINE_NAME, message);
     const lblEl = this._panelEl?.querySelector<HTMLElement>('#wez-status-lbl');
     if (!dotEl || !lblEl) return;
     const map: Record<string, [string, string]> = {
@@ -1444,3 +1451,4 @@ export class WeaponEffectEngine {
 }
 
 export default WeaponEffectEngine;
+

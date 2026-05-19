@@ -25,6 +25,12 @@ import VisualizationEngine from './Visualization/VisualizationEngine.ts';
 import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
 import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
+import KeyTerrainIdentificationEngine from './Analysis/KeyTerrain/KeyTerrainIdentificationEngine';
+import PosDefScorerEngine from './Analysis/PositionDefesibilityScorer/PosDefScorerEngine';
+import OpRankerEngine from './Analysis/OpRanker/OpRankerEngine';
+import LocalPeaksEngine from './Analysis/Peaks/LocalPeaksEngine';
+import OcokaEngine from './OCOKA/Ocoka';
+import MissionPlannerEngine from './MissionPlanner/MissionPlannerEngine';
 import SerializationEngine from './ImportExport/SerializationEngine';
 import { MorphixEditedState } from './Morphix/MorphixEngine';
 interface Evented {
@@ -69,6 +75,12 @@ declare class SymbolEngine implements Evented {
     private _flightEngine;
     private _effectEngine;
     private _deadGroundMapper;
+    private _keyTerrainIdentificationEngine;
+    private _posDefScorerEngine;
+    private _opRankerEngine;
+    private _localPeaksEngine;
+    private _ocokaEngine;
+    private _missionPlannerEngine;
     private _deploymentBuilderEngine;
     private _declutterEngine;
     private _morphixEngine;
@@ -132,6 +144,12 @@ declare class SymbolEngine implements Evented {
     private _initEffectEngine;
     private _initFlightEngine;
     private _initDeadGroundMapper;
+    private _initKeyTerrainIdentificationEngine;
+    private _initPosDefScorerEngine;
+    private _initOpRankerEngine;
+    private _initLocalPeaksEngine;
+    private _initOcokaEngine;
+    private _initMissionPlannerEngine;
     /** Destroy all analysis engines and unlink them from the context menu. */
     private _destroyAnalysisEngines;
     get view(): MapView | SceneView;
@@ -228,6 +246,12 @@ declare class SymbolEngine implements Evented {
     get losEngine(): LOSEngine | null;
     /** Access the TrajectoryEngine â€” open projectile trajectory analysis panels programmatically. */
     get trajectoryEngine(): TrajectoryEngine | null;
+    get keyTerrainIdentificationEngine(): KeyTerrainIdentificationEngine | null;
+    get posDefScorerEngine(): PosDefScorerEngine | null;
+    get opRankerEngine(): OpRankerEngine | null;
+    get localPeaksEngine(): LocalPeaksEngine | null;
+    get ocokaEngine(): OcokaEngine | null;
+    get missionPlannerEngine(): MissionPlannerEngine | null;
     /** Get current settings data for the control panel */
     get settings(): typeof settingsData;
     /**

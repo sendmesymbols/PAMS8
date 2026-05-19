@@ -123,6 +123,42 @@ const symbolEngine = new SymbolEngine(() => appConfig.activeView);
 
 // Expose symbolEngine globally so the settings panel can communicate with it
 (window as any).symbolEngine = symbolEngine;
+Object.defineProperty(window as any, 'keyTerrainEngine', {
+  configurable: true,
+  get() {
+    return symbolEngine.keyTerrainIdentificationEngine;
+  },
+});
+Object.defineProperty(window as any, 'posDefScorerEngine', {
+  configurable: true,
+  get() {
+    return symbolEngine.posDefScorerEngine;
+  },
+});
+Object.defineProperty(window as any, 'opRankerEngine', {
+  configurable: true,
+  get() {
+    return symbolEngine.opRankerEngine;
+  },
+});
+Object.defineProperty(window as any, 'localPeaksEngine', {
+  configurable: true,
+  get() {
+    return symbolEngine.localPeaksEngine;
+  },
+});
+Object.defineProperty(window as any, 'ocokaEngine', {
+  configurable: true,
+  get() {
+    return symbolEngine.ocokaEngine;
+  },
+});
+Object.defineProperty(window as any, 'missionPlannerEngine', {
+  configurable: true,
+  get() {
+    return symbolEngine.missionPlannerEngine;
+  },
+});
 
 // Expose DrawingCueEngine singleton so index.html plain JS can call openCompassWidget() etc.
 import DrawingCueEngine from '../MS/Engines/DrawingCueEngine';

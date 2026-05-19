@@ -9,13 +9,15 @@ import Point from '@arcgis/core/geometry/Point';
 import Extent from '@arcgis/core/geometry/Extent';
 import Mesh from '@arcgis/core/geometry/Mesh';
 import Polyline from '@arcgis/core/geometry/Polyline';
+import EngineLogger from '../../Support/EngineLogger';
 
 const M_PER_DEG = 111_320;
 const EARTH_R = 6_371_008.8;
 const WGS84 = { wkid: 4326 } as any;
+const ENGINE_NAME = 'DeadGroundMapper';
 
-type DeadGroundViewMode = '2d' | '3d' | 'both';
 type DeadGroundColorMode = 'depth' | 'binary' | 'range' | 'quadrant';
+type ViewshedDomeColorMode = 'elevation' | 'binary' | 'range' | 'azimuth';
 
 interface DeadGroundRunResult {
   depthGrid: Float32Array;
@@ -27,14 +29,51 @@ interface DeadGroundRunResult {
   totalCells: number;
 }
 
+export interface DeadGroundSummary {
+  observer: Point;
+  deadGroundPct: number;
+  deadCount: number;
+  totalCells: number;
+  maxDepth: number;
+  extent: Extent;
+}
+
+export interface DeadGroundHeadlessOptions {
+  observer: Point;
+  observerHeightM?: number;
+  radiusM?: number;
+  cellM?: number;
+}
+
+interface ViewshedDomeParams {
+  azCenterDeg: number;
+  azSpreadDeg: number;
+  elevMinDeg: number;
+  elevMaxDeg: number;
+  numAz: number;
+  numEl: number;
+  maxRangeM: number;
+  stepM: number;
+  colorMode: ViewshedDomeColorMode;
+  opacity: number;
+  showMasked: boolean;
+  showCap: boolean;
+  showHorizon: boolean;
+  doubleSided: boolean;
+}
+
 export class DeadGroundMapper {
   static readonly MESH_LAYER_ID = 'dead-ground-mesh';
+  static readonly DOME_LAYER_ID = 'dead-ground-viewshed-dome';
+  static readonly DOME_HORIZON_LAYER_ID = 'dead-ground-viewshed-horizon';
   static readonly CONTOUR_LAYER_ID = 'dead-ground-contours';
   static readonly SPOKE_LAYER_ID = 'dead-ground-spokes';
   static readonly OBSERVER_LAYER_ID = 'dead-ground-observer';
 
   private _view: MapView | SceneView | null = null;
   private _meshLayer!: GraphicsLayer;
+  private _domeLayer!: GraphicsLayer;
+  private _domeHorizonLayer!: GraphicsLayer;
   private _contourLayer!: GraphicsLayer;
   private _spokeLayer!: GraphicsLayer;
   private _observerLayer!: GraphicsLayer;
@@ -45,7 +84,6 @@ export class DeadGroundMapper {
   private _observerPt: Point | null = null;
   private _obsZ = 0;
   private _running = false;
-  private _currentView: DeadGroundViewMode = '2d';
   private _dragOffsetX = 0;
   private _dragOffsetY = 0;
   private _isDragging = false;
@@ -58,10 +96,13 @@ export class DeadGroundMapper {
   initialize(view: MapView | SceneView): void {
     if (this._view === view) return;
     this._view = view;
+    this._syncDomeControls();
     const map = view.map as any;
     if (map && !map.findLayerById(this._meshLayer.id)) {
       map.addMany([
         this._meshLayer,
+        this._domeLayer,
+        this._domeHorizonLayer,
         this._contourLayer,
         this._spokeLayer,
         this._observerLayer,
@@ -87,6 +128,28 @@ export class DeadGroundMapper {
     }
   }
 
+  public async runHeadless(options: DeadGroundHeadlessOptions): Promise<DeadGroundSummary> {
+    if (!this._view) throw new Error('DeadGroundMapper requires initialize(view) before runHeadless().');
+    const observer = options.observer;
+    let obsZ = options.observerHeightM ?? 1.8;
+    try {
+      const er = await (this._view.map as any).ground.queryElevation(observer);
+      obsZ = ((er?.geometry?.z ?? 0) as number) + (options.observerHeightM ?? 1.8);
+    } catch {}
+    const result = await this._computeDeadGround(observer, obsZ, {
+      radiusM: options.radiusM ?? 3000,
+      cellM: options.cellM ?? 100,
+    });
+    return {
+      observer,
+      deadGroundPct: result.totalCells > 0 ? Math.round((result.deadCount / result.totalCells) * 100) : 0,
+      deadCount: result.deadCount,
+      totalCells: result.totalCells,
+      maxDepth: result.maxDepth,
+      extent: result.extent,
+    };
+  }
+
   close(): void {
     this._hidePanel();
     this._clearResults();
@@ -98,6 +161,8 @@ export class DeadGroundMapper {
     const map = this._view?.map as any;
     if (map) {
       map.remove(this._meshLayer);
+      map.remove(this._domeLayer);
+      map.remove(this._domeHorizonLayer);
       map.remove(this._contourLayer);
       map.remove(this._spokeLayer);
       map.remove(this._observerLayer);
@@ -112,6 +177,16 @@ export class DeadGroundMapper {
     this._meshLayer = new GraphicsLayer({
       id: DeadGroundMapper.MESH_LAYER_ID,
       title: 'Dead ground - 3D mesh',
+      elevationInfo: { mode: 'absolute-height' } as any,
+    });
+    this._domeLayer = new GraphicsLayer({
+      id: DeadGroundMapper.DOME_LAYER_ID,
+      title: 'Dead ground - viewshed dome',
+      elevationInfo: { mode: 'absolute-height' } as any,
+    });
+    this._domeHorizonLayer = new GraphicsLayer({
+      id: DeadGroundMapper.DOME_HORIZON_LAYER_ID,
+      title: 'Dead ground - viewshed horizon',
       elevationInfo: { mode: 'absolute-height' } as any,
     });
     this._contourLayer = new GraphicsLayer({
@@ -220,8 +295,10 @@ export class DeadGroundMapper {
     const showSpokes = this._checked('dead-opt-spokes', false);
     const showContours = this._checked('dead-opt-contours', true);
     const snapToTerrain = this._checked('dead-opt-snap', true);
-    const show2D = this._currentView === '2d' || this._currentView === 'both';
-    const show3D = this._currentView === '3d' || this._currentView === 'both';
+    const show2D = this._checked('dead-opt-heatmap', true);
+    const show3D = this._checked('dead-opt-mesh', false);
+    const showDome = this._checked('dead-opt-dome', true) && this._view.type === '3d';
+    const domeParams = this._readDomeParams(radiusM, opacity, showMasked, showCap, showObstructionRing, doubleSided);
 
     try {
       this._setStatus('sampling', 'Getting terrain elevation...');
@@ -281,6 +358,22 @@ export class DeadGroundMapper {
         });
         this._meshLayer.add(meshGraphic);
       }
+      if (showDome) {
+        this._setProgress(0.84, 'Casting viewshed dome rays...');
+        const horizonAngles = await this._castViewshedDomeRays(this._observerPt, this._obsZ, {
+          ...domeParams,
+          onProgress: (frac, bearing) => this._setProgress(0.84 + frac * 0.1, `Dome ray ${Math.round(frac * domeParams.numAz)}/${domeParams.numAz} brg ${Math.round(bearing)}`),
+        });
+        this._setProgress(0.95, 'Building viewshed dome...');
+        const dome = this._buildViewshedDome(this._observerPt, this._obsZ, horizonAngles, domeParams);
+        this._domeLayer.add(dome.graphic);
+        if (domeParams.showHorizon) {
+          this._domeHorizonLayer.add(this._buildViewshedHorizonRing(this._observerPt, this._obsZ, horizonAngles, domeParams));
+        }
+        this._setText('dead-st-dome', `${dome.visPct}%`);
+      } else {
+        this._setText('dead-st-dome', this._checked('dead-opt-dome', true) ? '3D only' : 'off');
+      }
       if (showContours) {
         this._setProgress(0.9, 'Drawing contours...');
         this._buildContourGraphics(result.depthGrid, result.cols, result.rows, result.extent, {
@@ -300,7 +393,7 @@ export class DeadGroundMapper {
       this._setText('dead-st-cells', (result.cols * result.rows).toLocaleString());
       this._setProgress(1, `Done - ${pct}% dead ground`);
       this._setStatus('done', 'Done');
-      this._view.goTo({ target: result.extent, tilt: show3D ? 65 : 0 }, { duration: 1000 }).catch(() => {});
+      this._view.goTo({ target: result.extent, tilt: show3D || showDome ? 65 : 0 }, { duration: 1000 }).catch(() => {});
     } catch (err) {
       console.error('[DeadGroundMapper] Analysis failed', err);
       this._setProgress(0, 'Analysis failed');
@@ -313,6 +406,8 @@ export class DeadGroundMapper {
 
   private _clearResults(): void {
     this._meshLayer.removeAll();
+    this._domeLayer.removeAll();
+    this._domeHorizonLayer.removeAll();
     this._contourLayer.removeAll();
     this._spokeLayer.removeAll();
     if (this._heatmapLayer) {
@@ -334,6 +429,7 @@ export class DeadGroundMapper {
     this._setText('dead-st-dead', '\u2014');
     this._setText('dead-st-depth', '\u2014');
     this._setText('dead-st-cells', '\u2014');
+    this._setText('dead-st-dome', '\u2014');
     this._setProgress(0, '\u2014');
     this._setStatus('place', 'Place observer');
   }
@@ -422,7 +518,15 @@ export class DeadGroundMapper {
     cols: number,
     rows: number,
     extent: Extent,
-    opts: { maxDepth: number; opacity: number; showVisible: boolean; radiusM: number; observerPt: Point },
+    opts: {
+      maxDepth: number;
+      opacity: number;
+      colorMode: DeadGroundColorMode;
+      showMasked: boolean;
+      showVisible: boolean;
+      radiusM: number;
+      observerPt: Point;
+    },
   ): MediaLayer {
     const canvas = document.createElement('canvas');
     canvas.width = cols;
@@ -651,6 +755,229 @@ export class DeadGroundMapper {
     });
   }
 
+  private _readDomeParams(
+    radiusM: number,
+    opacity: number,
+    showMasked: boolean,
+    showCap: boolean,
+    showHorizon: boolean,
+    doubleSided: boolean,
+  ): ViewshedDomeParams {
+    const elevMin = Math.max(-89, Math.min(0, this._num('dead-dome-el-min', -5)));
+    const elevMax = Math.max(1, Math.min(89, this._num('dead-dome-el-max', 60)));
+    return {
+      azCenterDeg: ((this._num('dead-dome-az-center', 0) % 360) + 360) % 360,
+      azSpreadDeg: Math.max(10, Math.min(360, this._num('dead-dome-az-spread', 360))),
+      elevMinDeg: Math.min(elevMin, elevMax - 1),
+      elevMaxDeg: Math.max(elevMax, elevMin + 1),
+      numAz: Math.max(8, Math.round(this._num('dead-dome-rays', 72))),
+      numEl: Math.max(4, Math.round(this._num('dead-dome-slices', 16))),
+      maxRangeM: Math.max(200, radiusM),
+      stepM: Math.max(10, this._num('dead-dome-step', Math.max(25, radiusM / 100))),
+      colorMode: this._selectValue('dead-dome-color-mode', 'elevation') as ViewshedDomeColorMode,
+      opacity,
+      showMasked,
+      showCap,
+      showHorizon,
+      doubleSided,
+    };
+  }
+
+  private async _castViewshedDomeRays(
+    observerPt: Point,
+    obsZ: number,
+    opts: ViewshedDomeParams & { onProgress?: (frac: number, bearing: number) => void },
+  ): Promise<Float32Array> {
+    const lon0 = observerPt.longitude ?? observerPt.x;
+    const lat0 = observerPt.latitude ?? observerPt.y;
+    const pad = opts.maxRangeM * 1.05;
+    const cosLat = Math.max(0.01, Math.cos((lat0 * Math.PI) / 180));
+    const extent = new Extent({
+      xmin: lon0 - pad / (M_PER_DEG * cosLat),
+      ymin: lat0 - pad / M_PER_DEG,
+      xmax: lon0 + pad / (M_PER_DEG * cosLat),
+      ymax: lat0 + pad / M_PER_DEG,
+      spatialReference: WGS84,
+    });
+    const sampler = await (this._view!.map as any).ground.createElevationSampler(extent, { noDataValue: 0 });
+    const horizonAngles = new Float32Array(opts.numAz);
+    const numSteps = Math.max(1, Math.ceil(opts.maxRangeM / opts.stepM));
+    const halfAz = opts.azSpreadDeg / 2;
+
+    for (let rayIdx = 0; rayIdx < opts.numAz; rayIdx++) {
+      const bearing = opts.azCenterDeg - halfAz + (rayIdx / (opts.numAz - 1 || 1)) * opts.azSpreadDeg;
+      let maxSlopeDeg = -90;
+      for (let s = 1; s <= numSteps; s++) {
+        const dist = Math.min(opts.maxRangeM, s * opts.stepM);
+        const tip = this._destPt(lon0, lat0, bearing, dist);
+        const samplePt = new Point({ longitude: tip.longitude, latitude: tip.latitude, spatialReference: WGS84 });
+        const terrainZ = sampler.queryElevation(samplePt)?.z ?? 0;
+        const slopeDeg = (Math.atan2(terrainZ - obsZ, dist) * 180) / Math.PI;
+        if (slopeDeg > maxSlopeDeg) maxSlopeDeg = slopeDeg;
+      }
+      horizonAngles[rayIdx] = maxSlopeDeg;
+      if (rayIdx % 6 === 0 || rayIdx === opts.numAz - 1) {
+        opts.onProgress?.((rayIdx + 1) / opts.numAz, bearing);
+        await new Promise((r) => setTimeout(r, 0));
+      }
+    }
+
+    return horizonAngles;
+  }
+
+  private _buildViewshedDome(
+    observerPt: Point,
+    obsZ: number,
+    horizonAngles: Float32Array,
+    opts: ViewshedDomeParams,
+  ): { graphic: Graphic; visPct: number } {
+    const lon0 = observerPt.longitude ?? observerPt.x;
+    const lat0 = observerPt.latitude ?? observerPt.y;
+    const halfAz = opts.azSpreadDeg / 2;
+    const closedAz = opts.azSpreadDeg >= 359.9;
+    const azSegments = closedAz ? opts.numAz : Math.max(1, opts.numAz - 1);
+    const surfaceVerts = opts.numAz * (opts.numEl + 1);
+    const observerVertexIdx = surfaceVerts;
+    const totalVerts = surfaceVerts + 1;
+    const surfaceTris = azSegments * opts.numEl * 2;
+    const capTris = opts.showCap ? azSegments : 0;
+    const positions = new Float64Array(totalVerts * 3);
+    const colors = new Uint8Array(totalVerts * 4);
+    const normals = new Float32Array(totalVerts * 3);
+    const faces = new Uint32Array((surfaceTris + capTris) * 3);
+    let visibleCount = 0;
+
+    for (let azIdx = 0; azIdx < opts.numAz; azIdx++) {
+      const azDeg = opts.azCenterDeg - halfAz + (azIdx / (opts.numAz - 1 || 1)) * opts.azSpreadDeg;
+      const azRad = (azDeg * Math.PI) / 180;
+      const horizonDeg = horizonAngles[azIdx] ?? -90;
+      for (let elIdx = 0; elIdx <= opts.numEl; elIdx++) {
+        const elevDeg = opts.elevMinDeg + (elIdx / opts.numEl) * (opts.elevMaxDeg - opts.elevMinDeg);
+        const elevRad = (elevDeg * Math.PI) / 180;
+        const isMasked = elevDeg < horizonDeg;
+        if (!isMasked) visibleCount++;
+
+        const groundDist = opts.maxRangeM * Math.cos(elevRad);
+        const east = groundDist * Math.sin(azRad);
+        const north = groundDist * Math.cos(azRad);
+        const up = opts.maxRangeM * Math.sin(elevRad);
+        const vIdx = azIdx * (opts.numEl + 1) + elIdx;
+        const [lon, lat, z] = this._enuToWGS84(lon0, lat0, obsZ, east, north, up);
+        const [r, g, b, a] = this._viewshedVertexColor(opts.colorMode, {
+          elevDeg,
+          elevMin: opts.elevMinDeg,
+          elevMax: opts.elevMaxDeg,
+          isMasked: isMasked && opts.showMasked,
+          rangeM: groundDist,
+          maxRange: opts.maxRangeM,
+          azimuthDeg: azDeg,
+          opacity: opts.opacity,
+        });
+
+        positions[vIdx * 3] = lon;
+        positions[vIdx * 3 + 1] = lat;
+        positions[vIdx * 3 + 2] = z;
+        normals[vIdx * 3] = Math.sin(azRad) * Math.cos(elevRad);
+        normals[vIdx * 3 + 1] = Math.cos(azRad) * Math.cos(elevRad);
+        normals[vIdx * 3 + 2] = Math.sin(elevRad);
+        colors[vIdx * 4] = r;
+        colors[vIdx * 4 + 1] = g;
+        colors[vIdx * 4 + 2] = b;
+        colors[vIdx * 4 + 3] = isMasked && !opts.showMasked ? 0 : a;
+      }
+    }
+
+    positions[observerVertexIdx * 3] = lon0;
+    positions[observerVertexIdx * 3 + 1] = lat0;
+    positions[observerVertexIdx * 3 + 2] = obsZ;
+    normals[observerVertexIdx * 3 + 2] = 1;
+    colors[observerVertexIdx * 4] = 29;
+    colors[observerVertexIdx * 4 + 1] = 158;
+    colors[observerVertexIdx * 4 + 2] = 117;
+    colors[observerVertexIdx * 4 + 3] = Math.round(opts.opacity * 200);
+
+    let fi = 0;
+    for (let azIdx = 0; azIdx < azSegments; azIdx++) {
+      const azNext = closedAz ? (azIdx + 1) % opts.numAz : azIdx + 1;
+      for (let elIdx = 0; elIdx < opts.numEl; elIdx++) {
+        const v00 = azIdx * (opts.numEl + 1) + elIdx;
+        const v10 = azNext * (opts.numEl + 1) + elIdx;
+        const v01 = azIdx * (opts.numEl + 1) + elIdx + 1;
+        const v11 = azNext * (opts.numEl + 1) + elIdx + 1;
+        faces[fi++] = v00; faces[fi++] = v10; faces[fi++] = v01;
+        faces[fi++] = v10; faces[fi++] = v11; faces[fi++] = v01;
+      }
+    }
+    if (opts.showCap) {
+      for (let azIdx = 0; azIdx < azSegments; azIdx++) {
+        const azNext = closedAz ? (azIdx + 1) % opts.numAz : azIdx + 1;
+        faces[fi++] = observerVertexIdx;
+        faces[fi++] = azNext * (opts.numEl + 1);
+        faces[fi++] = azIdx * (opts.numEl + 1);
+      }
+    }
+
+    const mesh = new Mesh({
+      vertexAttributes: { position: positions, color: colors, normal: normals },
+      components: [{ faces, material: { colorMixMode: 'replace', doubleSided: opts.doubleSided } as any }],
+      spatialReference: WGS84,
+    } as any);
+    const visPct = Math.round((100 * visibleCount) / surfaceVerts);
+    return {
+      graphic: new Graphic({
+        geometry: mesh,
+        symbol: {
+          type: 'mesh-3d',
+          symbolLayers: [{
+            type: 'fill',
+            material: { color: [255, 255, 255, 255], colorMixMode: 'replace', doubleSided: opts.doubleSided },
+          }],
+        } as any,
+        attributes: { type: 'viewshed_dome', label: `Viewshed dome ${visPct}% visible` },
+      }),
+      visPct,
+    };
+  }
+
+  private _buildViewshedHorizonRing(
+    observerPt: Point,
+    obsZ: number,
+    horizonAngles: Float32Array,
+    opts: ViewshedDomeParams,
+  ): Graphic {
+    const lon0 = observerPt.longitude ?? observerPt.x;
+    const lat0 = observerPt.latitude ?? observerPt.y;
+    const halfAz = opts.azSpreadDeg / 2;
+    const closedAz = opts.azSpreadDeg >= 359.9;
+    const count = closedAz ? opts.numAz + 1 : opts.numAz;
+    const path: number[][] = [];
+    for (let rayIdx = 0; rayIdx < count; rayIdx++) {
+      const srcIdx = rayIdx % opts.numAz;
+      const azDeg = opts.azCenterDeg - halfAz + (srcIdx / (opts.numAz - 1 || 1)) * opts.azSpreadDeg;
+      const elevRad = ((horizonAngles[srcIdx] ?? 0) * Math.PI) / 180;
+      const azRad = (azDeg * Math.PI) / 180;
+      const groundDist = opts.maxRangeM * 0.95;
+      const east = groundDist * Math.sin(azRad);
+      const north = groundDist * Math.cos(azRad);
+      const up = groundDist * Math.tan(elevRad);
+      path.push(this._enuToWGS84(lon0, lat0, obsZ, east, north, up));
+    }
+    return new Graphic({
+      geometry: new Polyline({ hasZ: true, paths: [path], spatialReference: WGS84 }),
+      symbol: {
+        type: 'line-3d',
+        symbolLayers: [{
+          type: 'line',
+          size: 2,
+          material: { color: [239, 159, 39, 0.85] },
+          cap: 'round',
+          join: 'round',
+        }],
+      } as any,
+      attributes: { type: 'viewshed_horizon', label: 'Viewshed terrain horizon' },
+    });
+  }
+
   private _buildObstructionRingGraphics(depthGrid: Float32Array, cols: number, rows: number, extent: Extent): Graphic[] {
     const segments: number[][][] = [];
     const dLon = (extent.xmax - extent.xmin) / cols;
@@ -717,6 +1044,56 @@ export class DeadGroundMapper {
     return { longitude: (l2 * 180) / Math.PI, latitude: (p2 * 180) / Math.PI };
   }
 
+  private _enuToWGS84(lon: number, lat: number, z: number, east: number, north: number, up: number): [number, number, number] {
+    const cosLat = Math.max(0.01, Math.cos((lat * Math.PI) / 180));
+    return [
+      lon + east / (M_PER_DEG * cosLat),
+      lat + north / M_PER_DEG,
+      z + up,
+    ];
+  }
+
+  private _viewshedVertexColor(
+    mode: ViewshedDomeColorMode,
+    opts: {
+      elevDeg: number;
+      elevMin: number;
+      elevMax: number;
+      isMasked: boolean;
+      rangeM: number;
+      maxRange: number;
+      azimuthDeg: number;
+      opacity: number;
+    },
+  ): [number, number, number, number] {
+    const alpha = Math.round((opts.isMasked ? 0.45 : 0.85) * opts.opacity * 255);
+    if (opts.isMasked) {
+      return mode === 'binary' ? [90, 20, 20, alpha] : [60, 15, 15, alpha];
+    }
+    if (mode === 'binary') return [29, 158, 117, alpha];
+    if (mode === 'range') {
+      const t = Math.max(0, Math.min(1, opts.rangeM / opts.maxRange));
+      const [r, g, b] = this._lerpRGB([29, 82, 180], [200, 220, 255], t);
+      return [r, g, b, alpha];
+    }
+    if (mode === 'azimuth') {
+      const bearing = ((opts.azimuthDeg % 360) + 360) % 360;
+      const stops = [[55, 138, 221], [239, 159, 39], [220, 60, 48], [180, 40, 220], [55, 138, 221]];
+      const seg = (bearing / 360) * (stops.length - 1);
+      const lo = Math.floor(seg);
+      const hi = Math.min(stops.length - 1, lo + 1);
+      const [r, g, b] = this._lerpRGB(stops[lo], stops[hi], seg - lo);
+      return [r, g, b, alpha];
+    }
+    const t = Math.max(0, Math.min(1, (opts.elevDeg - opts.elevMin) / Math.max(1, opts.elevMax - opts.elevMin)));
+    const stops = [[26, 82, 220], [29, 158, 117], [239, 159, 39], [220, 90, 48]];
+    const seg = t * (stops.length - 1);
+    const lo = Math.floor(seg);
+    const hi = Math.min(stops.length - 1, lo + 1);
+    const [r, g, b] = this._lerpRGB(stops[lo], stops[hi], seg - lo);
+    return [r, g, b, alpha];
+  }
+
   private _depthToRGBA(depth: number, maxDepth: number, opacity: number): [number, number, number, number] {
     const t = Math.min(1, depth / maxDepth);
     const stops = [[30, 10, 10], [140, 28, 28], [220, 60, 48], [239, 159, 39], [245, 240, 64]];
@@ -762,6 +1139,14 @@ export class DeadGroundMapper {
     return this._depthToRGBA(depth, maxDepth, opacity);
   }
 
+  private _lerpRGB(a: number[], b: number[], t: number): [number, number, number] {
+    return [
+      Math.round(a[0] + (b[0] - a[0]) * t),
+      Math.round(a[1] + (b[1] - a[1]) * t),
+      Math.round(a[2] + (b[2] - a[2]) * t),
+    ];
+  }
+
   private _lerpRGBA(a: number[], b: number[], t: number, opacity: number): [number, number, number, number] {
     return [
       Math.round(a[0] + (b[0] - a[0]) * t),
@@ -781,6 +1166,7 @@ export class DeadGroundMapper {
       this._makeDraggable();
     }
     this._panelEl.style.display = 'block';
+    this._syncDomeControls();
   }
 
   private _hidePanel(): void {
@@ -812,11 +1198,6 @@ export class DeadGroundMapper {
         </div>
       </div>
       <div class="dead-body">
-        <div class="dead-vtabs">
-          <button class="dead-vtab active" data-view="2d">2D Heatmap</button>
-          <button class="dead-vtab" data-view="3d">3D Mesh</button>
-          <button class="dead-vtab" data-view="both">Both</button>
-        </div>
         <div class="dead-ps">Observer</div>
         <div class="dead-pg">
           <div class="dead-pf"><div class="dead-pl">Eye height (m)</div><input id="dead-inp-eye" type="number" value="1.8" min="0.5" max="20" step="0.1" /></div>
@@ -834,14 +1215,66 @@ export class DeadGroundMapper {
           </div>
         </div>
         <div class="dead-ps">Depth colour scale</div>
+        <div class="dead-pg dead-tight">
+          <div class="dead-pf dead-full"><div class="dead-pl">Colour mode</div>
+            <select id="dead-inp-color-mode">
+              <option value="depth" selected>Depth - shallow to deep</option>
+              <option value="binary">Binary - dead / visible</option>
+              <option value="range">Range - near to far</option>
+              <option value="quadrant">Quadrant - compass hue</option>
+            </select>
+          </div>
+        </div>
         <div class="dead-psr"><div class="dead-psr-l">Max depth (m)</div><input id="dead-inp-maxdepth" type="range" min="5" max="200" step="5" value="50"/><div class="dead-psr-v" id="dead-maxdepth-v">50 m</div></div>
         <div class="dead-psr"><div class="dead-psr-l">Heatmap opacity</div><input id="dead-inp-opacity" type="range" min="0.2" max="1.0" step="0.05" value="0.75"/><div class="dead-psr-v" id="dead-opacity-v">0.75</div></div>
         <div class="dead-pdiv"></div>
         <div class="dead-ps">Display options</div>
-        <div class="dead-ptr"><label>Show visible ground</label><input id="dead-opt-visible" type="checkbox"/></div>
-        <div class="dead-ptr"><label>Show observer LOS spokes</label><input id="dead-opt-spokes" type="checkbox"/></div>
-        <div class="dead-ptr"><label>Show depth contours</label><input id="dead-opt-contours" type="checkbox" checked/></div>
-        <div class="dead-ptr"><label>Snap to terrain elevation</label><input id="dead-opt-snap" type="checkbox" checked/></div>
+        <div class="dead-opt-grid">
+          <div class="dead-ptr"><label>2D heatmap</label><input id="dead-opt-heatmap" type="checkbox" checked/></div>
+          <div class="dead-ptr"><label>3D terrain mesh</label><input id="dead-opt-mesh" type="checkbox"/></div>
+          <div class="dead-ptr"><label>3D viewshed dome</label><input id="dead-opt-dome" type="checkbox" checked/></div>
+          <div class="dead-ptr"><label>Depth contours</label><input id="dead-opt-contours" type="checkbox" checked/></div>
+          <div class="dead-ptr"><label>Visible ground</label><input id="dead-opt-visible" type="checkbox"/></div>
+          <div class="dead-ptr"><label>LOS spokes</label><input id="dead-opt-spokes" type="checkbox"/></div>
+          <div class="dead-ptr"><label>Snap terrain</label><input id="dead-opt-snap" type="checkbox" checked/></div>
+          <div class="dead-ptr"><label>Masked cells</label><input id="dead-opt-masked" type="checkbox" checked/></div>
+          <div class="dead-ptr"><label>Bottom cap</label><input id="dead-opt-cap" type="checkbox" checked/></div>
+          <div class="dead-ptr"><label>Horizon ring</label><input id="dead-opt-ring" type="checkbox" checked/></div>
+          <div class="dead-ptr"><label>Double sided</label><input id="dead-opt-dblside" type="checkbox" checked/></div>
+        </div>
+        <div class="dead-dome-options" id="dead-dome-options">
+          <div class="dead-pg dead-tight">
+            <div class="dead-pf"><div class="dead-pl">Az centre</div><input id="dead-dome-az-center" type="number" value="0" min="0" max="359" step="1" /></div>
+            <div class="dead-pf"><div class="dead-pl">Spread</div><input id="dead-dome-az-spread" type="number" value="360" min="10" max="360" step="5" /></div>
+            <div class="dead-pf"><div class="dead-pl">Min elev</div><input id="dead-dome-el-min" type="number" value="-5" min="-89" max="0" step="1" /></div>
+            <div class="dead-pf"><div class="dead-pl">Max elev</div><input id="dead-dome-el-max" type="number" value="60" min="1" max="89" step="1" /></div>
+            <div class="dead-pf"><div class="dead-pl">Rays</div>
+              <select id="dead-dome-rays">
+                <option value="36">36</option>
+                <option value="72" selected>72</option>
+                <option value="120">120</option>
+                <option value="180">180</option>
+              </select>
+            </div>
+            <div class="dead-pf"><div class="dead-pl">Slices</div>
+              <select id="dead-dome-slices">
+                <option value="8">8</option>
+                <option value="16" selected>16</option>
+                <option value="24">24</option>
+                <option value="32">32</option>
+              </select>
+            </div>
+            <div class="dead-pf"><div class="dead-pl">Step (m)</div><input id="dead-dome-step" type="number" value="50" min="10" max="250" step="10" /></div>
+            <div class="dead-pf"><div class="dead-pl">Dome colour</div>
+              <select id="dead-dome-color-mode">
+                <option value="elevation" selected>Elevation</option>
+                <option value="binary">Binary</option>
+                <option value="range">Range</option>
+                <option value="azimuth">Azimuth</option>
+              </select>
+            </div>
+          </div>
+        </div>
         <div class="dead-pdiv"></div>
         <div id="dead-depthkey">
           <div class="dead-dk-label">Dead ground depth key</div>
@@ -853,14 +1286,16 @@ export class DeadGroundMapper {
           <div class="dead-st"><div class="dead-st-l">Dead ground</div><div class="dead-st-v" id="dead-st-dead">—</div></div>
           <div class="dead-st"><div class="dead-st-l">Max depth</div><div class="dead-st-v" id="dead-st-depth">—</div></div>
           <div class="dead-st"><div class="dead-st-l">Cells</div><div class="dead-st-v" id="dead-st-cells">—</div></div>
+          <div class="dead-st"><div class="dead-st-l">Dome vis</div><div class="dead-st-v" id="dead-st-dome">—</div></div>
         </div>
         <div id="dead-coords">Observer: click map to place</div>
         <div class="dead-pb-row">
           <button class="dead-pb" id="dead-btn-clear">Clear</button>
-          <button class="dead-pb dead-primary" id="dead-btn-run" disabled>Run analysis ↗</button>
+          <button class="dead-pb dead-primary" id="dead-btn-run" disabled>Run analysis</button>
         </div>
         <div id="dead-legend">
           <div class="dead-leg-row"><div class="dead-leg-swatch" style="background:linear-gradient(to right,#3a1a1a,#DC3C30,#EF9F27,#F5F040)"></div><div class="dead-leg-lbl">Dead ground - shallow → deep</div></div>
+          <div class="dead-leg-row"><div class="dead-leg-swatch" style="background:linear-gradient(to right,#1a52dc,#1D9E75,#EF9F27,#DC3C30)"></div><div class="dead-leg-lbl">Viewshed dome - elevation</div></div>
           <div class="dead-leg-row"><div class="dead-leg-swatch" style="background:rgba(29,158,117,0.35);border:1px solid #1D9E75"></div><div class="dead-leg-lbl">Visible ground (if enabled)</div></div>
           <div class="dead-leg-row"><div class="dead-leg-swatch" style="background:#378ADD"></div><div class="dead-leg-lbl">Observer position</div></div>
         </div>
@@ -900,14 +1335,24 @@ export class DeadGroundMapper {
     p.querySelector('#dead-inp-opacity')?.addEventListener('input', () => {
       this._setText('dead-opacity-v', this._num('dead-inp-opacity', 0.75).toFixed(2));
     });
-    p.querySelectorAll('.dead-vtab').forEach((tab) => {
-      tab.addEventListener('click', () => {
-        p.querySelectorAll('.dead-vtab').forEach((t) => t.classList.remove('active'));
-        tab.classList.add('active');
-        const v = (tab as HTMLElement).dataset.view as DeadGroundViewMode;
-        this._currentView = v || '2d';
+    p.querySelector('#dead-opt-dome')?.addEventListener('change', () => this._syncDomeControls());
+  }
+
+  private _syncDomeControls(): void {
+    const domeToggle = this._el('dead-opt-dome') as HTMLInputElement | null;
+    const wrap = this._el('dead-dome-options');
+    const available = this._view?.type === '3d';
+    const enabled = !!domeToggle?.checked && available;
+    if (domeToggle) {
+      domeToggle.disabled = !available;
+      domeToggle.title = available ? '' : 'Viewshed dome requires SceneView';
+    }
+    if (wrap) {
+      wrap.classList.toggle('dead-disabled', !enabled);
+      wrap.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input,select').forEach((el) => {
+        el.disabled = !enabled;
       });
-    });
+    }
   }
 
   private _makeDraggable(): void {
@@ -940,6 +1385,8 @@ export class DeadGroundMapper {
 
   private _setStatus(state: 'place' | 'sampling' | 'building' | 'done', text: string): void {
     const el = this._el('dead-status');
+    if (state === 'done') EngineLogger.success(ENGINE_NAME, text);
+    else EngineLogger.nextStep(ENGINE_NAME, text);
     if (!el) return;
     el.textContent = text;
     el.className = `dead-ph-status ${state}`;
@@ -1001,11 +1448,9 @@ export class DeadGroundMapper {
       .dead-help-body{padding:10px 11px 12px;font-size:10px;line-height:1.45;color:#bfbcb4;user-select:text}
       .dead-help-body p{margin:0 0 9px}.dead-help-block{margin-top:10px}.dead-help-block h4{margin:0 0 5px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#DC3C30}.dead-help-block ol{margin:0;padding-left:17px}.dead-help-block li{margin:3px 0}
       .dead-body{padding-bottom:6px;overflow-x:hidden}
-      .dead-vtabs{display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.07)}
-      .dead-vtab{flex:1;padding:7px;font-family:'Courier New',monospace;font-size:9px;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;border:none;background:transparent;color:#888780;transition:all .13s}
-      .dead-vtab.active{color:#DC3C30;border-bottom:2px solid #DC3C30}
       .dead-ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#3a3935;padding:9px 12px 5px}
       .dead-pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
+      .dead-pg.dead-tight{gap:6px 8px;padding-bottom:7px}
       .dead-pf{display:flex;flex-direction:column;gap:3px}.dead-full{grid-column:1/-1}
       .dead-pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}
       .dead-ground-panel input,.dead-ground-panel select{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s}
@@ -1013,9 +1458,15 @@ export class DeadGroundMapper {
       .dead-psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}.dead-psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;flex:1.6}.dead-psr input[type=range]{flex:2;accent-color:#DC3C30;cursor:pointer}.dead-psr-v{font-size:10px;color:#DC3C30;min-width:40px;text-align:right}
       .dead-pdiv{height:1px;background:rgba(255,255,255,0.07);margin:4px 0}
       .dead-ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}.dead-ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;cursor:pointer}.dead-ptr input[type=checkbox]{accent-color:#DC3C30;width:13px;height:13px;cursor:pointer}
+      .dead-opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 4px;padding:0 8px 6px}
+      .dead-opt-grid .dead-ptr{padding:4px 4px}
+      .dead-opt-grid .dead-ptr label{font-size:8px;letter-spacing:.055em;line-height:1.15}
+      .dead-dome-options{border-top:1px solid rgba(255,255,255,0.05);padding-top:7px;transition:opacity .15s}
+      .dead-dome-options.dead-disabled{opacity:.35}
+      .dead-ground-panel input:disabled,.dead-ground-panel select:disabled{opacity:.55;cursor:not-allowed}
       #dead-depthkey{margin:0 12px 9px}.dead-dk-label{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935;margin-bottom:5px}.dead-dk-bar{height:10px;border-radius:2px;background:linear-gradient(to right,#3a1a1a,#8B1A1A,#DC3C30,#EF9F27,#F5F040);border:1px solid rgba(255,255,255,0.08)}.dead-dk-legend{display:flex;justify-content:space-between;margin-top:3px;font-size:8px;color:#3a3935}
       #dead-progress-wrap{padding:0 12px 9px}#dead-progress-track{height:7px;background:rgba(46,168,255,0.18);border:1px solid rgba(46,168,255,0.55);border-radius:3px;overflow:hidden}#dead-progress-fill{height:100%;background:#2EA8FF;border-radius:2px;width:0%;transition:width .12s;box-shadow:0 0 8px rgba(46,168,255,0.55)}#dead-progress-label{font-size:9px;color:#5fbfff;letter-spacing:.05em;margin-top:4px}
-      #dead-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;margin:0 12px 8px;background:rgba(220,60,48,0.06);border:1px solid rgba(220,60,48,0.15);border-radius:3px;padding:7px 9px;font-size:10px}
+      #dead-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px 8px;margin:0 12px 8px;background:rgba(220,60,48,0.06);border:1px solid rgba(220,60,48,0.15);border-radius:3px;padding:7px 9px;font-size:10px}
       .dead-st{display:flex;flex-direction:column;gap:1px}.dead-st-l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935}.dead-st-v{color:#DC3C30}
       #dead-coords{font-size:9px;color:#DC3C30;padding:2px 12px 7px;letter-spacing:.05em;opacity:.75}
       .dead-pb-row{display:flex;gap:6px;padding:9px 12px}.dead-pb{flex:1;padding:7px;font-family:'Courier New',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:3px;border:1px solid rgba(220,60,48,0.38);background:transparent;color:#DC3C30;transition:all .14s}.dead-pb:hover:not(:disabled){background:rgba(220,60,48,0.10)}.dead-primary{background:rgba(220,60,48,0.16);border-color:#DC3C30}.dead-primary:hover:not(:disabled){background:rgba(220,60,48,0.28)}.dead-pb:disabled{opacity:.3;cursor:not-allowed}
@@ -1028,3 +1479,4 @@ export class DeadGroundMapper {
 }
 
 export default DeadGroundMapper;
+

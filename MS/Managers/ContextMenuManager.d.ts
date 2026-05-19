@@ -12,6 +12,12 @@ import CorridorEngine from '../Engines/Analysis/CorridorEngine';
 import FlightEngine from '../Engines/Analysis/FlightEngine';
 import { EffectEngine } from '../Engines/Analysis/EffectEngine';
 import DeadGroundMapper from '../Engines/Analysis/DeadGroundMapper';
+import KeyTerrainIdentificationEngine from '../Engines/Analysis/KeyTerrain/KeyTerrainIdentificationEngine';
+import PosDefScorerEngine from '../Engines/Analysis/PositionDefesibilityScorer/PosDefScorerEngine';
+import OpRankerEngine from '../Engines/Analysis/OpRanker/OpRankerEngine';
+import LocalPeaksEngine from '../Engines/Analysis/Peaks/LocalPeaksEngine';
+import OcokaEngine from '../Engines/OCOKA/Ocoka';
+import MissionPlannerEngine from '../Engines/MissionPlanner/MissionPlannerEngine';
 export interface ContextMenuItem {
     id: string;
     label: string | ((graphic?: Graphic) => string);
@@ -69,6 +75,12 @@ declare class ContextMenuManager extends Evented {
     private _flightEngine;
     private _effectEngine;
     private _deadGroundMapper;
+    private _keyTerrainIdentificationEngine;
+    private _posDefScorerEngine;
+    private _opRankerEngine;
+    private _localPeaksEngine;
+    private _ocokaEngine;
+    private _missionPlannerEngine;
     private _deploymentBuilderEngine;
     private _enabled;
     private _pointerDownHandle;
@@ -170,6 +182,34 @@ declare class ContextMenuManager extends Evented {
      * can be opened from More Actions palette.
      */
     linkDeadGroundMapper(engine: DeadGroundMapper | null): void;
+    /**
+     * Link a KeyTerrainIdentificationEngine so "Analysis -> Key Terrain Identifier"
+     * can be opened from More Actions palette.
+     */
+    linkKeyTerrainIdentificationEngine(engine: KeyTerrainIdentificationEngine | null): void;
+    /**
+     * Link a Position Defensibility Scorer engine so it can be opened from
+     * the More Actions palette.
+     */
+    linkPosDefScorerEngine(engine: PosDefScorerEngine | null): void;
+    /**
+     * Link an Observation Post Ranker engine so it can be opened from
+     * the More Actions palette.
+     */
+    linkOpRankerEngine(engine: OpRankerEngine | null): void;
+    /**
+     * Link a LocalPeaksEngine so it can be opened from
+     * the More Actions palette.
+     */
+    linkLocalPeaksEngine(engine: LocalPeaksEngine | null): void;
+    /**
+     * Link an OCOKA engine so it can be opened from the More Actions palette.
+     */
+    linkOcokaEngine(engine: OcokaEngine | null): void;
+    /**
+     * Link a MissionPlannerEngine so it can be opened from the More Actions palette.
+     */
+    linkMissionPlannerEngine(engine: MissionPlannerEngine | null): void;
     /**
      * Link a DeploymentBuilderEngine so the "Open Deployment Builder" item
      * appears in all graphic right-click menus when set.

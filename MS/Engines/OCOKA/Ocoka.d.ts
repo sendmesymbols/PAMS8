@@ -1,0 +1,120 @@
+/**
+ * Ocoka.ts
+ * OCOKA terrain-analysis widget focused on Avenues of Approach.
+ */
+import MapView from '@arcgis/core/views/MapView';
+import SceneView from '@arcgis/core/views/SceneView';
+import Graphic from '@arcgis/core/Graphic';
+import Point from '@arcgis/core/geometry/Point';
+export type ForceType = 'dismount' | 'wheeled' | 'tracked' | 'mixed';
+export interface OcokaPoint {
+    longitude: number;
+    latitude: number;
+    elevationM?: number;
+}
+export interface OcokaWeights {
+    width: number;
+    mask: number;
+    traf: number;
+    obs: number;
+    cc: number;
+    obs2: number;
+}
+export interface OcokaHeadlessOptions {
+    center?: OcokaPoint | Point;
+    radiusM?: number;
+    cellM?: number;
+    maxCorridors?: number;
+    slopeThresholdDeg?: number;
+    force?: ForceType;
+    weights?: Partial<OcokaWeights>;
+}
+interface OcokaScores {
+    width: number;
+    mask: number;
+    traf: number;
+    obs: number;
+    cc: number;
+    obst: number;
+}
+export interface OcokaCorridor {
+    id: string;
+    rank: number;
+    seed: OcokaPoint;
+    path: OcokaPoint[];
+    chokePts: OcokaPoint[];
+    widthM: number;
+    lengthM: number;
+    bearingDeg: number;
+    composite: number;
+    scores: OcokaScores;
+    note: string;
+}
+export declare class OcokaEngine {
+    static readonly CORRIDOR_LAYER_ID = "ocoka-corridors";
+    static readonly WIDTH_LAYER_ID = "ocoka-widths";
+    static readonly CHOKE_LAYER_ID = "ocoka-chokepoints";
+    static readonly LABEL_LAYER_ID = "ocoka-labels";
+    static readonly AO_LAYER_ID = "ocoka-ao";
+    static readonly HEAT_LAYER_ID = "ocoka-slope-heatmap";
+    private _view;
+    private _corridorLayer;
+    private _widthLayer;
+    private _chokeLayer;
+    private _labelLayer;
+    private _aoLayer;
+    private _heatLayer;
+    private _controlPanelEl;
+    private _listPanelEl;
+    private _hintEl;
+    private _legendEl;
+    private _clickHandle;
+    private _running;
+    private _isDragging;
+    private _dragOffsetX;
+    private _dragOffsetY;
+    constructor();
+    initialize(view: MapView | SceneView): void;
+    open(graphic: Graphic, view: MapView | SceneView): void;
+    runHeadless(options?: OcokaHeadlessOptions): Promise<OcokaCorridor[]>;
+    close(): void;
+    destroy(): void;
+    private _createLayers;
+    private _ensurePanels;
+    private _weightControl;
+    private _scoreKey;
+    private _legendItem;
+    private _bindPanelEvents;
+    private _showPanels;
+    private _hidePanels;
+    private _bindMapClick;
+    private _unbindMapClick;
+    private _runAnalysis;
+    private _readOptions;
+    private _extractCorridors;
+    private _drawCorridors;
+    private _buildCorridorPolygon;
+    private _drawSlopeOverlay;
+    private _setAnalysisArea;
+    private _renderRankedList;
+    private _clearAll;
+    private _clearResults;
+    private _bearing;
+    private _setStatus;
+    private _setProgress;
+    private _setRunDisabled;
+    private _makeDraggable;
+    private _onDragMove;
+    private _onDragEnd;
+    private _el;
+    private _input;
+    private _num;
+    private _checked;
+    private _selectValue;
+    private _setInputValue;
+    private _setText;
+    private _setHint;
+    private _tick;
+    private _injectStyles;
+}
+export default OcokaEngine;

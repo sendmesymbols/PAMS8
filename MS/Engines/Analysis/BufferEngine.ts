@@ -15,6 +15,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import EngineLogger from '../../Support/EngineLogger';
 
 export interface ThreatRingDef {
   label: string;
@@ -30,6 +31,7 @@ interface ThreatPreset {
 interface ComputedRing extends ThreatRingDef {
   geometry: Polygon | null;
 }
+const ENGINE_NAME = 'BufferEngine';
 
 type AnalysisMode = 'single' | 'union' | 'corridor';
 
@@ -908,6 +910,11 @@ export class BufferEngine {
 
   private _setStatus(state: 'awaiting' | 'picking' | 'computing' | 'ready' | 'committed' | 'error'): void {
     const dotEl = this._panelEl?.querySelector<HTMLElement>('#buffer-status-dot');
+    const statusTextMap: Record<typeof state, string> = { awaiting: 'Awaiting source', picking: 'Click map', computing: 'Computing', ready: 'Ready', committed: 'Committed', error: 'Error' };
+    const message = statusTextMap[state];
+    if (state === 'ready' || state === 'committed') EngineLogger.success(ENGINE_NAME, message);
+    else if (state === 'error') EngineLogger.error(ENGINE_NAME, message);
+    else EngineLogger.nextStep(ENGINE_NAME, message);
     const lblEl = this._panelEl?.querySelector<HTMLElement>('#buffer-status-lbl');
     if (!dotEl || !lblEl) return;
     const map: Record<string, [string, string]> = {
@@ -1180,3 +1187,4 @@ export class BufferEngine {
 }
 
 export default BufferEngine;
+
