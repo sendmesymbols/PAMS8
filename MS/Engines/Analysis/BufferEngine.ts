@@ -15,6 +15,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import EngineLogger from '../../Support/EngineLogger';
 
 export interface ThreatRingDef {
@@ -135,7 +136,6 @@ export class BufferEngine {
 
   private _panelEl: HTMLDivElement | null = null;
   private _pickHandle: any = null;
-  private _pickMode: 'replace' | 'add' | null = null;
 
   private _mode: AnalysisMode = 'single';
   private _presetKey = 'artillery_155mm';
@@ -167,19 +167,15 @@ export class BufferEngine {
   open(graphic: Graphic, view: MapView | SceneView): void {
     this.initialize(view);
 
-    if (this._panelEl && this._panelEl.style.display === 'none') {
-      this._panelEl.style.display = 'block';
-      return;
-    }
-
     const geom = graphic.geometry;
     let src: Point | null = null;
     if (geom?.type === 'point') src = geom as Point;
     else if ((geom as any)?.centroid) src = (geom as any).centroid as Point;
 
-    if (src) {
-      if (this._mode === 'single') this._sourcePoints = [src];
-      else this._sourcePoints.push(src);
+    const wgsSource = this._toWgs84Point(src);
+    if (wgsSource) {
+      if (this._mode === 'single') this._sourcePoints = [wgsSource];
+      else this._sourcePoints.push(wgsSource);
     }
 
     this._showPanel();
@@ -293,6 +289,21 @@ export class BufferEngine {
     return (geometryEngine.intersect(unionA, unionB) as Polygon | null) ?? null;
   }
 
+  private _computeMultiSourceContestedZone(sourcePoints: Point[], ringDefs: ThreatRingDef[]): Polygon | null {
+    const contested: Polygon[] = [];
+    const ringSets = sourcePoints.map((pt) => this._computeRings(pt, ringDefs, false));
+    for (let i = 0; i < ringSets.length; i++) {
+      for (let j = i + 1; j < ringSets.length; j++) {
+        const zone = this._computeContestedZone(ringSets[i], ringSets[j]);
+        if (zone) contested.push(zone);
+      }
+    }
+    if (!contested.length) return null;
+    return contested.length === 1
+      ? contested[0]
+      : ((geometryEngine.union(contested) as Polygon | null) ?? null);
+  }
+
   private _computeCorridorBuffer(
     polyline: Polyline,
     widthM: number,
@@ -371,8 +382,8 @@ export class BufferEngine {
     return rings.map((ring) => {
       const colors = RING_COLORS[ring.colorKey] ?? RING_COLORS.info;
       const labelPt = destinationPoint(
-        sourcePoint.longitude,
-        sourcePoint.latitude,
+        sourcePoint.longitude!,
+        sourcePoint.latitude!,
         0,
         ring.radiusM,
       );
@@ -396,6 +407,55 @@ export class BufferEngine {
         } as any,
         attributes: { type: 'buffer_label', label: ring.label },
       });
+    });
+  }
+
+  private _buildGeometryLabelGraphics(rings: ComputedRing[]): Graphic[] {
+    return rings.flatMap((ring) => {
+      if (!ring.geometry?.extent?.center) return [];
+      const colors = RING_COLORS[ring.colorKey] ?? RING_COLORS.info;
+      return [new Graphic({
+        geometry: ring.geometry.extent.center,
+        symbol: {
+          type: 'text',
+          color: colors.label,
+          haloColor: [0, 0, 0, 0.7],
+          haloSize: 1.5,
+          text: `${ring.label}  ${ring.radiusM >= 1000
+            ? `${(ring.radiusM / 1000).toFixed(1)} km`
+            : `${ring.radiusM} m`}`,
+          font: { family: 'Courier New', size: 10, weight: 'bold' },
+          horizontalAlignment: 'center',
+          verticalAlignment: 'middle',
+        } as any,
+        attributes: { type: 'buffer_label', label: ring.label },
+      })];
+    });
+  }
+
+  private _toWgs84Point(point: Point | null | undefined): Point | null {
+    if (!point) return null;
+    const sr: any = point.spatialReference;
+    const wkid = sr?.wkid ?? sr?.latestWkid;
+    let source = point;
+
+    if (wkid === 3857 || wkid === 102100 || sr?.isWebMercator) {
+      source = webMercatorUtils.webMercatorToGeographic(point) as Point;
+    }
+
+    if (wkid && wkid !== 4326 && wkid !== 3857 && wkid !== 102100 && !sr?.isWGS84) {
+      return null;
+    }
+
+    const longitude = Number.isFinite(source.longitude) ? source.longitude : source.x;
+    const latitude = Number.isFinite(source.latitude) ? source.latitude : source.y;
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return null;
+
+    return new Point({
+      longitude,
+      latitude,
+      z: source.z ?? point.z ?? 0,
+      spatialReference: { wkid: 4326 },
     });
   }
 
@@ -442,67 +502,78 @@ export class BufferEngine {
     this._labelLayer.removeAll();
     this._setStatus(this._sourcePoints.length === 0 ? 'awaiting' : 'computing');
 
-    const defs = this._currentRings().filter((r) => r.radiusM > 0);
-    const showLabels = this._inp('buffer-opt-labels')?.checked ?? true;
-    const asDonut = this._inp('buffer-opt-donut')?.checked ?? true;
-    const showContested = this._inp('buffer-opt-contested')?.checked ?? false;
+    try {
+      const defs = this._currentRings().filter((r) => r.radiusM > 0);
+      const showLabels = this._inp('buffer-opt-labels')?.checked ?? true;
+      const asDonut = this._inp('buffer-opt-donut')?.checked ?? true;
+      const showContested = this._inp('buffer-opt-contested')?.checked ?? false;
 
-    if (this._mode === 'corridor') {
-      if (this._sourcePoints.length >= 2) {
-        const widthM = Math.max(10, Number(this._inp('buffer-corridor-width')?.value ?? 250));
-        const standoffM = Math.max(0, Number(this._inp('buffer-corridor-standoff')?.value ?? 500));
-        const path = this._sourcePoints.map((p) => [p.longitude, p.latitude]);
-        const line = new Polyline({ paths: [path], spatialReference: { wkid: 4326 } });
-        const { corridor, standoff } = this._computeCorridorBuffer(line, widthM, standoffM);
-        if (standoff) this._analysisLayer.add(this._corridorGraphic(standoff, true));
-        if (corridor) this._analysisLayer.add(this._corridorGraphic(corridor, false));
+      if (this._mode === 'corridor') {
+        if (this._sourcePoints.length >= 2) {
+          const widthM = Math.max(10, Number(this._inp('buffer-corridor-width')?.value ?? 250));
+          const standoffM = Math.max(0, Number(this._inp('buffer-corridor-standoff')?.value ?? 500));
+          const path: number[][] = this._sourcePoints.map((p) => [p.longitude!, p.latitude!]);
+          const line = new Polyline({ paths: [path], spatialReference: { wkid: 4326 } });
+          const { corridor, standoff } = this._computeCorridorBuffer(line, widthM / 2, standoffM);
+          if (standoff) this._analysisLayer.add(this._corridorGraphic(standoff, true));
+          if (corridor) this._analysisLayer.add(this._corridorGraphic(corridor, false));
+        }
+        this._syncStats(defs);
+        this._setStatus('ready');
+        this._syncCommit();
+        return;
       }
+
+      if (this._sourcePoints.length > 0 && defs.length > 0) {
+        let rings: ComputedRing[] = [];
+        if (this._mode === 'union' && this._sourcePoints.length > 1) {
+          rings = this._computeUnionRings(this._sourcePoints, defs);
+          if (asDonut) {
+            const sorted = [...rings].sort((a, b) => b.radiusM - a.radiusM);
+            rings = sorted.map((ring, i) => {
+              const next = sorted[i + 1];
+              if (!ring.geometry || !next?.geometry) return ring;
+              return {
+                ...ring,
+                geometry: (geometryEngine.difference(ring.geometry, next.geometry) as Polygon | null) ?? ring.geometry,
+              };
+            });
+          }
+        } else {
+          rings = this._computeRings(this._sourcePoints[0], defs, asDonut);
+        }
+
+        this._buildRingGraphics(rings).forEach((g) => this._analysisLayer.add(g));
+
+        if (showLabels && this._sourcePoints[0]) {
+          if (this._mode === 'union' && this._sourcePoints.length > 1) {
+            this._buildGeometryLabelGraphics(rings).forEach((g) => this._labelLayer.add(g));
+          } else {
+            const sortedDefs: ComputedRing[] = [...defs]
+              .sort((a, b) => b.radiusM - a.radiusM)
+              .map((d) => ({ ...d, geometry: null }));
+            this._buildLabelGraphics(this._sourcePoints[0], sortedDefs)
+              .forEach((g) => this._labelLayer.add(g));
+          }
+        }
+
+        if (showContested && this._sourcePoints.length >= 2) {
+          const contested = this._computeMultiSourceContestedZone(this._sourcePoints, defs);
+          if (contested) this._analysisLayer.add(this._contestedGraphic(contested));
+        }
+      }
+
       this._syncStats(defs);
       this._setStatus('ready');
       this._syncCommit();
-      return;
+    } catch (error) {
+      console.warn('[BufferEngine] Failed to compute buffer analysis', error);
+      EngineLogger.error(ENGINE_NAME, 'Failed to compute buffer analysis');
+      this._analysisLayer.removeAll();
+      this._labelLayer.removeAll();
+      this._setStatus('error');
+      this._syncCommit();
     }
-
-    if (this._sourcePoints.length > 0 && defs.length > 0) {
-      let rings: ComputedRing[] = [];
-      if (this._mode === 'union' && this._sourcePoints.length > 1) {
-        rings = this._computeUnionRings(this._sourcePoints, defs);
-        if (asDonut) {
-          const sorted = [...rings].sort((a, b) => b.radiusM - a.radiusM);
-          rings = sorted.map((ring, i) => {
-            const next = sorted[i + 1];
-            if (!ring.geometry || !next?.geometry) return ring;
-            return {
-              ...ring,
-              geometry: (geometryEngine.difference(ring.geometry, next.geometry) as Polygon | null) ?? ring.geometry,
-            };
-          });
-        }
-      } else {
-        rings = this._computeRings(this._sourcePoints[0], defs, asDonut);
-      }
-
-      this._buildRingGraphics(rings).forEach((g) => this._analysisLayer.add(g));
-
-      if (showLabels && this._sourcePoints[0]) {
-        const sortedDefs: ComputedRing[] = [...defs]
-          .sort((a, b) => b.radiusM - a.radiusM)
-          .map((d) => ({ ...d, geometry: null }));
-        this._buildLabelGraphics(this._sourcePoints[0], sortedDefs)
-          .forEach((g) => this._labelLayer.add(g));
-      }
-
-      if (showContested && this._sourcePoints.length >= 2) {
-        const a = this._computeRings(this._sourcePoints[0], defs, false);
-        const b = this._computeRings(this._sourcePoints[1], defs, false);
-        const contested = this._computeContestedZone(a, b);
-        if (contested) this._analysisLayer.add(this._contestedGraphic(contested));
-      }
-    }
-
-    this._syncStats(defs);
-    this._setStatus('ready');
-    this._syncCommit();
   }
 
   private _contestedGraphic(geometry: Polygon): Graphic {
@@ -583,29 +654,22 @@ export class BufferEngine {
   private _startPick(mode: 'replace' | 'add'): void {
     if (!this._view) return;
     this._cancelPick();
-    this._pickMode = mode;
     this._setStatus('picking');
     this._pickHandle = this._view.on('click', async (event: any) => {
       this._cancelPick();
-      let point: Point;
+      let point: Point | null;
       if (this._view?.type === '3d') {
         const hit = await (this._view as any).hitTest(event, {
           include: [(this._view as any).map.ground],
         });
         const gp = hit?.ground?.mapPoint ?? event.mapPoint;
-        point = new Point({
-          longitude: gp.longitude,
-          latitude: gp.latitude,
-          z: gp.z ?? 0,
-          spatialReference: { wkid: 4326 },
-        });
+        point = this._toWgs84Point(gp);
       } else {
-        point = new Point({
-          longitude: event.mapPoint.longitude,
-          latitude: event.mapPoint.latitude,
-          z: event.mapPoint.z ?? 0,
-          spatialReference: { wkid: 4326 },
-        });
+        point = this._toWgs84Point(event.mapPoint);
+      }
+      if (!point) {
+        this._setStatus('error');
+        return;
       }
 
       if (mode === 'replace') this._sourcePoints = [point];
@@ -619,7 +683,6 @@ export class BufferEngine {
   private _cancelPick(): void {
     this._pickHandle?.remove();
     this._pickHandle = null;
-    this._pickMode = null;
   }
 
   private _commit(): void {
@@ -645,6 +708,8 @@ export class BufferEngine {
         attributes: { ...g.attributes, ...meta },
       }));
     });
+    const btn = this._panelEl?.querySelector<HTMLButtonElement>('#buffer-commit-btn');
+    if (btn) btn.disabled = true;
     this._setStatus('committed');
     setTimeout(() => this._setStatus('ready'), 1800);
   }
@@ -965,10 +1030,29 @@ export class BufferEngine {
     style.id = 'buffer-engine-styles';
     style.textContent = `
       .buffer-panel {
+        --ms-bg: #141820;
+        --ms-bg-header: rgba(26, 32, 48, 0.97);
+        --ms-bg-input: rgba(0, 0, 0, 0.28);
+        --ms-border: rgba(90, 140, 220, 0.25);
+        --ms-divider: rgba(80, 100, 150, 0.18);
+        --ms-text: #dce8f5;
+        --ms-text-dim: rgba(155, 180, 215, 0.72);
+        --ms-text-label: rgba(120, 150, 185, 0.75);
+        --ms-accent: #EF9F27;
+        --ms-success: #1D9E75;
+        --ms-danger: #DC3C30;
+        --ms-info: #378ADD;
+        --ms-radius: 9px;
+        --ms-shadow: 0 8px 36px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+        --ms-font: 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+        --ms-fs: 11.5px;
+        --ms-fs-sm: 12.5px;
+        --ms-fs-xs: 10px;
         position: fixed;
-        top: 60px;
-        left: 902px;
-        width: 292px;
+        top: 62px;
+        left: 306px;
+        width: 360px;
+        max-height: calc(100vh - 84px);
         background: var(--ms-bg);
         border: 1px solid var(--ms-border);
         border-radius: var(--ms-radius);
@@ -979,6 +1063,12 @@ export class BufferEngine {
         user-select: none;
         box-shadow: var(--ms-shadow);
         display: none;
+        overflow: hidden;
+        animation: bufferIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      @keyframes bufferIn {
+        from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
       }
       .buffer-header {
         display: flex;
@@ -987,10 +1077,17 @@ export class BufferEngine {
         padding: 9px 10px 8px;
         border-bottom: 1px solid var(--ms-divider);
         background: var(--ms-bg-header);
-        border-radius: 5px 5px 0 0;
         cursor: grab;
       }
       .buffer-header:active { cursor: grabbing; }
+      .buffer-header-icon {
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        color: var(--ms-accent);
+        border: 1px solid var(--ms-border);
+        border-radius: 3px;
+        padding: 2px 3px;
+      }
       .buffer-header-title {
         font-size: var(--ms-fs-sm);
         letter-spacing: 0.12em;
@@ -1031,7 +1128,7 @@ export class BufferEngine {
         left: 8px;
         right: 8px;
         z-index: 1120;
-        max-height: min(520px, calc(100vh - 132px));
+        max-height: min(420px, calc(100vh - 132px));
         overflow-y: auto;
         background: var(--ms-bg);
         border: 1px solid var(--ms-border);
@@ -1057,7 +1154,7 @@ export class BufferEngine {
       .buffer-help-title {
         margin-top: 2px;
         font-size: 13px;
-        color: var(--ms-success);
+        color: var(--ms-accent);
         font-weight: 700;
       }
       .buffer-help-close {
@@ -1094,16 +1191,20 @@ export class BufferEngine {
         gap: 5px 8px;
         margin: 0;
       }
-      .buffer-help-block dt { color: var(--ms-success); font-weight: 700; }
+      .buffer-help-block dt { color: var(--ms-accent); font-weight: 700; }
       .buffer-help-block dd { margin: 0; }
-      .buffer-body { padding: 0 0 6px; }
+      .buffer-body {
+        max-height: calc(100vh - 122px);
+        overflow-y: auto;
+        padding: 0 0 8px;
+      }
       .buffer-sec {
         font-size: var(--ms-fs-xs); letter-spacing: 0.1em; text-transform: uppercase;
-        color: var(--ms-text-label); padding: 9px 12px 4px;
+        color: var(--ms-text-label); padding: 9px 12px 5px;
       }
       .buffer-field-full { padding: 0 10px 8px; }
       .buffer-grid {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 0 10px 8px;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 7px 8px; padding: 0 10px 8px;
       }
       .buffer-field { display: flex; flex-direction: column; gap: 3px; }
       .buffer-label {
@@ -1114,8 +1215,10 @@ export class BufferEngine {
         border: 1px solid var(--ms-border);
         border-radius: 3px; color: var(--ms-text);
         font-family: inherit; font-size: var(--ms-fs); padding: 5px 7px; width: 100%;
+        box-sizing: border-box;
         outline: none;
       }
+      .buffer-input:focus, .buffer-select:focus { border-color: var(--ms-accent); }
       .buffer-select option { background: var(--ms-bg); }
       .buffer-toggle-row {
         display: flex; align-items: center; justify-content: space-between; padding: 4px 12px;
@@ -1127,7 +1230,7 @@ export class BufferEngine {
         margin: 4px 0;
       }
       .buffer-stats {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; padding: 8px 10px 6px;
+        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 8px 10px 6px;
       }
       .buffer-legend {
         display: grid;
@@ -1156,12 +1259,21 @@ export class BufferEngine {
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      .buffer-stat { display: flex; flex-direction: column; gap: 2px; }
+      .buffer-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        background: var(--ms-bg-input);
+        border: 1px solid var(--ms-divider);
+        border-radius: 3px;
+        padding: 5px 6px;
+      }
       .buffer-stat-lbl {
         font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ms-text-dim);
       }
       .buffer-stat-val {
-        font-size: var(--ms-fs); color: var(--ms-accent); font-weight: 700;
+        font-size: var(--ms-fs-sm); color: var(--ms-text); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
       .buffer-btn-row {
         display: flex; gap: 6px; padding: 6px 10px 2px;
@@ -1173,13 +1285,18 @@ export class BufferEngine {
         background: var(--ms-bg-input); color: var(--ms-text-dim);
         transition: all 0.14s;
       }
-      .buffer-btn:hover { background: var(--ms-bg-header); color: var(--ms-text); }
+      .buffer-btn:hover:not(:disabled) { background: var(--ms-bg-header); color: var(--ms-text); }
       .buffer-btn:disabled { opacity: 0.35; cursor: not-allowed; }
       .buffer-btn-primary {
         border-color: var(--ms-accent); color: var(--ms-accent); background: var(--ms-bg-input);
       }
       .buffer-btn-danger {
         border-color: var(--ms-danger); color: var(--ms-danger); background: var(--ms-bg-input);
+      }
+      @media (max-width: 560px) {
+        .buffer-panel { left: 12px; top: 72px; width: calc(100vw - 24px); }
+        .buffer-grid, .buffer-legend { grid-template-columns: 1fr; }
+        .buffer-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
     `;
     document.head.appendChild(style);

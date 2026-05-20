@@ -42,8 +42,6 @@ interface LocalPeaksValues {
   maxResults: number;
   autoRun: boolean;
   showLabels: boolean;
-  showInfluence: boolean;
-  showDensity: boolean;
   sortKey: SortKey;
 }
 
@@ -236,11 +234,9 @@ export class LocalPeaksEngine {
       prominenceM: options.prominenceM ?? 20,
       isolationM: options.isolationM ?? 250,
       minElevationM: options.minElevationM ?? -10000,
-      maxResults: options.maxResults ?? 20,
+      maxResults: options.maxResults ?? 30,
       autoRun: false,
       showLabels: false,
-      showInfluence: false,
-      showDensity: false,
       sortKey: options.sortKey ?? 'rank',
     };
     const gridSpec = this._gridSpec(extent, values.cellSizeM);
@@ -251,10 +247,10 @@ export class LocalPeaksEngine {
   }
 
   private _createLayers(): void {
-    this._peakLayer = new GraphicsLayer({ id: LocalPeaksEngine.PEAK_LAYER_ID, title: 'Local Peaks - Results', elevationInfo: { mode: 'on-the-ground' } as any });
-    this._labelLayer = new GraphicsLayer({ id: LocalPeaksEngine.LABEL_LAYER_ID, title: 'Local Peaks - Labels', elevationInfo: { mode: 'on-the-ground' } as any });
-    this._aoiLayer = new GraphicsLayer({ id: LocalPeaksEngine.AOI_LAYER_ID, title: 'Local Peaks - AOI', elevationInfo: { mode: 'on-the-ground' } as any });
-    this._profileLayer = new GraphicsLayer({ id: LocalPeaksEngine.PROFILE_LAYER_ID, title: 'Local Peaks - Profile line', elevationInfo: { mode: 'on-the-ground' } as any });
+    this._peakLayer = new GraphicsLayer({ id: LocalPeaksEngine.PEAK_LAYER_ID, title: 'Peak Analysis - Results', elevationInfo: { mode: 'on-the-ground' } as any });
+    this._labelLayer = new GraphicsLayer({ id: LocalPeaksEngine.LABEL_LAYER_ID, title: 'Peak Analysis - Labels', elevationInfo: { mode: 'on-the-ground' } as any });
+    this._aoiLayer = new GraphicsLayer({ id: LocalPeaksEngine.AOI_LAYER_ID, title: 'Peak Analysis - AOI', elevationInfo: { mode: 'on-the-ground' } as any });
+    this._profileLayer = new GraphicsLayer({ id: LocalPeaksEngine.PROFILE_LAYER_ID, title: 'Peak Analysis - Profile line', elevationInfo: { mode: 'on-the-ground' } as any });
   }
 
   private _ensureSketch(): void {
@@ -281,11 +277,9 @@ export class LocalPeaksEngine {
       prominenceM: this._num('peaks-prominence', 25),
       isolationM: this._num('peaks-isolation', 300),
       minElevationM: this._num('peaks-min-elev', -10000),
-      maxResults: Math.round(this._num('peaks-max-results', 50)),
+      maxResults: Math.round(this._num('peaks-max-results', 30)),
       autoRun: this._checked('peaks-auto-run', false),
       showLabels: this._checked('peaks-show-labels', true),
-      showInfluence: this._checked('peaks-show-influence', false),
-      showDensity: this._checked('peaks-show-density', false),
       sortKey: this._selectValue('peaks-sort', 'rank') as SortKey,
     };
   }
@@ -500,45 +494,175 @@ export class LocalPeaksEngine {
     this._results.forEach((peak) => {
       const selected = peak.id === this._selectedId;
       const point = new Point({ longitude: peak.longitude, latitude: peak.latitude, z: peak.elevation, spatialReference: WGS84 });
-      if (values.showDensity) {
-        const densityRaw = geometryEngine.geodesicBuffer(point, Math.max(values.searchRadiusM, 80), 'meters');
-        const densityGeom = (Array.isArray(densityRaw) ? densityRaw[0] : densityRaw) as Polygon | null;
-        if (densityGeom) {
-          const alpha = clamp(0.05 + peak.prominence / Math.max(peak.prominence + 140, 1) * 0.18, 0.06, 0.22);
+      const baseColor: [number, number, number] = isPeak ? [239, 159, 39] : [55, 138, 221];
+
+      // Top-3 halo ring for visual emphasis
+      if (peak.rank <= 3 && !selected) {
+        const haloR = Math.max(values.searchRadiusM * 0.28, 35) * (4 - peak.rank);
+        const haloRaw = geometryEngine.geodesicBuffer(point, haloR, 'meters');
+        const haloGeom = (Array.isArray(haloRaw) ? haloRaw[0] : haloRaw) as Polygon | null;
+        if (haloGeom) {
           this._peakLayer.add(new Graphic({
-            geometry: densityGeom,
-            symbol: {
-              type: 'simple-fill',
-              color: isPeak ? [239, 159, 39, alpha] : [55, 138, 221, alpha],
-              outline: { color: [0, 0, 0, 0], width: 0 },
-            } as any,
-            attributes: { type: 'local_peak_density', peakId: peak.id },
+            geometry: haloGeom,
+            symbol: { type: 'simple-fill', color: [0, 0, 0, 0], outline: { color: [...baseColor, 0.55 - peak.rank * 0.10], width: peak.rank === 1 ? 2 : 1.5 } } as any,
+            attributes: { type: 'local_peak_halo', peakId: peak.id },
           }));
         }
       }
+
+      // Main peak marker
+      const elevFormatted = Math.round(peak.elevation).toLocaleString();
+      const promFormatted = Math.round(peak.prominence);
       this._peakLayer.add(new Graphic({
         geometry: point,
         symbol: this._peakSymbol(peak, selected),
-        attributes: { type: 'local_peak', id: peak.id, rank: peak.rank, elevation: Math.round(peak.elevation * 10) / 10, prominence: Math.round(peak.prominence * 10) / 10, isolationM: Number.isFinite(peak.isolationM) ? Math.round(peak.isolationM) : null, featureType: isPeak ? 'Peak' : 'Valley' },
-        popupTemplate: { title: `{featureType} #{rank}`, content: 'Elevation: {elevation} m<br>Prominence: {prominence} m<br>Isolation: {isolationM} m' } as any,
+        attributes: {
+          type: 'local_peak', id: peak.id, rank: peak.rank,
+          elevation: Math.round(peak.elevation * 10) / 10,
+          prominence: Math.round(peak.prominence * 10) / 10,
+          isolationM: Number.isFinite(peak.isolationM) ? Math.round(peak.isolationM) : null,
+          featureType: isPeak ? 'Peak' : 'Valley',
+          latitude: peak.latitude.toFixed(5), longitude: peak.longitude.toFixed(5),
+        },
+        popupTemplate: {
+          title: (isPeak ? '▲' : '▽') + ' ' + (isPeak ? 'Peak' : 'Valley') + ' #' + peak.rank,
+          content: '<b>Elevation:</b> ' + elevFormatted + ' m<br>'
+            + '<b>Topographic Prominence:</b> ' + promFormatted + ' m<br>'
+            + '<b>Isolation:</b> ' + (Number.isFinite(peak.isolationM) ? formatDistance(peak.isolationM) : 'Highest in area') + '<br>'
+            + '<b>Neighborhood Mean:</b> ' + Math.round(peak.neighborhoodMean) + ' m<br>'
+            + '<b>Δ above mean:</b> ' + (Math.round(peak.elevation - peak.neighborhoodMean) >= 0 ? '+' : '') + Math.round(peak.elevation - peak.neighborhoodMean) + ' m<br>'
+            + '<b>Coordinates:</b> ' + peak.latitude.toFixed(5) + '°, ' + peak.longitude.toFixed(5) + '°',
+        } as any,
       } as any));
-      if (values.showInfluence) {
-        const raw = geometryEngine.geodesicBuffer(point, Math.max(20, values.isolationM / 2), 'meters');
-        const geom = (Array.isArray(raw) ? raw[0] : raw) as Polygon | null;
-        if (geom) this._peakLayer.add(new Graphic({ geometry: geom, symbol: { type: 'simple-fill', color: isPeak ? [239, 159, 39, 0.07] : [55, 138, 221, 0.07], outline: { color: isPeak ? [239, 159, 39, 0.35] : [55, 138, 221, 0.35], width: 0.8, style: 'dash' } } as any, attributes: { type: 'local_peak_influence', peakId: peak.id } }));
+
+      // Base label: rank number centered in circle (2D) or elevation at stick base (3D)
+      const is3D = this._view?.type === '3d';
+      const elevShort = elevFormatted + ' m';
+      this._labelLayer.add(new Graphic({
+        geometry: point,
+        symbol: {
+          type: 'text',
+          text: is3D ? elevShort : String(peak.rank),
+          color: [255, 255, 255, 1],
+          haloColor: [0, 0, 0, 0.78],
+          haloSize: is3D ? 1.5 : 1,
+          yoffset: 0,
+          font: { size: is3D ? 9 : (peak.rank >= 10 ? 7 : 8), family: 'Aptos, Segoe UI, sans-serif', weight: 'bold' },
+        } as any,
+        attributes: { type: 'local_peak_base_label', peakId: peak.id },
+      }));
+
+      // 2D only: elevation below the circle
+      if (!is3D) {
+        this._labelLayer.add(new Graphic({
+          geometry: point,
+          symbol: {
+            type: 'text',
+            text: elevShort,
+            color: isPeak ? '#FFAD3A' : '#6ABAFF',
+            haloColor: [3, 5, 14, 0.95],
+            haloSize: 1.5,
+            yoffset: -16,
+            font: { size: 9, family: 'Aptos, Segoe UI, sans-serif', weight: 'bold' },
+          } as any,
+          attributes: { type: 'local_peak_elev_2d', peakId: peak.id },
+        }));
       }
+
+      // Top label — rank at top of stick; elevation already shown at base so omit it here
       if (values.showLabels) {
-        this._labelLayer.add(new Graphic({ geometry: point, symbol: { type: 'text', text: `#${peak.rank} ${Math.round(peak.elevation)}m`, color: isPeak ? '#EF9F27' : '#5EA4FF', haloColor: [8, 10, 12, 0.95], haloSize: 1.3, yoffset: 16, font: { size: 10, family: 'Aptos, Segoe UI, sans-serif', weight: 'bold' } } as any, attributes: { type: 'local_peak_label', peakId: peak.id } }));
+        const icon = isPeak ? '▲' : '▽';
+        const isoFmt = Number.isFinite(peak.isolationM) ? formatDistance(peak.isolationM) : 'highest';
+        const labelColor = isPeak ? '#FFAD3A' : '#6ABAFF';
+        const labelHalo = [3, 5, 14, 0.97] as [number, number, number, number];
+
+        let labelText: string;
+        let fontSize: number;
+
+        if (peak.rank === 1) {
+          labelText = `${icon} ${isPeak ? 'PEAK' : 'VALLEY'}  #${peak.rank}\nPMN +${promFormatted} m  ·  ISO ${isoFmt}`;
+          fontSize = 13;
+        } else if (peak.rank <= 3) {
+          labelText = `${icon} #${peak.rank}  PMN +${promFormatted} m\nISO ${isoFmt}`;
+          fontSize = 12;
+        } else if (peak.rank <= 10) {
+          labelText = `${icon} #${peak.rank}  PMN +${promFormatted} m`;
+          fontSize = 11;
+        } else {
+          labelText = `${icon} #${peak.rank}`;
+          fontSize = 10;
+        }
+
+        let labelSymbol: any;
+        if (is3D) {
+          // Rank 1 = tallest stick, each subsequent rank decreases by ~3 screen pixels
+          const vOffsetLen = Math.max(52, Math.round(148 - (peak.rank - 1) * 3.5));
+          const vOffsetMax = Math.max(3500, Math.round(14000 - (peak.rank - 1) * 380));
+          // Callout line thickness also scales with rank — rank 1 most prominent
+          const calloutSize = Math.max(1.2, +(3 - (peak.rank - 1) * 0.065).toFixed(2));
+          labelSymbol = {
+            type: 'label-3d',
+            symbolLayers: [{
+              type: 'text',
+              material: { color: labelColor },
+              halo: { color: labelHalo, size: 2 },
+              font: { size: fontSize, weight: 'bold', family: 'Aptos, Segoe UI, sans-serif' },
+              text: labelText,
+            }],
+            verticalOffset: { screenLength: selected ? vOffsetLen + 20 : vOffsetLen, maxWorldLength: vOffsetMax, minWorldLength: 50 },
+            callout: { type: 'line', color: labelColor, size: calloutSize, border: { color: [0, 0, 0, 0.6] } },
+          };
+        } else {
+          const haloSize = peak.rank === 1 ? 3 : peak.rank <= 3 ? 2.5 : 2;
+          const yoffset = peak.rank === 1 ? 27 : peak.rank <= 3 ? 23 : 18;
+          labelSymbol = {
+            type: 'text', text: labelText, color: labelColor,
+            haloColor: labelHalo, haloSize, yoffset,
+            font: { size: fontSize, family: 'Aptos, Segoe UI, sans-serif', weight: 'bold' },
+          };
+        }
+
+        this._labelLayer.add(new Graphic({
+          geometry: point,
+          symbol: labelSymbol,
+          attributes: { type: 'local_peak_label', peakId: peak.id },
+        }));
       }
     });
   }
 
   private _peakSymbol(peak: LocalPeakResult, selected: boolean): any {
     const isPeak = peak.type === 'peaks';
+    // Gradient: rank 1 = brightest/largest, rank 15+ = most muted/smallest
+    const t = Math.min(1, (peak.rank - 1) / 14);
+    const peakFill: [number, number, number, number] = selected
+      ? [255, 255, 255, 1]
+      : [Math.round(255 - t * 55), Math.round(168 - t * 78), Math.round(40 - t * 14), 0.95];
+    const valFill: [number, number, number, number] = selected
+      ? [255, 255, 255, 1]
+      : [Math.round(52 + t * 68), Math.round(136 + t * 42), 220, 0.95];
+    const fill = isPeak ? peakFill : valFill;
+    const size = selected ? 26 : Math.round(22 - t * 8);
+    const outlineW = selected ? 2.8 : peak.rank <= 3 ? 2.2 : 1.5;
+    const outlineColor: [number, number, number, number] = selected
+      ? (isPeak ? [239, 120, 20, 1] : [30, 100, 210, 1])
+      : [6, 8, 12, 0.85];
     if (this._view?.type === '3d') {
-      return { type: 'point-3d', symbolLayers: [{ type: 'object', resource: { primitive: isPeak ? 'cone' : 'inverted-cone' }, material: { color: selected ? [255, 255, 255, 1] : isPeak ? [239, 159, 39, 1] : [55, 138, 221, 1] }, height: selected ? 90 : 62, width: selected ? 56 : 42, depth: selected ? 56 : 42 }], verticalOffset: { screenLength: 18, maxWorldLength: 220, minWorldLength: 30 }, callout: selected ? { type: 'line', color: [255, 255, 255, 0.8], size: 1 } : undefined } as any;
+      const h = selected ? 115 : Math.round(88 - t * 35);
+      const w = selected ? 66 : Math.round(52 - t * 22);
+      // Rank 1 = tallest marker stick, matching the label-3d vertical offset scaling
+      const vOffsetLen = selected ? 168 : Math.max(52, Math.round(148 - (peak.rank - 1) * 3.5));
+      const vOffsetMax = Math.max(3500, Math.round(14000 - (peak.rank - 1) * 380));
+      const calloutSize = Math.max(1.2, +(3 - (peak.rank - 1) * 0.065).toFixed(2));
+      return {
+        type: 'point-3d',
+        symbolLayers: [{ type: 'object', resource: { primitive: isPeak ? 'cone' : 'inverted-cone' }, material: { color: fill }, height: h, width: w, depth: w }],
+        verticalOffset: { screenLength: vOffsetLen, maxWorldLength: vOffsetMax, minWorldLength: 50 },
+        callout: { type: 'line', color: [fill[0], fill[1], fill[2], 0.92], size: calloutSize, border: { color: [0, 0, 0, 0.55] } },
+      } as any;
     }
-    return { type: 'simple-marker', style: isPeak ? 'triangle' : 'diamond', size: selected ? 16 : 11, color: selected ? [255, 255, 255, 0.95] : isPeak ? [239, 159, 39, 0.92] : [55, 138, 221, 0.92], outline: { color: selected ? [239, 159, 39, 1] : [10, 12, 14, 0.95], width: selected ? 2.4 : 1.2 } } as any;
+    // 2D: circle is far more legible than triangle — rank number centers perfectly inside
+    return { type: 'simple-marker', style: 'circle', size, color: fill, outline: { color: outlineColor, width: outlineW } } as any;
   }
 
   private _resolveAoi(values: LocalPeaksValues): { geometry: Polygon | Extent | null; extent: Extent | null } {
@@ -664,14 +788,26 @@ export class LocalPeaksEngine {
       this._profileContainer.className = 'peaks-profile-panel';
       document.body.appendChild(this._profileContainer);
     }
+    const isPeakType = peak.type === 'peaks';
     this._profileContainer.style.display = 'block';
-    this._profileContainer.innerHTML = `<div class="peaks-profile-head"><span>Elevation Profile - #${peak.rank}</span><button id="peaks-profile-close">x</button></div><div id="peaks-profile-widget" class="peaks-profile-widget"></div>`;
+    this._profileContainer.innerHTML = `<div class="peaks-profile-head"><span>${isPeakType ? '▲' : '▽'} Elevation Profile — ${isPeakType ? 'Peak' : 'Valley'} #${peak.rank} · ${Math.round(peak.elevation).toLocaleString()} m ASL</span><button id="peaks-profile-close">✕</button></div><div id="peaks-profile-widget" class="peaks-profile-widget"></div>`;
     this._profileContainer.querySelector('#peaks-profile-close')?.addEventListener('click', () => this._destroyProfileWidget());
     this._profileWidget?.destroy();
-    const line = this._profileLayer.graphics.find((g) => g.attributes?.type === 'local_peak_profile')?.geometry;
+    // ElevationProfile.input must be a Graphic (not geometry) — find the profile graphic directly
+    const profileGraphic = this._profileLayer.graphics.find((g) => g.attributes?.type === 'local_peak_profile') ?? null;
     try {
-      this._profileWidget = new ElevationProfile({ view: this._view, container: this._profileContainer.querySelector('#peaks-profile-widget') as HTMLDivElement, profiles: [{ type: 'ground', color: '#EF9F27', title: 'Ground' }] as any } as any);
-      if (line) (this._profileWidget as any).input = line;
+      this._profileWidget = new ElevationProfile({
+        view: this._view,
+        container: this._profileContainer.querySelector('#peaks-profile-widget') as HTMLDivElement,
+        profiles: [{ type: 'ground', color: isPeakType ? '#EF9F27' : '#378ADD', title: isPeakType ? 'Ground (Peak)' : 'Ground (Valley)' }] as any,
+      } as any);
+      if (profileGraphic) {
+        (this._profileWidget as any).when(() => {
+          if (this._profileWidget && profileGraphic) {
+            (this._profileWidget as any).input = profileGraphic;
+          }
+        }).catch(() => {/* ignore */});
+      }
     } catch {
       this._setStatus('Profile widget could not be opened in this view.', 'warn');
     }
@@ -705,13 +841,13 @@ export class LocalPeaksEngine {
 
   private _buildPanelHTML(): string {
     return `
-      <div class="peaks-header" id="peaks-drag-handle"><span class="peaks-header-icon">PEAK</span><span class="peaks-header-title">Local Peaks</span><span class="peaks-status-dot" id="peaks-status-dot"></span><span class="peaks-status-lbl" id="peaks-status-lbl">Ready</span><button class="peaks-help-btn" id="peaks-help-btn">?</button><button class="peaks-min-btn" id="peaks-min-btn">v</button><button class="peaks-close-btn" id="peaks-close-btn">x</button></div>
+      <div class="peaks-header" id="peaks-drag-handle"><span class="peaks-header-icon">PEAK</span><span class="peaks-header-title">Peak Analysis</span><span class="peaks-status-dot" id="peaks-status-dot"></span><span class="peaks-status-lbl" id="peaks-status-lbl">Ready</span><button class="peaks-help-btn" id="peaks-help-btn">?</button><button class="peaks-min-btn" id="peaks-min-btn">v</button><button class="peaks-close-btn" id="peaks-close-btn">x</button></div>
       <div class="peaks-help-popover" id="peaks-help-popover" hidden><div class="peaks-help-head"><div><div class="peaks-help-kicker">Field Guide</div><div class="peaks-help-title">Prominence-based peaks</div></div><button id="peaks-help-close">x</button></div><div class="peaks-help-body"><p>Samples terrain elevation inside the AOI, smooths single-cell noise, then detects true local maxima or minima using neighborhood comparison, approximate topographic prominence, and isolation filtering.</p><ol><li>Pick Current Extent, draw a custom polygon/box, or click a buffer center.</li><li>Tune search radius, prominence, and isolation to mission scale.</li><li>Run manually, or enable auto-run on pan/zoom for smaller AOIs.</li><li>Select a result to fly to it and open an elevation cross-section.</li></ol></div></div>
       <div class="peaks-body"><div class="peaks-status-msg" id="peaks-status">Ready.</div>
         <div class="peaks-sec">AOI</div><div class="peaks-grid"><label class="peaks-field full"><span>Spatial scope</span><select id="peaks-aoi-mode"><option value="extent">Current extent</option><option value="custom">Custom boundary</option><option value="buffer">Buffer zone</option></select></label><label class="peaks-field"><span>Buffer m</span><input id="peaks-buffer-radius" type="number" min="25" max="100000" step="100" value="2000"></label><label class="peaks-field"><span>Peak type</span><select id="peaks-type"><option value="peaks">Local maxima</option><option value="valleys">Valleys / pits</option></select></label></div>
         <div class="peaks-btn-row"><button id="peaks-draw-poly" class="peaks-btn">Draw Polygon</button><button id="peaks-draw-box" class="peaks-btn">Draw Box</button><button id="peaks-pick-buffer" class="peaks-btn">Pick Buffer</button></div>
-        <div class="peaks-sec">Detection</div><div class="peaks-grid"><label class="peaks-field"><span>Cell m</span><input id="peaks-cell-size" type="number" min="10" max="500" step="5" value="45"></label><label class="peaks-field"><span>Search radius m</span><input id="peaks-search-radius" type="number" min="20" max="5000" step="25" value="180"></label><label class="peaks-field"><span>Prominence m</span><input id="peaks-prominence" type="number" min="0" max="5000" step="5" value="25"></label><label class="peaks-field"><span>Isolation m</span><input id="peaks-isolation" type="number" min="0" max="20000" step="25" value="300"></label><label class="peaks-field"><span>Min height m</span><input id="peaks-min-elev" type="number" step="10" value="-10000"></label><label class="peaks-field"><span>Max results</span><input id="peaks-max-results" type="number" min="1" max="500" step="1" value="50"></label></div>
-        <div class="peaks-sec">Execution</div><div class="peaks-toggle"><label>Auto-calculate on pan/zoom</label><input id="peaks-auto-run" type="checkbox"></div><div class="peaks-toggle"><label>Peak layer visible</label><input id="peaks-layer-visible" type="checkbox" checked></div><div class="peaks-toggle"><label>Labels</label><input id="peaks-show-labels" type="checkbox" checked></div><div class="peaks-toggle"><label>Influence areas</label><input id="peaks-show-influence" type="checkbox"></div><div class="peaks-toggle"><label>Density heatmap</label><input id="peaks-show-density" type="checkbox"></div>
+        <div class="peaks-sec">Detection</div><div class="peaks-grid"><label class="peaks-field"><span>Cell m</span><input id="peaks-cell-size" type="number" min="10" max="500" step="5" value="45"></label><label class="peaks-field"><span>Search radius m</span><input id="peaks-search-radius" type="number" min="20" max="5000" step="25" value="180"></label><label class="peaks-field"><span>Prominence m</span><input id="peaks-prominence" type="number" min="0" max="5000" step="5" value="25"></label><label class="peaks-field"><span>Isolation m</span><input id="peaks-isolation" type="number" min="0" max="20000" step="25" value="300"></label><label class="peaks-field"><span>Min height m</span><input id="peaks-min-elev" type="number" step="10" value="-10000"></label><label class="peaks-field"><span>Max results</span><input id="peaks-max-results" type="number" min="1" max="500" step="1" value="30"></label></div>
+        <div class="peaks-sec">Execution</div><div class="peaks-toggle"><label>Auto-calculate on pan/zoom</label><input id="peaks-auto-run" type="checkbox"></div><div class="peaks-toggle"><label>Peak layer visible</label><input id="peaks-layer-visible" type="checkbox" checked></div><div class="peaks-toggle"><label>Labels</label><input id="peaks-show-labels" type="checkbox" checked></div>
         <div class="peaks-progress"><div><div id="peaks-progress-fill"></div></div><span id="peaks-progress-label">Idle</span></div><div class="peaks-btn-row"><button id="peaks-clear-btn" class="peaks-btn">Clear Results</button><button id="peaks-run-btn" class="peaks-btn primary">Run Analysis</button></div>
         <div class="peaks-sec">Results</div><div class="peaks-stats"><div><span>Count</span><b id="peaks-stat-count">0</b></div><div><span>Avg elev</span><b id="peaks-stat-avg">-</b></div><div><span>Max prom</span><b id="peaks-stat-prom">-</b></div></div><label class="peaks-field full sort"><span>Sort</span><select id="peaks-sort"><option value="rank">Rank</option><option value="elevation">Elevation</option><option value="prominence">Prominence</option></select></label><div class="peaks-results" id="peaks-results"></div><div class="peaks-btn-row"><button id="peaks-export-csv" class="peaks-btn">CSV</button><button id="peaks-export-geojson" class="peaks-btn">GeoJSON</button><button id="peaks-export-shp" class="peaks-btn">Shapefile</button></div>
       </div>`;
@@ -732,7 +868,7 @@ export class LocalPeaksEngine {
     this._el('peaks-export-shp')?.addEventListener('click', () => this._exportShapefile());
     this._el('peaks-sort')?.addEventListener('change', () => this._renderResults());
     this._el('peaks-layer-visible')?.addEventListener('change', () => { const visible = this._checked('peaks-layer-visible', true); this._peakLayer.visible = visible; this._labelLayer.visible = visible; });
-    ['peaks-show-labels', 'peaks-show-influence', 'peaks-show-density'].forEach((id) => this._el(id)?.addEventListener('change', () => this._renderGraphics(this._values())));
+    this._el('peaks-show-labels')?.addEventListener('change', () => this._renderGraphics(this._values()));
     ['peaks-auto-run', 'peaks-aoi-mode'].forEach((id) => this._el(id)?.addEventListener('change', () => this._syncAutoRun()));
     ['peaks-cell-size', 'peaks-search-radius', 'peaks-prominence', 'peaks-isolation', 'peaks-min-elev', 'peaks-max-results', 'peaks-buffer-radius', 'peaks-type'].forEach((id) => this._el(id)?.addEventListener('change', () => this._maybeAutoRun()));
   }
@@ -750,7 +886,43 @@ export class LocalPeaksEngine {
       if (sortKey === 'prominence') return b.prominence - a.prominence;
       return a.rank - b.rank;
     });
-    list.innerHTML = rows.map((p) => `<div class="peaks-row ${p.id === this._selectedId ? 'selected' : ''}" data-id="${p.id}"><div class="peaks-row-main"><b>#${p.rank}</b><span>${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}</span></div><div class="peaks-row-metrics"><span>${Math.round(p.elevation)} m</span><span>Prom ${Math.round(p.prominence)} m</span><span>Iso ${Number.isFinite(p.isolationM) ? formatDistance(p.isolationM) : 'top'}</span></div><div class="peaks-row-actions"><button data-select="${p.id}">Select</button><button data-fly="${p.id}">Fly to</button></div></div>`).join('');
+    const minElev = Math.min(...rows.map((r) => r.elevation));
+    const maxElev = Math.max(...rows.map((r) => r.elevation));
+    const elevRange = Math.max(1, maxElev - minElev);
+    list.innerHTML = rows.map((p) => {
+      const t = Math.min(1, (p.rank - 1) / 14);
+      const isPk = p.type === 'peaks';
+      const cr = clamp(isPk ? Math.round(255 - t * 55) : Math.round(52 + t * 68), 0, 255);
+      const cg = clamp(isPk ? Math.round(168 - t * 78) : Math.round(136 + t * 42), 0, 255);
+      const cb = clamp(isPk ? Math.round(40 - t * 14) : 220, 0, 255);
+      const hex = '#' + [cr, cg, cb].map((v) => v.toString(16).padStart(2, '0')).join('');
+      const elevPct = elevRange < 1 ? 50 : Math.round(((p.elevation - minElev) / elevRange) * 100);
+      const elevStr = Math.round(p.elevation).toLocaleString();
+      const promStr = Math.round(p.prominence);
+      const isoStr = Number.isFinite(p.isolationM) ? formatDistance(p.isolationM) : 'top';
+      const deltaMean = Math.round(p.elevation - p.neighborhoodMean);
+      const deltaStr = (deltaMean >= 0 ? '+' : '') + deltaMean;
+      const icon = isPk ? '▲' : '▽';
+      const latStr = Math.abs(p.latitude).toFixed(4) + '° ' + (p.latitude >= 0 ? 'N' : 'S');
+      const lonStr = Math.abs(p.longitude).toFixed(4) + '° ' + (p.longitude >= 0 ? 'E' : 'W');
+      const sel = p.id === this._selectedId ? ' selected' : '';
+      return '<div class="peaks-row' + sel + '" data-id="' + p.id + '">'
+        + '<div class="peaks-row-header">'
+        + '<span class="peaks-row-badge" style="background:' + hex + '">' + icon + ' ' + p.rank + '</span>'
+        + '<span class="peaks-row-elev">' + elevStr + '<span class="peaks-row-unit"> m</span></span>'
+        + '<div class="peaks-row-btns">'
+        + '<button data-select="' + p.id + '">Select</button>'
+        + '<button data-fly="' + p.id + '">Fly ↗</button>'
+        + '</div></div>'
+        + '<div class="peaks-row-bar-wrap"><div class="peaks-row-bar" style="width:' + elevPct + '%;background:' + hex + '88"></div></div>'
+        + '<div class="peaks-row-metrics">'
+        + '<span><span class="peaks-lbl">Prom</span> ' + promStr + ' m</span>'
+        + '<span><span class="peaks-lbl">Iso</span> ' + isoStr + '</span>'
+        + '<span><span class="peaks-lbl">ΔMean</span> ' + deltaStr + ' m</span>'
+        + '</div>'
+        + '<div class="peaks-row-coord">' + latStr + ', ' + lonStr + '</div>'
+        + '</div>';
+    }).join('');
     list.querySelectorAll<HTMLElement>('[data-id]').forEach((row) => row.addEventListener('click', (event) => { if ((event.target as HTMLElement).tagName === 'BUTTON') return; this._selectPeak(Number(row.dataset.id), false); }));
     list.querySelectorAll<HTMLButtonElement>('[data-select]').forEach((btn) => btn.addEventListener('click', () => this._selectPeak(Number(btn.dataset.select), false)));
     list.querySelectorAll<HTMLButtonElement>('[data-fly]').forEach((btn) => btn.addEventListener('click', () => this._selectPeak(Number(btn.dataset.fly), true)));
@@ -995,14 +1167,16 @@ export class LocalPeaksEngine {
     const style = document.createElement('style');
     style.id = 'local-peaks-engine-styles';
     style.textContent = `
-      .peaks-panel{position:fixed;top:62px;left:306px;width:304px;max-height:calc(100vh - 84px);background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:var(--ms-radius);color:var(--ms-text);font-family:var(--ms-font);font-size:var(--ms-fs);z-index:1100;box-shadow:var(--ms-shadow);display:none;overflow:hidden;user-select:none;animation:peaksIn .18s cubic-bezier(.34,1.56,.64,1)}
+      .peaks-panel{--ms-bg:#141820;--ms-bg-header:rgba(26,32,48,.97);--ms-bg-input:rgba(0,0,0,.28);--ms-border:rgba(90,140,220,.25);--ms-divider:rgba(80,100,150,.18);--ms-text:#dce8f5;--ms-text-dim:rgba(155,180,215,.72);--ms-text-label:rgba(120,150,185,.75);--ms-radius:9px;--ms-shadow:0 8px 36px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.04);--ms-font:'SF Pro Display','Segoe UI',system-ui,sans-serif;--ms-fs:11.5px;--ms-fs-sm:12.5px;--ms-fs-xs:10px;position:fixed;top:62px;left:306px;width:304px;max-height:calc(100vh - 84px);background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:var(--ms-radius);color:var(--ms-text);font-family:var(--ms-font);font-size:var(--ms-fs);z-index:1100;box-shadow:var(--ms-shadow);display:none;overflow:hidden;user-select:none;animation:peaksIn .18s cubic-bezier(.34,1.56,.64,1)}
       @keyframes peaksIn{from{opacity:0;transform:scale(.96) translateY(-8px)}to{opacity:1;transform:scale(1) translateY(0)}}
       .peaks-header{display:flex;align-items:center;gap:7px;padding:9px 10px 8px;border-bottom:1px solid var(--ms-divider);background:var(--ms-bg-header);cursor:grab}.peaks-header:active{cursor:grabbing}.peaks-header-icon{font-size:9px;letter-spacing:.08em;color:#EF9F27;border:1px solid var(--ms-border);border-radius:3px;padding:2px 3px}.peaks-header-title{font-size:var(--ms-fs-sm);letter-spacing:.12em;text-transform:uppercase;color:#EF9F27;font-weight:700;flex:1}.peaks-status-dot{width:7px;height:7px;border-radius:50%;background:#555}.peaks-status-lbl{font-size:var(--ms-fs-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--ms-text-dim);min-width:42px}.peaks-help-btn,.peaks-min-btn,.peaks-close-btn{background:none;border:1px solid transparent;color:var(--ms-text-dim);font-size:12px;cursor:pointer;padding:0 2px}.peaks-help-btn{width:17px;height:17px;border-color:var(--ms-border);border-radius:50%;color:#1D9E75;font-weight:700}
       .peaks-body{max-height:calc(100vh - 122px);overflow-y:auto;padding:0 0 8px}.peaks-status-msg{margin:8px 10px 2px;padding:6px 7px;border:1px solid var(--ms-divider);border-radius:3px;background:var(--ms-bg-input);font-size:var(--ms-fs-xs);line-height:1.35;color:var(--ms-text-dim)}.peaks-status-msg.running{color:#EF9F27}.peaks-status-msg.warn{color:#DC3C30;border-color:#DC3C30}.peaks-status-msg.pick{color:#378ADD;border-color:#378ADD}.peaks-status-msg.done,.peaks-status-msg.ready{color:#1D9E75}.peaks-sec{font-size:var(--ms-fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--ms-text-label);padding:9px 12px 5px}.peaks-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px 8px;padding:0 10px 8px}.peaks-field{display:flex;flex-direction:column;gap:3px}.peaks-field.full{grid-column:1/-1}.peaks-field.sort{padding:0 10px 7px}.peaks-field span,.peaks-toggle label{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-dim)}.peaks-field input,.peaks-field select,.peaks-grid select,.peaks-grid input{background:var(--ms-bg-input);border:1px solid var(--ms-border);border-radius:3px;color:var(--ms-text);font-family:inherit;font-size:var(--ms-fs);padding:5px 7px;outline:none;box-sizing:border-box;width:100%}.peaks-field input:focus,.peaks-field select:focus{border-color:#EF9F27}.peaks-field select option{background:var(--ms-bg)}
       .peaks-btn-row{display:flex;gap:6px;padding:6px 10px 0}.peaks-btn{flex:1;padding:6px 4px;font-family:inherit;font-size:var(--ms-fs-xs);letter-spacing:.05em;text-transform:uppercase;cursor:pointer;border-radius:3px;border:1px solid var(--ms-border);background:var(--ms-bg-input);color:var(--ms-text-dim);transition:all .14s}.peaks-btn:hover:not(:disabled){background:var(--ms-bg-header);color:var(--ms-text)}.peaks-btn.primary{border-color:#EF9F27;color:#EF9F27}.peaks-btn:disabled{opacity:.35;cursor:not-allowed}.peaks-toggle{display:flex;align-items:center;justify-content:space-between;padding:4px 12px}.peaks-toggle input{accent-color:#EF9F27;width:13px;height:13px;cursor:pointer}.peaks-progress{padding:7px 10px 2px}.peaks-progress>div{height:4px;background:var(--ms-bg-input);border-radius:3px;overflow:hidden;border:1px solid var(--ms-divider)}#peaks-progress-fill{height:100%;width:0;background:linear-gradient(90deg,#1D9E75,#EF9F27);transition:width .16s}#peaks-progress-label{display:block;margin-top:4px;font-size:var(--ms-fs-xs);color:var(--ms-text-dim);letter-spacing:.04em}.peaks-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 10px 8px}.peaks-stats div{background:var(--ms-bg-input);border:1px solid var(--ms-divider);border-radius:3px;padding:5px 6px}.peaks-stats span{display:block;font-size:var(--ms-fs-xs);text-transform:uppercase;color:var(--ms-text-label)}.peaks-stats b{display:block;margin-top:2px;font-size:var(--ms-fs-sm);color:var(--ms-text);white-space:nowrap}
       .peaks-results{max-height:230px;overflow-y:auto;padding:0 10px}.peaks-empty{padding:14px 8px;color:var(--ms-text-dim);font-size:var(--ms-fs-xs);line-height:1.5;text-align:center;border:1px dashed var(--ms-divider);border-radius:3px}.peaks-row{border:1px solid var(--ms-divider);border-radius:4px;background:var(--ms-bg-input);padding:6px 7px;margin-bottom:6px;cursor:pointer}.peaks-row:hover,.peaks-row.selected{border-color:#EF9F27;background:var(--ms-bg-header)}.peaks-row-main{display:flex;align-items:center;gap:7px}.peaks-row-main b{color:#EF9F27}.peaks-row-main span{font-size:var(--ms-fs-xs);color:var(--ms-text-dim)}.peaks-row-metrics{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;font-size:var(--ms-fs-xs);color:var(--ms-text)}.peaks-row-actions{display:flex;gap:5px;margin-top:5px}.peaks-row-actions button{flex:1;border:1px solid var(--ms-border);background:transparent;color:var(--ms-text-dim);border-radius:3px;font-size:10px;cursor:pointer}.peaks-row-actions button:hover{color:#EF9F27;border-color:#EF9F27}
       .peaks-help-popover{position:absolute;top:39px;left:8px;right:8px;z-index:1120;max-height:min(420px,calc(100vh - 132px));overflow-y:auto;background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:4px;box-shadow:var(--ms-shadow)}.peaks-help-popover[hidden]{display:none}.peaks-help-head{display:flex;justify-content:space-between;gap:10px;padding:10px 11px 8px;border-bottom:1px solid var(--ms-divider);background:var(--ms-bg-header)}.peaks-help-kicker{font-size:var(--ms-fs-xs);color:var(--ms-text-label);letter-spacing:.09em;text-transform:uppercase}.peaks-help-title{margin-top:2px;font-size:13px;color:#EF9F27;font-weight:700}.peaks-help-head button{width:20px;height:20px;border:1px solid var(--ms-border);border-radius:3px;background:var(--ms-bg-input);color:var(--ms-text-dim);cursor:pointer}.peaks-help-body{padding:10px 11px 12px;font-size:var(--ms-fs-xs);line-height:1.45;color:var(--ms-text-dim);user-select:text}.peaks-help-body p{margin:0 0 9px}.peaks-help-body ol{margin:0;padding-left:17px}
-      .peaks-profile-panel{position:fixed;right:18px;bottom:18px;width:min(560px,calc(100vw - 36px));height:240px;background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:var(--ms-radius);z-index:1099;box-shadow:var(--ms-shadow);display:none;overflow:hidden}.peaks-profile-head{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--ms-bg-header);border-bottom:1px solid var(--ms-divider);color:#EF9F27;font-size:var(--ms-fs-xs);letter-spacing:.08em;text-transform:uppercase;font-weight:700}.peaks-profile-head button{background:transparent;border:1px solid var(--ms-border);color:var(--ms-text-dim);border-radius:3px;cursor:pointer}.peaks-profile-widget{height:205px}@media(max-width:560px){.peaks-panel{left:12px;top:72px;width:calc(100vw - 24px)}.peaks-grid{grid-template-columns:1fr}.peaks-profile-panel{left:12px;right:12px;width:auto}}
+      .peaks-profile-panel{position:fixed;right:18px;bottom:18px;width:min(560px,calc(100vw - 36px));height:240px;background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:var(--ms-radius);z-index:1099;box-shadow:var(--ms-shadow);display:none;overflow:hidden}.peaks-profile-head{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--ms-bg-header);border-bottom:1px solid var(--ms-divider);color:#EF9F27;font-size:var(--ms-fs-xs);letter-spacing:.08em;text-transform:uppercase;font-weight:700}.peaks-profile-head button{background:transparent;border:1px solid var(--ms-border);color:var(--ms-text-dim);border-radius:3px;cursor:pointer}.peaks-profile-widget{height:205px}
+      .peaks-row-header{display:flex;align-items:center;gap:7px;margin-bottom:5px}.peaks-row-badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;min-width:38px;justify-content:center;letter-spacing:.03em}.peaks-row-elev{font-size:14px;font-weight:700;color:var(--ms-text);letter-spacing:.01em}.peaks-row-unit{font-size:10px;font-weight:400;color:var(--ms-text-dim)}.peaks-row-btns{display:flex;gap:4px;margin-left:auto}.peaks-row-btns button{padding:3px 7px;border:1px solid var(--ms-border);background:transparent;color:var(--ms-text-dim);border-radius:3px;font-size:9.5px;cursor:pointer;transition:all .12s}.peaks-row-btns button:hover{color:#EF9F27;border-color:#EF9F27}.peaks-row-bar-wrap{height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;margin-bottom:6px}.peaks-row-bar{height:100%;border-radius:2px;transition:width .2s}.peaks-row-metrics{display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--ms-text)}.peaks-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--ms-text-label);margin-right:2px}.peaks-row-coord{font-size:9px;color:var(--ms-text-label);margin-top:3px;font-family:'SF Mono','Consolas',monospace;letter-spacing:.03em}
+      @media(max-width:560px){.peaks-panel{left:12px;top:72px;width:calc(100vw - 24px)}.peaks-grid{grid-template-columns:1fr}.peaks-profile-panel{left:12px;right:12px;width:auto}}
     `;
     document.head.appendChild(style);
   }

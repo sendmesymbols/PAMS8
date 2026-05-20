@@ -1303,6 +1303,204 @@
         color: rgba(100, 130, 170, 0.6);
         margin-top: 1px;
       }
+
+      /* ═══════════════════════════════════════════════════════════════════════
+         ANALYSIS HUB PANEL
+         ═══════════════════════════════════════════════════════════════════════ */
+      #analysisHubPanel {
+        position: absolute;
+        top: 60px;
+        left: 50px;
+        width: 310px;
+        background: var(--bg-surface);
+        color: var(--neutral-200);
+        font-family: var(--font-sans);
+        font-size: var(--text-sm);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg), var(--shadow-inset);
+        z-index: 1070;
+        overflow: hidden;
+        display: none;
+      }
+
+      #analysisHubPanel.ah-visible {
+        display: block;
+        animation: ah-panel-in 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      @keyframes ah-panel-in {
+        from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      #analysisHubPanel header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 14px 10px 16px;
+        background: linear-gradient(135deg, rgba(80, 200, 110, 0.08) 0%, rgba(50, 140, 70, 0.05) 100%);
+        border-bottom: 1px solid var(--border-subtle);
+        user-select: none;
+        cursor: grab;
+      }
+
+      #analysisHubPanel header:active {
+        cursor: grabbing;
+      }
+
+      #analysisHubPanel header > span {
+        font-weight: 600;
+        color: #80d8a0;
+        font-size: var(--text-base);
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      #analysisHubPanel header > span::before {
+        content: '';
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: linear-gradient(135deg, #50c878, #208040);
+        border-radius: 2px;
+      }
+
+      .ah-symbol-badge {
+        font-size: var(--text-xs);
+        padding: 2px 7px;
+        background: rgba(100, 180, 255, 0.08);
+        border: 1px solid var(--border-subtle);
+        border-radius: 10px;
+        color: var(--neutral-500);
+        white-space: nowrap;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: all 0.2s ease;
+      }
+
+      .ah-symbol-badge.has-symbol {
+        color: #50d878;
+        border-color: rgba(80, 200, 100, 0.45);
+        background: rgba(80, 200, 100, 0.1);
+      }
+
+      .ah-close-btn {
+        background: none;
+        border: none;
+        color: var(--neutral-500);
+        cursor: pointer;
+        padding: 3px 5px;
+        border-radius: 3px;
+        font-size: 11px;
+        line-height: 1;
+        transition: color 0.12s, background 0.12s;
+        flex-shrink: 0;
+      }
+
+      .ah-close-btn:hover {
+        color: var(--neutral-200);
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .ah-content {
+        padding: 8px;
+        max-height: min(65vh, 480px);
+        overflow-y: auto;
+      }
+
+      .ah-content::-webkit-scrollbar { width: 4px; }
+      .ah-content::-webkit-scrollbar-track { background: transparent; }
+      .ah-content::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
+      .ah-content::-webkit-scrollbar-thumb:hover { background: #50c878; }
+
+      .ah-group { margin-bottom: 10px; }
+      .ah-group:last-child { margin-bottom: 2px; }
+
+      .ah-group-title {
+        font-size: 8.5px;
+        font-weight: 700;
+        color: #50c878;
+        text-transform: uppercase;
+        letter-spacing: 1.1px;
+        opacity: 0.85;
+        margin-bottom: 5px;
+        padding-left: 2px;
+      }
+
+      .ah-tools-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+      }
+
+      .ah-tool {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        padding: 9px 6px 7px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.14s ease;
+        text-align: center;
+        color: var(--neutral-300);
+        font-family: var(--font-sans);
+        width: 100%;
+      }
+
+      .ah-tool:hover {
+        background: rgba(80, 200, 100, 0.12);
+        border-color: rgba(80, 200, 100, 0.4);
+        color: var(--neutral-100);
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+      }
+
+      .ah-tool:active {
+        transform: translateY(0);
+        background: rgba(80, 200, 100, 0.22);
+      }
+
+      .ah-tool-icon { font-size: 17px; line-height: 1; margin-bottom: 1px; }
+      .ah-tool-name { font-size: 9.5px; font-weight: 550; line-height: 1.2; }
+
+      .ah-tool-tag {
+        font-size: 8px;
+        padding: 1px 5px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--neutral-500);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        white-space: nowrap;
+        margin-top: 1px;
+      }
+
+      .ah-tool-tag.needs-sym {
+        color: var(--accent-warning);
+        border-color: rgba(229, 165, 64, 0.3);
+        background: rgba(229, 165, 64, 0.07);
+      }
+
+      .ah-status {
+        padding: 6px 12px;
+        font-size: var(--text-xs);
+        color: var(--neutral-500);
+        border-top: 1px solid var(--border-subtle);
+        background: rgba(0, 0, 0, 0.15);
+        font-style: italic;
+        min-height: 24px;
+        line-height: 1.4;
+        transition: color 0.2s;
+      }
+
+      .ah-status.ah-ok  { color: #50d878; font-style: normal; }
+      .ah-status.ah-err { color: var(--accent-danger); font-style: normal; }
     </style>
     <link
       rel="stylesheet"
@@ -1370,6 +1568,7 @@
       <button id="savePlanButton" title="Save current symbol set, annotations, and settings as a reusable plan to local storage via ImportExportEngine.">Save Plan</button>
       <button id="loadPlanButton" title="Load a previously saved plan from local storage, restoring all symbols, annotations, and settings.">Load Plan</button>
       <button id="deployment-manager-btn" title="Open the Deployment Manager to manage and place formation templates.">🗺️ Deployment Manager</button>
+      <button id="analysis-hub-btn" title="Open Analysis Hub — quick access to all terrain, force, weapons and mission analysis engines">🔬 Analysis Hub</button>
 
       <!-- Measurement toggle button -->
       <button
@@ -1455,6 +1654,113 @@
       <div class="log-body" id="logBody">
         <div class="log-empty" id="logEmpty">No messages yet — engine activity will appear here</div>
       </div>
+    </div>
+
+    <!-- ── Analysis Hub Panel ────────────────────────────────────────────────── -->
+    <div id="analysisHubPanel">
+      <header>
+        <span>Analysis Hub</span>
+        <div class="ah-symbol-badge" id="ah-symbol-badge">No symbol</div>
+        <button class="ah-close-btn" id="ah-close-btn" title="Close">✕</button>
+      </header>
+      <div class="ah-content">
+
+        <div class="ah-group">
+          <div class="ah-group-title">Terrain Intelligence</div>
+          <div class="ah-tools-grid">
+            <button class="ah-tool" data-tool="keyTerrain" title="Identify tactically significant terrain features (hills, saddles, spurs, reentrants)">
+              <span class="ah-tool-icon">🗻</span>
+              <span class="ah-tool-name">Key Terrain</span>
+              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
+            </button>
+            <button class="ah-tool" data-tool="localPeaks" title="Detect terrain peaks and valleys in the AO">
+              <span class="ah-tool-icon">⛰️</span>
+              <span class="ah-tool-name">Peak Analysis</span>
+              <span class="ah-tool-tag">standalone</span>
+            </button>
+            <button class="ah-tool" data-tool="deadGround" title="Map terrain hidden from the observer position">
+              <span class="ah-tool-icon">🕳️</span>
+              <span class="ah-tool-name">Dead Ground</span>
+              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
+            </button>
+            <button class="ah-tool" data-tool="ocoka" title="OCOKA — Avenues of Approach terrain analysis">
+              <span class="ah-tool-icon">🛤️</span>
+              <span class="ah-tool-name">OCOKA</span>
+              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="ah-group">
+          <div class="ah-group-title">Force &amp; Position</div>
+          <div class="ah-tools-grid">
+            <button class="ah-tool" data-tool="los" title="Line of Sight — compute viewshed from observer position">
+              <span class="ah-tool-icon">👁️</span>
+              <span class="ah-tool-name">Line of Sight</span>
+              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
+            </button>
+            <button class="ah-tool" data-tool="posDefScorer" title="Position Defensibility Scorer — rate defensive value across 6 military factors">
+              <span class="ah-tool-icon">🏰</span>
+              <span class="ah-tool-name">Pos. Defensibility</span>
+              <span class="ah-tool-tag">standalone</span>
+            </button>
+            <button class="ah-tool" data-tool="opRanker" title="Observation Post Ranker — rank and compare candidate OP positions">
+              <span class="ah-tool-icon">📡</span>
+              <span class="ah-tool-name">OP Ranker</span>
+              <span class="ah-tool-tag">standalone</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="ah-group">
+          <div class="ah-group-title">Weapons &amp; Threats</div>
+          <div class="ah-tools-grid">
+            <button class="ah-tool" data-tool="wez" title="Weapon Engagement Zone — visualize weapon system engagement coverage">
+              <span class="ah-tool-icon">🎯</span>
+              <span class="ah-tool-name">WEZ</span>
+              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
+            </button>
+            <button class="ah-tool" data-tool="trajectory" title="Ballistic Trajectory — model projectile flight path and impact">
+              <span class="ah-tool-icon">🚀</span>
+              <span class="ah-tool-name">Trajectory</span>
+              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
+            </button>
+            <button class="ah-tool" data-tool="effects" title="Weapon Effects — compute munitions effects radius">
+              <span class="ah-tool-icon">💥</span>
+              <span class="ah-tool-name">Effects</span>
+              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
+            </button>
+            <button class="ah-tool" data-tool="buffer" title="Buffer &amp; Threat Rings — create buffer zones and concentric threat rings">
+              <span class="ah-tool-icon">⭕</span>
+              <span class="ah-tool-name">Buffer &amp; Rings</span>
+              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="ah-group">
+          <div class="ah-group-title">Route &amp; Mission</div>
+          <div class="ah-tools-grid">
+            <button class="ah-tool" data-tool="corridor" title="Corridor Analysis — route width, threats and chokepoints along MSRs">
+              <span class="ah-tool-icon">🗺️</span>
+              <span class="ah-tool-name">Corridor</span>
+              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
+            </button>
+            <button class="ah-tool" data-tool="flight" title="UAV Flight Analysis — plan UAV routes and analyze coverage">
+              <span class="ah-tool-icon">🛸</span>
+              <span class="ah-tool-name">UAV Flight</span>
+              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
+            </button>
+            <button class="ah-tool" data-tool="missionPlanner" title="Mission Planner Dashboard — integrated multi-factor terrain analysis">
+              <span class="ah-tool-icon">📋</span>
+              <span class="ah-tool-name">Mission Planner</span>
+              <span class="ah-tool-tag">standalone</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+      <div class="ah-status" id="ah-status">Ready — select a symbol for context-based tools</div>
     </div>
 
     <div id="symbolDetails" class="symbol-details">
@@ -2210,8 +2516,8 @@
               <input type="checkbox" id="setting-analysis-opRanker" checked title="Enable Observation Post Ranker engine. When disabled, the OP Ranker item is removed from More Actions." />
             </div>
             <div class="setting-row">
-              <label>Local Peaks</label>
-              <input type="checkbox" id="setting-analysis-localPeaks" checked title="Enable Local Peaks engine. When disabled, the Local Peaks item is removed from More Actions." />
+              <label>Peak Analysis</label>
+              <input type="checkbox" id="setting-analysis-localPeaks" checked title="Enable Peak Analysis engine. When disabled, the Peak Analysis item is removed from More Actions." />
             </div>
             <div class="setting-row">
               <label>Mission Planner Dashboard</label>
@@ -4311,6 +4617,52 @@
         document.getElementById('api-log-status').textContent = enabled ? 'Enabled' : 'Disabled';
       }
       setInterval(updateLoggerApiStatus, 2000);
+
+      // ── Draggable panels utility ─────────────────────────────────────────────
+      function makeDraggable(panel, handle) {
+        let dragging = false;
+        let ox = 0, oy = 0; // offset from panel origin to pointer at drag start
+
+        handle.addEventListener('mousedown', (e) => {
+          // Don't interfere with buttons or inputs inside the header
+          if (e.target.closest('button, input, select')) return;
+          dragging = true;
+          const rect = panel.getBoundingClientRect();
+          // Anchor to explicit left/top so right/bottom positioning doesn't fight us
+          panel.style.left   = rect.left + 'px';
+          panel.style.top    = rect.top  + 'px';
+          panel.style.right  = 'auto';
+          panel.style.bottom = 'auto';
+          ox = e.clientX - rect.left;
+          oy = e.clientY - rect.top;
+          document.body.style.userSelect = 'none';
+          handle.style.cursor = 'grabbing';
+          e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+          if (!dragging) return;
+          // Clamp so the panel can't be dragged fully off-screen
+          const maxLeft = window.innerWidth  - panel.offsetWidth  - 4;
+          const maxTop  = window.innerHeight - panel.offsetHeight - 4;
+          panel.style.left = Math.max(0, Math.min(e.clientX - ox, maxLeft)) + 'px';
+          panel.style.top  = Math.max(0, Math.min(e.clientY - oy, maxTop))  + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+          if (!dragging) return;
+          dragging = false;
+          document.body.style.userSelect = '';
+          handle.style.cursor = '';
+        });
+      }
+
+      // Wire Analysis Hub panel drag
+      (function () {
+        const panel  = document.getElementById('analysisHubPanel');
+        const handle = panel?.querySelector('header');
+        if (panel && handle) makeDraggable(panel, handle);
+      })();
 
       // Magnetic Compass panel open button
       document.getElementById('mc-open-widget-btn')?.addEventListener('click', () => {

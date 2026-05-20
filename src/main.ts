@@ -40,6 +40,7 @@ const drawAmbushButton = document.getElementById('drawAmbushButton');
 const savePlanButton = document.getElementById('savePlanButton');
 const loadPlanButton = document.getElementById('loadPlanButton');
 const deploymentManagerBtn = document.getElementById('deployment-manager-btn');
+const analysisHubBtn = document.getElementById('analysis-hub-btn');
 
 // Autocomplete elements
 const symbolSearchInput = document.getElementById(
@@ -1426,6 +1427,117 @@ function initializeAutocomplete() {
         console.warn('Deployment Manager not ready yet');
       }
     });
+  }
+
+  // ── Analysis Hub ──────────────────────────────────────────────────────────
+  {
+    const analysisHubPanel = document.getElementById('analysisHubPanel');
+    const ahStatus = document.getElementById('ah-status');
+    const ahSymbolBadge = document.getElementById('ah-symbol-badge');
+
+    function getActiveGraphic() {
+      const se = (window as any).symbolEngine;
+      if (!se) return null;
+      const last = se.contextMenuManager?.getLastClickedGraphic?.();
+      if (last) return last;
+      const sel: any[] = se.selectionEngine?.selectedGraphics ?? [];
+      return sel.length === 1 ? sel[0] : null;
+    }
+
+    function setAhStatus(msg: string, type: 'ok' | 'err' | '' = '') {
+      if (!ahStatus) return;
+      ahStatus.textContent = msg;
+      ahStatus.className = 'ah-status' + (type ? ` ah-${type}` : '');
+      if (type === 'ok') setTimeout(() => { if (ahStatus) ahStatus.className = 'ah-status'; }, 3000);
+    }
+
+    function updateAhBadge() {
+      if (!ahSymbolBadge) return;
+      const g = getActiveGraphic();
+      if (g) {
+        const label: string = g.attributes?.uniqueDesignation || g.attributes?.name || g.attributes?.id || 'Symbol';
+        ahSymbolBadge.textContent = String(label).substring(0, 18);
+        ahSymbolBadge.classList.add('has-symbol');
+      } else {
+        ahSymbolBadge.textContent = 'No symbol';
+        ahSymbolBadge.classList.remove('has-symbol');
+      }
+    }
+
+    if (analysisHubBtn && analysisHubPanel) {
+      analysisHubBtn.addEventListener('click', () => {
+        const visible = analysisHubPanel.classList.toggle('ah-visible');
+        if (visible) updateAhBadge();
+      });
+
+      document.getElementById('ah-close-btn')?.addEventListener('click', () => {
+        analysisHubPanel.classList.remove('ah-visible');
+      });
+
+      // Standalone tools — open without requiring a selected symbol
+      const standaloneTools: Record<string, () => void> = {
+        localPeaks:    () => { const se = (window as any).symbolEngine; se?.localPeaksEngine?.open(undefined, se.view); },
+        posDefScorer:  () => { const se = (window as any).symbolEngine; se?.posDefScorerEngine?.openWidget(se.view); },
+        opRanker:      () => { const se = (window as any).symbolEngine; se?.opRankerEngine?.openWidget(se.view); },
+        missionPlanner:() => { const se = (window as any).symbolEngine; se?.missionPlannerEngine?.openWidget(se.view); },
+      };
+
+      // Context tools — require a right-clicked or selected graphic
+      const contextTools: Record<string, (g: any, v: any, se: any) => void> = {
+        keyTerrain:  (g, v, se) => se.keyTerrainIdentificationEngine?.open(g, v),
+        deadGround:  (g, v, se) => se._deadGroundMapper?.open(g, v),
+        ocoka:       (g, v, se) => se.ocokaEngine?.open(g, v),
+        los:         (g, v, se) => se.losEngine?.open(g, v),
+        wez:         (g, v, se) => se.weaponEffectEngine?.open(g, v),
+        trajectory:  (g, v, se) => se.trajectoryEngine?.open(g, v),
+        effects:     (g, v, se) => se._effectEngine?.open(g, v),
+        buffer:      (g, v, se) => se._bufferEngine?.open(g, v),
+        corridor:    (g, v, se) => se._corridorEngine?.open(g, v),
+        flight:      (g, v, se) => se._flightEngine?.open(g, v),
+      };
+
+      const toolNames: Record<string, string> = {
+        keyTerrain: 'Key Terrain Identifier', localPeaks: 'Peak Analysis',
+        deadGround: 'Dead Ground Mapper',     ocoka: 'OCOKA',
+        los: 'Line of Sight',                 posDefScorer: 'Position Defensibility Scorer',
+        opRanker: 'OP Ranker',                wez: 'Weapon Engagement Zone',
+        trajectory: 'Trajectory',             effects: 'Weapon Effects',
+        buffer: 'Buffer & Rings',             corridor: 'Corridor Analysis',
+        flight: 'UAV Flight Analysis',        missionPlanner: 'Mission Planner',
+      };
+
+      analysisHubPanel.querySelectorAll<HTMLButtonElement>('.ah-tool').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tool = btn.dataset.tool ?? '';
+          const name = toolNames[tool] ?? tool;
+          const se = (window as any).symbolEngine;
+          if (!se) { setAhStatus('SymbolEngine not ready', 'err'); return; }
+
+          if (standaloneTools[tool]) {
+            standaloneTools[tool]();
+            setAhStatus(`${name} opened`, 'ok');
+            return;
+          }
+
+          const graphic = getActiveGraphic();
+          if (!graphic) {
+            setAhStatus('Right-click or select a symbol first', 'err');
+            return;
+          }
+
+          const fn = contextTools[tool];
+          if (fn) {
+            fn(graphic, se.view, se);
+            setAhStatus(`${name} opened`, 'ok');
+          }
+        });
+      });
+
+      // Refresh symbol badge every second while panel is open
+      setInterval(() => {
+        if (analysisHubPanel.classList.contains('ah-visible')) updateAhBadge();
+      }, 1000);
+    }
   }
 
   function waitForEngine(cb: () => void) {

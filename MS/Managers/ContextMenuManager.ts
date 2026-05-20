@@ -986,7 +986,7 @@ class ContextMenuManager extends Evented {
     }
 
     if (this._localPeaksEngine) {
-      actions.push(this.createPaletteAction('analysis-local-peaks', 'Local Peaks', 'Analysis / More Tools', undefined, () => {
+      actions.push(this.createPaletteAction('analysis-local-peaks', 'Peak Analysis', 'Analysis / More Tools', undefined, () => {
         if (this._localPeaksEngine && this.view) {
           this._localPeaksEngine.open(graphic, this.view);
         }

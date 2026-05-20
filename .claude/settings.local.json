@@ -18,7 +18,8 @@
       "PowerShell(Select-String *)",
       "Bash(npx vite *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "WebFetch(domain:developers.arcgis.com)"
     ]
   }
 }
