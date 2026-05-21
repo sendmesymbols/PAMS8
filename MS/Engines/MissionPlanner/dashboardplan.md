@@ -90,3 +90,40 @@ Build `MissionPlannerEngine` as a unified tactical terrain dashboard, not anothe
 - Map graphics correspond to the ranked list.
 - Settings toggles load and unload the tool correctly.
 - Report can be printed/exported without extra packages.
+
+## Realized Features (v2)
+
+The engine has since been re-aligned with `LocalPeaksEngine`'s public surface and enriched with a curated planner feature set. All additions reuse existing engines/utilities — no new terrain math.
+
+### Interface alignment
+- `MpStatusTone` (`ready | running | warn | pick | done`) with colored status dot + label and consistent `EngineLogger` routing.
+- Sketch-based AOI picker — `rectangle | polygon | buffer | view extent` modes backed by a single `SketchViewModel` on the AO layer.
+- Draggable / minimizable panel header (matches LocalPeaksEngine).
+- Auto-run on `view.stationary` with 700 ms debounce (`mp-auto-run`).
+- Result rows now use LocalPeaks-shaped DOM: rank badge, composite bar, key-value metric strip, MGRS coord line, caution chips.
+- Shapefile export (.shp/.shx/.dbf/.prj) alongside CSV + GeoJSON.
+- Public `runHeadless(options): Promise<MissionTerrainFeature[]>` mirrors LocalPeaks.runHeadless.
+
+### Features A–K
+- **A. MGRS-first reporting** — every ranked feature shows MGRS (zone + 100k + easting/northing). Self-contained UTM forward converter — no external dependency.
+- **B. Order-of-Battle summary** — Forces tab counts friendly / enemy / neutral graphics on the `FORCE` layer inside the AOI, grouped by SIDC echelon byte.
+- **C. Threat-bearing & range fans** for top-3 positions. Bearing is auto-derived as the average bearing from AO centroid to active enemy observers; user can override via the `mp-threat-bearing` input. Sector edges + concentric arcs at 200/500/1000 m on `mission-planner-fires`.
+- **D. Hostile-observation overlay** — runs `DeadGroundMapper.runHeadless` per active enemy observer and renders translucent red LOS reach on `mission-planner-hostile-obs`. Positions inside any enemy LOS extent gain an `EXPOSED nn%` danger chip and a 20-point composite-score penalty.
+- **E. Ambush Suitability composite** — `0.30·corridor + 0.25·(100-viewshed) + 0.20·concealment + 0.15·defensibility + 0.10·(100-mobility)`. New `ambush` mode amplifies this score in the composite.
+- **F. Withdrawal hint** — single extra `OcokaEngine.runHeadless` call from the rank-1 feature; picks the corridor whose bearing is closest to `(threatBearing + 180°)` and draws it on `mission-planner-withdrawal` with a `⇨ WITHDRAW` label.
+- **G. COA snapshots** — in-memory only (max 3, cleared on page reload). COA tab renders side-by-side comparison; Save COA writes one slot per click. Report tab embeds the comparison table.
+- **H. Inline elevation sparkline** — 24-sample SVG sparkline per row showing elevation toward the threat bearing, colored green (rising → dominance) or red (sinking → overlooked).
+- **I. March-time** — `distance(feature, friendly observer or AO centre) / UNIT_SETTINGS[unit].defaultSpeedKmh` rendered as `H+MM`.
+- **J. Caution chips** — `{level, text}` records rendered as colored pills: `EXPOSED`, `Limited observation`, `Dead ground exploit risk`, `Weak defensibility`, `Supply blind (>N km)`, `Edge of AO (sampling bias)`.
+- **K. Pin-from-map** — engine self-registers a `ContextMenuManager.addDynamicItemProvider` provider at panel open so right-clicking a `mission_planner_feature` graphic exposes *Pin as Friendly Observer* / *Pin as Enemy Observer*. The provider is gated by graphic-type so it doesn't pollute other context menus.
+
+### New layers
+- `mission-planner-fires` — fires fan sector edges + concentric range arcs.
+- `mission-planner-hostile-obs` — enemy LOS reach polygons.
+- `mission-planner-withdrawal` — rank-1 fallback corridor + arrow label.
+
+### Explicitly omitted
+- ❌ Heatmap overlay (slow; OCOKA + fires fans already carry the spatial story).
+- ❌ Custom WEZ math (`WeaponEffectEngine` has no headless API).
+- ❌ PDF export library (browser Print + Shapefile + GeoJSON cover the export need).
+- ❌ Multi-step wizard.

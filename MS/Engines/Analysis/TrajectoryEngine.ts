@@ -1496,8 +1496,12 @@ export class TrajectoryEngine {
 
   private _onDragMove = (e: MouseEvent): void => {
     if (!this._isDragging || !this._panelEl) return;
-    this._panelEl.style.left = `${Math.max(0, e.clientX - this._dragOffsetX)}px`;
-    this._panelEl.style.top = `${Math.max(0, e.clientY - this._dragOffsetY)}px`;
+    const maxLeft = window.innerWidth - this._panelEl.offsetWidth - 4;
+    const maxTop = window.innerHeight - this._panelEl.offsetHeight - 4;
+    const left = Math.max(0, Math.min(e.clientX - this._dragOffsetX, maxLeft));
+    const top = Math.max(0, Math.min(e.clientY - this._dragOffsetY, maxTop));
+    this._panelEl.style.left = `${left}px`;
+    this._panelEl.style.top = `${top}px`;
     this._panelEl.style.right = 'auto';
   };
 
@@ -1578,7 +1582,7 @@ export class TrajectoryEngine {
         position: fixed;
         top: 60px;
         left: 602px;
-        width: 292px;
+        width: 380px;
         background: var(--ms-bg);
         border: 1px solid var(--ms-border);
         border-radius: var(--ms-radius);
@@ -1606,7 +1610,7 @@ export class TrajectoryEngine {
         cursor: grab;
       }
       .traj-header:active { cursor: grabbing; }
-      .traj-header-icon { font-size: 15px; flex-shrink: 0; }
+      .traj-header-icon { font-size: var(--ms-fs-sm); flex-shrink: 0; }
       .traj-header-title {
         font-size: var(--ms-fs-sm);
         letter-spacing: 0.12em;
@@ -1633,7 +1637,7 @@ export class TrajectoryEngine {
         background: none;
         border: 1px solid transparent;
         color: var(--ms-text-dim);
-        font-size: 12px;
+        font-size: var(--ms-fs);
         cursor: pointer;
         padding: 0 2px;
         line-height: 1;
@@ -1680,7 +1684,7 @@ export class TrajectoryEngine {
       }
       .traj-help-title {
         margin-top: 2px;
-        font-size: 13px;
+        font-size: var(--ms-fs-sm);
         color: var(--ms-success);
         font-weight: 700;
       }
@@ -1696,7 +1700,7 @@ export class TrajectoryEngine {
       .traj-help-close:hover { color: var(--ms-text); }
       .traj-help-body {
         padding: 10px 11px 12px;
-        font-size: var(--ms-fs-xs);
+        font-size: var(--ms-fs);
         line-height: 1.45;
         color: var(--ms-text-dim);
         user-select: text;
@@ -1827,7 +1831,7 @@ export class TrajectoryEngine {
       .traj-leg-impact { color: var(--ms-danger); }
       .traj-stat { display: flex; flex-direction: column; gap: 2px; }
       .traj-stat-val {
-        font-size: 13px;
+        font-size: var(--ms-fs-sm);
         font-weight: 700;
         letter-spacing: 0.03em;
         color: var(--ms-warning);

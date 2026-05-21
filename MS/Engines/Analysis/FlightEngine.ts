@@ -955,14 +955,33 @@ export class FlightEngine {
           <button class="flight-help-close" id="flight-help-close" title="Close">x</button>
         </div>
         <div class="flight-help-body">
-          <p>Plans UAV movement from a launch or current position. The engine computes leg distance, ETA, return reserve, sensor coverage, and optional weapon envelope.</p>
+          <p>Plans a UAV mission from a launch or current position. The engine models the UAV route, computes leg distance and ETA, projects sensor coverage along the path, and visualises altitude-above-ground (AGL) and weapon envelope where relevant.</p>
           <div class="flight-help-block">
-            <h4>Workflow</h4>
+            <h4>What it analyses</h4>
             <ol>
-              <li>Select a UAV preset or tune speed, altitude, endurance, and payload.</li>
-              <li>Add waypoints from the map to extend the mission route.</li>
-              <li>Scrub or animate the timeline to preview position and coverage.</li>
-              <li>Commit the plan when the route is ready for the map overlay.</li>
+              <li><b>Route geometry</b> — waypoints, leg lengths, turn points, total track distance, and return reserve from the active endurance budget.</li>
+              <li><b>AGL altitude</b> — flight altitude above mean sea level is checked against terrain along the route; segments below the configured AGL clearance are flagged as risk.</li>
+              <li><b>Sensor footprint</b> — for each waypoint and the interpolated path, a swath polygon is built from sensor range and FOV (and gimbal heading) to show what the payload sees.</li>
+              <li><b>Weapon envelope</b> (if armed) — uses weapon range to overlay the engagement reach forward of the platform.</li>
+            </ol>
+          </div>
+          <div class="flight-help-block">
+            <h4>Setting waypoints</h4>
+            <ol>
+              <li>Pick a UAV preset (or tune speed, altitude, endurance, payload manually).</li>
+              <li>Click on the map to drop sequential waypoints — each one extends the active leg and re-runs distance, ETA, and coverage.</li>
+              <li>Drag a waypoint to relocate it; right-click to delete. The route, sensor footprint, and timeline update live.</li>
+              <li>Scrub or animate the timeline to preview platform position, sensor cone, and coverage at any time-of-mission.</li>
+              <li>Commit the plan when the route is ready to persist as a map overlay.</li>
+            </ol>
+          </div>
+          <div class="flight-help-block">
+            <h4>How parameters change the analysis</h4>
+            <ol>
+              <li><b>Speed &amp; endurance</b> control reachable range and ETA per leg — the return-reserve metric warns when the route exceeds the safe round-trip budget.</li>
+              <li><b>Altitude (AGL)</b> changes terrain clearance checks and the projected sensor footprint size — lower AGL = tighter swath, higher AGL = broader but lower-resolution coverage.</li>
+              <li><b>Sensor range &amp; FOV</b> directly scale the coverage polygon — narrow FOV / long range produces a slim corridor; wide FOV / short range produces a broad fan.</li>
+              <li><b>Armed + weapon range</b> draws the engagement envelope and is included in the risk/reach summary.</li>
             </ol>
           </div>
         </div>
@@ -1481,7 +1500,7 @@ export class FlightEngine {
 
   private _onDragMove = (e: MouseEvent): void => {
     if (!this._isDragging || !this._panelEl) return;
-    this._panelEl.style.left = `${clamp(e.clientX - this._dragOffsetX, 8, window.innerWidth - 300)}px`;
+    this._panelEl.style.left = `${clamp(e.clientX - this._dragOffsetX, 8, window.innerWidth - 396)}px`;
     this._panelEl.style.top = `${clamp(e.clientY - this._dragOffsetY, 8, window.innerHeight - 120)}px`;
     this._panelEl.style.right = 'auto';
   };
@@ -1566,7 +1585,7 @@ export class FlightEngine {
         position: fixed;
         top: 60px;
         left: 306px;
-        width: 282px;
+        width: 380px;
         background: var(--ms-bg);
         border: 1px solid var(--ms-border);
         border-radius: var(--ms-radius);
@@ -1631,7 +1650,7 @@ export class FlightEngine {
         background: none;
         border: 1px solid transparent;
         color: var(--ms-text-dim);
-        font-size: 12px;
+        font-size: var(--ms-fs);
         cursor: pointer;
         padding: 0 2px;
         line-height: 1;
@@ -1678,7 +1697,7 @@ export class FlightEngine {
       }
       .flight-help-title {
         margin-top: 2px;
-        font-size: 13px;
+        font-size: var(--ms-fs-sm);
         color: var(--ms-success);
         font-weight: 700;
       }
@@ -1694,7 +1713,7 @@ export class FlightEngine {
       .flight-help-close:hover { color: var(--ms-text); }
       .flight-help-body {
         padding: 10px 11px 12px;
-        font-size: var(--ms-fs-xs);
+        font-size: var(--ms-fs);
         line-height: 1.45;
         color: var(--ms-text-dim);
         user-select: text;
@@ -1703,7 +1722,7 @@ export class FlightEngine {
       .flight-help-block { margin-top: 10px; }
       .flight-help-block h4 {
         margin: 0 0 5px;
-        font-size: var(--ms-fs-xs);
+        font-size: var(--ms-fs);
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--ms-text);

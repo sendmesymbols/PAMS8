@@ -206,25 +206,56 @@ class DeploymentBuilderEngine {
         border-bottom:1px solid var(--ms-divider);
         border-radius:var(--ms-radius) var(--ms-radius) 0 0;cursor:grab;
       ">
-        <span style="font-weight:700;color:var(--ms-accent);font-size:13px">MAP Deployment Manager</span>
+        <span style="font-weight:700;color:var(--ms-accent);font-size:var(--ms-fs-sm)">MAP Deployment Manager</span>
         <div style="display:flex;gap:6px">
+          <button class="db-btn-help" style="
+            background:none;border:1px solid var(--ms-border);border-radius:4px;
+            color:var(--ms-text-dim);width:22px;height:22px;cursor:pointer;font-size:var(--ms-fs);
+            display:flex;align-items:center;justify-content:center;
+          " title="Help">?</button>
           <button class="db-btn-min" style="
             background:none;border:1px solid var(--ms-border);border-radius:4px;
-            color:var(--ms-text-dim);width:22px;height:22px;cursor:pointer;font-size:12px;
+            color:var(--ms-text-dim);width:22px;height:22px;cursor:pointer;font-size:var(--ms-fs);
             display:flex;align-items:center;justify-content:center;
           " title="Minimize">▼</button>
           <button class="db-btn-close" style="
             background:none;border:1px solid var(--ms-border);border-radius:4px;
-            color:var(--ms-text-dim);width:22px;height:22px;cursor:pointer;font-size:12px;
+            color:var(--ms-text-dim);width:22px;height:22px;cursor:pointer;font-size:var(--ms-fs);
             display:flex;align-items:center;justify-content:center;
           " title="Close">✕</button>
         </div>
       </div>
 
-      <div class="db-body" style="display:flex;height:340px;">
+      <div class="db-help-popover" style="
+        display:none;position:absolute;top:42px;right:12px;width:340px;
+        background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:var(--ms-radius);
+        box-shadow:var(--ms-shadow);padding:12px 14px;z-index:10;
+        font-size:var(--ms-fs-sm);color:var(--ms-text-dim);line-height:1.55;
+      ">
+        <div style="font-weight:700;color:var(--ms-accent);font-size:var(--ms-fs);margin-bottom:6px">About Deployment Manager</div>
+        <div style="margin-bottom:8px">Place pre-built tactical plans onto the map at a chosen anchor and bearing.</div>
+        <div style="font-weight:600;color:var(--ms-text);margin-bottom:3px">Flow</div>
+        <div style="margin-bottom:8px">1. Click map to set <strong>anchor</strong>. 2. Move cursor and click to set <strong>bearing</strong>. (As-Is skips step 2.)</div>
+        <div style="font-weight:600;color:var(--ms-text);margin-bottom:3px">Formations</div>
+        <div style="font-size:var(--ms-fs-xs);margin-bottom:8px">
+          <div><strong>Line</strong> — side-by-side along bearing</div>
+          <div><strong>Column</strong> — one behind another along bearing</div>
+          <div><strong>Wedge</strong> — lead at anchor, flanks behind</div>
+          <div><strong>Echelon R/L</strong> — step diagonally right/left rear</div>
+          <div><strong>Vee</strong> — lead at anchor, arms fan to rear</div>
+          <div><strong>As-Is</strong> — keep original plan layout</div>
+        </div>
+        <div style="font-size:var(--ms-fs-xs)">
+          <div><strong>Right-click</strong> during bearing resets the anchor.</div>
+          <div><strong>Esc</strong> cancels placement.</div>
+          <div><strong>Spacing</strong> applies to all modes.</div>
+        </div>
+      </div>
+
+      <div class="db-body" style="display:flex;height:380px;">
         <!-- Left column: plan list -->
         <div class="db-left" style="
-          width:220px;flex-shrink:0;border-right:1px solid var(--ms-divider);
+          width:260px;flex-shrink:0;border-right:1px solid var(--ms-divider);
           display:flex;flex-direction:column;
         ">
           <div style="padding:8px 10px;border-bottom:1px solid var(--ms-divider)">
@@ -319,6 +350,20 @@ class DeploymentBuilderEngine {
     // Wire header buttons
     el.querySelector('.db-btn-close')!.addEventListener('click', () => this._closeWidget());
     el.querySelector('.db-btn-min')!.addEventListener('click', () => this._minimizeWidget());
+    const helpBtn = el.querySelector('.db-btn-help') as HTMLElement | null;
+    const helpPop = el.querySelector('.db-help-popover') as HTMLElement | null;
+    if (helpBtn && helpPop) {
+      helpBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        helpPop.style.display = helpPop.style.display === 'none' ? 'block' : 'none';
+      });
+      document.addEventListener('click', (e) => {
+        if (!helpPop) return;
+        if (helpPop.style.display === 'block' && !helpPop.contains(e.target as Node) && e.target !== helpBtn) {
+          helpPop.style.display = 'none';
+        }
+      });
+    }
 
     // Drag
     this._makeDraggable(el.querySelector('.db-header') as HTMLElement, el);
@@ -389,9 +434,6 @@ class DeploymentBuilderEngine {
     const style = document.createElement('style');
     style.id = 'db-widget-styles';
     style.textContent = `
-      #deploymentBuilderWidget .db-plan-list::-webkit-scrollbar { width: 5px; }
-      #deploymentBuilderWidget .db-plan-list::-webkit-scrollbar-track { background: transparent; }
-      #deploymentBuilderWidget .db-plan-list::-webkit-scrollbar-thumb { background: var(--ms-border); border-radius: 3px; }
       #deploymentBuilderWidget .db-category-header {
         padding: 6px 10px 4px;
         font-size: var(--ms-fs-xs); font-weight: 700;
@@ -440,8 +482,10 @@ class DeploymentBuilderEngine {
         elY += me.clientY - startY;
         startX = me.clientX;
         startY = me.clientY;
-        el.style.left = `${Math.max(0, elX)}px`;
-        el.style.top = `${Math.max(0, elY)}px`;
+        const maxX = window.innerWidth - el.offsetWidth;
+        const maxY = window.innerHeight - el.offsetHeight;
+        el.style.left = `${Math.max(0, Math.min(elX, maxX))}px`;
+        el.style.top = `${Math.max(0, Math.min(elY, maxY))}px`;
       };
       const onUp = () => {
         handle.style.cursor = 'grab';

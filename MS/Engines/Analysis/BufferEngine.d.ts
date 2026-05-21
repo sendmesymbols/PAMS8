@@ -63,7 +63,6 @@ export declare class BufferEngine {
     private _committedLayer;
     private _panelEl;
     private _pickHandle;
-    private _pickMode;
     private _mode;
     private _presetKey;
     private _sourcePoints;
@@ -79,9 +78,12 @@ export declare class BufferEngine {
     private _computeRings;
     private _computeUnionRings;
     private _computeContestedZone;
+    private _computeMultiSourceContestedZone;
     private _computeCorridorBuffer;
     private _buildRingGraphics;
     private _buildLabelGraphics;
+    private _buildGeometryLabelGraphics;
+    private _toWgs84Point;
     private _buildSourceGraphic;
     private _drawSources;
     private _redraw;

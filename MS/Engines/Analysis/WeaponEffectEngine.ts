@@ -811,6 +811,14 @@ export class WeaponEffectEngine {
               <dt>Terrain</dt><dd>Runs a masking pass in 3D to subtract terrain-shadowed portions from the raw sector.</dd>
             </dl>
           </div>
+          <div class="wez-help-block">
+            <h4>Reading the result</h4>
+            <ul>
+              <li>Filled wedge = engagement zone (cleared of dead space).</li>
+              <li>Dashed circles = min/max range refs.</li>
+              <li>Grey wedges (3D only) = terrain-masked sectors after Run Mask.</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -1095,8 +1103,8 @@ export class WeaponEffectEngine {
     if (!this._isDragging || !this._panelEl) return;
     const x = e.clientX - this._dragOffsetX;
     const y = e.clientY - this._dragOffsetY;
-    this._panelEl.style.left = `${Math.max(0, x)}px`;
-    this._panelEl.style.top  = `${Math.max(0, y)}px`;
+    this._panelEl.style.left = `${Math.min(window.innerWidth - 396, Math.max(0, x))}px`;
+    this._panelEl.style.top  = `${Math.min(window.innerHeight - 120, Math.max(0, y))}px`;
     this._panelEl.style.right = 'auto';
   };
 
@@ -1183,7 +1191,7 @@ export class WeaponEffectEngine {
         position: fixed;
         top: 60px;
         left: 14px;
-        width: 282px;
+        width: 380px;
         background: var(--ms-bg);
         border: 1px solid var(--ms-border);
         border-radius: var(--ms-radius);
@@ -1232,7 +1240,7 @@ export class WeaponEffectEngine {
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--ms-text-dim);
-        min-width: 50px;
+        min-width: 60px;
       }
       .wez-help-btn, .wez-minimize-btn, .wez-close-btn {
         background: none;
@@ -1301,7 +1309,7 @@ export class WeaponEffectEngine {
       .wez-help-close:hover { color: var(--ms-text); }
       .wez-help-body {
         padding: 10px 11px 12px;
-        font-size: var(--ms-fs-xs);
+        font-size: var(--ms-fs);
         line-height: 1.45;
         color: var(--ms-text-dim);
         user-select: text;
@@ -1402,7 +1410,7 @@ export class WeaponEffectEngine {
       }
 
       .wez-coords {
-        font-size: var(--ms-fs-xs);
+        font-size: var(--ms-fs);
         color: var(--ms-accent);
         padding: 2px 12px 6px;
         letter-spacing: 0.04em;

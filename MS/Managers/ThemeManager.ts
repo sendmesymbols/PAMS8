@@ -26,10 +26,13 @@ export const THEMES: Theme[] = [
       '--ms-divider':    'rgba(255, 255, 255, 0.07)',
       '--ms-shadow':     '0 12px 40px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(255,255,255,0.04)',
       '--ms-font':       "'SF Mono', 'Consolas', 'Courier New', monospace",
-      '--ms-fs':         '12px',
-      '--ms-fs-sm':      '10px',
-      '--ms-fs-xs':      '9.5px',
-      '--ms-radius':     '6px',
+      '--ms-fs':         '13.5px',
+      '--ms-fs-sm':      '15px',
+      '--ms-fs-xs':      '11.5px',
+      '--ms-radius':     '9px',
+      '--ms-scrollbar-track': 'rgba(0,0,0,0.18)',
+      '--ms-scrollbar-thumb': 'linear-gradient(180deg, rgba(100,180,255,0.55), rgba(76,175,80,0.55))',
+      '--ms-scrollbar-thumb-hover': 'linear-gradient(180deg, rgba(100,180,255,0.85), rgba(76,175,80,0.75))',
     },
   },
   {
@@ -51,10 +54,13 @@ export const THEMES: Theme[] = [
       '--ms-divider':    'rgba(0, 200, 60, 0.10)',
       '--ms-shadow':     '0 12px 40px rgba(0,0,0,0.80), inset 0 0 0 1px rgba(0,200,60,0.06)',
       '--ms-font':       "'SF Mono', 'Consolas', 'Courier New', monospace",
-      '--ms-fs':         '12px',
-      '--ms-fs-sm':      '10px',
-      '--ms-fs-xs':      '9.5px',
-      '--ms-radius':     '6px',
+      '--ms-fs':         '13.5px',
+      '--ms-fs-sm':      '15px',
+      '--ms-fs-xs':      '11.5px',
+      '--ms-radius':     '9px',
+      '--ms-scrollbar-track': 'rgba(0,40,10,0.30)',
+      '--ms-scrollbar-thumb': 'linear-gradient(180deg, rgba(0,200,60,0.55), rgba(170,255,0,0.45))',
+      '--ms-scrollbar-thumb-hover': 'linear-gradient(180deg, rgba(0,200,60,0.85), rgba(170,255,0,0.75))',
     },
   },
   {
@@ -76,10 +82,13 @@ export const THEMES: Theme[] = [
       '--ms-divider':    'rgba(200, 160, 60, 0.12)',
       '--ms-shadow':     '0 12px 40px rgba(0,0,0,0.70), inset 0 0 0 1px rgba(200,160,60,0.05)',
       '--ms-font':       "'SF Mono', 'Consolas', 'Courier New', monospace",
-      '--ms-fs':         '12px',
-      '--ms-fs-sm':      '10px',
-      '--ms-fs-xs':      '9.5px',
-      '--ms-radius':     '6px',
+      '--ms-fs':         '13.5px',
+      '--ms-fs-sm':      '15px',
+      '--ms-fs-xs':      '11.5px',
+      '--ms-radius':     '9px',
+      '--ms-scrollbar-track': 'rgba(40,30,10,0.30)',
+      '--ms-scrollbar-thumb': 'linear-gradient(180deg, rgba(212,160,60,0.55), rgba(232,180,32,0.55))',
+      '--ms-scrollbar-thumb-hover': 'linear-gradient(180deg, rgba(212,160,60,0.85), rgba(232,180,32,0.75))',
     },
   },
   {
@@ -101,10 +110,13 @@ export const THEMES: Theme[] = [
       '--ms-divider':    'rgba(60, 120, 200, 0.15)',
       '--ms-shadow':     '0 8px 28px rgba(0,0,0,0.20), inset 0 0 0 1px rgba(60,120,200,0.08)',
       '--ms-font':       "'SF Mono', 'Consolas', 'Courier New', monospace",
-      '--ms-fs':         '12px',
-      '--ms-fs-sm':      '10px',
-      '--ms-fs-xs':      '9.5px',
-      '--ms-radius':     '6px',
+      '--ms-fs':         '13.5px',
+      '--ms-fs-sm':      '15px',
+      '--ms-fs-xs':      '11.5px',
+      '--ms-radius':     '9px',
+      '--ms-scrollbar-track': 'rgba(60,120,200,0.12)',
+      '--ms-scrollbar-thumb': 'linear-gradient(180deg, rgba(26,111,196,0.55), rgba(46,139,87,0.45))',
+      '--ms-scrollbar-thumb-hover': 'linear-gradient(180deg, rgba(26,111,196,0.85), rgba(46,139,87,0.75))',
     },
   },
   {
@@ -126,10 +138,13 @@ export const THEMES: Theme[] = [
       '--ms-divider':    'rgba(200, 50, 50, 0.12)',
       '--ms-shadow':     '0 12px 40px rgba(0,0,0,0.75), inset 0 0 0 1px rgba(200,50,50,0.06)',
       '--ms-font':       "'SF Mono', 'Consolas', 'Courier New', monospace",
-      '--ms-fs':         '12px',
-      '--ms-fs-sm':      '10px',
-      '--ms-fs-xs':      '9.5px',
-      '--ms-radius':     '6px',
+      '--ms-fs':         '13.5px',
+      '--ms-fs-sm':      '15px',
+      '--ms-fs-xs':      '11.5px',
+      '--ms-radius':     '9px',
+      '--ms-scrollbar-track': 'rgba(60,10,10,0.30)',
+      '--ms-scrollbar-thumb': 'linear-gradient(180deg, rgba(200,64,64,0.55), rgba(224,128,32,0.45))',
+      '--ms-scrollbar-thumb-hover': 'linear-gradient(180deg, rgba(200,64,64,0.85), rgba(224,128,32,0.75))',
     },
   },
 ];
@@ -177,9 +192,98 @@ class ThemeManager {
     document.dispatchEvent(new CustomEvent('ms-theme-changed', { detail: { theme: name } }));
   }
 
-  /** Bootstrap: inject the default (ops-dark) theme on first load. */
+  /** Bootstrap: inject the default (ops-dark) theme + the global panel-scrollbar rule. */
   public init(name: ThemeName = 'ops-dark'): void {
     this.setTheme(name);
+    this._injectGlobalScrollbarStyles();
+  }
+
+  /**
+   * Inject a one-shot stylesheet that themes scrollbars on every engine widget.
+   * Selectors are limited to known panel class/id prefixes so we don't disturb
+   * ArcGIS widgets or the rest of the app.
+   */
+  private _injectGlobalScrollbarStyles(): void {
+    if (document.getElementById('ms-global-scrollbar-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'ms-global-scrollbar-styles';
+    style.textContent = `
+      .peaks-panel, .ocoka-left-panel, .ocoka-right-panel, .wez-panel,
+      #deploymentBuilderWidget, .kt-panel, .kti-panel, .dg-panel, .dgm-panel,
+      .mp-panel, .opr-panel, .flight-panel, .uav-panel, .traj-panel,
+      [class*="-panel"][class*="ms-"], [class*="-widget"][class*="ms-"],
+      .peaks-panel *, .ocoka-left-panel *, .ocoka-right-panel *, .wez-panel *,
+      #deploymentBuilderWidget *, .kt-panel *, .kti-panel *, .dg-panel *, .dgm-panel *,
+      .mp-panel *, .opr-panel *, .flight-panel *, .uav-panel *, .traj-panel * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--ms-accent, #64b4ff) var(--ms-scrollbar-track, rgba(0,0,0,0.18));
+      }
+      .peaks-panel ::-webkit-scrollbar,
+      .ocoka-left-panel ::-webkit-scrollbar,
+      .ocoka-right-panel ::-webkit-scrollbar,
+      .wez-panel ::-webkit-scrollbar,
+      #deploymentBuilderWidget ::-webkit-scrollbar,
+      .kt-panel ::-webkit-scrollbar, .kti-panel ::-webkit-scrollbar,
+      .dg-panel ::-webkit-scrollbar, .dgm-panel ::-webkit-scrollbar,
+      .mp-panel ::-webkit-scrollbar, .opr-panel ::-webkit-scrollbar,
+      .flight-panel ::-webkit-scrollbar, .uav-panel ::-webkit-scrollbar,
+      .traj-panel ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      .peaks-panel ::-webkit-scrollbar-track,
+      .ocoka-left-panel ::-webkit-scrollbar-track,
+      .ocoka-right-panel ::-webkit-scrollbar-track,
+      .wez-panel ::-webkit-scrollbar-track,
+      #deploymentBuilderWidget ::-webkit-scrollbar-track,
+      .kt-panel ::-webkit-scrollbar-track, .kti-panel ::-webkit-scrollbar-track,
+      .dg-panel ::-webkit-scrollbar-track, .dgm-panel ::-webkit-scrollbar-track,
+      .mp-panel ::-webkit-scrollbar-track, .opr-panel ::-webkit-scrollbar-track,
+      .flight-panel ::-webkit-scrollbar-track, .uav-panel ::-webkit-scrollbar-track,
+      .traj-panel ::-webkit-scrollbar-track {
+        background: var(--ms-scrollbar-track, rgba(0,0,0,0.18));
+        border-radius: 3px;
+      }
+      .peaks-panel ::-webkit-scrollbar-thumb,
+      .ocoka-left-panel ::-webkit-scrollbar-thumb,
+      .ocoka-right-panel ::-webkit-scrollbar-thumb,
+      .wez-panel ::-webkit-scrollbar-thumb,
+      #deploymentBuilderWidget ::-webkit-scrollbar-thumb,
+      .kt-panel ::-webkit-scrollbar-thumb, .kti-panel ::-webkit-scrollbar-thumb,
+      .dg-panel ::-webkit-scrollbar-thumb, .dgm-panel ::-webkit-scrollbar-thumb,
+      .mp-panel ::-webkit-scrollbar-thumb, .opr-panel ::-webkit-scrollbar-thumb,
+      .flight-panel ::-webkit-scrollbar-thumb, .uav-panel ::-webkit-scrollbar-thumb,
+      .traj-panel ::-webkit-scrollbar-thumb {
+        background: var(--ms-scrollbar-thumb, var(--ms-accent, #64b4ff));
+        border-radius: 3px;
+        border: 1px solid rgba(0,0,0,0.25);
+      }
+      .peaks-panel ::-webkit-scrollbar-thumb:hover,
+      .ocoka-left-panel ::-webkit-scrollbar-thumb:hover,
+      .ocoka-right-panel ::-webkit-scrollbar-thumb:hover,
+      .wez-panel ::-webkit-scrollbar-thumb:hover,
+      #deploymentBuilderWidget ::-webkit-scrollbar-thumb:hover,
+      .kt-panel ::-webkit-scrollbar-thumb:hover, .kti-panel ::-webkit-scrollbar-thumb:hover,
+      .dg-panel ::-webkit-scrollbar-thumb:hover, .dgm-panel ::-webkit-scrollbar-thumb:hover,
+      .mp-panel ::-webkit-scrollbar-thumb:hover, .opr-panel ::-webkit-scrollbar-thumb:hover,
+      .flight-panel ::-webkit-scrollbar-thumb:hover, .uav-panel ::-webkit-scrollbar-thumb:hover,
+      .traj-panel ::-webkit-scrollbar-thumb:hover {
+        background: var(--ms-scrollbar-thumb-hover, var(--ms-accent, #64b4ff));
+      }
+      .peaks-panel ::-webkit-scrollbar-corner,
+      .ocoka-left-panel ::-webkit-scrollbar-corner,
+      .ocoka-right-panel ::-webkit-scrollbar-corner,
+      .wez-panel ::-webkit-scrollbar-corner,
+      #deploymentBuilderWidget ::-webkit-scrollbar-corner,
+      .kt-panel ::-webkit-scrollbar-corner, .kti-panel ::-webkit-scrollbar-corner,
+      .dg-panel ::-webkit-scrollbar-corner, .dgm-panel ::-webkit-scrollbar-corner,
+      .mp-panel ::-webkit-scrollbar-corner, .opr-panel ::-webkit-scrollbar-corner,
+      .flight-panel ::-webkit-scrollbar-corner, .uav-panel ::-webkit-scrollbar-corner,
+      .traj-panel ::-webkit-scrollbar-corner {
+        background: transparent;
+      }
+    `;
+    document.head.appendChild(style);
   }
 }
 
