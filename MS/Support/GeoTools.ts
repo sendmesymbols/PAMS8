@@ -18,6 +18,9 @@ import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 
+/** Structural point shape — anything with .x and .y. Accepts Point and plain {x,y} objects. */
+export type PtLike = { x: number; y: number; spatialReference?: SpatialReference };
+
 /**
  * GeoTools utility module for common geometric calculations and operations
  * Updated for ArcGIS API for JavaScript 4.x
@@ -59,7 +62,7 @@ export class GeoTools {
     /**
      * Calculate two points angle
      */
-    static twoPtsAngle(pt1: Point, pt2: Point): number {
+    static twoPtsAngle(pt1: PtLike, pt2: PtLike): number {
         const angle = Math.acos((pt2.x - pt1.x) / this._2PtLen(pt1, pt2));
         if (pt2.y < pt1.y) {
             return 2 * Math.PI - angle;
@@ -266,13 +269,13 @@ export class GeoTools {
     /**
      * Generate dashed points for a line
      */
-    static getDashPts(pts: Point[], dashArray: number[]): Point[] {
+    static getDashPts(pts: PtLike[], dashArray: number[]): Point[] {
         const result: Point[] = [];
 
         for (let j = 0; j < pts.length - 1; j++) {
             const p1 = pts[j];
             const p2 = pts[j + 1];
-            result.push(...this.dashes(p1.x, p1.y, p2.x, p2.y, dashArray, p1.spatialReference));
+            result.push(...this.dashes(p1.x, p1.y, p2.x, p2.y, dashArray, p1.spatialReference as SpatialReference));
         }
 
         return result;
@@ -345,7 +348,7 @@ export class GeoTools {
     /**
      * Calculate distance between two points (simple Euclidean)
      */
-    static _2PtLen(pt1: Point, pt2: Point): number {
+    static _2PtLen(pt1: PtLike, pt2: PtLike): number {
         if (pt1 !== undefined && pt2 !== undefined) {
             return Math.sqrt((pt1.x - pt2.x) * (pt1.x - pt2.x) + (pt1.y - pt2.y) * (pt1.y - pt2.y));
         }
@@ -353,7 +356,7 @@ export class GeoTools {
     }
 
     /** Legacy alias used by ObstacleBypassEasy / min bundles - Euclidean distance between two points. */
-    static B(pt1: Point, pt2: Point): number {
+    static B(pt1: PtLike, pt2: PtLike): number {
         return this._2PtLen(pt1, pt2);
     }
 

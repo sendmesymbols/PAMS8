@@ -39,7 +39,7 @@ export class DitchFilledWithWater {
   public symGeometricType: string = "Line";
   public isObstacle: string = "1";
 
-  private _lineSym: SimpleLineSymbol | null = null;
+  private _lineSym: SimpleLineSymbol | SimpleFillSymbol | null = null;
   private _points: Point[] = [];
   private _teethSize: number = 3;
   private _teethGap: number = 20;

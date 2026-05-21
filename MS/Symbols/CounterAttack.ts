@@ -4,6 +4,7 @@ import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials.ts";

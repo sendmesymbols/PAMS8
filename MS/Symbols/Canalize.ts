@@ -446,23 +446,6 @@ export class Canalize {
     }
 
     /**
-     * Create circle path at point with radius (unused in Canalize; kept if needed)
-     */
-    private createACP(pt: Point, radius: number): number[][] {
-        try {
-            const circlePts: Point[] = (Shapes as any).createCircle
-                ? (Shapes as any).createCircle(pt, radius, 60)
-                : [];
-            if (Array.isArray(circlePts) && circlePts.length > 0) {
-                return circlePts.map(p => [p.x, p.y]);
-            }
-            return [];
-        } catch (e) {
-            return [];
-        }
-    }
-
-    /**
      * Create circle path at point with radius (used as ACP circle)
      */
     private createACP(pt: Point, radius: number): number[][] {

@@ -1,6 +1,7 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
+import Polyline from "@arcgis/core/geometry/Polyline";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
@@ -370,7 +371,7 @@ export class CartoInformationModelSymbol {
     /**
      * Create symbol geometry from DrawEssentials
      */
-    private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
+    private createSymbol(drawEssentials: DrawEssentials): Polygon | Polyline | null {
         try {
             let pts: Point[];
 

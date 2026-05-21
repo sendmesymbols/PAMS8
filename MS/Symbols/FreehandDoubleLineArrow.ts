@@ -309,7 +309,7 @@ export class FreehandDoubleLineArrow {
 
             const stPt = baseLinePts.startPt;
             const endPt = baseLinePts.endPt;
-            const midPt = Utils.getMidPoint(stPt, endPt);
+            const midPt = Utils.getMidPoint(stPt, endPt, this.view.spatialReference);
             const firstPoint = pts[0];
             const lastPoint = pts.length >= 1 ? firstPoint : pts[pts.length - 1];
 

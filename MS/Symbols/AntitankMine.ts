@@ -1,6 +1,7 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
+import Polyline from "@arcgis/core/geometry/Polyline";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
@@ -260,7 +261,7 @@ export class AntitankMine {
         return drawEssentials;
     }
 
-    private createSymbol(drawEssentials: DrawEssentials): Polygon | null {
+    private createSymbol(drawEssentials: DrawEssentials): Polygon | Polyline | null {
         try {
             let pts: Point[];
 
@@ -274,7 +275,7 @@ export class AntitankMine {
             const firstPoint = pts[0];
             const drawType = (drawEssentials as any).DRAW_TYPE || 1;
 
-            let result: Polygon | null = null;
+            let result: Polygon | Polyline | null = null;
 
             switch (drawType) {
                 case 1:

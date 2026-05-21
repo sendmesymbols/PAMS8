@@ -314,7 +314,7 @@ export class FreehandArrow {
     /**
      * Create curved line symbol
      */
-    private createSymbolByCurve(pts: Point[], drawEssentials: DrawEssentials, result: Polyline): Polyline {
+    private createSymbolByCurve(pts: Point[], drawEssentials: DrawEssentials, result: Polygon | Polyline): Polygon | Polyline {
         const firstPoint = pts[0];
         const lastPoint = pts[pts.length - 1];
 

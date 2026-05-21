@@ -266,7 +266,7 @@ export class TargetAreaOfInterest {
             const firstPoint = pts[0];
             const drawType = (drawEssentials as any).DRAW_TYPE || 1;
 
-            let result: Polygon | null = null;
+            let result: Polygon | Polyline | null = null;
 
             switch (drawType) {
                 case 1:

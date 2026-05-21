@@ -91,7 +91,7 @@ export class UEISymbol {
         });
 
         if (Object.prototype.hasOwnProperty.call(options, "ANGLE")) {
-            this._ptSymbol.setAngle(options.ANGLE);
+            this._ptSymbol.angle = options.ANGLE;
         }
 
         if (options.GEOM) {
