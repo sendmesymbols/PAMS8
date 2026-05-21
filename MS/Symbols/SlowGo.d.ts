@@ -33,7 +33,7 @@ export declare class SlowGo {
     private clickHandler;
     private doubleClickHandler;
     private mouseMoveHandler;
-    private eventListeners;
+    private events;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
      * Initialize the SlowGo drawing
@@ -83,13 +83,8 @@ export declare class SlowGo {
      * Deactivate the drawing tool
      */
     deactivate(): void;
-    /**
-     * Event emitter functionality
-     */
-    private emit;
-    private emitGlobalEvent;
-    on(eventName: string, callback: Function): void;
-    off(eventName: string, callback?: Function): void;
+    on(eventName: string, callback: (data: any) => void): void;
+    off(eventName: string, callback?: (data: any) => void): void;
     getSymbolLayer(): GraphicsLayer;
     clearSymbols(): void;
 }

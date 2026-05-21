@@ -8,6 +8,7 @@ import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
+import SymbolEvents from "../Support/SymbolEvents";
 import '../ThirdParty/MilSymbols/milsymbol.d.ts';
 
 declare const ms: any;
@@ -52,6 +53,7 @@ export class UEISymbol {
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
     private amplifier: Amplifier;
+    private events: SymbolEvents;
 
     private mouseMoveHandler: { remove(): void } | null = null;
     private clickHandler: { remove(): void } | null = null;
@@ -61,6 +63,7 @@ export class UEISymbol {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
         this.amplifier = new Amplifier();
+        this.events = new SymbolEvents(view, "UEISymbol");
         this.setupEventHandlers();
     }
 
@@ -119,7 +122,7 @@ export class UEISymbol {
             const mapPoint = this.view.toMap(event);
             if (mapPoint) {
                 this.tempGraphic.geometry = mapPoint;
-                this.emitGlobalEvent("onDrawProgress", {
+                this.events.emit("onDrawProgress", {
                     currentGeometry: mapPoint,
                     currentDrawEssentials: null,
                     currentMarker: this._ptSymbol,
@@ -152,16 +155,7 @@ export class UEISymbol {
     }
 
     private emitDrawEnd(geometry: Point, symbol: PictureMarkerSymbol, drawEssentials: DrawEssentials): void {
-        this.emitGlobalEvent("onDrawEnd", { geometry, marker: symbol, drawEssentials });
-    }
-
-    private emitGlobalEvent(eventName: string, data: any): void {
-        const event = new CustomEvent(eventName, {
-            detail: { symbolType: "UEISymbol", eventName, ...data },
-            bubbles: true,
-            cancelable: true,
-        });
-        (this.view?.container ?? document).dispatchEvent(event);
+        this.events.emit("onDrawEnd", { geometry, marker: symbol, drawEssentials });
     }
 
     private cleanUp(): void {

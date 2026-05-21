@@ -11,6 +11,7 @@ import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
+import SymbolEvents from "../Support/SymbolEvents";
 export interface UnspecifiedWireOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polyline;
@@ -49,7 +50,7 @@ export class UnspecifiedWire {
     private mouseMoveHandler: any = null;
 
     // Event emitter
-    private eventListeners: Map<string, Function[]> = new Map();
+    private events: SymbolEvents;
 
     constructor(view: MapView | SceneView, isLine: boolean = false) {
         this.view = view;
@@ -57,6 +58,7 @@ export class UnspecifiedWire {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
         this.amplifier = new Amplifier();
+        this.events = new SymbolEvents(view, "UnspecifiedWire");
 
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
@@ -137,7 +139,7 @@ export class UnspecifiedWire {
         });
 
         this._points.push(point);
-        this.emit("onDrawClick", { currentPts: this._points });
+        this.events.emit("onDrawClick", { currentPts: this._points });
 
         // Start mouse move tracking after first click
         if (this._points.length === 1) {
@@ -190,7 +192,7 @@ export class UnspecifiedWire {
         const geometry = this.createSymbol(drawEssentials);
         if (geometry) {
             this.tempGraphic.geometry = geometry;
-            this.emit("onDrawProgress", {
+            this.events.emit("onDrawProgress", {
                 currentGeometry: geometry,
                 currentDrawEssentials: drawEssentials,
                 currentMarker: this._lineSym
@@ -290,7 +292,7 @@ export class UnspecifiedWire {
      * Final draw end handler
      */
     private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
-        this.emit("onDrawEnd", {
+        this.events.emit("onDrawEnd", {
             geometry: geometry,
             geographicGeometry: geoGeometry,
             drawEssentials: drawEssParam,
@@ -338,56 +340,14 @@ export class UnspecifiedWire {
         this.isDrawing = false;
     }
 
-    /**
-     * Event emitter functionality
-     */
-    private emit(eventName: string, data: any): void {
-        const listeners = this.eventListeners.get(eventName);
-        if (listeners) {
-            listeners.forEach(listener => listener(data));
-        }
-
-        this.emitGlobalEvent(eventName, data);
+    public on(eventName: string, callback: (data: any) => void): void {
+        this.events.on(eventName, callback);
     }
 
-    private emitGlobalEvent(eventName: string, data: any): void {
-        const customEvent = new CustomEvent(eventName, {
-            detail: {
-                symbolType: this.constructor.name,
-                eventName: eventName,
-                ...data
-            },
-            bubbles: true,
-            cancelable: true
-        });
-
-        if (this.view && this.view.container) {
-            this.view.container.dispatchEvent(customEvent);
-        } else {
-            document.dispatchEvent(customEvent);
-        }
+    public off(eventName: string, callback?: (data: any) => void): void {
+        this.events.off(eventName, callback);
     }
 
-    public on(eventName: string, callback: Function): void {
-        if (!this.eventListeners.has(eventName)) {
-            this.eventListeners.set(eventName, []);
-        }
-        this.eventListeners.get(eventName)!.push(callback);
-    }
-
-    public off(eventName: string, callback?: Function): void {
-        if (!callback) {
-            this.eventListeners.delete(eventName);
-        } else {
-            const listeners = this.eventListeners.get(eventName);
-            if (listeners) {
-                const index = listeners.indexOf(callback);
-                if (index > -1) {
-                    listeners.splice(index, 1);
-                }
-            }
-        }
-    }
 
     public getSymbolLayer(): GraphicsLayer {
         return this.symbolLayer;

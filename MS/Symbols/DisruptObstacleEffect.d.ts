@@ -42,7 +42,7 @@ export declare class DisruptObstacleEffect {
     private baseLineEndHandler;
     private baseLineProgressHandler;
     private baseLineClickHandler;
-    private eventListeners;
+    private events;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
      * Initialize the DisruptObstacleEffect drawing
@@ -116,13 +116,8 @@ export declare class DisruptObstacleEffect {
      * Deactivate the drawing tool
      */
     deactivate(): void;
-    /**
-     * Event emitter functionality
-     */
-    private emit;
-    private emitGlobalEvent;
-    on(eventName: string, callback: Function): void;
-    off(eventName: string, callback?: Function): void;
+    on(eventName: string, callback: (data: any) => void): void;
+    off(eventName: string, callback?: (data: any) => void): void;
     getSymbolLayer(): GraphicsLayer;
     clearSymbols(): void;
 }

@@ -25,6 +25,7 @@ export declare class UEISymbol {
     private isDrawing;
     private tempGraphic;
     private amplifier;
+    private events;
     private mouseMoveHandler;
     private clickHandler;
     constructor(view: MapView | SceneView);
@@ -34,7 +35,6 @@ export declare class UEISymbol {
     private setupEventHandlers;
     private createDrawEssentials;
     private emitDrawEnd;
-    private emitGlobalEvent;
     private cleanUp;
     private removeEventHandlers;
     deactivate(): void;

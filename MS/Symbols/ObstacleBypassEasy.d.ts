@@ -38,7 +38,7 @@ declare class ObstacleBypassEasy {
     private _onBaseLineEnd;
     private baseLineProgressHandler;
     private baseLineClickHandler;
-    private eventListeners;
+    private events;
     constructor(view: MapView | SceneView, isLine: boolean);
     init(options: ObstacleBypassEasyOptions, marker: SimpleLineSymbol): void;
     /**
@@ -105,18 +105,7 @@ declare class ObstacleBypassEasy {
      * Deactivate the symbol
      */
     deactivate(): void;
-    /**
-     * Emit events
-     */
-    private emit;
-    private emitGlobalEvent;
-    /**
-     * Add event listener
-     */
-    on(eventName: string, callback: Function): void;
-    /**
-     * Remove event listener
-     */
-    off(eventName: string, callback?: Function): void;
+    on(eventName: string, callback: (data: any) => void): void;
+    off(eventName: string, callback?: (data: any) => void): void;
 }
 export default ObstacleBypassEasy;

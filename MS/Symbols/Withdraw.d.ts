@@ -35,7 +35,7 @@ export declare class Withdraw {
     private clickHandler;
     private doubleClickHandler;
     private mouseMoveHandler;
-    private eventListeners;
+    private events;
     private toXYPath;
     constructor(view: MapView | SceneView, isLine?: boolean);
     init(options: WithdrawOptions, marker: SimpleLineSymbol): void;
@@ -87,13 +87,8 @@ export declare class Withdraw {
      * Deactivate the drawing tool
      */
     deactivate(): void;
-    /**
-     * Event emitter functionality
-     */
-    private emit;
-    private emitGlobalEvent;
-    on(eventName: string, callback: Function): void;
-    off(eventName: string, callback?: Function): void;
+    on(eventName: string, callback: (data: any) => void): void;
+    off(eventName: string, callback?: (data: any) => void): void;
     getSymbolLayer(): GraphicsLayer;
     clearSymbols(): void;
     private _circleDrawEx;

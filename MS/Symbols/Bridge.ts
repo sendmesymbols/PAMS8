@@ -12,6 +12,7 @@ import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
+import SymbolEvents from "../Support/SymbolEvents";
 export interface BridgeOptions {
     CTRL_PTS?: Point[];
     BASE_LN_PTS?: { startPt: Point; endPt: Point };
@@ -58,7 +59,7 @@ export class Bridge {
     private baseLineClickHandler: any = null;
     
     // Event emitter
-    private eventListeners: Map<string, Function[]> = new Map();
+    private events: SymbolEvents;
 
     constructor(view: MapView | SceneView, isLine: boolean = false) {
         this.view = view;
@@ -66,6 +67,7 @@ export class Bridge {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
         this.amplifier = new Amplifier();
+        this.events = new SymbolEvents(view, "Bridge");
         
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
@@ -173,7 +175,7 @@ export class Bridge {
             this._onDoubleClickHandler(event);
         });
         
-        this.emit("onBaseLineDrawEnd", { currentPts: evt.geometry.controlPoints });
+        this.events.emit("onBaseLineDrawEnd", { currentPts: evt.geometry.controlPoints });
     }
 
     /**
@@ -186,7 +188,7 @@ export class Bridge {
         const pl = new Polyline({ spatialReference: this.view.spatialReference });
         pl.addPath(evt.currentGeometry);
         
-        this.emit("onDrawProgress", {
+        this.events.emit("onDrawProgress", {
             currentGeometry: pl,
             currentDrawEssentials: localDrawEssentials,
             currentMarker: evt.currentMarker,
@@ -198,7 +200,7 @@ export class Bridge {
      * Handle baseline click
      */
     private baseLineClick(evt: any): void {
-        this.emit("onDrawClick", {
+        this.events.emit("onDrawClick", {
             currentPts: evt.currentGeometry,
             isBaseLine: true
         });
@@ -220,10 +222,10 @@ export class Bridge {
         });
         
         this._points.push(point);
-        this.emit("onDrawClick", { currentPts: this._points });
+        this.events.emit("onDrawClick", { currentPts: this._points });
         
         if (this.isLine === true && this._points.length === 1) {
-            this.emit("onDrawClick", { currentPts: this._points });
+            this.events.emit("onDrawClick", { currentPts: this._points });
             this.cleanUp();
         }
     }
@@ -269,7 +271,7 @@ export class Bridge {
         const geometry = this.createSymbol(drawEssentials);
         if (geometry) {
             this.tempGraphic.geometry = geometry;
-            this.emit("onDrawProgress", {
+            this.events.emit("onDrawProgress", {
                 currentGeometry: geometry,
                 currentDrawEssentials: drawEssentials,
                 currentMarker: this._lineSym
@@ -594,7 +596,7 @@ export class Bridge {
      * Final draw end handler
      */
     private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline, drawEssParam: DrawEssentials): void {
-        this.emit("onDrawEnd", {
+        this.events.emit("onDrawEnd", {
             geometry: geometry,
             geographicGeometry: geoGeometry,
             drawEssentials: drawEssParam,
@@ -656,56 +658,14 @@ export class Bridge {
         this.baselineDrawn = false;
     }
 
-    /**
-     * Event emitter functionality
-     */
-    private emit(eventName: string, data: any): void {
-        const listeners = this.eventListeners.get(eventName);
-        if (listeners) {
-            listeners.forEach(listener => listener(data));
-        }
-        
-        this.emitGlobalEvent(eventName, data);
+    public on(eventName: string, callback: (data: any) => void): void {
+        this.events.on(eventName, callback);
     }
 
-    private emitGlobalEvent(eventName: string, data: any): void {
-        const customEvent = new CustomEvent(eventName, {
-            detail: {
-                symbolType: "Bridge",
-                eventName: eventName,
-                ...data
-            },
-            bubbles: true,
-            cancelable: true
-        });
-
-        if (this.view && this.view.container) {
-            this.view.container.dispatchEvent(customEvent);
-        } else {
-            document.dispatchEvent(customEvent);
-        }
+    public off(eventName: string, callback?: (data: any) => void): void {
+        this.events.off(eventName, callback);
     }
 
-    public on(eventName: string, callback: Function): void {
-        if (!this.eventListeners.has(eventName)) {
-            this.eventListeners.set(eventName, []);
-        }
-        this.eventListeners.get(eventName)!.push(callback);
-    }
-
-    public off(eventName: string, callback?: Function): void {
-        if (!callback) {
-            this.eventListeners.delete(eventName);
-        } else {
-            const listeners = this.eventListeners.get(eventName);
-            if (listeners) {
-                const index = listeners.indexOf(callback);
-                if (index > -1) {
-                    listeners.splice(index, 1);
-                }
-            }
-        }
-    }
 
     public getSymbolLayer(): GraphicsLayer {
         return this.symbolLayer;

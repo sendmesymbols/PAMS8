@@ -33,7 +33,7 @@ export declare class SingleFenceWire {
     private clickHandler;
     private doubleClickHandler;
     private mouseMoveHandler;
-    private eventListeners;
+    private events;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
      * Initialize the Single Conc drawing
@@ -91,13 +91,8 @@ export declare class SingleFenceWire {
      * Deactivate the drawing tool
      */
     deactivate(): void;
-    /**
-     * Event emitter functionality
-     */
-    private emit;
-    private emitGlobalEvent;
-    on(eventName: string, callback: Function): void;
-    off(eventName: string, callback?: Function): void;
+    on(eventName: string, callback: (data: any) => void): void;
+    off(eventName: string, callback?: (data: any) => void): void;
     getSymbolLayer(): GraphicsLayer;
     clearSymbols(): void;
 }

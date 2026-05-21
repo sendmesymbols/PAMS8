@@ -42,7 +42,7 @@ declare class StrongPoint {
     private clickHandler;
     private doubleClickHandler;
     private mouseMoveHandler;
-    private eventListeners;
+    private events;
     constructor(view: MapView | SceneView, isLine?: boolean);
     init(options: StrongPointOptions, marker: any): void;
     private createDrawEssentials;
@@ -67,12 +67,9 @@ declare class StrongPoint {
     private createSymbolByLine;
     private createSymbolByCloseLine;
     private createSymbolByPerfectEllipse;
-    /**
-     * Event emitter functionality
-     */
     emit(event: string, data: any): void;
-    on(event: string, callback: Function): void;
-    off(event: string, callback?: Function): void;
+    on(event: string, callback: (data: any) => void): void;
+    off(event: string, callback?: (data: any) => void): void;
     getSymbolLayer(): GraphicsLayer;
     clearSymbols(): void;
 }

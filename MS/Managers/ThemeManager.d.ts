@@ -18,7 +18,13 @@ declare class ThemeManager {
     }[];
     /** Apply a named theme to the entire UI by injecting CSS custom-property overrides on :root. */
     setTheme(name: ThemeName): void;
-    /** Bootstrap: inject the default (ops-dark) theme on first load. */
+    /** Bootstrap: inject the default (ops-dark) theme + the global panel-scrollbar rule. */
     init(name?: ThemeName): void;
+    /**
+     * Inject a one-shot stylesheet that themes scrollbars on every engine widget.
+     * Selectors are limited to known panel class/id prefixes so we don't disturb
+     * ArcGIS widgets or the rest of the app.
+     */
+    private _injectGlobalScrollbarStyles;
 }
 export default ThemeManager;

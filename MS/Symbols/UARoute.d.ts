@@ -40,7 +40,7 @@ export declare class UARoute {
     private baseLineEndHandler;
     private baseLineProgressHandler;
     private baseLineClickHandler;
-    private eventListeners;
+    private events;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
      * Initialize the UARoute drawing
@@ -118,13 +118,8 @@ export declare class UARoute {
      * Deactivate the drawing tool
      */
     deactivate(): void;
-    /**
-     * Event emitter functionality
-     */
-    private emit;
-    private emitGlobalEvent;
-    on(eventName: string, callback: Function): void;
-    off(eventName: string, callback?: Function): void;
+    on(eventName: string, callback: (data: any) => void): void;
+    off(eventName: string, callback?: (data: any) => void): void;
     getSymbolLayer(): GraphicsLayer;
     clearSymbols(): void;
 }

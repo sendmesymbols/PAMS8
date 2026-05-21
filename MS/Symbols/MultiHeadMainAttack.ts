@@ -13,6 +13,7 @@ import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
+import SymbolEvents from "../Support/SymbolEvents";
 export interface MultiHeadMainAttackOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polygon;
@@ -64,7 +65,7 @@ export class MultiHeadMainAttack {
     private doubleClickHandler: any = null;
     private mouseMoveHandler: any = null;
 
-    private eventListeners: Map<string, Function[]> = new Map();
+    private events: SymbolEvents;
 
     constructor(view: MapView | SceneView, isLine: boolean = false) {
         this.view = view;
@@ -72,6 +73,7 @@ export class MultiHeadMainAttack {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
         this.amplifier = new Amplifier();
+        this.events = new SymbolEvents(view, "MultiHeadMainAttack");
         this.layerManager.initializeLayers();
         this.tempGraphic = new Graphic();
     }
@@ -181,7 +183,7 @@ export class MultiHeadMainAttack {
 
         this._updateCollection(polygon);
         this._refreshDisplay();
-        this.emit("onDrawClick", { currentPts: this._points });
+        this.events.emit("onDrawClick", { currentPts: this._points });
     }
 
     private _onDoubleClick(clickEvent: any): void {
@@ -214,7 +216,7 @@ export class MultiHeadMainAttack {
 
         this._updateCollection(polygon);
         this._refreshDisplay();
-        this.emit("onDrawProgress", { currentGeometry: this.tempGraphic?.geometry, currentMarker: this._lineSym });
+        this.events.emit("onDrawProgress", { currentGeometry: this.tempGraphic?.geometry, currentMarker: this._lineSym });
     }
 
     // ── Collection helpers ──────────────────────────────────────────────────
@@ -474,7 +476,7 @@ export class MultiHeadMainAttack {
         if (!drawGeometry) return;
         const spatialRef         = this.view.spatialReference;
         const geographicGeometry = (spatialRef?.wkid === 4326) ? drawGeometry.clone() : drawGeometry;
-        this.emit("onDrawEnd", {
+        this.events.emit("onDrawEnd", {
             geometry: drawGeometry,
             geographicGeometry,
             drawEssentials,
@@ -503,37 +505,12 @@ export class MultiHeadMainAttack {
 
     // ── Event emitter ────────────────────────────────────────────────────────
 
-    private emit(eventName: string, data: any): void {
-        const listeners = this.eventListeners.get(eventName);
-        if (listeners) listeners.forEach(l => l(data));
-
-        const customEvent = new CustomEvent(eventName, {
-            detail: { symbolType: "MultiHeadMainAttack", eventName, ...data },
-            bubbles: true,
-            cancelable: true
-        });
-        if (this.view?.container) {
-            this.view.container.dispatchEvent(customEvent);
-        } else {
-            document.dispatchEvent(customEvent);
-        }
+    public on(eventName: string, callback: (data: any) => void): void {
+        this.events.on(eventName, callback);
     }
 
-    public on(eventName: string, callback: Function): void {
-        if (!this.eventListeners.has(eventName)) this.eventListeners.set(eventName, []);
-        this.eventListeners.get(eventName)!.push(callback);
-    }
-
-    public off(eventName: string, callback?: Function): void {
-        if (!callback) {
-            this.eventListeners.delete(eventName);
-        } else {
-            const listeners = this.eventListeners.get(eventName);
-            if (listeners) {
-                const idx = listeners.indexOf(callback);
-                if (idx > -1) listeners.splice(idx, 1);
-            }
-        }
+    public off(eventName: string, callback?: (data: any) => void): void {
+        this.events.off(eventName, callback);
     }
 }
 

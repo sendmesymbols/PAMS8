@@ -16,6 +16,7 @@ import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
+import SymbolEvents from "../Support/SymbolEvents";
 
 export interface StrongPointOptions {
     ECHELON?: any;
@@ -56,7 +57,7 @@ class StrongPoint {
     private doubleClickHandler: any = null;
     private mouseMoveHandler: any = null;
 
-    private eventListeners: Map<string, Function[]> = new Map();
+    private events: SymbolEvents;
 
     constructor(view: MapView | SceneView, isLine: boolean = false) {
         this.view = view;
@@ -64,6 +65,7 @@ class StrongPoint {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
         this.amplifier = new Amplifier();
+        this.events = new SymbolEvents(view, "StrongPoint");
 
         this.layerManager.initializeLayers();
         this._tGraphic = new Graphic();
@@ -543,46 +545,16 @@ class StrongPoint {
         return result;
     }
 
-    /**
-     * Event emitter functionality
-     */
     public emit(event: string, data: any): void {
-        const listeners = this.eventListeners.get(event);
-        if (listeners) {
-            listeners.forEach(listener => listener(data));
-        }
-
-        const customEvent = new CustomEvent(event, {
-            detail: { symbolType: this.constructor.name, eventName: event, ...data },
-            bubbles: true,
-            cancelable: true
-        });
-        if (this.view && this.view.container) {
-            this.view.container.dispatchEvent(customEvent);
-        } else {
-            document.dispatchEvent(customEvent);
-        }
+        this.events.emit(event, data);
     }
 
-    public on(event: string, callback: Function): void {
-        if (!this.eventListeners.has(event)) {
-            this.eventListeners.set(event, []);
-        }
-        this.eventListeners.get(event)!.push(callback);
+    public on(event: string, callback: (data: any) => void): void {
+        this.events.on(event, callback);
     }
 
-    public off(event: string, callback?: Function): void {
-        if (!callback) {
-            this.eventListeners.delete(event);
-        } else {
-            const listeners = this.eventListeners.get(event);
-            if (listeners) {
-                const index = listeners.indexOf(callback);
-                if (index > -1) {
-                    listeners.splice(index, 1);
-                }
-            }
-        }
+    public off(event: string, callback?: (data: any) => void): void {
+        this.events.off(event, callback);
     }
 
     public getSymbolLayer(): GraphicsLayer {

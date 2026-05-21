@@ -12,6 +12,7 @@ import BaseLine from "../Support/BaseLine.ts";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import Amplifier from "../Support/Amplifier";
 
+import SymbolEvents from "../Support/SymbolEvents";
 export interface ObstacleBypassEasyOptions {
     CTRL_PTS?: Point[];
     BASE_LN_PTS?: {
@@ -53,7 +54,7 @@ class ObstacleBypassEasy {
     private baseLineClickHandler: any = null;
 
     // Event emitter
-    private eventListeners: Map<string, Function[]> = new Map();
+    private events: SymbolEvents;
 
     constructor(view: MapView | SceneView, isLine: boolean) {
         this.view = view;
@@ -62,6 +63,7 @@ class ObstacleBypassEasy {
         // All area symbols will go in TACT layer
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
         this.amplifier = new Amplifier();
+        this.events = new SymbolEvents(view, "ObstacleBypassEasy");
         this.layerManager.initializeLayers();
         // Initialize temporary graphic
         this._tGraphic = new Graphic();
@@ -168,7 +170,7 @@ class ObstacleBypassEasy {
         this._onClick = this.view.on("click", this._onClickHandler.bind(this));
         this._onDblClick = this.view.on("double-click", this._onDblClickHandler.bind(this));
         
-        this.emit("onBaseLineDrawEnd", { currentPts: evt.geometry.controlPoints });
+        this.events.emit("onBaseLineDrawEnd", { currentPts: evt.geometry.controlPoints });
     }
 
     /**
@@ -182,7 +184,7 @@ class ObstacleBypassEasy {
             spatialReference: this.view.spatialReference 
         });
         
-        this.emit("onDrawProgress", { 
+        this.events.emit("onDrawProgress", { 
             currentGeometry: pl, 
             currentDrawEssentials: localDrawEssentials, 
             currentMarker: evt.currentMarker, 
@@ -194,7 +196,7 @@ class ObstacleBypassEasy {
      * Handle baseline click event
      */
     private baseLineClick(evt: any): void {
-        this.emit("onDrawClick", { currentPts: evt.currentGeometry, isBaseLine: true });
+        this.events.emit("onDrawClick", { currentPts: evt.currentGeometry, isBaseLine: true });
     }
 
     /**
@@ -351,7 +353,7 @@ class ObstacleBypassEasy {
             this._tGraphic.geometry = this.createSymbol(drawEssentials);
         }
         
-        this.emit("onDrawProgress", { 
+        this.events.emit("onDrawProgress", { 
             currentGeometry: this._tGraphic?.geometry, 
             currentDrawEssentials: drawEssentials, 
             currentMarker: this._lineSymbol 
@@ -371,10 +373,10 @@ class ObstacleBypassEasy {
             spatialReference: this.view.spatialReference
         }));
         
-        this.emit("onDrawClick", { currentPts: this._points });
+        this.events.emit("onDrawClick", { currentPts: this._points });
         
         if (this.isLine && this._points.length === 1) {
-            this.emit("onDrawClick", { currentPts: this._points });
+            this.events.emit("onDrawClick", { currentPts: this._points });
             this.cleanUp();
         }
     }
@@ -428,7 +430,7 @@ class ObstacleBypassEasy {
      * Emit draw end event
      */
     private __onDrawEnd(geometry: Polyline, geoGeometry: Polyline | null, drawEssParam: DrawEssentials): void {
-        this.emit("onDrawEnd", { 
+        this.events.emit("onDrawEnd", { 
             geometry: geometry, 
             geographicGeometry: geoGeometry, 
             drawEssentials: drawEssParam, 
@@ -469,60 +471,14 @@ class ObstacleBypassEasy {
         this._geometryType = null;
     }
 
-    /**
-     * Emit events
-     */
-    private emit(eventName: string, data: any): void {
-        const listeners = this.eventListeners.get(eventName);
-        if (listeners) {
-            listeners.forEach(callback => callback(data));
-        }
-        this.emitGlobalEvent(eventName, data);
+    public on(eventName: string, callback: (data: any) => void): void {
+        this.events.on(eventName, callback);
     }
 
-    private emitGlobalEvent(eventName: string, data: any): void {
-        const customEvent = new CustomEvent(eventName, {
-            detail: {
-                symbolType: "ObstacleBypassEasy",
-                eventName,
-                ...data
-            },
-            bubbles: true,
-            cancelable: true
-        });
-        if (this.view && this.view.container) {
-            this.view.container.dispatchEvent(customEvent);
-        } else {
-            document.dispatchEvent(customEvent);
-        }
+    public off(eventName: string, callback?: (data: any) => void): void {
+        this.events.off(eventName, callback);
     }
 
-    /**
-     * Add event listener
-     */
-    public on(eventName: string, callback: Function): void {
-        if (!this.eventListeners.has(eventName)) {
-            this.eventListeners.set(eventName, []);
-        }
-        this.eventListeners.get(eventName)!.push(callback);
-    }
-
-    /**
-     * Remove event listener
-     */
-    public off(eventName: string, callback?: Function): void {
-        if (!callback) {
-            this.eventListeners.delete(eventName);
-        } else {
-            const listeners = this.eventListeners.get(eventName);
-            if (listeners) {
-                const index = listeners.indexOf(callback);
-                if (index > -1) {
-                    listeners.splice(index, 1);
-                }
-            }
-        }
-    }
 }
 
 export default ObstacleBypassEasy;

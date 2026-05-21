@@ -34,7 +34,7 @@ export declare class DivLineOfNoPen {
     private clickHandler;
     private doubleClickHandler;
     private mouseMoveHandler;
-    private eventListeners;
+    private events;
     constructor(view: MapView | SceneView, isLine?: boolean);
     /**
      * Initialize the phase line drawing
@@ -104,16 +104,8 @@ export declare class DivLineOfNoPen {
      * Deactivate the drawing tool
      */
     deactivate(): void;
-    /**
-     * Event emitter functionality
-     */
-    private emit;
-    /**
-     * Emit global events that can be caught by SymbolEngine
-     */
-    private emitGlobalEvent;
-    on(eventName: string, callback: Function): void;
-    off(eventName: string, callback?: Function): void;
+    on(eventName: string, callback: (data: any) => void): void;
+    off(eventName: string, callback?: (data: any) => void): void;
     /**
      * Get the current symbol layer
      */

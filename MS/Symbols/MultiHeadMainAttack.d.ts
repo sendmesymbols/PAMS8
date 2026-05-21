@@ -54,7 +54,7 @@ export declare class MultiHeadMainAttack {
     private clickHandler;
     private doubleClickHandler;
     private mouseMoveHandler;
-    private eventListeners;
+    private events;
     constructor(view: MapView | SceneView, isLine?: boolean);
     init(options: MultiHeadMainAttackOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void;
     deactivate(): void;
@@ -78,8 +78,7 @@ export declare class MultiHeadMainAttack {
     private __drawEnd;
     private _clearState;
     private _removeEvents;
-    private emit;
-    on(eventName: string, callback: Function): void;
-    off(eventName: string, callback?: Function): void;
+    on(eventName: string, callback: (data: any) => void): void;
+    off(eventName: string, callback?: (data: any) => void): void;
 }
 export default MultiHeadMainAttack;
