@@ -689,6 +689,382 @@
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
+   EXTENDED COMPONENTS (used by analysis engines)
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* Full-width field in ms-grid */
+.ms-field.full { grid-column: 1 / -1; }
+
+/* Minimized body */
+.ms-body.ms-minimized { display: none; }
+
+/* Disabled section */
+.ms-disabled { opacity: 0.4; pointer-events: none; }
+
+/* Monospace coordinate display */
+.ms-coords {
+  font-family: var(--ms-font-mono);
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-accent);
+  padding: 3px 10px 6px;
+  letter-spacing: 0.04em;
+}
+
+/* Italic hint / helper text */
+.ms-hint {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  font-style: italic;
+  padding: 4px 10px 6px;
+  line-height: 1.4;
+}
+
+/* Empty-state placeholder */
+.ms-empty {
+  padding: 14px 12px;
+  text-align: center;
+  color: var(--ms-text-dim);
+  font-size: var(--ms-fs-xs);
+  font-style: italic;
+}
+
+/* ─── Slider row ─────────────────────────────────────────────────────────── */
+.ms-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 2px;
+}
+
+.ms-slider-label {
+  flex: 1;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-label);
+  min-width: 0;
+}
+
+.ms-slider-value {
+  font-size: var(--ms-fs-xs);
+  font-family: var(--ms-font-mono);
+  color: var(--ms-accent);
+  min-width: 32px;
+  text-align: right;
+}
+
+.ms-slider-row input[type=range] {
+  width: 70px;
+  flex-shrink: 0;
+  accent-color: var(--ms-accent);
+}
+
+/* ─── Info / stats grid ──────────────────────────────────────────────────── */
+.ms-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+  padding: 4px 10px 8px;
+}
+
+.ms-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ms-info-label {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.ms-info-value {
+  font-size: var(--ms-fs-sm);
+  color: var(--ms-text);
+  font-weight: 700;
+  font-family: var(--ms-font-mono);
+}
+
+/* ─── Progress bar aliases ───────────────────────────────────────────────── */
+.ms-progress-wrap {
+  padding: 4px 10px 8px;
+}
+
+.ms-progress-track {
+  height: 8px;
+  background: var(--ms-bg-input);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--ms-border);
+}
+
+.ms-progress-label {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ─── 2-column checkbox option grid ─────────────────────────────────────── */
+.ms-opt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 6px;
+  padding: 2px 10px 6px;
+}
+
+.ms-opt-grid .ms-toggle-row {
+  padding: 3px 0;
+}
+
+/* ─── Feature / result cards ─────────────────────────────────────────────── */
+.ms-feature-card {
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius);
+  margin: 4px 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: border-color var(--ms-transition), background var(--ms-transition);
+}
+
+.ms-feature-card:hover {
+  border-color: var(--ms-accent);
+  background: rgba(239, 159, 39, 0.06);
+}
+
+.ms-feature-card.selected {
+  border-color: var(--ms-accent);
+  background: rgba(239, 159, 39, 0.10);
+  box-shadow: 0 0 0 1px var(--ms-accent);
+}
+
+.ms-feature-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 5px;
+}
+
+.ms-feature-rank {
+  font-size: var(--ms-fs-xs);
+  font-family: var(--ms-font-mono);
+  color: var(--ms-text-dim);
+  min-width: 18px;
+}
+
+.ms-feature-name {
+  flex: 1;
+  font-size: var(--ms-fs-sm);
+  font-weight: 600;
+  color: var(--ms-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ms-feature-type {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.ms-feature-score {
+  font-size: var(--ms-fs-sm);
+  font-weight: 700;
+  font-family: var(--ms-font-mono);
+  color: var(--ms-accent);
+}
+
+/* Threat level badge */
+.ms-feature-threat {
+  font-size: var(--ms-fs-xs);
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ms-feature-threat.high   { background: rgba(220, 50, 50, 0.2);  color: #ff7070; border: 1px solid rgba(220,50,50,0.4); }
+.ms-feature-threat.medium { background: rgba(220,160, 30, 0.2);  color: #ffc050; border: 1px solid rgba(220,160,30,0.4); }
+.ms-feature-threat.low    { background: rgba( 60,180, 80, 0.2);  color: #70e090; border: 1px solid rgba(60,180,80,0.4); }
+
+/* Sub-factor bar list inside a card */
+.ms-feature-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ms-feature-bar {
+  display: grid;
+  grid-template-columns: 80px 1fr 32px;
+  align-items: center;
+  gap: 5px;
+}
+
+.ms-feature-bar-label {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ms-feature-bar-track {
+  height: 4px;
+  background: var(--ms-bg-input);
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid var(--ms-border);
+}
+
+.ms-feature-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ms-accent);
+  transition: width 0.3s ease;
+}
+
+.ms-feature-bar-val {
+  font-size: var(--ms-fs-xs);
+  font-family: var(--ms-font-mono);
+  color: var(--ms-accent);
+  text-align: right;
+}
+
+.ms-feature-assessment {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  font-style: italic;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid var(--ms-border);
+  line-height: 1.4;
+}
+
+/* ─── Weight adjustment grid (OCOKA) ─────────────────────────────────────── */
+.ms-weight-grid {
+  padding: 4px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ms-weight-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ms-weight-row .ms-label {
+  flex: 1;
+}
+
+.ms-weight-row input[type=range] {
+  width: 60px;
+  flex-shrink: 0;
+  accent-color: var(--ms-accent);
+}
+
+.ms-weight-val {
+  font-size: var(--ms-fs-xs);
+  font-family: var(--ms-font-mono);
+  color: var(--ms-accent);
+  min-width: 28px;
+  text-align: right;
+}
+
+/* ─── Score / colour key ─────────────────────────────────────────────────── */
+.ms-score-key {
+  padding: 4px 10px 8px;
+}
+
+.ms-score-key-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.ms-score-key-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.ms-score-key-label {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-label);
+}
+
+/* ─── Map overlay legend (fixed-position, shown over map) ────────────────── */
+.ms-map-legend {
+  position: fixed;
+  bottom: 24px;
+  right: 14px;
+  background: var(--ms-bg);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius);
+  padding: 8px 12px;
+  z-index: 900;
+  min-width: 130px;
+  box-shadow: var(--ms-shadow);
+  backdrop-filter: blur(8px);
+  display: none;
+}
+
+.ms-map-legend.ms-visible { display: block; }
+
+.ms-map-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 4px;
+}
+
+.ms-map-legend-item:last-child { margin-bottom: 0; }
+
+.ms-map-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.ms-map-legend-label {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-label);
+}
+
+/* ─── Map hint bar (fixed-position, shown over map, bottom centre) ────────── */
+.ms-map-hint {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ms-bg);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius);
+  padding: 7px 16px;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-label);
+  z-index: 950;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: var(--ms-shadow);
+  backdrop-filter: blur(8px);
+  display: none;
+}
+
+.ms-map-hint.ms-visible { display: block; }
+
+/* ═════════════════════════════════════════════════════════════════════════════
    RESPONSIVE
    ═════════════════════════════════════════════════════════════════════════════ */
 

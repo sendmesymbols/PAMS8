@@ -170,7 +170,7 @@ export class OcokaEngine {
 
   constructor() {
     this._createLayers();
-    this._injectStyles();
+
   }
 
   initialize(view: MapView | SceneView): void {
@@ -289,19 +289,21 @@ export class OcokaEngine {
   private _ensurePanels(): void {
     if (!this._listPanelEl) {
       const panel = document.createElement('div');
-      panel.className = 'ocoka-left-panel';
+      panel.className = 'ms-panel ms-theme-ops-dark';
+      panel.style.cssText = 'top:60px;left:14px;width:360px;max-height:calc(100vh - 84px);display:flex;flex-direction:column;';
       panel.innerHTML = `
-        <div class="ocoka-lph">
-          <div class="ocoka-lph-title">⬡ OCOKA — Avenues of Approach</div>
-          <div class="ocoka-lph-sub" id="ocoka-lph-sub">Set AO then run analysis</div>
+        <div class="ms-header">
+          <div class="ms-header-icon">⬡</div>
+          <div class="ms-header-title">OCOKA — Avenues</div>
+          <div class="ms-status-lbl" id="ocoka-lph-sub">Set AO then run analysis</div>
         </div>
-        <div class="ocoka-sum-strip">
-          <div class="ocoka-ss"><div class="ocoka-ss-l">Corridors</div><div class="ocoka-ss-v" id="ocoka-ss-n">-</div></div>
-          <div class="ocoka-ss"><div class="ocoka-ss-l">Best avenue</div><div class="ocoka-ss-v" id="ocoka-ss-best">-</div></div>
-          <div class="ocoka-ss"><div class="ocoka-ss-l">Worst score</div><div class="ocoka-ss-v" id="ocoka-ss-worst">-</div></div>
+        <div class="buffer-stats">
+          <div class="buffer-stat"><div class="buffer-stat-lbl">Corridors</div><div class="buffer-stat-val" id="ocoka-ss-n">-</div></div>
+          <div class="buffer-stat"><div class="buffer-stat-lbl">Best avenue</div><div class="buffer-stat-val" id="ocoka-ss-best">-</div></div>
+          <div class="buffer-stat"><div class="buffer-stat-lbl">Worst score</div><div class="buffer-stat-val" id="ocoka-ss-worst">-</div></div>
         </div>
-        <div class="ocoka-approach-list" id="ocoka-approach-list">
-          <div class="ocoka-list-empty">
+        <div class="ms-body" id="ocoka-approach-list" style="overflow-y:auto;flex:1;padding:6px;">
+          <div class="ms-empty">
             Set the analysis area centre and radius<br>in the right panel, then click<br>
             <strong style="color:#378ADD">Run OCOKA Analysis</strong>.<br><br>
             Corridors are auto-extracted from<br>terrain topology and scored on:<br>
@@ -315,25 +317,24 @@ export class OcokaEngine {
 
     if (!this._controlPanelEl) {
       const panel = document.createElement('div');
-      panel.className = 'ocoka-right-panel';
+      panel.className = 'ms-panel ms-theme-ops-dark';
+      panel.style.cssText = 'top:60px;right:14px;width:380px;max-height:calc(100vh - 84px);overflow-y:auto;';
       panel.innerHTML = `
-        <div class="ocoka-ph" id="ocoka-drag-handle">
-          <div>
-            <div class="ocoka-ph-title">⬡ OCOKA Config</div>
-            <div class="ocoka-ph-status ready" id="ocoka-status">Ready</div>
-          </div>
-          <div class="ocoka-ph-actions">
-            <button class="ocoka-help-btn" id="ocoka-help-btn" title="OCOKA wiki">?</button>
-            <button class="ocoka-minimize-btn" id="ocoka-minimize-btn" title="Minimize">v</button>
-            <button class="ocoka-close-btn" id="ocoka-close-btn" title="Close">x</button>
-          </div>
+        <div class="ms-header" id="ocoka-drag-handle">
+          <div class="ms-header-icon">⬡</div>
+          <div class="ms-header-title">OCOKA Config</div>
+          <div class="ms-status-dot" id="ocoka-status-dot"></div>
+          <div class="ms-status-lbl" id="ocoka-status-lbl">Ready</div>
+          <button class="ms-header-btn ms-btn-round" id="ocoka-help-btn" title="OCOKA wiki">?</button>
+          <button class="ms-header-btn ms-btn-round" id="ocoka-minimize-btn" title="Minimize">▼</button>
+          <button class="ms-header-btn ms-btn-round" id="ocoka-close-btn" title="Close">✕</button>
         </div>
-        <div class="ocoka-help-popover" id="ocoka-help-popover" hidden>
-          <div class="ocoka-help-head">
-            <div><div class="ocoka-help-kicker">Field Wiki</div><div class="ocoka-help-title">OCOKA Terrain Analysis</div></div>
-            <button class="ocoka-help-close" id="ocoka-help-close">x</button>
+        <div class="ms-help-popover" id="ocoka-help-popover" hidden>
+          <div class="ms-help-head">
+            <div><div class="ms-help-kicker">Field Wiki</div><div class="ms-help-title">OCOKA Terrain Analysis</div></div>
+            <button class="ms-help-close" id="ocoka-help-close">✕</button>
           </div>
-          <div class="ocoka-help-body">
+          <div class="ms-help-body">
             <p><strong>OCOKA</strong> evaluates Obstacles, Cover and Concealment, Observation and fields of fire, Key Terrain, and Avenues of Approach.</p>
             <p>This widget focuses on the companion Avenues of Approach panel. It ranks likely approach corridors by width, masking, trafficability, observation exposure, cover/concealment, and obstacle restriction.</p>
             <ol>
@@ -341,7 +342,7 @@ export class OcokaEngine {
               <li>Set AO radius, force type, extraction limits, and scoring weights.</li>
               <li>Run OCOKA Analysis to draw corridor centrelines, width polygons, chokepoints, score labels, and the ranked avenues list.</li>
             </ol>
-            <div class="ocoka-help-kicker" style="margin-top:10px">Scoring weights explained</div>
+            <div class="ms-help-kicker" style="margin-top:10px">Scoring weights explained</div>
             <p><strong>Width</strong> — usable corridor breadth; favours avenues that pass a force without bottleneck.</p>
             <p><strong>Masking</strong> — terrain screening from enemy observation along the route.</p>
             <p><strong>Trafficability</strong> — slope and surface suitability for the selected force (dismount / wheeled / tracked).</p>
@@ -350,12 +351,12 @@ export class OcokaEngine {
             <p><strong>Obstacle</strong> — restriction from natural or built obstacles that slow or canalise movement.</p>
           </div>
         </div>
-        <div class="ocoka-body">
-          <div class="ocoka-ps">Analysis area</div>
-          <div class="ocoka-pg">
-            <div class="ocoka-pf"><div class="ocoka-pl">Centre lat</div><input id="ocoka-inp-lat" type="number" value="33.680" step="0.001" /></div>
-            <div class="ocoka-pf"><div class="ocoka-pl">Centre lon</div><input id="ocoka-inp-lon" type="number" value="73.060" step="0.001" /></div>
-            <div class="ocoka-pf full"><div class="ocoka-pl">Analysis radius</div>
+        <div class="ms-body">
+          <div class="ms-section-title">Analysis area</div>
+          <div class="ms-grid">
+            <div class="ms-field"><div class="ms-label">Centre lat</div><input id="ocoka-inp-lat" type="number" value="33.680" step="0.001" /></div>
+            <div class="ms-field"><div class="ms-label">Centre lon</div><input id="ocoka-inp-lon" type="number" value="73.060" step="0.001" /></div>
+            <div class="ms-field full"><div class="ms-label">Analysis radius</div>
               <select id="ocoka-inp-radius">
                 <option value="3000">3 km - position level</option>
                 <option value="5000" selected>5 km - company level</option>
@@ -364,19 +365,19 @@ export class OcokaEngine {
               </select>
             </div>
           </div>
-          <div class="ocoka-ps">Corridor extraction</div>
-          <div class="ocoka-pg"><div class="ocoka-pf full"><div class="ocoka-pl">Grid cell size (m)</div>
+          <div class="ms-section-title">Corridor extraction</div>
+          <div class="ms-grid"><div class="ms-field full"><div class="ms-label">Grid cell size (m)</div>
             <select id="ocoka-inp-cell"><option value="30">30 m - fine (slower)</option><option value="50" selected>50 m - balanced</option><option value="80">80 m - fast</option></select>
           </div></div>
-          <div class="ocoka-psr"><div class="ocoka-psr-l">Max corridors</div><input id="ocoka-inp-maxcorr" type="range" min="3" max="12" step="1" value="7" /><div class="ocoka-psr-v" id="ocoka-maxcorr-v">7</div></div>
-          <div class="ocoka-psr"><div class="ocoka-psr-l">Slope threshold (deg)</div><input id="ocoka-inp-slope" type="range" min="5" max="25" step="1" value="12" /><div class="ocoka-psr-v" id="ocoka-slope-v">12deg</div></div>
-          <div class="ocoka-ps">Force type</div>
-          <div class="ocoka-pg"><div class="ocoka-pf full"><div class="ocoka-pl">Trafficability standard</div>
+          <div class="ms-slider-row"><div class="ms-slider-label">Max corridors</div><input id="ocoka-inp-maxcorr" type="range" min="3" max="12" step="1" value="7" /><div class="ms-slider-value" id="ocoka-maxcorr-v">7</div></div>
+          <div class="ms-slider-row"><div class="ms-slider-label">Slope threshold (deg)</div><input id="ocoka-inp-slope" type="range" min="5" max="25" step="1" value="12" /><div class="ms-slider-value" id="ocoka-slope-v">12deg</div></div>
+          <div class="ms-section-title">Force type</div>
+          <div class="ms-grid"><div class="ms-field full"><div class="ms-label">Trafficability standard</div>
             <select id="ocoka-inp-force"><option value="dismount">Dismounted infantry</option><option value="wheeled" selected>Wheeled vehicles</option><option value="tracked">Tracked / armour</option><option value="mixed">Mixed force</option></select>
           </div></div>
-          <div class="ocoka-pdiv"></div>
-          <div class="ocoka-ps">Scoring weights (drag to adjust)</div>
-          <div class="ocoka-wt-grid">
+          <div class="ms-divider"></div>
+          <div class="ms-section-title">Scoring weights (drag to adjust)</div>
+          <div class="ms-weight-grid">
             ${this._weightControl('width', 'Width', 3)}
             ${this._weightControl('mask', 'Masking', 4)}
             ${this._weightControl('traf', 'Trafficability', 3)}
@@ -384,22 +385,22 @@ export class OcokaEngine {
             ${this._weightControl('cc', 'Cover & concealment', 3)}
             ${this._weightControl('obs2', 'Obstacle', 3)}
           </div>
-          <div class="ocoka-pdiv"></div>
-          <div class="ocoka-ps">Display options</div>
-          <div class="ocoka-ptr"><label>Slope heatmap overlay</label><input id="ocoka-opt-slope" type="checkbox" checked /></div>
-          <div class="ocoka-ptr"><label>Corridor centrelines</label><input id="ocoka-opt-lines" type="checkbox" checked /></div>
-          <div class="ocoka-ptr"><label>Width polygons</label><input id="ocoka-opt-width" type="checkbox" checked /></div>
-          <div class="ocoka-ptr"><label>Chokepoint markers</label><input id="ocoka-opt-choke" type="checkbox" checked /></div>
-          <div class="ocoka-pdiv"></div>
-          <div class="ocoka-score-key">
-            <div class="ocoka-sk-title">Score colour key</div>
+          <div class="ms-divider"></div>
+          <div class="ms-section-title">Display options</div>
+          <div class="ms-toggle-row"><label>Slope heatmap overlay</label><input id="ocoka-opt-slope" type="checkbox" checked /></div>
+          <div class="ms-toggle-row"><label>Corridor centrelines</label><input id="ocoka-opt-lines" type="checkbox" checked /></div>
+          <div class="ms-toggle-row"><label>Width polygons</label><input id="ocoka-opt-width" type="checkbox" checked /></div>
+          <div class="ms-toggle-row"><label>Chokepoint markers</label><input id="ocoka-opt-choke" type="checkbox" checked /></div>
+          <div class="ms-divider"></div>
+          <div class="ms-score-key">
+            <div class="ms-section-title" style="padding-top:4px">Score colour key</div>
             ${this._scoreKey('#1D9E75', '80-100 - Primary avenue of approach')}
             ${this._scoreKey('#78C840', '60-79 - Secondary avenue')}
             ${this._scoreKey('#EF9F27', '40-59 - Restricted / limited use')}
             ${this._scoreKey('#DC3C30', '0-39 - Unlikely / obstacle-rich')}
           </div>
-          <div class="ocoka-prog-wrap"><div class="ocoka-prog-track"><div class="ocoka-prog-fill" id="ocoka-prog-fill"></div></div><div class="ocoka-prog-label" id="ocoka-prog-label">-</div></div>
-          <div class="ocoka-pb-row"><button class="ocoka-pb" id="ocoka-btn-clear">Clear</button><button class="ocoka-pb primary" id="ocoka-btn-run">Run OCOKA Analysis</button></div>
+          <div class="ms-progress-wrap"><div class="ms-progress-track"><div class="ms-progress-fill" id="ocoka-prog-fill"></div></div><div class="ms-progress-label" id="ocoka-prog-label">-</div></div>
+          <div class="ms-btn-row"><button class="ms-btn" id="ocoka-btn-clear">Clear</button><button class="ms-btn primary" id="ocoka-btn-run">Run OCOKA Analysis</button></div>
         </div>
       `;
       document.body.appendChild(panel);
@@ -410,7 +411,7 @@ export class OcokaEngine {
 
     if (!this._hintEl) {
       const hint = document.createElement('div');
-      hint.className = 'ocoka-hint';
+      hint.className = 'ms-map-hint';
       hint.textContent = 'Click map to re-centre analysis area, then Run OCOKA Analysis';
       document.body.appendChild(hint);
       this._hintEl = hint;
@@ -418,13 +419,13 @@ export class OcokaEngine {
 
     if (!this._legendEl) {
       const legend = document.createElement('div');
-      legend.className = 'ocoka-map-legend';
+      legend.className = 'ms-map-legend';
       legend.innerHTML = `
         ${this._legendItem('#1D9E75', 'Primary')}
         ${this._legendItem('#78C840', 'Secondary')}
         ${this._legendItem('#EF9F27', 'Restricted')}
         ${this._legendItem('#DC3C30', 'Unlikely')}
-        <div class="ocoka-ml"><div class="ocoka-ml-sw" style="background:transparent;border:2px solid #EF9F27"></div><div class="ocoka-ml-lbl">Chokepoint</div></div>
+        <div class="ms-map-legend-item"><div class="ms-map-legend-swatch" style="background:transparent;border:2px solid #EF9F27"></div><div class="ms-map-legend-label">Chokepoint</div></div>
       `;
       document.body.appendChild(legend);
       this._legendEl = legend;
@@ -432,15 +433,15 @@ export class OcokaEngine {
   }
 
   private _weightControl(id: keyof OcokaWeights, label: string, value: number): string {
-    return `<div class="ocoka-wt-item"><div class="ocoka-wt-label">${label}</div><div class="ocoka-wt-row"><input type="range" id="ocoka-wt-${id}" min="0" max="10" step="1" value="${value}" /><div class="ocoka-wt-val" id="ocoka-wv-${id}">${value}</div></div></div>`;
+    return `<div class="ms-field"><div class="ms-label">${label}</div><div class="ms-weight-row"><input type="range" id="ocoka-wt-${id}" min="0" max="10" step="1" value="${value}" /><div class="ms-weight-val" id="ocoka-wv-${id}">${value}</div></div></div>`;
   }
 
   private _scoreKey(color: string, label: string): string {
-    return `<div class="ocoka-sk-row"><div class="ocoka-sk-sw" style="background:${color}"></div><div class="ocoka-sk-lbl">${label}</div></div>`;
+    return `<div class="ms-score-key-row"><div class="ms-score-key-swatch" style="background:${color}"></div><div class="ms-score-key-label">${label}</div></div>`;
   }
 
   private _legendItem(color: string, label: string): string {
-    return `<div class="ocoka-ml"><div class="ocoka-ml-sw" style="background:${color}"></div><div class="ocoka-ml-lbl">${label}</div></div>`;
+    return `<div class="ms-map-legend-item"><div class="ms-map-legend-swatch" style="background:${color}"></div><div class="ms-map-legend-label">${label}</div></div>`;
   }
 
   private _bindPanelEvents(): void {
@@ -452,7 +453,14 @@ export class OcokaEngine {
     this._controlPanelEl?.querySelector('#ocoka-btn-run')?.addEventListener('click', () => void this._runAnalysis());
     this._controlPanelEl?.querySelector('#ocoka-btn-clear')?.addEventListener('click', () => this._clearAll());
     this._controlPanelEl?.querySelector('#ocoka-close-btn')?.addEventListener('click', () => this.close());
-    this._controlPanelEl?.querySelector('#ocoka-minimize-btn')?.addEventListener('click', () => this._controlPanelEl?.classList.toggle('minimized'));
+    this._controlPanelEl?.querySelector('#ocoka-minimize-btn')?.addEventListener('click', () => {
+      const body = this._controlPanelEl?.querySelector<HTMLElement>('.ms-body');
+      const btn = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-minimize-btn');
+      if (!body || !btn) return;
+      const minimized = body.classList.contains('ms-minimized');
+      body.classList.toggle('ms-minimized', !minimized);
+      btn.textContent = minimized ? '▼' : '▶';
+    });
     this._controlPanelEl?.querySelector('#ocoka-help-btn')?.addEventListener('click', (event) => {
       event.stopPropagation();
       const help = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-help-popover');
@@ -465,15 +473,13 @@ export class OcokaEngine {
   }
 
   private _showPanels(): void {
-    [this._controlPanelEl, this._listPanelEl, this._hintEl, this._legendEl].forEach((el) => {
-      if (el) el.style.display = '';
-    });
+    [this._controlPanelEl, this._listPanelEl].forEach((el) => el?.classList.add('ms-visible'));
+    [this._hintEl, this._legendEl].forEach((el) => el?.classList.add('ms-visible'));
   }
 
   private _hidePanels(): void {
-    [this._controlPanelEl, this._listPanelEl, this._hintEl, this._legendEl].forEach((el) => {
-      if (el) el.style.display = 'none';
-    });
+    [this._controlPanelEl, this._listPanelEl].forEach((el) => el?.classList.remove('ms-visible'));
+    [this._hintEl, this._legendEl].forEach((el) => el?.classList.remove('ms-visible'));
   }
 
   private _bindMapClick(): void {
@@ -730,7 +736,7 @@ export class OcokaEngine {
     if (!list) return;
     list.innerHTML = '';
     if (!corridors.length) {
-      list.innerHTML = '<div class="ocoka-list-empty">No corridors found - try larger radius or lower slope threshold</div>';
+      list.innerHTML = '<div class="ms-empty">No corridors found - try larger radius or lower slope threshold</div>';
       return;
     }
 
@@ -738,14 +744,14 @@ export class OcokaEngine {
       const col = scoreColor(c.composite);
       const thr = threatLabel(c.composite);
       const card = document.createElement('div');
-      card.className = 'ocoka-acard';
+      card.className = 'ms-feature-card';
       card.dataset.id = c.id;
       const bar = (label: string, val: number, color: string) =>
-        `<div class="ocoka-ab"><div class="ocoka-ab-l">${label}</div><div class="ocoka-ab-track"><div class="ocoka-ab-fill" style="width:${val}%;background:${color}"></div></div><div class="ocoka-ab-v">${val}</div></div>`;
+        `<div class="ms-feature-bar"><div class="ms-feature-bar-label">${label}</div><div class="ms-feature-bar-track"><div class="ms-feature-bar-fill" style="width:${val}%;background:${color}"></div></div><div class="ms-feature-bar-val">${val}</div></div>`;
       card.innerHTML = `
-        <div class="ocoka-ascore" style="color:${col.hex}">${c.composite}</div>
-        <div class="ocoka-acard-top"><div class="ocoka-anum" style="background:${col.hex}22;color:${col.hex};border:1px solid ${col.hex}55">${c.rank}</div><div style="flex:1"><div class="ocoka-aname">Avenue ${c.rank}</div><div class="ocoka-atype">${col.label} - ~${c.widthM}m wide - ${Math.round(c.lengthM)}m</div></div></div>
-        <div class="ocoka-abars">
+        <div class="ms-feature-score" style="color:${col.hex}">${c.composite}</div>
+        <div class="ms-feature-top"><div class="ms-feature-rank" style="background:${col.hex}22;color:${col.hex};border:1px solid ${col.hex}55">${c.rank}</div><div style="flex:1"><div class="ms-feature-name">Avenue ${c.rank}</div><div class="ms-feature-type">${col.label} - ~${c.widthM}m wide - ${Math.round(c.lengthM)}m</div></div></div>
+        <div class="ms-feature-bars" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;">
           ${bar('Width', c.scores.width, '#378ADD')}
           ${bar('Masking', c.scores.mask, '#B428DC')}
           ${bar('Traff.', c.scores.traf, '#1D9E75')}
@@ -753,12 +759,12 @@ export class OcokaEngine {
           ${bar('Cover', c.scores.cc, '#78C840')}
           ${bar('Obstacle', c.scores.obst, '#DC3C30')}
         </div>
-        <div class="ocoka-anote">${c.chokePts.length ? `<strong>${c.chokePts.length} chokepoint${c.chokePts.length > 1 ? 's' : ''}</strong> - potential blocking positions.<br>` : 'No terrain chokepoints detected along this avenue.<br>'}${c.note}</div>
-        <div class="ocoka-athreat ${thr.cls}">${thr.text}</div>
+        <div class="ms-feature-assessment">${c.chokePts.length ? `<strong>${c.chokePts.length} chokepoint${c.chokePts.length > 1 ? 's' : ''}</strong> - potential blocking positions.<br>` : 'No terrain chokepoints detected along this avenue.<br>'}${c.note}</div>
+        <div class="ms-feature-threat ${thr.cls}">${thr.text}</div>
       `;
       card.addEventListener('click', () => {
-        this._listPanelEl?.querySelectorAll('.ocoka-acard').forEach((x) => x.classList.remove('sel'));
-        card.classList.add('sel');
+        this._listPanelEl?.querySelectorAll('.ms-feature-card').forEach((x) => x.classList.remove('selected'));
+        card.classList.add('selected');
         const mid = c.path[Math.floor(c.path.length / 2)];
         if (mid && this._view) void this._view.goTo({ center: [mid.longitude, mid.latitude], zoom: 13, tilt: this._view.type === '3d' ? 60 : undefined } as any, { duration: 700 } as any);
       });
@@ -769,13 +775,13 @@ export class OcokaEngine {
     this._setText('ocoka-ss-n', String(corridors.length));
     this._setText('ocoka-ss-best', String(corridors[0]?.composite ?? '-'));
     this._setText('ocoka-ss-worst', String(corridors[corridors.length - 1]?.composite ?? '-'));
-    requestAnimationFrame(() => list.querySelector<HTMLElement>('.ocoka-acard')?.click());
+    requestAnimationFrame(() => list.querySelector<HTMLElement>('.ms-feature-card')?.click());
   }
 
   private _clearAll(): void {
     this._clearResults();
     const list = this._listPanelEl?.querySelector<HTMLElement>('#ocoka-approach-list');
-    if (list) list.innerHTML = '<div class="ocoka-list-empty">Set AO then run analysis</div>';
+    if (list) list.innerHTML = '<div class="ms-empty">Set AO then run analysis</div>';
     ['ocoka-ss-n', 'ocoka-ss-best', 'ocoka-ss-worst'].forEach((id) => this._setText(id, '-'));
     this._setText('ocoka-lph-sub', 'Set AO then run analysis');
     this._setProgress(0, '-');
@@ -797,10 +803,18 @@ export class OcokaEngine {
   }
 
   private _setStatus(cls: string, text: string): void {
-    const el = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-status');
-    if (!el) return;
-    el.textContent = text;
-    el.className = `ocoka-ph-status ${cls}`;
+    const dot = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-status-dot');
+    const lbl = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-status-lbl');
+    if (lbl) lbl.textContent = text;
+    if (dot) {
+      if (cls === 'done' || cls === 'ready') {
+        dot.style.background = cls === 'done' ? 'var(--ms-success)' : '#888';
+        dot.style.boxShadow = cls === 'done' ? '0 0 6px var(--ms-success)' : 'none';
+      } else {
+        dot.style.background = 'var(--ms-accent)';
+        dot.style.boxShadow = '0 0 6px var(--ms-accent)';
+      }
+    }
   }
 
   private _setProgress(fraction: number, label: string): void {
@@ -884,24 +898,6 @@ export class OcokaEngine {
     return new Promise((resolve) => window.setTimeout(resolve, 0));
   }
 
-  private _injectStyles(): void {
-    if (document.getElementById('ocoka-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'ocoka-engine-styles';
-    style.textContent = `
-      .ocoka-left-panel,.ocoka-right-panel{position:fixed;z-index:1100;background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:var(--ms-radius);color:var(--ms-text);font-family:var(--ms-font);font-size:var(--ms-fs);box-shadow:0 10px 30px rgba(0,0,0,.35)}
-      .ocoka-left-panel{top:60px;left:14px;width:360px;max-height:calc(100vh - 84px);display:flex;flex-direction:column}.ocoka-right-panel{top:60px;right:14px;width:380px;max-height:calc(100vh - 84px);overflow-y:auto}.ocoka-right-panel.minimized .ocoka-body{display:none}
-      .ocoka-lph,.ocoka-ph{padding:9px 12px 8px;border-bottom:1px solid var(--ms-divider);background:rgba(55,138,221,0.07)}.ocoka-ph{display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:2;cursor:grab}.ocoka-lph-title,.ocoka-ph-title{font-size:var(--ms-fs-xs);letter-spacing:.13em;text-transform:uppercase;color:#378ADD;font-weight:700}.ocoka-lph-sub{font-size:var(--ms-fs-xs);color:var(--ms-text-label);letter-spacing:.05em;margin-top:2px}.ocoka-ph-status{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-label)}.ocoka-ph-status.ready{color:#378ADD}.ocoka-ph-status.sampling,.ocoka-ph-status.computing{color:#EF9F27}.ocoka-ph-status.done{color:#1D9E75}.ocoka-ph-actions{display:flex;gap:4px}.ocoka-help-btn,.ocoka-minimize-btn,.ocoka-close-btn,.ocoka-help-close{background:rgba(255,255,255,0.04);border:1px solid var(--ms-border);color:var(--ms-text-dim);border-radius:3px;font-family:inherit;font-size:var(--ms-fs);cursor:pointer}.ocoka-help-btn:hover,.ocoka-minimize-btn:hover,.ocoka-close-btn:hover,.ocoka-help-close:hover{color:var(--ms-text)}
-      .ocoka-help-popover{position:absolute;top:39px;left:8px;right:8px;z-index:1120;background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:var(--ms-radius);box-shadow:0 10px 30px rgba(0,0,0,.45);max-height:min(420px,calc(100vh - 132px));overflow:auto}.ocoka-help-popover[hidden]{display:none}.ocoka-help-head{display:flex;justify-content:space-between;padding:10px 11px 8px;border-bottom:1px solid var(--ms-divider);background:rgba(55,138,221,.07)}.ocoka-help-kicker{font-size:var(--ms-fs-xs);color:var(--ms-text-label);letter-spacing:.09em;text-transform:uppercase}.ocoka-help-title{margin-top:2px;font-size:var(--ms-fs-sm);color:#378ADD;font-weight:700}.ocoka-help-body{padding:10px 11px 12px;font-size:var(--ms-fs);line-height:1.55;color:var(--ms-text-dim);user-select:text}.ocoka-help-body p{margin:0 0 9px}.ocoka-help-body ol{margin:0;padding-left:17px}
-      .ocoka-sum-strip{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--ms-divider)}.ocoka-ss{padding:6px 8px;border-right:.5px solid var(--ms-divider)}.ocoka-ss:last-child{border-right:none}.ocoka-ss-l{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-label)}.ocoka-ss-v{font-size:var(--ms-fs);font-weight:600;color:#378ADD}.ocoka-approach-list{overflow-y:auto;flex:1;padding:6px}.ocoka-list-empty{padding:20px 12px;font-size:var(--ms-fs-xs);color:var(--ms-text-label);text-align:center;line-height:1.8}
-      .ocoka-ps{font-size:var(--ms-fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--ms-text-label);padding:9px 12px 5px}.ocoka-pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}.ocoka-pf{display:flex;flex-direction:column;gap:3px}.ocoka-pf.full{grid-column:1/-1}.ocoka-pl{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-dim)}.ocoka-right-panel input,.ocoka-right-panel select{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:3px;color:var(--ms-text);font-family:var(--ms-font);font-size:var(--ms-fs);padding:5px 7px;width:100%;outline:none;box-sizing:border-box}.ocoka-right-panel input:focus,.ocoka-right-panel select:focus{border-color:rgba(55,138,221,0.55)}.ocoka-right-panel select option{background:#141618}.ocoka-psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}.ocoka-psr-l{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-dim);flex:1.8}.ocoka-psr input[type=range]{flex:2;accent-color:#378ADD;cursor:pointer}.ocoka-psr-v{font-size:var(--ms-fs-xs);color:#378ADD;min-width:38px;text-align:right}.ocoka-pdiv{height:1px;background:var(--ms-divider);margin:4px 0}.ocoka-ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}.ocoka-ptr label{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-dim);cursor:pointer}.ocoka-ptr input[type=checkbox]{accent-color:#378ADD;width:13px;height:13px;cursor:pointer}
-      .ocoka-wt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;padding:0 12px 9px}.ocoka-wt-item{display:flex;flex-direction:column;gap:3px}.ocoka-wt-label{font-size:var(--ms-fs-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--ms-text-dim)}.ocoka-wt-row{display:flex;align-items:center;gap:5px}.ocoka-wt-row input[type=range]{flex:1;accent-color:#378ADD;cursor:pointer}.ocoka-wt-val{font-size:var(--ms-fs-xs);color:#378ADD;min-width:24px;text-align:right}.ocoka-score-key{margin:0 12px 9px}.ocoka-sk-title{font-size:var(--ms-fs-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--ms-text-label);margin-bottom:6px}.ocoka-sk-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}.ocoka-sk-sw{width:28px;height:9px;border-radius:2px;flex-shrink:0}.ocoka-sk-lbl{font-size:var(--ms-fs-xs);color:var(--ms-text-dim)}.ocoka-prog-wrap{padding:0 12px 9px}.ocoka-prog-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}.ocoka-prog-fill{height:100%;background:linear-gradient(to right,#378ADD,#1D9E75);border-radius:2px;width:0%;transition:width .12s}.ocoka-prog-label{font-size:var(--ms-fs-xs);color:var(--ms-text-label);letter-spacing:.05em;margin-top:4px}.ocoka-pb-row{display:flex;gap:6px;padding:9px 12px}.ocoka-pb{flex:1;padding:7px;font-family:var(--ms-font);font-size:var(--ms-fs-xs);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:3px;border:1px solid rgba(55,138,221,0.38);background:transparent;color:#378ADD}.ocoka-pb:hover:not(:disabled){background:rgba(55,138,221,0.10)}.ocoka-pb.primary{background:rgba(55,138,221,0.16);border-color:#378ADD}.ocoka-pb:disabled{opacity:.3;cursor:not-allowed}
-      .ocoka-acard{background:rgba(255,255,255,0.02);border:.5px solid var(--ms-divider);border-radius:4px;padding:9px 10px;margin-bottom:5px;cursor:pointer;transition:all .12s;position:relative}.ocoka-acard:hover{border-color:rgba(55,138,221,0.40);background:rgba(55,138,221,0.06)}.ocoka-acard.sel{border-color:#378ADD;background:rgba(55,138,221,0.12)}.ocoka-acard-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}.ocoka-anum{width:24px;height:24px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:var(--ms-fs);font-weight:700;flex-shrink:0}.ocoka-aname{font-size:var(--ms-fs);font-weight:500;color:var(--ms-text);flex:1}.ocoka-atype{font-size:var(--ms-fs-xs);color:var(--ms-text-label);letter-spacing:.04em;margin-top:1px}.ocoka-ascore{position:absolute;top:9px;right:9px;font-size:var(--ms-fs-sm);font-weight:700}.ocoka-abars{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:6px}.ocoka-ab{display:flex;flex-direction:column;gap:2px}.ocoka-ab-l{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-label)}.ocoka-ab-track{height:3px;background:rgba(255,255,255,0.06);border-radius:2px}.ocoka-ab-fill{height:100%;border-radius:2px}.ocoka-ab-v{font-size:var(--ms-fs-xs);color:var(--ms-text-dim)}.ocoka-anote{font-size:var(--ms-fs-xs);color:var(--ms-text-dim);line-height:1.55;border-top:.5px solid var(--ms-divider);padding-top:5px}.ocoka-athreat{font-size:var(--ms-fs-xs);font-weight:500;margin-top:4px;padding:3px 6px;border-radius:2px;display:inline-block}.ocoka-athreat.high{background:rgba(220,60,48,0.15);color:#DC3C30}.ocoka-athreat.medium{background:rgba(239,159,39,0.12);color:#EF9F27}.ocoka-athreat.low{background:rgba(29,158,117,0.12);color:#1D9E75}
-      .ocoka-hint{position:fixed;bottom:55px;left:50%;transform:translateX(-50%);background:var(--ms-bg);border:1px solid rgba(55,138,221,0.45);color:#378ADD;font-family:var(--ms-font);font-size:var(--ms-fs);letter-spacing:.08em;padding:8px 22px;border-radius:3px;pointer-events:none;z-index:1099;text-transform:uppercase}.ocoka-map-legend{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:1099;background:var(--ms-bg);border:1px solid var(--ms-divider);border-radius:4px;padding:7px 14px;display:flex;gap:16px;align-items:center}.ocoka-ml{display:flex;align-items:center;gap:7px}.ocoka-ml-sw{width:26px;height:9px;border-radius:2px}.ocoka-ml-lbl{font-size:var(--ms-fs-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--ms-text-dim)}
-      @media (max-width:760px){.ocoka-left-panel{left:10px;right:10px;top:auto;bottom:70px;width:auto;max-height:34vh}.ocoka-right-panel{left:10px;right:10px;top:72px;width:auto;max-height:45vh}.ocoka-map-legend{display:none}.ocoka-hint{left:10px;right:10px;transform:none;text-align:center}}
-    `;
-    document.head.appendChild(style);
-  }
 }
 
 export default OcokaEngine;

@@ -322,8 +322,9 @@ export class KeyTerrainIdentificationEngine {
       panel.className = 'ms-panel ms-theme-ops-dark';
       panel.innerHTML = `
         <div class="ms-header">
-          <div class="ms-header-icon">▲ Key Terrain - Ranked</div>
-          <div class="ms-header-subtitle" id="kt-list-sub">Run analysis to identify features</div>
+          <div class="ms-header-icon">▲</div>
+          <div class="ms-header-title">Key Terrain — Ranked</div>
+          <div class="ms-status-lbl" id="kt-list-sub">Run analysis to identify features</div>
         </div>
         <div class="ms-body" id="kt-feature-list">
           <div class="ms-empty" id="kt-list-empty">
@@ -343,15 +344,13 @@ export class KeyTerrainIdentificationEngine {
       panel.className = 'ms-panel ms-theme-ops-dark';
       panel.innerHTML = `
         <div class="ms-header" id="kt-drag-handle">
-          <div class="ms-header-left">
-            <div class="ms-header-title">□ Key Terrain Identifier</div>
-            <div class="ms-status ready" id="kt-status">Ready</div>
-          </div>
-          <div class="ms-header-actions">
-            <button class="ms-header-btn ms-btn-round" id="kt-help-btn" title="How key terrain analysis works">?</button>
-            <button class="ms-header-btn ms-btn-round" id="kt-minimize-btn" title="Minimize">▼</button>
-            <button class="ms-header-btn ms-btn-round" id="kt-close-btn" title="Close (keeps graphics)">✕</button>
-          </div>
+          <div class="ms-header-icon">⛰</div>
+          <div class="ms-header-title">Key Terrain Identifier</div>
+          <div class="ms-status-dot" id="kt-status-dot"></div>
+          <div class="ms-status-lbl" id="kt-status-lbl">Ready</div>
+          <button class="ms-header-btn ms-btn-round" id="kt-help-btn" title="How key terrain analysis works">?</button>
+          <button class="ms-header-btn ms-btn-round" id="kt-minimize-btn" title="Minimize">▼</button>
+          <button class="ms-header-btn ms-btn-round" id="kt-close-btn" title="Close (keeps graphics)">✕</button>
         </div>
         <div class="ms-help-popover" id="kt-help-popover" hidden>
           <div class="ms-help-head">
@@ -426,10 +425,10 @@ export class KeyTerrainIdentificationEngine {
             <div class="ms-slider-value" id="kt-maxfeat-v">15</div>
           </div>
           <div class="ms-section-title">Feature types</div>
-          <div class="ms-checkbox-row"><label>Dominant ground (hilltops)</label><input id="kt-opt-hills" type="checkbox" checked /></div>
-          <div class="ms-checkbox-row"><label>Saddles / passes</label><input id="kt-opt-saddles" type="checkbox" checked /></div>
-          <div class="ms-checkbox-row"><label>Re-entrants / avenues</label><input id="kt-opt-reents" type="checkbox" checked /></div>
-          <div class="ms-checkbox-row"><label>Spurs / flank positions</label><input id="kt-opt-spurs" type="checkbox" checked /></div>
+          <div class="ms-toggle-row"><label>Dominant ground (hilltops)</label><input id="kt-opt-hills" type="checkbox" checked /></div>
+          <div class="ms-toggle-row"><label>Saddles / passes</label><input id="kt-opt-saddles" type="checkbox" checked /></div>
+          <div class="ms-toggle-row"><label>Re-entrants / avenues</label><input id="kt-opt-reents" type="checkbox" checked /></div>
+          <div class="ms-toggle-row"><label>Spurs / flank positions</label><input id="kt-opt-spurs" type="checkbox" checked /></div>
           <div class="ms-divider"></div>
           <div class="ms-section-title">Overlay</div>
           <div class="ms-btn-row">
@@ -455,7 +454,7 @@ export class KeyTerrainIdentificationEngine {
           </div>
           <div class="ms-btn-row">
             <button class="ms-btn" id="kt-btn-clear">Clear</button>
-            <button class="ms-btn ms-btn-primary" id="kt-btn-run">Run Analysis ↗</button>
+            <button class="ms-btn primary" id="kt-btn-run">Run Analysis ↗</button>
           </div>
           <div class="ms-hint" id="kt-hint" style="display:none">Click map to re-centre the analysis area</div>
         </div>
@@ -1445,13 +1444,24 @@ export class KeyTerrainIdentificationEngine {
   };
 
   private _setStatus(statusClass: string, text: string): void {
-    const el = this._el('kt-status');
-    if (!el) return;
     if (statusClass === 'done') EngineLogger.success(ENGINE_NAME, text);
     else if (statusClass === 'sampling' || statusClass === 'scoring' || statusClass === 'ready') EngineLogger.nextStep(ENGINE_NAME, text);
     else EngineLogger.error(ENGINE_NAME, text);
-    el.textContent = text;
-    el.className = `kt-ph-status ${statusClass}`;
+    const dot = this._el('kt-status-dot');
+    const lbl = this._el('kt-status-lbl');
+    if (lbl) lbl.textContent = text;
+    if (dot) {
+      if (statusClass === 'done' || statusClass === 'ready') {
+        dot.style.background = 'var(--ms-success)';
+        dot.style.boxShadow = '0 0 6px var(--ms-success)';
+      } else if (statusClass === 'sampling' || statusClass === 'scoring') {
+        dot.style.background = 'var(--ms-accent)';
+        dot.style.boxShadow = '0 0 6px var(--ms-accent)';
+      } else {
+        dot.style.background = 'var(--ms-danger, #dc5050)';
+        dot.style.boxShadow = '0 0 6px var(--ms-danger, #dc5050)';
+      }
+    }
   }
 
   private _setProgress(fraction: number, label: string): void {

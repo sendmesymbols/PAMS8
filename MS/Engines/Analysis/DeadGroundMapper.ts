@@ -1179,8 +1179,10 @@ export class DeadGroundMapper {
   private _buildPanelHtml(): string {
     return `
       <div class="ms-header" id="dead-drag-handle">
-        <div class="ms-header-title">⊘ Dead Ground Mapper</div>
-        <div class="ms-status place" id="dead-status">Place observer</div>
+        <div class="ms-header-icon">⊘</div>
+        <div class="ms-header-title">Dead Ground Mapper</div>
+        <div class="ms-status-dot" id="dead-status-dot"></div>
+        <div class="ms-status-lbl" id="dead-status-lbl">Place observer</div>
         <button class="ms-header-btn ms-btn-round" id="dead-help-btn">?</button>
         <button class="ms-header-btn ms-btn-round" id="dead-minimize-btn">▼</button>
         <button class="ms-header-btn ms-btn-round" id="dead-close-btn">×</button>
@@ -1234,17 +1236,17 @@ export class DeadGroundMapper {
         <div class="ms-divider"></div>
         <div class="ms-section-title">Display options</div>
         <div class="ms-opt-grid">
-          <div class="ms-checkbox-row"><label>2D heatmap</label><input id="dead-opt-heatmap" type="checkbox" checked/></div>
-          <div class="ms-checkbox-row"><label>3D terrain mesh</label><input id="dead-opt-mesh" type="checkbox"/></div>
-          <div class="ms-checkbox-row"><label>3D viewshed dome</label><input id="dead-opt-dome" type="checkbox" checked/></div>
-          <div class="ms-checkbox-row"><label>Depth contours</label><input id="dead-opt-contours" type="checkbox" checked/></div>
-          <div class="ms-checkbox-row"><label>Visible ground</label><input id="dead-opt-visible" type="checkbox"/></div>
-          <div class="ms-checkbox-row"><label>LOS spokes</label><input id="dead-opt-spokes" type="checkbox"/></div>
-          <div class="ms-checkbox-row"><label>Snap terrain</label><input id="dead-opt-snap" type="checkbox" checked/></div>
-          <div class="ms-checkbox-row"><label>Masked cells</label><input id="dead-opt-masked" type="checkbox" checked/></div>
-          <div class="ms-checkbox-row"><label>Bottom cap</label><input id="dead-opt-cap" type="checkbox" checked/></div>
-          <div class="ms-checkbox-row"><label>Horizon ring</label><input id="dead-opt-ring" type="checkbox" checked/></div>
-          <div class="ms-checkbox-row"><label>Double sided</label><input id="dead-opt-dblside" type="checkbox" checked/></div>
+          <div class="ms-toggle-row"><label>2D heatmap</label><input id="dead-opt-heatmap" type="checkbox" checked/></div>
+          <div class="ms-toggle-row"><label>3D terrain mesh</label><input id="dead-opt-mesh" type="checkbox"/></div>
+          <div class="ms-toggle-row"><label>3D viewshed dome</label><input id="dead-opt-dome" type="checkbox" checked/></div>
+          <div class="ms-toggle-row"><label>Depth contours</label><input id="dead-opt-contours" type="checkbox" checked/></div>
+          <div class="ms-toggle-row"><label>Visible ground</label><input id="dead-opt-visible" type="checkbox"/></div>
+          <div class="ms-toggle-row"><label>LOS spokes</label><input id="dead-opt-spokes" type="checkbox"/></div>
+          <div class="ms-toggle-row"><label>Snap terrain</label><input id="dead-opt-snap" type="checkbox" checked/></div>
+          <div class="ms-toggle-row"><label>Masked cells</label><input id="dead-opt-masked" type="checkbox" checked/></div>
+          <div class="ms-toggle-row"><label>Bottom cap</label><input id="dead-opt-cap" type="checkbox" checked/></div>
+          <div class="ms-toggle-row"><label>Horizon ring</label><input id="dead-opt-ring" type="checkbox" checked/></div>
+          <div class="ms-toggle-row"><label>Double sided</label><input id="dead-opt-dblside" type="checkbox" checked/></div>
         </div>
         <div class="ms-dome-options" id="dead-dome-options">
           <div class="ms-grid ms-tight">
@@ -1295,7 +1297,7 @@ export class DeadGroundMapper {
         <div id="dead-coords" class="ms-coords">Observer: click map to place</div>
         <div class="ms-btn-row">
           <button class="ms-btn" id="dead-btn-clear">Clear</button>
-          <button class="ms-btn ms-btn-primary" id="dead-btn-run" disabled>Run analysis</button>
+          <button class="ms-btn primary" id="dead-btn-run" disabled>Run analysis</button>
         </div>
         <div id="dead-legend" class="ms-legend-wrap">
           <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:linear-gradient(to right,#3a1a1a,#DC3C30,#EF9F27,#F5F040)"></div><div class="ms-legend-label">Dead ground - shallow → deep</div></div>
@@ -1390,12 +1392,23 @@ export class DeadGroundMapper {
   };
 
   private _setStatus(state: 'place' | 'sampling' | 'building' | 'done', text: string): void {
-    const el = this._el('dead-status');
     if (state === 'done') EngineLogger.success(ENGINE_NAME, text);
     else EngineLogger.nextStep(ENGINE_NAME, text);
-    if (!el) return;
-    el.textContent = text;
-    el.className = `ms-status ${state}`;
+    const dot = this._el('dead-status-dot');
+    const lbl = this._el('dead-status-lbl');
+    if (lbl) lbl.textContent = text;
+    if (dot) {
+      if (state === 'done') {
+        dot.style.background = 'var(--ms-success)';
+        dot.style.boxShadow = '0 0 6px var(--ms-success)';
+      } else if (state === 'sampling' || state === 'building') {
+        dot.style.background = 'var(--ms-accent)';
+        dot.style.boxShadow = '0 0 6px var(--ms-accent)';
+      } else {
+        dot.style.background = '#888';
+        dot.style.boxShadow = 'none';
+      }
+    }
   }
 
   private _setProgress(frac: number, label: string): void {

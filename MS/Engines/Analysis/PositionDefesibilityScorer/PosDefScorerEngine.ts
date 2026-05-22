@@ -208,7 +208,6 @@ export class PosDefScorerEngine {
 
   constructor() {
     this._createLayers();
-    this._injectStyles();
   }
 
   initialize(view: MapView | SceneView): void {
@@ -305,12 +304,14 @@ export class PosDefScorerEngine {
     if (!this._scorePanelEl) {
       this._scorePanelEl = document.createElement('div');
       this._scorePanelEl.id = 'posdef-left-panel';
+      this._scorePanelEl.className = 'ms-panel ms-theme-ops-dark';
       this._scorePanelEl.innerHTML = this._scorePanelHtml();
       document.body.appendChild(this._scorePanelEl);
     }
     if (!this._controlPanelEl) {
       this._controlPanelEl = document.createElement('div');
       this._controlPanelEl.id = 'posdef-right-panel';
+      this._controlPanelEl.className = 'ms-panel ms-theme-ops-dark';
       this._controlPanelEl.innerHTML = this._controlPanelHtml();
       document.body.appendChild(this._controlPanelEl);
       this._bindPanelEvents();
@@ -326,89 +327,108 @@ export class PosDefScorerEngine {
 
   private _scorePanelHtml(): string {
     return `
-      <div class="posdef-lph">
-        <div class="posdef-lph-title">Defensibility Scorer</div>
-        <div class="posdef-lph-sub" id="posdef-lph-sub">Click map to score a position</div>
+      <div class="ms-header">
+        <div class="ms-header-title">Defensibility Scorer</div>
       </div>
-      <div id="posdef-score-ring-wrap">
-        <div id="posdef-score-ring">
-          <svg id="posdef-score-svg" width="90" height="90" viewBox="0 0 90 90">
-            <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"></circle>
-            <circle id="posdef-score-arc" cx="45" cy="45" r="38" fill="none" stroke="#1D9E75" stroke-width="7" stroke-dasharray="0 239" stroke-dashoffset="60" stroke-linecap="round" transform="rotate(-90 45 45)"></circle>
-          </svg>
-          <div id="posdef-score-num">-</div>
+      <div class="ms-body" style="display: flex; flex-direction: column; overflow-y: auto;">
+        <div style="padding: 12px; border-bottom: var(--ms-divider); font-size: var(--ms-fs-xs); color: var(--ms-text-dim);" id="posdef-lph-sub">Click map to score a position</div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 14px; padding: 14px 12px; border-bottom: var(--ms-divider); flex-shrink: 0;">
+          <div style="position: relative; width: 90px; height: 90px; flex-shrink: 0;" id="posdef-score-ring">
+            <svg id="posdef-score-svg" width="90" height="90" viewBox="0 0 90 90" style="display: block;">
+              <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"></circle>
+              <circle id="posdef-score-arc" cx="45" cy="45" r="38" fill="none" stroke="var(--ms-accent)" stroke-width="7" stroke-dasharray="0 239" stroke-dashoffset="60" stroke-linecap="round" transform="rotate(-90 45 45)"></circle>
+            </svg>
+            <div id="posdef-score-num" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 26px; font-weight: 700; color: var(--ms-accent); text-align: center; line-height: 1;">-</div>
+          </div>
+          <div style="flex: 1;">
+            <div id="posdef-score-grade" style="font-size: 18px; font-weight: 700; color: var(--ms-accent); margin-bottom: 4px;">-</div>
+            <div id="posdef-score-desc" style="font-size: var(--ms-fs-xs); color: var(--ms-text-dim); line-height: 1.5;">Place a position<br>on the map to score it</div>
+          </div>
         </div>
-        <div id="posdef-score-meta">
-          <div id="posdef-score-grade">-</div>
-          <div id="posdef-score-desc">Place a position<br>on the map to score it</div>
+        <div style="padding: 10px 12px; border-bottom: var(--ms-divider); flex-shrink: 0; display: flex; align-items: center; justify-content: center;"><canvas id="posdef-radar-canvas" width="248" height="190" style="display: block;"></canvas></div>
+        <div id="posdef-factors" style="overflow-y: auto; flex: 1; padding: 8px 10px;">
+          <div id="posdef-factor-empty" style="padding: 18px 10px; font-size: var(--ms-fs-xs); color: var(--ms-text-dim); text-align: center; line-height: 1.8;">Scores for each factor will<br>appear here after analysis.<br><br>Each factor is scored 0-20.<br>Total composite score: 0-100.</div>
         </div>
-      </div>
-      <div id="posdef-radar-wrap"><canvas id="posdef-radar-canvas" width="248" height="190"></canvas></div>
-      <div id="posdef-factors">
-        <div id="posdef-factor-empty">Scores for each factor will<br>appear here after analysis.<br><br>Each factor is scored 0-20.<br>Total composite score: 0-100.</div>
-      </div>
-      <div id="posdef-pos-history" style="display:none">
-        <div class="posdef-ph-header">Previous positions</div>
-        <div id="posdef-ph-rows"></div>
+        <div id="posdef-pos-history" style="display: none; border-top: var(--ms-divider); flex-shrink: 0; max-height: 130px; overflow-y: auto;">
+          <div style="font-size: 8.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ms-text-dim); padding: 6px 10px 3px;">Previous positions</div>
+          <div id="posdef-ph-rows"></div>
+        </div>
       </div>
     `;
   }
 
   private _controlPanelHtml(): string {
     return `
-      <div class="posdef-ph2">
-        <div class="posdef-ph2-title">Analysis Config</div>
-        <div class="posdef-help-wrap">
-          <button class="posdef-help-btn" id="posdef-help-btn" title="Position defensibility wiki">?</button>
-          <button class="posdef-close-btn" id="posdef-close-btn" title="Close">x</button>
+      <div class="ms-header">
+        <div class="ms-header-title">Analysis Config</div>
+        <div style="display: flex; gap: 4px;">
+          <button class="ms-btn" id="posdef-help-btn" title="Position defensibility wiki" style="padding: 4px 8px; font-size: var(--ms-fs-xs);">?</button>
+          <button class="ms-btn" id="posdef-close-btn" title="Close" style="padding: 4px 8px; font-size: var(--ms-fs-xs);">✕</button>
         </div>
-        <div class="posdef-ph2-status ready" id="posdef-status">Click map to score</div>
       </div>
-      <div class="posdef-help-popover" id="posdef-help-popover" hidden>
-        <div class="posdef-help-head"><div><div class="posdef-help-kicker">Wiki</div><div class="posdef-help-title">Position Defensibility Scorer</div></div><button id="posdef-help-close" class="posdef-help-close">x</button></div>
-        <div class="posdef-help-body">
+      <div class="ms-help-popover" id="posdef-help-popover" hidden style="position: absolute; top: 37px; left: 8px; right: 8px; z-index: 1120; max-height: min(440px, calc(100vh - 132px));">
+        <div class="ms-help-head">
+          <div>
+            <div class="ms-help-kicker">Wiki</div>
+            <div class="ms-help-title">Position Defensibility Scorer</div>
+          </div>
+          <button id="posdef-help-close" class="ms-help-close">✕</button>
+        </div>
+        <div class="ms-help-body">
           <p>Scores a fighting position from terrain-derived observation, fields of fire, cover, concealment, egress, and rear dead ground.</p>
-          <div class="posdef-help-block"><h4>Workflow</h4><ol><li>Open from More Actions or right-click a symbol.</li><li>Click the map to score a position.</li><li>Ctrl+Click or use + Egress to add withdrawal routes.</li><li>Adjust ranges, weights, and overlays, then Re-score.</li></ol></div>
-          <div class="posdef-help-block"><h4>Factors</h4><dl><dt>Observation</dt><dd>Visible ray coverage across the selected radius.</dd><dt>Fields of fire</dt><dd>Visible arcs inside the configured threat sector.</dd><dt>Cover</dt><dd>Nearby terrain masking from fire and view.</dd><dt>Egress</dt><dd>Clear or masked routes away from the position.</dd><dt>Dead ground</dt><dd>Rear terrain below line of sight for movement and FUP.</dd></dl></div>
+          <div style="margin-top: 10px;"><h4 style="margin: 0 0 5px; font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase;">Workflow</h4><ol style="margin: 0; padding-left: 17px;"><li style="margin: 3px 0;">Open from More Actions or right-click a symbol.</li><li style="margin: 3px 0;">Click the map to score a position.</li><li style="margin: 3px 0;">Ctrl+Click or use + Egress to add withdrawal routes.</li><li style="margin: 3px 0;">Adjust ranges, weights, and overlays, then Re-score.</li></ol></div>
+          <div style="margin-top: 10px;"><h4 style="margin: 0 0 5px; font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase;">Factors</h4><dl style="display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 5px 8px; margin: 0;"><dt style="color: var(--ms-accent); font-weight: 700;">Observation</dt><dd style="margin: 0;">Visible ray coverage across the selected radius.</dd><dt style="color: var(--ms-accent); font-weight: 700;">Fields of fire</dt><dd style="margin: 0;">Visible arcs inside the configured threat sector.</dd><dt style="color: var(--ms-accent); font-weight: 700;">Cover</dt><dd style="margin: 0;">Nearby terrain masking from fire and view.</dd><dt style="color: var(--ms-accent); font-weight: 700;">Egress</dt><dd style="margin: 0;">Clear or masked routes away from the position.</dd><dt style="color: var(--ms-accent); font-weight: 700;">Dead ground</dt><dd style="margin: 0;">Rear terrain below line of sight for movement and FUP.</dd></dl></div>
         </div>
       </div>
-      <div class="posdef-ps">Observer / position</div>
-      <div class="posdef-pg">
-        <div class="posdef-pf"><div class="posdef-pl">Eye height (m)</div><input id="posdef-inp-eye" type="number" value="1.8" min="0.5" max="10" step="0.1"></div>
-        <div class="posdef-pf"><div class="posdef-pl">Position type</div><select id="posdef-inp-postype"><option value="dismount">Dismount</option><option value="vehicle" selected>Vehicle</option><option value="tank">Tank</option><option value="mg">MG/ATGM</option><option value="sniper">Sniper</option></select></div>
+      <div class="ms-body" style="display: flex; flex-direction: column; overflow-y: auto;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px;">
+          <div style="font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim);" id="posdef-status">Click map to score</div>
+        </div>
+        <div class="ms-section-title">Observer / position</div>
+        <div class="ms-grid">
+          <div class="ms-field"><label class="ms-label">Eye height (m)</label><input id="posdef-inp-eye" type="number" value="1.8" min="0.5" max="10" step="0.1" class="ms-input"></div>
+          <div class="ms-field"><label class="ms-label">Position type</label><select id="posdef-inp-postype" class="ms-select"><option value="dismount">Dismount</option><option value="vehicle" selected>Vehicle</option><option value="tank">Tank</option><option value="mg">MG/ATGM</option><option value="sniper">Sniper</option></select></div>
+        </div>
+        <div class="ms-section-title">Analysis ranges</div>
+        ${this._sliderRow('Observation radius (m)', 'obs-r', 500, 10000, 250, 3000)}
+        ${this._sliderRow('Slope check radius (m)', 'slp-r', 50, 500, 25, 150)}
+        ${this._sliderRow('Ray resolution (deg)', 'ray-res', 2, 15, 1, 5, 'deg')}
+        <div class="ms-section-title">Egress routes (optional)</div>
+        <div id="posdef-egress-list" style="padding: 0 12px 8px;"><div id="posdef-eg-add-hint" style="font-size: var(--ms-fs-xs); color: var(--ms-text-dim); padding: 4px 0; letter-spacing: 0.04em;">Ctrl+Click map to add an egress waypoint</div></div>
+        <div class="ms-section-title">Scoring context</div>
+        <div class="ms-grid">
+          <div class="ms-field" style="grid-column: 1/-1;"><label class="ms-label">Threat axis (bearing deg)</label><input id="posdef-inp-threat-brg" type="number" value="270" min="0" max="359" step="1" class="ms-input"></div>
+        </div>
+        ${this._sliderRow('Slope acceptable (deg)', 'slp-ok', 5, 30, 1, 12, 'deg')}
+        <div class="ms-divider" style="margin: 4px 0;"></div>
+        <div class="ms-section-title">Factor weights (0-5)</div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; padding: 0 12px 8px;">
+          ${this._weightRow('Observation', 'obs', 4)}${this._weightRow('Fields of fire', 'fof', 4)}${this._weightRow('Cover from fire', 'cff', 3)}${this._weightRow('Cover from view', 'cfv', 3)}${this._weightRow('Egress routes', 'egr', 3)}${this._weightRow('Dead ground', 'dg', 3)}
+        </div>
+        <div class="ms-divider" style="margin: 4px 0;"></div>
+        <div class="ms-section-title">Overlays</div>
+        ${this._toggleRow('Viewshed overlay', 'vs', true)}${this._toggleRow('Dead ground overlay', 'dg', true)}${this._toggleRow('Slope overlay', 'slp', true)}${this._toggleRow('LOS spokes', 'los', true)}${this._toggleRow('Egress LOS lines', 'egr', true)}
+        <div class="ms-divider" style="margin: 4px 0;"></div>
+        <div style="padding: 0 12px 9px;"><div id="posdef-prog-track" style="height: 4px; background: var(--ms-bg-subtle); border-radius: 2px; overflow: hidden;"><div id="posdef-prog-fill" style="height: 100%; background: linear-gradient(to right, var(--ms-accent), #378ADD); border-radius: 2px; width: 0%; transition: width 0.12s;"></div></div><div id="posdef-prog-label" style="font-size: var(--ms-fs-xs); color: var(--ms-text-dim); letter-spacing: 0.05em; margin-top: 4px;">-</div></div>
+        <div style="display: flex; gap: 6px; padding: 9px 12px;">
+          <button class="ms-btn" id="posdef-btn-clear" style="flex: 1;">Clear</button>
+          <button class="ms-btn" id="posdef-btn-egress-mode" style="flex: 1;">+ Egress</button>
+          <button class="ms-btn ms-btn-primary" id="posdef-btn-rescore" style="flex: 1;" disabled>Re-score</button>
+        </div>
       </div>
-      <div class="posdef-ps">Analysis ranges</div>
-      ${this._sliderRow('Observation radius (m)', 'obs-r', 500, 10000, 250, 3000)}
-      ${this._sliderRow('Slope check radius (m)', 'slp-r', 50, 500, 25, 150)}
-      ${this._sliderRow('Ray resolution (deg)', 'ray-res', 2, 15, 1, 5, 'deg')}
-      <div class="posdef-ps">Egress routes (optional)</div><div id="posdef-egress-list"><div id="posdef-eg-add-hint">Ctrl+Click map to add an egress waypoint</div></div>
-      <div class="posdef-ps">Scoring context</div>
-      <div class="posdef-pg"><div class="posdef-pf full"><div class="posdef-pl">Threat axis (bearing deg)</div><input id="posdef-inp-threat-brg" type="number" value="270" min="0" max="359" step="1"></div></div>
-      ${this._sliderRow('Slope acceptable (deg)', 'slp-ok', 5, 30, 1, 12, 'deg')}
-      <div class="posdef-pdiv"></div>
-      <div class="posdef-ps">Factor weights (0-5)</div>
-      <div class="posdef-wt-grid">
-        ${this._weightRow('Observation', 'obs', 4)}${this._weightRow('Fields of fire', 'fof', 4)}${this._weightRow('Cover from fire', 'cff', 3)}${this._weightRow('Cover from view', 'cfv', 3)}${this._weightRow('Egress routes', 'egr', 3)}${this._weightRow('Dead ground', 'dg', 3)}
-      </div>
-      <div class="posdef-pdiv"></div>
-      <div class="posdef-ps">Overlays</div>
-      ${this._toggleRow('Viewshed overlay', 'vs', true)}${this._toggleRow('Dead ground overlay', 'dg', true)}${this._toggleRow('Slope overlay', 'slp', true)}${this._toggleRow('LOS spokes', 'los', true)}${this._toggleRow('Egress LOS lines', 'egr', true)}
-      <div class="posdef-pdiv"></div>
-      <div id="posdef-prog-wrap"><div id="posdef-prog-track"><div id="posdef-prog-fill"></div></div><div id="posdef-prog-label">-</div></div>
-      <div class="posdef-pb-row"><button class="posdef-pb" id="posdef-btn-clear">Clear</button><button class="posdef-pb" id="posdef-btn-egress-mode">+ Egress</button><button class="posdef-pb primary" id="posdef-btn-rescore" disabled>Re-score</button></div>
     `;
   }
 
   private _sliderRow(label: string, id: string, min: number, max: number, step: number, value: number, suffix = ''): string {
-    return `<div class="posdef-psr"><div class="posdef-psr-l">${label}</div><input id="posdef-inp-${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"><div class="posdef-psr-v" id="posdef-${id}-v">${value}${suffix}</div></div>`;
+    return `<div style="display: flex; align-items: center; gap: 8px; padding: 0 12px 8px;"><label style="font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim); flex: 1.8;" class="ms-label">${label}</label><input id="posdef-inp-${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" style="flex: 2; accent-color: var(--ms-accent); cursor: pointer;"><div id="posdef-${id}-v" style="font-size: var(--ms-fs-xs); color: var(--ms-accent); min-width: 38px; text-align: right;">${value}${suffix}</div></div>`;
   }
 
   private _weightRow(label: string, id: FactorId, value: number): string {
-    return `<div class="posdef-wt-item"><div class="posdef-wt-lbl">${label}</div><div class="posdef-wt-row"><input type="range" id="posdef-wt-${id}" min="0" max="5" step="1" value="${value}"><div class="posdef-wt-val" id="posdef-wv-${id}">${value}</div></div></div>`;
+    return `<div style="display: flex; flex-direction: column; gap: 3px;"><div style="font-size: 8px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ms-text-dim);">${label}</div><div style="display: flex; align-items: center; gap: 4px;"><input type="range" id="posdef-wt-${id}" min="0" max="5" step="1" value="${value}" style="flex: 1; accent-color: var(--ms-accent);"><div id="posdef-wv-${id}" style="font-size: var(--ms-fs-xs); color: var(--ms-accent); min-width: 18px; text-align: right;">${value}</div></div></div>`;
   }
 
   private _toggleRow(label: string, id: string, checked: boolean): string {
-    return `<div class="posdef-ptr"><label>${label}</label><input id="posdef-opt-${id}" type="checkbox"${checked ? ' checked' : ''}></div>`;
+    return `<div style="display: flex; align-items: center; justify-content: space-between; padding: 5px 12px;"><label style="font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim); cursor: pointer;" class="ms-label">${label}</label><input id="posdef-opt-${id}" type="checkbox"${checked ? ' checked' : ''} style="accent-color: var(--ms-accent); width: 13px; height: 13px; cursor: pointer;"></div>`;
   }
 
   private _bindPanelEvents(): void {
@@ -780,8 +800,8 @@ export class PosDefScorerEngine {
       FACTORS.forEach((f) => {
         const s = scores[f.id] ?? 0;
         const row = document.createElement('div');
-        row.className = 'posdef-factor-row';
-        row.innerHTML = `<div class="posdef-fac-icon">${f.icon}</div><div class="posdef-fac-body"><div class="posdef-fac-name">${f.label}</div><div class="posdef-fac-track"><div class="posdef-fac-fill" style="width:${s / 20 * 100}%;background:${f.color}"></div></div><div class="posdef-fac-note">${f.desc(s)}</div></div><div><div class="posdef-fac-score" style="color:${f.color}">${s}</div><div class="posdef-fac-max">/20</div></div>`;
+        row.style.cssText = 'display: grid; grid-template-columns: 30px 1fr 32px; align-items: center; gap: 6px; margin-bottom: 8px;';
+        row.innerHTML = `<div style="font-size: var(--ms-fs-xs); text-align: center; color: var(--ms-text-dim);">${f.icon}</div><div style="display: flex; flex-direction: column; gap: 3px;"><div style="font-size: var(--ms-fs-xs); font-weight: 500; color: var(--ms-text);">${f.label}</div><div style="height: 3px; background: var(--ms-bg-subtle); border-radius: 2px;"><div style="height: 100%; border-radius: 2px; transition: width 0.6s; width: ${s / 20 * 100}%; background: ${f.color};"></div></div><div style="font-size: 8.5px; color: var(--ms-text-dim); letter-spacing: 0.03em;">${f.desc(s)}</div></div><div><div style="font-size: 13px; font-weight: 700; text-align: right; color: ${f.color};">${s}</div><div style="font-size: 8px; color: var(--ms-text-dim); text-align: right; margin-top: 1px;">/20</div></div>`;
         wrap.appendChild(row);
       });
     }
@@ -875,13 +895,19 @@ export class PosDefScorerEngine {
     this._history.forEach((h, i) => {
       const g = getGrade(h.composite);
       const row = document.createElement('div');
-      row.className = `posdef-ph-row${i === 0 ? ' active-pos' : ''}`;
-      row.innerHTML = `<div class="posdef-ph-dot" style="background:${g.color}"></div><div class="posdef-ph-info">${h.pt.latitude.toFixed(4)}N ${h.pt.longitude.toFixed(4)}E</div><div class="posdef-ph-scr" style="color:${g.color}">${h.composite}</div>`;
+      row.style.cssText = `display: flex; align-items: center; gap: 7px; padding: 4px 10px; cursor: pointer; transition: background 0.12s; ${i === 0 ? 'background: var(--ms-bg-subtle);' : ''}`;
+      row.innerHTML = `<div style="width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: ${g.color};"></div><div style="flex: 1; font-size: 9.5px; color: var(--ms-text-dim);">${h.pt.latitude.toFixed(4)}N ${h.pt.longitude.toFixed(4)}E</div><div style="font-size: 11px; font-weight: 700; color: ${g.color};">${h.composite}</div>`;
       row.addEventListener('click', () => {
-        this._scorePanelEl?.querySelectorAll('.posdef-ph-row').forEach((x) => x.classList.remove('active-pos'));
-        row.classList.add('active-pos');
+        this._scorePanelEl?.querySelectorAll('#posdef-ph-rows > div').forEach((x) => x.style.background = '');
+        row.style.background = 'var(--ms-bg-subtle)';
         this._goToPoint(h.pt);
         this._updateScoreUI(h.scores, h.composite);
+      });
+      row.addEventListener('mouseover', () => {
+        if (!row.style.background) row.style.background = 'rgba(255, 255, 255, 0.06)';
+      });
+      row.addEventListener('mouseout', () => {
+        if (row.style.background === 'rgba(255, 255, 255, 0.06)') row.style.background = '';
       });
       rows.appendChild(row);
     });

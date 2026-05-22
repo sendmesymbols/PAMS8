@@ -87,6 +87,7 @@ class DeploymentBuilderEngine {
   private _minimized: boolean = false;
   private _searchText: string = '';
   private _collapsedCategories: Set<string> = new Set();
+  private _widgetHeight: string = '430px';
 
   private constructor() {}
 
@@ -177,6 +178,7 @@ class DeploymentBuilderEngine {
     const minBtn = this._widget.querySelector('.db-btn-min') as HTMLElement | null;
     if (body) body.style.display = this._minimized ? 'none' : 'flex';
     if (minBtn) minBtn.textContent = this._minimized ? '▶' : '▼';
+    this._widget.style.height = this._minimized ? 'auto' : this._widgetHeight;
   }
 
   private _buildWidget(): void {
@@ -187,6 +189,11 @@ class DeploymentBuilderEngine {
       top: 110px;
       left: 60px;
       width: 520px;
+      height: ${this._widgetHeight};
+      min-width: 380px;
+      min-height: 240px;
+      max-width: 90vw;
+      max-height: 90vh;
       background: var(--ms-bg);
       border: 1px solid var(--ms-border);
       border-radius: var(--ms-radius);
@@ -196,7 +203,9 @@ class DeploymentBuilderEngine {
       font-size: var(--ms-fs);
       color: var(--ms-text);
       user-select: none;
-      display: block;
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
     `;
 
     el.innerHTML = `
@@ -252,7 +261,7 @@ class DeploymentBuilderEngine {
         </div>
       </div>
 
-      <div class="db-body" style="display:flex;height:380px;">
+      <div class="db-body" style="display:flex;flex:1;overflow:hidden;min-height:0;">
         <!-- Left column: plan list -->
         <div class="db-left" style="
           width:260px;flex-shrink:0;border-right:1px solid var(--ms-divider);
@@ -342,6 +351,10 @@ class DeploymentBuilderEngine {
           </div>
         </div>
       </div>
+
+      <div data-resize="e"  class="db-resize-handle db-resize-e"></div>
+      <div data-resize="s"  class="db-resize-handle db-resize-s"></div>
+      <div data-resize="se" class="db-resize-handle db-resize-se"></div>
     `;
 
     document.body.appendChild(el);
@@ -367,6 +380,9 @@ class DeploymentBuilderEngine {
 
     // Drag
     this._makeDraggable(el.querySelector('.db-header') as HTMLElement, el);
+
+    // Resize
+    this._makeResizable(el);
 
     // Search
     const searchEl = el.querySelector('.db-search') as HTMLInputElement;
@@ -462,6 +478,35 @@ class DeploymentBuilderEngine {
         background: var(--ms-accent-dim);
       }
       #deploymentBuilderWidget .db-formation option { background: var(--ms-bg); }
+
+      #deploymentBuilderWidget .db-resize-handle {
+        position: absolute;
+        z-index: 20;
+        border-radius: 3px;
+        transition: background 0.15s;
+      }
+      #deploymentBuilderWidget .db-resize-handle:hover,
+      #deploymentBuilderWidget .db-resize-handle:active {
+        background: rgba(100,180,255,0.18);
+      }
+      #deploymentBuilderWidget .db-resize-e {
+        top: 8px; right: -4px; bottom: 8px; width: 8px; cursor: ew-resize;
+      }
+      #deploymentBuilderWidget .db-resize-s {
+        bottom: -4px; left: 8px; right: 8px; height: 8px; cursor: ns-resize;
+      }
+      #deploymentBuilderWidget .db-resize-se {
+        bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: se-resize;
+      }
+      #deploymentBuilderWidget .db-resize-se::after {
+        content: '';
+        position: absolute;
+        bottom: 4px; right: 4px;
+        width: 7px; height: 7px;
+        border-right: 2px solid rgba(100,180,255,0.55);
+        border-bottom: 2px solid rgba(100,180,255,0.55);
+        border-radius: 1px;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -494,6 +539,58 @@ class DeploymentBuilderEngine {
       };
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  private _makeResizable(el: HTMLElement): void {
+    const handles = el.querySelectorAll<HTMLElement>('[data-resize]');
+    handles.forEach((handle) => {
+      const dir = handle.dataset.resize!;
+      handle.addEventListener('mousedown', (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startW = el.offsetWidth;
+        const startH = el.offsetHeight;
+        const rect = el.getBoundingClientRect();
+        const startL = rect.left;
+        const startT = rect.top;
+        const minW = 380;
+        const minH = 240;
+
+        const onMove = (me: MouseEvent) => {
+          const dx = me.clientX - startX;
+          const dy = me.clientY - startY;
+          const maxW = window.innerWidth * 0.9;
+          const maxH = window.innerHeight * 0.9;
+
+          if (dir.includes('e')) {
+            el.style.width = `${Math.max(minW, Math.min(maxW, startW + dx))}px`;
+          }
+          if (dir.includes('s')) {
+            const newH = Math.max(minH, Math.min(maxH, startH + dy));
+            el.style.height = `${newH}px`;
+            this._widgetHeight = el.style.height;
+          }
+          if (dir === 'se') {
+            el.style.width = `${Math.max(minW, Math.min(maxW, startW + dx))}px`;
+            const newH = Math.max(minH, Math.min(maxH, startH + dy));
+            el.style.height = `${newH}px`;
+            this._widgetHeight = el.style.height;
+          }
+        };
+
+        const onUp = () => {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          document.body.style.cursor = '';
+        };
+
+        document.body.style.cursor = handle.style.cursor;
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
     });
   }
 
