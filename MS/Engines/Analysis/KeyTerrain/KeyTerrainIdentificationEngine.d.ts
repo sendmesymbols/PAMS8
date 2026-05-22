@@ -98,6 +98,5 @@ export declare class KeyTerrainIdentificationEngine {
     private _input;
     private _select;
     private _setText;
-    private _injectStyles;
 }
 export default KeyTerrainIdentificationEngine;

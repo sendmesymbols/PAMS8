@@ -90,7 +90,6 @@ export class DeadGroundMapper {
 
   constructor() {
     this._createLayers();
-    this._injectStyles();
   }
 
   initialize(view: MapView | SceneView): void {
@@ -1159,55 +1158,58 @@ export class DeadGroundMapper {
   private _showPanel(): void {
     if (!this._panelEl) {
       this._panelEl = document.createElement('div');
-      this._panelEl.className = 'dead-ground-panel';
+      this._panelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._panelEl.setAttribute('data-engine', 'dead-ground');
+      this._panelEl.style.top = '62px';
+      this._panelEl.style.right = '12px';
       this._panelEl.innerHTML = this._buildPanelHtml();
       document.body.appendChild(this._panelEl);
       this._bindPanelEvents();
       this._makeDraggable();
     }
-    this._panelEl.style.display = 'block';
+    this._panelEl.classList.add('ms-visible');
     this._syncDomeControls();
   }
 
   private _hidePanel(): void {
     if (!this._panelEl) return;
-    this._panelEl.style.display = 'none';
+    this._panelEl.classList.remove('ms-visible');
   }
 
   private _buildPanelHtml(): string {
     return `
-      <div class="dead-ph" id="dead-drag-handle">
-        <div class="dead-ph-title">⊘ Dead Ground Mapper</div>
-        <div class="dead-ph-status place" id="dead-status">Place observer</div>
-        <button class="dead-help-btn" id="dead-help-btn">?</button>
-        <button class="dead-minimize-btn" id="dead-minimize-btn">▼</button>
-        <button class="dead-close-btn" id="dead-close-btn">×</button>
+      <div class="ms-header" id="dead-drag-handle">
+        <div class="ms-header-title">⊘ Dead Ground Mapper</div>
+        <div class="ms-status place" id="dead-status">Place observer</div>
+        <button class="ms-header-btn ms-btn-round" id="dead-help-btn">?</button>
+        <button class="ms-header-btn ms-btn-round" id="dead-minimize-btn">▼</button>
+        <button class="ms-header-btn ms-btn-round" id="dead-close-btn">×</button>
       </div>
-      <div class="dead-help-popover" id="dead-help-popover" hidden>
-        <div class="dead-help-head">
+      <div class="ms-help-popover" id="dead-help-popover" hidden>
+        <div class="ms-help-head">
           <div>
-            <div class="dead-help-kicker">Help Wiki</div>
-            <div class="dead-help-title">Dead Ground Mapper</div>
+            <div class="ms-help-kicker">Help Wiki</div>
+            <div class="ms-help-title">Dead Ground Mapper</div>
           </div>
-          <button class="dead-help-close" id="dead-help-close">×</button>
+          <button class="ms-help-close" id="dead-help-close">×</button>
         </div>
-        <div class="dead-help-body">
+        <div class="ms-help-body">
           <p><strong>Dead ground</strong> is terrain hidden from an observer by intervening relief — areas where the observer cannot see, and where enemy can manoeuvre or assemble unobserved.</p>
-          <div class="dead-help-block"><h4>How it works</h4><p>The engine sweeps radial rays from the observer eye, tracing the terrain skyline along each bearing. For every grid cell, it compares the cell's elevation to the masking horizon angle in that direction. Cells lying below the horizon line-of-sight are <em>masked</em>; the vertical gap between the LOS and the ground is the dead-ground depth.</p></div>
-          <div class="dead-help-block"><h4>Observer position</h4><p>The observer is a single point with an eye height above ground. Where you place this observer fundamentally changes the map — moving the observer onto higher ground exposes reverse slopes and shrinks dead ground; moving into a valley creates large masked areas behind every ridge. Eye height matters too: raising it above 2&nbsp;m can dramatically reduce dead ground at short ranges.</p></div>
-          <div class="dead-help-block"><h4>Workflow</h4><ol><li>Place observer by clicking the map.</li><li>Set eye height, analysis radius, and grid cell size.</li><li>Pick 2D heatmap, 3D mesh, and / or viewshed dome.</li><li>Run analysis and inspect depth contours and stats.</li></ol></div>
-          <div class="dead-help-block"><h4>Display</h4><p>Red→yellow shading indicates increasing dead-ground depth. Optional green shading shows visible terrain, LOS spokes show radial sample directions, and contours mark equal-depth lines. The viewshed dome (3D) wraps the observer in a hemisphere coloured by what each direction can see.</p></div>
+          <div class="ms-help-block"><h4>How it works</h4><p>The engine sweeps radial rays from the observer eye, tracing the terrain skyline along each bearing. For every grid cell, it compares the cell's elevation to the masking horizon angle in that direction. Cells lying below the horizon line-of-sight are <em>masked</em>; the vertical gap between the LOS and the ground is the dead-ground depth.</p></div>
+          <div class="ms-help-block"><h4>Observer position</h4><p>The observer is a single point with an eye height above ground. Where you place this observer fundamentally changes the map — moving the observer onto higher ground exposes reverse slopes and shrinks dead ground; moving into a valley creates large masked areas behind every ridge. Eye height matters too: raising it above 2&nbsp;m can dramatically reduce dead ground at short ranges.</p></div>
+          <div class="ms-help-block"><h4>Workflow</h4><ol><li>Place observer by clicking the map.</li><li>Set eye height, analysis radius, and grid cell size.</li><li>Pick 2D heatmap, 3D mesh, and / or viewshed dome.</li><li>Run analysis and inspect depth contours and stats.</li></ol></div>
+          <div class="ms-help-block"><h4>Display</h4><p>Red→yellow shading indicates increasing dead-ground depth. Optional green shading shows visible terrain, LOS spokes show radial sample directions, and contours mark equal-depth lines. The viewshed dome (3D) wraps the observer in a hemisphere coloured by what each direction can see.</p></div>
         </div>
       </div>
-      <div class="dead-body">
-        <div class="dead-ps">Observer</div>
-        <div class="dead-pg">
-          <div class="dead-pf"><div class="dead-pl">Eye height (m)</div><input id="dead-inp-eye" type="number" value="1.8" min="0.5" max="20" step="0.1" /></div>
-          <div class="dead-pf"><div class="dead-pl">Analysis radius (m)</div><input id="dead-inp-radius" type="number" value="3000" min="200" max="15000" step="100" /></div>
+      <div class="ms-body">
+        <div class="ms-section-title">Observer</div>
+        <div class="ms-grid">
+          <div class="ms-field"><div class="ms-label">Eye height (m)</div><input id="dead-inp-eye" type="number" value="1.8" min="0.5" max="20" step="0.1" /></div>
+          <div class="ms-field"><div class="ms-label">Analysis radius (m)</div><input id="dead-inp-radius" type="number" value="3000" min="200" max="15000" step="100" /></div>
         </div>
-        <div class="dead-ps">Grid resolution</div>
-        <div class="dead-pg">
-          <div class="dead-pf dead-full"><div class="dead-pl">Cell size (m) - finer = slower</div>
+        <div class="ms-section-title">Grid resolution</div>
+        <div class="ms-grid">
+          <div class="ms-field full"><div class="ms-label">Cell size (m) - finer = slower</div>
             <select id="dead-inp-cell">
               <option value="20">20 m - fine (slow)</option>
               <option value="35" selected>35 m - balanced</option>
@@ -1216,9 +1218,9 @@ export class DeadGroundMapper {
             </select>
           </div>
         </div>
-        <div class="dead-ps">Depth colour scale</div>
-        <div class="dead-pg dead-tight">
-          <div class="dead-pf dead-full"><div class="dead-pl">Colour mode</div>
+        <div class="ms-section-title">Depth colour scale</div>
+        <div class="ms-grid ms-tight">
+          <div class="ms-field full"><div class="ms-label">Colour mode</div>
             <select id="dead-inp-color-mode">
               <option value="depth" selected>Depth - shallow to deep</option>
               <option value="binary">Binary - dead / visible</option>
@@ -1227,30 +1229,30 @@ export class DeadGroundMapper {
             </select>
           </div>
         </div>
-        <div class="dead-psr"><div class="dead-psr-l">Max depth (m)</div><input id="dead-inp-maxdepth" type="range" min="5" max="200" step="5" value="50"/><div class="dead-psr-v" id="dead-maxdepth-v">50 m</div></div>
-        <div class="dead-psr"><div class="dead-psr-l">Heatmap opacity</div><input id="dead-inp-opacity" type="range" min="0.2" max="1.0" step="0.05" value="0.75"/><div class="dead-psr-v" id="dead-opacity-v">0.75</div></div>
-        <div class="dead-pdiv"></div>
-        <div class="dead-ps">Display options</div>
-        <div class="dead-opt-grid">
-          <div class="dead-ptr"><label>2D heatmap</label><input id="dead-opt-heatmap" type="checkbox" checked/></div>
-          <div class="dead-ptr"><label>3D terrain mesh</label><input id="dead-opt-mesh" type="checkbox"/></div>
-          <div class="dead-ptr"><label>3D viewshed dome</label><input id="dead-opt-dome" type="checkbox" checked/></div>
-          <div class="dead-ptr"><label>Depth contours</label><input id="dead-opt-contours" type="checkbox" checked/></div>
-          <div class="dead-ptr"><label>Visible ground</label><input id="dead-opt-visible" type="checkbox"/></div>
-          <div class="dead-ptr"><label>LOS spokes</label><input id="dead-opt-spokes" type="checkbox"/></div>
-          <div class="dead-ptr"><label>Snap terrain</label><input id="dead-opt-snap" type="checkbox" checked/></div>
-          <div class="dead-ptr"><label>Masked cells</label><input id="dead-opt-masked" type="checkbox" checked/></div>
-          <div class="dead-ptr"><label>Bottom cap</label><input id="dead-opt-cap" type="checkbox" checked/></div>
-          <div class="dead-ptr"><label>Horizon ring</label><input id="dead-opt-ring" type="checkbox" checked/></div>
-          <div class="dead-ptr"><label>Double sided</label><input id="dead-opt-dblside" type="checkbox" checked/></div>
+        <div class="ms-slider-row"><div class="ms-slider-label">Max depth (m)</div><input id="dead-inp-maxdepth" type="range" min="5" max="200" step="5" value="50"/><div class="ms-slider-value" id="dead-maxdepth-v">50 m</div></div>
+        <div class="ms-slider-row"><div class="ms-slider-label">Heatmap opacity</div><input id="dead-inp-opacity" type="range" min="0.2" max="1.0" step="0.05" value="0.75"/><div class="ms-slider-value" id="dead-opacity-v">0.75</div></div>
+        <div class="ms-divider"></div>
+        <div class="ms-section-title">Display options</div>
+        <div class="ms-opt-grid">
+          <div class="ms-checkbox-row"><label>2D heatmap</label><input id="dead-opt-heatmap" type="checkbox" checked/></div>
+          <div class="ms-checkbox-row"><label>3D terrain mesh</label><input id="dead-opt-mesh" type="checkbox"/></div>
+          <div class="ms-checkbox-row"><label>3D viewshed dome</label><input id="dead-opt-dome" type="checkbox" checked/></div>
+          <div class="ms-checkbox-row"><label>Depth contours</label><input id="dead-opt-contours" type="checkbox" checked/></div>
+          <div class="ms-checkbox-row"><label>Visible ground</label><input id="dead-opt-visible" type="checkbox"/></div>
+          <div class="ms-checkbox-row"><label>LOS spokes</label><input id="dead-opt-spokes" type="checkbox"/></div>
+          <div class="ms-checkbox-row"><label>Snap terrain</label><input id="dead-opt-snap" type="checkbox" checked/></div>
+          <div class="ms-checkbox-row"><label>Masked cells</label><input id="dead-opt-masked" type="checkbox" checked/></div>
+          <div class="ms-checkbox-row"><label>Bottom cap</label><input id="dead-opt-cap" type="checkbox" checked/></div>
+          <div class="ms-checkbox-row"><label>Horizon ring</label><input id="dead-opt-ring" type="checkbox" checked/></div>
+          <div class="ms-checkbox-row"><label>Double sided</label><input id="dead-opt-dblside" type="checkbox" checked/></div>
         </div>
-        <div class="dead-dome-options" id="dead-dome-options">
-          <div class="dead-pg dead-tight">
-            <div class="dead-pf"><div class="dead-pl">Az centre</div><input id="dead-dome-az-center" type="number" value="0" min="0" max="359" step="1" /></div>
-            <div class="dead-pf"><div class="dead-pl">Spread</div><input id="dead-dome-az-spread" type="number" value="360" min="10" max="360" step="5" /></div>
-            <div class="dead-pf"><div class="dead-pl">Min elev</div><input id="dead-dome-el-min" type="number" value="-5" min="-89" max="0" step="1" /></div>
-            <div class="dead-pf"><div class="dead-pl">Max elev</div><input id="dead-dome-el-max" type="number" value="60" min="1" max="89" step="1" /></div>
-            <div class="dead-pf"><div class="dead-pl">Rays</div>
+        <div class="ms-dome-options" id="dead-dome-options">
+          <div class="ms-grid ms-tight">
+            <div class="ms-field"><div class="ms-label">Az centre</div><input id="dead-dome-az-center" type="number" value="0" min="0" max="359" step="1" /></div>
+            <div class="ms-field"><div class="ms-label">Spread</div><input id="dead-dome-az-spread" type="number" value="360" min="10" max="360" step="5" /></div>
+            <div class="ms-field"><div class="ms-label">Min elev</div><input id="dead-dome-el-min" type="number" value="-5" min="-89" max="0" step="1" /></div>
+            <div class="ms-field"><div class="ms-label">Max elev</div><input id="dead-dome-el-max" type="number" value="60" min="1" max="89" step="1" /></div>
+            <div class="ms-field"><div class="ms-label">Rays</div>
               <select id="dead-dome-rays">
                 <option value="36">36</option>
                 <option value="72" selected>72</option>
@@ -1258,7 +1260,7 @@ export class DeadGroundMapper {
                 <option value="180">180</option>
               </select>
             </div>
-            <div class="dead-pf"><div class="dead-pl">Slices</div>
+            <div class="ms-field"><div class="ms-label">Slices</div>
               <select id="dead-dome-slices">
                 <option value="8">8</option>
                 <option value="16" selected>16</option>
@@ -1266,8 +1268,8 @@ export class DeadGroundMapper {
                 <option value="32">32</option>
               </select>
             </div>
-            <div class="dead-pf"><div class="dead-pl">Step (m)</div><input id="dead-dome-step" type="number" value="50" min="10" max="250" step="10" /></div>
-            <div class="dead-pf"><div class="dead-pl">Dome colour</div>
+            <div class="ms-field"><div class="ms-label">Step (m)</div><input id="dead-dome-step" type="number" value="50" min="10" max="250" step="10" /></div>
+            <div class="ms-field"><div class="ms-label">Dome colour</div>
               <select id="dead-dome-color-mode">
                 <option value="elevation" selected>Elevation</option>
                 <option value="binary">Binary</option>
@@ -1277,31 +1279,31 @@ export class DeadGroundMapper {
             </div>
           </div>
         </div>
-        <div class="dead-pdiv"></div>
-        <div id="dead-depthkey">
-          <div class="dead-dk-label">Dead ground depth key</div>
-          <div class="dead-dk-bar"></div>
-          <div class="dead-dk-legend"><span>0 m (shallow)</span><span id="dead-dk-max">50 m (deep)</span></div>
+        <div class="ms-divider"></div>
+        <div id="dead-depthkey" class="ms-depthkey">
+          <div class="ms-legend-title">Dead ground depth key</div>
+          <div class="ms-legend-bar"></div>
+          <div class="ms-legend"><span>0 m (shallow)</span><span id="dead-dk-max">50 m (deep)</span></div>
         </div>
-        <div id="dead-progress-wrap"><div id="dead-progress-track"><div id="dead-progress-fill"></div></div><div id="dead-progress-label">—</div></div>
-        <div id="dead-stats">
-          <div class="dead-st"><div class="dead-st-l">Dead ground</div><div class="dead-st-v" id="dead-st-dead">—</div></div>
-          <div class="dead-st"><div class="dead-st-l">Max depth</div><div class="dead-st-v" id="dead-st-depth">—</div></div>
-          <div class="dead-st"><div class="dead-st-l">Cells</div><div class="dead-st-v" id="dead-st-cells">—</div></div>
-          <div class="dead-st"><div class="dead-st-l">Dome vis</div><div class="dead-st-v" id="dead-st-dome">—</div></div>
+        <div id="dead-progress-wrap" class="ms-progress-wrap"><div id="dead-progress-track" class="ms-progress-track"><div id="dead-progress-fill" class="ms-progress-fill"></div></div><div id="dead-progress-label" class="ms-progress-label">—</div></div>
+        <div id="dead-stats" class="ms-info-grid">
+          <div class="ms-info-item"><div class="ms-info-label">Dead ground</div><div class="ms-info-value" id="dead-st-dead">—</div></div>
+          <div class="ms-info-item"><div class="ms-info-label">Max depth</div><div class="ms-info-value" id="dead-st-depth">—</div></div>
+          <div class="ms-info-item"><div class="ms-info-label">Cells</div><div class="ms-info-value" id="dead-st-cells">—</div></div>
+          <div class="ms-info-item"><div class="ms-info-label">Dome vis</div><div class="ms-info-value" id="dead-st-dome">—</div></div>
         </div>
-        <div id="dead-coords">Observer: click map to place</div>
-        <div class="dead-pb-row">
-          <button class="dead-pb" id="dead-btn-clear">Clear</button>
-          <button class="dead-pb dead-primary" id="dead-btn-run" disabled>Run analysis</button>
+        <div id="dead-coords" class="ms-coords">Observer: click map to place</div>
+        <div class="ms-btn-row">
+          <button class="ms-btn" id="dead-btn-clear">Clear</button>
+          <button class="ms-btn ms-btn-primary" id="dead-btn-run" disabled>Run analysis</button>
         </div>
-        <div id="dead-legend">
-          <div class="dead-leg-row"><div class="dead-leg-swatch" style="background:linear-gradient(to right,#3a1a1a,#DC3C30,#EF9F27,#F5F040)"></div><div class="dead-leg-lbl">Dead ground - shallow → deep</div></div>
-          <div class="dead-leg-row"><div class="dead-leg-swatch" style="background:linear-gradient(to right,#1a52dc,#1D9E75,#EF9F27,#DC3C30)"></div><div class="dead-leg-lbl">Viewshed dome - elevation</div></div>
-          <div class="dead-leg-row"><div class="dead-leg-swatch" style="background:rgba(29,158,117,0.35);border:1px solid #1D9E75"></div><div class="dead-leg-lbl">Visible ground (if enabled)</div></div>
-          <div class="dead-leg-row"><div class="dead-leg-swatch" style="background:#378ADD"></div><div class="dead-leg-lbl">Observer position</div></div>
+        <div id="dead-legend" class="ms-legend-wrap">
+          <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:linear-gradient(to right,#3a1a1a,#DC3C30,#EF9F27,#F5F040)"></div><div class="ms-legend-label">Dead ground - shallow → deep</div></div>
+          <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:linear-gradient(to right,#1a52dc,#1D9E75,#EF9F27,#DC3C30)"></div><div class="ms-legend-label">Viewshed dome - elevation</div></div>
+          <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:rgba(29,158,117,0.35);border:1px solid #1D9E75"></div><div class="ms-legend-label">Visible ground (if enabled)</div></div>
+          <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:#378ADD"></div><div class="ms-legend-label">Observer position</div></div>
         </div>
-        <div id="dead-hint">Click anywhere on the map to place the observer</div>
+        <div id="dead-hint" class="ms-hint">Click anywhere on the map to place the observer</div>
       </div>
     `;
   }
@@ -1319,11 +1321,11 @@ export class DeadGroundMapper {
       if (help) help.hidden = true;
     });
     p.querySelector('#dead-minimize-btn')?.addEventListener('click', () => {
-      const body = p.querySelector<HTMLElement>('.dead-body');
+      const body = p.querySelector<HTMLElement>('.ms-body');
       const btn = this._el('dead-minimize-btn');
       if (!body || !btn) return;
-      const minimized = body.style.display === 'none';
-      body.style.display = minimized ? '' : 'none';
+      const minimized = body.classList.contains('ms-minimized');
+      body.classList.toggle('ms-minimized', !minimized);
       btn.textContent = minimized ? '▼' : '▶';
     });
     p.querySelector('#dead-close-btn')?.addEventListener('click', () => this._hidePanel());
@@ -1350,7 +1352,7 @@ export class DeadGroundMapper {
       domeToggle.title = available ? '' : 'Viewshed dome requires SceneView';
     }
     if (wrap) {
-      wrap.classList.toggle('dead-disabled', !enabled);
+      wrap.classList.toggle('ms-disabled', !enabled);
       wrap.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input,select').forEach((el) => {
         el.disabled = !enabled;
       });
@@ -1393,7 +1395,7 @@ export class DeadGroundMapper {
     else EngineLogger.nextStep(ENGINE_NAME, text);
     if (!el) return;
     el.textContent = text;
-    el.className = `dead-ph-status ${state}`;
+    el.className = `ms-status ${state}`;
   }
 
   private _setProgress(frac: number, label: string): void {
@@ -1428,58 +1430,6 @@ export class DeadGroundMapper {
     return this._panelEl?.querySelector(`#${id}`) ?? null;
   }
 
-  private _injectStyles(): void {
-    if (document.getElementById('dead-ground-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'dead-ground-engine-styles';
-    style.textContent = `
-      .dead-ground-panel{position:fixed;top:60px;left:1210px;width:380px;max-width:calc(100vw - 24px);z-index:1100;background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:var(--ms-radius);color:var(--ms-text);font-family:var(--ms-font);font-size:var(--ms-fs);max-height:calc(100vh - 80px);overflow-y:auto;overflow-x:hidden;display:none;user-select:none;box-shadow:0 8px 24px rgba(0,0,0,0.38);box-sizing:border-box}
-      .dead-ground-panel *{box-sizing:border-box}
-      .dead-ph{display:flex;align-items:center;gap:6px;padding:9px 10px 8px;border-bottom:1px solid var(--ms-divider);background:var(--ms-bg-header);position:sticky;top:0;z-index:2;cursor:grab}
-      .dead-ph:active{cursor:grabbing}
-      .dead-ph-title{font-size:var(--ms-fs);letter-spacing:.13em;text-transform:uppercase;color:#DC3C30;font-weight:700;flex:1}
-      .dead-ph-status{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-label);transition:color .2s}
-      .dead-ph-status.sampling{color:#EF9F27}.dead-ph-status.building{color:#378ADD}.dead-ph-status.done{color:#1D9E75}.dead-ph-status.place{color:#DC3C30}
-      .dead-help-btn,.dead-minimize-btn,.dead-close-btn{background:none;border:1px solid transparent;color:var(--ms-text-dim);font-size:var(--ms-fs);cursor:pointer;padding:0 2px;line-height:1}
-      .dead-help-btn{width:17px;height:17px;border-color:var(--ms-border);border-radius:50%;color:#1D9E75;font-weight:700}
-      .dead-help-btn:hover,.dead-minimize-btn:hover,.dead-close-btn:hover{color:var(--ms-text)}
-      .dead-help-popover{position:absolute;top:39px;left:8px;right:8px;z-index:1120;max-height:min(520px,calc(100vh - 132px));overflow-y:auto;background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:var(--ms-radius);box-shadow:0 8px 24px rgba(0,0,0,0.38)}
-      .dead-help-popover[hidden]{display:none}
-      .dead-help-head{display:flex;justify-content:space-between;gap:10px;padding:10px 11px 8px;border-bottom:1px solid var(--ms-divider);background:var(--ms-bg-header)}
-      .dead-help-kicker{font-size:var(--ms-fs-xs);color:var(--ms-text-dim);letter-spacing:.09em;text-transform:uppercase}
-      .dead-help-title{margin-top:2px;font-size:var(--ms-fs-sm);color:#1D9E75;font-weight:700}
-      .dead-help-close{width:20px;height:20px;border:1px solid var(--ms-border);border-radius:3px;background:var(--ms-bg-input);color:var(--ms-text-dim);cursor:pointer}
-      .dead-help-body{padding:10px 11px 12px;font-size:var(--ms-fs);line-height:1.5;color:var(--ms-text);user-select:text}
-      .dead-help-body p{margin:0 0 9px}.dead-help-block{margin-top:10px}.dead-help-block h4{margin:0 0 5px;font-size:var(--ms-fs-xs);letter-spacing:.08em;text-transform:uppercase;color:#DC3C30}.dead-help-block ol{margin:0;padding-left:17px}.dead-help-block li{margin:3px 0}
-      .dead-body{padding-bottom:6px;overflow-x:hidden}
-      .dead-ps{font-size:var(--ms-fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--ms-text-label);padding:9px 12px 5px}
-      .dead-pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}
-      .dead-pg.dead-tight{gap:6px 8px;padding-bottom:7px}
-      .dead-pf{display:flex;flex-direction:column;gap:3px}.dead-full{grid-column:1/-1}
-      .dead-pl{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-dim)}
-      .dead-ground-panel input,.dead-ground-panel select{background:var(--ms-bg-input);border:1px solid var(--ms-border);border-radius:3px;color:var(--ms-text);font-family:var(--ms-font);font-size:var(--ms-fs);padding:5px 7px;width:100%;outline:none;transition:border-color .15s}
-      .dead-ground-panel input:focus,.dead-ground-panel select:focus{border-color:rgba(220,60,48,0.55)} .dead-ground-panel select option{background:var(--ms-bg)}
-      .dead-psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}.dead-psr-l{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-dim);flex:1.6}.dead-psr input[type=range]{flex:2;accent-color:#DC3C30;cursor:pointer}.dead-psr-v{font-size:var(--ms-fs);color:#DC3C30;min-width:40px;text-align:right}
-      .dead-pdiv{height:1px;background:var(--ms-divider);margin:4px 0}
-      .dead-ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}.dead-ptr label{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-dim);cursor:pointer}.dead-ptr input[type=checkbox]{accent-color:#DC3C30;width:13px;height:13px;cursor:pointer}
-      .dead-opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 4px;padding:0 8px 6px}
-      .dead-opt-grid .dead-ptr{padding:4px 4px}
-      .dead-opt-grid .dead-ptr label{font-size:var(--ms-fs-xs);letter-spacing:.055em;line-height:1.2}
-      .dead-dome-options{border-top:1px solid var(--ms-divider);padding-top:7px;transition:opacity .15s}
-      .dead-dome-options.dead-disabled{opacity:.35}
-      .dead-ground-panel input:disabled,.dead-ground-panel select:disabled{opacity:.55;cursor:not-allowed}
-      #dead-depthkey{margin:0 12px 9px}.dead-dk-label{font-size:var(--ms-fs-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--ms-text-label);margin-bottom:5px}.dead-dk-bar{height:10px;border-radius:2px;background:linear-gradient(to right,#3a1a1a,#8B1A1A,#DC3C30,#EF9F27,#F5F040);border:1px solid var(--ms-divider)}.dead-dk-legend{display:flex;justify-content:space-between;margin-top:3px;font-size:var(--ms-fs-xs);color:var(--ms-text-label)}
-      #dead-progress-wrap{padding:0 12px 9px}#dead-progress-track{height:7px;background:rgba(46,168,255,0.18);border:1px solid rgba(46,168,255,0.55);border-radius:3px;overflow:hidden}#dead-progress-fill{height:100%;background:#2EA8FF;border-radius:2px;width:0%;transition:width .12s;box-shadow:0 0 8px rgba(46,168,255,0.55)}#dead-progress-label{font-size:var(--ms-fs-xs);color:#5fbfff;letter-spacing:.05em;margin-top:4px}
-      #dead-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px 8px;margin:0 12px 8px;background:rgba(220,60,48,0.06);border:1px solid rgba(220,60,48,0.15);border-radius:3px;padding:7px 9px;font-size:var(--ms-fs)}
-      .dead-st{display:flex;flex-direction:column;gap:1px}.dead-st-l{font-size:var(--ms-fs-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--ms-text-label)}.dead-st-v{color:#DC3C30}
-      #dead-coords{font-size:var(--ms-fs-xs);color:#DC3C30;padding:2px 12px 7px;letter-spacing:.05em;opacity:.75}
-      .dead-pb-row{display:flex;gap:6px;padding:9px 12px}.dead-pb{flex:1;padding:7px;font-family:var(--ms-font);font-size:var(--ms-fs);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:3px;border:1px solid rgba(220,60,48,0.38);background:transparent;color:#DC3C30;transition:all .14s}.dead-pb:hover:not(:disabled){background:rgba(220,60,48,0.10)}.dead-primary{background:rgba(220,60,48,0.16);border-color:#DC3C30}.dead-primary:hover:not(:disabled){background:rgba(220,60,48,0.28)}.dead-pb:disabled{opacity:.3;cursor:not-allowed}
-      #dead-legend{margin:0 12px 8px;background:var(--ms-bg);border:1px solid var(--ms-divider);border-radius:var(--ms-radius);padding:9px 13px;display:flex;flex-direction:column;gap:5px}
-      .dead-leg-row{display:flex;align-items:center;gap:8px}.dead-leg-swatch{width:28px;height:10px;border-radius:2px;flex-shrink:0}.dead-leg-lbl{font-size:var(--ms-fs-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--ms-text-dim)}
-      #dead-hint{margin:0 12px 10px;background:var(--ms-bg);border:1px solid rgba(220,60,48,0.45);color:#DC3C30;font-family:var(--ms-font);font-size:var(--ms-fs);letter-spacing:.08em;padding:8px 10px;border-radius:3px;pointer-events:none;text-transform:uppercase;transition:opacity .25s;text-align:center}
-    `;
-    document.head.appendChild(style);
-  }
 }
 
 export default DeadGroundMapper;

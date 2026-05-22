@@ -206,7 +206,7 @@ class DeploymentBuilderEngine {
         border-bottom:1px solid var(--ms-divider);
         border-radius:var(--ms-radius) var(--ms-radius) 0 0;cursor:grab;
       ">
-        <span style="font-weight:700;color:var(--ms-accent);font-size:var(--ms-fs-sm)">MAP Deployment Manager</span>
+        <span style="font-weight:700;color:var(--ms-accent);font-size:var(--ms-fs-sm)">Deployment Manager</span>
         <div style="display:flex;gap:6px">
           <button class="db-btn-help" style="
             background:none;border:1px solid var(--ms-border);border-radius:4px;

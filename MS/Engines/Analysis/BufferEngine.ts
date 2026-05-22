@@ -147,7 +147,6 @@ export class BufferEngine {
 
   constructor() {
     this._createLayers();
-    this._injectStyles();
   }
 
   initialize(view: MapView | SceneView): void {
@@ -718,11 +717,15 @@ export class BufferEngine {
     if (!this._panelEl) {
       this._panelEl = document.createElement('div');
       this._panelEl.id = 'buffer-engine-panel';
-      this._panelEl.className = 'buffer-panel';
+      this._panelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._panelEl.setAttribute('data-engine', 'buffer');
+      this._panelEl.style.top = '62px';
+      this._panelEl.style.left = '306px';
+      this._panelEl.style.width = '360px';
       document.body.appendChild(this._panelEl);
     }
     this._panelEl.innerHTML = this._buildPanelHTML();
-    this._panelEl.style.display = 'block';
+    this._panelEl.classList.add('ms-visible');
     this._bindPanelEvents();
     this._makeDraggable();
     this._syncStats(this._currentRings());
@@ -731,7 +734,7 @@ export class BufferEngine {
   }
 
   private _hidePanel(): void {
-    if (this._panelEl) this._panelEl.style.display = 'none';
+    if (this._panelEl) this._panelEl.classList.remove('ms-visible');
   }
 
   private _buildPanelHTML(): string {
@@ -740,27 +743,27 @@ export class BufferEngine {
       .join('');
 
     return `
-      <div class="buffer-header" id="buffer-drag-handle">
-        <span class="buffer-header-icon">◍</span>
-        <span class="buffer-header-title">Buffer & Threat Rings</span>
-        <span class="buffer-status-dot" id="buffer-status-dot"></span>
-        <span class="buffer-status-lbl" id="buffer-status-lbl">Awaiting source</span>
-        <button class="buffer-help-btn" id="buffer-help-btn" title="How buffer analysis works">?</button>
-        <button class="buffer-minimize-btn" id="buffer-minimize-btn" title="Minimize">▼</button>
-        <button class="buffer-close-btn" id="buffer-close-btn" title="Close (keeps graphics)">✕</button>
+      <div class="ms-header" id="buffer-drag-handle">
+        <span class="ms-header-icon">◍</span>
+        <span class="ms-header-title">Buffer & Threat Rings</span>
+        <span class="ms-status-dot" id="buffer-status-dot"></span>
+        <span class="ms-status-lbl" id="buffer-status-lbl">Awaiting source</span>
+        <button class="ms-header-btn ms-btn-round" id="buffer-help-btn" title="How buffer analysis works">?</button>
+        <button class="ms-header-btn ms-btn-round" id="buffer-minimize-btn" title="Minimize">▼</button>
+        <button class="ms-header-btn ms-btn-round" id="buffer-close-btn" title="Close (keeps graphics)">✕</button>
       </div>
 
-      <div class="buffer-help-popover" id="buffer-help-popover" hidden>
-        <div class="buffer-help-head">
+      <div class="ms-help-popover" id="buffer-help-popover" hidden>
+        <div class="ms-help-head">
           <div>
-            <div class="buffer-help-kicker">Field Guide</div>
-            <div class="buffer-help-title">Buffer / Threat Rings</div>
+            <div class="ms-help-kicker">Field Guide</div>
+            <div class="ms-help-title">Buffer / Threat Rings</div>
           </div>
-          <button class="buffer-help-close" id="buffer-help-close" title="Close">✕</button>
+          <button class="ms-help-close" id="buffer-help-close" title="Close">✕</button>
         </div>
-        <div class="buffer-help-body">
+        <div class="ms-help-body">
           <p>Builds geodesic distance rings, merged threat envelopes, or a simple movement corridor from selected source points. It is best for fast range visualization rather than physics-heavy analysis.</p>
-          <div class="buffer-help-block">
+          <div class="ms-help-block">
             <h4>How It Works</h4>
             <ol>
               <li>Pick one source for a classic ring set, or add several for a shared footprint.</li>
@@ -769,11 +772,11 @@ export class BufferEngine {
               <li>Turn on labels, donut bands, extrusion, or contested overlap depending on the map product you need.</li>
             </ol>
           </div>
-          <div class="buffer-help-block">
+          <div class="ms-help-block">
             <h4>Phenomenon</h4>
             <p>Each ring is a geodesic buffer measured outward from a source point. Union mode merges matching radii from multiple sources, while corridor mode buffers a connecting route line to show movement space and standoff around that line.</p>
           </div>
-          <div class="buffer-help-block">
+          <div class="ms-help-block">
             <h4>Parameters</h4>
             <dl>
               <dt>Mode</dt><dd>"Single" draws one set of rings, "Union" merges same-distance rings from multiple sources, and "Corridor" buffers the line through the selected points.</dd>
@@ -789,56 +792,56 @@ export class BufferEngine {
         </div>
       </div>
 
-      <div class="buffer-body">
-        <div class="buffer-sec">Mode</div>
-        <div class="buffer-field-full">
-          <select id="buffer-mode" class="buffer-select">
+      <div class="ms-body">
+        <div class="ms-section-title">Mode</div>
+        <div class="ms-field">
+          <select id="buffer-mode" class="ms-select">
             <option value="single"${this._mode === 'single' ? ' selected' : ''}>Single source</option>
             <option value="union"${this._mode === 'union' ? ' selected' : ''}>Multi-source union</option>
             <option value="corridor"${this._mode === 'corridor' ? ' selected' : ''}>Corridor</option>
           </select>
         </div>
 
-        <div class="buffer-sec">Preset</div>
-        <div class="buffer-field-full">
-          <select id="buffer-preset" class="buffer-select">${presetOptions}</select>
+        <div class="ms-section-title">Preset</div>
+        <div class="ms-field">
+          <select id="buffer-preset" class="ms-select">${presetOptions}</select>
         </div>
 
         <div id="buffer-corridor-wrap" style="display:${this._mode === 'corridor' ? 'block' : 'none'}">
-          <div class="buffer-sec">Corridor</div>
-          <div class="buffer-grid">
-            <div class="buffer-field">
-              <div class="buffer-label">Width (m)</div>
-              <input id="buffer-corridor-width" class="buffer-input" type="number" value="250" min="10" step="10" />
+          <div class="ms-section-title">Corridor</div>
+          <div class="ms-grid">
+            <div class="ms-field">
+              <div class="ms-label">Width (m)</div>
+              <input id="buffer-corridor-width" class="ms-input" type="number" value="250" min="10" step="10" />
             </div>
-            <div class="buffer-field">
-              <div class="buffer-label">Standoff (m)</div>
-              <input id="buffer-corridor-standoff" class="buffer-input" type="number" value="500" min="0" step="10" />
+            <div class="ms-field">
+              <div class="ms-label">Standoff (m)</div>
+              <input id="buffer-corridor-standoff" class="ms-input" type="number" value="500" min="0" step="10" />
             </div>
           </div>
         </div>
 
-        <div class="buffer-divider"></div>
-        <div class="buffer-sec">Display</div>
-        <div class="buffer-toggle-row">
-          <label class="buffer-label">Donut rings</label>
-          <input id="buffer-opt-donut" type="checkbox" class="buffer-check" checked />
+        <div class="ms-divider"></div>
+        <div class="ms-section-title">Display</div>
+        <div class="ms-toggle-row">
+          <label class="ms-label">Donut rings</label>
+          <input id="buffer-opt-donut" type="checkbox" checked />
         </div>
-        <div class="buffer-toggle-row">
-          <label class="buffer-label">Show labels</label>
-          <input id="buffer-opt-labels" type="checkbox" class="buffer-check" checked />
+        <div class="ms-toggle-row">
+          <label class="ms-label">Show labels</label>
+          <input id="buffer-opt-labels" type="checkbox" checked />
         </div>
-        <div class="buffer-toggle-row">
-          <label class="buffer-label">Extrude rings (3D)</label>
-          <input id="buffer-opt-extrude" type="checkbox" class="buffer-check" />
+        <div class="ms-toggle-row">
+          <label class="ms-label">Extrude rings (3D)</label>
+          <input id="buffer-opt-extrude" type="checkbox" />
         </div>
-        <div class="buffer-toggle-row">
-          <label class="buffer-label">Show contested zone</label>
-          <input id="buffer-opt-contested" type="checkbox" class="buffer-check" />
+        <div class="ms-toggle-row">
+          <label class="ms-label">Show contested zone</label>
+          <input id="buffer-opt-contested" type="checkbox" />
         </div>
 
-        <div class="buffer-divider"></div>
-        <div class="buffer-sec">Legend</div>
+        <div class="ms-divider"></div>
+        <div class="ms-section-title">Legend</div>
         <div class="buffer-legend">
           <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#DC3C30"></span><span class="buffer-legend-label">Lethal</span></div>
           <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#EF9F27"></span><span class="buffer-legend-label">Warning</span></div>
@@ -847,7 +850,7 @@ export class BufferEngine {
           <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#B428DC"></span><span class="buffer-legend-label">Contested zone</span></div>
         </div>
 
-        <div class="buffer-divider"></div>
+        <div class="ms-divider"></div>
         <div class="buffer-stats">
           <div class="buffer-stat"><div class="buffer-stat-lbl">Sources</div><div class="buffer-stat-val" id="buffer-st-sources">0</div></div>
           <div class="buffer-stat"><div class="buffer-stat-lbl">Rings</div><div class="buffer-stat-val" id="buffer-st-rings">0</div></div>
@@ -855,14 +858,14 @@ export class BufferEngine {
           <div class="buffer-stat"><div class="buffer-stat-lbl">Mode</div><div class="buffer-stat-val" id="buffer-st-mode">Single</div></div>
         </div>
 
-        <div class="buffer-btn-row">
-          <button class="buffer-btn" id="buffer-pick-btn">Pick Source</button>
-          <button class="buffer-btn" id="buffer-add-btn">Add Source</button>
+        <div class="ms-btn-row">
+          <button class="ms-btn" id="buffer-pick-btn">Pick Source</button>
+          <button class="ms-btn" id="buffer-add-btn">Add Source</button>
         </div>
-        <div class="buffer-btn-row">
-          <button class="buffer-btn" id="buffer-undo-btn">Undo Last</button>
-          <button class="buffer-btn buffer-btn-danger" id="buffer-clear-btn">Clear</button>
-          <button class="buffer-btn buffer-btn-primary" id="buffer-commit-btn" disabled>Commit ↗</button>
+        <div class="ms-btn-row">
+          <button class="ms-btn" id="buffer-undo-btn">Undo Last</button>
+          <button class="ms-btn ms-btn-danger" id="buffer-clear-btn">Clear</button>
+          <button class="ms-btn ms-btn-primary" id="buffer-commit-btn" disabled>Commit ↗</button>
         </div>
       </div>
     `;
@@ -883,7 +886,7 @@ export class BufferEngine {
     });
 
     p.querySelector('#buffer-minimize-btn')?.addEventListener('click', () => {
-      const body = p.querySelector<HTMLElement>('.buffer-body');
+      const body = p.querySelector<HTMLElement>('.ms-body');
       const btn  = p.querySelector<HTMLElement>('#buffer-minimize-btn');
       if (!body || !btn) return;
       const minimized = body.style.display === 'none';
@@ -1022,284 +1025,6 @@ export class BufferEngine {
           ? 'Union'
           : 'Corridor';
     }
-  }
-
-  private _injectStyles(): void {
-    if (document.getElementById('buffer-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'buffer-engine-styles';
-    style.textContent = `
-      .buffer-panel {
-        --ms-bg: #141820;
-        --ms-bg-header: rgba(26, 32, 48, 0.97);
-        --ms-bg-input: rgba(0, 0, 0, 0.28);
-        --ms-border: rgba(90, 140, 220, 0.25);
-        --ms-divider: rgba(80, 100, 150, 0.18);
-        --ms-text: #dce8f5;
-        --ms-text-dim: rgba(155, 180, 215, 0.72);
-        --ms-text-label: rgba(120, 150, 185, 0.75);
-        --ms-accent: #EF9F27;
-        --ms-success: #1D9E75;
-        --ms-danger: #DC3C30;
-        --ms-info: #378ADD;
-        --ms-radius: 9px;
-        --ms-shadow: 0 8px 36px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-        --ms-font: 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
-        --ms-fs: 11.5px;
-        --ms-fs-sm: 12.5px;
-        --ms-fs-xs: 10px;
-        position: fixed;
-        top: 62px;
-        left: 306px;
-        width: 360px;
-        max-height: calc(100vh - 84px);
-        background: var(--ms-bg);
-        border: 1px solid var(--ms-border);
-        border-radius: var(--ms-radius);
-        color: var(--ms-text);
-        font-family: var(--ms-font);
-        font-size: var(--ms-fs);
-        z-index: 1100;
-        user-select: none;
-        box-shadow: var(--ms-shadow);
-        display: none;
-        overflow: hidden;
-        animation: bufferIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      @keyframes bufferIn {
-        from { opacity: 0; transform: scale(0.96) translateY(-8px); }
-        to { opacity: 1; transform: scale(1) translateY(0); }
-      }
-      .buffer-header {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        padding: 9px 10px 8px;
-        border-bottom: 1px solid var(--ms-divider);
-        background: var(--ms-bg-header);
-        cursor: grab;
-      }
-      .buffer-header:active { cursor: grabbing; }
-      .buffer-header-icon {
-        font-size: 9px;
-        letter-spacing: 0.08em;
-        color: var(--ms-accent);
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        padding: 2px 3px;
-      }
-      .buffer-header-title {
-        font-size: var(--ms-fs-sm);
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--ms-accent);
-        font-weight: 700;
-        flex: 1;
-      }
-      .buffer-status-dot {
-        width: 7px; height: 7px; border-radius: 50%; background: #555; flex-shrink: 0;
-      }
-      .buffer-status-lbl {
-        font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase;
-        color: var(--ms-text-dim); min-width: 58px;
-      }
-      .buffer-help-btn, .buffer-minimize-btn, .buffer-close-btn {
-        background: none;
-        border: 1px solid transparent;
-        color: var(--ms-text-dim);
-        font-size: 12px;
-        cursor: pointer;
-        padding: 0 2px;
-        line-height: 1;
-        flex: 0 0 auto;
-      }
-      .buffer-help-btn {
-        width: 17px;
-        height: 17px;
-        border-color: var(--ms-border);
-        border-radius: 50%;
-        color: var(--ms-success);
-        font-weight: 700;
-      }
-      .buffer-help-btn:hover, .buffer-minimize-btn:hover, .buffer-close-btn:hover { color: var(--ms-text); }
-      .buffer-help-popover {
-        position: absolute;
-        top: 39px;
-        left: 8px;
-        right: 8px;
-        z-index: 1120;
-        max-height: min(420px, calc(100vh - 132px));
-        overflow-y: auto;
-        background: var(--ms-bg);
-        border: 1px solid var(--ms-border);
-        border-radius: 4px;
-        box-shadow: var(--ms-shadow);
-        color: var(--ms-text);
-      }
-      .buffer-help-popover[hidden] { display: none; }
-      .buffer-help-head {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 10px 11px 8px;
-        border-bottom: 1px solid var(--ms-divider);
-        background: var(--ms-bg-header);
-      }
-      .buffer-help-kicker {
-        font-size: var(--ms-fs-xs);
-        color: var(--ms-text-label);
-        letter-spacing: 0.09em;
-        text-transform: uppercase;
-      }
-      .buffer-help-title {
-        margin-top: 2px;
-        font-size: 13px;
-        color: var(--ms-accent);
-        font-weight: 700;
-      }
-      .buffer-help-close {
-        width: 20px;
-        height: 20px;
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        background: var(--ms-bg-input);
-        color: var(--ms-text-dim);
-        cursor: pointer;
-      }
-      .buffer-help-close:hover { color: var(--ms-text); }
-      .buffer-help-body {
-        padding: 10px 11px 12px;
-        font-size: var(--ms-fs-xs);
-        line-height: 1.45;
-        color: var(--ms-text-dim);
-        user-select: text;
-      }
-      .buffer-help-body p { margin: 0 0 9px; }
-      .buffer-help-block { margin-top: 10px; }
-      .buffer-help-block h4 {
-        margin: 0 0 5px;
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ms-text);
-      }
-      .buffer-help-block ol, .buffer-help-block ul { margin: 0; padding-left: 17px; }
-      .buffer-help-block li { margin: 3px 0; }
-      .buffer-help-block dl {
-        display: grid;
-        grid-template-columns: 72px minmax(0, 1fr);
-        gap: 5px 8px;
-        margin: 0;
-      }
-      .buffer-help-block dt { color: var(--ms-accent); font-weight: 700; }
-      .buffer-help-block dd { margin: 0; }
-      .buffer-body {
-        max-height: calc(100vh - 122px);
-        overflow-y: auto;
-        padding: 0 0 8px;
-      }
-      .buffer-sec {
-        font-size: var(--ms-fs-xs); letter-spacing: 0.1em; text-transform: uppercase;
-        color: var(--ms-text-label); padding: 9px 12px 5px;
-      }
-      .buffer-field-full { padding: 0 10px 8px; }
-      .buffer-grid {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 7px 8px; padding: 0 10px 8px;
-      }
-      .buffer-field { display: flex; flex-direction: column; gap: 3px; }
-      .buffer-label {
-        font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim);
-      }
-      .buffer-input, .buffer-select {
-        background: var(--ms-bg-input);
-        border: 1px solid var(--ms-border);
-        border-radius: 3px; color: var(--ms-text);
-        font-family: inherit; font-size: var(--ms-fs); padding: 5px 7px; width: 100%;
-        box-sizing: border-box;
-        outline: none;
-      }
-      .buffer-input:focus, .buffer-select:focus { border-color: var(--ms-accent); }
-      .buffer-select option { background: var(--ms-bg); }
-      .buffer-toggle-row {
-        display: flex; align-items: center; justify-content: space-between; padding: 4px 12px;
-      }
-      .buffer-check { accent-color: var(--ms-accent); width: 13px; height: 13px; cursor: pointer; }
-      .buffer-divider {
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
-        margin: 4px 0;
-      }
-      .buffer-stats {
-        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 8px 10px 6px;
-      }
-      .buffer-legend {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 4px 8px;
-        padding: 2px 10px 8px;
-      }
-      .buffer-legend-row {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        min-width: 0;
-      }
-      .buffer-legend-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        flex-shrink: 0;
-      }
-      .buffer-legend-label {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.07em;
-        text-transform: uppercase;
-        color: var(--ms-text-dim);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .buffer-stat {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        min-width: 0;
-        background: var(--ms-bg-input);
-        border: 1px solid var(--ms-divider);
-        border-radius: 3px;
-        padding: 5px 6px;
-      }
-      .buffer-stat-lbl {
-        font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ms-text-dim);
-      }
-      .buffer-stat-val {
-        font-size: var(--ms-fs-sm); color: var(--ms-text); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      }
-      .buffer-btn-row {
-        display: flex; gap: 6px; padding: 6px 10px 2px;
-      }
-      .buffer-btn {
-        flex: 1; padding: 6px 4px; font-family: inherit; font-size: var(--ms-fs-xs);
-        letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer;
-        border-radius: 3px; border: 1px solid var(--ms-border);
-        background: var(--ms-bg-input); color: var(--ms-text-dim);
-        transition: all 0.14s;
-      }
-      .buffer-btn:hover:not(:disabled) { background: var(--ms-bg-header); color: var(--ms-text); }
-      .buffer-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-      .buffer-btn-primary {
-        border-color: var(--ms-accent); color: var(--ms-accent); background: var(--ms-bg-input);
-      }
-      .buffer-btn-danger {
-        border-color: var(--ms-danger); color: var(--ms-danger); background: var(--ms-bg-input);
-      }
-      @media (max-width: 560px) {
-        .buffer-panel { left: 12px; top: 72px; width: calc(100vw - 24px); }
-        .buffer-grid, .buffer-legend { grid-template-columns: 1fr; }
-        .buffer-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      }
-    `;
-    document.head.appendChild(style);
   }
 }
 

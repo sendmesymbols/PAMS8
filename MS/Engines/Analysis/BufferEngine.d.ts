@@ -104,6 +104,5 @@ export declare class BufferEngine {
     private _setStatus;
     private _syncCommit;
     private _syncStats;
-    private _injectStyles;
 }
 export default BufferEngine;

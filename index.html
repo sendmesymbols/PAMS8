@@ -92,107 +92,91 @@
         left: 50px;
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
-        background: var(--bg-surface);
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-md), var(--shadow-inset);
-        backdrop-filter: blur(8px);
+        gap: 10px;
+        padding: 9px 12px;
+        background: rgba(20, 24, 32, 0.92);
+        border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius);
+        box-shadow: var(--ms-shadow);
+        backdrop-filter: blur(12px);
         z-index: 100;
+        font-family: var(--ms-font);
+        color: var(--ms-text);
+      }
+
+      .infobar-section {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .infobar-section:not(:last-child) {
+        border-right: 1px solid var(--ms-divider);
+        padding-right: 10px;
       }
 
       #infoDiv .autocomplete-container {
-        flex: 0 0 auto;
-        min-width: 180px;
+        position: relative;
+        display: inline-block;
+        min-width: 165px;
       }
 
-      #infoDiv input[type="text"],
-      #infoDiv select {
-        background: var(--bg-subtle);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        color: var(--neutral-200);
-        font-size: var(--text-sm);
-        font-family: var(--font-sans);
+      #infoDiv .ms-input {
+        width: 140px;
+        padding: 6px 8px;
+        font-size: var(--ms-fs-xs);
+      }
+
+      #infoDiv .ms-select {
+        width: 50px;
+        padding: 5px 7px;
+        font-size: var(--ms-fs-xs);
+      }
+
+      #infoDiv .ms-btn {
         padding: 6px 10px;
-        transition: all 0.15s ease;
+        font-size: var(--ms-fs-xs);
       }
 
-      #infoDiv input[type="text"]:focus,
-      #infoDiv select:focus {
-        outline: none;
-        border-color: var(--accent-primary);
-        background: rgba(255, 255, 255, 0.1);
-        box-shadow: 0 0 0 2px rgba(100, 180, 255, 0.15);
-      }
-
-      #infoDiv input[type="text"]::placeholder {
-        color: var(--neutral-500);
-      }
-
-      #infoDiv select {
-        cursor: pointer;
-        padding: 5px 8px;
-        min-width: 50px;
-      }
-
-      #infoDiv select option {
-        background: var(--bg-deep);
-        color: var(--neutral-300);
-      }
-
-      #infoDiv button,
-      #infoDiv input[type="button"] {
-        background: rgba(100, 160, 230, 0.15);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        color: var(--neutral-300);
-        font-size: var(--text-sm);
+      .infobar-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 7px 11px !important;
+        font-size: var(--ms-fs-xs) !important;
         font-weight: 500;
-        padding: 6px 12px;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        white-space: nowrap;
       }
 
-      #infoDiv button:hover,
-      #infoDiv input[type="button"]:hover {
-        background: rgba(100, 160, 230, 0.28);
-        border-color: var(--accent-primary);
-        color: var(--neutral-100);
-      }
-
-      #infoDiv button:active,
-      #infoDiv input[type="button"]:active {
-        transform: scale(0.97);
-        background: rgba(100, 160, 230, 0.4);
-      }
-
-      #measureToggleBtn {
-        background: rgba(100, 160, 230, 0.1) !important;
-        border-color: var(--border-subtle) !important;
-        padding: 6px 8px !important;
-        min-width: 38px !important;
-        font-size: 16px !important;
-      }
-
-      #measureToggleBtn.ms-btn-active {
-        background: rgba(76, 175, 80, 0.25) !important;
-        border-color: var(--accent-success) !important;
-        box-shadow: 0 0 8px rgba(76, 175, 80, 0.3), inset 0 0 0 1px rgba(76, 175, 80, 0.4) !important;
+      .infobar-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3em;
+        line-height: 1;
+        letter-spacing: -0.05em;
+        opacity: 0.95;
+        font-weight: normal;
       }
 
       #symbolSearch {
-        min-width: 170px !important;
+        font-family: var(--ms-font);
       }
 
       #sidcText {
-        font-family: var(--font-mono);
-        font-size: var(--text-sm) !important;
+        font-family: var(--ms-font-mono) !important;
         letter-spacing: 0.5px;
-        min-width: 200px !important;
-        color: var(--accent-primary) !important;
+        width: 200px !important;
+        color: var(--ms-accent) !important;
+      }
+
+      #measureToggleBtn {
+        min-width: 36px;
+        font-size: 13px;
+      }
+
+      #measureToggleBtn.ms-btn-active {
+        border-color: var(--ms-success) !important;
+        color: var(--ms-success) !important;
       }
 
       #fabricCanvas {
@@ -255,12 +239,12 @@
         position: absolute;
         bottom: 20px;
         right: 20px;
-        background: rgba(22, 27, 38, 0.96);
-        border: 1px solid rgba(90, 130, 200, 0.3);
-        padding: 16px 20px;
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.2) inset;
-        max-width: 320px;
+        background: rgba(20, 24, 32, 0.97);
+        border: 1px solid rgba(239, 159, 39, 0.28);
+        padding: 14px 18px;
+        border-radius: 9px;
+        box-shadow: 0 8px 36px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+        max-width: 300px;
         z-index: 1000;
         display: none;
         animation: symbol-toast-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -297,173 +281,74 @@
       }
 
       .symbol-details h3 {
-        margin: 0 0 12px 0;
-        color: #8ec4ff;
-        font-size: 13px;
+        margin: 0 0 10px 0;
+        color: #ef9f27;
+        font-size: 12px;
         font-weight: 700;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
         padding-bottom: 8px;
-        border-bottom: 1px solid rgba(90, 130, 200, 0.2);
+        border-bottom: 1px solid rgba(239, 159, 39, 0.2);
       }
 
       .symbol-details p {
-        margin: 6px 0;
-        font-size: 11.5px;
-        color: #9ab8d8;
+        margin: 5px 0;
+        font-size: 11px;
+        color: rgba(155, 180, 215, 0.8);
         line-height: 1.5;
       }
 
       .symbol-details .key {
-        font-weight: 600;
-        color: #64b4ff;
-        font-size: 10.5px;
+        font-weight: 700;
+        color: #ef9f27;
+        font-size: 10px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.08em;
       }
 
       /* ═══════════════════════════════════════════════════════════════════════
-         MEASUREMENT PANEL
+         MEASUREMENT PANEL (using Widgets.css + custom positioning)
          ═══════════════════════════════════════════════════════════════════════ */
       #measurePanel {
-        display: none;
         position: absolute;
         bottom: 25px;
         right: 12px;
-        width: 205px;
-        background: rgba(22, 27, 38, 0.96);
-        color: #dce8f5;
-        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
-        font-size: 11px;
-        border: 1px solid rgba(90, 130, 200, 0.3);
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.2) inset;
-        backdrop-filter: blur(10px);
+        width: 220px;
+        display: none;
         z-index: 900;
-        overflow: hidden;
-        user-select: none;
+        animation: msIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      #measurePanel.ms-panel {
+        max-height: calc(100vh - 84px);
       }
 
       #measurePanel.ms-active {
-        display: block;
-        animation: ms-panel-in 0.18s ease;
-      }
-
-      @keyframes ms-panel-in {
-        from {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      #measurePanel header {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 12px 6px;
-        border-bottom: 1px solid rgba(100, 160, 230, 0.25);
-        background: rgba(100, 160, 230, 0.08);
+        flex-direction: column;
       }
 
-      #measurePanel header span {
-        color: #64b4ff;
-        font-weight: bold;
-        letter-spacing: 0.4px;
-      }
-
-      /* Status dot */
-      #measurePanel header .ms-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
+      /* Status dot active state */
+      #measurePanel .ms-status-dot {
         background: #555;
-        transition: background 0.3s;
-      }
-      #measurePanel.ms-on header .ms-dot {
-        background: #4caf50;
-        box-shadow: 0 0 6px #4caf5088;
+        transition: background var(--ms-transition), box-shadow var(--ms-transition);
       }
 
-      /* Unit switcher */
-      #measurePanel .ms-units {
-        display: flex;
-        gap: 4px;
-        padding: 6px 12px;
-        border-bottom: 1px solid rgba(100, 160, 230, 0.15);
+      #measurePanel.ms-on .ms-status-dot {
+        background: var(--ms-success);
+        box-shadow: 0 0 8px var(--ms-success);
       }
-      #measurePanel .ms-units button {
-        flex: 1;
-        padding: 3px 0;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(100, 160, 230, 0.25);
-        border-radius: 4px;
-        color: #90b8d8;
-        font-family: inherit;
-        font-size: 11px;
-        cursor: pointer;
-        transition:
-          background 0.15s,
-          color 0.15s;
-      }
-      #measurePanel .ms-units button.ms-active-unit {
+
+      /* Unit switcher button overrides */
+      #measurePanel .ms-btn.ms-active-unit {
         background: rgba(100, 160, 230, 0.25);
-        color: #e8f4ff;
-        border-color: rgba(100, 160, 230, 0.6);
-      }
-      #measurePanel .ms-units button:hover {
-        background: rgba(100, 160, 230, 0.15);
+        color: var(--ms-text);
+        border-color: var(--ms-accent);
+        font-weight: 600;
       }
 
-      /* Data rows */
-      #measurePanel table {
-        width: 100%;
-        border-spacing: 0;
-        padding: 6px 12px 4px;
-      }
-      #measurePanel td {
-        padding: 2px 0;
-        line-height: 1.6;
-      }
-      #measurePanel td:first-child {
-        color: #7eb4e8;
-        padding-right: 8px;
-        white-space: nowrap;
-      }
-      #measurePanel td:last-child {
-        color: #e8f4ff;
-        font-weight: bold;
-      }
-
-      /* Idle hint */
-      #measurePanel .ms-idle {
-        padding: 8px 12px 10px;
-        color: #445;
-        font-style: italic;
-        font-size: 11px;
-      }
-
-      /* Copy button */
-      #measurePanel footer {
-        display: flex;
-        justify-content: flex-end;
-        padding: 4px 8px 8px;
-      }
-      #measurePanel footer button {
-        background: none;
-        border: 1px solid rgba(100, 160, 230, 0.3);
-        border-radius: 4px;
-        color: #7eb4e8;
-        font-size: 11px;
-        padding: 3px 8px;
-        cursor: pointer;
-        transition: background 0.15s;
-      }
-      #measurePanel footer button:hover {
-        background: rgba(100, 160, 230, 0.15);
-        color: #e8f4ff;
+      #measurePanel .ms-btn.ms-active-unit:hover {
+        background: rgba(100, 160, 230, 0.3);
       }
 
       /* Measurement toggle button active state */
@@ -549,600 +434,177 @@
       }
 
       /* ═══════════════════════════════════════════════════════════════════════
-         SETTINGS CONTROL PANEL
+         SETTINGS CONTROL PANEL — positioned overlay, inherits ms-panel styling
          ═══════════════════════════════════════════════════════════════════════ */
       #settingsPanel {
         position: absolute;
         top: 60px;
         right: 30px;
         width: 268px;
-        background: var(--bg-surface);
-        color: var(--neutral-200);
-        font-family: var(--font-sans);
-        font-size: var(--text-sm);
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-lg), var(--shadow-inset);
+        display: block;
         z-index: 1050;
         overflow: hidden;
         transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: none;
+        max-height: none;
       }
-
-      #settingsPanel.collapsed {
-        height: 42px;
+      #settingsPanel.collapsed { height: 42px; }
+      #settingsPanel.expanded { height: auto; max-height: 68vh; overflow-y: auto; }
+      #settingsPanel .ms-header .toggle-icon {
+        font-size: 9px; color: var(--ms-text-dim);
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0.7;
       }
-
-      #settingsPanel.expanded {
-        height: auto;
-        max-height: 68vh;
-        overflow-y: auto;
-      }
-
-      #settingsPanel::-webkit-scrollbar {
-        width: 6px;
-      }
-
-      #settingsPanel::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      #settingsPanel::-webkit-scrollbar-thumb {
-        background: var(--border-strong);
-        border-radius: 3px;
-      }
-
-      #settingsPanel::-webkit-scrollbar-thumb:hover {
-        background: var(--accent-primary);
-      }
-
-      #settingsPanel header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 14px 10px 16px;
-        background: linear-gradient(135deg, rgba(100, 180, 255, 0.08) 0%, rgba(80, 140, 200, 0.05) 100%);
-        border-bottom: 1px solid var(--border-subtle);
-        cursor: pointer;
-        user-select: none;
-        transition: background 0.15s ease;
-      }
-
-      #settingsPanel header:hover {
-        background: linear-gradient(135deg, rgba(100, 180, 255, 0.12) 0%, rgba(80, 140, 200, 0.08) 100%);
-      }
-
-      #settingsPanel header span {
-        font-weight: 600;
-        color: var(--accent-secondary);
-        font-size: var(--text-base);
-        letter-spacing: 0.3px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      #settingsPanel header span::before {
-        content: '';
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        background: linear-gradient(135deg, var(--accent-primary), #4080e0);
-        border-radius: 2px;
-      }
-
-      #settingsPanel header .toggle-icon {
-        font-size: 9px;
-        color: var(--neutral-500);
-        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        opacity: 0.7;
-      }
-
-      #settingsPanel.collapsed .toggle-icon {
-        transform: rotate(-90deg);
-      }
-
-      #settingsPanel .settings-content {
-        padding: 10px 12px 12px;
-      }
-
+      #settingsPanel.collapsed .ms-header .toggle-icon { transform: rotate(-90deg); }
+      #settingsPanel .ms-body { max-height: none; overflow: visible; padding: 8px 12px 12px; }
       #settingsPanel .settings-section {
-        margin-bottom: 14px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid var(--border-subtle);
-        position: relative;
+        margin-bottom: 14px; padding-bottom: 12px;
+        border-bottom: 1px solid var(--ms-divider); position: relative;
       }
-
-      #settingsPanel .settings-section::after {
-        content: '';
-        position: absolute;
-        bottom: -1px;
-        left: 20%;
-        right: 20%;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--border-default), transparent);
-      }
-
-      #settingsPanel .settings-section:last-child {
-        border-bottom: none;
-        margin-bottom: 0;
-        padding-bottom: 4px;
-      }
-
-      #settingsPanel .settings-section:last-child::after {
-        display: none;
-      }
-
-      #settingsPanel .section-title {
-        font-size: var(--text-xs);
-        font-weight: 700;
-        color: var(--accent-primary);
-        text-transform: uppercase;
-        letter-spacing: 1.2px;
-        margin-bottom: 10px;
-        padding-left: 2px;
-        opacity: 0.85;
-      }
-
+      #settingsPanel .settings-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 4px; }
       #settingsPanel .setting-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 7px;
-        min-height: 26px;
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 9px; min-height: 28px;
       }
-
-      #settingsPanel .setting-row:last-child {
-        margin-bottom: 0;
-      }
-
-      #settingsPanel .setting-row label {
-        flex: 1;
-        color: var(--neutral-400);
-        font-size: 10.5px;
-        font-weight: 450;
-      }
-
+      #settingsPanel .setting-row:last-child { margin-bottom: 0; }
+      #settingsPanel .setting-row label { flex: 1; color: #9fd8ff; font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em; }
       #settingsPanel .setting-row input[type='number'],
       #settingsPanel .setting-row input[type='text'],
       #settingsPanel .setting-row select {
-        width: 68px;
-        padding: 4px 8px;
-        background: rgba(0, 0, 0, 0.25);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-sm);
-        color: var(--neutral-200);
-        font-size: 10.5px;
-        font-family: inherit;
-        transition: all 0.15s ease;
+        width: 70px; padding: 4px 8px;
+        background: var(--ms-bg-input); border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius-sm); color: var(--ms-text);
+        font-size: var(--ms-fs-xs); font-family: var(--ms-font-mono);
+        transition: var(--ms-transition);
       }
-
       #settingsPanel .setting-row input[type='number']:focus,
       #settingsPanel .setting-row input[type='text']:focus,
       #settingsPanel .setting-row select:focus {
-        outline: none;
-        border-color: var(--accent-primary);
-        background: rgba(0, 0, 0, 0.35);
-        box-shadow: 0 0 0 2px rgba(100, 180, 255, 0.12);
+        outline: none; border-color: var(--ms-accent);
+        background: var(--ms-bg-input); box-shadow: 0 0 0 2px rgba(239, 159, 39, 0.15);
       }
-
-      #settingsPanel .setting-row select {
-        cursor: pointer;
-        padding: 3px 6px;
-      }
-
-      #settingsPanel .setting-row select option {
-        background: var(--bg-deep);
-        color: var(--neutral-300);
-      }
-
+      #settingsPanel .setting-row select { cursor: pointer; padding: 3px 6px; }
+      #settingsPanel .setting-row select option { background: var(--ms-bg); color: var(--ms-text); }
       #settingsPanel .setting-row input[type='checkbox'] {
-        width: 15px;
-        height: 15px;
-        accent-color: var(--accent-success);
-        cursor: pointer;
-        opacity: 0.85;
+        width: 15px; height: 15px; accent-color: var(--ms-accent); cursor: pointer; opacity: 0.85;
       }
-
       #settingsPanel .setting-row input[type='color'] {
-        width: 44px;
-        height: 22px;
-        padding: 1px 2px;
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-sm);
-        cursor: pointer;
-        background: transparent;
+        width: 44px; height: 22px; padding: 1px 2px; border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius-sm); cursor: pointer; background: transparent;
       }
-
-      #settingsPanel .setting-row input[type='color']::-webkit-color-swatch-wrapper {
-        padding: 1px;
-      }
-
-      #settingsPanel .setting-row input[type='color']::-webkit-color-swatch {
-        border: none;
-        border-radius: 2px;
-      }
-
+      #settingsPanel .setting-row input[type='color']::-webkit-color-swatch-wrapper { padding: 1px; }
+      #settingsPanel .setting-row input[type='color']::-webkit-color-swatch { border: none; border-radius: 2px; }
       #settingsPanel .setting-row input[type='range'] {
-        width: 65px;
-        height: 4px;
-        accent-color: var(--accent-primary);
-        cursor: pointer;
-        background: transparent;
+        width: 65px; height: 4px; accent-color: var(--ms-accent); cursor: pointer; background: transparent;
       }
-
       #settingsPanel .value-display {
-        font-size: var(--text-xs);
-        color: var(--neutral-500);
-        min-width: 28px;
-        text-align: right;
-        font-weight: 500;
-        margin-left: 6px;
+        font-size: var(--ms-fs-xs); color: var(--ms-accent); min-width: 32px; text-align: right;
+        font-weight: 600; margin-left: 6px; font-family: var(--ms-font-mono);
       }
-
       /* ═══════════════════════════════════════════════════════════════════════
          FEATURE COLLAPSIBLE PANELS
          ═══════════════════════════════════════════════════════════════════════ */
       #settingsPanel .feature-panel {
-        margin-bottom: 10px;
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-        background: rgba(0, 0, 0, 0.15);
+        margin-bottom: 10px; border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius-sm); overflow: hidden; background: var(--ms-bg-subtle);
       }
-
-      #settingsPanel .feature-panel:last-child {
-        margin-bottom: 0;
-      }
-
+      #settingsPanel .feature-panel:last-child { margin-bottom: 0; }
       #settingsPanel .feature-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 10px;
-        background: linear-gradient(135deg, rgba(100, 180, 255, 0.08) 0%, rgba(80, 140, 200, 0.05) 100%);
-        border-bottom: 1px solid var(--border-subtle);
-        cursor: pointer;
-        user-select: none;
-        transition: background 0.15s ease;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 8px 10px; background: var(--ms-bg-input);
+        border-bottom: 1px solid var(--ms-divider); cursor: pointer;
+        user-select: none; transition: background 0.15s ease;
       }
-
-      #settingsPanel .feature-header:hover {
-        background: linear-gradient(135deg, rgba(100, 180, 255, 0.12) 0%, rgba(80, 140, 200, 0.08) 100%);
-      }
-
-      #settingsPanel .feature-header-left {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
+      #settingsPanel .feature-header:hover { background: rgba(239, 159, 39, 0.07); }
+      #settingsPanel .feature-header-left { display: flex; align-items: center; gap: 8px; pointer-events: auto; }
       #settingsPanel .feature-header-left input[type="checkbox"] {
-        width: 14px;
-        height: 14px;
-        accent-color: var(--accent-success);
-        cursor: pointer;
+        width: 14px; height: 14px; accent-color: var(--ms-accent); cursor: pointer;
       }
-
       #settingsPanel .feature-header-left label {
-        color: var(--neutral-300);
-        font-size: 11.5px;
-        font-weight: 600;
-        cursor: pointer;
+        color: #9fd8ff; font-size: 11.5px; font-weight: 600;
+        letter-spacing: 0.04em; cursor: pointer;
       }
-
       #settingsPanel .feature-header .toggle-icon {
-        font-size: 8px;
-        color: var(--neutral-500);
-        transition: transform 0.2s ease;
-        opacity: 0.7;
+        font-size: 8px; color: var(--ms-text-dim); transition: transform 0.2s ease; opacity: 0.7;
       }
-
-      #settingsPanel .feature-panel.collapsed .feature-header .toggle-icon {
-        transform: rotate(-90deg);
-      }
-
+      #settingsPanel .feature-panel.collapsed .feature-header .toggle-icon { transform: rotate(-90deg); }
       #settingsPanel .feature-body {
-        padding: 8px 10px 6px;
-        max-height: 400px;
-        overflow-y: auto;
+        padding: 8px 10px 6px; max-height: 400px; overflow-y: auto;
         transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
       }
-
       #settingsPanel .feature-panel.collapsed .feature-body {
-        max-height: 0;
-        padding: 0 10px;
-        overflow-y: hidden;
-        opacity: 0.5;
+        max-height: 0; padding: 0 10px; overflow-y: hidden; opacity: 0.5;
       }
-
-      #settingsPanel .feature-body::-webkit-scrollbar {
-        width: 4px;
-      }
-
-      #settingsPanel .feature-body::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      #settingsPanel .feature-body::-webkit-scrollbar-thumb {
-        background: var(--border-default);
-        border-radius: 2px;
-      }
-
-      /* Disabled state for entire feature panel - but allow checkbox to still work */
-      #settingsPanel .feature-panel.disabled {
-        opacity: 0.5;
-      }
-
-      #settingsPanel .feature-panel.disabled .feature-body {
-        opacity: 0.4;
-        pointer-events: none;
-      }
-
-      /* Header should always be clickable */
-      #settingsPanel .feature-panel .feature-header {
-        pointer-events: auto;
-      }
-
-      /* Checkbox wrapper to ensure it's always clickable */
-      #settingsPanel .feature-panel .feature-header-left {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        pointer-events: auto;
-      }
-
-      /* Disabled input styling within feature panels */
+      #settingsPanel .feature-body::-webkit-scrollbar { width: 4px; }
+      #settingsPanel .feature-body::-webkit-scrollbar-track { background: transparent; }
+      #settingsPanel .feature-body::-webkit-scrollbar-thumb { background: var(--ms-border); border-radius: 2px; }
+      #settingsPanel .feature-panel.disabled { opacity: 0.5; }
+      #settingsPanel .feature-panel.disabled .feature-body { opacity: 0.4; pointer-events: none; }
+      #settingsPanel .feature-panel .feature-header { pointer-events: auto; }
       #settingsPanel .feature-body input:disabled,
-      #settingsPanel .feature-body select:disabled {
-        opacity: 0.35;
-        cursor: not-allowed;
-      }
-
+      #settingsPanel .feature-body select:disabled { opacity: 0.35; cursor: not-allowed; }
       #settingsPanel .feature-body input[type='checkbox']:disabled,
       #settingsPanel .feature-body input[type='range']:disabled,
-      #settingsPanel .feature-body input[type='color']:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
-        pointer-events: none;
-      }
-
-      #settingsPanel .setting-row:has(input:disabled, select:disabled) label {
-        opacity: 0.4;
-      }
-
-      /* Sub-feature indicator */
+      #settingsPanel .feature-body input[type='color']:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+      #settingsPanel .setting-row:has(input:disabled, select:disabled) label { opacity: 0.4; }
       #settingsPanel .sub-feature-label {
-        font-size: 9px;
-        color: var(--neutral-500);
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        margin: 8px 0 4px;
-        padding-left: 2px;
+        font-size: var(--ms-fs-xs); color: rgba(239, 159, 39, 0.65); text-transform: uppercase;
+        letter-spacing: 0.09em; margin: 10px 0 6px; padding: 0 0 4px 2px;
+        border-bottom: 1px solid rgba(239, 159, 39, 0.12);
       }
-
-      #settingsPanel .sub-feature-label:first-child {
-        margin-top: 0;
-      }
+      #settingsPanel .sub-feature-label:first-child { margin-top: 2px; }
+      #settingsPanel::-webkit-scrollbar { width: 6px; }
+      #settingsPanel::-webkit-scrollbar-track { background: transparent; }
+      #settingsPanel::-webkit-scrollbar-thumb { background: var(--ms-border); border-radius: 3px; }
+      #settingsPanel::-webkit-scrollbar-thumb:hover { background: var(--ms-accent); }
 
       /* ═══════════════════════════════════════════════════════════════════════
-         API TEST PANEL
+         API TEST PANEL — positioned overlay, inherits ms-panel styling
          ═══════════════════════════════════════════════════════════════════════ */
       #apiPanel {
         position: absolute;
         top: 60px;
         right: 310px;
         width: 300px;
-        background: var(--bg-surface);
-        color: var(--neutral-200);
-        font-family: var(--font-sans);
-        font-size: var(--text-sm);
-        border: 1px solid var(--border-default);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-lg), var(--shadow-inset);
+        display: block;
         z-index: 1060;
         overflow: hidden;
         transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: none;
+        max-height: none;
       }
-
-      #apiPanel.collapsed {
-        height: 42px;
+      #apiPanel.collapsed { height: 42px; }
+      #apiPanel.expanded { height: auto; max-height: 68vh; overflow-y: auto; }
+      #apiPanel .ms-header .toggle-icon {
+        font-size: 9px; color: var(--ms-text-dim);
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0.7;
       }
-
-      #apiPanel.expanded {
-        height: auto;
-        max-height: 68vh;
-        overflow-y: auto;
+      #apiPanel.collapsed .ms-header .toggle-icon { transform: rotate(-90deg); }
+      #apiPanel .ms-body { max-height: none; overflow: visible; padding: 0; }
+      #apiPanel .api-section { padding: 8px 12px 10px; border-bottom: 1px solid var(--ms-divider); }
+      #apiPanel .api-section:last-child { border-bottom: none; }
+      #apiPanel .ms-btn-row { flex-wrap: wrap; padding: 4px 0 0; gap: 4px; }
+      #apiPanel .ms-btn { flex: none; padding: 4px 8px; font-size: var(--ms-fs-xs); }
+      #apiPanel .ms-status { margin: 6px 0 0; }
+      #apiPanel .setting-row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding: 2px 0; }
+      #apiPanel .setting-row label { color: #9fd8ff; font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em; }
+      #apiPanel .setting-row input[type='number'],
+      #apiPanel .setting-row input[type='text'],
+      #apiPanel .setting-row select {
+        width: 80px; padding: 3px 7px;
+        background: var(--ms-bg-input); border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius-sm); color: var(--ms-text);
+        font-size: var(--ms-fs-xs); font-family: var(--ms-font-mono);
       }
-
-      #apiPanel::-webkit-scrollbar {
-        width: 5px;
+      #apiPanel .setting-row input[type='checkbox'] {
+        width: 14px; height: 14px; accent-color: var(--ms-accent); cursor: pointer;
       }
-
-      #apiPanel::-webkit-scrollbar-track {
-        background: transparent;
+      #apiPanel .setting-row input[type='range'] {
+        width: 60px; accent-color: var(--ms-accent); background: transparent;
       }
-
-      #apiPanel::-webkit-scrollbar-thumb {
-        background: var(--border-default);
-        border-radius: 3px;
-      }
-
-      #apiPanel::-webkit-scrollbar-thumb:hover {
-        background: var(--accent-tertiary);
-      }
-
-      #apiPanel header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 14px 10px 16px;
-        background: linear-gradient(135deg, rgba(176, 112, 224, 0.08) 0%, rgba(140, 80, 190, 0.05) 100%);
-        border-bottom: 1px solid var(--border-subtle);
-        cursor: pointer;
-        user-select: none;
-        transition: background 0.15s ease;
-      }
-
-      #apiPanel header:hover {
-        background: linear-gradient(135deg, rgba(176, 112, 224, 0.12) 0%, rgba(140, 80, 190, 0.08) 100%);
-      }
-
-      #apiPanel header span {
-        font-weight: 600;
-        color: var(--accent-secondary);
-        font-size: var(--text-base);
-        letter-spacing: 0.3px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      #apiPanel header span::before {
-        content: '';
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        background: linear-gradient(135deg, var(--accent-tertiary), #8040b0);
-        border-radius: 2px;
-      }
-
-      #apiPanel header .toggle-icon {
-        font-size: 9px;
-        color: var(--neutral-500);
-        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        opacity: 0.7;
-      }
-
-      #apiPanel.collapsed header .toggle-icon {
-        transform: rotate(-90deg);
-      }
-
-      #apiPanel .api-content {
-        padding: 10px 12px 12px;
-      }
-
-      #apiPanel .api-section {
-        margin-bottom: 14px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid var(--border-subtle);
-        position: relative;
-      }
-
-      #apiPanel .api-section::after {
-        content: '';
-        position: absolute;
-        bottom: -1px;
-        left: 15%;
-        right: 15%;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--border-subtle), transparent);
-      }
-
-      #apiPanel .api-section:last-child {
-        border-bottom: none;
-        margin-bottom: 0;
-        padding-bottom: 4px;
-      }
-
-      #apiPanel .api-section:last-child::after {
-        display: none;
-      }
-
-      #apiPanel .section-title {
-        font-size: var(--text-xs);
-        font-weight: 700;
-        color: var(--accent-tertiary);
-        text-transform: uppercase;
-        letter-spacing: 1.2px;
-        margin-bottom: 9px;
-        padding-left: 2px;
-        opacity: 0.9;
-      }
-
-      #apiPanel .api-btn-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        margin-bottom: 6px;
-      }
-
-      #apiPanel .api-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 5px 9px;
-        margin: 0;
-        background: rgba(80, 110, 160, 0.15);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-sm);
-        color: var(--neutral-300);
-        font-size: 10px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.12s ease;
-        white-space: nowrap;
-      }
-
-      #apiPanel .api-btn:hover {
-        background: rgba(80, 110, 160, 0.28);
-        border-color: var(--border-default);
-        color: var(--neutral-100);
-        transform: translateY(-1px);
-      }
-
-      #apiPanel .api-btn:active {
-        transform: translateY(0);
-        background: rgba(80, 110, 160, 0.4);
-      }
-
-      #apiPanel .api-btn.danger {
-        border-color: rgba(220, 80, 80, 0.3);
-        background: rgba(220, 80, 80, 0.1);
-        color: #f0a0a0;
-      }
-
-      #apiPanel .api-btn.danger:hover {
-        background: rgba(220, 80, 80, 0.25);
-        border-color: rgba(240, 100, 100, 0.5);
-        color: #fff0f0;
-      }
-
-      #apiPanel .api-btn.success {
-        border-color: rgba(80, 180, 100, 0.35);
-        background: rgba(80, 180, 100, 0.12);
-        color: #90e0b0;
-      }
-
-      #apiPanel .api-btn.success:hover {
-        background: rgba(80, 180, 100, 0.25);
-        border-color: rgba(100, 200, 120, 0.5);
-        color: #b0ffe0;
-      }
-
-      #apiPanel .setting-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-top: 8px;
-        padding: 4px 0;
-      }
-
-      #apiPanel .setting-row label {
-        color: #8ab0d0;
-        font-size: 10px;
-        font-weight: 450;
-      }
-
-      #apiPanel .status-text {
-        font-size: var(--text-xs);
-        color: var(--neutral-500);
-        margin-top: 6px;
-        font-style: normal;
-        padding: 4px 8px;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: var(--radius-sm);
-        border-left: 2px solid var(--border-default);
-      }
+      #apiPanel::-webkit-scrollbar { width: 5px; }
+      #apiPanel::-webkit-scrollbar-track { background: transparent; }
+      #apiPanel::-webkit-scrollbar-thumb { background: var(--ms-border); border-radius: 2px; }
+      #apiPanel::-webkit-scrollbar-thumb:hover { background: var(--ms-accent); }
 
       /* ═══════════════════════════════════════════════════════════════════════
          ENGINE LOG PANEL
@@ -1311,7 +773,7 @@
         position: absolute;
         top: 60px;
         left: 50px;
-        width: 310px;
+        width: 248px;
         background: var(--bg-surface);
         color: var(--neutral-200);
         font-family: var(--font-sans);
@@ -1338,163 +800,149 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        padding: 10px 14px 10px 16px;
-        background: linear-gradient(135deg, rgba(80, 200, 110, 0.08) 0%, rgba(50, 140, 70, 0.05) 100%);
+        padding: 9px 12px 9px 14px;
+        background: linear-gradient(135deg, rgba(80, 200, 110, 0.07) 0%, rgba(50, 140, 70, 0.04) 100%);
         border-bottom: 1px solid var(--border-subtle);
         user-select: none;
         cursor: grab;
       }
 
-      #analysisHubPanel header:active {
-        cursor: grabbing;
-      }
+      #analysisHubPanel header:active { cursor: grabbing; }
 
       #analysisHubPanel header > span {
         font-weight: 600;
         color: #80d8a0;
         font-size: var(--text-base);
         flex: 1;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      #analysisHubPanel header > span::before {
-        content: '';
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        background: linear-gradient(135deg, #50c878, #208040);
-        border-radius: 2px;
+        letter-spacing: 0.2px;
       }
 
       .ah-symbol-badge {
-        font-size: var(--text-xs);
+        font-size: 8.5px;
         padding: 2px 7px;
-        background: rgba(100, 180, 255, 0.08);
+        background: rgba(100, 180, 255, 0.06);
         border: 1px solid var(--border-subtle);
         border-radius: 10px;
         color: var(--neutral-500);
-        white-space: nowrap;
-        max-width: 120px;
+        font-family: var(--font-mono);
+        max-width: 90px;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
         transition: all 0.2s ease;
       }
 
       .ah-symbol-badge.has-symbol {
         color: #50d878;
-        border-color: rgba(80, 200, 100, 0.45);
-        background: rgba(80, 200, 100, 0.1);
+        border-color: rgba(80, 200, 100, 0.35);
+        background: rgba(80, 200, 100, 0.08);
       }
 
       .ah-close-btn {
         background: none;
         border: none;
-        color: var(--neutral-500);
+        color: var(--neutral-600);
         cursor: pointer;
-        padding: 3px 5px;
+        padding: 2px 5px;
         border-radius: 3px;
         font-size: 11px;
         line-height: 1;
-        transition: color 0.12s, background 0.12s;
         flex-shrink: 0;
+        transition: color 0.12s, background 0.12s;
       }
 
       .ah-close-btn:hover {
-        color: var(--neutral-200);
-        background: rgba(255, 255, 255, 0.08);
+        color: var(--neutral-300);
+        background: rgba(255, 255, 255, 0.06);
       }
 
       .ah-content {
-        padding: 8px;
-        max-height: min(65vh, 480px);
+        max-height: min(65vh, 440px);
         overflow-y: auto;
       }
 
-      .ah-content::-webkit-scrollbar { width: 4px; }
+      .ah-content::-webkit-scrollbar { width: 3px; }
       .ah-content::-webkit-scrollbar-track { background: transparent; }
       .ah-content::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
-      .ah-content::-webkit-scrollbar-thumb:hover { background: #50c878; }
+      .ah-content::-webkit-scrollbar-thumb:hover { background: rgba(80, 200, 100, 0.5); }
 
-      .ah-group { margin-bottom: 10px; }
-      .ah-group:last-child { margin-bottom: 2px; }
+      .ah-group + .ah-group { border-top: 1px solid var(--border-subtle); }
 
       .ah-group-title {
-        font-size: 8.5px;
+        font-size: 7.5px;
         font-weight: 700;
-        color: #50c878;
+        color: rgba(80, 200, 120, 0.5);
         text-transform: uppercase;
-        letter-spacing: 1.1px;
-        opacity: 0.85;
-        margin-bottom: 5px;
-        padding-left: 2px;
-      }
-
-      .ah-tools-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 4px;
+        letter-spacing: 1.5px;
+        padding: 7px 13px 3px;
       }
 
       .ah-tool {
         display: flex;
-        flex-direction: column;
         align-items: center;
-        gap: 3px;
-        padding: 9px 6px 7px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
+        gap: 9px;
+        padding: 6px 13px 6px 11px;
+        background: none;
+        border: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.025);
+        border-left: 2px solid transparent;
         cursor: pointer;
-        transition: all 0.14s ease;
-        text-align: center;
-        color: var(--neutral-300);
-        font-family: var(--font-sans);
+        transition: background 0.1s, border-left-color 0.1s;
         width: 100%;
+        text-align: left;
+        font-family: var(--font-sans);
       }
 
       .ah-tool:hover {
-        background: rgba(80, 200, 100, 0.12);
-        border-color: rgba(80, 200, 100, 0.4);
-        color: var(--neutral-100);
-        transform: translateY(-1px);
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        background: rgba(80, 200, 100, 0.07);
+        border-left-color: rgba(80, 200, 100, 0.3);
       }
 
-      .ah-tool:active {
-        transform: translateY(0);
-        background: rgba(80, 200, 100, 0.22);
+      .ah-tool:active { background: rgba(80, 200, 100, 0.14); }
+
+      .ah-tool-ind {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        flex-shrink: 0;
       }
 
-      .ah-tool-icon { font-size: 17px; line-height: 1; margin-bottom: 1px; }
-      .ah-tool-name { font-size: 9.5px; font-weight: 550; line-height: 1.2; }
+      .ah-tool-ind.needs-sym { background: var(--accent-warning); opacity: 0.7; }
+      .ah-tool-ind.solo      { background: var(--accent-success);  opacity: 0.7; }
+
+      .ah-tool-name {
+        flex: 1;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--neutral-400);
+        line-height: 1;
+        letter-spacing: 0.1px;
+        transition: color 0.1s;
+      }
+
+      .ah-tool:hover .ah-tool-name { color: var(--neutral-100); }
 
       .ah-tool-tag {
-        font-size: 8px;
-        padding: 1px 5px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.05);
-        color: var(--neutral-500);
-        border: 1px solid rgba(255, 255, 255, 0.07);
+        font-size: 7.5px;
+        letter-spacing: 0.6px;
         white-space: nowrap;
-        margin-top: 1px;
+        font-family: var(--font-mono);
+        opacity: 0.4;
+        transition: opacity 0.1s;
       }
 
-      .ah-tool-tag.needs-sym {
-        color: var(--accent-warning);
-        border-color: rgba(229, 165, 64, 0.3);
-        background: rgba(229, 165, 64, 0.07);
-      }
+      .ah-tool:hover .ah-tool-tag { opacity: 0.75; }
+      .ah-tool-tag.needs-sym { color: var(--accent-warning); }
+      .ah-tool-tag.solo      { color: var(--accent-success); }
 
       .ah-status {
-        padding: 6px 12px;
+        padding: 5px 13px;
         font-size: var(--text-xs);
-        color: var(--neutral-500);
+        color: var(--neutral-600);
         border-top: 1px solid var(--border-subtle);
-        background: rgba(0, 0, 0, 0.15);
+        background: rgba(0, 0, 0, 0.1);
         font-style: italic;
-        min-height: 24px;
+        min-height: 22px;
         line-height: 1.4;
         transition: color 0.2s;
       }
@@ -1506,6 +954,7 @@
       rel="stylesheet"
       href="https://js.arcgis.com/4.32/@arcgis/core/assets/esri/themes/light/main.css"
     />
+    <link rel="stylesheet" href="/MS/Styles/Widgets.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
     <script src="MS/ThirdParty/MilSymbols/milsymbol.js"></script>
     <script src="MS/ThirdParty/TweenJS/tween.js"></script>
@@ -1515,131 +964,108 @@
     <canvas id="fabricCanvas"></canvas>
 
     <div id="infoDiv">
-      <div class="autocomplete-container">
+      <!-- Section 1: Symbol/Code Controls -->
+      <div class="infobar-section">
+        <div class="autocomplete-container">
+          <input
+            class="ms-input"
+            type="text"
+            id="symbolSearch"
+            placeholder="Search symbols..."
+            title="Search tactical symbols by name or SIDC code. Autocomplete shows matching MIL-STD-2525D symbols."
+            autocomplete="off"
+          />
+          <div
+            id="autocompleteList"
+            class="autocomplete-list"
+            style="display: none"
+          ></div>
+        </div>
+        <select id="drawTypesSelectPre" class="ms-select" title="Sets symbol draw type (1-4) to control geometry configuration and control point behavior for the selected symbol.">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
         <input
-          class="esri-component esri-widget esri-interactive"
+          class="ms-input"
           type="text"
-          id="symbolSearch"
-          placeholder="Search symbols by name..."
-          title="Search tactical symbols by name or SIDC code. Autocomplete shows matching MIL-STD-2525D symbols."
-          autocomplete="off"
+          id="sidcText"
+          value="130610001411000010891000000000"
+          title="Enter 20-character Symbol Identification Code (SIDC) per MIL-STD-2525D to define symbol type, identity, status, and modifiers."
         />
-        <div
-          id="autocompleteList"
-          class="autocomplete-list"
-          style="display: none"
-        ></div>
       </div>
-      <select id="drawTypesSelectPre" class="drawTypesSelectPre" title="Sets symbol draw type (1-4) to control geometry configuration and control point behavior for the selected symbol.">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-      </select>
 
-      <input
-        class="esri-component esri-widget esri-interactive"
-        type="text"
-        id="sidcText"
-        value="130610001411000010891000000000"
-        title="Enter 20-character Symbol Identification Code (SIDC) per MIL-STD-2525D to define symbol type, identity, status, and modifiers."
-      />
+      <!-- Section 2: Draw & View Controls -->
+      <div class="infobar-section">
+        <button class="ms-btn ms-btn-primary infobar-btn" id="draw-btn" title="Start interactive drawing of the selected tactical symbol on the map using current settings."><span class="infobar-icon">✎</span>Draw</button>
+        <button class="ms-btn infobar-btn" id="switch-btn" title="Toggle between 2D map view and 3D scene view. Updates all engines to use the new view context."><span class="infobar-icon">⊞</span>2D</button>
+      </div>
 
-      <input
-        class="esri-component esri-widget--button esri-widget esri-interactive"
-        type="button"
-        id="draw-btn"
-        value="Draw"
-        title="Start interactive drawing of the selected tactical symbol on the map using current settings."
-      />
-
-      <input
-        class="esri-component esri-widget--button esri-widget esri-interactive"
-        type="button"
-        id="switch-btn"
-        value="2D"
-        title="Toggle between 2D map view and 3D scene view. Updates all engines to use the new view context."
-      />
-
-      <button id="drawArrowButton" title="Draw a freehand or structured arrow tactical symbol (e.g., direction of attack, movement).">Draw Arrow</button>
-      <button id="addTextButton" title="Add custom text annotations to the map at the clicked location.">Add Text</button>
-      <button id="createButton" title="Programmatically create a symbol with predefined parameters for testing (uses hardcoded SIDC/options).">Create</button>
-      <button id="drawBlockSymbolButton" title="Draw a rectangular block tactical symbol (e.g., unit position area) by defining a bounding box.">Draw Block Symbol</button>
-      <button id="savePlanButton" title="Save current symbol set, annotations, and settings as a reusable plan to local storage via ImportExportEngine.">Save Plan</button>
-      <button id="loadPlanButton" title="Load a previously saved plan from local storage, restoring all symbols, annotations, and settings.">Load Plan</button>
-      <button id="deployment-manager-btn" title="Open the Deployment Manager to manage and place formation templates.">🗺️ Deployment Manager</button>
-      <button id="analysis-hub-btn" title="Open Analysis Hub — quick access to all terrain, force, weapons and mission analysis engines">🔬 Analysis Hub</button>
-
-      <!-- Measurement toggle button -->
-      <button
-        id="measureToggleBtn"
-        class="esri-component esri-widget--button esri-widget esri-interactive"
-        title="Toggle live measurement panel on/off. Shortcut: M. Shows distance, area, bearing for drawn symbols via MeasurementEngine."
-        style="font-size: 16px; min-width: 36px"
-      >
-        📐
-      </button>
+      <!-- Section 3: Analysis & Management -->
+      <div class="infobar-section">
+        <button class="ms-btn infobar-btn" id="measureToggleBtn" title="Toggle live measurement panel on/off. Shortcut: M. Shows distance, area, bearing for drawn symbols via MeasurementEngine."><span class="infobar-icon">∟</span></button>
+        <button class="ms-btn infobar-btn" id="deployment-manager-btn" title="Open the Deployment Manager to manage and place formation templates."><span class="infobar-icon">⚙</span>Mgr</button>
+        <button class="ms-btn infobar-btn" id="analysis-hub-btn" title="Open Analysis Hub — quick access to all terrain, force, weapons and mission analysis engines"><span class="infobar-icon">⬢</span>Hub</button>
+        <button class="ms-btn infobar-btn" id="savePlanButton" title="Save current symbol set, annotations, and settings as a reusable plan to local storage via ImportExportEngine."><span class="infobar-icon">⬇</span></button>
+        <button class="ms-btn infobar-btn" id="loadPlanButton" title="Load a previously saved plan from local storage, restoring all symbols, annotations, and settings."><span class="infobar-icon">⬆</span></button>
+      </div>
     </div>
 
-    <!-- ── Measurement Panel ────────────────────────────────────────────────── -->
-    <div id="measurePanel">
-      <header>
-        <span>📐 Measurements</span>
-        <div class="ms-dot" title="Measurements on/off"></div>
-      </header>
-
-      <!-- Unit switcher -->
-      <div class="ms-units">
-        <button
-          data-unit="kilometers"
-          data-area="square-kilometers"
-          class="ms-active-unit"
-        >
-          km
-        </button>
-        <button data-unit="miles" data-area="square-miles">mi</button>
-        <button data-unit="nautical-miles" data-area="square-miles">nm</button>
-        <button data-unit="meters" data-area="square-meters">m</button>
+    <!-- ── Measurement Panel (Widgets.css) ────────────────────────────────── -->
+    <div id="measurePanel" class="ms-panel ms-theme-ops-dark">
+      <div class="ms-header">
+        <div class="ms-header-icon">📐</div>
+        <div class="ms-header-title">Measurements</div>
+        <div class="ms-status-dot"></div>
       </div>
 
-      <!-- Live data rows (hidden until first update) -->
-      <table id="measureDataTable" style="display: none">
-        <tr id="ms-row-seg">
-          <td>Segment</td>
-          <td id="ms-seg">—</td>
-        </tr>
-        <tr id="ms-row-bng">
-          <td>Bearing</td>
-          <td id="ms-bng">—</td>
-        </tr>
-        <tr id="ms-row-total">
-          <td>Total</td>
-          <td id="ms-total">—</td>
-        </tr>
-        <tr id="ms-row-height">
-          <td>Height</td>
-          <td id="ms-height">—</td>
-        </tr>
-        <tr id="ms-row-width">
-          <td>Width</td>
-          <td id="ms-width">—</td>
-        </tr>
-        <tr id="ms-row-area">
-          <td>Area</td>
-          <td id="ms-area">—</td>
-        </tr>
-      </table>
+      <div class="ms-body">
+        <!-- Unit switcher -->
+        <div style="display: flex; gap: 4px; padding: 6px 12px; border-bottom: 1px solid var(--ms-divider);">
+          <button data-unit="kilometers" data-area="square-kilometers" class="ms-btn ms-active-unit" style="flex: 1; padding: 4px 0; font-size: var(--ms-fs-xs);">km</button>
+          <button data-unit="miles" data-area="square-miles" class="ms-btn" style="flex: 1; padding: 4px 0; font-size: var(--ms-fs-xs);">mi</button>
+          <button data-unit="nautical-miles" data-area="square-miles" class="ms-btn" style="flex: 1; padding: 4px 0; font-size: var(--ms-fs-xs);">nm</button>
+          <button data-unit="meters" data-area="square-meters" class="ms-btn" style="flex: 1; padding: 4px 0; font-size: var(--ms-fs-xs);">m</button>
+        </div>
 
-      <!-- Idle hint (shown before first measurement) -->
-      <div class="ms-idle" id="measureIdle">
-        Draw a symbol to see live measurements
+        <!-- Live data rows (hidden until first update) -->
+        <table id="measureDataTable" style="display: none; width: 100%; border-spacing: 0; padding: 6px 12px 4px; font-family: var(--ms-font-mono); font-size: var(--ms-fs-xs);">
+          <tr id="ms-row-seg">
+            <td style="padding: 2px 0; color: var(--ms-text-label); padding-right: 8px; white-space: nowrap; line-height: 1.6;">Segment</td>
+            <td id="ms-seg" style="padding: 2px 0; color: var(--ms-text); font-weight: bold; line-height: 1.6;">—</td>
+          </tr>
+          <tr id="ms-row-bng">
+            <td style="padding: 2px 0; color: var(--ms-text-label); padding-right: 8px; white-space: nowrap; line-height: 1.6;">Bearing</td>
+            <td id="ms-bng" style="padding: 2px 0; color: var(--ms-text); font-weight: bold; line-height: 1.6;">—</td>
+          </tr>
+          <tr id="ms-row-total">
+            <td style="padding: 2px 0; color: var(--ms-text-label); padding-right: 8px; white-space: nowrap; line-height: 1.6;">Total</td>
+            <td id="ms-total" style="padding: 2px 0; color: var(--ms-text); font-weight: bold; line-height: 1.6;">—</td>
+          </tr>
+          <tr id="ms-row-height">
+            <td style="padding: 2px 0; color: var(--ms-text-label); padding-right: 8px; white-space: nowrap; line-height: 1.6;">Height</td>
+            <td id="ms-height" style="padding: 2px 0; color: var(--ms-text); font-weight: bold; line-height: 1.6;">—</td>
+          </tr>
+          <tr id="ms-row-width">
+            <td style="padding: 2px 0; color: var(--ms-text-label); padding-right: 8px; white-space: nowrap; line-height: 1.6;">Width</td>
+            <td id="ms-width" style="padding: 2px 0; color: var(--ms-text); font-weight: bold; line-height: 1.6;">—</td>
+          </tr>
+          <tr id="ms-row-area">
+            <td style="padding: 2px 0; color: var(--ms-text-label); padding-right: 8px; white-space: nowrap; line-height: 1.6;">Area</td>
+            <td id="ms-area" style="padding: 2px 0; color: var(--ms-text); font-weight: bold; line-height: 1.6;">—</td>
+          </tr>
+        </table>
+
+        <!-- Idle hint (shown before first measurement) -->
+        <div id="measureIdle" style="padding: 8px 12px 10px; color: var(--ms-text-dim); font-size: var(--ms-fs-xs); font-style: italic;">
+          Draw a symbol to see live measurements
+        </div>
       </div>
 
-      <footer>
-        <button id="measureCopyBtn" title="Copy measurements to clipboard">
-          ⎘ Copy
-        </button>
-      </footer>
+      <div style="display: flex; justify-content: flex-end; padding: 4px 8px 8px;">
+        <button id="measureCopyBtn" class="ms-btn" title="Copy measurements to clipboard" style="padding: 4px 8px; font-size: var(--ms-fs-xs);">⎘ Copy</button>
+      </div>
     </div>
 
     <!-- ── Engine Log Panel ─────────────────────────────────────────────────── -->
@@ -1666,97 +1092,89 @@
       <div class="ah-content">
 
         <div class="ah-group">
-          <div class="ah-group-title">Terrain Intelligence</div>
-          <div class="ah-tools-grid">
-            <button class="ah-tool" data-tool="keyTerrain" title="Identify tactically significant terrain features (hills, saddles, spurs, reentrants)">
-              <span class="ah-tool-icon">🗻</span>
-              <span class="ah-tool-name">Key Terrain</span>
-              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
-            </button>
-            <button class="ah-tool" data-tool="localPeaks" title="Detect terrain peaks and valleys in the AO">
-              <span class="ah-tool-icon">⛰️</span>
-              <span class="ah-tool-name">Peak Analysis</span>
-              <span class="ah-tool-tag">standalone</span>
-            </button>
-            <button class="ah-tool" data-tool="deadGround" title="Map terrain hidden from the observer position">
-              <span class="ah-tool-icon">🕳️</span>
-              <span class="ah-tool-name">Dead Ground</span>
-              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
-            </button>
-            <button class="ah-tool" data-tool="ocoka" title="OCOKA — Avenues of Approach terrain analysis">
-              <span class="ah-tool-icon">🛤️</span>
-              <span class="ah-tool-name">OCOKA</span>
-              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
-            </button>
-          </div>
+          <div class="ah-group-title">Terrain</div>
+          <button class="ah-tool" data-tool="keyTerrain" title="Identify tactically significant terrain features (hills, saddles, spurs, reentrants)">
+            <span class="ah-tool-ind needs-sym"></span>
+            <span class="ah-tool-name">Key Terrain</span>
+            <span class="ah-tool-tag needs-sym">sym</span>
+          </button>
+          <button class="ah-tool" data-tool="localPeaks" title="Detect terrain peaks and valleys in the AO">
+            <span class="ah-tool-ind solo"></span>
+            <span class="ah-tool-name">Peak Analysis</span>
+            <span class="ah-tool-tag solo">solo</span>
+          </button>
+          <button class="ah-tool" data-tool="deadGround" title="Map terrain hidden from the observer position">
+            <span class="ah-tool-ind needs-sym"></span>
+            <span class="ah-tool-name">Dead Ground</span>
+            <span class="ah-tool-tag needs-sym">sym</span>
+          </button>
+          <button class="ah-tool" data-tool="ocoka" title="OCOKA — Avenues of Approach terrain analysis">
+            <span class="ah-tool-ind needs-sym"></span>
+            <span class="ah-tool-name">OCOKA</span>
+            <span class="ah-tool-tag needs-sym">sym</span>
+          </button>
         </div>
 
         <div class="ah-group">
           <div class="ah-group-title">Force &amp; Position</div>
-          <div class="ah-tools-grid">
-            <button class="ah-tool" data-tool="los" title="Line of Sight — compute viewshed from observer position">
-              <span class="ah-tool-icon">👁️</span>
-              <span class="ah-tool-name">Line of Sight</span>
-              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
-            </button>
-            <button class="ah-tool" data-tool="posDefScorer" title="Position Defensibility Scorer — rate defensive value across 6 military factors">
-              <span class="ah-tool-icon">🏰</span>
-              <span class="ah-tool-name">Pos. Defensibility</span>
-              <span class="ah-tool-tag">standalone</span>
-            </button>
-            <button class="ah-tool" data-tool="opRanker" title="Observation Post Ranker — rank and compare candidate OP positions">
-              <span class="ah-tool-icon">📡</span>
-              <span class="ah-tool-name">OP Ranker</span>
-              <span class="ah-tool-tag">standalone</span>
-            </button>
-          </div>
+          <button class="ah-tool" data-tool="los" title="Line of Sight — compute viewshed from observer position">
+            <span class="ah-tool-ind needs-sym"></span>
+            <span class="ah-tool-name">Line of Sight</span>
+            <span class="ah-tool-tag needs-sym">sym</span>
+          </button>
+          <button class="ah-tool" data-tool="posDefScorer" title="Position Defensibility Scorer — rate defensive value across 6 military factors">
+            <span class="ah-tool-ind solo"></span>
+            <span class="ah-tool-name">Pos. Defensibility</span>
+            <span class="ah-tool-tag solo">solo</span>
+          </button>
+          <button class="ah-tool" data-tool="opRanker" title="Observation Post Ranker — rank and compare candidate OP positions">
+            <span class="ah-tool-ind solo"></span>
+            <span class="ah-tool-name">OP Ranker</span>
+            <span class="ah-tool-tag solo">solo</span>
+          </button>
         </div>
 
         <div class="ah-group">
           <div class="ah-group-title">Weapons &amp; Threats</div>
-          <div class="ah-tools-grid">
-            <button class="ah-tool" data-tool="wez" title="Weapon Engagement Zone — visualize weapon system engagement coverage">
-              <span class="ah-tool-icon">🎯</span>
-              <span class="ah-tool-name">WEZ</span>
-              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
-            </button>
-            <button class="ah-tool" data-tool="trajectory" title="Ballistic Trajectory — model projectile flight path and impact">
-              <span class="ah-tool-icon">🚀</span>
-              <span class="ah-tool-name">Trajectory</span>
-              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
-            </button>
-            <button class="ah-tool" data-tool="effects" title="Weapon Effects — compute munitions effects radius">
-              <span class="ah-tool-icon">💥</span>
-              <span class="ah-tool-name">Effects</span>
-              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
-            </button>
-            <button class="ah-tool" data-tool="buffer" title="Buffer &amp; Threat Rings — create buffer zones and concentric threat rings">
-              <span class="ah-tool-icon">⭕</span>
-              <span class="ah-tool-name">Buffer &amp; Rings</span>
-              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
-            </button>
-          </div>
+          <button class="ah-tool" data-tool="wez" title="Weapon Engagement Zone — visualize weapon system engagement coverage">
+            <span class="ah-tool-ind needs-sym"></span>
+            <span class="ah-tool-name">WEZ</span>
+            <span class="ah-tool-tag needs-sym">sym</span>
+          </button>
+          <button class="ah-tool" data-tool="trajectory" title="Ballistic Trajectory — model projectile flight path and impact">
+            <span class="ah-tool-ind needs-sym"></span>
+            <span class="ah-tool-name">Trajectory</span>
+            <span class="ah-tool-tag needs-sym">sym</span>
+          </button>
+          <button class="ah-tool" data-tool="effects" title="Weapon Effects — compute munitions effects radius">
+            <span class="ah-tool-ind needs-sym"></span>
+            <span class="ah-tool-name">Effects</span>
+            <span class="ah-tool-tag needs-sym">sym</span>
+          </button>
+          <button class="ah-tool" data-tool="buffer" title="Buffer &amp; Threat Rings — create buffer zones and concentric threat rings">
+            <span class="ah-tool-ind needs-sym"></span>
+            <span class="ah-tool-name">Buffer &amp; Rings</span>
+            <span class="ah-tool-tag needs-sym">sym</span>
+          </button>
         </div>
 
         <div class="ah-group">
           <div class="ah-group-title">Route &amp; Mission</div>
-          <div class="ah-tools-grid">
-            <button class="ah-tool" data-tool="corridor" title="Corridor Analysis — route width, threats and chokepoints along MSRs">
-              <span class="ah-tool-icon">🗺️</span>
-              <span class="ah-tool-name">Corridor</span>
-              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
-            </button>
-            <button class="ah-tool" data-tool="flight" title="UAV Flight Analysis — plan UAV routes and analyze coverage">
-              <span class="ah-tool-icon">🛸</span>
-              <span class="ah-tool-name">UAV Flight</span>
-              <span class="ah-tool-tag needs-sym">↗ needs symbol</span>
-            </button>
-            <button class="ah-tool" data-tool="missionPlanner" title="Mission Planner Dashboard — integrated multi-factor terrain analysis">
-              <span class="ah-tool-icon">📋</span>
-              <span class="ah-tool-name">Mission Planner</span>
-              <span class="ah-tool-tag">standalone</span>
-            </button>
-          </div>
+          <button class="ah-tool" data-tool="corridor" title="Corridor Analysis — route width, threats and chokepoints along MSRs">
+            <span class="ah-tool-ind needs-sym"></span>
+            <span class="ah-tool-name">Corridor</span>
+            <span class="ah-tool-tag needs-sym">sym</span>
+          </button>
+          <button class="ah-tool" data-tool="flight" title="UAV Flight Analysis — plan UAV routes and analyze coverage">
+            <span class="ah-tool-ind needs-sym"></span>
+            <span class="ah-tool-name">UAV Flight</span>
+            <span class="ah-tool-tag needs-sym">sym</span>
+          </button>
+          <button class="ah-tool" data-tool="missionPlanner" title="Mission Planner Dashboard — integrated multi-factor terrain analysis">
+            <span class="ah-tool-ind solo"></span>
+            <span class="ah-tool-name">Mission Planner</span>
+            <span class="ah-tool-tag solo">solo</span>
+          </button>
         </div>
 
       </div>
@@ -1769,15 +1187,16 @@
     </div>
 
     <!-- Settings Control Panel -->
-    <div id="settingsPanel" class="collapsed">
-      <header id="settingsHeader">
-        <span>⚙️ Settings</span>
+    <div id="settingsPanel" class="ms-panel ms-theme-ops-dark collapsed">
+      <div id="settingsHeader" class="ms-header">
+        <div class="ms-header-icon">⚙️</div>
+        <div class="ms-header-title">Settings</div>
         <span class="toggle-icon">▼</span>
-      </header>
-      <div class="settings-content">
+      </div>
+      <div class="settings-content ms-body">
         <!-- Symbol Sizes Section -->
         <div class="settings-section">
-          <div class="section-title">Symbol Sizes</div>
+          <div class="ms-section-title">Symbol Sizes</div>
           <div class="setting-row">
             <label>Size</label>
             <input
@@ -1854,7 +1273,7 @@
 
         <!-- Core Features Section -->
         <div class="settings-section">
-          <div class="section-title">Core Features</div>
+          <div class="ms-section-title">Core Features</div>
           <div class="setting-row">
             <label>Context Menu</label>
             <input type="checkbox" id="setting-contextMenu" checked title="Enable right-click context menu with symbol editing and measurement options (ContextMenuManager)." />
@@ -2638,37 +2057,30 @@
     </div>
 
     <!-- API Test Panel -->
-    <div id="apiPanel" class="collapsed">
-      <header id="apiHeader">
-        <span>🧪 API Test</span>
+    <div id="apiPanel" class="ms-panel ms-theme-ops-dark collapsed">
+      <div id="apiHeader" class="ms-header">
+        <div class="ms-header-icon">🧪</div>
+        <div class="ms-header-title">API Test</div>
         <span class="toggle-icon">▼</span>
-      </header>
-      <div class="api-content">
+      </div>
+      <div class="api-content ms-body">
         <div class="api-section">
-          <div class="section-title">SymbolEngine</div>
-          <button class="api-btn" id="api-drawSymbol" title="Draw a test symbol using SymbolEngine with default parameters.">Draw Symbol</button>
-          <button class="api-btn" id="api-addSymbol" title="Add a test symbol at the center of the current view using SymbolEngine.">Add at Center</button>
-          <button class="api-btn" id="api-clearAll" title="Clear all symbols and graphics from all layers via SymbolEngine.">Clear All</button>
-          <button class="api-btn danger" id="api-stop-continuous" title="Stop continuous symbol creation mode in SymbolEngine.">Stop Continuous</button>
-          <div class="status-text" id="api-symbol-status">Ready</div>
+          <div class="ms-section-title">SymbolEngine</div>
+          <button class="ms-btn" id="api-drawSymbol" title="Draw a test symbol using SymbolEngine with default parameters.">Draw Symbol</button>
+          <button class="ms-btn" id="api-addSymbol" title="Add a test symbol at the center of the current view using SymbolEngine.">Add at Center</button>
+          <button class="ms-btn" id="api-clearAll" title="Clear all symbols and graphics from all layers via SymbolEngine.">Clear All</button>
+          <button class="ms-btn danger" id="api-stop-continuous" title="Stop continuous symbol creation mode in SymbolEngine.">Stop Continuous</button>
+          <div class="ms-status" id="api-symbol-status">Ready</div>
         </div>
         <div class="api-section">
-          <div class="section-title">MeasurementEngine</div>
-          <button class="api-btn success" id="api-me-enable" title="Enable MeasurementEngine for live symbol measurements.">Enable</button>
-          <button class="api-btn danger" id="api-me-disable" title="Disable MeasurementEngine to stop live measurements.">Disable</button>
-          <button class="api-btn" id="api-me-toggle" title="Toggle MeasurementEngine on/off.">Toggle</button>
+          <div class="ms-section-title">MeasurementEngine</div>
+          <button class="ms-btn success" id="api-me-enable" title="Enable MeasurementEngine for live symbol measurements.">Enable</button>
+          <button class="ms-btn danger" id="api-me-disable" title="Disable MeasurementEngine to stop live measurements.">Disable</button>
+          <button class="ms-btn" id="api-me-toggle" title="Toggle MeasurementEngine on/off.">Toggle</button>
           <div class="setting-row" style="margin-top: 6px">
             <label>Distance:</label>
             <select
               id="api-me-distUnit"
-              style="
-                width: 80px;
-                background: rgba(255, 255, 255, 0.08);
-                border: 1px solid rgba(100, 160, 230, 0.3);
-                border-radius: 4px;
-                color: #e8f4ff;
-                font-size: 11px;
-              "
             >
               <option value="meters">meters</option>
               <option value="kilometers">km</option>
@@ -2690,13 +2102,13 @@
             <label>Speed km/h</label>
               <input type="number" id="api-me-speed" value="5" step="0.5" style="width: 60px" title="Set movement speed for ETA calculations in API test." />
           </div>
-          <div class="status-text" id="api-me-status">Disabled</div>
+          <div class="ms-status" id="api-me-status">Disabled</div>
         </div>
         <div class="api-section">
-          <div class="section-title">ProximityEngine</div>
-          <button class="api-btn success" id="api-prox-enable" title="Enable ProximityEngine for real-time snap indicators.">Enable</button>
-          <button class="api-btn danger" id="api-prox-disable" title="Disable ProximityEngine to stop snap indicators.">Disable</button>
-          <button class="api-btn" id="api-prox-toggle" title="Toggle ProximityEngine on/off.">Toggle</button>
+          <div class="ms-section-title">ProximityEngine</div>
+          <button class="ms-btn success" id="api-prox-enable" title="Enable ProximityEngine for real-time snap indicators.">Enable</button>
+          <button class="ms-btn danger" id="api-prox-disable" title="Disable ProximityEngine to stop snap indicators.">Disable</button>
+          <button class="ms-btn" id="api-prox-toggle" title="Toggle ProximityEngine on/off.">Toggle</button>
           <div class="setting-row" style="margin-top: 6px">
             <label>Snap:</label>
               <input
@@ -2709,36 +2121,28 @@
                 title="Set snap radius for API test proximity detection."
               />
           </div>
-          <div class="status-text" id="api-prox-status">Enabled</div>
+          <div class="ms-status" id="api-prox-status">Enabled</div>
         </div>
         <div class="api-section">
-          <div class="section-title">SelectionEngine</div>
-          <button class="api-btn" id="api-sel-lasso" title="Activate lasso selection tool to select multiple symbols.">Lasso Select</button>
-          <button class="api-btn" id="api-sel-clear" title="Clear current symbol selection.">Clear Selection</button>
-          <button class="api-btn" id="api-sel-count" title="Show count of currently selected symbols.">Selection Count</button>
-          <button class="api-btn" id="api-sel-delete" title="Delete all currently selected symbols.">Delete Selected</button>
-          <button class="api-btn" id="api-sel-move" title="Move selected symbols to clicked location.">Move Selected</button>
-          <button class="api-btn" id="api-sel-sim-sidc">Same Code</button>
-          <button class="api-btn" id="api-sel-sim-ech" title="Select all symbols with the same echelon as selected.">Same Echelon</button>
-          <button class="api-btn" id="api-sel-own" title="Select only own (friendly) symbols.">Own Only</button>
-          <button class="api-btn" id="api-sel-enemy" title="Select only enemy symbols.">Enemy</button>
-          <button class="api-btn" id="api-sel-pt" title="Select only point-type symbols.">Points</button>
-          <button class="api-btn" id="api-sel-area" title="Select only area-type symbols.">Areas</button>
-          <button class="api-btn" id="api-sel-line" title="Select only line-type symbols.">Lines</button>
-          <button class="api-btn" id="api-sel-within" title="Select symbols within the drawn polygon.">Select Within</button>
-          <button class="api-btn" id="api-sel-within-self" title="Select symbols within drawn polygon including the drawing.">Select Within+Self</button>
+          <div class="ms-section-title">SelectionEngine</div>
+          <button class="ms-btn" id="api-sel-lasso" title="Activate lasso selection tool to select multiple symbols.">Lasso Select</button>
+          <button class="ms-btn" id="api-sel-clear" title="Clear current symbol selection.">Clear Selection</button>
+          <button class="ms-btn" id="api-sel-count" title="Show count of currently selected symbols.">Selection Count</button>
+          <button class="ms-btn" id="api-sel-delete" title="Delete all currently selected symbols.">Delete Selected</button>
+          <button class="ms-btn" id="api-sel-move" title="Move selected symbols to clicked location.">Move Selected</button>
+          <button class="ms-btn" id="api-sel-sim-sidc">Same Code</button>
+          <button class="ms-btn" id="api-sel-sim-ech" title="Select all symbols with the same echelon as selected.">Same Echelon</button>
+          <button class="ms-btn" id="api-sel-own" title="Select only own (friendly) symbols.">Own Only</button>
+          <button class="ms-btn" id="api-sel-enemy" title="Select only enemy symbols.">Enemy</button>
+          <button class="ms-btn" id="api-sel-pt" title="Select only point-type symbols.">Points</button>
+          <button class="ms-btn" id="api-sel-area" title="Select only area-type symbols.">Areas</button>
+          <button class="ms-btn" id="api-sel-line" title="Select only line-type symbols.">Lines</button>
+          <button class="ms-btn" id="api-sel-within" title="Select symbols within the drawn polygon.">Select Within</button>
+          <button class="ms-btn" id="api-sel-within-self" title="Select symbols within drawn polygon including the drawing.">Select Within+Self</button>
           <div class="setting-row" style="margin-top: 4px">
             <label>Align:</label>
             <select
               id="api-sel-align"
-              style="
-                width: 70px;
-                background: rgba(255, 255, 255, 0.08);
-                border: 1px solid rgba(100, 160, 230, 0.3);
-                border-radius: 4px;
-                color: #e8f4ff;
-                font-size: 11px;
-              "
             >
               <option value="left">Left</option>
               <option value="right">Right</option>
@@ -2748,110 +2152,110 @@
               <option value="centerY">Center Y</option>
             </select>
           </div>
-          <div class="status-text" id="api-sel-status">0 selected</div>
+          <div class="ms-status" id="api-sel-status">0 selected</div>
         </div>
         <div class="api-section">
-          <div class="section-title">Undo/Redo</div>
-          <button class="api-btn" id="api-undo">Undo</button>
-          <button class="api-btn" id="api-redo">Redo</button>
-          <button class="api-btn" id="api-undoCount">Stack Info</button>
-          <div class="status-text" id="api-undo-status">Ready</div>
+          <div class="ms-section-title">Undo/Redo</div>
+          <button class="ms-btn" id="api-undo">Undo</button>
+          <button class="ms-btn" id="api-redo">Redo</button>
+          <button class="ms-btn" id="api-undoCount">Stack Info</button>
+          <div class="ms-status" id="api-undo-status">Ready</div>
         </div>
         <div class="api-section">
-          <div class="section-title">Save/Load</div>
-          <button class="api-btn" id="api-saveAll">Save All</button>
-          <button class="api-btn" id="api-load">Load</button>
-          <button class="api-btn" id="api-save-plan">Save Plan..</button>
-          <button class="api-btn" id="api-load-plan">Load Plan..</button>
-          <button class="api-btn" id="api-export">Export JSON</button>
-          <button class="api-btn" id="api-import">Import JSON</button>
-          <button class="api-btn success" id="api-export-geojson">
+          <div class="ms-section-title">Save/Load</div>
+          <button class="ms-btn" id="api-saveAll">Save All</button>
+          <button class="ms-btn" id="api-load">Load</button>
+          <button class="ms-btn" id="api-save-plan">Save Plan..</button>
+          <button class="ms-btn" id="api-load-plan">Load Plan..</button>
+          <button class="ms-btn" id="api-export">Export JSON</button>
+          <button class="ms-btn" id="api-import">Import JSON</button>
+          <button class="ms-btn success" id="api-export-geojson">
             Export GeoJSON
           </button>
-          <button class="api-btn" id="api-import-geojson">
+          <button class="ms-btn" id="api-import-geojson">
             Import GeoJSON
           </button>
-          <div class="status-text" id="api-save-status">Ready</div>
+          <div class="ms-status" id="api-save-status">Ready</div>
         </div>
         <div class="api-section">
-          <div class="section-title">Templates</div>
-          <button class="api-btn" id="api-template-list">List</button>
-          <button class="api-btn" id="api-template-save">Save to File</button>
-          <button class="api-btn" id="api-template-load">Load from File</button>
-          <button class="api-btn danger" id="api-template-delete">
+          <div class="ms-section-title">Templates</div>
+          <button class="ms-btn" id="api-template-list">List</button>
+          <button class="ms-btn" id="api-template-save">Save to File</button>
+          <button class="ms-btn" id="api-template-load">Load from File</button>
+          <button class="ms-btn danger" id="api-template-delete">
             Delete All
           </button>
-          <div class="status-text" id="api-template-status">0 templates</div>
+          <div class="ms-status" id="api-template-status">0 templates</div>
         </div>
         <div class="api-section">
-          <div class="section-title">Symbol Info</div>
-          <button class="api-btn" id="api-symbol-autocomplete">
+          <div class="ms-section-title">Symbol Info</div>
+          <button class="ms-btn" id="api-symbol-autocomplete">
             Autocomplete List
           </button>
-          <button class="api-btn" id="api-symbol-bykey">Get by Key</button>
-          <button class="api-btn" id="api-symbol-data">Get Symbol Data</button>
-          <div class="status-text" id="api-symbol-info-status">Ready</div>
+          <button class="ms-btn" id="api-symbol-bykey">Get by Key</button>
+          <button class="ms-btn" id="api-symbol-data">Get Symbol Data</button>
+          <div class="ms-status" id="api-symbol-info-status">Ready</div>
         </div>
         <div class="api-section">
-          <div class="section-title">Layers</div>
-          <button class="api-btn" id="api-layer-list">List Layers</button>
-          <button class="api-btn" id="api-layer-graphics">Graphic Count</button>
-          <button class="api-btn danger" id="api-layer-remove">
+          <div class="ms-section-title">Layers</div>
+          <button class="ms-btn" id="api-layer-list">List Layers</button>
+          <button class="ms-btn" id="api-layer-graphics">Graphic Count</button>
+          <button class="ms-btn danger" id="api-layer-remove">
             Remove All
           </button>
-          <div class="status-text" id="api-layer-status">Ready</div>
+          <div class="ms-status" id="api-layer-status">Ready</div>
         </div>
         <div class="api-section">
-          <div class="section-title">Graphics</div>
-          <button class="api-btn" id="api-graphic-add">Add Test Symbol</button>
-          <button class="api-btn" id="api-graphic-last">Last Clicked</button>
-          <button class="api-btn" id="api-graphic-remove">Remove Last</button>
-          <div class="status-text" id="api-graphic-status">Ready</div>
+          <div class="ms-section-title">Graphics</div>
+          <button class="ms-btn" id="api-graphic-add">Add Test Symbol</button>
+          <button class="ms-btn" id="api-graphic-last">Last Clicked</button>
+          <button class="ms-btn" id="api-graphic-remove">Remove Last</button>
+          <div class="ms-status" id="api-graphic-status">Ready</div>
         </div>
         <div class="api-section">
-          <div class="section-title">View</div>
-          <button class="api-btn" id="api-view-zoomIn">Zoom In</button>
-          <button class="api-btn" id="api-view-zoomOut">Zoom Out</button>
-          <button class="api-btn" id="api-view-center">Center</button>
-          <button class="api-btn" id="api-view-extent">Get Extent</button>
-          <div class="status-text" id="api-view-status">Ready</div>
+          <div class="ms-section-title">View</div>
+          <button class="ms-btn" id="api-view-zoomIn">Zoom In</button>
+          <button class="ms-btn" id="api-view-zoomOut">Zoom Out</button>
+          <button class="ms-btn" id="api-view-center">Center</button>
+          <button class="ms-btn" id="api-view-extent">Get Extent</button>
+          <div class="ms-status" id="api-view-status">Ready</div>
         </div>
         <div class="api-section">
-          <div class="section-title">Keyboard Shortcuts</div>
-          <button class="api-btn" id="api-shortcut-info">Show Shortcuts</button>
-          <div class="status-text" id="api-shortcut-status">
+          <div class="ms-section-title">Keyboard Shortcuts</div>
+          <button class="ms-btn" id="api-shortcut-info">Show Shortcuts</button>
+          <div class="ms-status" id="api-shortcut-status">
             L:Lasso M:Move E:Edit Esc:Cancel Del:Delete I:Info C:Center
           </div>
         </div>
         <div class="api-section">
-          <div class="section-title">ContextMenuManager</div>
-          <button class="api-btn" id="api-cmenu-items">List Items</button>
-          <button class="api-btn" id="api-cmenu-clear">Clear All</button>
-          <div class="status-text" id="api-cmenu-status">Ready</div>
+          <div class="ms-section-title">ContextMenuManager</div>
+          <button class="ms-btn" id="api-cmenu-items">List Items</button>
+          <button class="ms-btn" id="api-cmenu-clear">Clear All</button>
+          <div class="ms-status" id="api-cmenu-status">Ready</div>
         </div>
         <div class="api-section">
-          <div class="section-title">EditEngine</div>
-          <button class="api-btn" id="api-edit-activate">Activate Edit</button>
-          <button class="api-btn danger" id="api-edit-deactivate">
+          <div class="ms-section-title">EditEngine</div>
+          <button class="ms-btn" id="api-edit-activate">Activate Edit</button>
+          <button class="ms-btn danger" id="api-edit-deactivate">
             Deactivate
           </button>
-          <div class="status-text" id="api-edit-status">Inactive</div>
+          <div class="ms-status" id="api-edit-status">Inactive</div>
         </div>
         <div class="api-section">
-          <div class="section-title">Engine Logger</div>
-          <button class="api-btn success" id="api-log-enable">Enable</button>
-          <button class="api-btn danger" id="api-log-disable">Disable</button>
-          <button class="api-btn" id="api-log-clear">Clear Panel</button>
-          <button class="api-btn" id="api-log-test">Test Message</button>
-          <div class="status-text" id="api-log-status">Enabled</div>
+          <div class="ms-section-title">Engine Logger</div>
+          <button class="ms-btn success" id="api-log-enable">Enable</button>
+          <button class="ms-btn danger" id="api-log-disable">Disable</button>
+          <button class="ms-btn" id="api-log-clear">Clear Panel</button>
+          <button class="ms-btn" id="api-log-test">Test Message</button>
+          <div class="ms-status" id="api-log-status">Enabled</div>
         </div>
         <div class="api-section">
-          <div class="section-title">Clipboard</div>
-          <button class="api-btn" id="api-clip-copy">Copy Last</button>
-          <button class="api-btn" id="api-clip-paste">Paste</button>
-          <button class="api-btn" id="api-clip-paste-offset">Paste w/ Offset</button>
-          <button class="api-btn" id="api-clip-has-btn">Has Clipboard?</button>
-          <div class="status-text" id="api-clip-status">Empty</div>
+          <div class="ms-section-title">Clipboard</div>
+          <button class="ms-btn" id="api-clip-copy">Copy Last</button>
+          <button class="ms-btn" id="api-clip-paste">Paste</button>
+          <button class="ms-btn" id="api-clip-paste-offset">Paste w/ Offset</button>
+          <button class="ms-btn" id="api-clip-has-btn">Has Clipboard?</button>
+          <div class="ms-status" id="api-clip-status">Empty</div>
         </div>
       </div>
     </div>

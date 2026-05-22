@@ -190,7 +190,6 @@ export class KeyTerrainIdentificationEngine {
 
   constructor() {
     this._createLayers();
-    this._injectStyles();
   }
 
   initialize(view: MapView | SceneView): void {
@@ -320,14 +319,14 @@ export class KeyTerrainIdentificationEngine {
   private _ensurePanels(): void {
     if (!this._listPanelEl) {
       const panel = document.createElement('div');
-      panel.className = 'kt-list-panel kt-panel';
+      panel.className = 'ms-panel ms-theme-ops-dark';
       panel.innerHTML = `
-        <div class="kt-lph">
-          <div class="kt-lph-title">▲ Key Terrain - Ranked</div>
-          <div class="kt-lph-sub" id="kt-list-sub">Run analysis to identify features</div>
+        <div class="ms-header">
+          <div class="ms-header-icon">▲ Key Terrain - Ranked</div>
+          <div class="ms-header-subtitle" id="kt-list-sub">Run analysis to identify features</div>
         </div>
-        <div class="kt-feature-list" id="kt-feature-list">
-          <div class="kt-list-empty" id="kt-list-empty">
+        <div class="ms-body" id="kt-feature-list">
+          <div class="ms-empty" id="kt-list-empty">
             Set the analysis area in the right panel, then click<br>
             <strong style="color:#EF9F27">Run Analysis</strong><br><br>
             Features are ranked by composite score:<br>
@@ -341,28 +340,28 @@ export class KeyTerrainIdentificationEngine {
 
     if (!this._controlPanelEl) {
       const panel = document.createElement('div');
-      panel.className = 'kt-ctrl-panel kt-panel';
+      panel.className = 'ms-panel ms-theme-ops-dark';
       panel.innerHTML = `
-        <div class="kt-ph" id="kt-drag-handle">
-          <div class="kt-ph-title-wrap">
-            <div class="kt-ph-title">□ Key Terrain Identifier</div>
-            <div class="kt-ph-status ready" id="kt-status">Ready</div>
+        <div class="ms-header" id="kt-drag-handle">
+          <div class="ms-header-left">
+            <div class="ms-header-title">□ Key Terrain Identifier</div>
+            <div class="ms-status ready" id="kt-status">Ready</div>
           </div>
-          <div class="kt-ph-actions">
-            <button class="kt-help-btn" id="kt-help-btn" title="How key terrain analysis works">?</button>
-            <button class="kt-minimize-btn" id="kt-minimize-btn" title="Minimize">▼</button>
-            <button class="kt-close-btn" id="kt-close-btn" title="Close (keeps graphics)">✕</button>
+          <div class="ms-header-actions">
+            <button class="ms-header-btn ms-btn-round" id="kt-help-btn" title="How key terrain analysis works">?</button>
+            <button class="ms-header-btn ms-btn-round" id="kt-minimize-btn" title="Minimize">▼</button>
+            <button class="ms-header-btn ms-btn-round" id="kt-close-btn" title="Close (keeps graphics)">✕</button>
           </div>
         </div>
-        <div class="kt-help-popover" id="kt-help-popover" hidden>
-          <div class="kt-help-head">
+        <div class="ms-help-popover" id="kt-help-popover" hidden>
+          <div class="ms-help-head">
             <div>
-              <div class="kt-help-kicker">Field Guide</div>
-              <div class="kt-help-title">Key Terrain Identifier</div>
+              <div class="ms-help-kicker">Field Guide</div>
+              <div class="ms-help-title">Key Terrain Identifier</div>
             </div>
-            <button class="kt-help-close" id="kt-help-close" title="Close">✕</button>
+            <button class="ms-help-close" id="kt-help-close" title="Close">✕</button>
           </div>
-          <div class="kt-help-body">
+          <div class="ms-help-body">
             <p><strong style="color:#EF9F27">What it does.</strong> Detects and ranks tactically significant terrain inside the analysis area by combining elevation prominence, surface curvature (Laplacian + plan/profile), and a 36-ray viewshed score from each candidate.</p>
             <p><strong style="color:#EF9F27">Feature classes.</strong></p>
             <ul style="margin:0 0 9px;padding-left:16px;list-style:none">
@@ -384,19 +383,19 @@ export class KeyTerrainIdentificationEngine {
             <p><strong style="color:#EF9F27">Reading the cards.</strong> Score (0-100) = 35% prominence + 40% viewshed + 15% elevation + 10% type weight. Bars show each component normalised across the result set. The top result also drives the optional viewshed overlay.</p>
           </div>
         </div>
-        <div class="kt-body">
-          <div class="kt-ps">Analysis area</div>
-          <div class="kt-pg">
-            <div class="kt-pf">
-              <div class="kt-pl">Centre lat</div>
+        <div class="ms-body">
+          <div class="ms-section-title">Analysis area</div>
+          <div class="ms-grid">
+            <div class="ms-field">
+              <div class="ms-label">Centre lat</div>
               <input id="kt-inp-lat" type="number" value="33.680" step="0.001" />
             </div>
-            <div class="kt-pf">
-              <div class="kt-pl">Centre lon</div>
+            <div class="ms-field">
+              <div class="ms-label">Centre lon</div>
               <input id="kt-inp-lon" type="number" value="73.060" step="0.001" />
             </div>
-            <div class="kt-pf full">
-              <div class="kt-pl">Radius (m)</div>
+            <div class="ms-field full">
+              <div class="ms-label">Radius (m)</div>
               <select id="kt-inp-radius">
                 <option value="2000">2 km - position-level</option>
                 <option value="4000" selected>4 km - company-level</option>
@@ -405,10 +404,10 @@ export class KeyTerrainIdentificationEngine {
               </select>
             </div>
           </div>
-          <div class="kt-ps">Resolution & sensitivity</div>
-          <div class="kt-pg">
-            <div class="kt-pf full">
-              <div class="kt-pl">Grid cell size (m)</div>
+          <div class="ms-section-title">Resolution & sensitivity</div>
+          <div class="ms-grid">
+            <div class="ms-field full">
+              <div class="ms-label">Grid cell size (m)</div>
               <select id="kt-inp-cell">
                 <option value="20">20 m - fine (slower)</option>
                 <option value="40" selected>40 m - balanced</option>
@@ -416,49 +415,49 @@ export class KeyTerrainIdentificationEngine {
               </select>
             </div>
           </div>
-          <div class="kt-psr">
-            <div class="kt-psr-l">Peak sensitivity</div>
+          <div class="ms-slider-row">
+            <div class="ms-slider-label">Peak sensitivity</div>
             <input id="kt-inp-sens" type="range" min="1" max="10" step="1" value="5" />
-            <div class="kt-psr-v" id="kt-sens-v">5</div>
+            <div class="ms-slider-value" id="kt-sens-v">5</div>
           </div>
-          <div class="kt-psr">
-            <div class="kt-psr-l">Max features</div>
+          <div class="ms-slider-row">
+            <div class="ms-slider-label">Max features</div>
             <input id="kt-inp-maxfeat" type="range" min="5" max="30" step="1" value="15" />
-            <div class="kt-psr-v" id="kt-maxfeat-v">15</div>
+            <div class="ms-slider-value" id="kt-maxfeat-v">15</div>
           </div>
-          <div class="kt-ps">Feature types</div>
-          <div class="kt-ptr"><label>Dominant ground (hilltops)</label><input id="kt-opt-hills" type="checkbox" checked /></div>
-          <div class="kt-ptr"><label>Saddles / passes</label><input id="kt-opt-saddles" type="checkbox" checked /></div>
-          <div class="kt-ptr"><label>Re-entrants / avenues</label><input id="kt-opt-reents" type="checkbox" checked /></div>
-          <div class="kt-ptr"><label>Spurs / flank positions</label><input id="kt-opt-spurs" type="checkbox" checked /></div>
-          <div class="kt-pdiv"></div>
-          <div class="kt-ps">Overlay</div>
-          <div class="kt-overlay-row">
-            <button class="kt-ov-btn on" data-ov="curvature">Curvature</button>
-            <button class="kt-ov-btn on" data-ov="markers">Markers</button>
-            <button class="kt-ov-btn" data-ov="viewshed">Top viewshed</button>
+          <div class="ms-section-title">Feature types</div>
+          <div class="ms-checkbox-row"><label>Dominant ground (hilltops)</label><input id="kt-opt-hills" type="checkbox" checked /></div>
+          <div class="ms-checkbox-row"><label>Saddles / passes</label><input id="kt-opt-saddles" type="checkbox" checked /></div>
+          <div class="ms-checkbox-row"><label>Re-entrants / avenues</label><input id="kt-opt-reents" type="checkbox" checked /></div>
+          <div class="ms-checkbox-row"><label>Spurs / flank positions</label><input id="kt-opt-spurs" type="checkbox" checked /></div>
+          <div class="ms-divider"></div>
+          <div class="ms-section-title">Overlay</div>
+          <div class="ms-btn-row">
+            <button class="ms-btn on" data-ov="curvature">Curvature</button>
+            <button class="ms-btn on" data-ov="markers">Markers</button>
+            <button class="ms-btn" data-ov="viewshed">Top viewshed</button>
           </div>
-          <div class="kt-psr">
-            <div class="kt-psr-l">Overlay opacity</div>
+          <div class="ms-slider-row">
+            <div class="ms-slider-label">Overlay opacity</div>
             <input id="kt-inp-opa" type="range" min="0.2" max="1.0" step="0.05" value="0.65" />
-            <div class="kt-psr-v" id="kt-opa-v">0.65</div>
+            <div class="ms-slider-value" id="kt-opa-v">0.65</div>
           </div>
-          <div class="kt-pdiv"></div>
-          <div class="kt-score-grid">
-            <div class="kt-sg"><div class="kt-sg-l">Features found</div><div class="kt-sg-v" id="kt-sg-found">-</div></div>
-            <div class="kt-sg"><div class="kt-sg-l">Area (km2)</div><div class="kt-sg-v" id="kt-sg-area">-</div></div>
-            <div class="kt-sg"><div class="kt-sg-l">Highest elev</div><div class="kt-sg-v" id="kt-sg-elev">-</div></div>
-            <div class="kt-sg"><div class="kt-sg-l">Relief (m)</div><div class="kt-sg-v" id="kt-sg-relief">-</div></div>
+          <div class="ms-divider"></div>
+          <div class="ms-info-grid">
+            <div class="ms-info-item"><div class="ms-info-label">Features found</div><div class="ms-info-value" id="kt-sg-found">-</div></div>
+            <div class="ms-info-item"><div class="ms-info-label">Area (km2)</div><div class="ms-info-value" id="kt-sg-area">-</div></div>
+            <div class="ms-info-item"><div class="ms-info-label">Highest elev</div><div class="ms-info-value" id="kt-sg-elev">-</div></div>
+            <div class="ms-info-item"><div class="ms-info-label">Relief (m)</div><div class="ms-info-value" id="kt-sg-relief">-</div></div>
           </div>
-          <div class="kt-prog-wrap">
-            <div class="kt-prog-track"><div class="kt-prog-fill" id="kt-prog-fill"></div></div>
-            <div class="kt-prog-label" id="kt-prog-label">-</div>
+          <div class="ms-progress-wrap">
+            <div class="ms-progress-track"><div class="ms-progress-fill" id="kt-prog-fill"></div></div>
+            <div class="ms-progress-label" id="kt-prog-label">-</div>
           </div>
-          <div class="kt-pb-row">
-            <button class="kt-pb" id="kt-btn-clear">Clear</button>
-            <button class="kt-pb primary" id="kt-btn-run">Run Analysis ↗</button>
+          <div class="ms-btn-row">
+            <button class="ms-btn" id="kt-btn-clear">Clear</button>
+            <button class="ms-btn ms-btn-primary" id="kt-btn-run">Run Analysis ↗</button>
           </div>
-          <div class="kt-hint" id="kt-hint" style="display:none">Click map to re-centre the analysis area</div>
+          <div class="ms-hint" id="kt-hint" style="display:none">Click map to re-centre the analysis area</div>
         </div>
       `;
       document.body.appendChild(panel);
@@ -469,7 +468,7 @@ export class KeyTerrainIdentificationEngine {
   }
 
   private _bindPanelEvents(): void {
-    this._controlPanelEl?.querySelectorAll<HTMLButtonElement>('.kt-ov-btn').forEach((btn) => {
+    this._controlPanelEl?.querySelectorAll<HTMLButtonElement>('.ms-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const key = (btn.dataset.ov || 'curvature') as OverlayKey;
         this._overlayState[key] = !this._overlayState[key];
@@ -510,12 +509,12 @@ export class KeyTerrainIdentificationEngine {
       if (help) help.hidden = true;
     });
     this._controlPanelEl?.querySelector('#kt-minimize-btn')?.addEventListener('click', () => {
-      const body = this._controlPanelEl?.querySelector<HTMLElement>('.kt-body');
+      const body = this._controlPanelEl?.querySelector<HTMLElement>('.ms-body');
       const btn = this._controlPanelEl?.querySelector<HTMLElement>('#kt-minimize-btn');
       if (!body || !btn) return;
-      const minimized = body.style.display === 'none';
-      body.style.display = minimized ? '' : 'none';
-      btn.textContent = minimized ? '▼' : '▶';
+      const minimized = body.classList.contains('ms-minimized');
+      body.classList.toggle('ms-minimized', !minimized);
+      btn.textContent = !minimized ? '▼' : '▶';
     });
     this._controlPanelEl?.querySelector('#kt-close-btn')?.addEventListener('click', () => {
       this.close();
@@ -523,15 +522,27 @@ export class KeyTerrainIdentificationEngine {
   }
 
   private _showPanels(): void {
-    if (this._listPanelEl) this._listPanelEl.style.display = 'flex';
-    if (this._controlPanelEl) this._controlPanelEl.style.display = 'block';
+    if (this._listPanelEl) {
+      this._listPanelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._listPanelEl.setAttribute('data-engine', 'key-terrain');
+      this._listPanelEl.style.top = '14px';
+      this._listPanelEl.style.left = '14px';
+      this._listPanelEl.classList.add('ms-visible');
+    }
+    if (this._controlPanelEl) {
+      this._controlPanelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._controlPanelEl.setAttribute('data-engine', 'key-terrain');
+      this._controlPanelEl.style.top = '14px';
+      this._controlPanelEl.style.right = '14px';
+      this._controlPanelEl.classList.add('ms-visible');
+    }
     const hint = this._el('kt-hint');
-    if (hint) hint.style.display = '';
+    if (hint) hint.classList.add('ms-visible');
   }
 
   private _hidePanels(): void {
-    if (this._listPanelEl) this._listPanelEl.style.display = 'none';
-    if (this._controlPanelEl) this._controlPanelEl.style.display = 'none';
+    if (this._listPanelEl) this._listPanelEl.classList.remove('ms-visible');
+    if (this._controlPanelEl) this._controlPanelEl.classList.remove('ms-visible');
   }
 
   private _bindMapClick(): void {
@@ -652,7 +663,7 @@ export class KeyTerrainIdentificationEngine {
         const list = this._el('kt-feature-list');
         if (list) {
           list.innerHTML =
-            '<div class="kt-list-empty" id="kt-list-empty">No features detected.<br>Try increasing sensitivity or switching cell size.</div>';
+            '<div class="ms-empty" id="kt-list-empty">No features detected.<br>Try increasing sensitivity or switching cell size.</div>';
         }
         return;
       }
@@ -1288,45 +1299,45 @@ export class KeyTerrainIdentificationEngine {
     features.forEach((feature) => {
       const ft = FEATURE_TYPES[feature.type];
       const card = document.createElement('div');
-      card.className = 'kt-fc';
+      card.className = 'ms-feature-card';
       card.dataset.rank = String(feature.rank);
 
       const promPct = Math.round((feature.prom / maxProm) * 100);
       const elevPct = Math.round(((feature.elev - minElev) / relief) * 100);
 
       card.innerHTML = `
-        <div class="kt-fc-score-badge" style="color:${ft.hexColor}">${feature.compositeScore}</div>
-        <div class="kt-fc-top">
-          <div class="kt-fc-rank" style="background:${ft.hexColor}22;color:${ft.hexColor};border:1px solid ${ft.hexColor}55">
+        <div class="ms-feature-score" style="color:${ft.hexColor}">${feature.compositeScore}</div>
+        <div class="ms-feature-top">
+          <div class="ms-feature-rank" style="background:${ft.hexColor}22;color:${ft.hexColor};border:1px solid ${ft.hexColor}55">
             ${feature.rank}
           </div>
           <div>
-            <div class="kt-fc-name">${ft.icon} ${ft.label}</div>
-            <div class="kt-fc-type">${Math.round(feature.elev)} m MSL &nbsp;&middot;&nbsp; ${feature.viewshedPct}% visible</div>
+            <div class="ms-feature-name">${ft.icon} ${ft.label}</div>
+            <div class="ms-feature-type">${Math.round(feature.elev)} m MSL &nbsp;&middot;&nbsp; ${feature.viewshedPct}% visible</div>
           </div>
         </div>
-        <div class="kt-fc-bars">
-          <div class="kt-fc-bar">
-            <div class="kt-fc-bar-label">Prominence</div>
-            <div class="kt-fc-bar-track"><div class="kt-fc-bar-fill" style="width:${promPct}%;background:${ft.hexColor}"></div></div>
-            <div class="kt-fc-bar-val">${Math.round(feature.prom)}m</div>
+        <div class="ms-feature-bars">
+          <div class="ms-feature-bar">
+            <div class="ms-feature-bar-label">Prominence</div>
+            <div class="ms-feature-bar-track"><div class="ms-feature-bar-fill" style="width:${promPct}%;background:${ft.hexColor}"></div></div>
+            <div class="ms-feature-bar-val">${Math.round(feature.prom)}m</div>
           </div>
-          <div class="kt-fc-bar">
-            <div class="kt-fc-bar-label">Viewshed</div>
-            <div class="kt-fc-bar-track"><div class="kt-fc-bar-fill" style="width:${feature.viewshedPct}%;background:#378ADD"></div></div>
-            <div class="kt-fc-bar-val">${feature.viewshedPct}%</div>
+          <div class="ms-feature-bar">
+            <div class="ms-feature-bar-label">Viewshed</div>
+            <div class="ms-feature-bar-track"><div class="ms-feature-bar-fill" style="width:${feature.viewshedPct}%;background:#378ADD"></div></div>
+            <div class="ms-feature-bar-val">${feature.viewshedPct}%</div>
           </div>
-          <div class="kt-fc-bar">
-            <div class="kt-fc-bar-label">Elevation</div>
-            <div class="kt-fc-bar-track"><div class="kt-fc-bar-fill" style="width:${elevPct}%;background:#1D9E75"></div></div>
-            <div class="kt-fc-bar-val">${Math.round(feature.elev)}m</div>
+          <div class="ms-feature-bar">
+            <div class="ms-feature-bar-label">Elevation</div>
+            <div class="ms-feature-bar-track"><div class="ms-feature-bar-fill" style="width:${elevPct}%;background:#1D9E75"></div></div>
+            <div class="ms-feature-bar-val">${Math.round(feature.elev)}m</div>
           </div>
         </div>
-        <div class="kt-fc-assessment">${ft.assessment(feature)}</div>
+        <div class="ms-feature-assessment">${ft.assessment(feature)}</div>
       `;
 
       card.addEventListener('click', () => {
-        this._listPanelEl?.querySelectorAll('.kt-fc').forEach((el) => el.classList.remove('selected'));
+        this._listPanelEl?.querySelectorAll('.ms-feature-card').forEach((el) => el.classList.remove('selected'));
         card.classList.add('selected');
         void this._view?.goTo(
           {
@@ -1368,7 +1379,7 @@ export class KeyTerrainIdentificationEngine {
     const list = this._el('kt-feature-list');
     if (list) {
       list.innerHTML =
-        '<div class="kt-list-empty" id="kt-list-empty">Run analysis to identify features</div>';
+        '<div class="ms-empty" id="kt-list-empty">Run analysis to identify features</div>';
     }
     this._setText('kt-list-sub', 'Run analysis to identify features');
     ['kt-sg-found', 'kt-sg-area', 'kt-sg-elev', 'kt-sg-relief'].forEach((id) => this._setText(id, '-'));
@@ -1469,189 +1480,6 @@ export class KeyTerrainIdentificationEngine {
   private _setText(id: string, text: string): void {
     const el = this._el(id);
     if (el) el.textContent = text;
-  }
-
-  private _injectStyles(): void {
-    if (document.getElementById('key-terrain-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'key-terrain-engine-styles';
-    style.textContent = `
-      .kt-list-panel{
-        position:absolute;top:14px;left:14px;width:380px;z-index:1100;
-        background:var(--ms-bg, #141820);
-        border:1px solid var(--ms-border, rgba(90,140,220,0.3));
-        border-radius:var(--ms-radius, 9px);
-        color:var(--ms-text, #dce8f5);
-        font-family:var(--ms-font, 'SF Pro Display','Segoe UI',system-ui,sans-serif);
-        font-size:var(--ms-fs, 13.5px);
-        max-height:calc(100vh - 28px);display:none;flex-direction:column;
-        box-shadow:0 8px 36px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.04);
-      }
-      .kt-lph{
-        padding:10px 14px 9px;
-        border-bottom:1px solid var(--ms-divider, rgba(80,100,150,0.18));
-        background:rgba(239,159,39,0.07);
-        flex-shrink:0;
-      }
-      .kt-lph-title{font-size:var(--ms-fs-sm, 15px);letter-spacing:.12em;text-transform:uppercase;color:#EF9F27;font-weight:700;margin-bottom:2px}
-      .kt-lph-sub{font-size:var(--ms-fs-xs, 11.5px);color:var(--ms-text-dim, rgba(175,200,230,0.82));letter-spacing:.05em}
-      .kt-feature-list{overflow-y:auto;flex:1;padding:8px}
-      .kt-fc{
-        background:rgba(255,255,255,0.02);
-        border:1px solid var(--ms-divider, rgba(80,100,150,0.18));
-        border-radius:6px;padding:10px 12px;margin-bottom:7px;
-        cursor:pointer;transition:all .12s;position:relative;
-      }
-      .kt-fc:hover{background:rgba(239,159,39,0.07);border-color:rgba(239,159,39,0.35)}
-      .kt-fc.selected{border-color:#EF9F27;background:rgba(239,159,39,0.10)}
-      .kt-fc-top{display:flex;align-items:flex-start;gap:9px;margin-bottom:7px}
-      .kt-fc-rank{
-        width:24px;height:24px;border-radius:4px;
-        display:flex;align-items:center;justify-content:center;
-        font-size:var(--ms-fs, 13.5px);font-weight:700;flex-shrink:0;
-      }
-      .kt-fc-name{font-size:var(--ms-fs, 13.5px);font-weight:600;color:var(--ms-text, #dce8f5);line-height:1.3;flex:1}
-      .kt-fc-type{font-size:var(--ms-fs-xs, 11.5px);letter-spacing:.06em;text-transform:uppercase;color:var(--ms-text-dim, rgba(175,200,230,0.82));margin-top:2px}
-      .kt-fc-bars{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px}
-      .kt-fc-bar{display:flex;flex-direction:column;gap:3px}
-      .kt-fc-bar-label{font-size:var(--ms-fs-xs, 11.5px);letter-spacing:.06em;text-transform:uppercase;color:var(--ms-text-label, rgba(140,170,205,0.85))}
-      .kt-fc-bar-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px}
-      .kt-fc-bar-fill{height:100%;border-radius:2px;transition:width .3s}
-      .kt-fc-bar-val{font-size:var(--ms-fs-xs, 11.5px);color:var(--ms-text, #dce8f5)}
-      .kt-fc-assessment{
-        font-size:var(--ms-fs-xs, 11.5px);color:var(--ms-text-dim, rgba(175,200,230,0.82));line-height:1.5;
-        border-top:1px solid var(--ms-divider, rgba(80,100,150,0.18));padding-top:6px;margin-top:4px
-      }
-      .kt-fc-score-badge{position:absolute;top:10px;right:12px;font-size:var(--ms-fs-sm, 15px);font-weight:700}
-      .kt-list-empty{
-        padding:22px 14px;font-size:var(--ms-fs, 13.5px);color:var(--ms-text-dim, rgba(175,200,230,0.82));letter-spacing:.04em;
-        text-align:center;line-height:1.65;
-      }
-      .kt-ctrl-panel{
-        position:absolute;top:14px;right:14px;width:380px;z-index:1100;
-        background:var(--ms-bg, #141820);
-        border:1px solid var(--ms-border, rgba(90,140,220,0.3));
-        border-radius:var(--ms-radius, 9px);
-        color:var(--ms-text, #dce8f5);
-        font-family:var(--ms-font, 'SF Pro Display','Segoe UI',system-ui,sans-serif);
-        font-size:var(--ms-fs, 13.5px);
-        max-height:calc(100vh - 28px);overflow-y:auto;display:none;
-        box-shadow:0 8px 36px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.04);
-      }
-      .kt-ph{
-        display:flex;align-items:flex-start;justify-content:space-between;
-        padding:10px 14px 9px;
-        border-bottom:1px solid var(--ms-divider, rgba(80,100,150,0.18));
-        background:rgba(239,159,39,0.07);
-        position:sticky;top:0;z-index:2;
-        cursor:move;
-      }
-      .kt-ph-title-wrap{display:flex;flex-direction:column;gap:3px}
-      .kt-ph-title{font-size:var(--ms-fs-sm, 15px);letter-spacing:.12em;text-transform:uppercase;color:#EF9F27;font-weight:700}
-      .kt-ph-status{font-size:var(--ms-fs-xs, 11.5px);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-dim, rgba(175,200,230,0.82));transition:color .2s;font-weight:600}
-      .kt-ph-status.sampling{color:#EF9F27}
-      .kt-ph-status.scoring{color:#378ADD}
-      .kt-ph-status.done{color:#1D9E75}
-      .kt-ph-status.ready{color:#EF9F27}
-      .kt-ph-actions{display:flex;align-items:center;gap:6px}
-      .kt-help-btn,.kt-minimize-btn,.kt-close-btn{
-        width:22px;height:22px;padding:0;border:0;background:transparent;color:var(--ms-text-dim, rgba(175,200,230,0.82));
-        cursor:pointer;font-size:var(--ms-fs, 13.5px);line-height:1;border-radius:3px;transition:all .12s;
-        font-family:inherit;
-      }
-      .kt-help-btn:hover,.kt-minimize-btn:hover,.kt-close-btn:hover{color:var(--ms-text, #dce8f5);background:rgba(255,255,255,0.06)}
-      .kt-help-btn{border:1px solid var(--ms-border, rgba(90,140,220,0.3));border-radius:50%;color:#1D9E75;font-weight:700}
-      .kt-help-popover{
-        margin:8px 12px;border:1px solid var(--ms-border, rgba(90,140,220,0.3));
-        background:var(--ms-bg, #141820);border-radius:6px;overflow:hidden;
-        max-height:min(440px, calc(100vh - 132px));overflow-y:auto;
-      }
-      .kt-help-head{
-        display:flex;align-items:flex-start;justify-content:space-between;
-        padding:9px 12px;border-bottom:1px solid var(--ms-divider, rgba(80,100,150,0.18));
-        background:rgba(239,159,39,0.06);
-      }
-      .kt-help-kicker{font-size:var(--ms-fs-xs, 11.5px);letter-spacing:.09em;text-transform:uppercase;color:var(--ms-text-label, rgba(140,170,205,0.85))}
-      .kt-help-title{font-size:var(--ms-fs-sm, 15px);color:#EF9F27;letter-spacing:.06em;text-transform:uppercase;font-weight:700;margin-top:2px}
-      .kt-help-close{
-        width:22px;height:22px;padding:0;border:1px solid var(--ms-border, rgba(90,140,220,0.3));background:transparent;color:var(--ms-text-dim, rgba(175,200,230,0.82));
-        cursor:pointer;font-size:var(--ms-fs, 13.5px);font-family:inherit;border-radius:3px;
-      }
-      .kt-help-close:hover{color:var(--ms-text, #dce8f5);border-color:#EF9F27}
-      .kt-help-body{padding:11px 12px 12px;font-size:var(--ms-fs, 13.5px);color:var(--ms-text-dim, rgba(175,200,230,0.82));line-height:1.55;user-select:text}
-      .kt-help-body p{margin:0 0 9px}
-      .kt-help-body ol,.kt-help-body ul{margin:0 0 9px;padding-left:17px}
-      .kt-help-body li{margin:0 0 5px}
-      .kt-ps{font-size:var(--ms-fs-xs, 11.5px);letter-spacing:.1em;text-transform:uppercase;color:var(--ms-text-label, rgba(140,170,205,0.85));padding:11px 14px 6px;font-weight:600}
-      .kt-pg{display:grid;grid-template-columns:1fr 1fr;gap:9px 10px;padding:0 14px 10px}
-      .kt-pf{display:flex;flex-direction:column;gap:4px}
-      .kt-pf.full{grid-column:1/-1}
-      .kt-pl{font-size:var(--ms-fs-xs, 11.5px);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-label, rgba(140,170,205,0.85));font-weight:600}
-      .kt-ctrl-panel input,.kt-ctrl-panel select{
-        background:rgba(0,0,0,0.28);border:1px solid var(--ms-border, rgba(90,140,220,0.3));
-        border-radius:4px;color:var(--ms-text, #dce8f5);font-family:inherit;
-        font-size:var(--ms-fs, 13.5px);padding:7px 9px;width:100%;outline:none;transition:border-color .15s;
-        box-sizing:border-box;
-      }
-      .kt-ctrl-panel input:focus,.kt-ctrl-panel select:focus{border-color:#EF9F27}
-      .kt-ctrl-panel select option{background:var(--ms-bg, #141820)}
-      .kt-psr{display:flex;align-items:center;gap:9px;padding:0 14px 9px}
-      .kt-psr-l{font-size:var(--ms-fs-xs, 11.5px);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-label, rgba(140,170,205,0.85));flex:1.8;font-weight:600}
-      .kt-psr input[type=range]{flex:2;accent-color:#EF9F27;cursor:pointer}
-      .kt-psr-v{font-size:var(--ms-fs, 13.5px);color:#EF9F27;min-width:40px;text-align:right;font-weight:600}
-      .kt-pdiv{height:1px;background:var(--ms-divider, rgba(80,100,150,0.18));margin:5px 0}
-      .kt-ptr{display:flex;align-items:center;justify-content:space-between;padding:6px 14px}
-      .kt-ptr label{font-size:var(--ms-fs-xs, 11.5px);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-label, rgba(140,170,205,0.85));cursor:pointer;font-weight:600}
-      .kt-ptr input[type=checkbox]{accent-color:#EF9F27;width:15px;height:15px;cursor:pointer}
-      .kt-overlay-row{display:flex;gap:6px;padding:0 14px 10px}
-      .kt-ov-btn{
-        flex:1;padding:7px 5px;font-size:var(--ms-fs-xs, 11.5px);letter-spacing:.05em;text-transform:uppercase;
-        cursor:pointer;border-radius:4px;border:1px solid var(--ms-border, rgba(90,140,220,0.3));
-        background:rgba(0,0,0,0.28);color:var(--ms-text-dim, rgba(175,200,230,0.82));font-family:inherit;
-        transition:all .13s;font-weight:600;
-      }
-      .kt-ov-btn:hover{color:var(--ms-text, #dce8f5)}
-      .kt-ov-btn.on{border-color:#EF9F27;color:#EF9F27;background:rgba(239,159,39,0.10)}
-      .kt-prog-wrap{padding:0 14px 10px}
-      .kt-prog-track{height:5px;background:rgba(0,0,0,0.28);border-radius:3px;overflow:hidden;border:1px solid var(--ms-divider, rgba(80,100,150,0.18))}
-      .kt-prog-fill{height:100%;background:linear-gradient(to right,#EF9F27,#378ADD);border-radius:3px;width:0%;transition:width .1s}
-      .kt-prog-label{font-size:var(--ms-fs-xs, 11.5px);color:var(--ms-text-dim, rgba(175,200,230,0.82));letter-spacing:.04em;margin-top:5px}
-      .kt-score-grid{
-        display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;
-        margin:0 14px 10px;background:rgba(239,159,39,0.05);border:1px solid rgba(239,159,39,0.18);
-        border-radius:5px;padding:9px 11px;
-      }
-      .kt-sg{display:flex;flex-direction:column;gap:2px}
-      .kt-sg-l{font-size:var(--ms-fs-xs, 11.5px);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-label, rgba(140,170,205,0.85));font-weight:600}
-      .kt-sg-v{color:#EF9F27;font-size:var(--ms-fs-sm, 15px);font-weight:700}
-      .kt-pb-row{display:flex;gap:7px;padding:10px 14px}
-      .kt-pb{
-        flex:1;padding:9px;font-family:inherit;
-        font-size:var(--ms-fs-xs, 11.5px);letter-spacing:.06em;text-transform:uppercase;
-        cursor:pointer;border-radius:4px;border:1px solid var(--ms-border, rgba(90,140,220,0.3));
-        background:rgba(0,0,0,0.28);color:var(--ms-text-dim, rgba(175,200,230,0.82));transition:all .14s;font-weight:600;
-      }
-      .kt-pb:hover:not(:disabled){background:rgba(239,159,39,0.10);color:#EF9F27;border-color:#EF9F27}
-      .kt-pb.primary{background:rgba(239,159,39,0.16);border-color:#EF9F27;color:#EF9F27;font-weight:700}
-      .kt-pb.primary:hover:not(:disabled){background:rgba(239,159,39,0.28)}
-      .kt-pb:disabled{opacity:.35;cursor:not-allowed}
-      .kt-hint{
-        position:sticky;bottom:0;margin:0 14px 12px;
-        background:rgba(7,8,9,0.94);border:1px solid rgba(239,159,39,0.45);
-        color:#EF9F27;font-family:inherit;font-size:var(--ms-fs-xs, 11.5px);
-        letter-spacing:.08em;padding:9px 12px;border-radius:4px;
-        pointer-events:none;z-index:99;text-transform:uppercase;text-align:center;font-weight:600;
-      }
-      @media (max-width: 980px) {
-        .kt-list-panel{left:10px;top:10px;width:calc(50vw - 18px);max-height:48vh}
-        .kt-ctrl-panel{right:10px;top:10px;width:calc(50vw - 18px);max-height:calc(100vh - 20px)}
-      }
-      @media (max-width: 720px) {
-        .kt-list-panel{left:10px;right:10px;top:10px;width:auto;max-height:32vh}
-        .kt-ctrl-panel{left:10px;right:10px;top:auto;bottom:10px;width:auto;max-height:52vh}
-      }
-    `;
-    document.head.appendChild(style);
   }
 }
 

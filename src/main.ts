@@ -35,7 +35,6 @@ const switchButton: HTMLElement | null = document.getElementById('switch-btn');
 const drawButton: HTMLElement | null = document.getElementById('draw-btn');
 const createButton: HTMLElement | null =
   document.getElementById('createButton');
-const drawBlockSymbolButton = document.getElementById('drawBlockSymbolButton');
 const drawAmbushButton = document.getElementById('drawAmbushButton');
 const savePlanButton = document.getElementById('savePlanButton');
 const loadPlanButton = document.getElementById('loadPlanButton');
@@ -222,68 +221,6 @@ if (createButton) {
     console.log('----');
     const sidcInput = document.getElementById('sidcText') as HTMLInputElement;
     const sidc = sidcInput?.value.trim();
-  });
-}
-
-if (drawBlockSymbolButton) {
-  drawBlockSymbolButton.addEventListener('click', () => {
-    const view = appConfig.activeView;
-
-    // Create or get a graphics layer for block symbols
-    let graphicsLayer = view.map.findLayerById(
-      'blockSymbolLayer',
-    ) as GraphicsLayer;
-    if (!graphicsLayer) {
-      graphicsLayer = new GraphicsLayer({ id: 'blockSymbolLayer' });
-      view.map.add(graphicsLayer);
-    }
-
-    // Set up SketchViewModel for rectangle drawing
-    const sketchVM = new SketchViewModel({
-      view,
-      layer: graphicsLayer,
-      creationMode: 'single',
-    });
-
-    sketchVM.create('rectangle');
-
-    sketchVM.on('create', async (event) => {
-      if (event.state === 'complete') {
-        // Remove the plain rectangle
-        graphicsLayer.remove(event.graphic);
-
-        // Get the geometry of the drawn rectangle
-        const geometry = event.graphic.geometry;
-
-        // Generate the block symbol SVG (replace with your actual SIDC and options)
-        const sidc = '10032500003401000000'; // Example SIDC for "Block" task
-        const options = {
-          sidc,
-          size: 60, // or calculate based on geometry
-          // ...other options as needed
-        };
-
-        // Use your SymbolEngine to generate the SVG
-        const symbolEngine = new SymbolEngine(() => view);
-        const pictureMarkerSymbol = symbolEngine.generateForceSymbol(
-          options,
-          3,
-        );
-
-        // Place the symbol at the center of the rectangle
-        const center = geometry.extent.center;
-
-        const symbolGraphic = new Graphic({
-          geometry: center,
-          symbol: pictureMarkerSymbol,
-          attributes: { type: 'blockSymbol', sidc },
-        });
-
-        graphicsLayer.add(symbolGraphic);
-
-        sketchVM.destroy();
-      }
-    });
   });
 }
 
@@ -629,30 +566,6 @@ function createView(params: any, type: '2d' | '3d'): MapView | SceneView {
   return view;
 }
 
-// Test function to demonstrate milsymbol.js integration using SymbolEngine
-function testMilSymbol() {
-  console.log('Testing milsymbol.js integration via SymbolEngine...');
-
-  try {
-    // Use the SymbolEngine's test method
-    symbolEngine.testMilSymbol();
-  } catch (error) {
-    console.error('Error testing milsymbol.js via SymbolEngine:', error);
-  }
-}
-
-// Add a button to test milsymbol.js functionality
-const testMilSymbolButton = document.createElement('button');
-testMilSymbolButton.textContent = 'Test MilSymbol';
-testMilSymbolButton.className =
-  'esri-component esri-widget--button esri-widget esri-interactive';
-testMilSymbolButton.addEventListener('click', testMilSymbol);
-
-// Add the test button to the info div
-const infoDiv = document.getElementById('infoDiv');
-if (infoDiv) {
-  infoDiv.appendChild(testMilSymbolButton);
-}
 
 // Auto-run test when page loads (optional)
 window.addEventListener('load', () => {

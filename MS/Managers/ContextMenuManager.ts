@@ -8,6 +8,7 @@ import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import Point from '@arcgis/core/geometry/Point';
 
 import GraphicsLayerManager from './GraphicsLayerManager';
+import { menuIcon } from './MenuIcons';
 import MeasurementEngine from '../Engines/MeasurementEngine';
 import WeaponEffectEngine from '../Engines/Analysis/WeaponEffectEngine';
 import LOSEngine from '../Engines/Analysis/LOSEngine';
@@ -486,19 +487,19 @@ class ContextMenuManager extends Evented {
         ...(this._losEngine ? [{
           id: 'analysis-los',
           label: 'Line of Sight',
-          icon: `<span class="menu-icon-text">◉</span>`,
+          icon: menuIcon('eye'),
           action: (g: Graphic) => { if (this._losEngine && this.view) this._losEngine.open(g, this.view); },
         }] : []),
         ...(this._weaponEffectEngine ? [{
           id: 'analysis-wez',
           label: 'Weapon Engagement Zone',
-          icon: `<span class="menu-icon-text">◎</span>`,
+          icon: menuIcon('crosshair'),
           action: (g: Graphic) => { if (this._weaponEffectEngine && this.view) this._weaponEffectEngine.open(g, this.view); },
         }] : []),
         ...(this._trajectoryEngine ? [{
           id: 'analysis-trajectory',
           label: 'Projectile Trajectory',
-          icon: `<span class="menu-icon-text">↗</span>`,
+          icon: menuIcon('arrow-up-right'),
           action: (g: Graphic) => { if (this._trajectoryEngine && this.view) this._trajectoryEngine.open(g, this.view); },
         }] : []),
       ];
@@ -507,7 +508,7 @@ class ContextMenuManager extends Evented {
       analysisItem.className = this.options.menuItemClass || '';
       analysisItem.classList.add('has-submenu');
       analysisItem.style.position = 'relative';
-      analysisItem.innerHTML = `<span class="menu-icon-text">◌</span><span style="flex:1">Analysis</span>`;
+      analysisItem.innerHTML = `<span class="menu-icon">${menuIcon('layers')}</span><span style="flex:1">Analysis</span>`;
 
       const submenuEl = document.createElement('div');
       submenuEl.className = 'arcgis-submenu';
@@ -559,16 +560,15 @@ class ContextMenuManager extends Evented {
       this.menuElement.appendChild(sep);
 
       const header = document.createElement('div');
-      header.style.cssText =
-        'padding:8px 14px 4px;font-size:10px;color:#5a8ad0;font-weight:700;text-transform:uppercase;letter-spacing:1px';
+      header.className = 'arcgis-menu-section-header';
       header.textContent = 'Measurements';
       this.menuElement.appendChild(header);
 
       const toggleItem = document.createElement('div');
       toggleItem.className = this.options.menuItemClass || '';
       toggleItem.innerHTML = isOn
-        ? `<span class="menu-icon-text">∿</span><span>Disable Measurements <span style="color:#4caf50;font-size:10px;margin-left:6px;background:rgba(76,175,80,0.15);padding:2px 6px;border-radius:3px">● ON</span></span>`
-        : `<span class="menu-icon-text">∠</span><span>Enable Measurements <span style="color:#5a7aa8;font-size:10px;margin-left:6px;background:rgba(90,122,168,0.15);padding:2px 6px;border-radius:3px">○ OFF</span></span>`;
+        ? `<span class="menu-icon">${menuIcon('activity')}</span><span>Disable Measurements <span style="color:var(--ms-success);font-size:10px;margin-left:6px;background:rgba(76,175,80,0.12);padding:2px 6px;border-radius:3px;font-family:var(--ms-menu-font)">● ON</span></span>`
+        : `<span class="menu-icon">${menuIcon('ruler-simple')}</span><span>Enable Measurements <span style="color:var(--ms-text-dim);font-size:10px;margin-left:6px;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:3px;font-family:var(--ms-menu-font)">○ OFF</span></span>`;
       toggleItem.addEventListener('click', (e) => {
         e.stopPropagation();
         this._measurementEngine!.toggle();
@@ -586,8 +586,8 @@ class ContextMenuManager extends Evented {
         const slantItem = document.createElement('div');
         slantItem.className = this.options.menuItemClass || '';
         slantItem.innerHTML = opts.slant_range
-          ? `<span class="menu-icon-text">△</span><span>Disable 3D Slant Range</span>`
-          : `<span class="menu-icon-text">△</span><span>Enable 3D Slant Range</span>`;
+          ? `<span class="menu-icon">${menuIcon('box-3d')}</span><span>Disable 3D Slant Range</span>`
+          : `<span class="menu-icon">${menuIcon('box-3d')}</span><span>Enable 3D Slant Range</span>`;
         slantItem.addEventListener('click', (e) => {
           e.stopPropagation();
           this._measurementEngine!.setOptions({ slant_range: !opts.slant_range });
@@ -603,7 +603,7 @@ class ContextMenuManager extends Evented {
 
         const measureItem = document.createElement('div');
         measureItem.className = this.options.menuItemClass || '';
-        measureItem.innerHTML = `<span class="menu-icon-text">↔</span><span>Measure This Symbol</span>`;
+        measureItem.innerHTML = `<span class="menu-icon">${menuIcon('move')}</span><span>Measure This Symbol</span>`;
         measureItem.addEventListener('click', (e) => {
           e.stopPropagation();
           if (this.activeGraphic) {
@@ -640,7 +640,7 @@ class ContextMenuManager extends Evented {
 
       const stopItem = document.createElement('div');
       stopItem.className = this.options.menuItemClass || '';
-      stopItem.innerHTML = `<span class="menu-icon-text">■</span><span>Stop Continuous Mode <span style="color:#e5a540;font-size:10px;margin-left:6px;background:rgba(229,165,64,0.15);padding:2px 6px;border-radius:3px">● LOOP</span></span><span class="menu-shortcut">Esc</span>`;
+      stopItem.innerHTML = `<span class="menu-icon">${menuIcon('square-stop')}</span><span>Stop Continuous Mode <span style="color:var(--ms-warning);font-size:10px;margin-left:6px;background:rgba(229,165,64,0.12);padding:2px 6px;border-radius:3px;font-family:var(--ms-menu-font)">● LOOP</span></span><span class="menu-shortcut">Esc</span>`;
       stopItem.addEventListener('click', (e) => {
         e.stopPropagation();
         this._symbolEngine!.stopContinuousMode();
@@ -664,7 +664,7 @@ class ContextMenuManager extends Evented {
 
       const dbItem = document.createElement('div');
       dbItem.className = this.options.menuItemClass || '';
-      dbItem.innerHTML = `<span class="menu-icon-text">⌖</span><span>Open Deployment Manager</span>`;
+      dbItem.innerHTML = `<span class="menu-icon">${menuIcon('map-pin')}</span><span>Open Deployment Manager</span>`;
       dbItem.addEventListener('click', (e) => {
         e.stopPropagation();
         this._deploymentBuilderEngine!.openWidget();
@@ -688,7 +688,7 @@ class ContextMenuManager extends Evented {
 
       const moreItem = document.createElement('div');
       moreItem.className = this.options.menuItemClass || '';
-      moreItem.innerHTML = `<span class="menu-icon-text">+</span><span>More Actions...</span><span class="menu-shortcut">Search</span>`;
+      moreItem.innerHTML = `<span class="menu-icon">${menuIcon('grid')}</span><span>More Actions…</span><span class="menu-shortcut">Search</span>`;
       moreItem.addEventListener('click', (e) => {
         e.stopPropagation();
         this.showActionPalette(x, y, graphic, paletteActions);
@@ -1114,7 +1114,7 @@ class ContextMenuManager extends Evented {
 
     const searchIcon = document.createElement('span');
     searchIcon.className = 'arcgis-action-palette-search-icon';
-    searchIcon.textContent = 'Search';
+    searchIcon.innerHTML = menuIcon('search');
     searchWrap.appendChild(searchIcon);
 
     const input = document.createElement('input');
@@ -1483,42 +1483,39 @@ class ContextMenuManager extends Evented {
   private applyDefaultStyles(): void {
     const style = document.createElement('style');
     style.textContent = `
+      /* ── Context menu shell ─────────────────────────────────────────────── */
       .arcgis-context-menu {
         background-color: var(--ms-bg);
         border: 1px solid var(--ms-border);
         border-radius: var(--ms-radius);
         box-shadow: var(--ms-shadow);
-        padding: 6px 0;
-        min-width: 180px;
+        padding: 5px 0;
+        min-width: 200px;
         max-width: 320px;
         user-select: none;
-        backdrop-filter: blur(12px);
-        animation: contextMenuFadeIn 0.15s ease-out;
-        font-family: var(--ms-font);
+        backdrop-filter: blur(14px);
+        animation: contextMenuFadeIn 0.13s ease-out;
+        font-family: var(--ms-menu-font);
       }
 
       @keyframes contextMenuFadeIn {
-        from {
-          opacity: 0;
-          transform: scale(0.96) translateY(-4px);
-        }
-        to {
-          opacity: 1;
-          transform: scale(1) translateY(0);
-        }
+        from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+        to   { opacity: 1; transform: scale(1)    translateY(0);    }
       }
 
+      /* ── Menu items ─────────────────────────────────────────────────────── */
       .arcgis-context-menu-item {
-        padding: 8px 14px;
+        padding: 7px 12px;
         cursor: pointer;
         display: flex;
         align-items: center;
         color: var(--ms-text);
-        font-size: var(--ms-fs);
-        font-family: var(--ms-font);
-        transition: all 0.1s ease;
+        font-size: 12.5px;
+        font-family: var(--ms-menu-font);
+        letter-spacing: 0.01em;
+        transition: background-color 0.08s ease, border-left-color 0.08s ease;
         border-left: 2px solid transparent;
-        margin: 0 4px;
+        margin: 1px 4px;
         border-radius: 4px;
       }
 
@@ -1527,91 +1524,127 @@ class ContextMenuManager extends Evented {
         background-color: var(--ms-bg-input);
         border-left-color: var(--ms-accent);
         color: var(--ms-text);
-        filter: brightness(1.3);
-        padding-left: 16px;
+        filter: brightness(1.15);
       }
 
       .arcgis-context-menu-item.disabled {
         color: var(--ms-text-label);
         cursor: default;
+        opacity: 0.55;
       }
 
       .arcgis-context-menu-item.disabled:hover {
-        background-color: inherit;
+        background-color: transparent;
         border-left-color: transparent;
         filter: none;
       }
 
+      /* ── Groups ─────────────────────────────────────────────────────────── */
       .arcgis-context-menu-group {
-        margin-top: 6px;
-        padding-top: 6px;
+        margin-top: 4px;
+        padding-top: 4px;
         border-top: 1px solid var(--ms-divider);
       }
 
       .arcgis-context-menu-group-title {
-        padding: 6px 14px;
-        font-size: var(--ms-fs-sm);
+        padding: 5px 14px 4px;
+        font-family: var(--ms-menu-font);
+        font-size: var(--ms-fs-xs);
         color: var(--ms-accent-dim);
-        font-weight: 600;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 0.08em;
+        opacity: 0.8;
       }
 
+      /* ── Section header (Measurements, etc.) ───────────────────────────── */
+      .arcgis-menu-section-header {
+        padding: 8px 14px 3px;
+        font-family: var(--ms-menu-font);
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-accent-dim);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        opacity: 0.8;
+      }
+
+      /* ── Separator ──────────────────────────────────────────────────────── */
       .arcgis-context-menu-separator {
         height: 1px;
         background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
-        margin: 6px 12px;
+        margin: 5px 10px;
       }
 
+      /* ── Icon slot (SVG) ────────────────────────────────────────────────── */
       .menu-icon {
+        width: 16px;
+        min-width: 16px;
+        height: 16px;
         margin-right: 10px;
         display: inline-flex;
         align-items: center;
-        font-size: 14px;
-        opacity: 0.9;
+        justify-content: center;
+        color: var(--ms-accent-dim);
+        opacity: 0.85;
+        flex-shrink: 0;
       }
 
+      .menu-icon svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      /* Backward-compat: callers that still pass a bare Unicode string or
+         the old <span class="menu-icon-text"> wrapper — render it gracefully
+         without the pill border/background that was removed. */
       .menu-icon-text {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 22px;
+        width: 16px;
+        min-width: 16px;
         height: 16px;
-        padding: 0 4px;
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0;
-        color: var(--ms-accent-dim);
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        background: var(--ms-bg-input);
+        margin-right: 10px;
+        font-size: 13px;
         line-height: 1;
-        box-sizing: border-box;
+        color: var(--ms-accent-dim);
+        opacity: 0.85;
+        flex-shrink: 0;
       }
 
+      /* ── Shortcut badge ─────────────────────────────────────────────────── */
       .menu-shortcut {
-        margin-left: 16px;
+        margin-left: auto;
+        padding-left: 12px;
         font-size: var(--ms-fs-xs);
+        font-family: var(--ms-menu-font);
         color: var(--ms-text-dim);
         white-space: nowrap;
-        font-family: var(--ms-font);
-        background: rgba(0, 0, 0, 0.2);
-        padding: 2px 5px;
+        background: rgba(0, 0, 0, 0.18);
+        padding: 2px 6px;
         border-radius: 3px;
+        flex-shrink: 0;
       }
 
+      /* ── Submenu chevron ────────────────────────────────────────────────── */
       .arcgis-context-menu-item.has-submenu {
         position: relative;
       }
 
       .arcgis-context-menu-item.has-submenu::after {
-        content: '▸';
+        content: '';
+        display: inline-block;
+        width: 12px;
+        height: 12px;
         margin-left: auto;
-        font-size: var(--ms-fs-sm);
-        color: var(--ms-accent-dim);
         flex-shrink: 0;
+        background-color: var(--ms-accent-dim);
+        opacity: 0.55;
+        clip-path: polygon(30% 18%, 72% 50%, 30% 82%, 20% 72%, 54% 50%, 20% 28%);
       }
 
+      /* ── Submenu panel ──────────────────────────────────────────────────── */
       .arcgis-submenu {
         display: none;
         position: absolute;
@@ -1621,67 +1654,68 @@ class ContextMenuManager extends Evented {
         border: 1px solid var(--ms-border);
         border-radius: var(--ms-radius);
         box-shadow: var(--ms-shadow);
-        padding: 6px 0;
-        min-width: 180px;
+        padding: 5px 0;
+        min-width: 200px;
         max-width: 300px;
         z-index: 1001;
-        backdrop-filter: blur(12px);
-        animation: submenuFadeIn 0.12s ease-out;
+        backdrop-filter: blur(14px);
+        animation: submenuFadeIn 0.1s ease-out;
       }
 
       @keyframes submenuFadeIn {
-        from {
-          opacity: 0;
-          transform: translateX(-8px);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(0);
-        }
+        from { opacity: 0; transform: translateX(-6px); }
+        to   { opacity: 1; transform: translateX(0);    }
       }
 
+      /* ══════════════════════════════════════════════════════════════════════
+         ACTION PALETTE ("More Actions…")
+         ══════════════════════════════════════════════════════════════════════ */
       .arcgis-action-palette {
         width: min(420px, calc(100vw - 24px));
         max-height: min(520px, calc(100vh - 24px));
         background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 110px),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 100px),
           var(--ms-bg);
         border: 1px solid var(--ms-border);
-        border-radius: 8px;
-        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.36), var(--ms-shadow);
+        border-radius: 10px;
+        box-shadow: 0 20px 52px rgba(0, 0, 0, 0.4), var(--ms-shadow);
         color: var(--ms-text);
-        font-family: var(--ms-font);
+        font-family: var(--ms-menu-font);
         overflow: hidden;
         user-select: none;
-        backdrop-filter: blur(12px);
+        backdrop-filter: blur(16px);
         animation: actionPaletteIn 0.14s cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       @keyframes actionPaletteIn {
-        from {
-          opacity: 0;
-          transform: translateY(-4px) scale(0.985);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
+        from { opacity: 0; transform: translateY(-6px) scale(0.982); }
+        to   { opacity: 1; transform: translateY(0)    scale(1);      }
       }
 
+      /* ── Search bar ─────────────────────────────────────────────────────── */
       .arcgis-action-palette-search {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         padding: 10px 12px;
         border-bottom: 1px solid var(--ms-divider);
       }
 
       .arcgis-action-palette-search-icon {
+        width: 16px;
+        min-width: 16px;
+        height: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         color: var(--ms-accent-dim);
-        font-size: var(--ms-fs-xs);
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        opacity: 0.7;
+        flex-shrink: 0;
+      }
+
+      .arcgis-action-palette-search-icon svg {
+        width: 16px;
+        height: 16px;
       }
 
       .arcgis-action-palette-search input {
@@ -1691,35 +1725,55 @@ class ContextMenuManager extends Evented {
         border: 1px solid var(--ms-border);
         border-radius: 6px;
         color: var(--ms-text);
-        font-family: var(--ms-font);
-        font-size: var(--ms-fs);
+        font-family: var(--ms-menu-font);
+        font-size: 13px;
         outline: none;
-        padding: 8px 10px;
+        padding: 7px 10px;
+        transition: border-color 0.12s ease, box-shadow 0.12s ease;
+      }
+
+      .arcgis-action-palette-search input::placeholder {
+        color: var(--ms-text-dim);
+        opacity: 0.7;
       }
 
       .arcgis-action-palette-search input:focus {
         border-color: var(--ms-accent);
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--ms-accent) 22%, transparent);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--ms-accent) 20%, transparent);
       }
 
+      /* ── List area ──────────────────────────────────────────────────────── */
       .arcgis-action-palette-list {
         max-height: min(390px, calc(100vh - 150px));
         overflow: auto;
-        padding: 6px;
+        padding: 4px 6px;
       }
 
+      .arcgis-action-palette-list::-webkit-scrollbar { width: 5px; }
+      .arcgis-action-palette-list::-webkit-scrollbar-track { background: transparent; }
+      .arcgis-action-palette-list::-webkit-scrollbar-thumb {
+        background: var(--ms-scrollbar-thumb);
+        border-radius: 3px;
+      }
+
+      /* ── Category header ────────────────────────────────────────────────── */
       .arcgis-action-palette-category {
-        padding: 8px 8px 5px;
-        color: var(--ms-accent-dim);
+        font-family: var(--ms-menu-font);
         font-size: var(--ms-fs-xs);
-        font-weight: 800;
+        font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
+        color: var(--ms-accent-dim);
+        border-left: 2px solid var(--ms-accent);
+        padding: 5px 6px 4px;
+        margin: 8px 2px 3px;
+        opacity: 0.85;
       }
 
+      /* ── Action rows ────────────────────────────────────────────────────── */
       .arcgis-action-palette-row {
         width: 100%;
-        min-height: 42px;
+        min-height: 38px;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -1728,17 +1782,17 @@ class ContextMenuManager extends Evented {
         background: transparent;
         color: var(--ms-text);
         cursor: pointer;
-        font-family: var(--ms-font);
+        font-family: var(--ms-menu-font);
         margin: 1px 0;
-        padding: 7px 8px;
+        padding: 6px 8px;
         text-align: left;
-        transition: background-color 0.1s ease, border-color 0.1s ease, transform 0.1s ease;
+        transition: background-color 0.08s ease, border-color 0.08s ease;
       }
 
       .arcgis-action-palette-row.selected,
       .arcgis-action-palette-row:hover {
         background: var(--ms-bg-input);
-        border-color: color-mix(in srgb, var(--ms-accent) 48%, transparent);
+        border-color: color-mix(in srgb, var(--ms-accent) 45%, transparent);
       }
 
       .arcgis-action-palette-row:active {
@@ -1747,64 +1801,86 @@ class ContextMenuManager extends Evented {
 
       .arcgis-action-palette-row:disabled {
         cursor: default;
-        opacity: 0.48;
+        opacity: 0.4;
       }
 
+      /* ── Row icon slot ──────────────────────────────────────────────────── */
       .arcgis-action-palette-icon {
-        width: 20px;
-        min-width: 20px;
+        width: 18px;
+        min-width: 18px;
+        height: 18px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        opacity: 0.92;
+        color: var(--ms-accent-dim);
+        opacity: 0.85;
+        flex-shrink: 0;
       }
 
+      .arcgis-action-palette-icon svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      /* ── Row text ───────────────────────────────────────────────────────── */
       .arcgis-action-palette-copy {
         min-width: 0;
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 1px;
       }
 
       .arcgis-action-palette-label {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-size: var(--ms-fs);
-        font-weight: 650;
+        font-family: var(--ms-menu-font);
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--ms-text);
       }
 
       .arcgis-action-palette-meta {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        color: var(--ms-text-dim);
+        font-family: var(--ms-menu-font);
         font-size: var(--ms-fs-xs);
+        color: var(--ms-text-dim);
+        opacity: 0.8;
       }
 
+      /* ── Shortcut badge ─────────────────────────────────────────────────── */
       .arcgis-action-palette-shortcut {
+        font-family: var(--ms-menu-font);
+        font-size: var(--ms-fs-xs);
         color: var(--ms-text-dim);
         background: rgba(0, 0, 0, 0.18);
         border: 1px solid var(--ms-divider);
         border-radius: 4px;
-        font-size: var(--ms-fs-xs);
-        padding: 3px 6px;
+        padding: 2px 6px;
         white-space: nowrap;
+        flex-shrink: 0;
       }
 
+      /* ── Empty / hint ───────────────────────────────────────────────────── */
       .arcgis-action-palette-empty {
-        padding: 22px 12px;
+        padding: 24px 12px;
+        font-family: var(--ms-menu-font);
+        font-size: 13px;
         color: var(--ms-text-dim);
-        font-size: var(--ms-fs);
         text-align: center;
+        opacity: 0.7;
       }
 
       .arcgis-action-palette-hint {
         border-top: 1px solid var(--ms-divider);
-        color: var(--ms-text-dim);
+        font-family: var(--ms-menu-font);
         font-size: var(--ms-fs-xs);
-        padding: 8px 12px 10px;
+        color: var(--ms-text-dim);
+        padding: 7px 12px 9px;
+        opacity: 0.65;
       }
     `;
     document.head.appendChild(style);

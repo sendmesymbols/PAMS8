@@ -4,6 +4,12 @@ import Extent from "@arcgis/core/geometry/Extent";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+/** Structural point shape — anything with .x and .y. Accepts Point and plain {x,y} objects. */
+export type PtLike = {
+    x: number;
+    y: number;
+    spatialReference?: SpatialReference;
+};
 /**
  * GeoTools utility module for common geometric calculations and operations
  * Updated for ArcGIS API for JavaScript 4.x
@@ -37,7 +43,7 @@ export declare class GeoTools {
     /**
      * Calculate two points angle
      */
-    static twoPtsAngle(pt1: Point, pt2: Point): number;
+    static twoPtsAngle(pt1: PtLike, pt2: PtLike): number;
     /**
      * Convert radians to degrees
      */
@@ -97,7 +103,7 @@ export declare class GeoTools {
     /**
      * Generate dashed points for a line
      */
-    static getDashPts(pts: Point[], dashArray: number[]): Point[];
+    static getDashPts(pts: PtLike[], dashArray: number[]): Point[];
     /**
      * Create dashed points between two coordinates
      */
@@ -113,9 +119,9 @@ export declare class GeoTools {
     /**
      * Calculate distance between two points (simple Euclidean)
      */
-    static _2PtLen(pt1: Point, pt2: Point): number;
+    static _2PtLen(pt1: PtLike, pt2: PtLike): number;
     /** Legacy alias used by ObstacleBypassEasy / min bundles - Euclidean distance between two points. */
-    static B(pt1: Point, pt2: Point): number;
+    static B(pt1: PtLike, pt2: PtLike): number;
     /** Legacy alias used by CounterAttack min bundles - Euclidean distance between two points. */
     static k(pt1: Point, pt2: Point): number;
     /** Legacy alias used by BaseLine / min bundles - Euclidean distance between two points. */

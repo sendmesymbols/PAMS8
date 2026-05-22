@@ -85,6 +85,5 @@ export declare class DeadGroundMapper {
     private _selectValue;
     private _setText;
     private _el;
-    private _injectStyles;
 }
 export default DeadGroundMapper;

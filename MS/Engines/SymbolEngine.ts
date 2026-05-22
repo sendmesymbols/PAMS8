@@ -35,6 +35,7 @@ import ContextMenuManager, {
   ContextMenuItem,
   MenuItemEvent,
 } from '../Managers/ContextMenuManager';
+import { menuIcon } from '../Managers/MenuIcons';
 
 import symbolData from '../Data/Symbols.json';
 import settingsData from '../Data/Settings.json';
@@ -966,21 +967,21 @@ class SymbolEngine implements Evented {
         id: 'show-details',
         label: 'Show Details',
         shortcut: 'I',
-        icon: '<span class="menu-icon-text">◈</span>',
+        icon: menuIcon('info'),
         action: (graphic) => this.showSymbolDetails(graphic),
       },
       {
         id: 'center-on',
         label: 'Center On',
         shortcut: 'C',
-        icon: '<span class="menu-icon-text">◎</span>',
+        icon: menuIcon('navigation'),
         action: (graphic) => this.centerOnGraphic(graphic),
       },
       {
         id: 'remove-graphic',
         label: 'Remove',
         shortcut: 'Del',
-        icon: '<span class="menu-icon-text">×</span>',
+        icon: menuIcon('trash'),
         action: (graphic) => this.removeGraphic(graphic),
       },
       // ── Edit submenu (owned by EditEngine) ─────────────────────────
@@ -998,7 +999,7 @@ class SymbolEngine implements Evented {
       {
         id: 'clipboard-submenu',
         label: 'Clipboard',
-        icon: '<span class="menu-icon-text">⧉</span>',
+        icon: menuIcon('clipboard'),
         visible: () =>
           (settingsData as any).features?.clipboard !== false &&
           ((settingsData as any).features?.copyPaste !== false ||
@@ -1008,7 +1009,7 @@ class SymbolEngine implements Evented {
             id: 'copy-symbol',
             label: 'Copy Symbol',
             shortcut: 'Ctrl+C',
-            icon: '<span class="menu-icon-text">⧉</span>',
+            icon: menuIcon('copy'),
             visible: () => (settingsData as any).features?.copyPaste !== false,
             action: (graphic) => this.copySymbol(graphic),
           },
@@ -1016,7 +1017,7 @@ class SymbolEngine implements Evented {
             id: 'paste-symbol',
             label: 'Paste Symbol',
             shortcut: 'Ctrl+V',
-            icon: '<span class="menu-icon-text">•</span>',
+            icon: menuIcon('clipboard'),
             visible: () =>
               (settingsData as any).features?.copyPaste !== false &&
               this._clipboard !== null,
@@ -1026,7 +1027,7 @@ class SymbolEngine implements Evented {
             id: 'paste-symbol-offset',
             label: 'Paste with Offset...',
             shortcut: 'Ctrl+Shift+V',
-            icon: '<span class="menu-icon-text">∠</span>',
+            icon: menuIcon('move'),
             visible: () =>
               (settingsData as any).features?.copyPaste !== false &&
               this._clipboard !== null,
@@ -1039,7 +1040,7 @@ class SymbolEngine implements Evented {
                 ? `Undo ${this._undoStack[this._undoStack.length - 1].label}`
                 : 'Undo',
             shortcut: 'Ctrl+Z',
-            icon: '<span class="menu-icon-text">↩</span>',
+            icon: menuIcon('rotate-ccw'),
             enabled: (_graphic) => this._undoStack.length > 0,
             visible: () => (settingsData as any).features?.shortcuts !== false,
             action: (_graphic) => this.undo(),
@@ -1051,7 +1052,7 @@ class SymbolEngine implements Evented {
                 ? `Redo ${this._redoStack[this._redoStack.length - 1].label}`
                 : 'Redo',
             shortcut: 'Ctrl+Y',
-            icon: '<span class="menu-icon-text">↪</span>',
+            icon: menuIcon('rotate-cw'),
             enabled: (_graphic) => this._redoStack.length > 0,
             visible: () => (settingsData as any).features?.shortcuts !== false,
             action: (_graphic) => this.redo(),
@@ -1067,21 +1068,21 @@ class SymbolEngine implements Evented {
         id: 'show-details',
         label: 'Show Details',
         shortcut: 'I',
-        icon: '<span class="menu-icon-text">◈</span>',
+        icon: menuIcon('info'),
         action: (graphic) => this.showSymbolDetails(graphic),
       },
       {
         id: 'center-on',
         label: 'Center On',
         shortcut: 'C',
-        icon: '<span class="menu-icon-text">◎</span>',
+        icon: menuIcon('navigation'),
         action: (graphic) => this.centerOnGraphic(graphic),
       },
       {
         id: 'remove-graphic',
         label: 'Remove',
         shortcut: 'Del',
-        icon: '<span class="menu-icon-text">×</span>',
+        icon: menuIcon('trash'),
         action: (graphic) => this.removeGraphic(graphic),
       },
     ];

@@ -127,6 +127,5 @@ export declare class LocalPeaksEngine {
     private _setSelectValue;
     private _setText;
     private _tick;
-    private _injectStyles;
 }
 export default LocalPeaksEngine;

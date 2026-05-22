@@ -20,7 +20,6 @@ export declare class CorpsAdmArea {
     private layerManager;
     private symbolLayer;
     private isLine;
-    private isLine;
     declaredClass: string;
     private SID;
     private symName;

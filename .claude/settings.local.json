@@ -19,7 +19,8 @@
       "Bash(npx vite *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "WebFetch(domain:developers.arcgis.com)"
+      "WebFetch(domain:developers.arcgis.com)",
+      "Bash(powershell *)"
     ]
   }
 }

@@ -91,7 +91,7 @@ export declare class Canalize {
      */
     private flaps;
     /**
-     * Create circle path at point with radius (unused in Canalize; kept if needed)
+     * Create circle path at point with radius (used as ACP circle)
      */
     private createACP;
     /**
