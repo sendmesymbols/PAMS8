@@ -31,6 +31,7 @@ declare class DeploymentBuilderEngine {
     private _minimized;
     private _searchText;
     private _collapsedCategories;
+    private _widgetHeight;
     private constructor();
     static getInstance(): DeploymentBuilderEngine;
     start(view: MapView | SceneView, serialEngine: SerializationEngine): void;
@@ -45,6 +46,7 @@ declare class DeploymentBuilderEngine {
     private _buildWidget;
     private _injectWidgetStyles;
     private _makeDraggable;
+    private _makeResizable;
     private _resolveRegistryBase;
     private _loadRegistry;
     private _loadPlanFile;

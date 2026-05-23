@@ -91,6 +91,5 @@ export declare class PosDefScorerEngine {
     private _checked;
     private _setText;
     private _setStyle;
-    private _injectStyles;
 }
 export default PosDefScorerEngine;

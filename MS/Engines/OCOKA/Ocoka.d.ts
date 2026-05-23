@@ -115,6 +115,5 @@ export declare class OcokaEngine {
     private _setText;
     private _setHint;
     private _tick;
-    private _injectStyles;
 }
 export default OcokaEngine;

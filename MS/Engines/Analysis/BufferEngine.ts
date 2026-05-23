@@ -147,6 +147,7 @@ export class BufferEngine {
 
   constructor() {
     this._createLayers();
+    this._injectStyles();
   }
 
   initialize(view: MapView | SceneView): void {
@@ -327,7 +328,11 @@ export class BufferEngine {
 
   private _buildRingGraphics(rings: ComputedRing[]): Graphic[] {
     const is3D = this._view?.type === '3d';
-    const extrudeHeightM = (this._inp('buffer-opt-extrude')?.checked ?? false) ? 300 : 0;
+    const extrudeChecked = this._inp('buffer-opt-extrude')?.checked ?? false;
+    const extrudeHeightM = extrudeChecked
+      ? Math.max(50, Number(this._inp('buffer-extrude-height')?.value ?? 300))
+      : 0;
+
     return rings.flatMap((ring) => {
       if (!ring.geometry) return [];
       const colors = RING_COLORS[ring.colorKey] ?? RING_COLORS.info;
@@ -335,19 +340,21 @@ export class BufferEngine {
       const [or, og, ob, oa] = colors.outline;
 
       if (is3D) {
-        const symbolLayers: any[] = [{
-          type: 'fill',
-          material: { color: [fr, fg, fb, fa] },
-          outline: { color: [or, og, ob, oa], size: 1.5 },
-        }];
-        if (extrudeHeightM > 0) {
-          symbolLayers.push({
-            type: 'extrude',
-            material: { color: [fr, fg, fb, fa * 0.6] },
-            edges: { type: 'solid', color: [or, og, ob, oa * 0.4], size: 0.5 },
-            size: extrudeHeightM,
-          });
-        }
+        // When extruding, use only the extrude layer — a flat fill layer on top
+        // suppresses the extrusion entirely in SceneView.
+        const symbolLayers: any[] = extrudeHeightM > 0
+          ? [{
+              type: 'extrude',
+              material: { color: [fr, fg, fb, Math.min(fa * 2, 0.85)] },
+              edges: { type: 'solid', color: [or, og, ob, oa], size: 0.5 },
+              size: extrudeHeightM,
+            }]
+          : [{
+              type: 'fill',
+              material: { color: [fr, fg, fb, fa] },
+              outline: { color: [or, og, ob, oa], size: 1.5 },
+            }];
+
         return [new Graphic({
           geometry: ring.geometry,
           symbol: { type: 'polygon-3d', symbolLayers },
@@ -378,6 +385,7 @@ export class BufferEngine {
   }
 
   private _buildLabelGraphics(sourcePoint: Point, rings: ComputedRing[]): Graphic[] {
+    const is3D = this._view?.type === '3d';
     return rings.map((ring) => {
       const colors = RING_COLORS[ring.colorKey] ?? RING_COLORS.info;
       const labelPt = destinationPoint(
@@ -386,20 +394,42 @@ export class BufferEngine {
         0,
         ring.radiusM,
       );
+      const text = `${ring.label}  ${ring.radiusM >= 1000
+        ? `${(ring.radiusM / 1000).toFixed(1)} km`
+        : `${ring.radiusM} m`}`;
+      const pt = new Point({
+        longitude: labelPt.longitude,
+        latitude: labelPt.latitude,
+        spatialReference: { wkid: 4326 },
+      });
+
+      if (is3D) {
+        return new Graphic({
+          geometry: pt,
+          symbol: {
+            type: 'label-3d',
+            symbolLayers: [{
+              type: 'text',
+              material: { color: colors.label },
+              halo: { color: [0, 0, 0, 0.75], size: 1.5 },
+              text,
+              font: { family: 'Courier New', size: 10, weight: 'bold' },
+            }],
+            verticalOffset: { screenLength: 20, maxWorldLength: 2000, minWorldLength: 10 },
+            callout: { type: 'line', size: 0.5, color: [0, 0, 0, 0.4] },
+          } as any,
+          attributes: { type: 'buffer_label', label: ring.label },
+        });
+      }
+
       return new Graphic({
-        geometry: new Point({
-          longitude: labelPt.longitude,
-          latitude: labelPt.latitude,
-          spatialReference: { wkid: 4326 },
-        }),
+        geometry: pt,
         symbol: {
           type: 'text',
           color: colors.label,
           haloColor: [0, 0, 0, 0.7],
           haloSize: 1.5,
-          text: `${ring.label}  ${ring.radiusM >= 1000
-            ? `${(ring.radiusM / 1000).toFixed(1)} km`
-            : `${ring.radiusM} m`}`,
+          text,
           font: { family: 'Courier New', size: 10, weight: 'bold' },
           horizontalAlignment: 'center',
           verticalAlignment: 'bottom',
@@ -410,9 +440,33 @@ export class BufferEngine {
   }
 
   private _buildGeometryLabelGraphics(rings: ComputedRing[]): Graphic[] {
+    const is3D = this._view?.type === '3d';
     return rings.flatMap((ring) => {
       if (!ring.geometry?.extent?.center) return [];
       const colors = RING_COLORS[ring.colorKey] ?? RING_COLORS.info;
+      const text = `${ring.label}  ${ring.radiusM >= 1000
+        ? `${(ring.radiusM / 1000).toFixed(1)} km`
+        : `${ring.radiusM} m`}`;
+
+      if (is3D) {
+        return [new Graphic({
+          geometry: ring.geometry.extent.center,
+          symbol: {
+            type: 'label-3d',
+            symbolLayers: [{
+              type: 'text',
+              material: { color: colors.label },
+              halo: { color: [0, 0, 0, 0.75], size: 1.5 },
+              text,
+              font: { family: 'Courier New', size: 10, weight: 'bold' },
+            }],
+            verticalOffset: { screenLength: 20, maxWorldLength: 2000, minWorldLength: 10 },
+            callout: { type: 'line', size: 0.5, color: [0, 0, 0, 0.4] },
+          } as any,
+          attributes: { type: 'buffer_label', label: ring.label },
+        })];
+      }
+
       return [new Graphic({
         geometry: ring.geometry.extent.center,
         symbol: {
@@ -420,9 +474,7 @@ export class BufferEngine {
           color: colors.label,
           haloColor: [0, 0, 0, 0.7],
           haloSize: 1.5,
-          text: `${ring.label}  ${ring.radiusM >= 1000
-            ? `${(ring.radiusM / 1000).toFixed(1)} km`
-            : `${ring.radiusM} m`}`,
+          text,
           font: { family: 'Courier New', size: 10, weight: 'bold' },
           horizontalAlignment: 'center',
           verticalAlignment: 'middle',
@@ -835,6 +887,10 @@ export class BufferEngine {
           <label class="ms-label">Extrude rings (3D)</label>
           <input id="buffer-opt-extrude" type="checkbox" />
         </div>
+        <div class="ms-field" id="buffer-extrude-height-wrap" style="display:none">
+          <div class="ms-label">Height (m)</div>
+          <input id="buffer-extrude-height" class="ms-input" type="number" value="300" min="50" max="5000" step="50" />
+        </div>
         <div class="ms-toggle-row">
           <label class="ms-label">Show contested zone</label>
           <input id="buffer-opt-contested" type="checkbox" />
@@ -919,8 +975,15 @@ export class BufferEngine {
       p.querySelector(`#${id}`)?.addEventListener('change', () => this._redraw());
     });
 
-    ['buffer-opt-donut', 'buffer-opt-labels', 'buffer-opt-extrude', 'buffer-opt-contested']
+    ['buffer-opt-donut', 'buffer-opt-labels', 'buffer-opt-contested']
       .forEach((id) => p.querySelector(`#${id}`)?.addEventListener('change', () => this._redraw()));
+
+    p.querySelector('#buffer-opt-extrude')?.addEventListener('change', (e) => {
+      const wrap = p.querySelector<HTMLElement>('#buffer-extrude-height-wrap');
+      if (wrap) wrap.style.display = (e.target as HTMLInputElement).checked ? 'flex' : 'none';
+      this._redraw();
+    });
+    p.querySelector('#buffer-extrude-height')?.addEventListener('change', () => this._redraw());
 
     p.querySelector('#buffer-pick-btn')?.addEventListener('click', () => this._startPick('replace'));
     p.querySelector('#buffer-add-btn')?.addEventListener('click', () => this._startPick('add'));
@@ -971,6 +1034,116 @@ export class BufferEngine {
     document.removeEventListener('mousemove', this._onDragMove);
     document.removeEventListener('mouseup', this._onDragEnd);
   };
+
+  private _injectStyles(): void {
+    if (document.getElementById('buffer-engine-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'buffer-engine-styles';
+    style.textContent = `
+      #buffer-engine-panel .ms-field {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      #buffer-engine-panel .ms-field-full {
+        padding: 0 10px 8px;
+      }
+      #buffer-engine-panel .ms-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+        padding: 0 10px 8px;
+      }
+      #buffer-engine-panel .ms-input,
+      #buffer-engine-panel .ms-select {
+        background: var(--ms-bg-input);
+        border: 1px solid var(--ms-border);
+        border-radius: 3px;
+        color: var(--ms-text);
+        font-family: inherit;
+        font-size: var(--ms-fs);
+        padding: 5px 7px;
+        width: 100%;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      #buffer-engine-panel .ms-input:focus,
+      #buffer-engine-panel .ms-select:focus {
+        border-color: var(--ms-accent);
+      }
+      #buffer-engine-panel .ms-label {
+        font-size: var(--ms-fs-xs);
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--ms-text-dim);
+      }
+      #buffer-engine-panel .ms-section-title {
+        font-size: var(--ms-fs-xs);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ms-text-label);
+        padding: 9px 12px 4px;
+      }
+      #buffer-engine-panel .ms-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
+        margin: 4px 0;
+      }
+      #buffer-engine-panel .ms-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 12px;
+        gap: 8px;
+      }
+      #buffer-engine-panel .ms-btn-row {
+        display: flex;
+        gap: 5px;
+        padding: 8px 10px 4px;
+      }
+      #buffer-engine-panel .ms-btn {
+        flex: 1;
+        padding: 6px 4px;
+        font-family: inherit;
+        font-size: var(--ms-fs-xs);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        cursor: pointer;
+        border-radius: 3px;
+        border: 1px solid var(--ms-border);
+        background: var(--ms-bg-input);
+        color: var(--ms-text-dim);
+        transition: all 0.14s;
+      }
+      #buffer-engine-panel .ms-btn:hover {
+        background: var(--ms-bg-header);
+        color: var(--ms-text);
+      }
+      #buffer-engine-panel .ms-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      #buffer-engine-panel .ms-btn-primary {
+        border-color: var(--ms-success);
+        color: var(--ms-success);
+        background: var(--ms-bg-input);
+      }
+      #buffer-engine-panel .ms-btn-primary:hover {
+        background: var(--ms-bg-header);
+        color: var(--ms-text);
+      }
+      #buffer-engine-panel .ms-btn-danger {
+        border-color: var(--ms-danger);
+        color: var(--ms-danger);
+        background: var(--ms-bg-input);
+      }
+      #buffer-engine-panel .ms-btn-danger:hover {
+        background: var(--ms-bg-header);
+        color: var(--ms-text);
+      }
+    `;
+    document.head.appendChild(style);
+  }
 
   private _inp(id: string): HTMLInputElement | null {
     return this._panelEl?.querySelector<HTMLInputElement>(`#${id}`) ?? null;

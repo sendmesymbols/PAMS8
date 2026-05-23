@@ -305,6 +305,7 @@ export class PosDefScorerEngine {
       this._scorePanelEl = document.createElement('div');
       this._scorePanelEl.id = 'posdef-left-panel';
       this._scorePanelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._scorePanelEl.style.cssText = 'position: absolute; top: 14px; left: 14px; width: 272px; z-index: 1098; max-height: calc(100vh - 28px); display: none; flex-direction: column;';
       this._scorePanelEl.innerHTML = this._scorePanelHtml();
       document.body.appendChild(this._scorePanelEl);
     }
@@ -312,6 +313,7 @@ export class PosDefScorerEngine {
       this._controlPanelEl = document.createElement('div');
       this._controlPanelEl.id = 'posdef-right-panel';
       this._controlPanelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._controlPanelEl.style.cssText = 'position: absolute; top: 14px; right: 14px; width: 284px; z-index: 1098; max-height: calc(100vh - 28px); overflow-y: auto; display: none;';
       this._controlPanelEl.innerHTML = this._controlPanelHtml();
       document.body.appendChild(this._controlPanelEl);
       this._bindPanelEvents();
@@ -319,6 +321,7 @@ export class PosDefScorerEngine {
     if (!this._hintEl) {
       this._hintEl = document.createElement('div');
       this._hintEl.id = 'posdef-hint';
+      this._hintEl.style.cssText = 'position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%); z-index: 1098; display: none; font-family: monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 22px; border-radius: 3px; pointer-events: none;';
       this._hintEl.textContent = 'Click map to score a position - Ctrl+Click to add egress waypoints';
       document.body.appendChild(this._hintEl);
     }
@@ -929,18 +932,24 @@ export class PosDefScorerEngine {
     if (!list) return;
     list.innerHTML = '';
     if (!this._egressPts.length) {
-      list.innerHTML = '<div id="posdef-eg-add-hint">Ctrl+Click map to add an egress waypoint</div>';
+      list.innerHTML = '<div id="posdef-eg-add-hint" style="font-size: var(--ms-fs-xs); color: var(--ms-text-dim); padding: 4px 0; letter-spacing: 0.04em;">Ctrl+Click map to add an egress waypoint</div>';
       return;
     }
     this._egressPts.forEach((ep, i) => {
       const row = document.createElement('div');
-      row.className = 'posdef-eg-row';
-      row.innerHTML = `<div class="posdef-eg-dot"></div><div class="posdef-eg-coords">E${i + 1} ${ep.latitude.toFixed(4)}N ${ep.longitude.toFixed(4)}E</div><button class="posdef-eg-del" data-i="${i}">x</button>`;
-      row.querySelector('.posdef-eg-del')?.addEventListener('click', () => {
+      row.style.cssText = 'display: flex; align-items: center; gap: 7px; padding: 4px 0; border-bottom: 0.5px solid rgba(255, 255, 255, 0.05);';
+      const delBtn = document.createElement('button');
+      delBtn.style.cssText = 'font-size: var(--ms-fs-xs); color: var(--ms-text-dim); cursor: pointer; border: none; background: transparent; padding: 2px 4px; transition: color 0.12s;';
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('mouseover', () => delBtn.style.color = 'var(--ms-accent-danger)');
+      delBtn.addEventListener('mouseout', () => delBtn.style.color = 'var(--ms-text-dim)');
+      delBtn.addEventListener('click', () => {
         this._egressPts.splice(i, 1);
         this._redrawEgressMarkers();
         this._renderEgressList();
       });
+      row.innerHTML = `<div style="width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #378ADD;"></div><div style="font-size: 9.5px; color: var(--ms-text-dim); flex: 1; letter-spacing: 0.03em;">E${i + 1} ${ep.latitude.toFixed(4)}N ${ep.longitude.toFixed(4)}E</div>`;
+      row.appendChild(delBtn);
       list.appendChild(row);
     });
   }
@@ -1048,7 +1057,11 @@ export class PosDefScorerEngine {
     else EngineLogger.nextStep(ENGINE_NAME, t);
     if (el) {
       el.textContent = t;
-      el.className = `posdef-ph2-status ${s}`;
+      if (s === 'ready' || s === 'done') {
+        el.style.color = 'var(--ms-accent)';
+      } else if (s === 'running') {
+        el.style.color = '#EF9F27';
+      }
     }
   }
 
@@ -1094,30 +1107,6 @@ export class PosDefScorerEngine {
     if (el) (el.style as any)[prop] = value;
   }
 
-  private _injectStyles(): void {
-    if (document.getElementById('posdef-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'posdef-engine-styles';
-    style.textContent = `
-      #posdef-left-panel,#posdef-right-panel,#posdef-hint{font-family:'Courier New',monospace}
-      #posdef-left-panel{position:absolute;top:14px;left:14px;width:272px;z-index:1098;background:rgba(6,7,9,.97);border:1px solid rgba(29,158,117,.28);border-radius:5px;color:#bfbcb4;font-size:12px;max-height:calc(100vh - 28px);display:none;flex-direction:column;box-shadow:0 8px 24px rgba(0,0,0,.45)}
-      #posdef-right-panel{position:absolute;top:14px;right:14px;width:284px;z-index:1098;background:rgba(6,7,9,.97);border:1px solid rgba(29,158,117,.28);border-radius:5px;color:#bfbcb4;font-size:12px;max-height:calc(100vh - 28px);overflow-y:auto;display:none;box-shadow:0 8px 24px rgba(0,0,0,.45)}
-      .posdef-lph{padding:9px 12px 8px;border-bottom:1px solid rgba(29,158,117,.15);background:rgba(29,158,117,.07);flex-shrink:0}.posdef-lph-title,.posdef-ph2-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#1D9E75;font-weight:700}.posdef-lph-sub{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:2px}
-      #posdef-score-ring-wrap{display:flex;align-items:center;justify-content:center;gap:14px;padding:14px 12px;border-bottom:1px solid rgba(29,158,117,.12);flex-shrink:0}#posdef-score-ring{position:relative;width:90px;height:90px;flex-shrink:0}#posdef-score-num{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:26px;font-weight:700;color:#1D9E75;letter-spacing:-.02em;text-align:center;line-height:1}#posdef-score-meta{flex:1}#posdef-score-grade{font-size:18px;font-weight:700;color:#1D9E75;margin-bottom:4px}#posdef-score-desc{font-size:10px;color:#888780;line-height:1.5}
-      #posdef-radar-wrap{padding:10px 12px;border-bottom:1px solid rgba(29,158,117,.10);flex-shrink:0;display:flex;align-items:center;justify-content:center}#posdef-radar-canvas{display:block}#posdef-factors{overflow-y:auto;flex:1;padding:8px 10px}.posdef-factor-row{display:grid;grid-template-columns:30px 1fr 32px;align-items:center;gap:6px;margin-bottom:8px}.posdef-fac-icon{font-size:10px;text-align:center;color:#888780}.posdef-fac-body{display:flex;flex-direction:column;gap:3px}.posdef-fac-name{font-size:10px;font-weight:500;color:#bfbcb4}.posdef-fac-track{height:3px;background:rgba(255,255,255,.06);border-radius:2px}.posdef-fac-fill{height:100%;border-radius:2px;transition:width .6s}.posdef-fac-note{font-size:8.5px;color:#3a3935;letter-spacing:.03em}.posdef-fac-score{font-size:13px;font-weight:700;text-align:right}.posdef-fac-max{font-size:8px;color:#3a3935;text-align:right;margin-top:1px}#posdef-factor-empty{padding:18px 10px;font-size:10px;color:#3a3935;text-align:center;line-height:1.8}
-      #posdef-pos-history{border-top:1px solid rgba(29,158,117,.10);flex-shrink:0;max-height:130px;overflow-y:auto}.posdef-ph-header{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:#3a3935;padding:6px 10px 3px}.posdef-ph-row{display:flex;align-items:center;gap:7px;padding:4px 10px;cursor:pointer;transition:background .12s}.posdef-ph-row:hover,.posdef-ph-row.active-pos{background:rgba(29,158,117,.10)}.posdef-ph-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}.posdef-ph-info{flex:1;font-size:9.5px;color:#888780}.posdef-ph-scr{font-size:11px;font-weight:700}
-      .posdef-ph2{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:9px 12px 8px;border-bottom:1px solid rgba(29,158,117,.15);background:rgba(29,158,117,.07);position:sticky;top:0;z-index:2}.posdef-help-wrap{display:flex;gap:4px}.posdef-help-btn,.posdef-close-btn,.posdef-help-close{background:transparent;border:1px solid rgba(29,158,117,.28);border-radius:3px;color:#1D9E75;font-family:inherit;font-size:10px;cursor:pointer}.posdef-ph2-status{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#3a3935;transition:color .2s}.posdef-ph2-status.ready,.posdef-ph2-status.done{color:#1D9E75}.posdef-ph2-status.running{color:#EF9F27}
-      .posdef-help-popover{position:absolute;top:37px;left:8px;right:8px;z-index:1120;max-height:min(440px,calc(100vh - 132px));overflow-y:auto;background:rgba(6,7,9,.99);border:1px solid rgba(29,158,117,.28);border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.45)}.posdef-help-popover[hidden]{display:none}.posdef-help-head{display:flex;justify-content:space-between;gap:10px;padding:10px 11px 8px;border-bottom:1px solid rgba(29,158,117,.15);background:rgba(29,158,117,.07)}.posdef-help-kicker{font-size:9px;color:#3a3935;letter-spacing:.09em;text-transform:uppercase}.posdef-help-title{margin-top:2px;font-size:13px;color:#1D9E75;font-weight:700}.posdef-help-body{padding:10px 11px 12px;font-size:10px;line-height:1.45;color:#888780;user-select:text}.posdef-help-body p{margin:0 0 9px}.posdef-help-block{margin-top:10px}.posdef-help-block h4{margin:0 0 5px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#bfbcb4}.posdef-help-block ol{margin:0;padding-left:17px}.posdef-help-block li{margin:3px 0}.posdef-help-block dl{display:grid;grid-template-columns:74px minmax(0,1fr);gap:5px 8px;margin:0}.posdef-help-block dt{color:#1D9E75;font-weight:700}.posdef-help-block dd{margin:0}
-      .posdef-ps{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#3a3935;padding:9px 12px 5px}.posdef-pg{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding:0 12px 9px}.posdef-pf{display:flex;flex-direction:column;gap:3px}.posdef-pf.full{grid-column:1/-1}.posdef-pl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780}#posdef-right-panel input,#posdef-right-panel select{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);border-radius:3px;color:#bfbcb4;font-family:'Courier New',monospace;font-size:11px;padding:5px 7px;width:100%;outline:none;transition:border-color .15s}#posdef-right-panel input:focus,#posdef-right-panel select:focus{border-color:rgba(29,158,117,.55)}#posdef-right-panel select option{background:#141618}
-      .posdef-psr{display:flex;align-items:center;gap:8px;padding:0 12px 8px}.posdef-psr-l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;flex:1.8}.posdef-psr input[type=range]{flex:2;accent-color:#1D9E75;cursor:pointer}.posdef-psr-v{font-size:10px;color:#1D9E75;min-width:38px;text-align:right}.posdef-pdiv{height:1px;background:rgba(255,255,255,.07);margin:4px 0}.posdef-ptr{display:flex;align-items:center;justify-content:space-between;padding:5px 12px}.posdef-ptr label{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#888780;cursor:pointer}.posdef-ptr input[type=checkbox]{accent-color:#1D9E75;width:13px;height:13px;cursor:pointer}
-      #posdef-egress-list{padding:0 12px 8px}.posdef-eg-row{display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:.5px solid rgba(255,255,255,.05)}.posdef-eg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#378ADD}.posdef-eg-coords{font-size:9.5px;color:#888780;flex:1;letter-spacing:.03em}.posdef-eg-del{font-size:10px;color:#3a3935;cursor:pointer;border:none;background:transparent;padding:2px 4px;transition:color .12s}.posdef-eg-del:hover{color:#DC3C30}#posdef-eg-add-hint{font-size:9px;color:#3a3935;padding:4px 0;letter-spacing:.04em}
-      .posdef-wt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;padding:0 12px 8px}.posdef-wt-item{display:flex;flex-direction:column;gap:3px}.posdef-wt-lbl{font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:#888780}.posdef-wt-row{display:flex;align-items:center;gap:4px}.posdef-wt-row input[type=range]{flex:1;accent-color:#1D9E75}.posdef-wt-val{font-size:9px;color:#1D9E75;min-width:18px;text-align:right}
-      #posdef-prog-wrap{padding:0 12px 9px}#posdef-prog-track{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}#posdef-prog-fill{height:100%;background:linear-gradient(to right,#1D9E75,#378ADD);border-radius:2px;width:0%;transition:width .12s}#posdef-prog-label{font-size:9px;color:#3a3935;letter-spacing:.05em;margin-top:4px}.posdef-pb-row{display:flex;gap:6px;padding:9px 12px}.posdef-pb{flex:1;padding:7px;font-family:'Courier New',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:3px;border:1px solid rgba(29,158,117,.38);background:transparent;color:#1D9E75;transition:all .14s}.posdef-pb:hover:not(:disabled){background:rgba(29,158,117,.10)}.posdef-pb.primary{background:rgba(29,158,117,.16);border-color:#1D9E75}.posdef-pb.primary:hover:not(:disabled){background:rgba(29,158,117,.28)}.posdef-pb:disabled{opacity:.3;cursor:not-allowed}
-      #posdef-hint{position:absolute;bottom:55px;left:50%;transform:translateX(-50%);background:rgba(6,7,9,.94);border:1px solid rgba(29,158,117,.45);color:#1D9E75;font-size:11px;letter-spacing:.08em;padding:8px 22px;border-radius:3px;pointer-events:none;z-index:1098;text-transform:uppercase;display:none}
-      @media(max-width:720px){#posdef-left-panel{left:10px;top:72px;width:calc(100vw - 20px);max-height:44vh}#posdef-right-panel{left:10px;right:auto;top:calc(44vh + 84px);width:calc(100vw - 20px);max-height:calc(56vh - 94px)}}
-    `;
-    document.head.appendChild(style);
-  }
 }
 
 export default PosDefScorerEngine;

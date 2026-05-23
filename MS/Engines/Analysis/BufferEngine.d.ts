@@ -100,6 +100,7 @@ export declare class BufferEngine {
     private _makeDraggable;
     private _onDragMove;
     private _onDragEnd;
+    private _injectStyles;
     private _inp;
     private _setStatus;
     private _syncCommit;
