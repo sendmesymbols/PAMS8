@@ -1271,39 +1271,6 @@
           </div>
         </div>
 
-        <!-- Render Settings Section -->
-        <div class="settings-section">
-          <div class="ms-section-title">Render Settings</div>
-          <div class="setting-row">
-            <label>3D High Quality</label>
-            <input type="checkbox" id="setting-renderHighQuality3D" title="Use ArcGIS SceneView high quality profile in 3D. May improve sharpness at the cost of performance." />
-          </div>
-          <div class="setting-row">
-            <label>Disable 3D Shadows</label>
-            <input type="checkbox" id="setting-renderDisableSceneShadows" title="Disable 3D direct shadows and ambient occlusion. Can make imagery and symbols look brighter." />
-          </div>
-          <div class="setting-row">
-            <label>High Atmosphere</label>
-            <input type="checkbox" id="setting-renderHighAtmosphereQuality" title="Use high quality SceneView atmosphere rendering in 3D." />
-          </div>
-          <div class="setting-row">
-            <label>Lift Force Points</label>
-            <input type="checkbox" id="setting-renderLiftForcePoints" title="Lift UEI/force point symbols slightly above terrain. Useful for crisp 3D point symbols." />
-          </div>
-          <div class="setting-row">
-            <label>Lift Tactical Points</label>
-            <input type="checkbox" id="setting-renderLiftTacticalPoints" title="Lift tactical point symbols slightly above terrain without lifting line or area graphics." />
-          </div>
-          <div class="setting-row">
-            <label>Lift Lines/Areas</label>
-            <input type="checkbox" id="setting-renderLiftLinesAreas" title="Lift tactical line and area graphics. Usually keep off in rugged terrain to avoid cutting through elevated areas." />
-          </div>
-          <div class="setting-row">
-            <label>Lift Offset m</label>
-            <input type="number" id="setting-renderSymbolElevationOffset" value="1" min="0" max="50" step="0.5" style="width: 55px" title="Meters above terrain used by enabled lift controls." />
-          </div>
-        </div>
-
         <!-- Core Features Section -->
         <div class="settings-section">
           <div class="ms-section-title">Core Features</div>
@@ -1993,6 +1960,37 @@
             <span class="toggle-icon">▼</span>
           </div>
           <div class="feature-body">
+            <!-- 3D Render Settings -->
+            <div class="sub-feature-label">3D Render Settings</div>
+            <div class="setting-row">
+              <label>3D High Quality</label>
+              <input type="checkbox" id="setting-renderHighQuality3D" title="Use ArcGIS SceneView high quality profile in 3D. May improve sharpness at the cost of performance." />
+            </div>
+            <div class="setting-row">
+              <label>Disable 3D Shadows</label>
+              <input type="checkbox" id="setting-renderDisableSceneShadows" title="Disable 3D direct shadows and ambient occlusion. Can make imagery and symbols look brighter." />
+            </div>
+            <div class="setting-row">
+              <label>High Atmosphere</label>
+              <input type="checkbox" id="setting-renderHighAtmosphereQuality" title="Use high quality SceneView atmosphere rendering in 3D." />
+            </div>
+            <div class="setting-row">
+              <label>Lift Force Points</label>
+              <input type="checkbox" id="setting-renderLiftForcePoints" title="Lift UEI/force point symbols slightly above terrain. Useful for crisp 3D point symbols." />
+            </div>
+            <div class="setting-row">
+              <label>Lift Tactical Points</label>
+              <input type="checkbox" id="setting-renderLiftTacticalPoints" title="Lift tactical point symbols slightly above terrain without lifting line or area graphics." />
+            </div>
+            <div class="setting-row">
+              <label>Lift Lines/Areas</label>
+              <input type="checkbox" id="setting-renderLiftLinesAreas" title="Lift tactical line and area graphics. Usually keep off in rugged terrain to avoid cutting through elevated areas." />
+            </div>
+            <div class="setting-row">
+              <label>Lift Offset m</label>
+              <input type="number" id="setting-renderSymbolElevationOffset" value="1" min="0" max="50" step="0.5" style="width: 55px" title="Meters above terrain used by enabled lift controls." />
+            </div>
+
             <!-- Layer Effects -->
             <div class="sub-feature-label">Layer Effects (Glow / Shadow)</div>
             <div class="setting-row">
@@ -2415,33 +2413,33 @@
           path: ['freeHandLineWidth'],
           value: +v,
         }),
-        // Render settings
+        // Render settings (owned by Visualization Engine)
         'setting-renderHighQuality3D': (v) => ({
-          path: ['render', 'highQuality3D'],
+          path: ['visualization', 'render', 'highQuality3D'],
           value: v,
         }),
         'setting-renderDisableSceneShadows': (v) => ({
-          path: ['render', 'disableSceneShadows'],
+          path: ['visualization', 'render', 'disableSceneShadows'],
           value: v,
         }),
         'setting-renderHighAtmosphereQuality': (v) => ({
-          path: ['render', 'highAtmosphereQuality'],
+          path: ['visualization', 'render', 'highAtmosphereQuality'],
           value: v,
         }),
         'setting-renderLiftForcePoints': (v) => ({
-          path: ['render', 'liftForcePoints'],
+          path: ['visualization', 'render', 'liftForcePoints'],
           value: v,
         }),
         'setting-renderLiftTacticalPoints': (v) => ({
-          path: ['render', 'liftTacticalPoints'],
+          path: ['visualization', 'render', 'liftTacticalPoints'],
           value: v,
         }),
         'setting-renderLiftLinesAreas': (v) => ({
-          path: ['render', 'liftLinesAreas'],
+          path: ['visualization', 'render', 'liftLinesAreas'],
           value: v,
         }),
         'setting-renderSymbolElevationOffset': (v) => ({
-          path: ['render', 'symbolElevationOffset'],
+          path: ['visualization', 'render', 'symbolElevationOffset'],
           value: +v,
         }),
         // Features
@@ -2756,7 +2754,7 @@
         if (window.symbolEngine) {
           window.symbolEngine.onSettingChanged(path, value);
         }
-        if (path[0] === 'render' && window.applyRenderSettings) {
+        if (path[0] === 'visualization' && path[1] === 'render' && window.applyRenderSettings) {
           window.applyRenderSettings(window.symbolEngine?.settings);
         }
       });
@@ -2790,8 +2788,8 @@
             document.getElementById('setting-freeHandLineWidth').value =
               settings.freeHandLineWidth;
 
-          // Update render settings
-          const render = settings.render || {};
+          // Update render settings (now owned by VisualizationEngine)
+          const render = settings.visualization?.render || {};
           document.getElementById('setting-renderHighQuality3D').checked =
             render.highQuality3D === true;
           document.getElementById('setting-renderDisableSceneShadows').checked =

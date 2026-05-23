@@ -1063,9 +1063,13 @@ export class BufferEngine {
         font-family: inherit;
         font-size: var(--ms-fs);
         padding: 5px 7px;
-        width: 100%;
         outline: none;
         transition: border-color 0.15s;
+        box-sizing: border-box;
+      }
+      #buffer-engine-panel .ms-grid .ms-input,
+      #buffer-engine-panel .ms-grid .ms-select {
+        width: 100%;
       }
       #buffer-engine-panel .ms-input:focus,
       #buffer-engine-panel .ms-select:focus {

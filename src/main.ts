@@ -611,7 +611,7 @@ function applyRenderSettings(settings: any = settingsData): void {
   const sceneView = appConfig.sceneView as any;
   if (!sceneView) return;
 
-  const render: RenderSettings = settings?.render ?? {};
+  const render: RenderSettings = settings?.visualization?.render ?? {};
   const defaults = initialSceneRenderState;
 
   if (render.highQuality3D === true) {
@@ -728,7 +728,7 @@ function applyLayerElevation(
   const layer = sceneView.map.findLayerById(layerId) as any;
   if (!layer) return;
 
-  layer.elevationInfo = shouldLift
+  layer.elevationInfo = shouldLift && offset > 0
     ? { mode: 'relative-to-ground', offset }
     : { mode: 'on-the-ground' };
 }

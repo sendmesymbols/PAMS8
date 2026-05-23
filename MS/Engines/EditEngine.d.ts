@@ -48,6 +48,7 @@ declare class EditEngine {
     private _clickHandle;
     private _keydownListener;
     private _eventListeners;
+    private _modeBanner;
     constructor(viewProvider: () => MapView | SceneView, layerManager: GraphicsLayerManager);
     get view(): MapView | SceneView;
     /**
@@ -170,6 +171,9 @@ declare class EditEngine {
     private _clearMixedSessionState;
     private _finalizeMixedEditBeforeDeactivate;
     private _emit;
+    private _installEscListener;
+    private _showModeBanner;
+    private _removeModeBanner;
     /**
      * Returns the Edit submenu item tree.
      * Call from SymbolEngine.registerContextMenuItems() and spread the result.

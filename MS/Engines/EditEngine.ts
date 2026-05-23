@@ -93,6 +93,10 @@ class EditEngine {
     // External event listeners
     private _eventListeners: Map<string, Function[]> = new Map();
 
+    // Floating tip shown while an edit session is active — lets the user disable
+    // the mode without going through the right-click context menu.
+    private _modeBanner: HTMLElement | null = null;
+
     constructor(viewProvider: () => MapView | SceneView, layerManager: GraphicsLayerManager) {
         this._getView = viewProvider;
         this._layerManager = layerManager;
@@ -127,6 +131,9 @@ class EditEngine {
             this._activatePolyEdit(graphic, additionalGraphics);
             EngineLogger.nextStep('Edit Engine', 'Edit mode active — drag handles to move, rotate, or scale');
         }
+
+        this._showModeBanner('move-scale-rotate');
+        this._installEscListener();
     }
 
     /**
@@ -153,11 +160,8 @@ class EditEngine {
         this._showHandles(ctrlPts);
         this._setupHandleDrag(graphic, de!);
 
-        // Escape key exits reshape mode
-        this._keydownListener = (e: KeyboardEvent) => {
-            if (e.key === "Escape") this.deactivate();
-        };
-        document.addEventListener("keydown", this._keydownListener);
+        this._showModeBanner('control-points');
+        this._installEscListener();
     }
 
     /**
@@ -206,6 +210,7 @@ class EditEngine {
 
         this._clearHandles();
         this._clearPointerHandlers();
+        this._removeModeBanner();
 
         if (this._keydownListener) {
             document.removeEventListener("keydown", this._keydownListener);
@@ -493,6 +498,8 @@ class EditEngine {
         this._isMixedEdit = true;
         this._activateMixedEditSession(graphic, additionalGraphics);
         EngineLogger.nextStep('Edit Engine', 'Mixed edit mode active — drag to move or rotate (scale disabled)');
+        this._showModeBanner('mixed-edit');
+        this._installEscListener();
     }
 
     private _syncPointDrawEssentials(graphic: Graphic): void {
@@ -1092,6 +1099,69 @@ class EditEngine {
             EngineLogger.success('Edit Engine', 'Symbol updated — edit complete');
         }
         this._eventListeners.get(type)?.forEach(fn => fn(data));
+    }
+
+    // -----------------------------------------------------------------------
+    // Mode banner — on-map tip with a Disable button
+    // -----------------------------------------------------------------------
+
+    private _installEscListener(): void {
+        if (this._keydownListener) return;
+        this._keydownListener = (e: KeyboardEvent) => {
+            if (e.key === "Escape") this.deactivate();
+        };
+        document.addEventListener("keydown", this._keydownListener);
+    }
+
+    private _showModeBanner(mode: 'move-scale-rotate' | 'control-points' | 'mixed-edit'): void {
+        this._removeModeBanner();
+
+        const labels: Record<'move-scale-rotate' | 'control-points' | 'mixed-edit', { icon: string; title: string; hint: string }> = {
+            'move-scale-rotate': { icon: '✎',  title: 'Move / Scale / Rotate', hint: 'Drag handles to transform the symbol' },
+            'control-points':    { icon: '↕',  title: 'Edit Control Points',   hint: 'Drag points to reshape — click symbol to add, click point to remove' },
+            'mixed-edit':        { icon: '⇄',  title: 'Mixed Edit',            hint: 'Drag to move or rotate (scale disabled)' },
+        };
+        const cfg = labels[mode];
+
+        const el = document.createElement('div');
+        el.style.cssText = `
+            position: fixed;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(14,18,28,0.92);
+            border: 1px solid rgba(90,140,220,0.4);
+            border-radius: 9px;
+            padding: 8px 16px;
+            font-family: 'Inter','Segoe UI',sans-serif;
+            font-size: 11.5px;
+            color: #a8c4e0;
+            z-index: 1500;
+            white-space: nowrap;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+            display: flex; gap: 12px; align-items: center;
+        `;
+        const sep = `<span style="color:#334455">|</span>`;
+        const kbd = `<kbd style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:4px;padding:1px 6px;font-size:10.5px;color:#f08060;font-family:inherit">Esc</kbd>`;
+        el.innerHTML = `
+            <span><span style="color:#64b4ff;font-weight:700;margin-right:4px">${cfg.icon}</span><strong style="color:#c8dff5">${cfg.title}</strong></span>
+            ${sep}
+            <span style="opacity:0.85">${cfg.hint}</span>
+            ${sep}
+            <button class="edit-banner-disable" style="background:rgba(220,80,80,0.18);border:1px solid rgba(220,80,80,0.5);border-radius:4px;padding:3px 10px;color:#f08060;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:0.02em">Disable</button>
+            ${sep}
+            <span style="opacity:0.7">or press ${kbd}</span>
+        `;
+        el.querySelector('.edit-banner-disable')?.addEventListener('click', () => this.deactivate());
+        document.body.appendChild(el);
+        this._modeBanner = el;
+    }
+
+    private _removeModeBanner(): void {
+        if (this._modeBanner) {
+            this._modeBanner.remove();
+            this._modeBanner = null;
+        }
     }
 
     // -----------------------------------------------------------------------

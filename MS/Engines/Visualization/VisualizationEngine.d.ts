@@ -41,7 +41,24 @@ export interface ConvexHullOptions {
     fillOpacity: number;
     outlineWidth: number;
 }
+export interface RenderOptions {
+    /** Use ArcGIS SceneView high quality profile in 3D */
+    highQuality3D: boolean;
+    /** Disable 3D direct shadows and ambient occlusion */
+    disableSceneShadows: boolean;
+    /** Use high quality SceneView atmosphere rendering in 3D */
+    highAtmosphereQuality: boolean;
+    /** Lift force/UEI point symbols above terrain */
+    liftForcePoints: boolean;
+    /** Lift tactical point symbols above terrain */
+    liftTacticalPoints: boolean;
+    /** Lift tactical line/area graphics above terrain */
+    liftLinesAreas: boolean;
+    /** Elevation offset (metres) used when a lift flag is enabled */
+    symbolElevationOffset: number;
+}
 export interface VisualizationOptions {
+    render: RenderOptions;
     layerEffects: LayerEffectsOptions;
     coverageRings: CoverageRingsOptions;
     forceRatioGrid: ForceRatioGridOptions;
