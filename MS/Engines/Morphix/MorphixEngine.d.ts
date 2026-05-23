@@ -9,13 +9,11 @@ type SymbolDefinition = {
     Class?: string;
     Name?: string;
     SymGeoType?: string;
+    Description?: string;
     Parameters?: Array<Record<string, any>>;
     Tools?: Array<Record<string, any>>;
     [key: string]: any;
 };
-interface MorphixCallbacks {
-    applyEdit: (graphic: Graphic, editedState: MorphixEditedState) => Graphic | null;
-}
 export interface MorphixEditedState {
     sidc: string;
     symbolKey: string;
@@ -24,47 +22,64 @@ export interface MorphixEditedState {
     drawEssentials: DrawEssentials;
     attributes: Record<string, any>;
 }
+interface MorphixCallbacks {
+    applyEdit: (graphic: Graphic, editedState: MorphixEditedState) => Graphic | null;
+}
 declare class MorphixEngine {
     private callbacks;
     private root;
     private state;
-    private styleElement;
+    private originalSnapshot;
+    private symbolFilter;
+    private focusInfo;
     private keydownHandler;
     initialize(view: ViewLike, layerManager: GraphicsLayerManager, callbacks: MorphixCallbacks): void;
     open(graphic: Graphic): void;
     destroy(): void;
-    private createState;
+    private ensureRoot;
+    private buildState;
+    private serialize;
+    private parseSnapshot;
     private render;
-    private renderSummary;
-    private renderSymbolSwap;
-    private renderSidc;
-    private renderAmplifiers;
-    private renderDrawSettings;
-    private renderLabelSettings;
-    private renderPreview;
-    private renderAdvancedJson;
+    private renderHeader;
+    private renderSection;
+    private renderIdentitySection;
+    private renderSidcSection;
+    private renderSymbolSwapSection;
+    private renderAmplifierSection;
+    private renderDrawSection;
     private renderParameters;
-    private renderValueInput;
-    private handleInput;
-    private handleAction;
-    private handleKeyDown;
-    private save;
-    private applySymbolSearch;
+    private renderLabelSection;
+    private renderExtraSection;
+    private renderCimSection;
+    private renderJsonSection;
+    private renderFooter;
+    private textField;
+    private boolField;
+    private colorField;
+    private wire;
+    private onInput;
+    private onAction;
+    private onKeyDown;
+    private setSidcRange;
     private applySymbolKey;
     private applySidc;
-    private validateState;
+    private validate;
+    private save;
     private close;
-    private ensureRoot;
-    private ensureStyles;
+    private snapshotFocus;
+    private restoreFocus;
     private normalizeSidc;
     private getSymbolKey;
-    private geometryFamily;
-    private displayGeometryFamily;
-    private pickExistingKeys;
-    private pickExtraKeys;
-    private coerceValue;
-    private cloneValue;
-    private prepareJson;
-    private escape;
+    private geomFamilyOf;
+    private geomLabel;
+    /** Plain JSON clone — for amplifier/draw/label/extra/cim fields only. Never use on ArcGIS geometry. */
+    private jsonClone;
+    /** Preserve ArcGIS geometry instances by calling their .clone() when available. */
+    private cloneGeometry;
+    private coerce;
+    private esc;
+    private rgbToHex;
+    private hexToRgb;
 }
 export default MorphixEngine;

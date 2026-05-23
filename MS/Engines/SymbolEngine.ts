@@ -47,6 +47,7 @@ import AnnotationEngine from './AnnotationEngine.ts';
 import GeoTools from '../Support/GeoTools.ts';
 import EditEngine from './EditEngine.ts';
 import SelectionEngine from './SelectionEngine.ts';
+import SelectionActionPanel from './SelectionActionPanel.ts';
 // MeasurementEngine is loaded dynamically based on Settings.json features.measurementEngine
 import type MeasurementEngine from './MeasurementEngine.ts';
 // DeploymentBuilderEngine is loaded dynamically based on Settings.json features.deploymentBuilder
@@ -183,6 +184,9 @@ class SymbolEngine implements Evented {
   // Multi-select
   private _selectionEngine!: SelectionEngine;
 
+  // Contextual on-map toolbar for the current selection
+  private _selectionActionPanel?: SelectionActionPanel;
+
   constructor(viewProvider: () => MapView | SceneView) {
     this._getView = viewProvider;
     this._layerManager = GraphicsLayerManager.getInstance(this.view);
@@ -220,6 +224,20 @@ class SymbolEngine implements Evented {
       );
     });
     this.ensureMsAvailable();
+
+    // Selection quick-action toolbar (bottom-centre, adapts to selection shape)
+    this._selectionActionPanel = new SelectionActionPanel(
+      this._selectionEngine,
+      this._editEngine,
+      {
+        copySymbol: (g: Graphic) => this.copySymbol(g),
+        pushUndo: (entry) => this._pushUndo(entry),
+        getView: () => this.view,
+      },
+    );
+    if ((settingsData as any).features?.selectionQuickToolbar !== false) {
+      this._selectionActionPanel.enable();
+    }
 
     // Initialize EngineLogger from settings
     EngineLogger.setEnabled((settingsData as any).logging?.enabled !== false);
@@ -557,6 +575,7 @@ class SymbolEngine implements Evented {
     this._editEngine = new EditEngine(this._getView, this._layerManager);
     this._wireEditEngineUndo();
     this._selectionEngine.onViewChanged(newView);
+    this._selectionActionPanel?.refresh();
     this._morphixEngine.initialize(newView, this._layerManager, {
       applyEdit: (graphic, editedState) =>
         this.applyMorphixEdit(graphic, editedState),
@@ -1254,6 +1273,7 @@ class SymbolEngine implements Evented {
     } else {
       this._editEngine.activate(graphic, additional);
     }
+    this._selectionActionPanel?.refresh();
   }
 
   /**
@@ -1263,6 +1283,7 @@ class SymbolEngine implements Evented {
     this._closeActiveWorkflow();
     this._capturePreEditSnapshot(graphic, [], 'Edit Control Points');
     this._editEngine.activateEditControlPoints(graphic);
+    this._selectionActionPanel?.refresh();
   }
 
   /**
@@ -1279,6 +1300,7 @@ class SymbolEngine implements Evented {
    */
   public deactivateEdit(): void {
     this._editEngine.deactivate();
+    this._selectionActionPanel?.refresh();
   }
 
   /** Access the underlying EditEngine to register event listeners. */
@@ -1537,6 +1559,10 @@ class SymbolEngine implements Evented {
           : this._contextMenuManager.disable();
       } else if (feature === 'clipboard' && !value) {
         this._clipboard = null;
+      } else if (feature === 'selectionQuickToolbar' && this._selectionActionPanel) {
+        value
+          ? this._selectionActionPanel.enable()
+          : this._selectionActionPanel.disable();
       } else {
         console.log(`[SymbolEngine] Feature '${feature}' changed to ${value}`);
       }

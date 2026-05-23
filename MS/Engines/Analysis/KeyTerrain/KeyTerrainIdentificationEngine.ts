@@ -432,8 +432,8 @@ export class KeyTerrainIdentificationEngine {
           <div class="ms-divider"></div>
           <div class="ms-section-title">Overlay</div>
           <div class="ms-btn-row">
-            <button class="ms-btn on" data-ov="curvature">Curvature</button>
-            <button class="ms-btn on" data-ov="markers">Markers</button>
+            <button class="ms-btn primary" data-ov="curvature">Curvature</button>
+            <button class="ms-btn primary" data-ov="markers">Markers</button>
             <button class="ms-btn" data-ov="viewshed">Top viewshed</button>
           </div>
           <div class="ms-slider-row">
@@ -467,14 +467,16 @@ export class KeyTerrainIdentificationEngine {
   }
 
   private _bindPanelEvents(): void {
-    this._controlPanelEl?.querySelectorAll<HTMLButtonElement>('.ms-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const key = (btn.dataset.ov || 'curvature') as OverlayKey;
-        this._overlayState[key] = !this._overlayState[key];
-        btn.classList.toggle('on', this._overlayState[key]);
-        this._syncOverlayVisibility();
+    this._controlPanelEl
+      ?.querySelectorAll<HTMLButtonElement>('.ms-btn[data-ov]')
+      .forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.ov as OverlayKey;
+          this._overlayState[key] = !this._overlayState[key];
+          btn.classList.toggle('primary', this._overlayState[key]);
+          this._syncOverlayVisibility();
+        });
       });
-    });
 
     this._input('kt-inp-sens')?.addEventListener('input', () => {
       const el = this._input('kt-inp-sens');

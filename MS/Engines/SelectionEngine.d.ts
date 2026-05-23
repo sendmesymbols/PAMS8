@@ -66,6 +66,8 @@ declare class SelectionEngine {
     private _getGraphicSymbolCode;
     private _getGraphicEchelon;
     private _getGraphicIdentity;
+    /** Public wrapper around the geom-type classifier so external widgets (e.g. SelectionActionPanel) can bucket selections. */
+    getGraphicGeomType(graphic: Graphic): string | null;
     private _getGraphicGeomType;
     private _selectAllMatching;
     selectSimilarSameSIDC(graphic: Graphic): void;

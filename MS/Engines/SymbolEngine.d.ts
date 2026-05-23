@@ -106,6 +106,7 @@ declare class SymbolEngine implements Evented {
     private _clipboard;
     private _pendingAttrs;
     private _selectionEngine;
+    private _selectionActionPanel?;
     constructor(viewProvider: () => MapView | SceneView);
     /**
      * Implement Evented interface methods

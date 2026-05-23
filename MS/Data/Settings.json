@@ -386,6 +386,7 @@
     "proximityEngine": true,
     "selectionMenu": true,
     "alignMenu": true,
+    "selectionQuickToolbar": true,
     "clipboard": true,
     "editMoveScaleRotate": true,
     "editControlPoints": true,
@@ -590,7 +591,7 @@
       "highQuality3D": false,
       "disableSceneShadows": false,
       "highAtmosphereQuality": false,
-      "liftForcePoints": true,
+      "liftForcePoints": false,
       "liftTacticalPoints": false,
       "liftLinesAreas": false,
       "symbolElevationOffset": 1

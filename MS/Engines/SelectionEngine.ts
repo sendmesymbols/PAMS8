@@ -304,6 +304,11 @@ class SelectionEngine {
         return sidc.substring(2, 4);
     }
 
+    /** Public wrapper around the geom-type classifier so external widgets (e.g. SelectionActionPanel) can bucket selections. */
+    public getGraphicGeomType(graphic: Graphic): string | null {
+        return this._getGraphicGeomType(graphic);
+    }
+
     private _getGraphicGeomType(graphic: Graphic): string | null {
         const de = graphic.attributes?.drawEssentials;
         if (de?.SYM_GEO_TYPE) return de.SYM_GEO_TYPE;

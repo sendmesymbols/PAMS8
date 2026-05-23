@@ -1311,6 +1311,10 @@
             <input type="checkbox" id="setting-alignMenu" checked title="Show Align/Distribute/Arrange submenu in the right-click context menu (requires 2+ symbols selected)." />
           </div>
           <div class="setting-row">
+            <label>Selection Toolbar</label>
+            <input type="checkbox" id="setting-selectionQuickToolbar" checked title="Show the bottom-centre on-map toolbar whenever symbols are selected. Surfaces Move, Edit, Delete, Align, Distribute, and Arrange actions adapted to the selection shape." />
+          </div>
+          <div class="setting-row">
             <label>Clipboard</label>
             <input type="checkbox" id="setting-clipboard" checked title="Enable clipboard storage for copy/paste. When disabled, Ctrl+C saves nothing and existing clipboard is cleared (improves performance)." />
           </div>
@@ -2483,6 +2487,10 @@
           path: ['features', 'alignMenu'],
           value: v,
         }),
+        'setting-selectionQuickToolbar': (v) => ({
+          path: ['features', 'selectionQuickToolbar'],
+          value: v,
+        }),
         'setting-clipboard': (v) => ({
           path: ['features', 'clipboard'],
           value: v,
@@ -2831,6 +2839,8 @@
             features.selectionMenu !== false;
           document.getElementById('setting-alignMenu').checked =
             features.alignMenu !== false;
+          document.getElementById('setting-selectionQuickToolbar').checked =
+            features.selectionQuickToolbar !== false;
           document.getElementById('setting-clipboard').checked =
             features.clipboard !== false;
           document.getElementById('setting-editMoveScaleRotate').checked =
