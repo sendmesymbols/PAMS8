@@ -368,6 +368,7 @@ declare class SymbolEngine implements Evented {
     reProject(point: Point, spatialReference: SpatialReference): Point;
     createSymbolCacheKey(options: SymbolOptions, scaleFactor: number): string;
     private drawSymEnd;
+    private getDrawEndLayer;
     applyMorphixEdit(graphic: Graphic, editedState: MorphixEditedState): Graphic | null;
     private getOpacityValue;
     private symDrawProgress;

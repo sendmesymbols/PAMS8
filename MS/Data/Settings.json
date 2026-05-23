@@ -8,6 +8,15 @@
   "textSize": 12,
   "freeHandTextSize": 14,
   "freeHandLineWidth": 2.5,
+  "render": {
+    "highQuality3D": false,
+    "disableSceneShadows": false,
+    "highAtmosphereQuality": false,
+    "liftForcePoints": false,
+    "liftTacticalPoints": false,
+    "liftLinesAreas": false,
+    "symbolElevationOffset": 1
+  },
   "standardIdentities": [
     {
       "00": "[255, 255, 0]",

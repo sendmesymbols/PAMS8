@@ -3327,8 +3327,10 @@ class SymbolEngine implements Evented {
       graphic.attributes = attrs;
       graphic.set('id', attrs.id);
 
-      // Get the appropriate layer from LayerManager
-      const graphicsLayer = this._layerManager.getSymbolLayer();
+      // Route completed graphics to the same logical layer used while drawing.
+      // Without this, all final graphics land in ForceSymbolsLayer and inherit
+      // force-point render settings such as 3D lift.
+      const graphicsLayer = this.getDrawEndLayer(drawEssentials, geometry);
       graphicsLayer.add(graphic);
       this._lastCreatedGraphic = graphic;
       console.info('Symbol Added');
@@ -3448,6 +3450,21 @@ class SymbolEngine implements Evented {
     } catch (error) {
       console.error('Error in drawSymEnd:', error);
     }
+  }
+
+  private getDrawEndLayer(drawEssentials: any, geometry: any): GraphicsLayer {
+    const symGeoType = String(drawEssentials?.SYM_GEO_TYPE ?? '').toLowerCase();
+    const isUei = drawEssentials?.UEI === '1' || drawEssentials?.UEI === 1;
+
+    if (isUei || symGeoType === 'fpoint') {
+      return this._layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
+    }
+
+    if (symGeoType === 'point' || geometry?.type === 'point') {
+      return this._layerManager.getOrCreateLayer(LAYER_NAMES.TACT_PT);
+    }
+
+    return this._layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
   }
 
   public applyMorphixEdit(

@@ -2,6 +2,7 @@ import esriConfig from '@arcgis/core/config';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import Map from '@arcgis/core/map';
+import settingsData from '../MS/Data/Settings.json';
 
 // Serve fonts locally — no internet dependency
 esriConfig.fontsUrl = '/fonts';
@@ -22,6 +23,30 @@ import Polyline from '@arcgis/core/geometry/Polyline';
 import Point from '@arcgis/core/geometry/Point';
 import Amplifier from '../MS/Support/Amplifier.ts';
 import DrawEssentials from '../MS/Support/DrawEssentials.ts';
+
+type RenderSettings = {
+  highQuality3D?: boolean;
+  disableSceneShadows?: boolean;
+  highAtmosphereQuality?: boolean;
+  liftSymbolsFromGround?: boolean;
+  liftForcePoints?: boolean;
+  liftTacticalPoints?: boolean;
+  liftLinesAreas?: boolean;
+  symbolElevationOffset?: number;
+};
+
+const RENDER_LAYER_IDS = {
+  forcePoints: 'ForceSymbolsLayer',
+  tacticalPoints: 'TacticalPointSymbolsLayer',
+  linesAreas: 'TacticalSymbolsLayer',
+} as const;
+
+let initialSceneRenderState: {
+  qualityProfile: unknown;
+  directShadowsEnabled?: boolean;
+  ambientOcclusionEnabled?: boolean;
+  atmosphereQuality?: unknown;
+} | null = null;
 
 //import SymbolEngine from "../dist/MS/Engines/SymbolEngine.min";
 //import type { SymbolOptions } from '../dist/MS/ThirdParty/MilSymbols/UEITypes'
@@ -106,6 +131,8 @@ const baseMap = new Map({
 // Create 3D view first (as we want it active on startup)
 initialViewParams.map = baseMap;
 appConfig.sceneView = <SceneView>createView(initialViewParams, '3d');
+captureInitialSceneRenderState(appConfig.sceneView);
+applyRenderSettings(settingsData);
 
 // Set the 3D view as the active view on startup
 appConfig.activeView = appConfig.sceneView;
@@ -533,6 +560,7 @@ function switchView() {
     appConfig.sceneView.viewpoint = activeViewpoint;
     appConfig.sceneView.container = appConfig.container;
     appConfig.activeView = appConfig.sceneView;
+    applyRenderSettings((window as any).symbolEngine?.settings ?? settingsData);
     (switchButton as HTMLInputElement).value = '2D';
 
     appConfig.sceneView.on('click', (event: MouseEvent) => {
@@ -565,6 +593,147 @@ function createView(params: any, type: '2d' | '3d'): MapView | SceneView {
     });
   return view;
 }
+
+function captureInitialSceneRenderState(view: SceneView): void {
+  const sceneView = view as any;
+  const lighting = sceneView.environment?.lighting;
+  const atmosphere = sceneView.environment?.atmosphere;
+
+  initialSceneRenderState = {
+    qualityProfile: sceneView.qualityProfile,
+    directShadowsEnabled: lighting?.directShadowsEnabled,
+    ambientOcclusionEnabled: lighting?.ambientOcclusionEnabled,
+    atmosphereQuality: atmosphere?.quality,
+  };
+}
+
+function applyRenderSettings(settings: any = settingsData): void {
+  const sceneView = appConfig.sceneView as any;
+  if (!sceneView) return;
+
+  const render: RenderSettings = settings?.render ?? {};
+  const defaults = initialSceneRenderState;
+
+  if (render.highQuality3D === true) {
+    sceneView.qualityProfile = 'high';
+  } else if (defaults?.qualityProfile !== undefined) {
+    sceneView.qualityProfile = defaults.qualityProfile;
+  }
+
+  const lighting = sceneView.environment?.lighting;
+  if (lighting) {
+    if (render.disableSceneShadows === true) {
+      lighting.directShadowsEnabled = false;
+      lighting.ambientOcclusionEnabled = false;
+    } else {
+      if (defaults?.directShadowsEnabled !== undefined) {
+        lighting.directShadowsEnabled = defaults.directShadowsEnabled;
+      }
+      if (defaults?.ambientOcclusionEnabled !== undefined) {
+        lighting.ambientOcclusionEnabled = defaults.ambientOcclusionEnabled;
+      }
+    }
+  }
+
+  const atmosphere = sceneView.environment?.atmosphere;
+  if (atmosphere) {
+    if (render.highAtmosphereQuality === true) {
+      atmosphere.quality = 'high';
+    } else if (defaults?.atmosphereQuality !== undefined) {
+      atmosphere.quality = defaults.atmosphereQuality;
+    }
+  }
+
+  normalizeSymbolLayerMembership(sceneView);
+  applySymbolElevationSettings(sceneView, render);
+}
+
+function normalizeSymbolLayerMembership(sceneView: SceneView): void {
+  const renderLayerIds = Object.values(RENDER_LAYER_IDS);
+
+  renderLayerIds.forEach((layerId) => {
+    const layer = sceneView.map.findLayerById(layerId) as any;
+    if (!layer?.graphics) return;
+
+    Array.from(layer.graphics).forEach((graphic: any) => {
+      const targetLayerId = getRenderLayerIdForGraphic(graphic);
+      if (!targetLayerId || targetLayerId === layerId) return;
+
+      const targetLayer = sceneView.map.findLayerById(targetLayerId) as any;
+      if (!targetLayer) return;
+
+      layer.remove(graphic);
+      targetLayer.add(graphic);
+    });
+  });
+}
+
+function getRenderLayerIdForGraphic(graphic: any): string | null {
+  const drawEssentials = graphic?.attributes?.drawEssentials;
+  if (!drawEssentials) return null;
+
+  const symGeoType = String(drawEssentials.SYM_GEO_TYPE ?? '').toLowerCase();
+  const isUei = drawEssentials.UEI === '1' || drawEssentials.UEI === 1;
+
+  if (isUei || symGeoType === 'fpoint') {
+    return RENDER_LAYER_IDS.forcePoints;
+  }
+
+  if (symGeoType === 'point' || graphic.geometry?.type === 'point') {
+    return RENDER_LAYER_IDS.tacticalPoints;
+  }
+
+  return RENDER_LAYER_IDS.linesAreas;
+}
+
+function applySymbolElevationSettings(
+  sceneView: SceneView,
+  render: RenderSettings,
+): void {
+  const offset =
+    typeof render.symbolElevationOffset === 'number'
+      ? render.symbolElevationOffset
+      : 1;
+  const legacyLiftAll = render.liftSymbolsFromGround === true;
+  const liftForcePoints = render.liftForcePoints ?? legacyLiftAll;
+  const liftTacticalPoints = render.liftTacticalPoints ?? legacyLiftAll;
+  const liftLinesAreas = render.liftLinesAreas ?? legacyLiftAll;
+
+  applyLayerElevation(
+    sceneView,
+    RENDER_LAYER_IDS.forcePoints,
+    liftForcePoints,
+    offset,
+  );
+  applyLayerElevation(
+    sceneView,
+    RENDER_LAYER_IDS.tacticalPoints,
+    liftTacticalPoints,
+    offset,
+  );
+  applyLayerElevation(
+    sceneView,
+    RENDER_LAYER_IDS.linesAreas,
+    liftLinesAreas,
+    offset,
+  );
+}
+
+function applyLayerElevation(
+  sceneView: SceneView,
+  layerId: string,
+  shouldLift: boolean,
+  offset: number,
+): void {
+  const layer = sceneView.map.findLayerById(layerId) as any;
+  if (!layer) return;
+
+  layer.elevationInfo = shouldLift
+    ? { mode: 'relative-to-ground', offset }
+    : { mode: 'on-the-ground' };
+}
+
+(window as any).applyRenderSettings = applyRenderSettings;
 
 
 // Auto-run test when page loads (optional)
