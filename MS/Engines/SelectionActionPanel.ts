@@ -62,6 +62,16 @@ class SelectionActionPanel {
         this._cb = callbacks;
     }
 
+    /**
+     * Swap in a new EditEngine instance.  Called from SymbolEngine.onViewChanged
+     * after a 2D/3D view switch rebuilds the engine — without this the panel
+     * keeps pinning the old EditEngine (memory leak) and its buttons would
+     * invoke the old instance bound to the previous view.
+     */
+    public rewireEditEngine(editEngine: EditEngine): void {
+        this._editEngine = editEngine;
+    }
+
     /** Start listening for selection changes and rendering the panel. */
     public enable(): void {
         if (this._enabled) return;

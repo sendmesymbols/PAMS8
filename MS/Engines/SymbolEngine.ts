@@ -22,6 +22,8 @@ import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtil
 
 import GraphicsLayerManager, {
   LAYER_NAMES,
+  LEGACY_MIL_SYMBOLS_LAYER_ID,
+  SYMBOL_LAYER_IDS,
 } from '../Managers/GraphicsLayerManager';
 /*
 import ms from '../ThirdParty/MilSymbols/UEITypes.js';
@@ -189,12 +191,7 @@ class SymbolEngine implements Evented {
       viewProvider,
       this._layerManager,
     );
-    this._selectionEngine.activate([
-      LAYER_NAMES.FORCE,
-      LAYER_NAMES.TACT_PT,
-      LAYER_NAMES.TACT,
-      'milSymbols',
-    ]);
+    this._selectionEngine.activate([...SYMBOL_LAYER_IDS]);
     this._selectionEngine.setAnnotationRefreshCallback((graphic: Graphic) => {
       const de = graphic.attributes?.drawEssentials;
       const id = graphic.attributes?.id;
@@ -263,12 +260,7 @@ class SymbolEngine implements Evented {
     this._contextMenuManager = ContextMenuManager.getInstance();
     this._contextMenuManager.initialize(this.view, {
       targetGraphicTypes: [], // any type on these layers gets the menu
-      targetLayerIds: [
-        LAYER_NAMES.FORCE,
-        LAYER_NAMES.TACT_PT,
-        LAYER_NAMES.TACT,
-        'milSymbols',
-      ],
+      targetLayerIds: [...SYMBOL_LAYER_IDS],
     });
     if ((settingsData as any).features?.contextMenu === false) {
       this._contextMenuManager.disable();
@@ -436,9 +428,7 @@ class SymbolEngine implements Evented {
       this._proximityEngine?.activate();
 
       // Arm drawing cue overlays (idempotent)
-      this._drawingCueEngine?.activate([
-        LAYER_NAMES.FORCE, LAYER_NAMES.TACT_PT, LAYER_NAMES.TACT, 'milSymbols',
-      ]);
+      this._drawingCueEngine?.activate([...SYMBOL_LAYER_IDS]);
 
       // Feed drawing progress into the measurement engine
       const detail = event.detail;
@@ -505,6 +495,12 @@ class SymbolEngine implements Evented {
     this._layerManager.initializeLayers();
     this._editEngine = new EditEngine(this._getView, this._layerManager);
     this._undoRedoManager.rewireEditEngine(this._editEngine);
+    // SelectionActionPanel and KeyboardShortcutManager both capture the original
+    // EditEngine reference at construction.  Without swapping them here the old
+    // engine remains pinned (memory leak) and their callbacks invoke the
+    // discarded engine bound to the previous view.
+    this._selectionActionPanel?.rewireEditEngine(this._editEngine);
+    this._keyboardShortcutManager?.rewireEditEngine(this._editEngine);
     this._selectionEngine.onViewChanged(newView);
     this._selectionActionPanel?.refresh();
     this._morphixEngine.initialize(newView, this._layerManager, {
@@ -534,12 +530,7 @@ class SymbolEngine implements Evented {
     // pointer-down / contextmenu listeners are bound to the active view.
     this._contextMenuManager.initialize(newView, {
       targetGraphicTypes: [],
-      targetLayerIds: [
-        LAYER_NAMES.FORCE,
-        LAYER_NAMES.TACT_PT,
-        LAYER_NAMES.TACT,
-        'milSymbols',
-      ],
+      targetLayerIds: [...SYMBOL_LAYER_IDS],
     });
   }
 
@@ -607,7 +598,7 @@ class SymbolEngine implements Evented {
     this._proximityEngine = ProximityEngine.getInstance();
     this._proximityEngine.start(
       this.view,
-      [LAYER_NAMES.FORCE, LAYER_NAMES.TACT_PT, LAYER_NAMES.TACT, 'milSymbols'],
+      [...SYMBOL_LAYER_IDS],
       {
         nearestVertex: proxCfg.nearestVertex ?? true,
         nearestCoordinate: proxCfg.nearestCoordinate ?? true,
@@ -1084,8 +1075,10 @@ class SymbolEngine implements Evented {
    *   I        â†’ Show Details
    *   C        â†’ Center On
    */
+  private _keyboardShortcutManager?: KeyboardShortcutManager;
+
   private _setupKeyboardShortcuts(): void {
-    new KeyboardShortcutManager({
+    this._keyboardShortcutManager = new KeyboardShortcutManager({
       contextMenuManager: this._contextMenuManager,
       editEngine: this._editEngine,
       selectionEngine: this._selectionEngine,
@@ -1104,7 +1097,8 @@ class SymbolEngine implements Evented {
       pushUndo: (entry) => this._pushUndo(entry),
       stopContinuousMode: () => this.stopContinuousMode(),
       getCreationMode: () => this._creationMode,
-    }).attach();
+    });
+    this._keyboardShortcutManager.attach();
   }
 
   /** Access the MeasurementEngine â€” configure units or toggle programmatically.
@@ -1683,7 +1677,7 @@ class SymbolEngine implements Evented {
     geometry: __esri.Point,
     options: SymbolOptions,
   ): void {
-    const layer = this._layerManager.getOrCreateLayer('milSymbols');
+    const layer = this._layerManager.getOrCreateLayer(LEGACY_MIL_SYMBOLS_LAYER_ID);
     const symbol = this.generateForceSymbol(options, 3);
 
     const graphic = new Graphic({
@@ -1918,9 +1912,7 @@ class SymbolEngine implements Evented {
         // Arm proximity indicator for the upcoming draw session
         this._proximityEngine?.activate();
         // Arm drawing cue overlays for the upcoming draw session
-        this._drawingCueEngine?.activate([
-          LAYER_NAMES.FORCE, LAYER_NAMES.TACT_PT, LAYER_NAMES.TACT, 'milSymbols',
-        ]);
+        this._drawingCueEngine?.activate([...SYMBOL_LAYER_IDS]);
       }
 
       // Moved initialization of symbolData to constructor to avoid re-parsing

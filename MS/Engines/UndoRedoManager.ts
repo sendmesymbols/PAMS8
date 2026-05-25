@@ -90,10 +90,19 @@ export default class UndoRedoManager {
       : null;
   }
 
-  /** Clear both stacks — used by clearAllGraphics. */
+  /**
+   * Clear both stacks and the pre-edit snapshot — used by clearAllGraphics.
+   *
+   * The stack arrays hold closures that reference Graphic instances via
+   * `undo`/`redo` lambdas; dropping the arrays releases those references for
+   * GC. We also null `_preEditSnapshot`, which otherwise pins the most
+   * recently-edited graphic (including any `additionalGraphics`) until the
+   * next edit operation completes.
+   */
   public clear(): void {
     this._undoStack = [];
     this._redoStack = [];
+    this._preEditSnapshot = null;
   }
 
   public get nextRedoLabel(): string | null {

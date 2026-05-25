@@ -56,7 +56,7 @@ export interface KeyboardShortcutDeps {
 export default class KeyboardShortcutManager {
   private _handler: ((e: KeyboardEvent) => void) | null = null;
 
-  constructor(private readonly deps: KeyboardShortcutDeps) {}
+  constructor(private deps: KeyboardShortcutDeps) {}
 
   attach(): void {
     if (this._handler) return; // already attached
@@ -68,6 +68,16 @@ export default class KeyboardShortcutManager {
     if (!this._handler) return;
     document.removeEventListener('keydown', this._handler);
     this._handler = null;
+  }
+
+  /**
+   * Swap in a new EditEngine instance after a view switch.  Without this the
+   * old EditEngine is pinned by this manager's document keydown listener and
+   * shortcut state queries (`isModifyingSymbol` / `isEditingControlPoints`)
+   * read from the discarded engine bound to the previous view.
+   */
+  rewireEditEngine(editEngine: EditEngine): void {
+    this.deps.editEngine = editEngine;
   }
 
   private currentGraphic(): Graphic | null {

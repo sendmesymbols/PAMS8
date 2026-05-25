@@ -20,6 +20,7 @@ import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtil
 
 import GraphicsLayerManager, {
   LAYER_NAMES,
+  LEGACY_MIL_SYMBOLS_LAYER_ID,
 } from '../../Managers/GraphicsLayerManager';
 import EngineLogger from '../../Support/EngineLogger';
 import Plan from './Plan.ts';
@@ -78,7 +79,7 @@ class SerializationEngine {
         LAYER_NAMES.TACT,
         LAYER_NAMES.TACT_PT,
         LAYER_NAMES.FORCE,
-        'milSymbols',
+        LEGACY_MIL_SYMBOLS_LAYER_ID,
       ];
       let overlaySeq = 1;
       let totalSymbols = 0;
@@ -325,7 +326,7 @@ class SerializationEngine {
       LAYER_NAMES.TACT,
       LAYER_NAMES.TACT_PT,
       LAYER_NAMES.FORCE,
-      'milSymbols',
+      LEGACY_MIL_SYMBOLS_LAYER_ID,
     ];
     for (const layerId of layerIds) {
       const layer = this._layerManager.getOrCreateLayer(layerId) as any;
@@ -414,7 +415,7 @@ class SerializationEngine {
       LAYER_NAMES.TACT,
       LAYER_NAMES.TACT_PT,
       LAYER_NAMES.FORCE,
-      'milSymbols',
+      LEGACY_MIL_SYMBOLS_LAYER_ID,
     ];
     const sp = (pt: any) => this._serializePoint(pt);
 
