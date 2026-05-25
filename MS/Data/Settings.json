@@ -630,6 +630,19 @@
       "enemyFillColor": [200, 50, 50],
       "fillOpacity": 0.1,
       "outlineWidth": 2
+    },
+    "extrudedFootprints": {
+      "enabled": false,
+      "extrudePolygons": true,
+      "polygonHeightM": 100,
+      "polygonShowEdges": true,
+      "extrudeLines": true,
+      "lineWallHeightM": 100,
+      "lineWallThicknessM": 6,
+      "fillOpacity": 0.22,
+      "colorMode": "identity",
+      "singleColor": [80, 120, 200],
+      "edgeColor": [40, 40, 40]
     }
   },
   "echelonMap23": {

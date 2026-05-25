@@ -62,12 +62,26 @@ export interface RenderOptions {
     dropLineWidth: number;
     dropLineOpacity: number;
 }
+export interface ExtrudedFootprintsOptions {
+    enabled: boolean;
+    extrudePolygons: boolean;
+    polygonHeightM: number;
+    polygonShowEdges: boolean;
+    extrudeLines: boolean;
+    lineWallHeightM: number;
+    lineWallThicknessM: number;
+    fillOpacity: number;
+    colorMode: "identity" | "inherit" | "single";
+    singleColor: number[];
+    edgeColor: number[];
+}
 export interface VisualizationOptions {
     render: RenderOptions;
     layerEffects: LayerEffectsOptions;
     coverageRings: CoverageRingsOptions;
     forceRatioGrid: ForceRatioGridOptions;
     convexHull: ConvexHullOptions;
+    extrudedFootprints: ExtrudedFootprintsOptions;
 }
 export declare class VisualizationEngine {
     private static _instance;
@@ -99,6 +113,7 @@ export declare class VisualizationEngine {
     private _ratioColor;
     private _lerpColor;
     private _computeConvexHull;
+    private _computeExtrudedFootprints;
     /**
      * Draw time-distance threat projection rings centred on the given graphic.
      * Each entry in timeHoursIntervals produces a concentric circle whose radius

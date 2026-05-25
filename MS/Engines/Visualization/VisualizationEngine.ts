@@ -81,12 +81,37 @@ export interface RenderOptions {
   dropLineOpacity: number;
 }
 
+export interface ExtrudedFootprintsOptions {
+  enabled: boolean;
+  /** Extrude polygon (area) graphics into 3D blocks */
+  extrudePolygons: boolean;
+  /** Block height in metres for extruded polygons */
+  polygonHeightM: number;
+  /** Show solid edges on extruded polygons */
+  polygonShowEdges: boolean;
+  /** Extrude polyline graphics into vertical walls */
+  extrudeLines: boolean;
+  /** Wall height in metres for extruded lines */
+  lineWallHeightM: number;
+  /** Wall thickness in metres (PathSymbol3DLayer width) */
+  lineWallThicknessM: number;
+  /** Fill opacity for extruded faces (0–1) */
+  fillOpacity: number;
+  /** Source for the extrusion colour */
+  colorMode: "identity" | "inherit" | "single";
+  /** Used when colorMode === "single" */
+  singleColor: number[];
+  /** Edge colour for SolidEdges3D */
+  edgeColor: number[];
+}
+
 export interface VisualizationOptions {
   render: RenderOptions;
   layerEffects: LayerEffectsOptions;
   coverageRings: CoverageRingsOptions;
   forceRatioGrid: ForceRatioGridOptions;
   convexHull: ConvexHullOptions;
+  extrudedFootprints: ExtrudedFootprintsOptions;
 }
 
 // ─── Defaults ───────────────────────────────────────────────────────────────
@@ -135,6 +160,19 @@ const DEFAULT_OPTIONS: VisualizationOptions = {
     enemyFillColor: [200, 50, 50],
     fillOpacity: 0.1,
     outlineWidth: 2,
+  },
+  extrudedFootprints: {
+    enabled: false,
+    extrudePolygons: true,
+    polygonHeightM: 100,
+    polygonShowEdges: true,
+    extrudeLines: true,
+    lineWallHeightM: 100,
+    lineWallThicknessM: 6,
+    fillOpacity: 0.22,
+    colorMode: "identity",
+    singleColor: [80, 120, 200],
+    edgeColor: [40, 40, 40],
   },
 };
 
@@ -218,6 +256,7 @@ export class VisualizationEngine {
     if (options.coverageRings)  Object.assign(this._options.coverageRings,  options.coverageRings);
     if (options.forceRatioGrid) Object.assign(this._options.forceRatioGrid, options.forceRatioGrid);
     if (options.convexHull)     Object.assign(this._options.convexHull,     options.convexHull);
+    if (options.extrudedFootprints) Object.assign(this._options.extrudedFootprints, options.extrudedFootprints);
 
     if (this._enabled) {
       this._applyLayerEffects();
@@ -237,7 +276,8 @@ export class VisualizationEngine {
         title: "Visualization Overlay",
         listMode: "hide",
         opacity: 1,
-      });
+        elevationInfo: { mode: "relative-to-ground", offset: 0 },
+      } as any);
       // Index 0 = bottom of draw stack — sits under all symbol layers
       this._view.map.add(layer, 0);
     }
@@ -293,9 +333,10 @@ export class VisualizationEngine {
   private _refresh(): void {
     if (!this._enabled || !this._vizLayer) return;
     this._vizLayer.removeAll();
-    if (this._options.coverageRings.enabled)  this._computeCoverageRings();
-    if (this._options.forceRatioGrid.enabled) this._computeForceRatioGrid();
-    if (this._options.convexHull.enabled)     this._computeConvexHull();
+    if (this._options.coverageRings.enabled)     this._computeCoverageRings();
+    if (this._options.forceRatioGrid.enabled)    this._computeForceRatioGrid();
+    if (this._options.convexHull.enabled)        this._computeConvexHull();
+    if (this._options.extrudedFootprints.enabled) this._computeExtrudedFootprints();
   }
 
   // ─── Layer Effects ─────────────────────────────────────────────────────────
@@ -537,6 +578,156 @@ export class VisualizationEngine {
 
     drawHull(friendly, opt.friendlyFillColor);
     drawHull(enemy,    opt.enemyFillColor);
+  }
+
+  // ─── Extruded Footprints (3D blocks / walls for lines & areas) ─────────────
+
+  private _computeExtrudedFootprints(): void {
+    if (!this._vizLayer || !this._layerManager) return;
+    if ((this._view as any)?.type === "2d") return; // walls only meaningful in SceneView
+
+    const opt = this._options.extrudedFootprints;
+    const tactLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
+    if (!tactLayer?.graphics) return;
+
+    const FRIENDLY = [0, 100, 200];
+    const ENEMY    = [220, 50, 50];
+    const NEUTRAL  = [80, 200, 120];
+    const UNKNOWN  = [200, 200, 80];
+
+    const resolveColor = (g: Graphic): number[] => {
+      if (opt.colorMode === "single") return opt.singleColor;
+      if (opt.colorMode === "inherit") {
+        const sym = g.symbol as any;
+        const c = sym?.color;
+        if (c) {
+          if (Array.isArray(c)) return [c[0], c[1], c[2]];
+          if (typeof c.r === "number") return [c.r, c.g, c.b];
+        }
+        return opt.singleColor;
+      }
+      const id = this._getIdentity(g);
+      if (id === "friendly") return FRIENDLY;
+      if (id === "enemy")    return ENEMY;
+      if (id === "neutral")  return NEUTRAL;
+      return UNKNOWN;
+    };
+
+    const alpha = Math.max(0, Math.min(1, opt.fillOpacity));
+    const makeFill = (rgb: number[]): SimpleFillSymbol =>
+      new SimpleFillSymbol({
+        color: new Color([rgb[0], rgb[1], rgb[2], alpha]),
+        outline: new SimpleLineSymbol({
+          color: new Color([opt.edgeColor[0], opt.edgeColor[1], opt.edgeColor[2], opt.polygonShowEdges ? 0.9 : 0]),
+          width: opt.polygonShowEdges ? 1 : 0,
+        }),
+      });
+
+    const addWallQuad = (
+      x0: number, y0: number, x1: number, y1: number,
+      h: number, sr: any, fillSym: SimpleFillSymbol, tag: string,
+    ): void => {
+      this._vizLayer!.add(new Graphic({
+        geometry: new Polygon({
+          rings: [[
+            [x0, y0, 0],
+            [x1, y1, 0],
+            [x1, y1, h],
+            [x0, y0, h],
+            [x0, y0, 0],
+          ]] as any,
+          hasZ: true,
+          spatialReference: sr,
+        } as any),
+        symbol: fillSym,
+        attributes: { [VIZ_TAG]: tag },
+      }));
+    };
+
+    tactLayer.graphics.forEach((g: Graphic) => {
+      if (g.attributes?.[VIZ_TAG]) return;
+      const geom = g.geometry as any;
+      if (!geom) return;
+
+      const rgb = resolveColor(g);
+      const fillSym = makeFill(rgb);
+
+      if (geom.type === "polygon" && opt.extrudePolygons) {
+        const sr = geom.spatialReference;
+        const H = opt.polygonHeightM;
+        const rings: number[][][] = geom.rings ?? [];
+
+        rings.forEach((ring) => {
+          for (let i = 0; i < ring.length - 1; i++) {
+            const [x0, y0] = ring[i];
+            const [x1, y1] = ring[i + 1];
+            addWallQuad(x0, y0, x1, y1, H, sr, fillSym, "extruded-polygon");
+          }
+        });
+
+        // Top cap — clone rings lifted to z=H
+        const topRings = rings.map((ring) =>
+          ring.map(([x, y]) => [x, y, H]),
+        );
+        this._vizLayer!.add(new Graphic({
+          geometry: new Polygon({
+            rings: topRings as any,
+            hasZ: true,
+            spatialReference: sr,
+          } as any),
+          symbol: fillSym,
+          attributes: { [VIZ_TAG]: "extruded-polygon" },
+        }));
+        return;
+      }
+
+      if (geom.type === "polyline" && opt.extrudeLines) {
+        const sr = geom.spatialReference;
+        const H = opt.lineWallHeightM;
+        const T = Math.max(0, opt.lineWallThicknessM);
+        const paths: number[][][] = geom.paths ?? [];
+
+        if (T <= 0) {
+          // Thin sheet — vertical quad along each segment
+          paths.forEach((path) => {
+            for (let i = 0; i < path.length - 1; i++) {
+              const [x0, y0] = path[i];
+              const [x1, y1] = path[i + 1];
+              addWallQuad(x0, y0, x1, y1, H, sr, fillSym, "extruded-line");
+            }
+          });
+        } else {
+          // Buffer the polyline into a corridor polygon, then extrude as walls + cap
+          try {
+            const corridor = geometryEngine.geodesicBuffer(geom, T / 2, "meters") as any;
+            const corridors: any[] = Array.isArray(corridor) ? corridor : [corridor];
+            corridors.forEach((poly) => {
+              if (!poly?.rings) return;
+              const cRings: number[][][] = poly.rings;
+              cRings.forEach((ring) => {
+                for (let i = 0; i < ring.length - 1; i++) {
+                  const [x0, y0] = ring[i];
+                  const [x1, y1] = ring[i + 1];
+                  addWallQuad(x0, y0, x1, y1, H, poly.spatialReference ?? sr, fillSym, "extruded-line");
+                }
+              });
+              const topRings = cRings.map((ring) =>
+                ring.map(([x, y]) => [x, y, H]),
+              );
+              this._vizLayer!.add(new Graphic({
+                geometry: new Polygon({
+                  rings: topRings as any,
+                  hasZ: true,
+                  spatialReference: poly.spatialReference ?? sr,
+                } as any),
+                symbol: fillSym,
+                attributes: { [VIZ_TAG]: "extruded-line" },
+              }));
+            });
+          } catch (_) { /* buffer failed — skip */ }
+        }
+      }
+    });
   }
 
   // ─── Threat Fan (on-demand, callable from context menu) ────────────────────

@@ -2013,37 +2013,77 @@
             </div>
 
             <!-- Layer Effects -->
-            <div class="sub-feature-label">Layer Effects (Glow / Shadow)</div>
+            <div class="sub-feature-label">Layer Effects — Glow / Shadow (2D only)</div>
             <div class="setting-row">
               <label>Enabled</label>
-              <input type="checkbox" id="setting-vizLayerEffects" data-sf-master="vizLayerEffects" title="Apply CSS-filter glow/shadow effects to symbol layers for visual emphasis." />
+              <input type="checkbox" id="setting-vizLayerEffects" data-sf-master="vizLayerEffects" title="Apply CSS-filter glow/shadow effects to symbol layers for visual emphasis. ArcGIS GraphicsLayer effects render only in 2D MapView — ignored in 3D SceneView." />
             </div>
             <div class="setting-row" data-sf-group="vizLayerEffects">
               <label>Force Effect</label>
-              <select id="setting-vizForceEffect" style="width:100px" title="Glow/shadow effect for UEI (Force) symbols.">
+              <select id="setting-vizForceEffect" style="width:110px" title="Glow/shadow effect for UEI (Force) symbols. 2D only.">
+                <option value="">None</option>
                 <option value="bloom(1, 0.5px, 0.1)">Bloom soft</option>
                 <option value="bloom(1.8, 1px, 0.1)">Bloom strong</option>
+                <option value="bloom(2.5, 2px, 0)">Bloom intense</option>
                 <option value="drop-shadow(0px, 0px, 8px, #0050ff, 0.8)">Blue shadow</option>
                 <option value="drop-shadow(0px, 0px, 8px, #ffffff, 0.6)">White glow</option>
+                <option value="drop-shadow(0px, 0px, 10px, #ff3030, 0.8)">Red glow</option>
+                <option value="drop-shadow(2px, 2px, 4px, #000000, 0.7)">Hard shadow</option>
                 <option value="saturate(200%) brightness(1.2)">Vivid</option>
+                <option value="grayscale(100%)">Grayscale</option>
+                <option value="sepia(80%)">Sepia</option>
+                <option value="invert(100%)">Invert</option>
+                <option value="hue-rotate(90deg)">Hue rotate 90°</option>
+                <option value="hue-rotate(180deg)">Hue rotate 180°</option>
+                <option value="brightness(1.5) contrast(1.2)">High contrast</option>
+                <option value="brightness(0.6) contrast(1.4)">Dim contrast</option>
+                <option value="blur(1px)">Blur 1px</option>
+                <option value="blur(2px) brightness(1.3)">Soft blur</option>
+                <option value="opacity(50%)">50% opacity</option>
               </select>
             </div>
             <div class="setting-row" data-sf-group="vizLayerEffects">
               <label>Tact Pt Effect</label>
-              <select id="setting-vizTactPtEffect" style="width:100px" title="Effect for tactical point symbols.">
+              <select id="setting-vizTactPtEffect" style="width:110px" title="Effect for tactical point symbols. 2D only.">
+                <option value="">None</option>
                 <option value="bloom(0.8, 0.5px, 0.05)">Bloom soft</option>
                 <option value="bloom(1.5, 1px, 0.1)">Bloom strong</option>
+                <option value="bloom(2.2, 1.5px, 0)">Bloom intense</option>
                 <option value="drop-shadow(0px, 0px, 6px, #50c8ff, 0.7)">Cyan glow</option>
+                <option value="drop-shadow(0px, 0px, 6px, #ffaa00, 0.8)">Amber glow</option>
+                <option value="drop-shadow(0px, 0px, 8px, #00ff80, 0.7)">Green glow</option>
+                <option value="drop-shadow(1px, 1px, 3px, #000000, 0.7)">Soft shadow</option>
                 <option value="saturate(180%)">Vivid</option>
+                <option value="grayscale(100%)">Grayscale</option>
+                <option value="invert(100%)">Invert</option>
+                <option value="hue-rotate(120deg)">Hue rotate 120°</option>
+                <option value="brightness(1.4) saturate(140%)">Pop</option>
+                <option value="blur(0.5px)">Soft blur</option>
+                <option value="opacity(60%)">60% opacity</option>
+                <option value="opacity(35%)">35% opacity (ghost)</option>
               </select>
             </div>
             <div class="setting-row" data-sf-group="vizLayerEffects">
               <label>Tact Effect</label>
-              <select id="setting-vizTactEffect" style="width:100px" title="Effect for tactical line/area graphics.">
+              <select id="setting-vizTactEffect" style="width:110px" title="Effect for tactical line/area graphics. 2D only.">
+                <option value="">None</option>
                 <option value="drop-shadow(0px, 0px, 6px, #0050ff, 0.7)">Blue shadow</option>
                 <option value="drop-shadow(0px, 0px, 8px, #ff5000, 0.7)">Orange glow</option>
+                <option value="drop-shadow(0px, 0px, 8px, #ffffff, 0.6)">White glow</option>
+                <option value="drop-shadow(0px, 0px, 10px, #ff0040, 0.8)">Threat red</option>
+                <option value="drop-shadow(2px, 2px, 5px, #000000, 0.7)">Hard shadow</option>
                 <option value="bloom(0.8, 0.5px, 0.08)">Bloom</option>
+                <option value="bloom(1.5, 1px, 0)">Bloom strong</option>
                 <option value="saturate(180%) brightness(1.1)">Vivid</option>
+                <option value="grayscale(100%)">Grayscale</option>
+                <option value="sepia(70%)">Sepia</option>
+                <option value="invert(100%)">Invert</option>
+                <option value="hue-rotate(180deg)">Hue rotate 180°</option>
+                <option value="brightness(1.3) contrast(1.3)">High contrast</option>
+                <option value="brightness(0.7) saturate(70%)">Faded</option>
+                <option value="blur(1px)">Blur 1px</option>
+                <option value="opacity(50%)">50% opacity</option>
+                <option value="opacity(25%)">25% opacity (ghost)</option>
               </select>
             </div>
 
@@ -2101,6 +2141,58 @@
             <div class="setting-row" data-sf-group="vizConvexHull">
               <label>Outline Width</label>
               <input type="number" id="setting-vizHullOutline" value="2" min="0.5" max="8" step="0.5" style="width:50px" title="Outline width for hull polygons in pixels." />
+            </div>
+
+            <!-- Extruded Footprints (3D blocks for areas / walls for lines) -->
+            <div class="sub-feature-label">Extruded Footprints (3D)</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-vizExtruded" data-sf-master="vizExtruded" title="Extrude tactical line &amp; area graphics into 3D walls and blocks (SceneView only; ignored in 2D)." />
+            </div>
+            <div class="setting-row" data-sf-group="vizExtruded">
+              <label>Extrude Polygons</label>
+              <input type="checkbox" id="setting-vizExtrudePolygons" checked title="Render area (polygon) graphics as extruded 3D blocks." />
+            </div>
+            <div class="setting-row" data-sf-group="vizExtruded">
+              <label>Polygon Height m</label>
+              <input type="number" id="setting-vizPolygonHeight" value="100" min="1" max="10000" step="10" style="width:55px" title="Block height in metres for extruded polygons." />
+            </div>
+            <div class="setting-row" data-sf-group="vizExtruded">
+              <label>Polygon Edges</label>
+              <input type="checkbox" id="setting-vizPolygonEdges" checked title="Draw solid edges on extruded polygon blocks." />
+            </div>
+            <div class="setting-row" data-sf-group="vizExtruded">
+              <label>Extrude Lines</label>
+              <input type="checkbox" id="setting-vizExtrudeLines" checked title="Render line (polyline) graphics as vertical walls along the path." />
+            </div>
+            <div class="setting-row" data-sf-group="vizExtruded">
+              <label>Wall Height m</label>
+              <input type="number" id="setting-vizLineWallHeight" value="100" min="1" max="10000" step="10" style="width:55px" title="Wall height in metres for extruded polylines." />
+            </div>
+            <div class="setting-row" data-sf-group="vizExtruded">
+              <label>Wall Thickness m</label>
+              <input type="number" id="setting-vizLineWallThickness" value="6" min="0.5" max="500" step="0.5" style="width:55px" title="Wall thickness (path width) in metres for extruded polylines." />
+            </div>
+            <div class="setting-row" data-sf-group="vizExtruded">
+              <label>Fill Opacity</label>
+              <input type="range" id="setting-vizExtrudedOpacity" min="0" max="1" step="0.01" value="0.22" style="width:60px" title="Fill opacity for extruded shells." />
+              <span class="value-display" id="vizExtrudedOpacity-display">0.22</span>
+            </div>
+            <div class="setting-row" data-sf-group="vizExtruded">
+              <label>Color Mode</label>
+              <select id="setting-vizExtrudedColorMode" style="width:90px" title="Source of the extrusion colour: identity (friendly/enemy/neutral), inherit (use the underlying symbol colour), or a single colour.">
+                <option value="identity">Identity</option>
+                <option value="inherit">Inherit</option>
+                <option value="single">Single</option>
+              </select>
+            </div>
+            <div class="setting-row" data-sf-group="vizExtruded">
+              <label>Single Color</label>
+              <input type="color" id="setting-vizExtrudedSingleColor" value="#5078c8" title="Colour used when Color Mode is Single." />
+            </div>
+            <div class="setting-row" data-sf-group="vizExtruded">
+              <label>Edge Color</label>
+              <input type="color" id="setting-vizExtrudedEdgeColor" value="#282828" title="Edge colour for extruded polygon blocks." />
             </div>
           </div>
         </div>
@@ -2718,6 +2810,17 @@
         'setting-vizConvexHull':         (v) => ({ path: ['visualization', 'convexHull', 'enabled'], value: v }),
         'setting-vizHullOpacity':        (v) => ({ path: ['visualization', 'convexHull', 'fillOpacity'], value: +v }),
         'setting-vizHullOutline':        (v) => ({ path: ['visualization', 'convexHull', 'outlineWidth'], value: +v }),
+        'setting-vizExtruded':                (v) => ({ path: ['visualization', 'extrudedFootprints', 'enabled'],            value: v }),
+        'setting-vizExtrudePolygons':         (v) => ({ path: ['visualization', 'extrudedFootprints', 'extrudePolygons'],    value: v }),
+        'setting-vizPolygonHeight':           (v) => ({ path: ['visualization', 'extrudedFootprints', 'polygonHeightM'],     value: +v }),
+        'setting-vizPolygonEdges':            (v) => ({ path: ['visualization', 'extrudedFootprints', 'polygonShowEdges'],   value: v }),
+        'setting-vizExtrudeLines':            (v) => ({ path: ['visualization', 'extrudedFootprints', 'extrudeLines'],       value: v }),
+        'setting-vizLineWallHeight':          (v) => ({ path: ['visualization', 'extrudedFootprints', 'lineWallHeightM'],    value: +v }),
+        'setting-vizLineWallThickness':       (v) => ({ path: ['visualization', 'extrudedFootprints', 'lineWallThicknessM'], value: +v }),
+        'setting-vizExtrudedOpacity':         (v) => ({ path: ['visualization', 'extrudedFootprints', 'fillOpacity'],        value: +v }),
+        'setting-vizExtrudedColorMode':       (v) => ({ path: ['visualization', 'extrudedFootprints', 'colorMode'],          value: v }),
+        'setting-vizExtrudedSingleColor':     (v) => ({ path: ['visualization', 'extrudedFootprints', 'singleColor'],        value: hexToRgb(v) }),
+        'setting-vizExtrudedEdgeColor':       (v) => ({ path: ['visualization', 'extrudedFootprints', 'edgeColor'],          value: hexToRgb(v) }),
       };
 
       // Color conversion helpers
@@ -2921,9 +3024,9 @@
           const viz = settings.visualization ?? {};
           const vizLfx = viz.layerEffects ?? {};
           document.getElementById('setting-vizLayerEffects').checked     = vizLfx.enabled === true;
-          document.getElementById('setting-vizForceEffect').value        = vizLfx.forceEffect  || 'bloom(1, 0.5px, 0.1)';
-          document.getElementById('setting-vizTactPtEffect').value       = vizLfx.tactPtEffect || 'bloom(0.8, 0.5px, 0.05)';
-          document.getElementById('setting-vizTactEffect').value         = vizLfx.tactEffect   || 'drop-shadow(0px, 0px, 6px, #0050ff, 0.7)';
+          document.getElementById('setting-vizForceEffect').value        = vizLfx.forceEffect  ?? '';
+          document.getElementById('setting-vizTactPtEffect').value       = vizLfx.tactPtEffect ?? '';
+          document.getElementById('setting-vizTactEffect').value         = vizLfx.tactEffect   ?? '';
 
           const vizCR = viz.coverageRings ?? {};
           document.getElementById('setting-vizCoverageRings').checked    = vizCR.enabled === true;
@@ -2947,6 +3050,27 @@
           document.getElementById('setting-vizHullOpacity').value        = hullOp;
           document.getElementById('vizHullOpacity-display').textContent  = Number(hullOp).toFixed(2);
           document.getElementById('setting-vizHullOutline').value        = vizCH.outlineWidth ?? 2;
+
+          const vizEF = viz.extrudedFootprints ?? {};
+          document.getElementById('setting-vizExtruded').checked            = vizEF.enabled === true;
+          document.getElementById('setting-vizExtrudePolygons').checked     = vizEF.extrudePolygons !== false;
+          document.getElementById('setting-vizPolygonHeight').value         = vizEF.polygonHeightM ?? 100;
+          document.getElementById('setting-vizPolygonEdges').checked        = vizEF.polygonShowEdges !== false;
+          document.getElementById('setting-vizExtrudeLines').checked        = vizEF.extrudeLines !== false;
+          document.getElementById('setting-vizLineWallHeight').value        = vizEF.lineWallHeightM ?? 100;
+          document.getElementById('setting-vizLineWallThickness').value     = vizEF.lineWallThicknessM ?? 6;
+          const efOp = vizEF.fillOpacity ?? 0.22;
+          document.getElementById('setting-vizExtrudedOpacity').value       = efOp;
+          document.getElementById('vizExtrudedOpacity-display').textContent = Number(efOp).toFixed(2);
+          document.getElementById('setting-vizExtrudedColorMode').value     = vizEF.colorMode ?? 'identity';
+          if (Array.isArray(vizEF.singleColor)) {
+            document.getElementById('setting-vizExtrudedSingleColor').value =
+              rgbToHex(vizEF.singleColor[0], vizEF.singleColor[1], vizEF.singleColor[2]);
+          }
+          if (Array.isArray(vizEF.edgeColor)) {
+            document.getElementById('setting-vizExtrudedEdgeColor').value =
+              rgbToHex(vizEF.edgeColor[0], vizEF.edgeColor[1], vizEF.edgeColor[2]);
+          }
 
           // Analysis engine individual flags
           const analysis = settings.analysis || {};
