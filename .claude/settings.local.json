@@ -24,7 +24,8 @@
       "Bash(head -n 746 MS/Engines/SymbolEngine.ts)",
       "Bash(tail -n +924 MS/Engines/SymbolEngine.ts)",
       "Read(//tmp/**)",
-      "Bash(cd \"D:/Projects/PAMS8\" && sed -E 's/\\\\\\([0-9]+,[0-9]+\\\\\\)//g' /tmp/master_errors.txt | sort -u > /tmp/master_cats.txt && sed -E 's/\\\\\\([0-9]+,[0-9]+\\\\\\)//g' /tmp/head_errors.txt | sort -u > /tmp/head_cats.txt && echo \"master unique error patterns: $\\(wc -l < /tmp/master_cats.txt\\)\" && echo \"head unique error patterns:   $\\(wc -l < /tmp/head_cats.txt\\)\" && echo \"===in head but not master===\" && comm -23 /tmp/head_cats.txt /tmp/master_cats.txt)"
+      "Bash(cd \"D:/Projects/PAMS8\" && sed -E 's/\\\\\\([0-9]+,[0-9]+\\\\\\)//g' /tmp/master_errors.txt | sort -u > /tmp/master_cats.txt && sed -E 's/\\\\\\([0-9]+,[0-9]+\\\\\\)//g' /tmp/head_errors.txt | sort -u > /tmp/head_cats.txt && echo \"master unique error patterns: $\\(wc -l < /tmp/master_cats.txt\\)\" && echo \"head unique error patterns:   $\\(wc -l < /tmp/head_cats.txt\\)\" && echo \"===in head but not master===\" && comm -23 /tmp/head_cats.txt /tmp/master_cats.txt)",
+      "Bash(git stash *)"
     ]
   }
 }

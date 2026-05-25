@@ -2883,60 +2883,74 @@ class SymbolEngine implements Evented {
 
         const symbolId = data.id;
         setTimeout(() => {
-          const layer = this._layerManager.getSymbolLayer();
-          const existing = Array.from(layer.graphics).find(
-            (g: any) => g.attributes?.id === symbolId
-          );
-          if (!existing) {
-            const geom = de.GEOM || de.CTRL_PTS?.[0];
-            if (geom) {
-              const amp = new Amplifier();
-              if (data.amplifier) Object.assign(amp, data.amplifier);
-              if (data.sidc && !amp.SIDC) amp.SIDC = data.sidc;
+          // Look across every symbol layer the draw pipeline could have routed to
+          // (Area/Line → TACT, point tacticals → TACT_PT, force points → FORCE).
+          // Checking only one layer caused duplicate fallback graphics with the
+          // same id, which broke lasso and similar-selection by id collision.
+          const layerIds = [
+            LAYER_NAMES.FORCE,
+            LAYER_NAMES.TACT_PT,
+            LAYER_NAMES.TACT,
+          ];
+          const alreadyPlaced = layerIds.some((id) => {
+            const layer = this._layerManager.getLayer(id);
+            if (!layer) return false;
+            return Array.from(layer.graphics as any).some(
+              (g: any) => g.attributes?.id === symbolId,
+            );
+          });
+          if (alreadyPlaced) return;
 
-              const sidcInstance = new SIDC(amp.SIDC);
-              const symSet = sidcInstance.getSIDC().substring(4, 6);
-              const symDef = symbolData[symSet + sidcInstance.getSID()];
+          const geom = de.GEOM || de.CTRL_PTS?.[0];
+          if (!geom) return;
 
-              let marker: any;
-              if (symDef) {
-                marker = sidcInstance.getMarker(symDef.symGeometricType, symDef.isObstacle, symDef.Fill);
-              }
+          const amp = new Amplifier();
+          if (data.amplifier) Object.assign(amp, data.amplifier);
+          if (data.sidc && !amp.SIDC) amp.SIDC = data.sidc;
 
-              const graphic = new Graphic({
-                geometry: geom,
-                symbol: marker,
-                attributes: {
-                  id: symbolId,
-                  type: 'symbol',
-                  drawEssentials: de,
-                },
-              });
+          const sidcInstance = new SIDC(amp.SIDC);
+          const symSet = sidcInstance.getSIDC().substring(4, 6);
+          const symDef = symbolData[symSet + sidcInstance.getSID()];
 
-              de.AMPLIFIER = amp;
-              de.SIDC = amp.SIDC;
-              graphic.attributes.drawEssentials = de;
-              layer.add(graphic);
-
-              const annotationLayer = this._layerManager.getOrCreateLayer(
-                LAYER_NAMES.ANNOTATION_LAYER,
-              );
-              if (geom && amp.SIDC) {
-                AnnotationEngine.annotate(
-                  annotationLayer,
-                  geom,
-                  amp,
-                  de,
-                  symbolId,
-                  settingsData.textSize,
-                  (de as any).ISFHAND || 0,
-                  this.labelOptions || {},
-                  {},
-                );
-              }
-              console.info('[SaveLoad] Symbol added via fallback path:', symbolId);
-            }
+          let marker: any;
+          if (symDef) {
+            marker = sidcInstance.getMarker(symDef.symGeometricType, symDef.isObstacle, symDef.Fill);
           }
+
+          const graphic = new Graphic({
+            geometry: geom,
+            symbol: marker,
+            attributes: {
+              id: symbolId,
+              type: 'symbol',
+              drawEssentials: de,
+            },
+          });
+
+          de.AMPLIFIER = amp;
+          de.SIDC = amp.SIDC;
+          graphic.attributes.drawEssentials = de;
+
+          const targetLayer = this.getDrawEndLayer(de, geom);
+          targetLayer.add(graphic);
+
+          const annotationLayer = this._layerManager.getOrCreateLayer(
+            LAYER_NAMES.ANNOTATION_LAYER,
+          );
+          if (amp.SIDC) {
+            AnnotationEngine.annotate(
+              annotationLayer,
+              geom,
+              amp,
+              de,
+              symbolId,
+              settingsData.textSize,
+              (de as any).ISFHAND || 0,
+              this.labelOptions || {},
+              {},
+            );
+          }
+          console.info('[SaveLoad] Symbol added via fallback path:', symbolId);
         }, 100);
 
         return null;
