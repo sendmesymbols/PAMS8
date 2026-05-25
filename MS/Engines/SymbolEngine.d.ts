@@ -100,10 +100,8 @@ declare class SymbolEngine implements Evented {
     private _suppressDrawLifecycleCount;
     private _suppressNextAddUndoCount;
     private _lastCreatedGraphic;
-    private _undoStack;
-    private _redoStack;
-    private _preEditSnapshot;
-    private _clipboard;
+    private _undoRedoManager;
+    private _clipboardEngine;
     private _pendingAttrs;
     private _selectionEngine;
     private _selectionActionPanel?;
@@ -265,12 +263,6 @@ declare class SymbolEngine implements Evented {
     _pushUndo(entry: UndoEntry): void;
     /** Snapshot the graphic's current geometry and CTRL_PTS before an edit begins. */
     private _capturePreEditSnapshot;
-    /**
-     * Wire the EditEngine's changeInSymbol event to push an undo entry.
-     * Called once in the constructor; re-called after view switch.
-     */
-    private _wireEditEngineUndo;
-    private _buildGraphicUndoState;
     /** Undo the last operation. */
     undo(): void;
     /** Redo the last undone operation. */
@@ -304,20 +296,6 @@ declare class SymbolEngine implements Evented {
      * Returns the first pasted Graphic, or null if clipboard is empty.
      */
     pasteSymbol(targetPoint: Point, expandDistance?: number, expandUnit?: string): Graphic | null;
-    /** Paste a single clipboard item whose geometry has already been positioned. */
-    private _pasteOneItem;
-    /** Transform CTRL_PTS, BASE_LN_PTS and GEOM in a drawEssentials copy using a transform function. */
-    private _transformDrawEssentials;
-    /** Shift CTRL_PTS, BASE_LN_PTS and GEOM in a drawEssentials copy by (dx, dy). */
-    private _shiftDrawEssentials;
-    /** Build a new graphic from a clipboard item + positioned geometry, returning undo/redo closures. */
-    private _buildPastedGraphic;
-    /** Geodesic bearing (degrees, 0=N, 90=E) from lon1/lat1 to lon2/lat2 (WGS84 coordinates). */
-    private _computeBearing;
-    /** Centroid of all clipboard geometries (for multi-paste anchor). */
-    private _clipboardCentroid;
-    /** Translate all vertices of a geometry by (dx, dy). */
-    private _shiftGeometry;
     /**
      * Show Paste Offset Dialog (Triggered by CTRL+SHIFT+V)
      */
@@ -331,10 +309,6 @@ declare class SymbolEngine implements Evented {
      * Escape cancels paste mode.
      */
     _activatePasteMode(): void;
-    /**
-     * Translate all vertices of a geometry so that its centroid lands at targetPoint.
-     */
-    private _offsetGeometryTo;
     enrichSymbolOptions(options: SymbolOptions): SymbolOptions & {
         parsedSIDC?: ParsedSIDC;
         label?: string;

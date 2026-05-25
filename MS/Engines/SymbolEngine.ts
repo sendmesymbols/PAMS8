@@ -44,7 +44,6 @@ import SIDC from '../Support/SIDC.ts';
 import DrawEssentials from '../Support/DrawEssentials.ts';
 import Mapper from '../Engines/Mapper.ts';
 import AnnotationEngine from './AnnotationEngine.ts';
-import GeoTools from '../Support/GeoTools.ts';
 import EditEngine from './EditEngine.ts';
 import SelectionEngine from './SelectionEngine.ts';
 import SelectionActionPanel from './SelectionActionPanel.ts';
@@ -81,6 +80,8 @@ import DeclutterEngine from './Declutter/DeclutterEngine';
 import MorphixEngine, {
   MorphixEditedState,
 } from './Morphix/MorphixEngine';
+import ClipboardEngine from './ClipboardEngine';
+import UndoRedoManager from './UndoRedoManager';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -164,19 +165,11 @@ class SymbolEngine implements Evented {
   private _suppressNextAddUndoCount = 0;
   private _lastCreatedGraphic: Graphic | null = null;
 
-  // Undo / Redo stacks
-  private _undoStack: UndoEntry[] = [];
-  private _redoStack: UndoEntry[] = [];
-  // Geometry/CTRL_PTS snapshot captured just before an edit operation starts
-  private _preEditSnapshot: {
-    geometry: any;
-    ctrlPts: any;
-    baseLnPts: any;
-  } | null = null;
+  // Undo/Redo state owned by UndoRedoManager (delegated to via public facade)
+  private _undoRedoManager!: UndoRedoManager;
 
-  // Copy/Paste clipboard â€” stores one or more items for multi-copy
-  private _clipboard: Array<{ graphic: Graphic; layerId: string }> | null =
-    null;
+  // Copy/Paste state owned by ClipboardEngine (delegated to via public facade)
+  private _clipboardEngine!: ClipboardEngine;
 
   // ID to assign to the next graphic created via initialize() (used when loading)
   private _pendingAttrs: { symbolId?: string } | null = null;
@@ -192,7 +185,20 @@ class SymbolEngine implements Evented {
     this._layerManager = GraphicsLayerManager.getInstance(this.view);
     this._layerManager.initializeLayers();
     this._editEngine = new EditEngine(viewProvider, this._layerManager);
-    this._wireEditEngineUndo();
+    this._undoRedoManager = new UndoRedoManager({
+      layerManager: this._layerManager,
+      editEngine: this._editEngine,
+      getLabelOptions: () => this.labelOptions,
+    });
+    this._clipboardEngine = new ClipboardEngine({
+      getView: () => this.view,
+      layerManager: this._layerManager,
+      getSelectionEngine: () => this._selectionEngine,
+      pushUndo: (entry) => this._undoRedoManager.push(entry),
+      closeActiveWorkflow: () => this._closeActiveWorkflow(),
+      emitEvent: (name, data) => this.emitEvent(name, data),
+      getLabelOptions: () => this.labelOptions,
+    });
     this._selectionEngine = new SelectionEngine(
       viewProvider,
       this._layerManager,
@@ -573,7 +579,7 @@ class SymbolEngine implements Evented {
     this._layerManager = GraphicsLayerManager.getInstance(newView);
     this._layerManager.initializeLayers();
     this._editEngine = new EditEngine(this._getView, this._layerManager);
-    this._wireEditEngineUndo();
+    this._undoRedoManager.rewireEditEngine(this._editEngine);
     this._selectionEngine.onViewChanged(newView);
     this._selectionActionPanel?.refresh();
     this._morphixEngine.initialize(newView, this._layerManager, {
@@ -1039,7 +1045,7 @@ class SymbolEngine implements Evented {
             icon: menuIcon('clipboard'),
             visible: () =>
               (settingsData as any).features?.copyPaste !== false &&
-              this._clipboard !== null,
+              this._clipboardEngine.hasClipboard,
             action: (_graphic) => this._activatePasteMode(),
           },
           {
@@ -1049,30 +1055,30 @@ class SymbolEngine implements Evented {
             icon: menuIcon('move'),
             visible: () =>
               (settingsData as any).features?.copyPaste !== false &&
-              this._clipboard !== null,
+              this._clipboardEngine.hasClipboard,
             action: (_graphic) => this._showPasteOffsetDialog(),
           },
           {
             id: 'undo',
-            label: () =>
-              this._undoStack.length > 0
-                ? `Undo ${this._undoStack[this._undoStack.length - 1].label}`
-                : 'Undo',
+            label: () => {
+              const lbl = this._undoRedoManager.nextUndoLabel;
+              return lbl ? `Undo ${lbl}` : 'Undo';
+            },
             shortcut: 'Ctrl+Z',
             icon: menuIcon('rotate-ccw'),
-            enabled: (_graphic) => this._undoStack.length > 0,
+            enabled: (_graphic) => this._undoRedoManager.undoCount > 0,
             visible: () => (settingsData as any).features?.shortcuts !== false,
             action: (_graphic) => this.undo(),
           },
           {
             id: 'redo',
-            label: () =>
-              this._redoStack.length > 0
-                ? `Redo ${this._redoStack[this._redoStack.length - 1].label}`
-                : 'Redo',
+            label: () => {
+              const lbl = this._undoRedoManager.nextRedoLabel;
+              return lbl ? `Redo ${lbl}` : 'Redo';
+            },
             shortcut: 'Ctrl+Y',
             icon: menuIcon('rotate-cw'),
-            enabled: (_graphic) => this._redoStack.length > 0,
+            enabled: (_graphic) => this._undoRedoManager.redoCount > 0,
             visible: () => (settingsData as any).features?.shortcuts !== false,
             action: (_graphic) => this.redo(),
           },
@@ -1325,8 +1331,7 @@ class SymbolEngine implements Evented {
       const layer = lm.getLayer(id);
       if (layer) layer.removeAll();
     });
-    this._undoStack = [];
-    this._redoStack = [];
+    this._undoRedoManager.clear();
     console.info('[SymbolEngine] All graphics cleared');
   }
 
@@ -1558,7 +1563,7 @@ class SymbolEngine implements Evented {
           ? this._contextMenuManager.enable()
           : this._contextMenuManager.disable();
       } else if (feature === 'clipboard' && !value) {
-        this._clipboard = null;
+        this._clipboardEngine.clear();
       } else if (feature === 'selectionQuickToolbar' && this._selectionActionPanel) {
         value
           ? this._selectionActionPanel.enable()
@@ -1821,13 +1826,12 @@ class SymbolEngine implements Evented {
   }
 
   // -----------------------------------------------------------------------
-  // Undo / Redo
+  // Undo / Redo — delegated to UndoRedoManager
   // -----------------------------------------------------------------------
 
   /** Push an undo entry and clear the redo stack. */
   public _pushUndo(entry: UndoEntry): void {
-    this._undoStack.push(entry);
-    this._redoStack = [];
+    this._undoRedoManager.push(entry);
   }
 
   /** Snapshot the graphic's current geometry and CTRL_PTS before an edit begins. */
@@ -1836,175 +1840,26 @@ class SymbolEngine implements Evented {
     additionalGraphics: Graphic[],
     operationLabel: string,
   ): void {
-    const de = graphic.attributes?.drawEssentials;
-    this._preEditSnapshot = {
-      geometry: graphic.geometry?.clone(),
-      ctrlPts: de?.CTRL_PTS
-        ? de.CTRL_PTS.map((p: any) => p.clone?.() ?? p)
-        : null,
-      baseLnPts: de?.BASE_LN_PTS
-        ? JSON.parse(JSON.stringify(de.BASE_LN_PTS))
-        : null,
-    };
-    (this._preEditSnapshot as any)._graphic = graphic;
-    (this._preEditSnapshot as any)._label = operationLabel;
-    (this._preEditSnapshot as any)._additionalSnapshots =
-      additionalGraphics.map((g) => {
-        const ade = g.attributes?.drawEssentials;
-        return {
-          graphic: g,
-          geometry: g.geometry?.clone(),
-          ctrlPts: ade?.CTRL_PTS
-            ? ade.CTRL_PTS.map((p: any) => p.clone?.() ?? p)
-            : null,
-          baseLnPts: ade?.BASE_LN_PTS
-            ? JSON.parse(JSON.stringify(ade.BASE_LN_PTS))
-            : null,
-        };
-      });
-  }
-
-  /**
-   * Wire the EditEngine's changeInSymbol event to push an undo entry.
-   * Called once in the constructor; re-called after view switch.
-   */
-  private _wireEditEngineUndo(): void {
-    this._editEngine.on(
-      'changeInSymbol',
-      ({ graphic }: { graphic: Graphic }) => {
-        const snap = this._preEditSnapshot;
-        if (!snap || (snap as any)._graphic !== graphic) return;
-
-        const label = (snap as any)._label ?? 'Edit';
-        const annotationLayer = this._layerManager.getOrCreateLayer(
-          LAYER_NAMES.ANNOTATION_LAYER,
-        );
-
-        // Build undo/redo state for primary graphic
-        const primaryStates = this._buildGraphicUndoState(graphic, snap);
-
-        // Build undo/redo state for additional graphics
-        const additionalPrev: {
-          graphic: Graphic;
-          geometry: any;
-          ctrlPts: any;
-          baseLnPts: any;
-        }[] = ((snap as any)._additionalSnapshots ?? []).map((s: any) => ({
-          graphic: s.graphic,
-          geometry: s.geometry,
-          ctrlPts: s.ctrlPts,
-          baseLnPts: s.baseLnPts,
-        }));
-        const additionalNext = additionalPrev.map((s) =>
-          this._buildGraphicUndoState(s.graphic, s),
-        );
-
-        const applyGraphicState = (
-          g: Graphic,
-          geom: any,
-          ctrlPts: any,
-          baseLnPts: any,
-        ) => {
-          const de = g.attributes?.drawEssentials;
-          g.geometry = geom;
-          if (de && ctrlPts) de.CTRL_PTS = ctrlPts;
-          if (de && baseLnPts) de.BASE_LN_PTS = baseLnPts;
-          const gid = g.attributes?.id;
-          if (gid) {
-            AnnotationEngine.deAnnotate(annotationLayer, gid);
-            if (de?.AMPLIFIER) {
-              AnnotationEngine.annotate(
-                annotationLayer,
-                geom,
-                de.AMPLIFIER,
-                de,
-                gid,
-                settingsData.textSize,
-                de.ISFHAND || 0,
-                this.labelOptions || {},
-                {},
-              );
-            }
-          }
-        };
-
-        this._pushUndo({
-          label,
-          undo: () => {
-            applyGraphicState(
-              graphic,
-              primaryStates.prev.geometry,
-              primaryStates.prev.ctrlPts,
-              primaryStates.prev.baseLnPts,
-            );
-            additionalPrev.forEach((s) =>
-              applyGraphicState(s.graphic, s.geometry, s.ctrlPts, s.baseLnPts),
-            );
-          },
-          redo: () => {
-            applyGraphicState(
-              graphic,
-              primaryStates.next.geometry,
-              primaryStates.next.ctrlPts,
-              primaryStates.next.baseLnPts,
-            );
-            additionalNext.forEach((s) =>
-              applyGraphicState(s.graphic, s.geometry, s.ctrlPts, s.baseLnPts),
-            );
-          },
-        });
-
-        this._preEditSnapshot = null;
-      },
+    this._undoRedoManager.capturePreEditSnapshot(
+      graphic,
+      additionalGraphics,
+      operationLabel,
     );
-  }
-
-  private _buildGraphicUndoState(
-    graphic: Graphic,
-    prevSnap: { geometry: any; ctrlPts: any; baseLnPts: any },
-  ) {
-    const de = graphic.attributes?.drawEssentials;
-    return {
-      prev: {
-        geometry: prevSnap.geometry,
-        ctrlPts: prevSnap.ctrlPts,
-        baseLnPts: prevSnap.baseLnPts,
-      },
-      next: {
-        geometry: graphic.geometry?.clone(),
-        ctrlPts: de?.CTRL_PTS
-          ? de.CTRL_PTS.map((p: any) => p.clone?.() ?? p)
-          : null,
-        baseLnPts: de?.BASE_LN_PTS
-          ? JSON.parse(JSON.stringify(de.BASE_LN_PTS))
-          : null,
-      },
-    };
   }
 
   /** Undo the last operation. */
   public undo(): void {
-    const entry = this._undoStack.pop();
-    if (!entry) return;
-    entry.undo();
-    this._redoStack.push(entry);
-    EngineLogger.success('Symbol Engine', `Undo — ${entry.label}`);
-    console.info(`[Undo] ${entry.label}`);
+    this._undoRedoManager.undo();
   }
 
   /** Redo the last undone operation. */
   public redo(): void {
-    const entry = this._redoStack.pop();
-    if (!entry) return;
-    entry.redo();
-    this._undoStack.push(entry);
-    EngineLogger.success('Symbol Engine', `Redo — ${entry.label}`);
-    console.info(`[Redo] ${entry.label}`);
+    this._undoRedoManager.redo();
   }
 
   /** Number of operations available to undo. */
   public get undoCount(): number {
-    return this._undoStack.length;
+    return this._undoRedoManager.undoCount;
   }
 
   /** Current creation mode ('single' or 'continuous'). */
@@ -2034,25 +1889,21 @@ class SymbolEngine implements Evented {
 
   /** Number of operations available to redo. */
   public get redoCount(): number {
-    return this._redoStack.length;
+    return this._undoRedoManager.redoCount;
   }
 
   /** Label of the next undo operation, or null if the stack is empty. */
   public get nextUndoLabel(): string | null {
-    return this._undoStack.length > 0
-      ? this._undoStack[this._undoStack.length - 1].label
-      : null;
+    return this._undoRedoManager.nextUndoLabel;
   }
 
   /** Label of the next redo operation, or null if the stack is empty. */
   public get nextRedoLabel(): string | null {
-    return this._redoStack.length > 0
-      ? this._redoStack[this._redoStack.length - 1].label
-      : null;
+    return this._undoRedoManager.nextRedoLabel;
   }
 
   // -----------------------------------------------------------------------
-  // Copy / Paste
+  // Copy / Paste — delegated to ClipboardEngine
   // -----------------------------------------------------------------------
 
   /**
@@ -2060,31 +1911,14 @@ class SymbolEngine implements Evented {
    * Stores a deep clone of the graphic's geometry, symbol, and drawEssentials.
    */
   public copySymbol(graphic: Graphic): void {
-    if ((settingsData as any).features?.clipboard === false) return;
-    // When the right-clicked graphic is part of a multi-selection, copy all selected
-    const toCopy =
-      this._selectionEngine.isSelected(graphic) &&
-      this._selectionEngine.count > 1
-        ? this._selectionEngine.selectedGraphics
-        : [graphic];
-    const clipboard = toCopy.map((g) => ({
-      graphic: g.clone(),
-      layerId: String(g.layer?.id ?? this._layerManager.getSymbolLayer().id),
-    }));
-    this._clipboard = clipboard;
-    EngineLogger.nextStep(
-      'Symbol Engine',
-      `${clipboard.length} symbol${clipboard.length !== 1 ? 's' : ''} copied â€” click the map to paste`,
-    );
-    console.info(`[CopyPaste] Copied ${clipboard.length} graphic(s)`);
-    this.emitEvent('symbolCopied', { graphic, count: clipboard.length });
+    this._clipboardEngine.copy(graphic);
   }
 
   /**
    * True when the clipboard holds a graphic ready to paste.
    */
   public get hasClipboard(): boolean {
-    return this._clipboard !== null;
+    return this._clipboardEngine.hasClipboard;
   }
 
   /**
@@ -2093,473 +1927,32 @@ class SymbolEngine implements Evented {
    * Multiple items: preserves relative layout, collective centroid lands at targetPoint.
    * Returns the first pasted Graphic, or null if clipboard is empty.
    */
-  public pasteSymbol(targetPoint: Point, expandDistance: number = 0, expandUnit: string = 'meters'): Graphic | null {
-    if (!this._clipboard || this._clipboard.length === 0) return null;
-
-    const annotationLayer = this._layerManager.getOrCreateLayer(
-      LAYER_NAMES.ANNOTATION_LAYER,
-    );
-
-    if (this._clipboard.length === 1 && expandDistance === 0) {
-      const item = this._clipboard[0];
-      return this._pasteOneItem(
-        item,
-        this._offsetGeometryTo(item.graphic.geometry, targetPoint),
-        annotationLayer,
-      );
-    }
-
-    // Multi-paste or expand/contract: compute collective centroid
-    const centroid = this._clipboardCentroid();
-
-    const transformPt = (x: number, y: number): { x: number; y: number } => {
-      // Base position: translate from original centroid to target point
-      const baseX = targetPoint.x + (x - centroid.x);
-      const baseY = targetPoint.y + (y - centroid.y);
-
-      if (expandDistance === 0) return { x: baseX, y: baseY };
-
-      // Offset from target: if near zero the item is at the center, no movement
-      const dX = baseX - targetPoint.x;
-      const dY = baseY - targetPoint.y;
-      if (Math.abs(dX) < 1e-10 && Math.abs(dY) < 1e-10) return { x: baseX, y: baseY };
-
-      // Geodesic bearing from target to this item's base position
-      const bearing = this._computeBearing(targetPoint.x, targetPoint.y, baseX, baseY);
-      // Positive expandDistance â†’ move away; negative â†’ contract toward center
-      const outwardBearing = expandDistance >= 0 ? bearing : (bearing + 180) % 360;
-      const basePoint = new Point({ x: baseX, y: baseY, spatialReference: targetPoint.spatialReference });
-      const expanded = GeoTools.destination(basePoint, Math.abs(expandDistance), outwardBearing, expandUnit);
-      return { x: expanded.x, y: expanded.y };
-    };
-
-    const pasted: Graphic[] = [];
-    const undos: (() => void)[] = [];
-    const redos: (() => void)[] = [];
-
-    for (const item of this._clipboard) {
-      let newGeom = item.graphic.geometry?.clone();
-      if (newGeom) {
-        if (newGeom.type === 'point') {
-          const pt = transformPt(newGeom.x, newGeom.y);
-          newGeom.x = pt.x;
-          newGeom.y = pt.y;
-          if (targetPoint.z !== undefined) newGeom.z = targetPoint.z;
-        } else if (newGeom.type === 'polyline' && newGeom.paths) {
-          newGeom.paths = newGeom.paths.map((path: number[][]) =>
-            path.map(([x, y, ...rest]) => {
-              const pt = transformPt(x, y);
-              return [pt.x, pt.y, ...rest];
-            }),
-          );
-        } else if (newGeom.type === 'polygon' && newGeom.rings) {
-          newGeom.rings = newGeom.rings.map((ring: number[][]) =>
-            ring.map(([x, y, ...rest]) => {
-              const pt = transformPt(x, y);
-              return [pt.x, pt.y, ...rest];
-            }),
-          );
-        }
-      }
-
-      if (!newGeom) continue;
-      const {
-        graphic: g,
-        undo,
-        redo,
-      } = this._buildPastedGraphic(item, newGeom, annotationLayer, transformPt);
-      const layer =
-        this._layerManager.getOrCreateLayer(item.layerId) ??
-        this._layerManager.getSymbolLayer();
-      layer.add(g);
-      pasted.push(g);
-      undos.push(undo);
-      redos.push(redo);
-    }
-
-    if (pasted.length > 0) {
-      this._pushUndo({
-        label: `Paste ${pasted.length} Symbols`,
-        undo: () => undos.forEach((fn) => fn()),
-        redo: () => redos.forEach((fn) => fn()),
-      });
-      console.info(
-        `[CopyPaste] Pasted ${pasted.length} graphics at`,
-        targetPoint,
-      );
-      this.emitEvent('symbolPasted', {
-        graphics: pasted,
-        count: pasted.length,
-      });
-    }
-    return pasted[0] ?? null;
-  }
-
-  /** Paste a single clipboard item whose geometry has already been positioned. */
-  private _pasteOneItem(
-    item: { graphic: Graphic; layerId: string },
-    newGeom: any,
-    annotationLayer: GraphicsLayer,
-    transformFn?: (pt: {x: number, y: number}) => {x: number, y: number}
+  public pasteSymbol(
+    targetPoint: Point,
+    expandDistance: number = 0,
+    expandUnit: string = 'meters',
   ): Graphic | null {
-    if (!newGeom) return null;
-    const {
-      graphic: newGraphic,
-      undo,
-      redo,
-    } = this._buildPastedGraphic(item, newGeom, annotationLayer, transformFn);
-    const layer =
-      this._layerManager.getOrCreateLayer(item.layerId) ??
-      this._layerManager.getSymbolLayer();
-    layer.add(newGraphic);
-    this._pushUndo({ label: 'Paste Symbol', undo, redo });
-    console.info('[CopyPaste] Pasted at', newGeom);
-    this.emitEvent('symbolPasted', { graphic: newGraphic });
-    return newGraphic;
-  }
-
-  /** Transform CTRL_PTS, BASE_LN_PTS and GEOM in a drawEssentials copy using a transform function. */
-  private _transformDrawEssentials(de: any, transformFn: (pt: any) => {x: number, y: number}): any {
-    if (!de) return de;
-    const result = { ...de };
-    const tPt = (pt: any) => {
-      if (!pt) return pt;
-      const clone = pt.clone?.() ?? { ...pt };
-      const { x, y } = transformFn(clone);
-      clone.x = x;
-      clone.y = y;
-      return clone;
-    };
-    if (de.CTRL_PTS) result.CTRL_PTS = de.CTRL_PTS.map(tPt);
-    if (de.BASE_LN_PTS) {
-      result.BASE_LN_PTS = {
-        startPt: tPt(de.BASE_LN_PTS.startPt),
-        midPt: tPt(de.BASE_LN_PTS.midPt),
-        endPt: tPt(de.BASE_LN_PTS.endPt),
-      };
-    }
-    if (de.GEOM) result.GEOM = tPt(de.GEOM);
-    return result;
-  }
-
-  /** Shift CTRL_PTS, BASE_LN_PTS and GEOM in a drawEssentials copy by (dx, dy). */
-  private _shiftDrawEssentials(de: any, dx: number, dy: number): any {
-    return this._transformDrawEssentials(de, (pt) => ({ x: pt.x + dx, y: pt.y + dy }));
-  }
-
-  /** Build a new graphic from a clipboard item + positioned geometry, returning undo/redo closures. */
-  private _buildPastedGraphic(
-    item: { graphic: Graphic; layerId: string },
-    newGeom: any,
-    annotationLayer: GraphicsLayer,
-    transformFn?: (pt: {x: number, y: number}) => {x: number, y: number}
-  ): { graphic: Graphic; undo: () => void; redo: () => void } {
-    const source = item.graphic;
-    const origGeom = source.geometry;
-
-    let shiftedDe;
-    const sourceDe = source.attributes?.drawEssentials;
-
-    if (transformFn) {
-      shiftedDe = this._transformDrawEssentials(sourceDe, transformFn);
-    } else {
-      // Compute translation vector so we can shift CTRL_PTS / BASE_LN_PTS too
-      let dx = 0,
-        dy = 0;
-      if (origGeom && newGeom) {
-        if (origGeom.type === 'point') {
-          dx = (newGeom as any).x - (origGeom as any).x;
-          dy = (newGeom as any).y - (origGeom as any).y;
-        } else {
-          const oe = origGeom.extent,
-            ne = newGeom.extent;
-          if (oe && ne) {
-            dx = (ne.xmin + ne.xmax) / 2 - (oe.xmin + oe.xmax) / 2;
-            dy = (ne.ymin + ne.ymax) / 2 - (oe.ymin + oe.ymax) / 2;
-          }
-        }
-      }
-      shiftedDe = this._shiftDrawEssentials(sourceDe, dx, dy);
-    }
-    const newId = this.generateUUID();
-    const newGraphic = source.clone();
-    newGraphic.geometry = newGeom;
-    newGraphic.attributes = {
-      ...source.attributes,
-      id: newId,
-      drawEssentials: shiftedDe,
-    };
-
-    const layer =
-      this._layerManager.getOrCreateLayer(item.layerId) ??
-      this._layerManager.getSymbolLayer();
-    if (shiftedDe?.AMPLIFIER) {
-      AnnotationEngine.annotate(
-        annotationLayer,
-        newGeom,
-        shiftedDe.AMPLIFIER,
-        shiftedDe,
-        newId,
-        settingsData.textSize,
-        shiftedDe.ISFHAND || 0,
-        this.labelOptions || {},
-        {},
-      );
-    }
-    return {
-      graphic: newGraphic,
-      undo: () => {
-        layer.remove(newGraphic);
-        AnnotationEngine.deAnnotate(annotationLayer, newId);
-      },
-      redo: () => {
-        layer.add(newGraphic);
-        if (shiftedDe?.AMPLIFIER)
-          AnnotationEngine.annotate(
-            annotationLayer,
-            newGeom,
-            shiftedDe.AMPLIFIER,
-            shiftedDe,
-            newId,
-            settingsData.textSize,
-            shiftedDe.ISFHAND || 0,
-            this.labelOptions || {},
-            {},
-          );
-      },
-    };
-  }
-
-  /** Geodesic bearing (degrees, 0=N, 90=E) from lon1/lat1 to lon2/lat2 (WGS84 coordinates). */
-  private _computeBearing(lon1: number, lat1: number, lon2: number, lat2: number): number {
-    // If coordinates look like Web Mercator (metres, |value| >> 360), convert to geographic first
-    let gLon1 = lon1, gLat1 = lat1, gLon2 = lon2, gLat2 = lat2;
-    if (Math.abs(lat1) > 90 || Math.abs(lon1) > 180) {
-      const p1 = webMercatorUtils.webMercatorToGeographic(
-        new Point({ x: lon1, y: lat1, spatialReference: { wkid: 3857 } })
-      ) as Point;
-      const p2 = webMercatorUtils.webMercatorToGeographic(
-        new Point({ x: lon2, y: lat2, spatialReference: { wkid: 3857 } })
-      ) as Point;
-      gLon1 = p1.x; gLat1 = p1.y;
-      gLon2 = p2.x; gLat2 = p2.y;
-    }
-    const toRad = Math.PI / 180;
-    const phi1 = gLat1 * toRad;
-    const phi2 = gLat2 * toRad;
-    const dLambda = (gLon2 - gLon1) * toRad;
-    const y = Math.sin(dLambda) * Math.cos(phi2);
-    const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLambda);
-    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-  }
-
-  /** Centroid of all clipboard geometries (for multi-paste anchor). */
-  private _clipboardCentroid(): { x: number; y: number } {
-    if (!this._clipboard || this._clipboard.length === 0) return { x: 0, y: 0 };
-    let tx = 0,
-      ty = 0;
-    for (const { graphic: g } of this._clipboard) {
-      const geom = g.geometry;
-      if (!geom) continue;
-      if (geom.type === 'point') {
-        tx += (geom as any).x;
-        ty += (geom as any).y;
-      } else {
-        const ext = geom.extent;
-        if (ext) {
-          tx += (ext.xmin + ext.xmax) / 2;
-          ty += (ext.ymin + ext.ymax) / 2;
-        }
-      }
-    }
-    return { x: tx / this._clipboard.length, y: ty / this._clipboard.length };
-  }
-
-  /** Translate all vertices of a geometry by (dx, dy). */
-  private _shiftGeometry(sourceGeom: any, dx: number, dy: number): any {
-    if (!sourceGeom) return null;
-    try {
-      const clone = sourceGeom.clone();
-      if (clone.type === 'point') {
-        clone.x += dx;
-        clone.y += dy;
-      } else if (clone.type === 'polyline') {
-        clone.paths = clone.paths.map((path: number[][]) =>
-          path.map(([x, y, ...r]) => [x + dx, y + dy, ...r]),
-        );
-      } else if (clone.type === 'polygon') {
-        clone.rings = clone.rings.map((ring: number[][]) =>
-          ring.map(([x, y, ...r]) => [x + dx, y + dy, ...r]),
-        );
-      }
-      return clone;
-    } catch {
-      return sourceGeom.clone();
-    }
+    return this._clipboardEngine.paste(targetPoint, expandDistance, expandUnit);
   }
 
   /**
    * Show Paste Offset Dialog (Triggered by CTRL+SHIFT+V)
    */
   public _showPasteOffsetDialog(): void {
-    if (!this._clipboard || this._clipboard.length === 0) {
-      console.warn('[CopyPaste] Clipboard is empty.');
-      return;
-    }
-
-    let dialog = document.getElementById('pasteOffsetDialog');
-    if (!dialog) {
-      dialog = document.createElement('div');
-      dialog.id = 'pasteOffsetDialog';
-      dialog.style.cssText = `
-        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        background: rgba(30, 35, 45, 0.95); border: 1px solid rgba(100, 160, 230, 0.4);
-        padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-        z-index: 1000; color: #dce8f5; font-family: 'Courier New', monospace; min-width: 320px;
-      `;
-
-      dialog.innerHTML = `
-        <h3 style="margin: 0 0 15px 0; color: #64b4ff; font-size: 16px; border-bottom: 1px solid rgba(100, 160, 230, 0.25); padding-bottom: 8px;">Paste Offset</h3>
-        
-        <div style="margin-bottom: 15px;">
-          <label style="display: block; margin-bottom: 5px;">Location Mode:</label>
-          <select id="poMode" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
-            <option value="exact">Exact Location</option>
-            <option value="offset">Direction & Offset</option>
-            <option value="center">Pick Center Point</option>
-          </select>
-        </div>
-
-        <div id="poOffsetGroup" style="display: none; margin-bottom: 15px;">
-          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <div style="flex: 1;">
-              <label style="display: block; margin-bottom: 5px;">Distance:</label>
-              <input type="number" id="poDistance" value="0" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; box-sizing: border-box;" />
-            </div>
-            <div style="flex: 1;">
-              <label style="display: block; margin-bottom: 5px;">Unit:</label>
-              <select id="poUnit" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
-                <option value="meters">Meters</option>
-                <option value="kilometers">Kilometers</option>
-                <option value="miles">Miles</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label style="display: block; margin-bottom: 5px;">Direction:</label>
-            <select id="poDirection" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
-              <option value="0">North (0Â°)</option>
-              <option value="45">North East (45Â°)</option>
-              <option value="90">East (90Â°)</option>
-              <option value="135">South East (135Â°)</option>
-              <option value="180">South (180Â°)</option>
-              <option value="225">South West (225Â°)</option>
-              <option value="270">West (270Â°)</option>
-              <option value="315">North West (315Â°)</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="margin-bottom: 15px;">
-          <label style="display: block; margin-bottom: 5px;">Expand / Contract Distance:</label>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="number" id="poExpandDist" step="0.1" value="0" style="flex: 1; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; box-sizing: border-box;" />
-            <select id="poExpandUnit" style="padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
-              <option value="meters">m</option>
-              <option value="kilometers">km</option>
-              <option value="miles">mi</option>
-              <option value="nautical-miles">nm</option>
-            </select>
-          </div>
-          <small style="color: #a0b8d8; font-size: 10px; display: block; margin-top: 4px;">&gt; 0 spreads symbols out Â· &lt; 0 contracts them Â· only affects multi-symbol paste</small>
-        </div>
-
-        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-          <button id="poCancel" style="padding: 6px 15px; background: rgba(100, 160, 230, 0.2); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; cursor: pointer;">Cancel</button>
-          <button id="poApply" style="padding: 6px 15px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer;">Paste</button>
-        </div>
-      `;
-      document.body.appendChild(dialog);
-
-      const modeSelect = document.getElementById('poMode') as HTMLSelectElement;
-      const offsetGroup = document.getElementById('poOffsetGroup') as HTMLDivElement;
-      const applyBtn = document.getElementById('poApply') as HTMLButtonElement;
-
-      modeSelect.addEventListener('change', () => {
-        if (modeSelect.value === 'offset') {
-          offsetGroup.style.display = 'block';
-        } else {
-          offsetGroup.style.display = 'none';
-        }
-        applyBtn.innerText = modeSelect.value === 'center' ? 'Pick & Paste' : 'Paste';
-      });
-
-      document.getElementById('poCancel')!.addEventListener('click', () => {
-        dialog!.style.display = 'none';
-      });
-
-      applyBtn.addEventListener('click', () => {
-        dialog!.style.display = 'none';
-        const mode = modeSelect.value;
-        const expandDist = parseFloat((document.getElementById('poExpandDist') as HTMLInputElement).value) || 0;
-        const expandUnit = (document.getElementById('poExpandUnit') as HTMLSelectElement).value;
-
-        if (mode === 'exact') {
-          const centroid = this._clipboardCentroid();
-          this.pasteSymbol(new Point({ x: centroid.x, y: centroid.y, spatialReference: this.view.spatialReference }), expandDist, expandUnit);
-        } else if (mode === 'offset') {
-          const distance = parseFloat((document.getElementById('poDistance') as HTMLInputElement).value) || 0;
-          const unit = (document.getElementById('poUnit') as HTMLSelectElement).value;
-          const bearing = parseFloat((document.getElementById('poDirection') as HTMLSelectElement).value) || 0;
-
-          const centroid = this._clipboardCentroid();
-          const p = new Point({ x: centroid.x, y: centroid.y, spatialReference: this.view.spatialReference });
-          const targetPoint = GeoTools.destination(p, distance, bearing, unit);
-          this.pasteSymbol(targetPoint, expandDist, expandUnit);
-        } else if (mode === 'center') {
-          this._activatePasteModeWithOffset(expandDist, expandUnit);
-        }
-      });
-    }
-
-    // Reset and show
-    (document.getElementById('poMode') as HTMLSelectElement).value = 'exact';
-    (document.getElementById('poOffsetGroup') as HTMLDivElement).style.display = 'none';
-    (document.getElementById('poDistance') as HTMLInputElement).value = '0';
-    (document.getElementById('poExpandDist') as HTMLInputElement).value = '0';
-    (document.getElementById('poExpandUnit') as HTMLSelectElement).value = 'meters';
-    (document.getElementById('poApply') as HTMLButtonElement).innerText = 'Paste';
-    dialog.style.display = 'block';
+    this._clipboardEngine.showPasteOffsetDialog();
   }
 
   /**
    * Enter "paste mode" with expansion/contraction distance: the next map click pastes the clipboard graphic there.
    */
-  public _activatePasteModeWithOffset(expandDistance: number, expandUnit: string): void {
-    if (!this._clipboard) return;
-
-    this._closeActiveWorkflow();
-    this.emitEvent('pasteMode', { active: true });
-    console.info('[CopyPaste] Paste offset mode active â€” click map to paste');
-
-    const clickHandle = this.view.on('click', (evt) => {
-      clickHandle.remove();
-      keyHandle();
-      const pt = this.view.toMap({ x: evt.x, y: evt.y });
-      if (pt) this.pasteSymbol(pt, expandDistance, expandUnit);
-      this.emitEvent('pasteMode', { active: false });
-    });
-
-    const keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        clickHandle.remove();
-        keyHandle();
-        this.emitEvent('pasteMode', { active: false });
-        console.info('[CopyPaste] Paste offset mode cancelled');
-      }
-    };
-    document.addEventListener('keydown', keyHandler, { once: false });
-    const keyHandle = () => document.removeEventListener('keydown', keyHandler);
+  public _activatePasteModeWithOffset(
+    expandDistance: number,
+    expandUnit: string,
+  ): void {
+    this._clipboardEngine.activatePasteModeWithOffset(
+      expandDistance,
+      expandUnit,
+    );
   }
 
   /**
@@ -2567,65 +1960,9 @@ class SymbolEngine implements Evented {
    * Escape cancels paste mode.
    */
   public _activatePasteMode(): void {
-    if (!this._clipboard) return;
-
-    this._closeActiveWorkflow();
-    this.emitEvent('pasteMode', { active: true });
-    EngineLogger.nextStep('Symbol Engine', 'Paste mode active â€” click the map to place the copied symbol(s). Press Esc to cancel');
-    console.info('[CopyPaste] Paste mode active â€” click map to paste');
-
-    const clickHandle = this.view.on('click', (evt) => {
-      clickHandle.remove();
-      keyHandle();
-      const pt = this.view.toMap({ x: evt.x, y: evt.y });
-      if (pt) this.pasteSymbol(pt);
-      this.emitEvent('pasteMode', { active: false });
-    });
-
-    const keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        clickHandle.remove();
-        keyHandle();
-        this.emitEvent('pasteMode', { active: false });
-        console.info('[CopyPaste] Paste mode cancelled');
-      }
-    };
-    document.addEventListener('keydown', keyHandler, { once: false });
-    const keyHandle = () => document.removeEventListener('keydown', keyHandler);
+    this._clipboardEngine.activatePasteMode();
   }
 
-  /**
-   * Translate all vertices of a geometry so that its centroid lands at targetPoint.
-   */
-  private _offsetGeometryTo(sourceGeom: any, targetPoint: Point): any {
-    if (!sourceGeom) return null;
-    try {
-      const clone = sourceGeom.clone();
-      if (clone.type === 'point') {
-        clone.x = targetPoint.x;
-        clone.y = targetPoint.y;
-        if (targetPoint.z !== undefined) clone.z = targetPoint.z;
-      } else {
-        // Compute centroid from extent
-        const ext = clone.extent;
-        if (!ext) return clone;
-        const dx = targetPoint.x - (ext.xmin + ext.xmax) / 2;
-        const dy = targetPoint.y - (ext.ymin + ext.ymax) / 2;
-        if (clone.type === 'polyline') {
-          clone.paths = clone.paths.map((path: number[][]) =>
-            path.map(([x, y, ...rest]) => [x + dx, y + dy, ...rest]),
-          );
-        } else if (clone.type === 'polygon') {
-          clone.rings = clone.rings.map((ring: number[][]) =>
-            ring.map(([x, y, ...rest]) => [x + dx, y + dy, ...rest]),
-          );
-        }
-      }
-      return clone;
-    } catch {
-      return sourceGeom.clone();
-    }
-  }
 
   public enrichSymbolOptions(options: SymbolOptions): SymbolOptions & {
     parsedSIDC?: ParsedSIDC;

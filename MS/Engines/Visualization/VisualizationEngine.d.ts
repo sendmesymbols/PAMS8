@@ -64,15 +64,25 @@ export interface RenderOptions {
 }
 export interface ExtrudedFootprintsOptions {
     enabled: boolean;
+    /** Extrude polygon (area) graphics into 3D blocks */
     extrudePolygons: boolean;
+    /** Block height in metres for extruded polygons */
     polygonHeightM: number;
+    /** Show solid edges on extruded polygons */
     polygonShowEdges: boolean;
+    /** Extrude polyline graphics into vertical walls */
     extrudeLines: boolean;
+    /** Wall height in metres for extruded lines */
     lineWallHeightM: number;
+    /** Wall thickness in metres (PathSymbol3DLayer width) */
     lineWallThicknessM: number;
+    /** Fill opacity for extruded faces (0–1) */
     fillOpacity: number;
+    /** Source for the extrusion colour */
     colorMode: "identity" | "inherit" | "single";
+    /** Used when colorMode === "single" */
     singleColor: number[];
+    /** Edge colour for SolidEdges3D */
     edgeColor: number[];
 }
 export interface VisualizationOptions {
