@@ -251,33 +251,10 @@ class SymbolEngine implements Evented {
 
     reactiveUtils.watch(
       () => this._getView()?.type,
-      (newType: string | undefined, oldType: string | undefined) => {
-        // Use lowercase 'string' for primitive type
-        console.log(
-          'SymbolEngine ------ TYPE watcher FIRED. New:',
-          newType,
-          'Old:',
-          oldType,
-        );
-        // Potentially re-initialize or update SymbolEngine based on new view type
+      (_newType: string | undefined, _oldType: string | undefined) => {
+        // Reserved hook: view-type change reactor. Real re-attach work is in onViewChanged().
       },
-      { initial: true }, // This makes it fire once on setup
-    );
-
-    reactiveUtils.watch(
-      () => this._getView()?.type,
-      (newType: string | undefined, oldType: string | undefined) => {
-        console.log(newType);
-        console.log(oldType);
-      },
-    );
-
-    reactiveUtils.watch(
-      () => this._getView()?.type,
-      (newType: '2d' | '3d' | undefined) => {
-        console.log('SymbolEngine ------:', newType);
-        // Potentially re-initialize or update SymbolEngine based on new view type
-      },
+      { initial: true },
     );
 
     // Zoom-based declutter is handled by DeclutterEngine (see _initDeclutterEngine)
@@ -415,15 +392,6 @@ class SymbolEngine implements Evented {
     // Listen to the onDrawProgress event
     if (symbolInstance.on && typeof symbolInstance.on === 'function') {
       symbolInstance.on('onDrawProgress', (data: any) => {
-        console.log(
-          `SymbolEngine caught onDrawProgress event from ${symbolType}:`,
-        );
-        console.log('  currentGeometry:', data.currentGeometry);
-        console.log('  currentDrawEssentials:', data.currentDrawEssentials);
-        console.log('  currentMarker:', data.currentMarker);
-        console.log('  Full event data:', data);
-
-        // Emit a custom event that can be caught by the main application
         this.emitEvent('onDrawProgress', {
           symbolType: symbolType,
           currentGeometry: data.currentGeometry,
@@ -433,21 +401,12 @@ class SymbolEngine implements Evented {
         });
       });
 
-      // Listen to other events as well
       symbolInstance.on('onDrawEnd', (data: any) => {
-        console.log(`SymbolEngine caught onDrawEnd event from ${symbolType}:`);
-        console.log('  Full event data:', data);
-
-        // Emit a custom event
         this.emitEvent('onDrawEnd', {
           symbolType: symbolType,
           originalData: data,
         });
       });
-
-      console.log(
-        `${symbolType} registered with SymbolEngine and event listeners attached`,
-      );
     } else {
       console.warn(
         `${symbolType} instance does not support event listening (missing 'on' method)`,
@@ -473,9 +432,6 @@ class SymbolEngine implements Evented {
   public setupGlobalEventListener(): void {
     // Listen to custom events on the document
     document.addEventListener('onDrawProgress', (event: any) => {
-      console.log('SymbolEngine caught global onDrawProgress event:');
-      console.log('  Event detail:', event.detail);
-
       // Arm proximity indicator on first progress event (idempotent â€” no-ops if already active)
       this._proximityEngine?.activate();
 
@@ -508,9 +464,6 @@ class SymbolEngine implements Evented {
     });
 
     document.addEventListener('onDrawEnd', (event: any) => {
-      console.log('SymbolEngine caught global onDrawEnd event:');
-      console.log('  Event detail:', event.detail);
-
       // Handle the draw end event by creating and adding a graphic
       this.drawSymEnd(event.detail);
 
@@ -1821,6 +1774,18 @@ class SymbolEngine implements Evented {
     );
   }
 
+  /**
+   * Cache for the expensive milsymbol → canvas → dataURL rasterisation.
+   * Keyed on SIDC + size; re-used across draws of the same symbol class.
+   * PictureMarkerSymbol instances are still constructed per call (cheap) so
+   * ArcGIS isn't handed the same mutable symbol object twice.
+   */
+  private static _forceRasterCache: Map<
+    string,
+    { url: string; width: number; height: number; xoffset: number; yoffset: number }
+  > = new Map();
+  private static readonly _FORCE_RASTER_CACHE_MAX = 256;
+
   generateForceSymbol(
     drawEssentials: DrawEssentials,
     amplifier: Amplifier,
@@ -1834,9 +1799,22 @@ class SymbolEngine implements Evented {
         return undefined;
       }
 
+      const size = drawEssentials.SIZE || 35;
+      const cacheKey = `${sidc}|${size}`;
+      const cached = SymbolEngine._forceRasterCache.get(cacheKey);
+      if (cached) {
+        return new PictureMarkerSymbol({
+          url: cached.url,
+          width: cached.width + 'px',
+          height: cached.height + 'px',
+          xoffset: cached.xoffset,
+          yoffset: cached.yoffset,
+        });
+      }
+
       // Create milsymbol.js options
       const msOptions = {
-        size: drawEssentials.SIZE || 35,
+        size,
       };
 
       // Generate the symbol using milsymbol.js
@@ -1889,6 +1867,19 @@ class SymbolEngine implements Evented {
         xoffset,
         yoffset,
       });
+
+      if (SymbolEngine._forceRasterCache.size >= SymbolEngine._FORCE_RASTER_CACHE_MAX) {
+        const firstKey = SymbolEngine._forceRasterCache.keys().next().value;
+        if (firstKey !== undefined) SymbolEngine._forceRasterCache.delete(firstKey);
+      }
+      SymbolEngine._forceRasterCache.set(cacheKey, {
+        url: dataUrl,
+        width,
+        height,
+        xoffset,
+        yoffset,
+      });
+
       return pictureMarkerSymbol;
     } catch (e) {
       console.error('Error generating force symbol with milsymbol.js:', e);
@@ -2088,7 +2079,6 @@ class SymbolEngine implements Evented {
               drawEssentials.hasOwnProperty('BASE_LN_PTS') &&
               drawEssentials.BASE_LN_PTS
             ) {
-              debugger;
               if (
                 drawEssentials.BASE_LN_PTS.hasOwnProperty('startPt') &&
                 drawEssentials.BASE_LN_PTS.startPt
@@ -2313,12 +2303,6 @@ class SymbolEngine implements Evented {
           },
         });
       }
-
-      // Clean up event handlers if they exist
-      this._endEventHandle?.remove();
-      this._drawProgressEventHandle?.remove();
-      this._drawClickEventHandle?.remove();
-      this._drawBaseLineEndEventHandle?.remove();
 
       // Handle annotation if drawEssentials and amplifier are available
       if (drawEssentials && drawEssentials.AMPLIFIER) {
@@ -2612,17 +2596,6 @@ class SymbolEngine implements Evented {
     this.emit('baseLineDrawEnd', {
       currentPts: event.currentPts,
     });
-  }
-
-  private generateUUID(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
-      /[xy]/g,
-      function (c) {
-        const r = (Math.random() * 16) | 0;
-        const v = c === 'x' ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      },
-    );
   }
 
   /**
