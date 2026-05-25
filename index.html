@@ -1980,7 +1980,24 @@
             </div>
             <div class="setting-row">
               <label>Lift Force Points</label>
-              <input type="checkbox" id="setting-renderLiftForcePoints" title="Lift UEI/force point symbols slightly above terrain. Useful for crisp 3D point symbols." />
+              <input type="checkbox" id="setting-renderLiftForcePoints" data-sf-master="renderLiftForcePoints" title="Lift UEI/force point symbols slightly above terrain. Useful for crisp 3D point symbols." />
+            </div>
+            <div class="setting-row" data-sf-group="renderLiftForcePoints">
+              <label>↳ Drop Line</label>
+              <input type="checkbox" id="setting-renderForcePointDropLines" checked title="Draw a vertical line from each lifted force point down to its ground position (3D only)." />
+            </div>
+            <div class="setting-row" data-sf-group="renderLiftForcePoints">
+              <label>↳ Line Color</label>
+              <input type="color" id="setting-renderDropLineColor" value="#282828" title="Color of the drop line (RGB hex)." />
+            </div>
+            <div class="setting-row" data-sf-group="renderLiftForcePoints">
+              <label>↳ Line Width</label>
+              <input type="number" id="setting-renderDropLineWidth" value="1.5" min="0.5" max="10" step="0.5" style="width: 55px" title="Width of the drop line in pixels." />
+            </div>
+            <div class="setting-row" data-sf-group="renderLiftForcePoints">
+              <label>↳ Line Opacity</label>
+              <input type="range" id="setting-renderDropLineOpacity" min="0" max="1" step="0.05" value="0.85" style="width: 60px" title="Opacity of the drop line (0 = transparent, 1 = opaque)." />
+              <span class="value-display" id="renderDropLineOpacity-display">0.85</span>
             </div>
             <div class="setting-row">
               <label>Lift Tactical Points</label>
@@ -1992,7 +2009,7 @@
             </div>
             <div class="setting-row">
               <label>Lift Offset m</label>
-              <input type="number" id="setting-renderSymbolElevationOffset" value="1" min="0" max="50" step="0.5" style="width: 55px" title="Meters above terrain used by enabled lift controls." />
+              <input type="number" id="setting-renderSymbolElevationOffset" value="100" min="0" max="5000" step="1" style="width: 55px" title="Meters above terrain used by enabled lift controls." />
             </div>
 
             <!-- Layer Effects -->
@@ -2446,6 +2463,22 @@
           path: ['visualization', 'render', 'symbolElevationOffset'],
           value: +v,
         }),
+        'setting-renderForcePointDropLines': (v) => ({
+          path: ['visualization', 'render', 'forcePointDropLines'],
+          value: v,
+        }),
+        'setting-renderDropLineColor': (v) => ({
+          path: ['visualization', 'render', 'dropLineColor'],
+          value: hexToRgb(v),
+        }),
+        'setting-renderDropLineWidth': (v) => ({
+          path: ['visualization', 'render', 'dropLineWidth'],
+          value: +v,
+        }),
+        'setting-renderDropLineOpacity': (v) => ({
+          path: ['visualization', 'render', 'dropLineOpacity'],
+          value: +v,
+        }),
         // Features
         'setting-measurementEngine': (v) => ({
           path: ['features', 'measurementEngine'],
@@ -2812,7 +2845,19 @@
           document.getElementById('setting-renderLiftLinesAreas').checked =
             render.liftLinesAreas ?? legacyLiftAll;
           document.getElementById('setting-renderSymbolElevationOffset').value =
-            render.symbolElevationOffset ?? 1;
+            render.symbolElevationOffset ?? 100;
+          document.getElementById('setting-renderForcePointDropLines').checked =
+            render.forcePointDropLines !== false;
+          if (Array.isArray(render.dropLineColor)) {
+            document.getElementById('setting-renderDropLineColor').value =
+              rgbToHex(render.dropLineColor[0], render.dropLineColor[1], render.dropLineColor[2]);
+          }
+          document.getElementById('setting-renderDropLineWidth').value =
+            render.dropLineWidth ?? 1.5;
+          const dlOp = render.dropLineOpacity ?? 0.85;
+          document.getElementById('setting-renderDropLineOpacity').value = dlOp;
+          document.getElementById('renderDropLineOpacity-display').textContent =
+            Number(dlOp).toFixed(2);
           if (window.applyRenderSettings) {
             window.applyRenderSettings(settings);
           }

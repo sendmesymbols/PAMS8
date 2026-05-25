@@ -57,6 +57,7 @@ export declare class KeyTerrainIdentificationEngine {
     private _dragOffsetX;
     private _dragOffsetY;
     private _isDragging;
+    private _subDragCleanup;
     private _overlayState;
     constructor();
     initialize(view: MapView | SceneView): void;
@@ -91,6 +92,7 @@ export declare class KeyTerrainIdentificationEngine {
     private _makeDraggable;
     private _onDragMove;
     private _onDragEnd;
+    private _makeSubDraggable;
     private _setStatus;
     private _setProgress;
     private _tick;

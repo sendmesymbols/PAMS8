@@ -2,6 +2,7 @@
 import UEISymbol from "../Symbols/UEISymbol.ts";
 import TacticalPoint from "../Symbols/TacticalPoint.ts";
 import TacticalPointText from "../Symbols/TacticalPointText.ts";
+import TacticalPointTextBox from "../Symbols/TacticalPointTextBox.ts";
 import FreehandLine from "../Symbols/FreehandLine.ts";
 import FreehandLineDotted from "../Symbols/FreehandLineDotted.ts";
 import FreehandArea from "../Symbols/FreehandArea.ts";
@@ -164,6 +165,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "FreehandAreaFilled": FreehandAreaFilled,
     "CartoInformationModelSymbol": CartoInformationModelSymbol,
     "TacticalPointText": TacticalPointText,
+    "TacticalPointTextBox": TacticalPointTextBox,
     "TacticalPoint": TacticalPoint,
     "UEISymbol": UEISymbol,
     "MainAttack": MainAttack,

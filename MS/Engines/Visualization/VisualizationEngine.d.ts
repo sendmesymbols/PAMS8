@@ -56,6 +56,11 @@ export interface RenderOptions {
     liftLinesAreas: boolean;
     /** Elevation offset (metres) used when a lift flag is enabled */
     symbolElevationOffset: number;
+    /** Draw vertical drop lines from lifted force points down to terrain (3D only) */
+    forcePointDropLines: boolean;
+    dropLineColor: number[];
+    dropLineWidth: number;
+    dropLineOpacity: number;
 }
 export interface VisualizationOptions {
     render: RenderOptions;

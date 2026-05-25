@@ -73,6 +73,7 @@ export declare class OcokaEngine {
     private _isDragging;
     private _dragOffsetX;
     private _dragOffsetY;
+    private _subDragCleanup;
     constructor();
     initialize(view: MapView | SceneView): void;
     open(graphic: Graphic, view: MapView | SceneView): void;
@@ -106,6 +107,7 @@ export declare class OcokaEngine {
     private _makeDraggable;
     private _onDragMove;
     private _onDragEnd;
+    private _makeSubDraggable;
     private _el;
     private _input;
     private _num;

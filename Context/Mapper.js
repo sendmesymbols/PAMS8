@@ -42,7 +42,7 @@ define(["dojo/_base/declare",
 
 
     
-    ,"MilSymbologySymbols/UEISymbol", "MilSymbologySymbols/TacticalPoint", "MilSymbologySymbols/TacticalPointText"],
+    ,"MilSymbologySymbols/UEISymbol", "MilSymbologySymbols/TacticalPoint", "MilSymbologySymbols/TacticalPointText", "MilSymbologySymbols/TacticalPointTextBox"],
     function (declare, 
         SupportByFirePosition, AttackByFirePosition,
         Clear, BlockObstacleEffect, Block,
@@ -84,7 +84,7 @@ define(["dojo/_base/declare",
         FreehandAreaFilled, FreehandSemiCircle, FreehandSemiCircleFilled
 
 
-        ,UEISymbol ,TacticalPoint, TacticalPointText) {
+        ,UEISymbol ,TacticalPoint, TacticalPointText, TacticalPointTextBox) {
 
         var Mapper = declare(null, { declaredClass: "MilitarySymbology.Engines.Mapper",
         symName : "",

@@ -63,6 +63,7 @@ export declare class LocalPeaksEngine {
     private _dragOffsetX;
     private _dragOffsetY;
     private _isDragging;
+    private _subDragCleanup;
     constructor();
     initialize(view: MapView | SceneView): void;
     open(graphic?: Graphic, view?: MapView | SceneView): void;
@@ -120,6 +121,7 @@ export declare class LocalPeaksEngine {
     private _makeDraggable;
     private _onDragMove;
     private _onDragEnd;
+    private _makeSubDraggable;
     private _el;
     private _num;
     private _checked;

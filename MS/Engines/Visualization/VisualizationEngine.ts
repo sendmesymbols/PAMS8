@@ -74,6 +74,11 @@ export interface RenderOptions {
   liftLinesAreas: boolean;
   /** Elevation offset (metres) used when a lift flag is enabled */
   symbolElevationOffset: number;
+  /** Draw vertical drop lines from lifted force points down to terrain (3D only) */
+  forcePointDropLines: boolean;
+  dropLineColor: number[];
+  dropLineWidth: number;
+  dropLineOpacity: number;
 }
 
 export interface VisualizationOptions {
@@ -94,7 +99,11 @@ const DEFAULT_OPTIONS: VisualizationOptions = {
     liftForcePoints: false,
     liftTacticalPoints: false,
     liftLinesAreas: false,
-    symbolElevationOffset: 1,
+    symbolElevationOffset: 100,
+    forcePointDropLines: true,
+    dropLineColor: [40, 40, 40],
+    dropLineWidth: 1.5,
+    dropLineOpacity: 0.85,
   },
   layerEffects: {
     enabled: false,

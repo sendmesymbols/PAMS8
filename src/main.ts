@@ -33,13 +33,20 @@ type RenderSettings = {
   liftTacticalPoints?: boolean;
   liftLinesAreas?: boolean;
   symbolElevationOffset?: number;
+  forcePointDropLines?: boolean;
+  dropLineColor?: number[];
+  dropLineWidth?: number;
+  dropLineOpacity?: number;
 };
 
 const RENDER_LAYER_IDS = {
   forcePoints: 'ForceSymbolsLayer',
   tacticalPoints: 'TacticalPointSymbolsLayer',
   linesAreas: 'TacticalSymbolsLayer',
+  forcePointDropLines: 'ForcePointDropLinesLayer',
 } as const;
+
+let _dropLineWatcher: { remove(): void } | null = null;
 
 let initialSceneRenderState: {
   qualityProfile: unknown;
@@ -717,6 +724,95 @@ function applySymbolElevationSettings(
     liftLinesAreas,
     offset,
   );
+
+  applyForcePointDropLines(sceneView, render, liftForcePoints, offset);
+}
+
+function getOrCreateDropLineLayer(sceneView: SceneView): any {
+  let layer = sceneView.map.findLayerById(RENDER_LAYER_IDS.forcePointDropLines) as any;
+  if (!layer) {
+    layer = new GraphicsLayer({
+      id: RENDER_LAYER_IDS.forcePointDropLines,
+      title: 'Force Point Drop Lines',
+      listMode: 'hide',
+      elevationInfo: { mode: 'relative-to-ground', offset: 0 },
+    } as any);
+    sceneView.map.add(layer, 0);
+  }
+  return layer;
+}
+
+function rebuildForcePointDropLines(
+  sceneView: SceneView,
+  render: RenderSettings,
+  offset: number,
+): void {
+  const layer = getOrCreateDropLineLayer(sceneView);
+  layer.removeAll();
+  if (offset <= 0) return;
+
+  const forceLayer = sceneView.map.findLayerById(RENDER_LAYER_IDS.forcePoints) as any;
+  if (!forceLayer?.graphics) return;
+
+  const color = render.dropLineColor ?? [40, 40, 40];
+  const width = render.dropLineWidth ?? 1.5;
+  const opacity = render.dropLineOpacity ?? 0.85;
+  const rgba: [number, number, number, number] = [color[0], color[1], color[2], opacity];
+
+  Array.from(forceLayer.graphics).forEach((g: any) => {
+    const geom = g?.geometry;
+    if (!geom || geom.type !== 'point') return;
+    const pt = geom as Point;
+    const line = new Polyline({
+      hasZ: true,
+      paths: [[
+        [pt.x, pt.y, offset],
+        [pt.x, pt.y, 0],
+      ]],
+      spatialReference: pt.spatialReference,
+    } as any);
+    layer.add(new Graphic({
+      geometry: line,
+      symbol: new SimpleLineSymbol({
+        color: rgba,
+        width,
+        style: 'solid',
+      }) as any,
+      attributes: { __dropLine__: true },
+    } as any));
+  });
+}
+
+function applyForcePointDropLines(
+  sceneView: SceneView,
+  render: RenderSettings,
+  liftForcePoints: boolean,
+  offset: number,
+): void {
+  const enabled = liftForcePoints && (render.forcePointDropLines !== false) && offset > 0;
+
+  if (_dropLineWatcher) {
+    _dropLineWatcher.remove();
+    _dropLineWatcher = null;
+  }
+
+  const layer = getOrCreateDropLineLayer(sceneView);
+  layer.visible = enabled;
+
+  if (!enabled) {
+    layer.removeAll();
+    return;
+  }
+
+  rebuildForcePointDropLines(sceneView, render, offset);
+
+  const forceLayer = sceneView.map.findLayerById(RENDER_LAYER_IDS.forcePoints) as any;
+  if (forceLayer?.graphics) {
+    _dropLineWatcher = reactiveUtils.watch(
+      () => forceLayer.graphics.length,
+      () => rebuildForcePointDropLines(sceneView, render, offset),
+    );
+  }
 }
 
 function applyLayerElevation(
