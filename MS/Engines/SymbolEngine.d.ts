@@ -67,20 +67,8 @@ declare class SymbolEngine implements Evented {
     private _drawingCueEngine;
     private _mgrsEngine;
     private _visualizationEngine;
-    private _weaponEffectEngine;
-    private _losEngine;
-    private _trajectoryEngine;
-    private _bufferEngine;
-    private _corridorEngine;
-    private _flightEngine;
-    private _effectEngine;
-    private _deadGroundMapper;
-    private _keyTerrainIdentificationEngine;
-    private _posDefScorerEngine;
-    private _opRankerEngine;
-    private _localPeaksEngine;
-    private _ocokaEngine;
-    private _missionPlannerEngine;
+    /** Owns construction/destruction/view-attach for the 14 analysis engines. */
+    private _analysisRegistry;
     private _deploymentBuilderEngine;
     private _declutterEngine;
     private _morphixEngine;
@@ -135,22 +123,6 @@ declare class SymbolEngine implements Evented {
     private _initMGRSEngine;
     private _initVisualizationEngine;
     private _initDeploymentBuilderEngine;
-    private _initWeaponEffectEngine;
-    private _initLOSEngine;
-    private _initTrajectoryEngine;
-    private _initBufferEngine;
-    private _initCorridorEngine;
-    private _initEffectEngine;
-    private _initFlightEngine;
-    private _initDeadGroundMapper;
-    private _initKeyTerrainIdentificationEngine;
-    private _initPosDefScorerEngine;
-    private _initOpRankerEngine;
-    private _initLocalPeaksEngine;
-    private _initOcokaEngine;
-    private _initMissionPlannerEngine;
-    /** Destroy all analysis engines and unlink them from the context menu. */
-    private _destroyAnalysisEngines;
     get view(): MapView | SceneView;
     get layerManager(): GraphicsLayerManager;
     set layerManager(value: GraphicsLayerManager);
@@ -354,21 +326,11 @@ declare class SymbolEngine implements Evented {
      * This replicates the functionality from main.ts
      */
     testMilSymbol(): void;
-    /**
-     * Getter function to expose symbol data
-     * @returns The complete symbol data object
-     */
+    /** Complete symbol catalogue. Delegated to SymbolMetadataService. */
     getSymbolData(): any;
-    /**
-     * Get symbol data by key
-     * @param key The symbol key to retrieve
-     * @returns The symbol data for the specified key or null if not found
-     */
+    /** Lookup a symbol definition by key. Delegated to SymbolMetadataService. */
     getSymbolByKey(key: string): any;
-    /**
-     * Get all symbol names for autocomplete
-     * @returns Array of objects with key and name for autocomplete
-     */
+    /** Autocomplete list of { key, name } entries. Delegated to SymbolMetadataService. */
     getSymbolNamesForAutocomplete(): Array<{
         key: string;
         name: string;

@@ -30,7 +30,7 @@ import type { SymbolOptions } from '../ThirdParty/MilSymbols/UEITypes.ts';
 
 // Import milsymbol types for the global MS object
 import '../ThirdParty/MilSymbols/milsymbol.d.ts';
-import { parseSIDC, ParsedSIDC } from '../SIDC/SIDC';
+import { ParsedSIDC } from '../SIDC/SIDC';
 import ContextMenuManager, {
   ContextMenuItem,
   MenuItemEvent,
@@ -62,11 +62,6 @@ import type { VisualizationOptions } from './Visualization/VisualizationEngine.t
 import WeaponEffectEngine from './Analysis/WeaponEffectEngine';
 import LOSEngine from './Analysis/LOSEngine';
 import TrajectoryEngine from './Analysis/TrajectoryEngine';
-import BufferEngine from './Analysis/BufferEngine';
-import CorridorEngine from './Analysis/CorridorEngine';
-import FlightEngine from './Analysis/FlightEngine';
-import { EffectEngine } from './Analysis/EffectEngine';
-import DeadGroundMapper from './Analysis/DeadGroundMapper';
 import KeyTerrainIdentificationEngine from './Analysis/KeyTerrain/KeyTerrainIdentificationEngine';
 import PosDefScorerEngine from './Analysis/PositionDefesibilityScorer/PosDefScorerEngine';
 import OpRankerEngine from './Analysis/OpRanker/OpRankerEngine';
@@ -82,6 +77,9 @@ import MorphixEngine, {
 } from './Morphix/MorphixEngine';
 import ClipboardEngine from './ClipboardEngine';
 import UndoRedoManager from './UndoRedoManager';
+import AnalysisEngineRegistry from './AnalysisEngineRegistry';
+import SymbolMetadataService from './SymbolMetadataService';
+import KeyboardShortcutManager from './KeyboardShortcutManager';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -131,20 +129,8 @@ class SymbolEngine implements Evented {
   private _drawingCueEngine: DrawingCueEngine | null = null;
   private _mgrsEngine: MGRSEngine | null = null;
   private _visualizationEngine: VisualizationEngine | null = null;
-  private _weaponEffectEngine: WeaponEffectEngine | null = null;
-  private _losEngine: LOSEngine | null = null;
-  private _trajectoryEngine: TrajectoryEngine | null = null;
-  private _bufferEngine: BufferEngine | null = null;
-  private _corridorEngine: CorridorEngine | null = null;
-  private _flightEngine: FlightEngine | null = null;
-  private _effectEngine: EffectEngine | null = null;
-  private _deadGroundMapper: DeadGroundMapper | null = null;
-  private _keyTerrainIdentificationEngine: KeyTerrainIdentificationEngine | null = null;
-  private _posDefScorerEngine: PosDefScorerEngine | null = null;
-  private _opRankerEngine: OpRankerEngine | null = null;
-  private _localPeaksEngine: LocalPeaksEngine | null = null;
-  private _ocokaEngine: OcokaEngine | null = null;
-  private _missionPlannerEngine: MissionPlannerEngine | null = null;
+  /** Owns construction/destruction/view-attach for the 14 analysis engines. */
+  private _analysisRegistry!: AnalysisEngineRegistry;
   private _deploymentBuilderEngine: DeploymentBuilderEngine | null = null;
   private _declutterEngine: DeclutterEngine | null = null;
   private _morphixEngine: MorphixEngine;
@@ -348,27 +334,13 @@ class SymbolEngine implements Evented {
     // Conditionally load DeploymentBuilderEngine based on Settings.json feature flag
     this._initDeploymentBuilderEngine();
 
-    // Initialise WeaponEffectEngine (always on â€” activated on demand via context menu)
-    this._initWeaponEffectEngine();
-    // Initialise LOSEngine (always on â€” activated on demand via context menu)
-    this._initLOSEngine();
-    // Initialise TrajectoryEngine (always on â€” activated on demand via context menu)
-    this._initTrajectoryEngine();
-    // Initialise BufferEngine (always on â€” activated on demand via context menu)
-    this._initBufferEngine();
-    // Initialise CorridorEngine (always on â€” activated on demand via context menu)
-    this._initCorridorEngine();
-    // Initialise EffectEngine (always on â€” activated on demand via context menu)
-    this._initEffectEngine();
-    // Initialise FlightEngine (always on â€” activated on demand via context menu)
-    this._initFlightEngine();
-    this._initDeadGroundMapper();
-    this._initKeyTerrainIdentificationEngine();
-    this._initPosDefScorerEngine();
-    this._initOpRankerEngine();
-    this._initLocalPeaksEngine();
-    this._initOcokaEngine();
-    this._initMissionPlannerEngine();
+    // Initialise the 14 analysis engines (each respects its own analysis.* flag)
+    this._analysisRegistry = new AnalysisEngineRegistry({
+      getView: () => this.view,
+      contextMenuManager: this._contextMenuManager,
+      emitEvent: (name, data) => this.emitEvent(name, data),
+    });
+    this._analysisRegistry.initAll();
 
     // Initialise DeclutterEngine â€” manages annotation and symbol zoom/echelon visibility
     this._initDeclutterEngine();
@@ -602,20 +574,8 @@ class SymbolEngine implements Evented {
     // Re-attach DeclutterEngine to the new view
     this._declutterEngine?.onViewChanged(newView);
 
-    // Re-attach analysis engines to the new view
-    this._weaponEffectEngine?.initialize(newView);
-    this._losEngine?.initialize(newView);
-    this._trajectoryEngine?.initialize(newView);
-    this._bufferEngine?.initialize(newView);
-    this._effectEngine?.initialize(newView);
-    this._flightEngine?.initialize(newView);
-    this._deadGroundMapper?.initialize(newView);
-    this._keyTerrainIdentificationEngine?.initialize(newView);
-    this._posDefScorerEngine?.initialize(newView);
-    this._opRankerEngine?.initialize(newView);
-    this._localPeaksEngine?.initialize(newView);
-    this._ocokaEngine?.initialize(newView);
-    this._missionPlannerEngine?.onViewChanged(newView);
+    // Re-attach all loaded analysis engines to the new view
+    this._analysisRegistry.onViewChanged(newView);
 
     // Re-initialize the ContextMenuManager for the new view so its
     // pointer-down / contextmenu listeners are bound to the active view.
@@ -781,183 +741,6 @@ class SymbolEngine implements Evented {
     }
   }
 
-  private _initWeaponEffectEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.wez === false) return;
-    this._weaponEffectEngine = new WeaponEffectEngine();
-    this._weaponEffectEngine.initialize(this.view);
-    this._contextMenuManager.linkWeaponEffectEngine(this._weaponEffectEngine);
-    this.emitEvent('weaponEffectEngineReady', { engine: this._weaponEffectEngine });
-    console.info('[SymbolEngine] WeaponEffectEngine loaded');
-  }
-
-  private _initLOSEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.los === false) return;
-    this._losEngine = new LOSEngine();
-    this._losEngine.initialize(this.view);
-    this._contextMenuManager.linkLOSEngine(this._losEngine);
-    this.emitEvent('losEngineReady', { engine: this._losEngine });
-    console.info('[SymbolEngine] LOSEngine loaded');
-  }
-
-  private _initTrajectoryEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.trajectory === false) return;
-    this._trajectoryEngine = new TrajectoryEngine();
-    this._trajectoryEngine.initialize(this.view);
-    this._contextMenuManager.linkTrajectoryEngine(this._trajectoryEngine);
-    this.emitEvent('trajectoryEngineReady', { engine: this._trajectoryEngine });
-    console.info('[SymbolEngine] TrajectoryEngine loaded');
-  }
-
-  private _initBufferEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.buffer === false) return;
-    this._bufferEngine = new BufferEngine();
-    this._bufferEngine.initialize(this.view);
-    this._contextMenuManager.linkBufferEngine(this._bufferEngine);
-    this.emitEvent('bufferEngineReady', { engine: this._bufferEngine });
-    console.info('[SymbolEngine] BufferEngine loaded');
-  }
-
-  private _initCorridorEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.corridor === false) return;
-    this._corridorEngine = new CorridorEngine();
-    this._corridorEngine.initialize(this.view);
-    this._contextMenuManager.linkCorridorEngine(this._corridorEngine);
-    this.emitEvent('corridorEngineReady', { engine: this._corridorEngine });
-    console.info('[SymbolEngine] CorridorEngine loaded');
-  }
-
-  private _initEffectEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.effects === false) return;
-    this._effectEngine = new EffectEngine();
-    this._effectEngine.initialize(this.view);
-    this._contextMenuManager.linkEffectEngine(this._effectEngine);
-    this.emitEvent('effectEngineReady', { engine: this._effectEngine });
-    console.info('[SymbolEngine] EffectEngine loaded');
-  }
-
-  private _initFlightEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.flight === false) return;
-    this._flightEngine = new FlightEngine();
-    this._flightEngine.initialize(this.view);
-    this._contextMenuManager.linkFlightEngine(this._flightEngine);
-    this.emitEvent('flightEngineReady', { engine: this._flightEngine });
-    console.info('[SymbolEngine] FlightEngine loaded');
-  }
-
-  private _initDeadGroundMapper(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.deadGround === false) return;
-    this._deadGroundMapper = new DeadGroundMapper();
-    this._deadGroundMapper.initialize(this.view);
-    this._contextMenuManager.linkDeadGroundMapper(this._deadGroundMapper);
-    this.emitEvent('deadGroundMapperReady', { engine: this._deadGroundMapper });
-    console.info('[SymbolEngine] DeadGroundMapper loaded');
-  }
-
-  private _initKeyTerrainIdentificationEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.keyTerrain === false) return;
-    this._keyTerrainIdentificationEngine = new KeyTerrainIdentificationEngine();
-    this._keyTerrainIdentificationEngine.initialize(this.view);
-    this._contextMenuManager.linkKeyTerrainIdentificationEngine(
-      this._keyTerrainIdentificationEngine,
-    );
-    this.emitEvent('keyTerrainIdentificationEngineReady', {
-      engine: this._keyTerrainIdentificationEngine,
-    });
-    console.info('[SymbolEngine] KeyTerrainIdentificationEngine loaded');
-  }
-
-  private _initPosDefScorerEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.positionDefensibility === false) return;
-    this._posDefScorerEngine = new PosDefScorerEngine();
-    this._posDefScorerEngine.initialize(this.view);
-    this._contextMenuManager.linkPosDefScorerEngine(this._posDefScorerEngine);
-    this.emitEvent('posDefScorerEngineReady', { engine: this._posDefScorerEngine });
-    console.info('[SymbolEngine] PosDefScorerEngine loaded');
-  }
-
-  private _initOpRankerEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.opRanker === false) return;
-    this._opRankerEngine = new OpRankerEngine();
-    this._opRankerEngine.initialize(this.view);
-    this._contextMenuManager.linkOpRankerEngine(this._opRankerEngine);
-    this.emitEvent('opRankerEngineReady', { engine: this._opRankerEngine });
-    console.info('[SymbolEngine] OpRankerEngine loaded');
-  }
-
-  private _initLocalPeaksEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.localPeaks === false) return;
-    this._localPeaksEngine = new LocalPeaksEngine();
-    this._localPeaksEngine.initialize(this.view);
-    this._contextMenuManager.linkLocalPeaksEngine(this._localPeaksEngine);
-    this.emitEvent('localPeaksEngineReady', { engine: this._localPeaksEngine });
-    console.info('[SymbolEngine] LocalPeaksEngine loaded');
-  }
-
-  private _initOcokaEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.ocoka === false) return;
-    this._ocokaEngine = new OcokaEngine();
-    this._ocokaEngine.initialize(this.view);
-    this._contextMenuManager.linkOcokaEngine(this._ocokaEngine);
-    this.emitEvent('ocokaEngineReady', { engine: this._ocokaEngine });
-    console.info('[SymbolEngine] OCOKAEngine loaded');
-  }
-
-  private _initMissionPlannerEngine(): void {
-    if ((settingsData as any).features?.analysisEngines === false) return;
-    if ((settingsData as any).analysis?.missionPlanner === false) return;
-    this._missionPlannerEngine = new MissionPlannerEngine();
-    this._missionPlannerEngine.initialize(this.view);
-    this._contextMenuManager.linkMissionPlannerEngine(this._missionPlannerEngine);
-    this.emitEvent('missionPlannerEngineReady', { engine: this._missionPlannerEngine });
-    console.info('[SymbolEngine] MissionPlannerEngine loaded');
-  }
-
-  /** Destroy all analysis engines and unlink them from the context menu. */
-  private _destroyAnalysisEngines(): void {
-    this._weaponEffectEngine?.destroy?.();
-    this._weaponEffectEngine = null;
-    this._losEngine?.destroy?.();
-    this._losEngine = null;
-    this._trajectoryEngine?.destroy?.();
-    this._trajectoryEngine = null;
-    this._bufferEngine?.destroy?.();
-    this._bufferEngine = null;
-    this._corridorEngine?.destroy?.();
-    this._corridorEngine = null;
-    this._effectEngine?.destroy?.();
-    this._effectEngine = null;
-    this._flightEngine?.destroy?.();
-    this._flightEngine = null;
-    this._deadGroundMapper?.destroy?.();
-    this._deadGroundMapper = null;
-    this._keyTerrainIdentificationEngine?.destroy?.();
-    this._keyTerrainIdentificationEngine = null;
-    this._posDefScorerEngine?.destroy?.();
-    this._posDefScorerEngine = null;
-    this._opRankerEngine?.destroy?.();
-    this._opRankerEngine = null;
-    this._localPeaksEngine?.destroy?.();
-    this._localPeaksEngine = null;
-    this._ocokaEngine?.destroy?.();
-    this._ocokaEngine = null;
-    this._missionPlannerEngine?.destroy?.();
-    this._missionPlannerEngine = null;
-    this._contextMenuManager.unlinkAnalysisEngines();
-    console.info('[SymbolEngine] Analysis engines destroyed');
-  }
 
   get view() {
     return this._getView();
@@ -1349,113 +1132,26 @@ class SymbolEngine implements Evented {
    *   C        â†’ Center On
    */
   private _setupKeyboardShortcuts(): void {
-    document.addEventListener('keydown', (e: KeyboardEvent) => {
-      // Skip when typing in an input field
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
-
-      // Handle Ctrl shortcuts first
-      if (e.ctrlKey || e.metaKey) {
-        if (e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
-          e.preventDefault();
-          this.redo();
-        } else if (e.key === 'z' || e.key === 'Z') {
-          e.preventDefault();
-          this.undo();
-        } else if (e.key === 'y' || e.key === 'Y') {
-          e.preventDefault();
-          this.redo();
-        } else if (e.key === 'c' || e.key === 'C') {
-          if ((settingsData as any).features?.clipboard !== false) {
-            const g = this._contextMenuManager.getLastClickedGraphic()
-                ?? (this._selectionEngine.count === 1 ? this._selectionEngine.selectedGraphics[0] : null);
-            if (g) {
-              e.preventDefault();
-              this.copySymbol(g);
-            }
-          }
-        } else if (e.key === 'v' || e.key === 'V') {
-          if ((settingsData as any).features?.clipboard !== false) {
-            e.preventDefault();
-            if (e.shiftKey) {
-              this._showPasteOffsetDialog();
-            } else {
-              this._activatePasteMode();
-            }
-          }
-        }
-        return;
-      }
-
-      const graphic = this._contextMenuManager.getLastClickedGraphic()
-          ?? (this._selectionEngine.count === 1 ? this._selectionEngine.selectedGraphics[0] : null);
-
-      switch (e.key) {
-        case 'm':
-        case 'M':
-          if (graphic) {
-            e.preventDefault();
-            this.modifySymbol(graphic);
-          }
-          break;
-        case 'e':
-        case 'E':
-          if (graphic) {
-            e.preventDefault();
-            this.activateEditControlPoints(graphic);
-          }
-          break;
-        case 'Escape':
-          if (
-            this._editEngine.isModifyingSymbol ||
-            this._editEngine.isEditingControlPoints
-          ) {
-            e.preventDefault();
-            this.deactivateEdit();
-          }
-          if (this._creationMode === 'continuous') {
-            e.preventDefault();
-            this.stopContinuousMode();
-          }
-          break;
-        case 'Delete':
-          // Batch delete if multiple selected, otherwise remove the right-clicked graphic
-          if (this._selectionEngine.count > 1) {
-            e.preventDefault();
-            this._selectionEngine.deleteSelected((entry) =>
-              this._pushUndo(entry),
-            );
-          } else if (graphic) {
-            e.preventDefault();
-            this.removeGraphic(graphic);
-          }
-          break;
-        case 'i':
-        case 'I':
-          if (graphic) {
-            e.preventDefault();
-            this.showSymbolDetails(graphic);
-          }
-          break;
-        case 'c':
-        case 'C':
-          if (graphic) {
-            e.preventDefault();
-            this.centerOnGraphic(graphic);
-          }
-          break;
-        case 'l':
-        case 'L':
-          e.preventDefault();
-          if (this._selectionEngine.isLassoActive) {
-            this._selectionEngine.cancelLasso();
-          } else {
-            this._closeActiveWorkflow();
-            this._selectionEngine.lassoSelect();
-          }
-          break;
-      }
-    });
+    new KeyboardShortcutManager({
+      contextMenuManager: this._contextMenuManager,
+      editEngine: this._editEngine,
+      selectionEngine: this._selectionEngine,
+      modifySymbol: (g) => this.modifySymbol(g),
+      activateEditControlPoints: (g) => this.activateEditControlPoints(g),
+      deactivateEdit: () => this.deactivateEdit(),
+      undo: () => this.undo(),
+      redo: () => this.redo(),
+      copySymbol: (g) => this.copySymbol(g),
+      activatePasteMode: () => this._activatePasteMode(),
+      showPasteOffsetDialog: () => this._showPasteOffsetDialog(),
+      removeGraphic: (g) => this.removeGraphic(g),
+      showSymbolDetails: (g) => this.showSymbolDetails(g),
+      centerOnGraphic: (g) => this.centerOnGraphic(g),
+      closeActiveWorkflow: () => this._closeActiveWorkflow(),
+      pushUndo: (entry) => this._pushUndo(entry),
+      stopContinuousMode: () => this.stopContinuousMode(),
+      getCreationMode: () => this._creationMode,
+    }).attach();
   }
 
   /** Access the MeasurementEngine â€” configure units or toggle programmatically.
@@ -1487,41 +1183,41 @@ class SymbolEngine implements Evented {
 
   /** Access the WeaponEffectEngine â€” open WEZ analysis panels programmatically. */
   public get weaponEffectEngine(): WeaponEffectEngine | null {
-    return this._weaponEffectEngine;
+    return this._analysisRegistry.weaponEffectEngine;
   }
 
   /** Access the LOSEngine â€” open LOS/viewshed panels programmatically. */
   public get losEngine(): LOSEngine | null {
-    return this._losEngine;
+    return this._analysisRegistry.losEngine;
   }
 
   /** Access the TrajectoryEngine â€” open projectile trajectory analysis panels programmatically. */
   public get trajectoryEngine(): TrajectoryEngine | null {
-    return this._trajectoryEngine;
+    return this._analysisRegistry.trajectoryEngine;
   }
 
   public get keyTerrainIdentificationEngine(): KeyTerrainIdentificationEngine | null {
-    return this._keyTerrainIdentificationEngine;
+    return this._analysisRegistry.keyTerrainIdentificationEngine;
   }
 
   public get posDefScorerEngine(): PosDefScorerEngine | null {
-    return this._posDefScorerEngine;
+    return this._analysisRegistry.posDefScorerEngine;
   }
 
   public get opRankerEngine(): OpRankerEngine | null {
-    return this._opRankerEngine;
+    return this._analysisRegistry.opRankerEngine;
   }
 
   public get localPeaksEngine(): LocalPeaksEngine | null {
-    return this._localPeaksEngine;
+    return this._analysisRegistry.localPeaksEngine;
   }
 
   public get ocokaEngine(): OcokaEngine | null {
-    return this._ocokaEngine;
+    return this._analysisRegistry.ocokaEngine;
   }
 
   public get missionPlannerEngine(): MissionPlannerEngine | null {
-    return this._missionPlannerEngine;
+    return this._analysisRegistry.missionPlannerEngine;
   }
 
   /** Get current settings data for the control panel */
@@ -1636,109 +1332,15 @@ class SymbolEngine implements Evented {
 
     if (fullPath === 'features.analysisEngines') {
       if (!value) {
-        this._destroyAnalysisEngines();
+        this._analysisRegistry.destroyAll();
       } else {
-        // Master turned on — init any engine whose individual flag is also on
-        if (!this._weaponEffectEngine) this._initWeaponEffectEngine();
-        if (!this._losEngine)          this._initLOSEngine();
-        if (!this._trajectoryEngine)   this._initTrajectoryEngine();
-        if (!this._bufferEngine)       this._initBufferEngine();
-        if (!this._corridorEngine)     this._initCorridorEngine();
-        if (!this._effectEngine)       this._initEffectEngine();
-        if (!this._flightEngine)       this._initFlightEngine();
-        if (!this._deadGroundMapper)   this._initDeadGroundMapper();
-        if (!this._keyTerrainIdentificationEngine) this._initKeyTerrainIdentificationEngine();
-        if (!this._posDefScorerEngine) this._initPosDefScorerEngine();
-        if (!this._opRankerEngine) this._initOpRankerEngine();
-        if (!this._localPeaksEngine) this._initLocalPeaksEngine();
-        if (!this._ocokaEngine) this._initOcokaEngine();
-        if (!this._missionPlannerEngine) this._initMissionPlannerEngine();
+        this._analysisRegistry.initAll();
       }
     }
 
     // Individual analysis engine toggles
     if (fullPath.startsWith('analysis.') && (settingsData as any).features?.analysisEngines !== false) {
-      const key = path[1] as string;
-      if (!value) {
-        switch (key) {
-          case 'los':
-            this._losEngine?.destroy?.(); this._losEngine = null;
-            this._contextMenuManager.linkLOSEngine(null);
-            break;
-          case 'wez':
-            this._weaponEffectEngine?.destroy?.(); this._weaponEffectEngine = null;
-            this._contextMenuManager.linkWeaponEffectEngine(null);
-            break;
-          case 'trajectory':
-            this._trajectoryEngine?.destroy?.(); this._trajectoryEngine = null;
-            this._contextMenuManager.linkTrajectoryEngine(null);
-            break;
-          case 'buffer':
-            this._bufferEngine?.destroy?.(); this._bufferEngine = null;
-            this._contextMenuManager.linkBufferEngine(null);
-            break;
-          case 'corridor':
-            this._corridorEngine?.destroy?.(); this._corridorEngine = null;
-            this._contextMenuManager.linkCorridorEngine(null);
-            break;
-          case 'effects':
-            this._effectEngine?.destroy?.(); this._effectEngine = null;
-            this._contextMenuManager.linkEffectEngine(null);
-            break;
-          case 'flight':
-            this._flightEngine?.destroy?.(); this._flightEngine = null;
-            this._contextMenuManager.linkFlightEngine(null);
-            break;
-          case 'deadGround':
-            this._deadGroundMapper?.destroy?.(); this._deadGroundMapper = null;
-            this._contextMenuManager.linkDeadGroundMapper(null);
-            break;
-          case 'keyTerrain':
-            this._keyTerrainIdentificationEngine?.destroy?.(); this._keyTerrainIdentificationEngine = null;
-            this._contextMenuManager.linkKeyTerrainIdentificationEngine(null);
-            break;
-          case 'positionDefensibility':
-            this._posDefScorerEngine?.destroy?.(); this._posDefScorerEngine = null;
-            this._contextMenuManager.linkPosDefScorerEngine(null);
-            break;
-          case 'opRanker':
-            this._opRankerEngine?.destroy?.(); this._opRankerEngine = null;
-            this._contextMenuManager.linkOpRankerEngine(null);
-            break;
-          case 'localPeaks':
-            this._localPeaksEngine?.destroy?.(); this._localPeaksEngine = null;
-            this._contextMenuManager.linkLocalPeaksEngine(null);
-            break;
-          case 'ocoka':
-            this._ocokaEngine?.destroy?.(); this._ocokaEngine = null;
-            this._contextMenuManager.linkOcokaEngine(null);
-            break;
-          case 'missionPlanner':
-            this._missionPlannerEngine?.destroy?.(); this._missionPlannerEngine = null;
-            this._contextMenuManager.linkMissionPlannerEngine(null);
-            break;
-        }
-        console.info(`[SymbolEngine] Analysis engine '${key}' disabled`);
-      } else {
-        // Re-enable individual engine
-        switch (key) {
-          case 'los':        if (!this._losEngine)          this._initLOSEngine();          break;
-          case 'wez':        if (!this._weaponEffectEngine) this._initWeaponEffectEngine(); break;
-          case 'trajectory': if (!this._trajectoryEngine)   this._initTrajectoryEngine();   break;
-          case 'buffer':     if (!this._bufferEngine)       this._initBufferEngine();       break;
-          case 'corridor':   if (!this._corridorEngine)     this._initCorridorEngine();     break;
-          case 'effects':    if (!this._effectEngine)       this._initEffectEngine();       break;
-          case 'flight':     if (!this._flightEngine)       this._initFlightEngine();       break;
-          case 'deadGround': if (!this._deadGroundMapper)   this._initDeadGroundMapper();   break;
-          case 'keyTerrain': if (!this._keyTerrainIdentificationEngine) this._initKeyTerrainIdentificationEngine(); break;
-          case 'positionDefensibility': if (!this._posDefScorerEngine) this._initPosDefScorerEngine(); break;
-          case 'opRanker': if (!this._opRankerEngine) this._initOpRankerEngine(); break;
-          case 'localPeaks': if (!this._localPeaksEngine) this._initLocalPeaksEngine(); break;
-          case 'ocoka': if (!this._ocokaEngine) this._initOcokaEngine(); break;
-          case 'missionPlanner': if (!this._missionPlannerEngine) this._initMissionPlannerEngine(); break;
-        }
-        console.info(`[SymbolEngine] Analysis engine '${key}' enabled`);
-      }
+      this._analysisRegistry.setEnabled(path[1] as any, !!value);
     }
 
     if (fullPath === 'features.mgrsEngine') {
@@ -1969,28 +1571,7 @@ class SymbolEngine implements Evented {
     label?: string;
     text?: string;
   } {
-    try {
-      if (!options.sidc) throw new Error('Missing SIDC in symbol options');
-
-      console.log('SIDC:', options.sidc);
-      const parsed = parseSIDC(options.sidc);
-      console.log('Parsed SIDC:', parsed);
-      console.log('Standard Identity', parsed.setA.standardIdentityLabel);
-      console.log('Symbol Set', parsed.setA.symbolSetLabel);
-      console.log('Echelon', parsed.setA.echelonMobilityLabel);
-
-      return {
-        ...options,
-        parsedSIDC: parsed,
-        label:
-          `${parsed.setA.standardIdentityLabel ?? ''} ${parsed.setA.symbolSetLabel ?? ''}`.trim(),
-        text: parsed.setA.echelonMobilityLabel ?? '',
-      };
-    } catch (error) {
-      console.warn(error);
-      console.warn('Invalid SIDC provided:', options.sidc);
-      return options;
-    }
+    return SymbolMetadataService.enrich(options);
   }
 
   createLineSymbol(
@@ -3166,32 +2747,19 @@ class SymbolEngine implements Evented {
     }
   }
 
-  /**
-   * Getter function to expose symbol data
-   * @returns The complete symbol data object
-   */
+  /** Complete symbol catalogue. Delegated to SymbolMetadataService. */
   public getSymbolData(): any {
-    return symbolData;
+    return SymbolMetadataService.getData();
   }
 
-  /**
-   * Get symbol data by key
-   * @param key The symbol key to retrieve
-   * @returns The symbol data for the specified key or null if not found
-   */
+  /** Lookup a symbol definition by key. Delegated to SymbolMetadataService. */
   public getSymbolByKey(key: string): any {
-    return symbolData[key] || null;
+    return SymbolMetadataService.getByKey(key);
   }
 
-  /**
-   * Get all symbol names for autocomplete
-   * @returns Array of objects with key and name for autocomplete
-   */
+  /** Autocomplete list of { key, name } entries. Delegated to SymbolMetadataService. */
   public getSymbolNamesForAutocomplete(): Array<{ key: string; name: string }> {
-    return Object.entries(symbolData).map(([key, data]: [string, any]) => ({
-      key: key,
-      name: data.Name || 'Unnamed Symbol',
-    }));
+    return SymbolMetadataService.getNamesForAutocomplete();
   }
 
   // -----------------------------------------------------------------------
