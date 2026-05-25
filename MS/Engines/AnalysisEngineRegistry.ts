@@ -229,9 +229,38 @@ export default class AnalysisEngineRegistry {
     this.SPECS[key].unlink(this.deps.contextMenuManager);
   }
 
-  /** Initialise all enabled engines (respects master + individual flags). */
-  initAll(): void {
-    (Object.keys(this.SPECS) as AnalysisKey[]).forEach((k) => this.init(k));
+  /**
+   * Initialise all enabled engines (respects master + individual flags).
+   *
+   * Each engine's construction wires context-menu entries and view listeners,
+   * which is non-trivial work × 14. Doing it synchronously on boot pushed
+   * first-paint out by tens of ms. Instead we schedule each engine on the
+   * browser's idle queue so the main thread can finish the first frame, then
+   * trickle in the analysis engines one tick at a time. Context-menu items
+   * appear within a few ms of boot completion, before the user could plausibly
+   * right-click.
+   *
+   * `force === true` keeps the eager path for callers that need every engine
+   * built immediately (e.g. tests, or a synchronous setEnabled toggle).
+   */
+  initAll(force: boolean = false): void {
+    const keys = Object.keys(this.SPECS) as AnalysisKey[];
+    if (force) {
+      keys.forEach((k) => this.init(k));
+      return;
+    }
+    const schedule: (cb: () => void) => void =
+      typeof (globalThis as any).requestIdleCallback === 'function'
+        ? (cb) => (globalThis as any).requestIdleCallback(cb, { timeout: 250 })
+        : (cb) => setTimeout(cb, 0);
+    let i = 0;
+    const pump = () => {
+      if (i >= keys.length) return;
+      const k = keys[i++];
+      this.init(k);
+      schedule(pump);
+    };
+    schedule(pump);
   }
 
   /** Destroy every engine and tell the context menu the analysis tools are gone. */

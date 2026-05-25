@@ -1287,7 +1287,9 @@ class SymbolEngine implements Evented {
       if (!value) {
         this._analysisRegistry.destroyAll();
       } else {
-        this._analysisRegistry.initAll();
+        // User-initiated re-enable — build immediately so the next right-click
+        // shows the Analysis submenu without an idle-callback delay.
+        this._analysisRegistry.initAll(true);
       }
     }
 
@@ -2868,7 +2870,11 @@ class SymbolEngine implements Evented {
         if (data.amplifier) Object.assign(amplifier, data.amplifier);
         if (data.sidc && !amplifier.SIDC) amplifier.SIDC = data.sidc;
 
-        this._pendingAttrs = { symbolId: data.id };
+        const symbolId = data.id;
+        this._pendingAttrs = { symbolId };
+        // Reset the watcher so we can detect whether initialize() produced a graphic synchronously.
+        this._lastCreatedGraphic = null;
+
         const suppressBefore = this._suppressDrawLifecycleCount;
         if (data.suppressDrawingLifecycle === true) {
           this._suppressDrawLifecycleCount++;
@@ -2881,79 +2887,68 @@ class SymbolEngine implements Evented {
           this._suppressDrawLifecycleCount = suppressBefore;
         }
 
-        const symbolId = data.id;
-        setTimeout(() => {
-          // Look across every symbol layer the draw pipeline could have routed to
-          // (Area/Line → TACT, point tacticals → TACT_PT, force points → FORCE).
-          // Checking only one layer caused duplicate fallback graphics with the
-          // same id, which broke lasso and similar-selection by id collision.
-          const layerIds = [
-            LAYER_NAMES.FORCE,
-            LAYER_NAMES.TACT_PT,
-            LAYER_NAMES.TACT,
-          ];
-          const alreadyPlaced = layerIds.some((id) => {
-            const layer = this._layerManager.getLayer(id);
-            if (!layer) return false;
-            return Array.from(layer.graphics as any).some(
-              (g: any) => g.attributes?.id === symbolId,
-            );
-          });
-          if (alreadyPlaced) return;
+        // Happy path — the symbol class's passive init synchronously emitted
+        // onDrawEnd, drawSymEnd() placed the graphic, _lastCreatedGraphic is set.
+        // Local cast: TS control-flow narrows the field to `null` after the
+        // reset above and can't see that initialize() may mutate it.
+        const created = this._lastCreatedGraphic as Graphic | null;
+        if (created?.attributes?.id === symbolId) {
+          return created;
+        }
 
-          const geom = de.GEOM || de.CTRL_PTS?.[0];
-          if (!geom) return;
+        // Fallback path — the symbol class didn't emit synchronously. Build the
+        // graphic directly. Runs at most once per load (no timer, no polling),
+        // so bulk imports stay O(N) instead of O(N²) on layer scans.
+        const geom = (de as any).GEOM || (de as any).CTRL_PTS?.[0];
+        if (!geom) return null;
 
-          const amp = new Amplifier();
-          if (data.amplifier) Object.assign(amp, data.amplifier);
-          if (data.sidc && !amp.SIDC) amp.SIDC = data.sidc;
+        const amp = new Amplifier();
+        if (data.amplifier) Object.assign(amp, data.amplifier);
+        if (data.sidc && !amp.SIDC) amp.SIDC = data.sidc;
 
-          const sidcInstance = new SIDC(amp.SIDC);
-          const symSet = sidcInstance.getSIDC().substring(4, 6);
-          const symDef = symbolData[symSet + sidcInstance.getSID()];
+        const sidcInstance = new SIDC(amp.SIDC);
+        const symSet = sidcInstance.getSIDC().substring(4, 6);
+        const symDef = (symbolData as any)[symSet + sidcInstance.getSID()];
 
-          let marker: any;
-          if (symDef) {
-            marker = sidcInstance.getMarker(symDef.symGeometricType, symDef.isObstacle, symDef.Fill);
-          }
+        let marker: any;
+        if (symDef) {
+          marker = sidcInstance.getMarker(symDef.symGeometricType, symDef.isObstacle, symDef.Fill);
+        }
 
-          const graphic = new Graphic({
-            geometry: geom,
-            symbol: marker,
-            attributes: {
-              id: symbolId,
-              type: 'symbol',
-              drawEssentials: de,
-            },
-          });
+        (de as any).AMPLIFIER = amp;
+        (de as any).SIDC = amp.SIDC;
 
-          de.AMPLIFIER = amp;
-          de.SIDC = amp.SIDC;
-          graphic.attributes.drawEssentials = de;
+        const fallbackGraphic = new Graphic({
+          geometry: geom,
+          symbol: marker,
+          attributes: {
+            id: symbolId,
+            type: 'symbol',
+            drawEssentials: de,
+          },
+        });
 
-          const targetLayer = this.getDrawEndLayer(de, geom);
-          targetLayer.add(graphic);
+        const targetLayer = this.getDrawEndLayer(de, geom);
+        targetLayer.add(fallbackGraphic);
 
-          const annotationLayer = this._layerManager.getOrCreateLayer(
-            LAYER_NAMES.ANNOTATION_LAYER,
+        const annotationLayer = this._layerManager.getOrCreateLayer(
+          LAYER_NAMES.ANNOTATION_LAYER,
+        );
+        if (amp.SIDC) {
+          AnnotationEngine.annotate(
+            annotationLayer,
+            geom,
+            amp,
+            de,
+            symbolId,
+            settingsData.textSize,
+            (de as any).ISFHAND || 0,
+            this.labelOptions || {},
+            {},
           );
-          if (amp.SIDC) {
-            AnnotationEngine.annotate(
-              annotationLayer,
-              geom,
-              amp,
-              de,
-              symbolId,
-              settingsData.textSize,
-              (de as any).ISFHAND || 0,
-              this.labelOptions || {},
-              {},
-            );
-          }
-          console.info('[SaveLoad] Symbol added via fallback path:', symbolId);
-        }, 100);
-
-        return null;
+        }
+        console.info('[SaveLoad] Symbol added via fallback path:', symbolId);
+        return fallbackGraphic;
       }
 
       // Fallback: milsymbol or v1.0 legacy format â€” direct Graphic construction
