@@ -167,6 +167,7 @@ export class OcokaEngine {
   private _isDragging = false;
   private _dragOffsetX = 0;
   private _dragOffsetY = 0;
+  private _subDragCleanup: Array<() => void> = [];
 
   constructor() {
     this._createLayers();
@@ -258,6 +259,8 @@ export class OcokaEngine {
   destroy(): void {
     this.close();
     this._clearAll();
+    this._subDragCleanup.forEach((fn) => fn());
+    this._subDragCleanup = [];
     const map = this._view?.map as any;
     if (map) {
       [this._corridorLayer, this._widthLayer, this._chokeLayer, this._labelLayer, this._aoLayer, this._heatLayer]
@@ -313,6 +316,7 @@ export class OcokaEngine {
       `;
       document.body.appendChild(panel);
       this._listPanelEl = panel;
+      this._makeSubDraggable(panel, panel.querySelector<HTMLElement>('.ms-header'));
     }
 
     if (!this._controlPanelEl) {
@@ -855,6 +859,47 @@ export class OcokaEngine {
     document.removeEventListener('mousemove', this._onDragMove);
     document.removeEventListener('mouseup', this._onDragEnd);
   };
+
+  private _makeSubDraggable(panel: HTMLElement, handle: HTMLElement | null): void {
+    if (!handle) return;
+    let dragging = false;
+    let ox = 0;
+    let oy = 0;
+    const onMove = (e: MouseEvent) => {
+      if (!dragging) return;
+      const rect = panel.getBoundingClientRect();
+      panel.style.left = `${clamp(e.clientX - ox, 8, window.innerWidth - rect.width - 8)}px`;
+      panel.style.top = `${clamp(e.clientY - oy, 8, window.innerHeight - 80)}px`;
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+    };
+    const onUp = () => {
+      dragging = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    const onDown = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest('button, input, select')) return;
+      const rect = panel.getBoundingClientRect();
+      panel.style.left = `${rect.left}px`;
+      panel.style.top = `${rect.top}px`;
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+      ox = e.clientX - rect.left;
+      oy = e.clientY - rect.top;
+      dragging = true;
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      e.preventDefault();
+    };
+    handle.style.cursor = 'grab';
+    handle.addEventListener('mousedown', onDown);
+    this._subDragCleanup.push(() => {
+      handle.removeEventListener('mousedown', onDown);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    });
+  }
 
   private _el(id: string): HTMLElement | null {
     return this._controlPanelEl?.querySelector(`#${id}`) ?? this._listPanelEl?.querySelector(`#${id}`) ?? null;

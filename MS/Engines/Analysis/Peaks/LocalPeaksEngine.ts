@@ -152,6 +152,7 @@ export class LocalPeaksEngine {
   private _dragOffsetX = 0;
   private _dragOffsetY = 0;
   private _isDragging = false;
+  private _subDragCleanup: Array<() => void> = [];
 
   constructor() {
     this._createLayers();
@@ -195,6 +196,8 @@ export class LocalPeaksEngine {
   destroy(): void {
     this.close();
     this.clearResults();
+    this._subDragCleanup.forEach((fn) => fn());
+    this._subDragCleanup = [];
     const map = this._view?.map as any;
     if (map) {
       map.remove(this._peakLayer);
@@ -787,10 +790,12 @@ export class LocalPeaksEngine {
       this._profileContainer.className = 'peaks-profile-panel';
       document.body.appendChild(this._profileContainer);
     }
+    const profileEl = this._profileContainer;
     const isPeakType = peak.type === 'peaks';
     this._profileContainer.style.display = 'block';
     this._profileContainer.innerHTML = `<div class="peaks-profile-head"><span>${isPeakType ? '▲' : '▽'} Elevation Profile — ${isPeakType ? 'Peak' : 'Valley'} #${peak.rank} · ${Math.round(peak.elevation).toLocaleString()} m ASL</span><button id="peaks-profile-close">✕</button></div><div id="peaks-profile-widget" class="peaks-profile-widget"></div>`;
     this._profileContainer.querySelector('#peaks-profile-close')?.addEventListener('click', () => this._destroyProfileWidget());
+    this._makeSubDraggable(profileEl, profileEl.querySelector<HTMLElement>('.peaks-profile-head'));
     this._profileWidget?.destroy();
     // ElevationProfile.input must be a Graphic (not geometry) — find the profile graphic directly
     const profileGraphic = this._profileLayer.graphics.find((g) => g.attributes?.type === 'local_peak_profile') ?? null;
@@ -1156,6 +1161,49 @@ export class LocalPeaksEngine {
     document.removeEventListener('mousemove', this._onDragMove);
     document.removeEventListener('mouseup', this._onDragEnd);
   };
+
+  private _makeSubDraggable(panel: HTMLElement, handle: HTMLElement | null): void {
+    if (!handle) return;
+    let dragging = false;
+    let ox = 0;
+    let oy = 0;
+    const onMove = (e: MouseEvent) => {
+      if (!dragging) return;
+      const rect = panel.getBoundingClientRect();
+      const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+      const maxTop = Math.max(8, window.innerHeight - 80);
+      panel.style.left = `${clamp(e.clientX - ox, 8, maxLeft)}px`;
+      panel.style.top = `${clamp(e.clientY - oy, 8, maxTop)}px`;
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+    };
+    const onUp = () => {
+      dragging = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    const onDown = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest('button, input, select')) return;
+      const rect = panel.getBoundingClientRect();
+      panel.style.left = `${rect.left}px`;
+      panel.style.top = `${rect.top}px`;
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+      ox = e.clientX - rect.left;
+      oy = e.clientY - rect.top;
+      dragging = true;
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      e.preventDefault();
+    };
+    handle.style.cursor = 'grab';
+    handle.addEventListener('mousedown', onDown);
+    this._subDragCleanup.push(() => {
+      handle.removeEventListener('mousedown', onDown);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    });
+  }
 
   private _el(id: string): HTMLElement | null { return this._panelEl?.querySelector(`#${id}`) ?? null; }
   private _num(id: string, fallback: number): number { const el = this._el(id) as HTMLInputElement | null; const value = el ? Number(el.value) : fallback; return Number.isFinite(value) ? value : fallback; }
