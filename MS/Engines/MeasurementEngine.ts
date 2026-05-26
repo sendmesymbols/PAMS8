@@ -62,7 +62,15 @@ export interface MeasurementOptions {
     magnetic_declination?: number;
     /** Speed in km/h for march-time estimation */
     speed_kmh?: number;
+    /** Bearing display format. "decimal" → 045°, "mils" → 800 mil, "quadrant" → N45°E */
+    bearing_format?: BearingFormat;
+    /** Auto-pick a readable display unit per value (m↔km, ft↔mi, yd↔mi) */
+    auto_unit?: boolean;
+    /** Keep measurement labels on the map after a drawing is finished */
+    preserve_labels_on_complete?: boolean;
 }
+
+export type BearingFormat = "decimal" | "mils" | "quadrant";
 
 export interface MeasurementSnapshot {
     segmentLength: string;
@@ -94,6 +102,7 @@ class MeasurementEngine {
     private _isEnabled: boolean = false;
     private _view: MapView | SceneView | null = null;
     private _isGeodesic: boolean = false;
+    private _planarWarned: boolean = false;
 
     // Graphics layer + individual graphic handles
     private _layer: GraphicsLayer | null = null;
@@ -148,10 +157,30 @@ class MeasurementEngine {
     private _slantRange: boolean       = false;
     private _magneticDeclination: number = 0;
     private _speedKmh: number          = 0;
+    private _bearingFormat: BearingFormat = "decimal";
+    private _autoUnit: boolean         = false;
+    private _preserveOnComplete: boolean = false;
+
+    // Cached style objects — rebuilt only when font options change, not per label.
+    private _font: Font | null = null;
+    private _fontColorObj: Color | null = null;
+    private readonly _haloColor = new Color([0, 0, 0, 1]);
+
+    // Reusable polyline for length math (never assigned to a graphic).
+    private readonly _scratchLine = new Polyline();
+
+    // requestAnimationFrame coalescing for draw-progress updates.
+    private _rafId: number | null = null;
+    private _pendingUpdate: (() => void) | null = null;
+
+    // Most recent emitted snapshot — backs getFormattedSnapshot()/clipboard copy.
+    private _lastSnapshot: Partial<MeasurementSnapshot> | null = null;
 
     // ─────────────────────────────────────────────────────────────────────────
 
-    private constructor() {}
+    private constructor() {
+        this._rebuildStyle();
+    }
 
     public static getInstance(): MeasurementEngine {
         if (!MeasurementEngine._instance) {
@@ -232,10 +261,17 @@ class MeasurementEngine {
         if (options.slant_range     !== undefined) this._slantRange      = options.slant_range;
         if (options.magnetic_declination !== undefined) this._magneticDeclination = options.magnetic_declination;
         if (options.speed_kmh       !== undefined) this._speedKmh        = options.speed_kmh;
+        if (options.bearing_format  !== undefined) this._bearingFormat   = options.bearing_format;
+        if (options.auto_unit       !== undefined) this._autoUnit        = options.auto_unit;
+        if (options.preserve_labels_on_complete !== undefined) this._preserveOnComplete = options.preserve_labels_on_complete;
 
         if (this._showLastSegOnly && !this._showSegment) {
             console.info("[MeasurementEngine] show_last_seg_only requires show_segment — forcing on");
             this._showSegment = true;
+        }
+
+        if (options.font_size !== undefined || options.font_color !== undefined || options.font_opacity !== undefined) {
+            this._rebuildStyle();
         }
     }
 
@@ -261,6 +297,9 @@ class MeasurementEngine {
             slant_range:      this._slantRange,
             magnetic_declination: this._magneticDeclination,
             speed_kmh:        this._speedKmh,
+            bearing_format:   this._bearingFormat,
+            auto_unit:        this._autoUnit,
+            preserve_labels_on_complete: this._preserveOnComplete,
         };
     }
 
@@ -273,9 +312,8 @@ class MeasurementEngine {
         this._resolveGeodesic();
 
         if (this._showSegment) {
-            if (this._showLastSegOnly) {
-                const prev = this._findById("seg-label");
-                if (prev) this._layer.remove(prev);
+            if (this._showLastSegOnly && this._segGraphic) {
+                this._layer.remove(this._segGraphic);
             }
 
             const placeholder = new Point({ x: 0, y: 0, spatialReference: this._view.spatialReference });
@@ -283,7 +321,6 @@ class MeasurementEngine {
                 geometry: placeholder,
                 symbol: this._textSymbol(placeholder, 45, ""),
             });
-            (this._segGraphic as any).__meId = "seg-label";
             this._layer.add(this._segGraphic);
         }
 
@@ -299,7 +336,14 @@ class MeasurementEngine {
                 `First point placed — keep clicking to measure segments${this._showBng ? ' and bearings' : ''}. Double-click to finish`,
             );
         } else {
-            this._emitHint("Point added. Keep clicking to extend the line. Double-click to finish.", "segment");
+            // Running summary instead of repeating the same "keep clicking" line.
+            const segCount = ctrlPts.length - 1;
+            const pl = new Polyline({ spatialReference: ctrlPts[0].spatialReference });
+            pl.addPath(ctrlPts.map(p => [p.x, p.y]));
+            this._emitHint(
+                `${segCount} segment${segCount !== 1 ? "s" : ""} — total ${this._polyLen(pl)}. Double-click to finish.`,
+                "segment",
+            );
         }
     }
 
@@ -319,11 +363,35 @@ class MeasurementEngine {
         if (geom.type !== "polyline" && geom.type !== "polygon") return;
         if (ctrlPts.length < 2) return;
 
-        if (isPassive) {
-            this._updateForEdit(geom, ctrlPts);
-        } else {
-            this._updateGraphics(geom, ctrlPts, ctrlPts.length - 2, ctrlPts.length - 1, false);
+        // Draw-progress fires per mousemove; coalesce to one update per frame.
+        this._schedule(() => {
+            if (!this._isEnabled || !this._view || !this._layer) return;
+            if (isPassive) {
+                this._updateForEdit(geom, ctrlPts);
+            } else {
+                this._updateGraphics(geom, ctrlPts, ctrlPts.length - 2, ctrlPts.length - 1, false);
+            }
+        });
+    }
+
+    /** Coalesce rapid draw-progress updates into one rAF-aligned pass (trailing). */
+    private _schedule(fn: () => void): void {
+        this._pendingUpdate = fn;
+        if (this._rafId != null) return;
+        this._rafId = requestAnimationFrame(() => {
+            this._rafId = null;
+            const job = this._pendingUpdate;
+            this._pendingUpdate = null;
+            job?.();
+        });
+    }
+
+    private _cancelScheduled(): void {
+        if (this._rafId != null) {
+            cancelAnimationFrame(this._rafId);
+            this._rafId = null;
         }
+        this._pendingUpdate = null;
     }
 
     /**
@@ -341,10 +409,22 @@ class MeasurementEngine {
      * Optionally re-arms for the first point of the next symbol.
      */
     public wrapUp(firstPts?: Point[]): void {
+        this._cancelScheduled();
+        const continuing = firstPts && firstPts.length > 0;
+
+        // Preserve finished labels for briefings/screenshots only when the
+        // drawing is truly done (not when re-arming for the next segment).
+        if (this._preserveOnComplete && !continuing) {
+            this._clearHandles();
+            this._emitUpdate({} as MeasurementSnapshot);
+            this._emitHint("Drawing complete — labels kept. Start a new symbol to measure again.", "complete");
+            EngineLogger.success('Measurement Engine', 'Drawing complete — labels preserved');
+            return;
+        }
+
         this._layer?.removeAll();
         this._clearHandles();
         this._emitUpdate({} as MeasurementSnapshot);
-        const continuing = firstPts && firstPts.length > 0;
         this._emitHint(
             continuing
                 ? "Symbol complete. Starting the next segment…"
@@ -383,6 +463,8 @@ class MeasurementEngine {
         let total = "";
         if (geom.type === "polyline") {
             total = this._polyLen(geom as Polyline);
+        } else if (geom.type === "polygon") {
+            total = this._polyLen(this._polygonToPolyline(geom as Polygon));
         }
 
         const snap: MeasurementSnapshot = {
@@ -405,13 +487,23 @@ class MeasurementEngine {
      */
     public onViewChanged(view: MapView | SceneView): void {
         this.wrapUp();
+        // Detach the layer from the previous view's map, or it leaks across
+        // every 2D↔3D switch.
+        if (this._view && this._layer) {
+            this._view.map?.remove(this._layer);
+        }
+        this._layer = null;
         this.start(view);
     }
 
     public destroy(): void {
+        this._cancelScheduled();
+        this._layer?.removeAll();
+        this._clearHandles();
         if (this._view && this._layer) {
-            (this._view.map as any).remove(this._layer);
+            this._view.map?.remove(this._layer);
         }
+        this._isEnabled = false;
         this._layer = null;
         this._view  = null;
     }
@@ -434,6 +526,23 @@ class MeasurementEngine {
             isGeodesic: this._isGeodesic,
             activeGraphics: this._layer?.graphics.length ?? 0,
         };
+    }
+
+    /**
+     * A clean multi-line string of the most recent measurement, suitable for
+     * the "Copy" button or clipboard. Returns "" if nothing has been measured.
+     */
+    public getFormattedSnapshot(): string {
+        const s = this._lastSnapshot;
+        if (!s) return "";
+        const lines: string[] = [];
+        if (s.segmentLength) lines.push(`Segment: ${s.segmentLength}`);
+        if (s.bearing)       lines.push(`Bearing: ${s.bearing}`);
+        if (s.totalLength)   lines.push(`Total:   ${s.totalLength}`);
+        if (s.height)        lines.push(`Height:  ${s.height}`);
+        if (s.width)         lines.push(`Width:   ${s.width}`);
+        if (s.area)          lines.push(`Area:    ${s.area}`);
+        return lines.join("\n");
     }
 
     // ── Internal: graphics update ─────────────────────────────────────────────
@@ -471,11 +580,9 @@ class MeasurementEngine {
 
             if (newSeg) {
                 // Edit mode: create a fresh graphic each time
-                const prev = this._findById("seg-label");
-                if (prev) this._layer.remove(prev);
-                const sg = new Graphic({ geometry: mid, symbol: this._textSymbol(mid, angle, label) });
-                (sg as any).__meId = "seg-label";
-                this._layer.add(sg);
+                if (this._segGraphic) this._layer.remove(this._segGraphic);
+                this._segGraphic = new Graphic({ geometry: mid, symbol: this._textSymbol(mid, angle, label) });
+                this._layer.add(this._segGraphic);
             } else if (this._segGraphic) {
                 this._segGraphic.symbol   = this._textSymbol(mid, angle, label);
                 this._segGraphic.geometry = mid;
@@ -610,7 +717,9 @@ class MeasurementEngine {
     }
 
     private _angle(a: Point, b: Point): number {
-        return Math.atan((b.y - a.y) / (b.x - a.x)) * 180 / Math.PI * -1;
+        // atan2 handles vertical segments (b.x === a.x) and full quadrant range;
+        // plain atan returns NaN/±90° ambiguity there.
+        return Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI * -1;
     }
 
     private _metersToUnit(meters: number, unit: DistanceUnit): number {
@@ -625,56 +734,82 @@ class MeasurementEngine {
         }
     }
 
-    private _segLenVal(pt1: Point, pt2: Point): number {
-        const pl = new Polyline({ spatialReference: pt1.spatialReference });
-        pl.addPath([[pt1.x, pt1.y], [pt2.x, pt2.y]]);
-        let len2D = this._isGeodesic
-            ? geometryEngine.geodesicLength(pl, this._distUnit as any)
-            : geometryEngine.planarLength(pl, this._distUnit as any);
-        
-        len2D = Math.abs(len2D);
+    /** Pick a readable display unit for a length given in meters. */
+    private _resolveDisplayUnit(meters: number): DistanceUnit {
+        if (!this._autoUnit) return this._distUnit;
+        const m = Math.abs(meters);
+        switch (this._distUnit) {
+            case "feet":
+            case "miles":
+                return m >= 1609.34 ? "miles" : "feet";
+            case "yards":
+                return m >= 1609.34 ? "miles" : "yards";
+            case "nautical-miles":
+                return "nautical-miles";
+            case "meters":
+            case "kilometers":
+            default:
+                return m >= 1000 ? "kilometers" : "meters";
+        }
+    }
+
+    /** Format a length (in meters) into a display string with smart precision. */
+    private _formatDist(meters: number): string {
+        const unit = this._resolveDisplayUnit(meters);
+        const v = this._metersToUnit(meters, unit);
+        let str: string;
+        if (unit === "meters" || unit === "feet" || unit === "yards") {
+            str = v.toFixed(0);                       // whole units for small measures
+        } else {
+            str = Math.abs(v) < 10 ? v.toFixed(2) : v.toFixed(1);
+        }
+        return `${str} ${this._distAbbr(unit)}`;
+    }
+
+    /** Straight-line length between two points, in meters (slant-adjusted if enabled). */
+    private _segMeters(pt1: Point, pt2: Point): number {
+        this._scratchLine.spatialReference = pt1.spatialReference;
+        this._scratchLine.paths = [[[pt1.x, pt1.y], [pt2.x, pt2.y]]];
+        let m = Math.abs(this._isGeodesic
+            ? geometryEngine.geodesicLength(this._scratchLine, "meters")
+            : geometryEngine.planarLength(this._scratchLine, "meters"));
 
         if (this._slantRange && pt1.z !== undefined && pt2.z !== undefined) {
-            const dzMeters = pt2.z - pt1.z;
-            const dzUnit = this._metersToUnit(dzMeters, this._distUnit);
-            return Math.sqrt(len2D * len2D + dzUnit * dzUnit);
+            const dz = pt2.z - pt1.z;             // z is already in meters
+            return Math.sqrt(m * m + dz * dz);
         }
-        return len2D;
+        return m;
     }
 
     private _segLen(pt1: Point, pt2: Point): string {
-        const raw = this._segLenVal(pt1, pt2);
-        return `${raw.toFixed(1)} ${this._distAbbr(this._distUnit)}`;
+        return this._formatDist(this._segMeters(pt1, pt2));
     }
 
-    private _polyLenVal(pl: Polyline): number {
+    private _polyMeters(pl: Polyline): number {
         if (!this._slantRange || !pl.hasZ) {
-            const len2D = this._isGeodesic
-                ? geometryEngine.geodesicLength(pl, this._distUnit as any)
-                : geometryEngine.planarLength(pl, this._distUnit as any);
-            return Math.abs(len2D);
+            return Math.abs(this._isGeodesic
+                ? geometryEngine.geodesicLength(pl, "meters")
+                : geometryEngine.planarLength(pl, "meters"));
         }
 
-        // Slant range for polyline: sum of slant range for all segments
+        // Slant range: sum per-segment slant length across every path.
         let total = 0;
-        pl.paths.forEach(path => {
+        for (let p = 0; p < pl.paths.length; p++) {
+            const path = pl.paths[p];
             for (let i = 0; i < path.length - 1; i++) {
-                const p1 = pl.getPoint(0, i);
-                const p2 = pl.getPoint(0, i + 1);
-                total += this._segLenVal(p1, p2);
+                total += this._segMeters(pl.getPoint(p, i)!, pl.getPoint(p, i + 1)!);
             }
-        });
+        }
         return total;
     }
 
     private _polyLen(pl: Polyline): string {
-        const raw = this._polyLenVal(pl);
-        let res = `${raw.toFixed(1)} ${this._distAbbr(this._distUnit)}`;
-        
+        const meters = this._polyMeters(pl);
+        let res = this._formatDist(meters);
+
         // March-time estimator
         if (this._speedKmh > 0) {
-            const distKm = this._distUnit === "kilometers" ? raw : 
-                           this._metersToUnit(raw / this._metersToUnit(1, this._distUnit), "kilometers");
+            const distKm = meters / 1000;
             const hours = distKm / this._speedKmh;
             const h = Math.floor(hours);
             const m = Math.round((hours - h) * 60);
@@ -684,10 +819,17 @@ class MeasurementEngine {
     }
 
     private _area(poly: Polygon): string {
-        const raw = this._isGeodesic
+        const raw = Math.abs(this._isGeodesic
             ? geometryEngine.geodesicArea(poly, this._areaUnit as any)
-            : geometryEngine.planarArea(poly, this._areaUnit as any);
-        return `${Math.abs(raw).toFixed(1)} ${this._areaAbbr(this._areaUnit)}`;
+            : geometryEngine.planarArea(poly, this._areaUnit as any));
+        const str = this._areaUnit === "square-meters" || this._areaUnit === "square-feet"
+            ? raw.toFixed(0)
+            : raw < 10 ? raw.toFixed(2) : raw.toFixed(1);
+        return `${str} ${this._areaAbbr(this._areaUnit)}`;
+    }
+
+    private _polygonToPolyline(poly: Polygon): Polyline {
+        return new Polyline({ paths: poly.rings, spatialReference: poly.spatialReference });
     }
 
     private _extentToPolygon(ext: Extent): Polygon {
@@ -716,48 +858,71 @@ class MeasurementEngine {
             if (gridAzimuth < 0) gridAzimuth += 360;
         }
 
-        // For simplicity in this engine, we'll treat grid azimuth as true azimuth.
-        // In a strict geodetic sense, convergence angle is needed for true azimuth.
+        // Without a projection convergence angle we can't separate grid from true
+        // azimuth, so grid is the best honest estimate of true north here.
         const trueAzimuth = gridAzimuth;
-        
+
         let magneticAzimuth = trueAzimuth - this._magneticDeclination;
         if (magneticAzimuth < 0) magneticAzimuth += 360;
         if (magneticAzimuth >= 360) magneticAzimuth -= 360;
 
-        // Create label from magnetic azimuth
-        const ns = (magneticAzimuth > 270 || magneticAzimuth < 90) ? "N" : "S";
-        const ew = (magneticAzimuth > 0 && magneticAzimuth < 180) ? "E" : (magneticAzimuth > 180 && magneticAzimuth < 360) ? "W" : "";
-        
-        let degFromPole = magneticAzimuth;
-        if (magneticAzimuth > 90 && magneticAzimuth <= 180) degFromPole = 180 - magneticAzimuth;
-        else if (magneticAzimuth > 180 && magneticAzimuth <= 270) degFromPole = magneticAzimuth - 180;
-        else if (magneticAzimuth > 270) degFromPole = 360 - magneticAzimuth;
-        
-        const d = Math.floor(degFromPole);
-        const t = (degFromPole - d) * 60;
-        const m = Math.floor(t);
-        const s = Math.floor(60 * (t - m));
-        const label = `${ns}${d}°${m}'${s}"${ew}`;
-
+        const label = this._bearingLabel(trueAzimuth, magneticAzimuth);
         return { trueAzimuth, magneticAzimuth, gridAzimuth, label };
     }
 
-    private _bearing(a: Point, b: Point): string {
-        return this._bearingValues(a, b).label;
+    /**
+     * Build a compact bearing label. Uses magnetic azimuth (suffix "M") when a
+     * declination is set, otherwise true azimuth (suffix "T") — so the label is
+     * never silently mislabelled as one when it's the other.
+     */
+    private _bearingLabel(trueAz: number, magAz: number): string {
+        const hasDecl = this._magneticDeclination !== 0;
+        const az = hasDecl ? magAz : trueAz;
+        const suffix = hasDecl ? "M" : "T";
+
+        switch (this._bearingFormat) {
+            case "mils": {
+                const mils = Math.round(az / 360 * 6400) % 6400;
+                return `${mils} mil ${suffix}`;
+            }
+            case "quadrant": {
+                const ns = (az > 270 || az < 90) ? "N" : "S";
+                const ew = (az > 0 && az < 180) ? "E" : (az > 180 && az < 360) ? "W" : "";
+                let degFromPole = az;
+                if (az > 90 && az <= 180) degFromPole = 180 - az;
+                else if (az > 180 && az <= 270) degFromPole = az - 180;
+                else if (az > 270) degFromPole = 360 - az;
+                const d = Math.floor(degFromPole);
+                const t = (degFromPole - d) * 60;
+                const m = Math.floor(t);
+                const s = Math.floor(60 * (t - m));
+                return `${ns}${d}°${m}'${s}"${ew}`;
+            }
+            case "decimal":
+            default:
+                return `${(Math.round(az) % 360).toString().padStart(3, "0")}°${suffix}`;
+        }
     }
 
-    private _textSymbol(pt: Point, angle: number, label: string): TextSymbol {
-        const font = new Font({ size: this._fontSize, style: "italic", weight: "bold", family: "Helvetica" });
-        const color = new Color([...this._fontColor, this._fontOpacity]);
+    /** Rebuild cached Font/Color — called on construction and when font opts change. */
+    private _rebuildStyle(): void {
+        this._font = new Font({ size: this._fontSize, style: "italic", weight: "bold", family: "Helvetica" });
+        this._fontColorObj = new Color([...this._fontColor, this._fontOpacity]);
+    }
 
+    private _textSymbol(_anchor: Point, angle: number, label: string): TextSymbol {
         let xOff = 6, yOff = 6;
         if      (angle >  45)              { xOff = 10; yOff = 4;  }
         else if (angle > -45 && angle < 0) { xOff = 6;  yOff = 12; }
         else if (angle <= -45)             { xOff = -10; yOff = 4; }
 
+        // Font/Color are shared value objects — cheaper than allocating per label
+        // on every draw-progress frame.
         return new TextSymbol({
-            text: label, font, color,
-            haloColor: new Color([0, 0, 0, 1]),
+            text: label,
+            font: this._font!,
+            color: this._fontColorObj!,
+            haloColor: this._haloColor,
             haloSize: 3,
             xoffset: xOff, yoffset: yOff,
         });
@@ -771,16 +936,24 @@ class MeasurementEngine {
         return this.areaUnits.find(x => x.unit === u)?.abbr ?? u;
     }
 
-    private _findById(id: string): Graphic | undefined {
-        return this._layer?.graphics.find((g: Graphic) => (g as any).__meId === id) as Graphic | undefined;
-    }
-
-    /** Resolve geodesic mode from the view's spatial reference (lazy, idempotent). */
+    /**
+     * Resolve geodesic mode from the view's spatial reference (lazy, idempotent).
+     * Only WGS84 (4326) and Web Mercator (3857) support the geodesic operators;
+     * any other projected SR falls back to planar, which is inaccurate over long
+     * distances — warn once so it isn't a silent surprise.
+     */
     private _resolveGeodesic(): void {
         const sr = this._view?.spatialReference;
-        if (sr != null) {
-            this._isGeodesic = sr.wkid === 4326 || sr.wkid === 3857;
+        if (sr == null) return;
+        const supportsGeodesic = sr.wkid === 4326 || sr.wkid === 3857;
+        if (!supportsGeodesic && !this._planarWarned) {
+            this._planarWarned = true;
+            console.warn(
+                `[MeasurementEngine] SR ${sr.wkid} uses planar measurement — ` +
+                `distances/areas may be inaccurate over long ranges.`,
+            );
         }
+        this._isGeodesic = supportsGeodesic;
     }
 
     private _getOrCreateLayer(id: string): GraphicsLayer {
@@ -796,8 +969,9 @@ class MeasurementEngine {
     // ── Event helpers ─────────────────────────────────────────────────────────
 
     private _emitUpdate(snap: Partial<MeasurementSnapshot>): void {
+        this._lastSnapshot = { ...snap, unit: this._distUnit, areaUnit: this._areaUnit };
         document.dispatchEvent(new CustomEvent("measurement-update", {
-            detail: { ...snap, unit: this._distUnit, areaUnit: this._areaUnit },
+            detail: this._lastSnapshot,
             bubbles: true,
         }));
     }

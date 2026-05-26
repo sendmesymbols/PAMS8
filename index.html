@@ -1068,6 +1068,21 @@
       </div>
     </div>
 
+    <!-- ── Declutter Perf HUD ─────────────────────────────────────────────── -->
+    <div id="declutterPerfHud" style="
+      position: absolute; top: 60px; right: 620px; min-width: 200px;
+      background: rgba(16, 20, 30, 0.94); color: #dce8f5;
+      font-family: 'SF Mono', 'Consolas', monospace; font-size: 10.5px;
+      border: 1px solid rgba(90, 130, 200, 0.25); border-radius: 8px;
+      padding: 8px 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+      z-index: 1080; display: none;">
+      <div style="font-weight:600;color:#7eb8ff;margin-bottom:5px;letter-spacing:0.3px;font-size:11px;">📊 Declutter Perf</div>
+      <div id="hud-solveMs" style="line-height:1.55;">solve: —</div>
+      <div id="hud-indexSize" style="line-height:1.55;">index: —</div>
+      <div id="hud-zoom" style="line-height:1.55;">zoom: —</div>
+      <div id="hud-steps" style="margin-top:5px;padding-top:5px;border-top:1px solid rgba(100,160,230,0.18);color:rgba(180,200,230,0.85);line-height:1.6;"></div>
+    </div>
+
     <!-- ── Engine Log Panel ─────────────────────────────────────────────────── -->
     <div id="engineLogPanel" class="log-collapsed">
       <header id="engineLogHeader">
@@ -1405,6 +1420,22 @@
               <input type="checkbox" id="setting-showExtent" checked title="Display width and height (bounding box extent) of area and symbol groups." />
             </div>
             <div class="sub-feature-label">Advanced</div>
+            <div class="setting-row">
+              <label>Bearing Format</label>
+              <select id="setting-bearingFormat" title="How bearings are displayed: decimal degrees (045°), mils (NATO 6400), or quadrant (N45°E). Suffixed T (true) or M (magnetic, when declination is set).">
+                <option value="decimal" selected>Decimal °</option>
+                <option value="mils">Mils</option>
+                <option value="quadrant">Quadrant</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Auto Unit</label>
+              <input type="checkbox" id="setting-autoUnit" title="Automatically pick a readable distance unit per value (e.g. 850 m instead of 0.85 km, and km / miles for long distances)." />
+            </div>
+            <div class="setting-row">
+              <label>Keep Labels</label>
+              <input type="checkbox" id="setting-preserveLabels" title="Keep measurement labels on the map after a drawing finishes (useful for briefings/screenshots). When off, labels clear when the symbol is done." />
+            </div>
             <div class="setting-row">
               <label title="Slant Range (3D) accounts for elevation differences">Slant Range (3D)</label>
               <input type="checkbox" id="setting-slantRange" />
@@ -1774,11 +1805,11 @@
             </div>
             <div class="setting-row">
               <label>Min cluster size</label>
-              <input type="number" id="setting-clusterMinSize" value="3" min="2" max="50" step="1" style="width:55px" title="Minimum nearby symbols required before they aggregate into a cluster badge." />
+              <input type="number" id="setting-clusterMinSize" value="2" min="2" max="50" step="1" style="width:55px" title="Minimum nearby symbols required before they aggregate into a cluster badge." />
             </div>
             <div class="setting-row">
               <label>Radius px</label>
-              <input type="number" id="setting-clusterRadiusPx" value="40" min="10" max="200" step="5" style="width:55px" title="Screen-pixel radius used to find cluster neighbours around each seed symbol." />
+              <input type="number" id="setting-clusterRadiusPx" value="80" min="10" max="400" step="5" style="width:55px" title="Screen-pixel radius used to find cluster neighbours around each seed symbol. Higher = more aggressive clustering at low zoom." />
             </div>
             <div class="setting-row">
               <label>Disable above zoom</label>
@@ -1791,6 +1822,158 @@
             <div class="setting-row">
               <label>Respect identity</label>
               <input type="checkbox" id="setting-clusterRespectIdentity" checked title="When enabled, friendly and hostile symbols cluster separately. When disabled, all nearby symbols can merge into a single badge." />
+            </div>
+            <div class="setting-row">
+              <label>Promote mode</label>
+              <select id="setting-clusterPromoteMode" style="width:90px" title="badge: replace cluster with a generic circle+count. seed: keep the highest-priority member visible at its true position with a small ×N count beside it (only when all members share echelon)." >
+                <option value="badge">badge</option>
+                <option value="seed">seed</option>
+              </select>
+            </div>
+            <div class="sub-feature-label">Label Placement (Maplex)</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-labelsEnabled" title="Place labels around their parent symbol using an 8-position try-fit algorithm. Labels that collide are displaced and connected by a leader line. Higher-priority symbols win placement disputes." />
+            </div>
+            <div class="setting-row">
+              <label>Offset px</label>
+              <input type="number" id="setting-labelsOffsetPx" value="16" min="4" max="100" step="1" style="width:55px" title="Distance in pixels from a symbol's center to its label's center for the preferred position." />
+            </div>
+            <div class="setting-row">
+              <label>Leader threshold px</label>
+              <input type="number" id="setting-labelsLeaderThresholdPx" value="20" min="0" max="200" step="1" style="width:55px" title="Draw a leader line only when the label is displaced more than this many pixels from its anchor symbol." />
+            </div>
+            <div class="setting-row">
+              <label>Leader color</label>
+              <input type="color" id="setting-labelsLeaderColor" value="#808080" title="Stroke color for leader lines (RGB hex)." />
+            </div>
+            <div class="setting-row">
+              <label>Leader width</label>
+              <input type="number" id="setting-labelsLeaderWidth" value="0.75" min="0.25" max="6" step="0.25" style="width:55px" title="Stroke width for leader lines in pixels." />
+            </div>
+            <div class="setting-row">
+              <label>Leader opacity</label>
+              <input type="range" id="setting-labelsLeaderOpacity" min="0" max="1" step="0.05" value="0.7" style="width:60px" title="Opacity of leader lines (0 = transparent, 1 = opaque)." />
+              <span class="value-display" id="labelsLeaderOpacity-display">0.70</span>
+            </div>
+            <div class="setting-row">
+              <label>Max labels</label>
+              <input type="number" id="setting-labelsMaxToPlace" value="500" min="50" max="5000" step="50" style="width:65px" title="Hard cap on labels processed per solve. When exceeded, lowest-priority labels are hidden. Lower values keep the solve fast in dense scenes." />
+            </div>
+            <div class="setting-row">
+              <label>Abbreviate on overflow</label>
+              <input type="checkbox" id="setting-labelsAbbreviate" checked title="If no candidate position fits the full text, retry the placement with a truncated version (e.g. 'Bravo Company' → 'Bravo Co…'). Higher chance of finding a non-colliding spot." />
+            </div>
+            <div class="setting-row">
+              <label>Abbreviate max chars</label>
+              <input type="number" id="setting-labelsAbbreviateMaxChars" value="8" min="2" max="40" step="1" style="width:55px" title="Maximum characters retained before the ellipsis when abbreviating. Lower values are more likely to fit but harder to read." />
+            </div>
+            <div class="setting-row">
+              <label>Hide on overflow</label>
+              <input type="checkbox" id="setting-labelsHideOnOverflow" title="When no position fits (even after abbreviation), hide the label entirely rather than letting it overlap. Sorted by priority, so lowest-importance labels drop first." />
+            </div>
+            <div class="sub-feature-label">Disperse Markers</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-disperseEnabled" title="Radially fan out symbols stacked at the same coordinate so each one is visible. Active only at high zoom — complements clustering, which handles density at low / mid zoom." />
+            </div>
+            <div class="setting-row">
+              <label>Activate above zoom</label>
+              <input type="number" id="setting-disperseMinZoom" value="14" min="1" max="22" step="1" style="width:55px" title="Disperse only runs when the map zoom is at or above this level. Below this, clustering is expected to handle overlap." />
+            </div>
+            <div class="setting-row">
+              <label>Disable above zoom</label>
+              <input type="number" id="setting-disperseMaxZoom" value="18" min="1" max="22" step="1" style="width:55px" title="Above this zoom, Disperse releases all symbols to their true positions — at deep zoom the user is inspecting individuals and doesn't want a radial fan." />
+            </div>
+            <div class="setting-row">
+              <label>Stack threshold px</label>
+              <input type="number" id="setting-disperseThresholdPx" value="12" min="2" max="100" step="1" style="width:55px" title="Symbols within this screen-pixel distance of each other are treated as a stack and dispersed." />
+            </div>
+            <div class="setting-row">
+              <label>Fan radius px</label>
+              <input type="number" id="setting-disperseRadiusPx" value="18" min="4" max="120" step="1" style="width:55px" title="Distance each member of a stack is moved from the centroid when fanned out." />
+            </div>
+            <div class="setting-row">
+              <label>Max stack size</label>
+              <input type="number" id="setting-disperseMaxGroupSize" value="12" min="2" max="60" step="1" style="width:55px" title="Hard cap on members fanned per stack. Members beyond this stay at the centroid (safety valve for extreme stacks)." />
+            </div>
+            <div class="sub-feature-label">Ladder (Flag Halyard)</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-ladderEnabled" title="Gather nearby same-identity symbols into a vertical stack ('rungs') connected by a thin line ('spine') down to the geographic centroid. Highest-echelon symbol sits on the top rung. Supersedes Disperse Markers when both are enabled — ladder claims qualifying stacks first." />
+            </div>
+            <div class="setting-row">
+              <label>Activate above zoom</label>
+              <input type="number" id="setting-ladderMinZoom" value="14" min="1" max="22" step="1" style="width:55px" title="Laddering only runs when the map zoom is at or above this level. Below this, stacks remain unchanged." />
+            </div>
+            <div class="setting-row">
+              <label>Disable above zoom</label>
+              <input type="number" id="setting-ladderMaxZoom" value="17" min="1" max="22" step="1" style="width:55px" title="Above this zoom, Ladder releases all symbols to their true positions — at deep zoom the user wants to inspect individuals, not a halyard." />
+            </div>
+            <div class="setting-row">
+              <label>Stack threshold px</label>
+              <input type="number" id="setting-ladderThresholdPx" value="50" min="2" max="400" step="1" style="width:55px" title="Symbols within this screen-pixel radius of each other are gathered into the same ladder. Bigger = wider buffer = longer halyards." />
+            </div>
+            <div class="setting-row">
+              <label>Min rungs</label>
+              <input type="number" id="setting-ladderMinRungs" value="2" min="2" max="30" step="1" style="width:55px" title="Skip stacks smaller than this — leave the symbols unchanged." />
+            </div>
+            <div class="setting-row">
+              <label>Max rungs</label>
+              <input type="number" id="setting-ladderMaxRungs" value="15" min="2" max="100" step="1" style="width:55px" title="Cap on rungs per ladder. Subgroups beyond this size restore to their true positions (likely better candidates for a cluster badge)." />
+            </div>
+            <div class="setting-row">
+              <label>Layout</label>
+              <select id="setting-ladderLayout" style="width:90px" title="side: rungs offset to one side of the spine (flag-halyard style). center: rungs centered on the spine (vertical chain).">
+                <option value="side">side</option>
+                <option value="center">center</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Side offset px</label>
+              <input type="number" id="setting-ladderSideOffsetPx" value="24" min="4" max="120" step="1" style="width:55px" title="For side layout: horizontal distance from spine to each rung's centre. Ignored when layout=center." />
+            </div>
+            <div class="setting-row">
+              <label>Rung spacing px</label>
+              <input type="number" id="setting-ladderRungSpacingPx" value="22" min="6" max="100" step="1" style="width:55px" title="Vertical pixel spacing between consecutive rungs on the ladder." />
+            </div>
+            <div class="setting-row">
+              <label>Spine color</label>
+              <input type="color" id="setting-ladderSpineColor" value="#b4b4b4" title="Stroke color for the spine (and tie-lines) in RGB hex." />
+            </div>
+            <div class="setting-row">
+              <label>Spine width</label>
+              <input type="number" id="setting-ladderSpineWidth" value="1" min="0.25" max="6" step="0.25" style="width:55px" title="Stroke width for the spine in pixels." />
+            </div>
+            <div class="setting-row">
+              <label>Spine opacity</label>
+              <input type="range" id="setting-ladderSpineOpacity" min="0" max="1" step="0.05" value="0.7" style="width:60px" title="Opacity of the spine (0 = transparent, 1 = opaque). Tie-lines render at 60% of this value." />
+              <span class="value-display" id="ladderSpineOpacity-display">0.70</span>
+            </div>
+            <div class="setting-row">
+              <label>Respect identity</label>
+              <input type="checkbox" id="setting-ladderRespectIdentity" checked title="When enabled, friendly / hostile / neutral symbols form separate ladders. When disabled, all nearby symbols ladder together sorted purely by echelon." />
+            </div>
+            <div class="setting-row">
+              <label>Show tie-lines</label>
+              <input type="checkbox" id="setting-ladderShowTieLines" checked title="For side layout: draw thin perpendicular lines connecting the spine to each rung. Ignored when layout=center." />
+            </div>
+            <div class="setting-row">
+              <label>Altitude mode (3D)</label>
+              <input type="checkbox" id="setting-ladderAltitudeMode" title="Stack rungs vertically in altitude with a vertical stem from ground to top rung — like flags up a halyard. Switch the view to 3D to see it; in 2D the engine auto-falls-back to the side / center layout because z values can't be visualised on a flat map." />
+            </div>
+            <div class="setting-row">
+              <label>Altitude spacing m</label>
+              <input type="number" id="setting-ladderAltitudeSpacingM" value="250" min="1" max="20000" step="10" style="width:60px" title="Vertical distance in metres between consecutive rungs. At zoom 14 ≈ 9.5 m/px, so 250 m ≈ 26 px between rungs. Bump higher for taller halyards." />
+            </div>
+            <div class="setting-row">
+              <label>Stem base altitude m</label>
+              <input type="number" id="setting-ladderStemBaseAltitudeM" value="0" min="0" max="10000" step="1" style="width:60px" title="Offset above the ground (in metres) where the stem starts. Lifts the whole ladder by this much." />
+            </div>
+            <div class="sub-feature-label">Diagnostics</div>
+            <div class="setting-row">
+              <label>Perf HUD</label>
+              <input type="checkbox" id="setting-declutterPerfHud" title="Show a small overlay panel reporting last solve time, spatial-index size, and per-step duration. Useful for tuning cluster radius / max-to-place in dense scenes." />
             </div>
           </div>
         </div>
@@ -2426,6 +2609,20 @@
           <button class="ms-btn" id="api-clip-has-btn">Has Clipboard?</button>
           <div class="ms-status" id="api-clip-status">Empty</div>
         </div>
+        <div class="api-section">
+          <div class="ms-section-title">Test Field (Declutter Demo)</div>
+          <div class="setting-row" style="margin-top:4px">
+            <label>Count</label>
+            <input type="number" id="api-testfield-count" value="80" min="5" max="2000" step="5" style="width:70px" title="Total number of test symbols to generate." />
+          </div>
+          <div class="setting-row">
+            <label>Stacks</label>
+            <input type="number" id="api-testfield-stacks" value="4" min="0" max="40" step="1" style="width:70px" title="Number of intentional same-coordinate stacks (4 symbols each) to seed disperse/cluster testing." />
+          </div>
+          <button class="ms-btn success" id="api-testfield-generate" title="Drop a mixed field of UEI symbols (varied identity + echelon + designator) inside the current view. Use to test cluster badges, echelon ladder, disperse, label placer, and abbreviation in one click.">Generate Test Field</button>
+          <button class="ms-btn danger" id="api-testfield-clear" title="Remove every graphic tagged as test data. Leaves real (user-drawn) symbols alone.">Clear Test Field</button>
+          <div class="ms-status" id="api-testfield-status">Ready</div>
+        </div>
       </div>
     </div>
 
@@ -2674,6 +2871,9 @@
           path: ['measurement', 'speedKmh'],
           value: +v,
         }),
+        'setting-bearingFormat': (v) => ({ path: ['measurement', 'bearingFormat'], value: v }),
+        'setting-autoUnit': (v) => ({ path: ['measurement', 'autoUnit'], value: v }),
+        'setting-preserveLabels': (v) => ({ path: ['measurement', 'preserveOnComplete'], value: v }),
         'setting-showBng': (v) => ({ path: ['measurement', 'showBng'], value: v }),
         'setting-showArea': (v) => ({ path: ['measurement', 'showArea'], value: v }),
         'setting-showTotal': (v) => ({ path: ['measurement', 'showTotal'], value: v }),
@@ -2802,6 +3002,41 @@
         'setting-clusterMaxZoom':          (v) => ({ path: ['declutter', 'cluster', 'maxZoom'],          value: +v }),
         'setting-clusterFadeMs':           (v) => ({ path: ['declutter', 'cluster', 'fadeMs'],           value: +v }),
         'setting-clusterRespectIdentity':  (v) => ({ path: ['declutter', 'cluster', 'respectIdentity'], value: v }),
+        'setting-clusterPromoteMode':      (v) => ({ path: ['declutter', 'cluster', 'promoteMode'],     value: v }),
+        'setting-declutterPerfHud':        (v) => ({ path: ['declutter', 'perfHud'],                    value: v }),
+        'setting-labelsEnabled':             (v) => ({ path: ['declutter', 'labels', 'enabled'],             value: v }),
+        'setting-labelsOffsetPx':            (v) => ({ path: ['declutter', 'labels', 'offsetPx'],            value: +v }),
+        'setting-labelsLeaderThresholdPx':   (v) => ({ path: ['declutter', 'labels', 'leaderThresholdPx'],   value: +v }),
+        'setting-labelsLeaderColor':         (v) => ({ path: ['declutter', 'labels', 'leaderColor'],         value: hexToRgb(v) }),
+        'setting-labelsLeaderWidth':         (v) => ({ path: ['declutter', 'labels', 'leaderWidth'],         value: +v }),
+        'setting-labelsLeaderOpacity':       (v) => ({ path: ['declutter', 'labels', 'leaderOpacity'],       value: +v }),
+        'setting-labelsMaxToPlace':          (v) => ({ path: ['declutter', 'labels', 'maxToPlace'],          value: +v }),
+        'setting-labelsAbbreviate':          (v) => ({ path: ['declutter', 'labels', 'abbreviateOnOverflow'], value: v }),
+        'setting-labelsAbbreviateMaxChars':  (v) => ({ path: ['declutter', 'labels', 'abbreviateMaxChars'],   value: +v }),
+        'setting-labelsHideOnOverflow':      (v) => ({ path: ['declutter', 'labels', 'hideOnOverflow'],       value: v }),
+        'setting-disperseEnabled':           (v) => ({ path: ['declutter', 'disperse', 'enabled'],          value: v }),
+        'setting-disperseMinZoom':           (v) => ({ path: ['declutter', 'disperse', 'minZoom'],          value: +v }),
+        'setting-disperseMaxZoom':           (v) => ({ path: ['declutter', 'disperse', 'maxZoom'],          value: +v }),
+        'setting-disperseThresholdPx':       (v) => ({ path: ['declutter', 'disperse', 'thresholdPx'],      value: +v }),
+        'setting-disperseRadiusPx':          (v) => ({ path: ['declutter', 'disperse', 'radiusPx'],         value: +v }),
+        'setting-disperseMaxGroupSize':      (v) => ({ path: ['declutter', 'disperse', 'maxGroupSize'],     value: +v }),
+        'setting-ladderEnabled':             (v) => ({ path: ['declutter', 'ladder', 'enabled'],            value: v }),
+        'setting-ladderMinZoom':             (v) => ({ path: ['declutter', 'ladder', 'minZoom'],            value: +v }),
+        'setting-ladderMaxZoom':             (v) => ({ path: ['declutter', 'ladder', 'maxZoom'],            value: +v }),
+        'setting-ladderThresholdPx':         (v) => ({ path: ['declutter', 'ladder', 'thresholdPx'],        value: +v }),
+        'setting-ladderMinRungs':            (v) => ({ path: ['declutter', 'ladder', 'minRungs'],           value: +v }),
+        'setting-ladderMaxRungs':            (v) => ({ path: ['declutter', 'ladder', 'maxRungs'],           value: +v }),
+        'setting-ladderLayout':              (v) => ({ path: ['declutter', 'ladder', 'layout'],             value: v }),
+        'setting-ladderSideOffsetPx':        (v) => ({ path: ['declutter', 'ladder', 'sideOffsetPx'],       value: +v }),
+        'setting-ladderRungSpacingPx':       (v) => ({ path: ['declutter', 'ladder', 'rungSpacingPx'],      value: +v }),
+        'setting-ladderSpineColor':          (v) => ({ path: ['declutter', 'ladder', 'spineColor'],         value: hexToRgb(v) }),
+        'setting-ladderSpineWidth':          (v) => ({ path: ['declutter', 'ladder', 'spineWidth'],         value: +v }),
+        'setting-ladderSpineOpacity':        (v) => ({ path: ['declutter', 'ladder', 'spineOpacity'],       value: +v }),
+        'setting-ladderRespectIdentity':     (v) => ({ path: ['declutter', 'ladder', 'respectIdentity'],    value: v }),
+        'setting-ladderShowTieLines':        (v) => ({ path: ['declutter', 'ladder', 'showTieLines'],       value: v }),
+        'setting-ladderAltitudeMode':        (v) => ({ path: ['declutter', 'ladder', 'altitudeMode'],       value: v }),
+        'setting-ladderAltitudeSpacingM':    (v) => ({ path: ['declutter', 'ladder', 'altitudeSpacingM'],   value: +v }),
+        'setting-ladderStemBaseAltitudeM':   (v) => ({ path: ['declutter', 'ladder', 'stemBaseAltitudeM'],  value: +v }),
         'setting-mgrsEngine':     (v) => ({ path: ['features', 'mgrsEngine'], value: v }),
         'setting-mgrsShowGZD':    (v) => ({ path: ['mgrs', 'showGZD'], value: v }),
         'setting-mgrsShow100K':   (v) => ({ path: ['mgrs', 'show100K'], value: v }),
@@ -3046,11 +3281,59 @@
           document.getElementById('setting-declutterSymFadeMs').value = dc.symbols?.fadeMs ?? 300;
           const cc = dc.cluster ?? {};
           document.getElementById('setting-clusterEnabled').checked = cc.enabled === true;
-          document.getElementById('setting-clusterMinSize').value = cc.minClusterSize ?? 3;
-          document.getElementById('setting-clusterRadiusPx').value = cc.radiusPx ?? 40;
+          document.getElementById('setting-clusterMinSize').value = cc.minClusterSize ?? 2;
+          document.getElementById('setting-clusterRadiusPx').value = cc.radiusPx ?? 80;
           document.getElementById('setting-clusterMaxZoom').value = cc.maxZoom ?? 14;
           document.getElementById('setting-clusterFadeMs').value = cc.fadeMs ?? 250;
           document.getElementById('setting-clusterRespectIdentity').checked = cc.respectIdentity !== false;
+          document.getElementById('setting-clusterPromoteMode').value = cc.promoteMode ?? 'badge';
+          document.getElementById('setting-declutterPerfHud').checked = dc.perfHud === true;
+          const lc = dc.labels ?? {};
+          document.getElementById('setting-labelsEnabled').checked = lc.enabled === true;
+          document.getElementById('setting-labelsOffsetPx').value = lc.offsetPx ?? 16;
+          document.getElementById('setting-labelsLeaderThresholdPx').value = lc.leaderThresholdPx ?? 20;
+          document.getElementById('setting-labelsLeaderWidth').value = lc.leaderWidth ?? 0.75;
+          const lOp = lc.leaderOpacity ?? 0.7;
+          document.getElementById('setting-labelsLeaderOpacity').value = lOp;
+          document.getElementById('labelsLeaderOpacity-display').textContent = Number(lOp).toFixed(2);
+          document.getElementById('setting-labelsMaxToPlace').value = lc.maxToPlace ?? 500;
+          document.getElementById('setting-labelsAbbreviate').checked = lc.abbreviateOnOverflow !== false;
+          document.getElementById('setting-labelsAbbreviateMaxChars').value = lc.abbreviateMaxChars ?? 8;
+          document.getElementById('setting-labelsHideOnOverflow').checked = lc.hideOnOverflow === true;
+          if (Array.isArray(lc.leaderColor)) {
+            document.getElementById('setting-labelsLeaderColor').value =
+              rgbToHex(lc.leaderColor[0], lc.leaderColor[1], lc.leaderColor[2]);
+          }
+          const dsp = dc.disperse ?? {};
+          document.getElementById('setting-disperseEnabled').checked = dsp.enabled === true;
+          document.getElementById('setting-disperseMinZoom').value = dsp.minZoom ?? 14;
+          document.getElementById('setting-disperseMaxZoom').value = dsp.maxZoom ?? 18;
+          document.getElementById('setting-disperseThresholdPx').value = dsp.thresholdPx ?? 12;
+          document.getElementById('setting-disperseRadiusPx').value = dsp.radiusPx ?? 18;
+          document.getElementById('setting-disperseMaxGroupSize').value = dsp.maxGroupSize ?? 12;
+          const lad = dc.ladder ?? {};
+          document.getElementById('setting-ladderEnabled').checked = lad.enabled === true;
+          document.getElementById('setting-ladderMinZoom').value = lad.minZoom ?? 14;
+          document.getElementById('setting-ladderMaxZoom').value = lad.maxZoom ?? 17;
+          document.getElementById('setting-ladderThresholdPx').value = lad.thresholdPx ?? 50;
+          document.getElementById('setting-ladderMinRungs').value = lad.minRungs ?? 2;
+          document.getElementById('setting-ladderMaxRungs').value = lad.maxRungs ?? 15;
+          document.getElementById('setting-ladderLayout').value = lad.layout ?? 'side';
+          document.getElementById('setting-ladderSideOffsetPx').value = lad.sideOffsetPx ?? 24;
+          document.getElementById('setting-ladderRungSpacingPx').value = lad.rungSpacingPx ?? 22;
+          document.getElementById('setting-ladderSpineWidth').value = lad.spineWidth ?? 1;
+          const spOp = lad.spineOpacity ?? 0.7;
+          document.getElementById('setting-ladderSpineOpacity').value = spOp;
+          document.getElementById('ladderSpineOpacity-display').textContent = Number(spOp).toFixed(2);
+          document.getElementById('setting-ladderRespectIdentity').checked = lad.respectIdentity !== false;
+          document.getElementById('setting-ladderShowTieLines').checked = lad.showTieLines !== false;
+          document.getElementById('setting-ladderAltitudeMode').checked = lad.altitudeMode === true;
+          document.getElementById('setting-ladderAltitudeSpacingM').value = lad.altitudeSpacingM ?? 250;
+          document.getElementById('setting-ladderStemBaseAltitudeM').value = lad.stemBaseAltitudeM ?? 0;
+          if (Array.isArray(lad.spineColor)) {
+            document.getElementById('setting-ladderSpineColor').value =
+              rgbToHex(lad.spineColor[0], lad.spineColor[1], lad.spineColor[2]);
+          }
           document.getElementById('setting-analysisEngines').checked =
             features.analysisEngines !== false;
           document.getElementById('setting-deploymentBuilder').checked =
@@ -3142,6 +3425,9 @@
           document.getElementById('setting-slantRange').checked = measure.slantRange === true;
           document.getElementById('setting-magneticDeclination').value = measure.magneticDeclination || 0;
           document.getElementById('setting-speedKmh').value = measure.speedKmh || 5;
+          document.getElementById('setting-bearingFormat').value = measure.bearingFormat || 'decimal';
+          document.getElementById('setting-autoUnit').checked = measure.autoUnit === true;
+          document.getElementById('setting-preserveLabels').checked = measure.preserveOnComplete === true;
           document.getElementById('setting-showBng').checked = measure.showBng !== false;
           document.getElementById('setting-showArea').checked = measure.showArea !== false;
           document.getElementById('setting-showTotal').checked = measure.showTotal !== false;
@@ -4270,6 +4556,42 @@
           entries[0].remove();
         }
       });
+
+      // ── Declutter Perf HUD ─────────────────────────────────────────────────
+      const perfHudEl = document.getElementById('declutterPerfHud');
+      const hudSolveMs = document.getElementById('hud-solveMs');
+      const hudIndexSize = document.getElementById('hud-indexSize');
+      const hudZoom = document.getElementById('hud-zoom');
+      const hudSteps = document.getElementById('hud-steps');
+
+      function setHudVisible(on) {
+        if (perfHudEl) perfHudEl.style.display = on ? 'block' : 'none';
+      }
+
+      document.addEventListener('declutter-solve-stats', (e) => {
+        if (!perfHudEl || perfHudEl.style.display === 'none') return;
+        const s = e.detail;
+        hudSolveMs.textContent = `solve: ${s.solveMs.toFixed(1)} ms`;
+        hudIndexSize.textContent = `index: ${s.indexSize} symbols`;
+        hudZoom.textContent = `zoom: ${s.zoom.toFixed(2)}`;
+        const lines = Object.entries(s.perStepMs)
+          .map(([n, ms]) => `  ${n}: ${ms.toFixed(2)} ms`)
+          .join('<br>');
+        hudSteps.innerHTML = lines || '<span style="opacity:0.5">no steps</span>';
+      });
+
+      // React to settings toggle
+      const perfHudCheckbox = document.getElementById('setting-declutterPerfHud');
+      if (perfHudCheckbox) {
+        perfHudCheckbox.addEventListener('change', () => setHudVisible(perfHudCheckbox.checked));
+      }
+      // Initialize from settings once SymbolEngine has loaded
+      setTimeout(() => {
+        const s = window.symbolEngine?.settings;
+        const on = s?.declutter?.perfHud === true;
+        if (perfHudCheckbox) perfHudCheckbox.checked = on;
+        setHudVisible(on);
+      }, 1500);
 
       // API Logger buttons
       document.getElementById('api-log-enable').addEventListener('click', () => {

@@ -71,6 +71,10 @@ declare class SymbolEngine implements Evented {
     private _analysisRegistry;
     private _deploymentBuilderEngine;
     private _declutterEngine;
+    private _clusterEngine;
+    private _labelPlacer;
+    private _markerDisperser;
+    private _ladderEngine;
     private _morphixEngine;
     readonly serializationEngine: SerializationEngine;
     private currentSymbol;

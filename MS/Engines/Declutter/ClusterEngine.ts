@@ -9,7 +9,7 @@ import GraphicsLayerManager, { LAYER_NAMES } from "../../Managers/GraphicsLayerM
 import settingsData from "../../Data/Settings.json";
 import { DeclutterEngine, SolveContext } from "./DeclutterEngine";
 import { IndexEntry } from "./SpatialIndex";
-import { getIdentityCode } from "./echelon";
+import { getEchelonCode, getIdentityCode } from "./echelon";
 
 const SOLVE_STEP_NAME = "cluster";
 
@@ -46,18 +46,23 @@ interface Cluster {
  *     and destroying a layer per solve
  */
 export class ClusterEngine {
+  private _getView: () => MapView | SceneView;
   private _layerManager: GraphicsLayerManager;
   private _declutter: DeclutterEngine;
   private _enabled = false;
   /** Graphics currently hidden by clustering, mapped to their pre-hide state. */
   private _hiddenMembers = new Map<string, boolean>();
   private _clustersActive = false;
+  /** Member IDs the user clicked to expand — skipped from re-clustering until they click elsewhere or zoom. */
+  private _pinnedExpanded = new Set<string>();
+  private _clickHandle: { remove(): void } | null = null;
 
   constructor(
-    _viewProvider: () => MapView | SceneView,
+    viewProvider: () => MapView | SceneView,
     layerManager: GraphicsLayerManager,
     declutter: DeclutterEngine,
   ) {
+    this._getView = viewProvider;
     this._layerManager = layerManager;
     this._declutter = declutter;
   }
@@ -70,12 +75,16 @@ export class ClusterEngine {
     if (this._enabled) return;
     this._enabled = true;
     this._declutter.registerSolveStep(SOLVE_STEP_NAME, ctx => this._solve(ctx));
+    this._wireClickHandler();
   }
 
   disable(): void {
     if (!this._enabled) return;
     this._enabled = false;
     this._declutter.unregisterSolveStep(SOLVE_STEP_NAME);
+    this._clickHandle?.remove();
+    this._clickHandle = null;
+    this._pinnedExpanded.clear();
     this._restoreAllHidden();
     const layer = this._layerManager.getLayer(LAYER_NAMES.CLUSTER);
     if (layer) {
@@ -91,12 +100,41 @@ export class ClusterEngine {
 
   onViewChanged(_view: MapView | SceneView): void {
     if (this._enabled) {
+      this._clickHandle?.remove();
+      this._clickHandle = null;
+      this._pinnedExpanded.clear();
       this._restoreAllHidden();
       const layer = this._layerManager.getLayer(LAYER_NAMES.CLUSTER);
       layer?.removeAll();
       this._clustersActive = false;
+      this._wireClickHandler();
       this._declutter.requestSolve();
     }
+  }
+
+  /**
+   * Click-to-expand: clicking a cluster badge pins its members so they
+   * stay visible at their true positions until the user clicks elsewhere
+   * or the view zooms. Clicking blank map unpins everything.
+   */
+  private _wireClickHandler(): void {
+    const view = this._getView();
+    if (!view) return;
+    this._clickHandle = view.on("click", (event: any) => {
+      view.hitTest(event).then((res: any) => {
+        const hit = res?.results?.find((r: any) => r?.graphic?.attributes?.__isCluster);
+        if (hit) {
+          const memberIds: string[] = hit.graphic.attributes?.clusterMemberIds ?? [];
+          if (memberIds.length === 0) return;
+          for (const id of memberIds) this._pinnedExpanded.add(id);
+          this._declutter.requestSolve();
+        } else if (this._pinnedExpanded.size > 0) {
+          // Clicked blank map — collapse the expansion
+          this._pinnedExpanded.clear();
+          this._declutter.requestSolve();
+        }
+      }).catch(() => { /* hitTest can reject during view transitions */ });
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -126,16 +164,77 @@ export class ClusterEngine {
       return;
     }
 
+    const promoteToSeed = cfg.promoteMode === "seed";
+
     for (const c of clusters) {
-      for (const m of c.members) {
-        this._hiddenMembers.set(m.id, m.graphic.visible !== false);
-        m.graphic.visible = false;
+      const seedPromote = promoteToSeed && this._allShareEchelon(c.members);
+
+      if (seedPromote) {
+        // Members are already sorted by priority desc inside _computeClusters
+        // (greedy seeds with the highest-priority unprocessed entry).
+        const seed = c.members[0];
+
+        // Keep seed visible; hide everyone else
+        for (const m of c.members) {
+          if (m === seed) continue;
+          this._hiddenMembers.set(m.id, m.graphic.visible !== false);
+          m.graphic.visible = false;
+        }
+
+        const countBadge = this._makeSeedCountBadge(ctx, seed, c);
+        if (countBadge) layer.add(countBadge);
+      } else {
+        // Original count-badge mode: hide all members, render circle + text
+        for (const m of c.members) {
+          this._hiddenMembers.set(m.id, m.graphic.visible !== false);
+          m.graphic.visible = false;
+        }
+        layer.addMany(this._makeBadge(c));
       }
-      const badges = this._makeBadge(c);
-      layer.addMany(badges);
     }
 
     this._fadeInIfInactive(layer, cfg.fadeMs);
+  }
+
+  /** True when every cluster member has the same echelon code. */
+  private _allShareEchelon(members: IndexEntry[]): boolean {
+    if (members.length === 0) return false;
+    const first = getEchelonCode(members[0].graphic);
+    for (let i = 1; i < members.length; i++) {
+      if (getEchelonCode(members[i].graphic) !== first) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Tiny "×N" indicator placed NE of the seed symbol. Used when promote
+   * mode is on and all members share echelon — the seed conveys the unit
+   * type, the count conveys how many.
+   */
+  private _makeSeedCountBadge(ctx: SolveContext, seed: IndexEntry, c: Cluster): Graphic | null {
+    const color = IDENTITY_COLOR[c.group] ?? IDENTITY_COLOR.other;
+    const offsetPx = 18;
+    const badgeScreen = { x: seed.x + offsetPx, y: seed.y - offsetPx };
+    const mapPt = ctx.view.toMap(badgeScreen as any);
+    if (!mapPt) return null;
+
+    return new Graphic({
+      geometry: mapPt,
+      symbol: new TextSymbol({
+        text: `×${c.members.length}`,
+        color: [255, 255, 255, 1] as any,
+        font: { size: 11, family: "Inter, sans-serif", weight: "bold" },
+        haloColor: [color[0], color[1], color[2], 1] as any,
+        haloSize: 2,
+      }),
+      attributes: {
+        __isCluster: true,
+        __isClusterCount: true,
+        clusterCount: c.members.length,
+        clusterGroup: c.group,
+        clusterMemberIds: c.members.map(m => m.id),
+      },
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -150,6 +249,8 @@ export class ClusterEngine {
       for (const e of bucket) {
         // Skip graphics already hidden by other rules (echelon, zoom)
         if (e.graphic.visible === false) continue;
+        // Skip entries the user explicitly expanded via click-to-expand
+        if (this._pinnedExpanded.has(e.id)) continue;
         all.push(e);
       }
     }
@@ -215,6 +316,7 @@ export class ClusterEngine {
         __isCluster: true,
         clusterCount: count,
         clusterGroup: c.group,
+        clusterMemberIds: c.members.map(m => m.id),
       },
     });
 
@@ -313,11 +415,12 @@ export class ClusterEngine {
   private _cfg() {
     const c = (settingsData as any).declutter?.cluster ?? {};
     return {
-      minClusterSize: c.minClusterSize ?? 3,
-      radiusPx:       c.radiusPx       ?? 40,
-      maxZoom:        c.maxZoom        ?? 14,
-      fadeMs:         c.fadeMs         ?? 250,
+      minClusterSize:  c.minClusterSize ?? 3,
+      radiusPx:        c.radiusPx       ?? 40,
+      maxZoom:         c.maxZoom        ?? 14,
+      fadeMs:          c.fadeMs         ?? 250,
       respectIdentity: c.respectIdentity !== false,
+      promoteMode:     c.promoteMode    ?? "badge",
     };
   }
 }

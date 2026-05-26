@@ -39,6 +39,15 @@ export interface SolveContext {
 
 export type SolveStep = (ctx: SolveContext) => void;
 
+/** Stats dispatched after every solve pass for the perf HUD. */
+export interface SolveStats {
+  solveMs: number;
+  indexSize: number;
+  perStepMs: Record<string, number>;
+  zoom: number;
+  timestamp: number;
+}
+
 export interface DeclutterOptions {
   enabled?: boolean;
   annotations?: {
@@ -305,6 +314,8 @@ export class DeclutterEngine {
     const zoom = view?.zoom;
     if (!view || zoom === undefined) return;
 
+    const tStart = performance.now();
+
     // Rebuild the index only if the view has moved since last time.
     // Graphics-add flushes also bump the dirty path, so we clear+rebuild
     // unconditionally if size mismatches. Cheap: O(N) single pass.
@@ -327,15 +338,30 @@ export class DeclutterEngine {
       zoomInt: Math.floor(zoom),
     };
 
+    const perStepMs: Record<string, number> = {};
+
     // Run steps in insertion order. Wrap each in a try/catch so one bad
     // step can't halt the pipeline for the others.
     for (const [name, step] of this._solveSteps) {
+      const tStep = performance.now();
       try {
         step(ctx);
       } catch (err) {
         console.error(`[DeclutterEngine] solve step "${name}" failed`, err);
       }
+      perStepMs[name] = performance.now() - tStep;
     }
+
+    // Stats event for the perf HUD. Cheap to dispatch even with no
+    // listeners — the document event system early-outs.
+    const stats: SolveStats = {
+      solveMs:   performance.now() - tStart,
+      indexSize: this._spatialIndex.size,
+      perStepMs,
+      zoom,
+      timestamp: Date.now(),
+    };
+    document.dispatchEvent(new CustomEvent("declutter-solve-stats", { detail: stats }));
   }
 
   // -------------------------------------------------------------------------

@@ -46,7 +46,12 @@ declare class ProximityEngine {
     private _isEnabled;
     private _isActive;
     private _isGeodesic;
-    private _lastTick;
+    private _rafId;
+    private _pendingEvent;
+    private _containerEl;
+    private _altPressed;
+    private _boundKeyDown;
+    private _boundKeyUp;
     private _pointerHandle;
     private _boundPointerMove;
     private _layer;
@@ -62,6 +67,7 @@ declare class ProximityEngine {
     private _lastSnapX;
     private _lastSnapY;
     private _inClearedState;
+    private _indicatorVisible;
     private _nearestVertex;
     private _nearestCoordinate;
     private _showDistance;
@@ -93,6 +99,17 @@ declare class ProximityEngine {
      */
     activate(): void;
     /**
+     * Consumes the most recent pointer event once per animation frame.
+     * Bound as a class arrow-property so requestAnimationFrame keeps `this`.
+     */
+    private _processPendingFrame;
+    /**
+     * Re-snapshot the target layers without tearing down the active session.
+     * Call this if graphics are added/removed mid-draw (e.g. paste during a
+     * multi-click polyline) so they become snap targets immediately.
+     */
+    refreshCandidates(): void;
+    /**
      * Called when drawing ends. Removes the pointer-move listener and clears graphics.
      */
     deactivate(): void;
@@ -102,6 +119,13 @@ declare class ProximityEngine {
     private _runProximity;
     /** Euclidean distance in map-coordinate units (used for ranking candidates). */
     private _mapDist;
+    /**
+     * Approximate map-units-per-pixel for the current view.
+     * MapView exposes an exact, linear `resolution`. SceneView has none, so we
+     * approximate from the current extent — good enough for the coarse spatial
+     * pre-filter cull (which already pads with a buffer + per-candidate halfDiag).
+     */
+    private _getViewResolution;
     /** Screen-space pixel distance — used only for optional snapRadiusPx check. */
     private _screenDist;
     /**
@@ -114,7 +138,11 @@ declare class ProximityEngine {
      * each frame — only their mutable text/color properties are updated.
      */
     private _renderSnap;
-    /** Remove all indicator graphics from the layer. Re-created lazily on next snap. */
+    /**
+     * Hide the indicator graphics. They stay on the layer (visible=false) and are
+     * re-shown on the next snap — toggling visibility avoids the full GraphicsLayer
+     * redraw that add()/remove() triggers every time the cursor leaves/re-enters range.
+     */
     private _clear;
     private _calcDist;
     private _calcBearing;
@@ -128,8 +156,10 @@ declare class ProximityEngine {
      */
     private _computeCandidateExtent;
     /**
-     * Pre-allocate reusable symbol objects for the current draw session.
-     * Subsequent frames mutate these in place rather than constructing new instances.
+     * Pre-allocate reusable symbol objects and the three indicator graphics for
+     * the current draw session. The graphics are added to the layer once (hidden);
+     * subsequent frames toggle their visibility and swap geometry rather than
+     * adding/removing, which would force a full layer redraw each time.
      */
     private _initReuseObjects;
     private _emitStateChange;

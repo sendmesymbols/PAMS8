@@ -7,6 +7,9 @@ export declare const LAYER_NAMES: {
     TACT: string;
     SKETCH: string;
     ANNOTATION_LAYER: string;
+    CLUSTER: string;
+    LEADER_LINE: string;
+    LADDER: string;
 };
 /**
  * Legacy layer id retained for backwards compatibility with the milsymbol.js

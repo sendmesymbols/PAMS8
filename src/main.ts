@@ -61,6 +61,7 @@ let initialSceneRenderState: {
 // Import milsymbol types
 import '../MS/ThirdParty/MilSymbols/milsymbol.d.ts';
 import GeoTools from '../MS/Support/GeoTools.ts';
+import { generateTestField, clearTestField } from './testDataGenerator';
 
 // Define button to switch views
 const switchButton: HTMLElement | null = document.getElementById('switch-btn');
@@ -1560,19 +1561,25 @@ function initializeAutocomplete() {
   // ── Copy to clipboard ──────────────────────────────────────────────────
 
   copyBtn.addEventListener('click', () => {
-    const lines: string[] = [];
-    const add = (label: string, key: string) => {
-      if (lastSnap[key]) lines.push(`${label}: ${lastSnap[key]}`);
-    };
-    add('Segment', 'segmentLength');
-    add('Bearing', 'bearing');
-    add('Total', 'totalLength');
-    add('Height', 'height');
-    add('Width', 'width');
-    add('Area', 'area');
+    // Prefer the engine's formatter (single source of truth); fall back to the
+    // panel mirror if the engine isn't available.
+    let text = symbolEngine.measurementEngine?.getFormattedSnapshot() ?? '';
+    if (!text) {
+      const lines: string[] = [];
+      const add = (label: string, key: string) => {
+        if (lastSnap[key]) lines.push(`${label}: ${lastSnap[key]}`);
+      };
+      add('Segment', 'segmentLength');
+      add('Bearing', 'bearing');
+      add('Total', 'totalLength');
+      add('Height', 'height');
+      add('Width', 'width');
+      add('Area', 'area');
+      text = lines.join('\n');
+    }
 
-    if (!lines.length) return;
-    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
       const orig = copyBtn.textContent!;
       copyBtn.textContent = '✓ Copied!';
       setTimeout(() => (copyBtn.textContent = orig), 1800);
@@ -1593,6 +1600,29 @@ function initializeAutocomplete() {
   if (loadPlanButton) {
     loadPlanButton.addEventListener('click', () => {
       symbolEngine.serializationEngine.loadPlanFromFile();
+    });
+  }
+
+  // ── Test Field generator (declutter demo helper) ──────────────────────────
+  const testFieldGenBtn = document.getElementById('api-testfield-generate');
+  const testFieldClearBtn = document.getElementById('api-testfield-clear');
+  const testFieldStatus = document.getElementById('api-testfield-status');
+  const testFieldCountInput = document.getElementById('api-testfield-count') as HTMLInputElement | null;
+  const testFieldStacksInput = document.getElementById('api-testfield-stacks') as HTMLInputElement | null;
+
+  if (testFieldGenBtn) {
+    testFieldGenBtn.addEventListener('click', () => {
+      const count = Math.max(1, parseInt(testFieldCountInput?.value ?? '80', 10) || 80);
+      const stackCount = Math.max(0, parseInt(testFieldStacksInput?.value ?? '4', 10) || 0);
+      const added = generateTestField(symbolEngine, appConfig.activeView, { count, stackCount });
+      if (testFieldStatus) testFieldStatus.textContent = `Added ${added} test symbols`;
+    });
+  }
+
+  if (testFieldClearBtn) {
+    testFieldClearBtn.addEventListener('click', () => {
+      const removed = clearTestField(symbolEngine);
+      if (testFieldStatus) testFieldStatus.textContent = `Removed ${removed} test symbols`;
     });
   }
 

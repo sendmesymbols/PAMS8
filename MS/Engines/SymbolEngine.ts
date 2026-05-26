@@ -75,6 +75,9 @@ import SerializationEngine from './ImportExport/SerializationEngine';
 import ThemeManager from '../Managers/ThemeManager';
 import DeclutterEngine from './Declutter/DeclutterEngine';
 import ClusterEngine from './Declutter/ClusterEngine';
+import LabelPlacer from './Declutter/LabelPlacer';
+import MarkerDisperser from './Declutter/MarkerDisperser';
+import LadderEngine from './Declutter/LadderEngine';
 import MorphixEngine, {
   MorphixEditedState,
 } from './Morphix/MorphixEngine';
@@ -137,6 +140,9 @@ class SymbolEngine implements Evented {
   private _deploymentBuilderEngine: DeploymentBuilderEngine | null = null;
   private _declutterEngine: DeclutterEngine | null = null;
   private _clusterEngine: ClusterEngine | null = null;
+  private _labelPlacer: LabelPlacer | null = null;
+  private _markerDisperser: MarkerDisperser | null = null;
+  private _ladderEngine: LadderEngine | null = null;
   private _morphixEngine: MorphixEngine;
   public readonly serializationEngine = SerializationEngine.getInstance();
   private currentSymbol: any | undefined;
@@ -526,6 +532,12 @@ class SymbolEngine implements Evented {
     this._declutterEngine?.onViewChanged(newView);
     // Re-attach ClusterEngine to the new view
     this._clusterEngine?.onViewChanged(newView);
+    // Re-attach LabelPlacer to the new view
+    this._labelPlacer?.onViewChanged(newView);
+    // Re-attach MarkerDisperser to the new view
+    this._markerDisperser?.onViewChanged(newView);
+    // Re-attach LadderEngine to the new view
+    this._ladderEngine?.onViewChanged(newView);
 
     // Re-attach all loaded analysis engines to the new view
     this._analysisRegistry.onViewChanged(newView);
@@ -576,7 +588,10 @@ class SymbolEngine implements Evented {
           show_last_seg_only: measureCfg.showLastSegOnly,
           slant_range: measureCfg.slantRange,
           magnetic_declination: measureCfg.magneticDeclination,
-          speed_kmh: measureCfg.speedKmh
+          speed_kmh: measureCfg.speedKmh,
+          bearing_format: measureCfg.bearingFormat,
+          auto_unit: measureCfg.autoUnit,
+          preserve_labels_on_complete: measureCfg.preserveOnComplete
       });
 
       this._measurementEngine.start(this.view);
@@ -1243,7 +1258,10 @@ class SymbolEngine implements Evented {
           show_last_seg_only: measureCfg.showLastSegOnly,
           slant_range: measureCfg.slantRange,
           magnetic_declination: measureCfg.magneticDeclination,
-          speed_kmh: measureCfg.speedKmh
+          speed_kmh: measureCfg.speedKmh,
+          bearing_format: measureCfg.bearingFormat,
+          auto_unit: measureCfg.autoUnit,
+          preserve_labels_on_complete: measureCfg.preserveOnComplete
       });
       console.log(`[SymbolEngine] MeasurementEngine config updated from Settings.json`);
     }
@@ -1368,9 +1386,27 @@ class SymbolEngine implements Evented {
       else this._clusterEngine?.disable();
     }
 
+    if (fullPath === 'declutter.labels.enabled') {
+      if (value) this._labelPlacer?.enable();
+      else this._labelPlacer?.disable();
+    }
+
+    if (fullPath === 'declutter.disperse.enabled') {
+      if (value) this._markerDisperser?.enable();
+      else this._markerDisperser?.disable();
+    }
+
+    if (fullPath === 'declutter.ladder.enabled') {
+      if (value) this._ladderEngine?.enable();
+      else this._ladderEngine?.disable();
+    }
+
     if (fullPath.startsWith('declutter.') && fullPath !== 'declutter.enabled') {
       this._declutterEngine?.refresh();
       if (fullPath.startsWith('declutter.cluster.')) this._clusterEngine?.refresh();
+      if (fullPath.startsWith('declutter.labels.')) this._labelPlacer?.refresh();
+      if (fullPath.startsWith('declutter.disperse.')) this._markerDisperser?.refresh();
+      if (fullPath.startsWith('declutter.ladder.')) this._ladderEngine?.refresh();
     }
 
     // Emit event so other parts of the app can react
@@ -1394,6 +1430,36 @@ class SymbolEngine implements Evented {
       this._declutterEngine,
     );
     if (d?.cluster?.enabled === true) this._clusterEngine.enable();
+
+    // LabelPlacer — Maplex-style label placement with leader lines. Also
+    // a solve step; dormant until enabled in settings.
+    this._labelPlacer = new LabelPlacer(
+      this._getView,
+      this._layerManager,
+      this._declutterEngine,
+    );
+    if (d?.labels?.enabled === true) this._labelPlacer.enable();
+
+    // MarkerDisperser — radial fan-out for symbols stacked at the same
+    // point at high zoom. Complements clustering (which handles dense
+    // scenes at low/mid zoom).
+    this._markerDisperser = new MarkerDisperser(
+      this._getView,
+      this._layerManager,
+      this._declutterEngine,
+    );
+    if (d?.disperse?.enabled === true) this._markerDisperser.enable();
+
+    // LadderEngine — vertical-stack ("flag halyard") alternative to the
+    // radial disperser at high zoom. Same activation range as Disperse;
+    // when both are enabled, ladder claims qualifying stacks first
+    // (via __ladderRung guard) and disperser handles the residue.
+    this._ladderEngine = new LadderEngine(
+      this._getView,
+      this._layerManager,
+      this._declutterEngine,
+    );
+    if (d?.ladder?.enabled === true) this._ladderEngine.enable();
   }
 
   // -----------------------------------------------------------------------

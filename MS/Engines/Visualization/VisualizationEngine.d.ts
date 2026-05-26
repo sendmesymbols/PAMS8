@@ -1,6 +1,7 @@
 import Graphic from "@arcgis/core/Graphic";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import type { DeclutterEngine } from "../Declutter/DeclutterEngine";
 export interface LayerEffectsOptions {
     enabled: boolean;
     /** ArcGIS CSS-filter effect string for the FORCE layer (UEI symbols) */
@@ -38,6 +39,7 @@ export interface ConvexHullOptions {
     enabled: boolean;
     friendlyFillColor: number[];
     enemyFillColor: number[];
+    neutralFillColor: number[];
     fillOpacity: number;
     outlineWidth: number;
 }
@@ -85,6 +87,22 @@ export interface ExtrudedFootprintsOptions {
     /** Edge colour for SolidEdges3D */
     edgeColor: number[];
 }
+/**
+ * "Aggregate" mode: when the view zooms out past the threshold (where
+ * DeclutterEngine typically hides individual symbols), automatically surface
+ * analytical summaries (hull / grid) so the user still sees force disposition
+ * instead of an empty map. User-toggled overlays are unaffected; this only
+ * adds overlays on top.
+ */
+export interface AggregateOptions {
+    enabled: boolean;
+    /** Auto-show analytical summary when view zoom is below this level */
+    zoomBelow: number;
+    /** Include convex hull in the aggregate view */
+    showHull: boolean;
+    /** Include force-ratio grid in the aggregate view */
+    showGrid: boolean;
+}
 export interface VisualizationOptions {
     render: RenderOptions;
     layerEffects: LayerEffectsOptions;
@@ -92,6 +110,7 @@ export interface VisualizationOptions {
     forceRatioGrid: ForceRatioGridOptions;
     convexHull: ConvexHullOptions;
     extrudedFootprints: ExtrudedFootprintsOptions;
+    aggregate: AggregateOptions;
 }
 export declare class VisualizationEngine {
     private static _instance;
@@ -102,6 +121,8 @@ export declare class VisualizationEngine {
     private _watchers;
     private _refreshTimer;
     private _enabled;
+    private _declutter;
+    private static readonly DECLUTTER_STEP_NAME;
     private constructor();
     static getInstance(): VisualizationEngine;
     start(view: MapView | SceneView): void;
@@ -110,12 +131,24 @@ export declare class VisualizationEngine {
     get isEnabled(): boolean;
     toggle(): boolean;
     onViewChanged(view: MapView | SceneView): void;
+    /** Force a refresh of all enabled overlays. Useful for external engines (e.g. EditEngine) after bulk geometry mutations. */
+    refresh(): void;
+    /**
+     * Hook into DeclutterEngine's solve pipeline so analytical overlays refresh
+     * in sync with declutter passes. Pure refresh trigger — no behavior change
+     * beyond what aggregate mode already provides through the zoom watcher.
+     * Call disconnectDeclutter() before swapping declutter instances.
+     */
+    connectDeclutter(declutter: DeclutterEngine): void;
+    disconnectDeclutter(): void;
     setOptions(options: Partial<VisualizationOptions>): void;
     private _setupVizLayer;
     private _setupWatchers;
     private _clearWatchers;
     private _scheduleRefresh;
     private _refresh;
+    /** True when aggregate mode is active for the current view zoom. */
+    private _isInAggregateMode;
     private _applyLayerEffects;
     private _clearLayerEffects;
     private _computeCoverageRings;
@@ -134,6 +167,12 @@ export declare class VisualizationEngine {
     clearThreatFan(): void;
     private _clearVizLayer;
     private _getPointGraphics;
+    /**
+     * Filter graphics to those overlapping the current view extent, padded 1.5×
+     * so symbols just off-screen still contribute (e.g. coverage rings reaching in).
+     * Falls back to the full list if extent is unavailable or the SRs disagree.
+     */
+    private _filterByExtent;
     private _getIdentity;
 }
 export default VisualizationEngine;

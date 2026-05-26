@@ -43,7 +43,14 @@ export interface MeasurementOptions {
     magnetic_declination?: number;
     /** Speed in km/h for march-time estimation */
     speed_kmh?: number;
+    /** Bearing display format. "decimal" → 045°, "mils" → 800 mil, "quadrant" → N45°E */
+    bearing_format?: BearingFormat;
+    /** Auto-pick a readable display unit per value (m↔km, ft↔mi, yd↔mi) */
+    auto_unit?: boolean;
+    /** Keep measurement labels on the map after a drawing is finished */
+    preserve_labels_on_complete?: boolean;
 }
+export type BearingFormat = "decimal" | "mils" | "quadrant";
 export interface MeasurementSnapshot {
     segmentLength: string;
     totalLength: string;
@@ -67,6 +74,7 @@ declare class MeasurementEngine {
     private _isEnabled;
     private _view;
     private _isGeodesic;
+    private _planarWarned;
     private _layer;
     private _segGraphic;
     private _lineGraphic;
@@ -103,6 +111,16 @@ declare class MeasurementEngine {
     private _slantRange;
     private _magneticDeclination;
     private _speedKmh;
+    private _bearingFormat;
+    private _autoUnit;
+    private _preserveOnComplete;
+    private _font;
+    private _fontColorObj;
+    private readonly _haloColor;
+    private readonly _scratchLine;
+    private _rafId;
+    private _pendingUpdate;
+    private _lastSnapshot;
     private constructor();
     static getInstance(): MeasurementEngine;
     get isEnabled(): boolean;
@@ -129,6 +147,9 @@ declare class MeasurementEngine {
      * @param isPassive True when called from edit mode (new seg graphic each time).
      */
     updateSegments(geom: __esri.Geometry, ctrlPts: Point[], isPassive?: boolean): void;
+    /** Coalesce rapid draw-progress updates into one rAF-aligned pass (trailing). */
+    private _schedule;
+    private _cancelScheduled;
     /**
      * Called during multi-segment editing where segment index matters.
      */
@@ -160,6 +181,11 @@ declare class MeasurementEngine {
         isGeodesic: boolean;
         activeGraphics: number;
     };
+    /**
+     * A clean multi-line string of the most recent measurement, suitable for
+     * the "Copy" button or clipboard. Returns "" if nothing has been measured.
+     */
+    getFormattedSnapshot(): string;
     /** Core update — shared by draw-progress and all-segment editing. */
     private _updateGraphics;
     /** Edit mode variant — always creates a fresh segment graphic. */
@@ -171,19 +197,36 @@ declare class MeasurementEngine {
     private _mid;
     private _angle;
     private _metersToUnit;
-    private _segLenVal;
+    /** Pick a readable display unit for a length given in meters. */
+    private _resolveDisplayUnit;
+    /** Format a length (in meters) into a display string with smart precision. */
+    private _formatDist;
+    /** Straight-line length between two points, in meters (slant-adjusted if enabled). */
+    private _segMeters;
     private _segLen;
-    private _polyLenVal;
+    private _polyMeters;
     private _polyLen;
     private _area;
+    private _polygonToPolyline;
     private _extentToPolygon;
     private _bearingValues;
-    private _bearing;
+    /**
+     * Build a compact bearing label. Uses magnetic azimuth (suffix "M") when a
+     * declination is set, otherwise true azimuth (suffix "T") — so the label is
+     * never silently mislabelled as one when it's the other.
+     */
+    private _bearingLabel;
+    /** Rebuild cached Font/Color — called on construction and when font opts change. */
+    private _rebuildStyle;
     private _textSymbol;
     private _distAbbr;
     private _areaAbbr;
-    private _findById;
-    /** Resolve geodesic mode from the view's spatial reference (lazy, idempotent). */
+    /**
+     * Resolve geodesic mode from the view's spatial reference (lazy, idempotent).
+     * Only WGS84 (4326) and Web Mercator (3857) support the geodesic operators;
+     * any other projected SR falls back to planar, which is inaccurate over long
+     * distances — warn once so it isn't a silent surprise.
+     */
     private _resolveGeodesic;
     private _getOrCreateLayer;
     private _emitUpdate;

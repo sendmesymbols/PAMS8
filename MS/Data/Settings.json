@@ -416,7 +416,10 @@
     "showLastSegOnly": false,
     "slantRange": false,
     "magneticDeclination": 0,
-    "speedKmh": 5.0
+    "speedKmh": 5.0,
+    "bearingFormat": "decimal",
+    "autoUnit": false,
+    "preserveOnComplete": false
   },
   "drawingCues": {
     "enabled": true,
@@ -561,12 +564,53 @@
     },
     "cluster": {
       "enabled": false,
-      "minClusterSize": 3,
-      "radiusPx": 40,
+      "minClusterSize": 2,
+      "radiusPx": 80,
       "maxZoom": 14,
       "fadeMs": 250,
-      "respectIdentity": true
-    }
+      "respectIdentity": true,
+      "promoteMode": "badge"
+    },
+    "labels": {
+      "enabled": false,
+      "offsetPx": 16,
+      "leaderThresholdPx": 20,
+      "leaderColor": [128, 128, 128],
+      "leaderWidth": 0.75,
+      "leaderOpacity": 0.7,
+      "maxToPlace": 500,
+      "abbreviateOnOverflow": true,
+      "abbreviateMaxChars": 8,
+      "hideOnOverflow": false
+    },
+    "disperse": {
+      "enabled": false,
+      "minZoom": 14,
+      "maxZoom": 18,
+      "thresholdPx": 12,
+      "radiusPx": 18,
+      "maxGroupSize": 12
+    },
+    "ladder": {
+      "enabled": false,
+      "minZoom": 14,
+      "maxZoom": 17,
+      "thresholdPx": 50,
+      "minRungs": 2,
+      "maxRungs": 15,
+      "layout": "side",
+      "sideOffsetPx": 24,
+      "rungSpacingPx": 22,
+      "spineColor": [180, 180, 180],
+      "spineWidth": 1,
+      "spineOpacity": 0.7,
+      "respectIdentity": true,
+      "showTieLines": true,
+      "altitudeMode": true,
+      "altitudeSpacingM": 250,
+      "stemBaseAltitudeM": 0
+    },
+    "perfHud": false
   },
   "ZoomLvlEchelon": {
     "0": ["23", "00"],

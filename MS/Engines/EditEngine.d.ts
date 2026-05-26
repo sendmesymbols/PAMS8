@@ -35,6 +35,15 @@ declare class EditEngine {
     private _mixedSnapshots;
     private _mixedProxyGraphic;
     private _mixedProxyOriginalGeometry;
+    private _mixedHaloGraphics;
+    private _mixedFlashTimeout;
+    private _redrawRafId;
+    private _pendingRedraw;
+    private _handleScreenCacheScale;
+    private _handleScreenCacheCx;
+    private _handleScreenCacheCy;
+    private _pointerMoveRafId;
+    private _lastPointerMoveEvt;
     private _handleLayer;
     private _handleGraphics;
     private _pointerDownHandle;
@@ -156,6 +165,13 @@ declare class EditEngine {
      * Return the index at which to insert mapPt so it falls on the nearest segment.
      */
     private _findInsertionIndex;
+    /**
+     * Recompute each handle's screen-space position via view.toScreen(), but
+     * only when the cached view scale / center is stale. Result is stored on
+     * `handle.attributes._cachedScreen` so pointer-down and pointer-move can
+     * hit-test without per-event toScreen() calls.
+     */
+    private _refreshHandleScreenCache;
     /** Minimum distance from point P to segment A→B in map coordinates. */
     private _distancePtToSegment;
     private _clearHandles;
@@ -168,12 +184,36 @@ declare class EditEngine {
     /** Deep-clone BASE_LN_PTS ({ startPt, midPt, endPt }). */
     private _cloneBaseLnPts;
     private _createMixedProxyGraphic;
+    /**
+     * Build a subtle halo graphic for each symbol in the mixed-edit session.
+     * Halos sit on the handle layer and follow each symbol's geometry as the
+     * user transforms the proxy, so the user can always see which symbols are
+     * in scope — even if they extend beyond the proxy rectangle.
+     */
+    private _createMixedHalos;
+    /**
+     * Briefly swap each halo's symbol with a brighter "flash" variant at session
+     * start, then restore. One-shot pulse so the user sees every participating
+     * symbol confirm itself even before they start dragging.
+     */
+    private _flashMixedHalos;
+    private _updateMixedHalos;
+    private _clearMixedHalos;
+    private _createHaloSymbol;
+    private _createFlashSymbol;
+    private _logMixedSession;
     private _restoreMixedSnapshots;
     private _clearMixedSessionState;
     private _finalizeMixedEditBeforeDeactivate;
     private _emit;
     private _installEscListener;
     private _showModeBanner;
+    /**
+     * Make the mode banner draggable so the user can move it off any panel that
+     * overlaps it. Listeners are bound to `_modeBannerAbort` so they tear down
+     * when the banner is removed.
+     */
+    private _wireBannerDrag;
     private _removeModeBanner;
     /**
      * Returns the Edit submenu item tree.

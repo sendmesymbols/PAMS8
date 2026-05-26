@@ -12,6 +12,7 @@ import Color from "@arcgis/core/Color";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
 import GraphicsLayerManager, { LAYER_NAMES } from "../../Managers/GraphicsLayerManager";
+import type { DeclutterEngine } from "../Declutter/DeclutterEngine";
 
 // ─── Public option interfaces ───────────────────────────────────────────────
 
@@ -106,6 +107,23 @@ export interface ExtrudedFootprintsOptions {
   edgeColor: number[];
 }
 
+/**
+ * "Aggregate" mode: when the view zooms out past the threshold (where
+ * DeclutterEngine typically hides individual symbols), automatically surface
+ * analytical summaries (hull / grid) so the user still sees force disposition
+ * instead of an empty map. User-toggled overlays are unaffected; this only
+ * adds overlays on top.
+ */
+export interface AggregateOptions {
+  enabled: boolean;
+  /** Auto-show analytical summary when view zoom is below this level */
+  zoomBelow: number;
+  /** Include convex hull in the aggregate view */
+  showHull: boolean;
+  /** Include force-ratio grid in the aggregate view */
+  showGrid: boolean;
+}
+
 export interface VisualizationOptions {
   render: RenderOptions;
   layerEffects: LayerEffectsOptions;
@@ -113,6 +131,7 @@ export interface VisualizationOptions {
   forceRatioGrid: ForceRatioGridOptions;
   convexHull: ConvexHullOptions;
   extrudedFootprints: ExtrudedFootprintsOptions;
+  aggregate: AggregateOptions;
 }
 
 // ─── Defaults ───────────────────────────────────────────────────────────────
@@ -176,6 +195,12 @@ const DEFAULT_OPTIONS: VisualizationOptions = {
     singleColor: [80, 120, 200],
     edgeColor: [40, 40, 40],
   },
+  aggregate: {
+    enabled: false,
+    zoomBelow: 6,
+    showHull: true,
+    showGrid: false,
+  },
 };
 
 const VIZ_LAYER_ID = "VisualizationOverlayLayer";
@@ -193,6 +218,8 @@ export class VisualizationEngine {
   private _watchers: Array<{ remove(): void }> = [];
   private _refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private _enabled = false;
+  private _declutter: DeclutterEngine | null = null;
+  private static readonly DECLUTTER_STEP_NAME = "viz-aggregate";
 
   private constructor() {
     this._options = JSON.parse(JSON.stringify(DEFAULT_OPTIONS)) as VisualizationOptions;
@@ -257,6 +284,26 @@ export class VisualizationEngine {
     this._scheduleRefresh();
   }
 
+  /**
+   * Hook into DeclutterEngine's solve pipeline so analytical overlays refresh
+   * in sync with declutter passes. Pure refresh trigger — no behavior change
+   * beyond what aggregate mode already provides through the zoom watcher.
+   * Call disconnectDeclutter() before swapping declutter instances.
+   */
+  public connectDeclutter(declutter: DeclutterEngine): void {
+    if (this._declutter === declutter) return;
+    this.disconnectDeclutter();
+    this._declutter = declutter;
+    declutter.registerSolveStep(VisualizationEngine.DECLUTTER_STEP_NAME, () => {
+      if (this._enabled) this._scheduleRefresh();
+    });
+  }
+
+  public disconnectDeclutter(): void {
+    this._declutter?.unregisterSolveStep(VisualizationEngine.DECLUTTER_STEP_NAME);
+    this._declutter = null;
+  }
+
   public setOptions(options: Partial<VisualizationOptions>): void {
     if (options.render)         Object.assign(this._options.render,         options.render);
     if (options.layerEffects)   Object.assign(this._options.layerEffects,   options.layerEffects);
@@ -264,6 +311,7 @@ export class VisualizationEngine {
     if (options.forceRatioGrid) Object.assign(this._options.forceRatioGrid, options.forceRatioGrid);
     if (options.convexHull)     Object.assign(this._options.convexHull,     options.convexHull);
     if (options.extrudedFootprints) Object.assign(this._options.extrudedFootprints, options.extrudedFootprints);
+    if (options.aggregate)      Object.assign(this._options.aggregate,      options.aggregate);
 
     if (this._enabled) {
       this._applyLayerEffects();
@@ -321,12 +369,31 @@ export class VisualizationEngine {
     watchLayer(LAYER_NAMES.TACT_PT);
     watchLayer(LAYER_NAMES.TACT);
 
-    // Refresh grid when the view extent changes
+    // Refresh when zoom crosses the aggregate-mode threshold
+    this._watchers.push(
+      reactiveUtils.watch(
+        () => (this._view as any)?.zoom,
+        () => {
+          if (this._enabled && this._options.aggregate.enabled) {
+            this._scheduleRefresh();
+          }
+        },
+      ),
+    );
+
+    // Refresh whenever extent changes — every overlay is now extent-gated
     this._watchers.push(
       reactiveUtils.watch(
         () => (this._view as any)?.extent,
         () => {
-          if (this._enabled && this._options.forceRatioGrid.enabled) {
+          if (!this._enabled) return;
+          const o = this._options;
+          if (
+            o.coverageRings.enabled ||
+            o.forceRatioGrid.enabled ||
+            o.convexHull.enabled ||
+            o.extrudedFootprints.enabled
+          ) {
             this._scheduleRefresh();
           }
         },
@@ -353,10 +420,25 @@ export class VisualizationEngine {
   private _refresh(): void {
     if (!this._enabled || !this._vizLayer) return;
     this._vizLayer.removeAll();
-    if (this._options.coverageRings.enabled)     this._computeCoverageRings();
-    if (this._options.forceRatioGrid.enabled)    this._computeForceRatioGrid();
-    if (this._options.convexHull.enabled)        this._computeConvexHull();
-    if (this._options.extrudedFootprints.enabled) this._computeExtrudedFootprints();
+
+    const o = this._options;
+    const agg = this._isInAggregateMode();
+    const showHull = o.convexHull.enabled     || (agg && o.aggregate.showHull);
+    const showGrid = o.forceRatioGrid.enabled || (agg && o.aggregate.showGrid);
+
+    if (o.coverageRings.enabled)      this._computeCoverageRings();
+    if (showGrid)                     this._computeForceRatioGrid();
+    if (showHull)                     this._computeConvexHull();
+    if (o.extrudedFootprints.enabled) this._computeExtrudedFootprints();
+  }
+
+  /** True when aggregate mode is active for the current view zoom. */
+  private _isInAggregateMode(): boolean {
+    const a = this._options.aggregate;
+    if (!a.enabled) return false;
+    const zoom = (this._view as any)?.zoom;
+    if (typeof zoom !== "number") return false;
+    return zoom < a.zoomBelow;
   }
 
   // ─── Layer Effects ─────────────────────────────────────────────────────────
@@ -665,7 +747,8 @@ export class VisualizationEngine {
       }));
     };
 
-    tactLayer.graphics.forEach((g: Graphic) => {
+    const tactGraphics = this._filterByExtent(tactLayer.graphics.toArray());
+    tactGraphics.forEach((g: Graphic) => {
       if (g.attributes?.[VIZ_TAG]) return;
       const geom = g.geometry as any;
       if (!geom) return;
@@ -843,7 +926,36 @@ export class VisualizationEngine {
       });
     });
 
-    return { friendly, enemy, neutral };
+    return {
+      friendly: this._filterByExtent(friendly),
+      enemy:    this._filterByExtent(enemy),
+      neutral:  this._filterByExtent(neutral),
+    };
+  }
+
+  /**
+   * Filter graphics to those overlapping the current view extent, padded 1.5×
+   * so symbols just off-screen still contribute (e.g. coverage rings reaching in).
+   * Falls back to the full list if extent is unavailable or the SRs disagree.
+   */
+  private _filterByExtent<T extends Graphic>(graphics: T[]): T[] {
+    const view = this._view as any;
+    const ext = view?.extent;
+    if (!ext || graphics.length === 0) return graphics;
+    let padded: any;
+    try { padded = ext.clone().expand(1.5); } catch { padded = ext; }
+    return graphics.filter(g => {
+      const geom = g.geometry as any;
+      if (!geom) return false;
+      if (geom.type === "point") {
+        try { return padded.contains(geom); } catch { return true; }
+      }
+      const gExt = geom.extent;
+      if (gExt) {
+        try { return padded.intersects(gExt); } catch { return true; }
+      }
+      return true;
+    });
   }
 
   private _getIdentity(graphic: Graphic): "friendly" | "enemy" | "neutral" | "unknown" {

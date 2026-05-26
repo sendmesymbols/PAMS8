@@ -10,6 +10,8 @@ export const LAYER_NAMES = {
     SKETCH: "SketchLayer",
     ANNOTATION_LAYER: "AnnotationLayer",
     CLUSTER: "ClusterBadgeLayer",
+    LEADER_LINE: "LeaderLineLayer",
+    LADDER: "LadderLineLayer",
 };
 
 /**

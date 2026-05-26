@@ -29,7 +29,6 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
-import Polygon from '@arcgis/core/geometry/Polygon';
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import TextSymbol from '@arcgis/core/symbols/TextSymbol';
@@ -74,7 +73,19 @@ const DIST_ABBR: Record<ProximityDistanceUnit, string> = {
   yards: 'yd',
 };
 
+// Metres in one of each supported unit — used to convert haversine output.
+const METERS_PER_UNIT: Record<ProximityDistanceUnit, number> = {
+  meters: 1,
+  kilometers: 1000,
+  feet: 0.3048,
+  yards: 0.9144,
+  miles: 1609.344,
+  'nautical-miles': 1852,
+};
+
 const LAYER_ID = 'ProximityGraphicsLayer';
+const WGS84_RADIUS = 6378137;        // Web Mercator sphere radius (m)
+const EARTH_MEAN_RADIUS = 6371008.8; // IUGG mean radius (m), for haversine
 
 // Pre-computed spatial data per candidate for bounding-box pre-filter.
 interface CandidateExtent {
@@ -89,8 +100,20 @@ class ProximityEngine {
   private _view: MapView | SceneView | null = null;
   private _isEnabled: boolean = false;
   private _isActive: boolean = false;
-  private _isGeodesic: boolean = false;
-  private _lastTick: number = 0;
+  private _isGeodesic: boolean = false;     // great-circle math (4326 or Web Mercator)
+  private _isLatLon: boolean = false;       // wkid 4326 — coords already lon/lat
+  private _isWebMercator: boolean = false;  // wkid 3857 / 102100 — project inline
+
+  // rAF coalescer — replaces the wall-clock 30fps throttle.
+  // Pointer events are stored; the next animation frame consumes the latest one.
+  private _rafId: number = 0;
+  private _pendingEvent: PointerEvent | null = null;
+  private _containerEl: HTMLElement | null = null;
+
+  // Hold-Alt-to-bypass snap (matches CAD/GIS convention).
+  private _altPressed: boolean = false;
+  private _boundKeyDown: ((e: KeyboardEvent) => void) | null = null;
+  private _boundKeyUp: ((e: KeyboardEvent) => void) | null = null;
 
   private _pointerHandle: { remove(): void } | null = null;
   private _boundPointerMove: ((e: PointerEvent) => void) | null = null;
@@ -116,6 +139,8 @@ class ProximityEngine {
   private _lastSnapX: number = NaN;
   private _lastSnapY: number = NaN;
   private _inClearedState: boolean = true;
+  // Whether the indicator graphics are currently shown (vs hidden via visible=false)
+  private _indicatorVisible: boolean = false;
 
   // Configurable options
   private _nearestVertex: boolean = true;
@@ -168,22 +193,24 @@ class ProximityEngine {
   }
 
   public enable(): void {
+    if (this._isEnabled) return; // already on — don't re-emit hints/logs
     this._isEnabled = true;
     this._emitStateChange('enabled');
     this._emitHint(
       `Snap to nearest point enabled — cursor will snap to existing symbols within ` +
         (this._snapRadiusPx > 0 ? `${this._snapRadiusPx}px` : 'unlimited') +
-        `. Unit: ${DIST_ABBR[this._distUnit]}.`,
+        `. Hold Alt to bypass. Unit: ${DIST_ABBR[this._distUnit]}.`,
       'idle',
     );
     EngineLogger.success(
       'Proximity Engine',
-      `Enabled — snap indicators on. Range: ${this._snapRadiusPx > 0 ? `${this._snapRadiusPx}px` : 'unlimited'}, unit: ${DIST_ABBR[this._distUnit]}`,
+      `Enabled — snap indicators on. Range: ${this._snapRadiusPx > 0 ? `${this._snapRadiusPx}px` : 'unlimited'}, unit: ${DIST_ABBR[this._distUnit]}. Hold Alt to bypass`,
     );
     console.info('[ProximityEngine] enabled');
   }
 
   public disable(): void {
+    if (!this._isEnabled) return;
     this._isEnabled = false;
     this.deactivate();
     this._emitStateChange('disabled');
@@ -210,63 +237,65 @@ class ProximityEngine {
 
     // Snapshot existing graphics now — anything added during this draw session
     // (the symbol being drawn) will not be in this list and won't self-snap.
-    this._candidateSnapshot = [];
-    this._candidateExtents = [];
-    for (const id of this._targetLayerIds) {
-      const lyr = this._view.map.findLayerById(id) as GraphicsLayer | undefined;
-      if (lyr) {
-        lyr.graphics.forEach((g: Graphic) => {
-          if (g.geometry) {
-            this._candidateSnapshot.push(g);
-            this._candidateExtents.push(this._computeCandidateExtent(g));
-          }
-        });
-      }
-    }
+    this.refreshCandidates();
 
     // Pre-allocate reusable symbol and geometry objects for this draw session.
     this._initReuseObjects();
 
-    const containerEl = this._resolveContainer();
-    if (!containerEl) {
+    this._containerEl = this._resolveContainer();
+    if (!this._containerEl) {
       this._isActive = false;
       return;
     }
 
     // Register at window capture phase so ArcGIS SketchViewModel interception
-    // doesn't swallow the events.
+    // doesn't swallow the events. Each event only stashes the latest pointer
+    // position and schedules a frame — the actual work runs once per rAF, which
+    // coalesces bursts of moves and stays in sync with the browser's paint.
     this._boundPointerMove = (e: PointerEvent) => {
-      if (!this._isActive || !this._view) return;
-
-      const now = Date.now();
-      if (now - this._lastTick < 33) return; // ~30fps — sufficient for snap UI
-      this._lastTick = now;
-
-      const rect = containerEl.getBoundingClientRect();
-      if (
-        e.clientX < rect.left ||
-        e.clientX > rect.right ||
-        e.clientY < rect.top ||
-        e.clientY > rect.bottom
-      ) {
-        this._clear();
-        return;
+      if (!this._isActive) return;
+      this._pendingEvent = e;
+      if (this._rafId === 0) {
+        this._rafId = requestAnimationFrame(this._processPendingFrame);
       }
+    };
 
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      const mapPt = this._view.toMap({ x, y }) ?? null;
-      if (mapPt) this._runProximity(mapPt);
-      else this._clear();
+    // Alt held = temporary snap bypass. Power users place a point near a symbol
+    // without snapping, without toggling the engine off.
+    this._boundKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && !this._altPressed) {
+        this._altPressed = true;
+        this._clear();
+        this._emitHint('Snap bypassed — release Alt to resume snapping.', 'idle');
+      }
+    };
+    this._boundKeyUp = (e: KeyboardEvent) => {
+      if (this._altPressed && !e.altKey) this._altPressed = false;
     };
 
     window.addEventListener('pointermove', this._boundPointerMove, true);
+    window.addEventListener('keydown', this._boundKeyDown, true);
+    window.addEventListener('keyup', this._boundKeyUp, true);
     this._pointerHandle = {
       remove: () => {
         if (this._boundPointerMove) {
           window.removeEventListener('pointermove', this._boundPointerMove!, true);
           this._boundPointerMove = null;
         }
+        if (this._boundKeyDown) {
+          window.removeEventListener('keydown', this._boundKeyDown!, true);
+          this._boundKeyDown = null;
+        }
+        if (this._boundKeyUp) {
+          window.removeEventListener('keyup', this._boundKeyUp!, true);
+          this._boundKeyUp = null;
+        }
+        if (this._rafId !== 0) {
+          cancelAnimationFrame(this._rafId);
+          this._rafId = 0;
+        }
+        this._pendingEvent = null;
+        this._altPressed = false;
       },
     };
 
@@ -292,6 +321,59 @@ class ProximityEngine {
   }
 
   /**
+   * Consumes the most recent pointer event once per animation frame.
+   * Bound as a class arrow-property so requestAnimationFrame keeps `this`.
+   */
+  private _processPendingFrame = (): void => {
+    this._rafId = 0;
+    const e = this._pendingEvent;
+    this._pendingEvent = null;
+    if (!e || !this._isActive || !this._view || !this._containerEl) return;
+
+    if (this._altPressed) {
+      this._clear();
+      return;
+    }
+
+    // Gate on DOM containment, not a geometric bounds test. This also skips
+    // events whose target is an overlay sitting on top of the map (settings
+    // panel, search box, API panel) — a bounds test would treat those as map
+    // hits and snap "through" the panel.
+    const tgt = e.target as Node | null;
+    if (!tgt || !this._containerEl.contains(tgt)) {
+      this._clear();
+      return;
+    }
+
+    const rect = this._containerEl.getBoundingClientRect();
+    const mapPt =
+      this._view.toMap({ x: e.clientX - rect.left, y: e.clientY - rect.top }) ?? null;
+    if (mapPt) this._runProximity(mapPt);
+    else this._clear();
+  };
+
+  /**
+   * Re-snapshot the target layers without tearing down the active session.
+   * Call this if graphics are added/removed mid-draw (e.g. paste during a
+   * multi-click polyline) so they become snap targets immediately.
+   */
+  public refreshCandidates(): void {
+    if (!this._isActive || !this._view) return;
+    this._candidateSnapshot = [];
+    this._candidateExtents = [];
+    for (const id of this._targetLayerIds) {
+      const lyr = this._view.map.findLayerById(id) as GraphicsLayer | undefined;
+      if (!lyr) continue;
+      lyr.graphics.forEach((g: Graphic) => {
+        if (g.geometry) {
+          this._candidateSnapshot.push(g);
+          this._candidateExtents.push(this._computeCandidateExtent(g));
+        }
+      });
+    }
+  }
+
+  /**
    * Called when drawing ends. Removes the pointer-move listener and clears graphics.
    */
   public deactivate(): void {
@@ -302,6 +384,7 @@ class ProximityEngine {
     this._isActive = false;
     this._candidateSnapshot = [];
     this._candidateExtents = [];
+    this._containerEl = null;
     this._clear();
     this._emitHint('Proximity snap ended — drawing complete.', 'idle');
     EngineLogger.success('Proximity Engine', 'Deactivated — drawing complete');
@@ -319,6 +402,7 @@ class ProximityEngine {
     this._dotSym = null;
     this._lineSym = null;
     this._txtSym = null;
+    this._indicatorVisible = false;
     this._layer = this._getOrCreateLayer();
 
     console.info('[ProximityEngine] view changed');
@@ -355,33 +439,39 @@ class ProximityEngine {
     }
 
     // ── Spatial pre-filter ────────────────────────────────────────────────
-    // When a snap radius is set, skip candidates whose geometry extent center
-    // is farther away (in map units) than the screen-pixel threshold allows.
-    // This avoids running expensive geometry engine calls on distant graphics.
-    let activeIndices: number[];
-    if (this._snapRadiusPx > 0 && this._view) {
-      const resolution = (this._view as any).resolution as number;
-      if (resolution > 0) {
-        const threshMapUnits = (this._snapRadiusPx + 50) * resolution; // 50px buffer
-        activeIndices = [];
-        for (let i = 0; i < candidates.length; i++) {
-          const e = this._candidateExtents[i];
-          if (!e || Math.hypot(mapPt.x - e.cx, mapPt.y - e.cy) <= threshMapUnits + e.halfDiag) {
-            activeIndices.push(i);
-          }
-        }
-      } else {
-        activeIndices = candidates.map((_, i) => i);
-      }
+    // Skip candidates whose geometry extent is farther (in map units) than the
+    // search threshold, so we never run expensive geometry-engine calls on
+    // distant graphics. Inlined into the main loop — no per-frame index array.
+    //
+    // With an explicit snap radius the threshold is that radius (+ buffer).
+    // With unlimited snap (snapRadiusPx <= 0) we still bound the search to a
+    // generous multiple of the view extent, which keeps the cost sane in dense
+    // scenes while preserving "snap to the nearest visible thing" behaviour.
+    const resolution = this._getViewResolution();
+    let threshMapUnits: number;
+    if (this._snapRadiusPx > 0 && resolution > 0) {
+      threshMapUnits = (this._snapRadiusPx + 50) * resolution; // 50px buffer
+    } else if (resolution > 0 && this._view) {
+      threshMapUnits =
+        Math.max(this._view.width, this._view.height) * resolution * 1.5;
     } else {
-      activeIndices = candidates.map((_, i) => i);
+      threshMapUnits = Number.POSITIVE_INFINITY; // resolution unknown — don't cull
     }
 
     // ── Find nearest point across filtered candidates ─────────────────────
     let bestDist = Infinity;
     let bestCoord: Point | null = null;
 
-    for (const i of activeIndices) {
+    for (let i = 0; i < candidates.length; i++) {
+      const ext = this._candidateExtents[i];
+      if (
+        ext &&
+        threshMapUnits !== Number.POSITIVE_INFINITY &&
+        Math.hypot(mapPt.x - ext.cx, mapPt.y - ext.cy) > threshMapUnits + ext.halfDiag
+      ) {
+        continue; // extent too far — skip the geometry-engine call
+      }
+
       const g = candidates[i];
       if (!g.geometry) continue;
 
@@ -421,15 +511,26 @@ class ProximityEngine {
     }
 
     if (!bestCoord) {
+      // Emit the hint only on the transition into "no target" — otherwise it
+      // would fire every frame the cursor moves over an empty area.
+      const wasShowing = this._indicatorVisible;
       this._clear();
-      // candidates.length > 0 is guaranteed here (checked above)
-      this._emitHint('No nearby symbols within snap range.', 'no-targets');
+      if (wasShowing) {
+        this._emitHint('No nearby symbols within snap range.', 'no-targets');
+      }
       return;
     }
 
     // Hide indicator when nearest symbol exceeds the configured screen-pixel radius.
+    // In 2D, MapView.resolution is linear, so pixels = mapDist / resolution —
+    // this avoids two view.toScreen() projection calls every frame. In 3D the
+    // mapping isn't linear, so fall back to the accurate toScreen() path.
     if (this._snapRadiusPx > 0) {
-      const distPx = this._screenDist(mapPt, bestCoord);
+      const mvRes = (this._view as MapView).resolution;
+      const distPx =
+        typeof mvRes === 'number' && mvRes > 0
+          ? bestDist / mvRes
+          : this._screenDist(mapPt, bestCoord);
       if (distPx > this._snapRadiusPx) {
         this._clear();
         return;
@@ -442,6 +543,27 @@ class ProximityEngine {
   /** Euclidean distance in map-coordinate units (used for ranking candidates). */
   private _mapDist(a: Point, b: Point): number {
     return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  /**
+   * Approximate map-units-per-pixel for the current view.
+   * MapView exposes an exact, linear `resolution`. SceneView has none, so we
+   * approximate from the current extent — good enough for the coarse spatial
+   * pre-filter cull (which already pads with a buffer + per-candidate halfDiag).
+   */
+  private _getViewResolution(): number {
+    if (!this._view) return 0;
+    const mvRes = (this._view as MapView).resolution;
+    if (typeof mvRes === 'number' && mvRes > 0) return mvRes;
+    try {
+      const ext = this._view.extent;
+      if (ext && this._view.width > 0) {
+        return (ext.xmax - ext.xmin) / this._view.width;
+      }
+    } catch {
+      /* extent not ready */
+    }
+    return 0;
   }
 
   /** Screen-space pixel distance — used only for optional snapRadiusPx check. */
@@ -468,6 +590,8 @@ class ProximityEngine {
    */
   private _renderSnap(cursor: Point, snapPt: Point): void {
     if (!this._view || !this._layer) return;
+    // Indicator graphics are pre-created in _initReuseObjects(); bail if missing.
+    if (!this._snapGraphic || !this._lineGraphic) return;
 
     // Fresh geometry objects every frame — required so ArcGIS detects a new
     // reference and re-renders. Mutating the same object in place (previous
@@ -482,100 +606,131 @@ class ProximityEngine {
     const distLabel = this._calcDist(cursor, snap);
 
     // ── 1. Dot ────────────────────────────────────────────────────────────
-    if (!this._snapGraphic) {
-      this._snapGraphic = new Graphic({ geometry: snap, symbol: this._dotSym! });
-      this._layer.add(this._snapGraphic);
-      this._emitHint('Snapped to nearest symbol — click to place point at snap target.', 'snapped');
-      EngineLogger.nextStep('Proximity Engine', 'Snapped to nearest symbol — click to confirm position');
-    } else {
-      this._snapGraphic.geometry = snap;
-    }
+    this._snapGraphic.geometry = snap;
+    this._snapGraphic.visible = true;
 
     // ── 2. Dashed line ────────────────────────────────────────────────────
-    if (!this._lineGraphic) {
-      this._lineGraphic = new Graphic({ geometry: linePl, symbol: this._lineSym! });
-      this._layer.add(this._lineGraphic);
-    } else {
-      this._lineGraphic.geometry = linePl;
-    }
+    this._lineGraphic.geometry = linePl;
+    this._lineGraphic.visible = true;
 
     // ── 3. Distance + Direction label ─────────────────────────────────────
     const labelParts: string[] = [];
     if (this._showDistance) labelParts.push(distLabel);
     if (this._showDirection) labelParts.push(bearingStr);
 
-    if (labelParts.length > 0 && this._txtSym) {
-      this._txtSym.text = labelParts.join(' | ');
-      if (!this._labelGraphic) {
-        this._labelGraphic = new Graphic({ geometry: midPt, symbol: this._txtSym });
-        this._layer.add(this._labelGraphic);
-      } else {
+    if (this._labelGraphic && this._txtSym) {
+      if (labelParts.length > 0) {
+        this._txtSym.text = labelParts.join(' | ');
         this._labelGraphic.geometry = midPt;
         this._labelGraphic.symbol = this._txtSym;
+        this._labelGraphic.visible = true;
+      } else {
+        this._labelGraphic.visible = false;
       }
+    }
+
+    // First hidden→shown transition this cycle: announce the lock-on once.
+    if (!this._indicatorVisible) {
+      this._indicatorVisible = true;
+      this._emitHint('Snapped to nearest symbol — click to place point at snap target.', 'snapped');
+      EngineLogger.nextStep('Proximity Engine', 'Snapped to nearest symbol — click to confirm position');
     }
 
     this._emitSnap(snap, distLabel);
   }
 
-  /** Remove all indicator graphics from the layer. Re-created lazily on next snap. */
+  /**
+   * Hide the indicator graphics. They stay on the layer (visible=false) and are
+   * re-shown on the next snap — toggling visibility avoids the full GraphicsLayer
+   * redraw that add()/remove() triggers every time the cursor leaves/re-enters range.
+   */
   private _clear(): void {
-    if (!this._layer) return;
-    if (this._snapGraphic) {
-      this._layer.remove(this._snapGraphic);
-      this._snapGraphic = null;
-    }
-    if (this._lineGraphic) {
-      this._layer.remove(this._lineGraphic);
-      this._lineGraphic = null;
-    }
-    if (this._labelGraphic) {
-      this._layer.remove(this._labelGraphic);
-      this._labelGraphic = null;
-    }
+    if (this._snapGraphic) this._snapGraphic.visible = false;
+    if (this._lineGraphic) this._lineGraphic.visible = false;
+    if (this._labelGraphic) this._labelGraphic.visible = false;
+    this._indicatorVisible = false;
     this._emitClear();
   }
 
   // ── Geometry helpers ──────────────────────────────────────────────────────
 
+  /**
+   * Distance between two map points, formatted for display.
+   * Geographic / Web Mercator views use inline great-circle (haversine) math —
+   * no per-frame Polyline allocation and no geometry-engine call. Planar length
+   * in Web Mercator overstates ground distance badly away from the equator, so
+   * we never use it there. Other projected systems fall back to the geometry
+   * engine so their native units convert correctly.
+   */
   private _calcDist(a: Point, b: Point): string {
     try {
+      if (this._isGeodesic) {
+        const [lon1, lat1] = this._toLonLat(a);
+        const [lon2, lat2] = this._toLonLat(b);
+        const meters = this._haversineMeters(lat1, lon1, lat2, lon2);
+        return this._formatDistance(meters / METERS_PER_UNIT[this._distUnit]);
+      }
       const pl = new Polyline({ spatialReference: a.spatialReference });
       pl.addPath([
         [a.x, a.y],
         [b.x, b.y],
       ]);
-      const raw = this._isGeodesic
-        ? geometryEngine.geodesicLength(pl, this._distUnit as any)
-        : geometryEngine.planarLength(pl, this._distUnit as any);
-      return `${Math.abs(raw).toFixed(1)} ${DIST_ABBR[this._distUnit]}`;
+      const raw = geometryEngine.planarLength(pl, this._distUnit as any);
+      return this._formatDistance(Math.abs(raw));
     } catch {
       return '—';
     }
   }
 
+  /** Convert a point's coords to [lon, lat] degrees for great-circle math. */
+  private _toLonLat(p: Point): [number, number] {
+    if (this._isLatLon) return [p.x, p.y];
+    if (this._isWebMercator) {
+      const lon = (p.x / WGS84_RADIUS) * (180 / Math.PI);
+      const lat =
+        (Math.atan(Math.exp(p.y / WGS84_RADIUS)) * 2 - Math.PI / 2) *
+        (180 / Math.PI);
+      return [lon, lat];
+    }
+    return [p.x, p.y];
+  }
+
+  private _haversineMeters(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
+    const rad = Math.PI / 180;
+    const dLat = (lat2 - lat1) * rad;
+    const dLon = (lon2 - lon1) * rad;
+    const s1 = Math.sin(dLat / 2);
+    const s2 = Math.sin(dLon / 2);
+    const aa = s1 * s1 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * s2 * s2;
+    return 2 * EARTH_MEAN_RADIUS * Math.asin(Math.min(1, Math.sqrt(aa)));
+  }
+
+  /**
+   * Adaptive precision: keep the label readable across magnitudes
+   * (e.g. "8473 m", "84.7 m", "0.423 km") without switching the user's chosen
+   * unit out from under them.
+   */
+  private _formatDistance(value: number): string {
+    const v = Math.abs(value);
+    let str: string;
+    if (v >= 100) str = v.toFixed(0);
+    else if (v >= 10) str = v.toFixed(1);
+    else if (v >= 1) str = v.toFixed(2);
+    else str = v.toFixed(3);
+    return `${str} ${DIST_ABBR[this._distUnit]}`;
+  }
+
   private _calcBearing(a: Point, b: Point): number {
     try {
       if (this._isGeodesic) {
-        // When the view is already WGS84 (wkid 4326), coordinates are lon/lat —
-        // no reprojection needed. Skip the two geometryEngine.project() calls.
-        let lon1: number, lat1: number, lon2: number, lat2: number;
-        if (a.spatialReference?.wkid === 4326) {
-          lon1 = a.x; lat1 = a.y;
-          lon2 = b.x; lat2 = b.y;
-        } else {
-          const geoPt1 = geometryEngine.project(
-            new Point({ x: a.x, y: a.y, spatialReference: a.spatialReference }),
-            { wkid: 4326 },
-          ) as Point | null;
-          const geoPt2 = geometryEngine.project(
-            new Point({ x: b.x, y: b.y, spatialReference: b.spatialReference }),
-            { wkid: 4326 },
-          ) as Point | null;
-          if (!geoPt1 || !geoPt2) return 0;
-          lon1 = geoPt1.x; lat1 = geoPt1.y;
-          lon2 = geoPt2.x; lat2 = geoPt2.y;
-        }
+        // Inline lon/lat — no geometryEngine.project() round-trip per frame.
+        const [lon1, lat1] = this._toLonLat(a);
+        const [lon2, lat2] = this._toLonLat(b);
         const dLon = (lon2 - lon1) * (Math.PI / 180);
         const rlat1 = lat1 * (Math.PI / 180);
         const rlat2 = lat2 * (Math.PI / 180);
@@ -595,8 +750,13 @@ class ProximityEngine {
   }
 
   private _resolveGeodesic(): void {
-    const sr = this._view?.spatialReference;
-    this._isGeodesic = sr?.wkid === 4326;
+    const wkid = this._view?.spatialReference?.wkid;
+    this._isLatLon = wkid === 4326;
+    this._isWebMercator = wkid === 3857 || wkid === 102100;
+    // Great-circle math is meaningful for geographic & Web Mercator systems.
+    // Planar length in Web Mercator overstates ground distance away from the
+    // equator, so treat it as geodesic too.
+    this._isGeodesic = this._isLatLon || this._isWebMercator;
   }
 
   /** Safely resolve view.container, which may be a string ID or an HTMLElement. */
@@ -651,33 +811,68 @@ class ProximityEngine {
   }
 
   /**
-   * Pre-allocate reusable symbol objects for the current draw session.
-   * Subsequent frames mutate these in place rather than constructing new instances.
+   * Pre-allocate reusable symbol objects and the three indicator graphics for
+   * the current draw session. The graphics are added to the layer once (hidden);
+   * subsequent frames toggle their visibility and swap geometry rather than
+   * adding/removing, which would force a full layer redraw each time.
    */
   private _initReuseObjects(): void {
-    this._dotSym = new SimpleMarkerSymbol({
-      style: 'circle',
-      color: new Color([255, 255, 255, 1.0]),
-      size: this._markerSize,
-      outline: { color: new Color([...this._markerColor, 1.0]), width: 2.5 },
-    });
+    // Symbols don't change between draw sessions — build each once and reuse it.
+    // (onViewChanged() nulls them so they're rebuilt for the new view.)
+    if (!this._dotSym) {
+      this._dotSym = new SimpleMarkerSymbol({
+        style: 'circle',
+        color: new Color([255, 255, 255, 1.0]),
+        size: this._markerSize,
+        outline: { color: new Color([...this._markerColor, 1.0]), width: 2.5 },
+      });
+    }
 
-    this._lineSym = new SimpleLineSymbol({
-      style: 'short-dash',
-      color: new Color([...this._lineColor, this._lineOpacity]),
-      width: this._lineWidth + 0.5,
-    });
+    if (!this._lineSym) {
+      this._lineSym = new SimpleLineSymbol({
+        style: 'short-dash',
+        color: new Color([...this._lineColor, this._lineOpacity]),
+        width: this._lineWidth + 0.5,
+      });
+    }
 
-    this._txtSym = new TextSymbol({
-      text: '',
-      font: new Font({ size: this._fontSize, style: 'italic', weight: 'bold', family: 'Helvetica' }),
-      color: new Color([...this._fontColor, 1]),
-      haloColor: new Color([0, 0, 0, 1]),
-      haloSize: 3,
-      xoffset: 6,
-      yoffset: 6,
-    });
+    if (!this._txtSym) {
+      this._txtSym = new TextSymbol({
+        text: '',
+        font: new Font({ size: this._fontSize, style: 'italic', weight: 'bold', family: 'Helvetica' }),
+        color: new Color([...this._fontColor, 1]),
+        haloColor: new Color([0, 0, 0, 1]),
+        haloSize: 3,
+        xoffset: 6,
+        yoffset: 6,
+      });
+    }
 
+    if (!this._layer) return;
+
+    // Create the indicator graphics once and keep them on the layer (hidden).
+    if (!this._snapGraphic) {
+      this._snapGraphic = new Graphic({ symbol: this._dotSym, visible: false });
+      this._layer.add(this._snapGraphic);
+    } else {
+      this._snapGraphic.symbol = this._dotSym;
+      this._snapGraphic.visible = false;
+    }
+    if (!this._lineGraphic) {
+      this._lineGraphic = new Graphic({ symbol: this._lineSym, visible: false });
+      this._layer.add(this._lineGraphic);
+    } else {
+      this._lineGraphic.symbol = this._lineSym;
+      this._lineGraphic.visible = false;
+    }
+    if (!this._labelGraphic) {
+      this._labelGraphic = new Graphic({ symbol: this._txtSym, visible: false });
+      this._layer.add(this._labelGraphic);
+    } else {
+      this._labelGraphic.symbol = this._txtSym;
+      this._labelGraphic.visible = false;
+    }
+    this._indicatorVisible = false;
   }
 
   // ── Event helpers ─────────────────────────────────────────────────────────
@@ -790,13 +985,14 @@ class ProximityEngine {
   private _refreshIndicatorGraphics(): void {
     if (!this._layer) return;
 
-    // Update pre-allocated symbols in place
+    // Update pre-allocated symbols in place — mutate nested objects rather than
+    // reconstructing them each settings change.
     if (this._dotSym) {
       this._dotSym.size = this._markerSize;
-      this._dotSym.outline = new SimpleLineSymbol({
-        color: new Color([...this._markerColor, 1.0]),
-        width: 2.5,
-      });
+      if (this._dotSym.outline) {
+        this._dotSym.outline.color = new Color([...this._markerColor, 1.0]);
+        this._dotSym.outline.width = 2.5;
+      }
     }
     if (this._snapGraphic && this._dotSym) {
       this._snapGraphic.symbol = this._dotSym;
@@ -811,7 +1007,7 @@ class ProximityEngine {
     }
 
     if (this._txtSym) {
-      this._txtSym.font = new Font({ size: this._fontSize, family: 'Helvetica', style: 'italic', weight: 'bold' });
+      this._txtSym.font.size = this._fontSize;
       this._txtSym.color = new Color([...this._fontColor, 1]);
     }
     if (this._labelGraphic && this._txtSym) {
