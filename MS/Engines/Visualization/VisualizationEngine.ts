@@ -55,6 +55,7 @@ export interface ConvexHullOptions {
   enabled: boolean;
   friendlyFillColor: number[];
   enemyFillColor: number[];
+  neutralFillColor: number[];
   fillOpacity: number;
   outlineWidth: number;
 }
@@ -158,6 +159,7 @@ const DEFAULT_OPTIONS: VisualizationOptions = {
     enabled: false,
     friendlyFillColor: [0, 80, 200],
     enemyFillColor: [200, 50, 50],
+    neutralFillColor: [80, 200, 120],
     fillOpacity: 0.1,
     outlineWidth: 2,
   },
@@ -250,6 +252,11 @@ export class VisualizationEngine {
     if (this._enabled) this._scheduleRefresh();
   }
 
+  /** Force a refresh of all enabled overlays. Useful for external engines (e.g. EditEngine) after bulk geometry mutations. */
+  public refresh(): void {
+    this._scheduleRefresh();
+  }
+
   public setOptions(options: Partial<VisualizationOptions>): void {
     if (options.render)         Object.assign(this._options.render,         options.render);
     if (options.layerEffects)   Object.assign(this._options.layerEffects,   options.layerEffects);
@@ -291,7 +298,20 @@ export class VisualizationEngine {
       const layer = this._layerManager!.getOrCreateLayer(layerName);
       this._watchers.push(
         reactiveUtils.watch(
-          () => layer.graphics.length,
+          // Signature picks up add/remove (length) AND in-place geometry edits
+          // (reading geom.x/.y / first ring vertex makes reactiveUtils re-fire on mutation).
+          () => {
+            let sig = layer.graphics.length;
+            layer.graphics.forEach((g: any) => {
+              const geom = g.geometry as any;
+              if (!geom) return;
+              const v = geom.type === "point"
+                ? [geom.x, geom.y]
+                : (geom.rings?.[0]?.[0] ?? geom.paths?.[0]?.[0]);
+              if (v) sig += (v[0] ?? 0) + (v[1] ?? 0) * 1e-4;
+            });
+            return sig;
+          },
           () => this._scheduleRefresh(),
         ),
       );
@@ -544,7 +564,7 @@ export class VisualizationEngine {
   private _computeConvexHull(): void {
     if (!this._vizLayer) return;
     const opt = this._options.convexHull;
-    const { friendly, enemy } = this._getPointGraphics();
+    const { friendly, enemy, neutral } = this._getPointGraphics();
 
     const drawHull = (graphics: Graphic[], fillColor: number[]) => {
       if (graphics.length < 3) return;
@@ -578,6 +598,7 @@ export class VisualizationEngine {
 
     drawHull(friendly, opt.friendlyFillColor);
     drawHull(enemy,    opt.enemyFillColor);
+    drawHull(neutral,  opt.neutralFillColor);
   }
 
   // ─── Extruded Footprints (3D blocks / walls for lines & areas) ─────────────

@@ -4,17 +4,45 @@ import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
-import GraphicsLayerManager, { LAYER_NAMES } from "../../Managers/GraphicsLayerManager";
+import GraphicsLayerManager, {
+  LAYER_NAMES,
+  SYMBOL_LAYER_IDS,
+} from "../../Managers/GraphicsLayerManager";
 import settingsData from "../../Data/Settings.json";
+import { getEchelonCode } from "./echelon";
+import { SpatialIndex } from "./SpatialIndex";
 
-const SYMBOL_LAYERS = [LAYER_NAMES.FORCE, LAYER_NAMES.TACT_PT, LAYER_NAMES.TACT] as const;
 // Approximate Web Mercator scale at zoom 0 (used for minScale conversion)
 const BASE_SCALE = 591657550.5;
+// Debounce window for batching graphics-change events
+const GRAPHIC_BATCH_MS = 100;
+// Debounce window for solve pipeline (coalesces zoom + pan + add bursts)
+const SOLVE_DEBOUNCE_MS = 200;
+// SpatialIndex cell size — 64px keeps neighbor scans tight without
+// fragmenting the bucket map too much.
+const INDEX_CELL_PX = 64;
+
+type AnnotMode = "off" | "zoom" | "minscale" | "density";
+type Handle = { remove(): void };
+
+/**
+ * Context passed to every solve step. Read-only from the step's perspective:
+ * the step may toggle graphic visibility or push aggregate graphics into a
+ * separate layer, but it must not mutate the index.
+ */
+export interface SolveContext {
+  view: MapView | SceneView;
+  index: SpatialIndex;
+  zoom: number;
+  zoomInt: number;
+}
+
+export type SolveStep = (ctx: SolveContext) => void;
 
 export interface DeclutterOptions {
   enabled?: boolean;
   annotations?: {
-    mode?: "off" | "zoom" | "minscale" | "density";
+    mode?: AnnotMode;
     zoomThreshold?: number;
     densityMinPx?: number;
     fadeMs?: number;
@@ -30,17 +58,32 @@ export interface DeclutterOptions {
 export class DeclutterEngine {
   private _getView: () => MapView | SceneView;
   private _layerManager: GraphicsLayerManager;
-  private _zoomWatcher: { remove(): void } | null = null;
+  private _zoomWatcher: Handle | null = null;
+  private _stationaryWatcher: Handle | null = null;
+  private _graphicsWatchers = new Map<string, Handle>();
   private _enabled = false;
+
   // RAF handle per layer id (cancel in-flight fades when a new one starts)
   private _fadeHandles = new Map<string, number>();
   // Track last integer zoom so echelon re-eval only runs on integer zoom changes
   private _lastZoomInt = -1;
+  // Track last annotation mode so we can reset state on mode change
+  private _lastAnnotMode: AnnotMode | null = null;
+  // Pending batched-graphic-change layers and timer
+  private _dirtyLayers = new Set<string>();
+  private _dirtyTimer: number | null = null;
+
+  // Solve pipeline (Phase 1 foundation) — dormant until a step registers
+  private _spatialIndex = new SpatialIndex(INDEX_CELL_PX);
+  private _solveSteps = new Map<string, SolveStep>();
+  private _solveTimer: number | null = null;
 
   constructor(viewProvider: () => MapView | SceneView, layerManager: GraphicsLayerManager) {
     this._getView = viewProvider;
     this._layerManager = layerManager;
     this._attachZoomWatcher();
+    this._attachStationaryWatcher();
+    this._attachGraphicsWatchers();
   }
 
   // -------------------------------------------------------------------------
@@ -51,10 +94,16 @@ export class DeclutterEngine {
     this._enabled = true;
     const zoom = this._getView()?.zoom;
     if (zoom !== undefined) this._onZoomChange(zoom);
+    this._scheduleSolve();
   }
 
   disable(): void {
     this._enabled = false;
+    if (this._solveTimer !== null) {
+      clearTimeout(this._solveTimer);
+      this._solveTimer = null;
+    }
+    this._spatialIndex.clear();
     this._reset();
   }
 
@@ -69,12 +118,14 @@ export class DeclutterEngine {
     this._lastZoomInt = -1; // force echelon re-eval
     const zoom = this._getView()?.zoom;
     if (zoom !== undefined) this._onZoomChange(zoom);
+    this._scheduleSolve();
   }
 
   /** Call when the map view switches between 2D and 3D. */
   onViewChanged(newView: MapView | SceneView): void {
-    this._zoomWatcher?.remove();
     this._attachZoomWatcher();
+    this._attachStationaryWatcher();
+    this._attachGraphicsWatchers();
     const zoom = newView?.zoom;
     if (this._enabled && zoom !== undefined) this._onZoomChange(zoom);
   }
@@ -82,20 +133,209 @@ export class DeclutterEngine {
   destroy(): void {
     this._zoomWatcher?.remove();
     this._zoomWatcher = null;
+    this._stationaryWatcher?.remove();
+    this._stationaryWatcher = null;
+    this._graphicsWatchers.forEach(h => h.remove());
+    this._graphicsWatchers.clear();
+    if (this._dirtyTimer !== null) {
+      clearTimeout(this._dirtyTimer);
+      this._dirtyTimer = null;
+    }
+    if (this._solveTimer !== null) {
+      clearTimeout(this._solveTimer);
+      this._solveTimer = null;
+    }
+    this._solveSteps.clear();
+    this._spatialIndex.clear();
     this._reset();
   }
 
   // -------------------------------------------------------------------------
-  // Zoom watcher
+  // Solve pipeline API (Phase 1 foundation)
+  //
+  // Future declutter engines (cluster, label placer, marker disperser, etc.)
+  // register themselves as solve steps. The pipeline does **nothing** when
+  // no steps are registered, so this whole foundation is zero-cost for
+  // anyone not opted in.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Register a named solve step. Calling twice with the same name replaces
+   * the previous step. Steps run in insertion order on each solve pass.
+   */
+  registerSolveStep(name: string, step: SolveStep): void {
+    this._solveSteps.set(name, step);
+    if (this._enabled) this._scheduleSolve();
+  }
+
+  unregisterSolveStep(name: string): void {
+    this._solveSteps.delete(name);
+  }
+
+  /** External trigger — engines call this after mutating their own state. */
+  requestSolve(): void {
+    if (this._enabled) this._scheduleSolve();
+  }
+
+  /** Read-only access for solve steps that need richer queries between passes. */
+  get spatialIndex(): SpatialIndex {
+    return this._spatialIndex;
+  }
+
+  // -------------------------------------------------------------------------
+  // Watchers
   // -------------------------------------------------------------------------
 
   private _attachZoomWatcher(): void {
+    this._zoomWatcher?.remove();
     this._zoomWatcher = reactiveUtils.watch(
       () => this._getView()?.zoom,
-      (zoom: number) => {
+      (zoom: number | undefined) => {
         if (zoom !== undefined) this._onZoomChange(zoom);
       }
     );
+  }
+
+  /** Pan-aware re-evaluation: density mode needs to re-bin on pan. */
+  private _attachStationaryWatcher(): void {
+    this._stationaryWatcher?.remove();
+    this._stationaryWatcher = reactiveUtils.watch(
+      () => this._getView()?.stationary,
+      (stationary: boolean | undefined) => {
+        if (!stationary || !this._enabled) return;
+        const d = (settingsData as any).declutter;
+        if (d?.annotations?.mode === "density") this._annotDensity();
+        this._scheduleSolve();
+      }
+    );
+  }
+
+  /**
+   * Watch each symbol layer's graphics collection so newly added graphics
+   * inherit current declutter rules without waiting for the next zoom change.
+   */
+  private _attachGraphicsWatchers(): void {
+    this._graphicsWatchers.forEach(h => h.remove());
+    this._graphicsWatchers.clear();
+
+    const watchLayer = (layerId: string) => {
+      const layer = this._layerManager.getLayer(layerId);
+      if (!layer || !layer.graphics) return;
+      const handle = layer.graphics.on("change", (evt: { added?: Graphic[] }) => {
+        if (!this._enabled || !evt.added?.length) return;
+        this._dirtyLayers.add(layerId);
+        this._scheduleDirtyFlush();
+      });
+      this._graphicsWatchers.set(layerId, handle);
+    };
+
+    SYMBOL_LAYER_IDS.forEach(watchLayer);
+    watchLayer(LAYER_NAMES.ANNOTATION_LAYER);
+  }
+
+  /** Coalesce bursts of graphic adds into a single re-solve pass. */
+  private _scheduleDirtyFlush(): void {
+    if (this._dirtyTimer !== null) return;
+    this._dirtyTimer = window.setTimeout(() => {
+      this._dirtyTimer = null;
+      const layers = Array.from(this._dirtyLayers);
+      this._dirtyLayers.clear();
+      this._flushDirtyLayers(layers);
+    }, GRAPHIC_BATCH_MS);
+  }
+
+  private _flushDirtyLayers(layerIds: string[]): void {
+    const view = this._getView();
+    const zoom = view?.zoom;
+    if (zoom === undefined) return;
+    const d = (settingsData as any).declutter;
+    if (!d || d.enabled === false) return;
+
+    const zoomInt = Math.floor(zoom);
+    const echelonOn = d?.symbols?.echelonBased === true;
+    const hideOn = d?.symbols?.hideBelow === true;
+    const hideThreshold = d?.symbols?.zoomThreshold ?? 5;
+    const symbolsShouldShow = !hideOn || zoom >= hideThreshold;
+    const visibleEchelons = echelonOn ? this._visibleEchelonsForZoom(zoomInt) : null;
+
+    for (const layerId of layerIds) {
+      const layer = this._layerManager.getLayer(layerId);
+      if (!layer) continue;
+
+      if (layerId === LAYER_NAMES.ANNOTATION_LAYER) {
+        // Annotation mode handles its own visibility on zoom; on add we just
+        // re-run the active mode against the new graphics.
+        const mode: AnnotMode = d?.annotations?.mode ?? "off";
+        if (mode === "density") this._annotDensity();
+        // zoom/minscale/off modes affect the layer as a whole — adds inherit.
+        continue;
+      }
+
+      // Symbol layer — apply current per-graphic visibility rules
+      layer.graphics.forEach((g: Graphic) => {
+        const echOk = visibleEchelons === null
+          ? true
+          : visibleEchelons.includes(this._getEchelon(g));
+        g.visible = symbolsShouldShow && echOk;
+      });
+    }
+
+    this._syncAnnotationsToSymbolVisibility();
+    this._scheduleSolve();
+  }
+
+  // -------------------------------------------------------------------------
+  // Solve pipeline (internal)
+  // -------------------------------------------------------------------------
+
+  /** Debounced trigger — coalesces zoom + pan + add bursts. */
+  private _scheduleSolve(): void {
+    if (this._solveSteps.size === 0) return;       // dormant — no consumers
+    if (this._solveTimer !== null) return;          // already scheduled
+    this._solveTimer = window.setTimeout(() => {
+      this._solveTimer = null;
+      this._runSolve();
+    }, SOLVE_DEBOUNCE_MS);
+  }
+
+  private _runSolve(): void {
+    if (!this._enabled || this._solveSteps.size === 0) return;
+
+    const view = this._getView();
+    const zoom = view?.zoom;
+    if (!view || zoom === undefined) return;
+
+    // Rebuild the index only if the view has moved since last time.
+    // Graphics-add flushes also bump the dirty path, so we clear+rebuild
+    // unconditionally if size mismatches. Cheap: O(N) single pass.
+    const sources = SYMBOL_LAYER_IDS.map(layerId => {
+      const layer = this._layerManager.getLayer(layerId);
+      return {
+        layerId,
+        graphics: (layer?.graphics?.toArray?.() ?? []) as Graphic[],
+      };
+    });
+
+    if (this._spatialIndex.isStale(view) || this._spatialIndex.size === 0) {
+      this._spatialIndex.rebuild(sources, view);
+    }
+
+    const ctx: SolveContext = {
+      view,
+      index: this._spatialIndex,
+      zoom,
+      zoomInt: Math.floor(zoom),
+    };
+
+    // Run steps in insertion order. Wrap each in a try/catch so one bad
+    // step can't halt the pipeline for the others.
+    for (const [name, step] of this._solveSteps) {
+      try {
+        step(ctx);
+      } catch (err) {
+        console.error(`[DeclutterEngine] solve step "${name}" failed`, err);
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -112,6 +352,10 @@ export class DeclutterEngine {
     if (zoomInt !== this._lastZoomInt) {
       this._lastZoomInt = zoomInt;
       this._applySymbols(zoomInt);
+    } else {
+      // Same integer zoom — still need to handle fractional crossing of the
+      // hideBelow threshold (e.g. 4.9 → 5.1 with threshold=5 changes show state).
+      if (d?.symbols?.hideBelow) this._symbolZoomHide(zoom);
     }
   }
 
@@ -121,11 +365,32 @@ export class DeclutterEngine {
 
   private _applyAnnotations(zoom: number): void {
     const d = (settingsData as any).declutter;
-    switch (d?.annotations?.mode ?? "off") {
+    const mode: AnnotMode = d?.annotations?.mode ?? "off";
+
+    // Mode-switch cleanup: clear state left behind by the previous mode
+    if (this._lastAnnotMode !== null && this._lastAnnotMode !== mode) {
+      this._cleanupAnnotMode(this._lastAnnotMode);
+    }
+    this._lastAnnotMode = mode;
+
+    switch (mode) {
       case "zoom":     this._annotZoomThreshold(zoom); break;
       case "minscale": this._annotMinScale(); break;
       case "density":  this._annotDensity(); break;
       default:         this._annotOff(); break;
+    }
+  }
+
+  /** Undo side-effects left by `prevMode` so the next mode starts clean. */
+  private _cleanupAnnotMode(prevMode: AnnotMode): void {
+    const annotLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
+    if (!annotLayer) return;
+
+    if (prevMode === "minscale") {
+      (annotLayer as any).minScale = 0;
+    }
+    if (prevMode === "density") {
+      annotLayer.graphics.forEach((g: Graphic) => { g.visible = true; });
     }
   }
 
@@ -137,15 +402,15 @@ export class DeclutterEngine {
     if (!annotLayer) return;
 
     const shouldShow = zoom >= threshold;
+    const targetOpacity = shouldShow ? 1 : 0;
     const alreadyCorrect =
       annotLayer.visible === shouldShow &&
-      annotLayer.opacity === (shouldShow ? 1 : 0);
+      annotLayer.opacity === targetOpacity;
     if (alreadyCorrect) return;
 
     const fromOpacity = annotLayer.opacity;
-    const toOpacity   = shouldShow ? 1 : 0;
 
-    this._fadeLayer(LAYER_NAMES.ANNOTATION_LAYER, annotLayer, fromOpacity, toOpacity, fadeMs, () => {
+    this._fadeLayer(LAYER_NAMES.ANNOTATION_LAYER, annotLayer, fromOpacity, targetOpacity, fadeMs, () => {
       if (!shouldShow) annotLayer.visible = false;
     });
 
@@ -175,13 +440,14 @@ export class DeclutterEngine {
       const geom = g.geometry as Point | null;
       if (!geom) { g.visible = true; return; }
 
-      let screenPt: { x: number; y: number };
+      let screenPt: { x: number; y: number } | null | undefined;
       try {
         screenPt = view.toScreen(geom);
       } catch {
         g.visible = true;
         return;
       }
+      if (!screenPt) { g.visible = true; return; }
 
       const key = `${Math.floor(screenPt.x / cellSize)},${Math.floor(screenPt.y / cellSize)}`;
       if (grid.has(key)) {
@@ -217,47 +483,53 @@ export class DeclutterEngine {
     }
 
     if (d?.symbols?.hideBelow) {
-      this._symbolZoomHide(zoomInt);
+      // hideBelow uses raw (fractional) zoom for threshold crossing
+      const zoom = this._getView()?.zoom;
+      if (zoom !== undefined) this._symbolZoomHide(zoom);
     }
   }
 
-  /**
-   * Show/hide symbols based on their echelon and the ZoomLvlEchelon map.
-   * Echelon "00" (no echelon assigned) is always treated as visible.
-   */
-  private _applyEchelon(zoomInt: number): void {
+  /** Build the list of visible echelon codes at a given integer zoom. */
+  private _visibleEchelonsForZoom(zoomInt: number): string[] {
     const echelonMap = (settingsData as any).ZoomLvlEchelon;
-    if (!echelonMap) return;
+    if (!echelonMap) return ["00"];
 
-    // Find the highest map key that is <= zoomInt
     const sortedKeys = Object.keys(echelonMap).map(Number).sort((a, b) => a - b);
     let mapKey = sortedKeys[0];
     for (const k of sortedKeys) {
       if (k <= zoomInt) mapKey = k;
     }
-    const visibleEchelons: string[] = echelonMap[String(mapKey)] ?? ["00"];
+    return echelonMap[String(mapKey)] ?? ["00"];
+  }
+
+  /**
+   * Show/hide symbols based on their echelon and the ZoomLvlEchelon map.
+   * Echelon "00" (no echelon assigned) is always treated as visible.
+   * Single-pass: collects desired state and only flashes if at least one
+   * graphic actually changes.
+   */
+  private _applyEchelon(zoomInt: number): void {
+    const visibleEchelons = this._visibleEchelonsForZoom(zoomInt);
     const fadeMs = (settingsData as any).declutter?.symbols?.fadeMs ?? 300;
 
-    SYMBOL_LAYERS.forEach(layerName => {
+    SYMBOL_LAYER_IDS.forEach(layerName => {
       const layer = this._layerManager.getLayer(layerName);
       if (!layer) return;
 
-      // Check if any graphics need to change so we avoid unnecessary flashes
-      let needsUpdate = false;
+      // Single pass: compute desired visibility, collect dirty graphics
+      const updates: Array<{ g: Graphic; visible: boolean }> = [];
       layer.graphics.forEach((g: Graphic) => {
-        const echelon = this._getEchelon(g);
-        const shouldShow = visibleEchelons.includes(echelon);
-        if (g.visible !== shouldShow) needsUpdate = true;
+        const shouldShow = visibleEchelons.includes(this._getEchelon(g));
+        if (g.visible !== shouldShow) {
+          updates.push({ g, visible: shouldShow });
+        }
       });
 
-      if (!needsUpdate) return;
+      if (updates.length === 0) return;
 
-      // Flash-fade: fade out → update visibility → fade in
+      // Flash-fade: fade out → apply all updates → fade in
       this._flashLayer(layerName, layer, fadeMs, () => {
-        layer.graphics.forEach((g: Graphic) => {
-          const echelon = this._getEchelon(g);
-          g.visible = visibleEchelons.includes(echelon);
-        });
+        for (const u of updates) u.g.visible = u.visible;
       });
     });
 
@@ -265,17 +537,9 @@ export class DeclutterEngine {
     this._syncAnnotationsToSymbolVisibility();
   }
 
-  /** Extract 2-char echelon code from a graphic's attributes. */
+  /** Delegates to the shared echelon parser in ./echelon. */
   private _getEchelon(g: Graphic): string {
-    const de = g.attributes?.drawEssentials;
-    if (de?.ECHELON) return String(de.ECHELON);
-
-    // Fallback: parse from SIDC stored in amplifier or drawEssentials
-    const sidc: string = de?.SIDC || g.attributes?.sidc || "";
-    if (sidc.length === 20) return sidc.substr(8, 2);
-    if (sidc.length >= 10) return sidc.substr(8, 2);
-
-    return "00"; // treat unknown echelon as always-visible
+    return getEchelonCode(g);
   }
 
   /** After echelon visibility is applied, hide annotations for hidden parent symbols. */
@@ -285,7 +549,7 @@ export class DeclutterEngine {
 
     // Collect IDs of all currently visible symbols across all layers
     const visibleIds = new Set<string>();
-    SYMBOL_LAYERS.forEach(layerName => {
+    SYMBOL_LAYER_IDS.forEach(layerName => {
       const layer = this._layerManager.getLayer(layerName);
       if (!layer) return;
       layer.graphics.forEach((g: Graphic) => {
@@ -302,18 +566,27 @@ export class DeclutterEngine {
     });
   }
 
+  /**
+   * Fade symbol layers in/out at the hideBelow zoom threshold.
+   * Checks both visible AND opacity so a stale fade (opacity=0, visible=true)
+   * doesn't cause a no-op when the layer should be showing.
+   */
   private _symbolZoomHide(zoom: number): void {
     const d = (settingsData as any).declutter;
     const threshold = d?.symbols?.zoomThreshold ?? 5;
     const fadeMs    = d?.symbols?.fadeMs        ?? 400;
     const show      = zoom >= threshold;
+    const targetOp  = show ? 1 : 0;
 
-    SYMBOL_LAYERS.forEach(layerName => {
+    SYMBOL_LAYER_IDS.forEach(layerName => {
       const layer = this._layerManager.getLayer(layerName);
-      if (!layer || layer.visible === show) return;
+      if (!layer) return;
+
+      const alreadyCorrect = layer.visible === show && layer.opacity === targetOp;
+      if (alreadyCorrect) return;
+
       const fromOp = layer.opacity;
-      const toOp   = show ? 1 : 0;
-      this._fadeLayer(layerName, layer, fromOp, toOp, fadeMs, () => {
+      this._fadeLayer(layerName, layer, fromOp, targetOp, fadeMs, () => {
         if (!show) layer.visible = false;
       });
       if (show) layer.visible = true;
@@ -329,6 +602,7 @@ export class DeclutterEngine {
     this._fadeHandles.forEach(handle => cancelAnimationFrame(handle));
     this._fadeHandles.clear();
     this._lastZoomInt = -1;
+    this._lastAnnotMode = null;
 
     const annotLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
     if (annotLayer) {
@@ -338,7 +612,7 @@ export class DeclutterEngine {
       annotLayer.graphics.forEach((g: Graphic) => { g.visible = true; });
     }
 
-    SYMBOL_LAYERS.forEach(layerName => {
+    SYMBOL_LAYER_IDS.forEach(layerName => {
       const layer = this._layerManager.getLayer(layerName);
       if (layer) {
         layer.visible = true;

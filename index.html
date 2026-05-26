@@ -1767,6 +1767,31 @@
               <label>Symbol fade ms</label>
               <input type="number" id="setting-declutterSymFadeMs" value="300" min="0" max="2000" step="50" style="width:55px" title="Duration of symbol fade/flash animation in milliseconds (0 = instant)." />
             </div>
+            <div class="sub-feature-label">Cluster Badges</div>
+            <div class="setting-row">
+              <label>Enabled</label>
+              <input type="checkbox" id="setting-clusterEnabled" title="Aggregate nearby symbols into a single count badge. Originals are hidden; the badge replaces them. Reduces clutter in dense scenes." />
+            </div>
+            <div class="setting-row">
+              <label>Min cluster size</label>
+              <input type="number" id="setting-clusterMinSize" value="3" min="2" max="50" step="1" style="width:55px" title="Minimum nearby symbols required before they aggregate into a cluster badge." />
+            </div>
+            <div class="setting-row">
+              <label>Radius px</label>
+              <input type="number" id="setting-clusterRadiusPx" value="40" min="10" max="200" step="5" style="width:55px" title="Screen-pixel radius used to find cluster neighbours around each seed symbol." />
+            </div>
+            <div class="setting-row">
+              <label>Disable above zoom</label>
+              <input type="number" id="setting-clusterMaxZoom" value="14" min="1" max="22" step="1" style="width:55px" title="Above this zoom level the scene is already sparse — clustering is disabled to avoid unnecessary work." />
+            </div>
+            <div class="setting-row">
+              <label>Fade ms</label>
+              <input type="number" id="setting-clusterFadeMs" value="250" min="0" max="2000" step="50" style="width:55px" title="Duration of the cluster layer fade-in / fade-out transition." />
+            </div>
+            <div class="setting-row">
+              <label>Respect identity</label>
+              <input type="checkbox" id="setting-clusterRespectIdentity" checked title="When enabled, friendly and hostile symbols cluster separately. When disabled, all nearby symbols can merge into a single badge." />
+            </div>
           </div>
         </div>
 
@@ -2771,6 +2796,12 @@
         'setting-declutterSymbolZoom':    (v) => ({ path: ['declutter', 'symbols', 'zoomThreshold'],       value: +v }),
         'setting-declutterEchelon':       (v) => ({ path: ['declutter', 'symbols', 'echelonBased'],        value: v }),
         'setting-declutterSymFadeMs':     (v) => ({ path: ['declutter', 'symbols', 'fadeMs'],              value: +v }),
+        'setting-clusterEnabled':          (v) => ({ path: ['declutter', 'cluster', 'enabled'],          value: v }),
+        'setting-clusterMinSize':          (v) => ({ path: ['declutter', 'cluster', 'minClusterSize'],   value: +v }),
+        'setting-clusterRadiusPx':         (v) => ({ path: ['declutter', 'cluster', 'radiusPx'],         value: +v }),
+        'setting-clusterMaxZoom':          (v) => ({ path: ['declutter', 'cluster', 'maxZoom'],          value: +v }),
+        'setting-clusterFadeMs':           (v) => ({ path: ['declutter', 'cluster', 'fadeMs'],           value: +v }),
+        'setting-clusterRespectIdentity':  (v) => ({ path: ['declutter', 'cluster', 'respectIdentity'], value: v }),
         'setting-mgrsEngine':     (v) => ({ path: ['features', 'mgrsEngine'], value: v }),
         'setting-mgrsShowGZD':    (v) => ({ path: ['mgrs', 'showGZD'], value: v }),
         'setting-mgrsShow100K':   (v) => ({ path: ['mgrs', 'show100K'], value: v }),
@@ -3013,6 +3044,13 @@
           document.getElementById('setting-declutterSymbolZoom').value = dc.symbols?.zoomThreshold ?? 5;
           document.getElementById('setting-declutterEchelon').checked = dc.symbols?.echelonBased === true;
           document.getElementById('setting-declutterSymFadeMs').value = dc.symbols?.fadeMs ?? 300;
+          const cc = dc.cluster ?? {};
+          document.getElementById('setting-clusterEnabled').checked = cc.enabled === true;
+          document.getElementById('setting-clusterMinSize').value = cc.minClusterSize ?? 3;
+          document.getElementById('setting-clusterRadiusPx').value = cc.radiusPx ?? 40;
+          document.getElementById('setting-clusterMaxZoom').value = cc.maxZoom ?? 14;
+          document.getElementById('setting-clusterFadeMs').value = cc.fadeMs ?? 250;
+          document.getElementById('setting-clusterRespectIdentity').checked = cc.respectIdentity !== false;
           document.getElementById('setting-analysisEngines').checked =
             features.analysisEngines !== false;
           document.getElementById('setting-deploymentBuilder').checked =

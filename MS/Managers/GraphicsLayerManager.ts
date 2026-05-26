@@ -9,6 +9,7 @@ export const LAYER_NAMES = {
     TACT: "TacticalSymbolsLayer",
     SKETCH: "SketchLayer",
     ANNOTATION_LAYER: "AnnotationLayer",
+    CLUSTER: "ClusterBadgeLayer",
 };
 
 /**

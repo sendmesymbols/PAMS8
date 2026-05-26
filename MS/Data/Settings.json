@@ -558,6 +558,14 @@
       "zoomThreshold": 5,
       "echelonBased": false,
       "fadeMs": 300
+    },
+    "cluster": {
+      "enabled": false,
+      "minClusterSize": 3,
+      "radiusPx": 40,
+      "maxZoom": 14,
+      "fadeMs": 250,
+      "respectIdentity": true
     }
   },
   "ZoomLvlEchelon": {

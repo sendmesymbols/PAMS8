@@ -74,6 +74,7 @@ import Plan from './ImportExport/Plan.ts';
 import SerializationEngine from './ImportExport/SerializationEngine';
 import ThemeManager from '../Managers/ThemeManager';
 import DeclutterEngine from './Declutter/DeclutterEngine';
+import ClusterEngine from './Declutter/ClusterEngine';
 import MorphixEngine, {
   MorphixEditedState,
 } from './Morphix/MorphixEngine';
@@ -135,6 +136,7 @@ class SymbolEngine implements Evented {
   private _analysisRegistry!: AnalysisEngineRegistry;
   private _deploymentBuilderEngine: DeploymentBuilderEngine | null = null;
   private _declutterEngine: DeclutterEngine | null = null;
+  private _clusterEngine: ClusterEngine | null = null;
   private _morphixEngine: MorphixEngine;
   public readonly serializationEngine = SerializationEngine.getInstance();
   private currentSymbol: any | undefined;
@@ -522,6 +524,8 @@ class SymbolEngine implements Evented {
     this._deploymentBuilderEngine?.onViewChanged(newView);
     // Re-attach DeclutterEngine to the new view
     this._declutterEngine?.onViewChanged(newView);
+    // Re-attach ClusterEngine to the new view
+    this._clusterEngine?.onViewChanged(newView);
 
     // Re-attach all loaded analysis engines to the new view
     this._analysisRegistry.onViewChanged(newView);
@@ -1359,8 +1363,14 @@ class SymbolEngine implements Evented {
       else this._declutterEngine?.disable();
     }
 
+    if (fullPath === 'declutter.cluster.enabled') {
+      if (value) this._clusterEngine?.enable();
+      else this._clusterEngine?.disable();
+    }
+
     if (fullPath.startsWith('declutter.') && fullPath !== 'declutter.enabled') {
       this._declutterEngine?.refresh();
+      if (fullPath.startsWith('declutter.cluster.')) this._clusterEngine?.refresh();
     }
 
     // Emit event so other parts of the app can react
@@ -1375,6 +1385,15 @@ class SymbolEngine implements Evented {
     this._declutterEngine = new DeclutterEngine(this._getView, this._layerManager);
     const d = (settingsData as any).declutter;
     if (d?.enabled === true) this._declutterEngine.enable();
+
+    // ClusterEngine sits on top of DeclutterEngine — registers itself as a
+    // solve step when enabled, dormant otherwise.
+    this._clusterEngine = new ClusterEngine(
+      this._getView,
+      this._layerManager,
+      this._declutterEngine,
+    );
+    if (d?.cluster?.enabled === true) this._clusterEngine.enable();
   }
 
   // -----------------------------------------------------------------------
