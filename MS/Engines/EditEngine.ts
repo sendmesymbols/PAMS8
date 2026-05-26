@@ -96,6 +96,7 @@ class EditEngine {
     // Floating tip shown while an edit session is active — lets the user disable
     // the mode without going through the right-click context menu.
     private _modeBanner: HTMLElement | null = null;
+    private _modeBannerAbort: AbortController | null = null;
 
     constructor(viewProvider: () => MapView | SceneView, layerManager: GraphicsLayerManager) {
         this._getView = viewProvider;
@@ -284,9 +285,11 @@ class EditEngine {
                     this._syncPointDrawEssentials(graphic);
                     this._reAnnotate(graphic);
                     this._emit("changeInSymbol", { graphic });
+                    // Clear snapshot so a subsequent deactivate()/cancel doesn't revert.
+                    this._originalGeometry = null;
                     break;
                 case "cancel":
-                    graphic.geometry = this._originalGeometry;
+                    if (this._originalGeometry) graphic.geometry = this._originalGeometry;
                     this._reAnnotate(graphic);
                     break;
             }
@@ -776,6 +779,11 @@ class EditEngine {
         // pointer-up: finalise drag OR detect handle click → remove
         this._pointerUpHandle = view.on("pointer-up", () => {
             if (!this._isDraggingHandle) return;
+            if (this._activeHandleIndex < 0) {
+                this._isDraggingHandle = false;
+                this._handleDragOccurred = false;
+                return;
+            }
 
             const wasRealDrag = this._handleDragOccurred;
             this._isDraggingHandle = false;
@@ -1079,6 +1087,12 @@ class EditEngine {
         this._mixedProxyOriginalGeometry = null;
         this._mixedSnapshots = [];
         this._isMixedEdit = false;
+        // Destroy SVM last; any "cancel" event fired by destroy is a no-op
+        // because the state above has already been cleared.
+        if (this._sketchVM) {
+            this._sketchVM.destroy();
+            this._sketchVM = null;
+        }
     }
 
     private _finalizeMixedEditBeforeDeactivate(): void {
@@ -1098,7 +1112,13 @@ class EditEngine {
         if (type === 'changeInSymbol') {
             EngineLogger.success('Edit Engine', 'Symbol updated — edit complete');
         }
-        this._eventListeners.get(type)?.forEach(fn => fn(data));
+        this._eventListeners.get(type)?.forEach(fn => {
+            try {
+                fn(data);
+            } catch (e) {
+                console.error(`EditEngine: listener for "${type}" threw`, e);
+            }
+        });
     }
 
     // -----------------------------------------------------------------------
@@ -1118,7 +1138,7 @@ class EditEngine {
 
         const labels: Record<'move-scale-rotate' | 'control-points' | 'mixed-edit', { icon: string; title: string; hint: string }> = {
             'move-scale-rotate': { icon: '✎',  title: 'Move / Scale / Rotate', hint: 'Drag handles to transform the symbol' },
-            'control-points':    { icon: '↕',  title: 'Edit Control Points',   hint: 'Drag points to reshape — click symbol to add, click point to remove' },
+            'control-points':    { icon: '↕',  title: 'Edit Control Points',   hint: 'Drag handles to reshape • Click symbol to add • Click point to remove' },
             'mixed-edit':        { icon: '⇄',  title: 'Mixed Edit',            hint: 'Drag to move or rotate (scale disabled)' },
         };
         const cfg = labels[mode];
@@ -1152,12 +1172,69 @@ class EditEngine {
             ${sep}
             <span style="opacity:0.7">or press ${kbd}</span>
         `;
-        el.querySelector('.edit-banner-disable')?.addEventListener('click', () => this.deactivate());
+        this._modeBannerAbort = new AbortController();
+        el.querySelector('.edit-banner-disable')?.addEventListener(
+            'click',
+            () => this.deactivate(),
+            { signal: this._modeBannerAbort.signal }
+        );
         document.body.appendChild(el);
         this._modeBanner = el;
+        this._wireBannerDrag(el);
+    }
+
+    /**
+     * Make the mode banner draggable so the user can move it off any panel that
+     * overlaps it. Listeners are bound to `_modeBannerAbort` so they tear down
+     * when the banner is removed.
+     */
+    private _wireBannerDrag(banner: HTMLElement): void {
+        if (!this._modeBannerAbort) return;
+        const signal = this._modeBannerAbort.signal;
+        let dragging = false;
+        let ox = 0;
+        let oy = 0;
+
+        banner.style.cursor = 'grab';
+
+        banner.addEventListener('mousedown', (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('button, kbd')) return;
+            const rect = banner.getBoundingClientRect();
+            // Anchor by explicit left/top so subsequent moves don't fight the
+            // original left: 50% / transform: translateX(-50%) centring.
+            banner.style.left = rect.left + 'px';
+            banner.style.top = rect.top + 'px';
+            banner.style.right = 'auto';
+            banner.style.bottom = 'auto';
+            banner.style.transform = 'none';
+            ox = e.clientX - rect.left;
+            oy = e.clientY - rect.top;
+            dragging = true;
+            banner.style.cursor = 'grabbing';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        }, { signal });
+
+        document.addEventListener('mousemove', (e: MouseEvent) => {
+            if (!dragging) return;
+            const maxLeft = window.innerWidth  - banner.offsetWidth  - 4;
+            const maxTop  = window.innerHeight - banner.offsetHeight - 4;
+            banner.style.left = Math.max(0, Math.min(e.clientX - ox, maxLeft)) + 'px';
+            banner.style.top  = Math.max(0, Math.min(e.clientY - oy, maxTop))  + 'px';
+        }, { signal });
+
+        document.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            banner.style.cursor = 'grab';
+            document.body.style.userSelect = '';
+        }, { signal });
     }
 
     private _removeModeBanner(): void {
+        this._modeBannerAbort?.abort();
+        this._modeBannerAbort = null;
         if (this._modeBanner) {
             this._modeBanner.remove();
             this._modeBanner = null;

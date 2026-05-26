@@ -33,7 +33,15 @@ export default class UndoRedoManager {
     get undoCount(): number;
     get redoCount(): number;
     get nextUndoLabel(): string | null;
-    /** Clear both stacks — used by clearAllGraphics. */
+    /**
+     * Clear both stacks and the pre-edit snapshot — used by clearAllGraphics.
+     *
+     * The stack arrays hold closures that reference Graphic instances via
+     * `undo`/`redo` lambdas; dropping the arrays releases those references for
+     * GC. We also null `_preEditSnapshot`, which otherwise pins the most
+     * recently-edited graphic (including any `additionalGraphics`) until the
+     * next edit operation completes.
+     */
     clear(): void;
     get nextRedoLabel(): string | null;
     /**

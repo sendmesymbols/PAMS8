@@ -49,6 +49,7 @@ declare class EditEngine {
     private _keydownListener;
     private _eventListeners;
     private _modeBanner;
+    private _modeBannerAbort;
     constructor(viewProvider: () => MapView | SceneView, layerManager: GraphicsLayerManager);
     get view(): MapView | SceneView;
     /**

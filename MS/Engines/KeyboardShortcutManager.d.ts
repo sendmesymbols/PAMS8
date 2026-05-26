@@ -48,11 +48,18 @@ export interface KeyboardShortcutDeps {
  *   Ctrl+Shift+V    Paste with offset dialog
  */
 export default class KeyboardShortcutManager {
-    private readonly deps;
+    private deps;
     private _handler;
     constructor(deps: KeyboardShortcutDeps);
     attach(): void;
     detach(): void;
+    /**
+     * Swap in a new EditEngine instance after a view switch.  Without this the
+     * old EditEngine is pinned by this manager's document keydown listener and
+     * shortcut state queries (`isModifyingSymbol` / `isEditingControlPoints`)
+     * read from the discarded engine bound to the previous view.
+     */
+    rewireEditEngine(editEngine: EditEngine): void;
     private currentGraphic;
     private onKeyDown;
 }

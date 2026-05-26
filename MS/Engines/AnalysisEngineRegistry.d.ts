@@ -72,8 +72,21 @@ export default class AnalysisEngineRegistry {
     init(key: AnalysisKey): void;
     /** Destroy a single engine and unlink it from the context menu. */
     destroy(key: AnalysisKey): void;
-    /** Initialise all enabled engines (respects master + individual flags). */
-    initAll(): void;
+    /**
+     * Initialise all enabled engines (respects master + individual flags).
+     *
+     * Each engine's construction wires context-menu entries and view listeners,
+     * which is non-trivial work × 14. Doing it synchronously on boot pushed
+     * first-paint out by tens of ms. Instead we schedule each engine on the
+     * browser's idle queue so the main thread can finish the first frame, then
+     * trickle in the analysis engines one tick at a time. Context-menu items
+     * appear within a few ms of boot completion, before the user could plausibly
+     * right-click.
+     *
+     * `force === true` keeps the eager path for callers that need every engine
+     * built immediately (e.g. tests, or a synchronous setEnabled toggle).
+     */
+    initAll(force?: boolean): void;
     /** Destroy every engine and tell the context menu the analysis tools are gone. */
     destroyAll(): void;
     /** Toggle a single engine on or off at runtime (called from onSettingChanged). */

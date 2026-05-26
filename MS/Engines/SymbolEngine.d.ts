@@ -111,6 +111,10 @@ declare class SymbolEngine implements Evented {
      * This allows catching events from any symbol class without manual registration
      */
     setupGlobalEventListener(): void;
+    /**
+     * Generate a UUID for graphics
+     */
+    private generateUUID;
     onViewChanged(newView: MapView | SceneView): void;
     /**
      * Dynamically import and initialise MeasurementEngine only when the
@@ -198,6 +202,7 @@ declare class SymbolEngine implements Evented {
      *   I        â†’ Show Details
      *   C        â†’ Center On
      */
+    private _keyboardShortcutManager?;
     private _setupKeyboardShortcuts;
     /** Access the MeasurementEngine â€” configure units or toggle programmatically.
      *  May be undefined if the feature is disabled in Settings.json or not yet loaded. */
@@ -303,6 +308,14 @@ declare class SymbolEngine implements Evented {
     static isView2D(view: View): boolean;
     static isView3D(view: View): boolean;
     ensureMsAvailable(): void;
+    /**
+     * Cache for the expensive milsymbol → canvas → dataURL rasterisation.
+     * Keyed on SIDC + size; re-used across draws of the same symbol class.
+     * PictureMarkerSymbol instances are still constructed per call (cheap) so
+     * ArcGIS isn't handed the same mutable symbol object twice.
+     */
+    private static _forceRasterCache;
+    private static readonly _FORCE_RASTER_CACHE_MAX;
     generateForceSymbol(drawEssentials: DrawEssentials, amplifier: Amplifier, attr: object): PictureMarkerSymbol | undefined;
     initialize(drawEssentials: DrawEssentials, amplifier: Amplifier, isPassive?: boolean): void;
     getSymbol(isLine?: boolean): any;

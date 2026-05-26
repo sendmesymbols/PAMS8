@@ -39,6 +39,13 @@ declare class SelectionActionPanel {
     private _activeTab;
     private _similarPopup;
     constructor(selectionEngine: SelectionEngine, editEngine: EditEngine, callbacks: SelectionActionPanelCallbacks);
+    /**
+     * Swap in a new EditEngine instance.  Called from SymbolEngine.onViewChanged
+     * after a 2D/3D view switch rebuilds the engine — without this the panel
+     * keeps pinning the old EditEngine (memory leak) and its buttons would
+     * invoke the old instance bound to the previous view.
+     */
+    rewireEditEngine(editEngine: EditEngine): void;
     /** Start listening for selection changes and rendering the panel. */
     enable(): void;
     /** Tear down the panel and detach listeners. */
