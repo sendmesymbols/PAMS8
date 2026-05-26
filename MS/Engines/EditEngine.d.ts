@@ -179,6 +179,6 @@ declare class EditEngine {
      * Returns the Edit submenu item tree.
      * Call from SymbolEngine.registerContextMenuItems() and spread the result.
      */
-    buildContextMenuItems(onModify: (graphic: Graphic) => void, onActivateCtrlPts: (graphic: Graphic) => void, onDeactivate: () => void): ContextMenuItem[];
+    buildContextMenuItems(onModify: (graphic: Graphic) => void, onActivateCtrlPts: (graphic: Graphic) => void, onDeactivate: () => void, getSelectionCount?: () => number): ContextMenuItem[];
 }
 export default EditEngine;

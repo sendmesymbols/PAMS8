@@ -75,6 +75,25 @@ class EditEngine {
     private _mixedSnapshots: { graphic: Graphic; geometry: any; ctrlPts: Point[] | null; baseLnPts: any }[] = [];
     private _mixedProxyGraphic: Graphic | null = null;
     private _mixedProxyOriginalGeometry: any = null;
+    // Per-symbol halos shown during a mixed-edit session — flashed at start so
+    // the user sees which symbols are in scope, then kept as a subtle outline
+    // that follows each symbol as the proxy is transformed.
+    private _mixedHaloGraphics: { graphic: Graphic; symbolType: string }[] = [];
+    private _mixedFlashTimeout: number | null = null;
+
+    // rAF coalescing for live reshape redraws — drag events can fire many times
+    // per frame and createSymbol() can be expensive for complex symbols, so we
+    // collapse pending redraws to one per animation frame using the latest state.
+    private _redrawRafId: number | null = null;
+    private _pendingRedraw: { graphic: Graphic; de: DrawEssentials } | null = null;
+
+    // Cached screen positions for handle hit-testing — recomputed only when
+    // the view's scale/center changes (cheap polling) or when a handle moves.
+    private _handleScreenCacheScale: number | null = null;
+    private _handleScreenCacheCx: number | null = null;
+    private _handleScreenCacheCy: number | null = null;
+    private _pointerMoveRafId: number | null = null;
+    private _lastPointerMoveEvt: any = null;
 
     // Reshape handle state
     private _handleLayer: GraphicsLayer;
@@ -382,6 +401,10 @@ class EditEngine {
 
         this._mixedSnapshots.forEach(s => this._deAnnotate(s.graphic));
 
+        this._logMixedSession(allGraphics);
+        this._createMixedHalos();
+        this._flashMixedHalos();
+
         const proxy = this._createMixedProxyGraphic(allGraphics);
         if (!proxy) return;
         this._mixedProxyGraphic = proxy;
@@ -543,6 +566,7 @@ class EditEngine {
         if (!this._mixedProxyOriginalGeometry) return;
         const t = this._computeAffineTransform(this._mixedProxyOriginalGeometry, this._mixedProxyGraphic.geometry);
         this._mixedSnapshots.forEach(s => this._applySnapshotTransform(s, t));
+        this._updateMixedHalos();
     }
 
     private _applySnapshotTransform(
@@ -570,27 +594,32 @@ class EditEngine {
         if (!geometry?.clone) return geometry;
         const g = geometry.clone();
 
+        // Inline the affine transform: avoid allocating a Point per vertex
+        // (mixed-edit fires this per pointer event × per selected graphic).
+        const a = t.a, b = t.b, tx = t.tx, ty = t.ty;
+
         if (g.type === "point") {
-            const p = this._applyAffineToPoint(g as Point, t);
-            g.x = p.x;
-            g.y = p.y;
+            const x = g.x;
+            const y = g.y;
+            g.x = a * x - b * y + tx;
+            g.y = b * x + a * y + ty;
             return g;
         }
         if (g.type === "polyline" && g.paths) {
             g.paths = g.paths.map((path: number[][]) =>
-                path.map(([x, y]: number[]) => {
-                    const p = this._applyAffineToPoint(new Point({ x, y, spatialReference: g.spatialReference }), t);
-                    return [p.x, p.y];
-                })
+                path.map(([x, y]: number[]) => [
+                    a * x - b * y + tx,
+                    b * x + a * y + ty,
+                ])
             );
             return g;
         }
         if (g.type === "polygon" && g.rings) {
             g.rings = g.rings.map((ring: number[][]) =>
-                ring.map(([x, y]: number[]) => {
-                    const p = this._applyAffineToPoint(new Point({ x, y, spatialReference: g.spatialReference }), t);
-                    return [p.x, p.y];
-                })
+                ring.map(([x, y]: number[]) => [
+                    a * x - b * y + tx,
+                    b * x + a * y + ty,
+                ])
             );
             return g;
         }
@@ -703,10 +732,11 @@ class EditEngine {
             this._handleDragOccurred = false;
             this._activeHandleIndex = -1;
 
+            this._refreshHandleScreenCache(view);
+
             for (let i = 0; i < this._handleGraphics.length; i++) {
-                const geom = this._handleGraphics[i].geometry as any;
-                if (!geom) continue;
-                const screenPt = view.toScreen(geom);
+                const screenPt = (this._handleGraphics[i].attributes as any)?._cachedScreen;
+                if (!screenPt) continue;
                 if (Math.hypot(screenPt.x - evt.x, screenPt.y - evt.y) < 16) {
                     this._isDraggingHandle = true;
                     this._activeHandleIndex = i;
@@ -766,7 +796,12 @@ class EditEngine {
 
             // Move the visual handle to follow the pointer
             const handleGraphic = this._handleGraphics[this._activeHandleIndex];
-            if (handleGraphic) handleGraphic.geometry = mapPt;
+            if (handleGraphic) {
+                handleGraphic.geometry = mapPt;
+                // Invalidate the cached screen position for this handle; the
+                // next refresh will recompute all entries.
+                this._handleScreenCacheScale = null;
+            }
 
             // Update the corresponding CTRL_PT and trigger a live redraw
             const ctrlPts: Point[] = (de as any).CTRL_PTS;
@@ -804,25 +839,36 @@ class EditEngine {
             this._emit("changeInSymbol", { graphic });
         });
 
-        // pointer-move: update cursor to indicate add / drag / remove mode
+        // pointer-move: update cursor to indicate add / drag / remove mode.
+        // rAF-throttled so we do at most one cursor pass per frame, and reads
+        // screen positions from the cache instead of calling view.toScreen()
+        // for every handle on every pointer event.
         this._pointerMoveRawHandle = view.on("pointer-move", (evt: any) => {
-            let nearAdded = false;
-            let nearOriginal = false;
-            for (const handle of this._handleGraphics) {
-                const geom = handle.geometry as any;
-                if (!geom) continue;
-                const screenPt = view.toScreen(geom);
-                if (Math.hypot(screenPt.x - evt.x, screenPt.y - evt.y) < 16) {
-                    if (handle.attributes?.isAdded) nearAdded = true;
-                    else nearOriginal = true;
-                    break;
+            this._lastPointerMoveEvt = evt;
+            if (this._pointerMoveRafId !== null) return;
+            this._pointerMoveRafId = requestAnimationFrame(() => {
+                this._pointerMoveRafId = null;
+                const e = this._lastPointerMoveEvt;
+                if (!e) return;
+                this._refreshHandleScreenCache(view);
+
+                let nearAdded = false;
+                let nearOriginal = false;
+                for (const handle of this._handleGraphics) {
+                    const screenPt = (handle.attributes as any)?._cachedScreen;
+                    if (!screenPt) continue;
+                    if (Math.hypot(screenPt.x - e.x, screenPt.y - e.y) < 16) {
+                        if (handle.attributes?.isAdded) nearAdded = true;
+                        else nearOriginal = true;
+                        break;
+                    }
                 }
-            }
-            const container = (view as any).container as HTMLElement;
-            if (!container) return;
-            if (nearAdded) container.style.cursor = "not-allowed";     // click will remove
-            else if (nearOriginal) container.style.cursor = "move";    // click will drag
-            else container.style.cursor = "crosshair";                 // click will add
+                const container = (view as any).container as HTMLElement;
+                if (!container) return;
+                if (nearAdded) container.style.cursor = "not-allowed";     // click will remove
+                else if (nearOriginal) container.style.cursor = "move";    // click will drag
+                else container.style.cursor = "crosshair";                 // click will add
+            });
         });
     }
 
@@ -831,18 +877,29 @@ class EditEngine {
      * the graphic's geometry.  SCOPE is set to the symbol instance during init().
      */
     private _redrawFromCtrlPts(graphic: Graphic, de: DrawEssentials): void {
-        const scope = (de as any).SCOPE;
-        if (scope && typeof scope.createSymbol === "function") {
-            try {
-                const newGeom = scope.createSymbol(de);
-                if (newGeom) graphic.geometry = newGeom;
-                // createSymbol() may emit onDrawEnd and cause AnnotationEngine to
-                // re-annotate. Strip any labels that appeared during this redraw.
-                this._deAnnotate(graphic);
-            } catch (e) {
-                console.error("EditEngine._redrawFromCtrlPts: createSymbol error", e);
+        // Coalesce rapid drag events into one redraw per frame using the latest
+        // (graphic, de) pair. Calls from _addControlPoint / _removeControlPoint
+        // still land in the same queue and produce a redraw on the next frame.
+        this._pendingRedraw = { graphic, de };
+        if (this._redrawRafId !== null) return;
+        this._redrawRafId = requestAnimationFrame(() => {
+            this._redrawRafId = null;
+            const pending = this._pendingRedraw;
+            this._pendingRedraw = null;
+            if (!pending) return;
+            const scope = (pending.de as any).SCOPE;
+            if (scope && typeof scope.createSymbol === "function") {
+                try {
+                    const newGeom = scope.createSymbol(pending.de);
+                    if (newGeom) pending.graphic.geometry = newGeom;
+                    // createSymbol() may emit onDrawEnd and cause AnnotationEngine to
+                    // re-annotate. Strip any labels that appeared during this redraw.
+                    this._deAnnotate(pending.graphic);
+                } catch (e) {
+                    console.error("EditEngine._redrawFromCtrlPts: createSymbol error", e);
+                }
             }
-        }
+        });
     }
 
     // -----------------------------------------------------------------------
@@ -880,6 +937,7 @@ class EditEngine {
         });
         this._handleGraphics.splice(insertIdx, 0, newHandle);
         this._handleLayer.add(newHandle);
+        this._handleScreenCacheScale = null; // handle set changed → recompute
 
         // Redraw symbol with the new point
         this._redrawFromCtrlPts(graphic, de);
@@ -898,6 +956,7 @@ class EditEngine {
 
         const removed = this._handleGraphics.splice(index, 1)[0];
         if (removed) this._handleLayer.remove(removed);
+        this._handleScreenCacheScale = null; // handle set changed → recompute
 
         // Re-index remaining handles
         for (let i = index; i < this._handleGraphics.length; i++) {
@@ -925,6 +984,31 @@ class EditEngine {
         return insertAfterIdx + 1;
     }
 
+    /**
+     * Recompute each handle's screen-space position via view.toScreen(), but
+     * only when the cached view scale / center is stale. Result is stored on
+     * `handle.attributes._cachedScreen` so pointer-down and pointer-move can
+     * hit-test without per-event toScreen() calls.
+     */
+    private _refreshHandleScreenCache(view: any): void {
+        const scale = view.scale;
+        const cx = view.center?.x ?? 0;
+        const cy = view.center?.y ?? 0;
+        if (scale === this._handleScreenCacheScale &&
+            cx === this._handleScreenCacheCx &&
+            cy === this._handleScreenCacheCy) {
+            return; // cache is still valid
+        }
+        for (const handle of this._handleGraphics) {
+            const geom = handle.geometry as any;
+            if (!geom) continue;
+            (handle.attributes as any)._cachedScreen = view.toScreen(geom);
+        }
+        this._handleScreenCacheScale = scale;
+        this._handleScreenCacheCx = cx;
+        this._handleScreenCacheCy = cy;
+    }
+
     /** Minimum distance from point P to segment A→B in map coordinates. */
     private _distancePtToSegment(P: Point, A: Point, B: Point): number {
         const dx = B.x - A.x;
@@ -938,6 +1022,9 @@ class EditEngine {
     private _clearHandles(): void {
         this._handleGraphics.forEach(g => this._handleLayer.remove(g));
         this._handleGraphics = [];
+        this._handleScreenCacheScale = null;
+        this._handleScreenCacheCx = null;
+        this._handleScreenCacheCy = null;
     }
 
     private _clearPointerHandlers(): void {
@@ -953,6 +1040,18 @@ class EditEngine {
         this._pointerMoveRawHandle = null;
         this._suppressNextClick = false;
         this._handleDragOccurred = false;
+
+        // Cancel any pending throttled work so it doesn't run on a torn-down session.
+        if (this._pointerMoveRafId !== null) {
+            cancelAnimationFrame(this._pointerMoveRafId);
+            this._pointerMoveRafId = null;
+        }
+        this._lastPointerMoveEvt = null;
+        if (this._redrawRafId !== null) {
+            cancelAnimationFrame(this._redrawRafId);
+            this._redrawRafId = null;
+        }
+        this._pendingRedraw = null;
 
         // Restore default cursor when leaving reshape mode
         const container = (this.view as any)?.container as HTMLElement;
@@ -1069,6 +1168,139 @@ class EditEngine {
         });
     }
 
+    /**
+     * Build a subtle halo graphic for each symbol in the mixed-edit session.
+     * Halos sit on the handle layer and follow each symbol's geometry as the
+     * user transforms the proxy, so the user can always see which symbols are
+     * in scope — even if they extend beyond the proxy rectangle.
+     */
+    private _createMixedHalos(): void {
+        for (const s of this._mixedSnapshots) {
+            const geom = s.graphic.geometry;
+            if (!geom) continue;
+            const haloSym = this._createHaloSymbol(geom.type);
+            if (!haloSym) continue;
+            const halo = new Graphic({
+                geometry: geom.clone(),
+                symbol: haloSym,
+                attributes: { isMixedHalo: true },
+            });
+            this._handleLayer.add(halo);
+            this._mixedHaloGraphics.push({ graphic: halo, symbolType: geom.type });
+        }
+    }
+
+    /**
+     * Briefly swap each halo's symbol with a brighter "flash" variant at session
+     * start, then restore. One-shot pulse so the user sees every participating
+     * symbol confirm itself even before they start dragging.
+     */
+    private _flashMixedHalos(durationMs = 450): void {
+        if (this._mixedHaloGraphics.length === 0) return;
+        const originals = this._mixedHaloGraphics.map(h => h.graphic.symbol);
+        const targets = [...this._mixedHaloGraphics];
+        targets.forEach(h => {
+            const flashSym = this._createFlashSymbol(h.symbolType);
+            if (flashSym) h.graphic.symbol = flashSym;
+        });
+        this._mixedFlashTimeout = window.setTimeout(() => {
+            this._mixedFlashTimeout = null;
+            targets.forEach((h, i) => {
+                if (!h.graphic) return;
+                try { h.graphic.symbol = originals[i]; } catch { /* graphic may have been removed */ }
+            });
+        }, durationMs);
+    }
+
+    private _updateMixedHalos(): void {
+        const n = Math.min(this._mixedHaloGraphics.length, this._mixedSnapshots.length);
+        for (let i = 0; i < n; i++) {
+            this._mixedHaloGraphics[i].graphic.geometry = this._mixedSnapshots[i].graphic.geometry;
+        }
+    }
+
+    private _clearMixedHalos(): void {
+        if (this._mixedFlashTimeout !== null) {
+            clearTimeout(this._mixedFlashTimeout);
+            this._mixedFlashTimeout = null;
+        }
+        for (const h of this._mixedHaloGraphics) {
+            this._handleLayer.remove(h.graphic);
+        }
+        this._mixedHaloGraphics = [];
+    }
+
+    private _createHaloSymbol(geomType: string): any {
+        if (geomType === 'point') {
+            return new SimpleMarkerSymbol({
+                color: new Color([0, 180, 255, 0]),
+                size: 28,
+                style: 'circle',
+                outline: { color: new Color([0, 180, 255, 0.6]), width: 2 },
+            });
+        }
+        if (geomType === 'polyline') {
+            return {
+                type: 'simple-line',
+                color: [0, 180, 255, 0.5],
+                width: 6,
+                style: 'solid',
+            };
+        }
+        if (geomType === 'polygon') {
+            return {
+                type: 'simple-fill',
+                color: [0, 180, 255, 0.08],
+                outline: { color: [0, 180, 255, 0.6], width: 2 },
+            };
+        }
+        return null;
+    }
+
+    private _createFlashSymbol(geomType: string): any {
+        if (geomType === 'point') {
+            return new SimpleMarkerSymbol({
+                color: new Color([255, 255, 255, 0.3]),
+                size: 36,
+                style: 'circle',
+                outline: { color: new Color([120, 220, 255, 1]), width: 3 },
+            });
+        }
+        if (geomType === 'polyline') {
+            return {
+                type: 'simple-line',
+                color: [255, 255, 255, 0.9],
+                width: 8,
+                style: 'solid',
+            };
+        }
+        if (geomType === 'polygon') {
+            return {
+                type: 'simple-fill',
+                color: [255, 255, 255, 0.25],
+                outline: { color: [255, 255, 255, 1], width: 3 },
+            };
+        }
+        return null;
+    }
+
+    private _logMixedSession(graphics: Graphic[]): void {
+        const counts: Record<string, number> = {};
+        for (const g of graphics) {
+            const t = g.geometry?.type ?? 'unknown';
+            counts[t] = (counts[t] ?? 0) + 1;
+        }
+        const label = (type: string, n: number): string => {
+            const base = type === 'polyline' ? 'Line'
+                       : type === 'polygon'  ? 'Area'
+                       : type === 'point'    ? 'Point'
+                       : type;
+            return `${n} ${base}${n !== 1 ? 's' : ''}`;
+        };
+        const parts = Object.entries(counts).map(([t, n]) => label(t, n)).join(', ');
+        EngineLogger.nextStep('Edit Engine', `Mixed edit — ${graphics.length} symbols in session (${parts})`);
+    }
+
     private _restoreMixedSnapshots(): void {
         this._mixedSnapshots.forEach(s => {
             s.graphic.geometry = s.geometry?.clone?.() ?? s.geometry;
@@ -1080,6 +1312,7 @@ class EditEngine {
     }
 
     private _clearMixedSessionState(): void {
+        this._clearMixedHalos();
         if (this._mixedProxyGraphic) {
             this._handleLayer.remove(this._mixedProxyGraphic);
         }
@@ -1253,6 +1486,7 @@ class EditEngine {
         onModify: (graphic: Graphic) => void,
         onActivateCtrlPts: (graphic: Graphic) => void,
         onDeactivate: () => void,
+        getSelectionCount?: () => number,
     ): ContextMenuItem[] {
         return [
             {
@@ -1288,9 +1522,14 @@ class EditEngine {
                         label: 'Edit Control Points',
                         shortcut: 'E',
                         icon: '<span class="menu-icon-text">↕</span>',
+                        // Reshape currently operates on a single symbol — hide
+                        // the entry when 2+ symbols are selected so the user
+                        // doesn't silently get reshape on just the right-clicked
+                        // one (see EditEngine review #13, option 1).
                         visible: (_graphic: Graphic) =>
                             (settingsData as any).features?.editControlPoints !== false &&
-                            !this.isEditingControlPoints,
+                            !this.isEditingControlPoints &&
+                            (getSelectionCount?.() ?? 1) <= 1,
                         action: (graphic: Graphic) => onActivateCtrlPts(graphic),
                     },
                     {

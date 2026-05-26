@@ -741,6 +741,7 @@ class SymbolEngine implements Evented {
         (graphic) => this.modifySymbol(graphic),
         (graphic) => this.activateEditControlPoints(graphic),
         () => this.deactivateEdit(),
+        () => this._selectionEngine?.count ?? 0,
       ),
       // ── Selection + Align submenus (owned by SelectionEngine) ──────────
       ...this._selectionEngine.buildContextMenuItems(
