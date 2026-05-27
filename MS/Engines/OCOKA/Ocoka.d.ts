@@ -6,6 +6,7 @@ import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
+import { type TrafficabilitySummary } from '../Analysis/RoadNetworkEngine';
 export type ForceType = 'dismount' | 'wheeled' | 'tracked' | 'mixed';
 export interface OcokaPoint {
     longitude: number;
@@ -49,6 +50,14 @@ export interface OcokaCorridor {
     composite: number;
     scores: OcokaScores;
     note: string;
+    /** True when the corridor centreline was replaced by a real road route. */
+    viaRoad?: boolean;
+    /** Road-following distance (km), present only when viaRoad. */
+    roadDistanceKm?: number;
+    /** Road-following drive time (min), present only when viaRoad. */
+    roadTimeMin?: number;
+    /** Military trafficability of the routed approach, present only when viaRoad. */
+    trafficability?: TrafficabilitySummary | null;
 }
 export declare class OcokaEngine {
     static readonly CORRIDOR_LAYER_ID = "ocoka-corridors";
@@ -92,6 +101,22 @@ export declare class OcokaEngine {
     private _unbindMapClick;
     private _runAnalysis;
     private _readOptions;
+    /** Weighted composite of the six OCOKA factor scores. */
+    private _composite;
+    /** Lazily reach the shared (optional) road-network adapter — may be absent. */
+    private _roadNet;
+    /** Flatten a GeoJSON Line/MultiLineString into a single [lng,lat][] list. */
+    private _flattenLineCoords;
+    /**
+     * Opportunistically replace each synthetic corridor centreline with a real
+     * road route from its perimeter entry to the AO centre, and re-derive the
+     * trafficability score from the actual road classes traversed.
+     *
+     * Fully degradable: if the optional road service is absent or down, this is a
+     * no-op and the synthetic corridors stand. A single failed route leaves that
+     * corridor untouched while the rest still enrich. Never throws.
+     */
+    private _enrichCorridorsWithRoads;
     private _extractCorridors;
     private _drawCorridors;
     private _buildCorridorPolygon;

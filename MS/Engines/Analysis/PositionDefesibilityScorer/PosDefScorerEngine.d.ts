@@ -66,6 +66,20 @@ export declare class PosDefScorerEngine {
     private _drawPosition;
     private _addEgressPoint;
     private _redrawEgressMarkers;
+    /** Lazily reach the shared (optional) road-network adapter — may be absent. */
+    private _roadNet;
+    /**
+     * Opportunistically score the egress factor on real road-following routes
+     * from the position to each egress waypoint: a drivable withdrawal route is
+     * strong evidence the position can be vacated under power. Folds in as the
+     * better of the terrain-LOS egress score and the road-egress score, so road
+     * data never *lowers* the score — it only reveals viable routes the
+     * line-of-sight check can't see.
+     *
+     * Fully degradable: a missing/down service is a no-op; per-leg failures are
+     * skipped. Never throws.
+     */
+    private _enrichEgressWithRoads;
     private _drawEgressLines;
     private _updateScoreUI;
     private _drawRadar;

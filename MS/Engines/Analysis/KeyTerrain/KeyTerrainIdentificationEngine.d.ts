@@ -25,6 +25,8 @@ export interface RankedFeature extends FeatureCandidate {
     rank: number;
     depth?: number;
     ridgeBearing?: number;
+    /** Set when the feature sits on the reachable road network (controls a movement avenue). */
+    controlsRoute?: boolean;
 }
 export type KeyTerrainFeature = RankedFeature;
 export interface KeyTerrainHeadlessOptions {
@@ -83,6 +85,22 @@ export declare class KeyTerrainIdentificationEngine {
     private _buildCurvatureHeatmap;
     private _buildFeatureMarkers;
     private _buildTopViewshedGraphic;
+    /** Lazily reach the shared (optional) road-network adapter — may be absent. */
+    private _roadNet;
+    /** Flatten a GeoJSON Line/MultiLineString into a single [lng,lat][] list. */
+    private _flattenLineCoords;
+    private _haversineM;
+    /**
+     * Opportunistically promote terrain that controls movement. Pulls a drive-time
+     * service area from the AO centre off the optional road service and boosts the
+     * composite score of passes / avenues / dominant ground / ridges that sit on
+     * the reachable road network — terrain that commands a road is more "key".
+     * Re-sorts and re-ranks when anything was boosted.
+     *
+     * Fully degradable: a missing/down service is a no-op and the pure-terrain
+     * ranking stands. Never throws.
+     */
+    private _enrichFeaturesWithRoads;
     private _renderFeatureList;
     private _estimateRidgeBearing;
     private _syncOverlayVisibility;

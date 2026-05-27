@@ -93,6 +93,7 @@ export declare class MissionPlannerEngine {
     private _results;
     private _corridors;
     private _hostileObsExtents;
+    private _roadEgress;
     private _coaSnapshots;
     private _customAoi;
     private _bufferCenter;
@@ -142,7 +143,21 @@ export declare class MissionPlannerEngine {
     private _drawCorridors;
     private _drawResults;
     private _drawFiresFans;
+    /**
+     * Lazily reach the shared, OPTIONAL road-network adapter. It is owned by
+     * SymbolEngine and only present when the external pgRouting service is wired
+     * in; may also be offline. Returns null when absent — callers must degrade.
+     */
+    private _roadNet;
     private _drawWithdrawal;
+    /**
+     * If the optional road-network service is reachable, overlay a road-following
+     * egress route with drive-time and GO/SLOW-GO/NO-GO trafficability on top of
+     * the terrain corridor, and cache the summary for the Mobility tab. Returns
+     * quietly when the adapter is absent, disabled, offline, or finds no route —
+     * MissionPlanner carries on with the terrain corridor it already drew.
+     */
+    private _tryRoadEgress;
     private _buildHostileObservation;
     private _activeObservers;
     private _addObserver;
@@ -160,6 +175,8 @@ export declare class MissionPlannerEngine {
     private _renderResults;
     private _sparklineSVG;
     private _renderReport;
+    /** Mobility-tab readout of the optional road service. Mirrors its availability honestly. */
+    private _roadSummaryHtml;
     private _renderForces;
     private _renderCoas;
     private _saveCoa;

@@ -68,6 +68,16 @@ export declare class OpRankerEngine {
     private _buildRangeRing;
     private _renderEmptyList;
     private _renderOPListPre;
+    /** Lazily reach the shared (optional) road-network adapter — may be absent. */
+    private _roadNet;
+    /**
+     * Opportunistically annotate each OP with road accessibility from the AO
+     * centre (drive distance/time + trafficability). Purely informational — it
+     * does NOT affect viewshed ranking. Fully degradable: a missing/down service
+     * leaves roadAccess unset and the cards render without the road line. Never
+     * throws.
+     */
+    private _enrichOpsWithRoadAccess;
     private _renderRankedList;
     private _renderOptimalResult;
     private _removeOP;
