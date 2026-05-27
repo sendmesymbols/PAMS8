@@ -31,6 +31,11 @@ import DeadGroundMapper, { DeadGroundSummary } from '../Analysis/DeadGroundMappe
 import PosDefScorerEngine, { DefensibilitySummary } from '../Analysis/PositionDefesibilityScorer/PosDefScorerEngine';
 import OpRankerEngine, { OpRankSummary } from '../Analysis/OpRanker/OpRankerEngine';
 import OcokaEngine, { OcokaCorridor } from '../OCOKA/Ocoka';
+// Optional, NON-OWNED collaborator. We import the class only for its pure static
+// helpers (toPolyline / classifyClass) and types; the actual routing instance is
+// the shared adapter created by SymbolEngine and reached lazily via _roadNet().
+// MissionPlanner never constructs one and never requires the backend to be up.
+import RoadNetworkEngine, { type TrafficabilitySummary } from '../Analysis/RoadNetworkEngine';
 import GraphicsLayerManager, { LAYER_NAMES } from '../../Managers/GraphicsLayerManager';
 import EngineLogger from '../../Support/EngineLogger';
 
@@ -282,6 +287,7 @@ export class MissionPlannerEngine {
   private _results: MissionTerrainFeature[] = [];
   private _corridors: OcokaCorridor[] = [];
   private _hostileObsExtents: Extent[] = []; // bounding extents of enemy LOS regions for hit-test
+  private _roadEgress: { distanceKm: number; travelTimeMin: number; traffic: TrafficabilitySummary } | null = null; // optional road-following egress (when road service is up)
   private _coaSnapshots: CoaSnapshot[] = [];
   private _customAoi: Polygon | Extent | null = null;
   private _bufferCenter: Point | null = null;
@@ -459,7 +465,10 @@ export class MissionPlannerEngine {
       this._renderForces();
 
       const exposed = this._results.filter((f) => f.exposureToEnemyPct > 25).length;
-      const msg = `Complete · ${this._results.length} ranked${exposed ? ` · ${exposed} EXPOSED to enemy` : ''}.`;
+      const road = this._roadEgress
+        ? ` · road egress ${this._roadEgress.traffic.rating} ${this._roadEgress.distanceKm.toFixed(1)} km`
+        : (this._roadNet()?.isAvailable === false ? ' · road net offline → terrain egress' : '');
+      const msg = `Complete · ${this._results.length} ranked${exposed ? ` · ${exposed} EXPOSED to enemy` : ''}${road}.`;
       this._setStatus(msg, this._results.length ? 'done' : 'warn');
     } catch (error) {
       console.error('[MissionPlanner] Analysis failed', error);
@@ -530,6 +539,7 @@ export class MissionPlannerEngine {
     this._results = [];
     this._corridors = [];
     this._hostileObsExtents = [];
+    this._roadEgress = null;
     if (updateUi) {
       this._renderObservers();
       this._renderResults();
@@ -997,8 +1007,18 @@ export class MissionPlannerEngine {
     });
   }
 
+  /**
+   * Lazily reach the shared, OPTIONAL road-network adapter. It is owned by
+   * SymbolEngine and only present when the external pgRouting service is wired
+   * in; may also be offline. Returns null when absent — callers must degrade.
+   */
+  private _roadNet(): RoadNetworkEngine | null {
+    return (window as any).symbolEngine?.roadNetworkEngine ?? null;
+  }
+
   private async _drawWithdrawal(threatBrg: number, force: 'dismount' | 'wheeled' | 'tracked' | 'mixed'): Promise<void> {
     this._withdrawalLayer.removeAll();
+    this._roadEgress = null;
     const rank1 = this._results[0];
     if (!rank1) return;
     try {
@@ -1016,32 +1036,95 @@ export class MissionPlannerEngine {
         const dB = Math.abs(((b.bearingDeg - safeBearing + 540) % 360) - 180);
         return dA - dB;
       })[0];
-      if (!best) return;
-      this._withdrawalLayer.add(new Graphic({
-        geometry: {
-          type: 'polyline',
-          paths: [best.path.map((pt) => [pt.longitude, pt.latitude])],
-          spatialReference: WGS84,
-        } as any,
-        symbol: new SimpleLineSymbol({ color: [80, 230, 120, 0.85], width: 3.4, style: 'short-dash' as any }),
-        attributes: { missionPlanner: true, type: 'mission_planner_withdrawal', corridorId: best.id },
-      }));
-      // arrow at midpoint indicating direction
-      const mid = best.path[Math.floor(best.path.length / 2)];
-      if (mid) {
+
+      // Terrain-based egress axis — ALWAYS drawn. This is the graceful fallback
+      // and stays on the map whether or not the road service is reachable.
+      if (best) {
         this._withdrawalLayer.add(new Graphic({
-          geometry: new Point({ longitude: mid.longitude, latitude: mid.latitude, spatialReference: WGS84 }),
-          symbol: new TextSymbol({
-            text: '⇨ WITHDRAW',
-            color: [80, 230, 120, 1],
-            haloColor: [0, 0, 0, 0.9],
-            haloSize: 1.2,
-            font: { size: 10, family: 'Aptos, Segoe UI, sans-serif', weight: 'bold' } as any,
-          }),
-          attributes: { missionPlanner: true, type: 'mission_planner_withdrawal_label' },
+          geometry: {
+            type: 'polyline',
+            paths: [best.path.map((pt) => [pt.longitude, pt.latitude])],
+            spatialReference: WGS84,
+          } as any,
+          symbol: new SimpleLineSymbol({ color: [80, 230, 120, 0.85], width: 3.4, style: 'short-dash' as any }),
+          attributes: { missionPlanner: true, type: 'mission_planner_withdrawal', corridorId: best.id },
         }));
+        // arrow at midpoint indicating direction
+        const mid = best.path[Math.floor(best.path.length / 2)];
+        if (mid) {
+          this._withdrawalLayer.add(new Graphic({
+            geometry: new Point({ longitude: mid.longitude, latitude: mid.latitude, spatialReference: WGS84 }),
+            symbol: new TextSymbol({
+              text: '⇨ WITHDRAW',
+              color: [80, 230, 120, 1],
+              haloColor: [0, 0, 0, 0.9],
+              haloSize: 1.2,
+              font: { size: 10, family: 'Aptos, Segoe UI, sans-serif', weight: 'bold' } as any,
+            }),
+            attributes: { missionPlanner: true, type: 'mission_planner_withdrawal_label' },
+          }));
+        }
       }
+
+      // Optional upgrade: overlay a real road-following egress when the external
+      // road service is up. Silently no-ops otherwise (terrain corridor remains).
+      await this._tryRoadEgress(rank1.point, best, safeBearing);
     } catch { /* withdrawal hint is best-effort */ }
+  }
+
+  /**
+   * If the optional road-network service is reachable, overlay a road-following
+   * egress route with drive-time and GO/SLOW-GO/NO-GO trafficability on top of
+   * the terrain corridor, and cache the summary for the Mobility tab. Returns
+   * quietly when the adapter is absent, disabled, offline, or finds no route —
+   * MissionPlanner carries on with the terrain corridor it already drew.
+   */
+  private async _tryRoadEgress(from: Point, corridor: OcokaCorridor | undefined, safeBearing: number): Promise<void> {
+    const rn = this._roadNet();
+    if (!rn) return;                            // engine not wired in → terrain egress only
+    if (!(await rn.ensureAvailable())) return;  // backend down/disabled → terrain egress only
+
+    // Destination = far end of the terrain corridor, else ~2 km along the safe bearing.
+    const end = corridor?.path?.[corridor.path.length - 1];
+    const dest = end
+      ? new Point({ longitude: end.longitude, latitude: end.latitude, spatialReference: WGS84 })
+      : (() => {
+          const d = destinationPt(lonOf(from), latOf(from), safeBearing, 2000);
+          return new Point({ longitude: d.longitude, latitude: d.latitude, spatialReference: WGS84 });
+        })();
+
+    const res = await rn.route(from, dest);
+    if (!res.ok) return;                        // no nearby road / no path / error → terrain egress only
+    const line = RoadNetworkEngine.toPolyline(res.data.geometry);
+    if (!line) return;
+
+    const traffic = res.data.trafficability;
+    const tierColor: [number, number, number] =
+      traffic.rating === 'GO' ? [80, 230, 120]
+      : traffic.rating === 'SLOW-GO' ? [240, 200, 70]
+      : [225, 90, 70];
+    this._withdrawalLayer.add(new Graphic({
+      geometry: line,
+      symbol: new SimpleLineSymbol({ color: [...tierColor, 0.95] as any, width: 3.0 }),
+      attributes: { missionPlanner: true, type: 'mission_planner_withdrawal_road' },
+    }));
+    const path = line.paths?.[0] ?? [];
+    const mid = path[Math.floor(path.length / 2)];
+    if (mid) {
+      this._withdrawalLayer.add(new Graphic({
+        geometry: new Point({ longitude: mid[0], latitude: mid[1], spatialReference: WGS84 }),
+        symbol: new TextSymbol({
+          text: `🛣 EGRESS ${traffic.rating} · ${res.data.distanceKm.toFixed(1)} km / ${formatMarchTime(res.data.travelTimeMin)}`,
+          color: [...tierColor, 1] as any,
+          haloColor: [0, 0, 0, 0.9],
+          haloSize: 1.2,
+          yoffset: 12,
+          font: { size: 10, family: 'Aptos, Segoe UI, sans-serif', weight: 'bold' } as any,
+        }),
+        attributes: { missionPlanner: true, type: 'mission_planner_withdrawal_road_label' },
+      }));
+    }
+    this._roadEgress = { distanceKm: res.data.distanceKm, travelTimeMin: res.data.travelTimeMin, traffic };
   }
 
   private async _buildHostileObservation(radiusM: number, maxSlopeDeg: number): Promise<void> {
@@ -1263,6 +1346,9 @@ export class MissionPlannerEngine {
           <div class="mp-sec">Mobility</div>
           <div class="mp-copy">OCOKA corridors and chokepoints feed the <b>corridor control</b> score and ambush composite.</div>
           <div id="mp-corridor-summary" class="mp-forces"></div>
+          <div class="mp-sec" style="margin-top:10px">Road Network <span style="font-weight:400;opacity:0.7">(optional)</span></div>
+          <div class="mp-copy">Road-following egress &amp; trafficability from an external road service. Falls back to terrain corridors when it is offline.</div>
+          <div id="mp-road-summary" class="mp-forces"></div>
         </section>
 
         <section data-panel="results" hidden>
@@ -1448,6 +1534,23 @@ export class MissionPlannerEngine {
     if (report) report.innerHTML = this.generateReport();
   }
 
+  /** Mobility-tab readout of the optional road service. Mirrors its availability honestly. */
+  private _roadSummaryHtml(): string {
+    const rn = this._roadNet();
+    if (!rn) return '<div class="mp-empty">Road-network service not loaded — terrain corridors drive mobility.</div>';
+    if (!rn.isAvailable) return '<div class="mp-empty">Road-network service offline — egress falls back to terrain corridors.</div>';
+    const eg = this._roadEgress;
+    if (!eg) return '<div class="mp-empty">Road service online. Run analysis to compute a road-following egress.</div>';
+    const t = eg.traffic;
+    return '<table class="mp-table"><tbody>'
+      + `<tr><td>Egress</td><td><b>${t.rating}</b></td></tr>`
+      + `<tr><td>Distance</td><td>${eg.distanceKm.toFixed(1)} km</td></tr>`
+      + `<tr><td>Drive time</td><td>${formatMarchTime(eg.travelTimeMin)}</td></tr>`
+      + `<tr><td>Limiting</td><td>${RoadNetworkEngine.classifyClass(t.limitingClass).label}</td></tr>`
+      + `<tr><td>Dominant</td><td>${RoadNetworkEngine.classifyClass(t.dominantClass).label}</td></tr>`
+      + '</tbody></table>';
+  }
+
   private _renderForces(): void {
     const target = this._panelEl?.querySelector('#mp-forces-summary');
     const corridorTarget = this._panelEl?.querySelector('#mp-corridor-summary');
@@ -1461,6 +1564,8 @@ export class MissionPlannerEngine {
           + '</tbody></table>';
       }
     }
+    const roadTarget = this._panelEl?.querySelector('#mp-road-summary');
+    if (roadTarget) roadTarget.innerHTML = this._roadSummaryHtml();
     if (!target) return;
     if (!this._view) { target.innerHTML = ''; return; }
     const forceLayer = GraphicsLayerManager.getInstance(this._view).getLayer(LAYER_NAMES.FORCE);

@@ -12,6 +12,7 @@ import Polygon from '@arcgis/core/geometry/Polygon';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import EngineLogger from '../../Support/EngineLogger';
+import RoadNetworkEngine, { type TrafficabilitySummary } from '../Analysis/RoadNetworkEngine';
 
 const WGS84 = { wkid: 4326 } as any;
 const ENGINE_NAME = 'OCOKAEngine';
@@ -81,6 +82,14 @@ export interface OcokaCorridor {
   composite: number;
   scores: OcokaScores;
   note: string;
+  /** True when the corridor centreline was replaced by a real road route. */
+  viaRoad?: boolean;
+  /** Road-following distance (km), present only when viaRoad. */
+  roadDistanceKm?: number;
+  /** Road-following drive time (min), present only when viaRoad. */
+  roadTimeMin?: number;
+  /** Military trafficability of the routed approach, present only when viaRoad. */
+  trafficability?: TrafficabilitySummary | null;
 }
 
 const FORCE_SLOPE: Record<ForceType, number> = {
@@ -246,7 +255,9 @@ export class OcokaEngine {
       showChoke: false,
     };
     await this._tick();
-    return this._extractCorridors(runOptions)
+    const corridors = this._extractCorridors(runOptions);
+    await this._enrichCorridorsWithRoads(corridors, runOptions);
+    return corridors
       .sort((a, b) => b.composite - a.composite)
       .map((corridor, index) => ({ ...corridor, rank: index + 1 }));
   }
@@ -528,6 +539,9 @@ export class OcokaEngine {
       await this._tick();
       const corridors = this._extractCorridors(options);
 
+      this._setProgress(0.58, 'Routing approaches on road network');
+      await this._enrichCorridorsWithRoads(corridors, options);
+
       this._setProgress(0.72, 'Scoring OCOKA factors');
       await this._tick();
       const scored = corridors.sort((a, b) => b.composite - a.composite).map((c, i) => ({ ...c, rank: i + 1 }));
@@ -586,11 +600,112 @@ export class OcokaEngine {
     };
   }
 
+  /** Weighted composite of the six OCOKA factor scores. */
+  private _composite(scores: OcokaScores, weights: OcokaWeights): number {
+    const totalWeight = Math.max(
+      1,
+      weights.width + weights.mask + weights.traf + weights.obs + weights.cc + weights.obs2,
+    );
+    return Math.round((
+      scores.width * weights.width +
+      scores.mask * weights.mask +
+      scores.traf * weights.traf +
+      scores.obs * weights.obs +
+      scores.cc * weights.cc +
+      scores.obst * weights.obs2
+    ) / totalWeight);
+  }
+
+  /** Lazily reach the shared (optional) road-network adapter — may be absent. */
+  private _roadNet(): any {
+    return (window as any).symbolEngine?.roadNetworkEngine ?? null;
+  }
+
+  /** Flatten a GeoJSON Line/MultiLineString into a single [lng,lat][] list. */
+  private _flattenLineCoords(geom: any): number[][] {
+    if (!geom || !Array.isArray(geom.coordinates)) return [];
+    if (geom.type === 'MultiLineString') {
+      const out: number[][] = [];
+      for (const seg of geom.coordinates) for (const c of seg) out.push([c[0], c[1]]);
+      return out;
+    }
+    return (geom.coordinates as number[][]).map((c) => [c[0], c[1]]);
+  }
+
+  /**
+   * Opportunistically replace each synthetic corridor centreline with a real
+   * road route from its perimeter entry to the AO centre, and re-derive the
+   * trafficability score from the actual road classes traversed.
+   *
+   * Fully degradable: if the optional road service is absent or down, this is a
+   * no-op and the synthetic corridors stand. A single failed route leaves that
+   * corridor untouched while the rest still enrich. Never throws.
+   */
+  private async _enrichCorridorsWithRoads(corridors: OcokaCorridor[], options: OcokaOptions): Promise<void> {
+    const rn = this._roadNet();
+    if (!rn) return;
+    let available = false;
+    try {
+      available = await rn.ensureAvailable();
+    } catch {
+      available = false;
+    }
+    if (!available) return;
+
+    const centre = { longitude: options.center.longitude, latitude: options.center.latitude };
+    let enriched = 0;
+    for (const corridor of corridors) {
+      const entry = { longitude: corridor.seed.longitude, latitude: corridor.seed.latitude };
+      let res: any = null;
+      try {
+        res = await rn.route(entry, centre);
+      } catch {
+        res = { ok: false };
+      }
+      if (!res?.ok || !res.data?.geometry) continue;
+
+      const coords = this._flattenLineCoords(res.data.geometry);
+      if (coords.length < 2) continue;
+
+      const roadDistanceKm = res.data.distanceKm ?? 0;
+      const roadTimeMin = res.data.travelTimeMin ?? 0;
+      corridor.path = coords.map(([longitude, latitude]) => ({ longitude, latitude }) as OcokaPoint);
+      corridor.seed = corridor.path[0];
+      corridor.chokePts = []; // synthetic chokepoints no longer align with the real road path
+      corridor.viaRoad = true;
+      corridor.roadDistanceKm = roadDistanceKm;
+      corridor.roadTimeMin = roadTimeMin;
+      corridor.lengthM = Math.round(roadDistanceKm * 1000) || corridor.lengthM;
+
+      const traffic: TrafficabilitySummary | null = res.data.trafficability ?? null;
+      corridor.trafficability = traffic;
+      const head = `Road approach — ${roadDistanceKm.toFixed(1)} km, ${Math.round(roadTimeMin)} min`;
+      if (traffic && traffic.totalKm > 0) {
+        const tk = traffic.tierKm;
+        const trafScore = clamp(
+          Math.round((tk.GO * 100 + tk['SLOW-GO'] * 55 + tk['NO-GO'] * 18) / traffic.totalKm),
+          5,
+          100,
+        );
+        corridor.scores = { ...corridor.scores, traf: trafScore };
+        corridor.composite = this._composite(corridor.scores, options.weights);
+        const lim = RoadNetworkEngine.classifyClass(traffic.limitingClass);
+        corridor.note = `${head} · ${traffic.rating} (limiting: ${lim.label}).`;
+      } else {
+        corridor.note = `${head}.`;
+      }
+      enriched++;
+    }
+
+    if (enriched > 0) {
+      EngineLogger.success(ENGINE_NAME, `OCOKA: ${enriched} approach(es) routed on the road network.`);
+    }
+  }
+
   private _extractCorridors(options: OcokaOptions): OcokaCorridor[] {
     const count = clamp(Math.round(options.maxCorridors), 3, 12);
     const corridors: OcokaCorridor[] = [];
     const bearings = Array.from({ length: count }, (_, i) => normalizeBearing((360 / count) * i + 12));
-    const totalWeight = Math.max(1, Object.values(options.weights).reduce((sum, value) => sum + value, 0));
 
     bearings.forEach((bearing, i) => {
       const wav = Math.sin(toRad(bearing * 1.7 + options.center.latitude * 5));
@@ -618,14 +733,7 @@ export class OcokaEngine {
         cc: clamp(Math.round((60 + Math.abs(wav) * 30 + (100 - exposure * 0.5)) / 2), 5, 100),
         obst: clamp(Math.round(100 - Math.max(0, localSlope - options.slopeThresholdDeg) * 4 - Math.abs(cross) * 18), 5, 100),
       };
-      const composite = Math.round((
-        scores.width * options.weights.width +
-        scores.mask * options.weights.mask +
-        scores.traf * options.weights.traf +
-        scores.obs * options.weights.obs +
-        scores.cc * options.weights.cc +
-        scores.obst * options.weights.obs2
-      ) / totalWeight);
+      const composite = this._composite(scores, options.weights);
       const chokePts = path.filter((_, idx) => idx > 1 && idx < path.length - 2 && idx % Math.max(3, Math.round(steps / 3)) === 0 && (widthM < 420 || localSlope > options.slopeThresholdDeg));
 
       corridors.push({

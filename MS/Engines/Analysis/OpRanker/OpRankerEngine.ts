@@ -52,6 +52,8 @@ interface OpCandidate {
   obsZ?: number;
   isOptimal: boolean;
   rank?: number;
+  /** Road accessibility from the AO centre; 'none' = unreachable by road. */
+  roadAccess?: { km: number; min: number; rating: string } | 'none';
 }
 
 interface CoverageResult {
@@ -523,6 +525,8 @@ export class OpRankerEngine {
       const gapKm2 = ((result.gapCount * cellM * cellM) / 1e6).toFixed(2);
       this._setText('oprank-ss-cov', `${covPct}%`);
       this._setText('oprank-ss-gap', `${gapKm2} km2`);
+      this._setProgress(0.92, 'Checking road access...');
+      await this._enrichOpsWithRoadAccess(cLon, cLat);
       this._renderRankedList(ranked, result.aoTotal, cellM);
       this._renderOptimalResult(optimalIndices, kCount, result.aoTotal, result.combinedSeen);
       this._setProgress(1, `Done - ${this._ops.length} OPs ranked, ${covPct}% AO covered`);
@@ -852,6 +856,51 @@ export class OpRankerEngine {
     this._setText('oprank-lph-sub', 'Place OPs on map - then run analysis');
   }
 
+  /** Lazily reach the shared (optional) road-network adapter — may be absent. */
+  private _roadNet(): any {
+    return (window as any).symbolEngine?.roadNetworkEngine ?? null;
+  }
+
+  /**
+   * Opportunistically annotate each OP with road accessibility from the AO
+   * centre (drive distance/time + trafficability). Purely informational — it
+   * does NOT affect viewshed ranking. Fully degradable: a missing/down service
+   * leaves roadAccess unset and the cards render without the road line. Never
+   * throws.
+   */
+  private async _enrichOpsWithRoadAccess(cLon: number, cLat: number): Promise<void> {
+    const rn = this._roadNet();
+    if (!rn || this._ops.length === 0) return;
+    let available = false;
+    try {
+      available = await rn.ensureAvailable();
+    } catch {
+      available = false;
+    }
+    if (!available) return;
+
+    const origin = { longitude: cLon, latitude: cLat };
+    for (const op of this._ops) {
+      let res: any = null;
+      try {
+        res = await rn.route(origin, {
+          longitude: op.pt.longitude ?? op.pt.x,
+          latitude: op.pt.latitude ?? op.pt.y,
+        });
+      } catch {
+        res = { ok: false };
+      }
+      op.roadAccess =
+        res?.ok && res.data
+          ? {
+              km: res.data.distanceKm ?? 0,
+              min: res.data.travelTimeMin ?? 0,
+              rating: res.data.trafficability?.rating ?? 'GO',
+            }
+          : 'none';
+    }
+  }
+
   private _renderRankedList(ranked: OpCandidate[], aoTotal: number, cellM: number): void {
     const list = this._el('oprank-op-list');
     if (!list) return;
@@ -871,6 +920,12 @@ export class OpRankerEngine {
       else if (uniquePct > 3) note = 'Moderate contribution. Worth keeping if manpower allows.';
       else note = 'Minimal unique coverage - viewshed largely duplicated by other OPs.';
       if (op.isOptimal) note += ' In recommended set.';
+      let roadTxt = '';
+      if (op.roadAccess === 'none') {
+        roadTxt = '<br><span style="color:#DC3C30">No road access — air/foot insertion.</span>';
+      } else if (op.roadAccess) {
+        roadTxt = `<br><span style="color:#1D9E75">Road access: ${op.roadAccess.km.toFixed(1)} km · ${Math.round(op.roadAccess.min)} min · ${op.roadAccess.rating}.</span>`;
+      }
 
       const card = document.createElement('div');
       card.className = `oprank-op-card${op.isOptimal ? ' in-optimal' : ''}`;
@@ -887,7 +942,7 @@ export class OpRankerEngine {
           <div class="oprank-ob"><div class="oprank-ob-lbl">Unique coverage</div><div class="oprank-ob-track"><div class="oprank-ob-fill" style="width:${uniqueBar}%;background:${hex}"></div></div><div class="oprank-ob-val">${uniquePct}% (${uniqueKm2} km2)</div></div>
           <div class="oprank-ob"><div class="oprank-ob-lbl">Total viewshed</div><div class="oprank-ob-track"><div class="oprank-ob-fill" style="width:${totalPct}%;background:#378ADD"></div></div><div class="oprank-ob-val">${totalPct}% of AO</div></div>
         </div>
-        <div class="oprank-op-note">${note}</div>
+        <div class="oprank-op-note">${note}${roadTxt}</div>
         <div class="oprank-op-actions"><button class="oprank-op-action-btn" data-fly="${op.index}">Fly to</button><button class="oprank-op-action-btn remove" data-k="${op.index}">Remove</button></div>
       `;
       card.addEventListener('click', (e) => {

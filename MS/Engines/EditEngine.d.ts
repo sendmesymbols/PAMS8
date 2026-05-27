@@ -112,8 +112,12 @@ declare class EditEngine {
     /** Sync CTRL_PTS for an additional graphic using its own pre-edit snapshot. */
     private _syncCtrlPtsFrom;
     /**
-     * Activate mixed edit mode for heterogeneous selections.
-     * Supports move + rotate; scale is disabled.
+     * Activate group-transform mode for any multi-graphic selection — whether
+     * the members share a geometry type or are heterogeneous (point + line/area).
+     * A single proxy bounding box is transformed and the resulting move + rotate
+     * + uniform scale is applied to every member. This is required because
+     * ArcGIS SketchViewModel only supports translation when several graphics are
+     * updated together, so rotate/scale of a group is otherwise unavailable.
      */
     activateMixedEdit(graphic: Graphic, additionalGraphics?: Graphic[]): void;
     private _syncPointDrawEssentials;

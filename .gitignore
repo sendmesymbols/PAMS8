@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# ArcGIS runtime assets copied from node_modules/@arcgis/core/assets at dev/build
+# time (see the "copy-assets" npm script). Regenerable — not committed (~53 MB).
+public/assets
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

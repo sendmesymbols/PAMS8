@@ -4,9 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "copy-assets": "node -e \"const fs=require('fs');if(!fs.existsSync('public/assets')){fs.cpSync('node_modules/@arcgis/core/assets','public/assets',{recursive:true});console.log('Copied @arcgis/core assets -> public/assets')}\"",
+    "predev": "npm run copy-assets",
+    "prebuild": "npm run copy-assets",
+    "preview": "vite preview",
     "dev": "vite",
-    "build": "vite build && tsc -p tsconfig.build.json",
-    "preview": "vite preview"
+    "build": "vite build && tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "@arcgis/core": "latest"

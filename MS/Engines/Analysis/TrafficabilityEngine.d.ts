@@ -62,6 +62,9 @@ export declare class TrafficabilityEngine {
     private _running;
     /** Time/speed model for the current route or MSR (null in service-area mode). */
     private _driveModel;
+    /** Route mode: the primary + alternate routes, and which one is active. */
+    private _routeOptions;
+    private _selectedRoute;
     private _vehicleGraphic;
     private _animFrame;
     private _animRunning;
@@ -123,8 +126,33 @@ export declare class TrafficabilityEngine {
     private _runMsr;
     /** Classify an MSR/ASR from its aggregate trafficability. */
     private _msrClassification;
+    /**
+     * Route a chain of points (origin→via…→dest) leg by leg on the road network,
+     * merging into one path + ordered leg list + aggregate trafficability. Each
+     * failed leg degrades to a straight-line estimate. Shared by Route alternates
+     * and MSR finding. Never throws.
+     */
+    private _routeChain;
+    /** Candidate via points offset perpendicular to the O→D line, alternating sides. */
+    private _viaPoints;
+    /** Repaint all Route-mode options: selected one tier-coloured + emphasised, others dim. */
+    private _paintRoutes;
+    /** Render the selectable list of route options (primary + alternates). */
+    private _renderRoutesList;
+    /** Draw a path coloured per-segment by GO/SLOW-GO/NO-GO tier, over a dark casing. */
+    private _renderTieredPath;
+    /** Extract the sub-path between two cumulative distances (interpolated endpoints). */
+    private _pathSlice;
+    /** Thin, dim line for a non-selected alternate route. */
+    private _renderDimRoute;
+    /** Per-leg list with a trafficability-tier coloured dot. */
+    private _renderSegList;
+    /** Legend of the GO/SLOW-GO/NO-GO tiers present along the route. */
+    private _renderTierLegend;
+    private _bearing;
+    private _hexToRgb;
+    private _tierColorRgb;
     private _renderTrafficability;
-    private _renderSteps;
     private _renderBandLegend;
     private _renderWaypointList;
     private _startOriginPlacement;

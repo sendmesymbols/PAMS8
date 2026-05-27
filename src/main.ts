@@ -4,7 +4,11 @@ import SceneView from '@arcgis/core/views/SceneView';
 import Map from '@arcgis/core/map';
 import settingsData from '../MS/Data/Settings.json';
 
-// Serve fonts locally — no internet dependency
+// Serve ArcGIS runtime assets (CSS, i18n bundles, web workers, basemap defs)
+// and fonts locally — no js.arcgis.com / internet dependency. The assets are
+// copied from node_modules/@arcgis/core/assets into public/assets (see the
+// "copy-assets" npm script, run automatically before dev/build).
+esriConfig.assetsPath = '/assets';
 esriConfig.fontsUrl = '/fonts';
 import PlotPoint from '../MS/PlotPoint.ts';
 import SymbolEngine from '../MS/Engines/SymbolEngine.ts';

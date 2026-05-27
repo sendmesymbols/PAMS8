@@ -49,6 +49,8 @@ export interface RankedFeature extends FeatureCandidate {
   rank: number;
   depth?: number;
   ridgeBearing?: number;
+  /** Set when the feature sits on the reachable road network (controls a movement avenue). */
+  controlsRoute?: boolean;
 }
 
 export type KeyTerrainFeature = RankedFeature;
@@ -303,6 +305,7 @@ export class KeyTerrainIdentificationEngine {
       feature.ridgeBearing = this._estimateRidgeBearing(feature.plan, feature.prof);
     }
     this._scoreFeatures(rankedFeatures, minElev, maxElev);
+    await this._enrichFeaturesWithRoads(rankedFeatures, centreLon, centreLat, radiusM);
     return rankedFeatures;
   }
 
@@ -694,6 +697,9 @@ export class KeyTerrainIdentificationEngine {
       this._setProgress(0.87, 'Ranking features');
       await this._tick();
       this._scoreFeatures(rankedFeatures, minElev, maxElev);
+
+      this._setProgress(0.88, 'Checking road control');
+      await this._enrichFeaturesWithRoads(rankedFeatures, centreLon, centreLat, radiusM);
 
       if (this._overlayState.curvature) {
         this._setProgress(0.9, 'Building curvature overlay');
@@ -1296,6 +1302,98 @@ export class KeyTerrainIdentificationEngine {
     });
   }
 
+  /** Lazily reach the shared (optional) road-network adapter — may be absent. */
+  private _roadNet(): any {
+    return (window as any).symbolEngine?.roadNetworkEngine ?? null;
+  }
+
+  /** Flatten a GeoJSON Line/MultiLineString into a single [lng,lat][] list. */
+  private _flattenLineCoords(geom: any): number[][] {
+    if (!geom || !Array.isArray(geom.coordinates)) return [];
+    if (geom.type === 'MultiLineString') {
+      const out: number[][] = [];
+      for (const seg of geom.coordinates) for (const c of seg) out.push([c[0], c[1]]);
+      return out;
+    }
+    return (geom.coordinates as number[][]).map((c) => [c[0], c[1]]);
+  }
+
+  private _haversineM(lon1: number, lat1: number, lon2: number, lat2: number): number {
+    const p1 = (lat1 * Math.PI) / 180;
+    const p2 = (lat2 * Math.PI) / 180;
+    const dp = ((lat2 - lat1) * Math.PI) / 180;
+    const dl = ((lon2 - lon1) * Math.PI) / 180;
+    const a = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+    return 2 * EARTH_R * Math.asin(Math.sqrt(a));
+  }
+
+  /**
+   * Opportunistically promote terrain that controls movement. Pulls a drive-time
+   * service area from the AO centre off the optional road service and boosts the
+   * composite score of passes / avenues / dominant ground / ridges that sit on
+   * the reachable road network — terrain that commands a road is more "key".
+   * Re-sorts and re-ranks when anything was boosted.
+   *
+   * Fully degradable: a missing/down service is a no-op and the pure-terrain
+   * ranking stands. Never throws.
+   */
+  private async _enrichFeaturesWithRoads(
+    features: RankedFeature[],
+    centreLon: number,
+    centreLat: number,
+    radiusM: number,
+  ): Promise<void> {
+    const rn = this._roadNet();
+    if (!rn || features.length === 0) return;
+    let available = false;
+    try {
+      available = await rn.ensureAvailable();
+    } catch {
+      available = false;
+    }
+    if (!available) return;
+
+    // Drive time chosen so the isochrone roughly spans the AO (~40 km/h road avg, +10 min slack).
+    const minutes = Math.max(5, Math.min(60, Math.round(((radiusM / 1000) / 40) * 60) + 10));
+    let res: any = null;
+    try {
+      res = await rn.serviceArea({ longitude: centreLon, latitude: centreLat }, minutes);
+    } catch {
+      res = { ok: false };
+    }
+    if (!res?.ok || !res.data?.geometry) return;
+    const roadCoords = this._flattenLineCoords(res.data.geometry);
+    if (roadCoords.length < 2) return;
+
+    const NEAR_M = 250;
+    let boosted = 0;
+    for (const f of features) {
+      if (f.type !== 'saddle' && f.type !== 're_entrant' && f.type !== 'dominant_ground' && f.type !== 'ridge') {
+        continue;
+      }
+      let near = false;
+      for (const [lon, lat] of roadCoords) {
+        if (this._haversineM(f.lon, f.lat, lon, lat) <= NEAR_M) {
+          near = true;
+          break;
+        }
+      }
+      if (near) {
+        f.controlsRoute = true;
+        f.compositeScore = Math.min(100, Math.round(f.compositeScore * 1.15));
+        boosted++;
+      }
+    }
+
+    if (boosted > 0) {
+      features.sort((a, b) => b.compositeScore - a.compositeScore);
+      features.forEach((f, i) => {
+        f.rank = i + 1;
+      });
+      EngineLogger.success(ENGINE_NAME, `Key terrain: ${boosted} feature(s) control the reachable road network.`);
+    }
+  }
+
   private _renderFeatureList(features: RankedFeature[], minElev: number, maxElev: number): void {
     const list = this._el('kt-feature-list');
     if (!list) return;
@@ -1342,7 +1440,7 @@ export class KeyTerrainIdentificationEngine {
             <div class="ms-feature-bar-val">${Math.round(feature.elev)}m</div>
           </div>
         </div>
-        <div class="ms-feature-assessment">${ft.assessment(feature)}</div>
+        <div class="ms-feature-assessment">${ft.assessment(feature)}${feature.controlsRoute ? ' <strong style="color:#EF9F27">Controls a road avenue — high mobility value.</strong>' : ''}</div>
       `;
 
       card.addEventListener('click', () => {

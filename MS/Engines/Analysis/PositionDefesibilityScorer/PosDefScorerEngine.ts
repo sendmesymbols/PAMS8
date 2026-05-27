@@ -51,6 +51,11 @@ interface EgressResult {
   clear: boolean;
   masked: boolean;
   dist: number;
+  /** Set when a real road route to the egress point was found. */
+  viaRoad?: boolean;
+  roadKm?: number;
+  roadMin?: number;
+  roadRating?: 'GO' | 'SLOW-GO' | 'NO-GO';
 }
 
 interface ScoreResult {
@@ -527,6 +532,10 @@ export class PosDefScorerEngine {
       await this._tick();
       if (params.showVS || params.showDG || params.showSlp) this._drawRasterOverlay(result, pt, obsZ, params);
       if (params.showLOS) this._buildLOSSpokes(pt, result.horizons, result.numRays, params.rayRes, params.obsRadius, result.sampler).forEach((g) => this._spokesLayer.add(g));
+      if (this._egressPts.length > 0) {
+        this._setProgress(0.82, 'Routing egress on road network');
+        await this._enrichEgressWithRoads(pt, result);
+      }
       if (params.showEgr) this._drawEgressLines(pt, result.egrResults);
 
       this._setProgress(0.9, 'Rendering score');
@@ -773,13 +782,69 @@ export class PosDefScorerEngine {
     });
   }
 
+  /** Lazily reach the shared (optional) road-network adapter — may be absent. */
+  private _roadNet(): any {
+    return (window as any).symbolEngine?.roadNetworkEngine ?? null;
+  }
+
+  /**
+   * Opportunistically score the egress factor on real road-following routes
+   * from the position to each egress waypoint: a drivable withdrawal route is
+   * strong evidence the position can be vacated under power. Folds in as the
+   * better of the terrain-LOS egress score and the road-egress score, so road
+   * data never *lowers* the score — it only reveals viable routes the
+   * line-of-sight check can't see.
+   *
+   * Fully degradable: a missing/down service is a no-op; per-leg failures are
+   * skipped. Never throws.
+   */
+  private async _enrichEgressWithRoads(pt: Point, result: ScoreResult): Promise<void> {
+    const rn = this._roadNet();
+    if (!rn || this._egressPts.length === 0) return;
+    let available = false;
+    try {
+      available = await rn.ensureAvailable();
+    } catch {
+      available = false;
+    }
+    if (!available) return;
+
+    let any = false;
+    let sumScore = 0;
+    for (const er of result.egrResults) {
+      let res: any = null;
+      try {
+        res = await rn.route(pt, er.pt);
+      } catch {
+        res = { ok: false };
+      }
+      if (!res?.ok || !res.data) continue;
+      any = true;
+      er.viaRoad = true;
+      er.roadKm = res.data.distanceKm ?? 0;
+      er.roadMin = res.data.travelTimeMin ?? 0;
+      const rating: 'GO' | 'SLOW-GO' | 'NO-GO' = res.data.trafficability?.rating ?? 'GO';
+      er.roadRating = rating;
+      sumScore += rating === 'GO' ? 20 : rating === 'SLOW-GO' ? 14 : 7;
+    }
+    if (!any) return;
+
+    const roadEgr = Math.round(sumScore / result.egrResults.length);
+    result.scores.egr = Math.max(result.scores.egr, Math.min(20, roadEgr));
+    result.composite = this._computeComposite(result.scores);
+    EngineLogger.success(ENGINE_NAME, 'Defensibility: egress scored on real road routes.');
+  }
+
   private _drawEgressLines(pt: Point, results: EgressResult[]): void {
     results.forEach((er) => {
       const color = er.clear ? (er.masked ? [78, 200, 64] : [29, 158, 117]) : [220, 60, 48];
+      const roadTxt = er.viaRoad
+        ? ` - road ${(er.roadKm ?? 0).toFixed(1)}km/${Math.round(er.roadMin ?? 0)}min ${er.roadRating}`
+        : '';
       this._egrLayer.add(new Graphic({
         geometry: new Polyline({ paths: [[[pt.longitude, pt.latitude], [er.pt.longitude, er.pt.latitude]]], spatialReference: WGS84 }),
         symbol: { type: 'simple-line', color: [...color, 180], width: 2, style: er.masked ? 'solid' : 'short-dash' } as any,
-        attributes: { type: 'Egress LOS', label: `${er.clear ? 'Clear' : 'Blocked'} - ${er.dist}m${er.masked ? ' (masked)' : ''}` },
+        attributes: { type: 'Egress LOS', label: `${er.clear ? 'Clear' : 'Blocked'} - ${er.dist}m${er.masked ? ' (masked)' : ''}${roadTxt}` },
       }));
     });
   }
