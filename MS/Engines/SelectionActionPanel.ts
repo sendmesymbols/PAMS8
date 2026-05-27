@@ -345,7 +345,7 @@ class SelectionActionPanel {
                 break;
 
             case 'B': // Single line/area
-                row.appendChild(this._mkBtn('✎ Move/Scale/Rotate', () => this._editEngine.activate(primary)));
+                row.appendChild(this._mkBtn('✎ Move, Scale, Rotate', () => this._editEngine.activate(primary)));
                 row.appendChild(this._mkBtn('↕ Edit Points', () => this._editEngine.activateEditControlPoints(primary)));
                 row.appendChild(this._mkBtn('⎘ Copy', () => this._cb.copySymbol(primary)));
                 row.appendChild(this._mkBtn('✕ Delete', () => this._deleteOne(primary), 'danger'));
@@ -356,29 +356,15 @@ class SelectionActionPanel {
 
             case 'C': // Multi points
             case 'D': // Multi lines/areas
-                row.appendChild(this._mkBtn(`✎ Move/Scale/Rotate (${selected.length})`, () =>
+                row.appendChild(this._mkBtn(`✎ Move, Scale, Rotate (${selected.length})`, () =>
                     this._editEngine.activateMixedEdit(primary, additional)));
-                row.appendChild(this._mkBtn(`✣ Move`, () =>
-                    this._selectionEngine.moveSelected(({ graphics, dx, dy }) =>
-                        pushUndo({
-                            label: `Move ${graphics.length} Symbols`,
-                            undo: () => this._selectionEngine._applyDelta(graphics, -dx, -dy),
-                            redo: () => this._selectionEngine._applyDelta(graphics, dx, dy),
-                        }))));
                 row.appendChild(this._mkBtn(`✕ Delete (${selected.length})`, () =>
                     this._selectionEngine.deleteSelected((entry) => pushUndo(entry)), 'danger'));
                 break;
 
             case 'E': // Mixed
-                row.appendChild(this._mkBtn(`✎ Move/Scale/Rotate (${selected.length})`, () =>
+                row.appendChild(this._mkBtn(`✎ Move, Scale, Rotate (${selected.length})`, () =>
                     this._editEngine.activateMixedEdit(primary, additional)));
-                row.appendChild(this._mkBtn(`✣ Move`, () =>
-                    this._selectionEngine.moveSelected(({ graphics, dx, dy }) =>
-                        pushUndo({
-                            label: `Move ${graphics.length} Symbols`,
-                            undo: () => this._selectionEngine._applyDelta(graphics, -dx, -dy),
-                            redo: () => this._selectionEngine._applyDelta(graphics, dx, dy),
-                        }))));
                 row.appendChild(this._mkBtn(`✕ Delete (${selected.length})`, () =>
                     this._selectionEngine.deleteSelected((entry) => pushUndo(entry)), 'danger'));
                 break;

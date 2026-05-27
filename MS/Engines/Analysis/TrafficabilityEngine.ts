@@ -78,6 +78,8 @@ interface DriveSeg {
   name: string;
   fclass: string;
   speedKmh: number;
+  /** True when this leg is a straight-line estimate (no road match) — rendered grey/dashed. */
+  estimate?: boolean;
 }
 
 /** Time-parameterised drive model: maps elapsed minutes → position / speed / road. */
@@ -106,6 +108,23 @@ interface CalloutEntry {
   lat: number;
 }
 
+/** A merged multi-leg route (origin→…→dest) used by Route alternates and MSR. */
+interface RouteChain {
+  path: number[][];
+  segs: DriveSeg[];
+  distKm: number;
+  timeMin: number;
+  traffic: TrafficabilitySummary | null;
+  okLegs: number;
+  degraded: boolean;
+}
+
+/** One candidate route in Route mode (primary + alternates). */
+interface RouteOption {
+  id: string;
+  chain: RouteChain;
+}
+
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
 export class TrafficabilityEngine {
@@ -131,6 +150,10 @@ export class TrafficabilityEngine {
 
   /** Time/speed model for the current route or MSR (null in service-area mode). */
   private _driveModel: DriveModel | null = null;
+
+  /** Route mode: the primary + alternate routes, and which one is active. */
+  private _routeOptions: RouteOption[] = [];
+  private _selectedRoute = 0;
 
   // Vehicle playback
   private _vehicleGraphic: Graphic | null = null;
@@ -651,64 +674,47 @@ export class TrafficabilityEngine {
       this._startDestPlacement();
       return;
     }
+    const origin = this._origin, dest = this._dest;
     this._stopDrive();
     this._clearCallouts();
     this._analysisLayer.removeAll();
     this._driveModel = null;
+    this._routeOptions = [];
+    this._selectedRoute = 0;
 
     const speedKmh = Number(this._inp('reach-speed')?.value ?? 40);
-    const rn = this._roadNet();
-    if (rn && rn.availability === 'unknown') await rn.ensureAvailable();
 
-    let res: any = null;
-    if (rn) {
-      try {
-        res = await rn.route(this._origin, this._dest);
-      } catch {
-        res = { ok: false };
+    // Primary route. If it can't be routed at all, fall back to a straight-line estimate.
+    const primary = await this._routeChain([origin, dest], speedKmh);
+    if (primary.okLegs === 0) {
+      this._renderStraightLineEstimate(origin, dest, speedKmh);
+      return;
+    }
+
+    const options: RouteOption[] = [{ id: 'primary', chain: primary }];
+
+    // Alternates: route through perpendicular via points to force distinct corridors.
+    const wantAlts = this._panelEl?.querySelector<HTMLInputElement>('#reach-alts')?.checked ?? true;
+    if (wantAlts) {
+      const vias = this._viaPoints(origin, dest, 2);
+      for (const via of vias) {
+        if (options.length >= 3) break;
+        const alt = await this._routeChain([origin, via, dest], speedKmh);
+        if (alt.okLegs === 0) continue;
+        // Drop near-duplicates of an existing option (same corridor by distance).
+        const dup = options.some((o) => Math.abs(o.chain.distKm - alt.distKm) / Math.max(1, o.chain.distKm) < 0.03);
+        if (!dup) options.push({ id: `alt-${options.length}`, chain: alt });
       }
     }
 
-    if (res?.ok) {
-      const data = res.data as RouteData;
-      const line = RoadNetworkEngine.toPolyline(data.geometry);
-      if (line) {
-        this._analysisLayer.add(new Graphic({
-          geometry: line,
-          symbol: this._lineSymbol([52, 140, 220], 4.5, 0.95),
-          attributes: { type: 'trafficability_route', source: 'live', distanceKm: data.distanceKm },
-        }));
-      }
-      this._drawOriginMarker();
-      this._drawDestMarker();
-
-      this._setText('#reach-st-1-val', data.distanceKm.toFixed(1));
-      this._setText('#reach-st-1-lbl', 'Dist km');
-      this._setText('#reach-st-2-val', data.travelTimeMin.toFixed(0));
-      this._setText('#reach-st-2-lbl', 'Time min');
-      this._setText('#reach-st-3-val', data.trafficability?.rating ?? '—');
-      this._setText('#reach-st-3-lbl', 'Traffic');
-
-      this._renderTrafficability(data.trafficability);
-      this._renderSteps(data);
-      this._renderBandLegend([], 'live');
-
-      // Build drive model from steps for the play scrubber.
-      const segs = this._segsFromSteps(data, speedKmh);
-      this._driveModel = this._buildDriveModel(this._flattenGeoJson(data.geometry), segs, false);
-      this._showScrubber();
-
-      // Smart callouts: start + a rich destination summary.
-      this._addCallout(this._origin.longitude ?? 0, this._origin.latitude ?? 0, '#34C0AE',
-        `<div class="reach-co-title">🚩 Start</div>`);
-      this._addRouteSummaryCallout(this._dest, data.distanceKm, data.travelTimeMin, data.trafficability);
-      this._repositionCallouts();
-
-      this._setSourceNote(`Live road route — ${data.steps.length} leg${data.steps.length === 1 ? '' : 's'}. Hit ▶ to drive it. 🚙`);
-      this._setStatus('ready');
-    } else {
-      this._renderStraightLineEstimate(this._origin, this._dest, speedKmh, res?.reason);
+    // Default to the fastest option.
+    let best = 0;
+    for (let i = 1; i < options.length; i++) {
+      if (options[i].chain.timeMin < options[best].chain.timeMin) best = i;
     }
+    this._routeOptions = options;
+    this._selectedRoute = best;
+    this._paintRoutes();
   }
 
   /** Shared offline fallback for route mode: straight-line great-circle + ETA. */
@@ -734,7 +740,10 @@ export class TrafficabilityEngine {
     this._setText('#reach-st-3-lbl', 'Source');
     this._setText('#reach-traffic-note', '');
     this._setText('#reach-steps', '');
-    this._renderBandLegend([], 'estimate');
+    this._setText('#reach-legend', '');
+    this._setText('#reach-routes', '');
+    this._routeOptions = [];
+    this._selectedRoute = 0;
 
     this._driveModel = this._buildDriveModel(
       [[oLon, oLat], [dLon, dLat]],
@@ -764,75 +773,27 @@ export class TrafficabilityEngine {
     this._driveModel = null;
 
     const speedKmh = Number(this._inp('reach-speed')?.value ?? 40);
-    const rn = this._roadNet();
-    if (rn && rn.availability === 'unknown') await rn.ensureAvailable();
 
-    const path: number[][] = [];
-    const segs: DriveSeg[] = [];
-    const byClassKm: Record<string, number> = {};
-    let okLegs = 0, distKm = 0, timeMin = 0, degraded = false;
+    const chain = await this._routeChain(this._waypoints, speedKmh);
+    const { path, segs, traffic, degraded } = chain;
+    const liveAny = chain.okLegs > 0;
 
-    for (let i = 0; i < this._waypoints.length - 1; i++) {
-      const a = this._waypoints[i];
-      const b = this._waypoints[i + 1];
-      let res: any = null;
-      if (rn) {
-        try {
-          res = await rn.route(a, b);
-        } catch {
-          res = { ok: false };
-        }
-      }
-      if (res?.ok && res.data?.geometry) {
-        const data = res.data as RouteData;
-        const coords = this._flattenGeoJson(data.geometry);
-        if (path.length && coords.length) coords.shift(); // drop duplicate join vertex
-        path.push(...coords);
-        okLegs++;
-        distKm += data.distanceKm || 0;
-        timeMin += data.travelTimeMin || 0;
-        for (const c of data.byClass ?? []) byClassKm[c.fclass] = (byClassKm[c.fclass] || 0) + (c.km || 0);
-        for (const s of this._segsFromSteps(data, speedKmh)) segs.push(s);
-      } else {
-        // Degrade this leg to a straight line.
-        const aLon = a.longitude ?? 0, aLat = a.latitude ?? 0, bLon = b.longitude ?? 0, bLat = b.latitude ?? 0;
-        if (!path.length) path.push([aLon, aLat]);
-        path.push([bLon, bLat]);
-        const legKm = this._haversineM(aLon, aLat, bLon, bLat) / 1000;
-        const legMin = speedKmh > 0 ? (legKm / speedKmh) * 60 : 0;
-        distKm += legKm;
-        timeMin += legMin;
-        segs.push({ km: legKm, min: legMin, name: `Leg ${i + 1} (straight-line estimate)`, fclass: '', speedKmh });
-        degraded = true;
-      }
-    }
-
-    const liveAny = okLegs > 0;
-    const traffic: TrafficabilitySummary | null = liveAny && Object.keys(byClassKm).length
-      ? RoadNetworkEngine.classifyRoute(Object.entries(byClassKm).map(([fclass, km]) => ({ fclass, km })))
-      : null;
-
-    // Render the merged MSR centreline (bold).
-    if (path.length >= 2) {
-      this._analysisLayer.add(new Graphic({
-        geometry: { type: 'polyline', paths: [path], spatialReference: { wkid: 4326 } } as any,
-        symbol: this._lineSymbol(liveAny ? [214, 110, 50] : [150, 120, 90], 5, 0.95, !liveAny),
-        attributes: { type: 'trafficability_msr', source: liveAny ? (degraded ? 'mixed' : 'live') : 'estimate' },
-      }));
-    }
+    // Merged MSR centreline, coloured per-segment by trafficability tier.
+    if (path.length >= 2) this._renderTieredPath(path, segs, { type: 'trafficability_msr' });
     this._drawWaypointMarkers();
 
     const cls = this._msrClassification(traffic, liveAny);
-    this._setText('#reach-st-1-val', distKm.toFixed(1));
+    this._setText('#reach-st-1-val', chain.distKm.toFixed(1));
     this._setText('#reach-st-1-lbl', liveAny ? 'Dist km' : 'Dist km*');
-    this._setText('#reach-st-2-val', timeMin.toFixed(0));
+    this._setText('#reach-st-2-val', chain.timeMin.toFixed(0));
     this._setText('#reach-st-2-lbl', liveAny ? 'Time min' : 'ETA min*');
     this._setText('#reach-st-3-val', cls.short);
     this._setText('#reach-st-3-lbl', 'Class');
 
     this._renderTrafficability(traffic);
-    this._setText('#reach-steps', '');
-    this._renderBandLegend([], liveAny ? 'live' : 'estimate');
+    this._renderSegList(segs);
+    this._renderTierLegend(segs);
+    this._setText('#reach-routes', '');
 
     // Waypoint callouts: SP / CP-n / RP.
     this._waypoints.forEach((wp, i) => {
@@ -847,7 +808,7 @@ export class TrafficabilityEngine {
       const mid = path[Math.floor(path.length / 2)];
       this._addCallout(mid[0], mid[1], this._trafficColor(traffic?.rating),
         `<div class="reach-co-title">🛣 ${cls.label}</div>
-         <div class="reach-co-row"><b>${distKm.toFixed(1)} km</b> · <b>${timeMin.toFixed(0)} min</b>${degraded ? ' · partial' : ''}</div>
+         <div class="reach-co-row"><b>${chain.distKm.toFixed(1)} km</b> · <b>${chain.timeMin.toFixed(0)} min</b>${degraded ? ' · partial' : ''}</div>
          ${traffic ? `<div class="reach-co-chip" style="--c:${this._trafficColor(traffic.rating)}">${traffic.rating}</div>
          <div class="reach-co-row">Bottleneck: ${this._escape(RoadNetworkEngine.classifyClass(traffic.limitingClass).label)} (type ${RoadNetworkEngine.classifyClass(traffic.limitingClass).routeType})</div>` : ''}
          <div class="reach-co-note">${cls.blurb}</div>`);
@@ -885,6 +846,287 @@ export class TrafficabilityEngine {
     return { short: 'NO-GO', label: 'Restricted', blurb: 'Contains NO-GO segments — not recommended for supply traffic without improvement. ⚠' };
   }
 
+  // ─── Private: route chaining & alternates ───────────────────────────────────
+
+  /**
+   * Route a chain of points (origin→via…→dest) leg by leg on the road network,
+   * merging into one path + ordered leg list + aggregate trafficability. Each
+   * failed leg degrades to a straight-line estimate. Shared by Route alternates
+   * and MSR finding. Never throws.
+   */
+  private async _routeChain(points: Point[], speedKmh: number): Promise<RouteChain> {
+    const rn = this._roadNet();
+    if (rn && rn.availability === 'unknown') await rn.ensureAvailable();
+
+    const path: number[][] = [];
+    const segs: DriveSeg[] = [];
+    const byClassKm: Record<string, number> = {};
+    let okLegs = 0, distKm = 0, timeMin = 0, degraded = false;
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i], b = points[i + 1];
+      let res: any = null;
+      if (rn) {
+        try { res = await rn.route(a, b); } catch { res = { ok: false }; }
+      }
+      if (res?.ok && res.data?.geometry) {
+        const data = res.data as RouteData;
+        const coords = this._flattenGeoJson(data.geometry);
+        if (path.length && coords.length) coords.shift(); // drop duplicate join vertex
+        path.push(...coords);
+        okLegs++;
+        distKm += data.distanceKm || 0;
+        timeMin += data.travelTimeMin || 0;
+        for (const c of data.byClass ?? []) byClassKm[c.fclass] = (byClassKm[c.fclass] || 0) + (c.km || 0);
+        for (const s of this._segsFromSteps(data, speedKmh)) segs.push(s);
+      } else {
+        const aLon = a.longitude ?? 0, aLat = a.latitude ?? 0, bLon = b.longitude ?? 0, bLat = b.latitude ?? 0;
+        if (!path.length) path.push([aLon, aLat]);
+        path.push([bLon, bLat]);
+        const legKm = this._haversineM(aLon, aLat, bLon, bLat) / 1000;
+        const legMin = speedKmh > 0 ? (legKm / speedKmh) * 60 : 0;
+        distKm += legKm;
+        timeMin += legMin;
+        segs.push({ km: legKm, min: legMin, name: `Leg ${i + 1} (straight-line estimate)`, fclass: '', speedKmh, estimate: true });
+        degraded = true;
+      }
+    }
+
+    const traffic: TrafficabilitySummary | null = okLegs > 0 && Object.keys(byClassKm).length
+      ? RoadNetworkEngine.classifyRoute(Object.entries(byClassKm).map(([fclass, km]) => ({ fclass, km })))
+      : null;
+
+    return { path, segs, distKm, timeMin, traffic, okLegs, degraded };
+  }
+
+  /** Candidate via points offset perpendicular to the O→D line, alternating sides. */
+  private _viaPoints(origin: Point, dest: Point, n: number): Point[] {
+    const oLon = origin.longitude ?? 0, oLat = origin.latitude ?? 0;
+    const dLon = dest.longitude ?? 0, dLat = dest.latitude ?? 0;
+    const midLon = (oLon + dLon) / 2, midLat = (oLat + dLat) / 2;
+    const baseKm = this._haversineM(oLon, oLat, dLon, dLat) / 1000;
+    const bearing = this._bearing(oLon, oLat, dLon, dLat);
+    const mags = [0.22, 0.42, 0.62];
+    const out: Point[] = [];
+    for (let i = 0; i < n; i++) {
+      const side = i % 2 === 0 ? 90 : -90;
+      const offKm = Math.max(1, Math.min(40, baseKm * mags[Math.floor(i / 2) % mags.length]));
+      const v = this._destinationPoint(midLon, midLat, (bearing + side + 360) % 360, offKm * 1000);
+      out.push(new Point({ longitude: v.longitude, latitude: v.latitude, spatialReference: { wkid: 4326 } }));
+    }
+    return out;
+  }
+
+  /** Repaint all Route-mode options: selected one tier-coloured + emphasised, others dim. */
+  private _paintRoutes(): void {
+    const origin = this._origin, dest = this._dest;
+    if (!origin || !dest || !this._routeOptions.length) return;
+    this._stopDrive();
+    this._clearCallouts();
+    this._analysisLayer.removeAll();
+
+    const altAccents = ['#B070E0', '#8EC4FF', '#E5A540'];
+    const sel = Math.max(0, Math.min(this._selectedRoute, this._routeOptions.length - 1));
+    this._selectedRoute = sel;
+
+    // Dim alternates underneath; selected route on top.
+    this._routeOptions.forEach((o, i) => {
+      if (i !== sel) this._renderDimRoute(o.chain.path, altAccents[i % altAccents.length], { optionId: o.id });
+    });
+    const selChain = this._routeOptions[sel].chain;
+    this._renderTieredPath(selChain.path, selChain.segs, { optionId: this._routeOptions[sel].id });
+
+    this._drawOriginMarker();
+    this._drawDestMarker();
+
+    // Callouts: start, selected destination summary, alternate labels.
+    this._addCallout(origin.longitude ?? 0, origin.latitude ?? 0, '#34C0AE', `<div class="reach-co-title">🚩 Start</div>`);
+    this._addRouteSummaryCallout(dest, selChain.distKm, selChain.timeMin, selChain.traffic);
+    this._routeOptions.forEach((o, i) => {
+      if (i === sel || o.chain.path.length === 0) return;
+      const mid = o.chain.path[Math.floor(o.chain.path.length / 2)];
+      const rating = o.chain.traffic?.rating ?? 'EST';
+      this._addCallout(mid[0], mid[1], altAccents[i % altAccents.length],
+        `<div class="reach-co-title">↪ Alternate ${i}</div>
+         <div class="reach-co-row"><b>${o.chain.distKm.toFixed(1)} km</b> · <b>${o.chain.timeMin.toFixed(0)} min</b> · ${rating}</div>`);
+    });
+
+    // Stats / breakdown / legend / list for the selected route.
+    this._setText('#reach-st-1-val', selChain.distKm.toFixed(1)); this._setText('#reach-st-1-lbl', 'Dist km');
+    this._setText('#reach-st-2-val', selChain.timeMin.toFixed(0)); this._setText('#reach-st-2-lbl', 'Time min');
+    this._setText('#reach-st-3-val', selChain.traffic?.rating ?? '—'); this._setText('#reach-st-3-lbl', 'Traffic');
+    this._renderTrafficability(selChain.traffic);
+    this._renderSegList(selChain.segs);
+    this._renderTierLegend(selChain.segs);
+    this._renderRoutesList();
+
+    this._driveModel = this._buildDriveModel(selChain.path, selChain.segs, selChain.degraded);
+    this._showScrubber();
+    this._repositionCallouts();
+
+    const altCount = this._routeOptions.length - 1;
+    this._setSourceNote(
+      `Selected ${sel === 0 ? 'primary (MSR)' : `alternate ${sel} (ASR)`} · ${selChain.distKm.toFixed(1)} km, ${selChain.timeMin.toFixed(0)} min` +
+      (altCount > 0 ? ` · ${altCount} alternate${altCount === 1 ? '' : 's'} found — tap a route below to compare. 🚙` : '. Hit ▶ to drive it. 🚙'),
+    );
+    this._setStatus('ready');
+  }
+
+  /** Render the selectable list of route options (primary + alternates). */
+  private _renderRoutesList(): void {
+    const el = this._panelEl?.querySelector<HTMLElement>('#reach-routes');
+    if (!el) return;
+    if (this._mode !== 'route' || this._routeOptions.length <= 1) { el.innerHTML = ''; return; }
+    const altAccents = ['#5092DC', '#B070E0', '#8EC4FF', '#E5A540'];
+    el.innerHTML = this._routeOptions.map((o, i) => {
+      const c = o.chain;
+      const selCls = i === this._selectedRoute ? ' reach-route-sel' : '';
+      const name = i === 0 ? 'Primary · MSR' : `Alternate ${i} · ASR`;
+      const rating = c.traffic?.rating ?? 'EST';
+      return `<div class="reach-route-row${selCls}" data-idx="${i}">
+        <span class="reach-route-swatch" style="background:${altAccents[i % altAccents.length]}"></span>
+        <span class="reach-route-name">${name}</span>
+        <span class="reach-route-meta">${c.distKm.toFixed(1)}km · ${c.timeMin.toFixed(0)}min · <b style="color:${this._trafficColor(c.traffic?.rating)}">${rating}</b></span>
+      </div>`;
+    }).join('');
+    el.querySelectorAll<HTMLElement>('.reach-route-row').forEach((row) => {
+      row.addEventListener('click', () => {
+        const idx = Number(row.dataset.idx);
+        if (Number.isFinite(idx) && idx !== this._selectedRoute) {
+          this._selectedRoute = idx;
+          this._paintRoutes();
+        }
+      });
+    });
+  }
+
+  /** Draw a path coloured per-segment by GO/SLOW-GO/NO-GO tier, over a dark casing. */
+  private _renderTieredPath(path: number[][], segs: DriveSeg[], attrs: any = {}): void {
+    if (path.length < 2) return;
+    const cum: number[] = [0];
+    for (let i = 1; i < path.length; i++) {
+      cum[i] = cum[i - 1] + this._haversineM(path[i - 1][0], path[i - 1][1], path[i][0], path[i][1]) / 1000;
+    }
+    const pathKm = cum[cum.length - 1] || 0;
+    const segKm = segs.reduce((a, s) => a + (s.km || 0), 0) || pathKm;
+
+    // Dark casing for contrast.
+    this._analysisLayer.add(new Graphic({
+      geometry: { type: 'polyline', paths: [path], spatialReference: { wkid: 4326 } } as any,
+      symbol: this._lineSymbol([14, 20, 26], 8, 0.5),
+      attributes: { type: 'trafficability_route_casing', interactive: false, ...attrs },
+    }));
+
+    let segStartKm = 0;
+    for (const s of segs) {
+      const segEndKm = segStartKm + (s.km || 0);
+      const startDist = segKm > 0 ? (segStartKm / segKm) * pathKm : 0;
+      const endDist = segKm > 0 ? (segEndKm / segKm) * pathKm : pathKm;
+      segStartKm = segEndKm;
+      const sub = this._pathSlice(path, cum, startDist, endDist);
+      if (sub.length < 2) continue;
+      const tier = s.estimate ? undefined : RoadNetworkEngine.classifyClass(s.fclass).trafficability;
+      const color = this._tierColorRgb(tier);
+      this._analysisLayer.add(new Graphic({
+        geometry: { type: 'polyline', paths: [sub], spatialReference: { wkid: 4326 } } as any,
+        symbol: this._lineSymbol(color, 5, 0.95, !!s.estimate),
+        attributes: { type: 'trafficability_route', tier: tier ?? 'EST', fclass: s.fclass, ...attrs },
+      }));
+    }
+  }
+
+  /** Extract the sub-path between two cumulative distances (interpolated endpoints). */
+  private _pathSlice(path: number[][], cum: number[], startKm: number, endKm: number): number[][] {
+    const pathKm = cum[cum.length - 1] || 0;
+    const s = Math.max(0, Math.min(startKm, pathKm));
+    const e = Math.max(s, Math.min(endKm, pathKm));
+    const interp = (d: number): number[] => {
+      if (d <= 0) return path[0];
+      if (d >= pathKm) return path[path.length - 1];
+      for (let i = 1; i < cum.length; i++) {
+        if (cum[i] >= d) {
+          const span = cum[i] - cum[i - 1] || 1e-9;
+          const f = (d - cum[i - 1]) / span;
+          const a = path[i - 1], b = path[i];
+          return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+        }
+      }
+      return path[path.length - 1];
+    };
+    const out: number[][] = [interp(s)];
+    for (let i = 0; i < cum.length; i++) {
+      if (cum[i] > s && cum[i] < e) out.push(path[i]);
+    }
+    out.push(interp(e));
+    return out;
+  }
+
+  /** Thin, dim line for a non-selected alternate route. */
+  private _renderDimRoute(path: number[][], accent: string, attrs: any = {}): void {
+    if (path.length < 2) return;
+    this._analysisLayer.add(new Graphic({
+      geometry: { type: 'polyline', paths: [path], spatialReference: { wkid: 4326 } } as any,
+      symbol: this._lineSymbol(this._hexToRgb(accent), 2.8, 0.55),
+      attributes: { type: 'trafficability_route_alt', interactive: false, ...attrs },
+    }));
+  }
+
+  /** Per-leg list with a trafficability-tier coloured dot. */
+  private _renderSegList(segs: DriveSeg[]): void {
+    const el = this._panelEl?.querySelector<HTMLElement>('#reach-steps');
+    if (!el) return;
+    if (!segs.length) { el.innerHTML = ''; return; }
+    const rows = segs.slice(0, 30).map((s) => {
+      const tier = s.estimate ? undefined : RoadNetworkEngine.classifyClass(s.fclass).trafficability;
+      const c = this._tierColorRgb(tier);
+      return `<div class="reach-step">
+        <span class="reach-step-dot" style="background:rgb(${c[0]},${c[1]},${c[2]})"></span>
+        <span class="reach-step-name">${this._escape(s.name)}</span>
+        <span class="reach-step-km">${s.km.toFixed(1)} km</span>
+      </div>`;
+    }).join('');
+    const more = segs.length > 30 ? `<div class="reach-step-more">+${segs.length - 30} more legs…</div>` : '';
+    el.innerHTML = rows + more;
+  }
+
+  /** Legend of the GO/SLOW-GO/NO-GO tiers present along the route. */
+  private _renderTierLegend(segs: DriveSeg[]): void {
+    const el = this._panelEl?.querySelector<HTMLElement>('#reach-legend');
+    if (!el) return;
+    const present = new Set<Trafficability>();
+    let hasEstimate = false;
+    for (const s of segs) {
+      if (s.estimate) hasEstimate = true;
+      else present.add(RoadNetworkEngine.classifyClass(s.fclass).trafficability);
+    }
+    const tiers: Trafficability[] = ['GO', 'SLOW-GO', 'NO-GO'];
+    const items = tiers.filter((t) => present.has(t)).map((t) => {
+      const c = this._tierColorRgb(t);
+      return `<span class="reach-leg-item"><span class="reach-leg-swatch" style="background:rgb(${c[0]},${c[1]},${c[2]})"></span>${t}</span>`;
+    });
+    if (hasEstimate) items.push(`<span class="reach-leg-item"><span class="reach-leg-swatch" style="background:rgb(150,150,160)"></span>Estimate</span>`);
+    el.innerHTML = items.join('');
+  }
+
+  // ─── Private: small math/colour helpers ─────────────────────────────────────
+
+  private _bearing(lon1: number, lat1: number, lon2: number, lat2: number): number {
+    const φ1 = (lat1 * Math.PI) / 180, φ2 = (lat2 * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+    const y = Math.sin(Δλ) * Math.cos(φ2);
+    const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+    return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+  }
+
+  private _hexToRgb(hex: string): [number, number, number] {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [136, 136, 136];
+  }
+
+  private _tierColorRgb(t: Trafficability | undefined): [number, number, number] {
+    return t === 'GO' ? [29, 158, 117] : t === 'SLOW-GO' ? [239, 159, 39] : t === 'NO-GO' ? [226, 75, 74] : [150, 150, 160];
+  }
+
   // ─── Private: rendering helpers ─────────────────────────────────────────────
 
   private _renderTrafficability(traffic: TrafficabilitySummary | null | undefined): void {
@@ -902,28 +1144,6 @@ export class TrafficabilityEngine {
     el.innerHTML =
       `<span class="reach-co-chip" style="--c:${this._trafficColor(traffic.rating)}">${traffic.rating}</span> ` +
       `limiting: <b>${this._escape(lim.label)}</b> (route type ${lim.routeType}). ${this._escape(breakdown)}`;
-  }
-
-  private _renderSteps(data: RouteData): void {
-    const el = this._panelEl?.querySelector<HTMLElement>('#reach-steps');
-    if (!el) return;
-    if (!data.steps.length) {
-      el.innerHTML = '';
-      return;
-    }
-    const rows = data.steps
-      .slice(0, 30)
-      .map((s) => {
-        const c = RoadNetworkEngine.classifyClass(s.fclass).color;
-        return `<div class="reach-step">
-          <span class="reach-step-dot" style="background:rgb(${c[0]},${c[1]},${c[2]})"></span>
-          <span class="reach-step-name">${this._escape(s.name)}</span>
-          <span class="reach-step-km">${s.km.toFixed(1)} km</span>
-        </div>`;
-      })
-      .join('');
-    const more = data.steps.length > 30 ? `<div class="reach-step-more">+${data.steps.length - 30} more legs…</div>` : '';
-    el.innerHTML = rows + more;
   }
 
   private _renderBandLegend(bands: ServiceBand[], source: 'live' | 'estimate'): void {
@@ -1349,6 +1569,8 @@ export class TrafficabilityEngine {
     this._clearCallouts();
     this._analysisLayer.removeAll();
     this._driveModel = null;
+    this._routeOptions = [];
+    this._selectedRoute = 0;
     if (mode === 'msr' && this._origin && this._waypoints.length === 0) this._waypoints = [this._origin];
     this._syncModeUI();
     this._clearStats();
@@ -1409,6 +1631,8 @@ export class TrafficabilityEngine {
     this._dest = null;
     this._waypoints = [];
     this._driveModel = null;
+    this._routeOptions = [];
+    this._selectedRoute = 0;
     this._clearStats();
     this._setText('#reach-origin-coords', 'Origin: click map to place');
     this._setText('#reach-dest-coords', 'Destination: not set');
@@ -1424,6 +1648,7 @@ export class TrafficabilityEngine {
     this._setText('#reach-traffic-note', '');
     this._setText('#reach-steps', '');
     this._setText('#reach-legend', '');
+    this._setText('#reach-routes', '');
     this._setText('#reach-source-note', '');
     if (this._mode === 'serviceArea') {
       this._setText('#reach-st-1-lbl', 'Bands');
@@ -1570,6 +1795,10 @@ export class TrafficabilityEngine {
             <button class="reach-btn reach-btn-sm" id="reach-pick-dest-btn">Pick Destination ⊕</button>
             <button class="reach-btn reach-btn-sm" id="reach-clear-dest-btn">Clear Dest</button>
           </div>
+          <div class="reach-toggle-row">
+            <label class="reach-label" for="reach-alts">Find alternate routes</label>
+            <input type="checkbox" id="reach-alts" class="reach-check" checked />
+          </div>
         </div>
 
         <div id="reach-sec-msr" style="display:none">
@@ -1599,6 +1828,7 @@ export class TrafficabilityEngine {
         </div>
 
         <div class="reach-legend" id="reach-legend"></div>
+        <div class="reach-routes" id="reach-routes"></div>
         <div class="reach-source-note" id="reach-source-note"></div>
         <div class="reach-traffic-note" id="reach-traffic-note"></div>
         <div class="reach-steps" id="reach-steps"></div>
@@ -1895,6 +2125,20 @@ export class TrafficabilityEngine {
       .reach-legend { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 12px 4px; }
       .reach-leg-item { display: inline-flex; align-items: center; gap: 5px; font-size: var(--ms-fs-xs); color: var(--ms-text-dim); }
       .reach-leg-swatch { width: 11px; height: 4px; border-radius: 2px; display: inline-block; }
+      .reach-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 12px 2px; }
+      .reach-check { accent-color: #34C0AE; width: 14px; height: 14px; cursor: pointer; }
+      .reach-routes { padding: 2px 10px 4px; }
+      .reach-routes:empty { display: none; }
+      .reach-route-row {
+        display: flex; align-items: center; gap: 8px; padding: 5px 8px; margin: 3px 0;
+        border: 1px solid var(--ms-border); border-radius: 5px; cursor: pointer;
+        background: var(--ms-bg-input); transition: border-color 0.14s, background 0.14s;
+      }
+      .reach-route-row:hover { background: var(--ms-bg-header); }
+      .reach-route-sel { border-color: #34C0AE; background: var(--ms-bg-header); }
+      .reach-route-swatch { width: 12px; height: 4px; border-radius: 2px; flex: 0 0 auto; }
+      .reach-route-name { font-size: var(--ms-fs-xs); font-weight: 700; color: var(--ms-text); flex: 0 0 auto; }
+      .reach-route-meta { font-size: var(--ms-fs-xs); color: var(--ms-text-dim); flex: 1; text-align: right; }
       .reach-source-note { font-size: var(--ms-fs-xs); color: var(--ms-text-dim); padding: 2px 12px; font-style: italic; }
       .reach-source-note:empty { display: none; }
       .reach-traffic-note { font-size: var(--ms-fs-xs); color: var(--ms-text); padding: 4px 12px; line-height: 1.5; }

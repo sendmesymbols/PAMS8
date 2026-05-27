@@ -1380,9 +1380,9 @@ class EditEngine {
         this._removeModeBanner();
 
         const labels: Record<'move-scale-rotate' | 'control-points' | 'mixed-edit', { icon: string; title: string; hint: string }> = {
-            'move-scale-rotate': { icon: '✎',  title: 'Move / Scale / Rotate', hint: 'Drag handles to transform the symbol' },
+            'move-scale-rotate': { icon: '✎',  title: 'Move, Scale, Rotate', hint: 'Drag handles to transform the symbol' },
             'control-points':    { icon: '↕',  title: 'Edit Control Points',   hint: 'Drag handles to reshape • Click symbol to add • Click point to remove' },
-            'mixed-edit':        { icon: '✎',  title: 'Move / Scale / Rotate', hint: 'Drag the box to move, rotate or scale the group' },
+            'mixed-edit':        { icon: '✎',  title: 'Move, Scale, Rotate', hint: 'Drag the box to move, rotate or scale the group' },
         };
         const cfg = labels[mode];
 

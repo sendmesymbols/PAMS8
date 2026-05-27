@@ -300,7 +300,7 @@ export class DeadGroundMapper {
     const domeParams = this._readDomeParams(radiusM, opacity, showMasked, showCap, showObstructionRing, doubleSided);
 
     try {
-      this._setStatus('sampling', 'Getting terrain elevation...');
+      this._setStatus('sampling', 'Elevation...');
       this._setProgress(0, 'Querying observer elevation');
       if (snapToTerrain) {
         try {
@@ -1206,13 +1206,13 @@ export class DeadGroundMapper {
       <div class="ms-body">
         <div class="ms-section-title">Observer</div>
         <div class="ms-grid">
-          <div class="ms-field"><div class="ms-label">Eye height (m)</div><input id="dead-inp-eye" type="number" value="1.8" min="0.5" max="20" step="0.1" /></div>
-          <div class="ms-field"><div class="ms-label">Analysis radius (m)</div><input id="dead-inp-radius" type="number" value="3000" min="200" max="15000" step="100" /></div>
+          <div class="ms-field"><div class="ms-label">Eye height (m)</div><input id="dead-inp-eye" class="ms-input" type="number" value="1.8" min="0.5" max="20" step="0.1" /></div>
+          <div class="ms-field"><div class="ms-label">Analysis radius (m)</div><input id="dead-inp-radius" class="ms-input" type="number" value="3000" min="200" max="15000" step="100" /></div>
         </div>
         <div class="ms-section-title">Grid resolution</div>
         <div class="ms-grid">
           <div class="ms-field full"><div class="ms-label">Cell size (m) - finer = slower</div>
-            <select id="dead-inp-cell">
+            <select id="dead-inp-cell" class="ms-select">
               <option value="20">20 m - fine (slow)</option>
               <option value="35" selected>35 m - balanced</option>
               <option value="50">50 m - fast</option>
@@ -1223,7 +1223,7 @@ export class DeadGroundMapper {
         <div class="ms-section-title">Depth colour scale</div>
         <div class="ms-grid ms-tight">
           <div class="ms-field full"><div class="ms-label">Colour mode</div>
-            <select id="dead-inp-color-mode">
+            <select id="dead-inp-color-mode" class="ms-select">
               <option value="depth" selected>Depth - shallow to deep</option>
               <option value="binary">Binary - dead / visible</option>
               <option value="range">Range - near to far</option>
@@ -1250,12 +1250,12 @@ export class DeadGroundMapper {
         </div>
         <div class="ms-dome-options" id="dead-dome-options">
           <div class="ms-grid ms-tight">
-            <div class="ms-field"><div class="ms-label">Az centre</div><input id="dead-dome-az-center" type="number" value="0" min="0" max="359" step="1" /></div>
-            <div class="ms-field"><div class="ms-label">Spread</div><input id="dead-dome-az-spread" type="number" value="360" min="10" max="360" step="5" /></div>
-            <div class="ms-field"><div class="ms-label">Min elev</div><input id="dead-dome-el-min" type="number" value="-5" min="-89" max="0" step="1" /></div>
-            <div class="ms-field"><div class="ms-label">Max elev</div><input id="dead-dome-el-max" type="number" value="60" min="1" max="89" step="1" /></div>
+            <div class="ms-field"><div class="ms-label">Az centre</div><input id="dead-dome-az-center" class="ms-input" type="number" value="0" min="0" max="359" step="1" /></div>
+            <div class="ms-field"><div class="ms-label">Spread</div><input id="dead-dome-az-spread" class="ms-input" type="number" value="360" min="10" max="360" step="5" /></div>
+            <div class="ms-field"><div class="ms-label">Min elev</div><input id="dead-dome-el-min" class="ms-input" type="number" value="-5" min="-89" max="0" step="1" /></div>
+            <div class="ms-field"><div class="ms-label">Max elev</div><input id="dead-dome-el-max" class="ms-input" type="number" value="60" min="1" max="89" step="1" /></div>
             <div class="ms-field"><div class="ms-label">Rays</div>
-              <select id="dead-dome-rays">
+              <select id="dead-dome-rays" class="ms-select">
                 <option value="36">36</option>
                 <option value="72" selected>72</option>
                 <option value="120">120</option>
@@ -1263,16 +1263,16 @@ export class DeadGroundMapper {
               </select>
             </div>
             <div class="ms-field"><div class="ms-label">Slices</div>
-              <select id="dead-dome-slices">
+              <select id="dead-dome-slices" class="ms-select">
                 <option value="8">8</option>
                 <option value="16" selected>16</option>
                 <option value="24">24</option>
                 <option value="32">32</option>
               </select>
             </div>
-            <div class="ms-field"><div class="ms-label">Step (m)</div><input id="dead-dome-step" type="number" value="50" min="10" max="250" step="10" /></div>
+            <div class="ms-field"><div class="ms-label">Step (m)</div><input id="dead-dome-step" class="ms-input" type="number" value="50" min="10" max="250" step="10" /></div>
             <div class="ms-field"><div class="ms-label">Dome colour</div>
-              <select id="dead-dome-color-mode">
+              <select id="dead-dome-color-mode" class="ms-select">
                 <option value="elevation" selected>Elevation</option>
                 <option value="binary">Binary</option>
                 <option value="range">Range</option>
