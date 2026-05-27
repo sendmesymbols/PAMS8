@@ -11,6 +11,7 @@ import GraphicsLayerManager, {
 import AnnotationEngine from './AnnotationEngine.ts';
 import SelectionEngine from './SelectionEngine.ts';
 import GeoTools from '../Support/GeoTools.ts';
+import DrawEssentials from '../Support/DrawEssentials.ts';
 import EngineLogger from '../Support/EngineLogger';
 import settingsData from '../Data/Settings.json';
 
@@ -458,7 +459,16 @@ export default class ClipboardEngine {
     transformFn: (pt: any) => { x: number; y: number },
   ): any {
     if (!de) return de;
-    const result = { ...de };
+    // Build a real DrawEssentials INSTANCE (not a plain `{ ...de }` object).
+    // Symbol classes stash a live back-reference to themselves in `de.SCOPE`
+    // (e.g. `MainAttack`). A DrawEssentials instance has a clone() method, so
+    // ArcGIS's structural clone (Graphic.clone → tryClone) calls clone() and
+    // copies SCOPE by reference. A *plain* object has no clone(), so tryClone
+    // recurses into SCOPE and reconstructs the symbol via `new SymbolClass()`
+    // with no view — crashing in GraphicsLayerManager.getInstance when a pasted
+    // symbol is later copied. Keeping the prototype preserves edit-on-paste,
+    // which reads `de.SCOPE.createSymbol()`.
+    const result: any = new DrawEssentials(de);
     const tPt = (pt: any) => {
       if (!pt) return pt;
       const clone = pt.clone?.() ?? { ...pt };

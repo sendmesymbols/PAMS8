@@ -29,7 +29,8 @@
       "Bash(python3 *)",
       "Bash(findstr *)",
       "Bash(Select-String -Pattern \"ProximityEngine\" -Context 0,1)",
-      "Bash(Select-Object -First 40)"
+      "Bash(Select-Object -First 40)",
+      "Bash(grep -iE \"testDataGenerator|src/main.ts|src\\\\\\\\\\\\\\\\main.ts\")"
     ]
   }
 }

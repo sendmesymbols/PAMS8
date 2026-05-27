@@ -61,7 +61,7 @@ let initialSceneRenderState: {
 // Import milsymbol types
 import '../MS/ThirdParty/MilSymbols/milsymbol.d.ts';
 import GeoTools from '../MS/Support/GeoTools.ts';
-import { generateTestField, clearTestField } from './testDataGenerator';
+import { generateTestField, generateClutteredField, clearTestField } from './testDataGenerator';
 
 // Define button to switch views
 const switchButton: HTMLElement | null = document.getElementById('switch-btn');
@@ -1605,6 +1605,7 @@ function initializeAutocomplete() {
 
   // ── Test Field generator (declutter demo helper) ──────────────────────────
   const testFieldGenBtn = document.getElementById('api-testfield-generate');
+  const testFieldClutterBtn = document.getElementById('api-testfield-clutter');
   const testFieldClearBtn = document.getElementById('api-testfield-clear');
   const testFieldStatus = document.getElementById('api-testfield-status');
   const testFieldCountInput = document.getElementById('api-testfield-count') as HTMLInputElement | null;
@@ -1616,6 +1617,16 @@ function initializeAutocomplete() {
       const stackCount = Math.max(0, parseInt(testFieldStacksInput?.value ?? '4', 10) || 0);
       const added = generateTestField(symbolEngine, appConfig.activeView, { count, stackCount });
       if (testFieldStatus) testFieldStatus.textContent = `Added ${added} test symbols`;
+    });
+  }
+
+  if (testFieldClutterBtn) {
+    testFieldClutterBtn.addEventListener('click', () => {
+      // Cluttered preset: reuse the Count input but let the generator
+      // auto-boost stacks and tighten the spread for heavy overlap.
+      const count = Math.max(1, parseInt(testFieldCountInput?.value ?? '150', 10) || 150);
+      const added = generateClutteredField(symbolEngine, appConfig.activeView, { count });
+      if (testFieldStatus) testFieldStatus.textContent = `Added ${added} cluttered symbols`;
     });
   }
 

@@ -2620,6 +2620,7 @@
             <input type="number" id="api-testfield-stacks" value="4" min="0" max="40" step="1" style="width:70px" title="Number of intentional same-coordinate stacks (4 symbols each) to seed disperse/cluster testing." />
           </div>
           <button class="ms-btn success" id="api-testfield-generate" title="Drop a mixed field of UEI symbols (varied identity + echelon + designator) inside the current view. Use to test cluster badges, echelon ladder, disperse, label placer, and abbreviation in one click.">Generate Test Field</button>
+          <button class="ms-btn" id="api-testfield-clutter" title="Drop the same mixed field but deliberately jumbled — a tight footprint with many overlapping same-coordinate stacks so symbols pile on top of one another. Stresses every declutter path at once (label collisions, disperse, cluster badges, ladder). Uses the Count input; Stacks is auto-boosted.">Generate Cluttered Field</button>
           <button class="ms-btn danger" id="api-testfield-clear" title="Remove every graphic tagged as test data. Leaves real (user-drawn) symbols alone.">Clear Test Field</button>
           <div class="ms-status" id="api-testfield-status">Ready</div>
         </div>

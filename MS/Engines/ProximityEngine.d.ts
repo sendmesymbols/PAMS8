@@ -46,6 +46,8 @@ declare class ProximityEngine {
     private _isEnabled;
     private _isActive;
     private _isGeodesic;
+    private _isLatLon;
+    private _isWebMercator;
     private _rafId;
     private _pendingEvent;
     private _containerEl;
@@ -144,7 +146,24 @@ declare class ProximityEngine {
      * redraw that add()/remove() triggers every time the cursor leaves/re-enters range.
      */
     private _clear;
+    /**
+     * Distance between two map points, formatted for display.
+     * Geographic / Web Mercator views use inline great-circle (haversine) math —
+     * no per-frame Polyline allocation and no geometry-engine call. Planar length
+     * in Web Mercator overstates ground distance badly away from the equator, so
+     * we never use it there. Other projected systems fall back to the geometry
+     * engine so their native units convert correctly.
+     */
     private _calcDist;
+    /** Convert a point's coords to [lon, lat] degrees for great-circle math. */
+    private _toLonLat;
+    private _haversineMeters;
+    /**
+     * Adaptive precision: keep the label readable across magnitudes
+     * (e.g. "8473 m", "84.7 m", "0.423 km") without switching the user's chosen
+     * unit out from under them.
+     */
+    private _formatDistance;
     private _calcBearing;
     private _resolveGeodesic;
     /** Safely resolve view.container, which may be a string ID or an HTMLElement. */

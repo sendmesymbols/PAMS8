@@ -303,6 +303,33 @@ export function generateTestField(
 }
 
 /**
+ * Cluttered preset. Same generator, same Plan path — but a much tighter
+ * spread plus many small same-coordinate stacks so symbols pile on top of
+ * one another. Deliberately jumbled to stress every declutter path at
+ * once: label-placement collisions, disperse fans, cluster badges and the
+ * echelon ladder. Tagged "test-" like the normal field, so Clear Test
+ * Field removes both.
+ */
+export function generateClutteredField(
+  symbolEngine: any,
+  view: MapView | SceneView | undefined,
+  options: TestFieldOptions = {},
+): number {
+  const count = Math.max(1, options.count ?? 150);
+  // Most of the field lives in 4-symbol stacks (≈80%), so overlap is heavy.
+  const stackCount = options.stackCount ?? Math.max(8, Math.floor((count * 0.8) / 4));
+
+  return generateTestField(symbolEngine, view, {
+    // Tight footprint → even the non-stacked symbols overlap on screen.
+    spreadDegLon: 0.04,
+    spreadDegLat: 0.03,
+    ...options,
+    count,
+    stackCount,
+  });
+}
+
+/**
  * Remove every graphic with a sourceSymbolId tagged "test-". Safe to
  * call any time — leaves user-drawn symbols alone.
  */
