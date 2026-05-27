@@ -357,7 +357,7 @@ class SelectionActionPanel {
             case 'C': // Multi points
             case 'D': // Multi lines/areas
                 row.appendChild(this._mkBtn(`✎ Move/Scale/Rotate (${selected.length})`, () =>
-                    this._editEngine.activate(primary, additional)));
+                    this._editEngine.activateMixedEdit(primary, additional)));
                 row.appendChild(this._mkBtn(`✣ Move`, () =>
                     this._selectionEngine.moveSelected(({ graphics, dx, dy }) =>
                         pushUndo({
@@ -370,7 +370,7 @@ class SelectionActionPanel {
                 break;
 
             case 'E': // Mixed
-                row.appendChild(this._mkBtn(`⇄ Mixed Edit (${selected.length})`, () =>
+                row.appendChild(this._mkBtn(`✎ Move/Scale/Rotate (${selected.length})`, () =>
                     this._editEngine.activateMixedEdit(primary, additional)));
                 row.appendChild(this._mkBtn(`✣ Move`, () =>
                     this._selectionEngine.moveSelected(({ graphics, dx, dy }) =>

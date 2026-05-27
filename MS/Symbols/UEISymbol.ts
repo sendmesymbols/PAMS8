@@ -149,6 +149,14 @@ export class UEISymbol {
         de.SYM_NAME = this.symName;
         de.GEOM = geometry;
         de.AMPLIFIER = this.amplifier.toString();
+        // Record the marker size actually rendered (milsymbol read it from
+        // options.extraSettings.size in init) so the stored drawEssentials
+        // reflects what's on screen — the editor and the global resize both
+        // read de.extraSettings.size.
+        const usedSize = Number((options as any)?.extraSettings?.size);
+        if (Number.isFinite(usedSize) && usedSize > 0) {
+            de.extraSettings = { ...de.extraSettings, size: usedSize };
+        }
         (de as any).OPTIONS = options;
         (de as any).UEI = "1";
         return de;

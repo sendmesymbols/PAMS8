@@ -30,6 +30,9 @@ export declare class CorridorEngine {
     private _dragOffsetX;
     private _dragOffsetY;
     private _isDragging;
+    private _snapToRoads;
+    private _roadPath;
+    private _roadSummary;
     constructor();
     initialize(view: MapView | SceneView): void;
     open(graphic: Graphic, view: MapView | SceneView): void;
@@ -42,6 +45,25 @@ export declare class CorridorEngine {
     private _bindPanelEvents;
     private _startPlacement;
     private _cancelPlacement;
+    /** Lazily reach the shared road-network adapter (may be absent). */
+    private _roadNet;
+    /** Centreline source: road-following path when snapping is active, else raw waypoints. */
+    private _centrelineWaypoints;
+    /** Update the small snap-status line in the panel (no-op if panel closed). */
+    private _setSnapNote;
+    /** Flatten a GeoJSON Line/MultiLineString into a single [lng,lat][] list. */
+    private _flattenLineCoords;
+    /**
+     * Recompute the road-following centreline by routing each consecutive
+     * waypoint pair. Fully degradable: a missing service drops to straight-line,
+     * and any single failed leg falls back to its straight segment while the rest
+     * still follow roads. Never throws.
+     */
+    private _recomputeRoadPath;
+    /** Render the per-class trafficability breakdown into the panel (clears on null). */
+    private _setTrafficNote;
+    /** Re-render after a waypoint change, recomputing the road path first when snapping. */
+    private _onWaypointsChanged;
     private _drawPreview;
     private _drawThreat;
     private _redraw;

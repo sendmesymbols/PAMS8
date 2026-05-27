@@ -1079,3 +1079,44 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   ESRI POPUP — Ops Dark override
+   Scoped to `body.ms-popup-dark`, toggled on/off by analysis engines (KeyTerrain,
+   OCOKA, …) while one is open so the native ArcGIS popup matches the dark ops UI
+   instead of the globally-loaded light esri theme.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+body.ms-popup-dark .esri-popup__main-container {
+  background: var(--ms-bg);
+  color: var(--ms-text);
+  border: 1px solid var(--ms-border);
+  box-shadow: var(--ms-shadow);
+}
+
+body.ms-popup-dark .esri-popup__header,
+body.ms-popup-dark .esri-popup__footer {
+  background: var(--ms-bg-header);
+}
+
+body.ms-popup-dark .esri-popup__header-title,
+body.ms-popup-dark .esri-popup__content,
+body.ms-popup-dark .esri-popup__feature-menu-item {
+  color: var(--ms-text);
+}
+
+body.ms-popup-dark .esri-popup__button,
+body.ms-popup-dark .esri-popup__icon {
+  color: var(--ms-text-label);
+}
+
+body.ms-popup-dark .esri-popup__button:hover,
+body.ms-popup-dark .esri-popup__button:focus {
+  color: var(--ms-accent);
+  background: var(--ms-bg-input);
+}
+
+body.ms-popup-dark .esri-popup__pointer-direction {
+  background: var(--ms-bg);
+  border: 1px solid var(--ms-border);
+}

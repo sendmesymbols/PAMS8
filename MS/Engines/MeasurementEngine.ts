@@ -26,6 +26,7 @@ import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import EngineLogger from "../Support/EngineLogger";
+import RoadNetworkEngine from "./Analysis/RoadNetworkEngine";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -68,6 +69,8 @@ export interface MeasurementOptions {
     auto_unit?: boolean;
     /** Keep measurement labels on the map after a drawing is finished */
     preserve_labels_on_complete?: boolean;
+    /** Augment a measured polyline with road-following distance/ETA/trafficability (optional service). */
+    road_eta?: boolean;
 }
 
 export type BearingFormat = "decimal" | "mils" | "quadrant";
@@ -84,6 +87,8 @@ export interface MeasurementSnapshot {
     width: string;
     unit: DistanceUnit;
     areaUnit: AreaUnit;
+    /** Road-following distance/ETA/trafficability, when the road-network service is available. */
+    roadInfo?: string;
 }
 
 export interface MeasurementHint {
@@ -157,6 +162,7 @@ class MeasurementEngine {
     private _slantRange: boolean       = false;
     private _magneticDeclination: number = 0;
     private _speedKmh: number          = 0;
+    private _roadEta: boolean          = false;
     private _bearingFormat: BearingFormat = "decimal";
     private _autoUnit: boolean         = false;
     private _preserveOnComplete: boolean = false;
@@ -261,6 +267,7 @@ class MeasurementEngine {
         if (options.slant_range     !== undefined) this._slantRange      = options.slant_range;
         if (options.magnetic_declination !== undefined) this._magneticDeclination = options.magnetic_declination;
         if (options.speed_kmh       !== undefined) this._speedKmh        = options.speed_kmh;
+        if (options.road_eta        !== undefined) this._roadEta         = options.road_eta;
         if (options.bearing_format  !== undefined) this._bearingFormat   = options.bearing_format;
         if (options.auto_unit       !== undefined) this._autoUnit        = options.auto_unit;
         if (options.preserve_labels_on_complete !== undefined) this._preserveOnComplete = options.preserve_labels_on_complete;
@@ -297,6 +304,7 @@ class MeasurementEngine {
             slant_range:      this._slantRange,
             magnetic_declination: this._magneticDeclination,
             speed_kmh:        this._speedKmh,
+            road_eta:         this._roadEta,
             bearing_format:   this._bearingFormat,
             auto_unit:        this._autoUnit,
             preserve_labels_on_complete: this._preserveOnComplete,
@@ -479,7 +487,55 @@ class MeasurementEngine {
         };
 
         this._emitUpdate(snap);
+        // Optional road-following enrichment — async, never blocks the measurement.
+        if (this._roadEta && geom.type === "polyline") {
+            void this._enrichWithRoadEta(geom as Polyline, snap);
+        }
         return snap;
+    }
+
+    /** Lazily reach the optional road-network adapter (may be absent). */
+    private _roadNet(): any {
+        return (window as any).symbolEngine?.roadNetworkEngine ?? null;
+    }
+
+    /**
+     * Asynchronously augment a measured polyline with road-following distance,
+     * drive time and trafficability, then re-emit the snapshot. Endpoints-only
+     * (shortest road path A→B) to bound API calls. Fully degradable: a missing
+     * or failed service simply leaves the straight-line measurement untouched.
+     */
+    private async _enrichWithRoadEta(
+        pl: Polyline,
+        baseSnap: Partial<MeasurementSnapshot>,
+    ): Promise<void> {
+        const rn = this._roadNet();
+        if (!rn || !pl.paths?.length) return;
+        const lastPath = pl.paths[pl.paths.length - 1];
+        if (!lastPath?.length) return;
+        const a = pl.getPoint(0, 0);
+        const b = pl.getPoint(pl.paths.length - 1, lastPath.length - 1);
+        if (!a || !b) return;
+
+        let res: any = null;
+        try {
+            res = await rn.route(a, b);
+        } catch {
+            return;
+        }
+        if (!res?.ok || !res.data) return;
+
+        const d = res.data;
+        const km = (d.distanceKm ?? 0).toFixed(1);
+        const min = Math.round(d.travelTimeMin ?? 0);
+        let info = `${km} km · ${min} min by road`;
+        const t = d.trafficability;
+        if (t) {
+            const lim = RoadNetworkEngine.classifyClass(t.limitingClass);
+            info += ` · ${t.rating} (ltd: ${lim.label})`;
+        }
+        // Re-emit the original measurement plus the road enrichment.
+        this._emitUpdate({ ...baseSnap, roadInfo: info });
     }
 
     /**

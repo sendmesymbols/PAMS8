@@ -31,8 +31,15 @@ import OpRankerEngine from './Analysis/OpRanker/OpRankerEngine';
 import LocalPeaksEngine from './Analysis/Peaks/LocalPeaksEngine';
 import OcokaEngine from './OCOKA/Ocoka';
 import MissionPlannerEngine from './MissionPlanner/MissionPlannerEngine';
+import DeadGroundMapper from './Analysis/DeadGroundMapper';
+import BufferEngine from './Analysis/BufferEngine';
+import CorridorEngine from './Analysis/CorridorEngine';
+import FlightEngine from './Analysis/FlightEngine';
+import { EffectEngine } from './Analysis/EffectEngine';
 import SerializationEngine from './ImportExport/SerializationEngine';
-import { MorphixEditedState } from './Morphix/MorphixEngine';
+import { MorphixEditedState, MorphixSymbolPatch, MorphixSymbolSnapshot } from './Morphix/MorphixEngine';
+import RoadNetworkEngine from './Analysis/RoadNetworkEngine';
+import TrafficabilityEngine from './Analysis/TrafficabilityEngine';
 interface Evented {
     on(type: string, listener: Function): {
         remove(): void;
@@ -67,6 +74,10 @@ declare class SymbolEngine implements Evented {
     private _drawingCueEngine;
     private _mgrsEngine;
     private _visualizationEngine;
+    /** Optional adapter for the external pgRouting road-network service (intermittent). */
+    private _roadNetworkEngine;
+    /** Trafficability / trafficability / route-planning widget over the road network. */
+    private _trafficabilityEngine;
     /** Owns construction/destruction/view-attach for the 14 analysis engines. */
     private _analysisRegistry;
     private _deploymentBuilderEngine;
@@ -91,6 +102,8 @@ declare class SymbolEngine implements Evented {
     private _continuousTimeoutId;
     private _suppressDrawLifecycleCount;
     private _suppressNextAddUndoCount;
+    /** While > 0, applyMorphixEdit() re-renders without pushing an undo entry — used by settings-driven bulk re-renders (e.g. global force-symbol resize). */
+    private _suppressEditUndoCount;
     private _lastCreatedGraphic;
     private _undoRedoManager;
     private _clipboardEngine;
@@ -130,6 +143,8 @@ declare class SymbolEngine implements Evented {
     private _initDrawingCueEngine;
     private _initMGRSEngine;
     private _initVisualizationEngine;
+    private _initRoadNetworkEngine;
+    private _initTrafficabilityEngine;
     private _initDeploymentBuilderEngine;
     get view(): MapView | SceneView;
     get layerManager(): GraphicsLayerManager;
@@ -220,6 +235,10 @@ declare class SymbolEngine implements Evented {
     get mgrsEngine(): MGRSEngine | null;
     /** Access the VisualizationEngine â€” force overlays (rings, hull, grid, effects). */
     get visualizationEngine(): VisualizationEngine | null;
+    /** Access the RoadNetworkEngine â€” optional external routing/service-area adapter. */
+    get roadNetworkEngine(): RoadNetworkEngine | null;
+    /** Access the TrafficabilityEngine â€” open the trafficability / route-planning widget. */
+    get trafficabilityEngine(): TrafficabilityEngine | null;
     /** Access the WeaponEffectEngine â€” open WEZ analysis panels programmatically. */
     get weaponEffectEngine(): WeaponEffectEngine | null;
     /** Access the LOSEngine â€” open LOS/viewshed panels programmatically. */
@@ -232,6 +251,11 @@ declare class SymbolEngine implements Evented {
     get localPeaksEngine(): LocalPeaksEngine | null;
     get ocokaEngine(): OcokaEngine | null;
     get missionPlannerEngine(): MissionPlannerEngine | null;
+    get deadGroundMapper(): DeadGroundMapper | null;
+    get bufferEngine(): BufferEngine | null;
+    get corridorEngine(): CorridorEngine | null;
+    get effectEngine(): EffectEngine | null;
+    get flightEngine(): FlightEngine | null;
     /** Get current settings data for the control panel */
     get settings(): typeof settingsData;
     /**
@@ -239,6 +263,15 @@ declare class SymbolEngine implements Evented {
      * Updates settingsData in memory and applies changes to active engines.
      */
     onSettingChanged(path: string[], value: any): void;
+    /**
+     * Re-render every force (FPoint) symbol on the FORCE layer at the given marker
+     * size. Called when the Settings-panel "Size" value changes so the setting
+     * also drives symbols already on the map. Routed through {@link updateSymbol}
+     * so geometry, amplifiers, angle and opacity are preserved; undo is suppressed
+     * because — like every other settings change — a global resize is not an
+     * undoable edit.
+     */
+    private _applyForceSymbolSize;
     private _initDeclutterEngine;
     /** Push an undo entry and clear the redo stack. */
     _pushUndo(entry: UndoEntry): void;
@@ -333,6 +366,25 @@ declare class SymbolEngine implements Evented {
     createSymbolCacheKey(options: SymbolOptions, scaleFactor: number): string;
     private drawSymEnd;
     private getDrawEndLayer;
+    /**
+     * Programmatically update an existing symbol from a host program's own UI.
+     *
+     * Applies a partial {@link MorphixSymbolPatch} to the symbol's current state and
+     * re-renders it through the same pipeline the interactive editor uses. Geometry
+     * (GEOM / CTRL_PTS) is preserved untouched. Returns the new Graphic, or null if
+     * the patch could not be applied (e.g. invalid SIDC).
+     *
+     * @example
+     * // Point/Line/Area amplifier edit
+     * symbolEngine.updateSymbol(graphic, { amplifier: { UNIQUE_DESIG: 'TF-9' }, drawEssentials: { opacity: 0.6 } });
+     * // Force (FPoint) symbol — edits flow through the milsymbol OPTIONS object
+     * symbolEngine.updateSymbol(graphic, { options: { uniqueDesignation: 'A Coy' }, extraSettings: { size: 40 } });
+     */
+    updateSymbol(graphic: Graphic, patch: MorphixSymbolPatch): Graphic | null;
+    /** Read a symbol's current editable state (kind, sidc, amplifier, options, …) without opening the editor. */
+    getSymbolState(graphic: Graphic): MorphixSymbolSnapshot;
+    /** Open the built-in Morphix symbol editor modal for a graphic. */
+    openSymbolEditor(graphic: Graphic): void;
     applyMorphixEdit(graphic: Graphic, editedState: MorphixEditedState): Graphic | null;
     private getOpacityValue;
     private symDrawProgress;
@@ -389,4 +441,5 @@ declare class SymbolEngine implements Evented {
     /** Open a file picker and load symbols from a GeoJSON or PAMS8 JSON file. */
     loadFromGeoJSONFile(): void;
 }
+export type { MorphixSymbolPatch, MorphixSymbolSnapshot, MorphixEditedState, GeoKind, } from './Morphix/MorphixEngine';
 export default SymbolEngine;

@@ -24,6 +24,7 @@ import OpRankerEngine from '../Engines/Analysis/OpRanker/OpRankerEngine';
 import LocalPeaksEngine from '../Engines/Analysis/Peaks/LocalPeaksEngine';
 import OcokaEngine from '../Engines/OCOKA/Ocoka';
 import MissionPlannerEngine from '../Engines/MissionPlanner/MissionPlannerEngine';
+import TrafficabilityEngine from '../Engines/Analysis/TrafficabilityEngine';
 
 export interface ContextMenuItem {
   id: string;
@@ -107,6 +108,7 @@ class ContextMenuManager extends Evented {
   private _localPeaksEngine: LocalPeaksEngine | null = null;
   private _ocokaEngine: OcokaEngine | null = null;
   private _missionPlannerEngine: MissionPlannerEngine | null = null;
+  private _trafficabilityEngine: TrafficabilityEngine | null = null;
   private _deploymentBuilderEngine: { openWidget(): void } | null = null;
 
   private _enabled: boolean = true;
@@ -399,6 +401,14 @@ class ContextMenuManager extends Evented {
    */
   public linkMissionPlannerEngine(engine: MissionPlannerEngine | null): void {
     this._missionPlannerEngine = engine;
+  }
+
+  /**
+   * Link a TrafficabilityEngine so "Trafficability" can be opened from the
+   * More Actions palette with the right-clicked graphic as the origin.
+   */
+  public linkTrafficabilityEngine(engine: TrafficabilityEngine | null): void {
+    this._trafficabilityEngine = engine;
   }
 
   /**
@@ -1005,6 +1015,14 @@ class ContextMenuManager extends Evented {
       actions.push(this.createPaletteAction('analysis-mission-planner', 'Mission Planner Dashboard', 'Analysis / Mission Planning', undefined, () => {
         if (this._missionPlannerEngine && this.view) {
           this._missionPlannerEngine.open(graphic, this.view);
+        }
+      }));
+    }
+
+    if (this._trafficabilityEngine) {
+      actions.push(this.createPaletteAction('analysis-trafficability', 'Trafficability', 'Analysis / Mobility', undefined, () => {
+        if (this._trafficabilityEngine && this.view) {
+          this._trafficabilityEngine.open(graphic, this.view);
         }
       }));
     }

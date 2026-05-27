@@ -70,6 +70,11 @@ import OpRankerEngine from './Analysis/OpRanker/OpRankerEngine';
 import LocalPeaksEngine from './Analysis/Peaks/LocalPeaksEngine';
 import OcokaEngine from './OCOKA/Ocoka';
 import MissionPlannerEngine from './MissionPlanner/MissionPlannerEngine';
+import DeadGroundMapper from './Analysis/DeadGroundMapper';
+import BufferEngine from './Analysis/BufferEngine';
+import CorridorEngine from './Analysis/CorridorEngine';
+import FlightEngine from './Analysis/FlightEngine';
+import { EffectEngine } from './Analysis/EffectEngine';
 import Plan from './ImportExport/Plan.ts';
 import SerializationEngine from './ImportExport/SerializationEngine';
 import ThemeManager from '../Managers/ThemeManager';
@@ -80,10 +85,14 @@ import MarkerDisperser from './Declutter/MarkerDisperser';
 import LadderEngine from './Declutter/LadderEngine';
 import MorphixEngine, {
   MorphixEditedState,
+  MorphixSymbolPatch,
+  MorphixSymbolSnapshot,
 } from './Morphix/MorphixEngine';
 import ClipboardEngine from './ClipboardEngine';
 import UndoRedoManager from './UndoRedoManager';
 import AnalysisEngineRegistry from './AnalysisEngineRegistry';
+import RoadNetworkEngine from './Analysis/RoadNetworkEngine';
+import TrafficabilityEngine from './Analysis/TrafficabilityEngine';
 import SymbolMetadataService from './SymbolMetadataService';
 import KeyboardShortcutManager from './KeyboardShortcutManager';
 
@@ -135,6 +144,10 @@ class SymbolEngine implements Evented {
   private _drawingCueEngine: DrawingCueEngine | null = null;
   private _mgrsEngine: MGRSEngine | null = null;
   private _visualizationEngine: VisualizationEngine | null = null;
+  /** Optional adapter for the external pgRouting road-network service (intermittent). */
+  private _roadNetworkEngine: RoadNetworkEngine | null = null;
+  /** Trafficability / trafficability / route-planning widget over the road network. */
+  private _trafficabilityEngine: TrafficabilityEngine | null = null;
   /** Owns construction/destruction/view-attach for the 14 analysis engines. */
   private _analysisRegistry!: AnalysisEngineRegistry;
   private _deploymentBuilderEngine: DeploymentBuilderEngine | null = null;
@@ -159,6 +172,8 @@ class SymbolEngine implements Evented {
   private _continuousTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private _suppressDrawLifecycleCount = 0;
   private _suppressNextAddUndoCount = 0;
+  /** While > 0, applyMorphixEdit() re-renders without pushing an undo entry — used by settings-driven bulk re-renders (e.g. global force-symbol resize). */
+  private _suppressEditUndoCount = 0;
   private _lastCreatedGraphic: Graphic | null = null;
 
   // Undo/Redo state owned by UndoRedoManager (delegated to via public facade)
@@ -307,6 +322,12 @@ class SymbolEngine implements Evented {
 
     // Conditionally load VisualizationEngine based on Settings.json feature flag
     this._initVisualizationEngine();
+
+    // Conditionally load RoadNetworkEngine (external pgRouting service — optional/intermittent)
+    this._initRoadNetworkEngine();
+
+    // Conditionally load TrafficabilityEngine (widget over the road network — degrades gracefully)
+    this._initTrafficabilityEngine();
 
     // Conditionally load DeploymentBuilderEngine based on Settings.json feature flag
     this._initDeploymentBuilderEngine();
@@ -525,6 +546,10 @@ class SymbolEngine implements Evented {
     this._mgrsEngine?.onViewChanged(newView);
     // Re-attach visualization engine to the new view
     this._visualizationEngine?.onViewChanged(newView);
+    // Re-attach road network engine (moves the optional roads layer to the new map)
+    this._roadNetworkEngine?.onViewChanged(newView);
+    // Re-attach trafficability widget (moves its analysis/marker/committed layers)
+    this._trafficabilityEngine?.onViewChanged(newView);
 
     // Re-attach DeploymentBuilderEngine to the new view
     this._deploymentBuilderEngine?.onViewChanged(newView);
@@ -591,7 +616,8 @@ class SymbolEngine implements Evented {
           speed_kmh: measureCfg.speedKmh,
           bearing_format: measureCfg.bearingFormat,
           auto_unit: measureCfg.autoUnit,
-          preserve_labels_on_complete: measureCfg.preserveOnComplete
+          preserve_labels_on_complete: measureCfg.preserveOnComplete,
+          road_eta: measureCfg.roadEta
       });
 
       this._measurementEngine.start(this.view);
@@ -682,6 +708,48 @@ class SymbolEngine implements Evented {
     this._visualizationEngine.enable();
     this.emitEvent('visualizationEngineReady', { engine: this._visualizationEngine });
     console.info('[SymbolEngine] VisualizationEngine loaded');
+  }
+
+  private _initRoadNetworkEngine(): void {
+    const features = (settingsData as any).features ?? {};
+    if (features.roadNetwork !== true) {
+      console.info('[SymbolEngine] RoadNetworkEngine disabled via Settings.json');
+      return;
+    }
+    const cfg = (settingsData as any).roadNetwork ?? {};
+    this._roadNetworkEngine = new RoadNetworkEngine({
+      apiBaseUrl: cfg.apiBaseUrl,
+      dataBaseUrl: cfg.dataBaseUrl,
+      timeoutMs: cfg.timeoutMs,
+      availabilityTtlMs: cfg.availabilityTtlMs,
+      enabled: true,
+    });
+    this._roadNetworkEngine.initialize(this.view);
+    // Show the reference roads layer if requested. Best-effort: a down backend
+    // logs an error and removes the layer — never blocks startup.
+    if (cfg.showRoadsLayer !== false) {
+      void this._roadNetworkEngine.showRoadsLayer();
+    }
+    // Probe availability in the background so widgets get an early status badge.
+    void this._roadNetworkEngine.ensureAvailable();
+    (window as any).roadNetworkEngine = this._roadNetworkEngine;
+    this.emitEvent('roadNetworkEngineReady', { engine: this._roadNetworkEngine });
+    console.info('[SymbolEngine] RoadNetworkEngine loaded');
+  }
+
+  private _initTrafficabilityEngine(): void {
+    const features = (settingsData as any).features ?? {};
+    // Trafficability is a road-network tool; load it alongside RoadNetworkEngine.
+    // (It still works offline — degrading to range-ring / straight-line estimates.)
+    if (features.roadNetwork !== true) return;
+    if (this._trafficabilityEngine) return;
+    this._trafficabilityEngine = new TrafficabilityEngine();
+    this._trafficabilityEngine.initialize(this.view);
+    // Surface it in the right-click "More Actions…" palette.
+    this._contextMenuManager?.linkTrafficabilityEngine(this._trafficabilityEngine);
+    (window as any).trafficabilityEngine = this._trafficabilityEngine;
+    this.emitEvent('trafficabilityEngineReady', { engine: this._trafficabilityEngine });
+    console.info('[SymbolEngine] TrafficabilityEngine loaded');
   }
 
   private async _initDeploymentBuilderEngine(): Promise<void> {
@@ -997,34 +1065,30 @@ class SymbolEngine implements Evented {
       graphic.attributes?.id ?? 'graphic',
     );
     this._closeActiveWorkflow();
+
+    // Match the SelectionActionPanel popup exactly: when a multi-selection is
+    // active, edit the WHOLE live selection regardless of which graphic was
+    // right-clicked. ANY group of 2+ symbols (same-type OR mixed point/line/area)
+    // is routed through the proxy-based group transform, which supports move +
+    // rotate + scale. ArcGIS SketchViewModel only allows translation when several
+    // graphics are updated together, so a single graphic alone keeps the native
+    // edit (point = move, line/area = move + scale + rotate + reshape).
     const selected = this._selectionEngine.selectedGraphics;
     const isInSelection = selected.some((g) => g === graphic);
-    const additional = isInSelection
-      ? selected.filter((g) => g !== graphic)
-      : [];
-    const allForEdit = [graphic, ...additional];
-    const getGeomType = (g: Graphic): string => {
-      const deType = g.attributes?.drawEssentials?.SYM_GEO_TYPE;
-      if (deType) return `${deType}`;
-      if (g.geometry?.type === 'point') return 'Point';
-      if (g.geometry?.type === 'polyline') return 'Line';
-      if (g.geometry?.type === 'polygon') return 'Area';
-      return '';
-    };
-    const hasPointFamily = allForEdit.some((g) => {
-      const t = getGeomType(g);
-      return t === 'Point' || t === 'FPoint';
-    });
-    const hasLineAreaFamily = allForEdit.some((g) => {
-      const t = getGeomType(g);
-      return t === 'Line' || t === 'Area' || t === 'Polyline' || t === 'Polygon';
-    });
-    const isMixedSelection = allForEdit.length > 1 && hasPointFamily && hasLineAreaFamily;
-    this._capturePreEditSnapshot(graphic, additional, 'Move, Scale, Rotate');
-    if (isMixedSelection) {
-      this._editEngine.activateMixedEdit(graphic, additional);
+    const allForEdit: Graphic[] =
+      selected.length > 1
+        ? isInSelection
+          ? [graphic, ...selected.filter((g) => g !== graphic)]
+          : [...selected]
+        : [graphic];
+    const primary = allForEdit[0];
+    const additional = allForEdit.slice(1);
+
+    this._capturePreEditSnapshot(primary, additional, 'Move, Scale, Rotate');
+    if (additional.length > 0) {
+      this._editEngine.activateMixedEdit(primary, additional);
     } else {
-      this._editEngine.activate(graphic, additional);
+      this._editEngine.activate(primary, additional);
     }
     this._selectionActionPanel?.refresh();
   }
@@ -1148,6 +1212,16 @@ class SymbolEngine implements Evented {
     return this._visualizationEngine;
   }
 
+  /** Access the RoadNetworkEngine â€” optional external routing/service-area adapter. */
+  public get roadNetworkEngine(): RoadNetworkEngine | null {
+    return this._roadNetworkEngine;
+  }
+
+  /** Access the TrafficabilityEngine â€” open the trafficability / route-planning widget. */
+  public get trafficabilityEngine(): TrafficabilityEngine | null {
+    return this._trafficabilityEngine;
+  }
+
   /** Access the WeaponEffectEngine â€” open WEZ analysis panels programmatically. */
   public get weaponEffectEngine(): WeaponEffectEngine | null {
     return this._analysisRegistry.weaponEffectEngine;
@@ -1185,6 +1259,26 @@ class SymbolEngine implements Evented {
 
   public get missionPlannerEngine(): MissionPlannerEngine | null {
     return this._analysisRegistry.missionPlannerEngine;
+  }
+
+  public get deadGroundMapper(): DeadGroundMapper | null {
+    return this._analysisRegistry.deadGroundMapper;
+  }
+
+  public get bufferEngine(): BufferEngine | null {
+    return this._analysisRegistry.bufferEngine;
+  }
+
+  public get corridorEngine(): CorridorEngine | null {
+    return this._analysisRegistry.corridorEngine;
+  }
+
+  public get effectEngine(): EffectEngine | null {
+    return this._analysisRegistry.effectEngine;
+  }
+
+  public get flightEngine(): FlightEngine | null {
+    return this._analysisRegistry.flightEngine;
   }
 
   /** Get current settings data for the control panel */
@@ -1261,7 +1355,8 @@ class SymbolEngine implements Evented {
           speed_kmh: measureCfg.speedKmh,
           bearing_format: measureCfg.bearingFormat,
           auto_unit: measureCfg.autoUnit,
-          preserve_labels_on_complete: measureCfg.preserveOnComplete
+          preserve_labels_on_complete: measureCfg.preserveOnComplete,
+          road_eta: measureCfg.roadEta
       });
       console.log(`[SymbolEngine] MeasurementEngine config updated from Settings.json`);
     }
@@ -1337,6 +1432,46 @@ class SymbolEngine implements Evented {
       }
     }
 
+    if (fullPath === 'features.roadNetwork') {
+      if (this._roadNetworkEngine) {
+        this._roadNetworkEngine.updateConfig({ enabled: !!value });
+        if (value) {
+          void this._roadNetworkEngine.ensureAvailable(true);
+          if ((settingsData as any).roadNetwork?.showRoadsLayer !== false) {
+            void this._roadNetworkEngine.showRoadsLayer();
+          }
+        } else {
+          this._roadNetworkEngine.hideRoadsLayer();
+        }
+      } else if (value) {
+        this._initRoadNetworkEngine();
+      }
+      // The trafficability widget tracks the same feature flag.
+      if (value) {
+        this._initTrafficabilityEngine();
+      } else {
+        this._trafficabilityEngine?.close();
+        this._contextMenuManager?.linkTrafficabilityEngine(null);
+      }
+    }
+
+    if (fullPath.startsWith('roadNetwork.') && this._roadNetworkEngine) {
+      const key = path[path.length - 1];
+      if (key === 'showRoadsLayer') {
+        value
+          ? void this._roadNetworkEngine.showRoadsLayer()
+          : this._roadNetworkEngine.hideRoadsLayer();
+      } else {
+        const rn = (settingsData as any).roadNetwork ?? {};
+        this._roadNetworkEngine.updateConfig({
+          apiBaseUrl: rn.apiBaseUrl,
+          dataBaseUrl: rn.dataBaseUrl,
+          timeoutMs: rn.timeoutMs,
+          availabilityTtlMs: rn.availabilityTtlMs,
+        });
+      }
+    }
+
     if (fullPath.startsWith('visualization.') && this._visualizationEngine) {
       const vizCfg = (settingsData as any).visualization ?? {};
       this._visualizationEngine.setOptions(vizCfg as VisualizationOptions);
@@ -1366,6 +1501,12 @@ class SymbolEngine implements Evented {
         this._deploymentBuilderEngine.enable();
         this._contextMenuManager.linkDeploymentBuilderEngine(this._deploymentBuilderEngine);
       }
+    }
+
+    if (fullPath === 'size') {
+      // Force-symbol marker size — resize every FPoint already on the map so the
+      // setting drives existing symbols, not just newly drawn ones.
+      this._applyForceSymbolSize(value);
     }
 
     if (fullPath === 'creationMode') {
@@ -1411,6 +1552,43 @@ class SymbolEngine implements Evented {
 
     // Emit event so other parts of the app can react
     this.emitEvent('settingChanged', { path: path.join('.'), value });
+  }
+
+  /**
+   * Re-render every force (FPoint) symbol on the FORCE layer at the given marker
+   * size. Called when the Settings-panel "Size" value changes so the setting
+   * also drives symbols already on the map. Routed through {@link updateSymbol}
+   * so geometry, amplifiers, angle and opacity are preserved; undo is suppressed
+   * because — like every other settings change — a global resize is not an
+   * undoable edit.
+   */
+  private _applyForceSymbolSize(size: number): void {
+    const n = Number(size);
+    if (!Number.isFinite(n) || n <= 0) return;
+
+    const forceLayer = this._layerManager.getLayer(LAYER_NAMES.FORCE);
+    if (!forceLayer) return;
+
+    // Snapshot first — updateSymbol() removes and re-adds each graphic, which
+    // would otherwise mutate the collection while we iterate it. (toArray()
+    // already returns a fresh array.)
+    const graphics = forceLayer.graphics.toArray();
+
+    this._suppressEditUndoCount++;
+    try {
+      for (const graphic of graphics) {
+        const de = (graphic.attributes as any)?.drawEssentials;
+        const isFPoint =
+          String(de?.SYM_GEO_TYPE ?? '').toLowerCase() === 'fpoint' ||
+          de?.UEI === '1' ||
+          de?.UEI === 1;
+        if (!isFPoint) continue;
+        if (Number(de?.extraSettings?.size) === n) continue; // already this size
+        this.updateSymbol(graphic, { extraSettings: { size: n } });
+      }
+    } finally {
+      this._suppressEditUndoCount = Math.max(0, this._suppressEditUndoCount - 1);
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -2081,6 +2259,18 @@ class SymbolEngine implements Evented {
               }
             }
             if (this.currentSymbol.SymGeoType === 'FPoint') {
+              // The Settings-panel "Size" (settingsData.size) is the source of
+              // truth for force-symbol marker size — drive every freshly drawn
+              // FPoint from it so changing the setting actually takes effect.
+              // Passive re-renders (Morphix edits, plan loads, global resize)
+              // keep the size already baked into extraSettings.
+              if (!isPassive) {
+                const panelSize = Number((settingsData as any).size);
+                if (Number.isFinite(panelSize) && panelSize > 0) {
+                  drawEssentials.extraSettings.size = panelSize;
+                }
+              }
+
               if (drawEssentials.extraSettings.hasOwnProperty('size')) {
                 drawEssentials.SIZE = drawEssentials.extraSettings.size; // Changed drawEssentials.size to drawEssentials.SIZE
               }
@@ -2475,6 +2665,37 @@ class SymbolEngine implements Evented {
     return this._layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
   }
 
+  /**
+   * Programmatically update an existing symbol from a host program's own UI.
+   *
+   * Applies a partial {@link MorphixSymbolPatch} to the symbol's current state and
+   * re-renders it through the same pipeline the interactive editor uses. Geometry
+   * (GEOM / CTRL_PTS) is preserved untouched. Returns the new Graphic, or null if
+   * the patch could not be applied (e.g. invalid SIDC).
+   *
+   * @example
+   * // Point/Line/Area amplifier edit
+   * symbolEngine.updateSymbol(graphic, { amplifier: { UNIQUE_DESIG: 'TF-9' }, drawEssentials: { opacity: 0.6 } });
+   * // Force (FPoint) symbol — edits flow through the milsymbol OPTIONS object
+   * symbolEngine.updateSymbol(graphic, { options: { uniqueDesignation: 'A Coy' }, extraSettings: { size: 40 } });
+   */
+  public updateSymbol(
+    graphic: Graphic,
+    patch: MorphixSymbolPatch,
+  ): Graphic | null {
+    return this._morphixEngine.update(graphic, patch);
+  }
+
+  /** Read a symbol's current editable state (kind, sidc, amplifier, options, …) without opening the editor. */
+  public getSymbolState(graphic: Graphic): MorphixSymbolSnapshot {
+    return this._morphixEngine.getSymbolState(graphic);
+  }
+
+  /** Open the built-in Morphix symbol editor modal for a graphic. */
+  public openSymbolEditor(graphic: Graphic): void {
+    this._morphixEngine.open(graphic);
+  }
+
   public applyMorphixEdit(
     graphic: Graphic,
     editedState: MorphixEditedState,
@@ -2578,6 +2799,7 @@ class SymbolEngine implements Evented {
         );
       }
 
+      if (this._suppressEditUndoCount === 0) {
       this._pushUndo({
         label: 'Edit Symbol Details',
         undo: () => {
@@ -2618,6 +2840,7 @@ class SymbolEngine implements Evented {
           }
         },
       });
+      }
 
       this.emitEvent('symbolDetailsEdited', {
         graphic: newGraphic,
@@ -3181,5 +3404,12 @@ class SymbolEngine implements Evented {
   }
 
 }
+
+export type {
+  MorphixSymbolPatch,
+  MorphixSymbolSnapshot,
+  MorphixEditedState,
+  GeoKind,
+} from './Morphix/MorphixEngine';
 
 export default SymbolEngine;

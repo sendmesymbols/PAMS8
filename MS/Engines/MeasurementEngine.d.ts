@@ -49,6 +49,8 @@ export interface MeasurementOptions {
     auto_unit?: boolean;
     /** Keep measurement labels on the map after a drawing is finished */
     preserve_labels_on_complete?: boolean;
+    /** Augment a measured polyline with road-following distance/ETA/trafficability (optional service). */
+    road_eta?: boolean;
 }
 export type BearingFormat = "decimal" | "mils" | "quadrant";
 export interface MeasurementSnapshot {
@@ -63,6 +65,8 @@ export interface MeasurementSnapshot {
     width: string;
     unit: DistanceUnit;
     areaUnit: AreaUnit;
+    /** Road-following distance/ETA/trafficability, when the road-network service is available. */
+    roadInfo?: string;
 }
 export interface MeasurementHint {
     message: string;
@@ -111,6 +115,7 @@ declare class MeasurementEngine {
     private _slantRange;
     private _magneticDeclination;
     private _speedKmh;
+    private _roadEta;
     private _bearingFormat;
     private _autoUnit;
     private _preserveOnComplete;
@@ -165,6 +170,15 @@ declare class MeasurementEngine {
      * Returns the snapshot or null if the geometry is unsupported.
      */
     measureGraphic(graphic: Graphic): MeasurementSnapshot | null;
+    /** Lazily reach the optional road-network adapter (may be absent). */
+    private _roadNet;
+    /**
+     * Asynchronously augment a measured polyline with road-following distance,
+     * drive time and trafficability, then re-emit the snapshot. Endpoints-only
+     * (shortest road path A→B) to bound API calls. Fully degradable: a missing
+     * or failed service simply leaves the straight-line measurement untouched.
+     */
+    private _enrichWithRoadEta;
     /**
      * Reattach to a new view after a 2D↔3D switch.
      */

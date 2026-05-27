@@ -18,6 +18,7 @@ import OpRankerEngine from '../Engines/Analysis/OpRanker/OpRankerEngine';
 import LocalPeaksEngine from '../Engines/Analysis/Peaks/LocalPeaksEngine';
 import OcokaEngine from '../Engines/OCOKA/Ocoka';
 import MissionPlannerEngine from '../Engines/MissionPlanner/MissionPlannerEngine';
+import TrafficabilityEngine from '../Engines/Analysis/TrafficabilityEngine';
 export interface ContextMenuItem {
     id: string;
     label: string | ((graphic?: Graphic) => string);
@@ -81,6 +82,7 @@ declare class ContextMenuManager extends Evented {
     private _localPeaksEngine;
     private _ocokaEngine;
     private _missionPlannerEngine;
+    private _trafficabilityEngine;
     private _deploymentBuilderEngine;
     private _enabled;
     private _pointerDownHandle;
@@ -210,6 +212,11 @@ declare class ContextMenuManager extends Evented {
      * Link a MissionPlannerEngine so it can be opened from the More Actions palette.
      */
     linkMissionPlannerEngine(engine: MissionPlannerEngine | null): void;
+    /**
+     * Link a TrafficabilityEngine so "Trafficability" can be opened from the
+     * More Actions palette with the right-clicked graphic as the origin.
+     */
+    linkTrafficabilityEngine(engine: TrafficabilityEngine | null): void;
     /**
      * Link a DeploymentBuilderEngine so the "Open Deployment Builder" item
      * appears in all graphic right-click menus when set.

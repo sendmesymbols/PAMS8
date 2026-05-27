@@ -1010,6 +1010,12 @@
         <button class="ms-btn infobar-btn" id="savePlanButton" title="Save current symbol set, annotations, and settings as a reusable plan to local storage via ImportExportEngine."><span class="infobar-icon">⬇</span></button>
         <button class="ms-btn infobar-btn" id="loadPlanButton" title="Load a previously saved plan from local storage, restoring all symbols, annotations, and settings."><span class="infobar-icon">⬆</span></button>
       </div>
+
+      <!-- Section 4: Test Field (declutter demo) -->
+      <div class="infobar-section">
+        <button class="ms-btn infobar-btn" id="topbar-testfield-generate" title="Drop a mixed field of UEI symbols (varied identity + echelon + designator) inside the current view. Uses Count/Stacks from the API Test panel. Tests cluster badges, echelon ladder, disperse, label placer, and abbreviation in one click."><span class="infobar-icon">⊹</span>Test Field</button>
+        <button class="ms-btn infobar-btn" id="topbar-testfield-clutter" title="Drop the same mixed field but deliberately jumbled — a tight footprint with many overlapping same-coordinate stacks. Stresses every declutter path at once. Uses the API Test panel Count input; Stacks is auto-boosted."><span class="infobar-icon">⁂</span>Cluttered</button>
+      </div>
     </div>
 
     <!-- ── Measurement Panel (Widgets.css) ────────────────────────────────── -->
@@ -1054,6 +1060,10 @@
           <tr id="ms-row-area">
             <td style="padding: 2px 0; color: var(--ms-text-label); padding-right: 8px; white-space: nowrap; line-height: 1.6;">Area</td>
             <td id="ms-area" style="padding: 2px 0; color: var(--ms-text); font-weight: bold; line-height: 1.6;">—</td>
+          </tr>
+          <tr id="ms-row-road">
+            <td style="padding: 2px 0; color: var(--ms-text-label); padding-right: 8px; white-space: nowrap; line-height: 1.6;">Road</td>
+            <td id="ms-road" style="padding: 2px 0; color: var(--ms-text); font-weight: bold; line-height: 1.6;">—</td>
           </tr>
         </table>
 
@@ -1188,6 +1198,11 @@
           <button class="ah-tool" data-tool="missionPlanner" title="Mission Planner Dashboard — integrated multi-factor terrain analysis">
             <span class="ah-tool-ind solo"></span>
             <span class="ah-tool-name">Mission Planner</span>
+            <span class="ah-tool-tag solo">solo</span>
+          </button>
+          <button class="ah-tool" data-tool="trafficability" title="Trafficability widget — drive-time service areas, road-following routes, and Main Supply Route (MSR) finding with GO/SLOW-GO/NO-GO trafficability, smart on-map callouts and a drive playback scrubber. Uses the selected symbol as origin if one is set, else pick on the map. Needs the optional road-network service; degrades gracefully to estimates when offline.">
+            <span class="ah-tool-ind solo"></span>
+            <span class="ah-tool-name">Trafficability</span>
             <span class="ah-tool-tag solo">solo</span>
           </button>
         </div>
@@ -1447,6 +1462,10 @@
             <div class="setting-row">
               <label>March km/h</label>
               <input type="number" id="setting-speedKmh" value="5" min="0" step="0.5" style="width: 60px" title="Set movement speed (km/h) for calculating estimated time of arrival (ETA) for unit symbols." />
+            </div>
+            <div class="setting-row">
+              <label>Road ETA</label>
+              <input type="checkbox" id="setting-roadEta" title="When measuring a line/route symbol, add the real road-following distance, drive time, and trafficability (GO/SLOW-GO/NO-GO) from the optional road-network service. Falls back silently to straight-line if the service is offline." />
             </div>
             <div class="sub-feature-label">Styling</div>
             <div class="setting-row">
@@ -2594,6 +2613,14 @@
           <div class="ms-status" id="api-edit-status">Inactive</div>
         </div>
         <div class="api-section">
+          <div class="ms-section-title">Morphix (Symbol Editor)</div>
+          <button class="ms-btn" id="api-morphix-open" title="Open the built-in Morphix editor modal for the last right-clicked symbol.">Open Editor</button>
+          <button class="ms-btn" id="api-morphix-state" title="Read the last right-clicked symbol's editable state (kind, sidc, options...) via getSymbolState and log it.">Get State</button>
+          <button class="ms-btn success" id="api-morphix-update" title="Programmatically update the last right-clicked symbol via updateSymbol(). Applies a kind-aware demo patch (designation + size/opacity).">Update Demo</button>
+          <button class="ms-btn" id="api-morphix-desig" title="Prompt for a designation and apply it via updateSymbol() — works for Point/Line/Area (amplifier) and FPoint (OPTIONS).">Set Designation…</button>
+          <div class="ms-status" id="api-morphix-status">Right-click a symbol first</div>
+        </div>
+        <div class="api-section">
           <div class="ms-section-title">Engine Logger</div>
           <button class="ms-btn success" id="api-log-enable">Enable</button>
           <button class="ms-btn danger" id="api-log-disable">Disable</button>
@@ -2875,6 +2902,7 @@
         'setting-bearingFormat': (v) => ({ path: ['measurement', 'bearingFormat'], value: v }),
         'setting-autoUnit': (v) => ({ path: ['measurement', 'autoUnit'], value: v }),
         'setting-preserveLabels': (v) => ({ path: ['measurement', 'preserveOnComplete'], value: v }),
+        'setting-roadEta': (v) => ({ path: ['measurement', 'roadEta'], value: v }),
         'setting-showBng': (v) => ({ path: ['measurement', 'showBng'], value: v }),
         'setting-showArea': (v) => ({ path: ['measurement', 'showArea'], value: v }),
         'setting-showTotal': (v) => ({ path: ['measurement', 'showTotal'], value: v }),
@@ -3429,6 +3457,7 @@
           document.getElementById('setting-bearingFormat').value = measure.bearingFormat || 'decimal';
           document.getElementById('setting-autoUnit').checked = measure.autoUnit === true;
           document.getElementById('setting-preserveLabels').checked = measure.preserveOnComplete === true;
+          document.getElementById('setting-roadEta').checked = measure.roadEta === true;
           document.getElementById('setting-showBng').checked = measure.showBng !== false;
           document.getElementById('setting-showArea').checked = measure.showArea !== false;
           document.getElementById('setting-showTotal').checked = measure.showTotal !== false;
@@ -4358,6 +4387,91 @@
             document.getElementById('api-edit-status').textContent =
               'Deactivated';
           }
+        });
+
+      // Morphix (Symbol Editor) buttons
+      function morphixTargetGraphic(engine) {
+        const last = engine?.contextMenuManager?.getLastClickedGraphic?.();
+        if (last) return last;
+        const sel = engine?.selectionEngine?.selectedGraphics ?? [];
+        return sel.length === 1 ? sel[0] : null;
+      }
+
+      document
+        .getElementById('api-morphix-open')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          const status = document.getElementById('api-morphix-status');
+          const graphic = morphixTargetGraphic(engine);
+          if (!graphic) {
+            status.textContent = 'No symbol — right-click one first';
+            return;
+          }
+          engine.openSymbolEditor(graphic);
+          status.textContent = 'Editor opened';
+        });
+
+      document
+        .getElementById('api-morphix-state')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          const status = document.getElementById('api-morphix-status');
+          const graphic = morphixTargetGraphic(engine);
+          if (!graphic) {
+            status.textContent = 'No symbol — right-click one first';
+            return;
+          }
+          const state = engine.getSymbolState(graphic);
+          console.log('[Morphix] getSymbolState:', state);
+          status.textContent = `${state.kind || '?'} · ${state.symbolName || state.symbolKey}`;
+        });
+
+      document
+        .getElementById('api-morphix-update')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          const status = document.getElementById('api-morphix-status');
+          const graphic = morphixTargetGraphic(engine);
+          if (!graphic) {
+            status.textContent = 'No symbol — right-click one first';
+            return;
+          }
+          const state = engine.getSymbolState(graphic);
+          const tag = 'MX-' + Math.floor(Math.random() * 900 + 100);
+          // Kind-aware demo patch — exercises the right field set for each SYM_GEO_TYPE.
+          let patch;
+          if (state.kind === 'FPoint') {
+            patch = { options: { uniqueDesignation: tag }, extraSettings: { size: 40 } };
+          } else if (state.kind === 'Point') {
+            patch = { amplifier: { UNIQUE_DESIG: tag }, drawEssentials: { SIZE: 40, ANGLE: 45 } };
+          } else {
+            patch = { amplifier: { UNIQUE_DESIG: tag }, drawEssentials: { opacity: 0.6 } };
+          }
+          const result = engine.updateSymbol(graphic, patch);
+          status.textContent = result
+            ? `Updated ${state.kind} → ${tag}`
+            : 'Update failed (see console)';
+        });
+
+      document
+        .getElementById('api-morphix-desig')
+        .addEventListener('click', () => {
+          const engine = getEngines();
+          const status = document.getElementById('api-morphix-status');
+          const graphic = morphixTargetGraphic(engine);
+          if (!graphic) {
+            status.textContent = 'No symbol — right-click one first';
+            return;
+          }
+          const desig = prompt('New designation:');
+          if (desig == null) return;
+          const state = engine.getSymbolState(graphic);
+          const patch =
+            state.kind === 'FPoint'
+              ? { options: { uniqueDesignation: desig } }
+              : { amplifier: { UNIQUE_DESIG: desig } };
+          const result = engine.updateSymbol(graphic, patch);
+          status.textContent = result ? `Set designation: ${desig}` : 'Update failed';
         });
 
       // Clipboard buttons

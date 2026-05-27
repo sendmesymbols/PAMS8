@@ -1382,6 +1382,7 @@ function initializeAutocomplete() {
     height: document.getElementById('ms-height'),
     width: document.getElementById('ms-width'),
     area: document.getElementById('ms-area'),
+    road: document.getElementById('ms-road'),
   };
 
   // Row references (hide rows with no data)
@@ -1392,6 +1393,7 @@ function initializeAutocomplete() {
     height: document.getElementById('ms-row-height'),
     width: document.getElementById('ms-row-width'),
     area: document.getElementById('ms-row-area'),
+    road: document.getElementById('ms-row-road'),
   };
 
   let lastSnap: Record<string, string> = {};
@@ -1464,6 +1466,7 @@ function initializeAutocomplete() {
     set('height', d.height);
     set('width', d.width);
     set('area', d.area);
+    set('road', d.roadInfo);
   });
 
   // Right-click "Measure This Symbol" result
@@ -1611,24 +1614,29 @@ function initializeAutocomplete() {
   const testFieldCountInput = document.getElementById('api-testfield-count') as HTMLInputElement | null;
   const testFieldStacksInput = document.getElementById('api-testfield-stacks') as HTMLInputElement | null;
 
-  if (testFieldGenBtn) {
-    testFieldGenBtn.addEventListener('click', () => {
-      const count = Math.max(1, parseInt(testFieldCountInput?.value ?? '80', 10) || 80);
-      const stackCount = Math.max(0, parseInt(testFieldStacksInput?.value ?? '4', 10) || 0);
-      const added = generateTestField(symbolEngine, appConfig.activeView, { count, stackCount });
-      if (testFieldStatus) testFieldStatus.textContent = `Added ${added} test symbols`;
-    });
-  }
+  // Shared handlers — bound to both the API Test panel buttons and the
+  // top-bar quick-access buttons so there is a single source of truth.
+  const runTestFieldGenerate = () => {
+    const count = Math.max(1, parseInt(testFieldCountInput?.value ?? '80', 10) || 80);
+    const stackCount = Math.max(0, parseInt(testFieldStacksInput?.value ?? '4', 10) || 0);
+    const added = generateTestField(symbolEngine, appConfig.activeView, { count, stackCount });
+    if (testFieldStatus) testFieldStatus.textContent = `Added ${added} test symbols`;
+  };
 
-  if (testFieldClutterBtn) {
-    testFieldClutterBtn.addEventListener('click', () => {
-      // Cluttered preset: reuse the Count input but let the generator
-      // auto-boost stacks and tighten the spread for heavy overlap.
-      const count = Math.max(1, parseInt(testFieldCountInput?.value ?? '150', 10) || 150);
-      const added = generateClutteredField(symbolEngine, appConfig.activeView, { count });
-      if (testFieldStatus) testFieldStatus.textContent = `Added ${added} cluttered symbols`;
-    });
-  }
+  const runTestFieldClutter = () => {
+    // Cluttered preset: reuse the Count input but let the generator
+    // auto-boost stacks and tighten the spread for heavy overlap.
+    const count = Math.max(1, parseInt(testFieldCountInput?.value ?? '150', 10) || 150);
+    const added = generateClutteredField(symbolEngine, appConfig.activeView, { count });
+    if (testFieldStatus) testFieldStatus.textContent = `Added ${added} cluttered symbols`;
+  };
+
+  testFieldGenBtn?.addEventListener('click', runTestFieldGenerate);
+  testFieldClutterBtn?.addEventListener('click', runTestFieldClutter);
+
+  // Top-bar quick-access buttons (mirror the API Test panel actions)
+  document.getElementById('topbar-testfield-generate')?.addEventListener('click', runTestFieldGenerate);
+  document.getElementById('topbar-testfield-clutter')?.addEventListener('click', runTestFieldClutter);
 
   if (testFieldClearBtn) {
     testFieldClearBtn.addEventListener('click', () => {
@@ -1704,15 +1712,15 @@ function initializeAutocomplete() {
       // Context tools — require a right-clicked or selected graphic
       const contextTools: Record<string, (g: any, v: any, se: any) => void> = {
         keyTerrain:  (g, v, se) => se.keyTerrainIdentificationEngine?.open(g, v),
-        deadGround:  (g, v, se) => se._deadGroundMapper?.open(g, v),
+        deadGround:  (g, v, se) => se.deadGroundMapper?.open(g, v),
         ocoka:       (g, v, se) => se.ocokaEngine?.open(g, v),
         los:         (g, v, se) => se.losEngine?.open(g, v),
         wez:         (g, v, se) => se.weaponEffectEngine?.open(g, v),
         trajectory:  (g, v, se) => se.trajectoryEngine?.open(g, v),
-        effects:     (g, v, se) => se._effectEngine?.open(g, v),
-        buffer:      (g, v, se) => se._bufferEngine?.open(g, v),
-        corridor:    (g, v, se) => se._corridorEngine?.open(g, v),
-        flight:      (g, v, se) => se._flightEngine?.open(g, v),
+        effects:     (g, v, se) => se.effectEngine?.open(g, v),
+        buffer:      (g, v, se) => se.bufferEngine?.open(g, v),
+        corridor:    (g, v, se) => se.corridorEngine?.open(g, v),
+        flight:      (g, v, se) => se.flightEngine?.open(g, v),
       };
 
       const toolNames: Record<string, string> = {
@@ -1731,6 +1739,18 @@ function initializeAutocomplete() {
           const name = toolNames[tool] ?? tool;
           const se = (window as any).symbolEngine;
           if (!se) { setAhStatus('SymbolEngine not ready', 'err'); return; }
+
+          // Trafficability — opens the full route / service-area / MSR widget.
+          // Uses the active symbol as origin when one is selected, else lets the
+          // user pick an origin on the map. Degrades gracefully when offline.
+          if (tool === 'trafficability') {
+            const te = se.trafficabilityEngine;
+            if (!te) { setAhStatus('Trafficability engine not loaded', 'err'); return; }
+            const graphic = getActiveGraphic();
+            te.open(graphic ?? undefined, se.view);
+            setAhStatus(graphic ? 'Trafficability opened' : 'Trafficability — pick an origin on the map', 'ok');
+            return;
+          }
 
           if (standaloneTools[tool]) {
             standaloneTools[tool]();

@@ -207,6 +207,7 @@ export class KeyTerrainIdentificationEngine {
     this._ensurePanels();
     this._showPanels();
     this._bindMapClick();
+    document.body.classList.add('ms-popup-dark');
 
     const geom = graphic.geometry;
     let src: Point | null = null;
@@ -227,6 +228,9 @@ export class KeyTerrainIdentificationEngine {
   close(): void {
     this._hidePanels();
     this._unbindMapClick();
+    document.body.classList.remove('ms-popup-dark');
+    (this._view as any)?.closePopup?.();
+    if (this._view?.popup) this._view.popup.visible = false;
     this._onDragEnd();
   }
 
@@ -391,15 +395,15 @@ export class KeyTerrainIdentificationEngine {
           <div class="ms-grid">
             <div class="ms-field">
               <div class="ms-label">Centre lat</div>
-              <input id="kt-inp-lat" type="number" value="33.680" step="0.001" />
+              <input id="kt-inp-lat" class="ms-input" type="number" value="33.680" step="0.001" />
             </div>
             <div class="ms-field">
               <div class="ms-label">Centre lon</div>
-              <input id="kt-inp-lon" type="number" value="73.060" step="0.001" />
+              <input id="kt-inp-lon" class="ms-input" type="number" value="73.060" step="0.001" />
             </div>
             <div class="ms-field full">
               <div class="ms-label">Radius (m)</div>
-              <select id="kt-inp-radius">
+              <select id="kt-inp-radius" class="ms-select">
                 <option value="2000">2 km - position-level</option>
                 <option value="4000" selected>4 km - company-level</option>
                 <option value="8000">8 km - battalion-level</option>
@@ -411,7 +415,7 @@ export class KeyTerrainIdentificationEngine {
           <div class="ms-grid">
             <div class="ms-field full">
               <div class="ms-label">Grid cell size (m)</div>
-              <select id="kt-inp-cell">
+              <select id="kt-inp-cell" class="ms-select">
                 <option value="20">20 m - fine (slower)</option>
                 <option value="40" selected>40 m - balanced</option>
                 <option value="70">70 m - fast</option>

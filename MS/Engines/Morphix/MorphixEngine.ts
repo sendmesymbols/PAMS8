@@ -19,6 +19,16 @@ type SymbolDefinition = {
   [key: string]: any;
 };
 
+/**
+ * The four geometry families a symbol can belong to, mirroring the
+ * `SYM_GEO_TYPE` written into every symbol's drawEssentials:
+ *   - `Point`  → Tactical point (TacticalPoint) — edited via flat SIZE/ANGLE fields.
+ *   - `FPoint` → Force / UEI (milsymbol) — edited via the nested OPTIONS object.
+ *   - `Line`   → Polyline tactical graphic.
+ *   - `Area`   → Polygon tactical graphic.
+ */
+export type GeoKind = 'Point' | 'FPoint' | 'Line' | 'Area';
+
 export interface MorphixEditedState {
   sidc: string;
   symbolKey: string;
@@ -26,6 +36,44 @@ export interface MorphixEditedState {
   amplifier: Amplifier;
   drawEssentials: DrawEssentials;
   attributes: Record<string, any>;
+}
+
+/**
+ * Partial patch a host program supplies to {@link MorphixEngine.update} (and,
+ * via the library entry point, `symbolEngine.updateSymbol`). Each member is
+ * shallow-merged onto the symbol's current state, so only the fields you want
+ * to change need to be present. The patch is geometry-preserving — the symbol's
+ * GEOM / CTRL_PTS are never touched.
+ */
+export interface MorphixSymbolPatch {
+  /** Replace the 20-digit SIDC. Re-derives SID / echelon / symbol name. */
+  sidc?: string;
+  /** Merge into the amplifier fields (UNIQUE_DESIG, DTG, …) of Point/Line/Area symbols. */
+  amplifier?: Record<string, any>;
+  /** Merge into drawEssentials top-level fields (SIZE, ANGLE, DRAW_TYPE, ratios, opacity, …). */
+  drawEssentials?: Record<string, any>;
+  /** FPoint only: merge into the milsymbol OPTIONS object (uniqueDesignation, higherFormation, …). */
+  options?: Record<string, any>;
+  /** Merge into label styling options (textSize, color, bold, …). */
+  labelOptions?: Record<string, any>;
+  /** Merge into extraSettings (lineWidth, size, textSize, opacity). For FPoint, `size` drives the marker size. */
+  extraSettings?: Record<string, any>;
+  /** Merge into the CIM cartographic info model. */
+  cim?: Record<string, any>;
+}
+
+/** Read-only view of a symbol's editable state, returned by {@link MorphixEngine.getSymbolState}. */
+export interface MorphixSymbolSnapshot {
+  kind: GeoKind | '';
+  sidc: string;
+  symbolKey: string;
+  symbolName: string;
+  amplifier: Record<string, any>;
+  drawEssentials: Record<string, any>;
+  options: Record<string, any>;
+  labelOptions: Record<string, any>;
+  extraSettings: Record<string, any>;
+  cim: Record<string, any>;
 }
 
 interface MorphixCallbacks {
@@ -121,65 +169,150 @@ const SIDC_ECHELON: Option[] = [
 // ──────────────────────────────────────────────────────────────────────────────
 // Editable field tables
 
-type FieldType = 'number' | 'text' | 'bool';
+type FieldType = 'number' | 'text' | 'bool' | 'color';
+type FieldGroup =
+  | 'amplifier'
+  | 'drawEssentials'
+  | 'options'
+  | 'labelOptions'
+  | 'extraSettings'
+  | 'cim';
 
-const AMPLIFIER_FIELDS: Array<[string, string]> = [
-  ['UNIQUE_DESIG',      'Unique Desig'],
-  ['HIGHER_FORM',       'Higher Formation'],
-  ['STAFF_COM',         'Staff Comments'],
-  ['ADDL_INFO',         'Addl Information'],
-  ['DTG',               'DTG'],
-  ['EDTG',              'EDTG'],
-  ['ALTITUDE_DEPTH',    'Altitude / Depth'],
-  ['LOC',               'Location'],
-  ['DISTANCE',          'Distance'],
-  ['AZIMUTH',           'Azimuth'],
-  ['TYPE',              'Type'],
-  ['QUANTITY',          'Quantity'],
-  ['COUNTRY',           'Country'],
-  ['TARGET_DESIGNATOR', 'Target Designator'],
+interface FieldSpec {
+  group: FieldGroup;
+  key: string;
+  label: string;
+  type: FieldType;
+}
+
+const fs = (group: FieldGroup, key: string, label: string, type: FieldType = 'text'): FieldSpec => ({
+  group,
+  key,
+  label,
+  type,
+});
+
+/** Object-form amplifier fields used by Point / Line / Area symbols. */
+const AMPLIFIER_FIELDS: FieldSpec[] = [
+  fs('amplifier', 'UNIQUE_DESIG', 'Unique Desig'),
+  fs('amplifier', 'HIGHER_FORM', 'Higher Formation'),
+  fs('amplifier', 'STAFF_COM', 'Staff Comments'),
+  fs('amplifier', 'ADDL_INFO', 'Addl Information'),
+  fs('amplifier', 'DTG', 'DTG'),
+  fs('amplifier', 'EDTG', 'EDTG'),
+  fs('amplifier', 'ALTITUDE_DEPTH', 'Altitude / Depth'),
+  fs('amplifier', 'LOC', 'Location'),
+  fs('amplifier', 'DISTANCE', 'Distance'),
+  fs('amplifier', 'AZIMUTH', 'Azimuth'),
+  fs('amplifier', 'TYPE', 'Type'),
+  fs('amplifier', 'QUANTITY', 'Quantity'),
+  fs('amplifier', 'COUNTRY', 'Country'),
+  fs('amplifier', 'TARGET_DESIGNATOR', 'Target Designator'),
 ];
 
-const DRAW_FIELDS_COMMON: Array<[string, string, FieldType]> = [
-  ['SIZE',    'Size',    'number'],
-  ['opacity', 'Opacity', 'number'],
+/**
+ * milsymbol amplifier fields for Force (FPoint) symbols. These live inside the
+ * symbol's OPTIONS object — the renderer (UEISymbol) reads them from there, so
+ * editing the flat amplifier would have no visible effect.
+ */
+const FPOINT_OPTION_FIELDS: FieldSpec[] = [
+  fs('options', 'uniqueDesignation', 'Unique Desig'),
+  fs('options', 'higherFormation', 'Higher Formation'),
+  fs('options', 'quantity', 'Quantity'),
+  fs('options', 'reinforcedReduced', 'Reinforced / Reduced'),
+  fs('options', 'staffComments', 'Staff Comments'),
+  fs('options', 'additionalInformation', 'Addl Information'),
+  fs('options', 'type', 'Type'),
+  fs('options', 'dtg', 'DTG'),
+  fs('options', 'location', 'Location'),
+  fs('options', 'direction', 'Direction'),
+  fs('options', 'speed', 'Speed'),
+  fs('options', 'combatEffectiveness', 'Combat Effectiveness'),
+  fs('options', 'evaluationRating', 'Evaluation Rating'),
+  fs('options', 'roa', 'ROA'),
+  fs('options', 'msn', 'Mission'),
 ];
 
-const DRAW_FIELDS_POINT: Array<[string, string, FieldType]> = [
-  ['ANGLE',  'Angle (°)', 'number'],
-  ['OFFSET', 'Offset',    'text'],
+/**
+ * Bridge between the flat amplifier field names (Point/Line/Area, e.g. `UNIQUE_DESIG`)
+ * and the camelCase milsymbol option names (FPoint, e.g. `uniqueDesignation`). The same
+ * datum is stored under different keys depending on how the symbol was created, so we
+ * read both when populating and write both when needed.
+ */
+const FLAT_TO_OPT: Record<string, string> = {
+  UNIQUE_DESIG: 'uniqueDesignation',
+  HIGHER_FORM: 'higherFormation',
+  STAFF_COM: 'staffComments',
+  ADDL_INFO: 'additionalInformation',
+  QUANTITY: 'quantity',
+  TYPE: 'type',
+  DTG: 'dtg',
+  LOC: 'location',
+};
+const OPT_TO_FLAT: Record<string, string> = Object.fromEntries(
+  Object.entries(FLAT_TO_OPT).map(([k, v]) => [v, k]),
+);
+
+const DRAW_FIELDS_POINT: FieldSpec[] = [
+  fs('drawEssentials', 'SIZE', 'Size', 'number'),
+  fs('drawEssentials', 'ANGLE', 'Angle (°)', 'number'),
+  fs('drawEssentials', 'OFFSET', 'Offset', 'text'),
+  fs('drawEssentials', 'opacity', 'Opacity', 'number'),
+  fs('drawEssentials', 'ISFHAND', 'Freehand', 'bool'),
+  fs('drawEssentials', 'FRHNDSZ', 'Freehand Size', 'number'),
+  fs('drawEssentials', 'FRHNDWDTH', 'Freehand Width', 'number'),
 ];
 
-const DRAW_FIELDS_LINEAREA: Array<[string, string, FieldType]> = [
-  ['DRAW_TYPE',          'Draw Type',            'number'],
-  ['IS_OBS',             'Is Observation',       'number'],
-  ['ARROWHEAD_RATIO',    'Arrowhead Ratio',      'number'],
-  ['BK_LN_DIST_RATIO',   'Back Line Dist Ratio', 'number'],
-  ['BK_LN_ANGL_RATIO',   'Back Line Angl Ratio', 'number'],
-  ['FRNT_LN_DIST_RATIO', 'Front Line Dist Ratio','number'],
-  ['FRNT_LN_ANGL_RATIO', 'Front Line Angl Ratio','number'],
-  ['FLAP_DIST_RATIO',    'Flap Dist Ratio',      'number'],
-  ['FLAP_ANGLE',         'Flap Angle',           'number'],
-  ['ISFHAND',            'Freehand',             'bool'],
+// FPoint "Size" is read from extraSettings.size by the milsymbol renderer;
+// ANGLE / opacity are read from the top-level drawEssentials.
+const DRAW_FIELDS_FPOINT: FieldSpec[] = [
+  fs('extraSettings', 'size', 'Size', 'number'),
+  fs('drawEssentials', 'ANGLE', 'Angle (°)', 'number'),
+  fs('drawEssentials', 'opacity', 'Opacity', 'number'),
+];
+
+const DRAW_FIELDS_LINE: FieldSpec[] = [
+  fs('drawEssentials', 'opacity', 'Opacity', 'number'),
+  fs('drawEssentials', 'DRAW_TYPE', 'Draw Type', 'number'),
+  fs('drawEssentials', 'IS_OBS', 'Is Observation', 'number'),
+  fs('drawEssentials', 'ARROWHEAD_RATIO', 'Arrowhead Ratio', 'number'),
+  fs('drawEssentials', 'BK_LN_DIST_RATIO', 'Back Line Dist Ratio', 'number'),
+  fs('drawEssentials', 'BK_LN_ANGL_RATIO', 'Back Line Angl Ratio', 'number'),
+  fs('drawEssentials', 'FRNT_LN_DIST_RATIO', 'Front Line Dist Ratio', 'number'),
+  fs('drawEssentials', 'FRNT_LN_ANGL_RATIO', 'Front Line Angl Ratio', 'number'),
+  fs('drawEssentials', 'FLAP_DIST_RATIO', 'Flap Dist Ratio', 'number'),
+  fs('drawEssentials', 'FLAP_ANGLE', 'Flap Angle', 'number'),
+  fs('drawEssentials', 'ISFHAND', 'Freehand', 'bool'),
+  fs('drawEssentials', 'FRHNDSZ', 'Freehand Size', 'number'),
+  fs('drawEssentials', 'FRHNDWDTH', 'Freehand Width', 'number'),
+];
+
+const DRAW_FIELDS_AREA: FieldSpec[] = [
+  fs('drawEssentials', 'opacity', 'Opacity', 'number'),
+  fs('drawEssentials', 'DRAW_TYPE', 'Draw Type', 'number'),
+  fs('drawEssentials', 'IS_OBS', 'Is Observation', 'number'),
+  fs('drawEssentials', 'ISFHAND', 'Freehand', 'bool'),
+  fs('drawEssentials', 'FRHNDSZ', 'Freehand Size', 'number'),
+  fs('drawEssentials', 'FRHNDWDTH', 'Freehand Width', 'number'),
 ];
 
 const LABEL_FIELDS: Array<[string, string, 'number' | 'color' | 'bool']> = [
-  ['textSize',      'Text Size',     'number'],
-  ['haloColorSize', 'Halo Size',     'number'],
-  ['color',         'Text Color',    'color'],
-  ['haloColor',     'Halo Color',    'color'],
-  ['bold',          'Bold',          'bool'],
-  ['italic',        'Italic',        'bool'],
-  ['uLine',         'Underline',     'bool'],
-  ['oLine',         'Overline',      'bool'],
-  ['tLine',         'Strikethrough', 'bool'],
+  ['textSize', 'Text Size', 'number'],
+  ['haloColorSize', 'Halo Size', 'number'],
+  ['color', 'Text Color', 'color'],
+  ['haloColor', 'Halo Color', 'color'],
+  ['bold', 'Bold', 'bool'],
+  ['italic', 'Italic', 'bool'],
+  ['uLine', 'Underline', 'bool'],
+  ['oLine', 'Overline', 'bool'],
+  ['tLine', 'Strikethrough', 'bool'],
 ];
 
 const EXTRA_FIELDS: Array<[string, string]> = [
   ['lineWidth', 'Line Width'],
-  ['size',      'Marker Size'],
-  ['textSize',  'Text Size'],
-  ['opacity',   'Opacity'],
+  ['size', 'Marker Size'],
+  ['textSize', 'Text Size'],
+  ['opacity', 'Opacity'],
 ];
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -187,13 +320,16 @@ const EXTRA_FIELDS: Array<[string, string]> = [
 
 interface EditableState {
   graphic: Graphic;
+  /** Resolved geometry family — drives which fields populate and how we rebuild. */
+  kind: GeoKind | '';
   sidc: string;
   symbolKey: string;
-  geomFamily: 'point' | 'line' | 'area' | '';
   /** Geometry refs kept aside — never JSON-cloned, re-attached on save. */
-  geomRefs: { GEOM?: any; CTRL_PTS?: any[] };
+  geomRefs: { GEOM?: any; CTRL_PTS?: any[]; BASE_LN_PTS?: any };
   amplifier: Record<string, any>;
   drawEssentials: Record<string, any>;
+  /** FPoint OPTIONS payload (geometry + labelOptions stripped). Empty for other kinds. */
+  options: Record<string, any>;
   labelOptions: Record<string, any>;
   extraSettings: Record<string, any>;
   cim: Record<string, any>;
@@ -246,6 +382,95 @@ class MorphixEngine {
   }
 
   // ────────────────────────────────────────────────────────────────────────────
+  // Public programmatic API (no UI) — for host programs driving their own editors
+
+  /**
+   * Apply a partial patch to a symbol and re-render it through the same pipeline
+   * the interactive editor uses. Geometry is preserved untouched. Returns the
+   * newly created Graphic, or null if the edit could not be applied.
+   *
+   * @example
+   * symbolEngine.updateSymbol(graphic, {
+   *   sidc: '10031000151211000000',
+   *   options: { uniqueDesignation: 'A Coy', higherFormation: '1 Bn' }, // FPoint
+   *   extraSettings: { size: 40 },
+   * });
+   */
+  public update(graphic: Graphic, patch: MorphixSymbolPatch): Graphic | null {
+    if (!this.callbacks) {
+      // eslint-disable-next-line no-console
+      console.error('[MorphixEngine] update() called before initialize().');
+      return null;
+    }
+    if (!graphic) return null;
+
+    const state = this.buildState(graphic);
+    this.applyPatch(state, patch || {});
+
+    const errors = this.validate(state);
+    if (errors.length) {
+      // eslint-disable-next-line no-console
+      console.error('[MorphixEngine] update() rejected:', errors.join(' · '));
+      return null;
+    }
+
+    const editedState = this.buildEditedState(state);
+    try {
+      return this.callbacks.applyEdit(graphic, editedState);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[MorphixEngine] update() applyEdit failed:', err);
+      return null;
+    }
+  }
+
+  /** Read a symbol's current editable state without opening the editor. */
+  public getSymbolState(graphic: Graphic): MorphixSymbolSnapshot {
+    const s = this.buildState(graphic);
+    const def = SYMBOLS[s.symbolKey];
+    return {
+      kind: s.kind,
+      sidc: s.sidc,
+      symbolKey: s.symbolKey,
+      symbolName: def?.Name || s.drawEssentials.SYM_NAME || '',
+      amplifier: this.jsonClone(s.amplifier),
+      drawEssentials: this.jsonClone(s.drawEssentials),
+      options: this.jsonClone(s.options),
+      labelOptions: this.jsonClone(s.labelOptions),
+      extraSettings: this.jsonClone(s.extraSettings),
+      cim: this.jsonClone(s.cim),
+    };
+  }
+
+  /** Merge a patch onto a working state. Shared by update() and (indirectly) the modal. */
+  private applyPatch(state: EditableState, patch: MorphixSymbolPatch): void {
+    if (typeof patch.sidc === 'string' && patch.sidc.length) {
+      this.applySidc(patch.sidc, true, state);
+    }
+    if (patch.amplifier && typeof patch.amplifier === 'object') {
+      Object.assign(state.amplifier, patch.amplifier);
+    }
+    if (patch.drawEssentials && typeof patch.drawEssentials === 'object') {
+      Object.assign(state.drawEssentials, patch.drawEssentials);
+    }
+    if (patch.options && typeof patch.options === 'object' && state.kind === 'FPoint') {
+      Object.assign(state.options, patch.options);
+    }
+    if (patch.labelOptions && typeof patch.labelOptions === 'object') {
+      Object.assign(state.labelOptions, patch.labelOptions);
+    }
+    if (patch.extraSettings && typeof patch.extraSettings === 'object') {
+      Object.assign(state.extraSettings, patch.extraSettings);
+    }
+    if (patch.cim && typeof patch.cim === 'object') {
+      Object.assign(state.cim, patch.cim);
+    }
+    // Keep amplifier/options SIDC aligned even when sidc wasn't part of the patch.
+    state.amplifier.SIDC = state.sidc;
+    if (state.kind === 'FPoint') state.options.SIDC = state.sidc;
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
   // State
 
   private ensureRoot(): void {
@@ -269,35 +494,84 @@ class MorphixEngine {
   private buildState(graphic: Graphic): EditableState {
     const attrs = (graphic.attributes || {}) as Record<string, any>;
     const de = (attrs.drawEssentials || {}) as Record<string, any>;
+
+    // FPoint carries its renderable amplifier data inside OPTIONS — which at
+    // runtime can be nested (de.OPTIONS.OPTIONS for plan-loaded symbols) and uses
+    // camelCase milsymbol names. Everything else uses the flat AMPLIFIER object.
+    const optSource = this.resolveOptions(de);
+
     const ampSource =
       (de.AMPLIFIER && typeof de.AMPLIFIER === 'object'
         ? de.AMPLIFIER
-        : (attrs.amplifier as Record<string, any>) || {}) as Record<string, any>;
+        : attrs.amplifier && typeof attrs.amplifier === 'object'
+          ? (attrs.amplifier as Record<string, any>)
+          : {}) as Record<string, any>;
 
     const sidc = this.normalizeSidc(
-      ampSource.SIDC || de.SIDC || attrs.sidc || '',
+      ampSource.SIDC || de.SIDC || optSource.SIDC || attrs.sidc || '',
       de.SID,
     );
     const symbolKey = this.getSymbolKey(sidc);
     const def = SYMBOLS[symbolKey];
 
-    // Stash geometry refs — these must survive untouched through the editor
+    const kind = this.geomKindOf(
+      de.SYM_GEO_TYPE || def?.SymGeoType || optSource.symType || this.geomTypeOf(graphic),
+    );
+
+    // Stash geometry refs — these must survive untouched through the editor.
     const geomRefs: EditableState['geomRefs'] = {};
     if (de.GEOM) geomRefs.GEOM = de.GEOM;
+    else if (optSource.GEOM) geomRefs.GEOM = optSource.GEOM;
     if (Array.isArray(de.CTRL_PTS)) geomRefs.CTRL_PTS = de.CTRL_PTS;
+    if (de.BASE_LN_PTS) geomRefs.BASE_LN_PTS = de.BASE_LN_PTS;
 
-    // Amplifier — known fields first, then any extra payload the symbol carried
+    // FPoint OPTIONS — clone the payload (strip geometry + nested label opts),
+    // then fill the known editable fields from every place the value can live:
+    // the OPTIONS object (milsymbol name), the de top-level (camelCase), or the
+    // flat amplifier (bridged name). This makes populate work for symbols created
+    // interactively, loaded from a plan, or imported.
+    const options: Record<string, any> = {};
+    if (kind === 'FPoint') {
+      for (const k of Object.keys(optSource)) {
+        if (k === 'GEOM' || k === 'labelOptions' || k === 'OPTIONS') continue;
+        options[k] = this.jsonClone(optSource[k]);
+      }
+      for (const f of FPOINT_OPTION_FIELDS) {
+        const flatKey = OPT_TO_FLAT[f.key];
+        options[f.key] = this.firstFilled(
+          optSource[f.key],
+          (de as Record<string, any>)[f.key],
+          attrs[f.key],
+          flatKey ? ampSource[flatKey] : undefined,
+          options[f.key],
+        );
+      }
+      options.SIDC = sidc;
+    }
+
+    // Amplifier — known fields, sourced from the flat AMPLIFIER, then bridged from
+    // the FPoint OPTIONS (milsymbol name) or de top-level when the flat field is empty.
     const amplifier: Record<string, any> = { SIDC: sidc };
-    for (const [k] of AMPLIFIER_FIELDS) amplifier[k] = ampSource[k] ?? '';
+    for (const f of AMPLIFIER_FIELDS) {
+      const optKey = FLAT_TO_OPT[f.key];
+      amplifier[f.key] = this.firstFilled(
+        ampSource[f.key],
+        optKey ? optSource[optKey] : undefined,
+        (de as Record<string, any>)[f.key],
+        attrs[f.key],
+      );
+    }
     for (const k of Object.keys(ampSource)) {
       if (!(k in amplifier)) amplifier[k] = this.jsonClone(ampSource[k]);
     }
 
-    // DrawEssentials — JSON-clone the saved metadata; strip geometry, AMPLIFIER, and nested groups
+    // DrawEssentials — JSON-clone the saved metadata; strip geometry, nested groups.
     const drawEssentials = this.jsonClone(de) as Record<string, any>;
     delete drawEssentials.GEOM;
     delete drawEssentials.CTRL_PTS;
+    delete drawEssentials.BASE_LN_PTS;
     delete drawEssentials.AMPLIFIER;
+    delete drawEssentials.OPTIONS;
     delete drawEssentials.labelOptions;
     delete drawEssentials.extraSettings;
     delete drawEssentials.cim;
@@ -305,22 +579,43 @@ class MorphixEngine {
     drawEssentials.SIDC = sidc;
     drawEssentials.SID = sidc.slice(10, 16);
     drawEssentials.SYM_NAME = def?.Name || de.SYM_NAME || '';
-    drawEssentials.SYM_GEO_TYPE = def?.SymGeoType || de.SYM_GEO_TYPE || '';
+    drawEssentials.SYM_GEO_TYPE = def?.SymGeoType || de.SYM_GEO_TYPE || kind;
     drawEssentials.ECHELON = de.ECHELON ?? sidc.slice(8, 10);
 
     const defaults = new DrawEssentials();
-    const family = this.geomFamilyOf(def?.SymGeoType || de.SYM_GEO_TYPE);
+
+    const extraSettings = this.jsonClone(
+      de.extraSettings || optSource.extraSettings || defaults.extraSettings,
+    ) as Record<string, any>;
+
+    if (kind === 'FPoint') {
+      // The milsymbol renderer reads marker size from extraSettings.size.
+      // Seed it from the saved OPTIONS.size / ANGLE / opacity so the editor
+      // shows what's actually on screen.
+      if (optSource.size != null && Number(optSource.size)) {
+        extraSettings.size = Number(optSource.size);
+      }
+      if (drawEssentials.ANGLE == null && optSource.ANGLE != null) {
+        drawEssentials.ANGLE = optSource.ANGLE;
+      }
+      if (drawEssentials.opacity == null && optSource.opacity != null) {
+        drawEssentials.opacity = optSource.opacity;
+      }
+    }
 
     return {
       graphic,
+      kind,
       sidc,
       symbolKey,
-      geomFamily: family,
       geomRefs,
       amplifier,
       drawEssentials,
-      labelOptions: this.jsonClone(de.labelOptions || defaults.labelOptions),
-      extraSettings: this.jsonClone(de.extraSettings || defaults.extraSettings),
+      options,
+      labelOptions: this.jsonClone(
+        de.labelOptions || optSource.labelOptions || defaults.labelOptions,
+      ),
+      extraSettings,
       cim: this.jsonClone(de.cim || {}),
       jsonOpen: false,
     };
@@ -332,6 +627,7 @@ class MorphixEngine {
       symbolKey: s.symbolKey,
       amplifier: s.amplifier,
       drawEssentials: s.drawEssentials,
+      options: s.options,
       labelOptions: s.labelOptions,
       extraSettings: s.extraSettings,
       cim: s.cim,
@@ -343,6 +639,7 @@ class MorphixEngine {
     symbolKey: string;
     amplifier: Record<string, any>;
     drawEssentials: Record<string, any>;
+    options: Record<string, any>;
     labelOptions: Record<string, any>;
     extraSettings: Record<string, any>;
     cim: Record<string, any>;
@@ -391,7 +688,7 @@ class MorphixEngine {
           ${this.renderSidcSection()}
           ${this.renderSymbolSwapSection(def)}
           ${this.renderAmplifierSection()}
-          ${this.renderDrawSection(def)}
+          ${this.renderDrawSection()}
           ${this.renderLabelSection()}
           ${this.renderExtraSection()}
           ${this.renderCimSection()}
@@ -411,7 +708,7 @@ class MorphixEngine {
       <div class="ms-header" style="cursor:default;">
         <div class="ms-header-icon">MX</div>
         <div class="ms-header-title">Morphix · ${this.esc(def?.Name || s.drawEssentials.SYM_NAME || 'Symbol')}</div>
-        <span class="ms-status-lbl">${this.esc(s.symbolKey || '?')}</span>
+        <span class="ms-status-lbl">${this.esc(this.geomLabel(s.kind))} · ${this.esc(s.symbolKey || '?')}</span>
         <button class="ms-header-btn" type="button" data-action="cancel" title="Close (Esc)">×</button>
       </div>
     `;
@@ -440,7 +737,7 @@ class MorphixEngine {
         </div>
         <div class="ms-field">
           <span class="ms-label">Geometry</span>
-          <input class="ms-input" type="text" disabled value="${this.esc(this.geomLabel(def?.SymGeoType || s.drawEssentials.SYM_GEO_TYPE))}">
+          <input class="ms-input" type="text" disabled value="${this.esc(this.geomLabel(s.kind))}">
         </div>
       </div>
     `);
@@ -502,11 +799,11 @@ class MorphixEngine {
     const s = this.state!;
 
     // Lines and areas use a fixed SymbolEngine class — swapping changes rendering wholesale.
-    // Restrict swap to point symbols, like milsymbol.net.
-    if (s.geomFamily !== 'point') {
+    // Restrict swap to point families (Point / FPoint), like milsymbol.net.
+    if (s.kind !== 'Point' && s.kind !== 'FPoint') {
       return this.renderSection('Symbol Swap', `
         <div class="ms-status warning" style="margin:6px 12px 0;">
-          Symbol swap is disabled for ${this.esc(this.geomLabel(s.drawEssentials.SYM_GEO_TYPE))} graphics.
+          Symbol swap is disabled for ${this.esc(this.geomLabel(s.kind))} graphics.
           Edit the SIDC <em>amplifier</em>, <em>echelon</em>, <em>status</em>, and other fields above instead.
         </div>
         <div class="ms-hint">
@@ -519,7 +816,7 @@ class MorphixEngine {
 
     const filter = this.symbolFilter.trim().toLowerCase();
     const filtered = Object.entries(SYMBOLS).filter(([key, d]) => {
-      if (this.geomFamilyOf(d.SymGeoType) !== 'point') return false;
+      if (this.geomKindOf(d.SymGeoType) !== s.kind) return false;
       if (!filter) return true;
       return (
         key.toLowerCase().includes(filter) ||
@@ -554,7 +851,7 @@ class MorphixEngine {
       </div>
       <div class="ms-hint">
         Class: ${this.esc(def?.Class || '—')} ·
-        Geometry: ${this.esc(this.geomLabel(def?.SymGeoType))}
+        Geometry: ${this.esc(this.geomLabel(s.kind))}
         ${def?.Description ? ' · ' + this.esc(def.Description) : ''}
       </div>
     `);
@@ -562,30 +859,37 @@ class MorphixEngine {
 
   private renderAmplifierSection(): string {
     const s = this.state!;
-    const cells = AMPLIFIER_FIELDS
-      .map(([k, l]) => this.textField('amplifier', k, l, s.amplifier[k], 'text'))
+    const isFPoint = s.kind === 'FPoint';
+    const fields = isFPoint ? FPOINT_OPTION_FIELDS : AMPLIFIER_FIELDS;
+    const groupValues = isFPoint ? s.options : s.amplifier;
+
+    const cells = fields
+      .map((f) => this.textField(f.group, f.key, f.label, groupValues[f.key], f.type))
       .join('');
-    return this.renderSection('Amplifiers', `
+
+    const title = isFPoint ? 'Force Symbol Options' : 'Amplifiers';
+    const hint = isFPoint
+      ? `<div class="ms-hint">These fields drive the milsymbol render of this force symbol.</div>`
+      : '';
+
+    return this.renderSection(title, `
       <div class="ms-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
         ${cells}
       </div>
+      ${hint}
     `, 'reset-amplifiers');
   }
 
-  private renderDrawSection(def?: SymbolDefinition): string {
+  private renderDrawSection(): string {
     const s = this.state!;
-    const family = this.geomFamilyOf(def?.SymGeoType || s.drawEssentials.SYM_GEO_TYPE);
+    const fields = this.drawFieldsFor(s.kind);
 
-    const fields: Array<[string, string, FieldType]> = [
-      ...DRAW_FIELDS_COMMON,
-      ...(family === 'point' ? DRAW_FIELDS_POINT : []),
-      ...(family === 'line' || family === 'area' ? DRAW_FIELDS_LINEAREA : []),
-    ];
-
-    const cells = fields.map(([k, l, t]) => {
-      if (t === 'bool') return this.boolField('drawEssentials', k, l, s.drawEssentials[k]);
-      return this.textField('drawEssentials', k, l, s.drawEssentials[k], t);
+    const cells = fields.map((f) => {
+      if (f.type === 'bool') return this.boolField(f.group, f.key, f.label, this.groupValue(s, f.group)[f.key]);
+      return this.textField(f.group, f.key, f.label, this.groupValue(s, f.group)[f.key], f.type);
     }).join('');
+
+    const def = SYMBOLS[s.symbolKey];
 
     return this.renderSection('Draw Settings', `
       <div class="ms-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
@@ -593,6 +897,20 @@ class MorphixEngine {
       </div>
       ${this.renderParameters(def)}
     `, 'reset-draw');
+  }
+
+  private drawFieldsFor(kind: GeoKind | ''): FieldSpec[] {
+    switch (kind) {
+      case 'Point':  return DRAW_FIELDS_POINT;
+      case 'FPoint': return DRAW_FIELDS_FPOINT;
+      case 'Line':   return DRAW_FIELDS_LINE;
+      case 'Area':   return DRAW_FIELDS_AREA;
+      default:       return DRAW_FIELDS_POINT;
+    }
+  }
+
+  private groupValue(s: EditableState, group: FieldGroup): Record<string, any> {
+    return (s as any)[group] as Record<string, any>;
   }
 
   private renderParameters(def?: SymbolDefinition): string {
@@ -812,12 +1130,16 @@ class MorphixEngine {
       case 'save':
         this.save();
         return;
-      case 'reset-amplifiers':
-        this.state.amplifier = this.parseSnapshot().amplifier;
+      case 'reset-amplifiers': {
+        const snap = this.parseSnapshot();
+        this.state.amplifier = snap.amplifier;
+        this.state.options = snap.options;
         break;
+      }
       case 'reset-draw': {
         const snap = this.parseSnapshot();
         this.state.drawEssentials = snap.drawEssentials;
+        this.state.extraSettings = snap.extraSettings;
         this.state.sidc = snap.sidc;
         this.state.symbolKey = snap.symbolKey;
         break;
@@ -825,7 +1147,6 @@ class MorphixEngine {
       case 'reset-labels': {
         const snap = this.parseSnapshot();
         this.state.labelOptions = snap.labelOptions;
-        this.state.extraSettings = snap.extraSettings;
         this.state.cim = snap.cim;
         break;
       }
@@ -872,25 +1193,30 @@ class MorphixEngine {
     this.applySidc(next, true);
   }
 
-  private applySidc(rawSidc: string, sanitize: boolean): void {
-    if (!this.state) return;
-    const cleaned = sanitize
-      ? rawSidc.replace(/\D/g, '').slice(0, 20)
-      : rawSidc.slice(0, 20);
+  /**
+   * Apply a SIDC to a state (defaults to the open modal's state). Re-derives the
+   * symbol key, SID, echelon, name and geometry kind, and keeps the SIDC mirrored
+   * across amplifier / options / drawEssentials.
+   */
+  private applySidc(rawSidc: string, sanitize: boolean, target?: EditableState): void {
+    const s = target ?? this.state;
+    if (!s) return;
+    const cleaned = sanitize ? rawSidc.replace(/\D/g, '') : rawSidc;
+    // Keep the native length (20 or 30 char); pad short codes to the 20-char minimum.
     const sidc = cleaned.padEnd(20, '0');
 
-    const s = this.state;
     s.sidc = sidc;
     s.symbolKey = this.getSymbolKey(sidc);
     s.amplifier.SIDC = sidc;
     s.drawEssentials.SIDC = sidc;
     s.drawEssentials.SID = sidc.slice(10, 16);
     s.drawEssentials.ECHELON = sidc.slice(8, 10);
+    if (s.kind === 'FPoint') s.options.SIDC = sidc;
 
     const def = SYMBOLS[s.symbolKey];
     if (def) {
       s.drawEssentials.SYM_NAME = def.Name || '';
-      s.drawEssentials.SYM_GEO_TYPE = def.SymGeoType || '';
+      s.drawEssentials.SYM_GEO_TYPE = def.SymGeoType || s.drawEssentials.SYM_GEO_TYPE;
     }
   }
 
@@ -899,29 +1225,27 @@ class MorphixEngine {
 
   private validate(s: EditableState): string[] {
     const errors: string[] = [];
-    if (!/^\d{20}$/.test(s.sidc)) {
-      errors.push('SIDC must be exactly 20 digits.');
+    if (!/^\d{20,}$/.test(s.sidc)) {
+      errors.push('SIDC must be at least 20 digits.');
     }
     if (!SYMBOLS[s.symbolKey]) {
       errors.push(`Unknown symbol key ${s.symbolKey || '(empty)'} — adjust SIDC Set/Entity.`);
     }
 
-    // For non-point graphics, only refuse if SIDC was somehow swapped to a point family
-    const newFamily = this.geomFamilyOf(SYMBOLS[s.symbolKey]?.SymGeoType);
-    if (newFamily && newFamily !== s.geomFamily) {
-      errors.push(`Cannot change a ${this.geomLabel(s.geomFamily)} symbol to a ${this.geomLabel(newFamily)} symbol.`);
+    // The symbol can only be re-rendered into the same geometry family it started in.
+    const newKind = this.geomKindOf(SYMBOLS[s.symbolKey]?.SymGeoType);
+    if (newKind && s.kind && newKind !== s.kind) {
+      errors.push(`Cannot change a ${this.geomLabel(s.kind)} symbol to a ${this.geomLabel(newKind)} symbol.`);
     }
     return errors;
   }
 
-  private save(): void {
-    if (!this.state || !this.callbacks) return;
-    if (this.validate(this.state).length) {
-      this.render();
-      return;
-    }
-
-    const s = this.state;
+  /**
+   * Build the {@link MorphixEditedState} consumed by SymbolEngine.applyMorphixEdit.
+   * Shared by the modal Save button and the programmatic {@link update} API so both
+   * paths produce identical, geometry-correct results.
+   */
+  private buildEditedState(s: EditableState): MorphixEditedState {
     const def = SYMBOLS[s.symbolKey];
 
     const amplifier = new Amplifier(undefined, this.jsonClone(s.amplifier) as Partial<Amplifier>);
@@ -933,7 +1257,7 @@ class MorphixEngine {
     drawEssentials.SIDC = s.sidc;
     drawEssentials.SID = s.sidc.slice(10, 16);
     drawEssentials.SYM_NAME = def?.Name || drawEssentials.SYM_NAME;
-    drawEssentials.SYM_GEO_TYPE = def?.SymGeoType || drawEssentials.SYM_GEO_TYPE;
+    drawEssentials.SYM_GEO_TYPE = def?.SymGeoType || drawEssentials.SYM_GEO_TYPE || s.kind;
     drawEssentials.ECHELON = s.sidc.slice(8, 10);
     drawEssentials.labelOptions = this.jsonClone(s.labelOptions) as any;
     drawEssentials.extraSettings = this.jsonClone(s.extraSettings) as any;
@@ -949,13 +1273,40 @@ class MorphixEngine {
     if (s.geomRefs.CTRL_PTS) {
       (drawEssentials as any).CTRL_PTS = s.geomRefs.CTRL_PTS.map((p) => this.cloneGeometry(p));
     }
+    if (s.geomRefs.BASE_LN_PTS) {
+      const b = s.geomRefs.BASE_LN_PTS;
+      (drawEssentials as any).BASE_LN_PTS = {
+        startPt: b.startPt ? this.cloneGeometry(b.startPt) : b.startPt,
+        midPt: b.midPt ? this.cloneGeometry(b.midPt) : b.midPt,
+        endPt: b.endPt ? this.cloneGeometry(b.endPt) : b.endPt,
+      };
+    }
+
+    // FPoint: rebuild the milsymbol OPTIONS object the renderer reads from, syncing
+    // the canonical edit homes (SIDC, ANGLE, size, opacity) back into it.
+    if (s.kind === 'FPoint') {
+      const size = Number(s.extraSettings.size);
+      const options: Record<string, any> = {
+        ...this.jsonClone(s.options),
+        symType: 'FPoint',
+        SIDC: s.sidc,
+        ANGLE: (drawEssentials as any).ANGLE ?? 0,
+        opacity: drawEssentials.opacity ?? 1,
+        labelOptions: this.jsonClone(s.labelOptions),
+      };
+      if (Number.isFinite(size) && size > 0) options.size = size;
+      if (s.geomRefs.GEOM) options.GEOM = this.cloneGeometry(s.geomRefs.GEOM);
+      (drawEssentials as any).OPTIONS = options;
+      (drawEssentials as any).UEI = '1';
+    }
+
     (drawEssentials as any).AMPLIFIER = amplifier;
 
     const oldAttrs = (s.graphic.attributes || {}) as Record<string, any>;
-    const editedState: MorphixEditedState = {
+    return {
       sidc: s.sidc,
       symbolKey: s.symbolKey,
-      symbolDefinition: def!,
+      symbolDefinition: def || ({ Name: drawEssentials.SYM_NAME, SymGeoType: s.kind } as SymbolDefinition),
       amplifier,
       drawEssentials,
       attributes: {
@@ -964,9 +1315,19 @@ class MorphixEngine {
         drawEssentials,
       },
     };
+  }
+
+  private save(): void {
+    if (!this.state || !this.callbacks) return;
+    if (this.validate(this.state).length) {
+      this.render();
+      return;
+    }
+
+    const editedState = this.buildEditedState(this.state);
 
     try {
-      this.callbacks.applyEdit(s.graphic, editedState);
+      this.callbacks.applyEdit(this.state.graphic, editedState);
       this.close();
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -1029,7 +1390,9 @@ class MorphixEngine {
 
   private normalizeSidc(sidc: string, sid?: string): string {
     const digits = String(sidc || '').replace(/\D/g, '');
-    if (digits.length >= 20) return digits.slice(0, 20);
+    // Preserve the symbol's native length (this codebase uses both 20- and 30-char
+    // SIDCs); only pad short codes up to the 20-char minimum.
+    if (digits.length >= 20) return digits;
     if (digits.length > 0) return digits.padEnd(20, '0');
     const key = sid
       ? Object.keys(SYMBOLS).find((k) => k.slice(2, 8) === sid)
@@ -1044,20 +1407,58 @@ class MorphixEngine {
     return `${padded.slice(4, 6)}${padded.slice(10, 16)}`;
   }
 
-  private geomFamilyOf(value?: string): 'point' | 'line' | 'area' | '' {
-    const v = String(value || '').toLowerCase();
-    if (v === 'point' || v === 'fpoint') return 'point';
-    if (v === 'line' || v === 'polyline') return 'line';
-    if (v === 'area' || v === 'polygon') return 'area';
+  /**
+   * Resolve the innermost OPTIONS object for a Force (FPoint) symbol. At runtime the
+   * OPTIONS payload can be nested (`de.OPTIONS.OPTIONS`) because UEISymbol stores the
+   * drawEssentials it was initialised with as `OPTIONS`, and plan loads put the real
+   * milsymbol options one level deeper. Descend until there's no further `.OPTIONS`.
+   */
+  private resolveOptions(de: Record<string, any>): Record<string, any> {
+    let o = de?.OPTIONS;
+    let guard = 0;
+    while (o && typeof o.OPTIONS === 'object' && o.OPTIONS !== null && guard++ < 6) {
+      o = o.OPTIONS;
+    }
+    return o && typeof o === 'object' ? (o as Record<string, any>) : {};
+  }
+
+  /** Return the first argument that is neither null/undefined nor an empty/blank string. */
+  private firstFilled(...vals: any[]): any {
+    for (const v of vals) {
+      if (v === null || v === undefined) continue;
+      if (typeof v === 'string' && v.trim() === '') continue;
+      return v;
+    }
     return '';
   }
 
-  private geomLabel(value?: string): string {
-    const f = this.geomFamilyOf(value);
-    if (f === 'point') return 'Point';
-    if (f === 'line') return 'Line';
-    if (f === 'area') return 'Area';
-    return value || '—';
+  /** Resolve a raw SYM_GEO_TYPE / SymGeoType string to one of the four canonical kinds. */
+  private geomKindOf(value?: string): GeoKind | '' {
+    const v = String(value || '').toLowerCase();
+    if (v === 'fpoint') return 'FPoint';
+    if (v === 'point') return 'Point';
+    if (v === 'line' || v === 'polyline') return 'Line';
+    if (v === 'area' || v === 'polygon') return 'Area';
+    return '';
+  }
+
+  /** Best-effort geometry kind from the graphic when SYM_GEO_TYPE is missing. */
+  private geomTypeOf(graphic: Graphic): string {
+    const t = (graphic?.geometry as any)?.type;
+    if (t === 'polyline') return 'Line';
+    if (t === 'polygon') return 'Area';
+    if (t === 'point') return 'Point';
+    return '';
+  }
+
+  private geomLabel(kind: GeoKind | '' | undefined): string {
+    switch (kind) {
+      case 'Point':  return 'Point';
+      case 'FPoint': return 'Force Point';
+      case 'Line':   return 'Line';
+      case 'Area':   return 'Area';
+      default:       return '—';
+    }
   }
 
   /** Plain JSON clone — for amplifier/draw/label/extra/cim fields only. Never use on ArcGIS geometry. */

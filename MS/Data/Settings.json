@@ -394,7 +394,8 @@
     "mgrsEngine": false,
     "analysisEngines": true,
     "deploymentBuilder": true,
-    "visualizationEngine": false
+    "visualizationEngine": false,
+    "roadNetwork": true
   },
   "measurement": {
     "distUnit": "kilometers",
@@ -419,7 +420,8 @@
     "speedKmh": 5.0,
     "bearingFormat": "decimal",
     "autoUnit": false,
-    "preserveOnComplete": false
+    "preserveOnComplete": false,
+    "roadEta": false
   },
   "drawingCues": {
     "enabled": true,
@@ -510,6 +512,14 @@
     "labelSize": 11,
     "labelColor": [255, 255, 255],
     "labelOpacity": 0.9
+  },
+  "roadNetwork": {
+    "serverUrl": "http://localhost:8080",
+    "apiBaseUrl": "/roadnet/api",
+    "dataBaseUrl": "/roadnet/data",
+    "timeoutMs": 8000,
+    "availabilityTtlMs": 30000,
+    "showRoadsLayer": true
   },
   "proximity": {
     "nearestVertex": true,

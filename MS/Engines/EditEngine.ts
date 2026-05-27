@@ -411,11 +411,16 @@ class EditEngine {
         this._mixedProxyOriginalGeometry = proxy.geometry?.clone?.() ?? proxy.geometry;
         this._handleLayer.add(proxy);
 
+        // Uniform scaling (preserveAspectRatio) is enabled so a group can be
+        // moved, rotated AND scaled. The affine derived in _computeAffineTransform
+        // is a similarity transform (uniform scale + rotate + translate), so we
+        // lock the aspect ratio to keep the proxy's scaling uniform and faithful.
         this._sketchVM = new SketchViewModel({
             view: this.view,
             layer: this._handleLayer,
             defaultUpdateOptions: {
-                enableScaling: false,
+                enableScaling: true,
+                preserveAspectRatio: true,
                 enableRotation: true,
                 toggleToolOnClick: false,
                 tool: "transform",
@@ -424,7 +429,8 @@ class EditEngine {
 
         this._sketchVM.update([proxy], {
             tool: "transform",
-            enableScaling: false,
+            enableScaling: true,
+            preserveAspectRatio: true,
             enableRotation: true,
             toggleToolOnClick: false,
         } as any);
@@ -515,15 +521,19 @@ class EditEngine {
     }
 
     /**
-     * Activate mixed edit mode for heterogeneous selections.
-     * Supports move + rotate; scale is disabled.
+     * Activate group-transform mode for any multi-graphic selection — whether
+     * the members share a geometry type or are heterogeneous (point + line/area).
+     * A single proxy bounding box is transformed and the resulting move + rotate
+     * + uniform scale is applied to every member. This is required because
+     * ArcGIS SketchViewModel only supports translation when several graphics are
+     * updated together, so rotate/scale of a group is otherwise unavailable.
      */
     public activateMixedEdit(graphic: Graphic, additionalGraphics: Graphic[] = []): void {
         this.deactivate();
         this._activeGraphic = graphic;
         this._isMixedEdit = true;
         this._activateMixedEditSession(graphic, additionalGraphics);
-        EngineLogger.nextStep('Edit Engine', 'Mixed edit mode active — drag to move or rotate (scale disabled)');
+        EngineLogger.nextStep('Edit Engine', 'Group transform active — drag to move, rotate or scale');
         this._showModeBanner('mixed-edit');
         this._installEscListener();
     }
@@ -1372,7 +1382,7 @@ class EditEngine {
         const labels: Record<'move-scale-rotate' | 'control-points' | 'mixed-edit', { icon: string; title: string; hint: string }> = {
             'move-scale-rotate': { icon: '✎',  title: 'Move / Scale / Rotate', hint: 'Drag handles to transform the symbol' },
             'control-points':    { icon: '↕',  title: 'Edit Control Points',   hint: 'Drag handles to reshape • Click symbol to add • Click point to remove' },
-            'mixed-edit':        { icon: '⇄',  title: 'Mixed Edit',            hint: 'Drag to move or rotate (scale disabled)' },
+            'mixed-edit':        { icon: '✎',  title: 'Move / Scale / Rotate', hint: 'Drag the box to move, rotate or scale the group' },
         };
         const cfg = labels[mode];
 

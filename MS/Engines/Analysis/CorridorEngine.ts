@@ -15,6 +15,7 @@ import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import EngineLogger from '../../Support/EngineLogger';
+import RoadNetworkEngine, { type TrafficabilitySummary } from './RoadNetworkEngine';
 
 import {
   CORRIDOR_PRESETS,
@@ -107,6 +108,15 @@ export class CorridorEngine {
   private _dragOffsetX = 0;
   private _dragOffsetY = 0;
   private _isDragging = false;
+
+  // Road-network snapping (optional external service; degrades to straight-line).
+  private _snapToRoads = false;
+  private _roadPath: number[][] | null = null; // [lng,lat][] following real roads
+  private _roadSummary: {
+    distanceKm: number;
+    travelTimeMin: number;
+    traffic: TrafficabilitySummary | null;
+  } | null = null;
 
   constructor() {
     this._createLayers();
@@ -338,6 +348,9 @@ export class CorridorEngine {
             <label class="corr-toggle-row"><span class="corr-label">Exclusion</span><input id="corr-opt-excl" type="checkbox" class="corr-check" checked /></label>
           </div>
         </div>
+        <label class="corr-toggle-row" style="margin-top:6px"><span class="corr-label">Snap to roads</span><input id="corr-opt-snap" type="checkbox" class="corr-check" /></label>
+        <div class="corr-coords" id="corr-snap-note">Straight-line (road snapping off)</div>
+        <div class="corr-coords" id="corr-traffic-note" style="margin-top:2px"></div>
 
         <div class="corr-divider"></div>
         <div class="corr-sec">Threat Overlays</div>
@@ -463,10 +476,12 @@ export class CorridorEngine {
         this._routeDrawn = false;
         this._analysisLayer.removeAll();
         this._workingGraphics = [];
-      } else if (this._routeDrawn) {
-        this._redraw();
+        this._roadPath = null;
+        this._roadSummary = null;
+        this._drawPreview();
+      } else {
+        this._onWaypointsChanged();
       }
-      this._drawPreview();
       this._refreshPanel();
     });
 
@@ -474,18 +489,44 @@ export class CorridorEngine {
       this._waypoints = [];
       this._threats = [];
       this._routeDrawn = false;
+      this._roadPath = null;
+      this._roadSummary = null;
       this._cancelPlacement();
       this._analysisLayer.removeAll();
       this._threatLayer.removeAll();
       this._previewLayer.removeAll();
       this._workingGraphics = [];
       this._lastAvgScore = 0;
+      this._setTrafficNote(null);
       this._refreshPanel();
       this._setStatus('awaiting');
     });
 
-    p.querySelector('#corr-analyze-btn')?.addEventListener('click', () => this._redraw());
+    p.querySelector('#corr-analyze-btn')?.addEventListener('click', () => {
+      if (this._snapToRoads) {
+        void this._recomputeRoadPath().then(() => this._redraw());
+      } else {
+        this._redraw();
+      }
+    });
     p.querySelector('#corr-commit-btn')?.addEventListener('click', () => this._commit());
+
+    p.querySelector('#corr-opt-snap')?.addEventListener('change', (e) => {
+      this._snapToRoads = (e.target as HTMLInputElement).checked;
+      if (this._snapToRoads) {
+        void this._recomputeRoadPath().then(() => {
+          this._drawPreview();
+          if (this._routeDrawn) this._redraw();
+        });
+      } else {
+        this._roadPath = null;
+        this._roadSummary = null;
+        this._setSnapNote('Straight-line (road snapping off)');
+        this._setTrafficNote(null);
+        this._drawPreview();
+        if (this._routeDrawn) this._redraw();
+      }
+    });
   }
 
   private _startPlacement(mode: PlacementMode): void {
@@ -511,8 +552,7 @@ export class CorridorEngine {
 
       if (mode === 'waypoint') {
         this._waypoints.push({ longitude: pt.longitude, latitude: pt.latitude });
-        this._drawPreview();
-        if (this._routeDrawn) this._redraw();
+        this._onWaypointsChanged();
       } else {
         const overlay = this._currentThreatOverlay();
         const radiusM = this._numInput('corr-threat-radius', overlay.radiusM, 100);
@@ -551,10 +591,142 @@ export class CorridorEngine {
     if (thBtn) thBtn.textContent = 'Place ⊕';
   }
 
+  // ── Road-network snapping (optional, degradable) ─────────────────────────
+
+  /** Lazily reach the shared road-network adapter (may be absent). */
+  private _roadNet(): any {
+    return (window as any).symbolEngine?.roadNetworkEngine ?? null;
+  }
+
+  /** Centreline source: road-following path when snapping is active, else raw waypoints. */
+  private _centrelineWaypoints(): Waypoint[] {
+    if (this._snapToRoads && this._roadPath && this._roadPath.length >= 2) {
+      return this._roadPath.map(([lng, lat]) => ({ longitude: lng, latitude: lat }));
+    }
+    return this._waypoints;
+  }
+
+  /** Update the small snap-status line in the panel (no-op if panel closed). */
+  private _setSnapNote(msg: string): void {
+    const el = this._panelEl?.querySelector('#corr-snap-note');
+    if (el) (el as HTMLElement).textContent = msg;
+  }
+
+  /** Flatten a GeoJSON Line/MultiLineString into a single [lng,lat][] list. */
+  private _flattenLineCoords(geom: any): number[][] {
+    if (!geom || !Array.isArray(geom.coordinates)) return [];
+    if (geom.type === 'MultiLineString') {
+      const out: number[][] = [];
+      for (const seg of geom.coordinates) for (const c of seg) out.push([c[0], c[1]]);
+      return out;
+    }
+    return (geom.coordinates as number[][]).map((c) => [c[0], c[1]]);
+  }
+
+  /**
+   * Recompute the road-following centreline by routing each consecutive
+   * waypoint pair. Fully degradable: a missing service drops to straight-line,
+   * and any single failed leg falls back to its straight segment while the rest
+   * still follow roads. Never throws.
+   */
+  private async _recomputeRoadPath(): Promise<void> {
+    this._roadPath = null;
+    this._roadSummary = null;
+    if (!this._snapToRoads || this._waypoints.length < 2) return;
+
+    const rn = this._roadNet();
+    if (!rn) {
+      this._setSnapNote('Road service not loaded — straight-line');
+      return;
+    }
+    this._setSnapNote('Routing along roads…');
+
+    const path: number[][] = [];
+    const byClassKm: Record<string, number> = {};
+    let okLegs = 0,
+      distKm = 0,
+      timeMin = 0,
+      degraded = false;
+
+    for (let i = 0; i < this._waypoints.length - 1; i++) {
+      const a = this._waypoints[i];
+      const b = this._waypoints[i + 1];
+      let res: any = null;
+      try {
+        res = await rn.route(a, b);
+      } catch {
+        res = { ok: false };
+      }
+      if (res?.ok && res.data?.geometry) {
+        const coords = this._flattenLineCoords(res.data.geometry);
+        if (path.length && coords.length) coords.shift(); // drop duplicate join vertex
+        path.push(...coords);
+        okLegs++;
+        distKm += res.data.distanceKm || 0;
+        timeMin += res.data.travelTimeMin || 0;
+        for (const c of res.data.byClass ?? []) {
+          byClassKm[c.fclass] = (byClassKm[c.fclass] || 0) + (c.km || 0);
+        }
+      } else {
+        if (!path.length) path.push([a.longitude, a.latitude]);
+        path.push([b.longitude, b.latitude]);
+        degraded = true;
+      }
+    }
+
+    if (okLegs === 0) {
+      this._setSnapNote('Road network unavailable — straight-line');
+      this._setTrafficNote(null);
+      return;
+    }
+    // Classify trafficability across all routed legs (the route is only as
+    // good as its most restrictive class — its bottleneck).
+    const merged = Object.entries(byClassKm).map(([fclass, km]) => ({ fclass, km }));
+    const traffic = merged.length ? RoadNetworkEngine.classifyRoute(merged) : null;
+    this._roadPath = path;
+    this._roadSummary = { distanceKm: distKm, travelTimeMin: timeMin, traffic };
+    this._setSnapNote(
+      `${degraded ? 'Partial road' : 'Road'} route — ${distKm.toFixed(1)} km, ${timeMin.toFixed(0)} min` +
+        (traffic ? ` · ${traffic.rating}` : '') +
+        (degraded ? ' (some legs straight)' : ''),
+    );
+    this._setTrafficNote(traffic);
+  }
+
+  /** Render the per-class trafficability breakdown into the panel (clears on null). */
+  private _setTrafficNote(traffic: TrafficabilitySummary | null): void {
+    const el = this._panelEl?.querySelector('#corr-traffic-note');
+    if (!el) return;
+    if (!traffic || traffic.classes.length === 0) {
+      (el as HTMLElement).textContent = '';
+      return;
+    }
+    const lim = RoadNetworkEngine.classifyClass(traffic.limitingClass);
+    const breakdown = traffic.classes
+      .slice(0, 4)
+      .map((c) => `${c.info.label} ${c.pct.toFixed(0)}%`)
+      .join(' · ');
+    (el as HTMLElement).textContent =
+      `Trafficability ${traffic.rating} — limiting: ${lim.label} (type ${lim.routeType}). ${breakdown}`;
+  }
+
+  /** Re-render after a waypoint change, recomputing the road path first when snapping. */
+  private _onWaypointsChanged(): void {
+    if (this._snapToRoads) {
+      void this._recomputeRoadPath().then(() => {
+        this._drawPreview();
+        if (this._routeDrawn) this._redraw();
+      });
+    } else {
+      this._drawPreview();
+      if (this._routeDrawn) this._redraw();
+    }
+  }
+
   private _drawPreview(): void {
     this._previewLayer.removeAll();
     if (this._waypoints.length < 2) return;
-    const dense = densifyRoute(this._waypoints, 100) as Waypoint[];
+    const dense = densifyRoute(this._centrelineWaypoints(), 100) as Waypoint[];
     this._previewLayer.add(new Graphic({
       geometry: new Polyline({
         paths: [dense.map((p) => [p.longitude, p.latitude])],
@@ -651,7 +823,7 @@ export class CorridorEngine {
 
     const preset = this._currentPreset();
     const [r, g, b] = preset.color;
-    const dense = densifyRoute(this._waypoints, 50) as Waypoint[];
+    const dense = densifyRoute(this._centrelineWaypoints(), 50) as Waypoint[];
     const legs = computeLegs(this._waypoints) as Array<{ index: number; from: Waypoint; to: Waypoint; distM: number; bearingDeg: number }>;
 
     const route = new Polyline({
@@ -979,10 +1151,13 @@ export class CorridorEngine {
             this._routeDrawn = false;
             this._analysisLayer.removeAll();
             this._workingGraphics = [];
-          } else if (this._routeDrawn) {
-            this._redraw();
+            this._roadPath = null;
+            this._roadSummary = null;
+            this._setTrafficNote(null);
+            this._drawPreview();
+          } else {
+            this._onWaypointsChanged();
           }
-          this._drawPreview();
           this._refreshPanel();
         });
       });
@@ -1019,7 +1194,17 @@ export class CorridorEngine {
     }
 
     const dist = this._computeTotalDistance();
-    this._setText('#corr-st-dist', dist > 0 ? (dist >= 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`) : '—');
+    if (this._snapToRoads && this._roadSummary) {
+      // Road-following total (real network distance + drive time) supersedes the straight-line sum.
+      const t = this._roadSummary.traffic;
+      this._setText(
+        '#corr-st-dist',
+        `${this._roadSummary.distanceKm.toFixed(1)} km · ${this._roadSummary.travelTimeMin.toFixed(0)} min` +
+          (t ? ` · ${t.rating}` : ''),
+      );
+    } else {
+      this._setText('#corr-st-dist', dist > 0 ? (dist >= 1000 ? `${(dist / 1000).toFixed(2)} km` : `${Math.round(dist)} m`) : '—');
+    }
     this._setText('#corr-st-wps', String(this._waypoints.length));
     this._setText('#corr-st-threats', String(this._threats.length));
     const thumb = this._panelEl?.querySelector<HTMLElement>('#corr-exp-thumb');
@@ -1036,6 +1221,9 @@ export class CorridorEngine {
   private _restoreFromCommitted(attrs: Partial<CorridorAnalysisMeta>): void {
     this._waypoints = Array.isArray(attrs.waypoints) ? attrs.waypoints.map((w) => ({ longitude: w.longitude, latitude: w.latitude })) : [];
     this._routeDrawn = this._waypoints.length >= 2;
+    this._snapToRoads = false;
+    this._roadPath = null;
+    this._roadSummary = null;
   }
 
   private async _pickMapPoint(event: any): Promise<Point> {
