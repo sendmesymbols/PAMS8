@@ -513,7 +513,7 @@ class SelectionActionPanel {
     }
 
     private _deleteOne(graphic: Graphic): void {
-        const layer = graphic.layer as any;
+        const layer = (graphic.origin?.layer ?? null) as any;
         if (!layer) return;
         this._selectionEngine.clearSelection();
         layer.remove(graphic);

@@ -15,6 +15,7 @@
 import Point from '@arcgis/core/geometry/Point';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
+import type Geometry from "@arcgis/core/geometry/Geometry";
 export interface DrawingCueOptions {
     enabled?: boolean;
     rubberBand?: {
@@ -157,7 +158,7 @@ declare class DrawingCueEngine {
      * Called on each onDrawProgress event. Updates last ctrl-pt and redraws
      * distance rings when a new point is committed.
      */
-    updateFromProgress(_geom: __esri.Geometry, ctrlPts: Point[]): void;
+    updateFromProgress(_geom: Geometry, ctrlPts: Point[]): void;
     deactivate(): void;
     onViewChanged(view: MapView | SceneView): void;
     setOptions(opts: DrawingCueOptions): void;

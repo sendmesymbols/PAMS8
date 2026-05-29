@@ -3,7 +3,7 @@ import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import Graphic from '@arcgis/core/Graphic';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
-import Evented from '@arcgis/core/core/Evented';
+import { Evented } from '@arcgis/core/core/Evented';
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import Point from '@arcgis/core/geometry/Point';
 
@@ -838,7 +838,7 @@ class ContextMenuManager extends Evented {
             this.emit('menu-item-click', {
               actionId: item.id,
               graphic,
-              layerId: graphic.layer?.id || '',
+              layerId: graphic.origin?.layer?.id || '',
               graphicType:
                 graphic.attributes?.graphicType || graphic.attributes?.type,
               view: this.view,
@@ -1292,7 +1292,7 @@ class ContextMenuManager extends Evented {
     this.emit('menu-item-click', {
       actionId,
       graphic: this.activeGraphic,
-      layerId: this.activeGraphic.layer?.id || '',
+      layerId: (this.activeGraphic.origin as any)?.layer?.id || '',
       graphicType:
         this.activeGraphic.attributes?.graphicType || this.activeGraphic.attributes?.type,
       view: this.view,
@@ -1386,7 +1386,7 @@ class ContextMenuManager extends Evented {
     }
 
     // Emit event
-    const layerId = this.activeGraphic.layer?.id || '';
+    const layerId = (this.activeGraphic.origin as any)?.layer?.id || '';
 
     this.emit('menu-item-click', {
       actionId,

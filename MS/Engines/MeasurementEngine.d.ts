@@ -15,6 +15,7 @@ import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import type Geometry from "@arcgis/core/geometry/Geometry";
 export type DistanceUnit = "feet" | "miles" | "kilometers" | "nautical-miles" | "meters" | "yards";
 export type AreaUnit = "square-miles" | "acres" | "square-kilometers" | "hectares" | "square-meters" | "square-feet" | "square-yards";
 export interface MeasurementOptions {
@@ -151,14 +152,14 @@ declare class MeasurementEngine {
      * @param ctrlPts Current array of control points.
      * @param isPassive True when called from edit mode (new seg graphic each time).
      */
-    updateSegments(geom: __esri.Geometry, ctrlPts: Point[], isPassive?: boolean): void;
+    updateSegments(geom: Geometry, ctrlPts: Point[], isPassive?: boolean): void;
     /** Coalesce rapid draw-progress updates into one rAF-aligned pass (trailing). */
     private _schedule;
     private _cancelScheduled;
     /**
      * Called during multi-segment editing where segment index matters.
      */
-    updateAllSegments(geom: __esri.Geometry, ctrlPts: Point[], counter: number): void;
+    updateAllSegments(geom: Geometry, ctrlPts: Point[], counter: number): void;
     /**
      * Called when drawing is finished or cancelled. Clears all measurement graphics.
      * Optionally re-arms for the first point of the next symbol.

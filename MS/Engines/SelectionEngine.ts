@@ -139,7 +139,7 @@ class SelectionEngine {
             this._hoverGraphic = null;
 
             if (graphic) {
-                const layer = graphic.layer as GraphicsLayer | null;
+                const layer = this._findContainingLayer(graphic);
                 if (!layer) return;
                 const layerView = await this.view.whenLayerView(layer) as any;
                 this._hoverHandle = layerView.highlight(graphic);
@@ -247,10 +247,11 @@ class SelectionEngine {
 
                 const hit: Graphic[] = [];
                 targetIds.forEach(id => {
+                    if (id === "_LassoLayer") return;
                     const layer = this._layerManager.getLayer(id);
                     if (!layer) return;
                     (layer.graphics as any).forEach((g: Graphic) => {
-                        if (!g.geometry || g.layer?.id === "_LassoLayer") return;
+                        if (!g.geometry) return;
                         const inside = geometryEngine.intersects(poly, g.geometry);
                         if (inside) hit.push(g);
                     });
@@ -322,10 +323,11 @@ class SelectionEngine {
         const hit: Graphic[] = [];
         const targetIds = this._targetLayerIds.length ? this._targetLayerIds : this._layerManager.listLayers();
         targetIds.forEach(id => {
+            if (id === "_LassoLayer") return;
             const layer = this._layerManager.getLayer(id);
             if (!layer) return;
             (layer.graphics as any).forEach((g: Graphic) => {
-                if (!g.geometry || g.layer?.id === "_LassoLayer") return;
+                if (!g.geometry) return;
                 if (predicate(g)) {
                     hit.push(g);
                 }
@@ -397,12 +399,13 @@ class SelectionEngine {
         const hit: Graphic[] = [];
         const targetIds = this._targetLayerIds.length ? this._targetLayerIds : this._layerManager.listLayers();
         targetIds.forEach(id => {
+            if (id === "_LassoLayer") return;
             const layer = this._layerManager.getLayer(id);
             if (!layer) return;
             (layer.graphics as any).forEach((g: Graphic) => {
-                if (!g.geometry || g.layer?.id === "_LassoLayer") return;
+                if (!g.geometry) return;
                 if (!includeSelf && g === graphic) return;
-                
+
                 const inside = geometryEngine.intersects(poly, g.geometry);
                     
                 if (inside) {
@@ -552,7 +555,7 @@ class SelectionEngine {
 
         const toDelete = this.selectedGraphics.map(g => ({
             graphic: g,
-            layer: g.layer as GraphicsLayer | null,
+            layer: this._findContainingLayer(g),
         }));
 
         this.clearSelection();
@@ -1124,8 +1127,29 @@ class SelectionEngine {
         });
     }
 
+    /**
+     * Locate the GraphicsLayer that currently contains `graphic` by scanning
+     * managed layers. Required for ArcGIS 5.0 where `Graphic.layer` was removed
+     * and `Graphic.origin` is only populated for feature-query / sketch-derived
+     * graphics — not for plain `new Graphic({...})` added to a GraphicsLayer.
+     */
+    private _findContainingLayer(graphic: Graphic): GraphicsLayer | null {
+        // Fast path: origin is set (e.g. graphics from FeatureLayer queries)
+        const fromOrigin = (graphic.origin as any)?.layer as GraphicsLayer | undefined;
+        if (fromOrigin) return fromOrigin;
+
+        const targetIds = this._targetLayerIds.length
+            ? this._targetLayerIds
+            : this._layerManager.listLayers();
+        for (const id of targetIds) {
+            const layer = this._layerManager.getLayer(id);
+            if (layer && (layer.graphics as any).includes(graphic)) return layer;
+        }
+        return null;
+    }
+
     private async _addHighlight(graphic: Graphic, id: string): Promise<void> {
-        const layer = graphic.layer as GraphicsLayer | null;
+        const layer = this._findContainingLayer(graphic);
         if (!layer) return;
         try {
             const layerView = await this.view.whenLayerView(layer) as any;

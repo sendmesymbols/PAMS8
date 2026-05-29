@@ -291,7 +291,7 @@ if (drawAmbushButton) {
         graphicsLayer.remove(event.graphic);
 
         // Get the geometry of the drawn line
-        const lineGeometry = event.graphic.geometry as __esri.Polyline;
+        const lineGeometry = event.graphic.geometry as Polyline;
 
         // Create ambush symbol from the line
         createAmbushSymbol(lineGeometry, graphicsLayer);
@@ -323,7 +323,7 @@ if (
 }
 
 function createAmbushSymbol(
-  lineGeometry: __esri.Polyline,
+  lineGeometry: Polyline,
   layer: GraphicsLayer,
 ) {
   const coords = lineGeometry.paths[0];

@@ -2,6 +2,8 @@ import Extent from '@arcgis/core/geometry/Extent';
 import Point from '@arcgis/core/geometry/Point';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
+import type SpatialReference from "@arcgis/core/geometry/SpatialReference";
+import type { SpatialReferenceProperties } from "@arcgis/core/geometry/SpatialReference";
 
 export interface ElevationSamplerLike {
   queryElevation(geometry: Point): Point | null | undefined;
@@ -12,7 +14,7 @@ type PointLike =
   | {
       longitude: number;
       latitude: number;
-      spatialReference?: __esri.SpatialReferenceProperties | __esri.SpatialReference;
+      spatialReference?: SpatialReferenceProperties | SpatialReference;
     };
 
 export class ElevationUtils {

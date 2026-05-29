@@ -1,7 +1,7 @@
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import Graphic from '@arcgis/core/Graphic';
-import Evented from '@arcgis/core/core/Evented';
+import { Evented } from '@arcgis/core/core/Evented';
 import Point from '@arcgis/core/geometry/Point';
 import MeasurementEngine from '../Engines/MeasurementEngine';
 import WeaponEffectEngine from '../Engines/Analysis/WeaponEffectEngine';

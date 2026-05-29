@@ -7,7 +7,7 @@ import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
-import Evented from "@arcgis/core/core/Evented";
+import { Evented } from "@arcgis/core/core/Evented";
 type ViewType = MapView | SceneView;
 interface FwdAssemblyAreaOptions {
     CTRL_PTS?: Point[];

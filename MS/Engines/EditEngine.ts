@@ -283,7 +283,7 @@ class EditEngine {
     // -----------------------------------------------------------------------
 
     private _activatePointEdit(graphic: Graphic): void {
-        const layer = graphic.layer as GraphicsLayer | null;
+        const layer = (graphic.origin?.layer ?? null) as GraphicsLayer | null;
         if (!layer) {
             console.error("EditEngine: graphic has no layer — cannot activate SketchViewModel");
             return;
@@ -320,7 +320,7 @@ class EditEngine {
     // -----------------------------------------------------------------------
 
     private _activatePolyEdit(graphic: Graphic, additionalGraphics: Graphic[] = []): void {
-        const layer = graphic.layer as GraphicsLayer | null;
+        const layer = (graphic.origin?.layer ?? null) as GraphicsLayer | null;
         if (!layer) {
             console.error("EditEngine: graphic has no layer — cannot activate SketchViewModel");
             return;

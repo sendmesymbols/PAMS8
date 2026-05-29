@@ -29,6 +29,7 @@ import EngineLogger from '../Support/EngineLogger';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import { MagneticCompass, MagneticCompassOptions } from './Cue/MagneticCompass';
+import type Geometry from "@arcgis/core/geometry/Geometry";
 
 // ── Public option types ───────────────────────────────────────────────────────
 
@@ -322,7 +323,7 @@ class DrawingCueEngine {
    * Called on each onDrawProgress event. Updates last ctrl-pt and redraws
    * distance rings when a new point is committed.
    */
-  public updateFromProgress(_geom: __esri.Geometry, ctrlPts: Point[]): void {
+  public updateFromProgress(_geom: Geometry, ctrlPts: Point[]): void {
     if (!this._isEnabled || !this._isActive || ctrlPts.length < 1) return;
     const newCount = ctrlPts.length;
     if (newCount !== this._prevCtrlPtCount) {

@@ -12,7 +12,7 @@ import Polygon from "@arcgis/core/geometry/Polygon";
 import Color from "@arcgis/core/Color";
 import * as webMercatorUtils from "@arcgis/core/geometry/support/webMercatorUtils";
 import * as jsonUtils from "@arcgis/core/geometry/support/jsonUtils";
-import Evented from "@arcgis/core/core/Evented";
+import { Evented } from "@arcgis/core/core/Evented";
 
 type ViewType = MapView | SceneView;
 

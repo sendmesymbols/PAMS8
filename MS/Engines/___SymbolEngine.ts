@@ -1278,7 +1278,7 @@ class SymbolEngine implements Evented {
   private removeGraphic(graphic: Graphic): void {
     console.log('Removing graphic:', graphic.attributes?.name || 'Unnamed');
 
-    const layer = graphic.layer as __esri.GraphicsLayer | null;
+    const layer = (graphic.origin?.layer ?? null) as GraphicsLayer | null;
     if (!layer) return;
 
     const annotationLayer = this._layerManager.getOrCreateLayer(
@@ -1919,7 +1919,7 @@ class SymbolEngine implements Evented {
         : [graphic];
     const clipboard = toCopy.map((g) => ({
       graphic: g.clone(),
-      layerId: String(g.layer?.id ?? this._layerManager.getSymbolLayer().id),
+      layerId: String((g.origin as any)?.layer?.id ?? this._layerManager.getSymbolLayer().id),
     }));
     this._clipboard = clipboard;
     EngineLogger.nextStep(
@@ -2535,7 +2535,7 @@ class SymbolEngine implements Evented {
     return new PictureMarkerSymbol({ url, width, height });
   }
 
-  addPointToLayer(geometry: __esri.Point): void {
+  addPointToLayer(geometry: Point): void {
     const layer = this._layerManager.getOrCreateLayer(LAYER_NAMES.FORCE);
     const symbol = this.createPointSymbol();
     const graphic = new Graphic({ geometry, symbol });
@@ -2588,7 +2588,7 @@ class SymbolEngine implements Evented {
         );
       }
       if (event.state === 'complete') {
-        const point = event.graphic.geometry as __esri.Point;
+        const point = event.graphic.geometry as Point;
         this.addMilSymbolAtPoint(point, drawEssentials, amplifier, attr);
         sketchLayer.remove(event.graphic);
         sketchVM.destroy();
@@ -2600,7 +2600,7 @@ class SymbolEngine implements Evented {
     });
   }
   private addMilSymbolFor2D(
-    geometry: __esri.Point,
+    geometry: Point,
     drawEssentials: DrawEssentials,
     amplifier: Amplifier,
     attr: object,
@@ -2613,7 +2613,7 @@ class SymbolEngine implements Evented {
   }
 
   addMilSymbolAtPoint(
-    point: __esri.Point,
+    point: Point,
     drawEssentials: DrawEssentials,
     amplifier: Amplifier,
     attr: object,
@@ -2657,7 +2657,7 @@ class SymbolEngine implements Evented {
   }
 
   protected addMilSymbolFor3D(
-    geometry: __esri.Point,
+    geometry: Point,
     options: SymbolOptions,
   ): void {
     const layer = this._layerManager.getOrCreateLayer('milSymbols');
@@ -2674,7 +2674,7 @@ class SymbolEngine implements Evented {
   }
 
   private addPictureMarkerFor2D(
-    geometry: __esri.Point,
+    geometry: Point,
     url: string,
     width: number,
     height: number,
@@ -2693,7 +2693,7 @@ class SymbolEngine implements Evented {
   }
 
   private addPictureMarkerFor3D(
-    geometry: __esri.Point,
+    geometry: Point,
     url: string,
     width: number,
     height: number,
@@ -3550,7 +3550,7 @@ class SymbolEngine implements Evented {
     return {
       pams8Version: '2.0',
       type: 'pams8-symbol',
-      layerId: graphic.layer?.id ?? this._layerManager.getSymbolLayer().id,
+      layerId: graphic.origin?.layer?.id ?? this._layerManager.getSymbolLayer().id,
       id: graphic.attributes?.id,
       sidc: amplifier?.SIDC || de?.SIDC,
       amplifier: amplifier ? { ...amplifier } : {},

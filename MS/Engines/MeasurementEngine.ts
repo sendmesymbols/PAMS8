@@ -27,6 +27,8 @@ import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import EngineLogger from "../Support/EngineLogger";
 import RoadNetworkEngine from "./Analysis/RoadNetworkEngine";
+import type SpatialReference from "@arcgis/core/geometry/SpatialReference";
+import type Geometry from "@arcgis/core/geometry/Geometry";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -362,7 +364,7 @@ class MeasurementEngine {
      * @param isPassive True when called from edit mode (new seg graphic each time).
      */
     public updateSegments(
-        geom: __esri.Geometry,
+        geom: Geometry,
         ctrlPts: Point[],
         isPassive: boolean = false,
     ): void {
@@ -405,7 +407,7 @@ class MeasurementEngine {
     /**
      * Called during multi-segment editing where segment index matters.
      */
-    public updateAllSegments(geom: __esri.Geometry, ctrlPts: Point[], counter: number): void {
+    public updateAllSegments(geom: Geometry, ctrlPts: Point[], counter: number): void {
         if (!this._isEnabled || !this._view || !this._layer) return;
         if (geom.type !== "polyline" && geom.type !== "polygon") return;
         if (counter < 1) return;
@@ -605,7 +607,7 @@ class MeasurementEngine {
 
     /** Core update — shared by draw-progress and all-segment editing. */
     private _updateGraphics(
-        geom: __esri.Geometry,
+        geom: Geometry,
         ctrlPts: Point[],
         iFirst: number,
         iLast: number,
@@ -707,7 +709,7 @@ class MeasurementEngine {
     }
 
     /** Edit mode variant — always creates a fresh segment graphic. */
-    private _updateForEdit(geom: __esri.Geometry, ctrlPts: Point[]): void {
+    private _updateForEdit(geom: Geometry, ctrlPts: Point[]): void {
         this._updateGraphics(geom, ctrlPts, ctrlPts.length - 2, ctrlPts.length - 1, true);
     }
 
@@ -764,7 +766,7 @@ class MeasurementEngine {
 
     // ── Geometry helpers ──────────────────────────────────────────────────────
 
-    private _pt(x: number, y: number, ref: { spatialReference: __esri.SpatialReference }): Point {
+    private _pt(x: number, y: number, ref: { spatialReference: SpatialReference }): Point {
         return new Point({ x, y, spatialReference: ref.spatialReference });
     }
 

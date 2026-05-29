@@ -1216,7 +1216,8 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
           for (const r of hit.results) {
             const graphic = (r as any).graphic;
             const mapPoint = (r as any).mapPoint;
-            if (graphic?.layer?.type === 'ground' || graphic?.layer?.id === 'ground') {
+            const gLayer = (graphic?.origin as any)?.layer ?? (r as any).layer;
+            if (gLayer?.type === 'ground' || gLayer?.id === 'ground') {
               gp = mapPoint;
               break;
             }

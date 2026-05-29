@@ -11,7 +11,7 @@ import Point from "@arcgis/core/geometry/Point";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import * as webMercatorUtils from "@arcgis/core/geometry/support/webMercatorUtils";
 import * as jsonUtils from "@arcgis/core/geometry/support/jsonUtils";
-import Evented from "@arcgis/core/core/Evented";
+import { Evented } from "@arcgis/core/core/Evented";
 import ShapesUtil from "../Support/Shapes.ts";
 
 type ViewType = MapView | SceneView;

@@ -68,7 +68,7 @@ export default class ClipboardEngine {
         : [graphic];
     const clipboard = toCopy.map((g) => ({
       graphic: g.clone(),
-      layerId: String(g.layer?.id ?? this.deps.layerManager.getSymbolLayer().id),
+      layerId: String((g.origin as any)?.layer?.id ?? this.deps.layerManager.getSymbolLayer().id),
     }));
     this._clipboard = clipboard;
     EngineLogger.nextStep(

@@ -57,7 +57,19 @@
       "PowerShell(Out-File *)",
       "Bash(awk '{ if \\(length > max\\) { max = length; ln = NR } } END { print \"max length:\", max, \"at line:\", ln }' DeadGroundMapper.ts)",
       "Bash(grep -nE 'open\\\\s*\\\\\\(graphic|open\\\\s*\\\\\\(' __TRACKED_VAR__.d.ts)",
-      "Bash(echo \"EXIT-grep: $?\")"
+      "Bash(echo \"EXIT-grep: $?\")",
+      "PowerShell(node node_modules/typescript/bin/tsc -p tsconfig.build.json --noEmit 2>&1 | Select-Object -Last 40)",
+      "Bash(npm view *)",
+      "Bash(npm install *)",
+      "Bash(grep -oE \"addCommand\\\\\\(['\\\\\"][^'\\\\\"]+['\\\\\"]|command\\\\\\(['\\\\\"][^'\\\\\"]+['\\\\\"]\\\\\\)|\\\\\\\\bname:\\\\\\\\s*['\\\\\"][a-z-]+['\\\\\"]\" node_modules/@arcgis/codemod/dist/cli.js node_modules/@arcgis/codemod/dist/cli-*.js)",
+      "Bash(grep -oE \"\\\\\"[a-zA-Z][a-zA-Z0-9-]{4,40}\\\\\"\\\\\\\\s*:\\\\\\\\s*\\\\\\\\{\" node_modules/@arcgis/codemod/dist/codemod-DuW0st-O.js)",
+      "Bash(grep -oE '\"[a-zA-Z][a-zA-Z0-9-]{3,40}\":\\\\s*\\\\{\\\\s*description' node_modules/@arcgis/codemod/dist/codemod-DuW0st-O.js node_modules/@arcgis/codemod/dist/codemod-HlWPssK-.js)",
+      "Bash(grep -E '^\\(export default|export class|export \\\\{|declare class\\)' node_modules/@arcgis/core/__TRACKED_VAR__)",
+      "Bash(awk -F\"'\\\\\"]\" '{print $2}')",
+      "Bash(awk '{print $NF}')",
+      "Bash(grep -vE \":\\\\s*//|\\\\*\\\\s*@\")",
+      "Bash(grep -vE \"\\\\.layerView|this\\\\.layer\\\\b|origin.{0,4}\\\\.layer|_layer\\\\b|getLayer|\\\\.layerId|\\\\.layers\\\\b|\\\\.layerManager|opts\\\\.layer|options\\\\.layer|symbolLayer|map\\\\.layer|\\\\.layerInfos|\\\\.layer\\\\.|^.*\\\\.d\\\\.ts.*declare|layer\\\\.layer|\\(?:create|target|host|tact|new|old|created|pane|effect|grid|sketch|panel|proxy|annotation|lasso|force|feature|base\\)Layer\\\\b\")",
+      "Bash(grep -vE \":\\\\s*//|\\\\*\\\\s*@|/\\\\*.*\\\\.layer\")"
     ]
   }
 }

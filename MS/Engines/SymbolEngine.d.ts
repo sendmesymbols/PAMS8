@@ -331,14 +331,14 @@ declare class SymbolEngine implements Evented {
     createLineSymbol(color?: string, width?: number): SimpleLineSymbol;
     createFillSymbol(color?: string, outlineColor?: string, outlineWidth?: number): SimpleFillSymbol;
     createPictureMarkerSymbol(url: string, width: number, height: number): PictureMarkerSymbol;
-    addPointToLayer(geometry: __esri.Point): void;
+    addPointToLayer(geometry: Point): void;
     addPictureMarkerAtCenter(url: string, width: number | undefined, height: number | undefined, view: MapView | SceneView): void;
     drawMilSymbolInteractively(drawEssentials: DrawEssentials, amplifier: Amplifier, attr: object): void;
     private addMilSymbolFor2D;
-    addMilSymbolAtPoint(point: __esri.Point, drawEssentials: DrawEssentials, amplifier: Amplifier, attr: object): void;
+    addMilSymbolAtPoint(point: Point, drawEssentials: DrawEssentials, amplifier: Amplifier, attr: object): void;
     addMilSymbolAtCenter(options: SymbolOptions): void;
     protected svgToDataURL(svg: string): string;
-    protected addMilSymbolFor3D(geometry: __esri.Point, options: SymbolOptions): void;
+    protected addMilSymbolFor3D(geometry: Point, options: SymbolOptions): void;
     private addPictureMarkerFor2D;
     private addPictureMarkerFor3D;
     applySymbol(graphic: Graphic, symbol: SimpleMarkerSymbol | SimpleLineSymbol | SimpleFillSymbol): void;

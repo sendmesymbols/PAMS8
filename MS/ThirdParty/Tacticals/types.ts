@@ -1,5 +1,6 @@
 import type { Point } from '@arcgis/core/geometry';
 import type { SimpleMarkerSymbol, PictureMarkerSymbol } from '@arcgis/core/symbols';
+import type Graphic from "@arcgis/core/Graphic";
 
 export interface SIDC {
     schema: string;
@@ -47,7 +48,7 @@ export interface SymbolOptions {
 }
 
 export interface SymbolResult {
-    graphic: __esri.Graphic;
+    graphic: Graphic;
     symbol: SimpleMarkerSymbol | PictureMarkerSymbol;
     geometry: Point;
 }

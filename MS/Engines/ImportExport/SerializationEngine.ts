@@ -305,7 +305,7 @@ class SerializationEngine {
       pams8Version: '2.0',
       type: 'pams8-symbol',
       layerId:
-        graphic.layer?.id ??
+        graphic.origin?.layer?.id ??
         this._layerManager?.getSymbolLayer()?.id ??
         LAYER_NAMES.FORCE,
       id: graphic.attributes?.id,

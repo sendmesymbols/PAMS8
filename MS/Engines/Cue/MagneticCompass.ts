@@ -14,6 +14,7 @@ import FillSymbol3DLayer from '@arcgis/core/symbols/FillSymbol3DLayer';
 import ExtrudeSymbol3DLayer from '@arcgis/core/symbols/ExtrudeSymbol3DLayer';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
+import type { ClickEvent, DragEvent, PointerMoveEvent } from "@arcgis/core/views/input/types";
 
 // ── Public option types ───────────────────────────────────────────────────────
 
@@ -1127,7 +1128,7 @@ ${moveCross}
     if (!this._view) return;
     this._removeViewEvents();
 
-    this._pointerMoveHandle = this._view.on('pointer-move', (evt: __esri.ViewPointerMoveEvent) => {
+    this._pointerMoveHandle = this._view.on('pointer-move', (evt: PointerMoveEvent) => {
       if (!this._enabled) return;
       const onBezel = this._findHitInstance(evt.x, evt.y);
       const onFace  = !onBezel ? this._instances.find(i => this._isOnCompassFace(i, evt.x, evt.y)) ?? null : null;
@@ -1163,7 +1164,7 @@ ${moveCross}
       }
     });
 
-    this._dragHandle = this._view.on('drag', (evt: __esri.ViewDragEvent) => {
+    this._dragHandle = this._view.on('drag', (evt: DragEvent) => {
       if (!this._enabled) return;
 
       if (evt.action === 'start') {
@@ -1225,7 +1226,7 @@ ${moveCross}
       }
     });
 
-    this._clickHandle = this._view.on('click', (evt: __esri.ViewClickEvent) => {
+    this._clickHandle = this._view.on('click', (evt: ClickEvent) => {
       if (!this._enabled) return;
       const anyDragging = this._instances.some(i => i.dragState !== null || i.moveState !== null);
       if (anyDragging) return;
