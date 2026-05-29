@@ -301,7 +301,7 @@ export class DeadGroundMapper {
 
     try {
       this._setStatus('sampling', 'Elevation...');
-      this._setProgress(0, 'Querying observer elevation');
+      this._setProgress(0, 'Querying Observer Elevation');
       if (snapToTerrain) {
         try {
           const elev = await (this._view.map as any).ground.queryElevation(this._observerPt);
