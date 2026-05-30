@@ -1059,7 +1059,20 @@ export class VisualizationEngine {
     const liftTacticalPoints = render.liftTacticalPoints ?? legacyLiftAll;
     const liftLinesAreas = render.liftLinesAreas ?? legacyLiftAll;
 
-    this._applyLayerElevation(sceneView, RENDER_LAYER_IDS.forcePoints,    liftForcePoints,    offset);
+    // Bias the force-point layer slightly higher than the drop-line tip when
+    // drop lines are on. milsymbol-generated PictureMarkers anchor at the
+    // unit-frame centre, with modifiers/labels rendered below it, so a line
+    // ending at the bare anchor altitude appears to overrun the symbol body.
+    // Lifting the marker an extra fraction of the offset (clamped to a sane
+    // minimum so it still works at small offsets) makes the line tip clearly
+    // terminate beneath the symbol — flag above the halyard tip, not stuck
+    // through the middle of it.
+    const dropLinesOn = liftForcePoints && render.forcePointDropLines !== false && offset > 0;
+    const forceOffset = dropLinesOn
+      ? offset + Math.max(15, offset * 0.15)
+      : offset;
+
+    this._applyLayerElevation(sceneView, RENDER_LAYER_IDS.forcePoints,    liftForcePoints,    forceOffset);
     this._applyLayerElevation(sceneView, RENDER_LAYER_IDS.tacticalPoints, liftTacticalPoints, offset);
     this._applyLayerElevation(sceneView, RENDER_LAYER_IDS.linesAreas,     liftLinesAreas,     offset);
 
