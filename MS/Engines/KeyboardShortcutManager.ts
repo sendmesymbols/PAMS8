@@ -4,6 +4,7 @@ import ContextMenuManager from '../Managers/ContextMenuManager';
 import EditEngine from './EditEngine.ts';
 import SelectionEngine from './SelectionEngine.ts';
 import settingsData from '../Data/Settings.json';
+import CommandPalette from '../Support/CommandPalette';
 
 interface UndoEntry {
   label: string;
@@ -90,6 +91,14 @@ export default class KeyboardShortcutManager {
   }
 
   private onKeyDown(e: KeyboardEvent): void {
+    // Ctrl+K opens the command palette from anywhere — including focused inputs
+    // (otherwise users can't escape the giant settings panel via keyboard).
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      CommandPalette.toggle();
+      return;
+    }
+
     // Skip when typing in an input field
     const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;

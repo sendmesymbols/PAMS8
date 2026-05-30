@@ -137,6 +137,10 @@ const ICONS: Record<string, string> = {
     '<line x1="9" y1="10" x2="9" y2="13"/>' +
     '<line x1="2" y1="7.5" x2="6" y2="7.5"/>' +
     '<line x1="7" y1="4.5" x2="11" y2="4.5"/>',
+
+  'settings':
+    '<circle cx="8" cy="8" r="2"/>' +
+    '<path d="M8 1v2.2M8 12.8V15M1 8h2.2M12.8 8H15M3 3l1.6 1.6M11.4 11.4 13 13M3 13l1.6-1.6M11.4 4.6 13 3"/>',
 };
 
 const SVG_WRAP = (inner: string): string =>

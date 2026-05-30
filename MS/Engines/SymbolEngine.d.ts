@@ -223,6 +223,12 @@ declare class SymbolEngine implements Evented {
      */
     private _keyboardShortcutManager?;
     private _setupKeyboardShortcuts;
+    /**
+     * Populate the Ctrl+K command palette with per-engine settings manifests and
+     * a starter set of universal actions. Follow-up engines just add another
+     * `CommandPalette.registerSettings(...)` call here.
+     */
+    private _registerCommandPalette;
     /** Access the MeasurementEngine â€” configure units or toggle programmatically.
      *  May be undefined if the feature is disabled in Settings.json or not yet loaded. */
     get measurementEngine(): MeasurementEngine | undefined;

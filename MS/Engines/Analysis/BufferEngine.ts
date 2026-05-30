@@ -407,7 +407,11 @@ export class BufferEngine {
         return new Graphic({
           geometry: pt,
           symbol: {
-            type: 'label-3d',
+            // PointSymbol3D, not LabelSymbol3D — LabelSymbol3D is only valid
+            // inside a LabelClass on a layer's labelingInfo, not as a graphic's
+            // own symbol. PointSymbol3D + TextSymbol3DLayer renders identically
+            // with verticalOffset + callout.
+            type: 'point-3d',
             symbolLayers: [{
               type: 'text',
               material: { color: colors.label },
@@ -452,7 +456,11 @@ export class BufferEngine {
         return [new Graphic({
           geometry: ring.geometry.extent.center,
           symbol: {
-            type: 'label-3d',
+            // PointSymbol3D, not LabelSymbol3D — LabelSymbol3D is only valid
+            // inside a LabelClass on a layer's labelingInfo, not as a graphic's
+            // own symbol. PointSymbol3D + TextSymbol3DLayer renders identically
+            // with verticalOffset + callout.
+            type: 'point-3d',
             symbolLayers: [{
               type: 'text',
               material: { color: colors.label },

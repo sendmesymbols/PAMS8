@@ -12,6 +12,7 @@ esriConfig.assetsPath = '/assets';
 esriConfig.fontsUrl = '/fonts';
 import PlotPoint from '../MS/PlotPoint.ts';
 import SymbolEngine from '../MS/Engines/SymbolEngine.ts';
+import SettingsMenu from '../MS/Support/SettingsMenu.ts';
 import VisualizationEngine from '../MS/Engines/Visualization/VisualizationEngine.ts';
 //import SymbolEngine from "../dist/MS/Engines/SymbolEngine.min.js";
 import type { SymbolOptions } from '../MS/ThirdParty/MilSymbols/UEITypes.ts';
@@ -52,6 +53,10 @@ const savePlanButton = document.getElementById('savePlanButton');
 const loadPlanButton = document.getElementById('loadPlanButton');
 const deploymentManagerBtn = document.getElementById('deployment-manager-btn');
 const analysisHubBtn = document.getElementById('analysis-hub-btn');
+
+// ── ⚙ Settings menu — single topbar button opening a popover of all widgets ───
+const settingsMenuBtn = document.getElementById('settingsMenuBtn');
+settingsMenuBtn?.addEventListener('click', () => SettingsMenu.open(settingsMenuBtn));
 
 // Autocomplete elements
 const symbolSearchInput = document.getElementById(
@@ -1178,6 +1183,7 @@ function initializeAutocomplete() {
     panel.classList.add('ms-active'); // show panel on first click
     symbolEngine.measurementEngine?.toggle();
   });
+
 
   // ── Keyboard shortcut M ────────────────────────────────────────────────
 

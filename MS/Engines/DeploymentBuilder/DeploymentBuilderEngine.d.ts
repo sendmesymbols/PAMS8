@@ -52,6 +52,7 @@ declare class DeploymentBuilderEngine {
     private _loadPlanFile;
     private _loadRegistryIntoWidget;
     private _renderPlanList;
+    private _applySelectedPlanToUI;
     private _selectPlan;
     private _importSavedPlanFromFile;
     private _selectImportedPlan;
@@ -68,6 +69,7 @@ declare class DeploymentBuilderEngine {
     private _showBearingHUD;
     private _removeBearingHUD;
     private _showPlacementInstructions;
+    private _injectOverlayStyles;
     private _removePlacementInstructions;
     private _radiansToDegrees;
     private _bearingToCardinal;
@@ -97,5 +99,6 @@ declare class DeploymentBuilderEngine {
     private _removeBgPopup;
     private _getViewContainer;
     private _setStatus;
+    private _setHeaderState;
 }
 export default DeploymentBuilderEngine;

@@ -16,6 +16,12 @@ export interface SelectionActionPanelCallbacks {
         redo: () => void;
     }) => void;
     getView: () => MapView | SceneView;
+    /**
+     * Enter Move/Scale/Rotate. Routes through SymbolEngine.modifySymbol so the
+     * panel uses the same path as the right-click "Edit → Move, Scale, Rotate"
+     * menu — which correctly handles single-point (move+rotate via proxy),
+     * single-line/area, and any multi-selection (move+rotate+scale via proxy).
+     */
     modifySymbol: (graphic: Graphic) => void;
 }
 /**

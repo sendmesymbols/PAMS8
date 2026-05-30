@@ -103,6 +103,13 @@ declare class EditEngine {
     private _activatePolyEdit;
     private _activateMixedEditSession;
     /**
+     * Remove the on-map mode banner, the ESC key listener, and clear the active
+     * graphic reference. Called from the SVM "complete" / "cancel" handlers (so
+     * a click outside the proxy fully exits the mode), and harmless to call
+     * again from deactivate() since each step is idempotent.
+     */
+    private _teardownEditModeChrome;
+    /**
      * After SketchViewModel has updated the graphic's geometry, compute the
      * 2D similarity transform (translate + rotate + uniform scale) that was
      * applied, and propagate it to CTRL_PTS and BASE_LN_PTS in drawEssentials

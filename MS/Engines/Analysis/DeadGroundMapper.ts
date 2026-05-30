@@ -1238,7 +1238,7 @@ export class DeadGroundMapper {
         <div class="ms-opt-grid">
           <div class="ms-toggle-row"><label>2D heatmap</label><input id="dead-opt-heatmap" type="checkbox" checked/></div>
           <div class="ms-toggle-row"><label>3D terrain mesh</label><input id="dead-opt-mesh" type="checkbox"/></div>
-          <div class="ms-toggle-row"><label>3D viewshed dome</label><input id="dead-opt-dome" type="checkbox" checked/></div>
+          <div class="ms-toggle-row"><label>3D viewshed dome</label><input id="dead-opt-dome" type="checkbox"/></div>
           <div class="ms-toggle-row"><label>Depth contours</label><input id="dead-opt-contours" type="checkbox" checked/></div>
           <div class="ms-toggle-row"><label>Visible ground</label><input id="dead-opt-visible" type="checkbox"/></div>
           <div class="ms-toggle-row"><label>LOS spokes</label><input id="dead-opt-spokes" type="checkbox"/></div>

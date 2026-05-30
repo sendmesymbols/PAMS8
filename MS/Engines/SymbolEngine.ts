@@ -95,6 +95,18 @@ import RoadNetworkEngine from './Analysis/RoadNetworkEngine';
 import TrafficabilityEngine from './Analysis/TrafficabilityEngine';
 import SymbolMetadataService from './SymbolMetadataService';
 import KeyboardShortcutManager from './KeyboardShortcutManager';
+import CommandPalette from '../Support/CommandPalette';
+// Each widget self-registers with the Ctrl+K palette + ⚙ Settings menu when
+// imported. One side-effect import per engine keeps the wiring discoverable.
+import './MeasurementSettingsWidget';
+import './AppearanceSettingsWidget';
+import './CoreFeaturesSettingsWidget';
+import './ProximitySettingsWidget';
+import './DrawingCuesSettingsWidget';
+import './DeclutterSettingsWidget';
+import './MGRSSettingsWidget';
+import './VisualizationSettingsWidget';
+import './AnalysisSettingsWidget';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -348,6 +360,9 @@ class SymbolEngine implements Evented {
     if ((settingsData as any).features?.shortcuts !== false) {
       this._setupKeyboardShortcuts();
     }
+
+    // Populate the Ctrl+K command palette with settings manifests + actions.
+    this._registerCommandPalette();
 
     // Set up global event listeners for drawing events
     this.setupGlobalEventListener();
@@ -1197,6 +1212,134 @@ class SymbolEngine implements Evented {
       getCreationMode: () => this._creationMode,
     });
     this._keyboardShortcutManager.attach();
+  }
+
+  /**
+   * Populate the Ctrl+K command palette. The palette is a *launcher* only — it
+   * opens settings widgets, Analysis Hub tools, the Deployment Manager, and a
+   * handful of plan-level utilities. Individual settings rows do NOT appear in
+   * the palette (they live in the widgets, where the row + tooltip have proper
+   * context).
+   *
+   * Per-engine settings widgets self-register through `CommandPalette.registerWidget`
+   * in their own module — those imports are at the top of this file.
+   */
+  private _registerCommandPalette(): void {
+    // Helper: synthesize a click on an existing topbar / hub button so the
+    // palette re-uses whatever wiring main.ts already established.
+    const clickEl = (selector: string) => () => {
+      const el = document.querySelector(selector) as HTMLElement | null;
+      el?.click();
+    };
+
+    // Each Analysis Hub tool — these are wired in src/main.ts as
+    // `.ah-tool[data-tool="..."]` and dispatch to the relevant engine.
+    const hubTool = (
+      tool: string,
+      label: string,
+      hint: string,
+      keywords: string[],
+    ) => ({
+      id: `analysis.${tool}`,
+      label,
+      hint,
+      keywords: ['analysis', 'hub', ...keywords],
+      run: clickEl(`.ah-tool[data-tool="${tool}"]`),
+    });
+
+    CommandPalette.registerActions([
+      // ── Tools / panels ──────────────────────────────────────────────────
+      {
+        id: 'deployment.manager',
+        label: 'Deployment Manager',
+        hint: 'Place pre-built formation templates',
+        keywords: ['mgr', 'formation', 'template', 'deploy'],
+        run: clickEl('#deployment-manager-btn'),
+      },
+      {
+        id: 'analysisHub.open',
+        label: 'Analysis Hub',
+        hint: 'Browse every terrain / force / weapon / mission tool',
+        keywords: ['hub', 'panel'],
+        run: clickEl('#analysis-hub-btn'),
+      },
+
+      // ── Analysis Hub · Terrain ─────────────────────────────────────────
+      hubTool('keyTerrain', 'Key Terrain',
+        'Hills, saddles, spurs, reentrants — tactically significant features',
+        ['terrain', 'feature', 'hill', 'saddle']),
+      hubTool('localPeaks', 'Peak Analysis',
+        'Detect terrain peaks and valleys in the AO',
+        ['peak', 'valley', 'terrain', 'elevation']),
+      hubTool('deadGround', 'Dead Ground',
+        'Map terrain hidden from the observer position',
+        ['dead', 'hidden', 'mask', 'cover']),
+      hubTool('ocoka', 'OCOKA — Avenues of Approach',
+        'Multi-factor terrain analysis for AAs',
+        ['ocoka', 'avenue', 'approach', 'mcoo']),
+
+      // ── Analysis Hub · Force & Position ────────────────────────────────
+      hubTool('los', 'Line of Sight',
+        'Viewshed from an observer position',
+        ['los', 'viewshed', 'visibility']),
+      hubTool('posDefScorer', 'Position Defensibility',
+        'Rate defensive value across 6 military factors',
+        ['defensibility', 'position', 'score', 'defence']),
+      hubTool('opRanker', 'OP Ranker',
+        'Rank and compare candidate observation posts',
+        ['op', 'observation', 'post', 'rank']),
+
+      // ── Analysis Hub · Weapons & Threats ───────────────────────────────
+      hubTool('wez', 'Weapon Engagement Zone',
+        'Visualize weapon-system engagement coverage',
+        ['wez', 'weapon', 'engagement', 'range']),
+      hubTool('trajectory', 'Projectile Trajectory',
+        'Model projectile flight path and impact',
+        ['trajectory', 'ballistic', 'projectile']),
+      hubTool('effects', 'Weapon Effects',
+        'Munitions effects radius — blast, frag, shock',
+        ['blast', 'effect', 'munition']),
+      hubTool('buffer', 'Buffer & Threat Rings',
+        'Buffer zones and concentric threat rings',
+        ['buffer', 'ring', 'threat']),
+
+      // ── Analysis Hub · Route & Mission ─────────────────────────────────
+      hubTool('corridor', 'Corridor Analysis',
+        'Route corridor width, threats, chokepoints',
+        ['corridor', 'route', 'msr', 'chokepoint']),
+      hubTool('flight', 'UAV Flight',
+        'Plan UAV routes and analyse coverage',
+        ['uav', 'flight', 'drone']),
+      hubTool('missionPlanner', 'Mission Planner',
+        'Integrated multi-factor terrain analysis dashboard',
+        ['mission', 'planner', 'dashboard']),
+      hubTool('trafficability', 'Trafficability',
+        'Drive-time service areas, MSRs, GO/SLOW/NO-GO',
+        ['traffic', 'msr', 'route', 'drive']),
+
+      // ── Plan-level utilities ───────────────────────────────────────────
+      {
+        id: 'plan.save',
+        label: 'Save plan…',
+        hint: 'Persist current symbols + annotations to a file',
+        keywords: ['export', 'download'],
+        run: () => this.savePlanToFile(),
+      },
+      {
+        id: 'plan.load',
+        label: 'Load plan…',
+        hint: 'Restore a previously saved plan',
+        keywords: ['import', 'open'],
+        run: () => this.loadPlanFromFile(),
+      },
+      {
+        id: 'view.clear',
+        label: 'Clear all graphics',
+        hint: 'Remove every drawn symbol from the map',
+        keywords: ['reset', 'wipe'],
+        run: () => this.clearAllGraphics(),
+      },
+    ]);
   }
 
   /** Access the MeasurementEngine â€” configure units or toggle programmatically.

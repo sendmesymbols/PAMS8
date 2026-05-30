@@ -50,6 +50,8 @@ export interface RenderOptions {
     disableSceneShadows: boolean;
     /** Use high quality SceneView atmosphere rendering in 3D */
     highAtmosphereQuality: boolean;
+    /** @deprecated legacy "lift everything" flag — superseded by the three per-kind toggles below. */
+    liftSymbolsFromGround?: boolean;
     /** Lift force/UEI point symbols above terrain */
     liftForcePoints: boolean;
     /** Lift tactical point symbols above terrain */
@@ -123,6 +125,12 @@ export declare class VisualizationEngine {
     private _enabled;
     private _declutter;
     private static readonly DECLUTTER_STEP_NAME;
+    /** The SceneView that render settings target. Captured on first applyRenderSettings. */
+    private _renderSceneView;
+    /** SceneView defaults captured before any user overrides — used to revert. */
+    private _initialSceneRenderState;
+    /** Watcher that rebuilds drop lines whenever the FORCE layer's graphic count changes. */
+    private _dropLineWatcher;
     private constructor();
     static getInstance(): VisualizationEngine;
     start(view: MapView | SceneView): void;
@@ -142,6 +150,18 @@ export declare class VisualizationEngine {
     connectDeclutter(declutter: DeclutterEngine): void;
     disconnectDeclutter(): void;
     setOptions(options: Partial<VisualizationOptions>): void;
+    /**
+     * Apply render settings (lift, drop lines, scene quality, shadows,
+     * atmosphere) to the given SceneView. Safe to call before `start()` or
+     * `enable()` — render settings are independent of overlay state. The
+     * sceneView is cached so subsequent `setOptions({ render })` calls re-apply
+     * automatically.
+     *
+     * `settings` may be either a partial RenderOptions object or the full
+     * settings tree (with a `visualization.render` path) — both shapes are
+     * accepted for compatibility with how `Settings.json` is structured.
+     */
+    applyRenderSettings(sceneView: SceneView, settings?: any): void;
     private _setupVizLayer;
     private _setupWatchers;
     private _clearWatchers;
@@ -165,6 +185,20 @@ export declare class VisualizationEngine {
     showThreatFan(graphic: Graphic, speedKmh: number, timeHoursIntervals: number[]): void;
     /** Remove all threat-fan overlays */
     clearThreatFan(): void;
+    private _captureInitialSceneRenderState;
+    private _applyRenderSettings;
+    /**
+     * Move stray graphics back to the symbol layer that matches their
+     * drawEssentials kind. Without this, symbols added before render settings
+     * existed could end up on the wrong layer and resist elevation changes.
+     */
+    private _normalizeSymbolLayerMembership;
+    private _getRenderLayerIdForGraphic;
+    private _applySymbolElevationSettings;
+    private _applyLayerElevation;
+    private _getOrCreateDropLineLayer;
+    private _rebuildForcePointDropLines;
+    private _applyForcePointDropLines;
     private _clearVizLayer;
     private _getPointGraphics;
     /**

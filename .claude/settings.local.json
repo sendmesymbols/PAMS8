@@ -69,7 +69,8 @@
       "Bash(awk '{print $NF}')",
       "Bash(grep -vE \":\\\\s*//|\\\\*\\\\s*@\")",
       "Bash(grep -vE \"\\\\.layerView|this\\\\.layer\\\\b|origin.{0,4}\\\\.layer|_layer\\\\b|getLayer|\\\\.layerId|\\\\.layers\\\\b|\\\\.layerManager|opts\\\\.layer|options\\\\.layer|symbolLayer|map\\\\.layer|\\\\.layerInfos|\\\\.layer\\\\.|^.*\\\\.d\\\\.ts.*declare|layer\\\\.layer|\\(?:create|target|host|tact|new|old|created|pane|effect|grid|sketch|panel|proxy|annotation|lasso|force|feature|base\\)Layer\\\\b\")",
-      "Bash(grep -vE \":\\\\s*//|\\\\*\\\\s*@|/\\\\*.*\\\\.layer\")"
+      "Bash(grep -vE \":\\\\s*//|\\\\*\\\\s*@|/\\\\*.*\\\\.layer\")",
+      "Bash(curl -sf http://localhost:6548/ -o /dev/null)"
     ]
   }
 }

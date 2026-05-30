@@ -602,8 +602,11 @@ export class LocalPeaksEngine {
           const vOffsetMax = Math.max(3500, Math.round(14000 - (peak.rank - 1) * 380));
           // Callout line thickness also scales with rank — rank 1 most prominent
           const calloutSize = Math.max(1.2, +(3 - (peak.rank - 1) * 0.065).toFixed(2));
+          // PointSymbol3D (not LabelSymbol3D) — LabelSymbol3D is only legal
+          // inside a LabelClass; for per-graphic labels with vertical offset +
+          // callout the right wrapper is point-3d holding a TextSymbol3DLayer.
           labelSymbol = {
-            type: 'label-3d',
+            type: 'point-3d',
             symbolLayers: [{
               type: 'text',
               material: { color: labelColor },
