@@ -371,8 +371,17 @@ export class LadderEngine {
           ladderLayer.add(new Graphic({
             geometry: stem,
             symbol: new SimpleLineSymbol({
+              color: [14, 20, 26, 0.5] as any,
+              width: cfg.spineWidth * 2.5,
+            }),
+            attributes: { __isLadderSpine: true },
+          }));
+          ladderLayer.add(new Graphic({
+            geometry: stem,
+            symbol: new SimpleLineSymbol({
               color: [...cfg.spineColor, cfg.spineOpacity] as any,
               width: cfg.spineWidth,
+              style: 'short-dash' as any,
             }),
             attributes: { __isLadderSpine: true },
           }));
@@ -425,8 +434,17 @@ export class LadderEngine {
             ladderLayer.add(new Graphic({
               geometry: spinePoly,
               symbol: new SimpleLineSymbol({
+                color: [14, 20, 26, 0.5] as any,
+                width: cfg.spineWidth * 2.5,
+              }),
+              attributes: { __isLadderSpine: true },
+            }));
+            ladderLayer.add(new Graphic({
+              geometry: spinePoly,
+              symbol: new SimpleLineSymbol({
                 color: [...cfg.spineColor, cfg.spineOpacity] as any,
                 width: cfg.spineWidth,
+                style: 'short-dash' as any,
               }),
               attributes: { __isLadderSpine: true },
             }));

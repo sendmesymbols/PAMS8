@@ -12,6 +12,7 @@ esriConfig.assetsPath = '/assets';
 esriConfig.fontsUrl = '/fonts';
 import PlotPoint from '../MS/PlotPoint.ts';
 import SymbolEngine from '../MS/Engines/SymbolEngine.ts';
+import VisualizationEngine from '../MS/Engines/Visualization/VisualizationEngine.ts';
 //import SymbolEngine from "../dist/MS/Engines/SymbolEngine.min.js";
 import type { SymbolOptions } from '../MS/ThirdParty/MilSymbols/UEITypes.ts';
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
@@ -28,36 +29,10 @@ import Point from '@arcgis/core/geometry/Point';
 import Amplifier from '../MS/Support/Amplifier.ts';
 import DrawEssentials from '../MS/Support/DrawEssentials.ts';
 
-type RenderSettings = {
-  highQuality3D?: boolean;
-  disableSceneShadows?: boolean;
-  highAtmosphereQuality?: boolean;
-  liftSymbolsFromGround?: boolean;
-  liftForcePoints?: boolean;
-  liftTacticalPoints?: boolean;
-  liftLinesAreas?: boolean;
-  symbolElevationOffset?: number;
-  forcePointDropLines?: boolean;
-  dropLineColor?: number[];
-  dropLineWidth?: number;
-  dropLineOpacity?: number;
-};
-
-const RENDER_LAYER_IDS = {
-  forcePoints: 'ForceSymbolsLayer',
-  tacticalPoints: 'TacticalPointSymbolsLayer',
-  linesAreas: 'TacticalSymbolsLayer',
-  forcePointDropLines: 'ForcePointDropLinesLayer',
-} as const;
-
-let _dropLineWatcher: { remove(): void } | null = null;
-
-let initialSceneRenderState: {
-  qualityProfile: unknown;
-  directShadowsEnabled?: boolean;
-  ambientOcclusionEnabled?: boolean;
-  atmosphereQuality?: unknown;
-} | null = null;
+// Render settings (lift / drop lines / scene quality / shadows / atmosphere)
+// are owned by VisualizationEngine — see `applyRenderSettings()` below for the
+// shim that delegates to it, kept so index.html can keep calling
+// `window.applyRenderSettings(...)` unchanged.
 
 //import SymbolEngine from "../dist/MS/Engines/SymbolEngine.min";
 //import type { SymbolOptions } from '../dist/MS/ThirdParty/MilSymbols/UEITypes'
@@ -143,8 +118,11 @@ const baseMap = new Map({
 // Create 3D view first (as we want it active on startup)
 initialViewParams.map = baseMap;
 appConfig.sceneView = <SceneView>createView(initialViewParams, '3d');
-captureInitialSceneRenderState(appConfig.sceneView);
-applyRenderSettings(settingsData);
+// Render settings (lift, drop lines, scene quality, shadows, atmosphere) are
+// applied through VisualizationEngine. Calling it here — before SymbolEngine
+// is constructed — relies on the engine being a getInstance() singleton; the
+// engine will cache the SceneView and re-apply when setOptions runs later.
+VisualizationEngine.getInstance().applyRenderSettings(appConfig.sceneView, settingsData);
 
 // Set the 3D view as the active view on startup
 appConfig.activeView = appConfig.sceneView;
@@ -572,7 +550,10 @@ function switchView() {
     appConfig.sceneView.viewpoint = activeViewpoint;
     appConfig.sceneView.container = appConfig.container;
     appConfig.activeView = appConfig.sceneView;
-    applyRenderSettings((window as any).symbolEngine?.settings ?? settingsData);
+    VisualizationEngine.getInstance().applyRenderSettings(
+      appConfig.sceneView,
+      (window as any).symbolEngine?.settings ?? settingsData,
+    );
     (switchButton as HTMLInputElement).value = '2D';
 
     appConfig.sceneView.on('click', (event: MouseEvent) => {
@@ -606,235 +587,15 @@ function createView(params: any, type: '2d' | '3d'): MapView | SceneView {
   return view;
 }
 
-function captureInitialSceneRenderState(view: SceneView): void {
-  const sceneView = view as any;
-  const lighting = sceneView.environment?.lighting;
-  const atmosphere = sceneView.environment?.atmosphere;
-
-  initialSceneRenderState = {
-    qualityProfile: sceneView.qualityProfile,
-    directShadowsEnabled: lighting?.directShadowsEnabled,
-    ambientOcclusionEnabled: lighting?.ambientOcclusionEnabled,
-    atmosphereQuality: atmosphere?.quality,
-  };
-}
-
-function applyRenderSettings(settings: any = settingsData): void {
-  const sceneView = appConfig.sceneView as any;
-  if (!sceneView) return;
-
-  const render: RenderSettings = settings?.visualization?.render ?? {};
-  const defaults = initialSceneRenderState;
-
-  if (render.highQuality3D === true) {
-    sceneView.qualityProfile = 'high';
-  } else if (defaults?.qualityProfile !== undefined) {
-    sceneView.qualityProfile = defaults.qualityProfile;
-  }
-
-  const lighting = sceneView.environment?.lighting;
-  if (lighting) {
-    if (render.disableSceneShadows === true) {
-      lighting.directShadowsEnabled = false;
-      lighting.ambientOcclusionEnabled = false;
-    } else {
-      if (defaults?.directShadowsEnabled !== undefined) {
-        lighting.directShadowsEnabled = defaults.directShadowsEnabled;
-      }
-      if (defaults?.ambientOcclusionEnabled !== undefined) {
-        lighting.ambientOcclusionEnabled = defaults.ambientOcclusionEnabled;
-      }
-    }
-  }
-
-  const atmosphere = sceneView.environment?.atmosphere;
-  if (atmosphere) {
-    if (render.highAtmosphereQuality === true) {
-      atmosphere.quality = 'high';
-    } else if (defaults?.atmosphereQuality !== undefined) {
-      atmosphere.quality = defaults.atmosphereQuality;
-    }
-  }
-
-  normalizeSymbolLayerMembership(sceneView);
-  applySymbolElevationSettings(sceneView, render);
-}
-
-function normalizeSymbolLayerMembership(sceneView: SceneView): void {
-  const renderLayerIds = Object.values(RENDER_LAYER_IDS);
-
-  renderLayerIds.forEach((layerId) => {
-    const layer = sceneView.map.findLayerById(layerId) as any;
-    if (!layer?.graphics) return;
-
-    Array.from(layer.graphics).forEach((graphic: any) => {
-      const targetLayerId = getRenderLayerIdForGraphic(graphic);
-      if (!targetLayerId || targetLayerId === layerId) return;
-
-      const targetLayer = sceneView.map.findLayerById(targetLayerId) as any;
-      if (!targetLayer) return;
-
-      layer.remove(graphic);
-      targetLayer.add(graphic);
-    });
-  });
-}
-
-function getRenderLayerIdForGraphic(graphic: any): string | null {
-  const drawEssentials = graphic?.attributes?.drawEssentials;
-  if (!drawEssentials) return null;
-
-  const symGeoType = String(drawEssentials.SYM_GEO_TYPE ?? '').toLowerCase();
-  const isUei = drawEssentials.UEI === '1' || drawEssentials.UEI === 1;
-
-  if (isUei || symGeoType === 'fpoint') {
-    return RENDER_LAYER_IDS.forcePoints;
-  }
-
-  if (symGeoType === 'point' || graphic.geometry?.type === 'point') {
-    return RENDER_LAYER_IDS.tacticalPoints;
-  }
-
-  return RENDER_LAYER_IDS.linesAreas;
-}
-
-function applySymbolElevationSettings(
-  sceneView: SceneView,
-  render: RenderSettings,
-): void {
-  const offset =
-    typeof render.symbolElevationOffset === 'number'
-      ? render.symbolElevationOffset
-      : 1;
-  const legacyLiftAll = render.liftSymbolsFromGround === true;
-  const liftForcePoints = render.liftForcePoints ?? legacyLiftAll;
-  const liftTacticalPoints = render.liftTacticalPoints ?? legacyLiftAll;
-  const liftLinesAreas = render.liftLinesAreas ?? legacyLiftAll;
-
-  applyLayerElevation(
-    sceneView,
-    RENDER_LAYER_IDS.forcePoints,
-    liftForcePoints,
-    offset,
-  );
-  applyLayerElevation(
-    sceneView,
-    RENDER_LAYER_IDS.tacticalPoints,
-    liftTacticalPoints,
-    offset,
-  );
-  applyLayerElevation(
-    sceneView,
-    RENDER_LAYER_IDS.linesAreas,
-    liftLinesAreas,
-    offset,
-  );
-
-  applyForcePointDropLines(sceneView, render, liftForcePoints, offset);
-}
-
-function getOrCreateDropLineLayer(sceneView: SceneView): any {
-  let layer = sceneView.map.findLayerById(RENDER_LAYER_IDS.forcePointDropLines) as any;
-  if (!layer) {
-    layer = new GraphicsLayer({
-      id: RENDER_LAYER_IDS.forcePointDropLines,
-      title: 'Force Point Drop Lines',
-      listMode: 'hide',
-      elevationInfo: { mode: 'relative-to-ground', offset: 0 },
-    } as any);
-    sceneView.map.add(layer, 0);
-  }
-  return layer;
-}
-
-function rebuildForcePointDropLines(
-  sceneView: SceneView,
-  render: RenderSettings,
-  offset: number,
-): void {
-  const layer = getOrCreateDropLineLayer(sceneView);
-  layer.removeAll();
-  if (offset <= 0) return;
-
-  const forceLayer = sceneView.map.findLayerById(RENDER_LAYER_IDS.forcePoints) as any;
-  if (!forceLayer?.graphics) return;
-
-  const color = render.dropLineColor ?? [40, 40, 40];
-  const width = render.dropLineWidth ?? 1.5;
-  const opacity = render.dropLineOpacity ?? 0.85;
-  const rgba: [number, number, number, number] = [color[0], color[1], color[2], opacity];
-
-  Array.from(forceLayer.graphics).forEach((g: any) => {
-    const geom = g?.geometry;
-    if (!geom || geom.type !== 'point') return;
-    const pt = geom as Point;
-    const line = new Polyline({
-      hasZ: true,
-      paths: [[
-        [pt.x, pt.y, offset],
-        [pt.x, pt.y, 0],
-      ]],
-      spatialReference: pt.spatialReference,
-    } as any);
-    layer.add(new Graphic({
-      geometry: line,
-      symbol: new SimpleLineSymbol({
-        color: rgba,
-        width,
-        style: 'solid',
-      }) as any,
-      attributes: { __dropLine__: true },
-    } as any));
-  });
-}
-
-function applyForcePointDropLines(
-  sceneView: SceneView,
-  render: RenderSettings,
-  liftForcePoints: boolean,
-  offset: number,
-): void {
-  const enabled = liftForcePoints && (render.forcePointDropLines !== false) && offset > 0;
-
-  if (_dropLineWatcher) {
-    _dropLineWatcher.remove();
-    _dropLineWatcher = null;
-  }
-
-  const layer = getOrCreateDropLineLayer(sceneView);
-  layer.visible = enabled;
-
-  if (!enabled) {
-    layer.removeAll();
-    return;
-  }
-
-  rebuildForcePointDropLines(sceneView, render, offset);
-
-  const forceLayer = sceneView.map.findLayerById(RENDER_LAYER_IDS.forcePoints) as any;
-  if (forceLayer?.graphics) {
-    _dropLineWatcher = reactiveUtils.watch(
-      () => forceLayer.graphics.length,
-      () => rebuildForcePointDropLines(sceneView, render, offset),
-    );
-  }
-}
-
-function applyLayerElevation(
-  sceneView: SceneView,
-  layerId: string,
-  shouldLift: boolean,
-  offset: number,
-): void {
-  const layer = sceneView.map.findLayerById(layerId) as any;
-  if (!layer) return;
-
-  layer.elevationInfo = shouldLift && offset > 0
-    ? { mode: 'relative-to-ground', offset }
-    : { mode: 'on-the-ground' };
-}
-
-(window as any).applyRenderSettings = applyRenderSettings;
+// Compatibility shim — `index.html` calls `window.applyRenderSettings(...)`
+// whenever a render-bound setting changes. Delegate to VisualizationEngine,
+// which owns the actual SceneView mutations (lift, drop lines, quality,
+// shadows, atmosphere). The settings argument may be either the full settings
+// tree or a bare render block — the engine normalises both.
+(window as any).applyRenderSettings = (settings: any = settingsData): void => {
+  if (!appConfig.sceneView) return;
+  VisualizationEngine.getInstance().applyRenderSettings(appConfig.sceneView, settings);
+};
 
 
 // Auto-run test when page loads (optional)

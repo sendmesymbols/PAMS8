@@ -611,7 +611,7 @@
       "layout": "side",
       "sideOffsetPx": 24,
       "rungSpacingPx": 22,
-      "spineColor": [255, 180, 87],
+      "spineColor": [180, 180, 180],
       "spineWidth": 2,
       "spineOpacity": 0.8,
       "respectIdentity": true,
@@ -656,10 +656,10 @@
       "liftForcePoints": false,
       "liftTacticalPoints": false,
       "liftLinesAreas": false,
-      "symbolElevationOffset": 100,
+      "symbolElevationOffset": 400,
       "forcePointDropLines": true,
-      "dropLineColor": [40, 40, 40],
-      "dropLineWidth": 1.5,
+      "dropLineColor": [255, 0, 0],
+      "dropLineWidth": 2,
       "dropLineOpacity": 0.85
     },
     "layerEffects": {
