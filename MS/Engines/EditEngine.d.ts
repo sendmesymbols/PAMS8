@@ -119,7 +119,9 @@ declare class EditEngine {
      * ArcGIS SketchViewModel only supports translation when several graphics are
      * updated together, so rotate/scale of a group is otherwise unavailable.
      */
-    activateMixedEdit(graphic: Graphic, additionalGraphics?: Graphic[]): void;
+    activateMixedEdit(graphic: Graphic, additionalGraphics?: Graphic[], opts?: {
+        enableScaling?: boolean;
+    }): void;
     private _syncPointDrawEssentials;
     private _syncGeometryPoints;
     private _applyMixedCurrentTransform;

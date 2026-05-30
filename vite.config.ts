@@ -1,27 +1,11 @@
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
-import { readFileSync } from 'fs';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import terser from '@rollup/plugin-terser';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Dev-only reverse proxy for the OPTIONAL external road-network stack.
-// The road API (/api) is same-origin behind its own nginx and sends no CORS
-// header, so we proxy `/roadnet/*` → <serverUrl>/* during `vite dev`. The URL
-// lives in Settings.json (roadNetwork.serverUrl) so that file stays the single
-// source of truth; a missing/unreachable stack is non-fatal (the engine degrades).
-let roadServerUrl = 'http://localhost:8080';
-try {
-    const settings = JSON.parse(
-        readFileSync(resolve(__dirname, 'MS/Data/Settings.json'), 'utf-8'),
-    );
-    if (settings?.roadNetwork?.serverUrl) roadServerUrl = settings.roadNetwork.serverUrl;
-} catch {
-    /* fall back to default; proxy target just won't resolve if the stack is down */
-}
 
 export default defineConfig({
     build: {
@@ -86,7 +70,7 @@ export default defineConfig({
         port: 6547,
         proxy: {
             '/roadnet': {
-                target: roadServerUrl,
+                target: 'http://localhost:8080',
                 changeOrigin: true,
                 rewrite: (p) => p.replace(/^\/roadnet/, ''),
             },

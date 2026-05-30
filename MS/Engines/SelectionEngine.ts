@@ -479,7 +479,7 @@ class SelectionEngine {
     moveSelected(
         onComplete?: (result: { graphics: Graphic[]; dx: number; dy: number }) => void
     ): void {
-        if (this._selected.size < 2) return;
+        if (this._selected.size === 0) return;
         EngineLogger.nextStep(
             'Selection Engine',
             `Move mode — drag to reposition ${this._selected.size} selected symbols`,
@@ -1244,7 +1244,7 @@ class SelectionEngine {
                         label: () => `Move Selected (${this.count})`,
                         shortcut: 'M',
                         icon: '<span class="menu-icon-text">✣</span>',
-                        visible: () => this.count > 1,
+                        visible: () => this.count > 0,
                         action: (_graphic: any) => {
                             closeActiveWorkflow();
                             this.moveSelected(({ graphics, dx, dy }) =>

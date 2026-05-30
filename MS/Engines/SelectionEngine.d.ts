@@ -198,6 +198,13 @@ declare class SelectionEngine {
     _applyDelta(graphics: Graphic[], dx: number, dy: number): void;
     private _boundingBox;
     private _bboxToPolygon;
+    /**
+     * Locate the GraphicsLayer that currently contains `graphic` by scanning
+     * managed layers. Required for ArcGIS 5.0 where `Graphic.layer` was removed
+     * and `Graphic.origin` is only populated for feature-query / sketch-derived
+     * graphics — not for plain `new Graphic({...})` added to a GraphicsLayer.
+     */
+    private _findContainingLayer;
     private _addHighlight;
     private _removeHighlight;
     private _pushAlignUndo;

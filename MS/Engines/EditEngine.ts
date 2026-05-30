@@ -387,7 +387,7 @@ class EditEngine {
         });
     }
 
-    private _activateMixedEditSession(graphic: Graphic, additionalGraphics: Graphic[] = []): void {
+    private _activateMixedEditSession(graphic: Graphic, additionalGraphics: Graphic[] = [], enableScaling: boolean = true): void {
         const allGraphics = [graphic, ...additionalGraphics];
         this._mixedSnapshots = allGraphics.map(g => {
             const de = this._getDrawEssentials(g);
@@ -419,7 +419,7 @@ class EditEngine {
             view: this.view,
             layer: this._handleLayer,
             defaultUpdateOptions: {
-                enableScaling: true,
+                enableScaling: enableScaling,
                 preserveAspectRatio: true,
                 enableRotation: true,
                 toggleToolOnClick: false,
@@ -429,7 +429,7 @@ class EditEngine {
 
         this._sketchVM.update([proxy], {
             tool: "transform",
-            enableScaling: true,
+            enableScaling: enableScaling,
             preserveAspectRatio: true,
             enableRotation: true,
             toggleToolOnClick: false,
@@ -528,12 +528,22 @@ class EditEngine {
      * ArcGIS SketchViewModel only supports translation when several graphics are
      * updated together, so rotate/scale of a group is otherwise unavailable.
      */
-    public activateMixedEdit(graphic: Graphic, additionalGraphics: Graphic[] = []): void {
+    public activateMixedEdit(
+        graphic: Graphic,
+        additionalGraphics: Graphic[] = [],
+        opts: { enableScaling?: boolean } = {}
+    ): void {
         this.deactivate();
         this._activeGraphic = graphic;
         this._isMixedEdit = true;
-        this._activateMixedEditSession(graphic, additionalGraphics);
-        EngineLogger.nextStep('Edit Engine', 'Group transform active — drag to move, rotate or scale');
+        const enableScaling = opts.enableScaling !== false;
+        this._activateMixedEditSession(graphic, additionalGraphics, enableScaling);
+        EngineLogger.nextStep(
+            'Edit Engine',
+            enableScaling
+                ? 'Group transform active — drag to move, rotate or scale'
+                : 'Transform active — drag to move or rotate'
+        );
         this._showModeBanner('mixed-edit');
         this._installEscListener();
     }

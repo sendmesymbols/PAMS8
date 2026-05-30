@@ -323,11 +323,10 @@ class SymbolEngine implements Evented {
     // Conditionally load VisualizationEngine based on Settings.json feature flag
     this._initVisualizationEngine();
 
-    // Conditionally load RoadNetworkEngine (external pgRouting service — optional/intermittent)
+    // Conditionally load RoadNetworkEngine (external pgRouting service — optional/intermittent).
+    // It probes the backend before attaching anything road-dependent (TrafficabilityEngine,
+    // roads reference layer); when the server is gone these never spin up.
     this._initRoadNetworkEngine();
-
-    // Conditionally load TrafficabilityEngine (widget over the road network — degrades gracefully)
-    this._initTrafficabilityEngine();
 
     // Conditionally load DeploymentBuilderEngine based on Settings.json feature flag
     this._initDeploymentBuilderEngine();
@@ -725,16 +724,23 @@ class SymbolEngine implements Evented {
       enabled: true,
     });
     this._roadNetworkEngine.initialize(this.view);
-    // Show the reference roads layer if requested. Best-effort: a down backend
-    // logs an error and removes the layer — never blocks startup.
-    if (cfg.showRoadsLayer !== false) {
-      void this._roadNetworkEngine.showRoadsLayer();
-    }
-    // Probe availability in the background so widgets get an early status badge.
-    void this._roadNetworkEngine.ensureAvailable();
     (window as any).roadNetworkEngine = this._roadNetworkEngine;
-    this.emitEvent('roadNetworkEngineReady', { engine: this._roadNetworkEngine });
-    console.info('[SymbolEngine] RoadNetworkEngine loaded');
+    // Probe FIRST. Only attach roads layer + Trafficability if the backend
+    // actually answers — otherwise the rest of PAMS8 stays clean: no failed
+    // GeoJSONLayer load, no orphan menu item. The engine instance is kept so
+    // a later re-probe (e.g. user toggles the feature) can bring everything up.
+    void this._roadNetworkEngine.ensureAvailable().then((up) => {
+      if (!up) {
+        console.info('[SymbolEngine] Road network backend unreachable — features gated off');
+        return;
+      }
+      if (cfg.showRoadsLayer !== false) {
+        void this._roadNetworkEngine!.showRoadsLayer();
+      }
+      this._initTrafficabilityEngine();
+      this.emitEvent('roadNetworkEngineReady', { engine: this._roadNetworkEngine });
+      console.info('[SymbolEngine] RoadNetworkEngine loaded');
+    });
   }
 
   private _initTrafficabilityEngine(): void {
@@ -1085,11 +1091,18 @@ class SymbolEngine implements Evented {
     const additional = allForEdit.slice(1);
 
     this._capturePreEditSnapshot(primary, additional, 'Move, Scale, Rotate');
-    if (additional.length > 0) {
-      this._editEngine.activateMixedEdit(primary, additional);
-    } else {
-      this._editEngine.activate(primary, additional);
-    }
+    // Always route through the proxy-based mixed-edit path so single-symbol
+    // selections get the same proxy-driven UX as 2+ selections.
+    // activateMixedEdit() accepts an empty `additional` array.
+    //
+    // For a SINGLE POINT symbol scaling is suppressed (move + rotate only) —
+    // a lone point has no meaningful extent to scale. Lines, areas, and any
+    // multi-graphic selection keep full move + rotate + scale.
+    const isSinglePoint =
+      additional.length === 0 && primary.geometry?.type === 'point';
+    this._editEngine.activateMixedEdit(primary, additional, {
+      enableScaling: !isSinglePoint,
+    });
     this._selectionActionPanel?.refresh();
   }
 
@@ -1433,23 +1446,32 @@ class SymbolEngine implements Evented {
     }
 
     if (fullPath === 'features.roadNetwork') {
-      if (this._roadNetworkEngine) {
-        this._roadNetworkEngine.updateConfig({ enabled: !!value });
-        if (value) {
-          void this._roadNetworkEngine.ensureAvailable(true);
-          if ((settingsData as any).roadNetwork?.showRoadsLayer !== false) {
-            void this._roadNetworkEngine.showRoadsLayer();
-          }
+      if (value) {
+        // Turning ON: (re-)probe the backend, and only spin up the dependent
+        // pieces (roads layer, Trafficability widget) once it actually answers.
+        if (this._roadNetworkEngine) {
+          this._roadNetworkEngine.updateConfig({ enabled: true });
+          void this._roadNetworkEngine.ensureAvailable(true).then((up) => {
+            if (!up) {
+              console.info('[SymbolEngine] Road network still unreachable on re-toggle');
+              return;
+            }
+            if ((settingsData as any).roadNetwork?.showRoadsLayer !== false) {
+              void this._roadNetworkEngine!.showRoadsLayer();
+            }
+            this._initTrafficabilityEngine();
+          });
         } else {
+          // First-time init: probe is built in.
+          this._initRoadNetworkEngine();
+        }
+      } else {
+        // Turning OFF: tear down anything attached, but keep the engine instance
+        // around so the next ON-toggle can just re-probe.
+        if (this._roadNetworkEngine) {
+          this._roadNetworkEngine.updateConfig({ enabled: false });
           this._roadNetworkEngine.hideRoadsLayer();
         }
-      } else if (value) {
-        this._initRoadNetworkEngine();
-      }
-      // The trafficability widget tracks the same feature flag.
-      if (value) {
-        this._initTrafficabilityEngine();
-      } else {
         this._trafficabilityEngine?.close();
         this._contextMenuManager?.linkTrafficabilityEngine(null);
       }
