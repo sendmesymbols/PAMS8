@@ -245,6 +245,7 @@ class SymbolEngine implements Evented {
         copySymbol: (g: Graphic) => this.copySymbol(g),
         pushUndo: (entry) => this._pushUndo(entry),
         getView: () => this.view,
+        modifySymbol: (g: Graphic) => this.modifySymbol(g),
       },
     );
     if ((settingsData as any).features?.selectionQuickToolbar !== false) {

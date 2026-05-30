@@ -448,14 +448,36 @@ class EditEngine {
                         additionalGraphics: additionalGraphics
                     });
                     this._clearMixedSessionState();
+                    // SVM fires "complete" when the user clicks outside the proxy
+                    // (not when they release a transform handle). That is the
+                    // natural "I'm done" signal — fully exit the mode here so the
+                    // banner / ESC listener don't orphan into an inert UI state.
+                    // Mirrors the click-on-map deactivation in control-points mode.
+                    this._teardownEditModeChrome();
                     break;
                 case "cancel":
                     this._restoreMixedSnapshots();
                     this._mixedSnapshots.forEach(s => this._reAnnotate(s.graphic));
                     this._clearMixedSessionState();
+                    this._teardownEditModeChrome();
                     break;
             }
         });
+    }
+
+    /**
+     * Remove the on-map mode banner, the ESC key listener, and clear the active
+     * graphic reference. Called from the SVM "complete" / "cancel" handlers (so
+     * a click outside the proxy fully exits the mode), and harmless to call
+     * again from deactivate() since each step is idempotent.
+     */
+    private _teardownEditModeChrome(): void {
+        this._removeModeBanner();
+        if (this._keydownListener) {
+            document.removeEventListener("keydown", this._keydownListener);
+            this._keydownListener = null;
+        }
+        this._activeGraphic = null;
     }
 
     // -----------------------------------------------------------------------

@@ -14,6 +14,13 @@ export interface SelectionActionPanelCallbacks {
     copySymbol: (graphic: Graphic) => void;
     pushUndo: (entry: { label: string; undo: () => void; redo: () => void }) => void;
     getView: () => MapView | SceneView;
+    /**
+     * Enter Move/Scale/Rotate. Routes through SymbolEngine.modifySymbol so the
+     * panel uses the same path as the right-click "Edit → Move, Scale, Rotate"
+     * menu — which correctly handles single-point (move+rotate via proxy),
+     * single-line/area, and any multi-selection (move+rotate+scale via proxy).
+     */
+    modifySymbol: (graphic: Graphic) => void;
 }
 
 /**
@@ -332,12 +339,11 @@ class SelectionActionPanel {
 
     private _renderTransformActions(row: HTMLElement, selected: Graphic[], category: Category): void {
         const primary = selected[0];
-        const additional = selected.slice(1);
         const pushUndo = (e: any) => this._cb.pushUndo(e);
 
         switch (category) {
-            case 'A': // Single point
-                row.appendChild(this._mkBtn('✎ Move', () => this._editEngine.activate(primary)));
+            case 'A': // Single point — move + rotate (scaling auto-suppressed for lone points)
+                row.appendChild(this._mkBtn('✎ Move, Rotate', () => this._cb.modifySymbol(primary)));
                 row.appendChild(this._mkBtn('⎘ Copy', () => this._cb.copySymbol(primary)));
                 row.appendChild(this._mkBtn('✕ Delete', () => this._deleteOne(primary), 'danger'));
                 row.appendChild(this._mkSimilarBtn(primary));
@@ -345,7 +351,7 @@ class SelectionActionPanel {
                 break;
 
             case 'B': // Single line/area
-                row.appendChild(this._mkBtn('✎ Move, Scale, Rotate', () => this._editEngine.activate(primary)));
+                row.appendChild(this._mkBtn('✎ Move, Scale, Rotate', () => this._cb.modifySymbol(primary)));
                 row.appendChild(this._mkBtn('↕ Edit Points', () => this._editEngine.activateEditControlPoints(primary)));
                 row.appendChild(this._mkBtn('⎘ Copy', () => this._cb.copySymbol(primary)));
                 row.appendChild(this._mkBtn('✕ Delete', () => this._deleteOne(primary), 'danger'));
@@ -357,14 +363,14 @@ class SelectionActionPanel {
             case 'C': // Multi points
             case 'D': // Multi lines/areas
                 row.appendChild(this._mkBtn(`✎ Move, Scale, Rotate (${selected.length})`, () =>
-                    this._editEngine.activateMixedEdit(primary, additional)));
+                    this._cb.modifySymbol(primary)));
                 row.appendChild(this._mkBtn(`✕ Delete (${selected.length})`, () =>
                     this._selectionEngine.deleteSelected((entry) => pushUndo(entry)), 'danger'));
                 break;
 
             case 'E': // Mixed
                 row.appendChild(this._mkBtn(`✎ Move, Scale, Rotate (${selected.length})`, () =>
-                    this._editEngine.activateMixedEdit(primary, additional)));
+                    this._cb.modifySymbol(primary)));
                 row.appendChild(this._mkBtn(`✕ Delete (${selected.length})`, () =>
                     this._selectionEngine.deleteSelected((entry) => pushUndo(entry)), 'danger'));
                 break;

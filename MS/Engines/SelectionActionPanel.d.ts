@@ -16,6 +16,7 @@ export interface SelectionActionPanelCallbacks {
         redo: () => void;
     }) => void;
     getView: () => MapView | SceneView;
+    modifySymbol: (graphic: Graphic) => void;
 }
 /**
  * SelectionActionPanel
