@@ -1400,8 +1400,7 @@ class EditEngine {
         el.style.cssText = `
             position: fixed;
             bottom: 70px;
-            left: 50%;
-            transform: translateX(-50%);
+            right: 20px;
             background: rgba(14,18,28,0.92);
             border: 1px solid rgba(90,140,220,0.4);
             border-radius: 9px;
