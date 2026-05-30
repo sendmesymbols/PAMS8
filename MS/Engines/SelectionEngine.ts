@@ -364,7 +364,10 @@ class SelectionEngine {
     }
 
     selectPointSymbols(): void {
-        this._selectAllMatching(g => this._getGraphicGeomType(g) === "Point");
+        this._selectAllMatching(g => {
+            const t = this._getGraphicGeomType(g);
+            return t === "Point" || t === "FPoint";
+        });
     }
 
     selectAreaSymbols(): void {

@@ -23,6 +23,65 @@ const FORMATIONS: Record<string, [number, number][] | null> = {
   'vee':      [[0,0],[-1.5,1],[1.5,1],[-3,1.8],[3,1.8]],
 };
 
+// ── Formation chip metadata ──────────────────────────────────────────────────
+// SVG icons render in a 24×24 viewBox, top = "forward / bearing direction".
+// Filled with currentColor so chips pick up the theme accent when active.
+const FORMATION_META: Array<{ key: string; label: string; svg: string; hint: string }> = [
+  {
+    key: 'as-is',
+    label: 'As-Is',
+    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="7" r="1.5"/><circle cx="13" cy="5" r="1.5"/><circle cx="18" cy="10" r="1.5"/><circle cx="9" cy="14" r="1.5"/><circle cx="16" cy="17" r="1.5"/></svg>',
+    hint: 'Symbols keep their saved layout around the anchor. Spacing adds extra radial separation; 0 keeps the original plan exactly.',
+  },
+  {
+    key: 'line',
+    label: 'Line',
+    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="3" cy="12" r="1.5"/><circle cx="8" cy="12" r="1.5"/><circle cx="13" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/><circle cx="22" cy="12" r="1.5"/></svg>',
+    hint: 'Side-by-side along the bearing. Spacing controls the gap between each unit.',
+  },
+  {
+    key: 'column',
+    label: 'Column',
+    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="3" r="1.5"/><circle cx="12" cy="8" r="1.5"/><circle cx="12" cy="13" r="1.5"/><circle cx="12" cy="18" r="1.5"/><circle cx="12" cy="22" r="1.5"/></svg>',
+    hint: 'One behind the other along the bearing. Spacing controls the gap between each unit.',
+  },
+  {
+    key: 'wedge',
+    label: 'Wedge',
+    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="4" r="1.5"/><circle cx="7" cy="11" r="1.5"/><circle cx="17" cy="11" r="1.5"/><circle cx="3" cy="18" r="1.5"/><circle cx="21" cy="18" r="1.5"/></svg>',
+    hint: 'Lead at the anchor, flanks fan behind. Spacing controls how far apart the units sit.',
+  },
+  {
+    key: 'vee',
+    label: 'Vee',
+    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="20" r="1.5"/><circle cx="7" cy="13" r="1.5"/><circle cx="17" cy="13" r="1.5"/><circle cx="3" cy="6" r="1.5"/><circle cx="21" cy="6" r="1.5"/></svg>',
+    hint: 'Lead at the anchor, arms fan toward the front. Spacing controls the spread of the arms.',
+  },
+  {
+    key: 'echelonR',
+    label: 'Ech R',
+    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="3" cy="5" r="1.5"/><circle cx="8" cy="9" r="1.5"/><circle cx="13" cy="13" r="1.5"/><circle cx="18" cy="17" r="1.5"/><circle cx="22" cy="21" r="1.5"/></svg>',
+    hint: 'Step diagonally to the right and rear. Spacing controls the step distance.',
+  },
+  {
+    key: 'echelonL',
+    label: 'Ech L',
+    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="21" cy="5" r="1.5"/><circle cx="16" cy="9" r="1.5"/><circle cx="11" cy="13" r="1.5"/><circle cx="6" cy="17" r="1.5"/><circle cx="2" cy="21" r="1.5"/></svg>',
+    hint: 'Step diagonally to the left and rear. Spacing controls the step distance.',
+  },
+];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  own:       'Own Forces',
+  en:        'Enemy',
+  attack:    'Attack',
+  defence:   'Defence',
+  logistic:  'Logistic',
+  exercises: 'Exercises',
+  imported:  'Imported',
+  other:     'Other',
+};
+
 const ENGINE_NAME = 'DeploymentManager';
 
 interface PlanEntry {
@@ -153,7 +212,8 @@ class DeploymentBuilderEngine {
     if (!this._widget) {
       this._buildWidget();
     } else {
-      this._widget.style.display = 'block';
+      this._widget.classList.add('ms-visible');
+      this._widget.style.removeProperty('display');
       this._minimized = false;
       this._applyMinimizeState();
     }
@@ -162,7 +222,7 @@ class DeploymentBuilderEngine {
 
   private _closeWidget(): void {
     if (this._widget) {
-      this._widget.style.display = 'none';
+      this._widget.classList.remove('ms-visible');
     }
     this._cancelPlacement();
   }
@@ -174,180 +234,125 @@ class DeploymentBuilderEngine {
 
   private _applyMinimizeState(): void {
     if (!this._widget) return;
-    const body = this._widget.querySelector('.db-body') as HTMLElement | null;
-    const minBtn = this._widget.querySelector('.db-btn-min') as HTMLElement | null;
-    if (body) body.style.display = this._minimized ? 'none' : 'flex';
+    const body = this._widget.querySelector('.ms-body') as HTMLElement | null;
+    const minBtn = this._widget.querySelector('#db-min-btn') as HTMLElement | null;
+    if (body) body.classList.toggle('ms-minimized', this._minimized);
     if (minBtn) minBtn.textContent = this._minimized ? '▶' : '▼';
+    this._widget.classList.toggle('db-minimized', this._minimized);
     this._widget.style.height = this._minimized ? 'auto' : this._widgetHeight;
   }
 
   private _buildWidget(): void {
+    this._injectWidgetStyles();
+
     const el = document.createElement('div');
     el.id = 'deploymentBuilderWidget';
-    el.style.cssText = `
-      position: fixed;
-      top: 110px;
-      left: 60px;
-      width: 520px;
-      height: ${this._widgetHeight};
-      min-width: 380px;
-      min-height: 240px;
-      max-width: 90vw;
-      max-height: 90vh;
-      background: var(--ms-bg);
-      border: 1px solid var(--ms-border);
-      border-radius: var(--ms-radius);
-      box-shadow: var(--ms-shadow);
-      z-index: 1200;
-      font-family: var(--ms-font);
-      font-size: var(--ms-fs);
-      color: var(--ms-text);
-      user-select: none;
-      display: flex;
-      flex-direction: column;
-      overflow: visible;
-    `;
+    el.className = 'ms-panel ms-theme-ops-dark ms-visible';
+    el.setAttribute('data-engine', 'deployment-builder');
+
+    const chips = FORMATION_META.map((f) => `
+      <button class="db-chip${f.key === this._formationType ? ' active' : ''}" data-form="${f.key}" title="${f.hint}">
+        <span class="db-chip-icon">${f.svg}</span>
+        <span class="db-chip-label">${f.label}</span>
+      </button>
+    `).join('');
 
     el.innerHTML = `
-      <div class="db-header" style="
-        display:flex;align-items:center;justify-content:space-between;
-        padding:9px 12px;background:var(--ms-bg-header);
-        border-bottom:1px solid var(--ms-divider);
-        border-radius:var(--ms-radius) var(--ms-radius) 0 0;cursor:grab;
-      ">
-        <span style="font-weight:700;color:var(--ms-accent);font-size:var(--ms-fs-sm)">Deployment Manager</span>
-        <div style="display:flex;gap:6px">
-          <button class="db-btn-help" style="
-            background:none;border:1px solid var(--ms-border);border-radius:4px;
-            color:var(--ms-text-dim);width:22px;height:22px;cursor:pointer;font-size:var(--ms-fs);
-            display:flex;align-items:center;justify-content:center;
-          " title="Help">?</button>
-          <button class="db-btn-min" style="
-            background:none;border:1px solid var(--ms-border);border-radius:4px;
-            color:var(--ms-text-dim);width:22px;height:22px;cursor:pointer;font-size:var(--ms-fs);
-            display:flex;align-items:center;justify-content:center;
-          " title="Minimize">▼</button>
-          <button class="db-btn-close" style="
-            background:none;border:1px solid var(--ms-border);border-radius:4px;
-            color:var(--ms-text-dim);width:22px;height:22px;cursor:pointer;font-size:var(--ms-fs);
-            display:flex;align-items:center;justify-content:center;
-          " title="Close">✕</button>
-        </div>
+      <div class="ms-header" id="db-drag-handle">
+        <div class="ms-header-icon">DEP</div>
+        <div class="ms-header-title">Deployment Mgr</div>
+        <div class="ms-status-dot" id="db-status-dot"></div>
+        <div class="ms-status-lbl" id="db-status-lbl">Idle</div>
+        <button class="ms-header-btn ms-btn-round" id="db-help-btn" title="How it works">?</button>
+        <button class="ms-header-btn ms-btn-round" id="db-min-btn" title="Minimize">▼</button>
+        <button class="ms-header-btn ms-btn-round" id="db-close-btn" title="Close">✕</button>
       </div>
 
-      <div class="db-help-popover" style="
-        display:none;position:absolute;top:42px;right:12px;width:340px;
-        background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:var(--ms-radius);
-        box-shadow:var(--ms-shadow);padding:12px 14px;z-index:10;
-        font-size:var(--ms-fs-sm);color:var(--ms-text-dim);line-height:1.55;
-      ">
-        <div style="font-weight:700;color:var(--ms-accent);font-size:var(--ms-fs);margin-bottom:6px">About Deployment Manager</div>
-        <div style="margin-bottom:8px">Place pre-built tactical plans onto the map at a chosen anchor and bearing.</div>
-        <div style="font-weight:600;color:var(--ms-text);margin-bottom:3px">Flow</div>
-        <div style="margin-bottom:8px">1. Click map to set <strong>anchor</strong>. 2. Move cursor and click to set <strong>bearing</strong>. (As-Is skips step 2.)</div>
-        <div style="font-weight:600;color:var(--ms-text);margin-bottom:3px">Formations</div>
-        <div style="font-size:var(--ms-fs-xs);margin-bottom:8px">
-          <div><strong>Line</strong> — side-by-side along bearing</div>
-          <div><strong>Column</strong> — one behind another along bearing</div>
-          <div><strong>Wedge</strong> — lead at anchor, flanks behind</div>
-          <div><strong>Echelon R/L</strong> — step diagonally right/left rear</div>
-          <div><strong>Vee</strong> — lead at anchor, arms fan to rear</div>
-          <div><strong>As-Is</strong> — keep original plan layout</div>
-        </div>
-        <div style="font-size:var(--ms-fs-xs)">
-          <div><strong>Right-click</strong> during bearing resets the anchor.</div>
-          <div><strong>Esc</strong> cancels placement.</div>
-          <div><strong>Spacing</strong> applies to all modes.</div>
-        </div>
-      </div>
-
-      <div class="db-body" style="display:flex;flex:1;overflow:hidden;min-height:0;">
-        <!-- Left column: plan list -->
-        <div class="db-left" style="
-          width:260px;flex-shrink:0;border-right:1px solid var(--ms-divider);
-          display:flex;flex-direction:column;
-        ">
-          <div style="padding:8px 10px;border-bottom:1px solid var(--ms-divider)">
-            <input class="db-search" type="text" placeholder="SRH Search plans..." style="
-              width:100%;box-sizing:border-box;background:var(--ms-bg-input);
-              border:1px solid var(--ms-border);border-radius:5px;
-              color:var(--ms-text);font-size:var(--ms-fs-sm);padding:5px 8px;outline:none;
-            " />
-            <button class="db-btn-import-plan" style="
-              width:100%;margin-top:7px;padding:5px 8px;background:var(--ms-bg-input);
-              border:1px solid var(--ms-border);border-radius:5px;
-              color:var(--ms-text-dim);font-size:var(--ms-fs-sm);cursor:pointer;font-weight:600;
-            " title="Use a local JSON file saved with Save Plan">Use Saved Plan...</button>
+      <div class="ms-help-popover" id="db-help-popover" hidden>
+        <div class="ms-help-head">
+          <div>
+            <div class="ms-help-kicker">Field Guide</div>
+            <div class="ms-help-title">Deployment Manager</div>
           </div>
-          <div class="db-plan-list" style="flex:1;overflow-y:auto;padding:4px 0;"></div>
+          <button class="ms-help-close" id="db-help-close" title="Close">✕</button>
         </div>
+        <div class="ms-help-body">
+          <p>Drop pre-built tactical plans onto the map at a chosen anchor and bearing. Spacing controls unit separation in every formation.</p>
+          <p><strong style="color:var(--ms-accent)">Workflow</strong></p>
+          <ol>
+            <li>Pick a plan from the list on the left.</li>
+            <li>Pick a formation and spacing on the right.</li>
+            <li>Click <strong>Place on Map</strong>, then click the map to set anchor.</li>
+            <li>Move the cursor and click again to set bearing. As-Is skips this step.</li>
+          </ol>
+          <p><strong style="color:var(--ms-accent)">Formations</strong></p>
+          <ul style="list-style:none;padding:0;margin:0 0 9px">
+            <li><strong>As-Is</strong> — keep the plan's original layout</li>
+            <li><strong>Line / Column</strong> — across or along the bearing</li>
+            <li><strong>Wedge</strong> — lead at anchor, flanks behind</li>
+            <li><strong>Vee</strong> — lead at anchor, arms toward the front</li>
+            <li><strong>Ech R / Ech L</strong> — diagonal steps to right or left rear</li>
+          </ul>
+          <p><strong style="color:var(--ms-accent)">Shortcuts</strong></p>
+          <ul style="list-style:none;padding:0;margin:0">
+            <li><strong>Right-click</strong> during bearing — reset to anchor pick</li>
+            <li><strong>Esc</strong> — cancel placement</li>
+          </ul>
+        </div>
+      </div>
 
-        <!-- Right column: info + placement -->
-        <div class="db-right" style="flex:1;display:flex;flex-direction:column;padding:12px;">
-          <div class="db-info" style="flex:1;">
-            <div style="color:var(--ms-text-label);font-size:var(--ms-fs-xs);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">⚙ Formation Options</div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-              <label style="color:var(--ms-text-dim);font-size:var(--ms-fs-sm)">Formation</label>
-              <select class="db-formation" style="
-                background:var(--ms-bg-input);border:1px solid var(--ms-border);
-                border-radius:4px;color:var(--ms-text);font-size:var(--ms-fs-sm);padding:3px 6px;cursor:pointer;
-              ">
-                <option value="as-is">As-Is (Original)</option>
-                <option value="line">Line</option>
-                <option value="column">Column</option>
-                <option value="wedge">Wedge</option>
-                <option value="echelonR">Echelon Right</option>
-                <option value="echelonL">Echelon Left</option>
-                <option value="vee">Vee</option>
+      <div class="ms-body" id="db-body">
+        <div class="db-cols">
+          <!-- Left: plan picker -->
+          <div class="db-left">
+            <div class="db-toolbar">
+              <input class="ms-input db-search" type="text" placeholder="Search plans…" autocomplete="off" />
+              <button class="ms-btn db-btn-import" title="Use a local Save Plan JSON">Use Saved Plan…</button>
+            </div>
+            <div class="db-plan-list"></div>
+          </div>
+
+          <!-- Right: configure & place -->
+          <div class="db-right">
+            <div class="ms-section-title">Formation</div>
+            <div class="db-chip-grid">${chips}</div>
+            <div class="ms-hint db-form-hint"></div>
+
+            <div class="ms-section-title">Spacing</div>
+            <div class="db-spacing-row">
+              <input class="ms-input db-spacing-val" type="number" value="0" min="0" step="1" />
+              <select class="ms-select db-spacing-unit">
+                <option value="m">m</option>
+                <option value="km">km</option>
+                <option value="mi">mi</option>
+                <option value="nm">nm</option>
               </select>
             </div>
-            <div class="db-formation-hint" style="
-              display:block;font-size:var(--ms-fs-xs);color:var(--ms-text-label);
-              background:rgba(100,180,255,0.07);border:1px solid var(--ms-border);
-              border-radius:4px;padding:5px 8px;margin-bottom:6px;line-height:1.5;
-            "></div>
-            <div class="db-spacing-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;opacity:0.4;">
-              <label style="color:var(--ms-text-dim);font-size:var(--ms-fs-sm)">Spacing</label>
-              <div style="display:flex;gap:5px;align-items:center">
-                <input class="db-spacing-val" type="number" value="0" min="0" step="1" style="
-                  width:64px;background:var(--ms-bg-input);border:1px solid var(--ms-border);
-                  border-radius:4px;color:var(--ms-text);font-size:var(--ms-fs-sm);
-                  padding:3px 6px;outline:none;box-sizing:border-box;
-                " />
-                <select class="db-spacing-unit" style="
-                  background:var(--ms-bg-input);border:1px solid var(--ms-border);
-                  border-radius:4px;color:var(--ms-text);font-size:var(--ms-fs-sm);padding:3px 5px;cursor:pointer;
-                ">
-                  <option value="m">m</option>
-                  <option value="km">km</option>
-                  <option value="mi">mi</option>
-                  <option value="nm">nm</option>
-                </select>
+
+            <div class="ms-divider"></div>
+
+            <div class="ms-section-title">Selected Plan</div>
+            <div class="db-plan-summary">
+              <div class="db-plan-name empty">No plan selected</div>
+              <div class="db-plan-desc"></div>
+              <div class="ms-info-grid">
+                <div class="ms-info-item">
+                  <div class="ms-info-label">Symbols</div>
+                  <div class="ms-info-value db-plan-syms">—</div>
+                </div>
+                <div class="ms-info-item">
+                  <div class="ms-info-label">Category</div>
+                  <div class="ms-info-value db-plan-cat">—</div>
+                </div>
               </div>
             </div>
 
-            <div style="border-top:1px solid var(--ms-divider);padding-top:10px;">
-              <div class="db-selected-name" style="font-weight:700;color:var(--ms-accent);margin-bottom:4px;font-size:var(--ms-fs)">No plan selected</div>
-              <div class="db-selected-desc" style="color:var(--ms-text-dim);font-size:var(--ms-fs-sm);min-height:32px;"></div>
-              <div class="db-selected-count" style="color:var(--ms-text-label);font-size:var(--ms-fs-xs);margin-top:4px;"></div>
+            <div class="ms-hint db-status"></div>
+
+            <div class="ms-btn-row">
+              <button class="ms-btn danger db-btn-cancel">Cancel</button>
+              <button class="ms-btn primary db-btn-place" disabled>Place on Map ↗</button>
             </div>
-          </div>
-
-          <div class="db-status" style="
-            font-size:var(--ms-fs-sm);color:var(--ms-warning);min-height:18px;margin-bottom:8px;
-          "></div>
-
-          <div style="display:flex;gap:8px">
-            <button class="db-btn-place" disabled style="
-              flex:1;padding:7px 0;background:var(--ms-bg-input);
-              border:1px solid var(--ms-border);border-radius:6px;
-              color:var(--ms-text-dim);font-size:var(--ms-fs);cursor:not-allowed;font-weight:600;
-            ">Place on Map</button>
-            <button class="db-btn-cancel" style="
-              padding:7px 14px;background:var(--ms-bg-input);
-              border:1px solid var(--ms-danger);border-radius:6px;
-              color:var(--ms-danger);font-size:var(--ms-fs);cursor:pointer;
-            ">Cancel</button>
           </div>
         </div>
       </div>
@@ -361,25 +366,29 @@ class DeploymentBuilderEngine {
     this._widget = el;
 
     // Wire header buttons
-    el.querySelector('.db-btn-close')!.addEventListener('click', () => this._closeWidget());
-    el.querySelector('.db-btn-min')!.addEventListener('click', () => this._minimizeWidget());
-    const helpBtn = el.querySelector('.db-btn-help') as HTMLElement | null;
-    const helpPop = el.querySelector('.db-help-popover') as HTMLElement | null;
+    el.querySelector('#db-close-btn')!.addEventListener('click', () => this._closeWidget());
+    el.querySelector('#db-min-btn')!.addEventListener('click', () => this._minimizeWidget());
+
+    // Help popover (toggled via hidden attribute, click-outside to dismiss)
+    const helpBtn = el.querySelector('#db-help-btn') as HTMLElement | null;
+    const helpPop = el.querySelector('#db-help-popover') as HTMLElement | null;
+    const helpClose = el.querySelector('#db-help-close') as HTMLElement | null;
     if (helpBtn && helpPop) {
       helpBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        helpPop.style.display = helpPop.style.display === 'none' ? 'block' : 'none';
+        helpPop.hidden = !helpPop.hidden;
       });
+      helpClose?.addEventListener('click', () => { helpPop.hidden = true; });
       document.addEventListener('click', (e) => {
-        if (!helpPop) return;
-        if (helpPop.style.display === 'block' && !helpPop.contains(e.target as Node) && e.target !== helpBtn) {
-          helpPop.style.display = 'none';
+        if (helpPop.hidden) return;
+        if (!helpPop.contains(e.target as Node) && e.target !== helpBtn) {
+          helpPop.hidden = true;
         }
       });
     }
 
-    // Drag
-    this._makeDraggable(el.querySelector('.db-header') as HTMLElement, el);
+    // Drag (header is the handle)
+    this._makeDraggable(el.querySelector('#db-drag-handle') as HTMLElement, el);
 
     // Resize
     this._makeResizable(el);
@@ -390,41 +399,24 @@ class DeploymentBuilderEngine {
       this._searchText = searchEl.value.toLowerCase();
       this._renderPlanList();
     });
-    el.querySelector('.db-btn-import-plan')!.addEventListener('click', () => this._importSavedPlanFromFile());
+    el.querySelector('.db-btn-import')!.addEventListener('click', () => this._importSavedPlanFromFile());
 
-    // Formation descriptions (shown for non-as-is)
-    const FORMATION_HINTS: Record<string, string> = {
-      'as-is':    'PIN Symbols placed at their original relative positions around the anchor. Spacing and bearing have no effect.',
-      'line':     'BRG Symbols arranged side-by-side along the bearing direction. Spacing controls the gap between each unit.',
-      'column':   'BRG Symbols arranged one behind the other along the bearing direction. Spacing controls the gap between each unit.',
-      'wedge':    'BRG Lead unit at anchor, two flanks spread behind. Spacing controls how far apart the units are.',
-      'echelonR': 'BRG Units step diagonally to the right and rear. Spacing controls the step distance between each unit.',
-      'echelonL': 'BRG Units step diagonally to the left and rear. Spacing controls the step distance between each unit.',
-      'vee':      'BRG Lead unit at anchor, two arms fan out to the rear. Spacing controls the spread of the arms.',
+    // Formation chips
+    const chipGrid = el.querySelector('.db-chip-grid') as HTMLElement;
+    const formHint = el.querySelector('.db-form-hint') as HTMLElement;
+
+    const syncFormationUI = (key: string) => {
+      this._formationType = key;
+      const meta = FORMATION_META.find((f) => f.key === key);
+      formHint.textContent = meta?.hint ?? '';
+      chipGrid.querySelectorAll<HTMLElement>('.db-chip').forEach((c) => {
+        c.classList.toggle('active', c.dataset.form === key);
+      });
     };
-
-    FORMATION_HINTS['as-is'] = 'Symbols keep their saved layout around the anchor. Spacing adds separation between symbols; 0 keeps the original plan exactly.';
-
-    const formEl = el.querySelector('.db-formation') as HTMLSelectElement;
-    const formHint = el.querySelector('.db-formation-hint') as HTMLElement;
-    const spacingRow = el.querySelector('.db-spacing-row') as HTMLElement;
-
-    const syncFormationUI = () => {
-      const val = formEl.value;
-      this._formationType = val;
-      const isAsIs = val === 'as-is';
-      // Always show hint — describes what the formation does
-      formHint.textContent = FORMATION_HINTS[val] ?? '';
-      formHint.style.display = 'block';
-      formHint.style.borderColor = isAsIs ? 'var(--ms-border)' : 'rgba(100,180,255,0.3)';
-      formHint.style.color = isAsIs ? 'var(--ms-text-label)' : 'rgba(160,210,255,0.9)';
-      // Spacing applies to every mode; As-Is treats it as extra radial separation.
-      spacingRow.style.opacity = '1';
-      spacingRow.style.pointerEvents = '';
-    };
-
-    formEl.addEventListener('change', syncFormationUI);
-    syncFormationUI(); // apply initial state immediately
+    chipGrid.querySelectorAll<HTMLElement>('.db-chip').forEach((chip) => {
+      chip.addEventListener('click', () => syncFormationUI(chip.dataset.form ?? 'as-is'));
+    });
+    syncFormationUI(this._formationType);
 
     // Spacing: numeric input + unit select
     const spacingValEl = el.querySelector('.db-spacing-val') as HTMLInputElement;
@@ -441,8 +433,6 @@ class DeploymentBuilderEngine {
     // Place / Cancel
     el.querySelector('.db-btn-place')!.addEventListener('click', () => this._onPlaceClicked());
     el.querySelector('.db-btn-cancel')!.addEventListener('click', () => this._cancelPlacement());
-
-    this._injectWidgetStyles();
   }
 
   private _injectWidgetStyles(): void {
@@ -450,35 +440,178 @@ class DeploymentBuilderEngine {
     const style = document.createElement('style');
     style.id = 'db-widget-styles';
     style.textContent = `
-      #deploymentBuilderWidget .db-category-header {
-        padding: 6px 10px 4px;
-        font-size: var(--ms-fs-xs); font-weight: 700;
-        color: var(--ms-text-label); text-transform: uppercase; letter-spacing: 1px;
-        cursor: pointer; display: flex; align-items: center; gap: 4px;
+      /* Override ms-panel defaults — wider for two-column layout, custom position */
+      #deploymentBuilderWidget {
+        top: 110px; left: 60px;
+        width: 560px; height: 500px;
+        min-width: 440px; min-height: 320px;
+        max-width: 90vw; max-height: 90vh;
+        z-index: 1200;
+        overflow: visible;
       }
-      #deploymentBuilderWidget .db-category-header:hover { color: var(--ms-text-dim); }
-      #deploymentBuilderWidget .db-plan-item {
-        padding: 5px 14px;
-        font-size: var(--ms-fs); color: var(--ms-text-dim); cursor: pointer;
-        transition: background 0.1s;
-      }
-      #deploymentBuilderWidget .db-plan-item:hover { background: var(--ms-accent-dim); color: var(--ms-text); }
-      #deploymentBuilderWidget .db-plan-item.active {
-        background: var(--ms-accent-dim);
-        color: var(--ms-text);
-        border-left: 2px solid var(--ms-accent);
-      }
-      #deploymentBuilderWidget .db-search:focus {
-        border-color: var(--ms-accent) !important;
-        box-shadow: 0 0 0 2px var(--ms-accent-dim);
-      }
-      #deploymentBuilderWidget .db-btn-import-plan:hover {
-        border-color: var(--ms-accent);
-        color: var(--ms-text);
-        background: var(--ms-accent-dim);
-      }
-      #deploymentBuilderWidget .db-formation option { background: var(--ms-bg); }
+      #deploymentBuilderWidget.db-minimized .db-resize-handle { display: none; }
 
+      /* Body becomes a row-flex container; columns scroll independently */
+      #deploymentBuilderWidget .ms-body {
+        padding: 0; overflow: hidden; min-height: 0;
+        display: flex; flex-direction: column;
+      }
+      #deploymentBuilderWidget .db-cols {
+        display: flex; flex: 1; min-height: 0; overflow: hidden;
+      }
+
+      /* Left column: plan picker */
+      #deploymentBuilderWidget .db-left {
+        width: 232px; flex-shrink: 0;
+        border-right: 1px solid var(--ms-divider);
+        display: flex; flex-direction: column; min-width: 0;
+      }
+      #deploymentBuilderWidget .db-toolbar {
+        padding: 9px 10px;
+        border-bottom: 1px solid var(--ms-divider);
+        display: flex; flex-direction: column; gap: 6px;
+      }
+      #deploymentBuilderWidget .db-toolbar .ms-input { padding: 6px 8px; }
+      #deploymentBuilderWidget .db-toolbar .ms-btn  { padding: 6px 8px; }
+      #deploymentBuilderWidget .db-plan-list {
+        flex: 1; overflow-y: auto; padding: 4px 0;
+      }
+      #deploymentBuilderWidget .db-category-header {
+        padding: 9px 12px 4px;
+        font-size: var(--ms-fs-xs); font-weight: 700;
+        color: var(--ms-text-label);
+        text-transform: uppercase; letter-spacing: 0.1em;
+        cursor: pointer; user-select: none;
+        display: flex; align-items: center; gap: 6px;
+        transition: var(--ms-transition);
+      }
+      #deploymentBuilderWidget .db-category-header:hover { color: var(--ms-accent); }
+      #deploymentBuilderWidget .db-category-header .db-caret {
+        font-size: 8px; transition: transform 0.15s; opacity: 0.7;
+      }
+      #deploymentBuilderWidget .db-category-header.collapsed .db-caret {
+        transform: rotate(-90deg);
+      }
+      #deploymentBuilderWidget .db-plan-item {
+        padding: 6px 12px 6px 18px;
+        font-size: var(--ms-fs);
+        color: var(--ms-text-dim);
+        cursor: pointer;
+        transition: var(--ms-transition);
+        border-left: 2px solid transparent;
+      }
+      #deploymentBuilderWidget .db-plan-item:hover {
+        background: rgba(239, 159, 39, 0.06);
+        color: var(--ms-text);
+      }
+      #deploymentBuilderWidget .db-plan-item.active {
+        background: rgba(239, 159, 39, 0.14);
+        color: var(--ms-text);
+        border-left-color: var(--ms-accent);
+      }
+      #deploymentBuilderWidget .db-list-loading,
+      #deploymentBuilderWidget .db-list-empty {
+        padding: 14px 12px;
+        color: var(--ms-text-dim);
+        font-size: var(--ms-fs-xs);
+        font-style: italic;
+        text-align: center;
+      }
+
+      /* Right column: configure */
+      #deploymentBuilderWidget .db-right {
+        flex: 1; min-width: 0;
+        display: flex; flex-direction: column;
+        overflow-y: auto;
+      }
+      #deploymentBuilderWidget .db-right .ms-section-title:first-child { padding-top: 9px; }
+
+      /* Formation chip grid */
+      #deploymentBuilderWidget .db-chip-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        padding: 0 12px 4px;
+      }
+      #deploymentBuilderWidget .db-chip {
+        display: flex; flex-direction: column; align-items: center; gap: 3px;
+        padding: 7px 4px 5px;
+        background: var(--ms-bg-input);
+        border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius-sm);
+        color: var(--ms-text-dim);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: var(--ms-fs-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 600;
+        transition: var(--ms-transition);
+        min-width: 0;
+      }
+      #deploymentBuilderWidget .db-chip-icon {
+        display: flex; align-items: center; justify-content: center;
+        opacity: 0.7; transition: opacity var(--ms-transition);
+      }
+      #deploymentBuilderWidget .db-chip-icon svg {
+        width: 26px; height: 26px;
+      }
+      #deploymentBuilderWidget .db-chip:hover {
+        border-color: var(--ms-accent); color: var(--ms-text);
+      }
+      #deploymentBuilderWidget .db-chip:hover .db-chip-icon { opacity: 1; }
+      #deploymentBuilderWidget .db-chip:active { transform: scale(0.97); }
+      #deploymentBuilderWidget .db-chip.active {
+        border-color: var(--ms-accent);
+        background: rgba(239, 159, 39, 0.14);
+        color: var(--ms-accent);
+      }
+      #deploymentBuilderWidget .db-chip.active .db-chip-icon { opacity: 1; }
+
+      /* Spacing row */
+      #deploymentBuilderWidget .db-spacing-row {
+        display: flex; gap: 6px; padding: 0 12px 6px;
+        align-items: center;
+      }
+      #deploymentBuilderWidget .db-spacing-row .ms-input {
+        flex: 1; padding: 5px 8px;
+      }
+      #deploymentBuilderWidget .db-spacing-row .ms-select {
+        width: 64px; flex-shrink: 0; padding: 5px 6px;
+      }
+
+      /* Plan summary */
+      #deploymentBuilderWidget .db-plan-summary {
+        padding: 2px 12px 4px;
+      }
+      #deploymentBuilderWidget .db-plan-name {
+        font-size: var(--ms-fs-sm);
+        color: var(--ms-text);
+        font-weight: 700;
+        margin-bottom: 3px;
+      }
+      #deploymentBuilderWidget .db-plan-name.empty {
+        color: var(--ms-text-label);
+        font-weight: 500; font-style: italic;
+      }
+      #deploymentBuilderWidget .db-plan-desc {
+        font-size: var(--ms-fs-xs);
+        color: var(--ms-text-dim);
+        line-height: 1.4;
+        margin-bottom: 6px;
+        min-height: 18px;
+      }
+      #deploymentBuilderWidget .db-plan-summary .ms-info-grid {
+        padding: 4px 0 0;
+      }
+
+      /* Status / action row */
+      #deploymentBuilderWidget .db-status:empty { display: none; }
+      #deploymentBuilderWidget .ms-btn-row { padding: 6px 12px 12px; gap: 6px; }
+      #deploymentBuilderWidget .db-btn-place { flex: 2; }
+      #deploymentBuilderWidget .db-btn-cancel { flex: 1; }
+
+      /* Resize handles */
       #deploymentBuilderWidget .db-resize-handle {
         position: absolute;
         z-index: 20;
@@ -487,7 +620,7 @@ class DeploymentBuilderEngine {
       }
       #deploymentBuilderWidget .db-resize-handle:hover,
       #deploymentBuilderWidget .db-resize-handle:active {
-        background: rgba(100,180,255,0.18);
+        background: rgba(239, 159, 39, 0.18);
       }
       #deploymentBuilderWidget .db-resize-e {
         top: 8px; right: -4px; bottom: 8px; width: 8px; cursor: ew-resize;
@@ -503,9 +636,10 @@ class DeploymentBuilderEngine {
         position: absolute;
         bottom: 4px; right: 4px;
         width: 7px; height: 7px;
-        border-right: 2px solid rgba(100,180,255,0.55);
-        border-bottom: 2px solid rgba(100,180,255,0.55);
+        border-right: 2px solid var(--ms-accent);
+        border-bottom: 2px solid var(--ms-accent);
         border-radius: 1px;
+        opacity: 0.55;
       }
     `;
     document.head.appendChild(style);
@@ -629,7 +763,7 @@ class DeploymentBuilderEngine {
 
   private async _loadRegistryIntoWidget(): Promise<void> {
     const list = this._widget?.querySelector('.db-plan-list') as HTMLElement | null;
-    if (list) list.innerHTML = '<div style="padding:12px;color:var(--ms-text-label);font-size:var(--ms-fs-sm)">Loading plans…</div>';
+    if (list) list.innerHTML = '<div class="db-list-loading">Loading plans…</div>';
     const plans = await this._loadRegistry();
     console.log('[DeploymentBuilder] Registry loaded:', plans.length, 'plans from', this._registryBaseUrl + 'Deployemets.json');
     this._renderPlanList(plans);
@@ -652,20 +786,19 @@ class DeploymentBuilderEngine {
 
     list.innerHTML = '';
     if (filtered.length === 0) {
-      list.innerHTML = '<div style="padding:12px;color:var(--ms-text-dim);font-style:italic;font-size:var(--ms-fs-sm)">No plans found</div>';
+      const empty = document.createElement('div');
+      empty.className = 'db-list-empty';
+      empty.textContent = this._searchText ? 'No matching plans' : 'No plans available';
+      list.appendChild(empty);
       return;
     }
 
-    const categoryLabels: Record<string, string> = {
-      own: '▼ Own Forces', en: '▼ Enemy', attack: '▼ Attack',
-      defence: '▼ Defence', logistic: '▼ Logistic', exercises: '▼ Exercises', other: '▼ Other',
-    };
-
-    Object.keys(grouped).forEach(cat => {
+    Object.keys(grouped).forEach((cat) => {
       const isCollapsed = this._collapsedCategories.has(cat);
       const header = document.createElement('div');
-      header.className = 'db-category-header';
-      header.textContent = (categoryLabels[cat] ?? `▼ ${cat.charAt(0).toUpperCase() + cat.slice(1)}`).replace('▼', isCollapsed ? '▶' : '▼');
+      header.className = 'db-category-header' + (isCollapsed ? ' collapsed' : '');
+      const label = CATEGORY_LABELS[cat] ?? cat.charAt(0).toUpperCase() + cat.slice(1);
+      header.innerHTML = `<span class="db-caret">▼</span><span>${label}</span>`;
       header.addEventListener('click', () => {
         if (this._collapsedCategories.has(cat)) {
           this._collapsedCategories.delete(cat);
@@ -688,41 +821,54 @@ class DeploymentBuilderEngine {
     });
   }
 
+  private _applySelectedPlanToUI(state: 'loading' | 'ready' | 'failed'): void {
+    if (!this._widget || !this._selectedPlanEntry) return;
+    const nameEl = this._widget.querySelector('.db-plan-name') as HTMLElement | null;
+    const descEl = this._widget.querySelector('.db-plan-desc') as HTMLElement | null;
+    const symsEl = this._widget.querySelector('.db-plan-syms') as HTMLElement | null;
+    const catEl = this._widget.querySelector('.db-plan-cat') as HTMLElement | null;
+    const placeBtn = this._widget.querySelector('.db-btn-place') as HTMLButtonElement | null;
+
+    if (nameEl) {
+      nameEl.textContent = this._selectedPlanEntry.name;
+      nameEl.classList.remove('empty');
+    }
+    if (descEl) descEl.textContent = this._selectedPlanEntry.description;
+    if (catEl) catEl.textContent = CATEGORY_LABELS[this._selectedPlanEntry.category] ?? this._selectedPlanEntry.category;
+
+    if (state === 'loading') {
+      if (symsEl) symsEl.textContent = '…';
+      if (placeBtn) placeBtn.disabled = true;
+      this._setHeaderState('running', 'Loading');
+    } else if (state === 'failed') {
+      if (symsEl) symsEl.textContent = '—';
+      if (placeBtn) placeBtn.disabled = true;
+      this._setStatus('Failed to load plan file');
+      this._setHeaderState('warning', 'Error');
+    } else {
+      const count = this._selectedPlanMetrics?.symbolCount ?? 0;
+      if (symsEl) symsEl.textContent = String(count);
+      if (placeBtn) placeBtn.disabled = count <= 0;
+      this._setHeaderState(count > 0 ? 'ready' : '', count > 0 ? 'Ready' : 'Empty');
+    }
+  }
+
   private async _selectPlan(plan: PlanEntry): Promise<void> {
     this._selectedPlanEntry = plan;
     this._selectedPlanData = null;
     this._selectedPlanMetrics = null;
 
-    // Update UI immediately with loading state
-    const nameEl = this._widget?.querySelector('.db-selected-name') as HTMLElement | null;
-    const descEl = this._widget?.querySelector('.db-selected-desc') as HTMLElement | null;
-    const countEl = this._widget?.querySelector('.db-selected-count') as HTMLElement | null;
-    const placeBtn = this._widget?.querySelector('.db-btn-place') as HTMLButtonElement | null;
-
-    if (nameEl) nameEl.textContent = plan.name;
-    if (descEl) descEl.textContent = plan.description;
-    if (countEl) countEl.textContent = 'Loading…';
-    if (placeBtn) { placeBtn.disabled = true; placeBtn.style.cursor = 'not-allowed'; }
-
+    this._applySelectedPlanToUI('loading');
     this._renderPlanList();
 
     const data = await this._loadPlanFile(plan.file);
     if (!data) {
-      if (countEl) countEl.textContent = '⚠ Failed to load plan file';
+      this._applySelectedPlanToUI('failed');
       return;
     }
     this._selectedPlanData = data;
     this._selectedPlanMetrics = this._buildPlanMetrics(data);
-    const count = this._selectedPlanMetrics.symbolCount;
-
-    if (countEl) countEl.textContent = `${count} symbol${count !== 1 ? 's' : ''}`;
-    if (placeBtn && count > 0) {
-      placeBtn.disabled = false;
-      placeBtn.style.cursor = 'pointer';
-      placeBtn.style.background = 'var(--ms-accent-dim)';
-      placeBtn.style.borderColor = 'var(--ms-accent)';
-      placeBtn.style.color = 'var(--ms-text)';
-    }
+    this._applySelectedPlanToUI('ready');
   }
 
   // ── Placement Flow ─────────────────────────────────────────────────────────
@@ -779,28 +925,14 @@ class DeploymentBuilderEngine {
     this._selectedPlanData = data;
     this._selectedPlanMetrics = metrics;
 
-    const nameEl = this._widget?.querySelector('.db-selected-name') as HTMLElement | null;
-    const descEl = this._widget?.querySelector('.db-selected-desc') as HTMLElement | null;
-    const countEl = this._widget?.querySelector('.db-selected-count') as HTMLElement | null;
-    const placeBtn = this._widget?.querySelector('.db-btn-place') as HTMLButtonElement | null;
-
-    if (nameEl) nameEl.textContent = this._selectedPlanEntry.name;
-    if (descEl) descEl.textContent = this._selectedPlanEntry.description;
-    if (countEl) countEl.textContent = `${metrics.symbolCount} symbol${metrics.symbolCount !== 1 ? 's' : ''}`;
-    if (placeBtn) {
-      placeBtn.disabled = false;
-      placeBtn.style.cursor = 'pointer';
-      placeBtn.style.background = 'var(--ms-accent-dim)';
-      placeBtn.style.borderColor = 'var(--ms-accent)';
-      placeBtn.style.color = 'var(--ms-text)';
-    }
-
+    this._applySelectedPlanToUI('ready');
     this._renderPlanList();
   }
 
   private _onPlaceClicked(): void {
     if (!this._selectedPlanData) return;
     this._setStatus('Click on map to set anchor point…');
+    this._setHeaderState('running', 'Anchor');
     this._startPlacement(this._selectedPlanData);
     // Minimize widget so it doesn't block the map
     if (!this._minimized) this._minimizeWidget();
@@ -863,6 +995,7 @@ class DeploymentBuilderEngine {
     this._phase = 'bearing';
     this._showPlacementInstructions('bearing');
     this._setStatus('Move cursor to set bearing — click to place');
+    this._setHeaderState('running', 'Bearing');
 
     this._pointerMoveHandle = this._view.on('pointer-move', (evt) => {
       const mapPt = this._view!.toMap({ x: evt.x, y: evt.y });
@@ -894,6 +1027,7 @@ class DeploymentBuilderEngine {
       if (this._rightClickHandle) { this._rightClickHandle.remove(); this._rightClickHandle = null; }
       this._showPlacementInstructions('anchor');
       this._setStatus('Click on map to set anchor point…');
+      this._setHeaderState('running', 'Anchor');
       this._pointerMoveHandle = this._view!.on('pointer-move', (evt2) => {
         if (this._phase !== 'anchor') return;
         const mapPt = this._view!.toMap({ x: evt2.x, y: evt2.y });
@@ -940,7 +1074,7 @@ class DeploymentBuilderEngine {
     }
 
     this._setStatus(`Placed ${count} symbol${count !== 1 ? 's' : ''}`);
-    if (!this._minimized) { /* already minimized, restore */ }
+    this._setHeaderState(count > 0 ? 'ready' : 'warning', count > 0 ? 'Placed' : 'Empty');
     // Restore widget
     if (this._minimized) this._minimizeWidget();
   }
@@ -955,6 +1089,8 @@ class DeploymentBuilderEngine {
     this._removeBearingHUD();
     this._removePlacementInstructions();
     if (this._minimized) this._minimizeWidget();
+    const ready = (this._selectedPlanMetrics?.symbolCount ?? 0) > 0;
+    this._setHeaderState(ready ? 'ready' : '', ready ? 'Ready' : 'Idle');
   }
 
   // ── Ghost Preview ──────────────────────────────────────────────────────────
@@ -1121,31 +1257,19 @@ class DeploymentBuilderEngine {
   // ── Bearing HUD & Instructions ─────────────────────────────────────────────
 
   private _showBearingHUD(screenX: number, screenY: number, bearingDeg: number): void {
+    this._injectOverlayStyles();
     if (!this._bearingHUD) {
       const el = document.createElement('div');
-      el.style.cssText = `
-        position: fixed;
-        background: rgba(14,18,28,0.93);
-        border: 1px solid rgba(100,180,255,0.55);
-        border-radius: 7px;
-        padding: 5px 12px 5px 10px;
-        font-family: 'SF Mono','Consolas','Monaco',monospace;
-        font-size: 12.5px;
-        pointer-events: none;
-        z-index: 1500;
-        white-space: nowrap;
-        box-shadow: 0 3px 12px rgba(0,0,0,0.55);
-        display: flex; align-items: center; gap: 8px;
-      `;
+      el.className = 'db-bearing-hud';
       document.body.appendChild(el);
       this._bearingHUD = el;
     }
     const cardinal = this._bearingToCardinal(bearingDeg);
     const deg = Math.round(bearingDeg).toString().padStart(3, '0');
     this._bearingHUD.innerHTML = `
-      <span style="color:#7eb4e8;font-size:9.5px;text-transform:uppercase;letter-spacing:1px">BRG</span>
-      <span style="font-weight:800;color:#fff;font-size:14px">${deg}°</span>
-      <span style="color:#80d8a0;font-size:11px;font-weight:600">${cardinal}</span>
+      <span class="db-bearing-kicker">BRG</span>
+      <span class="db-bearing-deg">${deg}°</span>
+      <span class="db-bearing-card">${cardinal}</span>
     `;
     // Offset so HUD sits just above-right of cursor
     this._bearingHUD.style.left = `${screenX + 20}px`;
@@ -1160,60 +1284,129 @@ class DeploymentBuilderEngine {
   }
 
   private _showPlacementInstructions(phase: 'anchor' | 'anchor-asIs' | 'bearing'): void {
+    this._injectOverlayStyles();
     if (!this._placementInstructions) {
       const el = document.createElement('div');
-      el.style.cssText = `
+      el.className = 'db-placement-instructions';
+      document.body.appendChild(el);
+      this._placementInstructions = el;
+    }
+
+    const sep = `<span class="db-pi-sep">|</span>`;
+    const key = (label: string, tone: 'accent' | 'success' | 'danger' = 'accent') =>
+      `<kbd class="db-pi-key db-pi-key-${tone}">${label}</kbd>`;
+
+    if (phase === 'anchor-asIs') {
+      this._placementInstructions.innerHTML = `
+        <span class="db-pi-step">As-Is placement</span>
+        ${sep}
+        <span>${key('Click')} to place at anchor — no bearing step</span>
+        ${sep}
+        <span>${key('Esc', 'danger')} cancel</span>
+      `;
+    } else if (phase === 'anchor') {
+      this._placementInstructions.innerHTML = `
+        <span class="db-pi-step">Step 1 of 2 — Anchor</span>
+        ${sep}
+        <span>${key('Click')} to set anchor point</span>
+        ${sep}
+        <span>${key('Esc', 'danger')} cancel</span>
+      `;
+    } else {
+      this._placementInstructions.innerHTML = `
+        <span class="db-pi-step">Step 2 of 2 — Bearing</span>
+        ${sep}
+        <span>${key('Click')} to place formation</span>
+        ${sep}
+        <span>${key('Right-click', 'success')} reset anchor</span>
+        ${sep}
+        <span>${key('Esc', 'danger')} cancel</span>
+      `;
+    }
+  }
+
+  private _injectOverlayStyles(): void {
+    if (document.getElementById('db-overlay-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'db-overlay-styles';
+    style.textContent = `
+      .db-bearing-hud {
+        position: fixed;
+        z-index: 1500;
+        display: flex; align-items: center; gap: 8px;
+        background: rgba(14, 18, 28, 0.72);
+        -webkit-backdrop-filter: blur(10px) saturate(140%);
+        backdrop-filter: blur(10px) saturate(140%);
+        border: 1px solid rgba(239, 159, 39, 0.55);
+        border-radius: 7px;
+        padding: 5px 12px 5px 10px;
+        font-family: var(--ms-font-mono);
+        font-size: var(--ms-fs-sm);
+        pointer-events: none;
+        white-space: nowrap;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+      }
+      .db-bearing-hud .db-bearing-kicker {
+        color: rgba(180, 200, 230, 0.85);
+        font-size: var(--ms-fs-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-weight: 700;
+      }
+      .db-bearing-hud .db-bearing-deg {
+        font-weight: 800;
+        color: #ffffff;
+        font-size: 14px;
+        text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+      }
+      .db-bearing-hud .db-bearing-card {
+        color: #80d8a0;
+        font-size: var(--ms-fs);
+        font-weight: 600;
+      }
+
+      .db-placement-instructions {
         position: fixed;
         bottom: 70px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(14,18,28,0.92);
-        border: 1px solid rgba(90,140,220,0.4);
+        z-index: 1500;
+        display: flex; gap: 14px; align-items: center;
+        background: rgba(14, 18, 28, 0.68);
+        -webkit-backdrop-filter: blur(12px) saturate(140%);
+        backdrop-filter: blur(12px) saturate(140%);
+        border: 1px solid rgba(90, 140, 220, 0.4);
         border-radius: 9px;
         padding: 8px 20px;
-        font-family: 'Inter','Segoe UI',sans-serif;
-        font-size: 11.5px;
-        color: #a8c4e0;
-        z-index: 1500;
+        font-family: var(--ms-font);
+        font-size: var(--ms-fs);
+        color: rgba(200, 220, 240, 0.95);
         pointer-events: none;
         white-space: nowrap;
-        box-shadow: 0 4px 18px rgba(0,0,0,0.45);
-        display: flex; gap: 14px; align-items: center;
-      `;
-      document.body.appendChild(el);
-      this._placementInstructions = el;
-    }
-    const sep = `<span style="color:#334455">|</span>`;
-    const key = (label: string, color = '#64b4ff') =>
-      `<kbd style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:4px;padding:1px 6px;font-size:10.5px;color:${color};font-family:inherit">${label}</kbd>`;
-
-    if (phase === 'anchor-asIs') {
-      this._placementInstructions.innerHTML = `
-        <span>LOC <strong style="color:#c8dff5">As-Is placement</strong></span>
-        ${sep}
-        <span>${key('Click')} to place at anchor — no bearing step</span>
-        ${sep}
-        <span>${key('Esc', '#f08060')} cancel</span>
-      `;
-    } else if (phase === 'anchor') {
-      this._placementInstructions.innerHTML = `
-        <span>WEZ <strong style="color:#c8dff5">Step 1 of 2 — Anchor</strong></span>
-        ${sep}
-        <span>${key('Click')} to set anchor point</span>
-        ${sep}
-        <span>${key('Esc', '#f08060')} cancel</span>
-      `;
-    } else {
-      this._placementInstructions.innerHTML = `
-        <span>BRG <strong style="color:#c8dff5">Step 2 of 2 — Bearing</strong></span>
-        ${sep}
-        <span>${key('Click')} to place formation</span>
-        ${sep}
-        <span>${key('Right-click', '#90d890')} reset anchor</span>
-        ${sep}
-        <span>${key('Esc', '#f08060')} cancel</span>
-      `;
-    }
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+      }
+      .db-placement-instructions .db-pi-step {
+        color: #ffffff;
+        font-weight: 700;
+        text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+      }
+      .db-placement-instructions .db-pi-sep {
+        color: rgba(150, 170, 200, 0.4);
+      }
+      .db-placement-instructions .db-pi-key {
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: var(--ms-radius-sm);
+        padding: 1px 6px;
+        font-size: var(--ms-fs-xs);
+        font-family: inherit;
+        font-weight: 600;
+      }
+      .db-placement-instructions .db-pi-key-accent  { color: #ffc46e; }
+      .db-placement-instructions .db-pi-key-success { color: #90e8b0; }
+      .db-placement-instructions .db-pi-key-danger  { color: #ff9090; }
+    `;
+    document.head.appendChild(style);
   }
 
   private _removePlacementInstructions(): void {
@@ -1603,6 +1796,17 @@ class DeploymentBuilderEngine {
   private _setStatus(msg: string): void {
     const el = this._widget?.querySelector('.db-status') as HTMLElement | null;
     if (el) el.textContent = msg;
+  }
+
+  private _setHeaderState(state: '' | 'ready' | 'running' | 'warning', label: string): void {
+    if (!this._widget) return;
+    const dot = this._widget.querySelector('#db-status-dot') as HTMLElement | null;
+    const lbl = this._widget.querySelector('#db-status-lbl') as HTMLElement | null;
+    if (dot) {
+      dot.classList.remove('ready', 'running', 'warning');
+      if (state) dot.classList.add(state);
+    }
+    if (lbl) lbl.textContent = label;
   }
 }
 
