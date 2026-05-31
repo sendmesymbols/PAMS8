@@ -44,6 +44,12 @@ import settingsData from '../Data/Settings.json';
 import Amplifier from '../Support/Amplifier.ts';
 import SIDC from '../Support/SIDC.ts';
 import DrawEssentials from '../Support/DrawEssentials.ts';
+import {
+  getMinefieldTextureMetadata,
+  syncMinefieldTextureGraphic,
+  syncMinefieldTextureGraphicsForLayer,
+  removeMinefieldTextureForGraphic,
+} from '../Support/MinefieldTextureFill3D.ts';
 import Mapper from '../Engines/Mapper.ts';
 import AnnotationEngine from './AnnotationEngine.ts';
 import EditEngine from './EditEngine.ts';
@@ -594,6 +600,13 @@ class SymbolEngine implements Evented {
       targetGraphicTypes: [],
       targetLayerIds: [...SYMBOL_LAYER_IDS],
     });
+
+    // Swap minefield polygon symbols (PictureFillSymbol ↔ invisible fill) and
+    // create/remove their textured Mesh children for the new view type.
+    syncMinefieldTextureGraphicsForLayer(
+      this._layerManager.getOrCreateLayer(LAYER_NAMES.TACT),
+      newView,
+    );
   }
 
   /**
@@ -1048,6 +1061,7 @@ class SymbolEngine implements Evented {
       label: 'Remove Symbol',
       undo: () => {
         layer.add(graphic);
+        syncMinefieldTextureGraphic(layer, graphic, this._getView());
         if (de?.AMPLIFIER && graphicId) {
           AnnotationEngine.annotate(
             annotationLayer,
@@ -1063,11 +1077,13 @@ class SymbolEngine implements Evented {
         }
       },
       redo: () => {
+        removeMinefieldTextureForGraphic(layer, graphic);
         layer.remove(graphic);
         if (graphicId) AnnotationEngine.deAnnotate(annotationLayer, graphicId);
       },
     });
 
+    removeMinefieldTextureForGraphic(layer, graphic);
     layer.remove(graphic);
     if (graphicId) AnnotationEngine.deAnnotate(annotationLayer, graphicId);
   }
@@ -2711,6 +2727,17 @@ class SymbolEngine implements Evented {
       this._lastCreatedGraphic = graphic;
       console.info('Symbol Added');
 
+      // Minefield-style polygons render through PictureFillSymbol in 2D, but
+      // SceneView refuses it. The symbol class has already stamped texture
+      // metadata onto drawEssentials; emit the textured Mesh child here so
+      // the same PNG pattern shows in 3D.
+      if (
+        geometry?.type === 'polygon' &&
+        getMinefieldTextureMetadata(drawEssentials)
+      ) {
+        syncMinefieldTextureGraphic(graphicsLayer, graphic, this._getView());
+      }
+
       // Push undo entry for the Add operation
       const symLabel = drawEssentials?.SYM_NAME
         ? drawEssentials.SYM_NAME
@@ -2724,11 +2751,13 @@ class SymbolEngine implements Evented {
         this._pushUndo({
           label: `Add ${symLabel}`,
           undo: () => {
+            removeMinefieldTextureForGraphic(graphicsLayer, graphic);
             graphicsLayer.remove(graphic);
             AnnotationEngine.deAnnotate(annotationLayer, attrs.id);
           },
           redo: () => {
             graphicsLayer.add(graphic);
+            syncMinefieldTextureGraphic(graphicsLayer, graphic, this._getView());
             if (drawEssentials?.AMPLIFIER) {
               AnnotationEngine.annotate(
                 annotationLayer,

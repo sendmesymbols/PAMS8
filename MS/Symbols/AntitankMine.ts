@@ -16,6 +16,11 @@ import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
 import SymbolEvents from "../Support/SymbolEvents";
+import {
+    createMinefieldPreviewFillSymbol,
+    setMinefieldTextureMetadata,
+    type MinefieldTextureMetadata,
+} from "../Support/MinefieldTextureFill3D.ts";
 export interface AntitankMineOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polygon;
@@ -40,6 +45,7 @@ export class AntitankMine {
     private symGeometricType: string = "Area";
     private isObstacle: string = "1";
     private _lineSym: PictureFillSymbol | SimpleFillSymbol | null = null;
+    private _textureMetadata: MinefieldTextureMetadata | null = null;
     private _points: Point[] = [];
     private _geometryType: string | null = null;
     private _drawType: number = 1;
@@ -82,27 +88,19 @@ export class AntitankMine {
             this._opacity = options.opacity!;
         }
 
-        // Try to create PictureFillSymbol, fallback to SimpleFillSymbol
-        try {
-            const imagePath = this.getImagePath();
-            this._lineSym = new PictureFillSymbol({
-                url: imagePath,
-                outline: marker,
-                width: 100,
-                height: 50
-            });
-            
-            if (this._lineSym.color) {
-                this._lineSym.color.a = this._opacity;
-            }
-        } catch (e) {
-            console.log('PictureFillSymbol failed, using SimpleFillSymbol fallback');
-            this._lineSym = new SimpleFillSymbol({
-                style: "solid",
-                color: [255, 69, 0, this._opacity], // Red-orange color for antitank mines
-                outline: marker
-            });
-        }
+        // View-aware preview symbol: PNG fill in 2D, solid translucent in 3D.
+        this._textureMetadata = {
+            url: this.getImagePath(),
+            pictureWidth: 100,
+            pictureHeight: 50,
+            opacity: this._opacity,
+        };
+        this._lineSym = createMinefieldPreviewFillSymbol(
+            this.view,
+            marker,
+            this._textureMetadata,
+            [255, 69, 0],
+        );
 
         this._drawType = options.DRAW_TYPE || 1;
         
@@ -257,6 +255,10 @@ export class AntitankMine {
         (drawEssentials as any).DRAW_TYPE = drawType;
         (drawEssentials as any).IS_OBS = this.isObstacle;
         (drawEssentials as any).opacity = opacity;
+
+        if (this._textureMetadata) {
+            setMinefieldTextureMetadata(drawEssentials, this._textureMetadata);
+        }
 
         return drawEssentials;
     }
