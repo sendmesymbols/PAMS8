@@ -40,6 +40,15 @@ import SerializationEngine from './ImportExport/SerializationEngine';
 import { MorphixEditedState, MorphixSymbolPatch, MorphixSymbolSnapshot } from './Morphix/MorphixEngine';
 import RoadNetworkEngine from './Analysis/RoadNetworkEngine';
 import TrafficabilityEngine from './Analysis/TrafficabilityEngine';
+import './MeasurementSettingsWidget';
+import './AppearanceSettingsWidget';
+import './CoreFeaturesSettingsWidget';
+import './ProximitySettingsWidget';
+import './DrawingCuesSettingsWidget';
+import './DeclutterSettingsWidget';
+import './MGRSSettingsWidget';
+import './VisualizationSettingsWidget';
+import './AnalysisSettingsWidget';
 interface Evented {
     on(type: string, listener: Function): {
         remove(): void;
@@ -224,9 +233,14 @@ declare class SymbolEngine implements Evented {
     private _keyboardShortcutManager?;
     private _setupKeyboardShortcuts;
     /**
-     * Populate the Ctrl+K command palette with per-engine settings manifests and
-     * a starter set of universal actions. Follow-up engines just add another
-     * `CommandPalette.registerSettings(...)` call here.
+     * Populate the Ctrl+K command palette. The palette is a *launcher* only — it
+     * opens settings widgets, Analysis Hub tools, the Deployment Manager, and a
+     * handful of plan-level utilities. Individual settings rows do NOT appear in
+     * the palette (they live in the widgets, where the row + tooltip have proper
+     * context).
+     *
+     * Per-engine settings widgets self-register through `CommandPalette.registerWidget`
+     * in their own module — those imports are at the top of this file.
      */
     private _registerCommandPalette;
     /** Access the MeasurementEngine â€” configure units or toggle programmatically.

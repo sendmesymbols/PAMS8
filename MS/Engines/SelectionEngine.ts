@@ -13,7 +13,6 @@ import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
 import GraphicsLayerManager from "../Managers/GraphicsLayerManager";
 import { ContextMenuItem } from "../Managers/ContextMenuManager";
-import AnnotationEngine from "./AnnotationEngine.ts";
 import * as promiseUtils from "@arcgis/core/core/promiseUtils";
 import EngineLogger from "../Support/EngineLogger";
 import settingsData from "../Data/Settings.json";
@@ -31,6 +30,41 @@ const LASSO_SYM = new SimpleFillSymbol({
     color: new Color([0, 200, 100, 0.10]),
     outline: { color: new Color([0, 200, 100, 0.8]), width: 1.5, style: "dash" }
 });
+
+interface UndoEntry {
+    label: string;
+    undo: () => void;
+    redo: () => void;
+}
+
+interface CloneDragSymbol {
+    graphic: Graphic;
+    layer: GraphicsLayer;
+    id: string;
+    undo: () => void;
+    redo: () => void;
+}
+
+interface CloneDragCallbacks {
+    buildClone: (source: Graphic, layerId: string) => CloneDragSymbol | null;
+    pushUndo: (entry: UndoEntry) => void;
+    closeActiveWorkflow: () => void;
+}
+
+interface CloneDragState {
+    token: number;
+    previousSelection: Graphic[];
+    lastMapPoint: Point;
+    latestMapPoint: Point;
+    graphic: Graphic | null;
+    layer: GraphicsLayer | null;
+    id: string | null;
+    undo: (() => void) | null;
+    redo: (() => void) | null;
+    pending: boolean;
+    ended: boolean;
+    moved: boolean;
+}
 
 /**
  * SelectionEngine — manages multi-symbol selection and batch operations.
@@ -55,10 +89,15 @@ class SelectionEngine {
 
     private _clickHandle: any = null;
     private _pointerMoveHandle: any = null;
+    private _dragHandle: any = null;
     private _hoverHandle: { remove(): void } | null = null;
     private _hoverGraphic: Graphic | null = null;
     private _isDrawing: boolean = false;
     private _targetLayerIds: string[] = [];
+    private _suppressNextClick: boolean = false;
+    private _cloneDragCallbacks: CloneDragCallbacks | null = null;
+    private _cloneDragState: CloneDragState | null = null;
+    private _cloneDragToken = 0;
 
     // Active SketchVM for batch-move proxy drag
     private _sketchVM: SketchViewModel | null = null;
@@ -79,6 +118,10 @@ class SelectionEngine {
     /** Register a callback that re-annotates a graphic after its geometry is moved. */
     public setAnnotationRefreshCallback(fn: (graphic: Graphic) => void): void {
         this._annotationRefresh = fn;
+    }
+
+    public setCloneDragCallbacks(callbacks: CloneDragCallbacks): void {
+        this._cloneDragCallbacks = callbacks;
     }
 
     /** Suppress hover highlights while a symbol is being drawn. */
@@ -121,9 +164,11 @@ class SelectionEngine {
         this._targetLayerIds = targetLayerIds;
         if (this._clickHandle) this._clickHandle.remove();
         if (this._pointerMoveHandle) this._pointerMoveHandle.remove();
+        if (this._dragHandle) this._dragHandle.remove();
 
         const debouncedHover = promiseUtils.debounce(async (evt: any) => {
             if (this._isDrawing) return;
+            if (this._cloneDragState) return;
             const targetLayers = this._targetLayerIds
                 .map(id => this._layerManager.getLayer(id))
                 .filter((l): l is GraphicsLayer => l !== undefined);
@@ -152,6 +197,10 @@ class SelectionEngine {
         });
 
         this._clickHandle = this.view.on("click", async (evt) => {
+            if (this._suppressNextClick) {
+                this._suppressNextClick = false;
+                return;
+            }
             if (evt.button !== 0) return; // ignore right/middle click — ArcGIS fires click for all buttons
             const isShift = (evt.native as MouseEvent).shiftKey;
 
@@ -174,11 +223,15 @@ class SelectionEngine {
                 this.clearSelection();
             }
         });
+
+        this._dragHandle = this.view.on("drag", (evt) => this._handleCloneDrag(evt));
     }
 
     deactivate(): void {
         if (this._clickHandle) { this._clickHandle.remove(); this._clickHandle = null; }
         if (this._pointerMoveHandle) { this._pointerMoveHandle.remove(); this._pointerMoveHandle = null; }
+        if (this._dragHandle) { this._dragHandle.remove(); this._dragHandle = null; }
+        this._cancelCloneDrag(false);
         this._hoverHandle?.remove(); this._hoverHandle = null; this._hoverGraphic = null;
         if (this._sketchVM) { this._sketchVM.cancel(); this._sketchVM.destroy(); this._sketchVM = null; }
         this.cancelLasso();
@@ -196,6 +249,182 @@ class SelectionEngine {
     }
 
     get isLassoActive(): boolean { return this._lassoVM !== null; }
+
+    // Clone-drag (Cmd/Ctrl+Shift+drag)
+
+    private _handleCloneDrag(evt: any): void {
+        const action = evt.action;
+        if (action === "start") {
+            this._startCloneDrag(evt);
+            return;
+        }
+
+        const state = this._cloneDragState;
+        if (!state) return;
+
+        if (action === "update") {
+            evt.stopPropagation?.();
+            this._updateCloneDrag(evt);
+            return;
+        }
+
+        if (action === "end") {
+            evt.stopPropagation?.();
+            this._finishCloneDrag();
+            return;
+        }
+
+        if (action === "cancel") {
+            evt.stopPropagation?.();
+            this._cancelCloneDrag(true);
+        }
+    }
+
+    private _startCloneDrag(evt: any): void {
+        if (!this._cloneDragCallbacks) return;
+        if (this._isDrawing) return;
+        if ((settingsData as any).features?.copyPaste === false) return;
+        if (!this._isCloneDragGesture(evt)) return;
+
+        const mapPoint = this._mapPointFromDrag(evt);
+        if (!mapPoint) return;
+
+        evt.stopPropagation?.();
+        this._suppressNextClick = true;
+        this._cancelCloneDrag(false);
+        this._hoverHandle?.remove();
+        this._hoverHandle = null;
+        this._hoverGraphic = null;
+
+        const token = ++this._cloneDragToken;
+        this._cloneDragState = {
+            token,
+            previousSelection: this.selectedGraphics,
+            lastMapPoint: mapPoint,
+            latestMapPoint: mapPoint,
+            graphic: null,
+            layer: null,
+            id: null,
+            undo: null,
+            redo: null,
+            pending: true,
+            ended: false,
+            moved: false,
+        };
+
+        void this._resolveCloneDragHit(evt, token).catch((error) => {
+            console.warn("[SelectionEngine] Clone-drag hit test failed", error);
+            if (this._cloneDragState?.token === token) this._cancelCloneDrag(false);
+        });
+    }
+
+    private async _resolveCloneDragHit(evt: any, token: number): Promise<void> {
+        const targetLayers = this._targetLayerIds
+            .map(id => this._layerManager.getLayer(id))
+            .filter((l): l is GraphicsLayer => l !== undefined);
+        const hitOptions = targetLayers.length ? { include: targetLayers } : undefined;
+        const response = await this.view.hitTest(evt, hitOptions);
+        const hit = response.results?.find((r: any) => !!r.graphic);
+        const source = hit ? ((hit as any).graphic as Graphic) : null;
+        const sourceLayer = source ? this._findContainingLayer(source) : null;
+
+        const state = this._cloneDragState;
+        if (!state || state.token !== token) return;
+        if (state.ended || !source || !sourceLayer) {
+            this._cancelCloneDrag(false);
+            return;
+        }
+
+        this._cloneDragCallbacks?.closeActiveWorkflow();
+        const clone = this._cloneDragCallbacks?.buildClone(source, sourceLayer.id);
+        if (!clone) {
+            this._cancelCloneDrag(false);
+            return;
+        }
+
+        clone.layer.add(clone.graphic);
+        state.graphic = clone.graphic;
+        state.layer = clone.layer;
+        state.id = clone.id;
+        state.undo = clone.undo;
+        state.redo = clone.redo;
+        state.pending = false;
+
+        this.clearSelection();
+        this.selectGraphic(clone.graphic);
+        this._applyCloneDragDeltaToLatest(state);
+        EngineLogger.nextStep('Selection Engine', 'Clone-drag active - move the duplicated symbol');
+    }
+
+    private _updateCloneDrag(evt: any): void {
+        const state = this._cloneDragState;
+        if (!state) return;
+        const mapPoint = this._mapPointFromDrag(evt);
+        if (!mapPoint) return;
+
+        state.latestMapPoint = mapPoint;
+        this._applyCloneDragDeltaToLatest(state);
+    }
+
+    private _finishCloneDrag(): void {
+        const state = this._cloneDragState;
+        if (!state) return;
+
+        if (state.pending) {
+            state.ended = true;
+            return;
+        }
+
+        this._cloneDragState = null;
+        if (!state.graphic || !state.undo || !state.redo) return;
+
+        this._cloneDragCallbacks?.pushUndo({
+            label: "Clone and Move Symbol",
+            undo: state.undo,
+            redo: state.redo,
+        });
+        EngineLogger.success('Selection Engine', `Symbol cloned${state.moved ? ' and moved' : ''}`);
+    }
+
+    private _cancelCloneDrag(restoreSelection: boolean): void {
+        const state = this._cloneDragState;
+        this._cloneDragState = null;
+        if (!state) return;
+
+        if (state.graphic && state.undo) {
+            state.undo();
+            this.clearSelection();
+            if (restoreSelection) {
+                state.previousSelection.forEach(g => {
+                    if (this._findContainingLayer(g)) this.selectGraphic(g);
+                });
+            }
+        }
+    }
+
+    private _applyCloneDragDeltaToLatest(state: CloneDragState): void {
+        if (!state.graphic || state.pending) return;
+
+        const dx = state.latestMapPoint.x - state.lastMapPoint.x;
+        const dy = state.latestMapPoint.y - state.lastMapPoint.y;
+        if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) return;
+
+        this._applyDelta([state.graphic], dx, dy);
+        state.lastMapPoint = state.latestMapPoint;
+        state.moved = true;
+    }
+
+    private _isCloneDragGesture(evt: any): boolean {
+        const native = evt.native ?? evt;
+        const shift = Boolean(native.shiftKey ?? evt.shiftKey);
+        const commandOrCtrl = Boolean(native.metaKey ?? evt.metaKey) || Boolean(native.ctrlKey ?? evt.ctrlKey);
+        return shift && commandOrCtrl;
+    }
+
+    private _mapPointFromDrag(evt: any): Point | null {
+        const point = evt.mapPoint ?? this.view.toMap({ x: evt.x, y: evt.y });
+        return point ? (point.clone?.() ?? point) : null;
+    }
 
     // ── Lasso Select ─────────────────────────────────────────────────────────
 
@@ -1065,43 +1294,56 @@ class SelectionEngine {
 
             // Shift CTRL_PTS and BASE_LN_PTS
             if (de?.CTRL_PTS) {
-                de.CTRL_PTS = de.CTRL_PTS.map((p: any) => {
-                    const c = p.clone ? p.clone() : { ...p };
-                    c.x += dx; c.y += dy;
-                    return c;
-                });
+                de.CTRL_PTS = de.CTRL_PTS.map((p: any) => this._shiftGeometryLike(p, dx, dy));
             }
             if (de?.BASE_LN_PTS) {
-                const shiftPt = (p: any) => {
-                    if (!p) return p;
-                    const c = p.clone ? p.clone() : { ...p };
-                    c.x = (c.x ?? 0) + dx;
-                    c.y = (c.y ?? 0) + dy;
-                    return c;
-                };
                 de.BASE_LN_PTS = {
                     ...de.BASE_LN_PTS,
-                    startPt: shiftPt(de.BASE_LN_PTS.startPt),
-                    midPt: shiftPt(de.BASE_LN_PTS.midPt),
-                    endPt: shiftPt(de.BASE_LN_PTS.endPt),
+                    startPt: this._shiftGeometryLike(de.BASE_LN_PTS.startPt, dx, dy),
+                    midPt: this._shiftGeometryLike(de.BASE_LN_PTS.midPt, dx, dy),
+                    endPt: this._shiftGeometryLike(de.BASE_LN_PTS.endPt, dx, dy),
                 };
             }
             if (de?.GEOM) {
-                const p = de.GEOM.clone ? de.GEOM.clone() : { ...de.GEOM };
-                p.x += dx;
-                p.y += dy;
-                de.GEOM = p;
+                de.GEOM = this._shiftGeometryLike(de.GEOM, dx, dy);
             }
             if (de?.OPTIONS?.GEOM) {
-                const p = de.OPTIONS.GEOM.clone ? de.OPTIONS.GEOM.clone() : { ...de.OPTIONS.GEOM };
-                p.x += dx;
-                p.y += dy;
-                de.OPTIONS = { ...de.OPTIONS, GEOM: p };
+                de.OPTIONS = {
+                    ...de.OPTIONS,
+                    GEOM: this._shiftGeometryLike(de.OPTIONS.GEOM, dx, dy),
+                };
             }
 
             // Refresh annotation label at new position
             this._annotationRefresh?.(g);
         });
+    }
+
+    private _shiftGeometryLike(value: any, dx: number, dy: number): any {
+        if (!value) return value;
+        const clone = value.clone?.() ?? { ...value };
+
+        if (clone.type === "point" || ("x" in clone && "y" in clone)) {
+            clone.x = (clone.x ?? 0) + dx;
+            clone.y = (clone.y ?? 0) + dy;
+            return clone;
+        }
+
+        if (clone.type === "polyline" && clone.paths) {
+            clone.paths = clone.paths.map((path: number[][]) =>
+                path.map(([x, y, ...rest]) => [x + dx, y + dy, ...rest])
+            );
+            return clone;
+        }
+
+        if (clone.type === "polygon" && clone.rings) {
+            clone.rings = clone.rings.map((ring: number[][]) =>
+                ring.map(([x, y, ...rest]) => [x + dx, y + dy, ...rest])
+            );
+            return clone;
+        }
+
+        return clone;
     }
 
     private _boundingBox(graphics: Graphic[]): { xmin: number; xmax: number; ymin: number; ymax: number } | null {

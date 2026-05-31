@@ -1,8 +1,26 @@
 import Graphic from "@arcgis/core/Graphic";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import GraphicsLayerManager from "../Managers/GraphicsLayerManager";
 import { ContextMenuItem } from "../Managers/ContextMenuManager";
+interface UndoEntry {
+    label: string;
+    undo: () => void;
+    redo: () => void;
+}
+interface CloneDragSymbol {
+    graphic: Graphic;
+    layer: GraphicsLayer;
+    id: string;
+    undo: () => void;
+    redo: () => void;
+}
+interface CloneDragCallbacks {
+    buildClone: (source: Graphic, layerId: string) => CloneDragSymbol | null;
+    pushUndo: (entry: UndoEntry) => void;
+    closeActiveWorkflow: () => void;
+}
 /**
  * SelectionEngine — manages multi-symbol selection and batch operations.
  *
@@ -24,10 +42,15 @@ declare class SelectionEngine {
     private _highlights;
     private _clickHandle;
     private _pointerMoveHandle;
+    private _dragHandle;
     private _hoverHandle;
     private _hoverGraphic;
     private _isDrawing;
     private _targetLayerIds;
+    private _suppressNextClick;
+    private _cloneDragCallbacks;
+    private _cloneDragState;
+    private _cloneDragToken;
     private _sketchVM;
     private _lassoVM;
     private _eventListeners;
@@ -35,6 +58,7 @@ declare class SelectionEngine {
     constructor(viewProvider: () => MapView | SceneView, layerManager: GraphicsLayerManager);
     /** Register a callback that re-annotates a graphic after its geometry is moved. */
     setAnnotationRefreshCallback(fn: (graphic: Graphic) => void): void;
+    setCloneDragCallbacks(callbacks: CloneDragCallbacks): void;
     /** Suppress hover highlights while a symbol is being drawn. */
     setDrawing(drawing: boolean): void;
     get view(): MapView | SceneView;
@@ -49,6 +73,15 @@ declare class SelectionEngine {
     /** Cancel any in-progress lasso-select operation without changing the selection. */
     cancelLasso(): void;
     get isLassoActive(): boolean;
+    private _handleCloneDrag;
+    private _startCloneDrag;
+    private _resolveCloneDragHit;
+    private _updateCloneDrag;
+    private _finishCloneDrag;
+    private _cancelCloneDrag;
+    private _applyCloneDragDeltaToLatest;
+    private _isCloneDragGesture;
+    private _mapPointFromDrag;
     /**
      * Let the user draw a polygon; on completion every symbol whose geometry
      * is contained in (or intersects) the polygon is added to the selection.
@@ -196,6 +229,7 @@ declare class SelectionEngine {
     private _graphicId;
     private _centroid;
     _applyDelta(graphics: Graphic[], dx: number, dy: number): void;
+    private _shiftGeometryLike;
     private _boundingBox;
     private _bboxToPolygon;
     /**

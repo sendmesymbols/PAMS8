@@ -1,11 +1,19 @@
 import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
+import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import GraphicsLayerManager from '../Managers/GraphicsLayerManager';
 import SelectionEngine from './SelectionEngine.ts';
 interface UndoEntry {
     label: string;
+    undo: () => void;
+    redo: () => void;
+}
+export interface ClonedSymbol {
+    graphic: Graphic;
+    layer: GraphicsLayer;
+    id: string;
     undo: () => void;
     redo: () => void;
 }
@@ -31,10 +39,12 @@ export default class ClipboardEngine {
     private get view();
     get hasClipboard(): boolean;
     get clipboardLength(): number;
+    rewireLayerManager(layerManager: GraphicsLayerManager): void;
     /** Drop any held items — used when the clipboard feature is disabled. */
     clear(): void;
     copy(graphic: Graphic): void;
     paste(targetPoint: Point, expandDistance?: number, expandUnit?: string): Graphic | null;
+    buildClone(source: Graphic, layerId: string): ClonedSymbol | null;
     showPasteOffsetDialog(): void;
     activatePasteModeWithOffset(expandDistance: number, expandUnit: string): void;
     activatePasteMode(): void;

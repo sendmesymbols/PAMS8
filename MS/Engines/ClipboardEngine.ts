@@ -21,6 +21,14 @@ interface UndoEntry {
   redo: () => void;
 }
 
+export interface ClonedSymbol {
+  graphic: Graphic;
+  layer: GraphicsLayer;
+  id: string;
+  undo: () => void;
+  redo: () => void;
+}
+
 export interface ClipboardEngineDeps {
   getView: () => MapView | SceneView;
   layerManager: GraphicsLayerManager;
@@ -52,6 +60,10 @@ export default class ClipboardEngine {
 
   public get clipboardLength(): number {
     return this._clipboard?.length ?? 0;
+  }
+
+  public rewireLayerManager(layerManager: GraphicsLayerManager): void {
+    (this.deps as any).layerManager = layerManager;
   }
 
   /** Drop any held items — used when the clipboard feature is disabled. */
@@ -201,6 +213,32 @@ export default class ClipboardEngine {
       });
     }
     return pasted[0] ?? null;
+  }
+
+  public buildClone(
+    source: Graphic,
+    layerId: string,
+  ): ClonedSymbol | null {
+    const newGeom = source.geometry?.clone?.();
+    if (!newGeom) return null;
+
+    const annotationLayer = this.deps.layerManager.getOrCreateLayer(
+      LAYER_NAMES.ANNOTATION_LAYER,
+    );
+    const built = this._buildPastedGraphic(
+      { graphic: source, layerId },
+      newGeom,
+      annotationLayer,
+    );
+    const layer =
+      this.deps.layerManager.getOrCreateLayer(layerId) ??
+      this.deps.layerManager.getSymbolLayer();
+
+    return {
+      ...built,
+      layer,
+      id: String(built.graphic.attributes?.id ?? ''),
+    };
   }
 
   public showPasteOffsetDialog(): void {
@@ -469,23 +507,54 @@ export default class ClipboardEngine {
     // symbol is later copied. Keeping the prototype preserves edit-on-paste,
     // which reads `de.SCOPE.createSymbol()`.
     const result: any = new DrawEssentials(de);
-    const tPt = (pt: any) => {
-      if (!pt) return pt;
-      const clone = pt.clone?.() ?? { ...pt };
-      const { x, y } = transformFn(clone);
-      clone.x = x;
-      clone.y = y;
+    const tGeom = (geom: any) => {
+      if (!geom) return geom;
+      const clone = geom.clone?.() ?? { ...geom };
+
+      if (clone.type === 'point' || ('x' in clone && 'y' in clone)) {
+        const { x, y } = transformFn(clone);
+        clone.x = x;
+        clone.y = y;
+        return clone;
+      }
+
+      if (clone.type === 'polyline' && clone.paths) {
+        clone.paths = clone.paths.map((path: number[][]) =>
+          path.map(([x, y, ...rest]) => {
+            const pt = transformFn({ x, y });
+            return [pt.x, pt.y, ...rest];
+          }),
+        );
+        return clone;
+      }
+
+      if (clone.type === 'polygon' && clone.rings) {
+        clone.rings = clone.rings.map((ring: number[][]) =>
+          ring.map(([x, y, ...rest]) => {
+            const pt = transformFn({ x, y });
+            return [pt.x, pt.y, ...rest];
+          }),
+        );
+        return clone;
+      }
+
       return clone;
     };
-    if (de.CTRL_PTS) result.CTRL_PTS = de.CTRL_PTS.map(tPt);
+    if (de.CTRL_PTS) result.CTRL_PTS = de.CTRL_PTS.map(tGeom);
     if (de.BASE_LN_PTS) {
       result.BASE_LN_PTS = {
-        startPt: tPt(de.BASE_LN_PTS.startPt),
-        midPt: tPt(de.BASE_LN_PTS.midPt),
-        endPt: tPt(de.BASE_LN_PTS.endPt),
+        startPt: tGeom(de.BASE_LN_PTS.startPt),
+        midPt: tGeom(de.BASE_LN_PTS.midPt),
+        endPt: tGeom(de.BASE_LN_PTS.endPt),
       };
     }
-    if (de.GEOM) result.GEOM = tPt(de.GEOM);
+    if (de.GEOM) result.GEOM = tGeom(de.GEOM);
+    if (de.OPTIONS?.GEOM) {
+      result.OPTIONS = {
+        ...de.OPTIONS,
+        GEOM: tGeom(de.OPTIONS.GEOM),
+      };
+    }
     return result;
   }
 
@@ -536,6 +605,7 @@ export default class ClipboardEngine {
       id: newId,
       drawEssentials: shiftedDe,
     };
+    newGraphic.set('id', newId);
 
     const layer =
       this.deps.layerManager.getOrCreateLayer(item.layerId) ??
@@ -544,7 +614,7 @@ export default class ClipboardEngine {
     if (shiftedDe?.AMPLIFIER) {
       AnnotationEngine.annotate(
         annotationLayer,
-        newGeom,
+        newGraphic.geometry,
         shiftedDe.AMPLIFIER,
         shiftedDe,
         newId,
@@ -565,7 +635,7 @@ export default class ClipboardEngine {
         if (shiftedDe?.AMPLIFIER)
           AnnotationEngine.annotate(
             annotationLayer,
-            newGeom,
+            newGraphic.geometry,
             shiftedDe.AMPLIFIER,
             shiftedDe,
             newId,

@@ -227,6 +227,12 @@ class SymbolEngine implements Evented {
       this._layerManager,
     );
     this._selectionEngine.activate([...SYMBOL_LAYER_IDS]);
+    this._selectionEngine.setCloneDragCallbacks({
+      buildClone: (graphic: Graphic, layerId: string) =>
+        this._clipboardEngine.buildClone(graphic, layerId),
+      pushUndo: (entry) => this._pushUndo(entry),
+      closeActiveWorkflow: () => this._closeActiveWorkflow(),
+    });
     this._selectionEngine.setAnnotationRefreshCallback((graphic: Graphic) => {
       const de = graphic.attributes?.drawEssentials;
       const id = graphic.attributes?.id;
@@ -537,6 +543,7 @@ class SymbolEngine implements Evented {
     this._editEngine.deactivate();
     this._layerManager = GraphicsLayerManager.getInstance(newView);
     this._layerManager.initializeLayers();
+    this._clipboardEngine.rewireLayerManager(this._layerManager);
     this._editEngine = new EditEngine(this._getView, this._layerManager);
     this._undoRedoManager.rewireEditEngine(this._editEngine);
     // SelectionActionPanel and KeyboardShortcutManager both capture the original

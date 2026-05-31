@@ -31,6 +31,25 @@ export type ActionEntry = {
 };
 export declare const CommandPalette: {
     registerSettings(manifestId: string, manifest: SettingDescriptor[], opener?: () => void): void;
+    /**
+     * One-line widget self-registration. Feeds **both** surfaces:
+     *   - Ctrl+K palette: adds `Open <label> settings` as an action entry.
+     *   - Settings menu (the ⚙ topbar popover): adds the item under `category`.
+     *
+     * Engines call this from their `XxxSettingsWidget.ts` so a single declaration
+     * makes the widget discoverable everywhere.
+     */
+    registerWidget(opts: {
+        id: string;
+        label: string;
+        opener: () => void;
+        /** Menu bucket — defaults to 'Engines'. Known categories: Engines, Map, Appearance, Tools. */
+        category?: string;
+        /** Emoji / icon for the menu row. */
+        icon?: string;
+        hint?: string;
+        keywords?: string[];
+    }): void;
     registerActions(actions: ActionEntry[]): void;
     unregisterAction(id: string): void;
     open(): void;

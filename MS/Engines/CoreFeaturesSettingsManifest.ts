@@ -52,7 +52,7 @@ export const coreFeaturesSettingsManifest: SettingDescriptor[] = [
   sel('Selection menu', 'selectionMenu', 'Show Selection submenu (lasso, select-similar, filter-by-type) in the right-click context menu.'),
   sel('Align menu', 'alignMenu', 'Show Align / Distribute / Arrange submenu in the right-click context menu (requires 2+ selected).'),
   sel('Selection quick toolbar', 'selectionQuickToolbar', 'Bottom-centre on-map toolbar that appears whenever symbols are selected.'),
-  sel('Copy / paste', 'copyPaste', 'Enable copy-paste for selected symbols via the clipboard.'),
+  sel('Copy / paste', 'copyPaste', 'Enable copy-paste for selected symbols and Cmd/Ctrl+Shift+drag clone-drag.'),
   sel('Clipboard', 'clipboard', 'Storage backing for copy / paste. Disable to free memory and skip Ctrl+C storage.'),
 
   data('Save / load plans', 'saveLoad', 'Save and load full symbol plans to / from disk via ImportExportEngine.'),
