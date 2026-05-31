@@ -7,28 +7,16 @@ import SpatialReference from "@arcgis/core/geometry/SpatialReference";
  */
 export class Echelons {
     /**
-     * Create SQUAD echelon symbol (filled circles with hatching)
+     * Create SQUAD echelon symbol — single filled dot.
+     * Rendered as an outer outline circle + an Archimedean spiral whose stroke
+     * fills the disk. Polyline-only (carrier is a SimpleLineSymbol on a Polyline),
+     * no self-intersecting strokes — renders cleanly in 2D and 3D.
      */
     static createSQUAD(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts: Point[] = [];
-        const newPts: Point[] = [];
-        const step = 2 * Math.PI / 180;
-
-        // Create circle
-        for (let dtheta = 0 * Math.PI / 180; dtheta < 360 * Math.PI / 180; dtheta += step) {
-            const x = dx + dr * Math.cos(dtheta);
-            const y = dy - dr * Math.sin(dtheta);
-            pts.push(new Point({ x, y, spatialReference: sp }));
-        }
-
-        // Hatch pattern
-        for (let i = 0, j = 180; i < pts.length; i++, j--) {
-            newPts.push(new Point({ x: pts[i].x, y: pts[i].y, spatialReference: sp }));
-            newPts.push(new Point({ x: pts[j].x, y: pts[j].y, spatialReference: sp }));
-        }
-        const allPts = pts.concat(newPts);
-
-        return [allPts];
+        return [
+            Echelons.createOutlineCircle(dx, dy, dr, sp),
+            Echelons.createSpiralDisk(dx, dy, dr, sp),
+        ];
     }
 
     /**
@@ -48,101 +36,38 @@ export class Echelons {
     }
 
     /**
-     * Create SECTION echelon symbol (two filled circles)
+     * Create SECTION echelon symbol — two filled dots.
+     * Each dot = outline circle + spiral fill. Offsets preserved from the
+     * original implementation.
      */
     static createSECTION(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts1: Point[] = [];
-        const pts2: Point[] = [];
-        const newPts1: Point[] = [];
-        const newPts2: Point[] = [];
-
-        const step = 2 * Math.PI / 180;
         const dx1 = dx - (dr / 4) - dr;
         const dx2 = dx + (dr / 4) + dr;
-
-        // First circle
-        for (let dtheta = 0 * Math.PI / 180; dtheta < 360 * Math.PI / 180; dtheta += step) {
-            const x = dx1 + dr * Math.cos(dtheta);
-            const y = dy - dr * Math.sin(dtheta);
-            pts1.push(new Point({ x, y, spatialReference: sp }));
-        }
-
-        // Second circle
-        for (let dtheta = 0 * Math.PI / 180; dtheta < 360 * Math.PI / 180; dtheta += step) {
-            const x = dx2 + dr * Math.cos(dtheta);
-            const y = dy - dr * Math.sin(dtheta);
-            pts2.push(new Point({ x, y, spatialReference: sp }));
-        }
-
-        // Hatch patterns
-        for (let i = 0, j = 180; i < pts1.length; i++, j--) {
-            newPts1.push(new Point({ x: pts1[i].x, y: pts1[i].y, spatialReference: sp }));
-            newPts1.push(new Point({ x: pts1[j].x, y: pts1[j].y, spatialReference: sp }));
-
-            newPts2.push(new Point({ x: pts2[i].x, y: pts2[i].y, spatialReference: sp }));
-            newPts2.push(new Point({ x: pts2[j].x, y: pts2[j].y, spatialReference: sp }));
-        }
-
-        const allPts1 = pts1.concat(newPts1);
-        const allPts2 = pts2.concat(newPts2);
-
-        return [allPts1, allPts2];
+        return [
+            Echelons.createOutlineCircle(dx1, dy, dr, sp),
+            Echelons.createSpiralDisk(dx1, dy, dr, sp),
+            Echelons.createOutlineCircle(dx2, dy, dr, sp),
+            Echelons.createSpiralDisk(dx2, dy, dr, sp),
+        ];
     }
 
     /**
-     * Create PLATOON echelon symbol (three filled circles)
+     * Create PLATOON echelon symbol — three filled dots.
+     * Each dot = outline circle + spiral fill. Offsets preserved from the
+     * original implementation.
      */
     static createPLATOON(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts1: Point[] = [];
-        const pts2: Point[] = [];
-        const pts3: Point[] = [];
-        const newPts1: Point[] = [];
-        const newPts2: Point[] = [];
-        const newPts3: Point[] = [];
-
-        const step = 2 * Math.PI / 180;
         const dx1 = dx - dr - (dr / 2) - dr;
         const dx2 = dx;
         const dx3 = dx + dr + (dr / 2) + dr;
-
-        // First circle
-        for (let dtheta = 0 * Math.PI / 180; dtheta < 360 * Math.PI / 180; dtheta += step) {
-            const x = dx1 + dr * Math.cos(dtheta);
-            const y = dy - dr * Math.sin(dtheta);
-            pts1.push(new Point({ x, y, spatialReference: sp }));
-        }
-
-        // Second circle
-        for (let dtheta = 0 * Math.PI / 180; dtheta < 360 * Math.PI / 180; dtheta += step) {
-            const x = dx2 + dr * Math.cos(dtheta);
-            const y = dy - dr * Math.sin(dtheta);
-            pts2.push(new Point({ x, y, spatialReference: sp }));
-        }
-
-        // Third circle
-        for (let dtheta = 0 * Math.PI / 180; dtheta < 360 * Math.PI / 180; dtheta += step) {
-            const x = dx3 + dr * Math.cos(dtheta);
-            const y = dy - dr * Math.sin(dtheta);
-            pts3.push(new Point({ x, y, spatialReference: sp }));
-        }
-
-        // Hatch patterns
-        for (let i = 0, j = 180; i < pts1.length; i++, j--) {
-            newPts1.push(new Point({ x: pts1[i].x, y: pts1[i].y, spatialReference: sp }));
-            newPts1.push(new Point({ x: pts1[j].x, y: pts1[j].y, spatialReference: sp }));
-
-            newPts2.push(new Point({ x: pts2[i].x, y: pts2[i].y, spatialReference: sp }));
-            newPts2.push(new Point({ x: pts2[j].x, y: pts2[j].y, spatialReference: sp }));
-
-            newPts3.push(new Point({ x: pts3[i].x, y: pts3[i].y, spatialReference: sp }));
-            newPts3.push(new Point({ x: pts3[j].x, y: pts3[j].y, spatialReference: sp }));
-        }
-
-        const allPts1 = pts1.concat(newPts1);
-        const allPts2 = pts2.concat(newPts2);
-        const allPts3 = pts3.concat(newPts3);
-
-        return [allPts1, allPts2, allPts3];
+        return [
+            Echelons.createOutlineCircle(dx1, dy, dr, sp),
+            Echelons.createSpiralDisk(dx1, dy, dr, sp),
+            Echelons.createOutlineCircle(dx2, dy, dr, sp),
+            Echelons.createSpiralDisk(dx2, dy, dr, sp),
+            Echelons.createOutlineCircle(dx3, dy, dr, sp),
+            Echelons.createSpiralDisk(dx3, dy, dr, sp),
+        ];
     }
 
     /**
@@ -192,23 +117,22 @@ export class Echelons {
     }
 
     /**
-     * Create Brigade echelon symbol (single X)
+     * Create Brigade echelon symbol — single X (2 diagonal paths).
      */
     static createBRIGADE(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts = this.createX(dx, dy, dr, sp);
-        return [pts];
+        return Echelons.createX(dx, dy, dr, sp);
     }
 
     /**
-     * Create Division echelon symbol (two X's)
+     * Create Division echelon symbol — two X's (4 diagonal paths total).
      */
     static createDIV(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const dx1 = dx - (dr * 0.75);
         const dx2 = dx + (dr * 0.75);
-
-        const pts1 = this.createX(dx1, dy, dr, sp);
-        const pts2 = this.createX(dx2, dy, dr, sp);
-        return [pts1, pts2];
+        return [
+            ...Echelons.createX(dx1, dy, dr, sp),
+            ...Echelons.createX(dx2, dy, dr, sp),
+        ];
     }
 
     /**
@@ -224,32 +148,37 @@ export class Echelons {
     }
 
     /**
-     * Create Corps echelon symbol (three X's)
+     * Create Corps echelon symbol — three X's (6 diagonal paths total).
      */
     static createCORPS(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const dx1 = dx - (dr * 1.5);
         const dx2 = dx;
         const dx3 = dx + (dr * 1.5);
-
-        const pts1 = this.createX(dx1, dy, dr, sp);
-        const pts2 = this.createX(dx2, dy, dr, sp);
-        const pts3 = this.createX(dx3, dy, dr, sp);
-        return [pts1, pts2, pts3];
+        return [
+            ...Echelons.createX(dx1, dy, dr, sp),
+            ...Echelons.createX(dx2, dy, dr, sp),
+            ...Echelons.createX(dx3, dy, dr, sp),
+        ];
     }
 
     /**
-     * Create X shape
+     * Create X shape — two separate diagonals as independent paths.
+     * The previous single-polyline implementation backtracked through the
+     * centre three times, which the 3D polyline tessellator collapses to a
+     * single visible stroke (chevron). Splitting into two clean 2-point
+     * segments eliminates the degenerate centre vertex.
      */
-    static createX(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
-        const pts: Point[] = [];
-        pts.push(new Point({ x: dx - (dr / 2), y: dy - dr, spatialReference: sp }));
-        pts.push(new Point({ x: dx, y: dy, spatialReference: sp }));
-        pts.push(new Point({ x: dx + (dr / 2), y: dy + dr, spatialReference: sp }));
-        pts.push(new Point({ x: dx, y: dy, spatialReference: sp }));
-        pts.push(new Point({ x: dx + (dr / 2), y: dy - dr, spatialReference: sp }));
-        pts.push(new Point({ x: dx, y: dy, spatialReference: sp }));
-        pts.push(new Point({ x: dx - (dr / 2), y: dy + dr, spatialReference: sp }));
-        return pts;
+    static createX(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            [
+                new Point({ x: dx - (dr / 2), y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx + (dr / 2), y: dy + dr, spatialReference: sp }),
+            ],
+            [
+                new Point({ x: dx + (dr / 2), y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx - (dr / 2), y: dy + dr, spatialReference: sp }),
+            ],
+        ];
     }
 
     /**
@@ -267,6 +196,58 @@ export class Echelons {
         pts.push(new Point({ x: dx, y: dy, spatialReference: sp }));
         pts.push(new Point({ x: dx - (dr * 0.7), y: dy, spatialReference: sp }));
 
+        return pts;
+    }
+
+    /**
+     * Build an Archimedean spiral from center outward. One continuous monotone
+     * polyline path; carrier stroke overlaps the radial pitch (`r/turns`) and
+     * reads as a uniform disk. No self-intersections — clean in 3D.
+     */
+    private static createSpiralDisk(
+        cx: number,
+        cy: number,
+        r: number,
+        sp: SpatialReference,
+        turns: number = 8,
+        ptsPerTurn: number = 16,
+    ): Point[] {
+        const pts: Point[] = [];
+        const totalAngle = 2 * Math.PI * turns;
+        const totalPts = turns * ptsPerTurn;
+        for (let i = 0; i <= totalPts; i++) {
+            const t = i / totalPts;
+            const theta = totalAngle * t;
+            const radius = r * t;
+            pts.push(new Point({
+                x: cx + radius * Math.cos(theta),
+                y: cy - radius * Math.sin(theta),
+                spatialReference: sp,
+            }));
+        }
+        return pts;
+    }
+
+    /**
+     * Build a closed-circle outline. Guarantees a crisp silhouette for the
+     * filled-dot echelons regardless of stroke-width vs. spiral-pitch tuning.
+     */
+    private static createOutlineCircle(
+        cx: number,
+        cy: number,
+        r: number,
+        sp: SpatialReference,
+        steps: number = 36,
+    ): Point[] {
+        const pts: Point[] = [];
+        for (let i = 0; i <= steps; i++) {
+            const theta = (2 * Math.PI * i) / steps;
+            pts.push(new Point({
+                x: cx + r * Math.cos(theta),
+                y: cy - r * Math.sin(theta),
+                spatialReference: sp,
+            }));
+        }
         return pts;
     }
 }
