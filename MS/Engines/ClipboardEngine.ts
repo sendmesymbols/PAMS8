@@ -29,6 +29,11 @@ export interface ClonedSymbol {
   redo: () => void;
 }
 
+export interface CloneSource {
+  graphic: Graphic;
+  layerId: string;
+}
+
 export interface ClipboardEngineDeps {
   getView: () => MapView | SceneView;
   layerManager: GraphicsLayerManager;
@@ -239,6 +244,21 @@ export default class ClipboardEngine {
       layer,
       id: String(built.graphic.attributes?.id ?? ''),
     };
+  }
+
+  public buildClones(sources: CloneSource[]): ClonedSymbol[] | null {
+    const clones: ClonedSymbol[] = [];
+
+    for (const source of sources) {
+      const clone = this.buildClone(source.graphic, source.layerId);
+      if (!clone) {
+        clones.forEach((item) => item.undo());
+        return null;
+      }
+      clones.push(clone);
+    }
+
+    return clones;
   }
 
   public showPasteOffsetDialog(): void {

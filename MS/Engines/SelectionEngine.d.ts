@@ -16,8 +16,12 @@ interface CloneDragSymbol {
     undo: () => void;
     redo: () => void;
 }
+interface CloneDragSource {
+    graphic: Graphic;
+    layerId: string;
+}
 interface CloneDragCallbacks {
-    buildClone: (source: Graphic, layerId: string) => CloneDragSymbol | null;
+    buildClones: (sources: CloneDragSource[]) => CloneDragSymbol[] | null;
     pushUndo: (entry: UndoEntry) => void;
     closeActiveWorkflow: () => void;
 }
@@ -79,7 +83,11 @@ declare class SelectionEngine {
     private _updateCloneDrag;
     private _finishCloneDrag;
     private _cancelCloneDrag;
+    private _scheduleCloneDragFrame;
+    private _flushCloneDragFrame;
     private _applyCloneDragDeltaToLatest;
+    private _cloneDragSourcesForHit;
+    private _refreshCloneDragAnnotations;
     private _isCloneDragGesture;
     private _mapPointFromDrag;
     /**
@@ -228,7 +236,7 @@ declare class SelectionEngine {
     private _edges;
     private _graphicId;
     private _centroid;
-    _applyDelta(graphics: Graphic[], dx: number, dy: number): void;
+    _applyDelta(graphics: Graphic[], dx: number, dy: number, refreshAnnotations?: boolean): void;
     private _shiftGeometryLike;
     private _boundingBox;
     private _bboxToPolygon;

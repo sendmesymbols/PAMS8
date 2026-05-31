@@ -31,6 +31,8 @@ const LASSO_SYM = new SimpleFillSymbol({
     outline: { color: new Color([0, 200, 100, 0.8]), width: 1.5, style: "dash" }
 });
 
+const CLONE_DRAG_LIVE_ANNOTATION_LIMIT = 25;
+
 interface UndoEntry {
     label: string;
     undo: () => void;
@@ -45,8 +47,13 @@ interface CloneDragSymbol {
     redo: () => void;
 }
 
+interface CloneDragSource {
+    graphic: Graphic;
+    layerId: string;
+}
+
 interface CloneDragCallbacks {
-    buildClone: (source: Graphic, layerId: string) => CloneDragSymbol | null;
+    buildClones: (sources: CloneDragSource[]) => CloneDragSymbol[] | null;
     pushUndo: (entry: UndoEntry) => void;
     closeActiveWorkflow: () => void;
 }
@@ -56,11 +63,8 @@ interface CloneDragState {
     previousSelection: Graphic[];
     lastMapPoint: Point;
     latestMapPoint: Point;
-    graphic: Graphic | null;
-    layer: GraphicsLayer | null;
-    id: string | null;
-    undo: (() => void) | null;
-    redo: (() => void) | null;
+    items: CloneDragSymbol[];
+    rafId: number | null;
     pending: boolean;
     ended: boolean;
     moved: boolean;
@@ -302,11 +306,8 @@ class SelectionEngine {
             previousSelection: this.selectedGraphics,
             lastMapPoint: mapPoint,
             latestMapPoint: mapPoint,
-            graphic: null,
-            layer: null,
-            id: null,
-            undo: null,
-            redo: null,
+            items: [],
+            rafId: null,
             pending: true,
             ended: false,
             moved: false,
@@ -335,25 +336,30 @@ class SelectionEngine {
             return;
         }
 
-        this._cloneDragCallbacks?.closeActiveWorkflow();
-        const clone = this._cloneDragCallbacks?.buildClone(source, sourceLayer.id);
-        if (!clone) {
+        const sources = this._cloneDragSourcesForHit(source, sourceLayer);
+        if (sources.length === 0) {
             this._cancelCloneDrag(false);
             return;
         }
 
-        clone.layer.add(clone.graphic);
-        state.graphic = clone.graphic;
-        state.layer = clone.layer;
-        state.id = clone.id;
-        state.undo = clone.undo;
-        state.redo = clone.redo;
+        this._cloneDragCallbacks?.closeActiveWorkflow();
+        const clones = this._cloneDragCallbacks?.buildClones(sources);
+        if (!clones || clones.length === 0) {
+            this._cancelCloneDrag(false);
+            return;
+        }
+
+        clones.forEach(clone => clone.layer.add(clone.graphic));
+        state.items = clones;
         state.pending = false;
 
         this.clearSelection();
-        this.selectGraphic(clone.graphic);
-        this._applyCloneDragDeltaToLatest(state);
-        EngineLogger.nextStep('Selection Engine', 'Clone-drag active - move the duplicated symbol');
+        clones.forEach(clone => this.selectGraphic(clone.graphic));
+        this._applyCloneDragDeltaToLatest(state, true);
+        EngineLogger.nextStep(
+            'Selection Engine',
+            `Clone-drag active - move ${clones.length} duplicated symbol${clones.length !== 1 ? 's' : ''}`
+        );
     }
 
     private _updateCloneDrag(evt: any): void {
@@ -363,7 +369,7 @@ class SelectionEngine {
         if (!mapPoint) return;
 
         state.latestMapPoint = mapPoint;
-        this._applyCloneDragDeltaToLatest(state);
+        this._scheduleCloneDragFrame(state);
     }
 
     private _finishCloneDrag(): void {
@@ -375,24 +381,40 @@ class SelectionEngine {
             return;
         }
 
+        this._flushCloneDragFrame(state, true);
         this._cloneDragState = null;
-        if (!state.graphic || !state.undo || !state.redo) return;
+        if (state.rafId !== null) {
+            window.cancelAnimationFrame(state.rafId);
+            state.rafId = null;
+        }
+        if (state.items.length === 0) return;
+        this._refreshCloneDragAnnotations(state);
+
+        const items = [...state.items];
+        const count = items.length;
 
         this._cloneDragCallbacks?.pushUndo({
-            label: "Clone and Move Symbol",
-            undo: state.undo,
-            redo: state.redo,
+            label: `Clone and Move ${count} Symbol${count !== 1 ? 's' : ''}`,
+            undo: () => items.forEach(item => item.undo()),
+            redo: () => items.forEach(item => item.redo()),
         });
-        EngineLogger.success('Selection Engine', `Symbol cloned${state.moved ? ' and moved' : ''}`);
+        EngineLogger.success(
+            'Selection Engine',
+            `${count} symbol${count !== 1 ? 's' : ''} cloned${state.moved ? ' and moved' : ''}`
+        );
     }
 
     private _cancelCloneDrag(restoreSelection: boolean): void {
         const state = this._cloneDragState;
         this._cloneDragState = null;
         if (!state) return;
+        if (state.rafId !== null) {
+            window.cancelAnimationFrame(state.rafId);
+            state.rafId = null;
+        }
 
-        if (state.graphic && state.undo) {
-            state.undo();
+        if (state.items.length > 0) {
+            state.items.forEach(item => item.undo());
             this.clearSelection();
             if (restoreSelection) {
                 state.previousSelection.forEach(g => {
@@ -402,16 +424,55 @@ class SelectionEngine {
         }
     }
 
-    private _applyCloneDragDeltaToLatest(state: CloneDragState): void {
-        if (!state.graphic || state.pending) return;
+    private _scheduleCloneDragFrame(state: CloneDragState): void {
+        if (state.pending || state.items.length === 0 || state.rafId !== null) return;
+        state.rafId = window.requestAnimationFrame(() => {
+            state.rafId = null;
+            this._flushCloneDragFrame(state, false);
+        });
+    }
+
+    private _flushCloneDragFrame(state: CloneDragState, forceAnnotationRefresh: boolean): void {
+        if (state.rafId !== null) {
+            window.cancelAnimationFrame(state.rafId);
+            state.rafId = null;
+        }
+        this._applyCloneDragDeltaToLatest(state, forceAnnotationRefresh);
+    }
+
+    private _applyCloneDragDeltaToLatest(state: CloneDragState, forceAnnotationRefresh: boolean = false): void {
+        if (state.pending || state.items.length === 0) return;
 
         const dx = state.latestMapPoint.x - state.lastMapPoint.x;
         const dy = state.latestMapPoint.y - state.lastMapPoint.y;
         if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) return;
 
-        this._applyDelta([state.graphic], dx, dy);
+        const graphics = state.items.map(item => item.graphic);
+        const refreshAnnotations =
+            forceAnnotationRefresh ||
+            state.items.length <= CLONE_DRAG_LIVE_ANNOTATION_LIMIT;
+        this._applyDelta(graphics, dx, dy, refreshAnnotations);
         state.lastMapPoint = state.latestMapPoint;
         state.moved = true;
+    }
+
+    private _cloneDragSourcesForHit(source: Graphic, sourceLayer: GraphicsLayer): CloneDragSource[] {
+        if (this.isSelected(source) && this.count > 1) {
+            const selectedSources = this.selectedGraphics
+                .map((graphic) => {
+                    const layer = this._findContainingLayer(graphic);
+                    return layer ? { graphic, layerId: layer.id } : null;
+                })
+                .filter((item): item is CloneDragSource => item !== null);
+
+            if (selectedSources.length > 0) return selectedSources;
+        }
+
+        return [{ graphic: source, layerId: sourceLayer.id }];
+    }
+
+    private _refreshCloneDragAnnotations(state: CloneDragState): void {
+        state.items.forEach(item => this._annotationRefresh?.(item.graphic));
     }
 
     private _isCloneDragGesture(evt: any): boolean {
@@ -1263,7 +1324,12 @@ class SelectionEngine {
             : { x: 0, y: 0 };
     }
 
-    public _applyDelta(graphics: Graphic[], dx: number, dy: number): void {
+    public _applyDelta(
+        graphics: Graphic[],
+        dx: number,
+        dy: number,
+        refreshAnnotations: boolean = true
+    ): void {
         graphics.forEach(g => {
             const geom = g.geometry;
             if (!geom) return;
@@ -1315,7 +1381,7 @@ class SelectionEngine {
             }
 
             // Refresh annotation label at new position
-            this._annotationRefresh?.(g);
+            if (refreshAnnotations) this._annotationRefresh?.(g);
         });
     }
 

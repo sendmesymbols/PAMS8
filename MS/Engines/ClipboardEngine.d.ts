@@ -17,6 +17,10 @@ export interface ClonedSymbol {
     undo: () => void;
     redo: () => void;
 }
+export interface CloneSource {
+    graphic: Graphic;
+    layerId: string;
+}
 export interface ClipboardEngineDeps {
     getView: () => MapView | SceneView;
     layerManager: GraphicsLayerManager;
@@ -45,6 +49,7 @@ export default class ClipboardEngine {
     copy(graphic: Graphic): void;
     paste(targetPoint: Point, expandDistance?: number, expandUnit?: string): Graphic | null;
     buildClone(source: Graphic, layerId: string): ClonedSymbol | null;
+    buildClones(sources: CloneSource[]): ClonedSymbol[] | null;
     showPasteOffsetDialog(): void;
     activatePasteModeWithOffset(expandDistance: number, expandUnit: string): void;
     activatePasteMode(): void;

@@ -228,8 +228,7 @@ class SymbolEngine implements Evented {
     );
     this._selectionEngine.activate([...SYMBOL_LAYER_IDS]);
     this._selectionEngine.setCloneDragCallbacks({
-      buildClone: (graphic: Graphic, layerId: string) =>
-        this._clipboardEngine.buildClone(graphic, layerId),
+      buildClones: (sources) => this._clipboardEngine.buildClones(sources),
       pushUndo: (entry) => this._pushUndo(entry),
       closeActiveWorkflow: () => this._closeActiveWorkflow(),
     });
