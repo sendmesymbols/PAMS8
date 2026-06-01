@@ -70,7 +70,7 @@ export default defineConfig({
         port: 6547,
         proxy: {
             '/roadnet': {
-                target: 'http://localhost:8080',
+                target: 'http://localhost:9191',
                 changeOrigin: true,
                 rewrite: (p) => p.replace(/^\/roadnet/, ''),
             },

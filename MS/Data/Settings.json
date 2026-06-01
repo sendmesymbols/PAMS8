@@ -514,7 +514,7 @@
     "labelOpacity": 0.9
   },
   "roadNetwork": {
-    "serverUrl": "http://localhost:8080",
+    "serverUrl": "http://localhost:9191",
     "apiBaseUrl": "/roadnet/api",
     "dataBaseUrl": "/roadnet/data",
     "timeoutMs": 8000,
