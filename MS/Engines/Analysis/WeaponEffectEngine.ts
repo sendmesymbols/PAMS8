@@ -20,6 +20,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import Mesh from '@arcgis/core/geometry/Mesh';
 import { ElevationUtils } from '../../Support/Elevation/ElevationUtils';
 import EngineLogger from '../../Support/EngineLogger';
 
@@ -460,6 +461,185 @@ export class WeaponEffectEngine {
     } as any;
   }
 
+  // ─── Private: Dome Mesh ─────────────────────────────────────────────────────
+
+  /**
+   * Builds a geodesic spherical-shell sector mesh representing the 3D weapon
+   * engagement envelope. Replaces the flat polygon + extrude approach in 3D.
+   *
+   * Shape: a sector of a spherical shell bounded by:
+   *   • azimuth  : azimuthCenterDeg ± azimuthSpreadDeg/2
+   *   • elevation: elevMinDeg → elevMaxDeg
+   *   • range    : minRangeM  → maxRangeM  (hollow shell; or solid cone if min=0)
+   *
+   * Vertex positions are computed geodesically via _destinationPoint(), so the
+   * mesh is accurate at any scale. Vertex colours provide an elevation gradient.
+   */
+  private _buildWEZDomeMesh(
+    observerPoint: Point,
+    minRangeM: number,
+    maxRangeM: number,
+    azimuthCenterDeg: number,
+    azimuthSpreadDeg: number,
+    elevMinDeg: number,
+    elevMaxDeg: number,
+    color: [number, number, number],
+    alpha: number
+  ): any | null {
+    if (maxRangeM <= 0 || elevMaxDeg <= elevMinDeg) return null;
+
+    const is360   = azimuthSpreadDeg >= 360;
+    const azSpan  = is360 ? 360 : azimuthSpreadDeg;
+    const azStart = azimuthCenterDeg - azSpan / 2;
+    const oLon    = observerPoint.longitude ?? 0;
+    const oLat    = observerPoint.latitude  ?? 0;
+    const oZ      = (observerPoint as any).z ?? 0;
+    const [r, g, b] = color;
+    const ai255   = Math.round(alpha * 255);
+
+    // ~5° resolution, clamped to sensible min steps
+    const AZ_STEPS = is360
+      ? Math.max(36, Math.ceil(360 / 5))
+      : Math.max(6,  Math.ceil(azSpan / 5));
+    const EL_STEPS = Math.max(4, Math.ceil((elevMaxDeg - elevMinDeg) / 5));
+
+    const pos: number[] = [];  // flat [lon, lat, z, …]
+    const clr: number[] = [];  // flat [r, g, b, a, …]
+    const tri: number[] = [];  // triangle vertex-index triplets
+    let vi = 0;
+
+    const pushVert = (lon: number, lat: number, z: number,
+                      vr: number, vg: number, vb: number, va: number): number => {
+      pos.push(lon, lat, z);
+      clr.push(
+        Math.min(255, Math.max(0, Math.round(vr))),
+        Math.min(255, Math.max(0, Math.round(vg))),
+        Math.min(255, Math.max(0, Math.round(vb))),
+        Math.min(255, Math.max(0, Math.round(va)))
+      );
+      return vi++;
+    };
+
+    // Build a [EL_STEPS+1][colCount] grid of vertex indices for a spherical
+    // shell at `rangeM`. `dimFactor` scales both brightness and alpha.
+    const buildShell = (rangeM: number, dimFactor: number): number[][] => {
+      const colCount = is360 ? AZ_STEPS : AZ_STEPS + 1;
+      const grid: number[][] = [];
+      for (let ei = 0; ei <= EL_STEPS; ei++) {
+        const el     = elevMinDeg + (ei / EL_STEPS) * (elevMaxDeg - elevMinDeg);
+        const elRad  = (el * Math.PI) / 180;
+        const hDist  = rangeM * Math.cos(elRad);   // horizontal ground distance
+        const vH     = rangeM * Math.sin(elRad);   // height above observer
+        const bright = (0.55 + 0.45 * (ei / EL_STEPS)) * dimFactor;
+        const row: number[] = [];
+        for (let ai = 0; ai < colCount; ai++) {
+          const az = azStart + (ai / AZ_STEPS) * azSpan;
+          const { longitude, latitude } =
+            this._destinationPoint(oLon, oLat, az, Math.max(1, Math.abs(hDist)));
+          row.push(pushVert(
+            longitude, latitude, oZ + vH,
+            r * bright, g * bright, b * bright,
+            Math.round(ai255 * dimFactor)
+          ));
+        }
+        grid.push(row);
+      }
+      return grid;
+    };
+
+    // Tessellate a shell grid into two triangles per quad.
+    const tessellate = (grid: number[][], flip: boolean) => {
+      for (let ei = 0; ei < EL_STEPS; ei++) {
+        for (let ai = 0; ai < AZ_STEPS; ai++) {
+          const nai = is360 ? (ai + 1) % AZ_STEPS : ai + 1;
+          const tl = grid[ei][ai],    tr = grid[ei][nai];
+          const bl = grid[ei + 1][ai], br = grid[ei + 1][nai];
+          flip
+            ? tri.push(tl, bl, tr,  tr, bl, br)
+            : tri.push(tl, tr, bl,  tr, br, bl);
+        }
+      }
+    };
+
+    // Outer and optional inner shells
+    const outer = buildShell(maxRangeM, 1.0);
+    tessellate(outer, false);
+    const inner = minRangeM > 0 ? buildShell(minRangeM, 0.55) : null;
+    if (inner) tessellate(inner, true);
+
+    // Top annular cap (at elevMaxDeg) — only needed when inner shell exists.
+    // When inner = null and elevMaxDeg < 90° the top ring stays open (a
+    // correct representation of a direct-fire or flat-trajectory envelope).
+    const topO = outer[EL_STEPS];
+    const topI = inner?.[EL_STEPS] ?? null;
+    if (topI) {
+      for (let ai = 0; ai < AZ_STEPS; ai++) {
+        const nai = is360 ? (ai + 1) % AZ_STEPS : ai + 1;
+        tri.push(topO[ai], topO[nai], topI[ai],
+                 topI[ai], topO[nai], topI[nai]);
+      }
+    }
+
+    // Bottom cap (at elevMinDeg) — fan to observer, or annular ring.
+    const botO = outer[0];
+    const botI = inner?.[0] ?? null;
+    const obsVert = pushVert(oLon, oLat, oZ, r, g, b, Math.round(ai255 * 0.8));
+    for (let ai = 0; ai < AZ_STEPS; ai++) {
+      const nai = is360 ? (ai + 1) % AZ_STEPS : ai + 1;
+      if (botI) {
+        tri.push(botO[ai], botI[ai], botO[nai],
+                 botI[ai], botI[nai], botO[nai]);
+      } else {
+        tri.push(botO[ai], obsVert, botO[nai]);
+      }
+    }
+    if (botI) {
+      for (let ai = 0; ai < AZ_STEPS; ai++) {
+        const nai = is360 ? (ai + 1) % AZ_STEPS : ai + 1;
+        tri.push(botI[ai], botI[nai], obsVert);
+      }
+    }
+
+    // Side caps for non-360° wedge (left face at azStart, right face at azEnd).
+    if (!is360) {
+      const addCap = (outerCol: number[], innerCol: number[] | null, flip: boolean) => {
+        const apex = pushVert(oLon, oLat, oZ, r, g, b, Math.round(ai255 * 0.7));
+        if (innerCol) {
+          for (let ei = 0; ei < EL_STEPS; ei++) {
+            flip
+              ? tri.push(outerCol[ei], outerCol[ei + 1], innerCol[ei],
+                         innerCol[ei], outerCol[ei + 1], innerCol[ei + 1])
+              : tri.push(outerCol[ei], innerCol[ei], outerCol[ei + 1],
+                         innerCol[ei], innerCol[ei + 1], outerCol[ei + 1]);
+          }
+        } else {
+          for (let ei = 0; ei < EL_STEPS; ei++) {
+            flip
+              ? tri.push(outerCol[ei], outerCol[ei + 1], apex)
+              : tri.push(outerCol[ei], apex, outerCol[ei + 1]);
+          }
+        }
+      };
+      const last = AZ_STEPS; // AZ_STEPS+1 columns for sector → last index = AZ_STEPS
+      addCap(outer.map(row => row[0]),    inner?.map(row => row[0])    ?? null, false);
+      addCap(outer.map(row => row[last]), inner?.map(row => row[last]) ?? null, true);
+    }
+
+    if (!pos.length || !tri.length) return null;
+
+    return new (Mesh as any)({
+      vertexAttributes: {
+        position: new Float64Array(pos),
+        color:    new Uint8Array(clr),
+      },
+      components: [{
+        faces:    new Uint32Array(tri),
+        material: { colorMixMode: 'replace' },
+      }],
+      spatialReference: { wkid: 4326 },
+    });
+  }
+
   private _azimuthLineSymbol(color: [number, number, number]): any {
     const [r, g, b] = color;
     if (this._is3D()) {
@@ -525,6 +705,7 @@ export class WeaponEffectEngine {
     const maxR    = Math.max(minR + 1, Number(this._inp('wez-maxrange')?.value ?? 1000));
     const azC     = Number(this._inp('wez-azimuth')?.value ?? 0);
     const azSp    = Math.min(360, Math.max(10, Number(this._inp('wez-spread')?.value ?? 360)));
+    const elevMin = Number(this._inp('wez-elevmin')?.value ?? 0);
     const elevMax = Number(this._inp('wez-elevmax')?.value ?? 45);
     const showDead  = (this._panelEl.querySelector<HTMLInputElement>('#wez-opt-deadzone'))?.checked ?? true;
     const showRings = (this._panelEl.querySelector<HTMLInputElement>('#wez-opt-rings'))?.checked ?? true;
@@ -545,16 +726,39 @@ export class WeaponEffectEngine {
     const { zone, minRing, extrudeHeightM, preset } = result;
 
     // ── Main WEZ zone ──
-    if (zone) {
+    const zoneAttrs = {
+      type: 'wez_zone', weaponType: this._weaponKey(), minRangeM: minR,
+      maxRangeM: maxR, azimuthCenterDeg: azC, azimuthSpreadDeg: azSp,
+      elevMaxDeg: elevMax, extrudeHeightM,
+      fillOpacity: Number(this._inp('wez-fill-opacity')?.value ?? 22),
+    };
+
+    if (this._is3D()) {
+      // 3D: geodesic dome mesh — accurate spherical-shell sector
+      const domeMesh = this._buildWEZDomeMesh(
+        this._observerPoint, minR, maxR, azC, azSp, elevMin, elevMax,
+        preset.color, this._getFillAlpha()
+      );
+      if (domeMesh) {
+        this._analysisLayer.add(new Graphic({
+          geometry: domeMesh,
+          symbol: {
+            type: 'mesh-3d',
+            symbolLayers: [{
+              type: 'fill',
+              material: { colorMixMode: 'replace' },
+              edges: { type: 'sketch', color: [preset.color[0], preset.color[1], preset.color[2], 80], size: 0.8 },
+            }],
+          } as any,
+          attributes: zoneAttrs,
+        }));
+      }
+    } else if (zone) {
+      // 2D: flat filled polygon (extrude not applicable in MapView)
       this._analysisLayer.add(new Graphic({
         geometry: zone,
         symbol: this._wezZoneSymbol(preset.color, extrudeHeightM),
-        attributes: {
-          type: 'wez_zone', weaponType: this._weaponKey(), minRangeM: minR,
-          maxRangeM: maxR, azimuthCenterDeg: azC, azimuthSpreadDeg: azSp,
-          elevMaxDeg: elevMax, extrudeHeightM,
-          fillOpacity: Number(this._inp('wez-fill-opacity')?.value ?? 22),
-        },
+        attributes: zoneAttrs,
       }));
     }
 

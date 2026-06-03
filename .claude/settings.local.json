@@ -94,7 +94,10 @@
       "PowerShell(node -e \"console.log\\(require\\('pptxgenjs/package.json'\\).version\\)\")",
       "Bash(git diff *)",
       "Bash(awk '/private _buildPanelHTML/,/^  }$/' \"D:\\\\Projects\\\\PAMS8\\\\MS\\\\Engines\\\\Analysis\\\\TrafficabilityEngine.ts\")",
-      "Bash(awk '/private _buildResultsPanelHTML/,/^  }$/' \"D:\\\\Projects\\\\PAMS8\\\\MS\\\\Engines\\\\Analysis\\\\TrafficabilityEngine.ts\")"
+      "Bash(awk '/private _buildResultsPanelHTML/,/^  }$/' \"D:\\\\Projects\\\\PAMS8\\\\MS\\\\Engines\\\\Analysis\\\\TrafficabilityEngine.ts\")",
+      "Bash(npm list *)",
+      "Bash(python \"C:\\\\Users\\\\Legion\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\3c0df84b-b823-41c7-8618-c14781164b08\\\\aac34a4a-b299-4d53-9a5b-ea7978db32ed\\\\skills\\\\pptx\\\\scripts\\\\office\\\\soffice.py\" --headless --convert-to pdf PAMS8_Template.pptx)",
+      "Bash(ls \"C:\\\\Program Files\\\\LibreOffice\\\\program\\\\soffice.exe\" 2>&1; ls \"C:\\\\Program Files \\(x86\\)\\\\LibreOffice\\\\program\\\\soffice.exe\" 2>&1)"
     ]
   }
 }

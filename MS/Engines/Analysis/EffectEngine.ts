@@ -1141,6 +1141,14 @@ export class EffectEngine {
         pointer-events: none; z-index: 1100; text-transform: uppercase; transition: opacity .3s;
         opacity: 0;
       }
+      .effects-panel::-webkit-scrollbar { width: 5px; }
+      .effects-panel::-webkit-scrollbar-track { background: transparent; }
+      .effects-panel::-webkit-scrollbar-thumb { background: var(--ms-border); border-radius: 3px; }
+      .effects-panel::-webkit-scrollbar-thumb:hover { background: var(--ms-danger); }
+      #effects-strike-list::-webkit-scrollbar { width: 4px; }
+      #effects-strike-list::-webkit-scrollbar-track { background: transparent; }
+      #effects-strike-list::-webkit-scrollbar-thumb { background: var(--ms-border); border-radius: 2px; }
+      #effects-strike-list::-webkit-scrollbar-thumb:hover { background: var(--ms-danger); }
     `;
     document.head.appendChild(style);
   }
