@@ -138,6 +138,8 @@ export class LocalPeaksEngine {
   private _aoiLayer!: GraphicsLayer;
   private _profileLayer!: GraphicsLayer;
   private _panelEl: HTMLDivElement | null = null;
+  private _resultsPanelEl: HTMLDivElement | null = null;
+  private _resultsPanelBound = false;
   private _sketch: SketchViewModel | null = null;
   private _bufferPickHandle: any = null;
   private _viewWatchHandle: any = null;
@@ -207,6 +209,9 @@ export class LocalPeaksEngine {
     }
     this._panelEl?.remove();
     this._panelEl = null;
+    this._resultsPanelEl?.remove();
+    this._resultsPanelEl = null;
+    this._resultsPanelBound = false;
     this._view = null;
   }
 
@@ -841,13 +846,50 @@ export class LocalPeaksEngine {
     this._panelEl.classList.add('ms-visible');
     this._bindPanelEvents();
     this._makeDraggable();
+    this._ensureResultsPanel();
     this._renderResults();
     this._syncStats();
     this._setStatus('Ready. Choose AOI and run local terrain analysis.', 'ready');
   }
 
+  /**
+   * Companion results widget — the ranked peak list, summary stats, and exports
+   * live in their own movable panel rather than crammed into the control panel.
+   * Created once and reused; it shows alongside the main panel and hides with it.
+   */
+  private _ensureResultsPanel(): void {
+    if (!this._resultsPanelEl) {
+      this._resultsPanelEl = document.createElement('div');
+      this._resultsPanelEl.id = 'local-peaks-results-panel';
+      this._resultsPanelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._resultsPanelEl.setAttribute('data-engine', 'peaks');
+      this._resultsPanelEl.style.top = '62px';
+      this._resultsPanelEl.style.left = '700px';
+      this._resultsPanelEl.style.width = '420px';
+      this._resultsPanelEl.innerHTML = this._buildResultsPanelHTML();
+      document.body.appendChild(this._resultsPanelEl);
+    }
+    if (!this._resultsPanelBound) {
+      this._resultsPanelEl.querySelector('#peaks-results-close-btn')?.addEventListener('click', () => {
+        this._resultsPanelEl?.classList.remove('ms-visible');
+      });
+      this._resultsPanelEl.querySelector('#peaks-results-min-btn')?.addEventListener('click', () => {
+        const body = this._resultsPanelEl?.querySelector<HTMLElement>('#peaks-results-body');
+        if (body) body.style.display = body.style.display === 'none' ? '' : 'none';
+      });
+      this._el('peaks-export-csv')?.addEventListener('click', () => this._exportCsv());
+      this._el('peaks-export-geojson')?.addEventListener('click', () => this._exportGeoJson(false));
+      this._el('peaks-export-shp')?.addEventListener('click', () => this._exportShapefile());
+      this._el('peaks-sort')?.addEventListener('change', () => this._renderResults());
+      this._makeSubDraggable(this._resultsPanelEl, this._resultsPanelEl.querySelector<HTMLElement>('#peaks-results-drag-handle'));
+      this._resultsPanelBound = true;
+    }
+    this._resultsPanelEl.classList.add('ms-visible');
+  }
+
   private _hidePanel(): void {
     if (this._panelEl) this._panelEl.classList.remove('ms-visible');
+    if (this._resultsPanelEl) this._resultsPanelEl.classList.remove('ms-visible');
   }
 
   private _buildPanelHTML(): string {
@@ -860,7 +902,28 @@ export class LocalPeaksEngine {
         <div class="ms-section-title">Detection</div><div class="ms-grid"><div class="ms-field"><label class="ms-label">Cell m</label><input id="peaks-cell-size" type="number" min="10" max="500" step="5" value="45" class="ms-input"></div><div class="ms-field"><label class="ms-label">Search radius m</label><input id="peaks-search-radius" type="number" min="20" max="5000" step="25" value="180" class="ms-input"></div><div class="ms-field"><label class="ms-label">Prominence m</label><input id="peaks-prominence" type="number" min="0" max="5000" step="5" value="25" class="ms-input"></div><div class="ms-field"><label class="ms-label">Isolation m</label><input id="peaks-isolation" type="number" min="0" max="20000" step="25" value="300" class="ms-input"></div><div class="ms-field"><label class="ms-label">Min height m</label><input id="peaks-min-elev" type="number" step="10" value="-10000" class="ms-input"></div><div class="ms-field"><label class="ms-label">Max results</label><input id="peaks-max-results" type="number" min="1" max="500" step="1" value="30" class="ms-input"></div></div>
         <div class="ms-section-title">Execution</div><div class="ms-toggle-row"><label>Auto-calculate on pan/zoom</label><input id="peaks-auto-run" type="checkbox" class="ms-input"></div><div class="ms-toggle-row"><label>Peak layer visible</label><input id="peaks-layer-visible" type="checkbox" checked class="ms-input"></div><div class="ms-toggle-row"><label>Labels</label><input id="peaks-show-labels" type="checkbox" checked class="ms-input"></div>
         <div class="ms-progress"><div><div id="peaks-progress-fill" class="ms-progress-fill"></div></div><span id="peaks-progress-label" class="ms-progress-label">Idle</span></div><div class="ms-btn-row"><button id="peaks-clear-btn" class="ms-btn">Clear Results</button><button id="peaks-run-btn" class="ms-btn primary">Run Analysis</button></div>
-        <div class="ms-section-title">Results</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:0 12px 9px;"><div style="background:var(--ms-bg-input);border:1px solid var(--ms-border);border-radius:4px;padding:7px 9px;"><div style="display:block;font-size:10.5px;text-transform:uppercase;color:var(--ms-text-label);letter-spacing:.06em;font-weight:600;">Count</div><div style="display:block;margin-top:3px;font-size:16px;color:var(--ms-text);white-space:nowrap;font-weight:700;" id="peaks-stat-count">0</div></div><div style="background:var(--ms-bg-input);border:1px solid var(--ms-border);border-radius:4px;padding:7px 9px;"><div style="display:block;font-size:10.5px;text-transform:uppercase;color:var(--ms-text-label);letter-spacing:.06em;font-weight:600;">Avg elev</div><div style="display:block;margin-top:3px;font-size:16px;color:var(--ms-text);white-space:nowrap;font-weight:700;" id="peaks-stat-avg">-</div></div><div style="background:var(--ms-bg-input);border:1px solid var(--ms-border);border-radius:4px;padding:7px 9px;"><div style="display:block;font-size:10.5px;text-transform:uppercase;color:var(--ms-text-label);letter-spacing:.06em;font-weight:600;">Max prom</div><div style="display:block;margin-top:3px;font-size:16px;color:var(--ms-text);white-space:nowrap;font-weight:700;" id="peaks-stat-prom">-</div></div></div><div class="ms-field" style="grid-column:1/-1;padding:0 12px 8px;"><label class="ms-label">Sort</label><select id="peaks-sort" class="ms-select"><option value="rank">Rank</option><option value="elevation">Elevation</option><option value="prominence">Prominence</option></select></div><div id="peaks-results"></div><div class="ms-btn-row"><button id="peaks-export-csv" class="ms-btn">CSV</button><button id="peaks-export-geojson" class="ms-btn">GeoJSON</button><button id="peaks-export-shp" class="ms-btn">Shapefile</button></div>
+      </div>`;
+  }
+
+  private _buildResultsPanelHTML(): string {
+    return `
+      <div class="ms-header" id="peaks-results-drag-handle"><span class="ms-header-icon">RANK</span><span class="ms-header-title">Peak Results</span><span class="peaks-results-count" id="peaks-results-tally">0</span><button class="ms-header-btn" id="peaks-results-min-btn">▼</button><button class="ms-header-btn" id="peaks-results-close-btn">✕</button></div>
+      <div class="ms-body" id="peaks-results-body">
+        <div class="peaks-stats-grid">
+          <div class="peaks-stat-card"><div class="peaks-stat-lbl">Count</div><div class="peaks-stat-val" id="peaks-stat-count">0</div></div>
+          <div class="peaks-stat-card"><div class="peaks-stat-lbl">Avg elev</div><div class="peaks-stat-val" id="peaks-stat-avg">-</div></div>
+          <div class="peaks-stat-card"><div class="peaks-stat-lbl">Max prom</div><div class="peaks-stat-val" id="peaks-stat-prom">-</div></div>
+        </div>
+        <div class="peaks-legend">
+          <div class="peaks-legend-title">What the metrics mean</div>
+          <div class="peaks-legend-item"><span class="peaks-legend-key">▲ PK / ▼ VLY</span><span class="peaks-legend-def">Feature type — Peak (local high point) or Valley/pit (local low point), with its rank.</span></div>
+          <div class="peaks-legend-item"><span class="peaks-legend-key">Prom</span><span class="peaks-legend-def"><b>Prominence</b> — how far the summit rises above the highest saddle linking it to higher ground (m).</span></div>
+          <div class="peaks-legend-item"><span class="peaks-legend-key">Iso</span><span class="peaks-legend-def"><b>Isolation</b> — straight-line distance to the nearest higher feature ("top" = highest in the area).</span></div>
+          <div class="peaks-legend-item"><span class="peaks-legend-key">ΔMean</span><span class="peaks-legend-def"><b>Delta vs mean</b> — height of this feature above the average elevation of its surrounding neighborhood (m).</span></div>
+        </div>
+        <div class="ms-field" style="padding:0 12px 8px;"><label class="ms-label">Sort</label><select id="peaks-sort" class="ms-select"><option value="rank">Rank</option><option value="elevation">Elevation</option><option value="prominence">Prominence</option></select></div>
+        <div id="peaks-results"></div>
+        <div class="ms-btn-row"><button id="peaks-export-csv" class="ms-btn">CSV</button><button id="peaks-export-geojson" class="ms-btn">GeoJSON</button><button id="peaks-export-shp" class="ms-btn">Shapefile</button></div>
       </div>`;
   }
 
@@ -874,10 +937,6 @@ export class LocalPeaksEngine {
     this._el('peaks-draw-poly')?.addEventListener('click', () => this._startDraw('polygon'));
     this._el('peaks-draw-box')?.addEventListener('click', () => this._startDraw('rectangle'));
     this._el('peaks-pick-buffer')?.addEventListener('click', () => this._startBufferPick());
-    this._el('peaks-export-csv')?.addEventListener('click', () => this._exportCsv());
-    this._el('peaks-export-geojson')?.addEventListener('click', () => this._exportGeoJson(false));
-    this._el('peaks-export-shp')?.addEventListener('click', () => this._exportShapefile());
-    this._el('peaks-sort')?.addEventListener('change', () => this._renderResults());
     this._el('peaks-layer-visible')?.addEventListener('change', () => { const visible = this._checked('peaks-layer-visible', true); this._peakLayer.visible = visible; this._labelLayer.visible = visible; });
     this._el('peaks-show-labels')?.addEventListener('change', () => this._renderGraphics(this._values()));
     ['peaks-auto-run', 'peaks-aoi-mode'].forEach((id) => this._el(id)?.addEventListener('change', () => this._syncAutoRun()));
@@ -913,13 +972,14 @@ export class LocalPeaksEngine {
       const isoStr = Number.isFinite(p.isolationM) ? formatDistance(p.isolationM) : 'top';
       const deltaMean = Math.round(p.elevation - p.neighborhoodMean);
       const deltaStr = (deltaMean >= 0 ? '+' : '') + deltaMean;
-      const icon = isPk ? '▲' : '▽';
+      const icon = isPk ? '▲' : '▼';
+      const tag = isPk ? 'PK' : 'VLY';
       const latStr = Math.abs(p.latitude).toFixed(4) + '° ' + (p.latitude >= 0 ? 'N' : 'S');
       const lonStr = Math.abs(p.longitude).toFixed(4) + '° ' + (p.longitude >= 0 ? 'E' : 'W');
       const sel = p.id === this._selectedId ? ' selected' : '';
       return '<div class="peaks-row' + sel + '" data-id="' + p.id + '">'
         + '<div class="peaks-row-header">'
-        + '<span class="peaks-row-badge" style="background:' + hex + '">' + icon + ' ' + p.rank + '</span>'
+        + '<span class="peaks-row-badge" style="background:' + hex + '">' + icon + ' ' + tag + ' ' + p.rank + '</span>'
         + '<span class="peaks-row-elev">' + elevStr + '<span class="peaks-row-unit"> m</span></span>'
         + '<div class="peaks-row-btns">'
         + '<button data-select="' + p.id + '">Select</button>'
@@ -941,6 +1001,7 @@ export class LocalPeaksEngine {
 
   private _syncStats(): void {
     this._setText('peaks-stat-count', String(this._results.length));
+    this._setText('peaks-results-tally', String(this._results.length));
     if (!this._results.length) { this._setText('peaks-stat-avg', '-'); this._setText('peaks-stat-prom', '-'); return; }
     const avg = this._results.reduce((sum, p) => sum + p.elevation, 0) / this._results.length;
     const maxProm = Math.max(...this._results.map((p) => p.prominence));
@@ -1208,7 +1269,7 @@ export class LocalPeaksEngine {
     });
   }
 
-  private _el(id: string): HTMLElement | null { return this._panelEl?.querySelector(`#${id}`) ?? null; }
+  private _el(id: string): HTMLElement | null { return (this._panelEl?.querySelector(`#${id}`) as HTMLElement | null) ?? (this._resultsPanelEl?.querySelector(`#${id}`) as HTMLElement | null) ?? null; }
   private _num(id: string, fallback: number): number { const el = this._el(id) as HTMLInputElement | null; const value = el ? Number(el.value) : fallback; return Number.isFinite(value) ? value : fallback; }
   private _checked(id: string, fallback: boolean): boolean { const el = this._el(id) as HTMLInputElement | null; return el ? el.checked : fallback; }
   private _selectValue(id: string, fallback: string): string { const el = this._el(id) as HTMLSelectElement | null; return el?.value || fallback; }

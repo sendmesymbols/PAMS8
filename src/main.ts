@@ -1475,6 +1475,7 @@ function initializeAutocomplete() {
       // Standalone tools — open without requiring a selected symbol
       const standaloneTools: Record<string, () => void> = {
         localPeaks:    () => { const se = (window as any).symbolEngine; se?.localPeaksEngine?.open(undefined, se.view); },
+        keyTerrain:    () => { const se = (window as any).symbolEngine; se?.keyTerrainIdentificationEngine?.open(getActiveGraphic() ?? undefined, se.view); },
         posDefScorer:  () => { const se = (window as any).symbolEngine; se?.posDefScorerEngine?.openWidget(se.view); },
         opRanker:      () => { const se = (window as any).symbolEngine; se?.opRankerEngine?.openWidget(se.view); },
         missionPlanner:() => { const se = (window as any).symbolEngine; se?.missionPlannerEngine?.openWidget(se.view); },
@@ -1482,7 +1483,6 @@ function initializeAutocomplete() {
 
       // Context tools — require a right-clicked or selected graphic
       const contextTools: Record<string, (g: any, v: any, se: any) => void> = {
-        keyTerrain:  (g, v, se) => se.keyTerrainIdentificationEngine?.open(g, v),
         deadGround:  (g, v, se) => se.deadGroundMapper?.open(g, v),
         ocoka:       (g, v, se) => se.ocokaEngine?.open(g, v),
         los:         (g, v, se) => se.losEngine?.open(g, v),

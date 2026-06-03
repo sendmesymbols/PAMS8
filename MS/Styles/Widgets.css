@@ -1678,6 +1678,39 @@
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
+   KEY TERRAIN — control panel
+   Slightly wider than the base .ms-panel and guards against grid tracks growing
+   to the min-content width of number inputs (which produced a horizontal
+   scrollbar). minmax(0,1fr) lets the lat/lon fields shrink to fit.
+   ═════════════════════════════════════════════════════════════════════════════ */
+#kt-ctrl-panel {
+  width: 404px;
+}
+
+#kt-ctrl-panel .ms-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+#kt-ctrl-panel .ms-grid.full {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#kt-ctrl-panel .ms-field {
+  min-width: 0;
+}
+
+#kt-ctrl-panel .ms-input,
+#kt-ctrl-panel .ms-select {
+  width: 100%;
+  min-width: 0;
+}
+
+#kt-ctrl-panel #kt-pick-loc {
+  width: 100%;
+  font-weight: 600;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
    ESRI POPUP — Ops Dark override
    Scoped to `body.ms-popup-dark`, toggled on/off by analysis engines (KeyTerrain,
    OCOKA, …) while one is open so the native ArcGIS popup matches the dark ops UI
@@ -1722,11 +1755,110 @@ body.ms-popup-dark .esri-popup__pointer-direction {
    PEAK ANALYSIS — result rows (LocalPeaksEngine)
    ═════════════════════════════════════════════════════════════════════════════ */
 
+/* ── Companion results panel: header tally, summary stats ───────────────── */
+.peaks-results-count {
+  margin-left: auto;
+  font-family: var(--ms-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ms-accent);
+  background: rgba(239, 159, 39, 0.12);
+  border: 1px solid rgba(239, 159, 39, 0.32);
+  border-radius: 10px;
+  padding: 1px 9px;
+  min-width: 20px;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.peaks-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  padding: 10px 12px 9px;
+}
+
+.peaks-stat-card {
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius-sm);
+  padding: 7px 9px;
+}
+
+.peaks-stat-lbl {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  color: var(--ms-text-label);
+  letter-spacing: 0.07em;
+  font-weight: 700;
+}
+
+.peaks-stat-val {
+  margin-top: 3px;
+  font-family: var(--ms-font-mono);
+  font-size: 16px;
+  color: var(--ms-text);
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+/* ── Metric legend / glossary ───────────────────────────────────────────── */
+.peaks-legend {
+  margin: 0 12px 9px;
+  padding: 9px 11px 10px;
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border);
+  border-left: 3px solid var(--ms-accent);
+  border-radius: var(--ms-radius-sm);
+}
+
+.peaks-legend-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ms-accent);
+  margin-bottom: 7px;
+}
+
+.peaks-legend-item {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 5px;
+  line-height: 1.45;
+}
+
+.peaks-legend-item:last-child {
+  margin-bottom: 0;
+}
+
+.peaks-legend-key {
+  font-family: var(--ms-font-mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ms-text);
+  letter-spacing: 0.02em;
+  text-align: right;
+}
+
+.peaks-legend-def {
+  font-size: 11.5px;
+  color: var(--ms-text-label);
+}
+
+.peaks-legend-def b {
+  color: var(--ms-text);
+  font-weight: 600;
+}
+
 #peaks-results {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 4px 12px 10px;
+  overflow-y: auto;
 }
 
 .peaks-empty {
@@ -1742,9 +1874,9 @@ body.ms-popup-dark .esri-popup__pointer-direction {
 .peaks-row {
   background: var(--ms-bg-input);
   border: 1px solid var(--ms-divider);
-  border-left: 2px solid transparent;
+  border-left: 3px solid transparent;
   border-radius: var(--ms-radius-sm);
-  padding: 7px 9px 8px;
+  padding: 10px 12px 11px;
   cursor: pointer;
   transition:
     background-color 0.12s ease,
@@ -1775,21 +1907,22 @@ body.ms-popup-dark .esri-popup__pointer-direction {
 .peaks-row-badge {
   flex-shrink: 0;
   font-family: var(--ms-font-mono);
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #0d0e12;
-  padding: 2px 7px;
+  padding: 3px 9px;
   border-radius: 3px;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
   line-height: 1.4;
-  min-width: 38px;
+  min-width: 62px;
   text-align: center;
+  white-space: nowrap;
 }
 
 .peaks-row-elev {
   font-family: var(--ms-font-mono);
-  font-size: 14px;
+  font-size: 19px;
   font-weight: 700;
   color: var(--ms-text);
   letter-spacing: 0.01em;
@@ -1797,7 +1930,7 @@ body.ms-popup-dark .esri-popup__pointer-direction {
 }
 
 .peaks-row-unit {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--ms-text-label);
   letter-spacing: 0.06em;
@@ -1811,13 +1944,13 @@ body.ms-popup-dark .esri-popup__pointer-direction {
 }
 
 .peaks-row-btns button {
-  padding: 3px 8px;
+  padding: 4px 10px;
   background: transparent;
   border: 1px solid var(--ms-border);
   border-radius: 3px;
   color: var(--ms-text-dim);
   font-family: var(--ms-font);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1833,8 +1966,8 @@ body.ms-popup-dark .esri-popup__pointer-direction {
 
 /* ── Elevation bar ─────────────────────────────────────────────────────── */
 .peaks-row-bar-wrap {
-  margin: 7px 0 6px;
-  height: 3px;
+  margin: 8px 0 7px;
+  height: 4px;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 2px;
   overflow: hidden;
@@ -1850,11 +1983,11 @@ body.ms-popup-dark .esri-popup__pointer-direction {
 .peaks-row-metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   font-family: var(--ms-font-mono);
-  font-size: 10.5px;
+  font-size: 13px;
   color: var(--ms-text);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .peaks-row-metrics > span {
@@ -1864,24 +1997,24 @@ body.ms-popup-dark .esri-popup__pointer-direction {
 .peaks-lbl {
   display: inline-block;
   font-family: var(--ms-font);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ms-text-label);
-  margin-right: 3px;
-  opacity: 0.85;
+  margin-right: 4px;
+  opacity: 0.9;
 }
 
 /* ── Coordinates ────────────────────────────────────────────────────────── */
 .peaks-row-coord {
-  margin-top: 4px;
+  margin-top: 5px;
   font-family: var(--ms-font-mono);
-  font-size: 9.5px;
+  font-size: 12px;
   color: var(--ms-text-label);
   letter-spacing: 0.03em;
   text-align: right;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 /* ── Elevation profile sub-widget ───────────────────────────────────────── */
