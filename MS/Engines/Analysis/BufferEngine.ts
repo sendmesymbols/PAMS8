@@ -187,9 +187,7 @@ export class BufferEngine {
     this._redraw();
 
     if (this._sourcePoints.length === 0) {
-      // Opened with no symbol — let the user place the source on the map.
       this._startPick('replace');
-      this._flashPickTooltip('No symbol — click the map to set the source (or use “Pick Source”).');
     }
   }
 

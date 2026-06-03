@@ -108,13 +108,15 @@ export class LadderEngine {
     if (this._enabled) this._declutter.requestSolve();
   }
 
-  onViewChanged(_view: MapView | SceneView): void {
+  onViewChanged(_view: MapView | SceneView, newLayerManager?: GraphicsLayerManager): void {
     if (this._enabled) {
       // Layer references change with the view; clear cached originals so
-      // the next solve re-captures them on the new view's layers.
+      // the next solve re-captures them on the new view's layers. Restore
+      // against the old manager first, then adopt the new view's manager.
       this._origElevationModes.clear();
       this._restoreAll();
       this._clearLadderLayer();
+      if (newLayerManager) this._layerManager = newLayerManager;
       this._declutter.requestSolve();
     }
   }
@@ -272,13 +274,25 @@ export class LadderEngine {
 
     for (const seed of entries) {
       if (processed.has(seed.id)) continue;
-      const group = neighborsOf(seed).filter(n => !processed.has(n.id));
-      if (group.length >= 2) {
-        for (const m of group) processed.add(m.id);
-        stacks.push(group);
-      } else {
-        processed.add(seed.id);
+      // BFS flood-fill: transitively grow the stack so chains A–B–C are
+      // captured whole regardless of iteration order.
+      processed.add(seed.id);
+      const group: LogicalEntry[] = [seed];
+      const queue: LogicalEntry[] = [seed];
+      while (queue.length > 0) {
+        const cur = queue.shift()!;
+        for (const nb of neighborsOf(cur)) {
+          if (processed.has(nb.id)) continue;
+          processed.add(nb.id);
+          group.push(nb);
+          queue.push(nb);
+        }
       }
+      if (group.length >= cfg.minRungs) {
+        stacks.push(group);
+      }
+      // Singletons / sub-minRungs groups need no action here; they are simply
+      // not added to stacks and will be restored in step 4 if previously laddered.
     }
 
     // ------------------------------------------------------------------

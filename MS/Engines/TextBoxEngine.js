@@ -63,7 +63,7 @@ define(["dojo/_base/declare",
             
             var textSymScreenPtX, textSymScreenPtY;            
             if(this.textAlign==="left"){
-                var topPtGraphic = new Graphic(new Point(polygonGeom.rings[0][0][0], polygonGeom.rings[0][0][1], this.markerSymbol));
+                var topPtGraphic = new Graphic(new Point(polygonGeom.rings[0][0][0], polygonGeom.rings[0][0][1]), this.markerSymbol);
                 var symScreenTopPt = this.map.toScreen(topPtGraphic.geometry);
                 textSymScreenPtX = symScreenTopPt.x + widthFactor;
                 textSymScreenPtY = symScreenTopPt.y + lineHeightHalf;      

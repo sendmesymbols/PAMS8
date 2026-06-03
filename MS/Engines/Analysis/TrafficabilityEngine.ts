@@ -125,6 +125,34 @@ interface RouteOption {
   chain: RouteChain;
 }
 
+/** Per-waypoint display metadata set by the user in the MOVORD tab. */
+interface WaypointMeta {
+  label: string;    // custom name (SP / CP-n / RP by default)
+  dwellMin: number; // halt time in minutes before the convoy departs this WP
+}
+
+/** Absolute timing for one checkpoint in the movement order. */
+interface CheckpointTime {
+  label: string;
+  lat: number;
+  lon: number;
+  tPlusArrivalMin: number;
+  dwellMin: number;
+  tPlusDepartureMin: number;
+  absArrival: string;   // 'HH:MM' local or '' when no H-Hour
+  absDeparture: string;
+}
+
+// ─── Movement-profile table ──────────────────────────────────────────────────
+
+const MOVEMENT_PROFILES: Record<string, { label: string; mult: number }> = {
+  day:             { label: 'Day — Road',         mult: 1.0 },
+  'night-nvg':     { label: 'Night — NVG',        mult: 0.5 },
+  'night-blackout':{ label: 'Night — Blackout',   mult: 0.3 },
+  rain:            { label: 'Rain / Mud',         mult: 0.7 },
+  custom:          { label: 'Custom',             mult: 1.0 },
+};
+
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
 export class TrafficabilityEngine {
@@ -177,6 +205,49 @@ export class TrafficabilityEngine {
   private _dragOffsetX = 0;
   private _dragOffsetY = 0;
   private _isDragging = false;
+
+  // ── Companion results panel ───────────────────────────────────────────────
+  private _resultsPanelEl: HTMLDivElement | null = null;
+  private _resultsPanelBound = false;
+  private _subDragCleanup: Array<() => void> = [];
+
+  // ── Feature tabs ──────────────────────────────────────────────────────────
+  private _featureTab: 'conditions' | 'convoy' | 'export' = 'conditions';
+
+  // Conditions tab
+  private _movementProfile = 'day';
+  private _profileMultiplier = 1.0;
+  private _threatEnabled = false;
+  private _threatRadiusKm = 5;
+
+  // Convoy tab
+  private _convoyEnabled = false;
+  private _convoyVehicles = 10;
+  private _convoySpacingM = 50;
+  private _convoySerials = 1;
+  private _convoySerialHeadwayMin = 30;
+
+  // H-Hour / TOT
+  private _departureHHMM = '';   // 'HH:MM' from <input type="time">
+  private _useTOT = false;
+  private _totHHMM = '';
+
+  // Fuel planning — L/100km plus litres on board → range in km.
+  private _fuelEnabled = false;
+  private _fuelEconomyL100km = 30;     // typical military truck baseline
+  private _fuelOnBoardL = 200;
+  private static readonly FUEL_RESERVE_PCT = 0.20;
+
+  // Named waypoints — parallel to _waypoints[]
+  private _waypointMeta: WaypointMeta[] = [];
+
+  // Last computed checkpoint timings (drives MOVORD + convoy panels)
+  private _checkpointTimings: CheckpointTime[] = [];
+  private _lastRouteDistKm = 0;
+  private _lastRouteTimeMin = 0;
+  private _lastRouteTraffic: import('./RoadNetworkEngine').TrafficabilitySummary | null = null;
+  /** Vertices of the last computed route — used to place the fuel-exhaustion marker along the path. */
+  private _lastRoutePath: number[][] = [];
 
   constructor() {
     this._createLayers();
@@ -270,8 +341,13 @@ export class TrafficabilityEngine {
       map.remove(this._markerLayer);
       map.remove(this._committedLayer);
     }
+    this._subDragCleanup.forEach((fn) => fn());
+    this._subDragCleanup = [];
     this._panelEl?.remove();
     this._panelEl = null;
+    this._resultsPanelEl?.remove();
+    this._resultsPanelEl = null;
+    this._resultsPanelBound = false;
     this._view = null;
   }
 
@@ -759,6 +835,10 @@ export class TrafficabilityEngine {
 
     const speedKmh = Number(this._inp('reach-speed')?.value ?? 40);
 
+    // Render threat bubbles BEFORE routing so they exist while the route is
+    // computed — the route is then drawn on top, visibly bending around them.
+    if (this._threatEnabled) this._detectAndRenderThreatZones();
+
     // Primary route. If it can't be routed at all, fall back to a straight-line estimate.
     const primary = await this._routeChain([origin, dest], speedKmh);
     if (primary.okLegs === 0) {
@@ -849,6 +929,10 @@ export class TrafficabilityEngine {
 
     const speedKmh = Number(this._inp('reach-speed')?.value ?? 40);
 
+    // Render threat bubbles BEFORE routing so they're visible while the MSR is
+    // computed — `_routeChain` will steer each leg around them.
+    if (this._threatEnabled) this._detectAndRenderThreatZones();
+
     const chain = await this._routeChain(this._waypoints, speedKmh);
     const { path, segs, traffic, degraded } = chain;
     const liveAny = chain.okLegs > 0;
@@ -889,9 +973,26 @@ export class TrafficabilityEngine {
          <div class="reach-co-note">${cls.blurb}</div>`);
     }
 
+    // Apply per-waypoint dwell times to the total time and to checkpoint timings.
+    const totalDwellMin = this._waypointMeta.reduce((a, m) => a + (m?.dwellMin || 0), 0);
+    const effectiveTimeMin = chain.timeMin + totalDwellMin;
+
+    // Build checkpoint timings for MOVORD / convoy panels.
+    this._checkpointTimings = this._computeCheckpointTimings(this._waypoints, segs, effectiveTimeMin);
+    this._lastRouteDistKm = chain.distKm;
+    this._lastRouteTimeMin = effectiveTimeMin;
+    this._lastRouteTraffic = traffic;
+    this._lastRoutePath = path;
+
     // Build playback model.
     this._driveModel = segs.length ? this._buildDriveModel(path, segs, !liveAny || degraded) : null;
     if (this._driveModel) this._showScrubber(); else this._hideScrubber();
+
+    // Choke-point markers for track / unclassified segments.
+    this._renderChokeMarkers(segs, path);
+
+    // Threat-zone buffers if enabled.
+    if (this._threatEnabled) this._detectAndRenderThreatZones();
 
     this._repositionCallouts();
     this._setSourceNote(
@@ -899,6 +1000,14 @@ export class TrafficabilityEngine {
         ? `${degraded ? 'Partial road MSR' : 'Road MSR'} over ${this._waypoints.length} waypoints. ${cls.blurb}`
         : `Estimate — straight-line MSR at ${speedKmh} km/h.`,
     );
+
+    // Refresh feature-tab panels with the new result.
+    this._updateTimingPanel();
+    this._updateConvoyPanel();
+    this._updateFuelPanel();
+    this._renderFuelMarker();
+    this._updateMovordPanel();
+
     this._setStatus(liveAny ? 'ready' : 'estimate');
   }
 
@@ -933,13 +1042,30 @@ export class TrafficabilityEngine {
     const rn = this._roadNet();
     if (rn && rn.availability === 'unknown') await rn.ensureAvailable();
 
+    // If threat-zone avoidance is enabled, expand each leg with via-points that
+    // steer the route around each threat circle that the straight line crosses.
+    // This re-uses the same chain mechanism — only the geometry that pgRouting
+    // sees changes; alternates and MSR legs inherit the behaviour automatically.
+    let chainPoints = points;
+    if (this._threatEnabled) {
+      const threats = this._collectThreatCircles();
+      if (threats.length) {
+        const expanded: Point[] = [points[0]];
+        for (let i = 0; i < points.length - 1; i++) {
+          const vias = this._avoidVias(points[i], points[i + 1], threats);
+          expanded.push(...vias, points[i + 1]);
+        }
+        chainPoints = expanded;
+      }
+    }
+
     const path: number[][] = [];
     const segs: DriveSeg[] = [];
     const byClassKm: Record<string, number> = {};
     let okLegs = 0, distKm = 0, timeMin = 0, degraded = false;
 
-    for (let i = 0; i < points.length - 1; i++) {
-      const a = points[i], b = points[i + 1];
+    for (let i = 0; i < chainPoints.length - 1; i++) {
+      const a = chainPoints[i], b = chainPoints[i + 1];
       let res: any = null;
       if (rn) {
         try { res = await rn.route(a, b); } catch { res = { ok: false }; }
@@ -970,6 +1096,12 @@ export class TrafficabilityEngine {
     const traffic: TrafficabilitySummary | null = okLegs > 0 && Object.keys(byClassKm).length
       ? RoadNetworkEngine.classifyRoute(Object.entries(byClassKm).map(([fclass, km]) => ({ fclass, km })))
       : null;
+
+    // Apply movement-profile multiplier to all travel times.
+    if (this._profileMultiplier !== 1.0) {
+      timeMin *= this._profileMultiplier;
+      for (const s of segs) { s.min *= this._profileMultiplier; s.speedKmh /= this._profileMultiplier; }
+    }
 
     return { path, segs, distKm, timeMin, traffic, okLegs, degraded };
   }
@@ -1037,6 +1169,25 @@ export class TrafficabilityEngine {
 
     this._driveModel = this._buildDriveModel(selChain.path, selChain.segs, selChain.degraded);
     this._showScrubber();
+
+    // Choke markers + threat zones.
+    this._renderChokeMarkers(selChain.segs, selChain.path);
+    if (this._threatEnabled) this._detectAndRenderThreatZones();
+
+    // Store result for feature panels.
+    this._lastRouteDistKm = selChain.distKm;
+    this._lastRouteTimeMin = selChain.timeMin;
+    this._lastRouteTraffic = selChain.traffic;
+    this._lastRoutePath = selChain.path;
+    this._checkpointTimings = this._computeCheckpointTimings(
+      [origin, dest], selChain.segs, selChain.timeMin,
+    );
+    this._updateTimingPanel();
+    this._updateConvoyPanel();
+    this._updateFuelPanel();
+    this._renderFuelMarker();
+    this._updateMovordPanel();
+
     this._repositionCallouts();
 
     const altCount = this._routeOptions.length - 1;
@@ -1049,7 +1200,7 @@ export class TrafficabilityEngine {
 
   /** Render the selectable list of route options (primary + alternates). */
   private _renderRoutesList(): void {
-    const el = this._panelEl?.querySelector<HTMLElement>('#reach-routes');
+    const el = this._q<HTMLElement>('#reach-routes');
     if (!el) return;
     if (this._mode !== 'route' || this._routeOptions.length <= 1) { el.innerHTML = ''; return; }
     const altAccents = ['#5092DC', '#B070E0', '#8EC4FF', '#E5A540'];
@@ -1148,7 +1299,7 @@ export class TrafficabilityEngine {
 
   /** Per-leg list with a trafficability-tier coloured dot. */
   private _renderSegList(segs: DriveSeg[]): void {
-    const el = this._panelEl?.querySelector<HTMLElement>('#reach-steps');
+    const el = this._q<HTMLElement>('#reach-steps');
     if (!el) return;
     if (!segs.length) { el.innerHTML = ''; return; }
     const rows = segs.slice(0, 30).map((s) => {
@@ -1166,7 +1317,7 @@ export class TrafficabilityEngine {
 
   /** Legend of the GO/SLOW-GO/NO-GO tiers present along the route. */
   private _renderTierLegend(segs: DriveSeg[]): void {
-    const el = this._panelEl?.querySelector<HTMLElement>('#reach-legend');
+    const el = this._q<HTMLElement>('#reach-legend');
     if (!el) return;
     const present = new Set<Trafficability>();
     let hasEstimate = false;
@@ -1205,7 +1356,7 @@ export class TrafficabilityEngine {
   // ─── Private: rendering helpers ─────────────────────────────────────────────
 
   private _renderTrafficability(traffic: TrafficabilitySummary | null | undefined): void {
-    const el = this._panelEl?.querySelector<HTMLElement>('#reach-traffic-note');
+    const el = this._q<HTMLElement>('#reach-traffic-note');
     if (!el) return;
     if (!traffic || traffic.classes.length === 0) {
       el.textContent = '';
@@ -1222,7 +1373,7 @@ export class TrafficabilityEngine {
   }
 
   private _renderBandLegend(bands: ServiceBand[], source: 'live' | 'estimate'): void {
-    const el = this._panelEl?.querySelector<HTMLElement>('#reach-legend');
+    const el = this._q<HTMLElement>('#reach-legend');
     if (!el) return;
     if (!bands.length) {
       el.innerHTML = '';
@@ -1245,6 +1396,7 @@ export class TrafficabilityEngine {
     if (!el) return;
     if (!this._waypoints.length) {
       el.innerHTML = '<div class="reach-hint">No waypoints yet — click the map to drop the Start Point.</div>';
+      this._renderWpMetaList();
       return;
     }
     el.innerHTML = this._waypoints
@@ -1252,12 +1404,66 @@ export class TrafficabilityEngine {
         const isFirst = i === 0;
         const isLast = i === this._waypoints.length - 1 && this._waypoints.length > 1;
         const tag = isFirst ? 'SP' : isLast ? 'RP' : `CP-${i}`;
+        const label = this._waypointMeta[i]?.label || tag;
         return `<div class="reach-wp">
           <span class="reach-wp-tag">${tag}</span>
           <span class="reach-wp-coords">${(wp.latitude ?? 0).toFixed(4)}, ${(wp.longitude ?? 0).toFixed(4)}</span>
+          ${label !== tag ? `<span class="reach-wp-custom-lbl">${this._escape(label)}</span>` : ''}
         </div>`;
       })
       .join('');
+    this._syncWaypointMeta();
+    this._renderWpMetaList();
+  }
+
+  /** Ensure _waypointMeta stays the same length as _waypoints, filling defaults. */
+  private _syncWaypointMeta(): void {
+    while (this._waypointMeta.length < this._waypoints.length) {
+      const i = this._waypointMeta.length;
+      const isFirst = i === 0;
+      const isLast = i === this._waypoints.length - 1 && this._waypoints.length > 1;
+      this._waypointMeta.push({ label: isFirst ? 'SP' : isLast ? 'RP' : `CP-${i}`, dwellMin: 0 });
+    }
+    this._waypointMeta.length = this._waypoints.length;
+    // Re-label the last waypoint as RP if it just became the last.
+    if (this._waypoints.length > 1) {
+      const last = this._waypointMeta[this._waypoints.length - 1];
+      if (last && (last.label === `CP-${this._waypoints.length - 1}` || last.label === `CP-${this._waypoints.length - 2}`)) {
+        last.label = 'RP';
+      }
+    }
+  }
+
+  /** Render the editable waypoint-meta list in the MOVORD export tab. */
+  private _renderWpMetaList(): void {
+    const el = this._q<HTMLElement>('#reach-wp-meta-list');
+    if (!el) return;
+    if (!this._waypoints.length) {
+      el.innerHTML = '<div class="reach-hint">Add MSR waypoints first.</div>';
+      return;
+    }
+    el.innerHTML = this._waypoints.map((_wp, i) => {
+      const meta = this._waypointMeta[i] ?? { label: `WP-${i}`, dwellMin: 0 };
+      return `<div class="reach-wp-meta-row" data-idx="${i}">
+        <span class="reach-wp-meta-idx">${i === 0 ? '🚩' : i === this._waypoints.length - 1 ? '🏁' : '🔹'}</span>
+        <input class="reach-input reach-wp-meta-label" data-idx="${i}" value="${this._escape(meta.label)}" placeholder="Label" maxlength="20" title="Custom checkpoint name" />
+        <input class="reach-input reach-wp-meta-dwell" data-idx="${i}" type="number" min="0" max="999" step="5" value="${meta.dwellMin}" title="Dwell time (min)" style="width:48px;text-align:center" />
+        <span class="reach-label" style="opacity:0.6;white-space:nowrap">min</span>
+      </div>`;
+    }).join('');
+    // Bind live edits.
+    el.querySelectorAll<HTMLInputElement>('.reach-wp-meta-label').forEach((inp) => {
+      inp.addEventListener('input', () => {
+        const idx = Number(inp.dataset.idx);
+        if (this._waypointMeta[idx]) this._waypointMeta[idx].label = inp.value;
+      });
+    });
+    el.querySelectorAll<HTMLInputElement>('.reach-wp-meta-dwell').forEach((inp) => {
+      inp.addEventListener('input', () => {
+        const idx = Number(inp.dataset.idx);
+        if (this._waypointMeta[idx]) this._waypointMeta[idx].dwellMin = Math.max(0, Number(inp.value) || 0);
+      });
+    });
   }
 
   // ─── Private: Placement ─────────────────────────────────────────────────────
@@ -1511,7 +1717,7 @@ export class TrafficabilityEngine {
   }
 
   private _showScrubber(): void {
-    const wrap = this._panelEl?.querySelector<HTMLElement>('#reach-scrub-wrap');
+    const wrap = this._q<HTMLElement>('#reach-scrub-wrap');
     if (wrap) wrap.style.display = this._driveModel ? 'block' : 'none';
     if (!this._driveModel) return;
     this._animRateMinPerSec = this._driveModel.totalMin > 0 ? this._driveModel.totalMin / PLAY_DURATION_S : 1;
@@ -1522,7 +1728,7 @@ export class TrafficabilityEngine {
   }
 
   private _hideScrubber(): void {
-    const wrap = this._panelEl?.querySelector<HTMLElement>('#reach-scrub-wrap');
+    const wrap = this._q<HTMLElement>('#reach-scrub-wrap');
     if (wrap) wrap.style.display = 'none';
   }
 
@@ -1554,7 +1760,7 @@ export class TrafficabilityEngine {
     // Readouts.
     this._setText('#reach-scrub-time', `T+ ${this._fmtClock(s.elapsedMin)}`);
     this._setText('#reach-scrub-speed', `${Math.round(s.speedKmh)} km/h`);
-    const roadEl = this._panelEl?.querySelector<HTMLElement>('#reach-scrub-road');
+    const roadEl = this._q<HTMLElement>('#reach-scrub-road');
     if (roadEl) {
       const info = RoadNetworkEngine.classifyClass(s.fclass);
       const c = info.color;
@@ -1579,7 +1785,7 @@ export class TrafficabilityEngine {
 
   private _playDrive(): void {
     if (!this._driveModel) return;
-    const playBtn = this._panelEl?.querySelector<HTMLButtonElement>('#reach-play-btn');
+    const playBtn = this._q<HTMLButtonElement>('#reach-play-btn');
     const scrub = this._inp('reach-scrubber');
     this._animRunning = true;
     if (playBtn) playBtn.textContent = '⏸';
@@ -1615,7 +1821,7 @@ export class TrafficabilityEngine {
       cancelAnimationFrame(this._animFrame);
       this._animFrame = null;
     }
-    const playBtn = this._panelEl?.querySelector<HTMLButtonElement>('#reach-play-btn');
+    const playBtn = this._q<HTMLButtonElement>('#reach-play-btn');
     if (playBtn) playBtn.textContent = '▶';
   }
 
@@ -1671,6 +1877,7 @@ export class TrafficabilityEngine {
     show('#reach-sec-servicearea', this._mode === 'serviceArea');
     show('#reach-sec-route', this._mode === 'route');
     show('#reach-sec-msr', this._mode === 'msr');
+    show('#reach-msr-extra-row', this._mode === 'msr');
     const runBtn = this._panelEl.querySelector<HTMLButtonElement>('#reach-run-btn');
     if (runBtn) runBtn.textContent =
       this._mode === 'serviceArea' ? 'Compute Service Area' : this._mode === 'route' ? 'Compute Route' : 'Find MSR';
@@ -1706,13 +1913,24 @@ export class TrafficabilityEngine {
     this._origin = null;
     this._dest = null;
     this._waypoints = [];
+    this._waypointMeta = [];
     this._driveModel = null;
     this._routeOptions = [];
     this._selectedRoute = 0;
+    this._checkpointTimings = [];
+    this._lastRouteDistKm = 0;
+    this._lastRouteTimeMin = 0;
+    this._lastRouteTraffic = null;
+    this._lastRoutePath = [];
     this._clearStats();
     this._drawOriginMarker();
     this._drawDestMarker();
     this._renderWaypointList();
+    this._updateTimingPanel();
+    this._updateConvoyPanel();
+    this._updateFuelPanel();
+    this._renderFuelMarker();
+    this._updateMovordPanel();
     this._setCommitDisabled(true);
     this._setStatus('awaiting');
     if (this._mode === 'msr') this._startWaypointPlacement();
@@ -1773,6 +1991,7 @@ export class TrafficabilityEngine {
     this._panelEl.style.display = 'block';
     this._bindPanelEvents();
     this._makeDraggable();
+    this._ensureResultsPanel();
     this._syncModeUI();
     this._clearStats();
     this._renderWaypointList();
@@ -1792,6 +2011,7 @@ export class TrafficabilityEngine {
 
   private _hidePanel(): void {
     if (this._panelEl) this._panelEl.style.display = 'none';
+    if (this._resultsPanelEl) this._resultsPanelEl.style.display = 'none';
   }
 
   private _buildPanelHTML(): string {
@@ -1887,6 +2107,7 @@ export class TrafficabilityEngine {
           </div>
           <div class="reach-btn-row">
             <button class="reach-btn reach-btn-sm" id="reach-pick-dest-btn">Pick Destination ⊕</button>
+            <button class="reach-btn reach-btn-sm" id="reach-reverse-route-btn" title="Swap origin and destination — useful for planning the return leg">Reverse ⇄</button>
             <button class="reach-btn reach-btn-sm" id="reach-clear-dest-btn">Clear Dest</button>
           </div>
           <div class="reach-toggle-row">
@@ -1900,9 +2121,16 @@ export class TrafficabilityEngine {
           <div class="reach-sec">Supply Route Waypoints</div>
           <div class="reach-btn-row">
             <button class="reach-btn reach-btn-sm" id="reach-add-wp-btn">Add Waypoints ⊕</button>
+            <button class="reach-btn reach-btn-sm" id="reach-reverse-msr-btn" title="Reverse the waypoint order — Start ↔ Release Point">Reverse ⇄</button>
             <button class="reach-btn reach-btn-sm" id="reach-clear-wp-btn">Clear WPs</button>
           </div>
           <div class="reach-wp-list" id="reach-wp-list"></div>
+        </div>
+
+        <div id="reach-msr-extra-row" style="display:none">
+          <div class="reach-btn-row">
+            <button class="reach-btn reach-btn-sm" id="reach-msr-alts-btn" title="Compute an alternate route for each consecutive waypoint pair and overlay them as dashed divert lines">Find Leg Alternates ⇄</button>
+          </div>
         </div>
 
         <div class="reach-divider"></div>
@@ -1914,7 +2142,29 @@ export class TrafficabilityEngine {
         </div>
         <div class="reach-hint">Used for offline estimates (rings &amp; ETA).</div>
 
-        <div class="reach-divider"></div>
+        <div class="reach-btn-row reach-btn-row-main">
+          <button class="reach-btn" id="reach-clear-btn">Clear</button>
+          <button class="reach-btn reach-btn-primary" id="reach-run-btn">Compute Service Area</button>
+          <button class="reach-btn" id="reach-commit-btn" disabled>Commit ↗</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Companion results panel HTML — receives the stats grid, legend, drive
+   * scrubber and the three feature tabs (Conditions / Convoy / MOVORD).
+   */
+  private _buildResultsPanelHTML(): string {
+    return `
+      <div class="reach-header" id="reach-results-drag-handle">
+        <span class="reach-header-icon">▦</span>
+        <span class="reach-header-title">Results &amp; Planning</span>
+        <button class="reach-minimize-btn" id="reach-results-minimize-btn" title="Minimize">▼</button>
+        <button class="reach-close-btn" id="reach-results-close-btn" title="Close (keeps graphics)">✕</button>
+      </div>
+
+      <div class="reach-body" id="reach-results-body">
         <div class="reach-stats">
           <div class="reach-stat"><div class="reach-stat-val" id="reach-st-1-val">—</div><div class="reach-stat-lbl" id="reach-st-1-lbl">Bands</div></div>
           <div class="reach-stat"><div class="reach-stat-val" id="reach-st-2-val">—</div><div class="reach-stat-lbl" id="reach-st-2-lbl">Max (min)</div></div>
@@ -1941,10 +2191,113 @@ export class TrafficabilityEngine {
           </div>
         </div>
 
-        <div class="reach-btn-row reach-btn-row-main">
-          <button class="reach-btn" id="reach-clear-btn">Clear</button>
-          <button class="reach-btn reach-btn-primary" id="reach-run-btn">Compute Service Area</button>
-          <button class="reach-btn" id="reach-commit-btn" disabled>Commit ↗</button>
+        <!-- ── Feature Tabs ──────────────────────────────────────────── -->
+        <div class="reach-divider"></div>
+        <div class="reach-feat-tabs">
+          <button class="reach-feat-tab reach-feat-tab-active" data-feat="conditions">Conditions</button>
+          <button class="reach-feat-tab" data-feat="convoy">Convoy</button>
+          <button class="reach-feat-tab" data-feat="export">MOVORD</button>
+        </div>
+
+        <!-- Conditions tab -->
+        <div id="reach-feat-conditions">
+          <div class="reach-slider-row">
+            <span class="reach-label">Movement Profile</span>
+            <select id="reach-profile" class="reach-select">
+              <option value="day">Day — Road (1.0×)</option>
+              <option value="night-nvg">Night — NVG (0.5×)</option>
+              <option value="night-blackout">Night — Blackout (0.3×)</option>
+              <option value="rain">Rain / Mud (0.7×)</option>
+              <option value="custom">Custom…</option>
+            </select>
+          </div>
+          <div class="reach-slider-row" id="reach-custom-mult-row" style="display:none">
+            <span class="reach-label">Speed mult.</span>
+            <input id="reach-custom-mult" type="range" min="0.1" max="1.5" step="0.05" value="1.0" class="reach-slider" />
+            <span class="reach-slider-val" id="reach-custom-mult-val">1.0×</span>
+          </div>
+          <div class="reach-toggle-row">
+            <label class="reach-label" for="reach-threat-toggle">Avoid threat zones</label>
+            <input type="checkbox" id="reach-threat-toggle" class="reach-check" />
+          </div>
+          <div class="reach-slider-row" id="reach-threat-radius-row" style="display:none">
+            <span class="reach-label">Threat radius (km)</span>
+            <input id="reach-threat-radius" type="range" min="1" max="30" step="1" value="5" class="reach-slider" />
+            <span class="reach-slider-val" id="reach-threat-radius-val">5</span>
+          </div>
+          <div class="reach-feat-note" id="reach-threat-count"></div>
+        </div>
+
+        <!-- Convoy tab -->
+        <div id="reach-feat-convoy" style="display:none">
+          <div class="reach-toggle-row">
+            <label class="reach-label" for="reach-convoy-enabled">Convoy Planning</label>
+            <input type="checkbox" id="reach-convoy-enabled" class="reach-check" />
+          </div>
+          <div id="reach-convoy-fields" style="display:none">
+            <div class="reach-num-row">
+              <span class="reach-label">Vehicles</span>
+              <input id="reach-convoy-vehicles" type="number" min="1" max="200" step="1" value="10" class="reach-input reach-num-input" />
+            </div>
+            <div class="reach-num-row">
+              <span class="reach-label">Spacing (m)</span>
+              <input id="reach-convoy-spacing" type="number" min="10" max="500" step="10" value="50" class="reach-input reach-num-input" />
+            </div>
+            <div class="reach-num-row">
+              <span class="reach-label">Serials</span>
+              <input id="reach-convoy-serials" type="number" min="1" max="20" step="1" value="1" class="reach-input reach-num-input" />
+            </div>
+            <div class="reach-num-row" id="reach-headway-row" style="display:none">
+              <span class="reach-label">Serial headway (min)</span>
+              <input id="reach-convoy-headway" type="number" min="5" max="120" step="5" value="30" class="reach-input reach-num-input" />
+            </div>
+            <div class="reach-convoy-result" id="reach-convoy-result"></div>
+          </div>
+          <div class="reach-divider"></div>
+          <div class="reach-sec-mini">H-Hour &amp; Timing</div>
+          <div class="reach-num-row">
+            <span class="reach-label">Departure (HH:MM)</span>
+            <input id="reach-h-hour" type="time" class="reach-input reach-num-input" value="" />
+          </div>
+          <div class="reach-toggle-row">
+            <label class="reach-label" for="reach-use-tot">Use required arrival (TOT)</label>
+            <input type="checkbox" id="reach-use-tot" class="reach-check" />
+          </div>
+          <div class="reach-num-row" id="reach-tot-row" style="display:none">
+            <span class="reach-label">Required arrival</span>
+            <input id="reach-tot-time" type="time" class="reach-input reach-num-input" value="" />
+          </div>
+          <div class="reach-hint">Leave blank for T+ relative times only.</div>
+          <div class="reach-timing-panel" id="reach-timing-panel"></div>
+          <div class="reach-divider"></div>
+          <div class="reach-sec-mini">Fuel Planning</div>
+          <div class="reach-toggle-row">
+            <label class="reach-label" for="reach-fuel-enabled">Enable</label>
+            <input type="checkbox" id="reach-fuel-enabled" class="reach-check" />
+          </div>
+          <div id="reach-fuel-fields" style="display:none">
+            <div class="reach-num-row">
+              <span class="reach-label">Economy (L/100 km)</span>
+              <input id="reach-fuel-economy" type="number" min="1" max="500" step="0.5" value="30" class="reach-input reach-num-input" />
+            </div>
+            <div class="reach-num-row">
+              <span class="reach-label">On board (L)</span>
+              <input id="reach-fuel-onboard" type="number" min="1" max="5000" step="5" value="200" class="reach-input reach-num-input" />
+            </div>
+            <div class="reach-fuel-result" id="reach-fuel-result"></div>
+          </div>
+        </div>
+
+        <!-- MOVORD export tab -->
+        <div id="reach-feat-export" style="display:none">
+          <div class="reach-sec-mini">Named Waypoints &amp; Dwell</div>
+          <div class="reach-wp-meta-list" id="reach-wp-meta-list"></div>
+          <div class="reach-divider"></div>
+          <div class="reach-movord-preview" id="reach-movord-preview">Run a Route or MSR to generate a MOVORD.</div>
+          <div class="reach-btn-row">
+            <button class="reach-btn reach-btn-sm" id="reach-movord-copy-btn" disabled>⎘ Copy</button>
+            <button class="reach-btn reach-btn-sm" id="reach-movord-regen-btn">Refresh</button>
+          </div>
         </div>
       </div>
     `;
@@ -2006,6 +2359,8 @@ export class TrafficabilityEngine {
       this._dest = null;
       this._drawDestMarker();
     });
+    p.querySelector('#reach-reverse-route-btn')?.addEventListener('click', () => this._reverseRoute());
+    p.querySelector('#reach-reverse-msr-btn')?.addEventListener('click', () => this._reverseMsr());
 
     // MSR waypoint controls.
     p.querySelector('#reach-add-wp-btn')?.addEventListener('click', () => {
@@ -2025,18 +2380,159 @@ export class TrafficabilityEngine {
       this._setStatus('awaiting');
     });
 
+    p.querySelector('#reach-run-btn')?.addEventListener('click', () => void this._run());
+    p.querySelector('#reach-clear-btn')?.addEventListener('click', () => this._clear());
+    p.querySelector('#reach-commit-btn')?.addEventListener('click', () => this._commit());
+
+    // MSR leg alternates button.
+    p.querySelector('#reach-msr-alts-btn')?.addEventListener('click', () => void this._runMsrLegAlternates());
+  }
+
+  /** Bind events on the companion results panel (created once, bound once). */
+  private _bindResultsPanelEvents(): void {
+    const r = this._resultsPanelEl;
+    if (!r) return;
+
+    r.querySelector('#reach-results-close-btn')?.addEventListener('click', () => this.close());
+    r.querySelector('#reach-results-minimize-btn')?.addEventListener('click', () => {
+      const body = r.querySelector<HTMLElement>('#reach-results-body');
+      const btn = r.querySelector<HTMLElement>('#reach-results-minimize-btn');
+      if (!body || !btn) return;
+      const minimized = body.style.display === 'none';
+      body.style.display = minimized ? '' : 'none';
+      btn.textContent = minimized ? '▼' : '▶';
+    });
+
     // Drive scrubber.
-    p.querySelector('#reach-play-btn')?.addEventListener('click', () => this._toggleDrive());
-    p.querySelector('#reach-scrubber')?.addEventListener('input', (e) => {
+    r.querySelector('#reach-play-btn')?.addEventListener('click', () => this._toggleDrive());
+    r.querySelector('#reach-scrubber')?.addEventListener('input', (e) => {
       if (!this._driveModel) return;
       this._pauseDrive();
       const v = Number((e.target as HTMLInputElement).value);
       this._seekDrive((v / 1000) * this._driveModel.totalMin);
     });
 
-    p.querySelector('#reach-run-btn')?.addEventListener('click', () => void this._run());
-    p.querySelector('#reach-clear-btn')?.addEventListener('click', () => this._clear());
-    p.querySelector('#reach-commit-btn')?.addEventListener('click', () => this._commit());
+    // ── Feature tabs ────────────────────────────────────────────────────────
+    r.querySelectorAll<HTMLButtonElement>('.reach-feat-tab').forEach((tab) => {
+      tab.addEventListener('click', () => this._setFeatureTab((tab.dataset.feat as any) ?? 'conditions'));
+    });
+
+    // ── Conditions tab ──────────────────────────────────────────────────────
+    r.querySelector('#reach-profile')?.addEventListener('change', (e) => {
+      const key = (e.target as HTMLSelectElement).value;
+      this._movementProfile = key;
+      const prof = MOVEMENT_PROFILES[key] ?? MOVEMENT_PROFILES.day;
+      this._profileMultiplier = prof.mult;
+      const customRow = r.querySelector<HTMLElement>('#reach-custom-mult-row');
+      if (customRow) customRow.style.display = key === 'custom' ? '' : 'none';
+    });
+    const customMult = r.querySelector<HTMLInputElement>('#reach-custom-mult');
+    customMult?.addEventListener('input', () => {
+      this._profileMultiplier = Number(customMult.value);
+      const disp = r.querySelector<HTMLElement>('#reach-custom-mult-val');
+      if (disp) disp.textContent = `${Number(customMult.value).toFixed(2)}×`;
+    });
+
+    r.querySelector('#reach-threat-toggle')?.addEventListener('change', (e) => {
+      this._threatEnabled = (e.target as HTMLInputElement).checked;
+      const row = r.querySelector<HTMLElement>('#reach-threat-radius-row');
+      if (row) row.style.display = this._threatEnabled ? '' : 'none';
+      if (!this._threatEnabled) {
+        const toRemove = this._analysisLayer.graphics.filter(
+          (g: Graphic) => g.attributes?.type === 'trafficability_threat',
+        );
+        toRemove.forEach((g: Graphic) => this._analysisLayer.remove(g));
+        const countEl = r.querySelector<HTMLElement>('#reach-threat-count');
+        if (countEl) countEl.textContent = '';
+      } else {
+        this._detectAndRenderThreatZones();
+      }
+    });
+    const threatRadius = r.querySelector<HTMLInputElement>('#reach-threat-radius');
+    threatRadius?.addEventListener('input', () => {
+      this._threatRadiusKm = Number(threatRadius.value);
+      const disp = r.querySelector<HTMLElement>('#reach-threat-radius-val');
+      if (disp) disp.textContent = String(this._threatRadiusKm);
+      if (this._threatEnabled) this._detectAndRenderThreatZones();
+    });
+    if (threatRadius) {
+      const disp = r.querySelector<HTMLElement>('#reach-threat-radius-val');
+      if (disp) disp.textContent = String(this._threatRadiusKm);
+    }
+
+    // ── Convoy tab ──────────────────────────────────────────────────────────
+    r.querySelector('#reach-convoy-enabled')?.addEventListener('change', (e) => {
+      this._convoyEnabled = (e.target as HTMLInputElement).checked;
+      const fields = r.querySelector<HTMLElement>('#reach-convoy-fields');
+      if (fields) fields.style.display = this._convoyEnabled ? '' : 'none';
+      this._updateConvoyPanel();
+    });
+    const bindNum = (id: string, setter: (v: number) => void) => {
+      r.querySelector(`#${id}`)?.addEventListener('input', (e) => {
+        setter(Math.max(0, Number((e.target as HTMLInputElement).value) || 0));
+        this._updateConvoyPanel();
+        if (id === 'reach-convoy-serials') {
+          const row = r.querySelector<HTMLElement>('#reach-headway-row');
+          if (row) row.style.display = this._convoySerials > 1 ? '' : 'none';
+        }
+      });
+    };
+    bindNum('reach-convoy-vehicles', (v) => { this._convoyVehicles = v; });
+    bindNum('reach-convoy-spacing',  (v) => { this._convoySpacingM = v; });
+    bindNum('reach-convoy-serials',  (v) => { this._convoySerials = Math.max(1, v); });
+    bindNum('reach-convoy-headway',  (v) => { this._convoySerialHeadwayMin = v; });
+
+    r.querySelector('#reach-h-hour')?.addEventListener('change', (e) => {
+      this._departureHHMM = (e.target as HTMLInputElement).value;
+      this._updateTimingPanel();
+      this._updateConvoyPanel();
+      this._updateMovordPanel();
+    });
+    r.querySelector('#reach-use-tot')?.addEventListener('change', (e) => {
+      this._useTOT = (e.target as HTMLInputElement).checked;
+      const row = r.querySelector<HTMLElement>('#reach-tot-row');
+      if (row) row.style.display = this._useTOT ? '' : 'none';
+      this._updateTimingPanel();
+    });
+    r.querySelector('#reach-tot-time')?.addEventListener('change', (e) => {
+      this._totHHMM = (e.target as HTMLInputElement).value;
+      this._updateTimingPanel();
+    });
+
+    // Fuel planning.
+    r.querySelector('#reach-fuel-enabled')?.addEventListener('change', (e) => {
+      this._fuelEnabled = (e.target as HTMLInputElement).checked;
+      const fields = r.querySelector<HTMLElement>('#reach-fuel-fields');
+      if (fields) fields.style.display = this._fuelEnabled ? '' : 'none';
+      this._updateFuelPanel();
+      this._renderFuelMarker();
+      this._updateMovordPanel();
+    });
+    r.querySelector('#reach-fuel-economy')?.addEventListener('input', (e) => {
+      this._fuelEconomyL100km = Math.max(0.1, Number((e.target as HTMLInputElement).value) || 0);
+      this._updateFuelPanel();
+      this._renderFuelMarker();
+      this._updateMovordPanel();
+    });
+    r.querySelector('#reach-fuel-onboard')?.addEventListener('input', (e) => {
+      this._fuelOnBoardL = Math.max(0, Number((e.target as HTMLInputElement).value) || 0);
+      this._updateFuelPanel();
+      this._renderFuelMarker();
+      this._updateMovordPanel();
+    });
+
+    // ── MOVORD tab ──────────────────────────────────────────────────────────
+    r.querySelector('#reach-movord-copy-btn')?.addEventListener('click', () => {
+      const preview = r.querySelector<HTMLElement>('#reach-movord-preview');
+      const text = preview?.innerText ?? '';
+      if (text && text !== 'Run a Route or MSR to generate a MOVORD.') {
+        navigator.clipboard.writeText(text).catch(() => {});
+      }
+    });
+    r.querySelector('#reach-movord-regen-btn')?.addEventListener('click', () => {
+      this._syncWaypointMeta();
+      this._updateMovordPanel();
+    });
   }
 
   private _makeDraggable(): void {
@@ -2113,17 +2609,646 @@ export class TrafficabilityEngine {
   }
 
   private _setText(selector: string, text: string): void {
-    const el = this._panelEl?.querySelector<HTMLElement>(selector);
+    const el = this._q<HTMLElement>(selector);
     if (el) el.textContent = text;
   }
 
   private _inp(id: string): HTMLInputElement | null {
-    return this._panelEl?.querySelector<HTMLInputElement>(`#${id}`) ?? null;
+    return this._q<HTMLInputElement>(`#${id}`);
+  }
+
+  /** Query selector across both the main control panel and the results panel. */
+  private _q<T extends HTMLElement = HTMLElement>(selector: string): T | null {
+    return (this._panelEl?.querySelector<T>(selector)
+      ?? this._resultsPanelEl?.querySelector<T>(selector)) ?? null;
   }
 
   private _escape(s: string): string {
     return String(s).replace(/[&<>"']/g, (c) =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
+  }
+
+  // ─── Private: Feature-tab helpers ───────────────────────────────────────────
+
+  private _setFeatureTab(tab: 'conditions' | 'convoy' | 'export'): void {
+    this._featureTab = tab;
+    const root = this._resultsPanelEl ?? this._panelEl;
+    if (!root) return;
+    root.querySelectorAll<HTMLButtonElement>('.reach-feat-tab').forEach((btn) => {
+      btn.classList.toggle('reach-feat-tab-active', btn.dataset.feat === this._featureTab);
+    });
+    const show = (id: string, on: boolean) => {
+      const el = this._q<HTMLElement>(id);
+      if (el) el.style.display = on ? '' : 'none';
+    };
+    show('#reach-feat-conditions', tab === 'conditions');
+    show('#reach-feat-convoy',     tab === 'convoy');
+    show('#reach-feat-export',     tab === 'export');
+    if (tab === 'export') this._renderWpMetaList();
+  }
+
+  // ─── Private: Checkpoint timing ─────────────────────────────────────────────
+
+  /**
+   * Compute T+ arrival/departure times at each waypoint, given ordered legs.
+   * Distributes leg travel time across waypoints sequentially and applies
+   * per-waypoint dwell times.
+   */
+  private _computeCheckpointTimings(waypoints: Point[], segs: DriveSeg[], _totalMin: number): CheckpointTime[] {
+    const timings: CheckpointTime[] = [];
+    let tPlus = 0;
+    for (let i = 0; i < waypoints.length; i++) {
+      const meta = this._waypointMeta[i] ?? { label: i === 0 ? 'SP' : i === waypoints.length - 1 ? 'RP' : `CP-${i}`, dwellMin: 0 };
+      const dwell = meta.dwellMin || 0;
+      const absArr = this._hhmmPlusMins(this._departureHHMM, tPlus);
+      const absDep = this._hhmmPlusMins(this._departureHHMM, tPlus + dwell);
+      timings.push({
+        label: meta.label,
+        lat: waypoints[i].latitude ?? 0,
+        lon: waypoints[i].longitude ?? 0,
+        tPlusArrivalMin: tPlus,
+        dwellMin: dwell,
+        tPlusDepartureMin: tPlus + dwell,
+        absArrival: absArr,
+        absDeparture: absDep,
+      });
+      // Advance by the travel time for the next leg (uniform distribution across segments).
+      if (i < waypoints.length - 1) {
+        const legFrac = 1 / (waypoints.length - 1);
+        const legTime = segs.reduce((a, s) => a + s.min, 0) * legFrac;
+        tPlus += legTime + dwell;
+      }
+    }
+    return timings;
+  }
+
+  /** Parse 'HH:MM' string, add minutes, return new 'HH:MM' or '' if input is empty. */
+  private _hhmmPlusMins(base: string, addMin: number): string {
+    if (!base) return '';
+    const [hStr, mStr] = base.split(':');
+    const totalMin = Number(hStr) * 60 + Number(mStr) + Math.round(addMin);
+    const h = Math.floor(totalMin / 60) % 24;
+    const m = ((totalMin % 60) + 60) % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}L`;
+  }
+
+  // ─── Private: Timing panel (Convoy tab) ─────────────────────────────────────
+
+  private _updateTimingPanel(): void {
+    const el = this._q<HTMLElement>('#reach-timing-panel');
+    if (!el) return;
+    if (!this._checkpointTimings.length && !this._useTOT) { el.innerHTML = ''; return; }
+
+    let html = '';
+
+    // TOT backcomputation: required departure = TOT - total_route_time.
+    if (this._useTOT && this._totHHMM && this._lastRouteTimeMin > 0) {
+      const reqDep = this._hhmmPlusMins(this._totHHMM, -this._lastRouteTimeMin);
+      html += `<div class="reach-timing-row reach-timing-tot">
+        <span class="reach-timing-lbl">Required departure</span>
+        <span class="reach-timing-val">${reqDep}</span>
+      </div>
+      <div class="reach-timing-row reach-timing-tot">
+        <span class="reach-timing-lbl">TOT (required arrival)</span>
+        <span class="reach-timing-val">${this._totHHMM}L</span>
+      </div>`;
+    }
+
+    if (this._checkpointTimings.length && this._departureHHMM) {
+      html += `<div class="reach-timing-head">Checkpoint Schedule</div>`;
+      for (const ct of this._checkpointTimings) {
+        html += `<div class="reach-timing-row">
+          <span class="reach-timing-lbl">${this._escape(ct.label)}</span>
+          <span class="reach-timing-val">${ct.absArrival || this._fmtClock(ct.tPlusArrivalMin)}</span>
+          ${ct.dwellMin > 0 ? `<span class="reach-timing-dwell">+${ct.dwellMin}min dwell</span>` : ''}
+        </div>`;
+      }
+    } else if (this._checkpointTimings.length) {
+      html += `<div class="reach-timing-head">T+ Schedule</div>`;
+      for (const ct of this._checkpointTimings) {
+        html += `<div class="reach-timing-row">
+          <span class="reach-timing-lbl">${this._escape(ct.label)}</span>
+          <span class="reach-timing-val">T+ ${this._fmtClock(ct.tPlusArrivalMin)}</span>
+          ${ct.dwellMin > 0 ? `<span class="reach-timing-dwell">+${ct.dwellMin}min dwell</span>` : ''}
+        </div>`;
+      }
+    }
+
+    el.innerHTML = html;
+  }
+
+  // ─── Private: Convoy panel ───────────────────────────────────────────────────
+
+  private _updateConvoyPanel(): void {
+    const el = this._q<HTMLElement>('#reach-convoy-result');
+    if (!el) return;
+    if (!this._convoyEnabled || this._lastRouteTimeMin === 0) { el.innerHTML = ''; return; }
+
+    const speedKmh = Number(this._inp('reach-speed')?.value ?? 40) * this._profileMultiplier;
+    const convoyLengthKm = (this._convoyVehicles * this._convoySpacingM) / 1000;
+    const headToTailMin = speedKmh > 0 ? (convoyLengthKm / speedKmh) * 60 : 0;
+    const routeMin = this._lastRouteTimeMin;
+    const headClearMin = routeMin;
+    const tailClearMin = routeMin + headToTailMin;
+
+    const hhmmH = this._hhmmPlusMins(this._departureHHMM, headClearMin);
+    const hhmmT = this._hhmmPlusMins(this._departureHHMM, tailClearMin);
+
+    let html = `<div class="reach-convoy-row"><b>Convoy length:</b> ${convoyLengthKm.toFixed(2)} km</div>
+      <div class="reach-convoy-row"><b>Head-to-tail time:</b> ${headToTailMin.toFixed(1)} min</div>
+      <div class="reach-convoy-row"><b>Head clear RP:</b> T+ ${this._fmtClock(headClearMin)}${hhmmH ? ` · ${hhmmH}` : ''}</div>
+      <div class="reach-convoy-row"><b>Tail clear RP:</b> T+ ${this._fmtClock(tailClearMin)}${hhmmT ? ` · ${hhmmT}` : ''}</div>`;
+
+    if (this._convoySerials > 1) {
+      const lastHeadMin = routeMin + (this._convoySerials - 1) * this._convoySerialHeadwayMin;
+      const lastTailMin = lastHeadMin + headToTailMin;
+      const hhmmLT = this._hhmmPlusMins(this._departureHHMM, lastTailMin);
+      html += `<div class="reach-convoy-row reach-convoy-serial"><b>${this._convoySerials} serials · </b>`;
+      html += `Last serial tail clear RP: T+ ${this._fmtClock(lastTailMin)}${hhmmLT ? ` · ${hhmmLT}` : ''}</div>`;
+    }
+
+    el.innerHTML = html;
+  }
+
+  // ─── Private: MOVORD panel ───────────────────────────────────────────────────
+
+  // ─── Private: Fuel planning ─────────────────────────────────────────────────
+
+  /** Returns range in km from the current fuel economy + on-board values. */
+  private _fuelRangeKm(): number {
+    if (this._fuelEconomyL100km <= 0) return 0;
+    return (this._fuelOnBoardL / this._fuelEconomyL100km) * 100;
+  }
+
+  private _updateFuelPanel(): void {
+    const el = this._q<HTMLElement>('#reach-fuel-result');
+    if (!el) return;
+    if (!this._fuelEnabled) { el.innerHTML = ''; return; }
+
+    const range = this._fuelRangeKm();
+    const dist = this._lastRouteDistKm;
+    const reservePctRequired = TrafficabilityEngine.FUEL_RESERVE_PCT;
+
+    let html = `<div class="reach-fuel-row"><b>Range:</b> ${range.toFixed(0)} km @ ${this._fuelEconomyL100km} L/100km · ${this._fuelOnBoardL} L</div>`;
+    if (dist > 0) {
+      const burnedL = (dist * this._fuelEconomyL100km) / 100;
+      const remainL = this._fuelOnBoardL - burnedL;
+      const remainPct = this._fuelOnBoardL > 0 ? remainL / this._fuelOnBoardL : 0;
+      html += `<div class="reach-fuel-row"><b>Used by RP:</b> ${burnedL.toFixed(1)} L</div>`;
+      if (remainL < 0) {
+        const exhaustKm = range;
+        html += `<div class="reach-fuel-row reach-fuel-bad">⛽ <b>Fuel exhausted at km ${exhaustKm.toFixed(0)}</b> — short of RP by ${(dist - range).toFixed(0)} km. Plan a refuel.</div>`;
+      } else if (remainPct < reservePctRequired) {
+        html += `<div class="reach-fuel-row reach-fuel-warn">⚠ <b>${remainL.toFixed(1)} L (${(remainPct * 100).toFixed(0)}%)</b> at RP — below ${(reservePctRequired * 100).toFixed(0)}% reserve threshold.</div>`;
+      } else {
+        html += `<div class="reach-fuel-row reach-fuel-ok">✓ <b>${remainL.toFixed(1)} L (${(remainPct * 100).toFixed(0)}%)</b> remaining at RP.</div>`;
+      }
+    } else {
+      html += `<div class="reach-fuel-row" style="opacity:0.7">Run a Route or MSR to see consumption.</div>`;
+    }
+    el.innerHTML = html;
+  }
+
+  /** Place / remove the ⛽ marker on the map at the fuel-exhaustion point. */
+  private _renderFuelMarker(): void {
+    // Remove existing fuel markers.
+    this._markerLayer.graphics
+      .filter((g: Graphic) => g.attributes?.type === 'trafficability_fuel')
+      .forEach((g: Graphic) => this._markerLayer.remove(g));
+
+    if (!this._fuelEnabled || this._lastRoutePath.length < 2) return;
+    const range = this._fuelRangeKm();
+    if (range <= 0) return;
+
+    // Walk along the path to find the exhaustion point. If range > totalKm,
+    // mark the nominal-reserve threshold (range × (1 - reserve)) instead so the
+    // user sees a useful guidepost even when fuel is comfortable.
+    const cum: number[] = [0];
+    for (let i = 1; i < this._lastRoutePath.length; i++) {
+      cum[i] = cum[i - 1] + this._haversineM(
+        this._lastRoutePath[i - 1][0], this._lastRoutePath[i - 1][1],
+        this._lastRoutePath[i][0],     this._lastRoutePath[i][1],
+      ) / 1000;
+    }
+    const totalKm = cum[cum.length - 1] || 0;
+    if (totalKm <= 0) return;
+
+    const exhaustedOnRoute = range < totalKm;
+    const targetKm = exhaustedOnRoute
+      ? range
+      : range * (1 - TrafficabilityEngine.FUEL_RESERVE_PCT);   // reserve threshold
+
+    if (targetKm <= 0 || targetKm >= totalKm) return;  // off the path either way
+
+    const pos = this._interpAlongPath(this._lastRoutePath, cum, targetKm);
+    this._markerLayer.add(new Graphic({
+      geometry: new Point({ longitude: pos[0], latitude: pos[1], spatialReference: { wkid: 4326 } }),
+      symbol: {
+        type: 'text',
+        text: '⛽',
+        color: exhaustedOnRoute ? [226, 75, 74, 235] : [80, 150, 220, 235],
+        haloColor: [0, 0, 0, 200],
+        haloSize: 1.5,
+        font: { size: 18, weight: 'bold' },
+      } as any,
+      attributes: {
+        type: 'trafficability_fuel',
+        km: targetKm.toFixed(1),
+        kind: exhaustedOnRoute ? 'exhausted' : 'reserve',
+      },
+    }));
+  }
+
+  // ─── Private: Reverse route / MSR ───────────────────────────────────────────
+
+  private _reverseRoute(): void {
+    if (!this._origin || !this._dest) {
+      this._setSourceNote('Need both origin and destination to reverse.');
+      return;
+    }
+    const tmp = this._origin;
+    this._origin = this._dest;
+    this._dest = tmp;
+    this._drawOriginMarker();
+    this._drawDestMarker();
+    void this._run();
+  }
+
+  private _reverseMsr(): void {
+    if (this._waypoints.length < 2) {
+      this._setSourceNote('Need at least two waypoints to reverse.');
+      return;
+    }
+    this._waypoints.reverse();
+    // Keep custom labels paired with their waypoints — the SP/RP icon and
+    // default labels (SP / CP-n / RP) are positional and will swap on render.
+    this._waypointMeta.reverse();
+    this._origin = this._waypoints[0];
+    this._drawWaypointMarkers();
+    this._drawOriginMarker();
+    this._renderWaypointList();
+    void this._run();
+  }
+
+  private _updateMovordPanel(): void {
+    const preview = this._q<HTMLElement>('#reach-movord-preview');
+    const copyBtn = this._q<HTMLButtonElement>('#reach-movord-copy-btn');
+    if (!preview) return;
+    const text = this._generateMovord();
+    if (!text) {
+      preview.textContent = 'Run a Route or MSR to generate a MOVORD.';
+      if (copyBtn) copyBtn.disabled = true;
+      return;
+    }
+    preview.textContent = text;
+    if (copyBtn) copyBtn.disabled = false;
+  }
+
+  private _generateMovord(): string {
+    if (!this._checkpointTimings.length) return '';
+    const profile = MOVEMENT_PROFILES[this._movementProfile] ?? MOVEMENT_PROFILES.day;
+    const speedKmh = Number(this._inp('reach-speed')?.value ?? 40) * this._profileMultiplier;
+    const traffic = this._lastRouteTraffic;
+
+    const lines: string[] = [
+      `MOVEMENT ORDER`,
+      `─────────────────────────────────────────────`,
+      `Mode     : ${this._mode === 'msr' ? 'MSR' : 'Route'}`,
+      `Profile  : ${profile.label} (${this._profileMultiplier.toFixed(2)}×)`,
+      `Speed    : ${speedKmh.toFixed(0)} km/h`,
+      traffic ? `Traffic  : ${traffic.rating} — ${RoadNetworkEngine.classifyClass(traffic.limitingClass).label}` : '',
+      `─────────────────────────────────────────────`,
+    ];
+
+    const colW = 8;
+    for (const ct of this._checkpointTimings) {
+      const timeStr = ct.absArrival || `T+ ${this._fmtClock(ct.tPlusArrivalMin)}`;
+      const pad = (s: string, n: number) => s.length >= n ? s : s + ' '.repeat(n - s.length);
+      let row = `${pad(ct.label, colW)} ${timeStr}   ${ct.lat.toFixed(4)}°N ${ct.lon.toFixed(4)}°E`;
+      if (ct.dwellMin > 0) row += `   [+${ct.dwellMin}min dwell]`;
+      lines.push(row);
+    }
+
+    lines.push(`─────────────────────────────────────────────`);
+    lines.push(`Distance : ${this._lastRouteDistKm.toFixed(1)} km`);
+    lines.push(`ETA      : ${this._fmtClock(this._lastRouteTimeMin)}`);
+
+    if (this._convoyEnabled) {
+      const convoyLengthKm = (this._convoyVehicles * this._convoySpacingM) / 1000;
+      const headToTailMin = speedKmh > 0 ? (convoyLengthKm / speedKmh) * 60 : 0;
+      const tailMin = this._lastRouteTimeMin + headToTailMin;
+      const hhmmTail = this._hhmmPlusMins(this._departureHHMM, tailMin);
+      lines.push(`Convoy   : ${this._convoyVehicles}× vehicles · ${this._convoySpacingM}m spacing · ${this._convoySerials} serial(s)`);
+      lines.push(`Tail RP  : T+ ${this._fmtClock(tailMin)}${hhmmTail ? ` · ${hhmmTail}` : ''}`);
+    }
+
+    if (this._useTOT && this._totHHMM) {
+      const reqDep = this._hhmmPlusMins(this._totHHMM, -this._lastRouteTimeMin);
+      lines.push(`TOT      : ${this._totHHMM}L   Required departure: ${reqDep}`);
+    }
+
+    if (this._fuelEnabled && this._fuelEconomyL100km > 0) {
+      const range = this._fuelRangeKm();
+      const burnedL = (this._lastRouteDistKm * this._fuelEconomyL100km) / 100;
+      const remainL = this._fuelOnBoardL - burnedL;
+      const remainPct = this._fuelOnBoardL > 0 ? (remainL / this._fuelOnBoardL) * 100 : 0;
+      lines.push(`Fuel     : ${this._fuelOnBoardL} L · ${this._fuelEconomyL100km} L/100km · Range ${range.toFixed(0)} km`);
+      if (remainL < 0) {
+        lines.push(`           ⛽ EXHAUSTED at km ${range.toFixed(0)} — short by ${(this._lastRouteDistKm - range).toFixed(0)} km`);
+      } else {
+        lines.push(`           At RP: ${remainL.toFixed(1)} L (${remainPct.toFixed(0)}%)${remainPct < TrafficabilityEngine.FUEL_RESERVE_PCT * 100 ? ' ⚠ below reserve' : ''}`);
+      }
+    }
+
+    return lines.filter(Boolean).join('\n');
+  }
+
+  // ─── Private: Choke-point markers ───────────────────────────────────────────
+
+  /** Add ⚠ markers on the map for track / unclassified segments (potential choke points). */
+  private _renderChokeMarkers(segs: DriveSeg[], path: number[][]): void {
+    // Remove old choke markers.
+    this._markerLayer.graphics
+      .filter((g: Graphic) => g.attributes?.type === 'trafficability_choke')
+      .forEach((g: Graphic) => this._markerLayer.remove(g));
+
+    if (!path.length) return;
+    const chokeClasses = new Set(['track', 'path', 'unclassified', 'living_street', 'service']);
+    let segStartKm = 0;
+    const cum: number[] = [0];
+    for (let i = 1; i < path.length; i++) {
+      cum[i] = cum[i - 1] + this._haversineM(path[i - 1][0], path[i - 1][1], path[i][0], path[i][1]) / 1000;
+    }
+    const pathKm = cum[cum.length - 1] || 1;
+    const segKm = segs.reduce((a, s) => a + (s.km || 0), 0) || pathKm;
+
+    for (const s of segs) {
+      if (!s.estimate && chokeClasses.has(s.fclass)) {
+        const midDist = ((segStartKm + s.km / 2) / segKm) * pathKm;
+        const pos = this._interpAlongPath(path, cum, midDist);
+        this._markerLayer.add(new Graphic({
+          geometry: new Point({ longitude: pos[0], latitude: pos[1], spatialReference: { wkid: 4326 } }),
+          symbol: {
+            type: 'text',
+            text: '⚠',
+            color: [239, 159, 39, 230],
+            haloColor: [0, 0, 0, 180],
+            haloSize: 1.5,
+            font: { size: 14, weight: 'bold' },
+          } as any,
+          attributes: {
+            type: 'trafficability_choke',
+            fclass: s.fclass,
+            name: s.name,
+            km: s.km.toFixed(2),
+          },
+        }));
+      }
+      segStartKm += s.km;
+    }
+  }
+
+  /** Interpolate a position along a path given cumulative km distances. */
+  private _interpAlongPath(path: number[][], cum: number[], distKm: number): number[] {
+    if (distKm <= 0) return path[0];
+    if (distKm >= cum[cum.length - 1]) return path[path.length - 1];
+    for (let i = 1; i < cum.length; i++) {
+      if (cum[i] >= distKm) {
+        const span = cum[i] - cum[i - 1] || 1e-9;
+        const f = (distKm - cum[i - 1]) / span;
+        const a = path[i - 1], b = path[i];
+        return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+      }
+    }
+    return path[path.length - 1];
+  }
+
+  // ─── Private: MSR leg alternates ────────────────────────────────────────────
+
+  private async _runMsrLegAlternates(): Promise<void> {
+    if (this._waypoints.length < 2) return;
+    const btn = this._panelEl?.querySelector<HTMLButtonElement>('#reach-msr-alts-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Computing…'; }
+    const altAccents = ['#B070E0', '#8EC4FF', '#E5A540', '#F08080', '#80E080'];
+    let found = 0;
+    try {
+      for (let i = 0; i < this._waypoints.length - 1; i++) {
+        const a = this._waypoints[i], b = this._waypoints[i + 1];
+        const vias = this._viaPoints(a, b, 1);
+        if (!vias.length) continue;
+        const chain = await this._routeChain([a, vias[0], b], Number(this._inp('reach-speed')?.value ?? 40));
+        if (chain.okLegs === 0 || chain.path.length < 2) continue;
+        const color = altAccents[i % altAccents.length];
+        this._analysisLayer.add(new Graphic({
+          geometry: { type: 'polyline', paths: [chain.path], spatialReference: { wkid: 4326 } } as any,
+          symbol: this._lineSymbol(this._hexToRgb(color), 2.2, 0.65, true),
+          attributes: { type: 'trafficability_msr_leg_alt', legIdx: i },
+        }));
+        found++;
+      }
+      this._setSourceNote(found > 0
+        ? `${found} leg alternate${found === 1 ? '' : 's'} overlaid as dashed lines.`
+        : 'No alternates found — road coverage may be limited.');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Find Leg Alternates ⇄'; }
+    }
+  }
+
+  // ─── Private: Threat-zone detection ─────────────────────────────────────────
+
+  /**
+   * Scan SymbolEngine's layers + our committed layer for hostile (or
+   * suspect/red) symbols and return them as threat circles. Identity lives in
+   * SIDC positions 2-4 (two-digit affiliation): 06=Hostile, 05=Suspect, 07=Red.
+   * SIDC for any drawn symbol (Point/Line/Area/FPoint) is canonically at
+   * `drawEssentials.AMPLIFIER.SIDC` — falls back through OPTIONS for FPoint
+   * loaded from a plan, and to flat attributes for legacy graphics.
+   */
+  private _collectThreatCircles(): Array<{ lon: number; lat: number; radiusKm: number }> {
+    const sym = (window as any).symbolEngine;
+    const out: Array<{ lon: number; lat: number; radiusKm: number }> = [];
+    const layerIds: string[] = sym?.layerManager?.listLayers?.() ?? [];
+
+    const readSidc = (g: Graphic): string => {
+      const a: any = g.attributes ?? {};
+      const de = a.drawEssentials;
+      return (
+        de?.AMPLIFIER?.SIDC ??
+        de?.OPTIONS?.OPTIONS?.SIDC ??
+        de?.OPTIONS?.SIDC ??
+        de?.SIDC ??
+        a.SIDC ?? a.sidc ?? ''
+      );
+    };
+    const isHostileSidc = (sidc: string): boolean => {
+      if (!sidc || sidc.length < 4) return false;
+      const id = sidc.substring(2, 4);
+      return id === '06' || id === '05' || id === '07';
+    };
+    const collect = (g: Graphic) => {
+      if (!isHostileSidc(readSidc(g))) return;
+      const pt = this._geomToPoint(g.geometry);
+      if (pt) out.push({ lon: pt.longitude ?? 0, lat: pt.latitude ?? 0, radiusKm: this._threatRadiusKm });
+    };
+
+    for (const id of layerIds) {
+      const layer = sym?.layerManager?.getLayer?.(id);
+      if (!layer?.graphics) continue;
+      layer.graphics.forEach(collect);
+    }
+    this._committedLayer.graphics.forEach(collect);
+    return out;
+  }
+
+  private _detectAndRenderThreatZones(): void {
+    // Remove old threat graphics.
+    const old = this._analysisLayer.graphics.filter(
+      (g: Graphic) => g.attributes?.type === 'trafficability_threat',
+    );
+    old.forEach((g: Graphic) => this._analysisLayer.remove(g));
+
+    const countEl = this._q<HTMLElement>('#reach-threat-count');
+    const sym = (window as any).symbolEngine;
+    if (!sym) { if (countEl) countEl.textContent = 'No SymbolEngine found.'; return; }
+
+    const threats = this._collectThreatCircles();
+    const radiusM = this._threatRadiusKm * 1000;
+    for (const hp of threats) {
+      const ring = this._ringCoords(hp.lon, hp.lat, radiusM, 48);
+      this._analysisLayer.add(new Graphic({
+        geometry: new Polygon({ rings: [ring], spatialReference: { wkid: 4326 } }),
+        symbol: this._fillSymbol([220, 50, 50], 28, 180, 1.6),
+        attributes: { type: 'trafficability_threat', lon: hp.lon, lat: hp.lat },
+      }));
+    }
+
+    if (countEl) {
+      countEl.textContent = threats.length > 0
+        ? `${threats.length} hostile graphic${threats.length === 1 ? '' : 's'} buffered · ${this._threatRadiusKm} km radius. Routes will steer around them.`
+        : 'No hostile graphics found in symbol layers.';
+    }
+  }
+
+  /**
+   * For a single leg `(from → to)`, return an ordered list of via-points that
+   * steer the route around each threat circle the straight line crosses. Each
+   * via is placed perpendicular to the leg, on the **opposite side** of the
+   * threat centre from the line, at `radius × 1.3` from the centre so the
+   * road-following route has room to bend without re-entering the bubble.
+   *
+   * Uses a local equirectangular projection (km-accurate at military scales —
+   * a leg of a few hundred km is fine).
+   */
+  private _avoidVias(
+    from: Point, to: Point,
+    threats: Array<{ lon: number; lat: number; radiusKm: number }>,
+  ): Point[] {
+    if (!threats.length) return [];
+    const oLon = from.longitude ?? 0, oLat = from.latitude ?? 0;
+    const dLon = to.longitude ?? 0, dLat = to.latitude ?? 0;
+
+    const KM_PER_DEG_LAT = 111.32;
+    const cosLat = Math.cos((oLat * Math.PI) / 180);
+    const kmPerDegLon = KM_PER_DEG_LAT * Math.max(0.1, cosLat);
+    const toXY = (lon: number, lat: number) => ({
+      x: (lon - oLon) * kmPerDegLon,
+      y: (lat - oLat) * KM_PER_DEG_LAT,
+    });
+    const fromXY = (x: number, y: number) => ({
+      lon: oLon + x / kmPerDegLon,
+      lat: oLat + y / KM_PER_DEG_LAT,
+    });
+
+    const D = toXY(dLon, dLat);
+    const totalKm = Math.hypot(D.x, D.y);
+    if (totalKm < 0.1) return [];
+    const ux = D.x / totalKm, uy = D.y / totalKm;   // unit along O→D
+    const px = -uy, py = ux;                          // 90° left perpendicular
+
+    const SAFETY = 1.3; // 30% extra clearance so the road-network route bends cleanly
+    const hits: Array<{ along: number; viaLon: number; viaLat: number }> = [];
+    for (const t of threats) {
+      const T = toXY(t.lon, t.lat);
+      const along = T.x * ux + T.y * uy;               // along-track projection
+      const cross = T.x * px + T.y * py;               // signed cross-track (positive = left)
+      const clearance = t.radiusKm * SAFETY;
+      if (Math.abs(cross) > clearance) continue;       // line is already clear
+      // Allow vias slightly outside the segment so threats near the endpoints still steer.
+      if (along < -t.radiusKm || along > totalKm + t.radiusKm) continue;
+
+      // Push via to the side OPPOSITE the threat centre, so the bend goes around it.
+      // If threat is on the left of O→D (cross > 0), via goes right (negative perp).
+      const sideSign = cross >= 0 ? -1 : 1;
+      const viaX = T.x + px * (sideSign * clearance);
+      const viaY = T.y + py * (sideSign * clearance);
+      const via = fromXY(viaX, viaY);
+      hits.push({ along, viaLon: via.lon, viaLat: via.lat });
+    }
+
+    hits.sort((a, b) => a.along - b.along);
+    return hits.map((h) => new Point({
+      longitude: h.viaLon,
+      latitude: h.viaLat,
+      spatialReference: { wkid: 4326 },
+    }));
+  }
+
+  // ─── Private: Results panel scaffolding ─────────────────────────────────────
+
+  /**
+   * Companion results widget — stats, legend, drive playback, and the
+   * Conditions / Convoy / MOVORD feature tabs live in their own movable panel
+   * rather than crammed into the control panel. Created once and reused.
+   */
+  private _ensureResultsPanel(): void {
+    if (!this._resultsPanelEl) {
+      this._resultsPanelEl = document.createElement('div');
+      this._resultsPanelEl.id = 'trafficability-engine-results-panel';
+      this._resultsPanelEl.className = 'reach-panel reach-results-panel';
+      this._resultsPanelEl.innerHTML = this._buildResultsPanelHTML();
+      document.body.appendChild(this._resultsPanelEl);
+    } else {
+      // Re-attach if it was removed from the DOM.
+      if (!this._resultsPanelEl.isConnected) document.body.appendChild(this._resultsPanelEl);
+    }
+    if (!this._resultsPanelBound) {
+      this._bindResultsPanelEvents();
+      this._makeSubDraggable(
+        this._resultsPanelEl,
+        this._resultsPanelEl.querySelector<HTMLElement>('#reach-results-drag-handle'),
+      );
+      this._resultsPanelBound = true;
+    }
+    this._resultsPanelEl.style.display = 'block';
+  }
+
+  private _makeSubDraggable(panel: HTMLDivElement, handle: HTMLElement | null): void {
+    if (!handle) return;
+    let dragging = false, ox = 0, oy = 0;
+    const onMove = (e: MouseEvent) => {
+      if (!dragging) return;
+      const maxLeft = window.innerWidth - panel.offsetWidth - 4;
+      const maxTop = window.innerHeight - panel.offsetHeight - 4;
+      panel.style.left = `${Math.max(0, Math.min(e.clientX - ox, maxLeft))}px`;
+      panel.style.top = `${Math.max(0, Math.min(e.clientY - oy, maxTop))}px`;
+      panel.style.right = 'auto';
+    };
+    const onUp = () => {
+      dragging = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    const onDown = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest('button, input, select')) return;
+      dragging = true;
+      const r = panel.getBoundingClientRect();
+      ox = e.clientX - r.left;
+      oy = e.clientY - r.top;
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    };
+    handle.addEventListener('mousedown', onDown);
+    this._subDragCleanup.push(() => handle.removeEventListener('mousedown', onDown));
   }
 
   // ─── Private: Styles ────────────────────────────────────────────────────────
@@ -2154,6 +3279,18 @@ export class TrafficabilityEngine {
         from { opacity: 0; transform: scale(0.94) translateY(-8px); }
         to   { opacity: 1; transform: scale(1) translateY(0); }
       }
+      /* Results panel: same base look as .reach-panel, with a different default
+         position + a scrollable body. Declared AFTER .reach-panel so its
+         left/width win the cascade; no !important, so inline drag styles work. */
+      .reach-panel.reach-results-panel {
+        left: 740px;
+        width: 340px;
+        max-height: calc(100vh - 80px);
+        overflow-y: auto;
+      }
+      .reach-panel.reach-results-panel::-webkit-scrollbar { width: 5px; }
+      .reach-panel.reach-results-panel::-webkit-scrollbar-track { background: transparent; }
+      .reach-panel.reach-results-panel::-webkit-scrollbar-thumb { background: var(--ms-border); border-radius: 3px; }
       .reach-header {
         display: flex; align-items: center; gap: 7px;
         padding: 9px 10px 8px;
@@ -2312,8 +3449,81 @@ export class TrafficabilityEngine {
       .reach-co-note { color: #aab8cf; font-size: 10px; margin-top: 3px; font-style: italic; }
       .reach-co-chip { margin: 2px 0; }
 
+      /* ── Feature tabs ── */
+      .reach-feat-tabs { display: flex; gap: 3px; padding: 4px 10px 0; }
+      .reach-feat-tab {
+        flex: 1; padding: 5px 3px; font-family: inherit; font-size: var(--ms-fs-xs);
+        letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; border-radius: 3px 3px 0 0;
+        border: 1px solid var(--ms-border); border-bottom: none;
+        background: var(--ms-bg-input); color: var(--ms-text-dim); transition: all 0.14s;
+      }
+      .reach-feat-tab:hover { color: var(--ms-text); }
+      .reach-feat-tab-active { border-color: rgba(52,192,174,0.55); color: #34C0AE; background: var(--ms-bg-header); font-weight: 700; }
+
+      #reach-feat-conditions,
+      #reach-feat-convoy,
+      #reach-feat-export {
+        border: 1px solid rgba(52,192,174,0.2); border-top: none;
+        background: var(--ms-bg-header); margin: 0 10px 6px; border-radius: 0 0 4px 4px;
+        padding: 6px 0 4px;
+      }
+
+      /* ── Conditions tab ── */
+      .reach-select {
+        background: var(--ms-bg-input); border: 1px solid var(--ms-border); border-radius: 3px;
+        color: var(--ms-text); font-family: inherit; font-size: var(--ms-fs-xs);
+        padding: 3px 5px; flex: 1; min-width: 0; cursor: pointer; outline: none;
+        transition: border-color 0.15s;
+      }
+      .reach-select:focus { border-color: var(--ms-accent); }
+      .reach-feat-note { font-size: var(--ms-fs-xs); color: var(--ms-text-dim); padding: 2px 12px 4px; font-style: italic; min-height: 14px; }
+
+      /* ── Convoy tab ── */
+      .reach-num-row { display: flex; align-items: center; gap: 8px; padding: 2px 10px 4px; }
+      .reach-num-row .reach-label { flex: 1; }
+      .reach-num-input { background: var(--ms-bg-input); border: 1px solid var(--ms-border); border-radius: 3px; color: var(--ms-text); font-family: inherit; font-size: var(--ms-fs-xs); padding: 3px 6px; width: 72px; flex: none; outline: none; }
+      .reach-num-input:focus { border-color: var(--ms-accent); }
+      .reach-sec-mini { font-size: var(--ms-fs-xs); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ms-text-label); padding: 6px 12px 3px; }
+      .reach-convoy-result { padding: 4px 12px 2px; font-size: var(--ms-fs-xs); line-height: 1.7; }
+      .reach-convoy-row { color: var(--ms-text); }
+      .reach-convoy-serial { color: #EF9F27; }
+
+      /* ── Fuel result rows ── */
+      .reach-fuel-result { padding: 4px 12px 2px; font-size: var(--ms-fs-xs); line-height: 1.7; }
+      .reach-fuel-row { color: var(--ms-text); }
+      .reach-fuel-ok { color: #1D9E75; }
+      .reach-fuel-warn { color: #EF9F27; }
+      .reach-fuel-bad { color: #E24B4A; font-weight: 600; }
+
+      /* ── Timing panel ── */
+      .reach-timing-panel { padding: 4px 10px 2px; }
+      .reach-timing-head { font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ms-text-label); padding: 4px 2px 2px; }
+      .reach-timing-row { display: flex; align-items: baseline; gap: 6px; font-size: var(--ms-fs-xs); padding: 2px 0; border-bottom: 1px solid var(--ms-divider); }
+      .reach-timing-lbl { color: var(--ms-text-dim); flex: 1; }
+      .reach-timing-val { font-family: var(--ms-font-mono, monospace); font-weight: 700; color: #34C0AE; white-space: nowrap; }
+      .reach-timing-dwell { font-size: 9px; color: #EF9F27; white-space: nowrap; }
+      .reach-timing-tot { background: rgba(239,159,39,0.08); border-radius: 3px; }
+      .reach-timing-tot .reach-timing-val { color: #EF9F27; }
+
+      /* ── MOVORD export tab ── */
+      .reach-wp-meta-list { padding: 2px 10px; max-height: 120px; overflow-y: auto; }
+      .reach-wp-meta-row { display: flex; align-items: center; gap: 5px; padding: 2px 0; }
+      .reach-wp-meta-idx { font-size: 12px; flex: 0 0 auto; }
+      .reach-wp-meta-label { flex: 1; min-width: 0; font-size: var(--ms-fs-xs); padding: 3px 5px; background: var(--ms-bg-input); border: 1px solid var(--ms-border); border-radius: 3px; color: var(--ms-text); font-family: inherit; outline: none; }
+      .reach-wp-meta-label:focus { border-color: var(--ms-accent); }
+      .reach-wp-meta-dwell { font-size: var(--ms-fs-xs); background: var(--ms-bg-input); border: 1px solid var(--ms-border); border-radius: 3px; color: var(--ms-text); font-family: inherit; outline: none; padding: 3px 4px; }
+      .reach-wp-meta-dwell:focus { border-color: var(--ms-accent); }
+      .reach-movord-preview {
+        font-family: var(--ms-font-mono, monospace); font-size: 10px; white-space: pre;
+        background: rgba(0,0,0,0.25); border: 1px solid var(--ms-border); border-radius: 3px;
+        margin: 4px 10px; padding: 6px 8px; max-height: 220px; overflow-y: auto;
+        color: #c8daf0; line-height: 1.55; user-select: text;
+      }
+      .reach-wp-custom-lbl { font-size: var(--ms-fs-xs); color: #34C0AE; margin-left: 4px; font-style: italic; }
+
       @media (max-width: 520px) {
         .reach-panel { left: 14px; right: 14px; top: 56px; width: auto; }
+        .reach-panel.reach-results-panel { left: 14px; right: 14px; top: 56px; width: auto; }
         .reach-stats { grid-template-columns: 1fr; }
       }
     `;

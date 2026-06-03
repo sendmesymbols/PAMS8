@@ -86,6 +86,9 @@ export class DeclutterEngine {
   private _spatialIndex = new SpatialIndex(INDEX_CELL_PX);
   private _solveSteps = new Map<string, SolveStep>();
   private _solveTimer: number | null = null;
+  // Set whenever graphics are added/removed (or the view switches) so the next
+  // solve rebuilds the index even though the view fingerprint hasn't changed.
+  private _indexDirty = false;
 
   constructor(viewProvider: () => MapView | SceneView, layerManager: GraphicsLayerManager) {
     this._getView = viewProvider;
@@ -131,12 +134,22 @@ export class DeclutterEngine {
   }
 
   /** Call when the map view switches between 2D and 3D. */
-  onViewChanged(newView: MapView | SceneView): void {
+  onViewChanged(newView: MapView | SceneView, newLayerManager?: GraphicsLayerManager): void {
+    // 2D and 3D resolve to *different* GraphicsLayerManager instances, so the
+    // captured manager is stale after a switch. Adopt the new one before the
+    // watchers (which read this._layerManager) and any solve re-attach.
+    if (newLayerManager) this._layerManager = newLayerManager;
+    // The new view's layers are a different graphics set — force a rebuild.
+    this._indexDirty = true;
+    this._spatialIndex.clear();
     this._attachZoomWatcher();
     this._attachStationaryWatcher();
     this._attachGraphicsWatchers();
     const zoom = newView?.zoom;
-    if (this._enabled && zoom !== undefined) this._onZoomChange(zoom);
+    if (this._enabled && zoom !== undefined) {
+      this._onZoomChange(zoom);
+      this._scheduleSolve();
+    }
   }
 
   destroy(): void {
@@ -230,8 +243,13 @@ export class DeclutterEngine {
     const watchLayer = (layerId: string) => {
       const layer = this._layerManager.getLayer(layerId);
       if (!layer || !layer.graphics) return;
-      const handle = layer.graphics.on("change", (evt: { added?: Graphic[] }) => {
-        if (!this._enabled || !evt.added?.length) return;
+      const handle = layer.graphics.on("change", (evt: { added?: Graphic[]; removed?: Graphic[] }) => {
+        if (!this._enabled) return;
+        if (!evt.added?.length && !evt.removed?.length) return;
+        // Membership changed — the spatial index must be rebuilt next solve,
+        // even if the view hasn't moved (otherwise new graphics are invisible
+        // to cluster/disperse/ladder/label steps until the next pan/zoom).
+        this._indexDirty = true;
         this._dirtyLayers.add(layerId);
         this._scheduleDirtyFlush();
       });
@@ -316,19 +334,21 @@ export class DeclutterEngine {
 
     const tStart = performance.now();
 
-    // Rebuild the index only if the view has moved since last time.
-    // Graphics-add flushes also bump the dirty path, so we clear+rebuild
-    // unconditionally if size mismatches. Cheap: O(N) single pass.
-    const sources = SYMBOL_LAYER_IDS.map(layerId => {
-      const layer = this._layerManager.getLayer(layerId);
-      return {
-        layerId,
-        graphics: (layer?.graphics?.toArray?.() ?? []) as Graphic[],
-      };
-    });
-
-    if (this._spatialIndex.isStale(view) || this._spatialIndex.size === 0) {
+    // Rebuild the index when the view has moved, when it's empty, or when
+    // graphics were added/removed since the last solve (_indexDirty). The
+    // dirty flag is essential: graphics-add bursts don't change the view
+    // fingerprint, so without it new symbols never enter the index while the
+    // map is stationary. Cheap: O(N) single pass.
+    if (this._spatialIndex.isStale(view) || this._spatialIndex.size === 0 || this._indexDirty) {
+      const sources = SYMBOL_LAYER_IDS.map(layerId => {
+        const layer = this._layerManager.getLayer(layerId);
+        return {
+          layerId,
+          graphics: (layer?.graphics?.toArray?.() ?? []) as Graphic[],
+        };
+      });
       this._spatialIndex.rebuild(sources, view);
+      this._indexDirty = false;
     }
 
     const ctx: SolveContext = {
@@ -516,16 +536,16 @@ export class DeclutterEngine {
   }
 
   /** Build the list of visible echelon codes at a given integer zoom. */
-  private _visibleEchelonsForZoom(zoomInt: number): string[] {
+  private _visibleEchelonsForZoom(zoomInt: number): string[] | null {
     const echelonMap = (settingsData as any).ZoomLvlEchelon;
-    if (!echelonMap) return ["00"];
+    if (!echelonMap) return null;
 
     const sortedKeys = Object.keys(echelonMap).map(Number).sort((a, b) => a - b);
     let mapKey = sortedKeys[0];
     for (const k of sortedKeys) {
       if (k <= zoomInt) mapKey = k;
     }
-    return echelonMap[String(mapKey)] ?? ["00"];
+    return echelonMap[String(mapKey)] ?? null;
   }
 
   /**
@@ -545,7 +565,7 @@ export class DeclutterEngine {
       // Single pass: compute desired visibility, collect dirty graphics
       const updates: Array<{ g: Graphic; visible: boolean }> = [];
       layer.graphics.forEach((g: Graphic) => {
-        const shouldShow = visibleEchelons.includes(this._getEchelon(g));
+        const shouldShow = visibleEchelons === null ? true : visibleEchelons.includes(this._getEchelon(g));
         if (g.visible !== shouldShow) {
           updates.push({ g, visible: shouldShow });
         }

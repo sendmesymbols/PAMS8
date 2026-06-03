@@ -1091,7 +1091,10 @@ class MorphixEngine {
         const group = t.dataset.group!;
         const key = t.dataset.key!;
         const type = (t.dataset.type as FieldType) || 'text';
-        (this.state as any)[group][key] = this.coerce(t.value, type);
+        const coerced = this.coerce(t.value, type);
+        if (!(type === 'number' && coerced === undefined)) {
+          (this.state as any)[group][key] = coerced;
+        }
         if (group === 'amplifier' && key === 'SIDC') {
           this.applySidc(String(t.value), true);
         }
@@ -1483,11 +1486,12 @@ class MorphixEngine {
 
   private coerce(value: string, type: FieldType): any {
     const t = value.trim();
-    if (t === '') return type === 'number' ? '' : '';
     if (type === 'number') {
+      if (t === '') return undefined;
       const n = Number(t);
-      return Number.isFinite(n) ? n : value;
+      return Number.isFinite(n) ? n : undefined;
     }
+    if (t === '') return '';
     if (t === 'true') return true;
     if (t === 'false') return false;
     if (/^-?\d+(\.\d+)?$/.test(t)) return Number(t);

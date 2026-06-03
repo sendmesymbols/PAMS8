@@ -73,6 +73,60 @@ export class DisruptObstacleEffect {
 
     // Initialize temporary graphic
     this.tempGraphic = new Graphic();
+    this._injectStyles();
+  }
+
+  private _injectStyles(): void {
+    if (document.getElementById('disrupt-obs-effect-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'disrupt-obs-effect-styles';
+    style.textContent = `
+      .disrupt-obs-effect-panel {
+        position: fixed;
+        background: var(--ms-bg, #161b26);
+        border: 1px solid var(--ms-border, rgba(90, 130, 200, 0.3));
+        border-radius: var(--ms-radius, 8px);
+        color: var(--ms-text, #dce8f5);
+        font-family: var(--ms-font, 'Inter', sans-serif);
+        font-size: var(--ms-fs, 12px);
+        z-index: 1100;
+        overflow: hidden;
+        box-shadow: var(--ms-shadow, 0 8px 32px rgba(0, 0, 0, 0.45));
+      }
+
+      .disrupt-obs-effect-panel .ms-body {
+        max-height: 380px;
+        overflow-y: auto;
+        padding: 6px 0;
+      }
+
+      /* ── Thin ops-dark scrollbar — matches LocalPeaksEngine / Widgets.css ── */
+      .disrupt-obs-effect-panel .ms-body::-webkit-scrollbar,
+      .disrupt-obs-effect-panel::-webkit-scrollbar {
+        width: 4px;
+      }
+      .disrupt-obs-effect-panel .ms-body::-webkit-scrollbar-track,
+      .disrupt-obs-effect-panel::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .disrupt-obs-effect-panel .ms-body::-webkit-scrollbar-thumb,
+      .disrupt-obs-effect-panel::-webkit-scrollbar-thumb {
+        background: var(--ms-border, rgba(90, 130, 200, 0.35));
+        border-radius: 2px;
+      }
+      .disrupt-obs-effect-panel .ms-body::-webkit-scrollbar-thumb:hover,
+      .disrupt-obs-effect-panel::-webkit-scrollbar-thumb:hover {
+        background: var(--ms-accent, rgba(100, 180, 255, 0.65));
+      }
+
+      /* Firefox */
+      .disrupt-obs-effect-panel .ms-body,
+      .disrupt-obs-effect-panel {
+        scrollbar-width: thin;
+        scrollbar-color: var(--ms-border, rgba(90, 130, 200, 0.35)) transparent;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   /**

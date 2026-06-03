@@ -194,6 +194,13 @@ class SymbolEngine implements Evented {
   private _suppressEditUndoCount = 0;
   private _lastCreatedGraphic: Graphic | null = null;
 
+  // Snapshot of the SIDC/amplifier that belongs to the in-progress draw session.
+  // Set when initialize() starts a new draw; read by drawSymEnd() so a rapid
+  // second initialize() (continuous mode / user re-pick) cannot clobber the
+  // finishing graphic's identity.
+  private _activeSIDC: any | null = null;
+  private _activeAmplifier: Amplifier | null = null;
+
   // Undo/Redo state owned by UndoRedoManager (delegated to via public facade)
   private _undoRedoManager!: UndoRedoManager;
 
@@ -580,16 +587,14 @@ class SymbolEngine implements Evented {
 
     // Re-attach DeploymentBuilderEngine to the new view
     this._deploymentBuilderEngine?.onViewChanged(newView);
-    // Re-attach DeclutterEngine to the new view
-    this._declutterEngine?.onViewChanged(newView);
-    // Re-attach ClusterEngine to the new view
-    this._clusterEngine?.onViewChanged(newView);
-    // Re-attach LabelPlacer to the new view
-    this._labelPlacer?.onViewChanged(newView);
-    // Re-attach MarkerDisperser to the new view
-    this._markerDisperser?.onViewChanged(newView);
-    // Re-attach LadderEngine to the new view
-    this._ladderEngine?.onViewChanged(newView);
+    // Re-attach declutter engines to the new view. Each must also adopt the
+    // new GraphicsLayerManager — 2D and 3D resolve to different manager
+    // instances, so without this they keep querying the old view's layers.
+    this._declutterEngine?.onViewChanged(newView, this._layerManager);
+    this._clusterEngine?.onViewChanged(newView, this._layerManager);
+    this._labelPlacer?.onViewChanged(newView, this._layerManager);
+    this._markerDisperser?.onViewChanged(newView, this._layerManager);
+    this._ladderEngine?.onViewChanged(newView, this._layerManager);
 
     // Re-attach all loaded analysis engines to the new view
     this._analysisRegistry.onViewChanged(newView);
@@ -1698,6 +1703,10 @@ class SymbolEngine implements Evented {
     }
 
     if (fullPath === 'creationMode') {
+      if (this._continuousTimeoutId !== null) {
+        clearTimeout(this._continuousTimeoutId);
+        this._continuousTimeoutId = null;
+      }
       this._creationMode = value as 'single' | 'continuous';
     }
 
@@ -1871,6 +1880,10 @@ class SymbolEngine implements Evented {
   }
 
   public set creationMode(mode: 'single' | 'continuous') {
+    if (this._continuousTimeoutId !== null) {
+      clearTimeout(this._continuousTimeoutId);
+      this._continuousTimeoutId = null;
+    }
     this._creationMode = mode;
     (settingsData as any).creationMode = mode;
   }
@@ -2378,6 +2391,12 @@ class SymbolEngine implements Evented {
       this.sidc = new SIDC(amplifier.SIDC); // Assuming Amplifier has a SIDC property and SIDC class can be instantiated this way.
       this.amplifier = amplifier; // Set the amplifier for later use
 
+      // Snapshot the current draw session's identity so drawSymEnd() reads
+      // from these stable copies even if initialize() is called again before
+      // this draw completes (e.g. rapid re-pick or continuous mode).
+      this._activeSIDC = this.sidc;
+      this._activeAmplifier = this.amplifier;
+
       const reqSID = this.sidc.getSID();
       const coSIDC = this.sidc.getSIDC();
       const symSet = coSIDC.substring(4, 6); // Changed substr to substring for correctness in modern JS
@@ -2682,14 +2701,16 @@ class SymbolEngine implements Evented {
 
       // Set up drawEssentials and attributes
       if (drawEssentials) {
-        // Set SIDC if we have it
-        if (this.sidc && this.sidc.getSIDC) {
-          drawEssentials.SIDC = this.sidc.getSIDC();
+        // Set SIDC if we have it — read from the per-draw snapshot so a
+        // subsequent initialize() (rapid re-pick / continuous mode) cannot
+        // replace the in-flight draw's identity before drawSymEnd fires.
+        if (this._activeSIDC && this._activeSIDC.getSIDC) {
+          drawEssentials.SIDC = this._activeSIDC.getSIDC();
         }
 
-        // Set AMPLIFIER if we have it
-        if (this.amplifier) {
-          drawEssentials.AMPLIFIER = this.amplifier;
+        // Set AMPLIFIER if we have it (same snapshot rationale as above)
+        if (this._activeAmplifier) {
+          drawEssentials.AMPLIFIER = this._activeAmplifier;
         }
 
         graphic.set('drawEssentials', drawEssentials);

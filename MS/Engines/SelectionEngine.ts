@@ -1444,6 +1444,11 @@ class SelectionEngine {
      * and `Graphic.origin` is only populated for feature-query / sketch-derived
      * graphics — not for plain `new Graphic({...})` added to a GraphicsLayer.
      */
+    /** Public wrapper around the layer resolver so external widgets (e.g. SelectionActionPanel) can robustly find a graphic's layer. */
+    public findContainingLayer(graphic: Graphic): GraphicsLayer | null {
+        return this._findContainingLayer(graphic);
+    }
+
     private _findContainingLayer(graphic: Graphic): GraphicsLayer | null {
         // Fast path: origin is set (e.g. graphics from FeatureLayer queries)
         const fromOrigin = (graphic.origin as any)?.layer as GraphicsLayer | undefined;
@@ -1466,6 +1471,7 @@ class SelectionEngine {
             const layerView = await this.view.whenLayerView(layer) as any;
             if (!this._selected.has(id)) return; // cleared while awaiting
             const handle = layerView.highlight(graphic);
+            this._removeHighlight(id); // drop any stale handle from a racing call
             this._highlights.set(id, handle);
         } catch { /* view replaced during await */ }
     }

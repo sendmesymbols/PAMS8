@@ -99,9 +99,11 @@ export default class KeyboardShortcutManager {
       return;
     }
 
-    // Skip when typing in an input field
-    const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+    // Skip when typing in an input field or contenteditable element
+    const el = e.target as HTMLElement | null;
+    const tag = el?.tagName?.toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (el?.isContentEditable) return;
 
     // Handle Ctrl shortcuts first
     if (e.ctrlKey || e.metaKey) {
@@ -159,8 +161,7 @@ export default class KeyboardShortcutManager {
         ) {
           e.preventDefault();
           this.deps.deactivateEdit();
-        }
-        if (this.deps.getCreationMode() === 'continuous') {
+        } else if (this.deps.getCreationMode() === 'continuous') {
           e.preventDefault();
           this.deps.stopContinuousMode();
         }

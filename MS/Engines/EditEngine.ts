@@ -195,7 +195,13 @@ class EditEngine {
         const de = this._getDrawEssentials(graphic);
         if (!de) return;
 
-        de.SIZE = Math.max(10, (de.SIZE || 35) * scaleFactor);
+        // Record the original SIZE once per scale session so repeated symmetric
+        // operations (e.g. ×1.2 then ×0.833) always scale from the true baseline
+        // and never drift due to the Math.max(10, …) floor clamping the value.
+        if (graphic.attributes.__origSize == null) {
+            graphic.attributes.__origSize = de.SIZE || 35;
+        }
+        de.SIZE = Math.max(10, graphic.attributes.__origSize * scaleFactor);
         this._emit("scalePointSymbol", { graphic, newSize: de.SIZE });
     }
 
@@ -237,6 +243,10 @@ class EditEngine {
             this._keydownListener = null;
         }
 
+        // Clear the scale-session baseline so the next scale session starts fresh.
+        if (this._activeGraphic?.attributes) {
+            delete this._activeGraphic.attributes.__origSize;
+        }
         this._activeGraphic = null;
         this._originalGeometry = null;
         this._originalCtrlPts = null;

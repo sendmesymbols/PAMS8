@@ -1261,8 +1261,9 @@ export class VisualizationEngine {
 
     const code = sidc.substring(2, 4);
     if (code === "02" || code === "03") return "friendly";
-    if (code === "05" || code === "06" || code === "07") return "enemy";
+    if (code === "05" || code === "06") return "enemy";  // "07" removed — not a valid 2525D code (likely typo for "06")
     if (code === "04") return "neutral";
+    // "00" (Pending) and "01" (Unknown) fall through intentionally — excluded from overlays
     return "unknown";
   }
 }

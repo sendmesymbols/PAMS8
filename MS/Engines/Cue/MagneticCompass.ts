@@ -125,6 +125,8 @@ export class MagneticCompass {
   private _widget: HTMLElement | null = null;
   private _widgetOpen = false;
   private _styleEl: HTMLStyleElement | null = null;
+  private _onDocMouseMove: ((e: MouseEvent) => void) | null = null;
+  private _onDocMouseUp: ((e: MouseEvent) => void) | null = null;
 
   // Hover feedback
   private _hoveredInstId: string | null = null;
@@ -297,7 +299,7 @@ export class MagneticCompass {
       this._refreshBezel(inst);
       for (const sec of c.sectors || []) this.addSector(inst.id, sec);
     }
-    this._counter = Math.max(0, ...this._instances.map(i => parseInt(i.id.replace('mc-', '')) || 0));
+    this._counter = Math.max(0, ...this._instances.map(i => Number(i.id.split('_').pop()) || 0));
 
     // Sync widget controls with loaded settings
     this._syncWidgetToSettings();
@@ -331,6 +333,14 @@ export class MagneticCompass {
     this._removeViewEvents();
     this._clearAllInstances();
     this._placing = false;
+    if (this._onDocMouseMove) {
+      document.removeEventListener('mousemove', this._onDocMouseMove);
+      this._onDocMouseMove = null;
+    }
+    if (this._onDocMouseUp) {
+      document.removeEventListener('mouseup', this._onDocMouseUp);
+      this._onDocMouseUp = null;
+    }
     if (this._widget) {
       this._widget.remove();
       this._widget = null;
@@ -1459,13 +1469,19 @@ ${moveCross}
       e.preventDefault();
     });
 
-    document.addEventListener('mousemove', (e: MouseEvent) => {
+    // Remove any previously-attached pair so re-creation doesn't stack them
+    if (this._onDocMouseMove) document.removeEventListener('mousemove', this._onDocMouseMove);
+    if (this._onDocMouseUp)   document.removeEventListener('mouseup', this._onDocMouseUp);
+
+    this._onDocMouseMove = (e: MouseEvent) => {
       if (!dragging || !this._widget) return;
       this._widget.style.left = (e.clientX - dragX) + 'px';
       this._widget.style.top  = (e.clientY - dragY) + 'px';
-    });
+    };
+    this._onDocMouseUp = () => { dragging = false; };
 
-    document.addEventListener('mouseup', () => { dragging = false; });
+    document.addEventListener('mousemove', this._onDocMouseMove);
+    document.addEventListener('mouseup', this._onDocMouseUp);
 
     let movedDuringDown = false;
     header.addEventListener('mousemove', () => { if (dragging) movedDuringDown = true; });

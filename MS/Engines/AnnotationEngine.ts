@@ -481,15 +481,11 @@ class AnnotationEngine {
             }
 
             // Apply decorations (underline, overline, line-through)
-            if (labelOptions.uLine === 1) {
-                textSymbolOptions.decoration = "underline";
-            }
-            if (labelOptions.oLine === 1) {
-                textSymbolOptions.decoration = "overline";
-            }
-            if (labelOptions.tLine === 1) {
-                textSymbolOptions.decoration = "line-through";
-            }
+            const decorations: string[] = [];
+            if (labelOptions.uLine === 1) decorations.push("underline");
+            if (labelOptions.oLine === 1) decorations.push("line-through");
+            if (labelOptions.tLine === 1) decorations.push("overline");
+            if (decorations.length > 0) textSymbolOptions.decoration = decorations.join(" ");
 
             const textSymbol = new TextSymbol(textSymbolOptions);
 

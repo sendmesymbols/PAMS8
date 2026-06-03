@@ -36,14 +36,33 @@ export default class TemplateEngine {
     }
   }
 
-  public saveAsTemplate(name: string, graphic: Graphic): void {
+  /** Build the rich, file-compatible template payload for a graphic. */
+  private _buildTemplatePayload(name: string, graphic: Graphic): any {
     const de: any = graphic.attributes?.drawEssentials;
-    const templates = this._loadTemplatesStore();
-    templates[name] = {
+    const amplifier = de?.AMPLIFIER;
+
+    const deClean: any = { ...de };
+    delete deClean.AMPLIFIER;
+    delete deClean.SCOPE;
+    delete deClean.CTRL_PTS;
+    delete deClean.BASE_LN_PTS;
+    delete deClean.GEOM;
+
+    return {
+      pams8Version: '1.0',
+      type: 'pams8-template',
       name,
+      // Retained for backward-compat with older stored records that only had size/amplifier.
       size: de?.SIZE,
-      amplifier: de?.AMPLIFIER ? { ...de.AMPLIFIER } : {},
+      sidc: amplifier?.SIDC || de?.SIDC,
+      amplifier: amplifier ? { ...amplifier } : {},
+      drawEssentials: deClean,
     };
+  }
+
+  public saveAsTemplate(name: string, graphic: Graphic): void {
+    const templates = this._loadTemplatesStore();
+    templates[name] = this._buildTemplatePayload(name, graphic);
     localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
     console.info(`[Templates] Saved template: "${name}"`);
   }
@@ -58,10 +77,19 @@ export default class TemplateEngine {
     const de: any = graphic.attributes?.drawEssentials;
     if (!de) return;
 
+    // Rich payloads (file-based / new saveAsTemplate) carry full drawEssentials.
+    // Apply all persisted draw fields, preserving the graphic's own geometry.
+    if (t.drawEssentials) {
+      const { CTRL_PTS, BASE_LN_PTS, GEOM, AMPLIFIER, ...rest } = t.drawEssentials;
+      Object.assign(de, rest);
+    }
+
+    // Legacy records only carried a flat size; honour it as a fallback.
     if (t.size !== undefined) de.SIZE = t.size;
 
     const amplifier = new Amplifier();
-    Object.assign(amplifier, t.amplifier);
+    Object.assign(amplifier, t.amplifier ?? {});
+    if (t.sidc && !amplifier.SIDC) amplifier.SIDC = t.sidc;
     de.AMPLIFIER = amplifier;
 
     const id = graphic.attributes?.id;
@@ -98,26 +126,10 @@ export default class TemplateEngine {
   }
 
   public saveTemplateToFile(graphic: Graphic): void {
-    const de: any = graphic.attributes?.drawEssentials;
-    const amplifier = de?.AMPLIFIER;
     const name = window.prompt('Template name:');
     if (!name?.trim()) return;
 
-    const deClean: any = { ...de };
-    delete deClean.AMPLIFIER;
-    delete deClean.SCOPE;
-    delete deClean.CTRL_PTS;
-    delete deClean.BASE_LN_PTS;
-    delete deClean.GEOM;
-
-    const template = {
-      pams8Version: '1.0',
-      type: 'pams8-template',
-      name: name.trim(),
-      sidc: amplifier?.SIDC || de?.SIDC,
-      amplifier: amplifier ? { ...amplifier } : {},
-      drawEssentials: deClean,
-    };
+    const template = this._buildTemplatePayload(name.trim(), graphic);
 
     const json = JSON.stringify(template, null, 2);
     const blob = new Blob([json], { type: 'application/json' });

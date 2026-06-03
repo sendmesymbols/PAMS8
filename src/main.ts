@@ -1512,7 +1512,7 @@ function initializeAutocomplete() {
         keyTerrain: 'Key Terrain Identifier', localPeaks: 'Peak Analysis',
         deadGround: 'Dead Ground Mapper',     ocoka: 'OCOKA',
         los: 'Line of Sight',                 posDefScorer: 'Position Defensibility Scorer',
-        opRanker: 'OP Ranker',                wez: 'Weapon Engagement',
+        opRanker: 'OP Ranker',                wez: 'Weapon Effect Zone',
         trajectory: 'Trajectory',             effects: 'Weapon Effect',
         buffer: 'Buffer & Rings',             corridor: 'Corridor Analysis',
         flight: 'UAV Flight Analysis',        missionPlanner: 'Mission Planner',

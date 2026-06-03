@@ -620,8 +620,9 @@ export default class ClipboardEngine {
     const newId = ClipboardEngine.generateUUID();
     const newGraphic = source.clone();
     newGraphic.geometry = newGeom;
+    const clonedAttrs = JSON.parse(JSON.stringify(source.attributes ?? {}));
     newGraphic.attributes = {
-      ...source.attributes,
+      ...clonedAttrs,
       id: newId,
       drawEssentials: shiftedDe,
     };

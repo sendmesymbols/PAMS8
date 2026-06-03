@@ -1,9 +1,9 @@
 /**
  * EffectEngine.ts
- * Munition Effects Radius analysis engine.
+ * Weapon Effect analysis engine.
  *
  * Integrated with ContextMenuManager via linkEffectEngine().
- * Right-click any symbol → Analysis → Effects Radius.
+ * Right-click any symbol → Analysis → Weapon Effect.
  *
  * Layers:
  *   effects-analysis   — working graphics (rings, spheres, union)
@@ -105,7 +105,7 @@ export function computeEffects(munition: string, structureFactor = 'open_area', 
   const rLethalBlast = overpressureRadius(W, 200, h) * sf.blastMult;
   const rInjuryBlast = overpressureRadius(W, 35, h) * sf.blastMult;
   const rSafeBlast   = overpressureRadius(W, 6.9, h) * sf.blastMult;
-  
+
   const rFragLethal   = fragLethalRadius(W, m.fragmentVelocityMS, m.casingMassRatio) * sf.fragMult;
   const rFragCasualty = rFragLethal * 1.6;
 
@@ -282,9 +282,11 @@ export class EffectEngine {
   private _addStrike(pt: Point): void {
     const munKey = this._inp('effects-inp-munition')?.value ?? 'mortar_81mm';
     const struct = this._inp('effects-inp-structure')?.value ?? 'open_area';
-    const tntOv  = parseFloat(this._inp('effects-inp-tnt')?.value ?? '0.56') || null;
+    const tntOvStr = this._inp('effects-inp-tnt')?.value?.trim() ?? '';
+    const tntOvParsed = tntOvStr !== '' ? parseFloat(tntOvStr) : NaN;
+    const tntOv = Number.isFinite(tntOvParsed) ? tntOvParsed : null;
     const hOv    = parseFloat(this._inp('effects-inp-height')?.value ?? '0') || 0;
-    
+
     const res = computeEffects(munKey, struct, tntOv, hOv);
 
     this._strikes.push({ point: pt, result: res, munKey, struct, tntOv, hOv });
@@ -321,7 +323,9 @@ export class EffectEngine {
 
     const munKey = this._inp('effects-inp-munition')?.value ?? 'mortar_81mm';
     const struct = this._inp('effects-inp-structure')?.value ?? 'open_area';
-    const tntOv  = parseFloat(this._inp('effects-inp-tnt')?.value ?? '0.56') || null;
+    const tntOvStr2 = this._inp('effects-inp-tnt')?.value?.trim() ?? '';
+    const tntOvParsed2 = tntOvStr2 !== '' ? parseFloat(tntOvStr2) : NaN;
+    const tntOv = Number.isFinite(tntOvParsed2) ? tntOvParsed2 : null;
     const hOv    = parseFloat(this._inp('effects-inp-height')?.value ?? '0') || 0;
 
     this._strikes.forEach(s => {
@@ -354,7 +358,7 @@ export class EffectEngine {
     const showWave = this._inp('effects-opt-anim')?.checked ?? true;
     if (btnBlast) btnBlast.disabled = !showWave;
     if (btnCommit) btnCommit.disabled = false;
-    
+
     this._setStatus('ready');
   }
 
@@ -369,7 +373,7 @@ export class EffectEngine {
 
     const anim = this._createBlastWaveAnimation(pt, maxR, color, this._animLayer, durationMs, peakAlpha);
     this._blastAnimations.push(anim);
-    
+
     // Quick polling to check when animation ends
     const checkEnd = setInterval(() => {
       if (!anim.playing) {
@@ -409,10 +413,10 @@ export class EffectEngine {
   private _updatePhysicsPanel(res: any): void {
     if (!this._panelEl) return;
     const fmt = (v: number) => v >= 1000 ? (v / 1000).toFixed(2) + ' km' : Math.round(v) + ' m';
-    
+
     // We need to extract the radii safely from the rings array
     const getR = (id: string) => res.rings.find((r: any) => r.id === id)?.radiusM ?? 0;
-    
+
     const elLethal = this._panelEl.querySelector('#effects-ph-lethal');
     const elInjury = this._panelEl.querySelector('#effects-ph-injury');
     const elFrag = this._panelEl.querySelector('#effects-ph-frag');
@@ -445,7 +449,7 @@ export class EffectEngine {
         <div class="effects-sk-idx">${i + 1}</div>
         <div class="effects-sk-info">${s.point.latitude.toFixed(4)}°N  ${s.point.longitude.toFixed(4)}°E</div>
         <button class="effects-sk-del" data-i="${i}">✕</button>`;
-      
+
       row.querySelector('.effects-sk-del')?.addEventListener('click', () => {
         this._strikes.splice(i, 1);
         this._renderStrikeList();
@@ -562,19 +566,19 @@ export class EffectEngine {
   }
 
   private _buildPanelHTML(): string {
-    const munOpts = Object.entries(MUNITION_PRESETS).map(([k, m]: [string, any]) => 
+    const munOpts = Object.entries(MUNITION_PRESETS).map(([k, m]: [string, any]) =>
       `<option value="${k}"${k === 'mortar_81mm' ? ' selected' : ''}>${m.label}</option>`
     ).join('');
 
-    const structOpts = Object.entries(STRUCTURE_FACTORS).map(([k, s]: [string, any]) => 
+    const structOpts = Object.entries(STRUCTURE_FACTORS).map(([k, s]: [string, any]) =>
       `<option value="${k}"${k === 'open_area' ? ' selected' : ''}>${s.label}</option>`
     ).join('');
 
     return `
       <div class="effects-ph" id="effects-drag-handle">
-        <div class="effects-ph-title">✕ Effects Radius</div>
+        <div class="effects-ph-title">✕ Weapon Effect</div>
         <div class="effects-ph-status" id="effects-status">Awaiting strike point</div>
-        <button class="effects-help-btn" id="effects-help-btn" title="How effects radius works">?</button>
+        <button class="effects-help-btn" id="effects-help-btn" title="How weapon effect works">?</button>
         <button class="effects-minimize-btn" id="effects-minimize-btn" title="Minimize">▼</button>
         <button class="effects-close-btn" id="effects-close-btn" title="Close">✕</button>
       </div>
@@ -582,12 +586,17 @@ export class EffectEngine {
         <div class="effects-help-head">
           <div>
             <div class="effects-help-kicker">Field Guide</div>
-            <div class="effects-help-title">Effects Radius</div>
+            <div class="effects-help-title">Weapon Effect</div>
           </div>
           <button class="effects-help-close" id="effects-help-close" title="Close">✕</button>
         </div>
         <div class="effects-help-body">
-          <p>Estimates blast, fragmentation, thermal, and quantity-distance effects from a munition or explosive source, then draws hazard rings around one or more strike points.</p>
+          <div style="background:rgba(220,60,48,0.08);border-left:3px solid rgba(220,60,48,0.6);padding:7px 10px;border-radius:3px;margin-bottom:10px">
+            <div style="font-size:var(--ms-fs-xs);letter-spacing:.08em;text-transform:uppercase;color:rgba(220,60,48,0.7);margin-bottom:3px">Answers</div>
+            <div style="font-style:italic;color:var(--ms-text)">What happens when it lands here?</div>
+          </div>
+          <p>Models blast, fragmentation, thermal, and quantity-distance effects radiating outward from a detonation point, then draws hazard rings around one or more strike locations.</p>
+          <p style="font-size:var(--ms-fs-xs);color:var(--ms-text-dim);border-top:1px solid var(--ms-divider);padding-top:7px;margin-top:2px">Use <strong style="color:var(--ms-text)">Weapon Effect Zone</strong> first to determine where a weapon can reach, then place a strike here to see the consequences.</p>
           <div class="effects-help-block">
             <h4>How It Works</h4>
             <ol>
@@ -807,7 +816,7 @@ export class EffectEngine {
       this._analysisLayer.removeAll();
       this._markerLayer.removeAll();
       this._renderStrikeList();
-      
+
       const btnBlast = this._panelEl?.querySelector<HTMLButtonElement>('#effects-btn-blast');
       const btnCommit = this._panelEl?.querySelector<HTMLButtonElement>('#effects-btn-commit');
       const btnUndo = this._panelEl?.querySelector<HTMLButtonElement>('#effects-btn-undo');
@@ -818,7 +827,7 @@ export class EffectEngine {
       this._showHint('Click map to place detonation point');
       const coordsEl = this._panelEl?.querySelector('#effects-coords');
       if (coordsEl) coordsEl.textContent = 'Impact: not placed — click map';
-      
+
       ['effects-ph-lethal','effects-ph-injury','effects-ph-frag','effects-ph-thermal','effects-ph-safe','effects-ph-qd']
         .forEach(id => {
           const el = this._panelEl?.querySelector(`#${id}`);
@@ -833,7 +842,7 @@ export class EffectEngine {
       this._renderStrikeList();
       const btnUndo = this._panelEl?.querySelector<HTMLButtonElement>('#effects-btn-undo');
       if (btnUndo) btnUndo.disabled = this._strikes.length === 0;
-      
+
       if (this._strikes.length === 0) {
         this._analysisLayer.removeAll();
         this._markerLayer.removeAll();

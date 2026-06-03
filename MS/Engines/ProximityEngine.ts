@@ -114,6 +114,8 @@ class ProximityEngine {
   private _altPressed: boolean = false;
   private _boundKeyDown: ((e: KeyboardEvent) => void) | null = null;
   private _boundKeyUp: ((e: KeyboardEvent) => void) | null = null;
+  private _boundBlur: (() => void) | null = null;
+  private _boundVisibilityChange: (() => void) | null = null;
 
   private _pointerHandle: { remove(): void } | null = null;
   private _boundPointerMove: ((e: PointerEvent) => void) | null = null;
@@ -272,10 +274,21 @@ class ProximityEngine {
     this._boundKeyUp = (e: KeyboardEvent) => {
       if (this._altPressed && !e.altKey) this._altPressed = false;
     };
+    // Alt-Tab / window switch delivers the keyup elsewhere, so clear the bypass
+    // when this window loses focus or becomes hidden — otherwise snapping stays
+    // permanently bypassed for the rest of the draw session.
+    this._boundBlur = () => {
+      if (this._altPressed) this._altPressed = false;
+    };
+    this._boundVisibilityChange = () => {
+      if (document.hidden && this._altPressed) this._altPressed = false;
+    };
 
     window.addEventListener('pointermove', this._boundPointerMove, true);
     window.addEventListener('keydown', this._boundKeyDown, true);
     window.addEventListener('keyup', this._boundKeyUp, true);
+    window.addEventListener('blur', this._boundBlur);
+    document.addEventListener('visibilitychange', this._boundVisibilityChange);
     this._pointerHandle = {
       remove: () => {
         if (this._boundPointerMove) {
@@ -289,6 +302,14 @@ class ProximityEngine {
         if (this._boundKeyUp) {
           window.removeEventListener('keyup', this._boundKeyUp!, true);
           this._boundKeyUp = null;
+        }
+        if (this._boundBlur) {
+          window.removeEventListener('blur', this._boundBlur!);
+          this._boundBlur = null;
+        }
+        if (this._boundVisibilityChange) {
+          document.removeEventListener('visibilitychange', this._boundVisibilityChange!);
+          this._boundVisibilityChange = null;
         }
         if (this._rafId !== 0) {
           cancelAnimationFrame(this._rafId);

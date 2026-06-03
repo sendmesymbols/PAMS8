@@ -657,7 +657,7 @@ export class OpRankerEngine {
       }
       if (bestIdx < 0) break;
       selected.push(bestIdx);
-      for (let i = 0; i < total; i++) if (rasters[bestIdx][i]) alreadySeen[i] = 1;
+      for (let i = 0; i < total; i++) if (aoMask[i] && rasters[bestIdx][i]) alreadySeen[i] = 1;
     }
     return selected;
   }

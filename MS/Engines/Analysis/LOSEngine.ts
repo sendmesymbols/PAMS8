@@ -801,7 +801,7 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
           const numSteps = Math.ceil(tDist / stepM);
           let obstrPt: Point | null = null;
           const tGroundZ = ElevationUtils.queryPointElevation(sampler, { longitude: tgtLon, latitude: tgtLat });
-          const tZ = (tgt.z ?? 0) !== 0 ? (tgt.z ?? tGroundZ) : tGroundZ;
+          const tZ = tgt.z != null ? tgt.z : tGroundZ;
           const targetPoint = new Point({
             longitude: tgtLon,
             latitude: tgtLat,
@@ -1270,17 +1270,17 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
               gp = mapPoint;
               break;
             }
-            if (!gp.z && mapPoint?.z) {
+            if (gp.z == null && mapPoint?.z != null) {
               gp = mapPoint;
             }
           }
         }
 
-        if (!gp.z || gp.z === 0) {
+        if (gp.z == null) {
           gp = new Point({
             longitude: gp.longitude,
             latitude: gp.latitude,
-            z: gp.z ?? 0,
+            z: 0,
             spatialReference: { wkid: 4326 },
           });
         }

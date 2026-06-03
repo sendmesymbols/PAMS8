@@ -160,6 +160,12 @@ export class SpatialIndex {
   private static fingerprint(view: MapView | SceneView): string {
     const ext = view.extent;
     if (!ext) return "";
-    return `${view.zoom?.toFixed(2)}|${ext.xmin.toFixed(1)}|${ext.ymin.toFixed(1)}|${ext.xmax.toFixed(1)}|${ext.ymax.toFixed(1)}`;
+    // Include width/height: a window resize shifts screen-pixel positions
+    // without changing zoom/extent. For SceneView also include camera
+    // heading/tilt: a 3D camera rotate/tilt reprojects everything at the same
+    // extent. MapView has no `camera`, so guard for undefined.
+    const cam = (view as SceneView).camera;
+    const camPart = cam ? `|${cam.heading?.toFixed(1)}|${cam.tilt?.toFixed(1)}` : "";
+    return `${view.zoom?.toFixed(2)}|${ext.xmin.toFixed(1)}|${ext.ymin.toFixed(1)}|${ext.xmax.toFixed(1)}|${ext.ymax.toFixed(1)}|${view.width}|${view.height}${camPart}`;
   }
 }

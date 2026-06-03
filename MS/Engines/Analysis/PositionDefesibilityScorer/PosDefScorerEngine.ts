@@ -689,7 +689,8 @@ export class PosDefScorerEngine {
       const p = destPt(positionPt.longitude, positionPt.latitude, (fi / 24) * 360, slopeRadius);
       totalRise += Math.max(0, getZ(p.longitude, p.latitude) - obsZ + 0.5);
     }
-    const cffScore = Math.round(Math.min(20, (totalRise / 24) / 15 * 20));
+    const cffScale = Math.max(1, slopeRadius / 10);
+    const cffScore = Math.round(Math.min(20, (totalRise / 24) / cffScale * 20));
 
     let blocked = 0;
     for (let oi = 0; oi < 24; oi++) {
@@ -920,7 +921,8 @@ export class PosDefScorerEngine {
     }
     if (!any) return;
 
-    const roadEgr = Math.round(sumScore / result.egrResults.length);
+    const successCount = result.egrResults.filter(er => er.viaRoad).length;
+    const roadEgr = Math.round(sumScore / Math.max(1, successCount));
     result.scores.egr = Math.max(result.scores.egr, Math.min(20, roadEgr));
     result.composite = this._computeComposite(result.scores);
     EngineLogger.success(ENGINE_NAME, 'Defensibility: egress scored on real road routes.');

@@ -518,17 +518,36 @@ class SerializationEngine {
 
         const deData = props.drawEssentials ?? {};
         const deOut: any = { ...deData };
-        if (
-          !deOut.GEOM &&
-          !deOut.CTRL_PTS &&
-          !deOut.BASE_LN_PTS &&
-          feature.geometry?.type === 'Point'
-        ) {
-          deOut.GEOM = {
-            x: feature.geometry.coordinates?.[0],
-            y: feature.geometry.coordinates?.[1],
-            spatialReference: { wkid: 4326 },
-          };
+        const geomType = feature.geometry?.type;
+        const coords = feature.geometry?.coordinates;
+        const toPt = (c: any) =>
+          Array.isArray(c) && c[0] != null && c[1] != null
+            ? { x: c[0], y: c[1], spatialReference: { wkid: 4326 } }
+            : null;
+
+        if (!deOut.GEOM && !deOut.CTRL_PTS && !deOut.BASE_LN_PTS) {
+          if (geomType === 'Point') {
+            deOut.GEOM = {
+              x: coords?.[0],
+              y: coords?.[1],
+              spatialReference: { wkid: 4326 },
+            };
+          } else if (geomType === 'LineString') {
+            const pts = Array.isArray(coords) ? coords.map(toPt).filter(Boolean) : [];
+            if (pts.length) deOut.CTRL_PTS = pts;
+          } else if (geomType === 'MultiLineString') {
+            const flat: any[] = Array.isArray(coords) ? ([] as any[]).concat(...coords) : [];
+            const pts = flat.map(toPt).filter(Boolean);
+            if (pts.length) deOut.CTRL_PTS = pts;
+          } else if (geomType === 'Polygon') {
+            const ring = Array.isArray(coords) ? coords[0] : undefined;
+            const pts = Array.isArray(ring) ? ring.map(toPt).filter(Boolean) : [];
+            if (pts.length) deOut.CTRL_PTS = pts;
+          } else if (geomType === 'MultiPolygon') {
+            const ring = Array.isArray(coords) ? coords[0]?.[0] : undefined;
+            const pts = Array.isArray(ring) ? ring.map(toPt).filter(Boolean) : [];
+            if (pts.length) deOut.CTRL_PTS = pts;
+          }
         }
 
         this._onLoadSymbol!({

@@ -5,7 +5,7 @@ import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
 import TextSymbol from "@arcgis/core/symbols/TextSymbol";
-import GraphicsLayerManager, { LAYER_NAMES } from "../../Managers/GraphicsLayerManager";
+import GraphicsLayerManager, { LAYER_NAMES, SYMBOL_LAYER_IDS } from "../../Managers/GraphicsLayerManager";
 import settingsData from "../../Data/Settings.json";
 import { DeclutterEngine, SolveContext } from "./DeclutterEngine";
 import { IndexEntry } from "./SpatialIndex";
@@ -98,15 +98,18 @@ export class ClusterEngine {
     if (this._enabled) this._declutter.requestSolve();
   }
 
-  onViewChanged(_view: MapView | SceneView): void {
+  onViewChanged(_view: MapView | SceneView, newLayerManager?: GraphicsLayerManager): void {
     if (this._enabled) {
       this._clickHandle?.remove();
       this._clickHandle = null;
       this._pinnedExpanded.clear();
+      // Restore against the OLD manager first (where the graphics were hidden),
+      // then adopt the new view's manager for subsequent solves.
       this._restoreAllHidden();
       const layer = this._layerManager.getLayer(LAYER_NAMES.CLUSTER);
       layer?.removeAll();
       this._clustersActive = false;
+      if (newLayerManager) this._layerManager = newLayerManager;
       this._wireClickHandler();
       this._declutter.requestSolve();
     }
@@ -264,20 +267,33 @@ export class ClusterEngine {
       processed.add(seed.id);
 
       const seedGroup = cfg.respectIdentity ? this._groupOf(seed.graphic) : "all";
-      const candidates = ctx.index.within(seed.x, seed.y, cfg.radiusPx);
-      const members: IndexEntry[] = [];
-      for (const c of candidates) {
-        if (processed.has(c.id) && c.id !== seed.id) continue;
-        if (c.graphic.visible === false) continue;
-        if (cfg.respectIdentity && this._groupOf(c.graphic) !== seedGroup) continue;
-        members.push(c);
+
+      // BFS flood-fill: grow the group transitively so that chains A–B–C
+      // are fully collected regardless of which entry seeds first.
+      // Each entry is enqueued at most once (guarded by `processed`), so
+      // total work across the outer loop remains O(N·k) amortised.
+      const members: IndexEntry[] = [seed];
+      const queue: IndexEntry[] = [seed];
+
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        const neighbours = ctx.index.within(current.x, current.y, cfg.radiusPx);
+        for (const nb of neighbours) {
+          if (processed.has(nb.id)) continue;
+          if (nb.graphic.visible === false) continue;
+          if (cfg.respectIdentity && this._groupOf(nb.graphic) !== seedGroup) continue;
+          if (this._pinnedExpanded.has(nb.id)) continue;
+          processed.add(nb.id);
+          members.push(nb);
+          queue.push(nb);   // explore neighbours of this neighbour
+        }
       }
 
       if (members.length < cfg.minClusterSize) continue;
 
       // Centroid in screen space then back-project for the badge geometry
       let sx = 0, sy = 0;
-      for (const m of members) { sx += m.x; sy += m.y; processed.add(m.id); }
+      for (const m of members) { sx += m.x; sy += m.y; }
       sx /= members.length;
       sy /= members.length;
 
@@ -366,9 +382,21 @@ export class ClusterEngine {
   }
 
   private _findGraphicById(id: string): Graphic | null {
-    // Use the spatial index first (O(1)); fall back to direct layer scan
+    // Use the spatial index first (O(1)).
     const entry = this._declutter.spatialIndex.getById(id);
     if (entry) return entry.graphic;
+    // Index miss — it may have been rebuilt since the member was hidden, or
+    // the member scrolled out of the viewport (toScreen failed, so it isn't
+    // in the index). Fall back to a direct scan of the symbol layers so a
+    // hidden member is ALWAYS restored. The id matches how SpatialIndex keys
+    // entries (String(g.attributes.id)). Only runs on cluster changes.
+    for (const layerId of SYMBOL_LAYER_IDS) {
+      const layer = this._layerManager.getLayer(layerId);
+      const graphics = (layer?.graphics?.toArray?.() ?? []) as Graphic[];
+      for (const g of graphics) {
+        if (String(g.attributes?.id ?? "") === id) return g;
+      }
+    }
     return null;
   }
 

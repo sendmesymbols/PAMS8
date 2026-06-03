@@ -319,12 +319,24 @@ export class MissionPlannerEngine {
       this._firesLayer, this._featureLayer, this._observerLayer, this._labelLayer, this._snapshotLayer,
     ];
     layers.forEach((layer) => { if (!map.findLayerById(layer.id)) map.add(layer); });
-    this._localPeaks.initialize(view);
-    this._keyTerrain.initialize(view);
-    this._deadGround.initialize(view);
-    this._posDef.initialize(view);
-    this._opRanker.initialize(view);
-    this._ocoka.initialize(view);
+    // Wire the view into each headless sub-engine WITHOUT calling initialize(),
+    // because initialize() would try to add GraphicsLayers with the same static
+    // IDs that the AnalysisEngineRegistry's singleton instances already registered
+    // (e.g. LocalPeaksEngine.PEAK_LAYER_ID).  The !findLayerById guard in each
+    // sub-engine's initialize() silently skips the addMany(), leaving the sub-
+    // engine's private layer references unparented — so any graphics written to
+    // them never render.
+    //
+    // These engines are used here only for their headless compute methods
+    // (runHeadless / scorePoint / rankCandidates), which only need this._view to
+    // reach view.map.ground for elevation queries.  They never write to their own
+    // layers during headless execution, so skipping layer registration is safe.
+    (this._localPeaks as any)._view = view;
+    (this._keyTerrain as any)._view = view;
+    (this._deadGround as any)._view = view;
+    (this._posDef     as any)._view = view;
+    (this._opRanker   as any)._view = view;
+    (this._ocoka      as any)._view = view;
     this._ensureSketch();
   }
 
@@ -394,11 +406,18 @@ export class MissionPlannerEngine {
     this._setRunDisabled(true);
     this._setStatus('Running terrain, observation, and mobility analysis…', 'running');
     this.clearResults(false);
+    // Per-phase tracker: each boundary call sets `phase` immediately before it
+    // runs so the catch can name the exact sub-engine/step that threw and show
+    // its real message — instead of swallowing every failure as "Analysis failed".
+    let phase = 'initialising';
     try {
+      phase = 'reading inputs';
       const mode = this._selectValue('mp-mode', 'defensive') as MissionMode;
       const unit = this._selectValue('mp-unit', 'infantry') as UnitType;
       const radiusM = this._num('mp-radius', 3500);
       const center = this._resolveCenter();
+
+      phase = 'resolving AOI';
       const aoi = this._resolveAoi(radiusM);
       if (!aoi.geometry || !aoi.extent) {
         this._setStatus('Choose or draw a valid AOI first.', 'warn');
@@ -407,10 +426,18 @@ export class MissionPlannerEngine {
       this._drawAoi(aoi.geometry);
 
       const unitSettings = UNIT_SETTINGS[unit];
-      this._setStatus('Detecting peaks and key terrain forms…', 'running');
-      const peaks = await this._localPeaks.runHeadless({ aoi: aoi.geometry as any, maxResults: 12, cellSizeM: 120, prominenceM: 15 });
-      const keyFeatures = await this._keyTerrain.runHeadless({ center, extent: aoi.extent, radiusM, cellM: 120, maxFeatures: 14 });
 
+      phase = 'peak detection (LocalPeaksEngine.runHeadless)';
+      this._setStatus('Detecting peaks…', 'running');
+      // cellSizeM=300 keeps the grid ≤ ~100×100 cells at typical planning zoom levels,
+      // avoiding the 240×240-cell clamp that causes multi-second Gaussian smooth freezes.
+      const peaks = await this._localPeaks.runHeadless({ aoi: aoi.geometry as any, maxResults: 12, cellSizeM: 300, prominenceM: 15 });
+
+      phase = 'key terrain (KeyTerrainIdentificationEngine.runHeadless)';
+      this._setStatus('Identifying key terrain forms…', 'running');
+      const keyFeatures = await this._keyTerrain.runHeadless({ center, extent: aoi.extent, radiusM, cellM: 200, maxFeatures: 14 });
+
+      phase = 'mobility corridors (OcokaEngine.runHeadless)';
       this._setStatus('Extracting mobility corridors (OCOKA)…', 'running');
       this._corridors = await this._ocoka.runHeadless({
         center, radiusM: Math.max(radiusM, 4500), cellM: 150,
@@ -418,35 +445,31 @@ export class MissionPlannerEngine {
       });
       this._drawCorridors(this._corridors);
 
+      phase = 'hostile observation (DeadGroundMapper.runHeadless)';
       this._setStatus('Mapping hostile observation envelopes…', 'running');
       await this._buildHostileObservation(radiusM, unitSettings.maxSlopeDeg);
 
+      phase = 'merging candidates';
       const threatBrg = this._currentThreatBearing();
       const candidates = this._mergeCandidates(peaks, keyFeatures, threatBrg, unit);
-      const observerSeed = this._activeObservers('friendly').map((o) => o.point);
-      const topPeakObservers = candidates.slice(0, 3).map((c) => c.point);
 
-      this._setStatus('Ranking OP candidates and computing defensibility…', 'running');
-      const opRank = await this._opRanker.rankCandidates(
-        [...observerSeed, ...topPeakObservers].slice(0, 8),
-        { maxRangeM: radiusM, aoRadiusM: radiusM, cellM: 180, optimalCount: 3 },
-      ).catch(() => null);
+      // OpRanker, PosDefScorer, and per-candidate DeadGround each create their own
+      // elevation sampler and run synchronous grid loops.  Calling them once per
+      // candidate (8+ times) creates 16+ network DEM downloads and thousands of
+      // synchronous queryElevation calls — this is the primary cause of browser hangs.
+      // MissionPlanner only needs relative rankings, so proxy scores derived from
+      // already-computed terrain data (viewshedPct, elevationAdvantageM, prom) are
+      // used instead.  The proxies are computed inside _scoreCandidate when def/dead
+      // are null.
+      const opRank = null;
 
+      phase = 'scoring candidates (terrain proxies)';
+      this._setStatus('Scoring candidates…', 'running');
       const enriched: MissionTerrainFeature[] = [];
-      for (const candidate of candidates.slice(0, 16)) {
-        const [def, dead] = await Promise.all([
-          this._posDef.scorePoint(candidate.point, {
-            obsRadius: radiusM,
-            maxSlopeDeg: unitSettings.maxSlopeDeg,
-            threatBearingDeg: threatBrg,
-          }).catch(() => null),
-          this._deadGround.runHeadless({
-            observer: candidate.point,
-            radiusM: Math.min(radiusM, 3000),
-            cellM: 160,
-          }).catch(() => null),
-        ]);
-        enriched.push(await this._scoreCandidate(candidate, def, dead, opRank, mode, unit, threatBrg, aoi.extent));
+      const scoringCandidates = candidates.slice(0, 8);
+      for (const candidate of scoringCandidates) {
+        enriched.push(await this._scoreCandidate(candidate, null, null, opRank, mode, unit, threatBrg, aoi.extent));
+        await new Promise<void>((r) => setTimeout(r, 0)); // yield to browser between candidates
       }
       // ambush mode amplifies ambush score in composite
       if (mode === 'ambush') {
@@ -454,12 +477,25 @@ export class MissionPlannerEngine {
       }
       enriched.sort((a, b) => b.compositeScore - a.compositeScore);
       enriched.forEach((feature, index) => { feature.rank = index + 1; feature.id = index + 1; });
+
+      // Fetch elevation sparklines for top-3 only — each call creates one DEM sampler.
+      // Done after ranking so we only pay for the positions that actually matter.
+      phase = 'sparkline sampling (top-3)';
+      for (const feature of enriched.slice(0, 3)) {
+        feature.elevationProfile = await this._sampleSparkline(feature.point, threatBrg);
+      }
+
       this._results = enriched;
 
+      phase = 'drawing results & fires fans';
       this._setStatus('Drawing fires fans and withdrawal route…', 'running');
       this._drawResults();
       this._drawFiresFans(threatBrg);
+
+      phase = 'withdrawal route (OcokaEngine.runHeadless / road egress)';
       await this._drawWithdrawal(threatBrg, unitSettings.ocokaForce);
+
+      phase = 'rendering panels';
       this._renderResults();
       this._renderReport();
       this._renderForces();
@@ -470,9 +506,11 @@ export class MissionPlannerEngine {
         : (this._roadNet()?.isAvailable === false ? ' · road net offline → terrain egress' : '');
       const msg = `Complete · ${this._results.length} ranked${exposed ? ` · ${exposed} EXPOSED to enemy` : ''}${road}.`;
       this._setStatus(msg, this._results.length ? 'done' : 'warn');
-    } catch (error) {
-      console.error('[MissionPlanner] Analysis failed', error);
-      this._setStatus('Analysis failed. Try a smaller AOI or coarser terrain settings.', 'warn');
+    } catch (error: any) {
+      const detail = error?.message ?? String(error);
+      // Full object (with stack) to the console; phase + message to the panel/log.
+      console.error(`[MissionPlanner] Analysis failed during phase: ${phase}`, error);
+      this._setStatus(`Failed during "${phase}": ${detail}`, 'warn');
     } finally {
       this._running = false;
       this._setRunDisabled(false);
@@ -501,8 +539,8 @@ export class MissionPlannerEngine {
     }
     const threatBrg = options.threatBearingDeg ?? this._derivedThreatBearing();
 
-    const peaks = await this._localPeaks.runHeadless({ aoi: aoiGeom as any, maxResults: 12, cellSizeM: 120, prominenceM: 15 });
-    const keyFeatures = await this._keyTerrain.runHeadless({ center, extent: aoiExtent, radiusM, cellM: 120, maxFeatures: 14 });
+    const peaks = await this._localPeaks.runHeadless({ aoi: aoiGeom as any, maxResults: 12, cellSizeM: 300, prominenceM: 15 });
+    const keyFeatures = await this._keyTerrain.runHeadless({ center, extent: aoiExtent, radiusM, cellM: 200, maxFeatures: 14 });
     this._corridors = await this._ocoka.runHeadless({
       center, radiusM: Math.max(radiusM, 4500), cellM: 150,
       force: unitSettings.ocokaForce, slopeThresholdDeg: unitSettings.maxSlopeDeg,
@@ -510,12 +548,9 @@ export class MissionPlannerEngine {
     await this._buildHostileObservation(radiusM, unitSettings.maxSlopeDeg);
     const candidates = this._mergeCandidates(peaks, keyFeatures, threatBrg, unit);
     const enriched: MissionTerrainFeature[] = [];
-    for (const candidate of candidates.slice(0, options.maxResults ?? 16)) {
-      const [def, dead] = await Promise.all([
-        this._posDef.scorePoint(candidate.point, { obsRadius: radiusM, maxSlopeDeg: unitSettings.maxSlopeDeg, threatBearingDeg: threatBrg }).catch(() => null),
-        this._deadGround.runHeadless({ observer: candidate.point, radiusM: Math.min(radiusM, 3000), cellM: 160 }).catch(() => null),
-      ]);
-      enriched.push(await this._scoreCandidate(candidate, def, dead, null, mode, unit, threatBrg, aoiExtent));
+    for (const candidate of candidates.slice(0, options.maxResults ?? 8)) {
+      enriched.push(await this._scoreCandidate(candidate, null, null, null, mode, unit, threatBrg, aoiExtent));
+      await new Promise<void>((r) => setTimeout(r, 0));
     }
     if (mode === 'ambush') {
       enriched.forEach((f) => { f.compositeScore = Math.round(0.6 * f.ambushScore + 0.4 * f.compositeScore); });
@@ -765,9 +800,24 @@ export class MissionPlannerEngine {
     const weights = MODE_WEIGHTS[mode];
     const terrainScore = clamp((candidate.elevationAdvantageM / 250) * 55 + (candidate.prominenceM / 120) * 45, 0, 100);
     const viewshedScore = clamp(candidate.viewshedPct, 0, 100);
-    const defScore = def?.composite ?? candidate.defensibilityScore;
+
+    // Fast proxy when PosDefScorer was not run (avoids 6,450 synchronous elevation queries per call).
+    // Derived from viewshed + elevation advantage + prominence — captures the same terrain signals.
+    const defScore = def?.composite ?? clamp(
+      Math.round(candidate.viewshedPct * 0.35 + clamp(candidate.elevationAdvantageM / 5, 0, 40) + clamp(candidate.prominenceM / 4, 0, 25)),
+      0, 100,
+    );
+
     const corridorScore = this._corridorInfluence(candidate.point);
-    const deadPct = dead?.deadGroundPct ?? candidate.deadGroundPct;
+
+    // Fast proxy when DeadGroundMapper was not run per candidate.
+    // High-observation positions have less dead ground; valleys/saddles have more.
+    const isLowGround = candidate.type.includes('valley') || candidate.type.includes('saddle') || candidate.type.includes('reentrant');
+    const deadPct = dead?.deadGroundPct ?? clamp(
+      Math.round(isLowGround ? 100 - candidate.viewshedPct * 0.5 : 100 - candidate.viewshedPct * 0.75),
+      5, 75,
+    );
+
     const concealmentScore = (mode === 'defensive')
       ? clamp(100 - Math.abs(deadPct - 35), 0, 100)
       : clamp(deadPct, 0, 100);
@@ -794,7 +844,9 @@ export class MissionPlannerEngine {
     );
 
     const marchTimeMin = this._marchTimeMin(candidate.point, unit);
-    const elevationProfile = await this._sampleSparkline(candidate.point, threatBrg);
+    // Sparklines are fetched separately after ranking — skip here to avoid
+    // creating one ElevationSampler per candidate during the scoring loop.
+    const elevationProfile: number[] = [];
     const cautions = this._buildCautions(deadPct, candidate.viewshedPct, defScore, exposurePct, candidate.point, aoiExtent, unit);
 
     return {
@@ -1016,19 +1068,17 @@ export class MissionPlannerEngine {
     return (window as any).symbolEngine?.roadNetworkEngine ?? null;
   }
 
-  private async _drawWithdrawal(threatBrg: number, force: 'dismount' | 'wheeled' | 'tracked' | 'mixed'): Promise<void> {
+  private async _drawWithdrawal(threatBrg: number, _force: 'dismount' | 'wheeled' | 'tracked' | 'mixed'): Promise<void> {
     this._withdrawalLayer.removeAll();
     this._roadEgress = null;
     const rank1 = this._results[0];
     if (!rank1) return;
     try {
-      const corridors = await this._ocoka.runHeadless({
-        center: rank1.point,
-        radiusM: 2000,
-        cellM: 150,
-        force,
-        maxCorridors: 5,
-      });
+      // Reuse corridors already computed during the main analysis pass — avoids a
+      // second full OCOKA grid solve (slope/flow-accumulation) which is the primary
+      // cause of browser hangs. If no corridors exist yet (headless path), fall back
+      // to an empty array and the road-egress path or terrain bearing guess takes over.
+      const corridors = this._corridors;
       // pick the corridor whose bearing is closest to OPPOSITE of threat (i.e., away from enemy)
       const safeBearing = (threatBrg + 180) % 360;
       const best = corridors.slice().sort((a, b) => {

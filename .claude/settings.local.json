@@ -91,7 +91,10 @@
       "Bash(grep -iv \"import\\\\|//\\\\|wezPanel\\\\|wez-\")",
       "Bash(Get-ChildItem -Path \"D:\\\\Projects\\\\Web\\\\PAMS8\\\\MS\\\\Engines\" -Recurse -Filter \"*.ts\")",
       "Bash(Sort-Object)",
-      "PowerShell(node -e \"console.log\\(require\\('pptxgenjs/package.json'\\).version\\)\")"
+      "PowerShell(node -e \"console.log\\(require\\('pptxgenjs/package.json'\\).version\\)\")",
+      "Bash(git diff *)",
+      "Bash(awk '/private _buildPanelHTML/,/^  }$/' \"D:\\\\Projects\\\\PAMS8\\\\MS\\\\Engines\\\\Analysis\\\\TrafficabilityEngine.ts\")",
+      "Bash(awk '/private _buildResultsPanelHTML/,/^  }$/' \"D:\\\\Projects\\\\PAMS8\\\\MS\\\\Engines\\\\Analysis\\\\TrafficabilityEngine.ts\")"
     ]
   }
 }

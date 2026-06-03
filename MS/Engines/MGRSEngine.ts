@@ -49,23 +49,30 @@ function _formatMGRSLabel(lat: number, lon: number, intervalM: number): string {
   const utm = latLonToUTM(lat, lon, zone);
   const e = utm.e - 100000 * Math.floor(utm.e / 100000);
   const n = utm.n - (isSouth ? 10000000 : 0);
-  const e100k = Math.floor(e / 100000);
-  const n100k = Math.floor(n / 100000);
+  // MGRS 100km square: zone-cycled column letters + row letters (I/O omitted)
+  const e100k = Math.floor(utm.e / 100000);
+  const n100k = Math.floor(utm.n / 100000);
+  const colSet = (zone - 1) % 3;
+  const COL = ['ABCDEFGH', 'JKLMNPQR', 'STUVWXYZ'][colSet];
+  const colLetter = COL[e100k - 1] ?? '';
+  const ROW = zone % 2 === 1 ? 'ABCDEFGHJKLMNPQRSTUV' : 'FGHJKLMNPQRSTUVABCDE';
+  const rowLetter = ROW[n100k % 20] ?? '';
+  const square = colLetter + rowLetter;
 
   if (intervalM <= 100) {
     const eVal = Math.floor((e % 100000) / intervalM);
     const nVal = Math.floor((n % 100000) / intervalM);
-    return `${zoneLetter} ${e100k}${n100k} ${String(eVal).padStart(4, '0')} ${String(nVal).padStart(4, '0')}`;
+    return `${zoneLetter} ${square} ${String(eVal).padStart(4, '0')} ${String(nVal).padStart(4, '0')}`;
   } else if (intervalM <= 1000) {
     const eVal = Math.floor((e % 100000) / intervalM);
     const nVal = Math.floor((n % 100000) / intervalM);
-    return `${zoneLetter} ${e100k}${n100k} ${String(eVal).padStart(3, '0')}${String(nVal).padStart(3, '0')}`;
+    return `${zoneLetter} ${square} ${String(eVal).padStart(3, '0')}${String(nVal).padStart(3, '0')}`;
   } else if (intervalM <= 10000) {
     const eVal = Math.floor((e % 100000) / intervalM);
     const nVal = Math.floor((n % 100000) / intervalM);
-    return `${zoneLetter} ${e100k}${n100k} ${String(eVal).padStart(2, '0')}${String(nVal).padStart(2, '0')}`;
+    return `${zoneLetter} ${square} ${String(eVal).padStart(2, '0')}${String(nVal).padStart(2, '0')}`;
   } else {
-    return `${zoneLetter} ${e100k}${n100k}`;
+    return `${zoneLetter} ${square}`;
   }
 }
 
@@ -434,7 +441,7 @@ export default class MGRSEngine {
         }
       }
     }
-    if (84 > south - 0.01 && 84 < north + 12) {
+    if (84 > south - 0.01 && 84 < north + 0.01) {
       const w = Math.max(west, -180), e = Math.min(east, 180);
       if (w < e) {
         if (e - w > 170) {

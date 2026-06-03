@@ -519,7 +519,11 @@ class SelectionActionPanel {
     }
 
     private _deleteOne(graphic: Graphic): void {
-        const layer = (graphic.origin?.layer ?? null) as any;
+        // ArcGIS 5.0 does not populate Graphic.origin.layer for plain
+        // `new Graphic({...})` added to a GraphicsLayer (how drawn symbols are
+        // created), so fall back to the SelectionEngine's robust layer scan —
+        // the same resolver the context-menu delete path uses.
+        const layer = (graphic.origin?.layer ?? this._selectionEngine.findContainingLayer(graphic)) as any;
         if (!layer) return;
         this._selectionEngine.clearSelection();
         layer.remove(graphic);

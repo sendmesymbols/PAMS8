@@ -20,6 +20,10 @@ const ATTR_ORIG_TEXT = "__lblOrigText";
 // Last position we set — used to detect user edits between solves.
 const ATTR_LAST_X = "__lblLastSetX";
 const ATTR_LAST_Y = "__lblLastSetY";
+// Marks a label this placer hid (budget overflow / hide-on-overflow) so a
+// later solve can re-show it once it fits again, and so disable() can restore
+// it. Distinguishes placer-hidden labels from ones hidden by other engines.
+const ATTR_HIDDEN = "__lblHidden";
 const DRIFT_EPSILON = 1e-6;
 
 /**
@@ -106,13 +110,15 @@ export class LabelPlacer {
     if (this._enabled) this._declutter.requestSolve();
   }
 
-  onViewChanged(_view: MapView | SceneView): void {
+  onViewChanged(_view: MapView | SceneView, newLayerManager?: GraphicsLayerManager): void {
     if (this._enabled) {
       // Anchors were valid in the old view's spatial reference — restore
-      // so the next solve recaptures them in the new view's SR.
+      // (against the old manager) so the next solve recaptures them in the
+      // new view's SR, then adopt the new view's manager.
       this._restoreAllAnchors();
       const leaderLayer = this._layerManager.getLayer(LAYER_NAMES.LEADER_LINE);
       leaderLayer?.removeAll();
+      if (newLayerManager) this._layerManager = newLayerManager;
       this._declutter.requestSolve();
     }
   }
@@ -154,6 +160,22 @@ export class LabelPlacer {
         delete attrs[ATTR_LAST_X];
         delete attrs[ATTR_LAST_Y];
         delete attrs[ATTR_PLACED];
+      }
+    });
+
+    // ------------------------------------------------------------------
+    // 0b. Re-show any label THIS placer hid on a previous pass, so the
+    //     budget / hide-on-overflow decision is recomputed fresh every
+    //     solve. Without this, a label hidden when the scene was dense
+    //     stays invisible forever — even after it would fit again. Only
+    //     placer-hidden labels (ATTR_HIDDEN) are touched, so labels hidden
+    //     by other engines are left alone.
+    // ------------------------------------------------------------------
+    annotLayer.graphics.forEach((g: Graphic) => {
+      const attrs = g.attributes;
+      if (attrs && attrs[ATTR_HIDDEN]) {
+        g.visible = true;
+        delete attrs[ATTR_HIDDEN];
       }
     });
 
@@ -220,7 +242,7 @@ export class LabelPlacer {
     candidates.sort((a, b) => b.priority - a.priority);
     if (candidates.length > cfg.maxToPlace) {
       const overflow = candidates.splice(cfg.maxToPlace);
-      for (const o of overflow) o.graphic.visible = false;
+      for (const o of overflow) this._hideLabel(o.graphic);
     }
 
     // ------------------------------------------------------------------
@@ -340,7 +362,7 @@ export class LabelPlacer {
       //    Drop them rather than letting them overlap.
       // ----------------------------------------------------------------
       if (!chosen && cfg.hideOnOverflow) {
-        c.graphic.visible = false;
+        this._hideLabel(c.graphic);
         continue;
       }
 
@@ -466,12 +488,28 @@ export class LabelPlacer {
         }
         delete attrs[ATTR_ORIG_TEXT];
       }
+      // Re-show any label we hid via the budget / hide-on-overflow path.
+      if (attrs[ATTR_HIDDEN]) {
+        g.visible = true;
+        delete attrs[ATTR_HIDDEN];
+      }
       delete attrs[ATTR_PLACED];
       delete attrs[ATTR_ANCHOR_X];
       delete attrs[ATTR_ANCHOR_Y];
       delete attrs[ATTR_LAST_X];
       delete attrs[ATTR_LAST_Y];
     });
+  }
+
+  /**
+   * Hide a label this placer decided not to place, tagging it so the next
+   * solve re-shows it (re-evaluating the budget) and disable() restores it.
+   */
+  private _hideLabel(g: Graphic): void {
+    g.visible = false;
+    const attrs = g.attributes ?? {};
+    attrs[ATTR_HIDDEN] = true;
+    g.attributes = attrs;
   }
 
   // -------------------------------------------------------------------------

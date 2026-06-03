@@ -1,9 +1,9 @@
 /**
  * WeaponEffectEngine.ts
- * Weapon Engagement Zone (WEZ) analysis engine.
+ * Weapon Effect Zone analysis engine.
  *
  * Integrated with ContextMenuManager via linkWeaponEffectEngine().
- * Right-clicking any military symbol → Analysis → Weapon Engagement Zone
+ * Right-clicking any military symbol → Analysis → Weapon Effect Zone
  * opens this panel with the symbol's location as the observer origin.
  *
  * Uses three private GraphicsLayers:
@@ -187,7 +187,7 @@ export class WeaponEffectEngine {
     }
   }
 
-  /** Called by ContextMenuManager when "Weapon Engagement Zone" is clicked. */
+  /** Called by ContextMenuManager when "Weapon Effect Zone" is clicked. */
   open(graphic?: Graphic | null, view?: MapView | SceneView): void {
     if (view) this.initialize(view);
     const attrs = graphic?.attributes ?? {};
@@ -250,7 +250,7 @@ export class WeaponEffectEngine {
       // Opened with no symbol — let the user place the observer on the map.
       this._setStatus('awaiting');
       this._startReposition();
-      this._flashPickTooltip('No symbol — type a Lat/Lon and press Go, or click the map to place the firing point.');
+      //this._flashPickTooltip('No symbol — type a Lat/Lon and press Go, or click the map to place the firing point.');
     }
   }
 
@@ -378,18 +378,19 @@ export class WeaponEffectEngine {
   private _wezZoneSymbol(color: [number, number, number], extrudeM: number): any {
     const [r, g, b] = color;
     const alpha = this._getFillAlpha();
+    const alphaI = Math.round(alpha * 255);
     if (this._is3D()) {
       const layers: any[] = [{
         type: 'fill',
-        material: { color: [r, g, b, alpha] },
-        outline: { color: [r, g, b, 210 / 255], size: 1.8 },
+        material: { color: [r, g, b, alphaI] },
+        outline: { color: [r, g, b, 210], size: 1.8 },
       }];
       if (extrudeM > 0 && this._panelEl) {
         const extrudeCheck = this._panelEl.querySelector<HTMLInputElement>('#wez-opt-extrude');
         if (extrudeCheck?.checked) {
           layers.push({
             type: 'extrude',
-            material: { color: [r, g, b, alpha * 0.55] },
+            material: { color: [r, g, b, Math.round(alphaI * 0.55)] },
             edges: { type: 'solid', color: [r, g, b, 60], size: 0.5 },
             size: extrudeM,
           });
@@ -399,8 +400,8 @@ export class WeaponEffectEngine {
     }
     return {
       type: 'simple-fill',
-      color: [r, g, b, alpha],
-      outline: { color: [r, g, b, 220 / 255], width: 1.8 },
+      color: [r, g, b, alphaI],
+      outline: { color: [r, g, b, 220], width: 1.8 },
     } as any;
   }
 
@@ -681,11 +682,17 @@ export class WeaponEffectEngine {
           const terrainZ = ElevationUtils.queryPointElevation(sampler, samplePt);
           const slope = Math.atan2(terrainZ - obsZ, dist);
 
+          // Line-of-sight horizon test: maintain the maximum elevation angle
+          // (slope to the observer) seen so far. A sample is hidden only if its
+          // own elevation angle is below the running horizon; a sample that
+          // rises above the horizon is visible and raises it. Non-monotonic
+          // (undulating) terrain must NOT abort the ray on the first dip — keep
+          // sampling so the horizon can rise past higher ground further out.
           if (slope >= maxSlope) {
             maxSlope = slope;
-          } else if (maxSlope > 0.017) {
+            blocked = false;
+          } else {
             blocked = true;
-            break;
           }
         }
         if (blocked) maskedIndices.push(ray);
@@ -705,6 +712,10 @@ export class WeaponEffectEngine {
         }
         ranges.push({ s: rS * degPerRay, e: (rE + 1) * degPerRay });
       }
+
+      const staleGraphics = this._analysisLayer.graphics
+        .filter((g: Graphic) => g.attributes?.type === 'wez_masked_sector');
+      staleGraphics.forEach((g: Graphic) => this._analysisLayer.remove(g));
 
       ranges.forEach(({ s, e }) => {
         const spread = e - s;
@@ -782,7 +793,7 @@ export class WeaponEffectEngine {
     return `
       <div class="wez-header" id="wez-drag-handle">
         <span class="wez-header-icon">${preset.icon}</span>
-        <span class="wez-header-title">WEZ Analysis${isEdit ? ' — Re-edit' : ''}</span>
+        <span class="wez-header-title">Weapon Effect Zone${isEdit ? ' — Re-edit' : ''}</span>
         <span class="wez-status-dot" id="wez-status-dot"></span>
         <span class="wez-status-lbl" id="wez-status-lbl">${isEdit ? 'Restored' : 'Awaiting'}</span>
         <button class="wez-help-btn" id="wez-help-btn" title="How WEZ analysis works">?</button>
@@ -794,12 +805,17 @@ export class WeaponEffectEngine {
         <div class="wez-help-head">
           <div>
             <div class="wez-help-kicker">Field Guide</div>
-            <div class="wez-help-title">Weapon Engagement Zone (WEZ)</div>
+            <div class="wez-help-title">Weapon Effect Zone</div>
           </div>
           <button class="wez-help-close" id="wez-help-close" title="Close">✕</button>
         </div>
         <div class="wez-help-body">
-          <p>Builds a weapon engagement zone from a firing platform or weapon position. The result is a directional sector clipped by minimum range, maximum range, traverse, and elevation envelope.</p>
+          <div style="background:rgba(239,159,39,0.08);border-left:3px solid rgba(239,159,39,0.6);padding:7px 10px;border-radius:3px;margin-bottom:10px">
+            <div style="font-size:var(--ms-fs-xs);letter-spacing:.08em;text-transform:uppercase;color:rgba(239,159,39,0.7);margin-bottom:3px">Answers</div>
+            <div style="font-style:italic;color:var(--ms-text)">Where can this weapon reach from here?</div>
+          </div>
+          <p>Models the engagement sector a weapon system can cover from its firing position — a directional wedge clipped by minimum range, maximum range, traverse limits, and elevation envelope.</p>
+          <p style="font-size:var(--ms-fs-xs);color:var(--ms-text-dim);border-top:1px solid var(--ms-divider);padding-top:7px;margin-top:2px">Use <strong style="color:var(--ms-text)">Weapon Effect</strong> to analyse what happens when the round lands at a point inside this zone.</p>
           <div class="wez-help-block">
             <h4>How It Works</h4>
             <ol>
@@ -1054,7 +1070,7 @@ export class WeaponEffectEngine {
     const latRaw = this._inp('wez-lat')?.value ?? '';
     const lonRaw = this._inp('wez-lon')?.value ?? '';
     if (latRaw.trim() === '' || lonRaw.trim() === '') {
-      this._flashPickTooltip('Enter both Lat and Lon, or use “Pick ⊕” to click the map.');
+      this._flashPickTooltip('Enter both Lat and Lon, or use "Pick ⊕" to click the map.');
       return;
     }
     const lat = Number(latRaw);

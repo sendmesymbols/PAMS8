@@ -832,8 +832,10 @@ class MeasurementEngine {
             ? geometryEngine.geodesicLength(this._scratchLine, "meters")
             : geometryEngine.planarLength(this._scratchLine, "meters"));
 
-        if (this._slantRange && pt1.z !== undefined && pt2.z !== undefined) {
-            const dz = pt2.z - pt1.z;             // z is already in meters
+        if (this._slantRange && (pt1.z !== undefined || pt2.z !== undefined)) {
+            const z1 = pt1.z !== undefined ? pt1.z : 0;   // treat missing z as 0
+            const z2 = pt2.z !== undefined ? pt2.z : 0;
+            const dz = z2 - z1;                   // z is already in meters
             return Math.sqrt(m * m + dz * dz);
         }
         return m;

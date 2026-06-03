@@ -175,6 +175,116 @@ export const PROJECTILE_PRESETS: Record<string, ProjectilePreset> = {
     accentHex: '#378ADD',
     icon: 'AIR',
   },
+
+  // ── Pakistan ─────────────────────────────────────────────────────────────────
+
+  baktar_shikan: {
+    label: 'Baktar Shikan ATGM (PK)',
+    massKg: 11.3,
+    diamM: 0.120,
+    Cd: 0.43,
+    muzzleVelocity: 160,
+    optimalAngle: 0,
+    maxAngle: 12,
+    cepM: 2,
+    color: [50, 140, 70],
+    accentHex: '#328C46',
+    icon: 'RKT',
+  },
+  nasr_srbm: {
+    label: 'NASR Hatf-IX SRBM (PK)',
+    massKg: 200,
+    diamM: 0.290,
+    Cd: 0.22,
+    muzzleVelocity: 760,
+    optimalAngle: 35,
+    maxAngle: 50,
+    cepM: 150,
+    color: [50, 140, 70],
+    accentHex: '#328C46',
+    icon: 'RKT',
+  },
+  grad_bm21: {
+    label: 'BM-21 Grad 122 mm (PK)',
+    massKg: 66.4,
+    diamM: 0.122,
+    Cd: 0.27,
+    muzzleVelocity: 690,
+    optimalAngle: 45,
+    maxAngle: 55,
+    cepM: 160,
+    color: [50, 140, 70],
+    accentHex: '#328C46',
+    icon: 'RKT',
+  },
+  fatah1_mlrs: {
+    label: 'Fatah-1 MLRS 250 mm (PK)',
+    massKg: 200,
+    diamM: 0.250,
+    Cd: 0.24,
+    muzzleVelocity: 980,
+    optimalAngle: 35,
+    maxAngle: 50,
+    cepM: 100,
+    color: [50, 140, 70],
+    accentHex: '#328C46',
+    icon: 'RKT',
+  },
+
+  // ── India ─────────────────────────────────────────────────────────────────────
+
+  nag_atgm: {
+    label: 'Nag ATGM (IN)',
+    massKg: 42,
+    diamM: 0.160,
+    Cd: 0.36,
+    muzzleVelocity: 230,
+    optimalAngle: 0,
+    maxAngle: 15,
+    cepM: 1,
+    color: [220, 110, 30],
+    accentHex: '#DC6E1E',
+    icon: 'RKT',
+  },
+  pinaka_mk1: {
+    label: 'Pinaka Mk-I 214 mm (IN)',
+    massKg: 100,
+    diamM: 0.214,
+    Cd: 0.26,
+    muzzleVelocity: 820,
+    optimalAngle: 45,
+    maxAngle: 55,
+    cepM: 100,
+    color: [220, 110, 30],
+    accentHex: '#DC6E1E',
+    icon: 'RKT',
+  },
+  bofors_fh77: {
+    label: 'Bofors FH-77B 155 mm (IN)',
+    massKg: 43.5,
+    diamM: 0.155,
+    Cd: 0.27,
+    muzzleVelocity: 864,
+    optimalAngle: 30,
+    maxAngle: 65,
+    cepM: 45,
+    color: [220, 110, 30],
+    accentHex: '#DC6E1E',
+    icon: 'AT',
+  },
+  prahaar_srbm: {
+    label: 'Prahaar SRBM (IN)',
+    massKg: 280,
+    diamM: 0.420,
+    Cd: 0.21,
+    muzzleVelocity: 1150,
+    optimalAngle: 30,
+    maxAngle: 45,
+    cepM: 80,
+    color: [220, 110, 30],
+    accentHex: '#DC6E1E',
+    icon: 'RKT',
+  },
 };
 
 // ─── Physical Constants ───────────────────────────────────────────────────────
@@ -314,7 +424,6 @@ export class TrajectoryEngine {
       // Opened with no symbol — let the user place the fire point on the map.
       this._setStatus('awaiting');
       this._startFirePlacement();
-      this._flashPickTooltip('No symbol — click the map to place the fire point (or use “Pick Fire ⊕”).');
     }
   }
 
@@ -473,8 +582,9 @@ export class TrajectoryEngine {
       const da = (0.5 * this._airDensity(Math.max(0, altMSL)) * p.Cd * A * relSpd ** 2) / p.massKg;
 
       prevVU = vU;
+      const vE0 = vE;
       vE += (-(da * relE / relSpd) + fCor * vN) * dt;
-      vN += (-(da * relN / relSpd) - fCor * vE) * dt;
+      vN += (-(da * relN / relSpd) - fCor * vE0) * dt;
       vU += (-(da * vU / relSpd) - G) * dt;
 
       east += vE * dt;
@@ -483,7 +593,8 @@ export class TrajectoryEngine {
       t += dt;
     }
 
-    for (let i = apogeeIdx; i < pts.length; i++) {
+    termIdx = pts.length - 1;   // default: no terminal phase found → collapses to zero length at end
+    for (let i = apogeeIdx + 1; i < pts.length; i++) {
       if (Math.abs(pts[i].vU) >= 0.25 * muzzleVelocity) {
         termIdx = i;
         break;
@@ -664,14 +775,8 @@ export class TrajectoryEngine {
       this._setText('#traj-angle-val', `${solvedAngle.toFixed(1)}°`);
     }
 
-    const tempPresetKey = '__traj_tmp__';
-    (PROJECTILE_PRESETS as Record<string, ProjectilePreset>)[tempPresetKey] = {
-      ...preset,
-      muzzleVelocity,
-    };
-
     const result = this._integrate({
-      presetKey: tempPresetKey,
+      presetKey,
       originLon: this._firePoint.longitude ?? 0,
       originLat: this._firePoint.latitude ?? 0,
       originElevM,
@@ -683,8 +788,6 @@ export class TrajectoryEngine {
       targetElevM,
       useCoriolis,
     });
-
-    delete (PROJECTILE_PRESETS as Record<string, ProjectilePreset>)[tempPresetKey];
 
     if (!result || result.pts.length === 0) {
       this._setStatus('error');
