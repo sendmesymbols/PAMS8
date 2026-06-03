@@ -49,6 +49,8 @@ export declare class LocalPeaksEngine {
     private _aoiLayer;
     private _profileLayer;
     private _panelEl;
+    private _resultsPanelEl;
+    private _resultsPanelBound;
     private _sketch;
     private _bufferPickHandle;
     private _viewWatchHandle;
@@ -97,8 +99,15 @@ export declare class LocalPeaksEngine {
     private _openProfile;
     private _destroyProfileWidget;
     private _showPanel;
+    /**
+     * Companion results widget — the ranked peak list, summary stats, and exports
+     * live in their own movable panel rather than crammed into the control panel.
+     * Created once and reused; it shows alongside the main panel and hides with it.
+     */
+    private _ensureResultsPanel;
     private _hidePanel;
     private _buildPanelHTML;
+    private _buildResultsPanelHTML;
     private _bindPanelEvents;
     private _renderResults;
     private _syncStats;

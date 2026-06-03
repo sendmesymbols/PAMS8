@@ -173,6 +173,9 @@ export class OcokaEngine {
   private _legendEl: HTMLDivElement | null = null;
   private _clickHandle: any = null;
   private _running = false;
+  private _pickMode = false;
+  private _tooltipEl: HTMLDivElement | null = null;
+  private _tooltipTimer: number | null = null;
   private _isDragging = false;
   private _dragOffsetX = 0;
   private _dragOffsetY = 0;
@@ -199,14 +202,14 @@ export class OcokaEngine {
     }
   }
 
-  open(graphic: Graphic, view: MapView | SceneView): void {
-    this.initialize(view);
+  open(graphic?: Graphic | null, view?: MapView | SceneView): void {
+    if (view) this.initialize(view);
     this._ensurePanels();
     this._showPanels();
     this._bindMapClick();
     document.body.classList.add('ms-popup-dark');
 
-    const geom = graphic.geometry;
+    const geom = graphic?.geometry;
     let origin: Point | null = null;
     if (geom?.type === 'point') origin = geom as Point;
     else if ((geom as any)?.centroid) origin = (geom as any).centroid as Point;
@@ -218,6 +221,11 @@ export class OcokaEngine {
       this._setInputValue('ocoka-inp-lon', lon.toFixed(4));
       this._setAnalysisArea(lat, lon, this._num('ocoka-inp-radius', 5000));
       this._setHint(`Centre set - ${lat.toFixed(4)}N ${lon.toFixed(4)}E - click Run OCOKA`);
+      this._endPickMode();
+    } else if (!this._hasValidLocation()) {
+      // Opened with no symbol and no prior centre — prompt the user to pick one.
+      this._setHint('No symbol — click 📍 Pick, then click the map to set the OCOKA centre');
+      this._setStatus('ready', 'Pick a location');
     }
   }
 
@@ -265,6 +273,8 @@ export class OcokaEngine {
   close(): void {
     this._hidePanels();
     this._unbindMapClick();
+    this._endPickMode();
+    this._hideTooltip();
     document.body.classList.remove('ms-popup-dark');
     (this._view as any)?.closePopup?.();
     if (this._view?.popup) this._view.popup.visible = false;
@@ -285,10 +295,13 @@ export class OcokaEngine {
     this._listPanelEl?.remove();
     this._hintEl?.remove();
     this._legendEl?.remove();
+    this._hideTooltip();
+    this._tooltipEl?.remove();
     this._controlPanelEl = null;
     this._listPanelEl = null;
     this._hintEl = null;
     this._legendEl = null;
+    this._tooltipEl = null;
     this._view = null;
   }
 
@@ -373,8 +386,13 @@ export class OcokaEngine {
         <div class="ms-body">
           <div class="ms-section-title">Analysis area</div>
           <div class="ms-grid">
-            <div class="ms-field"><div class="ms-label">Centre lat</div><input id="ocoka-inp-lat" class="ms-input" type="number" value="33.680" step="0.001" /></div>
-            <div class="ms-field"><div class="ms-label">Centre lon</div><input id="ocoka-inp-lon" class="ms-input" type="number" value="73.060" step="0.001" /></div>
+            <div class="ms-field full"><div class="ms-label">Centre coordinates</div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input id="ocoka-inp-lat" class="ms-input" type="number" placeholder="lat" step="0.001" title="Centre latitude (decimal degrees)" style="flex:1;min-width:0;" />
+                <input id="ocoka-inp-lon" class="ms-input" type="number" placeholder="lon" step="0.001" title="Centre longitude (decimal degrees)" style="flex:1;min-width:0;" />
+                <button class="ms-btn" id="ocoka-btn-pick" title="Click, then click anywhere on the map to set the analysis centre" style="flex:0 0 auto;white-space:nowrap;padding:6px 9px;">📍 Pick</button>
+              </div>
+            </div>
             <div class="ms-field full"><div class="ms-label">Analysis radius</div>
               <select id="ocoka-inp-radius" class="ms-select">
                 <option value="3000">3 km - position level</option>
@@ -471,6 +489,11 @@ export class OcokaEngine {
     });
     this._controlPanelEl?.querySelector('#ocoka-btn-run')?.addEventListener('click', () => void this._runAnalysis());
     this._controlPanelEl?.querySelector('#ocoka-btn-clear')?.addEventListener('click', () => this._clearAll());
+    this._controlPanelEl?.querySelector('#ocoka-btn-pick')?.addEventListener('click', () => this._beginPickMode());
+    // Typing a valid coordinate clears any "pick a location" prompt.
+    ['ocoka-inp-lat', 'ocoka-inp-lon'].forEach((id) =>
+      this._input(id)?.addEventListener('input', () => { if (this._hasValidLocation()) { this._hideTooltip(); this._endPickMode(); } }),
+    );
     this._controlPanelEl?.querySelector('#ocoka-close-btn')?.addEventListener('click', () => this.close());
     this._controlPanelEl?.querySelector('#ocoka-minimize-btn')?.addEventListener('click', () => {
       const body = this._controlPanelEl?.querySelector<HTMLElement>('.ms-body');
@@ -512,6 +535,8 @@ export class OcokaEngine {
       this._setInputValue('ocoka-inp-lon', lon.toFixed(4));
       this._setAnalysisArea(lat, lon, this._num('ocoka-inp-radius', 5000));
       this._setHint(`Centre set - ${lat.toFixed(4)}N ${lon.toFixed(4)}E - click Run OCOKA`);
+      this._hideTooltip();
+      this._endPickMode();
     });
   }
 
@@ -522,6 +547,11 @@ export class OcokaEngine {
 
   private async _runAnalysis(): Promise<void> {
     if (!this._view || this._running) return;
+    if (!this._hasValidLocation()) {
+      this._flashTooltip('Set a location first — click 📍 Pick, then click the map (or type a lat / lon).');
+      this._beginPickMode();
+      return;
+    }
     this._running = true;
     this._setRunDisabled(true);
     this._clearResults();
@@ -1049,6 +1079,73 @@ export class OcokaEngine {
 
   private _setHint(text: string): void {
     if (this._hintEl) this._hintEl.textContent = text;
+  }
+
+  /** True when both lat and lon inputs hold a finite coordinate. */
+  private _hasValidLocation(): boolean {
+    const lat = (this._input('ocoka-inp-lat')?.value ?? '').trim();
+    const lon = (this._input('ocoka-inp-lon')?.value ?? '').trim();
+    return lat !== '' && lon !== '' && Number.isFinite(Number(lat)) && Number.isFinite(Number(lon));
+  }
+
+  /** Enter "pick on map" mode — highlights the button and prompts the user. */
+  private _beginPickMode(): void {
+    this._pickMode = true;
+    const btn = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-btn-pick');
+    if (btn) {
+      btn.classList.add('primary');
+      btn.textContent = '📍 Click map…';
+    }
+    this._setHint('Click anywhere on the map to set the OCOKA analysis centre');
+    this._setStatus('ready', 'Picking location');
+  }
+
+  private _endPickMode(): void {
+    if (!this._pickMode) return;
+    this._pickMode = false;
+    const btn = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-btn-pick');
+    if (btn) {
+      btn.classList.remove('primary');
+      btn.textContent = '📍 Pick';
+    }
+  }
+
+  /** Show a transient tooltip bubble anchored under the Pick button. */
+  private _flashTooltip(message: string): void {
+    const btn = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-btn-pick');
+    if (!btn) { this._setHint(message); return; }
+    if (!this._tooltipEl) {
+      const tip = document.createElement('div');
+      tip.className = 'ms-panel ms-theme-ops-dark';
+      tip.style.cssText =
+        'position:fixed;z-index:1200;background:var(--ms-bg-elevated,#1e2434);color:var(--ms-text,#fff);' +
+        'border:1px solid var(--ms-accent,#e5a540);border-radius:6px;padding:7px 10px;font-size:11px;line-height:1.4;' +
+        'max-width:230px;box-shadow:0 6px 20px rgba(0,0,0,.45);pointer-events:none;opacity:0;transition:opacity .18s;';
+      document.body.appendChild(tip);
+      this._tooltipEl = tip;
+    }
+    const tip = this._tooltipEl;
+    tip.textContent = message;
+    const rect = btn.getBoundingClientRect();
+    tip.style.left = `${Math.max(8, rect.right - 230)}px`;
+    tip.style.top = `${rect.bottom + 8}px`;
+    // Force a reflow so the opacity transition runs even on rapid re-trigger.
+    void tip.offsetWidth;
+    tip.style.opacity = '1';
+    btn.animate?.(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+      { duration: 360 },
+    );
+    if (this._tooltipTimer) window.clearTimeout(this._tooltipTimer);
+    this._tooltipTimer = window.setTimeout(() => this._hideTooltip(), 3800);
+  }
+
+  private _hideTooltip(): void {
+    if (this._tooltipTimer) {
+      window.clearTimeout(this._tooltipTimer);
+      this._tooltipTimer = null;
+    }
+    if (this._tooltipEl) this._tooltipEl.style.opacity = '0';
   }
 
   private _tick(): Promise<void> {

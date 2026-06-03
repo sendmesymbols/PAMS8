@@ -166,6 +166,10 @@ export class WeaponEffectEngine {
   private _dragOffsetY = 0;
   private _isDragging = false;
 
+  // Transient "pick a location" tooltip state
+  private _tooltipEl: HTMLDivElement | null = null;
+  private _tooltipTimer: number | null = null;
+
   constructor() {
     this._createLayers();
     this._injectStyles();
@@ -184,9 +188,9 @@ export class WeaponEffectEngine {
   }
 
   /** Called by ContextMenuManager when "Weapon Engagement Zone" is clicked. */
-  open(graphic: Graphic, view: MapView | SceneView): void {
-    this.initialize(view);
-    const attrs = graphic.attributes ?? {};
+  open(graphic?: Graphic | null, view?: MapView | SceneView): void {
+    if (view) this.initialize(view);
+    const attrs = graphic?.attributes ?? {};
 
     // ── Re-edit mode: graphic is a previously committed WEZ zone ──────────────
     if (attrs.type === 'wez_zone' && attrs.committedAt != null) {
@@ -227,7 +231,7 @@ export class WeaponEffectEngine {
     }
 
     // ── Normal mode: new observer from graphic geometry ───────────────────────
-    const geom = graphic.geometry;
+    const geom = graphic?.geometry;
     if (geom?.type === 'point') {
       this._observerPoint = geom as Point;
     } else if ((geom as any)?.centroid) {
@@ -236,17 +240,23 @@ export class WeaponEffectEngine {
       this._observerPoint = null;
     }
 
-    const detectedWeapon = this._detectWeaponType(graphic);
+    const detectedWeapon = graphic ? this._detectWeaponType(graphic) : 'mortar';
     this._showPanel(detectedWeapon);
 
     if (this._observerPoint) {
       this._drawObserver();
       this._redraw();
+    } else {
+      // Opened with no symbol — let the user place the observer on the map.
+      this._setStatus('awaiting');
+      this._startReposition();
+      this._flashPickTooltip('No symbol — click the map to place the observer (or use “Pick ⊕”).');
     }
   }
 
   close(): void {
     this._hidePanel();
+    this._hideTooltip();
     this._analysisLayer.removeAll();
     this._observerLayer.removeAll();
     this._cancelReposition();
@@ -262,7 +272,9 @@ export class WeaponEffectEngine {
       map.remove(this._observerLayer);
     }
     this._panelEl?.remove();
+    this._tooltipEl?.remove();
     this._panelEl = null;
+    this._tooltipEl = null;
     this._view = null;
   }
 
@@ -1033,6 +1045,7 @@ export class WeaponEffectEngine {
       }
 
       this._observerPoint = pt;
+      this._hideTooltip();
       this._drawObserver();
       this._redraw();
 
@@ -1142,6 +1155,42 @@ export class WeaponEffectEngine {
   private _syncTerrainBtn(): void {
     const terrainRow = this._panelEl?.querySelector<HTMLElement>('#wez-terrain-row');
     if (terrainRow) terrainRow.style.display = this._is3D() ? 'flex' : 'none';
+  }
+
+  /** Show a transient tooltip bubble anchored under the "Pick ⊕" button. */
+  private _flashPickTooltip(message: string): void {
+    const anchor = this._panelEl?.querySelector<HTMLElement>('#wez-reposition-btn');
+    if (!anchor) return;
+    if (!this._tooltipEl) {
+      const tip = document.createElement('div');
+      tip.style.cssText =
+        'position:fixed;z-index:1200;background:var(--ms-bg-header,#1e2434);color:var(--ms-text,#fff);' +
+        'border:1px solid var(--ms-accent,#378ADD);border-radius:5px;padding:7px 10px;font-size:11px;line-height:1.4;' +
+        'max-width:240px;box-shadow:var(--ms-shadow,0 6px 20px rgba(0,0,0,.45));pointer-events:none;opacity:0;transition:opacity .18s;';
+      document.body.appendChild(tip);
+      this._tooltipEl = tip;
+    }
+    const tip = this._tooltipEl;
+    tip.textContent = message;
+    const rect = anchor.getBoundingClientRect();
+    tip.style.left = `${Math.max(8, rect.right - 240)}px`;
+    tip.style.top = `${rect.bottom + 8}px`;
+    void tip.offsetWidth; // force reflow so the transition replays
+    tip.style.opacity = '1';
+    anchor.animate?.(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+      { duration: 360 },
+    );
+    if (this._tooltipTimer) window.clearTimeout(this._tooltipTimer);
+    this._tooltipTimer = window.setTimeout(() => this._hideTooltip(), 4000);
+  }
+
+  private _hideTooltip(): void {
+    if (this._tooltipTimer) {
+      window.clearTimeout(this._tooltipTimer);
+      this._tooltipTimer = null;
+    }
+    if (this._tooltipEl) this._tooltipEl.style.opacity = '0';
   }
 
   private _currentPreset(): WeaponPreset {

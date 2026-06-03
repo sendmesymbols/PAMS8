@@ -41,6 +41,7 @@ export declare class PosDefScorerEngine {
     private _history;
     private _running;
     private _addingEgress;
+    private _draggableBound;
     constructor();
     initialize(view: MapView | SceneView): void;
     open(graphic: Graphic, view: MapView | SceneView): void;
@@ -50,6 +51,7 @@ export declare class PosDefScorerEngine {
     destroy(): void;
     private _createLayers;
     private _ensurePanels;
+    private _makePanelDraggable;
     private _scorePanelHtml;
     private _controlPanelHtml;
     private _sliderRow;

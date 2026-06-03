@@ -42,13 +42,14 @@ export declare class DeadGroundMapper {
     private _isDragging;
     constructor();
     initialize(view: MapView | SceneView): void;
-    open(graphic: Graphic, view: MapView | SceneView): void;
+    open(graphic: Graphic | undefined, view: MapView | SceneView): void;
     runHeadless(options: DeadGroundHeadlessOptions): Promise<DeadGroundSummary>;
     close(): void;
     destroy(): void;
     private _createLayers;
     private _bindPick;
     private _cancelPick;
+    private _setObserverFromInputs;
     private _setObserver;
     private _runAnalysis;
     private _clearResults;

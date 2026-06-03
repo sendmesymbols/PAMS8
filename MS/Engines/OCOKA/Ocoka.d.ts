@@ -79,13 +79,16 @@ export declare class OcokaEngine {
     private _legendEl;
     private _clickHandle;
     private _running;
+    private _pickMode;
+    private _tooltipEl;
+    private _tooltipTimer;
     private _isDragging;
     private _dragOffsetX;
     private _dragOffsetY;
     private _subDragCleanup;
     constructor();
     initialize(view: MapView | SceneView): void;
-    open(graphic: Graphic, view: MapView | SceneView): void;
+    open(graphic?: Graphic | null, view?: MapView | SceneView): void;
     runHeadless(options?: OcokaHeadlessOptions): Promise<OcokaCorridor[]>;
     close(): void;
     destroy(): void;
@@ -141,6 +144,14 @@ export declare class OcokaEngine {
     private _setInputValue;
     private _setText;
     private _setHint;
+    /** True when both lat and lon inputs hold a finite coordinate. */
+    private _hasValidLocation;
+    /** Enter "pick on map" mode — highlights the button and prompts the user. */
+    private _beginPickMode;
+    private _endPickMode;
+    /** Show a transient tooltip bubble anchored under the Pick button. */
+    private _flashTooltip;
+    private _hideTooltip;
     private _tick;
 }
 export default OcokaEngine;

@@ -464,8 +464,13 @@ export class TrafficabilityEngine {
 
   private _drawOriginMarker(): void {
     this._removeMarkers('origin');
+    const latInp = this._inp('reach-origin-lat');
+    const lonInp = this._inp('reach-origin-lon');
     if (!this._origin) {
-      this._setText('#reach-origin-coords', 'Origin: click map to place');
+      this._setText('#reach-origin-coords', 'Origin: click map (Pick ⊕) or enter a Lat/Lon and press Set');
+      if (latInp) latInp.value = '';
+      if (lonInp) lonInp.value = '';
+      this._updateRunHint();
       return;
     }
     this._markerLayer.add(new Graphic({
@@ -477,16 +482,23 @@ export class TrafficabilityEngine {
       symbol: this._markerSymbol('diamond', [52, 192, 174], 13),
       attributes: { type: 'trafficability_origin', markerRole: 'origin' },
     }));
-    this._setText(
-      '#reach-origin-coords',
-      `Origin: ${(this._origin.latitude ?? 0).toFixed(5)}°N  ${(this._origin.longitude ?? 0).toFixed(5)}°E`,
-    );
+    const oLat = (this._origin.latitude ?? 0).toFixed(5);
+    const oLon = (this._origin.longitude ?? 0).toFixed(5);
+    this._setText('#reach-origin-coords', `Origin: ${oLat}°N  ${oLon}°E`);
+    if (latInp) latInp.value = oLat;
+    if (lonInp) lonInp.value = oLon;
+    this._updateRunHint();
   }
 
   private _drawDestMarker(): void {
     this._removeMarkers('dest');
+    const latInp = this._inp('reach-dest-lat');
+    const lonInp = this._inp('reach-dest-lon');
     if (!this._dest) {
       this._setText('#reach-dest-coords', 'Destination: not set');
+      if (latInp) latInp.value = '';
+      if (lonInp) lonInp.value = '';
+      this._updateRunHint();
       return;
     }
     this._markerLayer.add(new Graphic({
@@ -498,10 +510,12 @@ export class TrafficabilityEngine {
       symbol: this._markerSymbol('triangle', [214, 69, 65], 12),
       attributes: { type: 'trafficability_dest', markerRole: 'dest' },
     }));
-    this._setText(
-      '#reach-dest-coords',
-      `Destination: ${(this._dest.latitude ?? 0).toFixed(5)}°N  ${(this._dest.longitude ?? 0).toFixed(5)}°E`,
-    );
+    const dLat = (this._dest.latitude ?? 0).toFixed(5);
+    const dLon = (this._dest.longitude ?? 0).toFixed(5);
+    this._setText('#reach-dest-coords', `Destination: ${dLat}°N  ${dLon}°E`);
+    if (latInp) latInp.value = dLat;
+    if (lonInp) lonInp.value = dLon;
+    this._updateRunHint();
   }
 
   private _drawWaypointMarkers(): void {
@@ -527,6 +541,67 @@ export class TrafficabilityEngine {
     this._markerLayer.graphics
       .filter((g: Graphic) => g.attributes?.markerRole === role)
       .forEach((g: Graphic) => this._markerLayer.remove(g));
+  }
+
+  /** Read the typed Lat/Lon, returning a WGS84 point or null when out of range. */
+  private _pointFromInputs(latId: string, lonId: string): Point | null {
+    const lat = Number(this._inp(latId)?.value);
+    const lon = Number(this._inp(lonId)?.value);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+      return null;
+    }
+    return new Point({ longitude: lon, latitude: lat, spatialReference: { wkid: 4326 } });
+  }
+
+  private _setOriginFromInputs(): void {
+    const pt = this._pointFromInputs('reach-origin-lat', 'reach-origin-lon');
+    if (!pt) {
+      this._setText('#reach-origin-coords', 'Enter a valid Lat/Lon (lat ±90°, lon ±180°)');
+      this._setStatus('awaiting');
+      return;
+    }
+    this._cancelPlacement();
+    this._origin = pt;
+    if (this._mode === 'msr') {
+      this._waypoints = [pt];
+      this._drawWaypointMarkers();
+    }
+    this._drawOriginMarker();
+    this._setStatus('ready');
+  }
+
+  private _setDestFromInputs(): void {
+    const pt = this._pointFromInputs('reach-dest-lat', 'reach-dest-lon');
+    if (!pt) {
+      this._setText('#reach-dest-coords', 'Enter a valid Lat/Lon (lat ±90°, lon ±180°)');
+      return;
+    }
+    this._cancelPlacement();
+    this._dest = pt;
+    this._drawDestMarker();
+    void this._run();
+  }
+
+  /** Refresh the Run button tooltip to guide the user toward what is still missing. */
+  private _updateRunHint(): void {
+    const btn = this._panelEl?.querySelector<HTMLButtonElement>('#reach-run-btn');
+    if (!btn) return;
+    const place = 'click the map (Pick ⊕) or enter a Lat/Lon and press Set';
+    if (this._mode === 'msr') {
+      btn.title = this._waypoints.length >= 2
+        ? 'Find the Main Supply Route across the placed waypoints'
+        : 'Add at least two waypoints — click the map (Add Waypoints ⊕)';
+    } else if (this._mode === 'route') {
+      btn.title = !this._origin
+        ? `Place an origin first — ${place}`
+        : !this._dest
+          ? `Pick a destination — ${place}`
+          : 'Compute the road route from origin to destination';
+    } else {
+      btn.title = this._origin
+        ? 'Compute the drive-time service area from the origin'
+        : `Place an origin first — ${place}`;
+    }
   }
 
   // ─── Private: Run (mode dispatch) ───────────────────────────────────────────
@@ -1599,6 +1674,7 @@ export class TrafficabilityEngine {
     const runBtn = this._panelEl.querySelector<HTMLButtonElement>('#reach-run-btn');
     if (runBtn) runBtn.textContent =
       this._mode === 'serviceArea' ? 'Compute Service Area' : this._mode === 'route' ? 'Compute Route' : 'Find MSR';
+    this._updateRunHint();
   }
 
   private _commit(): void {
@@ -1634,8 +1710,8 @@ export class TrafficabilityEngine {
     this._routeOptions = [];
     this._selectedRoute = 0;
     this._clearStats();
-    this._setText('#reach-origin-coords', 'Origin: click map to place');
-    this._setText('#reach-dest-coords', 'Destination: not set');
+    this._drawOriginMarker();
+    this._drawDestMarker();
     this._renderWaypointList();
     this._setCommitDisabled(true);
     this._setStatus('awaiting');
@@ -1700,10 +1776,18 @@ export class TrafficabilityEngine {
     this._syncModeUI();
     this._clearStats();
     this._renderWaypointList();
-    this._setText('#reach-origin-coords', this._origin
-      ? `Origin: ${(this._origin.latitude ?? 0).toFixed(5)}°N  ${(this._origin.longitude ?? 0).toFixed(5)}°E`
-      : 'Origin: click map to place');
+    if (this._origin) {
+      this._setText('#reach-origin-coords',
+        `Origin: ${(this._origin.latitude ?? 0).toFixed(5)}°N  ${(this._origin.longitude ?? 0).toFixed(5)}°E`);
+      const oLat = this._inp('reach-origin-lat');
+      const oLon = this._inp('reach-origin-lon');
+      if (oLat) oLat.value = (this._origin.latitude ?? 0).toFixed(5);
+      if (oLon) oLon.value = (this._origin.longitude ?? 0).toFixed(5);
+    } else {
+      this._setText('#reach-origin-coords', 'Origin: click map (Pick ⊕) or enter a Lat/Lon and press Set');
+    }
     this._setText('#reach-dest-coords', 'Destination: not set');
+    this._updateRunHint();
   }
 
   private _hidePanel(): void {
@@ -1767,7 +1851,12 @@ export class TrafficabilityEngine {
         </div>
 
         <div class="reach-sec">Origin</div>
-        <div class="reach-coords" id="reach-origin-coords">Origin: click map to place</div>
+        <div class="reach-coords" id="reach-origin-coords">Origin: click map (Pick ⊕) or enter a Lat/Lon and press Set</div>
+        <div class="reach-ll-row">
+          <div class="reach-ll-field"><span class="reach-label">Lat °</span><input id="reach-origin-lat" class="reach-input" type="number" step="0.00001" min="-90" max="90" placeholder="lat" /></div>
+          <div class="reach-ll-field"><span class="reach-label">Lon °</span><input id="reach-origin-lon" class="reach-input" type="number" step="0.00001" min="-180" max="180" placeholder="lon" /></div>
+          <button class="reach-btn reach-btn-sm" id="reach-origin-setloc-btn" title="Place the origin at the Lat/Lon entered above">Set</button>
+        </div>
         <div class="reach-btn-row">
           <button class="reach-btn reach-btn-sm" id="reach-pick-origin-btn">Pick Origin ⊕</button>
         </div>
@@ -1791,6 +1880,11 @@ export class TrafficabilityEngine {
           <div class="reach-divider"></div>
           <div class="reach-sec">Destination</div>
           <div class="reach-coords" id="reach-dest-coords">Destination: not set</div>
+          <div class="reach-ll-row">
+            <div class="reach-ll-field"><span class="reach-label">Lat °</span><input id="reach-dest-lat" class="reach-input" type="number" step="0.00001" min="-90" max="90" placeholder="lat" /></div>
+            <div class="reach-ll-field"><span class="reach-label">Lon °</span><input id="reach-dest-lon" class="reach-input" type="number" step="0.00001" min="-180" max="180" placeholder="lon" /></div>
+            <button class="reach-btn reach-btn-sm" id="reach-dest-setloc-btn" title="Place the destination at the Lat/Lon entered above">Set</button>
+          </div>
           <div class="reach-btn-row">
             <button class="reach-btn reach-btn-sm" id="reach-pick-dest-btn">Pick Destination ⊕</button>
             <button class="reach-btn reach-btn-sm" id="reach-clear-dest-btn">Clear Dest</button>
@@ -1896,6 +1990,18 @@ export class TrafficabilityEngine {
 
     p.querySelector('#reach-pick-origin-btn')?.addEventListener('click', () => this._startOriginPlacement());
     p.querySelector('#reach-pick-dest-btn')?.addEventListener('click', () => this._startDestPlacement());
+    p.querySelector('#reach-origin-setloc-btn')?.addEventListener('click', () => this._setOriginFromInputs());
+    p.querySelector('#reach-dest-setloc-btn')?.addEventListener('click', () => this._setDestFromInputs());
+    p.querySelectorAll('#reach-origin-lat, #reach-origin-lon').forEach((el) =>
+      el.addEventListener('keydown', (e) => {
+        if ((e as KeyboardEvent).key === 'Enter') this._setOriginFromInputs();
+      }),
+    );
+    p.querySelectorAll('#reach-dest-lat, #reach-dest-lon').forEach((el) =>
+      el.addEventListener('keydown', (e) => {
+        if ((e as KeyboardEvent).key === 'Enter') this._setDestFromInputs();
+      }),
+    );
     p.querySelector('#reach-clear-dest-btn')?.addEventListener('click', () => {
       this._dest = null;
       this._drawDestMarker();
@@ -1915,6 +2021,7 @@ export class TrafficabilityEngine {
       this._analysisLayer.removeAll();
       this._clearCallouts();
       this._renderWaypointList();
+      this._updateRunHint();
       this._setStatus('awaiting');
     });
 
@@ -2118,6 +2225,14 @@ export class TrafficabilityEngine {
       .reach-slider { flex: 2; accent-color: #34C0AE; cursor: pointer; }
       .reach-slider-val { font-size: var(--ms-fs-sm); color: #34C0AE; min-width: 36px; text-align: right; }
       .reach-coords { font-size: var(--ms-fs-xs); color: var(--ms-accent); padding: 1px 12px 5px; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .reach-ll-row { display: flex; align-items: flex-end; gap: 6px; padding: 2px 10px 6px; }
+      .reach-ll-field { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+      .reach-input {
+        background: var(--ms-bg-input); border: 1px solid var(--ms-border); border-radius: 3px;
+        color: var(--ms-text); font-family: inherit; font-size: var(--ms-fs); padding: 4px 6px;
+        width: 100%; outline: none; transition: border-color 0.15s;
+      }
+      .reach-input:focus { border-color: var(--ms-accent); }
       .reach-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; padding: 8px 10px 6px; }
       .reach-stat { display: flex; flex-direction: column; gap: 2px; }
       .reach-stat-val { font-size: var(--ms-fs-sm); font-weight: 700; letter-spacing: 0.03em; color: #34C0AE; }

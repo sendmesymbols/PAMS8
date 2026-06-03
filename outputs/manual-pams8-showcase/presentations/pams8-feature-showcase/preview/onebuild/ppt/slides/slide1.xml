@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+      <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+      
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="10" name="Shape 10"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="0" y="0"/><a:ext cx="12192000" cy="6858000"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="111619"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="11" name="Shape 11"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="0" y="0"/><a:ext cx="12192000" cy="6858000"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="182127"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="12" name="Shape 12"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="304800" y="304800"/><a:ext cx="11582400" cy="6248400"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="151D21"/></a:solidFill>
+        <a:ln w="15240"><a:solidFill><a:srgbClr val="33444B"/></a:solidFill></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="20" name="Shape 20"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="666750" y="742950"/><a:ext cx="76200" cy="914400"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="21" name="Shape 21"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="895350" y="666750"/><a:ext cx="7239000" cy="323850"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1300" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>PAMS8 SHOWCASE</a:t></a:r><a:endParaRPr lang="en-US" sz="1300"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="22" name="Shape 22"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="895350" y="1123950"/><a:ext cx="7620000" cy="1123950"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="3600" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>PAMS8: Military Standard 2525D Symbol Drawing Library</a:t></a:r><a:endParaRPr lang="en-US" sz="3600"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="23" name="Shape 23"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="914400" y="2495550"/><a:ext cx="6762750" cy="685800"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="2200"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Draw, edit, analyze, and manage tactical map symbols in 2D and 3D.</a:t></a:r><a:endParaRPr lang="en-US" sz="2200"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="24" name="Shape 24"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="838200" y="3848100"/><a:ext cx="2381250" cy="1066800"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="1B292F"/></a:solidFill>
+        <a:ln w="17780"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="25" name="Shape 25"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="1047750" y="3981450"/><a:ext cx="2000250" cy="552450"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="4200" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>954</a:t></a:r><a:endParaRPr lang="en-US" sz="4200"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="26" name="Shape 26"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="1047750" y="4591050"/><a:ext cx="2000250" cy="266700"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>symbol definitions</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="27" name="Shape 27"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7010400" y="781050"/><a:ext cx="3771900" cy="4248150"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="12191D"/></a:solidFill>
+        <a:ln w="12700"><a:solidFill><a:srgbClr val="33444B"/></a:solidFill></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="28" name="Shape 28"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7353300" y="1219200"/><a:ext cx="3086100" cy="781050"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="2600" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Native tactical drawing + analysis workflows</a:t></a:r><a:endParaRPr lang="en-US" sz="2600"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="29" name="Shape 29"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7429500" y="2476500"/><a:ext cx="2933700" cy="1428750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr marL="285750" indent="-171450"><a:buChar char="-" /></a:pPr><a:r><a:rPr lang="en-US" sz="1600"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>2D / 3D view support</a:t></a:r><a:endParaRPr lang="en-US" sz="1600"/></a:p><a:p><a:pPr marL="285750" indent="-171450"><a:buChar char="-" /></a:pPr><a:r><a:rPr lang="en-US" sz="1600"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>MIL-STD-2525D rendering</a:t></a:r><a:endParaRPr lang="en-US" sz="1600"/></a:p><a:p><a:pPr marL="285750" indent="-171450"><a:buChar char="-" /></a:pPr><a:r><a:rPr lang="en-US" sz="1600"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Editable symbols and plans</a:t></a:r><a:endParaRPr lang="en-US" sz="1600"/></a:p><a:p><a:pPr marL="285750" indent="-171450"><a:buChar char="-" /></a:pPr><a:r><a:rPr lang="en-US" sz="1600"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Terrain and route analysis</a:t></a:r><a:endParaRPr lang="en-US" sz="1600"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="30" name="Shape 30"><a:hlinkClick r:id="rId2" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8991600" y="6096000"/><a:ext cx="1809750" cy="361950"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="223139"/></a:solidFill>
+        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1300" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Open Index</a:t></a:r><a:endParaRPr lang="en-US" sz="1300"/></a:p></p:txBody>
+    </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
+</p:sld>

@@ -51,10 +51,12 @@ export declare class TrajectoryEngine {
     private _dragOffsetX;
     private _dragOffsetY;
     private _isDragging;
+    private _tooltipEl;
+    private _tooltipTimer;
     constructor();
     initialize(view: MapView | SceneView): void;
     /** Called by ContextMenuManager when "Projectile Trajectory" is clicked. */
-    open(graphic: Graphic, view: MapView | SceneView): void;
+    open(graphic?: Graphic | null, view?: MapView | SceneView): void;
     close(): void;
     destroy(): void;
     private _createLayers;
@@ -96,6 +98,9 @@ export declare class TrajectoryEngine {
     private _onDragEnd;
     private _setStatus;
     private _setText;
+    /** Show a transient tooltip bubble anchored under the "Pick Fire ⊕" button. */
+    private _flashPickTooltip;
+    private _hideTooltip;
     private _inp;
     private _setInputVal;
     private _currentPreset;

@@ -155,9 +155,9 @@ export class LOSEngine {
     this._clearLOSAnalysis();
   }
 
-  open(graphic: Graphic, view: MapView | SceneView): void {
+  open(graphic: Graphic | undefined, view: MapView | SceneView): void {
     this.initialize(view);
-    const attrs = graphic.attributes ?? {};
+    const attrs = graphic?.attributes ?? {};
 
     // Re-edit a committed LOS result
     if (attrs.type === 'los_viewshed' && attrs.committedAt != null) {
@@ -191,14 +191,17 @@ export class LOSEngine {
       return;
     }
 
-    // Resume minimised panel
-    if (this._panelEl && this._observerPoint && this._panelEl.style.display === 'none') {
-      this._panelEl.style.display = 'block';
-      return;
-    }
+    // Normal open — start fresh every time. Clear any previous observer,
+    // targets and working graphics so the user can pick a new point. When a
+    // symbol is supplied, its location seeds the observer; otherwise the panel
+    // opens awaiting a pick (map click or Lat/Lon).
+    this._analysisLayer.removeAll();
+    this._observerLayer.removeAll();
+    this._cancelPick();
+    this._clearLOSAnalysis();
+    this._targets = [];
 
-    // Normal open — set observer from right-clicked graphic
-    const geom = graphic.geometry;
+    const geom = graphic?.geometry;
     if (geom?.type === 'point') {
       this._observerPoint = geom as Point;
     } else if ((geom as any)?.centroid) {
@@ -207,9 +210,9 @@ export class LOSEngine {
       this._observerPoint = null;
     }
 
-    this._targets = [];
     this._showPanel();
     if (this._observerPoint) this._drawObserver();
+    else this._setStatus('awaiting');
   }
 
   close(): void {
@@ -943,7 +946,14 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
   // ─── Private: Run orchestration ──────────────────────────────────────────────
 
   private async _run(): Promise<void> {
-    if (!this._observerPoint || !this._view) return;
+    if (!this._view) return;
+    if (!this._observerPoint) {
+      const coordsEl = this._panelEl?.querySelector<HTMLElement>('#los-coords');
+      if (coordsEl) coordsEl.textContent = 'Place an observer first — Pick ⊕ on the map, or enter a Lat/Lon and press Set';
+      this._setStatus('awaiting');
+      this._updateRunHint();
+      return;
+    }
     this._analysisLayer.removeAll();
     this._drawTargetMarkers();
     this._clearLOSAnalysis();
@@ -1004,11 +1014,50 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
       attributes: { type: 'los_observer' },
     }));
 
+    const lat = (this._observerPoint.latitude  ?? 0).toFixed(5);
+    const lon = (this._observerPoint.longitude ?? 0).toFixed(5);
     const coordsEl = this._panelEl?.querySelector<HTMLElement>('#los-coords');
-    if (coordsEl) {
-      const lat = (this._observerPoint.latitude  ?? 0).toFixed(5);
-      const lon = (this._observerPoint.longitude ?? 0).toFixed(5);
-      coordsEl.textContent = `Observer: ${lat}°N  ${lon}°E`;
+    if (coordsEl) coordsEl.textContent = `Observer: ${lat}°N  ${lon}°E`;
+
+    const latInp = this._inp('los-obs-lat');
+    const lonInp = this._inp('los-obs-lon');
+    if (latInp) latInp.value = lat;
+    if (lonInp) lonInp.value = lon;
+
+    this._updateRunHint();
+  }
+
+  private _updateRunHint(): void {
+    const runBtn = this._panelEl?.querySelector<HTMLButtonElement>('#los-run-btn');
+    if (runBtn) {
+      runBtn.title = this._observerPoint
+        ? 'Run line-of-sight / viewshed analysis from the observer'
+        : 'Place an observer first — click Pick ⊕ to place it on the map, or enter a Lat/Lon and press Set';
+    }
+  }
+
+  private async _setObserverFromInputs(): Promise<void> {
+    const lat = Number(this._inp('los-obs-lat')?.value);
+    const lon = Number(this._inp('los-obs-lon')?.value);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+      const coordsEl = this._panelEl?.querySelector<HTMLElement>('#los-coords');
+      if (coordsEl) coordsEl.textContent = 'Enter a valid Lat/Lon (lat ±90°, lon ±180°)';
+      this._setStatus('error');
+      return;
+    }
+
+    this._observerPoint = new Point({
+      longitude: lon,
+      latitude: lat,
+      spatialReference: { wkid: 4326 },
+    });
+    this._drawObserver();
+
+    const out = this._sel('los-output')?.value ?? 'Both';
+    if (this._targets.length > 0 || out !== 'LOS line only') {
+      await this._run();
+    } else {
+      this._setStatus('ready');
     }
   }
 
@@ -1431,6 +1480,23 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
 
         <div class="los-divider"></div>
         <div class="los-sec">Observer</div>
+        <div class="los-grid los-grid-3">
+          <div class="los-field">
+            <div class="los-label">Lat °</div>
+            <input id="los-obs-lat" class="los-input" type="number" step="0.00001" min="-90" max="90" placeholder="lat"${
+              this._observerPoint ? ` value="${(this._observerPoint.latitude ?? 0).toFixed(5)}"` : ''
+            } />
+          </div>
+          <div class="los-field">
+            <div class="los-label">Lon °</div>
+            <input id="los-obs-lon" class="los-input" type="number" step="0.00001" min="-180" max="180" placeholder="lon"${
+              this._observerPoint ? ` value="${(this._observerPoint.longitude ?? 0).toFixed(5)}"` : ''
+            } />
+          </div>
+          <div class="los-field los-field-btn">
+            <button class="los-btn los-btn-sm" id="los-obs-setloc-btn" title="Place the observer at the Lat/Lon entered above">Set</button>
+          </div>
+        </div>
         <div class="los-grid">
           <div class="los-field">
             <div class="los-label">Height (m)</div>
@@ -1438,13 +1504,13 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
           </div>
           <div class="los-field los-field-btn">
             <div class="los-label">Reposition</div>
-            <button class="los-btn los-btn-sm" id="los-obs-pick-btn">Pick ⊕</button>
+            <button class="los-btn los-btn-sm" id="los-obs-pick-btn" title="Click the map to place / move the observer">Pick ⊕</button>
           </div>
         </div>
         <div class="los-coords" id="los-coords">${
           this._observerPoint
             ? `Observer: ${(this._observerPoint.latitude ?? 0).toFixed(5)}°N  ${(this._observerPoint.longitude ?? 0).toFixed(5)}°E`
-            : 'Observer: symbol location set — reposition if needed'
+            : 'Observer: click map (Pick ⊕) or enter a Lat/Lon and press Set'
         }</div>
 
         <div class="los-divider"></div>
@@ -1541,6 +1607,12 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
     });
 
     p.querySelector('#los-obs-pick-btn')?.addEventListener('click', () => this._startPick('observer'));
+    p.querySelector('#los-obs-setloc-btn')?.addEventListener('click', () => this._setObserverFromInputs());
+    p.querySelectorAll('#los-obs-lat, #los-obs-lon').forEach((el) =>
+      el.addEventListener('keydown', (e) => {
+        if ((e as KeyboardEvent).key === 'Enter') this._setObserverFromInputs();
+      }),
+    );
     p.querySelector('#los-add-target-btn')?.addEventListener('click', () => this._startPick('target'));
     p.querySelector('#los-native-interactive')?.addEventListener('change', () => this._applyNativeInteractivity());
     p.querySelector('#los-analysis-mode')?.addEventListener('change', () => {
@@ -1569,9 +1641,14 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
       this._clearLOSAnalysis();
       this._observerPoint = null;
       const coordsEl = p.querySelector<HTMLElement>('#los-coords');
-      if (coordsEl) coordsEl.textContent = 'Observer: click map to place';
+      if (coordsEl) coordsEl.textContent = 'Observer: click map (Pick ⊕) or enter a Lat/Lon and press Set';
+      const latInp = this._inp('los-obs-lat');
+      const lonInp = this._inp('los-obs-lon');
+      if (latInp) latInp.value = '';
+      if (lonInp) lonInp.value = '';
       this._setCommitEnabled(false);
       this._updateTargetList();
+      this._updateRunHint();
       this._setStatus('awaiting');
     });
 
@@ -1588,6 +1665,7 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
 
     this._updateNativeInteractivityUI();
     this._applyNativeInteractivity();
+    this._updateRunHint();
   }
 
   private _makeDraggable(): void {
@@ -1805,6 +1883,8 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
       .los-grid {
         display:grid; grid-template-columns:1fr 1fr; gap:7px; padding:0 10px 8px;
       }
+      .los-grid-3 { grid-template-columns:1fr 1fr auto; align-items:end; }
+      .los-grid-3 .los-field-btn { justify-content:flex-end; }
       .los-field { display:flex; flex-direction:column; gap:3px; }
       .los-field-full { padding:0 10px 8px; }
       .los-field-btn { justify-content:flex-end; }

@@ -109,12 +109,12 @@ export class DeadGroundMapper {
     }
   }
 
-  open(graphic: Graphic, view: MapView | SceneView): void {
+  open(graphic: Graphic | undefined, view: MapView | SceneView): void {
     this.initialize(view);
     this._showPanel();
     this._bindPick();
 
-    const geom = graphic.geometry;
+    const geom = graphic?.geometry;
     let src: Point | null = null;
     if (geom?.type === 'point') src = geom as Point;
     else if ((geom as any)?.centroid) src = (geom as any).centroid as Point;
@@ -235,16 +235,35 @@ export class DeadGroundMapper {
     this._pickHandle = null;
   }
 
+  private _setObserverFromInputs(): void {
+    const lat = this._num('dead-inp-lat', Number.NaN);
+    const lon = this._num('dead-inp-lon', Number.NaN);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+      this._setStatus('place', 'Enter a valid Lat/Lon');
+      return;
+    }
+    const point = new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 });
+    this._setObserver(point);
+    this._view?.goTo({ target: point, zoom: this._view.type === '3d' ? undefined : 13 }).catch(() => {});
+  }
+
   private _setObserver(point: Point): void {
     this._observerPt = point;
     const lat = point.latitude ?? point.y;
     const lon = point.longitude ?? point.x;
+    const latInp = this._el('dead-inp-lat') as HTMLInputElement | null;
+    const lonInp = this._el('dead-inp-lon') as HTMLInputElement | null;
+    if (latInp) latInp.value = lat.toFixed(5);
+    if (lonInp) lonInp.value = lon.toFixed(5);
     const coords = this._el('dead-coords');
     if (coords) coords.textContent = `Observer: ${lat.toFixed(5)}\u00b0N  ${lon.toFixed(5)}\u00b0E`;
     const hint = this._el('dead-hint');
     if (hint) hint.style.opacity = '0';
     const runBtn = this._el('dead-btn-run') as HTMLButtonElement | null;
-    if (runBtn) runBtn.disabled = false;
+    if (runBtn) {
+      runBtn.disabled = false;
+      runBtn.title = 'Run dead-ground analysis from the placed observer';
+    }
     this._setStatus('place', 'Observer placed - click Run');
 
     this._observerLayer.removeAll();
@@ -421,10 +440,17 @@ export class DeadGroundMapper {
     this._observerPt = null;
     this._obsZ = 0;
     const runBtn = this._el('dead-btn-run') as HTMLButtonElement | null;
-    if (runBtn) runBtn.disabled = true;
+    if (runBtn) {
+      runBtn.disabled = true;
+      runBtn.title = 'Place an observer first — click the map or enter a Lat/Lon and press Set location';
+    }
+    const latInp = this._el('dead-inp-lat') as HTMLInputElement | null;
+    const lonInp = this._el('dead-inp-lon') as HTMLInputElement | null;
+    if (latInp) latInp.value = '';
+    if (lonInp) lonInp.value = '';
     const hint = this._el('dead-hint');
     if (hint) hint.style.opacity = '1';
-    this._setText('dead-coords', 'Observer: click map to place');
+    this._setText('dead-coords', 'Observer: click map to place, or enter Lat/Lon above');
     this._setText('dead-st-dead', '\u2014');
     this._setText('dead-st-depth', '\u2014');
     this._setText('dead-st-cells', '\u2014');
@@ -1205,6 +1231,11 @@ export class DeadGroundMapper {
       </div>
       <div class="ms-body">
         <div class="ms-section-title">Observer</div>
+        <div class="ms-grid ms-tight" style="grid-template-columns:1fr 1fr auto;align-items:end;">
+          <div class="ms-field"><div class="ms-label">Lat °</div><input id="dead-inp-lat" class="ms-input" type="number" step="0.00001" min="-90" max="90" placeholder="lat" /></div>
+          <div class="ms-field"><div class="ms-label">Lon °</div><input id="dead-inp-lon" class="ms-input" type="number" step="0.00001" min="-180" max="180" placeholder="lon" /></div>
+          <div class="ms-field"><button class="ms-btn" id="dead-btn-setloc" title="Place the observer at the latitude / longitude entered above">Set location</button></div>
+        </div>
         <div class="ms-grid">
           <div class="ms-field"><div class="ms-label">Eye height (m)</div><input id="dead-inp-eye" class="ms-input" type="number" value="1.8" min="0.5" max="20" step="0.1" /></div>
           <div class="ms-field"><div class="ms-label">Analysis radius (m)</div><input id="dead-inp-radius" class="ms-input" type="number" value="3000" min="200" max="15000" step="100" /></div>
@@ -1294,10 +1325,10 @@ export class DeadGroundMapper {
           <div class="ms-info-item"><div class="ms-info-label">Cells</div><div class="ms-info-value" id="dead-st-cells">—</div></div>
           <div class="ms-info-item"><div class="ms-info-label">Dome vis</div><div class="ms-info-value" id="dead-st-dome">—</div></div>
         </div>
-        <div id="dead-coords" class="ms-coords">Observer: click map to place</div>
+        <div id="dead-coords" class="ms-coords">Observer: click map to place, or enter Lat/Lon above</div>
         <div class="ms-btn-row">
           <button class="ms-btn" id="dead-btn-clear">Clear</button>
-          <button class="ms-btn primary" id="dead-btn-run" disabled>Run analysis</button>
+          <button class="ms-btn primary" id="dead-btn-run" disabled title="Place an observer first — click the map or enter a Lat/Lon and press Set location">Run analysis</button>
         </div>
         <div id="dead-legend" class="ms-legend-wrap">
           <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:linear-gradient(to right,#3a1a1a,#DC3C30,#EF9F27,#F5F040)"></div><div class="ms-legend-label">Dead ground - shallow → deep</div></div>
@@ -1305,7 +1336,7 @@ export class DeadGroundMapper {
           <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:rgba(29,158,117,0.35);border:1px solid #1D9E75"></div><div class="ms-legend-label">Visible ground (if enabled)</div></div>
           <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:#378ADD"></div><div class="ms-legend-label">Observer position</div></div>
         </div>
-        <div id="dead-hint" class="ms-hint">Click anywhere on the map to place the observer</div>
+        <div id="dead-hint" class="ms-hint">Click anywhere on the map to place the observer, or type a Lat/Lon and press Set location</div>
       </div>
     `;
   }
@@ -1333,6 +1364,7 @@ export class DeadGroundMapper {
     p.querySelector('#dead-close-btn')?.addEventListener('click', () => this._hidePanel());
     p.querySelector('#dead-btn-clear')?.addEventListener('click', () => this._clearAll());
     p.querySelector('#dead-btn-run')?.addEventListener('click', () => void this._runAnalysis());
+    p.querySelector('#dead-btn-setloc')?.addEventListener('click', () => this._setObserverFromInputs());
     p.querySelector('#dead-inp-maxdepth')?.addEventListener('input', () => {
       const v = this._num('dead-inp-maxdepth', 50);
       this._setText('dead-maxdepth-v', `${Math.round(v)} m`);

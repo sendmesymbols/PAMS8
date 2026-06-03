@@ -21,7 +21,7 @@
  *   them. The main button toggles/activates the feature; the gear calls the
  *   feature's `openXxxSettings()` to mount this widget anchored just below.
  */
-export type SettingType = 'boolean' | 'number' | 'enum' | 'color' | 'string';
+export type SettingType = 'boolean' | 'number' | 'enum' | 'color' | 'string' | 'action';
 export interface SettingOption {
     value: string;
     label: string;
@@ -41,6 +41,10 @@ export interface SettingDescriptor {
     hint?: string;
     help: string;
     keywords?: string[];
+    /** For `type: 'action'` — button caption (defaults to `label`). */
+    buttonLabel?: string;
+    /** For `type: 'action'` — invoked when the button is clicked. */
+    onClick?: () => void;
 }
 export interface MountWidgetOptions {
     /** DOM id for the panel. Doubles as instance-singleton key. */

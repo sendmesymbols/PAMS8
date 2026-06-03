@@ -69,9 +69,11 @@ export declare class BufferEngine {
     private _dragOffsetX;
     private _dragOffsetY;
     private _isDragging;
+    private _tooltipEl;
+    private _tooltipTimer;
     constructor();
     initialize(view: MapView | SceneView): void;
-    open(graphic: Graphic, view: MapView | SceneView): void;
+    open(graphic?: Graphic | null, view?: MapView | SceneView): void;
     close(): void;
     destroy(): void;
     private _createLayers;
@@ -102,6 +104,9 @@ export declare class BufferEngine {
     private _onDragEnd;
     private _injectStyles;
     private _inp;
+    /** Show a transient tooltip bubble anchored under the "Pick Source" button. */
+    private _flashPickTooltip;
+    private _hideTooltip;
     private _setStatus;
     private _syncCommit;
     private _syncStats;

@@ -1476,20 +1476,31 @@ function initializeAutocomplete() {
       const standaloneTools: Record<string, () => void> = {
         localPeaks:    () => { const se = (window as any).symbolEngine; se?.localPeaksEngine?.open(undefined, se.view); },
         keyTerrain:    () => { const se = (window as any).symbolEngine; se?.keyTerrainIdentificationEngine?.open(getActiveGraphic() ?? undefined, se.view); },
+        deadGround:    () => { const se = (window as any).symbolEngine; se?.deadGroundMapper?.open(getActiveGraphic() ?? undefined, se.view); },
         posDefScorer:  () => { const se = (window as any).symbolEngine; se?.posDefScorerEngine?.openWidget(se.view); },
         opRanker:      () => { const se = (window as any).symbolEngine; se?.opRankerEngine?.openWidget(se.view); },
         missionPlanner:() => { const se = (window as any).symbolEngine; se?.missionPlannerEngine?.openWidget(se.view); },
+        // OCOKA opens with or without a symbol — uses the active graphic as the
+        // initial centre when present, otherwise prompts to pick a location.
+        ocoka:         () => { const se = (window as any).symbolEngine; se?.ocokaEngine?.open(getActiveGraphic() ?? undefined, se.view); },
+        // LOS opens with or without a symbol — uses the active graphic as the
+        // observer when present, otherwise place the observer by clicking the
+        // map (Pick ⊕) or entering a Lat/Lon in the panel.
+        los:           () => { const se = (window as any).symbolEngine; se?.losEngine?.open(getActiveGraphic() ?? undefined, se.view); },
+        // WEZ / Trajectory open with or without a symbol — they use the active
+        // graphic as the firing/observer point when present, otherwise prompt
+        // the user to place it on the map (Pick ⊕).
+        wez:           () => { const se = (window as any).symbolEngine; se?.weaponEffectEngine?.open(getActiveGraphic() ?? undefined, se.view); },
+        trajectory:    () => { const se = (window as any).symbolEngine; se?.trajectoryEngine?.open(getActiveGraphic() ?? undefined, se.view); },
+        // Buffer & Threat Rings opens with or without a symbol — uses the active
+        // graphic as the first source when present, otherwise prompt the user to
+        // place a source on the map (Pick Source).
+        buffer:        () => { const se = (window as any).symbolEngine; se?.bufferEngine?.open(getActiveGraphic() ?? undefined, se.view); },
       };
 
       // Context tools — require a right-clicked or selected graphic
       const contextTools: Record<string, (g: any, v: any, se: any) => void> = {
-        deadGround:  (g, v, se) => se.deadGroundMapper?.open(g, v),
-        ocoka:       (g, v, se) => se.ocokaEngine?.open(g, v),
-        los:         (g, v, se) => se.losEngine?.open(g, v),
-        wez:         (g, v, se) => se.weaponEffectEngine?.open(g, v),
-        trajectory:  (g, v, se) => se.trajectoryEngine?.open(g, v),
         effects:     (g, v, se) => se.effectEngine?.open(g, v),
-        buffer:      (g, v, se) => se.bufferEngine?.open(g, v),
         corridor:    (g, v, se) => se.corridorEngine?.open(g, v),
         flight:      (g, v, se) => se.flightEngine?.open(g, v),
       };

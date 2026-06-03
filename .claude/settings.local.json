@@ -80,7 +80,12 @@
       "PowerShell(Get-Command npm,npm.cmd,node,pnpm,yarn -ErrorAction SilentlyContinue)",
       "PowerShell(\\(Get-Command npm\\).Source)",
       "Bash(Get-ChildItem -Path \"D:\\\\Projects\\\\Web\\\\PAMS8\\\\MS\\\\Engines\" -Recurse -Filter \"*Engine.ts\")",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(where soffice *)",
+      "Bash(where libreoffice *)",
+      "Read(//c/Program Files/LibreOffice/program/**)",
+      "Read(//c/Program Files/Microsoft Office/**)",
+      "PowerShell($lo = Test-Path \"C:\\\\Program Files\\\\LibreOffice\\\\program\\\\soffice.exe\"; Write-Output \"LibreOffice: $lo\"; $ppt = Get-ChildItem \"C:\\\\Program Files\\\\Microsoft Office\\\\root\" -Recurse -Filter \"POWERPNT.EXE\" -ErrorAction SilentlyContinue | Select-Object -First 1; Write-Output \"PowerPoint: $\\($ppt.FullName\\)\"; Write-Output \"Node: $\\(\\(Get-Command node -ErrorAction SilentlyContinue\\).Source\\)\")"
     ]
   }
 }

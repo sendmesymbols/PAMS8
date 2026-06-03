@@ -56,6 +56,9 @@ export declare class KeyTerrainIdentificationEngine {
     private _listPanelEl;
     private _clickHandle;
     private _running;
+    private _centreSet;
+    private _picking;
+    private _hintTimer;
     private _dragOffsetX;
     private _dragOffsetY;
     private _isDragging;
@@ -63,7 +66,7 @@ export declare class KeyTerrainIdentificationEngine {
     private _overlayState;
     constructor();
     initialize(view: MapView | SceneView): void;
-    open(graphic: Graphic, view: MapView | SceneView): void;
+    open(graphic?: Graphic | null, view?: MapView | SceneView): void;
     close(): void;
     destroy(): void;
     runHeadless(options?: KeyTerrainHeadlessOptions): Promise<KeyTerrainFeature[]>;
@@ -104,6 +107,10 @@ export declare class KeyTerrainIdentificationEngine {
     private _renderFeatureList;
     private _estimateRidgeBearing;
     private _syncOverlayVisibility;
+    /** Current value of the overlay-opacity slider (falls back to the default). */
+    private _currentOpacity;
+    /** Apply the slider opacity to every overlay layer live (no rebuild needed). */
+    private _applyOverlayOpacity;
     private _clearResults;
     private _clearAll;
     private _setAnalysisCentreMarker;
@@ -111,6 +118,16 @@ export declare class KeyTerrainIdentificationEngine {
     private _onDragMove;
     private _onDragEnd;
     private _makeSubDraggable;
+    /** Enter "pick a centre on the map" mode — highlight the button and flash a hint. */
+    private _beginPicking;
+    /** Leave picking mode — restore the button label and clear the hint. */
+    private _endPicking;
+    /**
+     * Show a transient tip in the panel's hint slot. `isError` styles it as a
+     * warning; `autoHideMs` (default 4000) auto-clears it — pass 0 to keep it
+     * visible until the next call, or pass a tiny value to hide immediately.
+     */
+    private _flashHint;
     private _setStatus;
     private _setProgress;
     private _tick;

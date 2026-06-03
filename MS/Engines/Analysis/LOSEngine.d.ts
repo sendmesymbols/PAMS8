@@ -45,7 +45,7 @@ export declare class LOSEngine {
     private _dragOffsetY;
     constructor();
     initialize(view: MapView | SceneView): void;
-    open(graphic: Graphic, view: MapView | SceneView): void;
+    open(graphic: Graphic | undefined, view: MapView | SceneView): void;
     close(): void;
     destroy(): void;
     private _createLayers;
@@ -75,6 +75,8 @@ export declare class LOSEngine {
     private _runTerrain;
     private _run;
     private _drawObserver;
+    private _updateRunHint;
+    private _setObserverFromInputs;
     private _drawTargetMarkers;
     private _is3D;
     private _observerSymbol;

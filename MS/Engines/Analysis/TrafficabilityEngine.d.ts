@@ -118,6 +118,12 @@ export declare class TrafficabilityEngine {
     private _drawDestMarker;
     private _drawWaypointMarkers;
     private _removeMarkers;
+    /** Read the typed Lat/Lon, returning a WGS84 point or null when out of range. */
+    private _pointFromInputs;
+    private _setOriginFromInputs;
+    private _setDestFromInputs;
+    /** Refresh the Run button tooltip to guide the user toward what is still missing. */
+    private _updateRunHint;
     private _run;
     private _runServiceArea;
     private _runRoute;

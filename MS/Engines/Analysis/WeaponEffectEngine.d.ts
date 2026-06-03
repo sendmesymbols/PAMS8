@@ -41,10 +41,12 @@ export declare class WeaponEffectEngine {
     private _dragOffsetX;
     private _dragOffsetY;
     private _isDragging;
+    private _tooltipEl;
+    private _tooltipTimer;
     constructor();
     initialize(view: MapView | SceneView): void;
     /** Called by ContextMenuManager when "Weapon Engagement Zone" is clicked. */
-    open(graphic: Graphic, view: MapView | SceneView): void;
+    open(graphic?: Graphic | null, view?: MapView | SceneView): void;
     close(): void;
     destroy(): void;
     private _createLayers;
@@ -78,6 +80,9 @@ export declare class WeaponEffectEngine {
     private _onDragEnd;
     private _setStatus;
     private _syncTerrainBtn;
+    /** Show a transient tooltip bubble anchored under the "Pick ⊕" button. */
+    private _flashPickTooltip;
+    private _hideTooltip;
     private _currentPreset;
     private _weaponKey;
     private _inp;
