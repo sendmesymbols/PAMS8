@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+      <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+      
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="10" name="Shape 10"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="0" y="0"/><a:ext cx="12192000" cy="6858000"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="111619"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="11" name="Shape 11"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="0" y="0"/><a:ext cx="12192000" cy="6858000"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="182127"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="12" name="Shape 12"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="304800" y="304800"/><a:ext cx="11582400" cy="6248400"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="151D21"/></a:solidFill>
+        <a:ln w="15240"><a:solidFill><a:srgbClr val="33444B"/></a:solidFill></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="20" name="Shape 20"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="495300" y="400050"/><a:ext cx="66675" cy="457200"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="21" name="Shape 21"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="685800" y="361950"/><a:ext cx="9334500" cy="266700"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1100" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>ENGINE VISUAL</a:t></a:r><a:endParaRPr lang="en-US" sz="1100"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="22" name="Shape 22"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="685800" y="571500"/><a:ext cx="9334500" cy="495300"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="2700" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>DrawingCueEngine Screenshot</a:t></a:r><a:endParaRPr lang="en-US" sz="2700"/></a:p></p:txBody>
+    </p:sp>
+    <p:cxnSp>
+      <p:nvCxnSpPr><p:cNvPr id="23" name="Line 23"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr>
+      <p:spPr>
+        <a:xfrm flipV="0"><a:off x="495300" y="1123950"/><a:ext cx="11201400" cy="9525"/></a:xfrm>
+        <a:prstGeom prst="line"><a:avLst/></a:prstGeom>
+        <a:ln w="12700"><a:solidFill><a:srgbClr val="33444B"/></a:solidFill></a:ln>
+      </p:spPr>
+      
+    </p:cxnSp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="40" name="Shape 40"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="876300" y="1428750"/><a:ext cx="10363200" cy="4572000"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="12191D"/></a:solidFill>
+        <a:ln w="16510"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:cxnSp>
+      <p:nvCxnSpPr><p:cNvPr id="41" name="Line 41"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr>
+      <p:spPr>
+        <a:xfrm flipV="0"><a:off x="1104900" y="1657350"/><a:ext cx="9906000" cy="4114800"/></a:xfrm>
+        <a:prstGeom prst="line"><a:avLst/></a:prstGeom>
+        <a:ln w="12700"><a:solidFill><a:srgbClr val="40545D"/></a:solidFill></a:ln>
+      </p:spPr>
+      
+    </p:cxnSp>
+    <p:cxnSp>
+      <p:nvCxnSpPr><p:cNvPr id="42" name="Line 42"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr>
+      <p:spPr>
+        <a:xfrm flipV="0"><a:off x="1104900" y="1657350"/><a:ext cx="9906000" cy="4114800"/></a:xfrm>
+        <a:prstGeom prst="line"><a:avLst/></a:prstGeom>
+        <a:ln w="12700"><a:solidFill><a:srgbClr val="40545D"/></a:solidFill></a:ln>
+      </p:spPr>
+      
+    </p:cxnSp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="43" name="Shape 43"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="1143000" y="3467100"/><a:ext cx="9829800" cy="495300"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="2000" b="1"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Add screenshot here</a:t></a:r><a:endParaRPr lang="en-US" sz="2000"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="46" name="Shape 46"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="1047750" y="5676900"/><a:ext cx="9334500" cy="266700"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Paste or insert a live application screenshot here. This slide is intentionally blank for your demo visuals.</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="90" name="Shape 90"><a:hlinkClick r:id="rId2" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="495300" y="6096000"/><a:ext cx="1600200" cy="361950"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="223139"/></a:solidFill>
+        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1300" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Back to Index</a:t></a:r><a:endParaRPr lang="en-US" sz="1300"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="91" name="Shape 91"><a:hlinkClick r:id="rId3" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="9620250" y="6096000"/><a:ext cx="1809750" cy="323850"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="1B272C"/></a:solidFill>
+        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Back to feature</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+    </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
+</p:sld>

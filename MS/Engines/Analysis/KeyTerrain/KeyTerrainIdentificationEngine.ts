@@ -345,6 +345,7 @@ export class KeyTerrainIdentificationEngine {
     if (!this._listPanelEl) {
       const panel = document.createElement('div');
       panel.className = 'ms-panel ms-theme-ops-dark';
+      panel.id = 'kt-list-panel';
       panel.innerHTML = `
         <div class="ms-header">
           <div class="ms-header-icon">▲</div>

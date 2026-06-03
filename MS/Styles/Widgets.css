@@ -1020,6 +1020,84 @@
   line-height: 1.4;
 }
 
+/* ─── Key Terrain ranked results panel — wider & more legible ──────────────── */
+/* Scoped to #kt-list-panel so the shared .ms-feature-* cards used by other
+   analysis engines keep their compact sizing. */
+#kt-list-panel {
+  width: 440px;
+}
+
+#kt-list-panel .ms-feature-card {
+  position: relative;
+  margin: 6px 9px;
+  padding: 11px 13px 12px;
+}
+
+/* Composite score moved to a large badge in the top-right corner */
+#kt-list-panel .ms-feature-score {
+  position: absolute;
+  top: 9px;
+  right: 13px;
+  font-size: 25px;
+  line-height: 1;
+}
+
+#kt-list-panel .ms-feature-top {
+  margin-bottom: 8px;
+  padding-right: 46px; /* keep title clear of the score badge */
+}
+
+#kt-list-panel .ms-feature-rank {
+  font-size: 12px;
+  min-width: 22px;
+  padding: 2px 0;
+  text-align: center;
+  font-weight: 700;
+  border-radius: 4px;
+}
+
+#kt-list-panel .ms-feature-name {
+  font-size: 14px;
+  white-space: normal; /* room to wrap now the panel is wider */
+}
+
+#kt-list-panel .ms-feature-type {
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+#kt-list-panel .ms-feature-bars {
+  gap: 5px;
+}
+
+#kt-list-panel .ms-feature-bar {
+  grid-template-columns: 90px 1fr 48px;
+  gap: 8px;
+}
+
+#kt-list-panel .ms-feature-bar-label {
+  font-size: 11.5px;
+}
+
+#kt-list-panel .ms-feature-bar-track {
+  height: 6px;
+}
+
+#kt-list-panel .ms-feature-bar-val {
+  font-size: 11.5px;
+}
+
+/* The assessment was the least readable element — bump size, drop the dim
+   italic, and give it more breathing room. */
+#kt-list-panel .ms-feature-assessment {
+  margin-top: 9px;
+  padding-top: 9px;
+  font-size: 12.5px;
+  font-style: normal;
+  color: var(--ms-text);
+  line-height: 1.55;
+}
+
 /* ─── Weight adjustment grid (OCOKA) ─────────────────────────────────────── */
 .ms-weight-grid {
   padding: 4px 10px 8px;
