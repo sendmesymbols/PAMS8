@@ -180,6 +180,9 @@ export class KeyTerrainIdentificationEngine {
   private _listPanelEl: HTMLDivElement | null = null;
   private _clickHandle: any = null;
   private _running = false;
+  private _centreSet = false;
+  private _picking = false;
+  private _hintTimer: number | null = null;
   private _dragOffsetX = 0;
   private _dragOffsetY = 0;
   private _isDragging = false;
@@ -204,14 +207,14 @@ export class KeyTerrainIdentificationEngine {
     }
   }
 
-  open(graphic: Graphic, view: MapView | SceneView): void {
-    this.initialize(view);
+  open(graphic?: Graphic | null, view?: MapView | SceneView): void {
+    if (view) this.initialize(view);
     this._ensurePanels();
     this._showPanels();
     this._bindMapClick();
     document.body.classList.add('ms-popup-dark');
 
-    const geom = graphic.geometry;
+    const geom = graphic?.geometry;
     let src: Point | null = null;
     if (geom?.type === 'point') src = geom as Point;
     else if ((geom as any)?.centroid) src = (geom as any).centroid as Point;
@@ -224,6 +227,18 @@ export class KeyTerrainIdentificationEngine {
       if (latInput) latInput.value = latitude.toFixed(4);
       if (lonInput) lonInput.value = longitude.toFixed(4);
       this._setAnalysisCentreMarker(latitude, longitude);
+      this._centreSet = true;
+    } else {
+      // Opened standalone (no symbol). Clear any seeded centre and prompt the
+      // user to pick a location — validation in _runAnalysis enforces this.
+      this._centreSet = false;
+      const latInput = this._input('kt-inp-lat');
+      const lonInput = this._input('kt-inp-lon');
+      if (latInput) latInput.value = '';
+      if (lonInput) lonInput.value = '';
+      this._centerLayer.removeAll();
+      this._setStatus('ready', 'Pick a location to begin');
+      this._beginPicking();
     }
   }
 
@@ -353,6 +368,7 @@ export class KeyTerrainIdentificationEngine {
     if (!this._controlPanelEl) {
       const panel = document.createElement('div');
       panel.className = 'ms-panel ms-theme-ops-dark';
+      panel.id = 'kt-ctrl-panel';
       panel.innerHTML = `
         <div class="ms-header" id="kt-drag-handle">
           <div class="ms-header-icon">⛰</div>
@@ -395,14 +411,17 @@ export class KeyTerrainIdentificationEngine {
         </div>
         <div class="ms-body">
           <div class="ms-section-title">Analysis area</div>
+          <div class="ms-btn-row">
+            <button class="ms-btn primary" id="kt-pick-loc" title="Click, then tap the map to set the analysis centre">📍 Pick location on map</button>
+          </div>
           <div class="ms-grid">
             <div class="ms-field">
               <div class="ms-label">Centre lat</div>
-              <input id="kt-inp-lat" class="ms-input" type="number" value="33.680" step="0.001" />
+              <input id="kt-inp-lat" class="ms-input" type="number" value="" step="0.001" placeholder="—" />
             </div>
             <div class="ms-field">
               <div class="ms-label">Centre lon</div>
-              <input id="kt-inp-lon" class="ms-input" type="number" value="73.060" step="0.001" />
+              <input id="kt-inp-lon" class="ms-input" type="number" value="" step="0.001" placeholder="—" />
             </div>
             <div class="ms-field full">
               <div class="ms-label">Radius (m)</div>
@@ -503,6 +522,11 @@ export class KeyTerrainIdentificationEngine {
       const el = this._input('kt-inp-opa');
       const out = this._el('kt-opa-v');
       if (el && out) out.textContent = Number(el.value).toFixed(2);
+      this._applyOverlayOpacity();
+    });
+
+    this._controlPanelEl?.querySelector('#kt-pick-loc')?.addEventListener('click', () => {
+      this._beginPicking();
     });
 
     this._controlPanelEl?.querySelector('#kt-btn-run')?.addEventListener('click', () => {
@@ -583,6 +607,8 @@ export class KeyTerrainIdentificationEngine {
       if (latInput) latInput.value = latitude.toFixed(4);
       if (lonInput) lonInput.value = longitude.toFixed(4);
       this._setAnalysisCentreMarker(latitude, longitude);
+      this._centreSet = true;
+      this._endPicking();
       this._setStatus('ready', `Centre set ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
       this._setProgress(0, 'Analysis centre updated');
     });
@@ -595,6 +621,27 @@ export class KeyTerrainIdentificationEngine {
 
   private async _runAnalysis(): Promise<void> {
     if (!this._view || this._running) return;
+
+    // Validation — a centre must be picked before analysis can run.
+    const latRaw = this._input('kt-inp-lat')?.value ?? '';
+    const lonRaw = this._input('kt-inp-lon')?.value ?? '';
+    const latNum = Number(latRaw);
+    const lonNum = Number(lonRaw);
+    const hasCentre =
+      this._centreSet &&
+      latRaw.trim() !== '' &&
+      lonRaw.trim() !== '' &&
+      Number.isFinite(latNum) &&
+      Number.isFinite(lonNum) &&
+      Math.abs(latNum) <= 90 &&
+      Math.abs(lonNum) <= 180;
+    if (!hasCentre) {
+      this._setStatus('error', 'No location selected');
+      this._flashHint('Pick a location on the map first — use “📍 Pick location on map”.', true);
+      this._beginPicking();
+      return;
+    }
+
     const runBtn = this._controlPanelEl?.querySelector<HTMLButtonElement>('#kt-btn-run');
     this._running = true;
     if (runBtn) runBtn.disabled = true;
@@ -738,6 +785,7 @@ export class KeyTerrainIdentificationEngine {
       this._setProgress(1, `Done - ${rankedFeatures.length} features identified`);
       this._setStatus('done', 'Done');
       this._syncOverlayVisibility();
+      this._applyOverlayOpacity();
 
       await this._view.goTo({ target: extent, ...(this._view.type === '3d' ? { tilt: 55 } : {}) } as any, {
         duration: 1200,
@@ -1138,7 +1186,10 @@ export class KeyTerrainIdentificationEngine {
         imgData.data[px + 1] = Math.round(95 + tt * 43);
         imgData.data[px + 2] = Math.round(165 + tt * 56);
       }
-      imgData.data[px + 3] = Math.round(opacity * 200 * Math.min(1, Math.abs(t) * 4));
+      // Bake only per-pixel intensity here; the user-facing opacity is applied
+      // live via the MediaLayer.opacity property so the slider can adjust it
+      // without rebuilding the raster (and without double-applying).
+      imgData.data[px + 3] = Math.round(200 * Math.min(1, Math.abs(t) * 4));
     }
 
     ctx.putImageData(imgData, 0, 0);
@@ -1150,6 +1201,7 @@ export class KeyTerrainIdentificationEngine {
         }),
       ],
       title: 'Terrain curvature',
+      opacity,
     });
   }
 
@@ -1298,7 +1350,7 @@ export class KeyTerrainIdentificationEngine {
         }),
       ],
       title: 'Top feature viewshed',
-      opacity: 0.7,
+      opacity: this._currentOpacity(),
     });
   }
 
@@ -1471,6 +1523,19 @@ export class KeyTerrainIdentificationEngine {
     if (this._viewshedLayer) this._viewshedLayer.visible = this._overlayState.viewshed;
   }
 
+  /** Current value of the overlay-opacity slider (falls back to the default). */
+  private _currentOpacity(): number {
+    return Number(this._input('kt-inp-opa')?.value ?? 0.65);
+  }
+
+  /** Apply the slider opacity to every overlay layer live (no rebuild needed). */
+  private _applyOverlayOpacity(): void {
+    const o = this._currentOpacity();
+    if (this._curvatureLayer) this._curvatureLayer.opacity = o;
+    if (this._viewshedLayer) this._viewshedLayer.opacity = o;
+    if (this._markerLayer) this._markerLayer.opacity = o;
+  }
+
   private _clearResults(): void {
     this._markerLayer.removeAll();
     const map = this._view?.map as any;
@@ -1483,6 +1548,11 @@ export class KeyTerrainIdentificationEngine {
   private _clearAll(): void {
     this._clearResults();
     this._centerLayer.removeAll();
+    this._centreSet = false;
+    const latInput = this._input('kt-inp-lat');
+    const lonInput = this._input('kt-inp-lon');
+    if (latInput) latInput.value = '';
+    if (lonInput) lonInput.value = '';
     const list = this._el('kt-feature-list');
     if (list) {
       list.innerHTML =
@@ -1491,8 +1561,9 @@ export class KeyTerrainIdentificationEngine {
     this._setText('kt-list-sub', 'Run analysis to identify features');
     ['kt-sg-found', 'kt-sg-area', 'kt-sg-elev', 'kt-sg-relief'].forEach((id) => this._setText(id, '-'));
     this._setProgress(0, '-');
-    this._setStatus('ready', 'Ready');
+    this._setStatus('ready', 'Pick a location to begin');
     this._syncOverlayVisibility();
+    this._beginPicking();
   }
 
   private _setAnalysisCentreMarker(latitude: number, longitude: number): void {
@@ -1592,6 +1663,53 @@ export class KeyTerrainIdentificationEngine {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     });
+  }
+
+  /** Enter "pick a centre on the map" mode — highlight the button and flash a hint. */
+  private _beginPicking(): void {
+    this._picking = true;
+    const btn = this._el('kt-pick-loc');
+    if (btn) {
+      btn.classList.add('primary');
+      btn.textContent = '📍 Click the map to set centre…';
+    }
+    this._flashHint('Click anywhere on the map to set the analysis centre.', false, 0);
+  }
+
+  /** Leave picking mode — restore the button label and clear the hint. */
+  private _endPicking(): void {
+    this._picking = false;
+    const btn = this._el('kt-pick-loc');
+    if (btn) btn.textContent = '📍 Pick location on map';
+    this._flashHint('', false, 1);
+  }
+
+  /**
+   * Show a transient tip in the panel's hint slot. `isError` styles it as a
+   * warning; `autoHideMs` (default 4000) auto-clears it — pass 0 to keep it
+   * visible until the next call, or pass a tiny value to hide immediately.
+   */
+  private _flashHint(message: string, isError = false, autoHideMs = 4000): void {
+    const hint = this._el('kt-hint');
+    if (!hint) return;
+    if (this._hintTimer != null) {
+      window.clearTimeout(this._hintTimer);
+      this._hintTimer = null;
+    }
+    if (!message) {
+      hint.style.display = 'none';
+      return;
+    }
+    hint.textContent = message;
+    hint.style.display = 'block';
+    hint.style.fontStyle = isError ? 'normal' : 'italic';
+    hint.style.color = isError ? 'var(--ms-danger, #dc5050)' : 'var(--ms-text-dim)';
+    if (autoHideMs > 0) {
+      this._hintTimer = window.setTimeout(() => {
+        hint.style.display = 'none';
+        this._hintTimer = null;
+      }, autoHideMs);
+    }
   }
 
   private _setStatus(statusClass: string, text: string): void {

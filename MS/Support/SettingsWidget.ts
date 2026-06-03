@@ -24,7 +24,7 @@
 
 import { getSetting, setSetting, onSettingsChanged, toHexColor, hexToRgb } from './SettingsBus';
 
-export type SettingType = 'boolean' | 'number' | 'enum' | 'color' | 'string';
+export type SettingType = 'boolean' | 'number' | 'enum' | 'color' | 'string' | 'action';
 
 export interface SettingOption {
   value: string;
@@ -46,6 +46,10 @@ export interface SettingDescriptor {
   hint?: string;
   help: string;
   keywords?: string[];
+  /** For `type: 'action'` — button caption (defaults to `label`). */
+  buttonLabel?: string;
+  /** For `type: 'action'` — invoked when the button is clicked. */
+  onClick?: () => void;
 }
 
 export interface MountWidgetOptions {
@@ -351,6 +355,11 @@ function renderRow(d: SettingDescriptor): string {
       control = `<input type="text" class="ms-sw-input ms-input" value="${escapeHtml(s)}">`;
       break;
     }
+    case 'action': {
+      const btnText = d.buttonLabel ?? d.label;
+      control = `<button type="button" class="ms-sw-input ms-btn ms-sw-action">${escapeHtml(btnText)}</button>`;
+      break;
+    }
   }
 
   return `<div class="ms-sw-row" ${rowAttrs}>${label}<div class="ms-sw-ctrl">${control}</div></div>`;
@@ -368,6 +377,19 @@ function bindRowControls(
     const type = row.getAttribute('data-type') as SettingType;
     const descriptor = manifest.find((d) => d.path.join('.') === fullPath);
     if (!descriptor) return;
+
+    if (type === 'action') {
+      const btn = row.querySelector<HTMLButtonElement>('.ms-sw-action');
+      if (!btn) return;
+      const click = (e: MouseEvent) => {
+        e.preventDefault();
+        descriptor.onClick?.();
+      };
+      btn.addEventListener('click', click);
+      cleanups.push(() => btn.removeEventListener('click', click));
+      return;
+    }
+
     const input = row.querySelector<HTMLInputElement | HTMLSelectElement>('.ms-sw-input');
     if (!input) return;
 

@@ -25,6 +25,7 @@ export declare class AntiTankMineWAntiHandle {
     private symGeometricType;
     private isObstacle;
     private _lineSym;
+    private _textureMetadata;
     private _points;
     private _geometryType;
     private _drawType;

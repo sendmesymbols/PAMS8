@@ -210,6 +210,7 @@ export class PosDefScorerEngine {
   private _history: HistoryEntry[] = [];
   private _running = false;
   private _addingEgress = false;
+  private _draggableBound: WeakSet<HTMLElement> = new WeakSet();
 
   constructor() {
     this._createLayers();
@@ -318,7 +319,7 @@ export class PosDefScorerEngine {
       this._controlPanelEl = document.createElement('div');
       this._controlPanelEl.id = 'posdef-right-panel';
       this._controlPanelEl.className = 'ms-panel ms-theme-ops-dark';
-      this._controlPanelEl.style.cssText = 'position: absolute; top: 14px; right: 14px; width: 284px; z-index: 1098; max-height: calc(100vh - 28px); overflow-y: auto; display: none;';
+      this._controlPanelEl.style.cssText = 'position: absolute; top: 14px; right: 14px; width: 312px; z-index: 1098; max-height: calc(100vh - 28px); overflow-y: auto; overflow-x: hidden; display: none;';
       this._controlPanelEl.innerHTML = this._controlPanelHtml();
       document.body.appendChild(this._controlPanelEl);
       this._bindPanelEvents();
@@ -326,17 +327,58 @@ export class PosDefScorerEngine {
     if (!this._hintEl) {
       this._hintEl = document.createElement('div');
       this._hintEl.id = 'posdef-hint';
-      this._hintEl.style.cssText = 'position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%); z-index: 1098; display: none; font-family: monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 22px; border-radius: 3px; pointer-events: none;';
+      this._hintEl.style.cssText = 'position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%); z-index: 1098; display: none; font-family: monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 22px; border-radius: 6px; pointer-events: none; background: rgba(20, 24, 32, 0.94); color: var(--ms-text, #dce8f5); border: 1px solid var(--ms-border, rgba(90, 130, 200, 0.35)); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); backdrop-filter: blur(10px);';
       this._hintEl.textContent = 'Click map to score a position - Ctrl+Click to add egress waypoints';
       document.body.appendChild(this._hintEl);
     }
+    this._makePanelDraggable(this._scorePanelEl);
+    this._makePanelDraggable(this._controlPanelEl);
     this._drawRadar({ obs: 0, fof: 0, cff: 0, cfv: 0, egr: 0, dg: 0 });
+  }
+
+  private _makePanelDraggable(panel: HTMLDivElement | null): void {
+    if (!panel) return;
+    const handle = panel.querySelector('.ms-header') as HTMLElement | null;
+    if (!handle || this._draggableBound.has(panel)) return;
+    this._draggableBound.add(panel);
+    handle.style.cursor = 'grab';
+    handle.style.userSelect = 'none';
+    let dragging = false;
+    let ox = 0;
+    let oy = 0;
+    handle.addEventListener('mousedown', (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest('button, input, select')) return;
+      dragging = true;
+      const rect = panel.getBoundingClientRect();
+      panel.style.left = rect.left + 'px';
+      panel.style.top = rect.top + 'px';
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+      ox = e.clientX - rect.left;
+      oy = e.clientY - rect.top;
+      handle.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', (e: MouseEvent) => {
+      if (!dragging) return;
+      const maxLeft = window.innerWidth - panel.offsetWidth - 4;
+      const maxTop = window.innerHeight - panel.offsetHeight - 4;
+      panel.style.left = Math.max(0, Math.min(e.clientX - ox, maxLeft)) + 'px';
+      panel.style.top = Math.max(0, Math.min(e.clientY - oy, maxTop)) + 'px';
+    });
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      handle.style.cursor = 'grab';
+      document.body.style.userSelect = '';
+    });
   }
 
   private _scorePanelHtml(): string {
     return `
       <div class="ms-header">
-        <div class="ms-header-title">Defensibility Scorer</div>
+        <div class="ms-header-title">Pos Def Scorer</div>
       </div>
       <div class="ms-body" style="display: flex; flex-direction: column; overflow-y: auto;">
         <div style="padding: 12px; border-bottom: var(--ms-divider); font-size: var(--ms-fs-xs); color: var(--ms-text-dim);" id="posdef-lph-sub">Click map to score a position</div>
@@ -368,7 +410,7 @@ export class PosDefScorerEngine {
   private _controlPanelHtml(): string {
     return `
       <div class="ms-header">
-        <div class="ms-header-title">Analysis Config</div>
+        <div class="ms-header-title">Pos Def Scorer</div>
         <div style="display: flex; gap: 4px;">
           <button class="ms-btn" id="posdef-help-btn" title="Position defensibility wiki" style="padding: 4px 8px; font-size: var(--ms-fs-xs);">?</button>
           <button class="ms-btn" id="posdef-close-btn" title="Close" style="padding: 4px 8px; font-size: var(--ms-fs-xs);">✕</button>
@@ -395,7 +437,7 @@ export class PosDefScorerEngine {
         <div class="ms-section-title">Observer / position</div>
         <div class="ms-grid">
           <div class="ms-field"><label class="ms-label">Eye height (m)</label><input id="posdef-inp-eye" type="number" value="1.8" min="0.5" max="10" step="0.1" class="ms-input"></div>
-          <div class="ms-field"><label class="ms-label">Position type</label><select id="posdef-inp-postype" class="ms-select"><option value="dismount">Dismount</option><option value="vehicle" selected>Vehicle</option><option value="tank">Tank</option><option value="mg">MG/ATGM</option><option value="sniper">Sniper</option></select></div>
+          <div class="ms-field"><label class="ms-label">Position type</label><select id="posdef-inp-postype" class="ms-select"><option value="dismount">Dismount</option><option value="vehicle">Vehicle</option><option value="tank">Tank</option><option value="mg">MG/ATGM</option><option value="sniper" selected>Sniper</option></select></div>
         </div>
         <div class="ms-section-title">Analysis ranges</div>
         ${this._sliderRow('Observation radius (m)', 'obs-r', 500, 10000, 250, 3000)}
@@ -531,7 +573,7 @@ export class PosDefScorerEngine {
       this._setProgress(0.7, 'Building overlays');
       await this._tick();
       if (params.showVS || params.showDG || params.showSlp) this._drawRasterOverlay(result, pt, obsZ, params);
-      if (params.showLOS) this._buildLOSSpokes(pt, result.horizons, result.numRays, params.rayRes, params.obsRadius, result.sampler).forEach((g) => this._spokesLayer.add(g));
+      if (params.showLOS) this._buildLOSSpokes(pt, obsZ, result.horizons, result.numRays, params.rayRes, params.obsRadius, result.sampler).forEach((g) => this._spokesLayer.add(g));
       if (this._egressPts.length > 0) {
         this._setProgress(0.82, 'Routing egress on road network');
         await this._enrichEgressWithRoads(pt, result);
@@ -731,14 +773,13 @@ export class PosDefScorerEngine {
     return canvas;
   }
 
-  private _buildLOSSpokes(positionPt: Point, horizons: Float32Array, numRays: number, rayRes: number, obsRadius: number, sampler: any): Graphic[] {
+  private _buildLOSSpokes(positionPt: Point, obsZ: number, horizons: Float32Array, numRays: number, rayRes: number, obsRadius: number, sampler: any): Graphic[] {
     const graphics: Graphic[] = [];
-    const posZ = sampler.queryElevation(positionPt)?.z ?? 0;
     for (let ri = 0; ri < numRays; ri += 3) {
       const brg = (ri / numRays) * 360;
       const p = destPt(positionPt.longitude, positionPt.latitude, brg, obsRadius);
       const z = sampler.queryElevation(new Point({ longitude: p.longitude, latitude: p.latitude, spatialReference: WGS84 }))?.z ?? 0;
-      const visible = (Math.atan2(z - posZ + 2, obsRadius) * 180 / Math.PI) >= horizons[ri];
+      const visible = (Math.atan2(z - obsZ, obsRadius) * 180 / Math.PI) >= horizons[ri];
       graphics.push(new Graphic({
         geometry: new Polyline({ paths: [[[positionPt.longitude, positionPt.latitude], [p.longitude, p.latitude]]], spatialReference: WGS84 }),
         symbol: { type: 'simple-line', color: visible ? [29, 158, 117, 40] : [80, 20, 20, 30], width: 0.6 } as any,
@@ -1037,6 +1078,14 @@ export class PosDefScorerEngine {
     this._currentPos = null;
     this._egressPts = [];
     this._history = [];
+    if (this._addingEgress) {
+      this._addingEgress = false;
+      const btn = this._button('posdef-btn-egress-mode');
+      if (btn) {
+        btn.textContent = '+ Egress';
+        btn.style.background = '';
+      }
+    }
     [this._overlayLayer, this._spokesLayer, this._posLayer, this._egrLayer, this._histLayer].forEach((l) => l.removeAll());
     this._clearOverlays();
     this._setText('posdef-lph-sub', 'Click map to score a position');

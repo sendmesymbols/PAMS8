@@ -1,0 +1,11 @@
+{
+  "title": "PAMS8 Feature Showcase",
+  "slideCount": 93,
+  "indexSlide": 3,
+  "output": "D:\\Projects\\Web\\PAMS8\\outputs\\manual-pams8-showcase\\presentations\\pams8-feature-showcase\\output\\PAMS8_Feature_Showcase_Clickable.pptx",
+  "sections": {
+    "coreFeatures": 15,
+    "engineSlides": 18,
+    "analysisSlides": 11
+  }
+}

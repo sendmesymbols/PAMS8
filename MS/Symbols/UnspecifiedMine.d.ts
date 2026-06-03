@@ -25,6 +25,7 @@ export declare class UnspecifiedMine {
     symGeometricType: string;
     isObstacle: string;
     private _lineSym;
+    private _textureMetadata;
     private _points;
     private _geometryType;
     private _drawType;

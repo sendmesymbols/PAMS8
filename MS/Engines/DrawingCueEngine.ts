@@ -229,7 +229,27 @@ class DrawingCueEngine {
     this._compass.start(view);
   }
 
-  public openCompassWidget(): void { this._compass?.openWidget(); }
+  public openCompassWidget(): void {
+    if (!this._compass) return;
+    // Auto-enable so the panel is immediately functional — without this, the
+    // map click handler bails on `!_enabled` and "+ Add Compass" appears to
+    // do nothing. Mirrors what the user would otherwise toggle separately.
+    this._compass.enable();
+    // Broadcast through the settings bus so the legacy panel's `setting-
+    // magneticCompass` checkbox and the modular widget's row both reflect
+    // reality. Receivers are idempotent (settingsData mutation + compass
+    // .setOptions → .enable() again is a no-op).
+    try {
+      window.dispatchEvent(new CustomEvent('settingsChanged', {
+        detail: {
+          path: ['drawingCues', 'magneticCompass', 'enabled'],
+          value: true,
+          fullPath: 'drawingCues.magneticCompass.enabled',
+        },
+      }));
+    } catch { /* ignore */ }
+    this._compass.openWidget();
+  }
   public closeCompassWidget(): void { this._compass?.closeWidget(); }
 
   public enable(): void {

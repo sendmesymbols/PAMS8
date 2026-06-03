@@ -298,4 +298,18 @@ export const drawingCuesSettingsManifest: SettingDescriptor[] = [
     step: 0.1,
     help: 'Magnetic declination offset applied to the compass readout. Positive = east of true north.',
   },
+  {
+    path: ['drawingCues', 'magneticCompass', '__openWidget'],
+    label: 'Compass panel',
+    buttonLabel: '🧭 Open Compass Panel',
+    group: 'Magnetic compass',
+    type: 'action',
+    help: 'Open the interactive magnetic compass management panel.',
+    keywords: ['compass', 'bezel', 'bearing'],
+    onClick: () => {
+      const eng = (window as any).drawingCueEngine;
+      if (eng?.openCompassWidget) eng.openCompassWidget();
+      else console.warn('DrawingCueEngine not ready yet');
+    },
+  },
 ];

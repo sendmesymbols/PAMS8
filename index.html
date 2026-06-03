@@ -4679,6 +4679,15 @@
 
       function setHudVisible(on) {
         if (perfHudEl) perfHudEl.style.display = on ? 'block' : 'none';
+        // When the HUD turns on, kick a fresh declutter solve so stats appear
+        // immediately. Otherwise the HUD waits for the next pan/zoom before
+        // any declutter-solve-stats event fires and the panel stays at "—".
+        if (on) {
+          const dc = window.symbolEngine?._declutterEngine;
+          if (dc?.requestSolve) {
+            try { dc.requestSolve(); } catch (e) { /* ignore */ }
+          }
+        }
       }
 
       document.addEventListener('declutter-solve-stats', (e) => {
@@ -4698,6 +4707,14 @@
       if (perfHudCheckbox) {
         perfHudCheckbox.addEventListener('change', () => setHudVisible(perfHudCheckbox.checked));
       }
+      // Also react to settings bus changes — fired by any source (legacy panel,
+      // modular Declutter settings widget, Ctrl+K command palette).
+      window.addEventListener('settingsChanged', (e) => {
+        if (e.detail?.fullPath !== 'declutter.perfHud') return;
+        const on = !!e.detail.value;
+        if (perfHudCheckbox && perfHudCheckbox.checked !== on) perfHudCheckbox.checked = on;
+        setHudVisible(on);
+      });
       // Initialize from settings once SymbolEngine has loaded
       setTimeout(() => {
         const s = window.symbolEngine?.settings;
