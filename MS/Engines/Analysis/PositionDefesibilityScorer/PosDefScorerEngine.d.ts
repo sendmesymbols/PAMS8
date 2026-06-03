@@ -18,6 +18,7 @@ export interface DefensibilityScoreOptions {
     rayResolutionDeg?: number;
     threatBearingDeg?: number;
     maxSlopeDeg?: number;
+    weights?: Partial<Record<FactorId, number>>;
 }
 export declare class PosDefScorerEngine {
     static readonly OVERLAY_LAYER_ID = "pos-def-viewshed-overlay";

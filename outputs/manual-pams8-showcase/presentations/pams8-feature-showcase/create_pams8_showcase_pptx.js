@@ -362,9 +362,10 @@ function featureSlideXml(slide, slideNo, rel) {
   const technical = technicalBasis(slide);
   const basisTitle = slide.scoring ? 'Scoring / technical basis' : 'Technical basis';
   const basisText = slide.scoring ? `${slide.scoring}\n${technical}` : technical;
-  parts.push(shape(70, 72, 536, 610, 84, { fill: slide.scoring ? '211F1A' : '17232A', line: slide.accent, lineWidth: 1, geom: 'roundRect' }));
-  parts.push(textBox(71, 90, 544, 220, 20, basisTitle, { size: 11, color: slide.accent, bold: true }));
-  parts.push(textBox(72, 90, 568, 560, 38, basisText, { size: 12.2, color: C.ink, valign: 'top' }));
+  parts.push(shape(70, 72, 520, 610, 112, { fill: slide.scoring ? '1F1B14' : '15212A', line: slide.accent, lineWidth: 1.2, geom: 'roundRect' }));
+  parts.push(shape(73, 72, 520, 4, 112, { fill: slide.accent, line: 'none', geom: 'rect' }));
+  parts.push(textBox(71, 92, 528, 560, 20, basisTitle, { size: 10.5, color: slide.accent, bold: true }));
+  parts.push(textBox(72, 92, 552, 580, 76, basisText, { size: 11, color: C.ink, valign: 'top' }));
   parts.push(backButton(90, rel.add(indexSlideNo)));
   return slideXml(parts.join(''));
 }
@@ -380,50 +381,55 @@ function screenshotSlideXml(slide, rel) {
 
 function technicalBasis(slide) {
   const byTitle = {
-    'Drawing & Symbol Creation': 'Uses DrawEssentials, Amplifier, SIDC metadata, Mapper, and symbol draw events. Final geometry is routed to symbol layers by geometry type.',
-    'Symbol Catalog': 'Backed by MS/Data/Symbols.json and SymbolMetadataService. Class names resolve through Mapper into concrete symbol implementations.',
-    'Edit': 'Uses SketchViewModel transform behavior plus stored pre-edit snapshots. CTRL_PTS and BASE_LN_PTS stay synchronized after geometry changes.',
-    'Control Points': 'Control handles modify the source control-point arrays, then symbol create/redraw logic rebuilds the tactical geometry.',
-    'Selection': 'Scans managed symbol layers, tracks selected Graphic instances, and applies type/SIDC/echelon filters from graphic attributes and draw metadata.',
-    'Batch Selection Operations': 'Geometry deltas and formation positions are computed from selected symbol centroids/extents, then applied as one undoable operation.',
-    'Copy / Paste': 'Clones geometry, symbol, drawEssentials, and attributes. Multi-symbol paste offsets from the clipboard centroid to preserve formation layout.',
-    'Undo / Redo': 'Stores labelled closures plus geometry/control-point snapshots. Redo stack clears whenever a new operation is pushed.',
-    'Context Menu': 'ContextMenuManager resolves the right-clicked graphic/layer, then renders registered and dynamic action trees.',
-    'Measurement': 'Computes geodesic or planar metrics from geometry. Optional magnetic declination, slant range, marching speed, and road ETA refine the result.',
-    'Drawing Assistance': 'Uses pointer updates and the last committed control point to draw temporary overlay graphics on a cue layer.',
-    'Proximity / Snapping': 'Snapshots candidate graphics from target layers and tests nearest vertex/coordinate per animation frame.',
-    'MGRS': 'Generates grid lines with GZD and UTM/MGRS math; level visibility is controlled by settings and zoom.',
-    'Import / Export': 'Serializes JSON-safe symbol state including GEOM, CTRL_PTS, and BASE_LN_PTS; restore replays the rendering pipeline.',
-    'Settings / Widgets': 'Feature flags and runtime settings are read by SymbolEngine and forwarded to active engines via setOptions/updateConfig.',
-    'SymbolEngine': 'Main mediator: initializes engines, listens to symbol events, manages layers, exposes public APIs, and handles view switches.',
-    'EditEngine': 'Combines SketchViewModel with custom mixed-transform math so grouped symbols can move, rotate, and scale together.',
-    'SelectionEngine': 'Maintains selected graphics, highlights, lasso sketching, clone-drag hooks, and batch geometry transforms.',
-    'ClipboardEngine': 'Transforms cloned geometries from original centroid to target paste point; integrates undo and annotation refresh.',
-    'UndoRedoManager': 'EditEngine events trigger snapshot-based undo entries for both primary and additional graphics.',
-    'KeyboardShortcutManager': 'Document-level keydown router suppresses inputs/textareas and delegates to current graphic or selection state.',
-    'AnnotationEngine': 'Annotation state is rebuilt after draw, edit, paste, and selection movement to keep labels attached to symbols.',
-    'MeasurementEngine': 'Formats distance/area/bearing snapshots and emits document events for HUD/widgets.',
-    'DrawingCueEngine': 'Maintains a temporary overlay layer and coalesces cursor-driven updates for drawing precision.',
-    'ProximityEngine': 'Uses screen-space snap radius plus map-space distance ranking; optimized by candidate extents and reusable graphics.',
-    'MGRSEngine': 'Rebuilds overlay on view changes, supporting 2D and 3D views with configurable line/label styles.',
-    'Symbol Support Engines': 'Keeps catalog lookup, template placement, class mapping, and text-box drawing separate from the core SymbolEngine.',
-    'Visualization / Declutter': 'Spatial indexing, priority resolution, clustering, marker dispersal, and label placement reduce dense tactical-map clutter.',
-    'MorphixEngine': 'Reads editable symbol state and applies partial patches without losing existing geometry.',
-    'ImportExport Engines': 'Plan serialization owns whole-map persistence while SymbolEngine keeps backward-compatible save/load delegates.',
-    'DeploymentBuilder / MissionPlanner': 'MissionPlanner composes existing terrain engines rather than duplicating terrain math.',
-    'OCOKA': 'Corridors degrade gracefully to pure terrain scoring when road-network enrichment is unavailable.',
-    'RoadNetwork / Trafficability': 'External road service is optional; failed calls leave straight-line or terrain-only results intact.',
-    'KeyTerrainIdentificationEngine': 'Terrain grid sampling produces elevation, curvature, prominence, and 36-ray viewshed components before final ranking.',
-    'PosDefScorerEngine': 'Position is evaluated radially: LOS horizons, slopes, egress rays, and rear dead ground feed the six factors.',
-    'OpRankerEngine': 'Each OP gets its own viewshed raster; final recommendation uses greedy max-coverage over AO cells.',
-    'LocalPeaksEngine': 'Neighborhood comparison filters false peaks; prominence and isolation thresholds control mission-scale sensitivity.',
-    'DeadGroundMapper': 'Observer-to-cell terrain profiles classify masked ground, useful for concealed movement and blind zones.',
-    'LOSEngine': 'Line-of-sight rays compare terrain elevation against the observer-to-target sightline.',
-    'WeaponEffectEngine': 'Weapon presets provide range bands and elevation envelope; terrain masking is mainly a 3D refinement.',
-    'TrajectoryEngine': 'Projectile path depends on origin, target/range, launch parameters, and terrain/elevation context.',
-    'BufferEngine': 'Buffers are distance-based graphics around sources; overlap highlights contested or mutually covered areas.',
-    'CorridorEngine': 'Dense route segments are scored against corridor width and nearby threat geometries.',
-    'EffectEngine / FlightEngine': 'Effects are radius overlays; flight workflows focus on UAV routing and coverage visualization.',
+    // ── Core Features ─────────────────────────────────────────────────────
+    'Drawing & Symbol Creation': 'SketchViewModel drives point/polyline/polygon draw modes. Symbol class is resolved via Mapper from Symbols.json metadata, then DrawEssentials + Amplifier wrap the geometry. On draw events, MeasurementEngine + ProximityEngine + DrawingCueEngine attach live overlays; on complete the final Graphic is routed to FORCE / TACT_PT / TACT layers by symbol geometry type, undo is pushed, and AnnotationEngine refreshes labels.',
+    'Symbol Catalog': 'SymbolMetadataService loads Symbols.json into an in-memory SIDC → SymbolDefinition map indexed by key, name tokens, and SymGeoType. Autocomplete uses prefix + token-substring matching with rank by Class. Selection sets the active class, parameters, and default DrawEssentials; Mapper resolves the class name into the concrete TS/JS symbol implementation registered on the engine.',
+    'Edit': 'EditEngine activates SketchViewModel’s move tool for point symbols and its transform tool (move + rotate + scale) for polylines / polygons; reshape uses draggable control-point handles on stored CTRL_PTS. A pre-edit snapshot (GEOM + CTRL_PTS + BASE_LN_PTS) is captured before activation so Cancel restores it. On complete the symbol re-renders, annotations refresh, and a single labelled undo entry is pushed.',
+    'Control Points': 'Reshape draws one handle Graphic per entry in the symbol’s CTRL_PTS array on a dedicated EDIT_HANDLES layer. Drag events update the source array, then symbol create/redraw rebuilds geometry through the same pipeline used at draw time. Handle redraws are coalesced via requestAnimationFrame to keep panning responsive; BASE_LN_PTS stays in sync with CTRL_PTS for line-anchored amplifiers.',
+    'Selection': 'SelectionEngine maintains a Set<Graphic> across managed symbol layers with click / Shift-click toggle and a SketchViewModel-driven lasso polygon. Highlights use ArcGIS LayerView.highlight() so the selection survives layer redraws. Filters (SIDC, echelon, identity, SymGeoType) read attributes + DrawEssentials and apply across all symbol layers at once.',
+    'Batch Selection Operations': 'Operations compute geometry deltas from selected centroids/extents and apply them in one atomic pass. Alignment uses min/max projection along the chosen axis; distribution uses equal-spacing between extremes; arrangement (square / triangle / inverted-triangle) positions members on a generated layout grid. Each operation pushes one undo entry that captures pre-op snapshots for every affected graphic.',
+    'Copy / Paste': 'ClipboardEngine deep-clones selected graphics via Graphic.clone(), preserving geometry, symbol, DrawEssentials, Amplifier, and attributes. Paste computes the clipboard centroid, then offsets every clone by (paste-point − centroid) to preserve relative formation layout. Offset-paste accepts a distance + bearing for radial expansion. Each paste is one undo entry.',
+    'Undo / Redo': 'UndoRedoManager owns LIFO undo / redo stacks of labelled closures plus pre-edit snapshots (geometry, CTRL_PTS, BASE_LN_PTS, additional-graphics state). EditEngine fires before-edit events that push snapshots and after-edit events that finalize closures. New operations clear the redo stack; clear-all drops both stacks to release Graphic references for GC.',
+    'Context Menu': 'ContextMenuManager listens for view "pointer-down" with button 2, hit-tests through hitTest(), and resolves the topmost managed graphic + its layer ID. Static menu items are registered per layer ID; dynamic providers add runtime entries (analysis, deployments, measurement). Trees are grouped by action class (edit / select / clipboard / measure / analyze) and rendered as a positioned HTML overlay.',
+    'Measurement': 'Geometry updates feed geometryEngine for geodesic length / area, and a per-segment cosine-law bearing with optional magnetic-declination offset. Optional 3D slant range uses observer-to-target elevation delta. Auto-unit picks m↔km or ft↔mi by magnitude; march ETA divides length by speedKmh; road ETA defers to the optional RoadNetwork service and falls back silently to straight-line.',
+    'Drawing Assistance': 'DrawingCueEngine maintains a dedicated cue layer and a debounced (50 ms) pointer handler. Cues are generated from the last committed control point and current cursor: rubber-band polyline, angular guides (snap by snapIntervalDeg with snapThresholdDeg tolerance), distance rings with an adaptive interval driven by view scale, nearby-highlight rings, and a magnetic-compass widget with declination offset.',
+    'Proximity / Snapping': 'Per pointer-move, candidate graphics are snapshotted from configured target layers and bbox-pre-filtered against a screen-space halfDiag extent. Survivors are tested for nearest vertex / nearest coordinate within snapRadiusPx; the winner renders a reusable dot + dashed line + distance label and emits proximity-snap / proximity-clear / proximity-hint document events.',
+    'MGRS': 'MGRSEngine derives the visible extent from the active view, computes Grid Zone Designator, 100 km, 10 km, 1 km, and 100 m cells using UTM ↔ MGRS conversion, and emits per-level polyline + label graphics on its own MGRS layer. Level visibility is gated by zoom thresholds (or explicit toggles); a debounced rebuild runs on view extent / zoom changes so 2D and 3D stay in sync.',
+    'Import / Export': 'SerializationEngine writes JSON-safe records (SIDC + GEOM + CTRL_PTS + BASE_LN_PTS + DrawEssentials + Amplifier + attributes). IOEngine handles file dialogs, base64 / Blob download, and format dispatch (PAMS8 JSON, Plan JSON, GeoJSON, templates). Restore replays the rendering pipeline through SymbolEngine.initialize() so the result matches an interactively drawn symbol bit-for-bit.',
+    'Settings / Widgets': 'Per-feature widgets own a SettingsManifest (schema + defaults). UI changes dispatch a settingsChanged CustomEvent on window; SymbolEngine.onSettingChanged(path, value) walks the runtime settings tree and forwards the patch to active engines via setOptions / updateConfig. Feature flags toggle subsystem availability at runtime without rebuilding the engine.',
+
+    // ── Engines ──────────────────────────────────────────────────────────
+    'SymbolEngine': 'Central mediator. Owns GraphicsLayerManager (FORCE, TACT, TACT_PT, ANNOTATION, SKETCH), wires SketchViewModel, instantiates and disposes sub-engines on view switch, listens for symbol onDrawProgress / onDrawEnd CustomEvents, exposes the public API (addMilSymbolAtCenter, clearAllGraphics, undo, redo, copy / paste …), and routes settingsChanged events to active engines.',
+    'EditEngine': 'Activates SketchViewModel’s move tool for points and its transform tool (move + rotate + scale) for poly geometries; reshape uses a dedicated handle layer with rAF-coalesced drag updates. Mixed-selection transforms compute a shared anchor + rotation around the centroid so grouped point + line + polygon members move coherently. Emits changeInSymbol / scalePointSymbol events for undo + annotation.',
+    'SelectionEngine': 'Tracks selected graphics in a Map<id, Graphic> across symbol layers with ArcGIS highlight tinting. Implements click / Shift-toggle / lasso (SketchViewModel polygon) selection, clone-drag (Ctrl-drag duplicate), batch alignment / distribution / formation arrange, filter selection (SIDC, echelon, identity, geometry type), and emits selectionChange events.',
+    'ClipboardEngine': 'Deep-clones source graphics; computes the source centroid and rebuilds each member at (target − centroid + memberOffset) so formations preserve relative layout. Offset-paste accepts a vector (distance + bearing) for radial expansion. Integrates with UndoRedoManager so each paste is one entry, and triggers AnnotationEngine for restored labels.',
+    'UndoRedoManager': 'LIFO undo + redo stacks of { label, undo, redo } closures. Pre-edit snapshots capture geometry, CTRL_PTS, BASE_LN_PTS, and any additional-graphics state before EditEngine activates. Push clears the redo stack; clear-all drops both stacks to release Graphic references. Public undoCount / redoCount drive UI affordances and the API panel.',
+    'KeyboardShortcutManager': 'Document-level keydown listener that suppresses events targeted at <input>/<textarea>/contenteditable, normalizes Cmd ↔ Ctrl, and dispatches to SymbolEngine delegates (undo, redo, copy, cut, paste, delete, lasso, escape, info, center). Routing favors current edit state, then selection, then last clicked graphic; combos register in declaration order.',
+    'AnnotationEngine': 'Owns the ANNOTATION layer. Reads Amplifier label fields + DrawEssentials placement to position each label relative to its parent geometry (offset by font size). Hides annotations during edit / drag; rebuilds after draw, edit, paste, delete, and selection moves so labels stay attached to symbols. Cooperates with the declutter LabelPlacer when enabled.',
+    'MeasurementEngine': 'On every draw / sketch update event, computes segment length, total length, bearing, geodesic area, bounding-box extent, slant range, and ETA. Uses geometryEngine for geodesic math and an internal formatter for unit + bearing (decimal / mils / quadrant) + autoUnit scaling. Optional road-following ETA via RoadNetworkEngine. Emits measurement-update events for HUD + widgets.',
+    'DrawingCueEngine': 'Cue overlays live on a dedicated GraphicsLayer with a 50 ms debounce on pointer-move. Active cues: rubber band, angular guides + protractor arc + fan, anchor cross, distance rings (fixed or adaptive to view scale, capped at maxOuterKm), nearby-highlight rings, cursor coordinate label, and the multi-instance magnetic compass widget.',
+    'ProximityEngine': 'Per pointer-move, snapshots candidates from target layers, bbox-pre-filters by screen-space halfDiag, then tests nearest vertex / nearest coordinate within snapRadiusPx. Reuses dot + dashed line + label graphics across frames to avoid GC pressure. Emits proximity-snap / proximity-clear / proximity-hint document events for HUD + audit logs.',
+    'MGRSEngine': 'Derives extent from the active view and rebuilds the overlay on extent / zoom changes (debounced). Generates GZD, 100 km, 10 km, 1 km, and 100 m cell polylines + labels using UTM ↔ MGRS conversion. Per-level visibility is gated by zoom thresholds, with independent color / opacity / width settings; 2D and 3D share the same rebuild path.',
+    'Symbol Support Engines': 'SymbolMetadataService loads + indexes Symbols.json by SIDC, key, and name tokens; Mapper resolves class names into concrete TS/JS symbol implementations; TemplateEngine pre-fills DrawEssentials + Amplifier for known SIDC patterns and persists user templates; TextBoxEngine draws multi-line styled text graphics. Keeps catalog and decoration concerns out of SymbolEngine.',
+    'Visualization / Declutter': 'SpatialIndex is a grid-bucketed R-tree-style index over symbol screen positions for O(1) neighbour queries. ClusterEngine groups by radius + identity; PriorityResolver ranks by echelon + identity to decide who survives; MarkerDisperser fans co-located symbols out radially; LadderEngine builds halyard-style stacks at high zoom; LabelPlacer runs an 8-position try-fit with leader lines on overflow. DeclutterEngine orchestrates the pipeline and re-runs on pan / zoom with debounce.',
+    'MorphixEngine': 'Reads editable symbol state into a kind-aware shape (Point / FPoint / Line / Area), then applies partial patches (amplifier, drawEssentials, options, extraSettings) through the same render pipeline used at draw time. Geometry, CTRL_PTS, and BASE_LN_PTS are preserved; emits update events so AnnotationEngine and UndoRedoManager pick up changes automatically.',
+    'ImportExport Engines': 'SerializationEngine maps Graphic → JSON-safe symbol records (SIDC + GEOM + CTRL_PTS + BASE_LN_PTS + DrawEssentials + Amplifier + attributes). Plan.ts owns the PlanDocument schema (metadata + symbols[] + overlays[]). IOEngine drives file dialogs, base64 / Blob download, and format dispatch (PAMS8 JSON, Plan JSON, GeoJSON, templates). Restore replays SymbolEngine.initialize() per record so output matches interactive draws.',
+    'DeploymentBuilder / MissionPlanner': 'DeploymentBuilder reads reusable formation templates and places them at a user-anchored centroid, rebuilding constituent symbols through the SymbolEngine draw pipeline. MissionPlannerEngine composes existing terrain engines (KeyTerrain, OpRanker, DeadGround, Corridor) along a route or AO and emits a ranked MissionTerrainFeature[] for the dashboard rather than duplicating terrain math.',
+    'OCOKA': 'Samples a terrain grid over the AO and scores five OCOKA dimensions: Observation (LOS / viewshed), Cover (terrain masking), Concealment (curvature + vegetation proxy), Key terrain (delegated to KeyTerrain output), Avenues (corridors via CorridorEngine). Dimension weights are configurable; output is a per-cell 0–100 heatmap plus ranked corridors with width / trafficability / threat exposure scores. Degrades to terrain-only when the road service is offline.',
+    'RoadNetwork / Trafficability': 'RoadNetworkEngine wraps an optional external road service: queries nearest road, performs A* / Dijkstra-style routing, and classifies edges (highway / major / minor / track). TrafficabilityEngine augments route segments with terrain-derived attributes (slope, vegetation proxy, wetness) per road class and assigns GO / SLOW-GO / NO-GO. Both fail gracefully — failed calls leave straight-line or terrain-only results intact.',
+
+    // ── Analysis Engines ──────────────────────────────────────────────────
+    'KeyTerrainIdentificationEngine': 'Samples a configurable elevation grid (20–70 m cell) via ElevationSampler, applies a 3×3 Gaussian smooth, derives Laplacian + plan / profile curvature for landform class, computes prominence within a radius, and runs 36-ray viewshed scoring at each candidate. Ranks features (dominant ground / ridge / saddle / re-entrant / spur) by 35% prominence + 40% viewshed + 15% elevation + 10% type weight.',
+    'PosDefScorerEngine': 'Six factors scored 0–20 from the observer point: observation (% visible rays), fields of fire (threat-sector coverage), cover-from-fire (terrain masking), cover-from-view (reverse LOS blocking), egress (terrain + optional RoadNetwork routing), rear dead ground (cells below the rear horizon). Ray casting defaults to 10° resolution and uses haversine for ground distances. Composite 0–100 with per-factor weights; emits radar + LOS spokes + egress overlays.',
+    'OpRankerEngine': 'For each candidate OP, casts horizon rays at ~2° resolution out to maxRange (3.5 km default) and rasterises a coverage layer on a 30–80 m cell grid inside the AO. Combines results with a greedy max-coverage set selector to recommend an optimal k-OP team that maximises unique AO coverage; outputs per-OP unique%, total%, gap area, and an aggregated count heatmap with road-access enrichment.',
+    'LocalPeaksEngine': 'ElevationSampler builds a regular grid over the AOI, 3×3 Gaussian smooths it, then scans 3×3 neighbourhoods for local maxima / minima. Each candidate is filtered by topographic prominence (height above the connecting saddle) and isolation (distance to the next higher peak). Surviving features rank by a prominence × elevation × isolation composite; outputs CSV / GeoJSON / Shapefile and an elevation profile cross-section.',
+    'DeadGroundMapper': 'Builds a per-bearing horizon cache from the observer, then samples AO cells and classifies each by (observer-LOS angle − target-ground angle). Renders depth-coloured heatmap (continuous ramp), binary visible / masked, range-fade, or quadrant-hued modes. 3D adds a viewshed dome (azimuth × elevation rays) with cap / skirt mesh and contour bands.',
+    'LOSEngine': 'Ray-casts at fixed angular resolution between observer and target using ElevationSampler; checks target slope against the maximum intervening terrain slope. 3D views additionally call ArcGIS ViewshedAnalysis for dome rendering. Maintains three layers (los-analysis, los-observer, los-committed) so working / persisted results stay separate; supports multi-target lists and per-target visible / blocked segments.',
+    'WeaponEffectEngine': 'Builds a directional sector from a preset (Direct Fire / Mortar / Artillery 155 / ATGM / Anti-Air / Anti-Armor) parameterised by min / max range (50 m – 30 km), azimuth spread (60–360°), elevation envelope (−10°–90°), and extrude height. Generates inner / outer geodesic rings + a 3D dome via ENU → WGS84 transform. Optional terrain masking subtracts blocked cells.',
+    'TrajectoryEngine': 'Solves projectile motion via an RK4-style ODE integrator with eight presets (60 / 81 / 120 mm mortars, 105 / 155 mm artillery, ATGM, RPG-7, loitering munition). Inputs: launch angle, muzzle velocity 115–827 m/s, azimuth, wind speed / bearing, Coriolis. Outputs apogee, time-of-flight, impact point, and a preset CEP (1–70 m). Renders arc + apogee mark + impact circle.',
+    'BufferEngine': 'Builds geodesic ring polygons at configurable radii around single / unioned / corridor sources using geometryEngine.geodesicBuffer. Six presets cover 155 mm artillery, 81 mm mortar, ATGM, IED / VBIED, NBC, and observation post; rings are colour-coded by threat tier (safe / warning / lethal / dead / exclusion / info). Overlaps are highlighted via union + intersect for contested areas.',
+    'CorridorEngine': 'Densifies the route to 20–40 m segments, scores each segment for terrain exposure (slope + LOS-ability to threats), and detects chokepoints by clustering high-exposure cells. Threat overlays at 700–3000 m radius shade segments by risk tier. Optional road-following via RoadNetworkEngine adds true distance, drive time, and trafficability; emits an average exposure score 0–100 plus per-segment rendering.',
+    'EffectEngine / FlightEngine': 'EffectEngine draws munition-effects circles around source graphics using preset radii (frag, blast, casualty), colour-banded by lethality tier. FlightEngine models low-level helicopter / UAV legs with terrain masking, wind drift, and optional road-following for ingress; renders the flight path, LOS-to-threat shading, and nap-of-earth feasibility with altitude / climb / turn-radius constraints.',
   };
   return byTitle[slide.title] || 'Uses ArcGIS graphics, managed layers, symbol metadata, and runtime settings to keep the workflow consistent in 2D and 3D.';
 }
@@ -468,25 +474,85 @@ function catalogSlideXml() {
 
 function indexSlideXml(rel) {
   const parts = [baseBg(), header(20, 'Clickable Index', 'Navigation', C.core)];
-  parts.push(textBox(30, 72, 126, 1120, 28, 'Click any item to jump to the feature intro slide. Use Back to Index on each slide to return here.', { size: 14, color: C.muted }));
-  parts.push(textBox(31, 82, 168, 440, 28, 'Core Features', { size: 18, color: C.core, bold: true }));
-  parts.push(textBox(32, 626, 168, 440, 28, 'Engines', { size: 18, color: C.engine, bold: true }));
-  const coreRows = coreItems.map((it) => ({ label: it.title, slide: findFeatureSlideNo(it.title), accent: C.core }));
-  const engineRows = [
-    ...engineItems.map((it) => ({ label: it[0], slide: findFeatureSlideNo(it[0]), accent: C.engine })),
-    ...analysisItems.map((it) => ({ label: it[0], slide: findFeatureSlideNo(it[0]), accent: C.analysis })),
+  parts.push(textBox(30, 72, 126, 1120, 22, 'Click any tile to jump to its feature slide. Each slide has a Back to Index button.', { size: 12.5, color: C.muted }));
+
+  // Column geometry — three balanced columns with consistent gutters
+  const colY = 168;            // top of the section header strip
+  const headerH = 44;          // section header strip height
+  const tileTop = colY + headerH + 14;
+  const tileH = 30;
+  const tileGap = 6;
+
+  // Column-1 (Core): full list of coreItems
+  const col1X = 56;
+  const col1W = 380;
+
+  // Column-2 (Engines): 9 engine slots split into two micro-columns of width 184 + 184
+  const col2X = 456;
+  const col2W = 380;
+
+  // Column-3 (Analysis): 11 analysis slots in a single narrow column
+  const col3X = 856;
+  const col3W = 372;
+
+  const sections = [
+    { x: col1X, w: col1W, title: 'Core Features',    accent: C.core,     items: coreItems.map((it) => ({ label: it.title, slide: findFeatureSlideNo(it.title) })) },
+    { x: col2X, w: col2W, title: 'Engines',          accent: C.engine,   items: engineItems.map((it) => ({ label: it[0], slide: findFeatureSlideNo(it[0]) })) },
+    { x: col3X, w: col3W, title: 'Analysis Engines', accent: C.analysis, items: analysisItems.map((it) => ({ label: it[0], slide: findFeatureSlideNo(it[0]) })) },
   ];
-  coreRows.forEach((it, i) => {
-    const y = 204 + i * 36;
-    parts.push(shape(100 + i, 82, y, 470, 28, { text: it.label, fill: '1A252A', line: it.accent, color: C.ink, size: 11.5, bold: true, linkTo: true, linkToRel: rel.add(it.slide) }));
+
+  let idCursor = 100;
+  sections.forEach((sec, sIdx) => {
+    // Section header strip — accent rail + title + count badge
+    parts.push(shape(idCursor++, sec.x, colY, 6, headerH, { fill: sec.accent, line: 'none', geom: 'rect' }));
+    parts.push(textBox(idCursor++, sec.x + 16, colY + 4, sec.w - 80, 18, String(sIdx + 1).padStart(2, '0'), { size: 9.5, color: sec.accent, bold: true }));
+    parts.push(textBox(idCursor++, sec.x + 16, colY + 18, sec.w - 80, 26, sec.title, { size: 17, color: C.ink, bold: true, valign: 'mid' }));
+    // Count badge (pill)
+    const badgeW = 56;
+    const badgeX = sec.x + sec.w - badgeW;
+    parts.push(shape(idCursor++, badgeX, colY + 12, badgeW, 22, { fill: '17242A', line: sec.accent, lineWidth: 1, text: `${sec.items.length} items`, size: 9.5, color: sec.accent, bold: true, align: 'ctr', geom: 'roundRect' }));
+    // Divider under header
+    parts.push(line(idCursor++, sec.x, colY + headerH + 4, sec.x + sec.w, colY + headerH + 4, sec.accent, 1.2));
+
+    // Items — two micro-columns when the list is long (engines has 18 entries)
+    const useSplit = sec.items.length > 11;
+    const microW = useSplit ? Math.floor((sec.w - 8) / 2) : sec.w;
+    const halfLen = useSplit ? Math.ceil(sec.items.length / 2) : sec.items.length;
+
+    sec.items.forEach((it, i) => {
+      const micro = useSplit && i >= halfLen ? 1 : 0;
+      const row = useSplit && i >= halfLen ? i - halfLen : i;
+      const tx = sec.x + (useSplit ? micro * (microW + 8) : 0);
+      const ty = tileTop + row * (tileH + tileGap);
+
+      // Tile body
+      parts.push(shape(idCursor++, tx, ty, microW, tileH, { fill: '141C20', line: 'none', geom: 'roundRect', linkTo: true, linkToRel: rel.add(it.slide) }));
+      // Accent left rail
+      parts.push(shape(idCursor++, tx, ty, 3, tileH, { fill: sec.accent, line: 'none', geom: 'rect' }));
+      // Index number (small, muted)
+      const numW = 28;
+      parts.push(textBox(idCursor++, tx + 8, ty, numW, tileH, String(i + 1).padStart(2, '0'), { size: 8.5, color: sec.accent, bold: true, valign: 'mid', align: 'ctr', font: 'Consolas' }));
+      // Label (truncated client-side via column width — PPTX wraps)
+      const labelX = tx + 8 + numW + 4;
+      const labelW = microW - (8 + numW + 4) - 18;
+      parts.push(textBox(idCursor++, labelX, ty, labelW, tileH, it.label, { size: useSplit ? 9.5 : 10.5, color: C.ink, bold: true, valign: 'mid' }));
+      // Arrow chevron on the right
+      parts.push(textBox(idCursor++, tx + microW - 18, ty, 14, tileH, '›', { size: 14, color: sec.accent, bold: true, valign: 'mid', align: 'ctr' }));
+    });
   });
-  engineRows.forEach((it, i) => {
-    const col = i < 15 ? 0 : 1;
-    const row = i < 15 ? i : i - 15;
-    const x = col === 0 ? 626 : 900;
-    const y = 204 + row * 36;
-    parts.push(shape(150 + i, x, y, 250, 28, { text: it.label, fill: '1A252A', line: it.accent, color: C.ink, size: 9.7, bold: true, linkTo: true, linkToRel: rel.add(it.slide) }));
-  });
+
+  // Footer legend strip
+  const footerY = 660;
+  parts.push(line(idCursor++, 56, footerY - 8, 1228, footerY - 8, '33444B', 0.8));
+  parts.push(shape(idCursor++, 56, footerY, 8, 8, { fill: C.core, line: 'none', geom: 'rect' }));
+  parts.push(textBox(idCursor++, 70, footerY - 6, 160, 22, 'Core', { size: 10, color: C.muted, valign: 'mid' }));
+  parts.push(shape(idCursor++, 130, footerY, 8, 8, { fill: C.engine, line: 'none', geom: 'rect' }));
+  parts.push(textBox(idCursor++, 144, footerY - 6, 160, 22, 'Engine', { size: 10, color: C.muted, valign: 'mid' }));
+  parts.push(shape(idCursor++, 210, footerY, 8, 8, { fill: C.analysis, line: 'none', geom: 'rect' }));
+  parts.push(textBox(idCursor++, 224, footerY - 6, 160, 22, 'Analysis', { size: 10, color: C.muted, valign: 'mid' }));
+  const totalCount = coreItems.length + engineItems.length + analysisItems.length;
+  parts.push(textBox(idCursor++, 980, footerY - 6, 248, 22, `${totalCount} features · 93 slides`, { size: 10, color: C.muted, bold: true, valign: 'mid', align: 'r', font: 'Consolas' }));
+
   return slideXml(parts.join(''));
 }
 

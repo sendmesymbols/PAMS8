@@ -105,656 +105,3394 @@
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="685800" y="1200150"/><a:ext cx="10668000" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="685800" y="1200150"/><a:ext cx="10668000" cy="209550"/></a:xfrm>
         <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
         <a:noFill/>
         <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Click any item to jump to the feature intro slide. Use Back to Index on each slide to return here.</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1250"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Click any tile to jump to its feature slide. Each slide has a Back to Index button.</a:t></a:r><a:endParaRPr lang="en-US" sz="1250"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="31" name="Shape 31"></p:cNvPr>
+        <p:cNvPr id="100" name="Shape 100"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="1600200"/><a:ext cx="4191000" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="533400" y="1600200"/><a:ext cx="57150" cy="419100"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="101" name="Shape 101"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="685800" y="1638300"/><a:ext cx="2857500" cy="171450"/></a:xfrm>
         <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
         <a:noFill/>
         <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1800" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Core Features</a:t></a:r><a:endParaRPr lang="en-US" sz="1800"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>01</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="32" name="Shape 32"></p:cNvPr>
+        <p:cNvPr id="102" name="Shape 102"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="1600200"/><a:ext cx="4191000" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="685800" y="1771650"/><a:ext cx="2857500" cy="247650"/></a:xfrm>
         <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
         <a:noFill/>
         <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1800" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Engines</a:t></a:r><a:endParaRPr lang="en-US" sz="1800"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1700" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Core Features</a:t></a:r><a:endParaRPr lang="en-US" sz="1700"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="100" name="Shape 100"><a:hlinkClick r:id="rId2" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="103" name="Shape 103"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="1943100"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="3619500" y="1714500"/><a:ext cx="533400" cy="209550"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
+        <a:solidFill><a:srgbClr val="17242A"/></a:solidFill>
         <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Drawing &amp; Symbol Creation</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>15 items</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
     </p:sp>
-    <p:sp>
-      <p:nvSpPr>
-        <p:cNvPr id="101" name="Shape 101"><a:hlinkClick r:id="rId3" action="ppaction://hlinksldjump"/></p:cNvPr>
-        <p:cNvSpPr/>
-        <p:nvPr/>
-      </p:nvSpPr>
+    <p:cxnSp>
+      <p:nvCxnSpPr><p:cNvPr id="104" name="Line 104"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="2286000"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:xfrm flipV="0"><a:off x="533400" y="2057400"/><a:ext cx="3619500" cy="9525"/></a:xfrm>
+        <a:prstGeom prst="line"><a:avLst/></a:prstGeom>
+        <a:ln w="15240"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Symbol Catalog</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
-    </p:sp>
+      <p:style/>
+    </p:cxnSp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="102" name="Shape 102"><a:hlinkClick r:id="rId4" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="105" name="Shape 105"><a:hlinkClick r:id="rId2" action="ppaction://hlinksldjump"/></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="2628900"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="533400" y="2152650"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Edit</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="103" name="Shape 103"><a:hlinkClick r:id="rId5" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="106" name="Shape 106"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="2971800"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="533400" y="2152650"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Control Points</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="104" name="Shape 104"><a:hlinkClick r:id="rId6" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="107" name="Shape 107"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="3314700"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="609600" y="2152650"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Selection</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>01</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="105" name="Shape 105"><a:hlinkClick r:id="rId7" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="108" name="Shape 108"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="3657600"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="914400" y="2152650"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Batch Selection Operations</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Drawing &amp; Symbol Creation</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="106" name="Shape 106"><a:hlinkClick r:id="rId8" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="109" name="Shape 109"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="4000500"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="2133600" y="2152650"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Copy / Paste</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="107" name="Shape 107"><a:hlinkClick r:id="rId9" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="110" name="Shape 110"><a:hlinkClick r:id="rId3" action="ppaction://hlinksldjump"/></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="4343400"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="533400" y="2495550"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Undo / Redo</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="108" name="Shape 108"><a:hlinkClick r:id="rId10" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="111" name="Shape 111"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="4686300"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="533400" y="2495550"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Context Menu</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="109" name="Shape 109"><a:hlinkClick r:id="rId11" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="112" name="Shape 112"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="5029200"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="609600" y="2495550"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Measurement</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>02</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="110" name="Shape 110"><a:hlinkClick r:id="rId12" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="113" name="Shape 113"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="5372100"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="914400" y="2495550"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Drawing Assistance</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Symbol Catalog</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="111" name="Shape 111"><a:hlinkClick r:id="rId13" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="114" name="Shape 114"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="5715000"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="2133600" y="2495550"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Proximity / Snapping</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="112" name="Shape 112"><a:hlinkClick r:id="rId14" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="115" name="Shape 115"><a:hlinkClick r:id="rId4" action="ppaction://hlinksldjump"/></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="6057900"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="533400" y="2838450"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>MGRS</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="113" name="Shape 113"><a:hlinkClick r:id="rId15" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="116" name="Shape 116"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="6400800"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="533400" y="2838450"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Import / Export</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="114" name="Shape 114"><a:hlinkClick r:id="rId16" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="117" name="Shape 117"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="781050" y="6743700"/><a:ext cx="4476750" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="609600" y="2838450"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1150" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Settings / Widgets</a:t></a:r><a:endParaRPr lang="en-US" sz="1150"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>03</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="150" name="Shape 150"><a:hlinkClick r:id="rId17" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="118" name="Shape 118"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="1943100"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="914400" y="2838450"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Edit</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="119" name="Shape 119"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2133600" y="2838450"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="120" name="Shape 120"><a:hlinkClick r:id="rId5" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="533400" y="3181350"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="121" name="Shape 121"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="533400" y="3181350"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="122" name="Shape 122"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="609600" y="3181350"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>04</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="123" name="Shape 123"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="914400" y="3181350"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Control Points</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="124" name="Shape 124"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2133600" y="3181350"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="125" name="Shape 125"><a:hlinkClick r:id="rId6" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="533400" y="3524250"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="126" name="Shape 126"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="533400" y="3524250"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="127" name="Shape 127"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="609600" y="3524250"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>05</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="128" name="Shape 128"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="914400" y="3524250"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Selection</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="129" name="Shape 129"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2133600" y="3524250"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="130" name="Shape 130"><a:hlinkClick r:id="rId7" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="533400" y="3867150"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="131" name="Shape 131"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="533400" y="3867150"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="132" name="Shape 132"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="609600" y="3867150"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>06</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="133" name="Shape 133"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="914400" y="3867150"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Batch Selection Operations</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="134" name="Shape 134"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2133600" y="3867150"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="135" name="Shape 135"><a:hlinkClick r:id="rId8" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="533400" y="4210050"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="136" name="Shape 136"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="533400" y="4210050"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="137" name="Shape 137"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="609600" y="4210050"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>07</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="138" name="Shape 138"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="914400" y="4210050"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Copy / Paste</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="139" name="Shape 139"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2133600" y="4210050"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="140" name="Shape 140"><a:hlinkClick r:id="rId9" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="533400" y="4552950"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="141" name="Shape 141"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="533400" y="4552950"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="142" name="Shape 142"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="609600" y="4552950"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>08</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="143" name="Shape 143"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="914400" y="4552950"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Undo / Redo</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="144" name="Shape 144"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2133600" y="4552950"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="145" name="Shape 145"><a:hlinkClick r:id="rId10" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="2152650"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="146" name="Shape 146"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="2152650"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="147" name="Shape 147"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2457450" y="2152650"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>09</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="148" name="Shape 148"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2762250" y="2152650"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Context Menu</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="149" name="Shape 149"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="3981450" y="2152650"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="150" name="Shape 150"><a:hlinkClick r:id="rId11" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="2495550"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="151" name="Shape 151"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="2495550"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="152" name="Shape 152"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2457450" y="2495550"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>10</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="153" name="Shape 153"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2762250" y="2495550"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Measurement</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="154" name="Shape 154"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="3981450" y="2495550"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="155" name="Shape 155"><a:hlinkClick r:id="rId12" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="2838450"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="156" name="Shape 156"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="2838450"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="157" name="Shape 157"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2457450" y="2838450"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>11</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="158" name="Shape 158"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2762250" y="2838450"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Drawing Assistance</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="159" name="Shape 159"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="3981450" y="2838450"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="160" name="Shape 160"><a:hlinkClick r:id="rId13" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="3181350"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="161" name="Shape 161"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="3181350"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="162" name="Shape 162"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2457450" y="3181350"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>12</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="163" name="Shape 163"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2762250" y="3181350"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Proximity / Snapping</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="164" name="Shape 164"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="3981450" y="3181350"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="165" name="Shape 165"><a:hlinkClick r:id="rId14" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="3524250"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="166" name="Shape 166"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="3524250"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="167" name="Shape 167"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2457450" y="3524250"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>13</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="168" name="Shape 168"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2762250" y="3524250"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>MGRS</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="169" name="Shape 169"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="3981450" y="3524250"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="170" name="Shape 170"><a:hlinkClick r:id="rId15" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="3867150"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="171" name="Shape 171"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="3867150"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="172" name="Shape 172"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2457450" y="3867150"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>14</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="173" name="Shape 173"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2762250" y="3867150"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Import / Export</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="174" name="Shape 174"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="3981450" y="3867150"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="175" name="Shape 175"><a:hlinkClick r:id="rId16" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="4210050"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="176" name="Shape 176"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2381250" y="4210050"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="177" name="Shape 177"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2457450" y="4210050"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>15</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="178" name="Shape 178"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2762250" y="4210050"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Settings / Widgets</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="179" name="Shape 179"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="3981450" y="4210050"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="180" name="Shape 180"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4343400" y="1600200"/><a:ext cx="57150" cy="419100"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="181" name="Shape 181"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4495800" y="1638300"/><a:ext cx="2857500" cy="171450"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>02</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="182" name="Shape 182"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4495800" y="1771650"/><a:ext cx="2857500" cy="247650"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1700" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Engines</a:t></a:r><a:endParaRPr lang="en-US" sz="1700"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="183" name="Shape 183"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7429500" y="1714500"/><a:ext cx="533400" cy="209550"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="17242A"/></a:solidFill>
         <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>SymbolEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>18 items</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
     </p:sp>
-    <p:sp>
-      <p:nvSpPr>
-        <p:cNvPr id="151" name="Shape 151"><a:hlinkClick r:id="rId18" action="ppaction://hlinksldjump"/></p:cNvPr>
-        <p:cNvSpPr/>
-        <p:nvPr/>
-      </p:nvSpPr>
+    <p:cxnSp>
+      <p:nvCxnSpPr><p:cNvPr id="184" name="Line 184"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="2286000"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm flipV="0"><a:off x="4343400" y="2057400"/><a:ext cx="3619500" cy="9525"/></a:xfrm>
+        <a:prstGeom prst="line"><a:avLst/></a:prstGeom>
+        <a:ln w="15240"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>EditEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
-    </p:sp>
+      <p:style/>
+    </p:cxnSp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="152" name="Shape 152"><a:hlinkClick r:id="rId19" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="185" name="Shape 185"><a:hlinkClick r:id="rId17" action="ppaction://hlinksldjump"/></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="2628900"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="4343400" y="2152650"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>SelectionEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="153" name="Shape 153"><a:hlinkClick r:id="rId20" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="186" name="Shape 186"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="2971800"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="4343400" y="2152650"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>ClipboardEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="154" name="Shape 154"><a:hlinkClick r:id="rId21" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="187" name="Shape 187"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="3314700"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="4419600" y="2152650"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>UndoRedoManager</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>01</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="155" name="Shape 155"><a:hlinkClick r:id="rId22" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="188" name="Shape 188"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="3657600"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="4724400" y="2152650"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>KeyboardShortcutManager</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>SymbolEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="156" name="Shape 156"><a:hlinkClick r:id="rId23" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="189" name="Shape 189"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="4000500"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="5943600" y="2152650"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>AnnotationEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="157" name="Shape 157"><a:hlinkClick r:id="rId24" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="190" name="Shape 190"><a:hlinkClick r:id="rId18" action="ppaction://hlinksldjump"/></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="4343400"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="4343400" y="2495550"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>MeasurementEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="158" name="Shape 158"><a:hlinkClick r:id="rId25" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="191" name="Shape 191"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="4686300"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="4343400" y="2495550"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>DrawingCueEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="159" name="Shape 159"><a:hlinkClick r:id="rId26" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="192" name="Shape 192"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="5029200"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="4419600" y="2495550"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>ProximityEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>02</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="160" name="Shape 160"><a:hlinkClick r:id="rId27" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="193" name="Shape 193"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="5372100"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="4724400" y="2495550"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>MGRSEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>EditEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="161" name="Shape 161"><a:hlinkClick r:id="rId28" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="194" name="Shape 194"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="5715000"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="5943600" y="2495550"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Symbol Support Engines</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="162" name="Shape 162"><a:hlinkClick r:id="rId29" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="195" name="Shape 195"><a:hlinkClick r:id="rId19" action="ppaction://hlinksldjump"/></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="6057900"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="4343400" y="2838450"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Visualization / Declutter</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="163" name="Shape 163"><a:hlinkClick r:id="rId30" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="196" name="Shape 196"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="6400800"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="4343400" y="2838450"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>MorphixEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="164" name="Shape 164"><a:hlinkClick r:id="rId31" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="197" name="Shape 197"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="5962650" y="6743700"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="4419600" y="2838450"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>ImportExport Engines</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>03</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="165" name="Shape 165"><a:hlinkClick r:id="rId32" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="198" name="Shape 198"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="1943100"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="4724400" y="2838450"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>DeploymentBuilder / MissionPlanner</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>SelectionEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="166" name="Shape 166"><a:hlinkClick r:id="rId33" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="199" name="Shape 199"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="2286000"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="5943600" y="2838450"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>OCOKA</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="167" name="Shape 167"><a:hlinkClick r:id="rId34" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="200" name="Shape 200"><a:hlinkClick r:id="rId20" action="ppaction://hlinksldjump"/></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="2628900"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="4343400" y="3181350"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill></a:ln>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>RoadNetwork / Trafficability</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="168" name="Shape 168"><a:hlinkClick r:id="rId35" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="201" name="Shape 201"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="2971800"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="4343400" y="3181350"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="202" name="Shape 202"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4419600" y="3181350"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>04</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="203" name="Shape 203"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4724400" y="3181350"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>ClipboardEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="204" name="Shape 204"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="5943600" y="3181350"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="205" name="Shape 205"><a:hlinkClick r:id="rId21" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4343400" y="3524250"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="206" name="Shape 206"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4343400" y="3524250"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="207" name="Shape 207"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4419600" y="3524250"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>05</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="208" name="Shape 208"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4724400" y="3524250"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>UndoRedoManager</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="209" name="Shape 209"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="5943600" y="3524250"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="210" name="Shape 210"><a:hlinkClick r:id="rId22" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4343400" y="3867150"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="211" name="Shape 211"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4343400" y="3867150"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="212" name="Shape 212"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4419600" y="3867150"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>06</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="213" name="Shape 213"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4724400" y="3867150"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>KeyboardShortcutManager</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="214" name="Shape 214"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="5943600" y="3867150"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="215" name="Shape 215"><a:hlinkClick r:id="rId23" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4343400" y="4210050"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="216" name="Shape 216"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4343400" y="4210050"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="217" name="Shape 217"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4419600" y="4210050"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>07</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="218" name="Shape 218"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4724400" y="4210050"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>AnnotationEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="219" name="Shape 219"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="5943600" y="4210050"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="220" name="Shape 220"><a:hlinkClick r:id="rId24" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4343400" y="4552950"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="221" name="Shape 221"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4343400" y="4552950"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="222" name="Shape 222"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4419600" y="4552950"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>08</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="223" name="Shape 223"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4724400" y="4552950"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>MeasurementEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="224" name="Shape 224"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="5943600" y="4552950"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="225" name="Shape 225"><a:hlinkClick r:id="rId25" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4343400" y="4895850"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="226" name="Shape 226"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4343400" y="4895850"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="227" name="Shape 227"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4419600" y="4895850"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>09</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="228" name="Shape 228"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="4724400" y="4895850"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>DrawingCueEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="229" name="Shape 229"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="5943600" y="4895850"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="230" name="Shape 230"><a:hlinkClick r:id="rId26" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="2152650"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="231" name="Shape 231"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="2152650"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="232" name="Shape 232"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6267450" y="2152650"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>10</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="233" name="Shape 233"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6572250" y="2152650"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>ProximityEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="234" name="Shape 234"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7791450" y="2152650"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="235" name="Shape 235"><a:hlinkClick r:id="rId27" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="2495550"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="236" name="Shape 236"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="2495550"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="237" name="Shape 237"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6267450" y="2495550"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>11</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="238" name="Shape 238"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6572250" y="2495550"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>MGRSEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="239" name="Shape 239"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7791450" y="2495550"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="240" name="Shape 240"><a:hlinkClick r:id="rId28" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="2838450"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="241" name="Shape 241"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="2838450"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="242" name="Shape 242"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6267450" y="2838450"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>12</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="243" name="Shape 243"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6572250" y="2838450"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Symbol Support Engines</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="244" name="Shape 244"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7791450" y="2838450"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="245" name="Shape 245"><a:hlinkClick r:id="rId29" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="3181350"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="246" name="Shape 246"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="3181350"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="247" name="Shape 247"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6267450" y="3181350"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>13</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="248" name="Shape 248"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6572250" y="3181350"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Visualization / Declutter</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="249" name="Shape 249"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7791450" y="3181350"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="250" name="Shape 250"><a:hlinkClick r:id="rId30" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="3524250"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="251" name="Shape 251"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="3524250"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="252" name="Shape 252"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6267450" y="3524250"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>14</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="253" name="Shape 253"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6572250" y="3524250"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>MorphixEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="254" name="Shape 254"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7791450" y="3524250"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="255" name="Shape 255"><a:hlinkClick r:id="rId31" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="3867150"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="256" name="Shape 256"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="3867150"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="257" name="Shape 257"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6267450" y="3867150"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>15</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="258" name="Shape 258"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6572250" y="3867150"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>ImportExport Engines</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="259" name="Shape 259"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7791450" y="3867150"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="260" name="Shape 260"><a:hlinkClick r:id="rId32" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="4210050"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="261" name="Shape 261"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="4210050"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="262" name="Shape 262"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6267450" y="4210050"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>16</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="263" name="Shape 263"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6572250" y="4210050"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>DeploymentBuilder / MissionPlanner</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="264" name="Shape 264"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7791450" y="4210050"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="265" name="Shape 265"><a:hlinkClick r:id="rId33" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="4552950"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="266" name="Shape 266"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="4552950"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="267" name="Shape 267"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6267450" y="4552950"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>17</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="268" name="Shape 268"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6572250" y="4552950"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>OCOKA</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="269" name="Shape 269"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7791450" y="4552950"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="270" name="Shape 270"><a:hlinkClick r:id="rId34" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="4895850"/><a:ext cx="1771650" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="271" name="Shape 271"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6191250" y="4895850"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="272" name="Shape 272"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6267450" y="4895850"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>18</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="273" name="Shape 273"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="6572250" y="4895850"/><a:ext cx="1219200" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>RoadNetwork / Trafficability</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="274" name="Shape 274"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="7791450" y="4895850"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="275" name="Shape 275"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="1600200"/><a:ext cx="57150" cy="419100"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="276" name="Shape 276"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8305800" y="1638300"/><a:ext cx="2781300" cy="171450"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>03</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="277" name="Shape 277"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8305800" y="1771650"/><a:ext cx="2781300" cy="247650"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1700" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Analysis Engines</a:t></a:r><a:endParaRPr lang="en-US" sz="1700"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="278" name="Shape 278"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="11163300" y="1714500"/><a:ext cx="533400" cy="209550"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="17242A"/></a:solidFill>
         <a:ln w="12700"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>KeyTerrainIdentificationEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="950" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>11 items</a:t></a:r><a:endParaRPr lang="en-US" sz="950"/></a:p></p:txBody>
     </p:sp>
+    <p:cxnSp>
+      <p:nvCxnSpPr><p:cNvPr id="279" name="Line 279"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr>
+      <p:spPr>
+        <a:xfrm flipV="0"><a:off x="8153400" y="2057400"/><a:ext cx="3543300" cy="9525"/></a:xfrm>
+        <a:prstGeom prst="line"><a:avLst/></a:prstGeom>
+        <a:ln w="15240"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill></a:ln>
+      </p:spPr>
+      <p:style/>
+    </p:cxnSp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="169" name="Shape 169"><a:hlinkClick r:id="rId36" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="280" name="Shape 280"><a:hlinkClick r:id="rId35" action="ppaction://hlinksldjump"/></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="3314700"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="8153400" y="2152650"/><a:ext cx="3543300" cy="285750"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill></a:ln>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>PosDefScorerEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="170" name="Shape 170"><a:hlinkClick r:id="rId37" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="281" name="Shape 281"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="3657600"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="8153400" y="2152650"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>OpRankerEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="171" name="Shape 171"><a:hlinkClick r:id="rId38" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="282" name="Shape 282"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="4000500"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="8229600" y="2152650"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>LocalPeaksEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>01</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="172" name="Shape 172"><a:hlinkClick r:id="rId39" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="283" name="Shape 283"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="4343400"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="8534400" y="2152650"/><a:ext cx="2990850" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>DeadGroundMapper</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1050" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>KeyTerrainIdentificationEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="1050"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="173" name="Shape 173"><a:hlinkClick r:id="rId40" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="284" name="Shape 284"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="4686300"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="11525250" y="2152650"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>LOSEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="174" name="Shape 174"><a:hlinkClick r:id="rId41" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="285" name="Shape 285"><a:hlinkClick r:id="rId36" action="ppaction://hlinksldjump"/></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="5029200"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
+        <a:xfrm><a:off x="8153400" y="2495550"/><a:ext cx="3543300" cy="285750"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill></a:ln>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>WeaponEffectEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="175" name="Shape 175"><a:hlinkClick r:id="rId42" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="286" name="Shape 286"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="5372100"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="8153400" y="2495550"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>TrajectoryEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="176" name="Shape 176"><a:hlinkClick r:id="rId43" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="287" name="Shape 287"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="5715000"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="8229600" y="2495550"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>BufferEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>02</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="177" name="Shape 177"><a:hlinkClick r:id="rId44" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="288" name="Shape 288"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="6057900"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="8534400" y="2495550"/><a:ext cx="2990850" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>CorridorEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1050" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>PosDefScorerEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="1050"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
-        <p:cNvPr id="178" name="Shape 178"><a:hlinkClick r:id="rId45" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvPr id="289" name="Shape 289"></p:cNvPr>
         <p:cNvSpPr/>
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="8572500" y="6400800"/><a:ext cx="2381250" cy="266700"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1A252A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill></a:ln>
+        <a:xfrm><a:off x="11525250" y="2495550"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="970" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>EffectEngine / FlightEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="970"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="290" name="Shape 290"><a:hlinkClick r:id="rId37" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="2838450"/><a:ext cx="3543300" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="291" name="Shape 291"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="2838450"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="292" name="Shape 292"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8229600" y="2838450"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>03</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="293" name="Shape 293"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8534400" y="2838450"/><a:ext cx="2990850" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1050" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>OpRankerEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="1050"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="294" name="Shape 294"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="11525250" y="2838450"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="295" name="Shape 295"><a:hlinkClick r:id="rId38" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="3181350"/><a:ext cx="3543300" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="296" name="Shape 296"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="3181350"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="297" name="Shape 297"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8229600" y="3181350"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>04</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="298" name="Shape 298"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8534400" y="3181350"/><a:ext cx="2990850" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1050" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>LocalPeaksEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="1050"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="299" name="Shape 299"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="11525250" y="3181350"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="300" name="Shape 300"><a:hlinkClick r:id="rId39" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="3524250"/><a:ext cx="3543300" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="301" name="Shape 301"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="3524250"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="302" name="Shape 302"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8229600" y="3524250"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>05</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="303" name="Shape 303"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8534400" y="3524250"/><a:ext cx="2990850" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1050" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>DeadGroundMapper</a:t></a:r><a:endParaRPr lang="en-US" sz="1050"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="304" name="Shape 304"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="11525250" y="3524250"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="305" name="Shape 305"><a:hlinkClick r:id="rId40" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="3867150"/><a:ext cx="3543300" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="306" name="Shape 306"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="3867150"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="307" name="Shape 307"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8229600" y="3867150"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>06</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="308" name="Shape 308"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8534400" y="3867150"/><a:ext cx="2990850" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1050" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>LOSEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="1050"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="309" name="Shape 309"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="11525250" y="3867150"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="310" name="Shape 310"><a:hlinkClick r:id="rId41" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="4210050"/><a:ext cx="3543300" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="311" name="Shape 311"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="4210050"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="312" name="Shape 312"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8229600" y="4210050"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>07</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="313" name="Shape 313"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8534400" y="4210050"/><a:ext cx="2990850" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1050" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>WeaponEffectEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="1050"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="314" name="Shape 314"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="11525250" y="4210050"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="315" name="Shape 315"><a:hlinkClick r:id="rId42" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="4552950"/><a:ext cx="3543300" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="316" name="Shape 316"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="4552950"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="317" name="Shape 317"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8229600" y="4552950"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>08</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="318" name="Shape 318"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8534400" y="4552950"/><a:ext cx="2990850" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1050" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>TrajectoryEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="1050"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="319" name="Shape 319"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="11525250" y="4552950"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="320" name="Shape 320"><a:hlinkClick r:id="rId43" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="4895850"/><a:ext cx="3543300" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="321" name="Shape 321"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="4895850"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="322" name="Shape 322"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8229600" y="4895850"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>09</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="323" name="Shape 323"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8534400" y="4895850"/><a:ext cx="2990850" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1050" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>BufferEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="1050"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="324" name="Shape 324"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="11525250" y="4895850"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="325" name="Shape 325"><a:hlinkClick r:id="rId44" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="5238750"/><a:ext cx="3543300" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="326" name="Shape 326"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="5238750"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="327" name="Shape 327"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8229600" y="5238750"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>10</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="328" name="Shape 328"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8534400" y="5238750"/><a:ext cx="2990850" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1050" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>CorridorEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="1050"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="329" name="Shape 329"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="11525250" y="5238750"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="330" name="Shape 330"><a:hlinkClick r:id="rId45" action="ppaction://hlinksldjump"/></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="5581650"/><a:ext cx="3543300" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="141C20"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="331" name="Shape 331"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8153400" y="5581650"/><a:ext cx="28575" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="332" name="Shape 332"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8229600" y="5581650"/><a:ext cx="266700" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="850" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>11</a:t></a:r><a:endParaRPr lang="en-US" sz="850"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="333" name="Shape 333"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="8534400" y="5581650"/><a:ext cx="2990850" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1050" b="1"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>EffectEngine / FlightEngine</a:t></a:r><a:endParaRPr lang="en-US" sz="1050"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="334" name="Shape 334"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="11525250" y="5581650"/><a:ext cx="133350" cy="285750"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" b="1"><a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>›</a:t></a:r><a:endParaRPr lang="en-US" sz="1400"/></a:p></p:txBody>
+    </p:sp>
+    <p:cxnSp>
+      <p:nvCxnSpPr><p:cNvPr id="335" name="Line 335"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr>
+      <p:spPr>
+        <a:xfrm flipV="0"><a:off x="533400" y="6210300"/><a:ext cx="11163300" cy="9525"/></a:xfrm>
+        <a:prstGeom prst="line"><a:avLst/></a:prstGeom>
+        <a:ln w="10160"><a:solidFill><a:srgbClr val="33444B"/></a:solidFill></a:ln>
+      </p:spPr>
+      <p:style/>
+    </p:cxnSp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="336" name="Shape 336"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="533400" y="6286500"/><a:ext cx="76200" cy="76200"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="337" name="Shape 337"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="666750" y="6229350"/><a:ext cx="1524000" cy="209550"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1000"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Core</a:t></a:r><a:endParaRPr lang="en-US" sz="1000"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="338" name="Shape 338"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="1238250" y="6286500"/><a:ext cx="76200" cy="76200"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="EF9F27"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="339" name="Shape 339"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="1371600" y="6229350"/><a:ext cx="1524000" cy="209550"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1000"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Engine</a:t></a:r><a:endParaRPr lang="en-US" sz="1000"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="340" name="Shape 340"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2000250" y="6286500"/><a:ext cx="76200" cy="76200"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="65A7FF"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="341" name="Shape 341"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="2133600" y="6229350"/><a:ext cx="1524000" cy="209550"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1000"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Analysis</a:t></a:r><a:endParaRPr lang="en-US" sz="1000"/></a:p></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="342" name="Shape 342"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="9334500" y="6229350"/><a:ext cx="2362200" cy="209550"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:noFill/>
+        <a:ln><a:noFill/></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr algn="r"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1000" b="1"><a:solidFill><a:srgbClr val="A8B7B1"/></a:solidFill><a:latin typeface="Consolas"/></a:rPr><a:t>44 features · 93 slides</a:t></a:r><a:endParaRPr lang="en-US" sz="1000"/></a:p></p:txBody>
     </p:sp>
     </p:spTree>
   </p:cSld>

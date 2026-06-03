@@ -71,8 +71,12 @@ function overpressureRadius(tntKg: number, targetKPa: number, heightM = 0): numb
     const mid = (lo + hi) / 2;
     if (zToOverpressureKPa(mid) > targetKPa) lo = mid; else hi = mid;
   }
-  const groundR = lo * W3;
-  return Math.sqrt(groundR * groundR + heightM * heightM);
+  // `lo * W3` is the actual (slant) distance from the burst at which the target
+  // overpressure occurs. For an elevated burst the radius felt on the ground is
+  // the horizontal leg of that slant distance, so it *shrinks* with height.
+  const slantR = lo * W3;
+  const groundR = Math.sqrt(Math.max(0, slantR * slantR - heightM * heightM));
+  return groundR;
 }
 
 function fragLethalRadius(tntKg: number, v0MS: number, casingRatio: number): number {
@@ -92,10 +96,10 @@ function thermalRadius(tntKg: number): number {
   return 1.8 * Math.cbrt(tntKg) * Math.pow(tntKg, 0.17);
 }
 
-export function computeEffects(munition: string, structureFactor = 'open_area', detonationHeightOverride: number | null = null): any {
+export function computeEffects(munition: string, structureFactor = 'open_area', tntOverrideKg: number | null = null, detonationHeightOverride: number | null = null): any {
   const m = MUNITION_PRESETS[munition] ?? MUNITION_PRESETS.mortar_81mm;
   const sf = STRUCTURE_FACTORS[structureFactor] ?? STRUCTURE_FACTORS.open_area;
-  const W = m.tntEquivKg;
+  const W = (tntOverrideKg != null && tntOverrideKg > 0) ? tntOverrideKg : m.tntEquivKg;
   const h = detonationHeightOverride ?? m.detonationHeightM;
 
   const rLethalBlast = overpressureRadius(W, 200, h) * sf.blastMult;
@@ -185,9 +189,8 @@ export class EffectEngine {
     }
   }
 
-  open(graphic: Graphic, view: MapView | SceneView): void {
-    this.initialize(view);
-    const attrs = graphic.attributes ?? {};
+  open(graphic?: Graphic | null, view?: MapView | SceneView): void {
+    if (view) this.initialize(view);
 
     // Resume mode: panel was minimised
     if (this._panelEl && this._panelEl.style.display === 'none') {
@@ -202,8 +205,10 @@ export class EffectEngine {
     this._showLegend();
     this._showHint('Click map to place detonation point');
 
+    // With a symbol, seed the first strike at its location; otherwise the user
+    // places the detonation point by clicking the map (Pick is active below).
     let pt: Point | null = null;
-    const geom = graphic.geometry;
+    const geom = graphic?.geometry;
     if (geom?.type === 'point') {
       pt = geom as Point;
     } else if ((geom as any)?.centroid) {
@@ -311,6 +316,8 @@ export class EffectEngine {
     const donut  = this._inp('effects-opt-donut')?.checked ?? true;
     const labels = this._inp('effects-opt-labels')?.checked ?? true;
     const union  = this._inp('effects-opt-union')?.checked ?? true;
+    const showDome    = this._inp('effects-opt-dome')?.checked ?? true;
+    const domeOpacity = Number(this._inp('effects-dome-opacity')?.value ?? 95) / 100;
 
     const munKey = this._inp('effects-inp-munition')?.value ?? 'mortar_81mm';
     const struct = this._inp('effects-inp-structure')?.value ?? 'open_area';
@@ -325,9 +332,11 @@ export class EffectEngine {
       const ringGfx = this._buildRingGraphics(s.point, s.result, { asDonut: donut, showLabels: labels });
       this._analysisLayer.addMany(ringGfx);
 
-      // Marker
-      const markerGfx = this._buildImpactMarker(s.point, s.result);
-      this._markerLayer.addMany(markerGfx);
+      // Marker — the initial 3D detonation dome (optional)
+      if (showDome) {
+        const markerGfx = this._buildImpactMarker(s.point, s.result, domeOpacity);
+        this._markerLayer.addMany(markerGfx);
+      }
     });
 
     // Union
@@ -342,7 +351,8 @@ export class EffectEngine {
 
     const btnBlast = this._panelEl?.querySelector<HTMLButtonElement>('#effects-btn-blast');
     const btnCommit = this._panelEl?.querySelector<HTMLButtonElement>('#effects-btn-commit');
-    if (btnBlast) btnBlast.disabled = false;
+    const showWave = this._inp('effects-opt-anim')?.checked ?? true;
+    if (btnBlast) btnBlast.disabled = !showWave;
     if (btnCommit) btnCommit.disabled = false;
     
     this._setStatus('ready');
@@ -353,10 +363,11 @@ export class EffectEngine {
     const color = res.munition.color;
     const speedMul = parseFloat(this._inp('effects-anim-speed')?.value ?? '1') || 1;
     const durationMs = 2200 / speedMul;
+    const peakAlpha = Number(this._inp('effects-blast-opacity')?.value ?? 35) / 100;
 
     this._setStatus('animating');
 
-    const anim = this._createBlastWaveAnimation(pt, maxR, color, this._animLayer, durationMs);
+    const anim = this._createBlastWaveAnimation(pt, maxR, color, this._animLayer, durationMs, peakAlpha);
     this._blastAnimations.push(anim);
     
     // Quick polling to check when animation ends
@@ -640,12 +651,23 @@ export class EffectEngine {
       <div class="effects-ps">Display options</div>
       <div class="effects-ptr"><label>Donut rings (punch inner)</label><input id="effects-opt-donut" type="checkbox" checked/></div>
       <div class="effects-ptr"><label>Ring labels</label><input id="effects-opt-labels" type="checkbox" checked/></div>
-      <div class="effects-ptr"><label>Blast wave animation</label><input id="effects-opt-anim" type="checkbox" checked/></div>
+      <div class="effects-ptr"><label>Show blast wave</label><input id="effects-opt-anim" type="checkbox" checked/></div>
+      <div class="effects-ptr"><label title="The 3D dome at the detonation point">Show impact dome</label><input id="effects-opt-dome" type="checkbox" checked/></div>
       <div class="effects-ptr"><label>Multi-strike union</label><input id="effects-opt-union" type="checkbox" checked/></div>
       <div class="effects-anim-row">
         <label>Anim speed</label>
         <input id="effects-anim-speed" type="range" min="0.3" max="3" step="0.1" value="1"/>
         <div id="effects-anim-speed-v" class="effects-anim-speed-v">1×</div>
+      </div>
+      <div class="effects-anim-row">
+        <label>Dome opacity</label>
+        <input id="effects-dome-opacity" type="range" min="0" max="100" step="5" value="95"/>
+        <div id="effects-dome-opacity-v" class="effects-anim-speed-v">95%</div>
+      </div>
+      <div class="effects-anim-row">
+        <label>Blast opacity</label>
+        <input id="effects-blast-opacity" type="range" min="0" max="100" step="5" value="35"/>
+        <div id="effects-blast-opacity-v" class="effects-anim-speed-v">35%</div>
       </div>
 
       <div class="effects-pdiv"></div>
@@ -745,14 +767,38 @@ export class EffectEngine {
       el?.addEventListener('change', () => this._redrawAll());
     });
 
-    ['#effects-opt-donut', '#effects-opt-labels', '#effects-opt-union'].forEach(selector => {
+    ['#effects-opt-donut', '#effects-opt-labels', '#effects-opt-union', '#effects-opt-dome'].forEach(selector => {
       this._panelEl?.querySelector(selector)?.addEventListener('change', () => this._redrawAll());
+    });
+
+    // Impact dome opacity slider — live label + redraw.
+    const domeOp = this._panelEl.querySelector<HTMLInputElement>('#effects-dome-opacity');
+    const domeOpV = this._panelEl.querySelector('#effects-dome-opacity-v');
+    domeOp?.addEventListener('input', () => {
+      if (domeOpV) domeOpV.textContent = domeOp.value + '%';
+      this._redrawAll();
     });
 
     const animSpeed = this._panelEl.querySelector<HTMLInputElement>('#effects-anim-speed');
     const animSpeedV = this._panelEl.querySelector('#effects-anim-speed-v');
     animSpeed?.addEventListener('input', () => {
       if (animSpeedV) animSpeedV.textContent = animSpeed.value + '×';
+    });
+
+    // Blast wave opacity slider — live label; takes effect on the next play.
+    const blastOp = this._panelEl.querySelector<HTMLInputElement>('#effects-blast-opacity');
+    const blastOpV = this._panelEl.querySelector('#effects-blast-opacity-v');
+    blastOp?.addEventListener('input', () => {
+      if (blastOpV) blastOpV.textContent = blastOp.value + '%';
+    });
+
+    // Show blast wave — master show/hide: stop any running wave + gate the
+    // replay button when off.
+    this._panelEl.querySelector('#effects-opt-anim')?.addEventListener('change', () => {
+      const show = this._inp('effects-opt-anim')?.checked ?? true;
+      if (!show) this._stopAllAnimations();
+      const btnBlast = this._panelEl?.querySelector<HTMLButtonElement>('#effects-btn-blast');
+      if (btnBlast) btnBlast.disabled = !show || this._strikes.length === 0;
     });
 
     this._panelEl.querySelector('#effects-btn-clear')?.addEventListener('click', () => {
@@ -1154,8 +1200,9 @@ export class EffectEngine {
     return graphics;
   }
 
-  private _buildImpactMarker(impactPoint: Point, result: any): Graphic[] {
+  private _buildImpactMarker(impactPoint: Point, result: any, opacity = 0.95): Graphic[] {
     const [r, g, b] = result.munition.color;
+    const a = Math.max(0, Math.min(1, opacity));
     return [
       new Graphic({
         geometry: impactPoint,
@@ -1163,7 +1210,7 @@ export class EffectEngine {
           type: 'point-3d',
           symbolLayers: [{
             type: 'object', resource: { primitive: 'sphere' },
-            material: { color: [r, g, b, 0.95] },
+            material: { color: [r, g, b, a] },
             width: 80, height: 80, depth: 80,
           }],
           verticalOffset: { screenLength: 20, maxWorldLength: 400, minWorldLength: 4 },
@@ -1230,7 +1277,7 @@ export class EffectEngine {
     });
   }
 
-  private _createBlastWaveAnimation(impactPoint: Point, maxRadiusM: number, color: number[], animLayer: GraphicsLayer, durationMs = 2200): any {
+  private _createBlastWaveAnimation(impactPoint: Point, maxRadiusM: number, color: number[], animLayer: GraphicsLayer, durationMs = 2200, peakAlpha = 0.35): any {
     let rafId: any = null, playing = false;
     let sphereGraphic: Graphic | null = null;
 
@@ -1244,7 +1291,7 @@ export class EffectEngine {
           const t = Math.min(1, (nowMs - startMs) / durationMs);
           const easedT = 1 - Math.pow(1 - t, 2.5);
           const radius = maxRadiusM * easedT;
-          const alpha = 0.35 * (1 - Math.pow(t, 0.8));
+          const alpha = peakAlpha * (1 - Math.pow(t, 0.8));
 
           if (sphereGraphic && animLayer.graphics.includes(sphereGraphic)) {
             animLayer.remove(sphereGraphic);

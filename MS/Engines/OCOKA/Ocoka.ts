@@ -321,7 +321,8 @@ export class OcokaEngine {
     if (!this._listPanelEl) {
       const panel = document.createElement('div');
       panel.className = 'ms-panel ms-theme-ops-dark';
-      panel.style.cssText = 'top:60px;left:14px;width:360px;max-height:calc(100vh - 84px);';
+      panel.id = 'ocoka-list-panel';
+      panel.style.cssText = 'top:60px;left:14px;width:480px;max-height:calc(100vh - 84px);';
       panel.innerHTML = `
         <div class="ms-header">
           <div class="ms-header-icon">⬡</div>
@@ -528,6 +529,7 @@ export class OcokaEngine {
     if (!this._view || this._clickHandle) return;
     this._clickHandle = this._view.on('click', (event: any) => {
       if (this._running || !event.mapPoint) return;
+      if (!this._pickMode) return;
       const p = event.mapPoint as Point;
       const lat = p.latitude ?? p.y;
       const lon = p.longitude ?? p.x;
@@ -701,6 +703,7 @@ export class OcokaEngine {
       const roadTimeMin = res.data.travelTimeMin ?? 0;
       corridor.path = coords.map(([longitude, latitude]) => ({ longitude, latitude }) as OcokaPoint);
       corridor.seed = corridor.path[0];
+      corridor.bearingDeg = this._bearing(corridor.path[0], corridor.path[corridor.path.length - 1]);
       corridor.chokePts = []; // synthetic chokepoints no longer align with the real road path
       corridor.viaRoad = true;
       corridor.roadDistanceKm = roadDistanceKm;

@@ -557,24 +557,19 @@ export class OpRankerEngine {
     const dLon = (extent.xmax - extent.xmin) / cols;
     const dLat = (extent.ymax - extent.ymin) / rows;
     const stepM = Math.max(cellM * 0.6, 20);
-    const numSteps = Math.ceil(maxRangeM / stepM);
     const opLon = opPt.longitude ?? opPt.x;
     const opLat = opPt.latitude ?? opPt.y;
     const cosLat = Math.cos((opLat * Math.PI) / 180);
     const horizonRes = 2;
-    const horizons = new Float32Array(360 / horizonRes);
-
-    for (let di = 0; di < horizons.length; di++) {
-      const brg = di * horizonRes;
-      let maxSlope = -90;
-      for (let s = 1; s <= numSteps; s++) {
-        const dist = s * stepM;
+    const isVisible = (brg: number, targetDist: number, targetSlope: number): boolean => {
+      let maxInterveningSlope = -90;
+      for (let dist = stepM; dist < targetDist - stepM * 0.5; dist += stepM) {
         const { longitude, latitude } = destPt(opLon, opLat, brg, dist);
         const z = sampler.queryElevation(new Point({ longitude, latitude, spatialReference: WGS84 }))?.z ?? 0;
-        maxSlope = Math.max(maxSlope, (Math.atan2(z - obsZ, dist) * 180) / Math.PI);
+        maxInterveningSlope = Math.max(maxInterveningSlope, (Math.atan2(z - obsZ, dist) * 180) / Math.PI);
       }
-      horizons[di] = maxSlope;
-    }
+      return targetSlope >= maxInterveningSlope;
+    };
 
     const raster = new Uint8Array(cols * rows);
     for (let row = 0; row < rows; row++) {
@@ -586,10 +581,10 @@ export class OpRankerEngine {
         const dist = Math.sqrt(east * east + north * north);
         if (dist < 2 || dist > maxRangeM) continue;
         const brg = ((Math.atan2(east, north) * 180) / Math.PI + 360) % 360;
-        const bKey = Math.round(brg / horizonRes) % (360 / horizonRes);
+        const snappedBrg = (Math.round(brg / horizonRes) % (360 / horizonRes)) * horizonRes;
         const terrZ = sampler.queryElevation(new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 }))?.z ?? 0;
         const slope = (Math.atan2(terrZ - obsZ, dist) * 180) / Math.PI;
-        raster[row * cols + col] = slope >= horizons[bKey] ? 1 : 0;
+        raster[row * cols + col] = isVisible(snappedBrg, dist, slope) ? 1 : 0;
       }
     }
     return { raster };

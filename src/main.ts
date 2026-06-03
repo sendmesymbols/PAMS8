@@ -1496,11 +1496,14 @@ function initializeAutocomplete() {
         // graphic as the first source when present, otherwise prompt the user to
         // place a source on the map (Pick Source).
         buffer:        () => { const se = (window as any).symbolEngine; se?.bufferEngine?.open(getActiveGraphic() ?? undefined, se.view); },
+        // Weapon Effect opens with or without a symbol — uses the active graphic
+        // as the first detonation point when present, otherwise click the map to
+        // place it.
+        effects:       () => { const se = (window as any).symbolEngine; se?.effectEngine?.open(getActiveGraphic() ?? undefined, se.view); },
       };
 
       // Context tools — require a right-clicked or selected graphic
       const contextTools: Record<string, (g: any, v: any, se: any) => void> = {
-        effects:     (g, v, se) => se.effectEngine?.open(g, v),
         corridor:    (g, v, se) => se.corridorEngine?.open(g, v),
         flight:      (g, v, se) => se.flightEngine?.open(g, v),
       };
@@ -1509,8 +1512,8 @@ function initializeAutocomplete() {
         keyTerrain: 'Key Terrain Identifier', localPeaks: 'Peak Analysis',
         deadGround: 'Dead Ground Mapper',     ocoka: 'OCOKA',
         los: 'Line of Sight',                 posDefScorer: 'Position Defensibility Scorer',
-        opRanker: 'OP Ranker',                wez: 'Weapon Engagement Zone',
-        trajectory: 'Trajectory',             effects: 'Weapon Effects',
+        opRanker: 'OP Ranker',                wez: 'Weapon Engagement',
+        trajectory: 'Trajectory',             effects: 'Weapon Effect',
         buffer: 'Buffer & Rings',             corridor: 'Corridor Analysis',
         flight: 'UAV Flight Analysis',        missionPlanner: 'Mission Planner',
       };

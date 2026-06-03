@@ -1098,6 +1098,109 @@
   line-height: 1.55;
 }
 
+/* ─── OCOKA avenues (results) panel — wider & more legible ─────────────────── */
+/* Scoped to #ocoka-list-panel so the shared .ms-feature-* / .buffer-stat cards
+   used by other analysis engines keep their compact sizing. */
+#ocoka-list-panel .buffer-stats {
+  gap: 8px;
+  padding: 10px 12px 8px;
+}
+
+#ocoka-list-panel .buffer-stat {
+  padding: 7px 9px;
+}
+
+#ocoka-list-panel .buffer-stat-lbl {
+  font-size: 11px;
+}
+
+#ocoka-list-panel .buffer-stat-val {
+  font-size: 17px;
+}
+
+#ocoka-list-panel .ms-empty {
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 16px 14px;
+}
+
+#ocoka-list-panel .ms-feature-card {
+  position: relative;
+  margin: 7px 10px;
+  padding: 12px 14px 13px;
+}
+
+/* Composite score moved to a large badge in the top-right corner */
+#ocoka-list-panel .ms-feature-score {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  font-size: 30px;
+  line-height: 1;
+}
+
+#ocoka-list-panel .ms-feature-top {
+  margin-bottom: 9px;
+  padding-right: 54px; /* keep title clear of the score badge */
+}
+
+#ocoka-list-panel .ms-feature-rank {
+  font-size: 13px;
+  min-width: 26px;
+  padding: 3px 0;
+  text-align: center;
+  font-weight: 700;
+  border-radius: 4px;
+}
+
+#ocoka-list-panel .ms-feature-name {
+  font-size: 16px;
+  white-space: normal; /* room to wrap now the panel is wider */
+}
+
+#ocoka-list-panel .ms-feature-type {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+#ocoka-list-panel .ms-feature-bars {
+  gap: 6px 14px !important;
+}
+
+#ocoka-list-panel .ms-feature-bar {
+  grid-template-columns: 70px 1fr 34px;
+  gap: 8px;
+}
+
+#ocoka-list-panel .ms-feature-bar-label {
+  font-size: 12px;
+}
+
+#ocoka-list-panel .ms-feature-bar-track {
+  height: 7px;
+}
+
+#ocoka-list-panel .ms-feature-bar-val {
+  font-size: 12.5px;
+}
+
+/* The assessment & threat lines were the least readable — bump size, drop the
+   dim italic, and give them more breathing room. */
+#ocoka-list-panel .ms-feature-assessment {
+  margin-top: 10px;
+  padding-top: 10px;
+  font-size: 13px;
+  font-style: normal;
+  color: var(--ms-text);
+  line-height: 1.6;
+}
+
+#ocoka-list-panel .ms-feature-threat {
+  font-size: 11.5px;
+  padding: 4px 8px;
+  margin-top: 8px;
+}
+
 /* ─── Weight adjustment grid (OCOKA) ─────────────────────────────────────── */
 .ms-weight-grid {
   padding: 4px 10px 8px;

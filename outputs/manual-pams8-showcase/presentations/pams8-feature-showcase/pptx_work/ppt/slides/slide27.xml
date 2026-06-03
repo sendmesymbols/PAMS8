@@ -305,10 +305,24 @@
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="685800" y="5105400"/><a:ext cx="5810250" cy="800100"/></a:xfrm>
+        <a:xfrm><a:off x="685800" y="4953000"/><a:ext cx="5810250" cy="1066800"/></a:xfrm>
         <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="17232A"/></a:solidFill>
-        <a:ln w="12700"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+        <a:solidFill><a:srgbClr val="15212A"/></a:solidFill>
+        <a:ln w="15240"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill></a:ln>
+      </p:spPr>
+      <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
+    </p:sp>
+    <p:sp>
+      <p:nvSpPr>
+        <p:cNvPr id="73" name="Shape 73"></p:cNvPr>
+        <p:cNvSpPr/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm><a:off x="685800" y="4953000"/><a:ext cx="38100" cy="1066800"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+        <a:solidFill><a:srgbClr val="58C98B"/></a:solidFill>
+        <a:ln><a:noFill/></a:ln>
       </p:spPr>
       <p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>
     </p:sp>
@@ -319,12 +333,12 @@
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="857250" y="5181600"/><a:ext cx="2095500" cy="190500"/></a:xfrm>
+        <a:xfrm><a:off x="876300" y="5029200"/><a:ext cx="5334000" cy="190500"/></a:xfrm>
         <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
         <a:noFill/>
         <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1100" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Technical basis</a:t></a:r><a:endParaRPr lang="en-US" sz="1100"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1050" b="1"><a:solidFill><a:srgbClr val="58C98B"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Technical basis</a:t></a:r><a:endParaRPr lang="en-US" sz="1050"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>
@@ -333,12 +347,12 @@
         <p:nvPr/>
       </p:nvSpPr>
       <p:spPr>
-        <a:xfrm><a:off x="857250" y="5410200"/><a:ext cx="5334000" cy="361950"/></a:xfrm>
+        <a:xfrm><a:off x="876300" y="5257800"/><a:ext cx="5524500" cy="723900"/></a:xfrm>
         <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
         <a:noFill/>
         <a:ln><a:noFill/></a:ln>
       </p:spPr>
-      <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1220"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Snapshots candidate graphics from target layers and tests nearest vertex/coordinate per animation frame.</a:t></a:r><a:endParaRPr lang="en-US" sz="1220"/></a:p></p:txBody>
+      <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="95250" rIns="95250" tIns="95250" bIns="95250"/><a:lstStyle/><a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1100"><a:solidFill><a:srgbClr val="F4F7F4"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>Per pointer-move, candidate graphics are snapshotted from configured target layers and bbox-pre-filtered against a screen-space halfDiag extent. Survivors are tested for nearest vertex / nearest coordinate within snapRadiusPx; the winner renders a reusable dot + dashed line + distance label and emits proximity-snap / proximity-clear / proximity-hint document events.</a:t></a:r><a:endParaRPr lang="en-US" sz="1100"/></a:p></p:txBody>
     </p:sp>
     <p:sp>
       <p:nvSpPr>

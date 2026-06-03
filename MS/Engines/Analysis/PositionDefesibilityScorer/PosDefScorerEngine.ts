@@ -39,6 +39,7 @@ interface ScoreParams {
   rayRes: number;
   threatBrg: number;
   slopeOkDeg: number;
+  weights: Record<FactorId, number>;
   showVS: boolean;
   showDG: boolean;
   showSlp: boolean;
@@ -90,6 +91,7 @@ export interface DefensibilityScoreOptions {
   rayResolutionDeg?: number;
   threatBearingDeg?: number;
   maxSlopeDeg?: number;
+  weights?: Partial<Record<FactorId, number>>;
 }
 
 const FACTORS: FactorDef[] = [
@@ -146,6 +148,15 @@ const GRADE: GradeDef[] = [
   { min: 35, grade: 'D', label: 'Poor', color: '#EF9F27' },
   { min: 0, grade: 'F', label: 'Indefensible', color: '#DC3C30' },
 ];
+
+const DEFAULT_WEIGHTS: Record<FactorId, number> = {
+  obs: 4,
+  fof: 4,
+  cff: 3,
+  cfv: 3,
+  egr: 3,
+  dg: 3,
+};
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -260,6 +271,7 @@ export class PosDefScorerEngine {
       rayRes: options.rayResolutionDeg ?? 10,
       threatBrg: options.threatBearingDeg ?? 270,
       slopeOkDeg: options.maxSlopeDeg ?? 12,
+      weights: { ...DEFAULT_WEIGHTS, ...(options.weights ?? {}) },
       showVS: false,
       showDG: false,
       showSlp: false,
@@ -311,7 +323,7 @@ export class PosDefScorerEngine {
       this._scorePanelEl = document.createElement('div');
       this._scorePanelEl.id = 'posdef-left-panel';
       this._scorePanelEl.className = 'ms-panel ms-theme-ops-dark';
-      this._scorePanelEl.style.cssText = 'position: absolute; top: 14px; left: 14px; width: 272px; z-index: 1098; max-height: calc(100vh - 28px); display: none; flex-direction: column;';
+      this._scorePanelEl.style.cssText = 'position: absolute; top: 14px; left: 14px; width: 440px; z-index: 1098; max-height: calc(100vh - 28px); display: none; flex-direction: column;';
       this._scorePanelEl.innerHTML = this._scorePanelHtml();
       document.body.appendChild(this._scorePanelEl);
     }
@@ -381,23 +393,23 @@ export class PosDefScorerEngine {
         <div class="ms-header-title">Pos Def Scorer</div>
       </div>
       <div class="ms-body" style="display: flex; flex-direction: column; overflow-y: auto;">
-        <div style="padding: 12px; border-bottom: var(--ms-divider); font-size: var(--ms-fs-xs); color: var(--ms-text-dim);" id="posdef-lph-sub">Click map to score a position</div>
-        <div style="display: flex; align-items: center; justify-content: center; gap: 14px; padding: 14px 12px; border-bottom: var(--ms-divider); flex-shrink: 0;">
-          <div style="position: relative; width: 90px; height: 90px; flex-shrink: 0;" id="posdef-score-ring">
-            <svg id="posdef-score-svg" width="90" height="90" viewBox="0 0 90 90" style="display: block;">
+        <div style="padding: 14px 16px; border-bottom: var(--ms-divider); font-size: 14px; letter-spacing: 0.03em; color: var(--ms-text-dim);" id="posdef-lph-sub">Click map to score a position</div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 22px; padding: 20px 18px; border-bottom: var(--ms-divider); flex-shrink: 0;">
+          <div style="position: relative; width: 140px; height: 140px; flex-shrink: 0;" id="posdef-score-ring">
+            <svg id="posdef-score-svg" width="140" height="140" viewBox="0 0 90 90" style="display: block;">
               <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"></circle>
               <circle id="posdef-score-arc" cx="45" cy="45" r="38" fill="none" stroke="var(--ms-accent)" stroke-width="7" stroke-dasharray="0 239" stroke-dashoffset="60" stroke-linecap="round" transform="rotate(-90 45 45)"></circle>
             </svg>
-            <div id="posdef-score-num" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 26px; font-weight: 700; color: var(--ms-accent); text-align: center; line-height: 1;">-</div>
+            <div id="posdef-score-num" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 46px; font-weight: 800; color: var(--ms-accent); text-align: center; line-height: 1;">-</div>
           </div>
           <div style="flex: 1;">
-            <div id="posdef-score-grade" style="font-size: 18px; font-weight: 700; color: var(--ms-accent); margin-bottom: 4px;">-</div>
-            <div id="posdef-score-desc" style="font-size: var(--ms-fs-xs); color: var(--ms-text-dim); line-height: 1.5;">Place a position<br>on the map to score it</div>
+            <div id="posdef-score-grade" style="font-size: 28px; font-weight: 800; color: var(--ms-accent); margin-bottom: 8px; line-height: 1.1;">-</div>
+            <div id="posdef-score-desc" style="font-size: 14px; color: var(--ms-text-dim); line-height: 1.55;">Place a position<br>on the map to score it</div>
           </div>
         </div>
-        <div style="padding: 10px 12px; border-bottom: var(--ms-divider); flex-shrink: 0; display: flex; align-items: center; justify-content: center;"><canvas id="posdef-radar-canvas" width="248" height="190" style="display: block;"></canvas></div>
-        <div id="posdef-factors" style="overflow-y: auto; flex: 1; padding: 8px 10px;">
-          <div id="posdef-factor-empty" style="padding: 18px 10px; font-size: var(--ms-fs-xs); color: var(--ms-text-dim); text-align: center; line-height: 1.8;">Scores for each factor will<br>appear here after analysis.<br><br>Each factor is scored 0-20.<br>Total composite score: 0-100.</div>
+        <div style="padding: 12px; border-bottom: var(--ms-divider); flex-shrink: 0; display: flex; align-items: center; justify-content: center;"><canvas id="posdef-radar-canvas" width="412" height="280" style="display: block;"></canvas></div>
+        <div id="posdef-factors" style="overflow-y: auto; flex: 1; padding: 16px 18px;">
+          <div id="posdef-factor-empty" style="padding: 22px 12px; font-size: 14px; color: var(--ms-text-dim); text-align: center; line-height: 1.9;">Scores for each factor will<br>appear here after analysis.<br><br>Each factor is scored 0-20.<br>Total composite score: 0-100.</div>
         </div>
         <div id="posdef-pos-history" style="display: none; border-top: var(--ms-divider); flex-shrink: 0; max-height: 130px; overflow-y: auto;">
           <div style="font-size: 8.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ms-text-dim); padding: 6px 10px 3px;">Previous positions</div>
@@ -558,6 +570,7 @@ export class PosDefScorerEngine {
       rayRes,
       threatBrg,
       slopeOkDeg,
+      weights: this._weights(),
       showVS: this._checked('posdef-opt-vs', true),
       showDG: this._checked('posdef-opt-dg', true),
       showSlp: this._checked('posdef-opt-slp', true),
@@ -573,7 +586,7 @@ export class PosDefScorerEngine {
       this._setProgress(0.7, 'Building overlays');
       await this._tick();
       if (params.showVS || params.showDG || params.showSlp) this._drawRasterOverlay(result, pt, obsZ, params);
-      if (params.showLOS) this._buildLOSSpokes(pt, obsZ, result.horizons, result.numRays, params.rayRes, params.obsRadius, result.sampler).forEach((g) => this._spokesLayer.add(g));
+      if (params.showLOS) this._buildLOSSpokes(pt, obsZ, result.numRays, params.obsRadius, result.sampler).forEach((g) => this._spokesLayer.add(g));
       if (this._egressPts.length > 0) {
         this._setProgress(0.82, 'Routing egress on road network');
         await this._enrichEgressWithRoads(pt, result);
@@ -626,6 +639,17 @@ export class PosDefScorerEngine {
     const step = Math.max(20, obsRadius / 60);
     const numRays = Math.max(8, Math.round(360 / rayRes));
     const horizons = new Float32Array(numRays);
+    const isTargetVisible = (brg: number, targetDist: number, targetSlope: number): boolean => {
+      let maxInterveningSlope = -90;
+      for (let d = step; d < targetDist - step * 0.5; d += step) {
+        const p = destPt(positionPt.longitude, positionPt.latitude, brg, d);
+        maxInterveningSlope = Math.max(
+          maxInterveningSlope,
+          Math.atan2(getZ(p.longitude, p.latitude) - obsZ, d) * 180 / Math.PI,
+        );
+      }
+      return targetSlope >= maxInterveningSlope;
+    };
     for (let ri = 0; ri < numRays; ri++) {
       const brg = (ri / numRays) * 360;
       let maxSlp = -90;
@@ -639,9 +663,10 @@ export class PosDefScorerEngine {
     let visRays = 0;
     for (let ri = 0; ri < numRays; ri++) {
       const brg = (ri / numRays) * 360;
-      const p = destPt(positionPt.longitude, positionPt.latitude, brg, obsRadius * 0.9);
-      const slp = Math.atan2(getZ(p.longitude, p.latitude) - obsZ, obsRadius * 0.9) * 180 / Math.PI;
-      if (slp >= horizons[ri]) visRays++;
+      const targetDist = obsRadius * 0.9;
+      const p = destPt(positionPt.longitude, positionPt.latitude, brg, targetDist);
+      const slp = Math.atan2(getZ(p.longitude, p.latitude) - obsZ, targetDist) * 180 / Math.PI;
+      if (isTargetVisible(brg, targetDist, slp)) visRays++;
     }
     const obsScore = Math.round(Math.min(20, (visRays / numRays) * 20));
 
@@ -652,9 +677,10 @@ export class PosDefScorerEngine {
       const delta = Math.abs(((brg - threatBrg + 540) % 360) - 180);
       if (delta > 90) continue;
       fofTotal++;
-      const p = destPt(positionPt.longitude, positionPt.latitude, brg, obsRadius * 0.85);
-      const slp = Math.atan2(getZ(p.longitude, p.latitude) - obsZ, obsRadius * 0.85) * 180 / Math.PI;
-      if (slp >= horizons[ri]) fofVis++;
+      const targetDist = obsRadius * 0.85;
+      const p = destPt(positionPt.longitude, positionPt.latitude, brg, targetDist);
+      const slp = Math.atan2(getZ(p.longitude, p.latitude) - obsZ, targetDist) * 180 / Math.PI;
+      if (isTargetVisible(brg, targetDist, slp)) fofVis++;
     }
     const fofScore = fofTotal > 0 ? Math.round(Math.min(20, (fofVis / fofTotal) * 20)) : 10;
 
@@ -698,7 +724,10 @@ export class PosDefScorerEngine {
         const clear = eptSlp >= maxSlpToEgr;
         const mid = destPt(positionPt.longitude, positionPt.latitude, egrBrg, dist * 0.5);
         const midSlp = Math.atan2(getZ(mid.longitude, mid.latitude) - obsZ, dist * 0.5) * 180 / Math.PI;
-        const masked = midSlp < horizons[Math.round(egrBrg / rayRes) % numRays] * 0.7;
+        // horizons[] is indexed by ray index (brg = ri/numRays*360), so map the
+        // bearing back through numRays — not rayRes, which only matches when it
+        // divides 360 evenly and the max(8,…) clamp is inactive.
+        const masked = midSlp < horizons[Math.round(egrBrg * numRays / 360) % numRays] * 0.7;
         egrResults.push({ pt: ept, clear, masked, dist: Math.round(dist) });
         if (clear) clearEgr++;
       }
@@ -724,12 +753,12 @@ export class PosDefScorerEngine {
     }
     const dgScore = Math.round(Math.min(20, ((dgCount ? totalDG / dgCount : 0) / 8) * 20));
     const scores: ScoreMap = { obs: obsScore, fof: fofScore, cff: cffScore, cfv: cfvScore, egr: egrScore, dg: dgScore };
-    return { scores, composite: this._computeComposite(scores), horizons, egrResults, sampler, extent, numRays };
+    return { scores, composite: this._computeComposite(scores, params.weights), horizons, egrResults, sampler, extent, numRays };
   }
 
   private _drawRasterOverlay(result: ScoreResult, positionPt: Point, obsZ: number, params: ScoreParams): void {
     if (!this._view) return;
-    const canvas = this._buildViewshedCanvas(result.horizons, result.numRays, params.rayRes, positionPt, obsZ, result.sampler, result.extent, params.obsRadius, 0.8);
+    const canvas = this._buildViewshedCanvas(result.numRays, params.rayRes, positionPt, obsZ, result.sampler, result.extent, params.obsRadius, 0.8);
     const ml = new MediaLayer({
       source: [new ImageElement({ image: canvas.toDataURL('image/png'), georeference: new ExtentAndRotationGeoreference({ extent: result.extent }) })],
       title: 'Position Defensibility - Viewshed / Dead Ground',
@@ -738,12 +767,22 @@ export class PosDefScorerEngine {
     this._mediaLayers.push(ml);
   }
 
-  private _buildViewshedCanvas(horizons: Float32Array, numRays: number, rayRes: number, positionPt: Point, obsZ: number, sampler: any, extent: Extent, obsRadius: number, opacity: number): HTMLCanvasElement {
+  private _buildViewshedCanvas(numRays: number, rayRes: number, positionPt: Point, obsZ: number, sampler: any, extent: Extent, obsRadius: number, opacity: number): HTMLCanvasElement {
     const cols = Math.round(obsRadius * 2 / 40);
     const rows = Math.round(obsRadius * 2 / 40);
     const dLon = (extent.xmax - extent.xmin) / cols;
     const dLat = (extent.ymax - extent.ymin) / rows;
     const cosLat = Math.cos(positionPt.latitude * Math.PI / 180);
+    const step = Math.max(20, obsRadius / 60);
+    const isVisible = (brg: number, targetDist: number, targetSlope: number): boolean => {
+      let maxInterveningSlope = -90;
+      for (let d = step; d < targetDist - step * 0.5; d += step) {
+        const p = destPt(positionPt.longitude, positionPt.latitude, brg, d);
+        const z = sampler.queryElevation(new Point({ longitude: p.longitude, latitude: p.latitude, spatialReference: WGS84 }))?.z ?? 0;
+        maxInterveningSlope = Math.max(maxInterveningSlope, Math.atan2(z - obsZ, d) * 180 / Math.PI);
+      }
+      return targetSlope >= maxInterveningSlope;
+    };
     const canvas = document.createElement('canvas');
     canvas.width = cols;
     canvas.height = rows;
@@ -758,11 +797,12 @@ export class PosDefScorerEngine {
         const dist = Math.sqrt(east * east + north * north);
         if (dist < 5 || dist > obsRadius) continue;
         const brg = ((Math.atan2(east, north) * 180 / Math.PI) + 360) % 360;
-        const ri = Math.round(brg / rayRes) % numRays;
+        const ri = Math.round(brg * numRays / 360) % numRays;
+        const snappedBrg = (ri / numRays) * 360;
         const z = sampler.queryElevation(new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 }))?.z ?? 0;
         const slp = Math.atan2(z - obsZ, dist) * 180 / Math.PI;
         const px = (r * cols + c) * 4;
-        if (slp >= horizons[ri]) {
+        if (isVisible(snappedBrg, dist, slp)) {
           img.data[px] = 29; img.data[px + 1] = 158; img.data[px + 2] = 117; img.data[px + 3] = Math.round(0.35 * opacity * 255);
         } else {
           img.data[px] = 80; img.data[px + 1] = 20; img.data[px + 2] = 20; img.data[px + 3] = Math.round(0.25 * opacity * 255);
@@ -773,13 +813,23 @@ export class PosDefScorerEngine {
     return canvas;
   }
 
-  private _buildLOSSpokes(positionPt: Point, obsZ: number, horizons: Float32Array, numRays: number, rayRes: number, obsRadius: number, sampler: any): Graphic[] {
+  private _buildLOSSpokes(positionPt: Point, obsZ: number, numRays: number, obsRadius: number, sampler: any): Graphic[] {
     const graphics: Graphic[] = [];
+    const step = Math.max(20, obsRadius / 60);
+    const isVisible = (brg: number, targetSlope: number): boolean => {
+      let maxInterveningSlope = -90;
+      for (let d = step; d < obsRadius - step * 0.5; d += step) {
+        const p = destPt(positionPt.longitude, positionPt.latitude, brg, d);
+        const z = sampler.queryElevation(new Point({ longitude: p.longitude, latitude: p.latitude, spatialReference: WGS84 }))?.z ?? 0;
+        maxInterveningSlope = Math.max(maxInterveningSlope, Math.atan2(z - obsZ, d) * 180 / Math.PI);
+      }
+      return targetSlope >= maxInterveningSlope;
+    };
     for (let ri = 0; ri < numRays; ri += 3) {
       const brg = (ri / numRays) * 360;
       const p = destPt(positionPt.longitude, positionPt.latitude, brg, obsRadius);
       const z = sampler.queryElevation(new Point({ longitude: p.longitude, latitude: p.latitude, spatialReference: WGS84 }))?.z ?? 0;
-      const visible = (Math.atan2(z - obsZ, obsRadius) * 180 / Math.PI) >= horizons[ri];
+      const visible = isVisible(brg, Math.atan2(z - obsZ, obsRadius) * 180 / Math.PI);
       graphics.push(new Graphic({
         geometry: new Polyline({ paths: [[[positionPt.longitude, positionPt.latitude], [p.longitude, p.latitude]]], spatialReference: WGS84 }),
         symbol: { type: 'simple-line', color: visible ? [29, 158, 117, 40] : [80, 20, 20, 30], width: 0.6 } as any,
@@ -909,8 +959,8 @@ export class PosDefScorerEngine {
       FACTORS.forEach((f) => {
         const s = scores[f.id] ?? 0;
         const row = document.createElement('div');
-        row.style.cssText = 'display: grid; grid-template-columns: 30px 1fr 32px; align-items: center; gap: 6px; margin-bottom: 8px;';
-        row.innerHTML = `<div style="font-size: var(--ms-fs-xs); text-align: center; color: var(--ms-text-dim);">${f.icon}</div><div style="display: flex; flex-direction: column; gap: 3px;"><div style="font-size: var(--ms-fs-xs); font-weight: 500; color: var(--ms-text);">${f.label}</div><div style="height: 3px; background: var(--ms-bg-subtle); border-radius: 2px;"><div style="height: 100%; border-radius: 2px; transition: width 0.6s; width: ${s / 20 * 100}%; background: ${f.color};"></div></div><div style="font-size: 8.5px; color: var(--ms-text-dim); letter-spacing: 0.03em;">${f.desc(s)}</div></div><div><div style="font-size: 13px; font-weight: 700; text-align: right; color: ${f.color};">${s}</div><div style="font-size: 8px; color: var(--ms-text-dim); text-align: right; margin-top: 1px;">/20</div></div>`;
+        row.style.cssText = 'display: grid; grid-template-columns: 40px 1fr 56px; align-items: center; gap: 12px; margin-bottom: 14px;';
+        row.innerHTML = `<div style="font-size: 18px; text-align: center; color: var(--ms-text-dim);">${f.icon}</div><div style="display: flex; flex-direction: column; gap: 5px;"><div style="font-size: 15px; font-weight: 600; color: var(--ms-text);">${f.label}</div><div style="height: 6px; background: var(--ms-bg-subtle); border-radius: 3px;"><div style="height: 100%; border-radius: 3px; transition: width 0.6s; width: ${s / 20 * 100}%; background: ${f.color};"></div></div><div style="font-size: 12px; color: var(--ms-text-dim); letter-spacing: 0.03em;">${f.desc(s)}</div></div><div><div style="font-size: 24px; font-weight: 800; text-align: right; color: ${f.color};">${s}</div><div style="font-size: 11px; color: var(--ms-text-dim); text-align: right; margin-top: 1px;">/20</div></div>`;
         wrap.appendChild(row);
       });
     }
@@ -970,25 +1020,25 @@ export class PosDefScorerEngine {
       const dx = Math.cos(a);
       const dy = Math.sin(a);
       ctx.beginPath();
-      ctx.arc(cx + dx * R * t, cy + dy * R * t, 3.5, 0, Math.PI * 2);
+      ctx.arc(cx + dx * R * t, cy + dy * R * t, 5, 0, Math.PI * 2);
       ctx.fillStyle = f.color;
       ctx.fill();
-      ctx.font = '700 9px "Courier New"';
+      ctx.font = '700 14px "Courier New"';
       ctx.fillStyle = f.color;
       ctx.textAlign = dx > 0.1 ? 'left' : dx < -0.1 ? 'right' : 'center';
       ctx.textBaseline = dy > 0.1 ? 'top' : dy < -0.1 ? 'bottom' : 'middle';
-      ctx.fillText(`${f.icon} ${scores[f.id] ?? '-'}`, cx + dx * (R + 14), cy + dy * (R + 14));
+      ctx.fillText(`${f.icon} ${scores[f.id] ?? '-'}`, cx + dx * (R + 22), cy + dy * (R + 22));
     });
     const composite = this._computeComposite(scores);
     const g = getGrade(composite);
-    ctx.font = '700 20px "Courier New"';
+    ctx.font = '700 34px "Courier New"';
     ctx.fillStyle = g.color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(composite), cx, cy - 4);
-    ctx.font = '9px "Courier New"';
+    ctx.fillText(String(composite), cx, cy - 6);
+    ctx.font = '13px "Courier New"';
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.fillText('/100', cx, cy + 12);
+    ctx.fillText('/100', cx, cy + 20);
   }
 
   private _renderHistory(): void {
@@ -1117,20 +1167,20 @@ export class PosDefScorerEngine {
     this._mediaLayers = [];
   }
 
-  private _computeComposite(scores: ScoreMap): number {
-    const w = this._weights();
+  private _computeComposite(scores: ScoreMap, weights?: Record<FactorId, number>): number {
+    const w = weights ?? this._weights();
     const wT = Object.values(w).reduce((s, v) => s + v, 0) || 1;
     return Math.round(FACTORS.reduce((s, f) => s + (scores[f.id] ?? 0) * ((w[f.id] ?? 1) / 20), 0) / wT * 100);
   }
 
   private _weights(): Record<FactorId, number> {
     return {
-      obs: this._num('posdef-wt-obs', 4),
-      fof: this._num('posdef-wt-fof', 4),
-      cff: this._num('posdef-wt-cff', 3),
-      cfv: this._num('posdef-wt-cfv', 3),
-      egr: this._num('posdef-wt-egr', 3),
-      dg: this._num('posdef-wt-dg', 3),
+      obs: this._num('posdef-wt-obs', DEFAULT_WEIGHTS.obs),
+      fof: this._num('posdef-wt-fof', DEFAULT_WEIGHTS.fof),
+      cff: this._num('posdef-wt-cff', DEFAULT_WEIGHTS.cff),
+      cfv: this._num('posdef-wt-cfv', DEFAULT_WEIGHTS.cfv),
+      egr: this._num('posdef-wt-egr', DEFAULT_WEIGHTS.egr),
+      dg: this._num('posdef-wt-dg', DEFAULT_WEIGHTS.dg),
     };
   }
 

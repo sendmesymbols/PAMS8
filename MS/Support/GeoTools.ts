@@ -333,7 +333,8 @@ export class GeoTools {
         const a = Math.sin(lon2 - lon1) * Math.cos(lat2);
         const b = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
 
-        return this.radiansToDegrees(Math.atan2(a, b));
+        // atan2 returns [-180,180]; normalize to a 0-360 compass azimuth.
+        return (this.radiansToDegrees(Math.atan2(a, b)) + 360) % 360;
     }
 
     /**
@@ -534,7 +535,7 @@ export class GeoTools {
         const x = w * Math.cos(t);
         const y = w * Math.sin(t);
 
-        const xp = x / Math.cos(y0);
+        const xp = x / Math.cos(y0 * Math.PI / 180);
 
         return new Point({
             x: xp + x0,

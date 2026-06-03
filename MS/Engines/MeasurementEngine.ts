@@ -944,8 +944,11 @@ class MeasurementEngine {
                 return `${mils} mil ${suffix}`;
             }
             case "quadrant": {
-                const ns = (az > 270 || az < 90) ? "N" : "S";
-                const ew = (az > 0 && az < 180) ? "E" : (az > 180 && az < 360) ? "W" : "";
+                // Quadrant bearing: measured from the nearer N/S pole toward E/W.
+                // Boundaries (0/90/180/270/360) are cardinals — inclusive so due
+                // East (90) reads N90°E rather than the nonsensical S90°E.
+                const ns = (az <= 90 || az >= 270) ? "N" : "S";
+                const ew = (az === 0 || az === 180 || az === 360) ? "" : (az < 180 ? "E" : "W");
                 let degFromPole = az;
                 if (az > 90 && az <= 180) degFromPole = 180 - az;
                 else if (az > 180 && az <= 270) degFromPole = az - 180;

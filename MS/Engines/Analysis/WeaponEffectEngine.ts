@@ -250,7 +250,7 @@ export class WeaponEffectEngine {
       // Opened with no symbol — let the user place the observer on the map.
       this._setStatus('awaiting');
       this._startReposition();
-      this._flashPickTooltip('No symbol — click the map to place the observer (or use “Pick ⊕”).');
+      this._flashPickTooltip('No symbol — type a Lat/Lon and press Go, or click the map to place the firing point.');
     }
   }
 
@@ -629,12 +629,17 @@ export class WeaponEffectEngine {
       attributes: { type: 'wez_observer' },
     }));
 
+    const lat = this._observerPoint.latitude ?? 0;
+    const lon = this._observerPoint.longitude ?? 0;
     const coordsEl = this._panelEl?.querySelector<HTMLElement>('#wez-coords');
     if (coordsEl) {
-      const lat = this._observerPoint.latitude ?? 0;
-      const lon = this._observerPoint.longitude ?? 0;
       coordsEl.textContent = `Observer: ${lat.toFixed(5)}°N  ${lon.toFixed(5)}°E`;
     }
+    // Keep the top Lat/Lon bar in sync with the current firing point.
+    const latInp = this._inp('wez-lat');
+    const lonInp = this._inp('wez-lon');
+    if (latInp) latInp.value = lat.toFixed(5);
+    if (lonInp) lonInp.value = lon.toFixed(5);
   }
 
   // ─── Private: Terrain masking ────────────────────────────────────────────────
@@ -771,6 +776,8 @@ export class WeaponEffectEngine {
     const obsH    = v.obsHeight   ?? 2;
     const fo      = v.fillOpacity ?? 22;      // percent, 0-100
     const isEdit  = override != null;
+    const obsLat  = this._observerPoint ? (this._observerPoint.latitude ?? 0).toFixed(5) : '';
+    const obsLon  = this._observerPoint ? (this._observerPoint.longitude ?? 0).toFixed(5) : '';
 
     return `
       <div class="wez-header" id="wez-drag-handle">
@@ -835,6 +842,20 @@ export class WeaponEffectEngine {
       </div>
 
       <div class="wez-body">
+
+        <div class="wez-sec">Firing Location</div>
+        <div class="wez-locbar">
+          <div class="wez-loc-field">
+            <span class="wez-loc-lbl">Lat</span>
+            <input id="wez-lat" class="wez-loc-input" type="number" value="${obsLat}" placeholder="—" step="0.00001" min="-90" max="90" />
+          </div>
+          <div class="wez-loc-field">
+            <span class="wez-loc-lbl">Lon</span>
+            <input id="wez-lon" class="wez-loc-input" type="number" value="${obsLon}" placeholder="—" step="0.00001" min="-180" max="180" />
+          </div>
+          <button class="wez-btn wez-btn-sm wez-btn-primary" id="wez-loc-go" title="Place the firing point at these coordinates">Go</button>
+          <button class="wez-btn wez-btn-sm" id="wez-loc-pick" title="Click the map to place the firing point">Pick ⊕</button>
+        </div>
 
         <div class="wez-sec">Weapon System</div>
         <div class="wez-field-full">
@@ -998,8 +1019,15 @@ export class WeaponEffectEngine {
     // Terrain mask button
     p.querySelector('#wez-terrain-btn')?.addEventListener('click', () => this._runTerrainMask());
 
-    // Reposition
+    // Reposition (Observer section) + top location bar Pick
     p.querySelector('#wez-reposition-btn')?.addEventListener('click', () => this._startReposition());
+    p.querySelector('#wez-loc-pick')?.addEventListener('click', () => this._startReposition());
+
+    // Manual Lat/Lon entry — "Go" places the firing point at typed coordinates.
+    p.querySelector('#wez-loc-go')?.addEventListener('click', () => this._applyManualLocation());
+    ['wez-lat', 'wez-lon'].forEach(id => p.querySelector(`#${id}`)?.addEventListener('keydown', (e) => {
+      if ((e as KeyboardEvent).key === 'Enter') this._applyManualLocation();
+    }));
 
     // Clear
     p.querySelector('#wez-clear-btn')?.addEventListener('click', () => {
@@ -1008,6 +1036,10 @@ export class WeaponEffectEngine {
       this._observerPoint = null;
       const coordsEl = p.querySelector<HTMLElement>('#wez-coords');
       if (coordsEl) coordsEl.textContent = 'Observer: click map to place';
+      const latInp = this._inp('wez-lat');
+      const lonInp = this._inp('wez-lon');
+      if (latInp) latInp.value = '';
+      if (lonInp) lonInp.value = '';
       const commitBtn = p.querySelector<HTMLButtonElement>('#wez-commit-btn');
       if (commitBtn) commitBtn.disabled = true;
       this._setStatus('awaiting');
@@ -1015,6 +1047,35 @@ export class WeaponEffectEngine {
 
     // Commit
     p.querySelector('#wez-commit-btn')?.addEventListener('click', () => this._commit());
+  }
+
+  /** Place the firing point from the panel's Lat/Lon inputs. */
+  private _applyManualLocation(): void {
+    const latRaw = this._inp('wez-lat')?.value ?? '';
+    const lonRaw = this._inp('wez-lon')?.value ?? '';
+    if (latRaw.trim() === '' || lonRaw.trim() === '') {
+      this._flashPickTooltip('Enter both Lat and Lon, or use “Pick ⊕” to click the map.');
+      return;
+    }
+    const lat = Number(latRaw);
+    const lon = Number(lonRaw);
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) {
+      this._flashPickTooltip('Invalid coordinates — Lat must be -90…90 and Lon -180…180.');
+      return;
+    }
+
+    this._cancelReposition();
+    this._observerPoint = new Point({ longitude: lon, latitude: lat, spatialReference: { wkid: 4326 } });
+    this._hideTooltip();
+    this._drawObserver();
+    this._redraw();
+
+    const tBtn = this._panelEl?.querySelector<HTMLButtonElement>('#wez-terrain-btn');
+    if (tBtn) tBtn.disabled = false;
+
+    if (this._view) {
+      void this._view.goTo({ target: this._observerPoint, zoom: this._is3D() ? undefined : 13 } as any).catch(() => {});
+    }
   }
 
   private _startReposition(): void {
@@ -1467,6 +1528,40 @@ export class WeaponEffectEngine {
         overflow: hidden;
         text-overflow: ellipsis;
       }
+
+      .wez-locbar {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        padding: 2px 10px 8px;
+      }
+      .wez-loc-field {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        flex: 1;
+        min-width: 0;
+      }
+      .wez-loc-lbl {
+        font-size: var(--ms-fs-xs);
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--ms-text-dim);
+      }
+      .wez-loc-input {
+        background: var(--ms-bg-input);
+        border: 1px solid var(--ms-border);
+        border-radius: 3px;
+        color: var(--ms-text);
+        font-family: var(--ms-font-mono);
+        font-size: var(--ms-fs);
+        padding: 5px 6px;
+        width: 100%;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .wez-loc-input:focus { border-color: var(--ms-accent); }
+      .wez-locbar .wez-btn-sm { align-self: stretch; }
 
       .wez-btn-row {
         display: flex;
