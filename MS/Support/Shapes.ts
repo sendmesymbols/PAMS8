@@ -1354,18 +1354,70 @@ class Shapes {
     }
 
     static createPL(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts1 = this.createDD(dx, dy + (dr / 2), dr / 2, sp);
-        pts1.push(new Point({ x: dx - ((dr / 2) / 3), y: dy, spatialReference: sp }));
-        pts1.push(new Point({ x: dx - ((dr / 2) / 3), y: dy - dr, spatialReference: sp }));
-
-        const pts2 = this.createL(dx + (dr * 1.3), dy, dr, sp);
-        return [pts1, pts2];
+        return [
+            ...this.createPStrokes(dx, dy, dr, sp),
+            ...this.createLStrokes(dx + (dr * 1.3), dy, dr, sp),
+        ];
     }
 
     static createSL(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts1 = this.createS(dx, dy, dr, sp);
-        const pts2 = this.createL(dx + (dr * 1.3), dy, dr, sp);
-        return [pts1, pts2];
+        return [
+            this.createS(dx, dy, dr, sp),
+            ...this.createLStrokes(dx + (dr * 1.3), dy, dr, sp),
+        ];
+    }
+
+    /**
+     * Letter L as two clean strokes — vertical stem + horizontal foot.
+     * The single-path createL retraces its vertical segment (bottom → top →
+     * bottom), which the 3D polyline tessellator collapses, dropping part of
+     * the glyph. Separate paths render identically in 2D and 3D.
+     */
+    static createLStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            [
+                new Point({ x: dx, y: dy + dr, spatialReference: sp }),
+                new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+            ],
+            [
+                new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx + dr, y: dy - dr, spatialReference: sp }),
+            ],
+        ];
+    }
+
+    /**
+     * Letter P as clean strokes — vertical stem + upper-right bowl — with no
+     * retraced segments. The original createDD-based bowl backtracked through
+     * its stem, so the 3D tessellator collapsed part of it. Geometry matches
+     * the original P (bowl centred at dy + dr/2, radius dr/2).
+     */
+    static createPStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const rr = dr / 2;
+        const cy = dy + rr;          // bowl centre y
+        const stemX = dx - rr / 3;   // left stem x (matches createDD)
+        const step = 2 * Math.PI / 180;
+
+        // Vertical stem: top → bottom (single clean segment)
+        const stem: Point[] = [
+            new Point({ x: stemX, y: dy + dr, spatialReference: sp }),
+            new Point({ x: stemX, y: dy - dr, spatialReference: sp }),
+        ];
+
+        // Upper-right bowl: top of stem → top centre → arc → middle of stem
+        const bowl: Point[] = [
+            new Point({ x: stemX, y: dy + dr, spatialReference: sp }),
+            new Point({ x: dx, y: dy + dr, spatialReference: sp }),
+        ];
+        for (let dtheta = 270 * Math.PI / 180; dtheta < 360 * Math.PI / 180; dtheta += step) {
+            bowl.push(new Point({ x: dx + rr * Math.cos(dtheta), y: cy - rr * Math.sin(dtheta), spatialReference: sp }));
+        }
+        for (let dtheta = 0; dtheta < 91 * Math.PI / 180; dtheta += step) {
+            bowl.push(new Point({ x: dx + rr * Math.cos(dtheta), y: cy - rr * Math.sin(dtheta), spatialReference: sp }));
+        }
+        bowl.push(new Point({ x: stemX, y: dy, spatialReference: sp }));
+
+        return [stem, bowl];
     }
 
     static createKG(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {

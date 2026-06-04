@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Tactical Map – Measurement Annotations</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a1a; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+  .container { position: relative; width: 706px; height: 829px; }
+  canvas { position: absolute; top: 0; left: 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <canvas id="base"    width="706" height="829"></canvas>
+  <canvas id="overlay" width="706" height="829"></canvas>
+</div>
+
+<script>
+// ── Terrain background ──────────────────────────────────────────────────────
+const base = document.getElementById('base');
+const bc   = base.getContext('2d');
+const W = 706, H = 829;
+
+// Sky/terrain gradient base
+const terrainGrad = bc.createLinearGradient(0, 0, W, H);
+terrainGrad.addColorStop(0.0,  '#2d3a1e');
+terrainGrad.addColorStop(0.2,  '#3a4a20');
+terrainGrad.addColorStop(0.4,  '#4a5a28');
+terrainGrad.addColorStop(0.6,  '#3d4d22');
+terrainGrad.addColorStop(0.8,  '#4a5530');
+terrainGrad.addColorStop(1.0,  '#384020');
+bc.fillStyle = terrainGrad;
+bc.fillRect(0, 0, W, H);
+
+// Terrain ridgeline patches (darker valleys, lighter ridges)
+function terrainPatch(x, y, rx, ry, color, alpha) {
+  bc.save();
+  bc.globalAlpha = alpha;
+  const g = bc.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry));
+  g.addColorStop(0, color);
+  g.addColorStop(1, 'transparent');
+  bc.fillStyle = g;
+  bc.beginPath();
+  bc.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  bc.fill();
+  bc.restore();
+}
+
+// Ridge highlights
+const ridges = [
+  [120, 250, 180, 90, '#6a7a38', 0.55],
+  [320, 180, 140, 80, '#5a6a30', 0.5],
+  [550, 300, 160, 100,'#5e6e34', 0.5],
+  [200, 450, 200, 120,'#4a5a28', 0.45],
+  [480, 550, 220, 130,'#556030', 0.5],
+  [100, 620, 160, 90, '#4e5c2a', 0.45],
+  [600, 680, 150, 80, '#5a6530', 0.48],
+  [350, 700, 200, 110,'#485525', 0.42],
+  [680, 200, 100, 150,'#60703a', 0.4],
+  [60,  400, 90,  200,'#3a4820', 0.5],
+  [400, 400, 260, 160,'#485528', 0.3],
+];
+ridges.forEach(r => terrainPatch(...r));
+
+// Valley shadows
+const valleys = [
+  [300, 500, 120, 60, '#1e2810', 0.55],
+  [500, 450, 100, 50, '#1a2410', 0.5],
+  [150, 700, 130, 60, '#1e2810', 0.48],
+  [420, 300, 90,  45, '#202c12', 0.4],
+  [580, 600, 110, 55, '#1e2a10', 0.45],
+  [200, 350, 100, 50, '#1a2210', 0.4],
+];
+valleys.forEach(v => terrainPatch(...v));
+
+// Noise-like fine terrain texture (stipple)
+bc.save();
+bc.globalAlpha = 0.12;
+for (let i = 0; i < 3000; i++) {
+  const x = Math.random() * W;
+  const y = Math.random() * H;
+  const s = Math.random() * 4 + 1;
+  bc.fillStyle = Math.random() > 0.5 ? '#8a9a50' : '#1a2010';
+  bc.fillRect(x, y, s, s * 0.4);
+}
+bc.restore();
+
+// Teal lake (upper centre)
+bc.save();
+bc.globalAlpha = 0.88;
+const lakeGrad = bc.createRadialGradient(365, 148, 5, 365, 148, 55);
+lakeGrad.addColorStop(0,   '#3cc8c0');
+lakeGrad.addColorStop(0.5, '#20a8a0');
+lakeGrad.addColorStop(1,   '#128880');
+bc.fillStyle = lakeGrad;
+bc.beginPath();
+bc.ellipse(365, 148, 52, 30, -0.3, 0, Math.PI * 2);
+bc.fill();
+bc.strokeStyle = '#40d8d0';
+bc.lineWidth = 1.2;
+bc.stroke();
+bc.restore();
+
+// Second smaller lake
+bc.save();
+bc.globalAlpha = 0.75;
+bc.fillStyle = '#1a9898';
+bc.beginPath();
+bc.ellipse(330, 125, 22, 14, 0.2, 0, Math.PI * 2);
+bc.fill();
+bc.restore();
+
+// White snow patches (upper left)
+bc.save();
+bc.globalAlpha = 0.7;
+bc.fillStyle = '#e8ecf0';
+bc.beginPath();
+bc.ellipse(92, 320, 26, 18, 0, 0, Math.PI * 2);
+bc.fill();
+bc.beginPath();
+bc.ellipse(78, 340, 18, 12, 0.2, 0, Math.PI * 2);
+bc.fill();
+bc.restore();
+
+// ── Tactical symbols ────────────────────────────────────────────────────────
+const ov  = document.getElementById('overlay');
+const ctx = ov.getContext('2d');
+
+// Helper: draw enemy unit symbol (X in a box)
+function drawEnemyUnit(cx, cy, sz, angle=0) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+  ctx.strokeStyle = '#ff2020';
+  ctx.lineWidth = 2.8;
+  ctx.shadowColor = 'rgba(255,0,0,0.4)';
+  ctx.shadowBlur = 4;
+  // Rectangle
+  ctx.strokeRect(-sz*1.4, -sz*0.7, sz*2.8, sz*1.4);
+  // X
+  ctx.beginPath();
+  ctx.moveTo(-sz*1.4, -sz*0.7); ctx.lineTo(sz*1.4,  sz*0.7);
+  ctx.moveTo( sz*1.4, -sz*0.7); ctx.lineTo(-sz*1.4, sz*0.7);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Engagement area ellipse
+ctx.save();
+ctx.strokeStyle = '#ff2020';
+ctx.lineWidth   = 2.5;
+ctx.shadowColor = 'rgba(255,0,0,0.3)';
+ctx.shadowBlur  = 6;
+ctx.setLineDash([]);
+ctx.beginPath();
+ctx.ellipse(370, 490, 290, 290, -0.15, 0, Math.PI * 2);
+ctx.stroke();
+ctx.restore();
+
+// Enemy units
+drawEnemyUnit(300, 205, 20, 0.08);
+drawEnemyUnit(385, 195, 20, -0.05);
+drawEnemyUnit(468, 238, 20, 0.12);
+
+// "Unique Designation" label
+ctx.save();
+ctx.font      = 'bold 14px "Segoe UI", Arial';
+ctx.fillStyle = '#ffffff';
+ctx.shadowColor= 'rgba(0,0,0,0.9)';
+ctx.shadowBlur = 5;
+ctx.fillText('Unique Designation', 268, 408);
+ctx.restore();
+
+// ── Measurement overlays ─────────────────────────────────────────────────────
+
+function arrow(x1,y1,x2,y2, color='#00e5ff', lw=1.5) {
+  const dx = x2-x1, dy = y2-y1;
+  const len = Math.hypot(dx,dy);
+  const ux = dx/len, uy = dy/len;
+  const hw = 7, hl = 12;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle   = color;
+  ctx.lineWidth   = lw;
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur  = 3;
+  // shaft
+  ctx.beginPath();
+  ctx.moveTo(x1 + ux*hl, y1 + uy*hl);
+  ctx.lineTo(x2 - ux*hl, y2 - uy*hl);
+  ctx.stroke();
+  // arrowhead at end
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - ux*hl - uy*hw, y2 - uy*hl + ux*hw);
+  ctx.lineTo(x2 - ux*hl + uy*hw, y2 - uy*hl - ux*hw);
+  ctx.closePath(); ctx.fill();
+  // arrowhead at start
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 + ux*hl - uy*hw, y1 + uy*hl + ux*hw);
+  ctx.lineTo(x1 + ux*hl + uy*hw, y1 + uy*hl - ux*hw);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function measureLabel(x, y, text, align='center') {
+  ctx.save();
+  ctx.font      = 'bold 12px "Courier New", monospace';
+  const tw      = ctx.measureText(text).width;
+  const pad     = 5;
+  const bx      = align === 'center' ? x - tw/2 - pad : x - pad;
+  ctx.fillStyle = 'rgba(0,10,25,0.82)';
+  ctx.beginPath();
+  ctx.roundRect(bx, y - 14, tw + pad*2, 20, 3);
+  ctx.fill();
+  ctx.fillStyle   = '#00e5ff';
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur  = 2;
+  ctx.textAlign   = align;
+  ctx.textBaseline= 'middle';
+  ctx.fillText(text, x, y - 4);
+  ctx.restore();
+}
+
+function tickLine(x1,y1,x2,y2, color='#00e5ff') {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 1;
+  ctx.setLineDash([3,3]);
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ── Width of ellipse (horizontal) ───────────────────────────────────────────
+// Ellipse cx=370, cy=490, rx=290  → left=80, right=660
+tickLine(80,  490, 80,  790);
+tickLine(660, 490, 660, 790);
+arrow(80, 780, 660, 780, '#00e5ff', 1.8);
+measureLabel(370, 765, '≈ 9.4 km  (Width)');
+
+// ── Height of ellipse (vertical) ────────────────────────────────────────────
+// ry=290 → top=200, bottom=780
+tickLine(370, 200, 640, 200);
+tickLine(370, 780, 640, 780);
+arrow(628, 200, 628, 780, '#00e5ff', 1.8);
+ctx.save();
+ctx.translate(648, 490);
+ctx.rotate(-Math.PI/2);
+measureLabel(0, 0, '≈ 9.4 km  (Height)');
+ctx.restore();
+
+// ── Distance between Unit 1 and Unit 3 ──────────────────────────────────────
+// Unit1 centre ~(300,205), Unit3 ~(468,238)
+arrow(300, 205, 468, 238, '#ffdd00', 1.6);
+measureLabel(384, 198, '≈ 3.8 km', 'center');
+
+// ── Bearing label on inter-unit line ────────────────────────────────────────
+ctx.save();
+ctx.font      = 'bold 10px "Courier New"';
+ctx.fillStyle = '#ffdd00';
+ctx.shadowColor='rgba(0,0,0,0.9)'; ctx.shadowBlur=3;
+ctx.textAlign = 'center';
+ctx.fillText('BRG  079°', 384, 248);
+ctx.restore();
+
+// ── Segment: Unit2 to Lake ───────────────────────────────────────────────────
+tickLine(385, 195, 365, 148);
+arrow(385, 193, 365, 165, '#80ff80', 1.4);
+measureLabel(406, 168, '≈ 1.1 km', 'center');
+
+// ── Area label inside ellipse ───────────────────────────────────────────────
+ctx.save();
+ctx.font      = 'bold 13px "Courier New", monospace';
+ctx.fillStyle = 'rgba(0,8,20,0.8)';
+const areaText= 'AREA  ≈ 69.4 km²';
+const atw     = ctx.measureText(areaText).width;
+ctx.beginPath();
+ctx.roundRect(370 - atw/2 - 8, 545, atw + 16, 22, 4);
+ctx.fill();
+ctx.fillStyle   = '#00e5ff';
+ctx.textAlign   = 'center';
+ctx.textBaseline= 'middle';
+ctx.shadowColor = 'rgba(0,0,0,0.9)';
+ctx.shadowBlur  = 3;
+ctx.fillText(areaText, 370, 557);
+ctx.restore();
+
+// ── North indicator ──────────────────────────────────────────────────────────
+ctx.save();
+const nx=650, ny=60, nr=24;
+ctx.strokeStyle='#ffffff'; ctx.fillStyle='#ffffff';
+ctx.lineWidth=1.5;
+ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=4;
+// Circle
+ctx.beginPath(); ctx.arc(nx,ny,nr,0,Math.PI*2); ctx.stroke();
+// Arrow
+ctx.beginPath();
+ctx.moveTo(nx, ny-nr+4);
+ctx.lineTo(nx-7, ny+nr-8);
+ctx.lineTo(nx,   ny+4);
+ctx.lineTo(nx+7, ny+nr-8);
+ctx.closePath(); ctx.fill();
+// N label
+ctx.font='bold 11px Arial'; ctx.fillStyle='#00e5ff';
+ctx.textAlign='center'; ctx.textBaseline='middle';
+ctx.fillText('N', nx, ny-nr-10);
+ctx.restore();
+
+// ── Scale bar ────────────────────────────────────────────────────────────────
+ctx.save();
+const sx=30, sy=790, sw=94;  // ~3 km
+ctx.fillStyle='rgba(0,8,20,0.75)';
+ctx.beginPath(); ctx.roundRect(sx-4, sy-18, sw+60, 26, 4); ctx.fill();
+ctx.strokeStyle='#ffffff'; ctx.lineWidth=2;
+// bar
+ctx.strokeRect(sx, sy-8, sw, 8);
+// segments
+ctx.fillStyle='#ffffff';
+ctx.fillRect(sx,      sy-8, sw/2, 8);
+ctx.fillStyle='rgba(0,0,0,0)';
+ctx.fillRect(sx+sw/2, sy-8, sw/2, 8);
+// ticks
+ctx.lineWidth=1;
+ctx.beginPath();
+ctx.moveTo(sx,    sy-14); ctx.lineTo(sx,    sy+2);
+ctx.moveTo(sx+sw/2, sy-12); ctx.lineTo(sx+sw/2, sy+2);
+ctx.moveTo(sx+sw, sy-14); ctx.lineTo(sx+sw, sy+2);
+ctx.stroke();
+// labels
+ctx.font='bold 10px "Courier New"'; ctx.fillStyle='#ffffff';
+ctx.textAlign='center';
+ctx.fillText('0',     sx,      sy-16);
+ctx.fillText('1.5 km',sx+sw/2, sy-16);
+ctx.fillText('3 km',  sx+sw,   sy-16);
+ctx.restore();
+
+// ── Coord labels at ellipse extremes ────────────────────────────────────────
+function coordLabel(x, y, text) {
+  ctx.save();
+  ctx.font='10px "Courier New"';
+  const tw = ctx.measureText(text).width;
+  ctx.fillStyle='rgba(0,8,20,0.75)';
+  ctx.beginPath(); ctx.roundRect(x-tw/2-3, y-12, tw+6, 16, 2); ctx.fill();
+  ctx.fillStyle='rgba(200,230,255,0.9)';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(text, x, y-4);
+  ctx.restore();
+}
+coordLabel(370, 188, '34.782°N  70.451°E');  // north extreme
+coordLabel(370, 792, '34.699°N  70.451°E');  // south extreme
+
+</script>
+</body>
+</html>

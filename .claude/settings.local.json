@@ -97,7 +97,10 @@
       "Bash(awk '/private _buildResultsPanelHTML/,/^  }$/' \"D:\\\\Projects\\\\PAMS8\\\\MS\\\\Engines\\\\Analysis\\\\TrafficabilityEngine.ts\")",
       "Bash(npm list *)",
       "Bash(python \"C:\\\\Users\\\\Legion\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\3c0df84b-b823-41c7-8618-c14781164b08\\\\aac34a4a-b299-4d53-9a5b-ea7978db32ed\\\\skills\\\\pptx\\\\scripts\\\\office\\\\soffice.py\" --headless --convert-to pdf PAMS8_Template.pptx)",
-      "Bash(ls \"C:\\\\Program Files\\\\LibreOffice\\\\program\\\\soffice.exe\" 2>&1; ls \"C:\\\\Program Files \\(x86\\)\\\\LibreOffice\\\\program\\\\soffice.exe\" 2>&1)"
+      "Bash(ls \"C:\\\\Program Files\\\\LibreOffice\\\\program\\\\soffice.exe\" 2>&1; ls \"C:\\\\Program Files \\(x86\\)\\\\LibreOffice\\\\program\\\\soffice.exe\" 2>&1)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(python -c \"from PIL import Image, ImageDraw, ImageFont; print\\('PIL available'\\)\")",
+      "Bash(python -c \"import cairosvg; print\\('cairosvg available'\\)\")"
     ]
   }
 }
