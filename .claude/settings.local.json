@@ -100,7 +100,10 @@
       "Bash(ls \"C:\\\\Program Files\\\\LibreOffice\\\\program\\\\soffice.exe\" 2>&1; ls \"C:\\\\Program Files \\(x86\\)\\\\LibreOffice\\\\program\\\\soffice.exe\" 2>&1)",
       "mcp__Claude_in_Chrome__tabs_context_mcp",
       "Bash(python -c \"from PIL import Image, ImageDraw, ImageFont; print\\('PIL available'\\)\")",
-      "Bash(python -c \"import cairosvg; print\\('cairosvg available'\\)\")"
+      "Bash(python -c \"import cairosvg; print\\('cairosvg available'\\)\")",
+      "Bash(Get-ChildItem -Path \"D:\\\\Projects\\\\PAMS8\\\\MS\\\\ThirdParty\\\\MilSymbols\" -Recurse)",
+      "Bash(Select-Object -First 30)",
+      "WebSearch"
     ]
   }
 }

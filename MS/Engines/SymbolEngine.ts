@@ -2290,8 +2290,8 @@ class SymbolEngine implements Evented {
           url: cached.url,
           width: cached.width + 'px',
           height: cached.height + 'px',
-          xoffset: cached.xoffset,
-          yoffset: cached.yoffset,
+          xoffset: cached.xoffset + 'px',
+          yoffset: cached.yoffset + 'px',
         });
       }
 
@@ -2340,15 +2340,20 @@ class SymbolEngine implements Evented {
 
       // Calculate offsets based on anchor point
       const anchor = symbol.markerAnchor || { x: width / 2, y: height / 2 };
+      // px-space offsets so the milsymbol reference point (markerAnchor) lands on
+      // the geometry. +x is right; ArcGIS yoffset is +up while the canvas anchor.y
+      // is measured downward, so the y term is (anchor.y - height/2). Units are
+      // appended as 'px' at construction to match width/height (bare numbers would
+      // be interpreted as points and overshoot by ~33%).
       const xoffset = width / 2 - anchor.x;
-      const yoffset = height / 2 - anchor.y;
+      const yoffset = anchor.y - height / 2;
 
       const pictureMarkerSymbol = new PictureMarkerSymbol({
         url: dataUrl,
         width: width + 'px',
         height: height + 'px',
-        xoffset,
-        yoffset,
+        xoffset: xoffset + 'px',
+        yoffset: yoffset + 'px',
       });
 
       if (SymbolEngine._forceRasterCache.size >= SymbolEngine._FORCE_RASTER_CACHE_MAX) {

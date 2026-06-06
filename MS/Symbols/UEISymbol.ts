@@ -86,8 +86,8 @@ export class UEISymbol {
             url: this._ueiData.asCanvas().toDataURL(),
             width:   width  + "px",
             height:  height + "px",
-            xoffset: (width  / 2) - anchor.x,
-            yoffset: (height / 2) - anchor.y,
+            xoffset: `${(width  / 2) - anchor.x}px`,
+            yoffset: `${anchor.y - (height / 2)}px`,
         });
 
         if (Object.prototype.hasOwnProperty.call(options, "ANGLE")) {
