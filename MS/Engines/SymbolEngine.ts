@@ -339,8 +339,17 @@ class SymbolEngine implements Evented {
     // Initialize ThemeManager with the configured theme
     ThemeManager.getInstance().init((settingsData as any).ui?.theme ?? 'ops-dark');
 
-    // Conditionally load MeasurementEngine based on Settings.json feature flag
-    this._initMeasurementEngine();
+    // Conditionally load MeasurementEngine based on Settings.json feature flag.
+    // Runtime toggles (M key, ∟ button, Settings checkbox) lazy-load on demand
+    // via toggleMeasurement() / onSettingChanged, so the gate only controls boot.
+    {
+      const features = (settingsData as any).features ?? {};
+      if (features.measurementEngine !== false) {
+        void this._initMeasurementEngine();
+      } else {
+        console.info('[SymbolEngine] MeasurementEngine disabled via Settings.json (lazy-load available)');
+      }
+    }
 
     // Conditionally load ProximityEngine based on Settings.json feature flag
     this._initProximityEngine();
@@ -615,18 +624,13 @@ class SymbolEngine implements Evented {
   }
 
   /**
-   * Dynamically import and initialise MeasurementEngine only when the
-   * Settings.json feature flag is true.  The dynamic import keeps the module
-   * out of the initial bundle when the feature is disabled.
+   * Dynamically import and initialise MeasurementEngine. Idempotent — returns
+   * the existing instance if already loaded. The Settings.json feature flag
+   * is checked by the boot caller and by toggleMeasurement(); this method
+   * itself is gate-free so runtime opt-in works regardless of the boot state.
    */
-  private async _initMeasurementEngine(): Promise<void> {
-    const features = (settingsData as any).features ?? {};
-    if (features.measurementEngine === false) {
-      console.info(
-        '[SymbolEngine] MeasurementEngine disabled via Settings.json',
-      );
-      return;
-    }
+  private async _initMeasurementEngine(): Promise<MeasurementEngine | null> {
+    if (this._measurementEngine) return this._measurementEngine;
     try {
       const { default: ME } = await import('./MeasurementEngine.ts');
       this._measurementEngine = ME.getInstance();
@@ -666,8 +670,10 @@ class SymbolEngine implements Evented {
         engine: this._measurementEngine,
       });
       console.info('[SymbolEngine] MeasurementEngine loaded');
+      return this._measurementEngine;
     } catch (e) {
       console.error('[SymbolEngine] Failed to load MeasurementEngine:', e);
+      return null;
     }
   }
 
@@ -1375,6 +1381,15 @@ class SymbolEngine implements Evented {
     return this._measurementEngine;
   }
 
+  /** Toggle the MeasurementEngine, lazy-loading it on first use when the
+   *  Settings.json gate left it off at boot. Every UI hook (M key, ∟ button,
+   *  Settings checkbox) should funnel through this so the feature can be
+   *  switched on without restarting the app. */
+  public async toggleMeasurement(): Promise<void> {
+    const engine = this._measurementEngine ?? (await this._initMeasurementEngine());
+    engine?.toggle();
+  }
+
   /** Access the ProximityEngine â€” toggle or adjust snap options programmatically.
    *  May be undefined if the feature is disabled in Settings.json or not yet loaded. */
   public get proximityEngine(): ProximityEngine | null {
@@ -1491,10 +1506,17 @@ class SymbolEngine implements Evented {
 
     if (fullPath.startsWith('features.')) {
       const feature = path[1];
-      if (feature === 'measurementEngine' && this._measurementEngine) {
-        value
-          ? this._measurementEngine.enable()
-          : this._measurementEngine.disable();
+      if (feature === 'measurementEngine') {
+        if (value) {
+          // Lazy-load the engine on first opt-in so flipping the Settings
+          // checkbox works even when the boot gate left it unloaded.
+          void (async () => {
+            const engine = this._measurementEngine ?? (await this._initMeasurementEngine());
+            engine?.enable();
+          })();
+        } else {
+          this._measurementEngine?.disable();
+        }
       } else if (feature === 'proximityEngine' && this._proximityEngine) {
         value
           ? this._proximityEngine.enable()
@@ -2963,18 +2985,48 @@ class SymbolEngine implements Evented {
       this._suppressDrawLifecycleCount++;
       this._suppressNextAddUndoCount++;
 
+      // ── [Morphix DEBUG] remove after diagnosis ───────────────────────────
+      const _dbgDe = editedState.drawEssentials as any;
+      console.log('[Morphix DEBUG] applyMorphixEdit → initialize', {
+        oldId,
+        oldGeomType: (oldGraphic.geometry as any)?.type,
+        SYM_GEO_TYPE: _dbgDe?.SYM_GEO_TYPE,
+        symbolKey: editedState.symbolKey,
+        sidc: editedState.sidc,
+        hasGEOM: !!_dbgDe?.GEOM,
+        ctrlPtsLen: Array.isArray(_dbgDe?.CTRL_PTS) ? _dbgDe.CTRL_PTS.length : 'none',
+        hasBASE_LN_PTS: !!_dbgDe?.BASE_LN_PTS,
+        hasOPTIONS: !!_dbgDe?.OPTIONS,
+        UNIQUE_DESIG: editedState.amplifier?.UNIQUE_DESIG,
+        opacity: _dbgDe?.opacity,
+        DRAW_TYPE: _dbgDe?.DRAW_TYPE,
+      });
+      // ─────────────────────────────────────────────────────────────────────
+
       this.initialize(
         editedState.drawEssentials,
         editedState.amplifier,
         true,
       );
 
+      const _viaLastCreated = !!this._lastCreatedGraphic;
       const newGraphic =
         this._lastCreatedGraphic ||
         Array.from(this._layerManager.getSymbolLayer().graphics).find(
           (g: any) => g.attributes?.id === oldId,
         ) ||
         null;
+
+      // ── [Morphix DEBUG] remove after diagnosis ───────────────────────────
+      console.log('[Morphix DEBUG] applyMorphixEdit ← initialize result', {
+        oldId,
+        synchronousEmit: _viaLastCreated,
+        newGraphicFound: !!newGraphic,
+        newGraphicId: newGraphic?.attributes?.id,
+        newGeomType: (newGraphic?.geometry as any)?.type,
+        newLayerId: (newGraphic?.origin?.layer as any)?.id,
+      });
+      // ─────────────────────────────────────────────────────────────────────
 
       this._suppressDrawLifecycleCount = suppressBefore;
       this._pendingAttrs = previousPendingAttrs;

@@ -351,6 +351,7 @@ export class KeyTerrainIdentificationEngine {
           <div class="ms-header-icon">▲</div>
           <div class="ms-header-title">Key Terrain — Ranked</div>
           <div class="ms-status-lbl" id="kt-list-sub">Run analysis to identify features</div>
+          <button class="ms-header-btn ms-btn-round" id="kt-list-close-btn" title="Close">✕</button>
         </div>
         <div class="ms-body" id="kt-feature-list">
           <div class="ms-empty" id="kt-list-empty">
@@ -363,6 +364,7 @@ export class KeyTerrainIdentificationEngine {
       `;
       document.body.appendChild(panel);
       this._listPanelEl = panel;
+      panel.querySelector('#kt-list-close-btn')?.addEventListener('click', () => this.close());
       this._makeSubDraggable(panel, panel.querySelector<HTMLElement>('.ms-header'));
     }
 
@@ -375,10 +377,10 @@ export class KeyTerrainIdentificationEngine {
           <div class="ms-header-icon">⛰</div>
           <div class="ms-header-title">Key Terrain Identifier</div>
           <div class="ms-status-dot" id="kt-status-dot"></div>
-          <div class="ms-status-lbl" id="kt-status-lbl">Ready</div>
-          <button class="ms-header-btn ms-btn-round" id="kt-help-btn" title="How key terrain analysis works">?</button>
-          <button class="ms-header-btn ms-btn-round" id="kt-minimize-btn" title="Minimize">▼</button>
-          <button class="ms-header-btn ms-btn-round" id="kt-close-btn" title="Close (keeps graphics)">✕</button>
+          <div class="ms-status-lbl" id="kt-status-lbl" style="flex-shrink:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Ready</div>
+          <button class="ms-header-btn ms-btn-round" id="kt-help-btn" title="How key terrain analysis works" style="flex-shrink:0">?</button>
+          <button class="ms-header-btn ms-btn-round" id="kt-minimize-btn" title="Minimize" style="flex-shrink:0">▼</button>
+          <button class="ms-header-btn ms-btn-round" id="kt-close-btn" title="Close (keeps graphics)" style="flex-shrink:0">✕</button>
         </div>
         <div class="ms-help-popover" id="kt-help-popover" hidden>
           <div class="ms-help-head">

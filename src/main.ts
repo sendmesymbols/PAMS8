@@ -787,7 +787,7 @@ function initializeAutocomplete() {
 
     // Step 2: Define static/default values for remaining SIDC parts
     const codingScheme = '10'; // positions 1–2 (Warfighting)
-    const standardIdentity = '06'; // positions 3–4 (Friendly)
+    const standardIdentity = '03'; // positions 3–4 (Friendly)
     const status = '0'; // position 7 (Present)
     const hqModifier = '0'; // position 8 (None)
     const amplifier1 = '22'; // positions 9–10 (Default)
@@ -1181,7 +1181,7 @@ function initializeAutocomplete() {
 
   toggleBtn.addEventListener('click', () => {
     panel.classList.add('ms-active'); // show panel on first click
-    symbolEngine.measurementEngine?.toggle();
+    void symbolEngine.toggleMeasurement();
   });
 
 
@@ -1192,7 +1192,7 @@ function initializeAutocomplete() {
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     if (e.key === 'm' || e.key === 'M') {
       panel.classList.add('ms-active');
-      symbolEngine.measurementEngine?.toggle();
+      void symbolEngine.toggleMeasurement();
     }
   });
 

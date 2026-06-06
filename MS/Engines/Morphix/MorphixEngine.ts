@@ -1329,8 +1329,23 @@ class MorphixEngine {
 
     const editedState = this.buildEditedState(this.state);
 
+    // ── [Morphix DEBUG] remove after diagnosis ─────────────────────────────
+    console.log('[Morphix DEBUG] save() → applyEdit', {
+      kind: this.state.kind,
+      symbolKey: this.state.symbolKey,
+      sidc: this.state.sidc,
+      isDirty: JSON.stringify(this.serialize(this.state)) !== this.originalSnapshot,
+    });
+    // ───────────────────────────────────────────────────────────────────────
+
     try {
-      this.callbacks.applyEdit(this.state.graphic, editedState);
+      const result = this.callbacks.applyEdit(this.state.graphic, editedState);
+      // ── [Morphix DEBUG] remove after diagnosis ───────────────────────────
+      console.log('[Morphix DEBUG] save() ← applyEdit returned', {
+        kind: this.state.kind,
+        gotGraphic: !!result,
+      });
+      // ─────────────────────────────────────────────────────────────────────
       this.close();
     } catch (err) {
       // eslint-disable-next-line no-console

@@ -52,6 +52,8 @@ interface EgressResult {
   clear: boolean;
   masked: boolean;
   dist: number;
+  autoDir?: boolean; // true = auto terrain estimate (no user waypoint)
+  autoDirBrg?: number; // compass bearing of auto-direction line
   /** Set when a real road route to the egress point was found. */
   viaRoad?: boolean;
   roadKm?: number;
@@ -67,6 +69,7 @@ interface ScoreResult {
   sampler: any;
   extent: Extent;
   numRays: number;
+  egrAutoAnalyzed: boolean;
 }
 
 interface HistoryEntry {
@@ -100,42 +103,60 @@ const FACTORS: FactorDef[] = [
     label: 'Observation arc',
     icon: 'OBS',
     color: '#1D9E75',
-    desc: (s) => s >= 15 ? 'Excellent - sees most of AO' : s >= 10 ? 'Good observation' : s >= 6 ? 'Limited arcs' : 'Poor - nearly blind',
+    desc: (s) => s >= 15 ? 'Wide arcs — early warning across most approach routes' :
+                 s >= 10 ? 'Adequate — most threat approaches visible' :
+                 s >= 6  ? 'Restricted — significant dead angles; post sentries' :
+                           'Severe blind arcs — position vulnerable to unseen approach',
   },
   {
     id: 'fof',
     label: 'Fields of fire',
     icon: 'FOF',
     color: '#378ADD',
-    desc: (s) => s >= 15 ? 'Wide unobstructed fields' : s >= 10 ? 'Adequate direct fire arcs' : s >= 6 ? 'Restricted by terrain' : 'Confined - minimal fire',
+    desc: (s) => s >= 15 ? 'Open fire lanes — can engage across threat sector at range' :
+                 s >= 10 ? 'Adequate direct fire into threat sector' :
+                 s >= 6  ? 'Restricted — terrain forces close-range or channelled engagement' :
+                           'Cannot effectively engage the threat axis — reposition or clear obstacles',
   },
   {
     id: 'cff',
     label: 'Cover from fire',
     icon: 'CFF',
     color: '#EF9F27',
-    desc: (s) => s >= 15 ? 'Strong terrain masking' : s >= 10 ? 'Moderate protection' : s >= 6 ? 'Partial cover only' : 'Exposed - no cover',
+    desc: (s) => s >= 15 ? 'Strong defilade — terrain masks position from direct fire' :
+                 s >= 10 ? 'Partial defilade — some fire approaches on the threat axis' :
+                 s >= 6  ? 'Exposed on key threat axes — dig in or use additional cover' :
+                           'No terrain masking from enemy fire — position must be hardened',
   },
   {
     id: 'cfv',
     label: 'Cover from view',
     icon: 'CFV',
     color: '#B428DC',
-    desc: (s) => s >= 15 ? 'Well concealed' : s >= 10 ? 'Partial concealment' : s >= 6 ? 'Marginal concealment' : 'Fully exposed',
+    desc: (s) => s >= 15 ? 'Well concealed — hard to locate from surrounding terrain' :
+                 s >= 10 ? 'Partially concealed — use camouflage and noise discipline' :
+                 s >= 6  ? 'Largely observable — assume enemy can see this position' :
+                           'Fully exposed — enemy observation from multiple angles is certain',
   },
   {
     id: 'egr',
     label: 'Egress routes',
     icon: 'EGR',
     color: '#78C840',
-    desc: (s) => s >= 15 ? 'Multiple covered routes' : s >= 10 ? 'At least one clear route' : s >= 6 ? 'Limited egress' : 'Bottleneck - trapped',
+    desc: (s) => s >= 15 ? 'Multiple open/masked withdrawal routes available' :
+                 s >= 10 ? 'At least one viable withdrawal route' :
+                 s >= 6  ? 'Limited egress — withdrawal under fire will be difficult' :
+                           'Position risks becoming a trap — plan alternate break-out routes',
   },
   {
     id: 'dg',
     label: 'Dead ground behind',
     icon: 'DG',
     color: '#DC3C30',
-    desc: (s) => s >= 15 ? 'Deep dead ground - safe FUP' : s >= 10 ? 'Useful dead ground' : s >= 6 ? 'Shallow dead ground' : 'No dead ground',
+    desc: (s) => s >= 15 ? 'Extensive dead ground — secure FUP and covered friendly approach' :
+                 s >= 10 ? 'Useful dead ground for tactical movement to/from position' :
+                 s >= 6  ? 'Shallow dead ground — limited covered movement rearward' :
+                           'Exposed rear — reinforcement and resupply routes are under observation',
   },
 ];
 
@@ -222,6 +243,7 @@ export class PosDefScorerEngine {
   private _running = false;
   private _addingEgress = false;
   private _draggableBound: WeakSet<HTMLElement> = new WeakSet();
+  private _egrAutoAnalyzed = true;
 
   constructor() {
     this._createLayers();
@@ -584,15 +606,15 @@ export class PosDefScorerEngine {
       const result = await this._scorePosition(pt, obsZ, params);
 
       this._setProgress(0.7, 'Building overlays');
-      await this._tick();
-      if (params.showVS || params.showDG || params.showSlp) this._drawRasterOverlay(result, pt, obsZ, params);
-      if (params.showLOS) this._buildLOSSpokes(pt, obsZ, result.numRays, params.obsRadius, result.sampler).forEach((g) => this._spokesLayer.add(g));
+      if (params.showVS || params.showDG || params.showSlp) await this._drawRasterOverlay(result, pt, obsZ, params);
+      if (params.showLOS) this._buildLOSSpokes(pt, obsZ, result.numRays, params.obsRadius, result.sampler, result.horizons).forEach((g) => this._spokesLayer.add(g));
       if (this._egressPts.length > 0) {
         this._setProgress(0.82, 'Routing egress on road network');
         await this._enrichEgressWithRoads(pt, result);
       }
       if (params.showEgr) this._drawEgressLines(pt, result.egrResults);
 
+      this._egrAutoAnalyzed = result.egrAutoAnalyzed;
       this._setProgress(0.9, 'Rendering score');
       await this._tick();
       this._updateScoreUI(result.scores, result.composite);
@@ -617,7 +639,7 @@ export class PosDefScorerEngine {
 
   private async _scorePosition(positionPt: Point, obsZ: number, params: ScoreParams): Promise<ScoreResult> {
     if (!this._view) throw new Error('No active view');
-    const { obsRadius, slopeRadius, rayRes, threatBrg } = params;
+    const { obsRadius, slopeRadius, rayRes, threatBrg, slopeOkDeg } = params;
     const cosLat = Math.max(0.1, Math.cos((positionPt.latitude * Math.PI) / 180));
     const padDeg = (obsRadius * 1.08) / M_PER_DEG;
     const extent = new Extent({
@@ -637,8 +659,11 @@ export class PosDefScorerEngine {
       }
     };
     const step = Math.max(20, obsRadius / 60);
-    const numRays = Math.max(8, Math.round(360 / rayRes));
+    // Minimum 24 rays (15° per ray) — below this terrain analysis loses tactical meaning.
+    const numRays = Math.max(24, Math.round(360 / rayRes));
     const horizons = new Float32Array(numRays);
+
+    // Reusable LOS helper: is a target visible from positionPt/obsZ?
     const isTargetVisible = (brg: number, targetDist: number, targetSlope: number): boolean => {
       let maxInterveningSlope = -90;
       for (let d = step; d < targetDist - step * 0.5; d += step) {
@@ -650,6 +675,8 @@ export class PosDefScorerEngine {
       }
       return targetSlope >= maxInterveningSlope;
     };
+
+    // Horizon array — maximum blocking elevation angle per ray over full obsRadius.
     for (let ri = 0; ri < numRays; ri++) {
       const brg = (ri / numRays) * 360;
       let maxSlp = -90;
@@ -659,7 +686,9 @@ export class PosDefScorerEngine {
       }
       horizons[ri] = maxSlp;
     }
+    await this._tick();
 
+    // ── OBS: fraction of rays with unobstructed LOS to 90% of radius ──────────
     let visRays = 0;
     for (let ri = 0; ri < numRays; ri++) {
       const brg = (ri / numRays) * 360;
@@ -670,6 +699,7 @@ export class PosDefScorerEngine {
     }
     const obsScore = Math.round(Math.min(20, (visRays / numRays) * 20));
 
+    // ── FOF: visible rays within threat sector (±90° of threat bearing) ────────
     let fofVis = 0;
     let fofTotal = 0;
     for (let ri = 0; ri < numRays; ri++) {
@@ -683,16 +713,45 @@ export class PosDefScorerEngine {
       if (isTargetVisible(brg, targetDist, slp)) fofVis++;
     }
     const fofScore = fofTotal > 0 ? Math.round(Math.min(20, (fofVis / fofTotal) * 20)) : 10;
+    await this._tick();
 
-    let totalRise = 0;
-    for (let fi = 0; fi < 24; fi++) {
-      const p = destPt(positionPt.longitude, positionPt.latitude, (fi / 24) * 360, slopeRadius);
-      totalRise += Math.max(0, getZ(p.longitude, p.latitude) - obsZ + 0.5);
+    // ── CFF: cover from enemy direct fire ─────────────────────────────────────
+    // Cast from enemy positions along the threat axis at direct fire ranges and
+    // check whether intervening terrain masks our position from each enemy LOS.
+    // A high score means the position is in defilade from the threat direction.
+    const cffRanges = [400, 800, 1200, 1800].filter((r) => r <= obsRadius * 0.95);
+    const cffSpreads = [-60, -45, -30, -15, 0, 15, 30, 45, 60];
+    let cffBlocked = 0;
+    let cffChecked = 0;
+    for (const range of cffRanges) {
+      for (const spread of cffSpreads) {
+        const enemyBrg = (threatBrg + spread + 360) % 360;
+        const enemyPt = destPt(positionPt.longitude, positionPt.latitude, enemyBrg, range);
+        const enemyZ = getZ(enemyPt.longitude, enemyPt.latitude) + 1.8;
+        const dist = geoDist(positionPt.longitude, positionPt.latitude, enemyPt.longitude, enemyPt.latitude);
+        const reverseBrg = (enemyBrg + 180) % 360;
+        // Angle from enemy to our position
+        const posSlope = Math.atan2(obsZ - enemyZ, dist) * 180 / Math.PI;
+        // Check intervening terrain between enemy and our position
+        let maxInterveningTerrain = -90;
+        for (let d = step; d < dist * 0.92; d += step) {
+          const ip = destPt(enemyPt.longitude, enemyPt.latitude, reverseBrg, d);
+          maxInterveningTerrain = Math.max(
+            maxInterveningTerrain,
+            Math.atan2(getZ(ip.longitude, ip.latitude) - enemyZ, d) * 180 / Math.PI,
+          );
+        }
+        cffChecked++;
+        if (maxInterveningTerrain > posSlope) cffBlocked++;
+      }
     }
-    const cffScale = Math.max(1, slopeRadius / 10);
-    const cffScore = Math.round(Math.min(20, (totalRise / 24) / cffScale * 20));
+    // If threat ranges all exceeded obsRadius (tiny obsRadius setting) fall back gracefully.
+    const cffScore = cffChecked > 0 ? Math.round(Math.min(20, (cffBlocked / cffChecked) * 20)) : 0;
+    await this._tick();
 
-    let blocked = 0;
+    // ── CFV: cover from enemy observation ─────────────────────────────────────
+    // 24 notional observers at 90% of obsRadius; count how many cannot see us.
+    let cfvBlocked = 0;
     for (let oi = 0; oi < 24; oi++) {
       const brg = (oi / 24) * 360;
       const p = destPt(positionPt.longitude, positionPt.latitude, brg, obsRadius * 0.9);
@@ -705,13 +764,19 @@ export class PosDefScorerEngine {
         const ip = destPt(p.longitude, p.latitude, reverseBrg, d);
         maxReverseSlp = Math.max(maxReverseSlp, Math.atan2(getZ(ip.longitude, ip.latitude) - extObsZ, d) * 180 / Math.PI);
       }
-      if (reverseSlp < maxReverseSlp) blocked++;
+      if (reverseSlp < maxReverseSlp) cfvBlocked++;
     }
-    const cfvScore = Math.round(Math.min(20, (blocked / 24) * 20));
+    const cfvScore = Math.round(Math.min(20, (cfvBlocked / 24) * 20));
+    await this._tick();
 
-    let egrScore = 10;
+    // ── EGR: egress routes ─────────────────────────────────────────────────────
+    let egrScore = 0;
     const egrResults: EgressResult[] = [];
+    let egrAutoAnalyzed = true;
+
     if (this._egressPts.length > 0) {
+      // User-defined waypoint analysis — precise and directional.
+      egrAutoAnalyzed = false;
       let clearEgr = 0;
       for (const ept of this._egressPts) {
         const dist = geoDist(positionPt.longitude, positionPt.latitude, ept.longitude, ept.latitude);
@@ -725,41 +790,92 @@ export class PosDefScorerEngine {
         const clear = eptSlp >= maxSlpToEgr;
         const mid = destPt(positionPt.longitude, positionPt.latitude, egrBrg, dist * 0.5);
         const midSlp = Math.atan2(getZ(mid.longitude, mid.latitude) - obsZ, dist * 0.5) * 180 / Math.PI;
-        // horizons[] is indexed by ray index (brg = ri/numRays*360), so map the
-        // bearing back through numRays — not rayRes, which only matches when it
-        // divides 360 evenly and the max(8,…) clamp is inactive.
         const masked = midSlp < horizons[Math.round(egrBrg * numRays / 360) % numRays] * 0.7;
         egrResults.push({ pt: ept, clear, masked, dist: Math.round(dist) });
         if (clear) clearEgr++;
       }
       const maskedCount = egrResults.filter((r) => r.masked).length;
       egrScore = Math.round(Math.min(20, (clearEgr / this._egressPts.length) * 12 + (maskedCount / this._egressPts.length) * 8));
-    }
+    } else {
+      // Auto terrain analysis: probe 8 cardinal/intercardinal bearings.
+      // Scores terrain traversability and masking — not a route plan, but a
+      // terrain-based estimate of withdrawal options in each direction.
+      const autoEgrDirs = [0, 45, 90, 135, 180, 225, 270, 315];
+      const egrCheckDist = Math.min(1200, obsRadius * 0.4);
+      let clearCount = 0;
+      let maskedAndClearCount = 0;
 
+      for (const dir of autoEgrDirs) {
+        const ept = destPt(positionPt.longitude, positionPt.latitude, dir, egrCheckDist);
+        // Slope traversability: reject directions exceeding acceptable slope.
+        let maxRouteSlopeDeg = 0;
+        for (let d = step; d < egrCheckDist * 0.95; d += step) {
+          const p1 = destPt(positionPt.longitude, positionPt.latitude, dir, d);
+          const p2 = destPt(positionPt.longitude, positionPt.latitude, dir, Math.min(d + step, egrCheckDist));
+          const dz = Math.abs(getZ(p2.longitude, p2.latitude) - getZ(p1.longitude, p1.latitude));
+          maxRouteSlopeDeg = Math.max(maxRouteSlopeDeg, Math.atan2(dz, step) * 180 / Math.PI);
+        }
+        const clear = maxRouteSlopeDeg <= slopeOkDeg;
+        // Masking: is the midpoint of this route below the blocking horizon?
+        const midPt = destPt(positionPt.longitude, positionPt.latitude, dir, egrCheckDist * 0.5);
+        const midSlp = Math.atan2(getZ(midPt.longitude, midPt.latitude) - obsZ, egrCheckDist * 0.5) * 180 / Math.PI;
+        const riIdx = Math.round(dir * numRays / 360) % numRays;
+        const masked = midSlp < horizons[riIdx] * 0.7;
+        const eptPoint = new Point({ longitude: ept.longitude, latitude: ept.latitude, spatialReference: WGS84 });
+        egrResults.push({ pt: eptPoint, clear, masked, dist: Math.round(egrCheckDist), autoDir: true, autoDirBrg: dir });
+        if (clear) clearCount++;
+        if (clear && masked) maskedAndClearCount++;
+      }
+      // Max raw: 8 clear × 1.5 + 8 masked × 1.0 = 20 → maps directly to 0-20.
+      egrScore = Math.round(Math.min(20, clearCount * 1.5 + maskedAndClearCount * 1.0));
+    }
+    await this._tick();
+
+    // ── DG: dead ground behind position — enemy LOS extended rearward ─────────
+    // For each rear-arc ray, place a notional enemy at the opposite (threat) side
+    // and compute where that enemy's LOS line passes through our position and
+    // extends into the rear terrain. Any ground below that projected LOS height
+    // is dead ground — concealed from the enemy and usable for FUP / withdrawal.
     const rearBrg = (threatBrg + 180) % 360;
-    let totalDG = 0;
+    // Use a conservative engagement range: enemy at 1.5 km or half the obs radius.
+    const enemyEngageRange = Math.min(1500, obsRadius * 0.5);
     let dgCount = 0;
+    let dgTotal = 0;
+    const maxDGDist = Math.min(slopeRadius * 4, obsRadius * 0.3);
+
     for (let ri = 0; ri < numRays; ri++) {
       const brg = (ri / numRays) * 360;
-      if (Math.abs(((brg - rearBrg + 540) % 360) - 180) > 60) continue;
-      for (let d = step; d <= slopeRadius * 3; d += step) {
+      const angleDelta = Math.abs(((brg - rearBrg + 540) % 360) - 180);
+      if (angleDelta > 60) continue; // examine only the rear 120° arc
+
+      // Enemy is in the threat direction, opposite to this rear ray.
+      const enemyDirBrg = (brg + 180) % 360;
+      const enemyPt = destPt(positionPt.longitude, positionPt.latitude, enemyDirBrg, enemyEngageRange);
+      const enemyZ = getZ(enemyPt.longitude, enemyPt.latitude) + 1.8;
+
+      // Angle of enemy's LOS arriving at our position.
+      const angleToPos = Math.atan2(obsZ - enemyZ, enemyEngageRange);
+
+      // Walk rearward: is each point below the enemy's extended LOS?
+      for (let d = step; d <= maxDGDist; d += step) {
         const p = destPt(positionPt.longitude, positionPt.latitude, brg, d);
-        const losZ = obsZ + d * Math.tan(horizons[ri] * Math.PI / 180);
         const z = getZ(p.longitude, p.latitude);
-        if (z < losZ) {
-          totalDG += losZ - z;
-          dgCount++;
-        }
+        // LOS height at total distance (enemyEngageRange + d) from the enemy.
+        const losHeight = enemyZ + (enemyEngageRange + d) * Math.tan(angleToPos);
+        dgTotal++;
+        if (z < losHeight) dgCount++;
       }
     }
-    const dgScore = Math.round(Math.min(20, ((dgCount ? totalDG / dgCount : 0) / 8) * 20));
+    // Score = fraction of rear-arc terrain that is in dead ground (0-100% → 0-20).
+    const dgScore = Math.round(Math.min(20, (dgCount / Math.max(1, dgTotal)) * 20));
+
     const scores: ScoreMap = { obs: obsScore, fof: fofScore, cff: cffScore, cfv: cfvScore, egr: egrScore, dg: dgScore };
-    return { scores, composite: this._computeComposite(scores, params.weights), horizons, egrResults, sampler, extent, numRays };
+    return { scores, composite: this._computeComposite(scores, params.weights), horizons, egrResults, sampler, extent, numRays, egrAutoAnalyzed };
   }
 
-  private _drawRasterOverlay(result: ScoreResult, positionPt: Point, obsZ: number, params: ScoreParams): void {
+  private async _drawRasterOverlay(result: ScoreResult, positionPt: Point, obsZ: number, params: ScoreParams): Promise<void> {
     if (!this._view) return;
-    const canvas = this._buildViewshedCanvas(result.numRays, params.rayRes, positionPt, obsZ, result.sampler, result.extent, params.obsRadius, 0.8);
+    const canvas = await this._buildViewshedCanvas(result.numRays, positionPt, obsZ, result.extent, params.obsRadius, 0.8, result.horizons);
     const ml = new MediaLayer({
       source: [new ImageElement({ image: canvas.toDataURL('image/png'), georeference: new ExtentAndRotationGeoreference({ extent: result.extent }) })],
       title: 'Position Defensibility - Viewshed / Dead Ground',
@@ -768,28 +884,28 @@ export class PosDefScorerEngine {
     this._mediaLayers.push(ml);
   }
 
-  private _buildViewshedCanvas(numRays: number, rayRes: number, positionPt: Point, obsZ: number, sampler: any, extent: Extent, obsRadius: number, opacity: number): HTMLCanvasElement {
+  private async _buildViewshedCanvas(numRays: number, positionPt: Point, obsZ: number, extent: Extent, obsRadius: number, opacity: number, horizons: Float32Array): Promise<HTMLCanvasElement> {
     const cols = Math.round(obsRadius * 2 / 40);
     const rows = Math.round(obsRadius * 2 / 40);
     const dLon = (extent.xmax - extent.xmin) / cols;
     const dLat = (extent.ymax - extent.ymin) / rows;
     const cosLat = Math.cos(positionPt.latitude * Math.PI / 180);
-    const step = Math.max(20, obsRadius / 60);
-    const isVisible = (brg: number, targetDist: number, targetSlope: number): boolean => {
-      let maxInterveningSlope = -90;
-      for (let d = step; d < targetDist - step * 0.5; d += step) {
-        const p = destPt(positionPt.longitude, positionPt.latitude, brg, d);
-        const z = sampler.queryElevation(new Point({ longitude: p.longitude, latitude: p.latitude, spatialReference: WGS84 }))?.z ?? 0;
-        maxInterveningSlope = Math.max(maxInterveningSlope, Math.atan2(z - obsZ, d) * 180 / Math.PI);
-      }
-      return targetSlope >= maxInterveningSlope;
+    // Re-create a lightweight sampler for canvas pixel queries only.
+    let sampler: any = null;
+    try { sampler = await (this._view!.map as any).ground.createElevationSampler(extent); } catch { /* no elevation */ }
+    const getZ = (lon: number, lat: number): number => {
+      try { const r = sampler?.queryElevation(new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 })); return Number.isFinite(r?.z) ? r.z : 0; } catch { return 0; }
     };
     const canvas = document.createElement('canvas');
     canvas.width = cols;
     canvas.height = rows;
     const ctx = canvas.getContext('2d')!;
     const img = ctx.createImageData(cols, rows);
+    const aVis = Math.round(0.35 * opacity * 255);
+    const aHid = Math.round(0.25 * opacity * 255);
     for (let r = 0; r < rows; r++) {
+      // Yield every 20 rows so the browser can repaint between chunks.
+      if (r % 20 === 0) await this._tick();
       for (let c = 0; c < cols; c++) {
         const lon = extent.xmin + (c + 0.5) * dLon;
         const lat = extent.ymax - (r + 0.5) * dLat;
@@ -799,14 +915,17 @@ export class PosDefScorerEngine {
         if (dist < 5 || dist > obsRadius) continue;
         const brg = ((Math.atan2(east, north) * 180 / Math.PI) + 360) % 360;
         const ri = Math.round(brg * numRays / 360) % numRays;
-        const snappedBrg = (ri / numRays) * 360;
-        const z = sampler.queryElevation(new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 }))?.z ?? 0;
+        const z = getZ(lon, lat);
         const slp = Math.atan2(z - obsZ, dist) * 180 / Math.PI;
+        // Visibility test using precomputed per-ray horizon — O(1) per pixel.
+        // A pixel is visible when its elevation angle exceeds the max blocking
+        // angle of all terrain samples along that ray to obsRadius.
+        const visible = slp > horizons[ri];
         const px = (r * cols + c) * 4;
-        if (isVisible(snappedBrg, dist, slp)) {
-          img.data[px] = 29; img.data[px + 1] = 158; img.data[px + 2] = 117; img.data[px + 3] = Math.round(0.35 * opacity * 255);
+        if (visible) {
+          img.data[px] = 29; img.data[px + 1] = 158; img.data[px + 2] = 117; img.data[px + 3] = aVis;
         } else {
-          img.data[px] = 80; img.data[px + 1] = 20; img.data[px + 2] = 20; img.data[px + 3] = Math.round(0.25 * opacity * 255);
+          img.data[px] = 80; img.data[px + 1] = 20; img.data[px + 2] = 20; img.data[px + 3] = aHid;
         }
       }
     }
@@ -814,23 +933,15 @@ export class PosDefScorerEngine {
     return canvas;
   }
 
-  private _buildLOSSpokes(positionPt: Point, obsZ: number, numRays: number, obsRadius: number, sampler: any): Graphic[] {
+  private _buildLOSSpokes(positionPt: Point, obsZ: number, numRays: number, obsRadius: number, sampler: any, horizons: Float32Array): Graphic[] {
     const graphics: Graphic[] = [];
-    const step = Math.max(20, obsRadius / 60);
-    const isVisible = (brg: number, targetSlope: number): boolean => {
-      let maxInterveningSlope = -90;
-      for (let d = step; d < obsRadius - step * 0.5; d += step) {
-        const p = destPt(positionPt.longitude, positionPt.latitude, brg, d);
-        const z = sampler.queryElevation(new Point({ longitude: p.longitude, latitude: p.latitude, spatialReference: WGS84 }))?.z ?? 0;
-        maxInterveningSlope = Math.max(maxInterveningSlope, Math.atan2(z - obsZ, d) * 180 / Math.PI);
-      }
-      return targetSlope >= maxInterveningSlope;
-    };
     for (let ri = 0; ri < numRays; ri += 3) {
       const brg = (ri / numRays) * 360;
       const p = destPt(positionPt.longitude, positionPt.latitude, brg, obsRadius);
-      const z = sampler.queryElevation(new Point({ longitude: p.longitude, latitude: p.latitude, spatialReference: WGS84 }))?.z ?? 0;
-      const visible = isVisible(brg, Math.atan2(z - obsZ, obsRadius) * 180 / Math.PI);
+      const z = (sampler.queryElevation(new Point({ longitude: p.longitude, latitude: p.latitude, spatialReference: WGS84 }))?.z ?? 0);
+      // Visibility from precomputed horizon — endpoint slope vs max blocking slope on this ray.
+      const endSlope = Math.atan2(z - obsZ, obsRadius) * 180 / Math.PI;
+      const visible = endSlope >= horizons[ri];
       graphics.push(new Graphic({
         geometry: new Polyline({ paths: [[[positionPt.longitude, positionPt.latitude], [p.longitude, p.latitude]]], spatialReference: WGS84 }),
         symbol: { type: 'simple-line', color: visible ? [29, 158, 117, 40] : [80, 20, 20, 30], width: 0.6 } as any,
@@ -929,16 +1040,30 @@ export class PosDefScorerEngine {
   }
 
   private _drawEgressLines(pt: Point, results: EgressResult[]): void {
+    const compassLabel = (brg: number) => {
+      const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+      return dirs[Math.round(brg / 45) % 8];
+    };
     results.forEach((er) => {
-      const color = er.clear ? (er.masked ? [78, 200, 64] : [29, 158, 117]) : [220, 60, 48];
-      const roadTxt = er.viaRoad
-        ? ` - road ${(er.roadKm ?? 0).toFixed(1)}km/${Math.round(er.roadMin ?? 0)}min ${er.roadRating}`
-        : '';
-      this._egrLayer.add(new Graphic({
-        geometry: new Polyline({ paths: [[[pt.longitude, pt.latitude], [er.pt.longitude, er.pt.latitude]]], spatialReference: WGS84 }),
-        symbol: { type: 'simple-line', color: [...color, 180], width: 2, style: er.masked ? 'solid' : 'short-dash' } as any,
-        attributes: { type: 'Egress LOS', label: `${er.clear ? 'Clear' : 'Blocked'} - ${er.dist}m${er.masked ? ' (masked)' : ''}${roadTxt}` },
-      }));
+      if (er.autoDir) {
+        // Terrain-estimate lines: thin, low-opacity, dotted — not a planned route.
+        const color = er.clear ? (er.masked ? [78, 200, 64, 90] : [29, 158, 117, 70]) : [180, 60, 40, 55];
+        this._egrLayer.add(new Graphic({
+          geometry: new Polyline({ paths: [[[pt.longitude, pt.latitude], [er.pt.longitude, er.pt.latitude]]], spatialReference: WGS84 }),
+          symbol: { type: 'simple-line', color, width: 1, style: 'short-dot' } as any,
+          attributes: { type: 'Egress LOS', label: `Terrain est. ${compassLabel(er.autoDirBrg ?? 0)}: ${er.clear ? 'passable' : 'blocked'}${er.masked ? ' (masked)' : ''}` },
+        }));
+      } else {
+        const color = er.clear ? (er.masked ? [78, 200, 64] : [29, 158, 117]) : [220, 60, 48];
+        const roadTxt = er.viaRoad
+          ? ` — road ${(er.roadKm ?? 0).toFixed(1)}km / ${Math.round(er.roadMin ?? 0)}min ${er.roadRating}`
+          : '';
+        this._egrLayer.add(new Graphic({
+          geometry: new Polyline({ paths: [[[pt.longitude, pt.latitude], [er.pt.longitude, er.pt.latitude]]], spatialReference: WGS84 }),
+          symbol: { type: 'simple-line', color: [...color, 180], width: 2, style: er.masked ? 'solid' : 'short-dash' } as any,
+          attributes: { type: 'Egress LOS', label: `${er.clear ? 'Clear' : 'Blocked'} — ${er.dist}m${er.masked ? ' (masked)' : ''}${roadTxt}` },
+        }));
+      }
     });
   }
 
@@ -960,9 +1085,13 @@ export class PosDefScorerEngine {
       wrap.innerHTML = '';
       FACTORS.forEach((f) => {
         const s = scores[f.id] ?? 0;
+        const isEgrAuto = f.id === 'egr' && this._egrAutoAnalyzed;
+        const badge = isEgrAuto
+          ? `<span style="font-size:9px;letter-spacing:0.07em;text-transform:uppercase;color:#EF9F27;background:rgba(239,159,39,0.1);border:1px solid rgba(239,159,39,0.3);border-radius:3px;padding:1px 5px;vertical-align:middle;margin-left:5px;">terrain est.</span>`
+          : '';
         const row = document.createElement('div');
         row.style.cssText = 'display: grid; grid-template-columns: 40px 1fr 56px; align-items: center; gap: 12px; margin-bottom: 14px;';
-        row.innerHTML = `<div style="font-size: 18px; text-align: center; color: var(--ms-text-dim);">${f.icon}</div><div style="display: flex; flex-direction: column; gap: 5px;"><div style="font-size: 15px; font-weight: 600; color: var(--ms-text);">${f.label}</div><div style="height: 6px; background: var(--ms-bg-subtle); border-radius: 3px;"><div style="height: 100%; border-radius: 3px; transition: width 0.6s; width: ${s / 20 * 100}%; background: ${f.color};"></div></div><div style="font-size: 12px; color: var(--ms-text-dim); letter-spacing: 0.03em;">${f.desc(s)}</div></div><div><div style="font-size: 24px; font-weight: 800; text-align: right; color: ${f.color};">${s}</div><div style="font-size: 11px; color: var(--ms-text-dim); text-align: right; margin-top: 1px;">/20</div></div>`;
+        row.innerHTML = `<div style="font-size: 18px; text-align: center; color: var(--ms-text-dim);">${f.icon}</div><div style="display: flex; flex-direction: column; gap: 5px;"><div style="font-size: 15px; font-weight: 600; color: var(--ms-text);">${f.label}${badge}</div><div style="height: 6px; background: var(--ms-bg-subtle); border-radius: 3px;"><div style="height: 100%; border-radius: 3px; transition: width 0.6s; width: ${s / 20 * 100}%; background: ${f.color};"></div></div><div style="font-size: 12px; color: var(--ms-text-dim); letter-spacing: 0.03em;">${f.desc(s)}${isEgrAuto ? ' Add egress waypoints for precise analysis.' : ''}</div></div><div><div style="font-size: 24px; font-weight: 800; text-align: right; color: ${f.color};">${s}</div><div style="font-size: 11px; color: var(--ms-text-dim); text-align: right; margin-top: 1px;">/20</div></div>`;
         wrap.appendChild(row);
       });
     }
@@ -1090,7 +1219,11 @@ export class PosDefScorerEngine {
     if (!list) return;
     list.innerHTML = '';
     if (!this._egressPts.length) {
-      list.innerHTML = '<div id="posdef-eg-add-hint" style="font-size: var(--ms-fs-xs); color: var(--ms-text-dim); padding: 4px 0; letter-spacing: 0.04em;">Ctrl+Click map to add an egress waypoint</div>';
+      list.innerHTML = `
+        <div style="font-size: var(--ms-fs-xs); color: rgba(239,159,39,0.7); padding: 4px 0 2px; letter-spacing: 0.04em; line-height: 1.55;">
+          No waypoints — EGR scored from terrain estimate.<br>
+          <span style="opacity:0.65;">Ctrl+Click map to add precise egress waypoints.</span>
+        </div>`;
       return;
     }
     this._egressPts.forEach((ep, i) => {
@@ -1188,10 +1321,12 @@ export class PosDefScorerEngine {
 
   private _gradeDescription(score: number, scores: ScoreMap): string {
     const weak = FACTORS.filter((f) => (scores[f.id] ?? 0) < 8).map((f) => f.label.toLowerCase());
-    if (score >= 75) return `Strong position. ${weak.length ? `Weakness: ${weak[0]}.` : 'All factors adequate.'}`;
-    if (score >= 55) return `Acceptable. Improve: ${weak.slice(0, 2).join(', ') || 'marginal all round'}.`;
-    if (score >= 40) return `Marginal. Critical weaknesses in: ${weak.slice(0, 2).join(', ') || 'multiple factors'}.`;
-    return `Avoid this position. Multiple critical failures: ${weak.slice(0, 3).join(', ')}.`;
+    const crit = FACTORS.filter((f) => (scores[f.id] ?? 0) < 5).map((f) => f.label.toLowerCase());
+    if (score >= 75) return `Strong position. ${weak.length ? `Monitor: ${weak[0]} — below threshold.` : 'All factors adequate — prepare and improve.'}`;
+    if (score >= 55) return `Acceptable — enhance before occupation. Prioritise: ${weak.slice(0, 2).join(', ') || 'all factors marginal'}.`;
+    if (score >= 40) return `Marginal — use only if no alternatives. Critical: ${weak.slice(0, 2).join(', ') || 'multiple factors'}. Supplement with engineering works.`;
+    if (score >= 25) return `Poor position. Seek alternatives. ${crit.length ? `Cannot hold without improving: ${crit.slice(0, 2).join(', ')}.` : 'All factors below acceptable.'}`;
+    return `Avoid — multiple critical failures. Position likely indefensible: ${weak.slice(0, 3).join(', ') || 'all factors'}.`;
   }
 
   private _goToPoint(pt: Point): void {

@@ -1,4 +1,4 @@
-{
+﻿{
     "poObj": {
         "plnOrdrId": 53113700474442,
         "catCode": "PLAN",
@@ -82,7 +82,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"121100\",\"SYM_NAME\":\"Inf\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151211000000\",\"uniqueDesignation\":\"17 FF\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"roa\":\"66\",\"msn\":\" \",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{},\"GEOM\":{\"type\":\"point\",\"x\":74.63627635353626,\"y\":32.32252609895579,\"sp\":\"WGS1SP\"}},\"GEOM\":{\"type\":\"point\",\"x\":74.63627635353626,\"y\":32.32252609895579,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151211000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"121100\",\"SYM_NAME\":\"Inf\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151211000000\",\"uniqueDesignation\":\"Alpha\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"roa\":\"66\",\"msn\":\" \",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{},\"GEOM\":{\"type\":\"point\",\"x\":74.63627635353626,\"y\":32.32252609895579,\"sp\":\"WGS1SP\"}},\"GEOM\":{\"type\":\"point\",\"x\":74.63627635353626,\"y\":32.32252609895579,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151211000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -142,7 +142,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.65241722089432,\"y\":32.33990534209136,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65230300676605,\"y\":32.34165662539166,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65557714511007,\"y\":32.33826827291936,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65363550492931,\"y\":32.3380017732867,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"PL4\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"14\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10062500141512000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.65241722089432,\"y\":32.33990534209136,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65230300676605,\"y\":32.34165662539166,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65557714511007,\"y\":32.33826827291936,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65363550492931,\"y\":32.3380017732867,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Lima 4\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"14\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10062500141512000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -154,7 +154,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"120500\",\"SYM_NAME\":\"Armr\",\"OPTIONS\":{\"ANGLE\":0,\"size\":25,\"additionalInformation\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\",\"staffComments\":\"\",\"uniqueDesignation\":\"5 Cav\",\"uniqueDesignationID\":\"\",\"GEOM\":{\"type\":\"point\",\"x\":74.65419828535988,\"y\":32.32797455403004,\"sp\":\"WGS1SP\"},\"opacity\":1,\"labelOptions\":0},\"GEOM\":{\"type\":\"point\",\"x\":74.65419828535988,\"y\":32.32797455403004,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000141205000000\",\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"120500\",\"SYM_NAME\":\"Armr\",\"OPTIONS\":{\"ANGLE\":0,\"size\":25,\"additionalInformation\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\",\"staffComments\":\"\",\"uniqueDesignation\":\"Delta\",\"uniqueDesignationID\":\"\",\"GEOM\":{\"type\":\"point\",\"x\":74.65419828535988,\"y\":32.32797455403004,\"sp\":\"WGS1SP\"},\"opacity\":1,\"labelOptions\":0},\"GEOM\":{\"type\":\"point\",\"x\":74.65419828535988,\"y\":32.32797455403004,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000141205000000\",\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -166,7 +166,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151403\",\"SYM_NAME\":\"Main Attk\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.65181068318212,\"y\":32.32580891408148,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65969145803344,\"y\":32.332585619026084,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"DTG\":\"260004ZJUN25\",\"DTGTO\":\"260004ZJUN25\",\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\"},\"HEAD_RATIO\":\"0.2\",\"TAIL_FACTOR\":\"0.15\",\"SIDC\":\"10032500001514030000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151403\",\"SYM_NAME\":\"Main Attk\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.65181068318212,\"y\":32.32580891408148,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65969145803344,\"y\":32.332585619026084,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"DTG\":\"260004ZJUN25\",\"DTGTO\":\"260004ZJUN25\",\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\"},\"HEAD_RATIO\":\"0.2\",\"TAIL_FACTOR\":\"0.15\",\"SIDC\":\"10032500001514030000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -178,7 +178,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"121100\",\"SYM_NAME\":\"Inf\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151211000000\",\"uniqueDesignation\":\" 17 FF\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"roa\":\"66\",\"msn\":\" \",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.63475349849253,\"y\":32.32732309234354,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151211000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"121100\",\"SYM_NAME\":\"Inf\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151211000000\",\"uniqueDesignation\":\"Alpha\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"roa\":\"66\",\"msn\":\" \",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.63475349849253,\"y\":32.32732309234354,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151211000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -190,7 +190,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Line\",\"SID\":\"140303\",\"SYM_NAME\":\"Start Line\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.630992475703,\"y\":32.32935337540236,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.63469265975468,\"y\":32.32106307943823,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"DTG\":\"260004ZJUN25\",\"DTGTO\":\"260004ZJUN25\",\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\"},\"DRAW_TYPE\":1,\"SIDC\":\"10032500001403030000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Line\",\"SID\":\"140303\",\"SYM_NAME\":\"Start Line\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.630992475703,\"y\":32.32935337540236,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.63469265975468,\"y\":32.32106307943823,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"DTG\":\"260004ZJUN25\",\"DTGTO\":\"260004ZJUN25\",\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\"},\"DRAW_TYPE\":1,\"SIDC\":\"10032500001403030000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -214,7 +214,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151403\",\"SYM_NAME\":\"Main Attk\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.63524963458156,\"y\":32.32253477573746,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65215332556697,\"y\":32.32489520105524,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"DTG\":\"260004ZJUN25\",\"DTGTO\":\"260004ZJUN25\",\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"HEAD_RATIO\":\"0.2\",\"TAIL_FACTOR\":\"0.15\",\"SIDC\":\"10032500001514030000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151403\",\"SYM_NAME\":\"Main Attk\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.63524963458156,\"y\":32.32253477573746,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65215332556697,\"y\":32.32489520105524,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"DTG\":\"260004ZJUN25\",\"DTGTO\":\"260004ZJUN25\",\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"HEAD_RATIO\":\"0.2\",\"TAIL_FACTOR\":\"0.15\",\"SIDC\":\"10032500001514030000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -226,7 +226,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151403\",\"SYM_NAME\":\"Main Attk\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.63281475593324,\"y\":32.32697061553962,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64648237995073,\"y\":32.332529036449245,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"DTG\":\"260117ZJUN25\",\"DTGTO\":\"260117ZJUN25\",\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"HEAD_RATIO\":\"0.2\",\"TAIL_FACTOR\":\"0.15\",\"SIDC\":\"10032500001514030000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151403\",\"SYM_NAME\":\"Main Attk\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.63281475593324,\"y\":32.32697061553962,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64648237995073,\"y\":32.332529036449245,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"DTG\":\"260117ZJUN25\",\"DTGTO\":\"260117ZJUN25\",\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"HEAD_RATIO\":\"0.2\",\"TAIL_FACTOR\":\"0.15\",\"SIDC\":\"10032500001514030000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -274,7 +274,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"121100\",\"SYM_NAME\":\"Inf\",\"OPTIONS\":{\"ANGLE\":0,\"size\":25,\"additionalInformation\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\",\"staffComments\":\"\",\"uniqueDesignation\":\"17 FF\",\"uniqueDesignationID\":\"\",\"msn\":\" \",\"roa\":\"66\",\"GEOM\":{\"type\":\"point\",\"x\":74.65263735894005,\"y\":32.32687048412334,\"sp\":\"WGS1SP\"},\"opacity\":1,\"labelOptions\":0},\"GEOM\":{\"type\":\"point\",\"x\":74.65263735894005,\"y\":32.32687048412334,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151211000000\",\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"121100\",\"SYM_NAME\":\"Inf\",\"OPTIONS\":{\"ANGLE\":0,\"size\":25,\"additionalInformation\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\",\"staffComments\":\"\",\"uniqueDesignation\":\"Alpha\",\"uniqueDesignationID\":\"\",\"msn\":\" \",\"roa\":\"66\",\"GEOM\":{\"type\":\"point\",\"x\":74.65263735894005,\"y\":32.32687048412334,\"sp\":\"WGS1SP\"},\"opacity\":1,\"labelOptions\":0},\"GEOM\":{\"type\":\"point\",\"x\":74.65263735894005,\"y\":32.32687048412334,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151211000000\",\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -286,7 +286,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.64880044016546,\"y\":32.3249813626628,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64891465429375,\"y\":32.326694574586995,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65287407740745,\"y\":32.32311586523423,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65169386474855,\"y\":32.322011795327526,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65085629447451,\"y\":32.322582865968926,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"PL1\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"14\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10062500141512000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.64880044016546,\"y\":32.3249813626628,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64891465429375,\"y\":32.326694574586995,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65287407740745,\"y\":32.32311586523423,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65169386474855,\"y\":32.322011795327526,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65085629447451,\"y\":32.322582865968926,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Lima 1\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"14\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10062500141512000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -298,7 +298,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.64388923264943,\"y\":32.33248142375317,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64377501852115,\"y\":32.33423270705347,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64704915686518,\"y\":32.33084435458117,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64510751668442,\"y\":32.33057785494851,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"PL2\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"14\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10062500141512000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.64388923264943,\"y\":32.33248142375317,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64377501852115,\"y\":32.33423270705347,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64704915686518,\"y\":32.33084435458117,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64510751668442,\"y\":32.33057785494851,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Lima 2\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"14\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10062500141512000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -310,7 +310,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.65643375107216,\"y\":32.33211974568029,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65654796520045,\"y\":32.333832957604486,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.66050738831414,\"y\":32.33025424825172,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65932717565525,\"y\":32.32915017834502,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.6584896053812,\"y\":32.32972124898642,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"PL3\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"14\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10062500141512000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.65643375107216,\"y\":32.33211974568029,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65654796520045,\"y\":32.333832957604486,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.66050738831414,\"y\":32.33025424825172,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65932717565525,\"y\":32.32915017834502,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.6584896053812,\"y\":32.32972124898642,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Lima 3\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"14\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10062500141512000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -370,7 +370,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"120500\",\"SYM_NAME\":\"Armr\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000141205000000\",\"uniqueDesignation\":\"5 Cav\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"14\",\"opacity\":1,\"labelOptions\":{},\"GEOM\":{\"type\":\"point\",\"x\":74.63977892013685,\"y\":32.32343981198203,\"sp\":\"WGS1SP\"}},\"GEOM\":{\"type\":\"point\",\"x\":74.63977892013685,\"y\":32.32343981198203,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000141205000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"120500\",\"SYM_NAME\":\"Armr\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000141205000000\",\"uniqueDesignation\":\"Delta\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"14\",\"opacity\":1,\"labelOptions\":{},\"GEOM\":{\"type\":\"point\",\"x\":74.63977892013685,\"y\":32.32343981198203,\"sp\":\"WGS1SP\"}},\"GEOM\":{\"type\":\"point\",\"x\":74.63977892013685,\"y\":32.32343981198203,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000141205000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -382,7 +382,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"120500\",\"SYM_NAME\":\"Armr\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000141205000000\",\"uniqueDesignation\":\"5 Cav\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"14\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.63688549555376,\"y\":32.32857944775462,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000141205000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"120500\",\"SYM_NAME\":\"Armr\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000141205000000\",\"uniqueDesignation\":\"Delta\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"14\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.63688549555376,\"y\":32.32857944775462,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000141205000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -394,7 +394,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151403\",\"SYM_NAME\":\"Main Attk\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.64598576263985,\"y\":32.33372776030888,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65489446464568,\"y\":32.340276036996926,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"DTG\":\"260004ZJUN25\",\"DTGTO\":\"260004ZJUN25\",\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\"},\"HEAD_RATIO\":\"0.2\",\"TAIL_FACTOR\":\"0.15\",\"SIDC\":\"10032500001514030000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151403\",\"SYM_NAME\":\"Main Attk\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.64598576263985,\"y\":32.33372776030888,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65489446464568,\"y\":32.340276036996926,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"DTG\":\"260004ZJUN25\",\"DTGTO\":\"260004ZJUN25\",\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\"},\"HEAD_RATIO\":\"0.2\",\"TAIL_FACTOR\":\"0.15\",\"SIDC\":\"10032500001514030000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -406,7 +406,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"120500\",\"SYM_NAME\":\"Armr\",\"OPTIONS\":{\"ANGLE\":0,\"size\":25,\"additionalInformation\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\",\"staffComments\":\"\",\"uniqueDesignation\":\"5 Cav\",\"uniqueDesignationID\":\"\",\"GEOM\":{\"type\":\"point\",\"x\":74.648525650322,\"y\":32.33581725750526,\"sp\":\"WGS1SP\"},\"opacity\":1,\"labelOptions\":0},\"GEOM\":{\"type\":\"point\",\"x\":74.648525650322,\"y\":32.33581725750526,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000141205000000\",\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"120500\",\"SYM_NAME\":\"Armr\",\"OPTIONS\":{\"ANGLE\":0,\"size\":25,\"additionalInformation\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\",\"staffComments\":\"\",\"uniqueDesignation\":\"Delta\",\"uniqueDesignationID\":\"\",\"GEOM\":{\"type\":\"point\",\"x\":74.648525650322,\"y\":32.33581725750526,\"sp\":\"WGS1SP\"},\"opacity\":1,\"labelOptions\":0},\"GEOM\":{\"type\":\"point\",\"x\":74.648525650322,\"y\":32.33581725750526,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000141205000000\",\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -418,7 +418,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"121100\",\"SYM_NAME\":\"Inf\",\"OPTIONS\":{\"ANGLE\":0,\"size\":25,\"additionalInformation\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\",\"staffComments\":\"\",\"uniqueDesignation\":\"17 FF\",\"uniqueDesignationID\":\"\",\"msn\":\" \",\"roa\":\"66\",\"GEOM\":{\"type\":\"point\",\"x\":74.64627943913247,\"y\":32.33467511622246,\"sp\":\"WGS1SP\"},\"opacity\":1,\"labelOptions\":0},\"GEOM\":{\"type\":\"point\",\"x\":74.64627943913247,\"y\":32.33467511622246,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151211000000\",\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"121100\",\"SYM_NAME\":\"Inf\",\"OPTIONS\":{\"ANGLE\":0,\"size\":25,\"additionalInformation\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"ph\":\"69977d6e-55ca-41f4-bfa6-359c89717b1e\",\"staffComments\":\"\",\"uniqueDesignation\":\"Alpha\",\"uniqueDesignationID\":\"\",\"msn\":\" \",\"roa\":\"66\",\"GEOM\":{\"type\":\"point\",\"x\":74.64627943913247,\"y\":32.33467511622246,\"sp\":\"WGS1SP\"},\"opacity\":1,\"labelOptions\":0},\"GEOM\":{\"type\":\"point\",\"x\":74.64627943913247,\"y\":32.33467511622246,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151211000000\",\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -442,7 +442,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"152100\",\"SYM_NAME\":\"BOF\",\"BK_LN_DIST_RATIO\":5,\"BK_LN_ANGL_RATIO\":5,\"FRNT_LN_ANGL_RATIO\":5,\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.6430002907889,\"y\":32.31705317986209,\"sp\":\"WGS1SP\"}],\"BASE_LN_PTS\":{\"startPt\":{\"type\":\"point\",\"x\":74.638981482648,\"y\":32.313742112990845,\"sp\":\"WGS1SP\"},\"endPt\":{\"type\":\"point\",\"x\":74.64478005240359,\"y\":32.31517217825359,\"sp\":\"WGS1SP\"},\"midPt\":{\"type\":\"point\",\"x\":74.64188076752579,\"y\":32.31445714562222,\"sp\":\"WGS1SP\"}},\"AMPLIFIER\":{\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"SIDC\":\"10032500001521000000\",\"labelOptions\":{},\"drawExtendType\":1,\"DRAW_TYPE\":1,\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"152100\",\"SYM_NAME\":\"BOF\",\"BK_LN_DIST_RATIO\":5,\"BK_LN_ANGL_RATIO\":5,\"FRNT_LN_ANGL_RATIO\":5,\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.6430002907889,\"y\":32.31705317986209,\"sp\":\"WGS1SP\"}],\"BASE_LN_PTS\":{\"startPt\":{\"type\":\"point\",\"x\":74.638981482648,\"y\":32.313742112990845,\"sp\":\"WGS1SP\"},\"endPt\":{\"type\":\"point\",\"x\":74.64478005240359,\"y\":32.31517217825359,\"sp\":\"WGS1SP\"},\"midPt\":{\"type\":\"point\",\"x\":74.64188076752579,\"y\":32.31445714562222,\"sp\":\"WGS1SP\"}},\"AMPLIFIER\":{\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"SIDC\":\"10032500001521000000\",\"labelOptions\":{},\"drawExtendType\":1,\"DRAW_TYPE\":1,\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -454,7 +454,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Line\",\"SID\":\"140300\",\"SYM_NAME\":\"Phase Line\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.64317233696133,\"y\":32.33527605162166,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64583733328786,\"y\":32.333677053825745,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64743633108378,\"y\":32.33135469988406,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65341353713042,\"y\":32.323435853656655,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65337546575432,\"y\":32.319514501919045,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"DTG\":\"260004ZJUN25\",\"DTGTO\":\"260004ZJUN25\",\"UNIQUE_DESIG\":\"Ph 1\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"roa\":\"\",\"msn\":\"\",\"ph\":\"-1\"},\"DRAW_TYPE\":1,\"SIDC\":\"10032500001403000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Line\",\"SID\":\"140300\",\"SYM_NAME\":\"Phase Line\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.64317233696133,\"y\":32.33527605162166,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64583733328786,\"y\":32.333677053825745,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.64743633108378,\"y\":32.33135469988406,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65341353713042,\"y\":32.323435853656655,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.65337546575432,\"y\":32.319514501919045,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"DTG\":\"260004ZJUN25\",\"DTGTO\":\"260004ZJUN25\",\"UNIQUE_DESIG\":\"Phase Alpha\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\",\"roa\":\"\",\"msn\":\"\",\"ph\":\"-1\"},\"DRAW_TYPE\":1,\"SIDC\":\"10032500001403000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -506,7 +506,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Point\",\"SID\":\"160303\",\"SYM_NAME\":\"Tgt\",\"SIZE\":50,\"ANGLE\":0,\"GEOM\":{\"type\":\"point\",\"x\":74.64764593638256,\"y\":32.354838862839955,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\" \",\"ADDL_INFO\":\"P 1310\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"OFFSET\":\"0\",\"SIDC\":\"10102500001603030000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Point\",\"SID\":\"160303\",\"SYM_NAME\":\"Tgt\",\"SIZE\":50,\"ANGLE\":0,\"GEOM\":{\"type\":\"point\",\"x\":74.64764593638256,\"y\":32.354838862839955,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{\"UNIQUE_DESIG\":\" \",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\" \",\"ADDL_INFO\":\"P 1310\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"OFFSET\":\"0\",\"SIDC\":\"10102500001603030000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -594,7 +594,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.54386249443995,\"y\":31.523666121792473,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54312010260612,\"y\":31.524294299498013,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54633713388601,\"y\":31.5243704422502,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54567088480438,\"y\":31.52362805041638,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"A coy\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.54386249443995,\"y\":31.523666121792473,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54312010260612,\"y\":31.524294299498013,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54633713388601,\"y\":31.5243704422502,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54567088480438,\"y\":31.52362805041638,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Alpha Coy\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -618,7 +618,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.53339286601428,\"y\":31.533069751687517,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53369743702302,\"y\":31.534782963611715,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53997921407841,\"y\":31.52785397316274,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53628629059737,\"y\":31.52812047279539,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"32 FF\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"16\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500161512000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.53339286601428,\"y\":31.533069751687517,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53369743702302,\"y\":31.534782963611715,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53997921407841,\"y\":31.52785397316274,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53628629059737,\"y\":31.52812047279539,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Bravo\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"16\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500161512000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -630,7 +630,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151201\",\"SYM_NAME\":\"C Pen Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.539389107749,\"y\":31.519744770054867,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53950332187728,\"y\":31.521077268218132,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54213024682771,\"y\":31.519097556661283,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54102617692101,\"y\":31.518907199780816,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"16 PR\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"\",\"hfid\":\"\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512010000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151201\",\"SYM_NAME\":\"C Pen Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.539389107749,\"y\":31.519744770054867,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53950332187728,\"y\":31.521077268218132,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54213024682771,\"y\":31.519097556661283,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54102617692101,\"y\":31.518907199780816,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Charlie\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"\",\"hfid\":\"\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512010000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -642,7 +642,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"130300\",\"SYM_NAME\":\"Fd Arty\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151303000000\",\"uniqueDesignation\":\"122 Med\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.55054402094433,\"y\":31.513577207127756,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151303000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"130300\",\"SYM_NAME\":\"Fd Arty\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151303000000\",\"uniqueDesignation\":\"Echo\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.55054402094433,\"y\":31.513577207127756,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151303000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -654,7 +654,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.5342114006003,\"y\":31.533659858016964,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53402104371983,\"y\":31.534402249850782,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53622918353325,\"y\":31.533183965815798,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53548679169943,\"y\":31.53293650187119,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"A coy\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.5342114006003,\"y\":31.533659858016964,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53402104371983,\"y\":31.534402249850782,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53622918353325,\"y\":31.533183965815798,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53548679169943,\"y\":31.53293650187119,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Alpha Coy\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -678,7 +678,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151201\",\"SYM_NAME\":\"C Pen Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.53185097528254,\"y\":31.52568390472542,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53207940353909,\"y\":31.527054474264776,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53474439986562,\"y\":31.52511283408402,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53348804445454,\"y\":31.524808263075272,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"32 FF\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"\",\"hfid\":\"\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512010000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151201\",\"SYM_NAME\":\"C Pen Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.53185097528254,\"y\":31.52568390472542,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53207940353909,\"y\":31.527054474264776,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53474439986562,\"y\":31.52511283408402,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53348804445454,\"y\":31.524808263075272,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Bravo\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"\",\"hfid\":\"\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512010000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -702,7 +702,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.53624821922129,\"y\":31.53168014646011,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53638146903762,\"y\":31.532403502605884,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53809468096182,\"y\":31.53072836205778,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53723807499972,\"y\":31.530709326369735,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"B coy\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.53624821922129,\"y\":31.53168014646011,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53638146903762,\"y\":31.532403502605884,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53809468096182,\"y\":31.53072836205778,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53723807499972,\"y\":31.530709326369735,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Bravo Coy\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -726,7 +726,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"130300\",\"SYM_NAME\":\"Fd Arty\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151303000000\",\"uniqueDesignation\":\"222 Fd\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.53032812023879,\"y\":31.52252398050968,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151303000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"130300\",\"SYM_NAME\":\"Fd Arty\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151303000000\",\"uniqueDesignation\":\"Foxtrot\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.53032812023879,\"y\":31.52252398050968,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151303000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -750,7 +750,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.54298685278978,\"y\":31.52301890839889,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54272035315714,\"y\":31.52488440582746,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55292348195013,\"y\":31.52035391207236,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54991584323876,\"y\":31.519478270422216,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"16 PR\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"16\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500161512000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.54298685278978,\"y\":31.52301890839889,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54272035315714,\"y\":31.52488440582746,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55292348195013,\"y\":31.52035391207236,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54991584323876,\"y\":31.519478270422216,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Charlie\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"16\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500161512000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -774,7 +774,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Point\",\"SID\":\"214804\",\"SYM_NAME\":\"Res\",\"SIZE\":25,\"ANGLE\":0,\"GEOM\":{\"type\":\"point\",\"x\":74.53577232702013,\"y\":31.52256205188577,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Bde Res\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"\",\"hfid\":\"\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"SIDC\":\"10032500002148040000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Point\",\"SID\":\"214804\",\"SYM_NAME\":\"Res\",\"SIZE\":25,\"ANGLE\":0,\"GEOM\":{\"type\":\"point\",\"x\":74.53577232702013,\"y\":31.52256205188577,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Golf Res\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"\",\"hfid\":\"\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"SIDC\":\"10032500002148040000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -786,7 +786,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"130300\",\"SYM_NAME\":\"Fd Arty\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151303000000\",\"uniqueDesignation\":\"122 Med\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.54228253233208,\"y\":31.51631834620647,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151303000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"130300\",\"SYM_NAME\":\"Fd Arty\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151303000000\",\"uniqueDesignation\":\"Echo\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.54228253233208,\"y\":31.51631834620647,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151303000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -798,7 +798,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"130300\",\"SYM_NAME\":\"Fd Arty\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151303000000\",\"uniqueDesignation\":\"222 Fd\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.5353916132592,\"y\":31.51978284143096,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151303000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"130300\",\"SYM_NAME\":\"Fd Arty\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151303000000\",\"uniqueDesignation\":\"Foxtrot\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.5353916132592,\"y\":31.51978284143096,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151303000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -810,7 +810,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"130300\",\"SYM_NAME\":\"Fd Arty\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151303000000\",\"uniqueDesignation\":\"222 Fd\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"34 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.52952862134083,\"y\":31.52823468692367,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151303000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"FPoint\",\"SID\":\"130300\",\"SYM_NAME\":\"Fd Arty\",\"OPTIONS\":{\"alphaNum\":100,\"size\":\"25\",\"ANGLE\":0,\"symType\":\"FPoint\",\"SIDC\":\"10031000151303000000\",\"uniqueDesignation\":\"Foxtrot\",\"uniqueDesignationID\":\"\",\"higherFormation\":\"1 Div\",\"hfid\":\"10893\",\"staffComments\":\"\",\"additionalInformation\":\"\",\"ECHELON\":\"15\",\"opacity\":1,\"labelOptions\":{}},\"GEOM\":{\"type\":\"point\",\"x\":74.52952862134083,\"y\":31.52823468692367,\"sp\":\"WGS1SP\"},\"AMPLIFIER\":{},\"UEI\":\"1\",\"SIDC\":\"10031000151303000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -834,7 +834,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.54734602535248,\"y\":31.522828551518423,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54679399039912,\"y\":31.52358997904029,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54848816663528,\"y\":31.52362805041638,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54987777186268,\"y\":31.522466873445534,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54896405883645,\"y\":31.522295552253116,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"B coy\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.54734602535248,\"y\":31.522828551518423,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54679399039912,\"y\":31.52358997904029,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54848816663528,\"y\":31.52362805041638,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54987777186268,\"y\":31.522466873445534,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.54896405883645,\"y\":31.522295552253116,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Bravo Coy\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -846,7 +846,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.55062016369651,\"y\":31.521210518034458,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55025848562362,\"y\":31.522314587941164,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55092473470525,\"y\":31.5223716950053,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55214301874024,\"y\":31.52119148234641,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55256180387727,\"y\":31.52056330464087,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55197169754781,\"y\":31.519801877119004,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55140062690641,\"y\":31.520220662256033,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"C coy\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.55062016369651,\"y\":31.521210518034458,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55025848562362,\"y\":31.522314587941164,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55092473470525,\"y\":31.5223716950053,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55214301874024,\"y\":31.52119148234641,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55256180387727,\"y\":31.52056330464087,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55197169754781,\"y\":31.519801877119004,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.55140062690641,\"y\":31.520220662256033,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Charlie Coy\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512000000\",\"labelOptions\":{},\"opacity\":1}"
                     },
                     {
                         "plnOrdrSymbolPK": {
@@ -858,7 +858,7 @@
                         "isShared": "N",
                         "creatorId": 10900,
                         "updateSeqnr": 1,
-                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.53801853820963,\"y\":31.52935779251842,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53828503784229,\"y\":31.530195362792472,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53929392930876,\"y\":31.528025294355157,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53857057316299,\"y\":31.528139508483438,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"C coy\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"34 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512000000\",\"labelOptions\":{},\"opacity\":1}"
+                        "drawEss": "{\"SYM_GEO_TYPE\":\"Area\",\"SID\":\"151200\",\"SYM_NAME\":\"Battle Posn\",\"CTRL_PTS\":[{\"type\":\"point\",\"x\":74.53801853820963,\"y\":31.52935779251842,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53828503784229,\"y\":31.530195362792472,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53929392930876,\"y\":31.528025294355157,\"sp\":\"WGS1SP\"},{\"type\":\"point\",\"x\":74.53857057316299,\"y\":31.528139508483438,\"sp\":\"WGS1SP\"}],\"AMPLIFIER\":{\"UNIQUE_DESIG\":\"Charlie Coy\",\"UNIQUE_DESIG_ID\":\"\",\"HIGHER_FORM\":\"1 Div\",\"hfid\":\"10893\",\"STAFF_COM\":\"\",\"ADDL_INFO\":\"\",\"MULTI_LINE_LABEL_TEXT\":\"\",\"MULTI_LINE_LABEL_COLOR\":\"#000000\",\"MULTI_LINE_LABEL_ALIGN\":\"center\"},\"ECHELON\":\"15\",\"DRAW_TYPE\":1,\"FACE_GAP\":5,\"SIDC\":\"10032500151512000000\",\"labelOptions\":{},\"opacity\":1}"
                     }
                 ]
             }
@@ -870,7 +870,7 @@
         "isVisibleToCurrOrg": false,
         "suppPOTree": []
     },
-    "unitAbbrdNameTxt": "34 Div",
+    "unitAbbrdNameTxt": "1 Div",
     "unitIdentTxt": "qwrqwrqwr",
     "objItemId": 10893,
     "oiCatCode": "OR",

@@ -27,9 +27,9 @@ import TextSymbol from '@arcgis/core/symbols/TextSymbol';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import LocalPeaksEngine, { LocalPeakResult } from '../Analysis/Peaks/LocalPeaksEngine';
 import KeyTerrainIdentificationEngine, { KeyTerrainFeature } from '../Analysis/KeyTerrain/KeyTerrainIdentificationEngine';
-import DeadGroundMapper, { DeadGroundSummary } from '../Analysis/DeadGroundMapper';
-import PosDefScorerEngine, { DefensibilitySummary } from '../Analysis/PositionDefesibilityScorer/PosDefScorerEngine';
-import OpRankerEngine, { OpRankSummary } from '../Analysis/OpRanker/OpRankerEngine';
+import DeadGroundMapper from '../Analysis/DeadGroundMapper';
+import PosDefScorerEngine from '../Analysis/PositionDefesibilityScorer/PosDefScorerEngine';
+import OpRankerEngine from '../Analysis/OpRanker/OpRankerEngine';
 import OcokaEngine, { OcokaCorridor } from '../OCOKA/Ocoka';
 // Optional, NON-OWNED collaborator. We import the class only for its pure static
 // helpers (toPolyline / classifyClass) and types; the actual routing instance is
@@ -38,14 +38,33 @@ import OcokaEngine, { OcokaCorridor } from '../OCOKA/Ocoka';
 import RoadNetworkEngine, { type TrafficabilitySummary } from '../Analysis/RoadNetworkEngine';
 import GraphicsLayerManager, { LAYER_NAMES } from '../../Managers/GraphicsLayerManager';
 import EngineLogger from '../../Support/EngineLogger';
+import { SIDC } from '../../Support/SIDC';
+import { getEchelonCode } from '../Declutter/echelon';
 
 const WGS84 = { wkid: 4326 } as any;
 const ENGINE_NAME = 'MissionPlannerEngine';
 const EARTH_RADIUS_M = 6_371_008.8;
 
+// Optical/ground observation heights used by the line-of-sight model. These model
+// a standing/dismounted observer with optics and an exposed target (vehicle or
+// standing figure). NOTE: this is BARE-EARTH terrain intervisibility only — it
+// ignores vegetation canopy, structures, and sensor types beyond line-of-sight
+// optics. Surfaced honestly in the panel field guide.
+const OBSERVER_EYE_M = 2;
+const TARGET_HEIGHT_M = 2;
+// Per-candidate radial-viewshed probe budget. Bounded on purpose: azimuths × steps
+// queries against ONE shared elevation sampler keeps a full 8-candidate solve in the
+// low-thousands of synchronous queries (no per-candidate sampler creation, no N×N grid).
+const PROBE_RANGE_M = 1500;
+const PROBE_AZIMUTHS = 24;
+const PROBE_STEPS = 15;
+
 export type MissionMode = 'defensive' | 'offensive' | 'recon' | 'route' | 'ambush';
 export type UnitType = 'infantry' | 'mechanized' | 'aviation';
 export type ObserverSide = 'friendly' | 'enemy';
+// Mission-movement route semantics. Withdraw/exfil head rearward to friendly; advance
+// pushes forward to an objective; msr is the controlled main supply route itself.
+type RouteKind = 'withdraw' | 'exfil' | 'advance' | 'msr';
 type AoiMode = 'extent' | 'custom' | 'buffer';
 type AoiDrawMode = 'polygon' | 'rectangle';
 type MpStatusTone = 'ready' | 'running' | 'warn' | 'pick' | 'done';
@@ -129,6 +148,26 @@ const MODE_WEIGHTS: Record<MissionMode, MissionPlannerWeights> = {
   ambush:    { terrain: 0.15, observation: 0.10, defensibility: 0.15, corridor: 0.30, concealment: 0.25, accessibility: 0.05 },
 };
 
+// Which movement route each mission mode plans. Defensive falls back to a rally
+// (withdraw); ambush/recon exfil to a rally; offensive pushes an axis of advance to
+// the objective; route mode controls a main supply route (MSR).
+const MODE_ROUTE: Record<MissionMode, RouteKind> = {
+  defensive: 'withdraw',
+  ambush:    'exfil',
+  recon:     'exfil',
+  offensive: 'advance',
+  route:     'msr',
+};
+
+// Per-route presentation. `verb` is the ground/air label, `color`/`labelColor` the
+// route + label RGBA, `destLabel` the destination marker text.
+const ROUTE_PROFILE: Record<RouteKind, { verb: string; airVerb: string; color: number[]; labelColor: number[]; destLabel: string; objective: boolean }> = {
+  withdraw: { verb: '⇨ WITHDRAW',         airVerb: '✈ WITHDRAW (air)',  color: [80, 230, 120, 0.85], labelColor: [80, 230, 120, 1], destLabel: '⚑ RALLY', objective: false },
+  exfil:    { verb: '⇦ EXFIL',            airVerb: '✈ EXFIL (air)',     color: [80, 230, 120, 0.85], labelColor: [80, 230, 120, 1], destLabel: '⚑ RALLY', objective: false },
+  advance:  { verb: '⇨ AXIS OF ADVANCE',  airVerb: '✈ AIR ASSAULT',     color: [239, 159, 39, 0.9],  labelColor: [245, 190, 90, 1], destLabel: '◎ OBJ',   objective: true },
+  msr:      { verb: '⇨ MSR',              airVerb: '✈ AIR CORRIDOR',    color: [80, 160, 240, 0.9],  labelColor: [120, 180, 255, 1], destLabel: '◎ MSR',  objective: true },
+};
+
 const UNIT_SETTINGS: Record<UnitType, { maxSlopeDeg: number; ocokaForce: 'dismount' | 'wheeled' | 'tracked' | 'mixed'; defaultSpeedKmh: number }> = {
   infantry:   { maxSlopeDeg: 35, ocokaForce: 'dismount', defaultSpeedKmh: 5 },
   mechanized: { maxSlopeDeg: 20, ocokaForce: 'tracked',  defaultSpeedKmh: 25 },
@@ -146,7 +185,11 @@ function clamp(value: number, min: number, max: number): number {
 function toRad(deg: number): number { return (deg * Math.PI) / 180; }
 function toDeg(rad: number): number { return (rad * 180) / Math.PI; }
 
-function distanceM(a: { longitude?: number; latitude?: number; x?: number; y?: number }, b: { longitude?: number; latitude?: number; x?: number; y?: number }): number {
+// Loose lon/lat accessor type. Coords are nullable so an ArcGIS Point (whose
+// longitude/latitude/x/y are `number | null | undefined`) is structurally assignable.
+type LngLatLike = { longitude?: number | null; latitude?: number | null; x?: number | null; y?: number | null };
+
+function distanceM(a: LngLatLike, b: LngLatLike): number {
   const aLat = a.latitude ?? a.y ?? 0;
   const aLon = a.longitude ?? a.x ?? 0;
   const bLat = b.latitude ?? b.y ?? 0;
@@ -159,7 +202,7 @@ function distanceM(a: { longitude?: number; latitude?: number; x?: number; y?: n
   return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
 }
 
-function bearingDeg(from: { longitude?: number; latitude?: number; x?: number; y?: number }, to: { longitude?: number; latitude?: number; x?: number; y?: number }): number {
+function bearingDeg(from: LngLatLike, to: LngLatLike): number {
   const lat1 = toRad(from.latitude ?? from.y ?? 0);
   const lat2 = toRad(to.latitude ?? to.y ?? 0);
   const dLon = toRad((to.longitude ?? to.x ?? 0) - (from.longitude ?? from.x ?? 0));
@@ -252,6 +295,48 @@ function formatMarchTime(min: number): string {
   return `${h}h${String(m).padStart(2, '0')}`;
 }
 
+type Affiliation = 'friendly' | 'hostile' | 'neutral' | 'unknown';
+
+/**
+ * Resolve the standard identity (affiliation) of a force graphic from its SIDC,
+ * using the project's canonical parser (SIDC.getIdentity() → the two-digit field
+ * at positions 2–3) rather than a single-character heuristic. Falls back to the
+ * legacy 2525B/C letter scheme (affiliation letter at index 1) when the SIDC is
+ * not the digit-based form.
+ *
+ * Digit codes (per SIDC.ts standardIdentities):
+ *   00 pending · 01 unknown · 02 assumed friend · 03 friend · 04 neutral ·
+ *   05 suspect/joker · 06 hostile/faker
+ */
+function classifyAffiliation(sidcRaw: unknown): Affiliation {
+  const sidc = String(sidcRaw ?? '').trim();
+  if (!sidc) return 'unknown';
+
+  // Digit scheme (project canonical / 2525D-style): identity = positions 2–3.
+  const idField = sidc.length >= 4 ? new SIDC(sidc).getIdentity() : '';
+  if (/^\d{2}$/.test(idField)) {
+    switch (idField) {
+      case '02': // assumed friend
+      case '03': // friend
+        return 'friendly';
+      case '05': // suspect / joker
+      case '06': // hostile / faker
+        return 'hostile';
+      case '04': // neutral
+        return 'neutral';
+      default:   // 00 pending, 01 unknown, 07+ presentation colours
+        return 'unknown';
+    }
+  }
+
+  // Legacy letter scheme (2525B/C 15-char SIDC): affiliation letter at index 1.
+  const letter = sidc.charAt(1).toUpperCase();
+  if (letter === 'F' || letter === 'A' || letter === 'D' || letter === 'M') return 'friendly'; // friend, assumed friend, exercise variants
+  if (letter === 'H' || letter === 'S' || letter === 'J' || letter === 'K') return 'hostile';  // hostile, suspect, joker, faker
+  if (letter === 'N' || letter === 'L') return 'neutral';
+  return 'unknown'; // U pending/unknown, P, G, W
+}
+
 // ───────────────────────────────────────────────────────────────────────────────
 
 export class MissionPlannerEngine {
@@ -286,13 +371,16 @@ export class MissionPlannerEngine {
   private _observers: ObserverPoint[] = [];
   private _results: MissionTerrainFeature[] = [];
   private _corridors: OcokaCorridor[] = [];
-  private _hostileObsExtents: Extent[] = []; // bounding extents of enemy LOS regions for hit-test
+  private _hostileObsExtents: Extent[] = []; // bounding extents of enemy analysis areas — fallback exposure test only when DEM sampler is unavailable
+  private _runSampler: any = null; // shared AOI elevation sampler for the current run (built once, reused by every probe/LOS/march call)
   private _roadEgress: { distanceKm: number; travelTimeMin: number; traffic: TrafficabilitySummary } | null = null; // optional road-following egress (when road service is up)
   private _coaSnapshots: CoaSnapshot[] = [];
   private _customAoi: Polygon | Extent | null = null;
   private _bufferCenter: Point | null = null;
+  private _rallyPoint: Point | null = null; // optional manual withdrawal destination (overrides auto rally)
   private _sketch: SketchViewModel | null = null;
   private _bufferPickHandle: any = null;
+  private _rallyPickHandle: any = null;
   private _viewWatchHandle: any = null;
   private _autoTimer: number | null = null;
   private _running = false;
@@ -375,6 +463,7 @@ export class MissionPlannerEngine {
   close(): void {
     if (this._panelEl) this._panelEl.style.display = 'none';
     this._cancelBufferPick();
+    this._cancelRallyPick();
     this._detachAutoRun();
     this._sketch?.cancel();
   }
@@ -453,22 +542,21 @@ export class MissionPlannerEngine {
       const threatBrg = this._currentThreatBearing();
       const candidates = this._mergeCandidates(peaks, keyFeatures, threatBrg, unit);
 
-      // OpRanker, PosDefScorer, and per-candidate DeadGround each create their own
-      // elevation sampler and run synchronous grid loops.  Calling them once per
-      // candidate (8+ times) creates 16+ network DEM downloads and thousands of
-      // synchronous queryElevation calls — this is the primary cause of browser hangs.
-      // MissionPlanner only needs relative rankings, so proxy scores derived from
-      // already-computed terrain data (viewshedPct, elevationAdvantageM, prom) are
-      // used instead.  The proxies are computed inside _scoreCandidate when def/dead
-      // are null.
-      const opRank = null;
+      // Build ONE shared elevation sampler over the AOI (+observers +margin). Every
+      // per-candidate computation — radial viewshed, enemy line-of-sight, and the
+      // terrain-integrated march — queries this single cached sampler synchronously.
+      // This is what makes real terrain analysis affordable: no per-candidate sampler
+      // creation (the old hang source) and no full N×N grid re-solve. If the DEM is
+      // unavailable the sampler is null and each metric degrades to a documented proxy.
+      phase = 'building elevation sampler';
+      this._runSampler = await this._buildRunSampler(aoi.extent);
 
-      phase = 'scoring candidates (terrain proxies)';
-      this._setStatus('Scoring candidates…', 'running');
+      phase = 'scoring candidates (terrain line-of-sight)';
+      this._setStatus(this._runSampler ? 'Scoring candidates (terrain LOS)…' : 'Scoring candidates (DEM offline → estimates)…', 'running');
       const enriched: MissionTerrainFeature[] = [];
       const scoringCandidates = candidates.slice(0, 8);
       for (const candidate of scoringCandidates) {
-        enriched.push(await this._scoreCandidate(candidate, null, null, opRank, mode, unit, threatBrg, aoi.extent));
+        enriched.push(await this._scoreCandidate(candidate, mode, unit, threatBrg, aoi.extent));
         await new Promise<void>((r) => setTimeout(r, 0)); // yield to browser between candidates
       }
       // ambush mode amplifies ambush score in composite
@@ -492,8 +580,8 @@ export class MissionPlannerEngine {
       this._drawResults();
       this._drawFiresFans(threatBrg);
 
-      phase = 'withdrawal route (OcokaEngine.runHeadless / road egress)';
-      await this._drawWithdrawal(threatBrg, unitSettings.ocokaForce);
+      phase = 'mission route (rally/objective resolution / road egress)';
+      await this._drawMissionRoute(threatBrg, unit, mode);
 
       phase = 'rendering panels';
       this._renderResults();
@@ -514,6 +602,7 @@ export class MissionPlannerEngine {
     } finally {
       this._running = false;
       this._setRunDisabled(false);
+      this._runSampler = null; // release cached DEM tiles
     }
   }
 
@@ -547,10 +636,15 @@ export class MissionPlannerEngine {
     });
     await this._buildHostileObservation(radiusM, unitSettings.maxSlopeDeg);
     const candidates = this._mergeCandidates(peaks, keyFeatures, threatBrg, unit);
+    this._runSampler = await this._buildRunSampler(aoiExtent);
     const enriched: MissionTerrainFeature[] = [];
-    for (const candidate of candidates.slice(0, options.maxResults ?? 8)) {
-      enriched.push(await this._scoreCandidate(candidate, null, null, null, mode, unit, threatBrg, aoiExtent));
-      await new Promise<void>((r) => setTimeout(r, 0));
+    try {
+      for (const candidate of candidates.slice(0, options.maxResults ?? 8)) {
+        enriched.push(await this._scoreCandidate(candidate, mode, unit, threatBrg, aoiExtent));
+        await new Promise<void>((r) => setTimeout(r, 0));
+      }
+    } finally {
+      this._runSampler = null;
     }
     if (mode === 'ambush') {
       enriched.forEach((f) => { f.compositeScore = Math.round(0.6 * f.ambushScore + 0.4 * f.compositeScore); });
@@ -574,6 +668,7 @@ export class MissionPlannerEngine {
     this._results = [];
     this._corridors = [];
     this._hostileObsExtents = [];
+    this._runSampler = null;
     this._roadEgress = null;
     if (updateUi) {
       this._renderObservers();
@@ -699,6 +794,34 @@ export class MissionPlannerEngine {
     this._bufferPickHandle = null;
   }
 
+  private _startRallyPick(): void {
+    if (!this._view) return;
+    this._cancelBufferPick();
+    this._cancelRallyPick();
+    this._sketch?.cancel();
+    this._setStatus('Click a point to set the route destination (rally / objective).', 'pick');
+    this._rallyPickHandle = this._view.on('click', async (event: any) => {
+      event.stopPropagation?.();
+      let mapPoint = event.mapPoint as Point | null;
+      if (!mapPoint && this._view?.type === '3d') {
+        try {
+          const hit = await (this._view as any).hitTest(event, { include: [(this._view as any).map.ground] });
+          mapPoint = hit?.ground?.mapPoint ?? null;
+        } catch { mapPoint = null; }
+      }
+      if (!mapPoint) return;
+      this._rallyPoint = new Point({ longitude: lonOf(mapPoint), latitude: latOf(mapPoint), spatialReference: WGS84 });
+      this._cancelRallyPick();
+      this._setStatus('Route destination set — it anchors the mission route. Run analysis to update.', 'ready');
+      this._maybeAutoRun();
+    });
+  }
+
+  private _cancelRallyPick(): void {
+    this._rallyPickHandle?.remove?.();
+    this._rallyPickHandle = null;
+  }
+
   private _drawBufferAoi(): void {
     const radiusM = this._num('mp-radius', 3500);
     const geom = this._bufferGeometry(radiusM);
@@ -727,9 +850,8 @@ export class MissionPlannerEngine {
 
   // ── Internals: candidates / scoring ─────────────────────────────────────────
 
-  private _mergeCandidates(peaks: LocalPeakResult[], keyFeatures: KeyTerrainFeature[], threatBrg: number, unit: UnitType): MissionTerrainFeature[] {
+  private _mergeCandidates(peaks: LocalPeakResult[], keyFeatures: KeyTerrainFeature[], threatBrg: number, _unit: UnitType): MissionTerrainFeature[] {
     const all: MissionTerrainFeature[] = [];
-    const keyMaxElev = Math.max(1, ...keyFeatures.map((feature) => feature.elev));
     keyFeatures.forEach((feature, idx) => {
       const p = pointFromLngLat(feature.lon, feature.lat);
       all.push(this._blankFeature({
@@ -739,7 +861,12 @@ export class MissionPlannerEngine {
         point: p,
         elevationM: Math.round(feature.elev),
         prominenceM: Math.round(feature.prom),
-        elevationAdvantageM: Math.round(feature.elev - keyMaxElev + Math.max(0, feature.prom)),
+        // Seed only — the real elevation advantage (vs. the local terrain ring) is
+        // measured per candidate in _probeTerrain. Prominence is a sane, non-negative
+        // stand-in used solely when the DEM sampler is unavailable. (Previously this
+        // subtracted the GLOBAL max key-terrain elevation, forcing every feature but
+        // the single tallest to a negative "advantage" and corrupting the ranking.)
+        elevationAdvantageM: Math.round(Math.max(0, feature.prom)),
         viewshedPct: Math.round(feature.viewshedPct ?? 0),
         compositeScore: Math.round(feature.compositeScore ?? 0),
         bearingToThreatDeg: threatBrg,
@@ -789,41 +916,63 @@ export class MissionPlannerEngine {
 
   private async _scoreCandidate(
     candidate: MissionTerrainFeature,
-    def: DefensibilitySummary | null,
-    dead: DeadGroundSummary | null,
-    opRank: OpRankSummary | null,
     mode: MissionMode,
     unit: UnitType,
     threatBrg: number,
     aoiExtent: Extent | null,
   ): Promise<MissionTerrainFeature> {
     const weights = MODE_WEIGHTS[mode];
-    const terrainScore = clamp((candidate.elevationAdvantageM / 250) * 55 + (candidate.prominenceM / 120) * 45, 0, 100);
-    const viewshedScore = clamp(candidate.viewshedPct, 0, 100);
 
-    // Fast proxy when PosDefScorer was not run (avoids 6,450 synchronous elevation queries per call).
-    // Derived from viewshed + elevation advantage + prominence — captures the same terrain signals.
-    const defScore = def?.composite ?? clamp(
-      Math.round(candidate.viewshedPct * 0.35 + clamp(candidate.elevationAdvantageM / 5, 0, 40) + clamp(candidate.prominenceM / 4, 0, 25)),
-      0, 100,
-    );
+    // Real terrain signals from the one shared sampler (bounded radial viewshed).
+    // Every candidate — peak or key-terrain alike — flows through the same probe,
+    // so observation, dead ground, and elevation advantage are finally on one scale.
+    // Degrades to documented seed/proxy values only when the DEM sampler is null.
+    const probe = this._probeTerrain(candidate.point);
+    const hasProbe = probe != null;
+
+    const viewshedPct = hasProbe ? probe!.viewshedPct : clamp(candidate.viewshedPct, 0, 100);
+    const elevationAdvantageM = hasProbe ? probe!.elevationAdvantageM : candidate.elevationAdvantageM;
+    const elevationM = hasProbe ? Math.round(probe!.groundZ) : candidate.elevationM;
+    const dominanceDeg = hasProbe ? probe!.dominanceDeg : 0;
+
+    // Dead ground = the complement of the real viewshed when probed; else the old
+    // terrain-type proxy (kept only for the DEM-offline fallback path).
+    const isLowGround = candidate.type.includes('valley') || candidate.type.includes('saddle') || candidate.type.includes('reentrant');
+    const deadPct = hasProbe
+      ? clamp(100 - viewshedPct, 0, 100)
+      : clamp(Math.round(isLowGround ? 100 - candidate.viewshedPct * 0.5 : 100 - candidate.viewshedPct * 0.75), 5, 75);
+
+    const terrainScore = clamp((elevationAdvantageM / 250) * 55 + (candidate.prominenceM / 120) * 45, 0, 100);
+    const viewshedScore = clamp(viewshedPct, 0, 100);
+
+    // Real defensibility: fields of fire (viewshed) + elevation dominance over the
+    // surrounding terrain ring + the average inbound climb an attacker must make to
+    // close the position. No longer a viewshed-only proxy.
+    const defScore = hasProbe
+      ? clamp(Math.round(
+          0.40 * viewshedScore
+          + 0.35 * clamp((elevationAdvantageM / 150) * 100, 0, 100)
+          + 0.25 * clamp((dominanceDeg / 20) * 100, 0, 100),
+        ), 0, 100)
+      : clamp(Math.round(candidate.viewshedPct * 0.35 + clamp(candidate.elevationAdvantageM / 5, 0, 40) + clamp(candidate.prominenceM / 4, 0, 25)), 0, 100);
 
     const corridorScore = this._corridorInfluence(candidate.point);
-
-    // Fast proxy when DeadGroundMapper was not run per candidate.
-    // High-observation positions have less dead ground; valleys/saddles have more.
-    const isLowGround = candidate.type.includes('valley') || candidate.type.includes('saddle') || candidate.type.includes('reentrant');
-    const deadPct = dead?.deadGroundPct ?? clamp(
-      Math.round(isLowGround ? 100 - candidate.viewshedPct * 0.5 : 100 - candidate.viewshedPct * 0.75),
-      5, 75,
-    );
-
     const concealmentScore = (mode === 'defensive')
       ? clamp(100 - Math.abs(deadPct - 35), 0, 100)
       : clamp(deadPct, 0, 100);
-    const op = opRank?.candidates.find((item) => Math.abs(lonOf(item.point) - lonOf(candidate.point)) < 0.0001);
-    const accessibilityScore = op?.optimal ? 80 : 55;
+
+    // Real exposure: bare-earth line-of-sight from each active enemy observer to this
+    // candidate (fraction of enemy OPs that can actually see it), not a bounding box.
     const exposurePct = this._exposureToEnemy(candidate.point);
+
+    // Real march time: terrain-integrated walk/drive from the nearest friendly start.
+    const marchTimeMin = this._marchTimeMin(candidate.point, unit);
+
+    // Real accessibility: ease of reaching/resupplying the position — terrain march
+    // cost (steep, far ground is less accessible) blended with proximity to a usable
+    // mobility corridor. Replaces the former constant 55 that never differentiated.
+    const marchScore = clamp(100 - marchTimeMin / 2, 0, 100);
+    const accessibilityScore = Math.round(clamp(0.6 * marchScore + 0.4 * corridorScore, 0, 100));
     const mobilityInfluenceScore = Math.round((corridorScore + accessibilityScore) / 2);
 
     const compositeScore = Math.round(
@@ -833,7 +982,7 @@ export class MissionPlannerEngine {
       + corridorScore * weights.corridor
       + concealmentScore * weights.concealment
       + accessibilityScore * weights.accessibility
-      - exposurePct * 0.20, // exposed positions are penalised
+      - exposurePct * 0.20, // positions the enemy can actually see are penalised
     );
     const ambushScore = Math.round(
       0.30 * corridorScore
@@ -843,14 +992,15 @@ export class MissionPlannerEngine {
       + 0.10 * clamp(100 - mobilityInfluenceScore, 0, 100),
     );
 
-    const marchTimeMin = this._marchTimeMin(candidate.point, unit);
-    // Sparklines are fetched separately after ranking — skip here to avoid
-    // creating one ElevationSampler per candidate during the scoring loop.
+    // Sparklines are fetched separately after ranking (top-3 only) to keep the loop light.
     const elevationProfile: number[] = [];
-    const cautions = this._buildCautions(deadPct, candidate.viewshedPct, defScore, exposurePct, candidate.point, aoiExtent, unit);
+    const cautions = this._buildCautions(deadPct, viewshedPct, defScore, exposurePct, candidate.point, aoiExtent, unit);
 
     return {
       ...candidate,
+      elevationM,
+      elevationAdvantageM,
+      viewshedPct: Math.round(viewshedPct),
       mgrs: latLonToMGRS(latOf(candidate.point), lonOf(candidate.point)),
       deadGroundPct: Math.round(deadPct),
       defensibilityScore: Math.round(defScore),
@@ -867,22 +1017,163 @@ export class MissionPlannerEngine {
     };
   }
 
-  private _corridorInfluence(point: Point): number {
-    if (this._corridors.length === 0) return 0;
+  /**
+   * Bounded radial-viewshed probe against the shared run sampler. Walks PROBE_AZIMUTHS
+   * rays out to PROBE_RANGE_M, marking each step visible when its vertical angle clears
+   * the running horizon (classic line-of-sight sweep). Returns the real fraction of the
+   * surrounding terrain the position can observe (fields of fire), the position's
+   * elevation advantage over the mean of the sampled ring, and the average inbound
+   * climb angle an attacker faces (a dominance/defensibility cue). Returns null when no
+   * DEM is available so callers fall back to documented proxies.
+   */
+  private _probeTerrain(point: Point): { viewshedPct: number; elevationAdvantageM: number; groundZ: number; dominanceDeg: number } | null {
+    const sampler = this._runSampler;
+    if (!sampler) return null;
     const lon = lonOf(point);
     const lat = latOf(point);
+    const z0 = this._queryZ(sampler, lon, lat);
+    if (z0 == null) return null;
+    const obsZ = z0 + OBSERVER_EYE_M;
+    const stepM = PROBE_RANGE_M / PROBE_STEPS;
+    let visible = 0;
+    let total = 0;
+    let ringSum = 0;
+    let ringCount = 0;
+    let climbSum = 0;
+    let climbCount = 0;
+    for (let a = 0; a < PROBE_AZIMUTHS; a++) {
+      const az = (a / PROBE_AZIMUTHS) * 360;
+      let maxAngle = -Infinity; // running horizon (vertical angle), in radians
+      for (let s = 1; s <= PROBE_STEPS; s++) {
+        const d = s * stepM;
+        const p = destinationPt(lon, lat, az, d);
+        const z = this._queryZ(sampler, p.longitude, p.latitude);
+        if (z == null) continue;
+        const targetAngle = Math.atan2((z + TARGET_HEIGHT_M) - obsZ, d);
+        if (targetAngle >= maxAngle) visible++;
+        const terrainAngle = Math.atan2(z - obsZ, d);
+        if (terrainAngle > maxAngle) maxAngle = terrainAngle;
+        total++;
+        ringSum += z;
+        ringCount++;
+        // inbound climb to reach us from this point (only counts where we dominate)
+        if (z0 > z) { climbSum += toDeg(Math.atan2(z0 - z, d)); climbCount++; }
+      }
+    }
+    if (total === 0) return null;
+    const viewshedPct = clamp(Math.round((visible / total) * 100), 0, 100);
+    const meanRing = ringCount ? ringSum / ringCount : z0;
+    const elevationAdvantageM = Math.round(z0 - meanRing);
+    const dominanceDeg = climbCount ? climbSum / climbCount : 0;
+    return { viewshedPct, elevationAdvantageM, groundZ: z0, dominanceDeg };
+  }
+
+  /**
+   * Bare-earth line-of-sight test from `from` (observer + eye height) to `to`
+   * (target + height). Samples the intervening terrain at ~30 m and returns true
+   * when the target clears the running terrain horizon. Synchronous against the
+   * shared sampler.
+   */
+  private _losVisible(from: Point, to: Point, fromEyeM = OBSERVER_EYE_M, toHeightM = TARGET_HEIGHT_M): boolean {
+    const sampler = this._runSampler;
+    if (!sampler) return false;
+    const flon = lonOf(from);
+    const flat = latOf(from);
+    const fromZ = this._queryZ(sampler, flon, flat);
+    const toZ = this._queryZ(sampler, lonOf(to), latOf(to));
+    if (fromZ == null || toZ == null) return false;
+    const dist = distanceM(from, to);
+    if (dist < 1) return true;
+    const obsZ = fromZ + fromEyeM;
+    const brg = bearingDeg(from, to);
+    const steps = clamp(Math.round(dist / 30), 8, 80);
+    let maxAngle = -Infinity;
+    for (let s = 1; s < steps; s++) {
+      const d = (s / steps) * dist;
+      const p = destinationPt(flon, flat, brg, d);
+      const z = this._queryZ(sampler, p.longitude, p.latitude);
+      if (z == null) continue;
+      const angle = Math.atan2(z - obsZ, d);
+      if (angle > maxAngle) maxAngle = angle;
+    }
+    const targetAngle = Math.atan2((toZ + toHeightM) - obsZ, dist);
+    return targetAngle >= maxAngle;
+  }
+
+  /** queryElevation wrapper that rejects non-finite / no-data samples (returns null). */
+  private _queryZ(sampler: any, lon: number, lat: number): number | null {
+    const z = sampler.queryElevation(new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 }))?.z;
+    return Number.isFinite(z) ? z : null;
+  }
+
+  /**
+   * Build ONE elevation sampler covering the AOI, all observers, and a margin large
+   * enough for the radial probe / LOS / march reach. Created and awaited once per run;
+   * thereafter all per-candidate queries hit its cached tiles synchronously. Returns
+   * null if the ground/DEM cannot produce a sampler (engine then uses proxies).
+   */
+  private async _buildRunSampler(aoiExtent: Extent | null): Promise<any> {
+    if (!this._view) return null;
+    try {
+      let xmin = Infinity, ymin = Infinity, xmax = -Infinity, ymax = -Infinity;
+      const include = (lon: number, lat: number) => {
+        if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+        xmin = Math.min(xmin, lon); xmax = Math.max(xmax, lon);
+        ymin = Math.min(ymin, lat); ymax = Math.max(ymax, lat);
+      };
+      if (aoiExtent) { include(aoiExtent.xmin, aoiExtent.ymin); include(aoiExtent.xmax, aoiExtent.ymax); }
+      this._observers.forEach((o) => include(lonOf(o.point), latOf(o.point)));
+      const c = this._resolveCenter();
+      include(lonOf(c), latOf(c));
+      if (!Number.isFinite(xmin)) return null;
+      // Pad ~0.05° (~5.5 km) so edge probes/LOS stay inside cached data, then clamp the
+      // overall span so a pair of far-apart observers can't request a giant low-res tile set.
+      const pad = 0.05;
+      xmin -= pad; ymin -= pad; xmax += pad; ymax += pad;
+      const MAX_SPAN = 0.8;
+      if (xmax - xmin > MAX_SPAN) { const cx = (xmin + xmax) / 2; xmin = cx - MAX_SPAN / 2; xmax = cx + MAX_SPAN / 2; }
+      if (ymax - ymin > MAX_SPAN) { const cy = (ymin + ymax) / 2; ymin = cy - MAX_SPAN / 2; ymax = cy + MAX_SPAN / 2; }
+      const ext = new Extent({ xmin, ymin, xmax, ymax, spatialReference: WGS84 });
+      return await (this._view.map as any).ground.createElevationSampler(ext, { noDataValue: 0 });
+    } catch {
+      return null;
+    }
+  }
+
+  private _corridorInfluence(point: Point): number {
+    if (this._corridors.length === 0) return 0;
     let best = 0;
     this._corridors.forEach((corridor) => {
       corridor.path.forEach((pathPoint) => {
-        const d = Math.hypot((pathPoint.longitude - lon) * 85000, (pathPoint.latitude - lat) * 111320);
+        // Real geodesic distance (m). The previous hard-coded 85000 m/deg longitude
+        // scale only held near 40° N and skewed corridor control with latitude.
+        const d = distanceM(point, { longitude: pathPoint.longitude, latitude: pathPoint.latitude });
+        // Influence falls off to 0 at ~3.5 km from the corridor centreline, capped by
+        // the corridor's own composite strength (you can't control a weak corridor well).
         best = Math.max(best, clamp(100 - d / 35, 0, corridor.composite));
       });
     });
     return best;
   }
 
-  /** Fraction of nearby enemy LOS extents the candidate falls inside (0–100). */
+  /**
+   * Real exposure: the fraction of active enemy observers (0–100) that hold a
+   * bare-earth line of sight to this candidate. Uses point-to-point LOS against the
+   * shared sampler — the actual question a planner asks ("can the enemy OP see me?").
+   *
+   * Fallback (only when no DEM sampler is available): the coarse bounding-box test
+   * against each enemy's analysis extent. That box approximates *proximity*, not
+   * visibility, so it is used strictly as a degraded last resort.
+   */
   private _exposureToEnemy(point: Point): number {
+    const enemies = this._activeObservers('enemy');
+    if (enemies.length === 0) return 0;
+    if (this._runSampler) {
+      let seen = 0;
+      enemies.forEach((e) => { if (this._losVisible(e.point, point)) seen++; });
+      return clamp(Math.round((seen / enemies.length) * 100), 0, 100);
+    }
+    // DEM offline → degrade to bounding-box proximity.
     if (this._hostileObsExtents.length === 0) return 0;
     let hits = 0;
     this._hostileObsExtents.forEach((ext) => { if (this._pointInExtent(point, ext)) hits++; });
@@ -896,7 +1187,9 @@ export class MissionPlannerEngine {
   private async _sampleSparkline(point: Point, bearing: number, samples = 24, spanM = 2000): Promise<number[]> {
     if (!this._view) return [];
     try {
-      const sampler = await (this._view.map as any).ground.createElevationSampler(
+      // Prefer the shared run sampler (already cached); only build a local one if a
+      // sparkline is requested outside an active run.
+      const sampler = this._runSampler ?? await (this._view.map as any).ground.createElevationSampler(
         new Extent({
           xmin: lonOf(point) - 0.05, ymin: latOf(point) - 0.05,
           xmax: lonOf(point) + 0.05, ymax: latOf(point) + 0.05,
@@ -913,13 +1206,54 @@ export class MissionPlannerEngine {
     } catch { return []; }
   }
 
+  /**
+   * Terrain-integrated march time (minutes) from the nearest friendly start point to
+   * the candidate. Samples the straight path against the shared sampler and applies a
+   * movement model per unit:
+   *   • infantry  → Tobler's hiking function (slope-aware walking speed)
+   *   • tracked / wheeled → base speed reduced on grade, near-stalled past the unit's
+   *     max climbable slope
+   *   • aviation  → terrain-independent air speed (straight-line)
+   * Degrades to constant-speed straight-line when no DEM sampler is available.
+   */
   private _marchTimeMin(point: Point, unit: UnitType): number {
-    const speed = UNIT_SETTINGS[unit].defaultSpeedKmh;
+    const settings = UNIT_SETTINGS[unit];
     const friendlies = this._activeObservers('friendly');
     const ref = friendlies[0]?.point ?? this._resolveCenter();
     if (!ref) return 0;
-    const km = distanceM(point, ref) / 1000;
-    return (km / Math.max(1, speed)) * 60;
+    const totalDist = distanceM(point, ref);
+    if (totalDist < 1) return 0;
+
+    // Aviation ignores ground; everything else without a DEM degrades to flat speed.
+    const sampler = this._runSampler;
+    if (unit === 'aviation' || !sampler) {
+      return (totalDist / 1000 / Math.max(1, settings.defaultSpeedKmh)) * 60;
+    }
+
+    const brg = bearingDeg(ref, point);
+    const steps = clamp(Math.round(totalDist / 50), 4, 120); // ~50 m segments, bounded
+    const segM = totalDist / steps;
+    let prevZ = this._queryZ(sampler, lonOf(ref), latOf(ref)) ?? 0;
+    let minutes = 0;
+    for (let s = 1; s <= steps; s++) {
+      const d = s * segM;
+      const p = destinationPt(lonOf(ref), latOf(ref), brg, d);
+      const z = this._queryZ(sampler, p.longitude, p.latitude) ?? prevZ;
+      const slope = (z - prevZ) / segM; // rise / run
+      let speedKmh: number;
+      if (unit === 'infantry') {
+        // Tobler: 6·e^(−3.5·|slope+0.05|) km/h (≈5 km/h on the flat, slower up/down steep grades)
+        speedKmh = 6 * Math.exp(-3.5 * Math.abs(slope + 0.05));
+      } else {
+        const slopeDeg = Math.abs(toDeg(Math.atan(slope)));
+        const factor = slopeDeg >= settings.maxSlopeDeg ? 0.15 : clamp(1 - slopeDeg / settings.maxSlopeDeg, 0.15, 1);
+        speedKmh = settings.defaultSpeedKmh * factor;
+      }
+      speedKmh = Math.max(0.3, speedKmh);
+      minutes += (segM / 1000) / speedKmh * 60;
+      prevZ = z;
+    }
+    return minutes;
   }
 
   private _recommendUse(mode: MissionMode, type: string, score: number, corridorScore: number, exposurePct: number): string {
@@ -957,9 +1291,9 @@ export class MissionPlannerEngine {
     let best = Infinity;
     forceLayer.graphics.forEach((g) => {
       const sidc = String(g.attributes?.SIDC ?? g.attributes?.sidc ?? '');
-      const identity = sidc.charAt(3); // standard identity byte position (varies by scheme — heuristic)
-      const friendly = identity === '3' || identity === '6' || identity === 'F'; // friendly / assumed friend
-      if (!friendly) return;
+      // Canonical affiliation (SIDC identity field) — the old sidc.charAt(3) heuristic
+      // read the wrong digit and mislabelled hostile units (id '06') as friendly.
+      if (classifyAffiliation(sidc) !== 'friendly') return;
       const gp = g.geometry as any;
       const gpPt = gp?.type === 'point' ? gp : gp?.centroid ?? gp?.extent?.center;
       if (!gpPt) return;
@@ -1068,58 +1402,283 @@ export class MissionPlannerEngine {
     return (window as any).symbolEngine?.roadNetworkEngine ?? null;
   }
 
-  private async _drawWithdrawal(threatBrg: number, _force: 'dismount' | 'wheeled' | 'tracked' | 'mixed'): Promise<void> {
+  /**
+   * Draw the mission movement route, mode-aware in concept, direction, and label, and
+   * unit-aware in style:
+   *   • defensive → WITHDRAW, ambush/recon → EXFIL  (rearward, toward friendly/rally)
+   *   • offensive → AXIS OF ADVANCE                 (forward, toward the objective)
+   *   • route     → MSR                             (along the dominant mobility corridor)
+   * and per unit: aviation = direct air line, mechanized = trafficable corridor + real
+   * road egress, infantry = most concealed (low enemy-LOS) corridor, cross-country.
+   */
+  private async _drawMissionRoute(threatBrg: number, unit: UnitType, mode: MissionMode): Promise<void> {
     this._withdrawalLayer.removeAll();
     this._roadEgress = null;
     const rank1 = this._results[0];
     if (!rank1) return;
     try {
-      // Reuse corridors already computed during the main analysis pass — avoids a
-      // second full OCOKA grid solve (slope/flow-accumulation) which is the primary
-      // cause of browser hangs. If no corridors exist yet (headless path), fall back
-      // to an empty array and the road-egress path or terrain bearing guess takes over.
-      const corridors = this._corridors;
-      // pick the corridor whose bearing is closest to OPPOSITE of threat (i.e., away from enemy)
-      const safeBearing = (threatBrg + 180) % 360;
-      const best = corridors.slice().sort((a, b) => {
-        const dA = Math.abs(((a.bearingDeg - safeBearing + 540) % 360) - 180);
-        const dB = Math.abs(((b.bearingDeg - safeBearing + 540) % 360) - 180);
-        return dA - dB;
-      })[0];
+      const kind = MODE_ROUTE[mode];
+      const profile = ROUTE_PROFILE[kind];
+      const { from, to, corridor: fixedCorridor, reversed: fixedReversed } = this._resolveRouteEndpoints(rank1.point, threatBrg, kind);
+      const desiredBearing = bearingDeg(from, to);
+      this._drawRouteDestMarker(to, kind);
 
-      // Terrain-based egress axis — ALWAYS drawn. This is the graceful fallback
-      // and stays on the map whether or not the road service is reachable.
-      if (best) {
-        this._withdrawalLayer.add(new Graphic({
-          geometry: {
-            type: 'polyline',
-            paths: [best.path.map((pt) => [pt.longitude, pt.latitude])],
-            spatialReference: WGS84,
-          } as any,
-          symbol: new SimpleLineSymbol({ color: [80, 230, 120, 0.85], width: 3.4, style: 'short-dash' as any }),
-          attributes: { missionPlanner: true, type: 'mission_planner_withdrawal', corridorId: best.id },
-        }));
-        // arrow at midpoint indicating direction
-        const mid = best.path[Math.floor(best.path.length / 2)];
-        if (mid) {
-          this._withdrawalLayer.add(new Graphic({
-            geometry: new Point({ longitude: mid.longitude, latitude: mid.latitude, spatialReference: WGS84 }),
-            symbol: new TextSymbol({
-              text: '⇨ WITHDRAW',
-              color: [80, 230, 120, 1],
-              haloColor: [0, 0, 0, 0.9],
-              haloSize: 1.2,
-              font: { size: 10, family: 'Aptos, Segoe UI, sans-serif', weight: 'bold' } as any,
-            }),
-            attributes: { missionPlanner: true, type: 'mission_planner_withdrawal_label' },
-          }));
+      // Aviation: terrain-independent direct line from start to destination.
+      if (unit === 'aviation') {
+        const km = distanceM(from, to) / 1000;
+        this._drawEgressPath(
+          [[lonOf(from), latOf(from)], [lonOf(to), latOf(to)]],
+          profile.color, 'dash',
+          `${profile.airVerb} · ${km.toFixed(1)} km / ${formatMarchTime((km / UNIT_SETTINGS.aviation.defaultSpeedKmh) * 60)}`,
+          profile.labelColor,
+        );
+        return;
+      }
+
+      let drawn = false;
+      if (fixedCorridor) {
+        // MSR mode: the route IS the dominant corridor — draw it end-to-end.
+        const pts = fixedCorridor.path.map((p) => [p.longitude, p.latitude]);
+        const oriented = fixedReversed ? pts.slice().reverse() : pts;
+        this._drawEgressPath(oriented, profile.color, 'solid', profile.verb, profile.labelColor, fixedCorridor.id);
+        drawn = true;
+      } else if (this._corridors.length) {
+        // Withdraw/exfil/advance: pick the best corridor for this unit, oriented toward `to`.
+        let best: OcokaCorridor | null = null;
+        let bestScore = -Infinity;
+        let bestReversed = false;
+        for (const corridor of this._corridors) {
+          const { score, reversed } = this._scoreRouteCorridor(corridor, from, desiredBearing, unit);
+          if (score > bestScore) { bestScore = score; best = corridor; bestReversed = reversed; }
+        }
+        if (best) {
+          const pts = best.path.map((p) => [p.longitude, p.latitude]);
+          const oriented = bestReversed ? pts.slice().reverse() : pts;
+          const label = `${profile.verb} · ${unit === 'infantry' ? 'covered' : 'mobility'}`;
+          this._drawEgressPath(oriented, profile.color, unit === 'infantry' ? 'short-dash' : 'solid', label, profile.labelColor, best.id);
+          drawn = true;
         }
       }
 
-      // Optional upgrade: overlay a real road-following egress when the external
-      // road service is up. Silently no-ops otherwise (terrain corridor remains).
-      await this._tryRoadEgress(rank1.point, best, safeBearing);
-    } catch { /* withdrawal hint is best-effort */ }
+      // No usable corridor: straight from→to so the route is never blank.
+      if (!drawn) {
+        this._drawEgressPath(
+          [[lonOf(from), latOf(from)], [lonOf(to), latOf(to)]],
+          profile.color, 'short-dash', profile.verb, profile.labelColor,
+        );
+      }
+
+      // Vehicles get a real road-following overlay along the route when the optional
+      // road service is up. Silent no-op otherwise (terrain route remains).
+      if (unit === 'mechanized') await this._tryRoadEgress(from, to);
+    } catch { /* route hint is best-effort */ }
+  }
+
+  /** Resolve the route's start and destination points for the given route kind. */
+  private _resolveRouteEndpoints(rank1: Point, threatBrg: number, kind: RouteKind): { from: Point; to: Point; corridor?: OcokaCorridor; reversed?: boolean } {
+    const mk = (lon: number, lat: number) => new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 });
+
+    if (kind === 'withdraw' || kind === 'exfil') {
+      return { from: rank1, to: this._resolveRallyPoint(rank1, threatBrg) };
+    }
+
+    if (kind === 'advance') {
+      const to = this._resolveObjectivePoint(rank1, threatBrg);
+      let from = this._nearestFriendlyPoint(to) ?? rank1;
+      if (distanceM(from, to) < 200) {
+        // Degenerate (objective on the only available start): advance toward the threat.
+        const radiusM = this._num('mp-radius', 3500);
+        const d = destinationPt(lonOf(from), latOf(from), threatBrg, radiusM * 1.5);
+        return { from, to: mk(d.longitude, d.latitude) };
+      }
+      return { from, to };
+    }
+
+    // MSR: choose the dominant unit-trafficable corridor, oriented from the friendly side.
+    let best: OcokaCorridor | null = null;
+    let bestScore = -Infinity;
+    for (const c of this._corridors) {
+      const s = clamp(c.scores?.traf ?? c.composite ?? 0, 0, 100) * 0.6 + clamp(c.composite ?? 0, 0, 100) * 0.4;
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    const friendly = this._nearestFriendlyPoint(rank1) ?? rank1;
+    if (best && best.path.length >= 2) {
+      const head = best.path[0];
+      const tail = best.path[best.path.length - 1];
+      const headPt = mk(head.longitude, head.latitude);
+      const tailPt = mk(tail.longitude, tail.latitude);
+      const reversed = distanceM(friendly, tailPt) < distanceM(friendly, headPt);
+      return { from: reversed ? tailPt : headPt, to: reversed ? headPt : tailPt, corridor: best, reversed };
+    }
+    return { from: friendly, to: rank1 }; // no corridors → degenerate MSR placeholder
+  }
+
+  /** Resolve the rally (rearward) destination: manual pick → nearest friendly →
+   *  fallback point away from the threat. */
+  private _resolveRallyPoint(rank1: Point, threatBrg: number): Point {
+    const mk = (lon: number, lat: number) => new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 });
+    const MIN_M = 200;
+    if (this._rallyPoint && distanceM(rank1, this._rallyPoint) > MIN_M) {
+      return mk(lonOf(this._rallyPoint), latOf(this._rallyPoint));
+    }
+    const friendly = this._nearestFriendlyPoint(rank1);
+    if (friendly && distanceM(rank1, friendly) > MIN_M) return friendly;
+    const radiusM = this._num('mp-radius', 3500);
+    const safeBearing = (threatBrg + 180) % 360; // away from the threat
+    const d = destinationPt(lonOf(rank1), latOf(rank1), safeBearing, radiusM * 1.5);
+    return mk(d.longitude, d.latitude);
+  }
+
+  /** Resolve the offensive objective: manual pick → (mp-objective: nearest enemy /
+   *  threat bearing, or the top-ranked feature). */
+  private _resolveObjectivePoint(rank1: Point, threatBrg: number): Point {
+    const mk = (lon: number, lat: number) => new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 });
+    const MIN_M = 200;
+    if (this._rallyPoint && distanceM(rank1, this._rallyPoint) > MIN_M) {
+      return mk(lonOf(this._rallyPoint), latOf(this._rallyPoint));
+    }
+    if (this._selectValue('mp-objective', 'enemy') === 'feature') {
+      const feat = this._results[0];
+      if (feat) return mk(lonOf(feat.point), latOf(feat.point));
+    }
+    // Default: nearest active enemy observer, else a point along the threat bearing.
+    let best: Point | null = null;
+    let bestD = Infinity;
+    this._activeObservers('enemy').forEach((e) => {
+      const d = distanceM(rank1, e.point);
+      if (d > MIN_M && d < bestD) { bestD = d; best = e.point; }
+    });
+    if (best) return mk(lonOf(best), latOf(best));
+    const radiusM = this._num('mp-radius', 3500);
+    const d = destinationPt(lonOf(rank1), latOf(rank1), threatBrg, radiusM * 1.5); // toward the threat
+    return mk(d.longitude, d.latitude);
+  }
+
+  /** Nearest active friendly observer, else nearest friendly FORCE graphic; null if none. */
+  private _nearestFriendlyPoint(ref: Point): Point | null {
+    const mk = (lon: number, lat: number) => new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 });
+    let best: Point | null = null;
+    let bestD = Infinity;
+    this._activeObservers('friendly').forEach((o) => {
+      const d = distanceM(ref, o.point);
+      if (d < bestD) { bestD = d; best = o.point; }
+    });
+    if (!best && this._view) {
+      const forceLayer = GraphicsLayerManager.getInstance(this._view).getLayer(LAYER_NAMES.FORCE);
+      forceLayer?.graphics.forEach((g) => {
+        const sidc = String(g.attributes?.SIDC ?? g.attributes?.sidc ?? '');
+        if (classifyAffiliation(sidc) !== 'friendly') return;
+        const gp = g.geometry as any;
+        const pt = gp?.type === 'point' ? gp : gp?.centroid ?? gp?.extent?.center;
+        if (!pt) return;
+        const d = distanceM(ref, pt);
+        if (d < bestD) { bestD = d; best = mk(lonOf(pt), latOf(pt)); }
+      });
+    }
+    return best ? mk(lonOf(best), latOf(best)) : null;
+  }
+
+  /**
+   * Score a corridor as a route for the given unit (0–100), and report whether it
+   * should be traversed reversed so it heads toward the destination. Blends direction
+   * alignment, per-unit trafficability (OCOKA traf), concealment (OCOKA mask/cc + live
+   * enemy LOS along the path), and proximity to the start point.
+   */
+  private _scoreRouteCorridor(corridor: OcokaCorridor, ref: Point, desiredBearing: number, unit: UnitType): { score: number; reversed: boolean } {
+    const fwd = this._bearingAlignment(corridor.bearingDeg, desiredBearing);
+    const rev = this._bearingAlignment((corridor.bearingDeg + 180) % 360, desiredBearing);
+    const reversed = rev > fwd;
+    const directionScore = Math.max(fwd, rev);
+
+    const trafScore = clamp(corridor.scores?.traf ?? corridor.composite ?? 0, 0, 100);
+    const maskCc = clamp(((corridor.scores?.mask ?? 50) + (corridor.scores?.cc ?? 50)) / 2, 0, 100);
+    const concealScore = clamp(0.5 * maskCc + 0.5 * (100 - this._corridorExposureFraction(corridor) * 100), 0, 100);
+
+    let minD = Infinity;
+    corridor.path.forEach((p) => {
+      const d = distanceM(ref, { longitude: p.longitude, latitude: p.latitude });
+      if (d < minD) minD = d;
+    });
+    const proximityScore = clamp(100 - minD / 30, 0, 100); // 0 at ~3 km off the start point
+
+    const w = unit === 'infantry'
+      ? { dir: 0.30, traf: 0.10, conceal: 0.45, prox: 0.15 } // foot: prize concealment, tolerate steep/off-road
+      : { dir: 0.35, traf: 0.40, conceal: 0.10, prox: 0.15 }; // vehicles: prize trafficable ground
+    const score = w.dir * directionScore + w.traf * trafScore + w.conceal * concealScore + w.prox * proximityScore;
+    return { score, reversed };
+  }
+
+  /** Alignment of two bearings as 0–100 (100 = identical heading, 0 = opposite). */
+  private _bearingAlignment(a: number, target: number): number {
+    const diff = Math.abs(((a - target + 540) % 360) - 180); // 0..180
+    return clamp(100 - (diff / 180) * 100, 0, 100);
+  }
+
+  /** Fraction (0–1) of sampled corridor-path points visible to any active enemy
+   *  observer (real bare-earth LOS). 0 when no enemies or no DEM sampler. */
+  private _corridorExposureFraction(corridor: OcokaCorridor): number {
+    const enemies = this._activeObservers('enemy');
+    const path = corridor.path;
+    if (enemies.length === 0 || !this._runSampler || path.length === 0) return 0;
+    const samples = Math.min(5, path.length);
+    let exposed = 0;
+    for (let i = 0; i < samples; i++) {
+      const idx = Math.floor((i / Math.max(1, samples - 1)) * (path.length - 1));
+      const pt = new Point({ longitude: path[idx].longitude, latitude: path[idx].latitude, spatialReference: WGS84 });
+      if (enemies.some((e) => this._losVisible(e.point, pt))) exposed++;
+    }
+    return exposed / samples;
+  }
+
+  /** Draw a withdrawal egress polyline + a midpoint direction label. */
+  private _drawEgressPath(pathLngLat: number[][], color: number[], style: string, label: string, labelColor: number[], corridorId?: string): void {
+    if (pathLngLat.length < 2) return;
+    this._withdrawalLayer.add(new Graphic({
+      geometry: new Polyline({ paths: [pathLngLat], spatialReference: WGS84 }),
+      symbol: new SimpleLineSymbol({ color: color as any, width: 3.4, style: style as any }),
+      attributes: { missionPlanner: true, type: 'mission_planner_withdrawal', ...(corridorId ? { corridorId } : {}) },
+    }));
+    const mid = pathLngLat[Math.floor(pathLngLat.length / 2)];
+    if (mid) {
+      this._withdrawalLayer.add(new Graphic({
+        geometry: new Point({ longitude: mid[0], latitude: mid[1], spatialReference: WGS84 }),
+        symbol: new TextSymbol({
+          text: label,
+          color: labelColor as any,
+          haloColor: [0, 0, 0, 0.9],
+          haloSize: 1.2,
+          font: { size: 10, family: 'Aptos, Segoe UI, sans-serif', weight: 'bold' } as any,
+        }),
+        attributes: { missionPlanner: true, type: 'mission_planner_withdrawal_label' },
+      }));
+    }
+  }
+
+  /** Draw the route-destination marker — a friendly rally (withdraw/exfil) or an
+   *  objective (advance/msr), styled to match. */
+  private _drawRouteDestMarker(dest: Point, kind: RouteKind): void {
+    const profile = ROUTE_PROFILE[kind];
+    const markerColor = profile.objective ? [239, 159, 39, 0.9] : [80, 160, 240, 0.9];
+    this._withdrawalLayer.add(new Graphic({
+      geometry: dest,
+      symbol: new SimpleMarkerSymbol({
+        style: profile.objective ? 'diamond' : 'square', size: 13, color: markerColor as any,
+        outline: { color: [255, 255, 255, 0.9], width: 1.4 },
+      }),
+      attributes: { missionPlanner: true, type: 'mission_planner_route_dest', kind },
+    }));
+    this._withdrawalLayer.add(new Graphic({
+      geometry: dest,
+      symbol: new TextSymbol({
+        text: profile.destLabel,
+        color: profile.labelColor as any,
+        haloColor: [0, 0, 0, 0.9],
+        haloSize: 1.2,
+        yoffset: 11,
+        font: { size: 10, family: 'Aptos, Segoe UI, sans-serif', weight: 'bold' } as any,
+      }),
+      attributes: { missionPlanner: true, type: 'mission_planner_route_dest_label' },
+    }));
   }
 
   /**
@@ -1129,20 +1688,12 @@ export class MissionPlannerEngine {
    * quietly when the adapter is absent, disabled, offline, or finds no route —
    * MissionPlanner carries on with the terrain corridor it already drew.
    */
-  private async _tryRoadEgress(from: Point, corridor: OcokaCorridor | undefined, safeBearing: number): Promise<void> {
+  private async _tryRoadEgress(from: Point, dest: Point): Promise<void> {
     const rn = this._roadNet();
     if (!rn) return;                            // engine not wired in → terrain egress only
     if (!(await rn.ensureAvailable())) return;  // backend down/disabled → terrain egress only
 
-    // Destination = far end of the terrain corridor, else ~2 km along the safe bearing.
-    const end = corridor?.path?.[corridor.path.length - 1];
-    const dest = end
-      ? new Point({ longitude: end.longitude, latitude: end.latitude, spatialReference: WGS84 })
-      : (() => {
-          const d = destinationPt(lonOf(from), latOf(from), safeBearing, 2000);
-          return new Point({ longitude: d.longitude, latitude: d.latitude, spatialReference: WGS84 });
-        })();
-
+    // Route along real roads from the position to the resolved rally destination.
     const res = await rn.route(from, dest);
     if (!res.ok) return;                        // no nearby road / no path / error → terrain egress only
     const line = RoadNetworkEngine.toPolyline(res.data.geometry);
@@ -1184,29 +1735,32 @@ export class MissionPlannerEngine {
     if (enemies.length === 0) return;
     for (const enemy of enemies) {
       try {
+        const analyzedRadiusM = Math.min(radiusM, 3000);
         const summary = await this._deadGround.runHeadless({
           observer: enemy.point,
-          radiusM: Math.min(radiusM, 3000),
+          radiusM: analyzedRadiusM,
           cellM: 220,
         });
         if (!summary?.extent) continue;
         this._hostileObsExtents.push(summary.extent);
-        // visualise enemy LOS reach via geodesic buffer around enemy with reduced radius proportional to visible fraction
+        // Visual envelope of the enemy's observation. The ring radius is the ACTUAL
+        // analysed radius (never the larger AOI radius — the old code drew reach the
+        // dead-ground solve never covered), and the visible fraction is encoded as fill
+        // opacity rather than a shrunken radius, so the ring doesn't imply a hard cutoff.
+        // Per-candidate exposure is decided by real line-of-sight in _exposureToEnemy,
+        // not by this ring — this is a situational-awareness overlay only.
         const visibleFraction = clamp(1 - (summary.deadGroundPct / 100), 0, 1);
-        const visR = radiusM * visibleFraction;
-        if (visR > 50) {
-          const buf = geometryEngine.geodesicBuffer(enemy.point, visR, 'meters');
-          const polygon = (Array.isArray(buf) ? buf[0] : buf) as Polygon | null;
-          if (polygon) {
-            this._hostileObsLayer.add(new Graphic({
-              geometry: polygon,
-              symbol: new SimpleFillSymbol({
-                color: [220, 60, 48, 0.10],
-                outline: new SimpleLineSymbol({ color: [220, 60, 48, 0.55], width: 1, style: 'dot' as any }),
-              }),
-              attributes: { missionPlanner: true, type: 'mission_planner_hostile_obs', observerId: enemy.id, visibleFraction },
-            }));
-          }
+        const buf = geometryEngine.geodesicBuffer(enemy.point, analyzedRadiusM, 'meters');
+        const polygon = (Array.isArray(buf) ? buf[0] : buf) as Polygon | null;
+        if (polygon) {
+          this._hostileObsLayer.add(new Graphic({
+            geometry: polygon,
+            symbol: new SimpleFillSymbol({
+              color: [220, 60, 48, clamp(0.04 + visibleFraction * 0.18, 0.04, 0.22)],
+              outline: new SimpleLineSymbol({ color: [220, 60, 48, 0.55], width: 1, style: 'dot' as any }),
+            }),
+            attributes: { missionPlanner: true, type: 'mission_planner_hostile_obs', observerId: enemy.id, visibleFraction, analyzedRadiusM },
+          }));
         }
       } catch (e) {
         // silently skip — engine may not support every terrain area
@@ -1320,12 +1874,21 @@ export class MissionPlannerEngine {
             <li><b>Mission</b> — pick mode (defensive, offensive, recon, route, ambush), unit type, AOI radius, and threat bearing. Auto-run reruns on pan/zoom.</li>
             <li><b>Forces</b> — order-of-battle summary of friendly &amp; hostile graphics inside the AOI.</li>
             <li><b>Obs</b> — add/remove friendly &amp; enemy observers. Enemies drive hostile-LOS envelopes and threat bearing.</li>
-            <li><b>Mobility</b> — OCOKA corridors feed the corridor-control and ambush scores.</li>
+            <li><b>Mobility</b> — OCOKA corridors feed the corridor-control and ambush scores, and drive the <b>mission route</b>, whose <i>purpose</i> follows the mode: defensive = <b>Withdraw</b>, ambush/recon = <b>Exfil</b> (rearward, toward your nearest friendly force), offensive = <b>Axis of Advance</b> toward the objective (Enemy/threat or the Top-ranked feature — set by <i>Objective</i>), route = <b>MSR</b> along the dominant corridor. The route <i>style</i> follows the unit — aviation flies a direct line, mechanized takes the most trafficable corridor + a real road egress, infantry takes the most concealed (low enemy line-of-sight) corridor. <i>Pick Dest</i> overrides the destination in any mode.</li>
             <li><b>Results</b> — ranked terrain features. Score bars: green=safe primary, orange=top-3, red=EXPOSED to enemy observation. Chips flag dead ground, weak defensibility, supply blind, edge-of-AO.</li>
             <li><b>COA</b> — snapshot up to 3 named courses-of-action for side-by-side compare.</li>
             <li><b>Report</b> — print, CSV, GeoJSON, or Shapefile export of the ranked features.</li>
           </ol>
           <p>Composite score weighting changes by mode (defensive favours terrain + observation; ambush favours corridor + concealment). Exposure to enemy LOS subtracts from the composite.</p>
+          <p><b>How the numbers are derived (all measured against terrain elevation, not estimated):</b></p>
+          <ul>
+            <li><b>Obs / Dead ground</b> — a radial line-of-sight sweep around each position: the real share of the surrounding terrain it can / cannot see.</li>
+            <li><b>Expo</b> — bare-earth line-of-sight from every active enemy observer to the position: the fraction of enemy OPs that can actually see it (not mere proximity).</li>
+            <li><b>Def</b> — fields of fire + elevation dominance over the surrounding terrain + the inbound climb an attacker must make.</li>
+            <li><b>March</b> — terrain-integrated travel from the nearest friendly start: Tobler's slope-aware pace (foot), grade-reduced speed (vehicles), air-speed (aviation).</li>
+            <li><b>Corr</b> — geodesic distance to the nearest OCOKA corridor, capped by that corridor's strength.</li>
+          </ul>
+          <p><b>Limitations — read before briefing:</b> line-of-sight is <b>bare-earth only</b> — it ignores vegetation canopy, buildings, and any sensor beyond optical/visual (no radar/thermal/defilade behind man-made cover). Results are as good as the underlying DEM resolution. If the elevation service is unavailable the panel falls back to coarse estimates and the status line says so.</p>
         </div>
       </div>
       <div class="mp-tabs">
@@ -1363,11 +1926,16 @@ export class MissionPlannerEngine {
             </select></label>
             <label class="mp-field"><span>Threat bearing °</span><input id="mp-threat-bearing" type="number" min="0" max="360" step="1" value="0"></label>
             <label class="mp-field"><span>Sector °</span><input id="mp-sector" type="number" min="20" max="180" step="5" value="60"></label>
+            <label class="mp-field"><span>Objective (offensive)</span><select id="mp-objective" title="What the offensive Axis of Advance heads toward. 'Pick Dest' overrides this. Ignored in route/MSR mode (which follows the dominant corridor).">
+              <option value="enemy">Enemy / threat</option>
+              <option value="feature">Top-ranked feature</option>
+            </select></label>
           </div>
           <div class="mp-btn-row">
             <button id="mp-draw-poly" class="mp-btn">Draw Polygon</button>
             <button id="mp-draw-box" class="mp-btn">Draw Box</button>
             <button id="mp-pick-buffer" class="mp-btn">Pick Buffer</button>
+            <button id="mp-pick-rally" class="mp-btn" title="Click the map to set the route destination — rally point for withdraw/exfil modes, objective for advance/route modes. Overrides the automatic destination.">Pick Dest</button>
           </div>
           <div class="mp-toggle"><label>Auto-run on view change</label><input id="mp-auto-run" type="checkbox"></div>
           <div class="mp-btn-row">
@@ -1446,6 +2014,7 @@ export class MissionPlannerEngine {
     this._el('mp-draw-poly')?.addEventListener('click', () => this._startDraw('polygon'));
     this._el('mp-draw-box')?.addEventListener('click', () => this._startDraw('rectangle'));
     this._el('mp-pick-buffer')?.addEventListener('click', () => this._startBufferPick());
+    this._el('mp-pick-rally')?.addEventListener('click', () => this._startRallyPick());
     this._el('mp-add-friendly')?.addEventListener('click', () => { this._addObserver('friendly', this._resolveCenter()); this._renderObservers(); });
     this._el('mp-add-enemy')?.addEventListener('click', () => { this._addObserver('enemy', this._resolveCenter()); this._renderObservers(); });
     this._el('mp-clear-observers')?.addEventListener('click', () => { this._observers = []; this._renderObservers(); this._updateThreatBearingFromEnemies(true); });
@@ -1631,13 +2200,16 @@ export class MissionPlannerEngine {
       if (!pt) return;
       if (aoi) { try { if (!geometryEngine.contains(aoi, pt) && !geometryEngine.intersects(aoi, pt)) return; } catch { /* fall through */ } }
       const sidc = String(g.attributes?.SIDC ?? g.attributes?.sidc ?? '');
-      const ident = sidc.charAt(3);
-      const echelon = sidc.charAt(4) || '?';
-      const key = `Ech ${echelon}`;
+      // Canonical affiliation + echelon, matching the on-map symbol. The previous
+      // sidc.charAt(3)/charAt(4) heuristics read the wrong digits: hostile units were
+      // tallied as friendly and the rows were grouped by a symbol-set digit.
+      const affiliation = classifyAffiliation(sidc);
+      const echCode = getEchelonCode(g);
+      const key = echCode === '00' ? 'Unspecified' : `Ech ${echCode}`;
       if (!counts[key]) counts[key] = { fr: 0, en: 0, ne: 0 };
-      if (ident === '3' || ident === '6' || ident === 'F') counts[key].fr++;
-      else if (ident === '1' || ident === 'H' || ident === '4') counts[key].en++;
-      else counts[key].ne++;
+      if (affiliation === 'friendly') counts[key].fr++;
+      else if (affiliation === 'hostile') counts[key].en++;
+      else counts[key].ne++; // neutral + unknown
     });
     const keys = Object.keys(counts).sort();
     if (keys.length === 0) {
