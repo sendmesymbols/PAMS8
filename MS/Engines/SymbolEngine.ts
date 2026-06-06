@@ -2940,11 +2940,34 @@ class SymbolEngine implements Evented {
     this._morphixEngine.open(graphic);
   }
 
+  /**
+   * Resolve the GraphicsLayer a graphic currently lives in. The ArcGIS SDK sets
+   * `graphic.layer` when a graphic is added to a GraphicsLayer; `graphic.origin`
+   * is only populated for features originating from a FeatureLayer query and has
+   * no `.layer`, so relying on it leaves drawn/selected symbols "unattached".
+   * Falls back to `origin.layer` (legacy) and finally a scan of the symbol layers.
+   */
+  private _resolveGraphicLayer(graphic: Graphic): GraphicsLayer | null {
+    if (!graphic) return null;
+
+    const direct = (graphic as any).layer as GraphicsLayer | null;
+    if (direct) return direct;
+
+    const fromOrigin = ((graphic as any).origin?.layer ?? null) as GraphicsLayer | null;
+    if (fromOrigin) return fromOrigin;
+
+    for (const id of SYMBOL_LAYER_IDS) {
+      const layer = this._layerManager.getLayer(id);
+      if (layer && layer.graphics?.includes(graphic)) return layer;
+    }
+    return null;
+  }
+
   public applyMorphixEdit(
     graphic: Graphic,
     editedState: MorphixEditedState,
   ): Graphic | null {
-    const oldLayer = (graphic.origin?.layer ?? null) as GraphicsLayer | null;
+    const oldLayer = this._resolveGraphicLayer(graphic);
     if (!oldLayer) {
       throw new Error('Selected symbol is not attached to a graphics layer.');
     }
@@ -3050,7 +3073,7 @@ class SymbolEngine implements Evented {
         throw new Error('Edited symbol could not be rendered.');
       }
 
-      const createdLayer = (newGraphic.origin?.layer ?? null) as GraphicsLayer | null;
+      const createdLayer = this._resolveGraphicLayer(newGraphic);
       if (createdLayer && createdLayer !== targetLayer) {
         createdLayer.remove(newGraphic);
         targetLayer.add(newGraphic);

@@ -702,6 +702,52 @@ class MorphixEngine {
     this.restoreFocus();
   }
 
+  /**
+   * Update only the parts of the modal that depend on field values — the footer
+   * status / Save button enabled-state, the read-only SIDC mirror, and the JSON
+   * preview — WITHOUT rebuilding the form. This keeps the editable inputs (and
+   * the Save button) alive and focused, so a value edit followed immediately by
+   * a Save click doesn't destroy the button mid-click. Used for plain value /
+   * bool / color edits; structural changes (SIDC, symbol swap, reset, JSON
+   * toggle) still go through the full render().
+   */
+  private refreshDynamic(): void {
+    if (!this.root || !this.state) return;
+    const s = this.state;
+    const errors = this.validate(s);
+    const isValid = errors.length === 0;
+    const isDirty = JSON.stringify(this.serialize(s)) !== this.originalSnapshot;
+
+    const saveBtn = this.root.querySelector(
+      '[data-action="save"]',
+    ) as HTMLButtonElement | null;
+    if (saveBtn) saveBtn.disabled = !(isValid && isDirty);
+
+    const msg = this.root.querySelector(
+      '[data-mx="footer-msg"]',
+    ) as HTMLElement | null;
+    if (msg) {
+      msg.textContent = isValid
+        ? isDirty
+          ? 'Ready to save.'
+          : 'No changes yet.'
+        : errors.join(' · ');
+      msg.style.color = isValid ? 'var(--ms-text-dim)' : 'var(--ms-danger)';
+    }
+
+    const mirror = this.root.querySelector(
+      '[data-mx="sidc-mirror"]',
+    ) as HTMLInputElement | null;
+    if (mirror) mirror.value = s.sidc;
+
+    if (s.jsonOpen) {
+      const ta = this.root.querySelector(
+        '[data-mx="json-text"]',
+      ) as HTMLTextAreaElement | null;
+      if (ta) ta.value = JSON.stringify(this.serialize(s), null, 2);
+    }
+  }
+
   private renderHeader(def?: SymbolDefinition): string {
     const s = this.state!;
     return `
@@ -788,7 +834,7 @@ class MorphixEngine {
       <div class="ms-grid full">
         <div class="ms-field">
           <span class="ms-label">SIDC (read-only)</span>
-          <input class="ms-input" type="text" disabled value="${this.esc(s.sidc)}"
+          <input class="ms-input" type="text" disabled value="${this.esc(s.sidc)}" data-mx="sidc-mirror"
                  style="font-family:var(--ms-font-mono);letter-spacing:1px;color:var(--ms-accent);">
         </div>
       </div>
@@ -979,7 +1025,7 @@ class MorphixEngine {
         <button type="button" class="ms-btn" data-action="toggle-json" style="margin-right:12px;padding:3px 9px;font-size:var(--ms-fs-xs);">${open ? 'Hide' : 'Show'}</button>
       </div>
       ${open
-        ? `<div class="ms-grid full"><textarea class="ms-input" readonly rows="14" style="font-family:var(--ms-font-mono);min-height:240px;resize:vertical;">${this.esc(JSON.stringify(this.serialize(this.state!), null, 2))}</textarea></div>`
+        ? `<div class="ms-grid full"><textarea class="ms-input" readonly rows="14" data-mx="json-text" style="font-family:var(--ms-font-mono);min-height:240px;resize:vertical;">${this.esc(JSON.stringify(this.serialize(this.state!), null, 2))}</textarea></div>`
         : ''}
     `;
   }
@@ -990,7 +1036,7 @@ class MorphixEngine {
       : errors.map((e) => this.esc(e)).join(' · ');
     return `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:var(--ms-bg-header);border-top:1px solid var(--ms-divider);">
-        <div style="font-size:var(--ms-fs-xs);color:${isValid ? 'var(--ms-text-dim)' : 'var(--ms-danger)'};line-height:1.5;flex:1;min-width:0;">
+        <div data-mx="footer-msg" style="font-size:var(--ms-fs-xs);color:${isValid ? 'var(--ms-text-dim)' : 'var(--ms-danger)'};line-height:1.5;flex:1;min-width:0;">
           ${message}
         </div>
         <div style="display:flex;gap:6px;">
@@ -1055,7 +1101,12 @@ class MorphixEngine {
       const target = el as HTMLInputElement | HTMLSelectElement;
       const kind = (target as HTMLInputElement).dataset.kind;
       if (!kind) return;
-      const liveKinds = new Set(['symbol-filter']);
+      // Text/number value fields update live on `input` so state (and the
+      // Save button's enabled state) stay current WITHOUT a full re-render.
+      // `change` fires on blur — which happens when the user clicks Save —
+      // and a full re-render there destroys the Save button mid-click,
+      // swallowing the click. `symbol-filter` is also live for instant search.
+      const liveKinds = new Set(['symbol-filter', 'value']);
       const eventName = liveKinds.has(kind) ? 'input' : 'change';
       target.addEventListener(eventName, (e) => this.onInput(e));
     });
@@ -1095,10 +1146,16 @@ class MorphixEngine {
         if (!(type === 'number' && coerced === undefined)) {
           (this.state as any)[group][key] = coerced;
         }
+        // Editing the SIDC restructures the form (combos, echelon, name) so it
+        // needs a full re-render; every other value edit only affects the
+        // footer / mirror, so refresh those in place to keep inputs (and the
+        // Save button) alive and focused.
         if (group === 'amplifier' && key === 'SIDC') {
           this.applySidc(String(t.value), true);
+          this.render();
+        } else {
+          this.refreshDynamic();
         }
-        this.render();
         return;
       }
 
@@ -1106,7 +1163,7 @@ class MorphixEngine {
         const group = t.dataset.group!;
         const key = t.dataset.key!;
         (this.state as any)[group][key] = t.checked ? 1 : 0;
-        this.render();
+        this.refreshDynamic();
         return;
       }
 
@@ -1114,7 +1171,7 @@ class MorphixEngine {
         const group = t.dataset.group!;
         const key = t.dataset.key!;
         (this.state as any)[group][key] = this.hexToRgb(t.value);
-        this.render();
+        this.refreshDynamic();
         return;
       }
     }
