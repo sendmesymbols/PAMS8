@@ -1536,16 +1536,34 @@ class MorphixEngine {
     }
   }
 
-  /** Plain JSON clone — for amplifier/draw/label/extra/cim fields only. Never use on ArcGIS geometry. */
-  private jsonClone<T>(value: T): T {
+  /**
+   * Plain JSON clone — for amplifier/draw/label/extra/cim fields only. Never use
+   * on ArcGIS geometry.
+   *
+   * Carries a `seen` set of the objects on the current recursion path so a
+   * circular reference (e.g. a stray `SCOPE` renderer back-reference or an
+   * ArcGIS geometry that slipped into the payload) is cut instead of overflowing
+   * the stack. Add-before / delete-after means shared-but-acyclic references
+   * (a DAG) still clone fully — only true back-edges are dropped.
+   */
+  private jsonClone<T>(value: T, seen?: Set<unknown>, depth = 0): T {
     if (value === null || typeof value !== 'object') return value;
-    if (Array.isArray(value)) return value.map((v) => this.jsonClone(v)) as any;
-    const out: Record<string, any> = {};
-    for (const k of Object.keys(value as any)) {
-      const v = (value as any)[k];
-      if (typeof v === 'function') continue;
-      out[k] = this.jsonClone(v);
+    if (depth > 200) return undefined as any; // pathological depth — bail rather than overflow
+    const path = seen ?? new Set<unknown>();
+    if (path.has(value)) return undefined as any; // circular — cut this branch
+    path.add(value);
+    let out: any;
+    if (Array.isArray(value)) {
+      out = value.map((v) => this.jsonClone(v, path, depth + 1));
+    } else {
+      out = {};
+      for (const k of Object.keys(value as any)) {
+        const v = (value as any)[k];
+        if (typeof v === 'function') continue;
+        out[k] = this.jsonClone(v, path, depth + 1);
+      }
     }
+    path.delete(value);
     return out as T;
   }
 
