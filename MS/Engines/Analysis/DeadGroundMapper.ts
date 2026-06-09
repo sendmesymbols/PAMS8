@@ -16,6 +16,20 @@ const EARTH_R = 6_371_008.8;
 const WGS84 = { wkid: 4326 } as any;
 const ENGINE_NAME = 'DeadGroundMapper';
 
+// Shared sequential ramp for dead-ground DEPTH (shallow -> deep). Intuition:
+// shallow / low-threat = pale yellow, deepest / most-dangerous = saturated red
+// (red reads as "threat"; the old ramp painted the deepest ground calm yellow,
+// which is what made the map look like it contradicted the key). Heatmap, 3D
+// mesh, contours, and the depth legend all read this single source so the map
+// and the key can never drift apart.
+const DEPTH_RAMP: [number, number, number][] = [
+  [255, 245, 150], // 0%  - shallow, pale yellow
+  [250, 190, 70],  // amber
+  [240, 120, 45],  // orange
+  [222, 60, 48],   // red
+  [150, 18, 18],   // 100% - deepest, dark red
+];
+
 type DeadGroundColorMode = 'depth' | 'binary' | 'range' | 'quadrant';
 type ViewshedDomeColorMode = 'elevation' | 'binary' | 'range' | 'azimuth';
 
@@ -84,6 +98,7 @@ export class DeadGroundMapper {
   private _observerPt: Point | null = null;
   private _obsZ = 0;
   private _running = false;
+  private _maxDepthUserSet = false;
   private _dragOffsetX = 0;
   private _dragOffsetY = 0;
   private _isDragging = false;
@@ -337,17 +352,33 @@ export class DeadGroundMapper {
         cellM,
         onProgress: (frac, label) => this._setProgress(frac * 0.7, label),
       });
-      const realMaxDepth = Math.min(maxDepth, result.maxDepth > 0 ? result.maxDepth : maxDepth);
       let validCells = 0;
       let deadCells = 0;
+      const positiveDepths: number[] = [];
       for (let i = 0; i < result.depthGrid.length; i++) {
         const d = result.depthGrid[i];
         if (!Number.isNaN(d)) {
           validCells++;
-          if (d > 0) deadCells++;
+          if (d > 0) {
+            deadCells++;
+            positiveDepths.push(d);
+          }
         }
       }
       const pct = validCells > 0 ? Math.round((100 * deadCells) / validCells) : 0;
+
+      // Auto-scale the depth colour ramp to the data (95th percentile) unless the
+      // user has pinned the slider manually. Keeps the legend's "deep" anchor
+      // honest: without this the ramp clamps at the slider's 50 m default while
+      // real depths can run to hundreds of metres, saturating most dead cells to
+      // a single flat yellow so the key no longer matches the map.
+      let realMaxDepth: number;
+      if (this._maxDepthUserSet) {
+        realMaxDepth = Math.min(maxDepth, result.maxDepth > 0 ? result.maxDepth : maxDepth);
+      } else {
+        realMaxDepth = Math.max(5, this._niceCeil(this._percentile(positiveDepths, 0.95)));
+        this._applyAutoMaxDepth(realMaxDepth);
+      }
 
       this._clearResults();
 
@@ -409,6 +440,7 @@ export class DeadGroundMapper {
       this._setText('dead-st-dead', `${pct}%`);
       this._setText('dead-st-depth', `${Math.round(result.maxDepth)} m`);
       this._setText('dead-st-cells', (result.cols * result.rows).toLocaleString());
+      this._updateDepthLegend(colorMode, realMaxDepth);
       this._setProgress(1, `Done - ${pct}% dead ground`);
       this._setStatus('done', 'Done');
       this._view.goTo({ target: result.extent, tilt: show3D || showDome ? 65 : 0 }, { duration: 1000 }).catch(() => {});
@@ -439,6 +471,14 @@ export class DeadGroundMapper {
     this._observerLayer.removeAll();
     this._observerPt = null;
     this._obsZ = 0;
+    this._maxDepthUserSet = false;
+    const maxDepthSlider = this._el('dead-inp-maxdepth') as HTMLInputElement | null;
+    if (maxDepthSlider) {
+      maxDepthSlider.max = '200';
+      maxDepthSlider.value = '50';
+    }
+    this._setText('dead-maxdepth-v', '50 m');
+    this._updateDepthLegend(this._selectValue('dead-inp-color-mode', 'depth') as DeadGroundColorMode, 50);
     const runBtn = this._el('dead-btn-run') as HTMLButtonElement | null;
     if (runBtn) {
       runBtn.disabled = true;
@@ -596,19 +636,26 @@ export class DeadGroundMapper {
     opts: { maxDepth: number; observerPt: Point },
   ): Graphic[] {
     const graphics: Graphic[] = [];
-    const levels = [5, 10, 20, 35, 50, 75, 100].filter((l) => l <= opts.maxDepth * 1.1);
+    const maxD = opts.maxDepth;
+    // Adapt contour levels to the (possibly auto-scaled) range. For shallow maps
+    // keep the fixed tactical depths; for deep maps blend shallow markers with
+    // proportional bands so contours span the whole range instead of clustering
+    // in the bottom slice.
+    const rawLevels = maxD <= 60
+      ? [5, 10, 20, 35, 50, 75, 100]
+      : [5, 15, 30, ...[0.25, 0.4, 0.55, 0.7, 0.85, 1].map((f) => Math.round((maxD * f) / 5) * 5)];
+    const levels = Array.from(new Set(rawLevels)).filter((l) => l > 0 && l <= maxD * 1.1).sort((a, b) => a - b);
     const dLon = (extent.xmax - extent.xmin) / cols;
     const dLat = (extent.ymax - extent.ymin) / rows;
 
     levels.forEach((level) => {
       const t = Math.min(1, level / opts.maxDepth);
-      const stops = [[140, 28, 28], [220, 60, 48], [239, 159, 39], [245, 240, 64]];
-      const si = t * (stops.length - 1);
+      const si = t * (DEPTH_RAMP.length - 1);
       const lo = Math.floor(si);
-      const hi = Math.min(stops.length - 1, lo + 1);
+      const hi = Math.min(DEPTH_RAMP.length - 1, lo + 1);
       const f = si - lo;
-      const [r1, g1, b1] = stops[lo];
-      const [r2, g2, b2] = stops[hi];
+      const [r1, g1, b1] = DEPTH_RAMP[lo];
+      const [r2, g2, b2] = DEPTH_RAMP[hi];
       const col = [Math.round(r1 + (r2 - r1) * f), Math.round(g1 + (g2 - g1) * f), Math.round(b1 + (b2 - b1) * f)];
       const segments: number[][][] = [];
 
@@ -1121,13 +1168,12 @@ export class DeadGroundMapper {
 
   private _depthToRGBA(depth: number, maxDepth: number, opacity: number): [number, number, number, number] {
     const t = Math.min(1, depth / maxDepth);
-    const stops = [[30, 10, 10], [140, 28, 28], [220, 60, 48], [239, 159, 39], [245, 240, 64]];
-    const seg = t * (stops.length - 1);
+    const seg = t * (DEPTH_RAMP.length - 1);
     const lo = Math.floor(seg);
-    const hi = Math.min(stops.length - 1, lo + 1);
+    const hi = Math.min(DEPTH_RAMP.length - 1, lo + 1);
     const frac = seg - lo;
-    const [r1, g1, b1] = stops[lo];
-    const [r2, g2, b2] = stops[hi];
+    const [r1, g1, b1] = DEPTH_RAMP[lo];
+    const [r2, g2, b2] = DEPTH_RAMP[hi];
     return [
       Math.round(r1 + (r2 - r1) * frac),
       Math.round(g1 + (g2 - g1) * frac),
@@ -1181,6 +1227,62 @@ export class DeadGroundMapper {
     ];
   }
 
+  private _percentile(values: number[], p: number): number {
+    if (values.length === 0) return 0;
+    const sorted = values.slice().sort((a, b) => a - b);
+    const idx = Math.min(sorted.length - 1, Math.max(0, Math.round(p * (sorted.length - 1))));
+    return sorted[idx];
+  }
+
+  private _niceCeil(v: number): number {
+    if (v <= 0) return 5;
+    const mag = Math.pow(10, Math.floor(Math.log10(v)));
+    const n = v / mag;
+    const nice = n <= 1 ? 1 : n <= 1.5 ? 1.5 : n <= 2 ? 2 : n <= 2.5 ? 2.5
+      : n <= 3 ? 3 : n <= 4 ? 4 : n <= 5 ? 5 : n <= 7.5 ? 7.5 : 10;
+    return nice * mag;
+  }
+
+  private _applyAutoMaxDepth(v: number): void {
+    const slider = this._el('dead-inp-maxdepth') as HTMLInputElement | null;
+    if (slider) {
+      if (v > Number(slider.max)) slider.max = String(Math.ceil(v));
+      slider.value = String(v);
+    }
+    this._setText('dead-maxdepth-v', `${Math.round(v)} m (auto)`);
+  }
+
+  private _rampCss(stops: number[][]): string {
+    return `linear-gradient(to right, ${stops.map((s) => `rgb(${s[0]},${s[1]},${s[2]})`).join(', ')})`;
+  }
+
+  private _legendCss(mode: DeadGroundColorMode): string {
+    switch (mode) {
+      case 'binary': return 'rgb(220,60,48)';
+      case 'range': return 'linear-gradient(to right, rgb(55,138,221), rgb(245,240,64))';
+      case 'quadrant': return 'linear-gradient(to right, rgb(55,138,221), rgb(29,158,117), rgb(239,159,39), rgb(220,60,48), rgb(55,138,221))';
+      default: return this._rampCss(DEPTH_RAMP);
+    }
+  }
+
+  // The depth key must describe whatever the colour-mode dropdown is actually
+  // painting — depth / range / quadrant / binary mean four different things, so
+  // a fixed "shallow -> deep" key is wrong for three of them.
+  private _updateDepthLegend(mode: DeadGroundColorMode, maxDepth: number): void {
+    const bar = this._el('dead-legend-bar');
+    if (bar) bar.style.background = this._legendCss(mode);
+    const labels: Record<DeadGroundColorMode, [string, string, string]> = {
+      depth: ['Dead ground depth key', '0 m (shallow)', `${Math.round(maxDepth)} m (deep)`],
+      binary: ['Dead ground key', 'Dead ground', 'depth not shown'],
+      range: ['Range from observer', 'Near', 'Far edge'],
+      quadrant: ['Bearing from observer', 'N', 'E · S · W'],
+    };
+    const [title, lo, hi] = labels[mode];
+    this._setText('dead-legend-title', title);
+    this._setText('dead-dk-min', lo);
+    this._setText('dead-dk-max', hi);
+  }
+
   private _showPanel(): void {
     if (!this._panelEl) {
       this._panelEl = document.createElement('div');
@@ -1195,6 +1297,10 @@ export class DeadGroundMapper {
     }
     this._panelEl.classList.add('ms-visible');
     this._syncDomeControls();
+    this._updateDepthLegend(
+      this._selectValue('dead-inp-color-mode', 'depth') as DeadGroundColorMode,
+      this._num('dead-inp-maxdepth', 50),
+    );
   }
 
   private _hidePanel(): void {
@@ -1226,7 +1332,7 @@ export class DeadGroundMapper {
           <div class="ms-help-block"><h4>How it works</h4><p>The engine sweeps radial rays from the observer eye, tracing the terrain skyline along each bearing. For every grid cell, it compares the cell's elevation to the masking horizon angle in that direction. Cells lying below the horizon line-of-sight are <em>masked</em>; the vertical gap between the LOS and the ground is the dead-ground depth.</p></div>
           <div class="ms-help-block"><h4>Observer position</h4><p>The observer is a single point with an eye height above ground. Where you place this observer fundamentally changes the map — moving the observer onto higher ground exposes reverse slopes and shrinks dead ground; moving into a valley creates large masked areas behind every ridge. Eye height matters too: raising it above 2&nbsp;m can dramatically reduce dead ground at short ranges.</p></div>
           <div class="ms-help-block"><h4>Workflow</h4><ol><li>Place observer by clicking the map.</li><li>Set eye height, analysis radius, and grid cell size.</li><li>Pick 2D heatmap, 3D mesh, and / or viewshed dome.</li><li>Run analysis and inspect depth contours and stats.</li></ol></div>
-          <div class="ms-help-block"><h4>Display</h4><p>Red→yellow shading indicates increasing dead-ground depth. Optional green shading shows visible terrain, LOS spokes show radial sample directions, and contours mark equal-depth lines. The viewshed dome (3D) wraps the observer in a hemisphere coloured by what each direction can see.</p></div>
+          <div class="ms-help-block"><h4>Display</h4><p>Pale-yellow→red shading indicates increasing dead-ground depth (deeper = redder = higher threat). Optional green shading shows visible terrain, LOS spokes show radial sample directions, and contours mark equal-depth lines. The viewshed dome (3D) wraps the observer in a hemisphere coloured by what each direction can see.</p></div>
         </div>
       </div>
       <div class="ms-body">
@@ -1314,9 +1420,9 @@ export class DeadGroundMapper {
         </div>
         <div class="ms-divider"></div>
         <div id="dead-depthkey" class="ms-depthkey">
-          <div class="ms-legend-title">Dead ground depth key</div>
-          <div class="ms-legend-bar"></div>
-          <div class="ms-legend"><span>0 m (shallow)</span><span id="dead-dk-max">50 m (deep)</span></div>
+          <div class="ms-legend-title" id="dead-legend-title">Dead ground depth key</div>
+          <div class="ms-legend-bar" id="dead-legend-bar"></div>
+          <div class="ms-legend"><span id="dead-dk-min">0 m (shallow)</span><span id="dead-dk-max">50 m (deep)</span></div>
         </div>
         <div id="dead-progress-wrap" class="ms-progress-wrap"><div id="dead-progress-track" class="ms-progress-track"><div id="dead-progress-fill" class="ms-progress-fill"></div></div><div id="dead-progress-label" class="ms-progress-label">—</div></div>
         <div id="dead-stats" class="ms-info-grid">
@@ -1331,7 +1437,7 @@ export class DeadGroundMapper {
           <button class="ms-btn primary" id="dead-btn-run" disabled title="Place an observer first — click the map or enter a Lat/Lon and press Set location">Run analysis</button>
         </div>
         <div id="dead-legend" class="ms-legend-wrap">
-          <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:linear-gradient(to right,#3a1a1a,#DC3C30,#EF9F27,#F5F040)"></div><div class="ms-legend-label">Dead ground - shallow → deep</div></div>
+          <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:linear-gradient(to right,#fff596,#f0782d,#961212)"></div><div class="ms-legend-label">Dead ground - shallow → deep</div></div>
           <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:linear-gradient(to right,#1a52dc,#1D9E75,#EF9F27,#DC3C30)"></div><div class="ms-legend-label">Viewshed dome - elevation</div></div>
           <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:rgba(29,158,117,0.35);border:1px solid #1D9E75"></div><div class="ms-legend-label">Visible ground (if enabled)</div></div>
           <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:#378ADD"></div><div class="ms-legend-label">Observer position</div></div>
@@ -1366,9 +1472,16 @@ export class DeadGroundMapper {
     p.querySelector('#dead-btn-run')?.addEventListener('click', () => void this._runAnalysis());
     p.querySelector('#dead-btn-setloc')?.addEventListener('click', () => this._setObserverFromInputs());
     p.querySelector('#dead-inp-maxdepth')?.addEventListener('input', () => {
+      this._maxDepthUserSet = true;
       const v = this._num('dead-inp-maxdepth', 50);
       this._setText('dead-maxdepth-v', `${Math.round(v)} m`);
-      this._setText('dead-dk-max', `${Math.round(v)} m (deep)`);
+      this._updateDepthLegend(this._selectValue('dead-inp-color-mode', 'depth') as DeadGroundColorMode, v);
+    });
+    p.querySelector('#dead-inp-color-mode')?.addEventListener('change', () => {
+      this._updateDepthLegend(
+        this._selectValue('dead-inp-color-mode', 'depth') as DeadGroundColorMode,
+        this._num('dead-inp-maxdepth', 50),
+      );
     });
     p.querySelector('#dead-inp-opacity')?.addEventListener('input', () => {
       this._setText('dead-opacity-v', this._num('dead-inp-opacity', 0.75).toFixed(2));

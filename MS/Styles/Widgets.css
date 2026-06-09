@@ -854,7 +854,7 @@
   height: 10px;
   border-radius: var(--ms-radius-sm);
   border: 1px solid var(--ms-border);
-  background: linear-gradient(to right, #1e0a0a, #8c1c1c, #dc3c30, #ef9f27, #f5f040);
+  background: linear-gradient(to right, #fff596, #fabe46, #f0782d, #de3c30, #961212);
 }
 
 .ms-legend {
