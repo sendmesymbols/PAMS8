@@ -103,7 +103,9 @@
       "Bash(python -c \"import cairosvg; print\\('cairosvg available'\\)\")",
       "Bash(Get-ChildItem -Path \"D:\\\\Projects\\\\PAMS8\\\\MS\\\\ThirdParty\\\\MilSymbols\" -Recurse)",
       "Bash(Select-Object -First 30)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(xargs wc -l)",
+      "Bash(xargs cat)"
     ]
   }
 }
