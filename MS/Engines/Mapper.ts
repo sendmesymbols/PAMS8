@@ -43,6 +43,8 @@ import BOPFreehand from "../Symbols/BOPFreehand.ts"; //Fixed
 import Boundary from "../Symbols/Boundary.ts"; //Fixed
 import FreehandCloseSupportingAttack from "../Symbols/FreehandCloseSupportingAttack.ts";  //Fixed
 import MainAttack from "../Symbols/MainAttack.ts";  //Fixed
+import FriendlyAirborneAviation from "../Symbols/FriendlyAirborneAviation.ts";
+import AttackHelicopter from "../Symbols/AttackHelicopter.ts";
 import MultiHeadMainAttack from "../Symbols/MultiHeadMainAttack.ts";  //Fixed
 import AttackByFirePosition from "../Symbols/AttackByFirePosition.ts"; //Fixed
 import Clear from "../Symbols/Clear.ts"; //Fixed
@@ -56,6 +58,7 @@ import FreehandSemiCircleFilled from "../Symbols/FreehandSemiCircleFilled.ts"; /
 import FreehandSupportingAttack from "../Symbols/FreehandSupportingAttack.ts"; //Fixed
 import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts"; //Fixed
 import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts"; //Fixed
+import FriendlyAviationAttack from "../Symbols/FriendlyAviationAttack.ts";
 import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts"; //Fixed
 import NamedAreaOfInterest from "../Symbols/NamedAreaOfInterest.ts"; //Fixed
 import VitalArea from "../Symbols/VitalArea.ts"; //Fixed
@@ -67,6 +70,7 @@ import LandingZone from "../Symbols/LandingZone.ts"; //Fixed
 import VitalGr from "../Symbols/VitalGr.ts";  //Fixed
 import NoGo from "../Symbols/NoGo.ts";  //Fixed
 import FlightZone from "../Symbols/FlightZone.ts";  //Fixed
+import AirspaceArea from "../Symbols/AirspaceArea.ts";
 import PenetrationBox from "../Symbols/PenetrationBox.ts";  //Fixed
 import DitchEmpty from "../Symbols/DitchEmpty.ts";  //Fixed
 import DitchFilledWithWater from "../Symbols/DitchFilledWithWater.ts";  //Fixed
@@ -76,6 +80,22 @@ import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";  //Fi
 import SingleFenceWire from "../Symbols/SingleFenceWire.ts";  //Fixed
 import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";  //Fixed
 import UARoute from "../Symbols/UARoute.ts";  //Fixed
+import SafeLane from "../Symbols/SafeLane.ts";  //Fixed
+import TransitCorridors from "../Symbols/TransitCorridors.ts";  //Fixed
+import MinimumRiskRoute from "../Symbols/MinimumRiskRoute.ts";  //Fixed
+import LowLevelTransitRoute from "../Symbols/LowLevelTransitRoute.ts";  //Fixed
+import HighDensityAirspaceControlZone from "../Symbols/HighDensityAirspaceControlZone.ts";  //Fixed
+import RestrictedOperationsZone from "../Symbols/RestrictedOperationsZone.ts";  //Fixed
+import AirToAirRestrictedOperationsZone from "../Symbols/AirToAirRestrictedOperationsZone.ts";  //Fixed
+import UnmannedAircraftRestrictedOperationsZone from "../Symbols/UnmannedAircraftRestrictedOperationsZone.ts";  //Fixed
+import WeaponEngagementZone from "../Symbols/WeaponEngagementZone.ts";  //Fixed
+import FighterEngagementZone from "../Symbols/FighterEngagementZone.ts";  //Fixed
+import JointEngagementZone from "../Symbols/JointEngagementZone.ts";  //Fixed
+import MissileEngagementZone from "../Symbols/MissileEngagementZone.ts";  //Fixed
+import LowAltitudeMissileEngagementZone from "../Symbols/LowAltitudeMissileEngagementZone.ts";  //Fixed
+import HighAltitudeMissileEngagementZone from "../Symbols/HighAltitudeMissileEngagementZone.ts";  //Fixed
+import ShortRangeAirDefenseEngagementZone from "../Symbols/ShortRangeAirDefenseEngagementZone.ts";  //Fixed
+import WeaponFreeZone from "../Symbols/WeaponFreeZone.ts";  //Fixed
 import Canalize from "../Symbols/Canalize.ts";  //Fixed
 import Corridors from "../Symbols/Corridors.ts"; //Fixed
 import Cover from "../Symbols/Cover.ts"; //Fixed
@@ -169,6 +189,8 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "TacticalPoint": TacticalPoint,
     "UEISymbol": UEISymbol,
     "MainAttack": MainAttack,
+    "FriendlyAirborneAviation": FriendlyAirborneAviation,
+    "AttackHelicopter": AttackHelicopter,
     "MultiHeadMainAttack": MultiHeadMainAttack,
     "AttackByFirePosition": AttackByFirePosition,
     "Clear": Clear,
@@ -183,6 +205,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "FreehandSupportingAttack": FreehandSupportingAttack,
     "FriendlyDirOfMainAttk": FriendlyDirOfMainAttk,
     "FriendlyDirOfSpAttk": FriendlyDirOfSpAttk,
+    "FriendlyAviationAttack": FriendlyAviationAttack,
     "TargetAreaOfInterest": TargetAreaOfInterest,
     "NamedAreaOfInterest": NamedAreaOfInterest,
     "StratAssyArea": StratAssyArea,
@@ -190,6 +213,22 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "SingleFenceWire": SingleFenceWire,
     "TripleStrandConcertina": TripleStrandConcertina,
     "UARoute": UARoute,
+    "SafeLane": SafeLane,
+    "TransitCorridors": TransitCorridors,
+    "MinimumRiskRoute": MinimumRiskRoute,
+    "LowLevelTransitRoute": LowLevelTransitRoute,
+    "HighDensityAirspaceControlZone": HighDensityAirspaceControlZone,
+    "RestrictedOperationsZone": RestrictedOperationsZone,
+    "AirToAirRestrictedOperationsZone": AirToAirRestrictedOperationsZone,
+    "UnmannedAircraftRestrictedOperationsZone": UnmannedAircraftRestrictedOperationsZone,
+    "WeaponEngagementZone": WeaponEngagementZone,
+    "FighterEngagementZone": FighterEngagementZone,
+    "JointEngagementZone": JointEngagementZone,
+    "MissileEngagementZone": MissileEngagementZone,
+    "LowAltitudeMissileEngagementZone": LowAltitudeMissileEngagementZone,
+    "HighAltitudeMissileEngagementZone": HighAltitudeMissileEngagementZone,
+    "ShortRangeAirDefenseEngagementZone": ShortRangeAirDefenseEngagementZone,
+    "WeaponFreeZone": WeaponFreeZone,
     "UnspecifiedMine": UnspecifiedMine,
     "VitalArea": VitalArea,
     "WideAreaAntiTankMine": WideAreaAntiTankMine,
@@ -213,6 +252,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "Fix": Fix,
     "FlightRoute": FlightRoute,
     "FlightZone": FlightZone,
+    "AirspaceArea": AirspaceArea,
     "FormingUpPoint": FormingUpPoint,
     "Funnel": Funnel,
     "FwdAssemblyArea": FwdAssemblyArea,

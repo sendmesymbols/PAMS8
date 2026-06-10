@@ -552,7 +552,9 @@
     "opRanker": true,
     "localPeaks": true,
     "missionPlanner": true,
-    "ocoka": true
+    "ocoka": true,
+    "landingZone": true,
+    "airspace": true
   },
   "creationMode": "single",
   "ui": {

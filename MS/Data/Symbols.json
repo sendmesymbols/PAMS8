@@ -9230,6 +9230,33 @@
         "Cat": ["attk"],
         "Grp": ["Control Measures","Friendly Direction of Sp Attk, Dir Arrow" ]
     },
+    "25140060": {
+        "Class": "FriendlyAviationAttack",
+        "Description": "",
+        "Name": "Friendly Aviation Attack",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Line) and 2 (Curve)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Line",
+                "description": "Use Line"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Curve",
+                "description": "Use Curve"
+            }
+        ],
+        "Cat": ["attk"],
+        "Grp": ["Control Measures","Friendly Aviation Attack" ]
+    },
     "25140800": {
         "Class": "InfiltrationLane",
         "Description": "",
@@ -9821,6 +9848,56 @@
         "Tools": [],
         "Cat": ["attk"],
         "Grp": ["Control Measures","Main Attk" ]
+    },
+    "25151401": {
+        "Class": "FriendlyAirborneAviation",
+        "Description": "",
+        "Name": "Friendly Airborne Aviation",
+        "Parameters": [{
+                "Name": "Arrowhead Ratio",
+                "default": "0.07",
+                "description": "Arrowhead Ratio",
+                "paramThumbnail": "",
+                "value": "HEAD_RATIO"
+            },
+            {
+                "Name": "Tail Ratio",
+                "default": "0.05",
+                "description": "Tail Ratio",
+                "paramThumbnail": "",
+                "value": "TAIL_FACTOR"
+            }
+        ],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk"],
+        "Grp": ["Control Measures","Friendly Airborne Aviation" ]
+    },
+    "25151402": {
+        "Class": "AttackHelicopter",
+        "Description": "",
+        "Name": "Attack Helicopter",
+        "Parameters": [{
+                "Name": "Arrowhead Ratio",
+                "default": "0.07",
+                "description": "Arrowhead Ratio",
+                "paramThumbnail": "",
+                "value": "HEAD_RATIO"
+            },
+            {
+                "Name": "Tail Ratio",
+                "default": "0.05",
+                "description": "Tail Ratio",
+                "paramThumbnail": "",
+                "value": "TAIL_FACTOR"
+            }
+        ],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk"],
+        "Grp": ["Control Measures","Attack Helicopter" ]
     },
     "25151404": {
         "Class": "SupportingAttack",
@@ -10563,6 +10640,182 @@
         "Cat": ["attk", "def"],
         "Grp": ["Control Measures","UAV Route" ]
     },
+    "25170400": {
+        "Class": "SafeLane",
+        "Description": "",
+        "Name": "Safe Lane",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","UAV Route" ]
+    },
+    "25170600": {
+        "Class": "TransitCorridors",
+        "Description": "",
+        "Name": "Transit Corridors",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","UAV Route" ]
+    },
+    "25170300": {
+        "Class": "MinimumRiskRoute",
+        "Description": "",
+        "Name": "Minimum Risk Route",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","UAV Route" ]
+    },
+    "25170200": {
+        "Class": "LowLevelTransitRoute",
+        "Description": "",
+        "Name": "Low Level Transit Route",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","UAV Route" ]
+    },
+    "25170900": {
+        "Class": "HighDensityAirspaceControlZone",
+        "Description": "",
+        "Name": "High-Density Airspace Control Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
+    "25171000": {
+        "Class": "RestrictedOperationsZone",
+        "Description": "",
+        "Name": "Restricted Operations Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
+    "25171100": {
+        "Class": "AirToAirRestrictedOperationsZone",
+        "Description": "",
+        "Name": "Air to Air Restricted Operations Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
+    "25171200": {
+        "Class": "UnmannedAircraftRestrictedOperationsZone",
+        "Description": "",
+        "Name": "Unmanned Aircraft Restricted Operations Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
+    "25171300": {
+        "Class": "WeaponEngagementZone",
+        "Description": "",
+        "Name": "Weapon Engagement Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
+    "25171400": {
+        "Class": "FighterEngagementZone",
+        "Description": "",
+        "Name": "Fighter Engagement Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
+    "25171500": {
+        "Class": "JointEngagementZone",
+        "Description": "",
+        "Name": "Joint Engagement Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
+    "25171600": {
+        "Class": "MissileEngagementZone",
+        "Description": "",
+        "Name": "Missile Engagement Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
+    "25171700": {
+        "Class": "LowAltitudeMissileEngagementZone",
+        "Description": "",
+        "Name": "Low Altitude Missile Engagement Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
+    "25171800": {
+        "Class": "HighAltitudeMissileEngagementZone",
+        "Description": "",
+        "Name": "High Altitude Missile Engagement Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
+    "25171900": {
+        "Class": "ShortRangeAirDefenseEngagementZone",
+        "Description": "",
+        "Name": "Short Range Air Defense Engagement Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
+    "25172000": {
+        "Class": "WeaponFreeZone",
+        "Description": "",
+        "Name": "Weapon Free Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
     "25170701": {
         "Class": "FlightRoute",
         "Description": "",
@@ -10621,6 +10874,70 @@
         ],
         "Cat": ["ipb"],
         "Grp": ["Control Measures","Flight Zone" ]
+    },
+    "25251001": {
+        "Class": "AirspaceArea",
+        "Description": "Restricted Operations Zone — airspace of defined dimensions reserved for a specific operation.",
+        "Name": "ROZ — Restricted Operations Zone",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "2",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon), 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Use Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["ipb"],
+        "Grp": ["Control Measures","Airspace" ]
+    },
+    "25251002": {
+        "Class": "AirspaceArea",
+        "Description": "Airspace Coordination Area — block of airspace where friendly fires and aircraft are coordinated.",
+        "Name": "ACA — Airspace Coordination Area",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "2",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon), 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Use Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["ipb"],
+        "Grp": ["Control Measures","Airspace" ]
     },
     "25180100": {
         "Class": "TacticalPoint",

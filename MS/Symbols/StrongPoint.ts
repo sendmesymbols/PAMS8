@@ -121,33 +121,53 @@ class StrongPoint {
         return drawEssentials;
     }
 
-    private createStrongPts(pts: Point[], gap_ratio: number, center_pt: Point, result: Polyline, type: number): Polyline {
-        const firstPoint = new Point({ x: pts[0].x, y: pts[0].y, spatialReference: this.view.spatialReference });
-        const lastPoint = pts[pts.length - 1];
+    private createStrongPts(pts: Point[], _gap_ratio: number, _center_pt: Point, result: Polyline, type: number): Polyline {
+        if (!pts || pts.length < 2) return result;
 
-        let gapRatio = GeoTools._2PtLen(firstPoint, lastPoint);
-        gapRatio = gapRatio / gap_ratio;
+        // Total length of this boundary arc — drives uniform tick spacing & size.
+        let arcLen = 0;
+        for (let i = 1; i < pts.length; i++) arcLen += GeoTools._2PtLen(pts[i - 1], pts[i]);
+        if (arcLen <= 0) return result;
 
-        const baseLineLen = GeoTools._2PtLen(firstPoint, lastPoint);
-        let cLenLimit: number;
-        if (type === 1) {
-            cLenLimit = baseLineLen / 2;
-            if (cLenLimit > baseLineLen / 2) cLenLimit = baseLineLen / 2;
-        } else if (type === 2) {
-            cLenLimit = baseLineLen / 12;
-            if (cLenLimit > baseLineLen / 12) cLenLimit = baseLineLen / 12;
-        } else {
-            cLenLimit = baseLineLen / 10;
-            if (cLenLimit > baseLineLen / 10) cLenLimit = baseLineLen / 10;
-        }
+        // Evenly spaced teeth. Closed shapes (type 2/3) arrive as two arcs, so they
+        // get fewer per arc to keep the overall density consistent with the open line.
+        const tickCount = type === 1 ? 40 : 24;
+        const step = arcLen / tickCount;        // even spacing along the boundary
+        const tickLen = step * 0.8;             // uniform, short protruding length
 
-        const resPts = GeoTools.getDashPts(pts, [gapRatio, gapRatio], 5);
-        for (let i = 0; i < resPts.length; i += 2) {
-            const k = GeoTools.twoPtsAngle(resPts[i], center_pt) + Math.PI;
-            result.addPath([
-                [cLenLimit * Math.cos(k) + resPts[i].x, cLenLimit * Math.sin(k) + resPts[i].y],
-                [resPts[i].x, resPts[i].y]
-            ]);
+        // Centroid of the arc — only used to flip each tooth to the outward side.
+        let cx = 0, cy = 0;
+        for (let i = 0; i < pts.length; i++) { cx += pts[i].x; cy += pts[i].y; }
+        cx /= pts.length; cy /= pts.length;
+
+        // Resample the arc at even arc-length intervals; drop a perpendicular tooth at each.
+        let acc = 0;
+        for (let i = 1; i < pts.length; i++) {
+            const a = pts[i - 1];
+            const b = pts[i];
+            const segLen = GeoTools._2PtLen(a, b);
+            if (segLen === 0) continue;
+
+            const ux = (b.x - a.x) / segLen;    // unit tangent along the boundary
+            const uy = (b.y - a.y) / segLen;
+
+            let pos = 0;
+            while (acc + (segLen - pos) >= step) {
+                pos += step - acc;
+                const px = a.x + ux * pos;      // foot of the tooth, on the boundary
+                const py = a.y + uy * pos;
+
+                // Perpendicular to the local tangent, pointing away from the centre.
+                let nx = -uy, ny = ux;
+                if ((px - cx) * nx + (py - cy) * ny < 0) { nx = -nx; ny = -ny; }
+
+                result.addPath([
+                    [px + nx * tickLen, py + ny * tickLen],
+                    [px, py]
+                ]);
+                acc = 0;
+            }
+            acc += segLen - pos;
         }
 
         return result;

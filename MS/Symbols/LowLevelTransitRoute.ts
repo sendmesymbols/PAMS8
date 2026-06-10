@@ -13,7 +13,7 @@ import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
 import SymbolEvents from "../Support/SymbolEvents";
-export interface UARouteOptions {
+export interface LowLevelTransitRouteOptions {
     CTRL_PTS?: Point[];
     BASE_LN_PTS?: {startPt: Point, endPt: Point};
     GEOM?: Polyline;
@@ -21,19 +21,19 @@ export interface UARouteOptions {
 }
 
 /**
- * UARoute class for drawing UARoute tactical symbols
+ * LowLevelTransitRoute class for drawing LowLevelTransitRoute tactical symbols
  * Uses baseline + control points
  * Returns Polyline geometry despite being classified as an Area symbol
  */
-export class UARoute {
+export class LowLevelTransitRoute {
     private view: MapView | SceneView;
     private layerManager: GraphicsLayerManager;
     private symbolLayer: GraphicsLayer;
     private isLine: boolean;
 
     // Symbol properties
-    public SID = "170700";
-    public symName = "UAV Route";
+    public SID = "170200";
+    public symName = "Low Level Transit Route";
     public symGeometricType = "Line";
 
     private _lineSym: SimpleLineSymbol | null = null;
@@ -64,7 +64,7 @@ export class UARoute {
         this.layerManager = GraphicsLayerManager.getInstance(view);
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
         this.amplifier = new Amplifier();
-        this.events = new SymbolEvents(view, "UARoute");
+        this.events = new SymbolEvents(view, "LowLevelTransitRoute");
 
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
@@ -74,9 +74,9 @@ export class UARoute {
     }
 
     /**
-     * Initialize the UARoute drawing
+     * Initialize the LowLevelTransitRoute drawing
      */
-    public init(options: UARouteOptions, marker: SimpleLineSymbol): void {
+    public init(options: LowLevelTransitRouteOptions, marker: SimpleLineSymbol): void {
         this._lineSym = marker.clone();
 
         const drawEssentials = new DrawEssentials();
@@ -424,12 +424,12 @@ export class UARoute {
                 for (let i = 0; i < values.midPoints.length; i++) {
                     let cLenLimit = values.midPoints[i].len / 2;
                     if (cLenLimit > corridorBaseLen / 3.6) cLenLimit = corridorBaseLen / 3.6;
-                    const uaStrokes = (Shapes as any).createUA
-                        ? (Shapes as any).createUA(values.midPoints[i].midPt.x, values.midPoints[i].midPt.y, cLenLimit, values.midPoints[i].midPt.spatialReference)
+                    const lltrStrokes = (Shapes as any).createLLTR
+                        ? (Shapes as any).createLLTR(values.midPoints[i].midPt.x, values.midPoints[i].midPt.y, cLenLimit, values.midPoints[i].midPt.spatialReference)
                         : [];
-                    if (Array.isArray(uaStrokes)) {
-                        for (let j = 0; j <= uaStrokes.length - 1; j++) {
-                            const seg = uaStrokes[j] as Point[];
+                    if (Array.isArray(lltrStrokes)) {
+                        for (let j = 0; j <= lltrStrokes.length - 1; j++) {
+                            const seg = lltrStrokes[j] as Point[];
                             if (seg && seg.length) {
                                 result.addPath(seg.map(p => [p.x, p.y]));
                             }
@@ -588,4 +588,4 @@ export class UARoute {
     }
 }
 
-export default UARoute;
+export default LowLevelTransitRoute;

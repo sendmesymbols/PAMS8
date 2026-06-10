@@ -14,6 +14,7 @@ import PlotPoint from '../MS/PlotPoint.ts';
 import SymbolEngine from '../MS/Engines/SymbolEngine.ts';
 import SettingsMenu from '../MS/Support/SettingsMenu.ts';
 import VisualizationEngine from '../MS/Engines/Visualization/VisualizationEngine.ts';
+import CombatPowerEngine from '../MS/Engines/Planning/CombatPowerEngine.ts';
 //import SymbolEngine from "../dist/MS/Engines/SymbolEngine.min.js";
 import type { SymbolOptions } from '../MS/ThirdParty/MilSymbols/UEITypes.ts';
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
@@ -179,6 +180,18 @@ Object.defineProperty(window as any, 'missionPlannerEngine', {
   configurable: true,
   get() {
     return symbolEngine.missionPlannerEngine;
+  },
+});
+Object.defineProperty(window as any, 'landingZoneEngine', {
+  configurable: true,
+  get() {
+    return symbolEngine.landingZoneEngine;
+  },
+});
+Object.defineProperty(window as any, 'airspaceEngine', {
+  configurable: true,
+  get() {
+    return symbolEngine.airspaceEngine;
   },
 });
 
@@ -1479,6 +1492,9 @@ function initializeAutocomplete() {
         deadGround:    () => { const se = (window as any).symbolEngine; se?.deadGroundMapper?.open(getActiveGraphic() ?? undefined, se.view); },
         posDefScorer:  () => { const se = (window as any).symbolEngine; se?.posDefScorerEngine?.openWidget(se.view); },
         opRanker:      () => { const se = (window as any).symbolEngine; se?.opRankerEngine?.openWidget(se.view); },
+        // Combat Power — reads every unit symbol on the map (no selection needed)
+        // and reports the friendly:hostile force ratio with a doctrinal verdict.
+        combatPower:   () => { const se = (window as any).symbolEngine; CombatPowerEngine.getInstance().open(se?.view); },
         missionPlanner:() => { const se = (window as any).symbolEngine; se?.missionPlannerEngine?.openWidget(se.view); },
         // OCOKA opens with or without a symbol — uses the active graphic as the
         // initial centre when present, otherwise prompts to pick a location.
@@ -1500,6 +1516,17 @@ function initializeAutocomplete() {
         // as the first detonation point when present, otherwise click the map to
         // place it.
         effects:       () => { const se = (window as any).symbolEngine; se?.effectEngine?.open(getActiveGraphic() ?? undefined, se.view); },
+        // Landing Zone Planner opens standalone in click-to-search mode.
+        landingZone:   () => { const se = (window as any).symbolEngine; se?.landingZoneEngine?.openWidget(se.view); },
+        // Airspace opens with or without a symbol — if a polygon is selected it
+        // loads as the active footprint; otherwise the panel lets you draw one.
+        airspace:      () => {
+          const se = (window as any).symbolEngine;
+          const g = getActiveGraphic();
+          const ge = g?.geometry;
+          if (ge && (ge.type === 'polygon' || (ge as any).rings)) se?.airspaceEngine?.open(g, se.view);
+          else se?.airspaceEngine?.openWidget(se.view);
+        },
       };
 
       // Context tools — require a right-clicked or selected graphic
@@ -1516,6 +1543,8 @@ function initializeAutocomplete() {
         trajectory: 'Trajectory',             effects: 'Weapon Effect',
         buffer: 'Buffer & Rings',             corridor: 'Corridor Analysis',
         flight: 'UAV Flight Analysis',        missionPlanner: 'Mission Planner',
+        combatPower: 'Combat Power',          landingZone: 'Landing Zone Planner',
+        airspace: 'Airspace (ROZ / ACA)',
       };
 
       analysisHubPanel.querySelectorAll<HTMLButtonElement>('.ah-tool').forEach(btn => {

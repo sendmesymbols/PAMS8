@@ -67,4 +67,6 @@ export const analysisSettingsManifest: SettingDescriptor[] = [
   route('corridor', 'Corridor Analysis', 'Route corridor width, threats and chokepoints along MSRs.'),
   route('flight', 'UAV Flight Analysis', 'Plan UAV routes and analyse coverage.'),
   route('missionPlanner', 'Mission Planner Dashboard', 'Integrated multi-factor terrain analysis dashboard.'),
+  route('landingZone', 'Landing Zone Planner', 'Assess helicopter LZ/PZ/DZ suitability — slope, capacity, obstacles, approaches.'),
+  weap('airspace', 'Airspace (ROZ / ACA)', 'Author restricted operations zones & airspace coordination areas with floor/ceiling bands and conflict detection.'),
 ];

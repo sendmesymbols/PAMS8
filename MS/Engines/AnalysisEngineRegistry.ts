@@ -18,6 +18,8 @@ import OpRankerEngine from './Analysis/OpRanker/OpRankerEngine';
 import LocalPeaksEngine from './Analysis/Peaks/LocalPeaksEngine';
 import OcokaEngine from './OCOKA/Ocoka';
 import MissionPlannerEngine from './MissionPlanner/MissionPlannerEngine';
+import LandingZoneEngine from './Analysis/LandingZone/LandingZoneEngine';
+import AirspaceEngine from './Analysis/Airspace/AirspaceEngine';
 
 export type AnalysisKey =
   | 'wez'
@@ -33,7 +35,9 @@ export type AnalysisKey =
   | 'opRanker'
   | 'localPeaks'
   | 'ocoka'
-  | 'missionPlanner';
+  | 'missionPlanner'
+  | 'landingZone'
+  | 'airspace';
 
 interface AnalysisSpec {
   factory: () => any;
@@ -76,6 +80,8 @@ export default class AnalysisEngineRegistry {
   private _localPeaks: LocalPeaksEngine | null = null;
   private _ocoka: OcokaEngine | null = null;
   private _missionPlanner: MissionPlannerEngine | null = null;
+  private _landingZone: LandingZoneEngine | null = null;
+  private _airspace: AirspaceEngine | null = null;
 
   private readonly SPECS: Record<AnalysisKey, AnalysisSpec> = {
     wez: {
@@ -177,6 +183,20 @@ export default class AnalysisEngineRegistry {
       logName: 'MissionPlannerEngine',
       onViewChanged: (inst, view) => inst.onViewChanged(view),
     },
+    landingZone: {
+      factory: () => new LandingZoneEngine(),
+      link: (cmm, e) => cmm.linkLandingZoneEngine(e),
+      unlink: (cmm) => cmm.linkLandingZoneEngine(null),
+      readyEvent: 'landingZoneEngineReady',
+      logName: 'LandingZoneEngine',
+    },
+    airspace: {
+      factory: () => new AirspaceEngine(),
+      link: (cmm, e) => cmm.linkAirspaceEngine(e),
+      unlink: (cmm) => cmm.linkAirspaceEngine(null),
+      readyEvent: 'airspaceEngineReady',
+      logName: 'AirspaceEngine',
+    },
   };
 
   constructor(private readonly deps: AnalysisRegistryDeps) {}
@@ -196,6 +216,8 @@ export default class AnalysisEngineRegistry {
   get localPeaksEngine(): LocalPeaksEngine | null { return this._localPeaks; }
   get ocokaEngine(): OcokaEngine | null { return this._ocoka; }
   get missionPlannerEngine(): MissionPlannerEngine | null { return this._missionPlanner; }
+  get landingZoneEngine(): LandingZoneEngine | null { return this._landingZone; }
+  get airspaceEngine(): AirspaceEngine | null { return this._airspace; }
 
   /** Has the engine been constructed? */
   has(key: AnalysisKey): boolean {
@@ -316,6 +338,8 @@ export default class AnalysisEngineRegistry {
       case 'localPeaks': return this._localPeaks;
       case 'ocoka': return this._ocoka;
       case 'missionPlanner': return this._missionPlanner;
+      case 'landingZone': return this._landingZone;
+      case 'airspace': return this._airspace;
     }
   }
 
@@ -335,6 +359,8 @@ export default class AnalysisEngineRegistry {
       case 'localPeaks': this._localPeaks = inst; break;
       case 'ocoka': this._ocoka = inst; break;
       case 'missionPlanner': this._missionPlanner = inst; break;
+      case 'landingZone': this._landingZone = inst; break;
+      case 'airspace': this._airspace = inst; break;
     }
   }
 }

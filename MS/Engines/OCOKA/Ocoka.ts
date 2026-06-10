@@ -10,6 +10,7 @@ import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import Polyline from '@arcgis/core/geometry/Polyline';
+import Extent from '@arcgis/core/geometry/Extent';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import EngineLogger from '../../Support/EngineLogger';
 import RoadNetworkEngine, { type TrafficabilitySummary } from '../Analysis/RoadNetworkEngine';
@@ -161,6 +162,11 @@ export class OcokaEngine {
   static readonly HEAT_LAYER_ID = 'ocoka-slope-heatmap';
 
   private _view: MapView | SceneView | null = null;
+  // Shared AO elevation sampler for the current run — built once (awaited) then
+  // queried synchronously by every corridor step / slope cell. null when the
+  // ground/DEM cannot produce one, in which case terrain degrades to the
+  // synthetic pseudoTerrain proxy (documented in each corridor note).
+  private _runSampler: any = null;
   private _corridorLayer!: GraphicsLayer;
   private _widthLayer!: GraphicsLayer;
   private _chokeLayer!: GraphicsLayer;
@@ -263,6 +269,7 @@ export class OcokaEngine {
       showChoke: false,
     };
     await this._tick();
+    this._runSampler = await this._buildSampler(runOptions.center, runOptions.radiusM);
     const corridors = this._extractCorridors(runOptions);
     await this._enrichCorridorsWithRoads(corridors, runOptions);
     return corridors
@@ -302,6 +309,7 @@ export class OcokaEngine {
     this._hintEl = null;
     this._legendEl = null;
     this._tooltipEl = null;
+    this._runSampler = null;
     this._view = null;
   }
 
@@ -561,7 +569,8 @@ export class OcokaEngine {
     try {
       const options = this._readOptions();
       this._setStatus('sampling', 'Sampling terrain');
-      this._setProgress(0.08, 'Building OCOKA terrain model');
+      this._setProgress(0.08, 'Building elevation sampler');
+      this._runSampler = await this._buildSampler(options.center, options.radiusM);
       await this._tick();
       this._setAnalysisArea(options.center.latitude, options.center.longitude, options.radiusM);
       if (options.showSlope) this._drawSlopeOverlay(options);
@@ -735,52 +744,142 @@ export class OcokaEngine {
     }
   }
 
+  /**
+   * Build ONE elevation sampler covering the AO (+ a margin large enough for a
+   * corridor to reach the perimeter). Awaited once per run; thereafter every
+   * step/slope query hits its cached tiles synchronously. Returns null if the
+   * ground/DEM cannot produce a sampler — the engine then falls back to
+   * synthetic terrain.
+   */
+  private async _buildSampler(center: OcokaPoint, radiusM: number): Promise<any> {
+    if (!this._view) return null;
+    try {
+      const padDeg = (radiusM * 1.3) / 111_320; // ~reach + margin, in degrees
+      const ext = new Extent({
+        xmin: center.longitude - padDeg,
+        xmax: center.longitude + padDeg,
+        ymin: center.latitude - padDeg,
+        ymax: center.latitude + padDeg,
+        spatialReference: WGS84,
+      });
+      return await (this._view.map as any).ground.createElevationSampler(ext, { noDataValue: 0 });
+    } catch {
+      return null;
+    }
+  }
+
+  /** queryElevation wrapper that rejects non-finite / no-data samples. */
+  private _queryZ(lon: number, lat: number): number | null {
+    if (!this._runSampler) return null;
+    const z = this._runSampler.queryElevation(
+      new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 }),
+    )?.z;
+    return Number.isFinite(z) ? z : null;
+  }
+
+  /** Real sampled elevation, falling back to the synthetic surface when no DEM. */
+  private _elevAt(lon: number, lat: number, center: OcokaPoint): number {
+    return this._queryZ(lon, lat) ?? pseudoTerrain(lon, lat, center);
+  }
+
+  /** Slope (deg) of the segment between two elevations over a horizontal run. */
+  private _segSlopeDeg(z1: number, z2: number, horizM: number): number {
+    return toDeg(Math.atan(Math.abs(z2 - z1) / Math.max(1, horizM)));
+  }
+
   private _extractCorridors(options: OcokaOptions): OcokaCorridor[] {
     const count = clamp(Math.round(options.maxCorridors), 3, 12);
     const corridors: OcokaCorridor[] = [];
-    const bearings = Array.from({ length: count }, (_, i) => normalizeBearing((360 / count) * i + 12));
+    const center = options.center;
+    const hasDEM = !!this._runSampler;
 
-    bearings.forEach((bearing, i) => {
-      const wav = Math.sin(toRad(bearing * 1.7 + options.center.latitude * 5));
-      const cross = Math.cos(toRad(bearing * 2.3 - options.center.longitude * 4));
-      const widthM = Math.round(clamp(options.radiusM * (0.055 + (wav + 1) * 0.035), 120, 950));
-      const lengthM = Math.round(options.radiusM * (0.78 + (cross + 1) * 0.12));
-      const steps = Math.max(6, Math.round(lengthM / Math.max(250, options.cellM * 6)));
-      const path: OcokaPoint[] = [];
-      for (let s = 0; s <= steps; s++) {
-        const t = s / steps;
-        const bend = Math.sin(t * Math.PI) * (8 + wav * 8);
-        const dist = lengthM * (1 - t);
-        const point = destinationPoint(options.center, normalizeBearing(bearing + bend), dist);
-        point.elevationM = pseudoTerrain(point.longitude, point.latitude, options.center);
-        path.push(point);
+    // Walk parameters. Each avenue is SEEDED on a radial bearing, then steered
+    // step-by-step toward the gentlest reachable ground (±DEV per step, never
+    // drifting more than MAX_OFFSET from the seed bearing) so it follows real
+    // passes/valleys instead of a straight line.
+    const stepM = Math.max(120, options.cellM * 4);
+    const steps = Math.max(6, Math.round(options.radiusM / stepM));
+    const DEV = 18;
+    const MAX_OFFSET = 38;
+
+    const seedBearings = Array.from({ length: count }, (_, i) => normalizeBearing((360 / count) * i + 12));
+
+    seedBearings.forEach((b0, i) => {
+      const outward: OcokaPoint[] = [];
+      let cur: OcokaPoint = { ...center, elevationM: this._elevAt(center.longitude, center.latitude, center) };
+      outward.push(cur);
+      let heading = b0;
+      let slopeSum = 0, slopeN = 0, roughSum = 0, prevSlope = 0;
+      let minZ = cur.elevationM!, maxZ = cur.elevationM!;
+      const chokeCandidates: Array<{ pt: OcokaPoint; slope: number }> = [];
+
+      for (let s = 1; s <= steps; s++) {
+        const offered = hasDEM ? [heading - DEV, heading, heading + DEV] : [heading];
+        let best: { h: number; pt: OcokaPoint; slope: number } | null = null;
+        for (const hc of offered) {
+          const h = normalizeBearing(hc);
+          let off = ((h - b0 + 540) % 360) - 180; // signed offset from seed bearing
+          if (Math.abs(off) > MAX_OFFSET) continue;
+          const pt = destinationPoint(cur, h, stepM);
+          pt.elevationM = this._elevAt(pt.longitude, pt.latitude, center);
+          const slope = this._segSlopeDeg(cur.elevationM!, pt.elevationM!, stepM);
+          if (!best || slope < best.slope) best = { h, pt, slope };
+        }
+        if (!best) {
+          // Whole sector clipped — push straight ahead on the current heading.
+          const pt = destinationPoint(cur, heading, stepM);
+          pt.elevationM = this._elevAt(pt.longitude, pt.latitude, center);
+          best = { h: heading, pt, slope: this._segSlopeDeg(cur.elevationM!, pt.elevationM!, stepM) };
+        }
+        heading = best.h;
+        cur = best.pt;
+        outward.push(cur);
+        slopeSum += best.slope; slopeN++;
+        roughSum += Math.abs(best.slope - prevSlope); prevSlope = best.slope;
+        minZ = Math.min(minZ, cur.elevationM!); maxZ = Math.max(maxZ, cur.elevationM!);
+        if (best.slope > options.forceSlopeDeg) chokeCandidates.push({ pt: cur, slope: best.slope });
       }
 
-      const localSlope = clamp(5 + Math.abs(wav) * 18 + Math.abs(cross) * 6, 3, 32);
-      const exposure = clamp(50 + cross * 35 - Math.abs(wav) * 12, 5, 98);
+      // Order perimeter → centre so seed = perimeter entry (matches the road
+      // enrichment, which routes seed → AO centre, and the drawing convention).
+      const path = outward.slice().reverse();
+      const avgSlope = slopeN ? slopeSum / slopeN : 0;
+      const roughness = slopeN ? roughSum / slopeN : 0;
+      const reliefM = maxZ - minZ;
+      const lengthM = stepM * steps;
+
+      // Usable breadth: gentler average slope ⇒ wider trafficable avenue.
+      const widthM = Math.round(clamp(options.radiusM * (0.04 + (1 - clamp(avgSlope / 30, 0, 1)) * 0.12), 120, 950));
+      // Exposure proxy: deeper relief along the corridor screens movement.
+      const exposure = clamp(75 - reliefM * 0.05, 5, 98);
+
       const scores: OcokaScores = {
         width: clamp(Math.round((widthM / 850) * 100), 10, 100),
-        mask: clamp(Math.round(60 + Math.abs(wav) * 30 - exposure * 0.15), 5, 100),
-        traf: clamp(Math.round(100 - (localSlope / Math.max(1, options.forceSlopeDeg)) * 45), 5, 100),
-        obs: clamp(Math.round(100 - exposure * 0.55 + options.slopeThresholdDeg * 1.2), 5, 100),
-        cc: clamp(Math.round((60 + Math.abs(wav) * 30 + (100 - exposure * 0.5)) / 2), 5, 100),
-        obst: clamp(Math.round(100 - Math.max(0, localSlope - options.slopeThresholdDeg) * 4 - Math.abs(cross) * 18), 5, 100),
+        mask: clamp(Math.round(35 + reliefM * 0.06), 5, 100),
+        traf: clamp(Math.round(100 - (avgSlope / Math.max(1, options.forceSlopeDeg)) * 45), 5, 100),
+        obs: clamp(Math.round(45 + reliefM * 0.04 - exposure * 0.25), 5, 100),
+        cc: clamp(Math.round(30 + reliefM * 0.05 + roughness * 3), 5, 100),
+        obst: clamp(Math.round(100 - Math.max(0, avgSlope - options.slopeThresholdDeg) * 5 - roughness * 6), 5, 100),
       };
       const composite = this._composite(scores, options.weights);
-      const chokePts = path.filter((_, idx) => idx > 1 && idx < path.length - 2 && idx % Math.max(3, Math.round(steps / 3)) === 0 && (widthM < 420 || localSlope > options.slopeThresholdDeg));
+      const chokePts = chokeCandidates.sort((a, b) => b.slope - a.slope).slice(0, 3).map((c) => c.pt);
 
       corridors.push({
         id: `ocoka-avenue-${i + 1}`,
         rank: i + 1,
         seed: path[0],
         path,
-        chokePts: chokePts.slice(0, 3),
+        chokePts,
         widthM,
         lengthM,
-        bearingDeg: bearing,
+        bearingDeg: b0,
         composite,
         scores,
-        note: localSlope > options.forceSlopeDeg ? 'Mobility is constrained by slope and likely obstacles.' : 'Movement is feasible with terrain masking opportunities.',
+        note: hasDEM
+          ? (avgSlope > options.forceSlopeDeg
+              ? `Avg slope ${avgSlope.toFixed(1)}° exceeds the ${options.force} limit — mobility constrained; ${chokePts.length} chokepoint(s).`
+              : `Avg slope ${avgSlope.toFixed(1)}° — trafficable for ${options.force}; ${Math.round(reliefM)} m relief offers masking.`)
+          : 'Synthetic terrain estimate — elevation service unavailable.',
       });
     });
 
@@ -847,20 +946,27 @@ export class OcokaEngine {
         const east = -options.radiusM + stepM * (c + 0.5);
         const north = options.radiusM - stepM * (r + 0.5);
         if (Math.hypot(east, north) > options.radiusM) continue;
-        const center = destinationPoint(options.center, normalizeBearing(toDeg(Math.atan2(east, north))), Math.hypot(east, north));
-        const slope = clamp(Math.abs(Math.sin((r + 1) * 1.7) + Math.cos((c + 1) * 1.3)) * 16, 0, 32);
+        const cell = destinationPoint(options.center, normalizeBearing(toDeg(Math.atan2(east, north))), Math.hypot(east, north));
+        // Real slope from the sampled DEM: gradient over a half-cell E/N probe.
+        const probe = Math.max(30, stepM * 0.5);
+        const z0 = this._elevAt(cell.longitude, cell.latitude, options.center);
+        const pe = destinationPoint(cell, 90, probe);
+        const pn = destinationPoint(cell, 0, probe);
+        const dzE = this._elevAt(pe.longitude, pe.latitude, options.center) - z0;
+        const dzN = this._elevAt(pn.longitude, pn.latitude, options.center) - z0;
+        const slope = clamp(toDeg(Math.atan(Math.hypot(dzE, dzN) / Math.max(1, probe))), 0, 60);
         const color: [number, number, number] = slope <= options.forceSlopeDeg ? [29, 158, 117] : slope <= options.forceSlopeDeg * 1.5 ? [239, 159, 39] : [220, 60, 48];
         const half = stepM * 0.5;
         const corners = [
-          destinationPoint(center, 315, half),
-          destinationPoint(center, 45, half),
-          destinationPoint(center, 135, half),
-          destinationPoint(center, 225, half),
+          destinationPoint(cell, 315, half),
+          destinationPoint(cell, 45, half),
+          destinationPoint(cell, 135, half),
+          destinationPoint(cell, 225, half),
         ];
         this._heatLayer.add(new Graphic({
           geometry: new Polygon({ rings: [[...corners.map((p) => [p.longitude, p.latitude]), [corners[0].longitude, corners[0].latitude]]], spatialReference: WGS84 }),
           symbol: { type: 'simple-fill', color: [...color, 0.13], outline: { color: [...color, 0.04], width: 0.2 } } as any,
-          attributes: { type: 'OCOKA slope heatmap', label: `Estimated slope ${slope.toFixed(1)} deg` },
+          attributes: { type: 'OCOKA slope heatmap', label: `${this._runSampler ? 'Slope' : 'Est. slope'} ${slope.toFixed(1)} deg` },
         }));
       }
     }

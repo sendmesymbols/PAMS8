@@ -1349,8 +1349,11 @@ class Shapes {
     static createACP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const pts1 = this.createA(dx - (dr * 1.8), dy, dr, sp);
         const pts2 = this.createCC(dx, dy, dr, sp);
-        const pts3 = this.createPP(dx + (dr * 1.2), dy, dr, sp);
-        return [pts1, pts2, pts3];
+        // P glyph as clean strokes (stem + bowl) — createPP backtracks through
+        // the stem and the 3D tessellator collapses part of it. Strokes render
+        // identically in 2D and 3D.
+        const pStrokes = this.createPStrokes(dx + (dr * 1.2), dy, dr, sp);
+        return [pts1, pts2, ...pStrokes];
     }
 
     static createPL(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
@@ -1365,6 +1368,336 @@ class Shapes {
             this.createS(dx, dy, dr, sp),
             ...this.createLStrokes(dx + (dr * 1.3), dy, dr, sp),
         ];
+    }
+
+    /**
+     * Letter M as four clean strokes (left stem, V valley, right stem).
+     * Modelled on createN; no single-letter createM existed before.
+     */
+    static createM(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const leftX = dx - (dr * 0.6);
+        const rightX = dx + (dr * 0.6);
+        return [
+            // Left vertical
+            [
+                new Point({ x: leftX, y: dy - dr, spatialReference: sp }),
+                new Point({ x: leftX, y: dy + dr, spatialReference: sp })
+            ],
+            // Left diagonal: top-left down to centre valley
+            [
+                new Point({ x: leftX, y: dy + dr, spatialReference: sp }),
+                new Point({ x: dx, y: dy, spatialReference: sp })
+            ],
+            // Right diagonal: centre valley up to top-right
+            [
+                new Point({ x: dx, y: dy, spatialReference: sp }),
+                new Point({ x: rightX, y: dy + dr, spatialReference: sp })
+            ],
+            // Right vertical
+            [
+                new Point({ x: rightX, y: dy + dr, spatialReference: sp }),
+                new Point({ x: rightX, y: dy - dr, spatialReference: sp })
+            ]
+        ];
+    }
+
+    /**
+     * "TC" label (Transit Corridors) — T + C, centred on (dx, dy).
+     */
+    static createTC(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createTStrokes(dx - (dr * 0.7), dy, dr, sp),
+            ...this.createCStrokes(dx + (dr * 0.7), dy, dr, sp)
+        ];
+    }
+
+    /**
+     * "MRR" label (Minimum Risk Route) — M + R + R, centred on (dx, dy).
+     */
+    static createMRR(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createM(dx - (dr * 1.4), dy, dr, sp),
+            ...this.createRStrokes(dx, dy, dr, sp),
+            ...this.createRStrokes(dx + (dr * 1.4), dy, dr, sp)
+        ];
+    }
+
+    /**
+     * "LLTR" label (Low Level Transit Route) — L + L + T + R, centred on (dx, dy).
+     */
+    static createLLTR(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createLStrokes(dx - (dr * 2.1), dy, dr, sp),
+            ...this.createLStrokes(dx - (dr * 0.7), dy, dr, sp),
+            ...this.createTStrokes(dx + (dr * 0.7), dy, dr, sp),
+            ...this.createRStrokes(dx + (dr * 2.1), dy, dr, sp)
+        ];
+    }
+
+    // ---------------------------------------------------------------------
+    // Airspace / engagement-zone inner-text labels. Rendered as polygon rings
+    // via createInnerText, mirroring createNAIStrokes / createNAIRings.
+    // E, H, W had no *Strokes variant, so 2-point-segment versions are added
+    // here so they survive the strokes->rings conversion.
+    // ---------------------------------------------------------------------
+
+    static createEStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            // Vertical stem
+            [
+                new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx, y: dy + dr, spatialReference: sp })
+            ],
+            // Top bar
+            [
+                new Point({ x: dx, y: dy + dr, spatialReference: sp }),
+                new Point({ x: dx + dr, y: dy + dr, spatialReference: sp })
+            ],
+            // Middle bar
+            [
+                new Point({ x: dx, y: dy, spatialReference: sp }),
+                new Point({ x: dx + (dr * 0.8), y: dy, spatialReference: sp })
+            ],
+            // Bottom bar
+            [
+                new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx + dr, y: dy - dr, spatialReference: sp })
+            ]
+        ];
+    }
+
+    static createHStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const leftX = dx - (dr * 0.6);
+        const rightX = dx + (dr * 0.6);
+        return [
+            // Left vertical
+            [
+                new Point({ x: leftX, y: dy - dr, spatialReference: sp }),
+                new Point({ x: leftX, y: dy + dr, spatialReference: sp })
+            ],
+            // Crossbar
+            [
+                new Point({ x: leftX, y: dy, spatialReference: sp }),
+                new Point({ x: rightX, y: dy, spatialReference: sp })
+            ],
+            // Right vertical
+            [
+                new Point({ x: rightX, y: dy - dr, spatialReference: sp }),
+                new Point({ x: rightX, y: dy + dr, spatialReference: sp })
+            ]
+        ];
+    }
+
+    static createWStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            // Left vertical
+            [
+                new Point({ x: dx - (dr * 0.7), y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx - (dr * 0.7), y: dy + dr, spatialReference: sp })
+            ],
+            // Left diagonal down to centre valley
+            [
+                new Point({ x: dx - (dr * 0.7), y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx, y: dy, spatialReference: sp })
+            ],
+            // Centre valley to bottom-right
+            [
+                new Point({ x: dx, y: dy, spatialReference: sp }),
+                new Point({ x: dx + (dr * 0.7), y: dy - dr, spatialReference: sp })
+            ],
+            // Right vertical
+            [
+                new Point({ x: dx + (dr * 0.7), y: dy - dr, spatialReference: sp }),
+                new Point({ x: dx + (dr * 0.7), y: dy + dr, spatialReference: sp })
+            ]
+        ];
+    }
+
+    /**
+     * Convert 2-point letter strokes to ring paths (number[][][]) for polygon
+     * inner text, mirroring the createNAIRings conversion.
+     */
+    static strokesToRings(strokes: Point[][]): number[][][] {
+        const paths: number[][][] = [];
+        for (let i = 0; i < strokes.length; i++) {
+            const seg = strokes[i];
+            if (seg && seg.length >= 2) {
+                paths.push([[seg[0].x, seg[0].y], [seg[1].x, seg[1].y]]);
+            }
+        }
+        return paths;
+    }
+
+    // --- 3-letter labels (full-size letters, 1.3*dr step, centred on dx,dy) ---
+
+    static createROZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createRStrokes(dx - (dr * 1.3), dy, dr, sp),
+            ...this.createOStrokes(dx, dy, dr, sp),
+            ...this.createZStrokes(dx + (dr * 1.3), dy, dr, sp)
+        ];
+    }
+    static createROZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToRings(this.createROZStrokes(dx, dy, dr, sp));
+    }
+
+    static createWEZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createWStrokes(dx - (dr * 1.3), dy, dr, sp),
+            ...this.createEStrokes(dx, dy, dr, sp),
+            ...this.createZStrokes(dx + (dr * 1.3), dy, dr, sp)
+        ];
+    }
+    static createWEZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToRings(this.createWEZStrokes(dx, dy, dr, sp));
+    }
+
+    static createFEZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createFStrokes(dx - (dr * 1.3), dy, dr, sp),
+            ...this.createEStrokes(dx, dy, dr, sp),
+            ...this.createZStrokes(dx + (dr * 1.3), dy, dr, sp)
+        ];
+    }
+    static createFEZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToRings(this.createFEZStrokes(dx, dy, dr, sp));
+    }
+
+    static createJEZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createJStrokes(dx - (dr * 1.3), dy, dr, sp),
+            ...this.createEStrokes(dx, dy, dr, sp),
+            ...this.createZStrokes(dx + (dr * 1.3), dy, dr, sp)
+        ];
+    }
+    static createJEZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToRings(this.createJEZStrokes(dx, dy, dr, sp));
+    }
+
+    static createMEZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createM(dx - (dr * 1.3), dy, dr, sp),
+            ...this.createEStrokes(dx, dy, dr, sp),
+            ...this.createZStrokes(dx + (dr * 1.3), dy, dr, sp)
+        ];
+    }
+    static createMEZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToRings(this.createMEZStrokes(dx, dy, dr, sp));
+    }
+
+    // --- 6-letter labels (letters shrunk to dr*0.6, 0.8*dr step, centred) ---
+
+    static createHIDACZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const ls = dr * 0.6;
+        const st = dr * 0.8;
+        return [
+            ...this.createHStrokes(dx - (st * 2.5), dy, ls, sp),
+            ...this.createIStrokes(dx - (st * 1.5), dy, ls, sp),
+            ...this.createDStrokes(dx - (st * 0.5), dy, ls, sp),
+            ...this.createAStrokes(dx + (st * 0.5), dy, ls, sp),
+            ...this.createCStrokes(dx + (st * 1.5), dy, ls, sp),
+            ...this.createZStrokes(dx + (st * 2.5), dy, ls, sp)
+        ];
+    }
+    static createHIDACZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToRings(this.createHIDACZStrokes(dx, dy, dr, sp));
+    }
+
+    static createAARROZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const ls = dr * 0.6;
+        const st = dr * 0.8;
+        return [
+            ...this.createAStrokes(dx - (st * 2.5), dy, ls, sp),
+            ...this.createAStrokes(dx - (st * 1.5), dy, ls, sp),
+            ...this.createRStrokes(dx - (st * 0.5), dy, ls, sp),
+            ...this.createRStrokes(dx + (st * 0.5), dy, ls, sp),
+            ...this.createOStrokes(dx + (st * 1.5), dy, ls, sp),
+            ...this.createZStrokes(dx + (st * 2.5), dy, ls, sp)
+        ];
+    }
+    static createAARROZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToRings(this.createAARROZStrokes(dx, dy, dr, sp));
+    }
+
+    static createUARROZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const ls = dr * 0.6;
+        const st = dr * 0.8;
+        return [
+            ...this.createUStrokes(dx - (st * 2.5), dy, ls, sp),
+            ...this.createAStrokes(dx - (st * 1.5), dy, ls, sp),
+            ...this.createRStrokes(dx - (st * 0.5), dy, ls, sp),
+            ...this.createRStrokes(dx + (st * 0.5), dy, ls, sp),
+            ...this.createOStrokes(dx + (st * 1.5), dy, ls, sp),
+            ...this.createZStrokes(dx + (st * 2.5), dy, ls, sp)
+        ];
+    }
+    static createUARROZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToRings(this.createUARROZStrokes(dx, dy, dr, sp));
+    }
+
+    // --- WFZ (3 letters, full size) ---
+
+    static createWFZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createWStrokes(dx - (dr * 1.3), dy, dr, sp),
+            ...this.createFStrokes(dx, dy, dr, sp),
+            ...this.createZStrokes(dx + (dr * 1.3), dy, dr, sp)
+        ];
+    }
+    static createWFZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToRings(this.createWFZStrokes(dx, dy, dr, sp));
+    }
+
+    // --- 5-letter labels (letters shrunk to dr*0.7, 0.95*dr step, centred) ---
+
+    static createLOMEZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const ls = dr * 0.7;
+        const st = dr * 0.95;
+        return [
+            ...this.createLStrokes(dx - (st * 2), dy, ls, sp),
+            ...this.createOStrokes(dx - st, dy, ls, sp),
+            ...this.createM(dx, dy, ls, sp),
+            ...this.createEStrokes(dx + st, dy, ls, sp),
+            ...this.createZStrokes(dx + (st * 2), dy, ls, sp)
+        ];
+    }
+    static createLOMEZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToRings(this.createLOMEZStrokes(dx, dy, dr, sp));
+    }
+
+    static createHIMEZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const ls = dr * 0.7;
+        const st = dr * 0.95;
+        return [
+            ...this.createHStrokes(dx - (st * 2), dy, ls, sp),
+            ...this.createIStrokes(dx - st, dy, ls, sp),
+            ...this.createM(dx, dy, ls, sp),
+            ...this.createEStrokes(dx + st, dy, ls, sp),
+            ...this.createZStrokes(dx + (st * 2), dy, ls, sp)
+        ];
+    }
+    static createHIMEZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToRings(this.createHIMEZStrokes(dx, dy, dr, sp));
+    }
+
+    // --- 8-letter label (letters shrunk to dr*0.5, 0.7*dr step, centred) ---
+
+    static createSHORADEZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const ls = dr * 0.5;
+        const st = dr * 0.7;
+        return [
+            ...this.createSStrokes(dx - (st * 3.5), dy, ls, sp),
+            ...this.createHStrokes(dx - (st * 2.5), dy, ls, sp),
+            ...this.createOStrokes(dx - (st * 1.5), dy, ls, sp),
+            ...this.createRStrokes(dx - (st * 0.5), dy, ls, sp),
+            ...this.createAStrokes(dx + (st * 0.5), dy, ls, sp),
+            ...this.createDStrokes(dx + (st * 1.5), dy, ls, sp),
+            ...this.createEStrokes(dx + (st * 2.5), dy, ls, sp),
+            ...this.createZStrokes(dx + (st * 3.5), dy, ls, sp)
+        ];
+    }
+    static createSHORADEZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToRings(this.createSHORADEZStrokes(dx, dy, dr, sp));
     }
 
     /**

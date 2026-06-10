@@ -25,6 +25,8 @@ import LocalPeaksEngine from '../Engines/Analysis/Peaks/LocalPeaksEngine';
 import OcokaEngine from '../Engines/OCOKA/Ocoka';
 import MissionPlannerEngine from '../Engines/MissionPlanner/MissionPlannerEngine';
 import TrafficabilityEngine from '../Engines/Analysis/TrafficabilityEngine';
+import LandingZoneEngine from '../Engines/Analysis/LandingZone/LandingZoneEngine';
+import AirspaceEngine from '../Engines/Analysis/Airspace/AirspaceEngine';
 
 export interface ContextMenuItem {
   id: string;
@@ -108,6 +110,8 @@ class ContextMenuManager extends Evented {
   private _localPeaksEngine: LocalPeaksEngine | null = null;
   private _ocokaEngine: OcokaEngine | null = null;
   private _missionPlannerEngine: MissionPlannerEngine | null = null;
+  private _landingZoneEngine: LandingZoneEngine | null = null;
+  private _airspaceEngine: AirspaceEngine | null = null;
   private _trafficabilityEngine: TrafficabilityEngine | null = null;
   private _deploymentBuilderEngine: { openWidget(): void } | null = null;
 
@@ -403,6 +407,16 @@ class ContextMenuManager extends Evented {
     this._missionPlannerEngine = engine;
   }
 
+  /** Link a LandingZoneEngine so "Landing Zone Analysis" can be opened from the menu. */
+  public linkLandingZoneEngine(engine: LandingZoneEngine | null): void {
+    this._landingZoneEngine = engine;
+  }
+
+  /** Link an AirspaceEngine so "Airspace (ROZ/ACA)" can be opened from the menu. */
+  public linkAirspaceEngine(engine: AirspaceEngine | null): void {
+    this._airspaceEngine = engine;
+  }
+
   /**
    * Link a TrafficabilityEngine so "Trafficability" can be opened from the
    * More Actions palette with the right-clicked graphic as the origin.
@@ -435,6 +449,8 @@ class ContextMenuManager extends Evented {
     this._localPeaksEngine = null;
     this._ocokaEngine = null;
     this._missionPlannerEngine = null;
+    this._landingZoneEngine = null;
+    this._airspaceEngine = null;
   }
 
 
@@ -1015,6 +1031,22 @@ class ContextMenuManager extends Evented {
       actions.push(this.createPaletteAction('analysis-mission-planner', 'Mission Planner Dashboard', 'Analysis / Mission Planning', undefined, () => {
         if (this._missionPlannerEngine && this.view) {
           this._missionPlannerEngine.open(graphic, this.view);
+        }
+      }));
+    }
+
+    if (this._landingZoneEngine) {
+      actions.push(this.createPaletteAction('analysis-landing-zone', 'Landing Zone Analysis', 'Analysis / More Tools', undefined, () => {
+        if (this._landingZoneEngine && this.view) {
+          this._landingZoneEngine.open(graphic, this.view);
+        }
+      }));
+    }
+
+    if (this._airspaceEngine) {
+      actions.push(this.createPaletteAction('analysis-airspace', 'Airspace (ROZ / ACA)', 'Analysis / More Tools', undefined, () => {
+        if (this._airspaceEngine && this.view) {
+          this._airspaceEngine.open(graphic, this.view);
         }
       }));
     }

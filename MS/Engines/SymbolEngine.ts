@@ -76,6 +76,8 @@ import OpRankerEngine from './Analysis/OpRanker/OpRankerEngine';
 import LocalPeaksEngine from './Analysis/Peaks/LocalPeaksEngine';
 import OcokaEngine from './OCOKA/Ocoka';
 import MissionPlannerEngine from './MissionPlanner/MissionPlannerEngine';
+import LandingZoneEngine from './Analysis/LandingZone/LandingZoneEngine';
+import AirspaceEngine from './Analysis/Airspace/AirspaceEngine';
 import DeadGroundMapper from './Analysis/DeadGroundMapper';
 import BufferEngine from './Analysis/BufferEngine';
 import CorridorEngine from './Analysis/CorridorEngine';
@@ -113,6 +115,9 @@ import './DeclutterSettingsWidget';
 import './MGRSSettingsWidget';
 import './VisualizationSettingsWidget';
 import './AnalysisSettingsWidget';
+import './LandingZoneCommands';
+import './AirspaceCommands';
+import './Planning/CombatPowerCommand';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -1458,6 +1463,14 @@ class SymbolEngine implements Evented {
 
   public get missionPlannerEngine(): MissionPlannerEngine | null {
     return this._analysisRegistry.missionPlannerEngine;
+  }
+
+  public get landingZoneEngine(): LandingZoneEngine | null {
+    return this._analysisRegistry.landingZoneEngine;
+  }
+
+  public get airspaceEngine(): AirspaceEngine | null {
+    return this._analysisRegistry.airspaceEngine;
   }
 
   public get deadGroundMapper(): DeadGroundMapper | null {
