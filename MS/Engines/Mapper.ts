@@ -61,6 +61,11 @@ import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts"; //Fixed
 import FriendlyAviationAttack from "../Symbols/FriendlyAviationAttack.ts";
 import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts"; //Fixed
 import NamedAreaOfInterest from "../Symbols/NamedAreaOfInterest.ts"; //Fixed
+import AirfieldZone from "../Symbols/AirfieldZone.ts";
+import EngagementArea from "../Symbols/EngagementArea.ts";
+import DropZone from "../Symbols/DropZone.ts";
+import ExtractionZone from "../Symbols/ExtractionZone.ts";
+import PickupZone from "../Symbols/PickupZone.ts";
 import VitalArea from "../Symbols/VitalArea.ts"; //Fixed
 import CorpsAdmArea from "../Symbols/CorpsAdmArea.ts"; //Fixed
 import ZoneOfResponsibility from "../Symbols/ZoneOfResponsibility.ts"; //Fixed
@@ -208,6 +213,11 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "FriendlyAviationAttack": FriendlyAviationAttack,
     "TargetAreaOfInterest": TargetAreaOfInterest,
     "NamedAreaOfInterest": NamedAreaOfInterest,
+    "AirfieldZone": AirfieldZone,
+    "EngagementArea": EngagementArea,
+    "DropZone": DropZone,
+    "ExtractionZone": ExtractionZone,
+    "PickupZone": PickupZone,
     "StratAssyArea": StratAssyArea,
     "SingleConcertina": SingleConcertina,
     "SingleFenceWire": SingleFenceWire,

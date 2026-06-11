@@ -1182,6 +1182,79 @@ class Shapes {
         return paths;
     }
 
+    static createEAStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const eStrokes = this.createEStrokes(dx - (dr * 1.2), dy, dr, sp);
+        const aStrokes = this.createAStrokes(dx + (dr * 0.6), dy, dr, sp);
+        return [...eStrokes, ...aStrokes];
+    }
+
+    static createEARings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        // Return single-stroke line paths (not rectangles)
+        const paths: number[][][] = [];
+        const strokes = this.createEAStrokes(dx, dy, dr, sp);
+        for (let i = 0; i < strokes.length; i++) {
+            const seg = strokes[i];
+            if (seg && seg.length >= 2) {
+                const p1 = seg[0];
+                const p2 = seg[1];
+                paths.push([[p1.x, p1.y], [p2.x, p2.y]]);
+            }
+        }
+        return paths;
+    }
+
+    static createDZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const dStrokes = this.createDStrokes(dx - (dr * 1.1), dy, dr, sp);
+        const zStrokes = this.createZStrokes(dx + (dr * 0.3), dy, dr, sp);
+        return [...dStrokes, ...zStrokes];
+    }
+
+    static createDZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        // Emit every consecutive 2-point segment so multi-point arc strokes
+        // (the D curve) are preserved rather than truncated to their endpoints.
+        return this.strokesToSegments(this.createDZStrokes(dx, dy, dr, sp));
+    }
+
+    /**
+     * Flatten a list of strokes (each an array of >=2 points) into single
+     * 2-point line segments. Straight strokes yield one segment; arc strokes
+     * yield one segment per consecutive point pair.
+     */
+    static strokesToSegments(strokes: Point[][]): number[][][] {
+        const paths: number[][][] = [];
+        for (let i = 0; i < strokes.length; i++) {
+            const seg = strokes[i];
+            if (!seg || seg.length < 2) continue;
+            for (let k = 0; k < seg.length - 1; k++) {
+                const p1 = seg[k];
+                const p2 = seg[k + 1];
+                paths.push([[p1.x, p1.y], [p2.x, p2.y]]);
+            }
+        }
+        return paths;
+    }
+
+    static createEZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const eStrokes = this.createEStrokes(dx - (dr * 1.2), dy, dr, sp);
+        const zStrokes = this.createZStrokes(dx + (dr * 0.3), dy, dr, sp);
+        return [...eStrokes, ...zStrokes];
+    }
+
+    static createEZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToSegments(this.createEZStrokes(dx, dy, dr, sp));
+    }
+
+    static createPZStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const pStrokes = this.createPStrokes(dx - (dr * 1.0), dy, dr, sp);
+        const zStrokes = this.createZStrokes(dx + (dr * 0.3), dy, dr, sp);
+        return [...pStrokes, ...zStrokes];
+    }
+
+    static createPZRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        // Emit every consecutive 2-point segment so the P bowl arc is preserved.
+        return this.strokesToSegments(this.createPZStrokes(dx, dy, dr, sp));
+    }
+
     static createVStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         return [
             [

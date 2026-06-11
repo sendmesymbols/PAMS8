@@ -48,36 +48,51 @@ class Utils {
 
     /**
      * Create Bezier path from points
-     * Note: This is a simplified implementation without TweenMax
+     * Uses a Catmull-Rom spline so smooth symbols do not depend on the legacy
+     * TweenMax globals.
      */
     static createBezierPath(pointCollection: { x: number, y: number }[], numberOfPts: number, spatialReference:SpatialReference, isPloyLine: Boolean): Polygon | Polyline {
+        const points = pointCollection.slice();
+        while (
+            points.length > 1 &&
+            points[points.length - 1].x === points[points.length - 2].x &&
+            points[points.length - 1].y === points[points.length - 2].y
+        ) {
+            points.pop();
+        }
 
-        var position = { x: pointCollection[0].x, y: pointCollection[0].y };
-        if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
-            pointCollection.pop();
-        }
-        if (pointCollection[pointCollection.length - 1].x === pointCollection[pointCollection.length - 2].x && pointCollection[pointCollection.length - 1].y === pointCollection[pointCollection.length - 2].y) {
-            pointCollection.pop();
-        }
-        var tween = window.TweenMax.to(position, numberOfPts, { bezier: pointCollection, ease: window.Linear.easeNone });
-        //ease:Power1.easeInOut  ease: Linear.easeNone
-        var path = [];
-        var i;
-        for (i = 0; i <= numberOfPts; i++) {
-            tween.time(i);
-            path.push([position.x, position.y]);
-        }
-        if(isPloyLine) {
-            var result:Polyline = new Polyline({"spatialReference": spatialReference});
-            console.log("Polyline");
-            result.addPath(path);
+        const path: number[][] = [];
+        if (points.length === 1) {
+            path.push([points[0].x, points[0].y]);
         } else {
-            var result:Polygon = new Polygon({"spatialReference": spatialReference});
-            console.log("Polygon");
-            result.addRing(path);
+            const segmentCount = points.length - 1;
+            for (let i = 0; i <= numberOfPts; i++) {
+                const position = (i / numberOfPts) * segmentCount;
+                const segment = Math.min(Math.floor(position), segmentCount - 1);
+                const t = Math.min(position - segment, 1);
+                const p0 = points[Math.max(0, segment - 1)];
+                const p1 = points[segment];
+                const p2 = points[Math.min(points.length - 1, segment + 1)];
+                const p3 = points[Math.min(points.length - 1, segment + 2)];
+                const t2 = t * t;
+                const t3 = t2 * t;
+
+                path.push([
+                    0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+                    0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
+                ]);
+            }
         }
 
-        return result;
+        if(isPloyLine) {
+            const result:Polyline = new Polyline({"spatialReference": spatialReference});
+            result.addPath(path);
+            return result;
+        } else {
+            const result:Polygon = new Polygon({"spatialReference": spatialReference});
+            result.addRing(path);
+            return result;
+        }
     }
 
 }
