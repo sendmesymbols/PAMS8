@@ -846,6 +846,32 @@ class Shapes {
     }
 
     /**
+     * Letter Y as clean strokes — stem + two branches — with no retraced
+     * segments. createY returns to the junction point twice, which the 3D
+     * tessellator collapses. Three separate 2-point paths render identically
+     * in 2D and 3D.
+     */
+    static createYStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            // Vertical stem: junction → bottom
+            [
+                new Point({ x: dx, y: dy, spatialReference: sp }),
+                new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+            ],
+            // Left branch: junction → upper-left
+            [
+                new Point({ x: dx, y: dy, spatialReference: sp }),
+                new Point({ x: dx - (dr * 0.6), y: dy + dr, spatialReference: sp }),
+            ],
+            // Right branch: junction → upper-right
+            [
+                new Point({ x: dx, y: dy, spatialReference: sp }),
+                new Point({ x: dx + (dr * 0.6), y: dy + dr, spatialReference: sp }),
+            ],
+        ];
+    }
+
+    /**
      * Create letter Z
      */
     static createZ(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
@@ -1966,10 +1992,12 @@ class Shapes {
     }
 
     static createENY(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts1 = this.createE(dx - (dr * 1.667), dy, dr, sp);
+        // E and Y rendered as clean strokes — their single-path originals
+        // retrace segments that the 3D tessellator collapses.
+        const eStrokes = this.createEStrokes(dx - (dr * 1.667), dy, dr, sp);
         const pts2 = this.createN(dx + (dr * 0.083), dy, dr, sp);
-        const pts3 = this.createY(dx + (dr * 1.38), dy, dr, sp);
-        return [pts1, pts2, pts3];
+        const yStrokes = this.createYStrokes(dx + (dr * 1.38), dy, dr, sp);
+        return [...eStrokes, pts2, ...yStrokes];
     }
 
     static CATK(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
