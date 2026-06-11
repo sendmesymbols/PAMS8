@@ -295,8 +295,9 @@ export class Secure {
         if (circle.radius > 0) {
           const values = Shapes.createCircleSegmentFromThreePoints(this.view as any, circle, sp1, sp2, sp3, numberOfPts);
 
-          // Extract arc path (ring) and split with a gap
-          const ring = (values.geometry as any).rings?.[0] as number[][];
+          // Extract arc path (ring) and split with a gap.
+          // createCircleSegmentFromThreePoints returns a Polyline -> use paths, not rings.
+          const ring = (values.geometry as any).paths?.[0] as number[][];
           if (ring && ring.length >= numberOfPts + 1) {
             result.addPath(ring.slice(0, 25));
             result.addPath(ring.slice(35, numberOfPts + 1));
@@ -311,26 +312,37 @@ export class Secure {
             const sPts = Shapes.createS(cPoint.x, cPoint.y, cLenLimit, spatialReference);
             result.addPath(sPts.map(p => [p.x, p.y]));
 
-            // Wings at end point using back/last points from arc
+            // Wings (flap) at end point. The arc ring is ordered by angle, so endPt
+            // can be at either ring end depending on draw direction. Pick the ring end
+            // nearest endPt and read the tangent from THAT end so the flap stays stable
+            // (otherwise it wobbles as the direction changes).
             const length = GeoTools._2PtLen(endPt, cPoint) / 10;
-            let angle = GeoTools.twoPtsAngle(values.backPoint, values.lastPoint);
-            if (angle < Math.PI) {
-              angle += 2.35619; // +135°
+
+            const firstRingPt = new Point({ x: ring[0][0], y: ring[0][1], spatialReference });
+            const lastRingPt = new Point({ x: ring[ring.length - 1][0], y: ring[ring.length - 1][1], spatialReference });
+
+            let arcBackPt: Point;
+            let arcTipPt: Point;
+            if (GeoTools._2PtLen(endPt, lastRingPt) <= GeoTools._2PtLen(endPt, firstRingPt)) {
+              const bi = Math.max(0, ring.length - 6);
+              arcBackPt = new Point({ x: ring[bi][0], y: ring[bi][1], spatialReference });
+              arcTipPt = lastRingPt;
             } else {
-              angle -= 2.35619; // -135°
+              const bi = Math.min(5, ring.length - 1);
+              arcBackPt = new Point({ x: ring[bi][0], y: ring[bi][1], spatialReference });
+              arcTipPt = firstRingPt;
             }
+
+            const baseAngle = GeoTools.twoPtsAngle(arcBackPt, arcTipPt);
+
+            let angle = baseAngle < Math.PI ? baseAngle + 2.35619 : baseAngle - 2.35619; // ±135°
             const innerWing = new Point({
               x: endPt.x + length * Math.cos(angle),
               y: endPt.y + length * Math.sin(angle),
               spatialReference
             });
 
-            angle = GeoTools.twoPtsAngle(values.backPoint, values.lastPoint);
-            if (angle > Math.PI) {
-              angle += 2.35619;
-            } else {
-              angle -= 2.35619;
-            }
+            angle = baseAngle > Math.PI ? baseAngle + 2.35619 : baseAngle - 2.35619;
             const outerWing = new Point({
               x: endPt.x + length * Math.cos(angle),
               y: endPt.y + length * Math.sin(angle),
