@@ -35,7 +35,7 @@ export class ExtractionZone {
 
     // Symbol properties
     public declaredClass = "MilitarySymbology.Symbols.ExtractionZone";
-    private SID: string = "250700";
+    private SID: string = "070000";
     private symName: string = "Extraction Zone";
     private symGeometricType: string = "Area";
     private _lineSym: SimpleLineSymbol | null = null;

@@ -34,7 +34,7 @@ export class DropZone {
 
     // Symbol properties
     public declaredClass = "MilitarySymbology.Symbols.DropZone";
-    private SID: string = "250600";
+    private SID: string = "060000";
     private symName: string = "Drop Zone";
     private symGeometricType: string = "Area";
     private _lineSym: SimpleLineSymbol | null = null;

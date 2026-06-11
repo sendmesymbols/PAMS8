@@ -35,7 +35,7 @@ export class PickupZone {
 
     // Symbol properties
     public declaredClass = "MilitarySymbology.Symbols.PickupZone";
-    private SID: string = "250900";
+    private SID: string = "090000";
     private symName: string = "Pickup Zone";
     private symGeometricType: string = "Area";
     private _lineSym: SimpleLineSymbol | null = null;

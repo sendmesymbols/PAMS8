@@ -8385,7 +8385,7 @@
         "Cat": ["ipb"],
         "Grp": ["Control Measures","Engagement Area" ]
     },
-    "250600": {
+    "25060000": {
         "Class": "DropZone",
         "Description": "",
         "Name": "Drop Zone",
@@ -8417,7 +8417,7 @@
         "Cat": ["ipb"],
         "Grp": ["Control Measures","Drop Zone" ]
     },
-    "250700": {
+    "25070000": {
         "Class": "ExtractionZone",
         "Description": "",
         "Name": "Extraction Zone",
@@ -8449,7 +8449,7 @@
         "Cat": ["ipb"],
         "Grp": ["Control Measures","Extraction Zone" ]
     },
-    "250900": {
+    "25090000": {
         "Class": "PickupZone",
         "Description": "",
         "Name": "Pickup Zone",
