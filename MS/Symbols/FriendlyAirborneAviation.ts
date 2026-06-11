@@ -29,9 +29,9 @@ export interface ArrowHeadResult {
 }
 
 /**
- * FriendlyAirborneAviation symbol — the Main Attack arrow with a bow-tie (⋈)
- * aviation marker at the tail. Everything is emitted as a single Polygon geometry
- * (the arrow rings plus the marker rings). Supports immediate placement and
+ * FriendlyAirborneAviation symbol — a Main Attack arrow whose two body edges
+ * swap sides and cross through the middle, forming the airborne "X" arrow.
+ * Emitted as a single Polygon geometry. Supports immediate placement and
  * interactive drawing modes.
  */
 export class FriendlyAirborneAviation {
@@ -52,6 +52,8 @@ export class FriendlyAirborneAviation {
     private _tailFactor: number = 0.05;
     private _headPercentage: number = 0.07;
     private _arrowHeadRatio: number = 1.07;
+    private _neckWiden: number = 1.9;        // throat width multiplier (also pulls the crossing back)
+    private _crossBack: number = 0.9;        // body tail-spread factor (smaller → crossing sits further back)
 
     // Drawing state
     private isDrawing: boolean = false;
@@ -314,12 +316,21 @@ export class FriendlyAirborneAviation {
                 break;
         }
 
-        // Tail two points
-        const pt1 = {
-            x: this._tailFactor * len * Math.cos(k) + firstPoint.x,
-            y: this._tailFactor * len * Math.sin(k) + firstPoint.y
-        };
         const partialLen = (1 - this._headPercentage) * len;
+
+        // Body tail corners — scaled by _crossBack so the two edges start closer
+        // together; the narrower they start, the further back the crossing sits.
+        const bodyHalf = this._tailFactor * len * this._crossBack;
+        const tailTop = {
+            x: bodyHalf * Math.cos(k) + firstPoint.x,
+            y: bodyHalf * Math.sin(k) + firstPoint.y
+        };
+        const tailBot = {
+            x: -bodyHalf * Math.cos(k) + firstPoint.x,
+            y: -bodyHalf * Math.sin(k) + firstPoint.y
+        };
+
+        // Arrow-head base reference points (full width — independent of the body).
         const p1 = {
             x: this._tailFactor * partialLen * Math.cos(k) + firstPoint.x,
             y: this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
@@ -331,43 +342,26 @@ export class FriendlyAirborneAviation {
 
         // Create main arrow ring
         const ring: number[][] = [];
-        ring.push([pt1.x, pt1.y]);
+        ring.push([tailTop.x, tailTop.y]);
 
         const values = this.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
-        const arrowHeadRing = values.rings.map(pt => [pt.x, pt.y]);
+        // Widen the throat where the body meets the head (this also pulls the
+        // body crossing back toward the tail).
+        this.widenNeck(values, this._neckWiden,
+            (lastPoint.x - firstPoint.x) / (len || 1), (lastPoint.y - firstPoint.y) / (len || 1));
+        // Reverse the arrow-head points so the two body edges swap sides and
+        // cross through the middle — this IS the airborne "X" arrow.
+        const arrowHeadRing = values.rings.map(pt => [pt.x, pt.y]).reverse();
         ring.push(...arrowHeadRing);
 
-        ring.push([p2.x, p2.y]);
+        ring.push([tailBot.x, tailBot.y]);
 
         // Close the ring
-        ring.push([pt1.x, pt1.y]);
+        ring.push([tailTop.x, tailTop.y]);
 
         result.addRing(ring);
 
-        // Inner line in Arrow
-        const midPt = GeoTools.getMidPoint(
-            new Point({ x: values.midPtLeft.x, y: values.midPtLeft.y, spatialReference: this.view.spatialReference }),
-            new Point({ x: values.midPtRight.x, y: values.midPtRight.y, spatialReference: this.view.spatialReference })
-        );
-        const angle = GeoTools.twoPtsAngle(midPt, lastPoint);
-        const headBaseLen = len * this._headPercentage / 1.3;
-
-        const newCandidatePt = {
-            x: midPt.x + headBaseLen * Math.cos(angle),
-            y: midPt.y + headBaseLen * Math.sin(angle)
-        };
-
-        const innerRing: number[][] = [
-            [values.midPtLeft.x, values.midPtLeft.y],
-            [newCandidatePt.x, newCandidatePt.y],
-            [values.midPtRight.x, values.midPtRight.y],
-            [values.midPtLeft.x, values.midPtLeft.y] // Close ring
-        ];
-
-        result.addRing(innerRing);
-
-        // Aviation marker at the tail (same geometry)
-        this.addTypeMarker(result, pts);
+        // Clean single-outline block arrowhead — no inner notch line.
 
         return result;
     }
@@ -424,7 +418,14 @@ export class FriendlyAirborneAviation {
             15
         );
 
-        const headPath = values.rings;
+        // Widen the throat where the body meets the head (this also pulls the
+        // body crossing back toward the tail).
+        const headDirLen = GeoTools._2PtLen(pts[pts.length - 2], lastPoint) || 1;
+        this.widenNeck(values, this._neckWiden,
+            (lastPoint.x - pts[pts.length - 2].x) / headDirLen,
+            (lastPoint.y - pts[pts.length - 2].y) / headDirLen);
+        // Reverse the arrow-head points so the body edges cross (airborne "X").
+        const headPath = values.rings.slice().reverse();
 
         // Combine all paths
         const ring: number[][] = [];
@@ -445,53 +446,27 @@ export class FriendlyAirborneAviation {
 
         result.addRing(ring);
 
-        // Inner line in Arrow
-        const innerRing: number[][] = [
-            [values.midPtLeft.x, values.midPtLeft.y],
-            [values.newCandiadatePt.x, values.newCandiadatePt.y],
-            [values.midPtRight.x, values.midPtRight.y],
-            [values.midPtLeft.x, values.midPtLeft.y] // Close ring
-        ];
-
-        result.addRing(innerRing);
-
-        // Aviation marker at the tail (same geometry)
-        this.addTypeMarker(result, pts);
+        // Clean single-outline block arrowhead — no inner notch line.
 
         return result;
     }
 
     /**
-     * Type marker: a bow-tie (⋈) at the arrow tail, drawn as two filled triangle
-     * rings on the same polygon. Oriented along the shaft.
+     * Widen the arrow throat: scale the perpendicular separation of the head
+     * inner points by `factor` (keeping their along-axis position). A wider
+     * throat also pulls the body crossing back toward the tail.
      */
-    private addTypeMarker(result: Polygon, pts: Point[]): void {
-        if (pts.length < 2) return;
-
-        const tail = pts[0];
-        const fwd = pts[1];
-        const len = GeoTools._2PtLen(tail, pts[pts.length - 1]);
-        if (len <= 0) return;
-
-        const ax = fwd.x - tail.x, ay = fwd.y - tail.y;
-        const al = Math.hypot(ax, ay);
-        if (al === 0) return;
-
-        const dx = ax / al, dy = ay / al;       // unit shaft direction
-        const px = -dy, py = dx;                 // perpendicular
-
-        const u = len * 0.08;                    // base size
-        const halfLen = u, halfWid = u * 0.7;
-        const cx = tail.x, cy = tail.y;          // bow-tie centre at the tail
-
-        const lTop = [cx - dx * halfLen + px * halfWid, cy - dy * halfLen + py * halfWid];
-        const lBot = [cx - dx * halfLen - px * halfWid, cy - dy * halfLen - py * halfWid];
-        const rTop = [cx + dx * halfLen + px * halfWid, cy + dy * halfLen + py * halfWid];
-        const rBot = [cx + dx * halfLen - px * halfWid, cy + dy * halfLen - py * halfWid];
-
-        // Two triangles meeting at the tail centre form the bow-tie.
-        result.addRing([lTop, lBot, [cx, cy], lTop]);
-        result.addRing([rTop, rBot, [cx, cy], rTop]);
+    private widenNeck(values: ArrowHeadResult, factor: number, ux: number, uy: number): void {
+        const li = values.rings[0];
+        const ri = values.rings[4];
+        const mx = (li.x + ri.x) / 2, my = (li.y + ri.y) / 2;
+        for (const p of [li, ri]) {
+            const dx = p.x - mx, dy = p.y - my;
+            const along = dx * ux + dy * uy;                 // component along the axis
+            const perpx = dx - along * ux, perpy = dy - along * uy;  // perpendicular component
+            p.x = mx + along * ux + perpx * factor;
+            p.y = my + along * uy + perpy * factor;
+        }
     }
 
     /**
