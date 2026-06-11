@@ -284,11 +284,14 @@ export class DoubleApronFence {
       // Baseline metrics
       const baseLineLenFull = GeoTools._2PtLen(firstPoint, lastPoint);
 
-      // 1) Place an 'F' at the start
+      // 1) Place an 'F' at the start (clean strokes — createF retraces the top
+      // bar and upper half of the stem, which the 3D tessellator collapses).
       let cLenLimit = baseLineLenFull / 10;
       if (cLenLimit > baseLineLenFull / 3) cLenLimit = baseLineLenFull / 3;
-      const fPts = Shapes.createF(firstPoint.x, firstPoint.y, cLenLimit, firstPoint.spatialReference);
-      result.addPath(fPts.map(p => [p.x, p.y]));
+      const fStrokes = Shapes.createFStrokes(firstPoint.x, firstPoint.y, cLenLimit, firstPoint.spatialReference);
+      for (const seg of fStrokes) {
+        result.addPath(seg.map(p => [p.x, p.y]));
+      }
 
       // 2) Tail segment forward from start
       let k = GeoTools.twoPtsAngle(firstPoint, secondPoint);

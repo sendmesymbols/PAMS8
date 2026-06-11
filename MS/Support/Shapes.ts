@@ -901,9 +901,12 @@ class Shapes {
 
     // Combination letter methods
     static createAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts1 = this.createA(dx - (dr * 1.3), dy, dr, sp);
-        const pts2 = this.createA(dx + (dr * 1.3), dy, dr, sp);
-        return [pts1, pts2];
+        // Use stroke-based A so each letter renders as clean 2-point segments —
+        // createA retraces its right diagonal, which collapses in the 3D
+        // tessellator. Matches the createSAA / createFAA pattern.
+        const a1Strokes = this.createAStrokes(dx - (dr * 1.3), dy, dr, sp);
+        const a2Strokes = this.createAStrokes(dx + (dr * 1.3), dy, dr, sp);
+        return [...a1Strokes, ...a2Strokes];
     }
 
     static createAO(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {

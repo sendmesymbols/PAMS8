@@ -312,10 +312,16 @@ export class AssemblyArea {
                 try {
                     const aaRings = (Shapes as any).createAA(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
                     if (aaRings && Array.isArray(aaRings)) {
-                        for (let j = 0; j <= aaRings.length - 1; j++) {
-                            if (aaRings[j]) {
-                                result.addRing(aaRings[j]);
-                            }
+                        for (let j = 0; j < aaRings.length; j++) {
+                            const seg = aaRings[j];
+                            if (!seg || seg.length < 2) continue;
+                            // Close each 2-point stroke as [p1, p2, p1] so the
+                            // polygon outline shows the segment in both 2D and 3D
+                            // (the previous +ε offset created a near-zero-area
+                            // triangle that the 3D tessellator culled).
+                            const p1 = [seg[0].x, seg[0].y];
+                            const p2 = [seg[seg.length - 1].x, seg[seg.length - 1].y];
+                            result.addRing([p1, p2, p1]);
                         }
                     }
                 } catch (e) {

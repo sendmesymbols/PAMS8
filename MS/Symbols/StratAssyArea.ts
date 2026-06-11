@@ -315,17 +315,16 @@ export class StratAssyArea {
                 try {
                     const saaRings = Shapes.createSAA(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
                     if (saaRings && Array.isArray(saaRings)) {
-                        for (let j = 0; j <= saaRings.length - 1; j++) {
-                            if (saaRings[j]) {
-                                // Convert Point array to coordinate array for addRing
-                                const coords = saaRings[j].map(pt => [pt.x, pt.y]);
-                                if (coords.length === 2) {
-                                    coords.push([coords[1][0] + 1e-6, coords[1][1] + 1e-6]);
-                                }
-                                // Close the ring
-                                coords.push(coords[0]);
-                                result.addRing(coords);
-                            }
+                        for (let j = 0; j < saaRings.length; j++) {
+                            const seg = saaRings[j];
+                            if (!seg || seg.length < 2) continue;
+                            // Close each 2-point stroke as [p1, p2, p1] so the
+                            // polygon outline shows the segment in both 2D and 3D
+                            // (the previous +ε offset created a near-zero-area
+                            // triangle that the 3D tessellator culled).
+                            const p1 = [seg[0].x, seg[0].y];
+                            const p2 = [seg[seg.length - 1].x, seg[seg.length - 1].y];
+                            result.addRing([p1, p2, p1]);
                         }
                     }
                 } catch (e) {
