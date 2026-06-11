@@ -21,11 +21,9 @@ export interface FriendlyAirborneAviationOptions {
     [key: string]: any;
 }
 
-export interface ArrowHeadResult {
-    rings: Array<{ x: number, y: number }>;
-    midPtLeft: { x: number, y: number };
-    midPtRight: { x: number, y: number };
-    newCandiadatePt: { x: number, y: number };
+interface XY {
+    x: number;
+    y: number;
 }
 
 /**
@@ -51,9 +49,10 @@ export class FriendlyAirborneAviation {
     // Symbol parameters
     private _tailFactor: number = 0.05;
     private _headPercentage: number = 0.07;
-    private _arrowHeadRatio: number = 1.07;
-    private _neckWiden: number = 1.9;        // throat width multiplier (also pulls the crossing back)
-    private _crossBack: number = 0.9;        // body tail-spread factor (smaller → crossing sits further back)
+    private _headLengthScale: number = 1.15;
+    private _arrowHeadRatio: number = 1.35;
+    private _shoulderFraction: number = 0.48;
+    private _crossFraction: number = 0.74;
 
     // Drawing state
     private isDrawing: boolean = false;
@@ -295,257 +294,135 @@ export class FriendlyAirborneAviation {
      * Create simple arrow for 2 points or less
      */
     private createSimpleArrow(pts: Point[], result: Polygon): Polygon {
-        const firstPoint = pts[0];
-        const lastPoint = pts[pts.length - 1];
+        if (pts.length < 2) return result;
 
-        const len = GeoTools._2PtLen(firstPoint, lastPoint);
-        let k = Math.atan((firstPoint.y - lastPoint.y) / (firstPoint.x - lastPoint.x));
-
-        switch (GeoTools.twoPtsRelationShip(firstPoint, lastPoint)) {
-            case "ne":
-                k += Math.PI / 2;
-                break;
-            case "nw":
-                k += Math.PI * 3 / 2;
-                break;
-            case "sw":
-                k += Math.PI * 3 / 2;
-                break;
-            case "se":
-                k += Math.PI / 2;
-                break;
-        }
-
-        const partialLen = (1 - this._headPercentage) * len;
-
-        // Body tail corners — scaled by _crossBack so the two edges start closer
-        // together; the narrower they start, the further back the crossing sits.
-        const bodyHalf = this._tailFactor * len * this._crossBack;
-        const tailTop = {
-            x: bodyHalf * Math.cos(k) + firstPoint.x,
-            y: bodyHalf * Math.sin(k) + firstPoint.y
-        };
-        const tailBot = {
-            x: -bodyHalf * Math.cos(k) + firstPoint.x,
-            y: -bodyHalf * Math.sin(k) + firstPoint.y
-        };
-
-        // Arrow-head base reference points (full width — independent of the body).
-        const p1 = {
-            x: this._tailFactor * partialLen * Math.cos(k) + firstPoint.x,
-            y: this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
-        };
-        const p2 = {
-            x: -1 * this._tailFactor * partialLen * Math.cos(k) + firstPoint.x,
-            y: -1 * this._tailFactor * partialLen * Math.sin(k) + firstPoint.y
-        };
-
-        // Create main arrow ring
-        const ring: number[][] = [];
-        ring.push([tailTop.x, tailTop.y]);
-
-        const values = this.CreateArrowHeadPathEx(p1, lastPoint, p2, len, this._headPercentage, 15);
-        // Widen the throat where the body meets the head (this also pulls the
-        // body crossing back toward the tail).
-        this.widenNeck(values, this._neckWiden,
-            (lastPoint.x - firstPoint.x) / (len || 1), (lastPoint.y - firstPoint.y) / (len || 1));
-        // Reverse the arrow-head points so the two body edges swap sides and
-        // cross through the middle — this IS the airborne "X" arrow.
-        const arrowHeadRing = values.rings.map(pt => [pt.x, pt.y]).reverse();
-        ring.push(...arrowHeadRing);
-
-        ring.push([tailBot.x, tailBot.y]);
-
-        // Close the ring
-        ring.push([tailTop.x, tailTop.y]);
-
-        result.addRing(ring);
-
-        // Clean single-outline block arrowhead — no inner notch line.
-
-        return result;
+        return this.createShoulderedArrow([
+            { x: pts[0].x, y: pts[0].y },
+            { x: pts[pts.length - 1].x, y: pts[pts.length - 1].y }
+        ], result);
     }
 
     /**
      * Create complex arrow for multiple points
      */
     private createComplexArrow(pts: Point[], result: Polygon): Polygon {
-        const leftArray: { x: number, y: number }[] = [];
-        const rightArray: { x: number, y: number }[] = [];
-        const lastPoint = pts[pts.length - 1];
+        const controlPoints = pts.map(pt => ({ x: pt.x, y: pt.y }));
+        const centerline = Shapes.CreateBezierPathPCOnly(controlPoints, 70);
+        return this.createShoulderedArrow(centerline, result);
+    }
 
-        const tempArray: { x: number, y: number }[] = [];
-        pts.forEach(pt => {
-            tempArray.push({ x: pt.x, y: pt.y });
-        });
+    /**
+     * Build the target profile: parallel tail rails, a distinct shoulder,
+     * a late crossing, and a reopened neck leading into the arrowhead.
+     */
+    private createShoulderedArrow(centerline: XY[], result: Polygon): Polygon {
+        const totalLen = GeoTools._ptCollectionLen(centerline, 0);
+        if (centerline.length < 2 || totalLen <= 0) return result;
 
-        const angleArray = GeoTools._vertexAngle(tempArray);
-        const totalL = GeoTools._ptCollectionLen(tempArray, 0);
+        const headFraction = Math.min(0.35, Math.max(0.06, this._headPercentage * this._headLengthScale));
+        const bodyLen = totalLen * (1 - headFraction);
+        const bodyHalfWidth = totalLen * this._tailFactor;
+        const bodySamples = 100;
+        const bodyCenter: XY[] = [];
+        const leftRail: XY[] = [];
+        const rightRail: XY[] = [];
 
-        for (let i = 0, len = tempArray.length - 1; i < len; i++) {
-            let partialLen = GeoTools._ptCollectionLen(tempArray, i);
-            partialLen += totalL / 2.4;
-
-            const pt1 = {
-                x: (this._tailFactor) * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
-                y: (this._tailFactor) * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
-            };
-            const pt2 = {
-                x: -1 * (this._tailFactor) * partialLen * Math.cos(angleArray[i]) + tempArray[i].x,
-                y: -1 * (this._tailFactor) * partialLen * Math.sin(angleArray[i]) + tempArray[i].y
-            };
-
-            leftArray.push(pt1);
-            rightArray.push(pt2);
+        for (let i = 0; i <= bodySamples; i++) {
+            bodyCenter.push(this.pointAtDistance(centerline, bodyLen * i / bodySamples));
         }
 
-        leftArray.push({ x: lastPoint.x, y: lastPoint.y });
-        rightArray.push({ x: lastPoint.x, y: lastPoint.y });
+        for (let i = 0; i <= bodySamples; i++) {
+            const progress = i / bodySamples;
+            const tangent = this.tangentAt(bodyCenter, i);
+            const normal = { x: -tangent.y, y: tangent.x };
+            const widthFactor = this.railWidthFactor(progress);
 
-        // Create Bezier paths
-        let leftBezier = Shapes.CreateBezierPathPCOnly(leftArray, 70);
-        leftBezier.splice(Math.floor((1 - this._headPercentage) * 70), Number.MAX_VALUE);
-
-        let rightBezier = Shapes.CreateBezierPathPCOnly(rightArray, 70);
-        rightBezier.splice(Math.floor((1 - this._headPercentage) * 70), Number.MAX_VALUE);
-
-        const values = this.CreateArrowHeadPathEx(
-            leftBezier[leftBezier.length - 1],
-            lastPoint,
-            rightBezier[rightBezier.length - 1],
-            GeoTools._ptCollectionLen(tempArray, 0),
-            this._headPercentage,
-            15
-        );
-
-        // Widen the throat where the body meets the head (this also pulls the
-        // body crossing back toward the tail).
-        const headDirLen = GeoTools._2PtLen(pts[pts.length - 2], lastPoint) || 1;
-        this.widenNeck(values, this._neckWiden,
-            (lastPoint.x - pts[pts.length - 2].x) / headDirLen,
-            (lastPoint.y - pts[pts.length - 2].y) / headDirLen);
-        // Reverse the arrow-head points so the body edges cross (airborne "X").
-        const headPath = values.rings.slice().reverse();
-
-        // Combine all paths
-        const ring: number[][] = [];
-
-        // Add left bezier path
-        leftBezier.forEach(pt => ring.push([pt.x, pt.y]));
-
-        // Add arrow head
-        headPath.forEach(pt => ring.push([pt.x, pt.y]));
-
-        // Add reversed right bezier path
-        rightBezier.reverse().forEach(pt => ring.push([pt.x, pt.y]));
-
-        // Close the ring
-        if (leftBezier.length > 0) {
-            ring.push([leftBezier[0].x, leftBezier[0].y]);
+            leftRail.push({
+                x: bodyCenter[i].x + normal.x * bodyHalfWidth * widthFactor,
+                y: bodyCenter[i].y + normal.y * bodyHalfWidth * widthFactor
+            });
+            rightRail.push({
+                x: bodyCenter[i].x - normal.x * bodyHalfWidth * widthFactor,
+                y: bodyCenter[i].y - normal.y * bodyHalfWidth * widthFactor
+            });
         }
 
-        result.addRing(ring);
+        this.addStrokePath(result, leftRail);
+        this.addStrokePath(result, rightRail);
 
-        // Clean single-outline block arrowhead — no inner notch line.
+        const bodyEnd = bodyCenter[bodySamples];
+        const headTangent = this.tangentAt(bodyCenter, bodySamples);
+        const headNormal = { x: -headTangent.y, y: headTangent.x };
+        const headOuterHalf = totalLen * headFraction * this._arrowHeadRatio;
+        const tip = centerline[centerline.length - 1];
+        const rightInner = leftRail[bodySamples];
+        const leftInner = rightRail[bodySamples];
+        const rightOuter = {
+            x: bodyEnd.x - headNormal.x * headOuterHalf,
+            y: bodyEnd.y - headNormal.y * headOuterHalf
+        };
+        const leftOuter = {
+            x: bodyEnd.x + headNormal.x * headOuterHalf,
+            y: bodyEnd.y + headNormal.y * headOuterHalf
+        };
+
+        this.addStroke(result, rightInner, rightOuter);
+        this.addStroke(result, rightOuter, tip);
+        this.addStroke(result, tip, leftOuter);
+        this.addStroke(result, leftOuter, leftInner);
 
         return result;
     }
 
-    /**
-     * Widen the arrow throat: scale the perpendicular separation of the head
-     * inner points by `factor` (keeping their along-axis position). A wider
-     * throat also pulls the body crossing back toward the tail.
-     */
-    private widenNeck(values: ArrowHeadResult, factor: number, ux: number, uy: number): void {
-        const li = values.rings[0];
-        const ri = values.rings[4];
-        const mx = (li.x + ri.x) / 2, my = (li.y + ri.y) / 2;
-        for (const p of [li, ri]) {
-            const dx = p.x - mx, dy = p.y - my;
-            const along = dx * ux + dy * uy;                 // component along the axis
-            const perpx = dx - along * ux, perpy = dy - along * uy;  // perpendicular component
-            p.x = mx + along * ux + perpx * factor;
-            p.y = my + along * uy + perpy * factor;
+    private railWidthFactor(progress: number): number {
+        if (progress <= this._shoulderFraction) return 1;
+
+        if (progress <= this._crossFraction) {
+            return 1 - (progress - this._shoulderFraction) /
+                (this._crossFraction - this._shoulderFraction);
+        }
+
+        return -(progress - this._crossFraction) / (1 - this._crossFraction);
+    }
+
+    private addStrokePath(result: Polygon, path: XY[]): void {
+        for (let i = 1; i < path.length; i++) {
+            this.addStroke(result, path[i - 1], path[i]);
         }
     }
 
-    /**
-     * Create arrow head path
-     */
-    private CreateArrowHeadPathEx(
-        pt1: { x: number, y: number },
-        candidatePt: { x: number, y: number },
-        pt2: { x: number, y: number },
-        totalLen: number,
-        headPercentage: number,
-        headAngle: number,
-        straight?: boolean
-    ): ArrowHeadResult {
-        const headSizeBaseRatio = this._arrowHeadRatio;
-        const headBaseLen = totalLen * headPercentage;
-        const headSideLen = headBaseLen * headSizeBaseRatio;
+    private addStroke(result: Polygon, start: XY, end: XY): void {
+        result.addRing([
+            [start.x, start.y],
+            [end.x, end.y]
+        ]);
+    }
 
-        const angle1 = GeoTools.twoPtsAngle(candidatePt, new Point({ x: pt1.x, y: pt1.y, spatialReference: this.view.spatialReference }));
-        const angle2 = GeoTools.twoPtsAngle(candidatePt, new Point({ x: pt2.x, y: pt2.y, spatialReference: this.view.spatialReference }));
+    private pointAtDistance(path: XY[], distance: number): XY {
+        let travelled = 0;
 
-        let midAngle = (Math.abs(angle1 - angle2)) / 2;
-        if (Math.abs(angle1 - angle2) > Math.PI * 1.88) {
-            midAngle += Math.PI;
+        for (let i = 1; i < path.length; i++) {
+            const segmentLen = GeoTools._2PtLen(path[i - 1], path[i]);
+            if (travelled + segmentLen >= distance) {
+                const ratio = segmentLen === 0 ? 0 : (distance - travelled) / segmentLen;
+                return {
+                    x: path[i - 1].x + (path[i].x - path[i - 1].x) * ratio,
+                    y: path[i - 1].y + (path[i].y - path[i - 1].y) * ratio
+                };
+            }
+            travelled += segmentLen;
         }
 
-        const len = Math.sqrt(headBaseLen * headBaseLen + headSideLen * headSideLen - 2 * headSideLen * headBaseLen * Math.cos(midAngle + headAngle / 180 * Math.PI));
-        const upAngle = Math.asin(headBaseLen * Math.sin(midAngle + headAngle / 180 * Math.PI) / len);
-        const centAngle = upAngle + headAngle / 180 * Math.PI;
+        return { ...path[path.length - 1] };
+    }
 
-        const result = (straight === false || straight === undefined) ?
-            (headBaseLen * Math.sin(Math.PI - centAngle - midAngle) / Math.sin(centAngle)) : 0;
-
-        const leftInnerPt = {
-            x: candidatePt.x + result * Math.cos(angle1),
-            y: candidatePt.y + result * Math.sin(angle1)
-        };
-        const leftOuterPt = {
-            x: candidatePt.x + headSideLen * Math.cos(angle1 - headAngle / 180 * Math.PI),
-            y: candidatePt.y + headSideLen * Math.sin(angle1 - headAngle / 180 * Math.PI)
-        };
-
-        const rightInnerPt = {
-            x: candidatePt.x + result * Math.cos(angle2),
-            y: candidatePt.y + result * Math.sin(angle2)
-        };
-        const rightOuterPt = {
-            x: candidatePt.x + headSideLen * Math.cos(angle2 + headAngle / 180 * Math.PI),
-            y: candidatePt.y + headSideLen * Math.sin(angle2 + headAngle / 180 * Math.PI)
-        };
-
-        const ring = [leftInnerPt, leftOuterPt, candidatePt, rightOuterPt, rightInnerPt];
-
-        const intersectLineLeft = GeoTools.getMidPoint(
-            new Point({ x: leftInnerPt.x, y: leftInnerPt.y, spatialReference: this.view.spatialReference }),
-            new Point({ x: leftOuterPt.x, y: leftOuterPt.y, spatialReference: this.view.spatialReference })
-        );
-        const intersectLineRight = GeoTools.getMidPoint(
-            new Point({ x: rightInnerPt.x, y: rightInnerPt.y, spatialReference: this.view.spatialReference }),
-            new Point({ x: rightOuterPt.x, y: rightOuterPt.y, spatialReference: this.view.spatialReference })
-        );
-
-        const midPt = GeoTools.getMidPoint(
-            new Point({ x: pt1.x, y: pt1.y, spatialReference: this.view.spatialReference }),
-            new Point({ x: pt2.x, y: pt2.y, spatialReference: this.view.spatialReference })
-        );
-        const angle = GeoTools.twoPtsAngle(midPt, candidatePt);
-
-        const newCandidatePt = {
-            x: midPt.x + headBaseLen * Math.cos(angle),
-            y: midPt.y + headBaseLen * Math.sin(angle)
-        };
-
-        return {
-            rings: ring,
-            midPtLeft: intersectLineLeft,
-            midPtRight: intersectLineRight,
-            newCandiadatePt: newCandidatePt
-        };
+    private tangentAt(path: XY[], index: number): XY {
+        const before = path[Math.max(0, index - 1)];
+        const after = path[Math.min(path.length - 1, index + 1)];
+        const dx = after.x - before.x;
+        const dy = after.y - before.y;
+        const len = Math.hypot(dx, dy) || 1;
+        return { x: dx / len, y: dy / len };
     }
 
     /**
