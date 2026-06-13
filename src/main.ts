@@ -593,6 +593,13 @@ function createView(params: any, type: '2d' | '3d'): MapView | SceneView {
     view = new SceneView(params);
   }
 
+  // Suppress the SDK's built-in double-click zoom. Multi-point/area symbols use a
+  // double-click to finish drawing (ArcGIS 3.x's disableDoubleClickZoom() no longer
+  // exists in JS 5 — stopPropagation is the supported replacement).
+  view.on('double-click', (event) => {
+    event.stopPropagation();
+  });
+
   view
     .when(() => {})
     .catch((error) => {

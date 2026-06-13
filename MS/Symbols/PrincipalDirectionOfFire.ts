@@ -20,7 +20,7 @@ export interface PrincipalDirectionOfFireOptions {
 }
 
 /**
- * Draws two arrows from a common origin. Their separation scales with length.
+ * Draws two independently placed arrows from a common origin.
  */
 export class PrincipalDirectionOfFire {
   private view: MapView | SceneView;
@@ -105,7 +105,7 @@ export class PrincipalDirectionOfFire {
     this._points.push(point);
     this.events.emit('onDrawClick', { currentPts: this._points });
 
-    if (this._points.length === 2) {
+    if (this._points.length === 3) {
       const geometry = this.createSymbol(this._points);
       if (geometry) {
         this.__drawEnd(
@@ -119,12 +119,17 @@ export class PrincipalDirectionOfFire {
   }
 
   private _onMouseMoveHandler(inputEvent: any): void {
-    if (this._points.length !== 1 || !this.tempGraphic) return;
+    if (
+      this._points.length === 0 ||
+      this._points.length >= 3 ||
+      !this.tempGraphic
+    )
+      return;
 
     const candidatePoint = this.toPoint(inputEvent);
     if (!candidatePoint) return;
 
-    const points = [this._points[0], candidatePoint];
+    const points = this._points.concat(candidatePoint);
     const geometry = this.createSymbol(points);
     if (!geometry) return;
 
@@ -152,76 +157,51 @@ export class PrincipalDirectionOfFire {
     if (points.length < 2) return null;
 
     const origin = points[0];
-    const directionPoint = points[points.length - 1];
-    const dx = directionPoint.x - origin.x;
-    const dy = directionPoint.y - origin.y;
-    const length = Math.hypot(dx, dy);
-    if (length === 0) return null;
+    const firstTip = points[1];
+    const secondTip = points[2];
+    const firstArmDx = firstTip.x - origin.x;
+    const firstArmDy = firstTip.y - origin.y;
+    const firstArmLength = Math.hypot(firstArmDx, firstArmDy);
+    if (firstArmLength === 0) return null;
 
-    const unitX = dx / length;
-    const unitY = dy / length;
-    const perpendicularX = -unitY;
-    const perpendicularY = unitX;
-    // A broad V matches the principal direction of fire control measure.
-    const tipOffset = length * 0.85;
-
-    const leftTip = new Point({
-      x: directionPoint.x + perpendicularX * tipOffset,
-      y: directionPoint.y + perpendicularY * tipOffset,
-      spatialReference: this.view.spatialReference,
-    });
-    const rightTip = new Point({
-      x: directionPoint.x - perpendicularX * tipOffset,
-      y: directionPoint.y - perpendicularY * tipOffset,
-      spatialReference: this.view.spatialReference,
-    });
-    const leftArrowHeadLength =
-      Math.hypot(leftTip.x - origin.x, leftTip.y - origin.y) * 0.15;
-    const rightArrowHeadLength =
-      Math.hypot(rightTip.x - origin.x, rightTip.y - origin.y) * 0.15;
-    const leftArmAngle = Math.atan2(leftTip.y - origin.y, leftTip.x - origin.x);
-    const leftArmLength = Math.hypot(
-      leftTip.x - origin.x,
-      leftTip.y - origin.y,
-    );
+    const firstArmAngle = Math.atan2(firstArmDy, firstArmDx);
     const innerLineStartRatio = 0.1;
     const innerLineEndRatio = 0.82;
-    const innerLineOffset = leftArmLength * 0.035;
-    const leftPerpendicular = {
-      x: -Math.sin(leftArmAngle),
-      y: Math.cos(leftArmAngle),
+    const innerLineOffset = firstArmLength * 0.035;
+    const firstPerpendicular = {
+      x: -Math.sin(firstArmAngle),
+      y: Math.cos(firstArmAngle),
     };
-    const leftMidPoint = {
-      x: (origin.x + leftTip.x) / 2,
-      y: (origin.y + leftTip.y) / 2,
+    const firstMidPoint = {
+      x: (origin.x + firstTip.x) / 2,
+      y: (origin.y + firstTip.y) / 2,
     };
     const towardInterior =
-      (rightTip.x - leftMidPoint.x) * leftPerpendicular.x +
-        (rightTip.y - leftMidPoint.y) * leftPerpendicular.y >=
-      0
+      !secondTip ||
+      (secondTip.x - firstMidPoint.x) * firstPerpendicular.x +
+        (secondTip.y - firstMidPoint.y) * firstPerpendicular.y >=
+        0
         ? 1
         : -1;
-    const innerOffsetX = leftPerpendicular.x * innerLineOffset * towardInterior;
-    const innerOffsetY = leftPerpendicular.y * innerLineOffset * towardInterior;
+    const innerOffsetX =
+      firstPerpendicular.x * innerLineOffset * towardInterior;
+    const innerOffsetY =
+      firstPerpendicular.y * innerLineOffset * towardInterior;
     const innerLineStart = [
-      origin.x + (leftTip.x - origin.x) * innerLineStartRatio + innerOffsetX,
-      origin.y + (leftTip.y - origin.y) * innerLineStartRatio + innerOffsetY,
+      origin.x + firstArmDx * innerLineStartRatio + innerOffsetX,
+      origin.y + firstArmDy * innerLineStartRatio + innerOffsetY,
     ];
     const innerLineEnd = [
-      origin.x + (leftTip.x - origin.x) * innerLineEndRatio + innerOffsetX,
-      origin.y + (leftTip.y - origin.y) * innerLineEndRatio + innerOffsetY,
+      origin.x + firstArmDx * innerLineEndRatio + innerOffsetX,
+      origin.y + firstArmDy * innerLineEndRatio + innerOffsetY,
     ];
     const middleLineStart = [
-      origin.x +
-        (leftTip.x - origin.x) * innerLineStartRatio +
-        innerOffsetX / 2,
-      origin.y +
-        (leftTip.y - origin.y) * innerLineStartRatio +
-        innerOffsetY / 2,
+      origin.x + firstArmDx * innerLineStartRatio + innerOffsetX / 2,
+      origin.y + firstArmDy * innerLineStartRatio + innerOffsetY / 2,
     ];
     const middleLineEnd = [
-      origin.x + (leftTip.x - origin.x) * innerLineEndRatio + innerOffsetX / 2,
-      origin.y + (leftTip.y - origin.y) * innerLineEndRatio + innerOffsetY / 2,
+      origin.x + firstArmDx * innerLineEndRatio + innerOffsetX / 2,
+      origin.y + firstArmDy * innerLineEndRatio + innerOffsetY / 2,
     ];
 
     const result = new Polyline({
@@ -229,18 +209,29 @@ export class PrincipalDirectionOfFire {
     });
     result.addPath([
       [origin.x, origin.y],
-      [leftTip.x, leftTip.y],
+      [firstTip.x, firstTip.y],
     ]);
     result.addPath([middleLineStart, middleLineEnd]);
     result.addPath([innerLineStart, innerLineEnd]);
-    result.addPath(this.createArrowHead(origin, leftTip, leftArrowHeadLength));
-    result.addPath([
-      [origin.x, origin.y],
-      [rightTip.x, rightTip.y],
-    ]);
     result.addPath(
-      this.createArrowHead(origin, rightTip, rightArrowHeadLength),
+      this.createArrowHead(origin, firstTip, firstArmLength * 0.15),
     );
+
+    if (secondTip) {
+      const secondArmLength = Math.hypot(
+        secondTip.x - origin.x,
+        secondTip.y - origin.y,
+      );
+      if (secondArmLength > 0) {
+        result.addPath([
+          [origin.x, origin.y],
+          [secondTip.x, secondTip.y],
+        ]);
+        result.addPath(
+          this.createArrowHead(origin, secondTip, secondArmLength * 0.15),
+        );
+      }
+    }
 
     return result;
   }

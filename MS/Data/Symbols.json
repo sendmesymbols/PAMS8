@@ -9433,8 +9433,35 @@
         ],
         "Cat": ["attk"],
         "Grp": ["Control Measures","Friendly Direction of Sp Attk, Dir Arrow" ]
-    },
-    "25140060": {
+      },
+    "25140605": {
+        "Class": "DirectionOfFeintAttack",
+        "Description": "",
+        "Name": "Direction of Feint Attack",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Line) and 2 (Curve)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Line",
+                "description": "Use Line"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Curve",
+                "description": "Use Curve"
+            }
+        ],
+        "Cat": ["attk"],
+        "Grp": ["Control Measures","Direction of Feint Attack" ]
+      },
+      "25140060": {
         "Class": "FriendlyAviationAttack",
         "Description": "",
         "Name": "Friendly Aviation Attack",

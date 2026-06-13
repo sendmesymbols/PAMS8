@@ -58,6 +58,7 @@ import FreehandSemiCircleFilled from "../Symbols/FreehandSemiCircleFilled.ts"; /
 import FreehandSupportingAttack from "../Symbols/FreehandSupportingAttack.ts"; //Fixed
 import FriendlyDirOfMainAttk from "../Symbols/FriendlyDirOfMainAttk.ts"; //Fixed
 import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts"; //Fixed
+import DirectionOfFeintAttack from "../Symbols/DirectionOfFeintAttack.ts"; //Fixed
 import FriendlyAviationAttack from "../Symbols/FriendlyAviationAttack.ts";
 import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts"; //Fixed
 import NamedAreaOfInterest from "../Symbols/NamedAreaOfInterest.ts"; //Fixed
@@ -215,6 +216,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "FreehandSupportingAttack": FreehandSupportingAttack,
     "FriendlyDirOfMainAttk": FriendlyDirOfMainAttk,
     "FriendlyDirOfSpAttk": FriendlyDirOfSpAttk,
+    "DirectionOfFeintAttack": DirectionOfFeintAttack,
     "FriendlyAviationAttack": FriendlyAviationAttack,
     "TargetAreaOfInterest": TargetAreaOfInterest,
     "NamedAreaOfInterest": NamedAreaOfInterest,
