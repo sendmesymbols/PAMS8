@@ -155,6 +155,7 @@ import Penetrate from "../Symbols/Penetrate.ts"; //Fixed
 import SlowGo from "../Symbols/SlowGo.ts";  //Fixed
 import Withdraw from "../Symbols/Withdraw.ts"; //Fixed
 import WithdrawUnderPressure from "../Symbols/WithdrawUnderPressure.ts"; //Fixed
+import Retire from "../Symbols/Retire.ts"; //Fixed
 import Bypass from "../Symbols/Bypass.ts"; //Fixed
 import SupportByFirePosition from "../Symbols/SupportByFirePosition.ts"; //Fixed
 import PrincipalDirectionOfFire from "../Symbols/PrincipalDirectionOfFire.ts";
@@ -333,6 +334,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "VitalGr": VitalGr,
     "Withdraw": Withdraw,
     "WithdrawUnderPressure": WithdrawUnderPressure,
+    "Retire": Retire,
     "SupportByFirePosition": SupportByFirePosition,
     "PrincipalDirectionOfFire": PrincipalDirectionOfFire,
     "SearchReconnaissanceArea": SearchReconnaissanceArea,

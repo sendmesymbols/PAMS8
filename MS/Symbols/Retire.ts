@@ -15,7 +15,7 @@ import Shapes from '../Support/Shapes.ts';
 import BaseLine from '../Support/BaseLine.ts';
 
 import SymbolEvents from "../Support/SymbolEvents";
-export interface WithdrawOptions {
+export interface RetireOptions {
   ECHLON?: number;
   CTRL_PTS?: Point[];
   GEOM?: Polyline;
@@ -23,20 +23,20 @@ export interface WithdrawOptions {
 }
 
 /**
- * Withdraw class for drawing Withdraw tactical symbols
+ * Retire class for drawing Retire tactical symbols
  * Uses baseline + control points pattern with arc and arrow
  * Returns Polyline geometry despite being classified as an Area symbol
  */
-export class Withdraw {
+export class Retire {
   private view: MapView | SceneView;
   private layerManager: GraphicsLayerManager;
   private symbolLayer: GraphicsLayer;
   private isLine: boolean;
 
   // Symbol properties
-  public declaredClass: string = 'MilitarySymbology.Symbols.Withdraw';
-  public SID: string = '342400';
-  public symName: string = 'Withdraw';
+  public declaredClass: string = 'MilitarySymbology.Symbols.Retire';
+  public SID: string = '342000';
+  public symName: string = 'Retire';
   public symGeometricType: string = 'Area';
 
   private _lineSym: SimpleLineSymbol | null = null;
@@ -76,14 +76,14 @@ export class Withdraw {
     this.layerManager = GraphicsLayerManager.getInstance(view);
     this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
     this.amplifier = new Amplifier();
-    this.events = new SymbolEvents(view, "Withdraw");
+    this.events = new SymbolEvents(view, "Retire");
 
     this.layerManager.initializeLayers();
 
     this.tempGraphic = new Graphic();
   }
 
-  public init(options: WithdrawOptions, marker: SimpleLineSymbol): void {
+  public init(options: RetireOptions, marker: SimpleLineSymbol): void {
     this._lineSym = marker.clone();
 
     //(this.view as any).navigation.setImmediateClick(false);
@@ -324,17 +324,17 @@ export class Withdraw {
         for (var i = 0; i < values.midPoints.length; i++) {
           cLenLimit = values.midPoints[i].len / 2;
           if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
-          // W as clean strokes — single-path createW retraces its left vertical,
-          // which the 3D tessellator collapses (renders in 2D, breaks in 3D).
-          // createWStrokes is the same glyph as separate non-retracing paths.
-          const wStrokes = Shapes.createWStrokes(
+          // R as clean strokes — createRStrokes returns non-retracing 2-point
+          // paths (D-arc + stem + leg). A single-path R would retrace and the
+          // 3D tessellator would collapse it (renders in 2D, breaks in 3D).
+          const rStrokes = Shapes.createRStrokes(
             values.midPoints[i].midPt.x,
             values.midPoints[i].midPt.y,
             cLenLimit,
             this.view.spatialReference,
           );
-          for (let j = 0; j < wStrokes.length; j++) {
-            result.addPath(this.toXYPath(wStrokes[j]));
+          for (let j = 0; j < rStrokes.length; j++) {
+            result.addPath(this.toXYPath(rStrokes[j]));
           }
         }
 
@@ -638,4 +638,4 @@ export class Withdraw {
   }
 }
 
-export default Withdraw;
+export default Retire;

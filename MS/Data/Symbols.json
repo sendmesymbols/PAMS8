@@ -19552,6 +19552,17 @@
         "Cat": ["def"],
         "Grp": [ "Control Measures","Delay" ]
     },
+    "25342000": {
+        "Class": "Retire",
+        "Description": "",
+        "Name": "Retire",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": [ "Control Measures","Retire" ]
+    },
     "25342500": {
         "Class": "WithdrawUnderPressure",
         "Description": "",

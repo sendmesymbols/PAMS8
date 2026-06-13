@@ -2073,9 +2073,12 @@ class Shapes {
     }
 
     static createWP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts1 = this.createW(dx - (dr * 0.5), dy, dr, sp);
+        // W as clean strokes — single-path createW retraces its left vertical and the
+        // 3D tessellator collapses it. createWStrokes is the same glyph as separate
+        // non-retracing paths; createPP is already a clean single path.
+        const wStrokes = this.createWStrokes(dx - (dr * 0.5), dy, dr, sp);
         const pts2 = this.createPP(dx + (dr * 0.7), dy, dr, sp);
-        return [pts1, pts2];
+        return [...wStrokes, pts2];
     }
 
     static createENY(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
