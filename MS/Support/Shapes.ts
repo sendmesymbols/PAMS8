@@ -288,13 +288,14 @@ class Shapes {
      * Create letter L
      */
     static createL(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
-        const pts: Point[] = [];
-        pts.push(new Point({ x: dx, y: dy - dr, spatialReference: sp }));
-        pts.push(new Point({ x: dx, y: dy + dr, spatialReference: sp }));
-        pts.push(new Point({ x: dx, y: dy - dr, spatialReference: sp }));
-        pts.push(new Point({ x: dx + dr, y: dy - dr, spatialReference: sp }));
-
-        return pts;
+        // Clean L as one non-retracing path: stem top -> stem bottom -> base right.
+        // The old version went bottom -> top -> bottom (back down the stem); that
+        // doubled-over segment collapses in the 3D tessellator.
+        return [
+            new Point({ x: dx, y: dy + dr, spatialReference: sp }),
+            new Point({ x: dx, y: dy - dr, spatialReference: sp }),
+            new Point({ x: dx + dr, y: dy - dr, spatialReference: sp })
+        ];
     }
 
     /**
@@ -664,10 +665,20 @@ class Shapes {
      * Create letter P (PP version)
      */
     static createPP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
-        const pts = this.createDD(dx, dy + (dr / 2), dr / 2, sp);
-        pts.push(new Point({ x: dx - ((dr / 2) / 3), y: dy, spatialReference: sp }));
-        pts.push(new Point({ x: dx - ((dr / 2) / 3), y: dy - dr, spatialReference: sp }));
-
+        // Clean P as one non-retracing path: full-height stem, then a bowl arc on the
+        // upper right. The old version reused createDD and then retraced its stem; that
+        // doubled-over segment collapses in the 3D tessellator.
+        const sx = dx - (dr / 6);   // stem x (matches the previous stem placement)
+        const r = dr / 2;           // bowl radius
+        const cy = dy + (dr / 2);   // bowl centre y (upper half)
+        const pts: Point[] = [];
+        pts.push(new Point({ x: sx, y: dy - dr, spatialReference: sp }));  // stem bottom
+        pts.push(new Point({ x: sx, y: dy + dr, spatialReference: sp }));  // stem top
+        const steps = 24;
+        for (let i = 0; i <= steps; i++) {
+            const t = (Math.PI * i) / steps;  // 0 (stem top) .. PI (mid stem)
+            pts.push(new Point({ x: sx + r * Math.sin(t), y: cy + r * Math.cos(t), spatialReference: sp }));
+        }
         return pts;
     }
 

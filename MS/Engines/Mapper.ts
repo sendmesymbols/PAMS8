@@ -34,6 +34,7 @@ import BdeAdmArea from "../Symbols/BdeAdmArea.ts"; //Fixed
 import DivAdmArea from "../Symbols/DivAdmArea.ts"; //Fixed
 import BridgeHeadLine from "../Symbols/BridgeHeadLine.ts"; //Fixed
 import PhaseLine from "../Symbols/PhaseLine.ts"; //Fixed
+import Turn from "../Symbols/Turn.ts";
 import Breach from "../Symbols/Breach.ts"; //Fixed
 import Bridge from "../Symbols/Bridge.ts"; //Fixed
 import BtleHndOvrLn from "../Symbols/BtleHndOvrLn.ts"; //Fixed
@@ -90,6 +91,7 @@ import SingleFenceWire from "../Symbols/SingleFenceWire.ts";  //Fixed
 import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";  //Fixed
 import ObstacleZone from "../Symbols/ObstacleZone.ts";
 import ObstacleFreeZone from "../Symbols/ObstacleFreeZone.ts";
+import ObstacleRestrictedZone from "../Symbols/ObstacleRestrictedZone.ts";
 import UARoute from "../Symbols/UARoute.ts";  //Fixed
 import SafeLane from "../Symbols/SafeLane.ts";  //Fixed
 import TransitCorridors from "../Symbols/TransitCorridors.ts";  //Fixed
@@ -169,6 +171,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "CLineOfDenial": CLineOfDenial,
     "ALineOfDenial": ALineOfDenial,
     "PhaseLine": PhaseLine,
+    "Turn": Turn,
     "Ambush": Ambush,
     "ArcOfFireSD": ArcOfFireSD,
     "AntiPersonnelAntiTankMine": AntiPersonnelAntiTankMine,
@@ -273,6 +276,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "DoubleFenceWire": DoubleFenceWire,
     "ObstacleZone": ObstacleZone,
     "ObstacleFreeZone": ObstacleFreeZone,
+    "ObstacleRestrictedZone": ObstacleRestrictedZone,
     "DoubleStrandConcertina": DoubleStrandConcertina,
     "Fix": Fix,
     "FlightRoute": FlightRoute,

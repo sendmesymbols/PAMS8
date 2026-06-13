@@ -15091,6 +15091,18 @@
         "Cat": ["engr"],
         "Grp": [ "Control Measures","Disrupt / Obs Effect" ]
     },
+    "25270504": {
+        "Class": "Turn",
+        "Description": "An obstacle effect that integrates fire planning and obstacle effort to divert an enemy formation from one avenue of approach to an adjacent avenue of approach or into an engagement area.",
+        "Name": "Turn / Obs Effect",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "isObstacle": "1",
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Turn / Obs Effect" ]
+    },
     "25270601": {
         "Class": "ObstacleBypassEasy",
         "Description": "",
@@ -18355,6 +18367,18 @@
         "isObstacle": "1",
         "Cat": ["engr"],
         "Grp": [ "Control Measures","Obstacle Free Zone" ]
+    },
+    "25270400": {
+        "Class": "ObstacleRestrictedZone",
+        "Description": "",
+        "Name": "Obstacle Restricted Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "isObstacle": "1",
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Obstacle Restricted Zone" ]
     },
     "25290304": {
         "Class": "DoubleApronFence",
