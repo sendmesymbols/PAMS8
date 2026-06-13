@@ -383,7 +383,10 @@ export class SupportByFirePosition {
                 stPtCandidatePt = new Point({ x: p1.x + length * Math.cos(angle), y: p1.y + length * Math.sin(angle), spatialReference });
                 endPtCandidatePt = new Point({ x: p2.x + length * Math.cos(angle), y: p2.y + length * Math.sin(angle), spatialReference });
 
-                len = length / frontLineAngle;
+                // Narrow the front shaft splay. FRNT_LN_ANGL_RATIO defaults to 0.8,
+                // which gives ~51 deg per side (~102 deg between the two arrows) and
+                // reads far too wide; tripling the divisor pulls each arrow to ~23 deg.
+                len = length / (frontLineAngle * 3);
                 angle = GeoTools.angleInRadians(stPtCandidatePt, endPtCandidatePt);
 
                 pt1 = new Point({ x: -1 * len * Math.cos(angle) + stPtCandidatePt.x, y: -1 * len * Math.sin(angle) + stPtCandidatePt.y, spatialReference });
