@@ -63,6 +63,11 @@ import DirectionOfFeintAttack from "../Symbols/DirectionOfFeintAttack.ts"; //Fix
 import FriendlyAviationAttack from "../Symbols/FriendlyAviationAttack.ts";
 import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts"; //Fixed
 import NamedAreaOfInterest from "../Symbols/NamedAreaOfInterest.ts"; //Fixed
+import FARP from "../Symbols/FARP.ts";
+import MinedArea from "../Symbols/MinedArea.ts";
+import DecoyMinedArea from "../Symbols/DecoyMinedArea.ts";
+import DecoyMinedAreaFenced from "../Symbols/DecoyMinedAreaFenced.ts";
+import UXOArea from "../Symbols/UXOArea.ts";
 import AssaultPosition from "../Symbols/AssaultPosition.ts"; //Fixed
 import Encirclement from "../Symbols/Encirclement.ts"; //Fixed
 import FortifiedArea from "../Symbols/FortifiedArea.ts"; //Fixed
@@ -84,7 +89,10 @@ import AirspaceArea from "../Symbols/AirspaceArea.ts";
 import PenetrationBox from "../Symbols/PenetrationBox.ts";  //Fixed
 import DitchEmpty from "../Symbols/DitchEmpty.ts";  //Fixed
 import ObstacleLine from "../Symbols/ObstacleLine.ts";
+import AntitankWall from "../Symbols/AntitankWall.ts";
+import FortifiedLine from "../Symbols/FortifiedLine.ts";
 import DitchFilledWithWater from "../Symbols/DitchFilledWithWater.ts";  //Fixed
+import AntitankDitchReinforcedWithMines from "../Symbols/AntitankDitchReinforcedWithMines.ts";
 import SingleConcertina from "../Symbols/SingleConcertina.ts";  //Fixed
 import DoubleStrandConcertina from "../Symbols/DoubleStrandConcertina.ts";  //Fixed
 import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";  //Fixed
@@ -229,6 +237,11 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "FriendlyAviationAttack": FriendlyAviationAttack,
     "TargetAreaOfInterest": TargetAreaOfInterest,
     "NamedAreaOfInterest": NamedAreaOfInterest,
+    "FARP": FARP,
+    "MinedArea": MinedArea,
+    "DecoyMinedArea": DecoyMinedArea,
+    "DecoyMinedAreaFenced": DecoyMinedAreaFenced,
+    "UXOArea": UXOArea,
     "AssaultPosition": AssaultPosition,
     "Encirclement": Encirclement,
     "FortifiedArea": FortifiedArea,
@@ -273,7 +286,10 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "DisruptObstacleEffect": DisruptObstacleEffect,
     "DitchEmpty": DitchEmpty,
     "ObstacleLine": ObstacleLine,
+    "AntitankWall": AntitankWall,
+    "FortifiedLine": FortifiedLine,
     "DitchFilledWithWater": DitchFilledWithWater,
+    "AntitankDitchReinforcedWithMines": AntitankDitchReinforcedWithMines,
     "DivAdmArea": DivAdmArea,
     "DivLineOfNoPen": DivLineOfNoPen,
     "DoubleApronFence": DoubleApronFence,

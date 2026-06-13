@@ -18351,6 +18351,68 @@
         "Cat": ["engr"],
         "Grp": [ "Control Measures","DCB - Filled With Water" ]
     },
+    "25290203": {
+        "Class": "AntitankDitchReinforcedWithMines",
+        "Description": "",
+        "Name": "AT Ditch Reinforced w/ AT Mines",
+        "Parameters": [{
+                "Name": "Teeth Size",
+                "default": "3",
+                "description": "Teeth Size",
+                "paramThumbnail": "",
+                "value": "TEETH_SIZE"
+            },
+            {
+                "Name": "Teeth Gap",
+                "default": "20",
+                "description": "Teeth Gap",
+                "paramThumbnail": "",
+                "value": "TEETH_GAP"
+            }
+        ],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "isObstacle": "1",
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","AT Ditch Reinforced w/ AT Mines" ]
+    },
+    "25290204": {
+        "Class": "AntitankWall",
+        "Description": "",
+        "Name": "Antitank Wall",
+        "Parameters": [{
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Straight) and 2 (Curve)",
+                "paramThumbnail": "",
+                "value": "DRAW_TYPE"
+            }
+        ],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Antitank Wall" ]
+    },
+    "25290900": {
+        "Class": "FortifiedLine",
+        "Description": "",
+        "Name": "Fortified Line",
+        "Parameters": [{
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Straight) and 2 (Curve)",
+                "paramThumbnail": "",
+                "value": "DRAW_TYPE"
+            }
+        ],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Fortified Line" ]
+    },
     "25290301": {
         "Class": "UnspecifiedWire",
         "Description": "",
@@ -18422,6 +18484,136 @@
         "isObstacle": "1",
         "Cat": ["engr"],
         "Grp": [ "Control Measures","Obstacle Restricted Zone" ]
+    },
+    "25270800": {
+        "Class": "MinedArea",
+        "Description": "",
+        "Name": "Mined Area",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Sharp Edged Polygon), 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Use Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "isObstacle": "1",
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Mined Area" ]
+    },
+    "25271000": {
+        "Class": "UXOArea",
+        "Description": "",
+        "Name": "Unexploded Explosive Ordnance (UXO) Area",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Sharp Edged Polygon), 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Use Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Unexploded Explosive Ordnance (UXO) Area" ]
+    },
+    "25270900": {
+        "Class": "DecoyMinedArea",
+        "Description": "",
+        "Name": "Decoy Mined Area",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Sharp Edged Polygon), 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Use Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "isObstacle": "1",
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Decoy Mined Area" ]
+    },
+    "25270901": {
+        "Class": "DecoyMinedAreaFenced",
+        "Description": "",
+        "Name": "Decoy Mined Area Fenced",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Sharp Edged Polygon), 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Use Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Decoy Mined Area Fenced" ]
     },
     "25290304": {
         "Class": "DoubleApronFence",
@@ -18506,6 +18698,39 @@
         "isObstacle": "1",
         "Cat": ["engr"],
         "Grp": [ "Control Measures","Line of Contact" ]
+    },
+    "25310300": {
+        "Class": "FARP",
+        "Description": "",
+        "Name": "Forward Arming and Refueling Point (FARP)",
+        "Parameters": [{
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Smooth Polygon), 2 (Sharp Edged Polygon), 3 (Rectangle)",
+                "paramThumbnail": "",
+                "value": "DRAW_TYPE"
+            }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [
+            {
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Use Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["log"],
+        "Grp": [ "Control Measures","Forward Arming and Refueling Point (FARP)" ]
     },
     "25320100": {
         "Class": "TacticalPoint",
