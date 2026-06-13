@@ -211,6 +211,18 @@ export class PrincipalDirectionOfFire {
       origin.x + (leftTip.x - origin.x) * innerLineEndRatio + innerOffsetX,
       origin.y + (leftTip.y - origin.y) * innerLineEndRatio + innerOffsetY,
     ];
+    const middleLineStart = [
+      origin.x +
+        (leftTip.x - origin.x) * innerLineStartRatio +
+        innerOffsetX / 2,
+      origin.y +
+        (leftTip.y - origin.y) * innerLineStartRatio +
+        innerOffsetY / 2,
+    ];
+    const middleLineEnd = [
+      origin.x + (leftTip.x - origin.x) * innerLineEndRatio + innerOffsetX / 2,
+      origin.y + (leftTip.y - origin.y) * innerLineEndRatio + innerOffsetY / 2,
+    ];
 
     const result = new Polyline({
       spatialReference: this.view.spatialReference,
@@ -219,6 +231,7 @@ export class PrincipalDirectionOfFire {
       [origin.x, origin.y],
       [leftTip.x, leftTip.y],
     ]);
+    result.addPath([middleLineStart, middleLineEnd]);
     result.addPath([innerLineStart, innerLineEnd]);
     result.addPath(this.createArrowHead(origin, leftTip, leftArrowHeadLength));
     result.addPath([
