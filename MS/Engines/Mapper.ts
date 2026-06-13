@@ -143,6 +143,7 @@ import WithdrawUnderPressure from "../Symbols/WithdrawUnderPressure.ts"; //Fixed
 import Bypass from "../Symbols/Bypass.ts"; //Fixed
 import SupportByFirePosition from "../Symbols/SupportByFirePosition.ts"; //Fixed
 import PrincipalDirectionOfFire from "../Symbols/PrincipalDirectionOfFire.ts";
+import SearchReconnaissanceArea from "../Symbols/SearchReconnaissanceArea.ts";
 import StartLine from "../Symbols/StartLine.ts";  //Fixed
 import ObjArea from "../Symbols/ObjArea.ts"; //Fixed
 import SupportingAttack from "../Symbols/SupportingAttack.ts"; //Fixed
@@ -304,6 +305,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "WithdrawUnderPressure": WithdrawUnderPressure,
     "SupportByFirePosition": SupportByFirePosition,
     "PrincipalDirectionOfFire": PrincipalDirectionOfFire,
+    "SearchReconnaissanceArea": SearchReconnaissanceArea,
     "Bypass": Bypass,
     "StartLine": StartLine,
     "ObjArea": ObjArea,

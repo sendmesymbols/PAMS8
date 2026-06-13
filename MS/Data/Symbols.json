@@ -10465,6 +10465,17 @@
         "Cat": ["attk"],
         "Grp": ["Control Measures","BOF/Support By Fire Position" ]
     },
+    "25152200": {
+        "Class": "SearchReconnaissanceArea",
+        "Description": "",
+        "Name": "Search Reconnaissance Area",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Search Reconnaissance Area" ]
+    },
     "25152300": {
         "Class": "ArcOfFireSD",
         "Description": "",
