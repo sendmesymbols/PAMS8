@@ -89,6 +89,7 @@ import TripleStrandConcertina from "../Symbols/TripleStrandConcertina.ts";  //Fi
 import SingleFenceWire from "../Symbols/SingleFenceWire.ts";  //Fixed
 import DoubleFenceWire from "../Symbols/DoubleFenceWire.ts";  //Fixed
 import ObstacleZone from "../Symbols/ObstacleZone.ts";
+import ObstacleFreeZone from "../Symbols/ObstacleFreeZone.ts";
 import UARoute from "../Symbols/UARoute.ts";  //Fixed
 import SafeLane from "../Symbols/SafeLane.ts";  //Fixed
 import TransitCorridors from "../Symbols/TransitCorridors.ts";  //Fixed
@@ -271,6 +272,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "DoubleApronFence": DoubleApronFence,
     "DoubleFenceWire": DoubleFenceWire,
     "ObstacleZone": ObstacleZone,
+    "ObstacleFreeZone": ObstacleFreeZone,
     "DoubleStrandConcertina": DoubleStrandConcertina,
     "Fix": Fix,
     "FlightRoute": FlightRoute,

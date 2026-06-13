@@ -18344,6 +18344,18 @@
         "Cat": ["engr"],
         "Grp": [ "Control Measures","Obstacle Zone" ]
     },
+    "25270300": {
+        "Class": "ObstacleFreeZone",
+        "Description": "",
+        "Name": "Obstacle Free Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "isObstacle": "1",
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Obstacle Free Zone" ]
+    },
     "25290304": {
         "Class": "DoubleApronFence",
         "Description": "",
