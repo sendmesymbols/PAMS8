@@ -412,7 +412,9 @@ export class SupportByFirePosition {
             const stPtBackPt = new Point({ x: p1.x - length * Math.cos(angle), y: p1.y - length * Math.sin(angle), spatialReference });
             const endPtBackPt = new Point({ x: p2.x - length * Math.cos(angle), y: p2.y - length * Math.sin(angle), spatialReference });
 
-            len = length / backLineAngle;
+            // Narrow the back-line splay to match the tightened front arrowheads:
+            // halve the lateral offset (effective BK_LN_ANGL_RATIO doubled).
+            len = length / (backLineAngle * 2);
             angle = GeoTools.angleInRadians(stPtBackPt, endPtBackPt);
 
             const backPt1 = new Point({ x: -1 * len * Math.cos(angle) + stPtBackPt.x, y: -1 * len * Math.sin(angle) + stPtBackPt.y, spatialReference });
@@ -429,11 +431,17 @@ export class SupportByFirePosition {
     }
 
     /**
-     * Create arrow head path — matches JS: angle += 15 (radians), angle -= 30 (radians)
+     * Create arrow head path.
+     * Wings fan out symmetrically about the backward (tail) axis (angle + PI).
+     * FLANK_HALF_ANGLE controls how wide the V opens — smaller is pointier/narrower.
      */
     private _arrowHead(candidatePoint: Point, length: number, angle: number): number[][] {
-        const angle1 = angle + 15;
-        const angle2 = angle - 15;
+        // ~25 deg either side of the tail axis -> ~50 deg total opening.
+        // (Was the legacy ~40 deg / ~81 deg total, which rendered too wide.)
+        const FLANK_HALF_ANGLE = 25 * Math.PI / 180;
+        const tailAngle = angle + Math.PI;
+        const angle1 = tailAngle + FLANK_HALF_ANGLE;
+        const angle2 = tailAngle - FLANK_HALF_ANGLE;
 
         const rightWing = {
             x: candidatePoint.x + length * Math.cos(angle1),

@@ -9,14 +9,12 @@ import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
-import BaseLine from "../Support/BaseLine.ts";
-import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
 import SymbolEvents from "../Support/SymbolEvents";
 export interface AttackPositionOptions {
     CTRL_PTS?: Point[];
-    GEOM?: Polygon;
+    GEOM?: Polygon | number[][][];
     DRAW_TYPE?: number;
     [key: string]: any;
 }
@@ -24,33 +22,32 @@ export interface AttackPositionOptions {
 /**
  * AttackPosition class for drawing Attack Position symbols
  * Supports multiple drawing types: Bezier curve (1), Polygon (2), Rectangle (3)
- * Includes inner text markers using CATK method
+ * Includes ATK inner text markers
  */
 export class AttackPosition {
     private view: MapView | SceneView;
     private layerManager: GraphicsLayerManager;
     private symbolLayer: GraphicsLayer;
     private isLine: boolean;
-    
+
     // Symbol properties
     private SID: string = "151600";
-    private symName: string = "Attk Posn";
+    private symName: string = "Attack Position";
     private symGeometricType: string = "Area";
     private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
-    private _geometryType: string | null = null;
     private _drawType: number = 1;
     private amplifier: Amplifier;
-    
+
     // Drawing state
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
-    
+
     // Event handlers
     private clickHandler: any = null;
     private doubleClickHandler: any = null;
     private mouseMoveHandler: any = null;
-    
+
     // Event emitter
     private events: SymbolEvents;
 
@@ -61,10 +58,10 @@ export class AttackPosition {
         this.symbolLayer = this.layerManager.getOrCreateLayer(LAYER_NAMES.TACT);
         this.amplifier = new Amplifier();
         this.events = new SymbolEvents(view, "AttackPosition");
-        
+
         // Initialize layers if not already done
         this.layerManager.initializeLayers();
-        
+
         // Initialize temporary graphic
         this.tempGraphic = new Graphic();
     }
@@ -75,31 +72,28 @@ export class AttackPosition {
     public init(options: AttackPositionOptions, marker: SimpleLineSymbol): void {
         this._lineSym = marker.clone();
         this._drawType = options.DRAW_TYPE || 1;
-        
-        // Set up event handlers
-        this.setupEventHandlers();
-
-        const drawEssentials = new DrawEssentials();
 
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
                 try {
-                    this.tempGraphic.geometry = new Polygon({
-                        rings: options.GEOM,
-                        spatialReference: this.view.spatialReference
-                    });
+                    this.tempGraphic.geometry =
+                        options.GEOM instanceof Polygon
+                            ? options.GEOM.clone()
+                            : new Polygon({
+                                  rings: options.GEOM,
+                                  spatialReference: this.view.spatialReference
+                              });
                 } catch (error) {
                     console.error(this.symName, "Failed to create Polygon geometry:", error);
                 }
             }
-            
+
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE || 1);
             if (this.tempGraphic && this.tempGraphic.geometry) {
                 this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEss);
             }
             this._clear();
-
         } else if (options.hasOwnProperty("CTRL_PTS")) {
             // Immediate placement with control points only
             const drawEss = this.createDrawEssentials(options.CTRL_PTS!.slice(), options.DRAW_TYPE || 1);
@@ -109,7 +103,6 @@ export class AttackPosition {
                 this.__drawEnd(geometry, drawEss);
                 this._clear();
             }
-
         } else {
             // Interactive drawing mode
             this.startInteractiveDrawing();
@@ -127,6 +120,7 @@ export class AttackPosition {
             symbol: this._lineSym
         });
         this.symbolLayer.add(this.tempGraphic);
+        this.setupEventHandlers();
     }
 
     /**
@@ -138,7 +132,7 @@ export class AttackPosition {
             this._onClickHandler(event);
         });
 
-        // Double click handler  
+        // Double click handler
         this.doubleClickHandler = this.view.on("double-click", (event) => {
             this._onDoubleClickHandler(event);
         });
@@ -156,7 +150,7 @@ export class AttackPosition {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
 
         if (this._points.length === 1) {
@@ -165,7 +159,7 @@ export class AttackPosition {
                 this._onMouseMoveHandler(event);
             });
         }
-        
+
         this.events.emit("onDrawClick", { currentPts: this._points });
 
         // For single line mode, finish after first click
@@ -193,7 +187,7 @@ export class AttackPosition {
             y: mapPoint.y,
             spatialReference: this.view.spatialReference
         });
-        
+
         this._points.push(point);
         this.cleanUp();
     }
@@ -238,7 +232,7 @@ export class AttackPosition {
         drawEssentials.SYM_NAME = this.symName;
         drawEssentials.GEOM = null;
         drawEssentials.AMPLIFIER = this.amplifier.toString();
-        
+
         // Store additional properties
         (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
@@ -280,18 +274,27 @@ export class AttackPosition {
                     result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
             }
 
-            return result ? this.createInnerText(result, firstPoint, lastPoint) : result;
+            if (!result) {
+                return null;
+            }
 
-            
+            const polygon =
+                result.type === "polyline"
+                    ? new Polygon({
+                          rings: (result as Polyline).paths,
+                          spatialReference: this.view.spatialReference
+                      })
+                    : (result as Polygon);
+
+            return this.createInnerText(polygon, firstPoint, lastPoint);
         } catch (e) {
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
             return null;
         }
     }
 
-
     /**
-     * Create inner text markers for Attack Position using CATK
+     * Create ATK inner text markers as rings in the same polygon geometry.
      */
     private createInnerText(result: Polygon, firstPoint: Point, lastPoint: Point): Polygon {
         try {
@@ -311,37 +314,34 @@ export class AttackPosition {
                 cLenLimit = baseLineLen / 3.6;
             }
 
-            // Try to use Shapes.CATK if available
-            if (Shapes && (Shapes as any).CATK) {
-                try {
-                    const catkRings = (Shapes as any).CATK(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-                    if (catkRings && Array.isArray(catkRings)) {
-                        for (let j = 1; j <= catkRings.length - 1; j++) {
-                            if (catkRings[j]) {
-                                const coords = catkRings[j].map(pt => [pt.x, pt.y]);
-                                if (coords.length === 2) {
-                                    coords.push([coords[1][0] + 1e-6, coords[1][1] + 1e-6]);
-                                }
-                                // Close the ring
-                                coords.push(coords[0]);
-
-                                result.addRing(coords);
-                            }
-                        }
-                    }
-
-                } catch (e) {
-                    console.log('Error creating CATK inner text with Shapes utility');
+            const rings = this.createATKRings(midPt, cLenLimit);
+            for (const ring of rings) {
+                if (ring.length >= 3) {
+                    result.addRing(ring);
+                } else if (ring.length === 2) {
+                    result.addRing([ring[0], ring[1], ring[0]]);
                 }
             }
 
             return result;
         } catch (e) {
-            console.log('Cannot create Inner Text');
+            console.log("Cannot create Inner Text");
             return result;
         }
     }
 
+    private createATKRings(midPt: Point, size: number): number[][][] {
+        const letterSize = size * 0.82;
+        const step = size * 1.35;
+        const spatialReference = midPt.spatialReference;
+        const strokes = [
+            ...Shapes.createAStrokes(midPt.x - step, midPt.y, letterSize, spatialReference),
+            ...Shapes.createTStrokes(midPt.x, midPt.y, letterSize, spatialReference),
+            ...Shapes.createKStrokes(midPt.x + step, midPt.y, letterSize, spatialReference)
+        ];
+
+        return strokes.filter((stroke) => stroke && stroke.length >= 2).map((stroke) => stroke.map((point) => [point.x, point.y]));
+    }
 
     /**
      * Utility method to calculate distance
@@ -359,11 +359,11 @@ export class AttackPosition {
         if (this._points.length === 0) return;
 
         const drawEssentials = this.createDrawEssentials(this._points.slice(), this._drawType);
-        
+
         if (this.tempGraphic && this.tempGraphic.geometry) {
             this.__drawEnd(this.tempGraphic.geometry as Polygon, drawEssentials);
         }
-        
+
         this._clear();
         this._removeEvents();
     }
@@ -405,7 +405,7 @@ export class AttackPosition {
         if (this.tempGraphic && this.symbolLayer) {
             this.symbolLayer.remove(this.tempGraphic);
         }
-        
+
         this.tempGraphic = null;
         this._points = [];
     }
@@ -434,7 +434,6 @@ export class AttackPosition {
     public deactivate(): void {
         this._clear();
         this._removeEvents();
-        this._geometryType = null;
         this.isDrawing = false;
     }
 
@@ -446,7 +445,6 @@ export class AttackPosition {
         this.events.off(eventName, callback);
     }
 
-
     public getSymbolLayer(): GraphicsLayer {
         return this.symbolLayer;
     }
@@ -456,4 +454,4 @@ export class AttackPosition {
     }
 }
 
-export default AttackPosition; 
+export default AttackPosition;

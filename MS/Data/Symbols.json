@@ -8353,6 +8353,38 @@
         "Cat": ["ipb"],
         "Grp": ["Control Measures","Airfield Zone" ]
     },
+    "25151000": {
+        "Class": "FortifiedArea",
+        "Description": "",
+        "Name": "Fortified Area",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Sharp Edged Polygon), 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Use Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["def"],
+        "Grp": ["Control Measures","Fortified Area" ]
+    },
     "25151300": {
         "Class": "EngagementArea",
         "Description": "",
@@ -9352,6 +9384,18 @@
         "Grp": ["Control Measures","Start Line" ]
     },
 
+    "25140500": {
+        "Class": "PrincipalDirectionOfFire",
+        "Description": "",
+        "Name": "Principal Direction of Fire",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["attk", "def"],
+        "Grp": ["Control Measures","Principal Direction of Fire" ]
+    },
+
     "25140602": {
         "Class": "FriendlyDirOfMainAttk",
         "Description": "",
@@ -9984,6 +10028,17 @@
         "Cat": ["def"],
         "Grp": ["Control Measures","Contain" ]
     },
+    "25151205": {
+        "Class": "Retain",
+        "Description": "",
+        "Name": "Retain",
+        "Parameters": [],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "Cat": ["def"],
+        "Grp": ["Control Measures","Retain" ]
+    },
     "25151403": {
         "Class": "MainAttack",
         "Description": "The principal attack or effort into which the commander throws the full weight of the offensive power at his disposal.",
@@ -10166,10 +10221,10 @@
         "Cat": ["attk"],
         "Grp": ["Control Measures","Multi Head Main Attk" ]
     },
-    "25151600": {
-        "Class": "AttackPosition",
+    "25151500": {
+        "Class": "AssaultPosition",
         "Description": "",
-        "Name": "Attk Posn",
+        "Name": "Assault Position",
         "Parameters": [{
             "Name": "Draw Type",
             "default": "1",
@@ -10196,7 +10251,39 @@
             }
         ],
         "Cat": ["attk"],
-        "Grp": ["Control Measures","Attk Posn" ]
+        "Grp": ["Control Measures","Assault Position" ]
+    },
+    "25151600": {
+        "Class": "AttackPosition",
+        "Description": "",
+        "Name": "Attack Position",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon) and 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["attk"],
+        "Grp": ["Control Measures","Attack Position" ]
     },
     "25151700": {
         "Class": "ObjArea",
@@ -10229,6 +10316,38 @@
         ],
         "Cat": ["attk"],
         "Grp": ["Control Measures","Obj Area" ]
+    },
+    "25151801": {
+        "Class": "Encirclement",
+        "Description": "",
+        "Name": "Encirclement",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon) and 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["attk"],
+        "Grp": ["Control Measures","Encirclement" ]
     },
     "25151900": {
         "Class": "PenetrationBox",

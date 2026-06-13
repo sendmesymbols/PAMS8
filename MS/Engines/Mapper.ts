@@ -61,6 +61,9 @@ import FriendlyDirOfSpAttk from "../Symbols/FriendlyDirOfSpAttk.ts"; //Fixed
 import FriendlyAviationAttack from "../Symbols/FriendlyAviationAttack.ts";
 import TargetAreaOfInterest from "../Symbols/TargetAreaOfInterest.ts"; //Fixed
 import NamedAreaOfInterest from "../Symbols/NamedAreaOfInterest.ts"; //Fixed
+import AssaultPosition from "../Symbols/AssaultPosition.ts"; //Fixed
+import Encirclement from "../Symbols/Encirclement.ts"; //Fixed
+import FortifiedArea from "../Symbols/FortifiedArea.ts"; //Fixed
 import AirfieldZone from "../Symbols/AirfieldZone.ts";
 import EngagementArea from "../Symbols/EngagementArea.ts";
 import DropZone from "../Symbols/DropZone.ts";
@@ -121,6 +124,7 @@ import Funnel from "../Symbols/Funnel.ts"; //Fixed
 import FwdLineOfTps from "../Symbols/FwdLineOfTps.ts";  //Fixed
 import Guard from "../Symbols/Guard.ts"; //Fixed
 import Secure from "../Symbols/Secure.ts"; //Fixed
+import Retain from "../Symbols/Retain.ts"; //Fixed
 
 import InfiltrationLane from "../Symbols/InfiltrationLane.ts"; //Fixed
 import Isolate from "../Symbols/Isolate.ts";  //Fixed
@@ -137,6 +141,7 @@ import Withdraw from "../Symbols/Withdraw.ts"; //Fixed
 import WithdrawUnderPressure from "../Symbols/WithdrawUnderPressure.ts"; //Fixed
 import Bypass from "../Symbols/Bypass.ts"; //Fixed
 import SupportByFirePosition from "../Symbols/SupportByFirePosition.ts"; //Fixed
+import PrincipalDirectionOfFire from "../Symbols/PrincipalDirectionOfFire.ts";
 import StartLine from "../Symbols/StartLine.ts";  //Fixed
 import ObjArea from "../Symbols/ObjArea.ts"; //Fixed
 import SupportingAttack from "../Symbols/SupportingAttack.ts"; //Fixed
@@ -213,6 +218,9 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "FriendlyAviationAttack": FriendlyAviationAttack,
     "TargetAreaOfInterest": TargetAreaOfInterest,
     "NamedAreaOfInterest": NamedAreaOfInterest,
+    "AssaultPosition": AssaultPosition,
+    "Encirclement": Encirclement,
+    "FortifiedArea": FortifiedArea,
     "AirfieldZone": AirfieldZone,
     "EngagementArea": EngagementArea,
     "DropZone": DropZone,
@@ -282,6 +290,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "Occupy": Occupy,
     "Penetrate": Penetrate,
     "PenetrationBox": PenetrationBox,
+    "Retain": Retain,
     "Screen": Screen,
     "Secure": Secure,
     "SlowGo": SlowGo,
@@ -292,6 +301,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "Withdraw": Withdraw,
     "WithdrawUnderPressure": WithdrawUnderPressure,
     "SupportByFirePosition": SupportByFirePosition,
+    "PrincipalDirectionOfFire": PrincipalDirectionOfFire,
     "Bypass": Bypass,
     "StartLine": StartLine,
     "ObjArea": ObjArea,
