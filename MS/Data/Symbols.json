@@ -18332,6 +18332,18 @@
         "Cat": ["engr"],
         "Grp": [ "Control Measures","Wire Obs - Double Fence Wire" ]
     },
+    "25270200": {
+        "Class": "ObstacleZone",
+        "Description": "",
+        "Name": "Obstacle Zone",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "isObstacle": "1",
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Obstacle Zone" ]
+    },
     "25290304": {
         "Class": "DoubleApronFence",
         "Description": "",
