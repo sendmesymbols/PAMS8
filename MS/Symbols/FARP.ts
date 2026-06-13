@@ -278,7 +278,9 @@ export class FARP {
                     result = Shapes.createSymbolByPolygon(pts, firstPoint, lastPoint, drawEssentials, this.view.spatialReference);
             }
 
-            return result ? this.createInnerText(result, firstPoint, lastPoint) : result;
+            return result instanceof Polygon
+                ? this.createInnerText(result, firstPoint, lastPoint)
+                : null;
 
         } catch (e) {
             console.error(e);
@@ -289,7 +291,7 @@ export class FARP {
 
 
     /**
-     * Create inner text markers for Area of Operations
+     * Add the geometric FARP label to the area polygon.
      */
     private createInnerText(result: Polygon, firstPoint: Point, lastPoint: Point): Polygon {
         try {
@@ -320,7 +322,11 @@ export class FARP {
                 ...(Shapes as any).createRStrokes(midPt.x + spacing * 0.5, midPt.y, letterSize, midPt.spatialReference),
                 ...(Shapes as any).createPStrokes(midPt.x + spacing * 1.5, midPt.y, letterSize, midPt.spatialReference)
             ];
-            const rings = (Shapes as any).strokesToRings(strokes);
+            // Preserve multi-point strokes such as the P bowl. Shapes.strokesToRings
+            // intentionally reduces each stroke to its first segment.
+            const rings = strokes.map((stroke: Point[]) =>
+                stroke.map((point: Point) => [point.x, point.y])
+            );
 
             if (rings && Array.isArray(rings)) {
                 for (let r = 0; r < rings.length; r++) {

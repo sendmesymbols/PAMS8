@@ -22,12 +22,12 @@ export interface DecoyMinedAreaFencedOptions {
 
 /**
  * DecoyMinedAreaFenced class for the MIL-STD-2525D Decoy (Phony) Mined Area, Fenced
- * obstacle symbol (25270901). Supports drawing types: Bezier curve (1), Polygon (2),
- * Rectangle (3). Non-obstacle (renders in the standard identity colour). The whole
- * symbol uses a dashed LINE STYLE (style = "dash") so the perimeter "wire" and the
- * centre decoy caret render dashed — the dashing comes from the line style, NOT from
- * chopped geometry. Around the boundary it places the fence pattern X-X-X-M-X-X-X
- * (an "M" every fourth glyph, the rest "X"). Copied from DecoyMinedArea.
+ * symbol (25270901). Supports drawing types: Bezier curve (1), Polygon (2), Rectangle (3).
+ * Non-obstacle (renders in the standard identity colour) with a SOLID line symbol.
+ * Around the boundary it places the fence pattern X-X-X-M-X-X-X (an "M" every fourth
+ * glyph, the rest "X"). Only the centre inverted-V (caret) is dashed, and that dashing
+ * is produced as real GEOMETRY — short stroked ring segments separated by empty gaps —
+ * NOT a dashed line style. Copied from DecoyMinedArea.
  */
 export class DecoyMinedAreaFenced {
     private view: MapView | SceneView;
@@ -82,13 +82,6 @@ export class DecoyMinedAreaFenced {
      */
     public init(options: DecoyMinedAreaFencedOptions, marker: SimpleLineSymbol): void {
         this._lineSym = marker.clone();
-
-        // Dashed LINE STYLE for the whole symbol — the perimeter "wire" between the
-        // X/M posts and the centre caret render dashed from the style itself.
-        if (this._lineSym && 'style' in this._lineSym) {
-            (this._lineSym as any).style = "dash";
-        }
-
         this._drawType = options.DRAW_TYPE || 1;
 
         // Set up event handlers
@@ -314,7 +307,7 @@ export class DecoyMinedAreaFenced {
      * Place the fence pattern X-X-X-M-X-X-X around the boundary: evenly-spaced glyphs
      * by arc length, an "M" every _fenceMEvery-th (anchored at the top-centre) and an
      * "X" otherwise. Each glyph is broken into 2-point segments (so multi-point strokes
-     * like "X" survive) and added as polygon rings — sharing the dashed line symbol.
+     * like "X" survive) and added as polygon rings — sharing the solid line symbol.
      */
     private createFenceMarkers(result: Polygon): Polygon {
         try {
@@ -368,8 +361,10 @@ export class DecoyMinedAreaFenced {
     }
 
     /**
-     * Add the decoy marker: an inverted-V (caret, apex up) in the centre. Drawn as solid
-     * geometry — the dashed LINE STYLE on the symbol renders it as a dashed line.
+     * Add the decoy marker: a dashed inverted-V (caret, apex up) in the centre. The dashes
+     * are real GEOMETRY — each dash is a short stroked ring with a gap of empty geometry
+     * after it — NOT a dashed line style, so the caret reads dashed while the rest of the
+     * symbol (boundary + X/M fence) stays solid.
      */
     private addDecoyMarker(result: Polygon): Polygon {
         try {
@@ -387,20 +382,62 @@ export class DecoyMinedAreaFenced {
             const cx = (extent.xmin + extent.xmax) / 2;
             const cy = (extent.ymin + extent.ymax) / 2;
 
+            // Inverted-V (apex up), centred, proportional to the area extent.
             const apex: number[] = [cx, cy + h * 0.18];
             const leftEnd: number[] = [cx - w * 0.27, cy - h * 0.10];
             const rightEnd: number[] = [cx + w * 0.27, cy - h * 0.10];
 
-            // Two legs as minimally-closed rings so each renders as a single stroked
-            // segment in the polygon outline (dashed via the symbol's line style).
-            result.addRing([leftEnd, apex, leftEnd]);
-            result.addRing([rightEnd, apex, rightEnd]);
+            // Dash period (dash + gap) and the "on" fraction, sized to the shape.
+            const period = Math.min(w, h) * 0.09;
+            const dutyOn = 0.55;
+
+            // Dash both legs from the outer end toward the apex so the pattern is
+            // mirror-symmetric about the vertical axis. Real geometry — NOT a line style.
+            const dashes: number[][][] = [
+                ...this.dashedSegments(leftEnd, apex, period, dutyOn),
+                ...this.dashedSegments(rightEnd, apex, period, dutyOn)
+            ];
+
+            for (let i = 0; i < dashes.length; i++) {
+                const d = dashes[i];
+                if (d && d.length === 2) {
+                    // Close the 2-point dash minimally so it renders as one stroked segment.
+                    result.addRing([d[0], d[1], d[0]]);
+                }
+            }
 
             return result;
         } catch (e) {
             console.log('Cannot create Decoy marker');
             return result;
         }
+    }
+
+    /**
+     * Break a line segment into dash sub-segments (real geometry). Returns an array of
+     * [start, end] point pairs; the gaps between consecutive dashes are left empty.
+     */
+    private dashedSegments(p1: number[], p2: number[], period: number, dutyOn: number): number[][][] {
+        const dx = p2[0] - p1[0];
+        const dy = p2[1] - p1[1];
+        const len = Math.hypot(dx, dy);
+        if (len === 0 || period <= 0) {
+            return [[p1, p2]];
+        }
+        const ux = dx / len;
+        const uy = dy / len;
+        const on = period * Math.max(0.05, Math.min(0.95, dutyOn));
+        const segs: number[][][] = [];
+        let s = 0;
+        while (s < len - 1e-6) {
+            const e = Math.min(s + on, len);
+            segs.push([
+                [p1[0] + ux * s, p1[1] + uy * s],
+                [p1[0] + ux * e, p1[1] + uy * e]
+            ]);
+            s += period;
+        }
+        return segs;
     }
 
     /**
