@@ -310,14 +310,35 @@ export class FriendlyDirOfMainAttk {
           secondLastPoint,
           outerLength,
         );
-        const innerHead = Shapes.createSimpleArrowHead(
-          innerTip,
-          secondLastPoint,
-          outerLength * 0.72,
-        );
+          const innerHead = Shapes.createSimpleArrowHead(
+            innerTip,
+            secondLastPoint,
+            outerLength * 0.72,
+          );
 
-        result.addPath(outerHead);
-        result.addPath(innerHead);
+          const shaftPath = result.paths[0];
+          if (shaftPath && shaftPath.length > 0) {
+            const first = shaftPath[0];
+            const last = shaftPath[shaftPath.length - 1];
+            const firstDistance = Math.hypot(
+              first[0] - lastPoint.x,
+              first[1] - lastPoint.y,
+            );
+            const lastDistance = Math.hypot(
+              last[0] - lastPoint.x,
+              last[1] - lastPoint.y,
+            );
+            const innerTipCoords = [innerTip.x, innerTip.y];
+
+            if (firstDistance < lastDistance) {
+              shaftPath[0] = innerTipCoords;
+            } else {
+              shaftPath[shaftPath.length - 1] = innerTipCoords;
+            }
+          }
+
+          result.addPath(outerHead);
+          result.addPath(innerHead);
         result.addPath([outerHead[0], innerHead[0]]);
         result.addPath([
           outerHead[outerHead.length - 1],
