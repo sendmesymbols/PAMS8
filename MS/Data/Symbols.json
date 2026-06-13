@@ -15115,6 +15115,30 @@
         "Cat": ["engr"],
         "Grp": [ "Control Measures","Obs Bypass Easy" ]
     },
+    "25270602": {
+        "Class": "ObstacleBypassDifficult",
+        "Description": "",
+        "Name": "Obs Bypass Difficult",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "isObstacle": "1",
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Obs Bypass Difficult" ]
+    },
+    "25270603": {
+        "Class": "ObstacleBypassImpossible",
+        "Description": "",
+        "Name": "Obs Bypass Impossible",
+        "Parameters": [],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [],
+        "isObstacle": "1",
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Obs Bypass Impossible" ]
+    },
     "25270701": {
         "Class": "AntiPersonnelMine",
         "Description": "",
@@ -18257,6 +18281,25 @@
         "Tools": [],
         "Cat": ["engr"],
         "Grp": [ "Control Measures","Tetrahedrons, Dragons Teeth - Movable and Prefabricated" ]
+    },
+    "25290100": {
+        "Class": "ObstacleLine",
+        "Description": "",
+        "Name": "Obstacle Line",
+        "Parameters": [{
+                "Name": "Draw Type",
+                "default": "1",
+                "description": "Possible Values 1 (Straight) and 2 (Curve)",
+                "paramThumbnail": "",
+                "value": "DRAW_TYPE"
+            }
+        ],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "isObstacle": "1",
+        "Cat": ["engr"],
+        "Grp": [ "Control Measures","Obstacle Line" ]
     },
     "25290201": {
         "Class": "DitchEmpty",

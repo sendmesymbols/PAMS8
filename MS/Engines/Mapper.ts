@@ -83,6 +83,7 @@ import FlightZone from "../Symbols/FlightZone.ts";  //Fixed
 import AirspaceArea from "../Symbols/AirspaceArea.ts";
 import PenetrationBox from "../Symbols/PenetrationBox.ts";  //Fixed
 import DitchEmpty from "../Symbols/DitchEmpty.ts";  //Fixed
+import ObstacleLine from "../Symbols/ObstacleLine.ts";
 import DitchFilledWithWater from "../Symbols/DitchFilledWithWater.ts";  //Fixed
 import SingleConcertina from "../Symbols/SingleConcertina.ts";  //Fixed
 import DoubleStrandConcertina from "../Symbols/DoubleStrandConcertina.ts";  //Fixed
@@ -139,6 +140,8 @@ import MovingConvoy from "../Symbols/MovingConvoy.ts"; //Fixed
 // Import the new TypeScript symbol classes
 
 import ObstacleBypassEasy from "../Symbols/ObstacleBypassEasy.ts"; //Fixed
+import ObstacleBypassDifficult from "../Symbols/ObstacleBypassDifficult.ts";
+import ObstacleBypassImpossible from "../Symbols/ObstacleBypassImpossible.ts";
 import Occupy from "../Symbols/Occupy.ts"; //Fixed
 import Penetrate from "../Symbols/Penetrate.ts"; //Fixed
 import SlowGo from "../Symbols/SlowGo.ts";  //Fixed
@@ -269,6 +272,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "Disrupt": Disrupt,
     "DisruptObstacleEffect": DisruptObstacleEffect,
     "DitchEmpty": DitchEmpty,
+    "ObstacleLine": ObstacleLine,
     "DitchFilledWithWater": DitchFilledWithWater,
     "DivAdmArea": DivAdmArea,
     "DivLineOfNoPen": DivLineOfNoPen,
@@ -298,6 +302,8 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "MovingConvoy": MovingConvoy,
     "NoGo": NoGo,
     "ObstacleBypassEasy": ObstacleBypassEasy,
+    "ObstacleBypassDifficult": ObstacleBypassDifficult,
+    "ObstacleBypassImpossible": ObstacleBypassImpossible,
     "Occupy": Occupy,
     "Penetrate": Penetrate,
     "PenetrationBox": PenetrationBox,
