@@ -64,6 +64,7 @@ import DrawingCueEngine from './DrawingCueEngine.ts';
 import MGRSEngine from './MGRSEngine.ts';
 import VisualizationEngine from './Visualization/VisualizationEngine.ts';
 import SectorDrawTool from './Visualization/SectorDrawTool.ts';
+import RouteProfileEngine from './RouteProfileEngine.ts';
 import EngineLogger from '../Support/EngineLogger';
 import type { DrawingCueOptions } from './DrawingCueEngine.ts';
 import type { MGRSEngineOptions } from './MGRSEngine.ts';
@@ -169,6 +170,7 @@ class SymbolEngine implements Evented {
   private _mgrsEngine: MGRSEngine | null = null;
   private _visualizationEngine: VisualizationEngine | null = null;
   private _sectorDrawTool: SectorDrawTool | null = null;
+  private _routeProfileEngine: RouteProfileEngine = new RouteProfileEngine(() => this.view);
   /** Optional adapter for the external pgRouting road-network service (intermittent). */
   private _roadNetworkEngine: RoadNetworkEngine | null = null;
   /** Trafficability / trafficability / route-planning widget over the road network. */
@@ -899,6 +901,14 @@ class SymbolEngine implements Evented {
         label: 'Add Threat Sector',
         icon: menuIcon('crosshair'),
         action: (graphic) => this.beginSectorDraw(graphic),
+        visible: () => (settingsData as any).features?.visualizationEngine === true,
+      },
+      {
+        id: 'route-elevation-profile',
+        label: 'Elevation Profile',
+        icon: menuIcon('navigation'),
+        visible: (graphic: Graphic) => graphic.geometry?.type === 'polyline',
+        action: (graphic) => this.showRouteProfile(graphic),
       },
       // ── Edit submenu (owned by EditEngine) ─────────────────────────
       ...this._editEngine.buildContextMenuItems(
@@ -1007,6 +1017,7 @@ class SymbolEngine implements Evented {
         label: 'Add Threat Sector',
         icon: menuIcon('crosshair'),
         action: (graphic) => this.beginSectorDraw(graphic),
+        visible: () => (settingsData as any).features?.visualizationEngine === true,
       },
     ];
 
@@ -1456,7 +1467,7 @@ class SymbolEngine implements Evented {
   }
 
   /** Start the interactive threat-sector draw, optionally seeded on a point graphic. */
-  public beginSectorDraw(center?: Graphic): void {
+  public beginSectorDraw(center?: Point | Graphic): void {
     this._sectorDrawTool?.begin(center);
   }
 
@@ -1476,6 +1487,19 @@ class SymbolEngine implements Evented {
   /** Clear the MGRS density heatmap. */
   public clearMgrsDensity(): void {
     this._visualizationEngine?.clearMgrsDensity();
+  }
+
+  /**
+   * Show the terrain elevation profile (distance vs elevation cross-section)
+   * for a route. Pass a polyline graphic or Polyline geometry.
+   */
+  public showRouteProfile(input: Graphic | Polyline): Promise<void> {
+    return this._routeProfileEngine.showProfile(input);
+  }
+
+  /** Remove the route elevation-profile panel. */
+  public clearRouteProfile(): void {
+    this._routeProfileEngine.clearProfile();
   }
 
   /** Access the RoadNetworkEngine â€” optional external routing/service-area adapter. */
