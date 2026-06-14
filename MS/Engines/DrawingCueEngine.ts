@@ -206,7 +206,7 @@ class DrawingCueEngine {
   private _closeCueEnabled: boolean = true;
   private _closeFirstVertex: Point | null = null;
   private _closeRingG: Graphic | null = null;
-  private static readonly CLOSE_PX = 16;
+  private static readonly CLOSE_PX = 16; // snap-to-close hotspot radius, CSS pixels
 
   // ── Magnetic compass child engine ──────────────────────────────────────────
   private _compass: MagneticCompass | null = null;
@@ -1307,7 +1307,8 @@ class DrawingCueEngine {
     }
     const screen = this._view.toScreen(this._closeFirstVertex);
     if (!screen) { this._clearCloseRing(); return; }
-    const rect = (this._view.container as HTMLElement).getBoundingClientRect();
+    const rect = this._resolveContainer()?.getBoundingClientRect();
+    if (!rect) { this._clearCloseRing(); return; }
     const px = e.clientX - rect.left;
     const py = e.clientY - rect.top;
     const dist = Math.hypot(px - screen.x, py - screen.y);
@@ -1329,19 +1330,20 @@ class DrawingCueEngine {
   }
 
   private _clearCloseRing(): void {
-    if (this._closeRingG && this._layer) this._layer.remove(this._closeRingG);
+    this._removeGraphic(this._closeRingG);
     this._closeRingG = null;
   }
 
   private _clearDrawingGraphics(): void {
     if (!this._layer) return;
-    for (const g of [this._rbLineG, this._rbLabelG, this._coordG]) {
+    for (const g of [this._rbLineG, this._rbLabelG, this._coordG, this._closeRingG]) {
       if (g) this._removeGraphic(g);
     }
     for (const g of [...this._guideGs, ...this._ringGs, ...this._protractorGs, ...this._needleGs]) this._removeGraphic(g);
     this._rbLineG      = null;
     this._rbLabelG     = null;
     this._coordG       = null;
+    this._closeRingG   = null;
     this._guideGs      = [];
     this._ringGs       = [];
     this._protractorGs = [];
