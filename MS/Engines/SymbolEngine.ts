@@ -63,6 +63,7 @@ import ProximityEngine from './ProximityEngine.ts';
 import DrawingCueEngine from './DrawingCueEngine.ts';
 import MGRSEngine from './MGRSEngine.ts';
 import VisualizationEngine from './Visualization/VisualizationEngine.ts';
+import SectorDrawTool from './Visualization/SectorDrawTool.ts';
 import EngineLogger from '../Support/EngineLogger';
 import type { DrawingCueOptions } from './DrawingCueEngine.ts';
 import type { MGRSEngineOptions } from './MGRSEngine.ts';
@@ -167,6 +168,7 @@ class SymbolEngine implements Evented {
   private _drawingCueEngine: DrawingCueEngine | null = null;
   private _mgrsEngine: MGRSEngine | null = null;
   private _visualizationEngine: VisualizationEngine | null = null;
+  private _sectorDrawTool: SectorDrawTool | null = null;
   /** Optional adapter for the external pgRouting road-network service (intermittent). */
   private _roadNetworkEngine: RoadNetworkEngine | null = null;
   /** Trafficability / trafficability / route-planning widget over the road network. */
@@ -198,6 +200,13 @@ class SymbolEngine implements Evented {
   /** While > 0, applyMorphixEdit() re-renders without pushing an undo entry — used by settings-driven bulk re-renders (e.g. global force-symbol resize). */
   private _suppressEditUndoCount = 0;
   private _lastCreatedGraphic: Graphic | null = null;
+
+  // Symbol instance for the in-flight INTERACTIVE draw (set in initialize() when
+  // !isPassive). Every symbol class registers click/double-click/pointer-move in
+  // its init() and only self-removes them on a COMPLETED draw, so an abandoned
+  // draw (re-pick / Escape / view switch) would leak those listeners + the
+  // instance. We deactivate() this on each of those paths.
+  private _activeDrawSymbol: any | null = null;
 
   // Snapshot of the SIDC/amplifier that belongs to the in-progress draw session.
   // Set when initialize() starts a new draw; read by drawSymEnd() so a rapid
@@ -566,6 +575,9 @@ class SymbolEngine implements Evented {
 
   onViewChanged(newView: MapView | SceneView) {
     console.log('SymbolEngine: Detected view change:', newView?.type);
+    // An in-flight interactive draw is bound to the OLD view — cancel it so its
+    // listeners (and the discarded-view reference) don't leak across the switch.
+    this._cancelActiveDraw();
     this._editEngine.deactivate();
     this._layerManager = GraphicsLayerManager.getInstance(newView);
     this._layerManager.initializeLayers();
@@ -594,6 +606,7 @@ class SymbolEngine implements Evented {
     this._mgrsEngine?.onViewChanged(newView);
     // Re-attach visualization engine to the new view
     this._visualizationEngine?.onViewChanged(newView);
+    this._sectorDrawTool?.onViewChanged(newView);
     // Re-attach road network engine (moves the optional roads layer to the new map)
     this._roadNetworkEngine?.onViewChanged(newView);
     // Re-attach trafficability widget (moves its analysis/marker/committed layers)
@@ -756,6 +769,7 @@ class SymbolEngine implements Evented {
     this._visualizationEngine.start(this.view);
     this._visualizationEngine.setOptions(vizCfg as VisualizationOptions);
     this._visualizationEngine.enable();
+    this._sectorDrawTool = new SectorDrawTool(() => this.view, this._visualizationEngine);
     this.emitEvent('visualizationEngineReady', { engine: this._visualizationEngine });
     console.info('[SymbolEngine] VisualizationEngine loaded');
   }
@@ -880,6 +894,12 @@ class SymbolEngine implements Evented {
         icon: menuIcon('trash'),
         action: (graphic) => this.removeGraphic(graphic),
       },
+      {
+        id: 'add-threat-sector',
+        label: 'Add Threat Sector',
+        icon: menuIcon('crosshair'),
+        action: (graphic) => this.beginSectorDraw(graphic),
+      },
       // ── Edit submenu (owned by EditEngine) ─────────────────────────
       ...this._editEngine.buildContextMenuItems(
         (graphic) => this.modifySymbol(graphic),
@@ -981,6 +1001,12 @@ class SymbolEngine implements Evented {
         shortcut: 'Del',
         icon: menuIcon('trash'),
         action: (graphic) => this.removeGraphic(graphic),
+      },
+      {
+        id: 'add-threat-sector',
+        label: 'Add Threat Sector',
+        icon: menuIcon('crosshair'),
+        action: (graphic) => this.beginSectorDraw(graphic),
       },
     ];
 
@@ -1109,7 +1135,20 @@ class SymbolEngine implements Evented {
    * SelectionEngine move) before starting a new one.  Must be called at the
    * top of every operation that begins an interactive workflow.
    */
+  /**
+   * Tear down any in-flight interactive draw so its view listeners (registered
+   * in the symbol's init()) don't leak when the draw is abandoned via re-pick,
+   * Escape, or a 2D/3D view switch. Null-guarded — safe to call when idle.
+   */
+  private _cancelActiveDraw(): void {
+    if (this._activeDrawSymbol) {
+      this._activeDrawSymbol.deactivate?.();
+      this._activeDrawSymbol = null;
+    }
+  }
+
   private _closeActiveWorkflow(): void {
+    this._cancelActiveDraw();
     this._editEngine.deactivate();
     this._selectionEngine.cancelMove();
   }
@@ -1414,6 +1453,29 @@ class SymbolEngine implements Evented {
   /** Access the VisualizationEngine â€” force overlays (rings, hull, grid, effects). */
   public get visualizationEngine(): VisualizationEngine | null {
     return this._visualizationEngine;
+  }
+
+  /** Start the interactive threat-sector draw, optionally seeded on a point graphic. */
+  public beginSectorDraw(center?: Graphic): void {
+    this._sectorDrawTool?.begin(center);
+  }
+
+  /** Clear all drawn threat sectors. */
+  public clearSectors(): void {
+    this._visualizationEngine?.clearSectors();
+  }
+
+  /**
+   * Shade MGRS grid cells by symbol density / force ratio.
+   * precision: 0 = 100 km, 1 = 10 km (default), 2 = 1 km. mode: "ratio" | "count".
+   */
+  public showMgrsDensity(opts?: { precision?: 0 | 1 | 2; mode?: "ratio" | "count" }): void {
+    this._visualizationEngine?.showMgrsDensity(opts);
+  }
+
+  /** Clear the MGRS density heatmap. */
+  public clearMgrsDensity(): void {
+    this._visualizationEngine?.clearMgrsDensity();
   }
 
   /** Access the RoadNetworkEngine â€” optional external routing/service-area adapter. */
@@ -1743,6 +1805,9 @@ class SymbolEngine implements Evented {
         this._continuousTimeoutId = null;
       }
       this._creationMode = value as 'single' | 'continuous';
+      // Switching back to single from the settings UI must also tear down the
+      // draw continuous mode already re-armed, not just stop future re-arms.
+      if (this._creationMode === 'single') this._disarmActiveDraw();
     }
 
     if (fullPath === 'ui.theme') {
@@ -1921,6 +1986,24 @@ class SymbolEngine implements Evented {
     }
     this._creationMode = mode;
     (settingsData as any).creationMode = mode;
+    // Reverting to single must also kill the draw that continuous mode already
+    // re-armed after the last symbol — otherwise the cursor keeps drawing.
+    if (mode === 'single') this._disarmActiveDraw();
+  }
+
+  /**
+   * Tear down the interactive draw session currently armed on the map and the
+   * overlays initialize() turned on for it (proximity / drawing cues / drawing
+   * flag). Continuous mode re-arms a fresh draw immediately after every symbol,
+   * so every path that leaves continuous mode must call this or the cursor
+   * stays live and the next click drops another unwanted symbol. Idempotent —
+   * safe to call when nothing is armed.
+   */
+  private _disarmActiveDraw(): void {
+    this._cancelActiveDraw();
+    this._selectionEngine?.setDrawing(false);
+    this._proximityEngine?.deactivate();
+    this._drawingCueEngine?.deactivate();
   }
 
   /** Stop continuous creation mode and revert to single. No-op if already single. */
@@ -1934,6 +2017,7 @@ class SymbolEngine implements Evented {
     (settingsData as any).creationMode = 'single';
     this._lastDrawEssentials = null;
     this._lastAmplifier = null;
+    this._disarmActiveDraw();
     this.emitEvent('creationModeChanged', { mode: 'single' });
     EngineLogger.success('Symbol Engine', 'Continuous mode stopped â€” reverted to single');
   }
@@ -2449,6 +2533,14 @@ class SymbolEngine implements Evented {
         const symbol = this.getSymbol(drawEssentials.IS_LINE);
         symbol.amplifier = amplifier;
 
+        // Track the in-flight interactive draw so an abandoned draw (re-pick /
+        // Escape / view switch) can deactivate() it and release its listeners.
+        // Passive (plan-load / programmatic) placements complete synchronously
+        // inside init(), so they don't need tracking here.
+        if (!isPassive) {
+          this._activeDrawSymbol = symbol;
+        }
+
         /*
                 // Set up event handlers
                 this.endEvent = symbol.on("onDrawEnd", (data: any) => this.drawSymEnd(data));
@@ -2623,6 +2715,17 @@ class SymbolEngine implements Evented {
             }
           }
           symbol.init(drawEssentials, marker);
+        }
+
+        // Passive placement (plan load / paste / programmatic) completes
+        // synchronously inside init() above. Some line/area symbol classes
+        // register their view listeners at the top of init() but their
+        // immediate-placement path clears only the preview graphic, not the
+        // listeners — release them here. deactivate() is null-guarded, only
+        // clears the preview + handlers (never the placed graphic), and is a
+        // no-op for classes that already cleaned up (UEI / tactical point).
+        if (isPassive) {
+          symbol.deactivate?.();
         }
       } else {
         console.warn(`Symbol data not found for SIDC part: ${symSet + reqSID}`);
