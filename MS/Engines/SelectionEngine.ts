@@ -4,7 +4,6 @@ import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import Color from "@arcgis/core/Color";
 import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
@@ -34,11 +33,7 @@ const LASSO_SYM = new SimpleFillSymbol({
 // ── Subtract (deselect) lasso polygon symbol ─────────────────────────────────
 const LASSO_SUBTRACT_SYM = new SimpleFillSymbol({
     color: new Color([220, 50, 50, 0.12]),
-    outline: new SimpleLineSymbol({
-        color: new Color([220, 50, 50, 0.9]),
-        width: 1.5,
-        style: "dash",
-    }),
+    outline: { color: new Color([220, 50, 50, 0.9]), width: 1.5, style: "dash" }
 });
 
 const CLONE_DRAG_LIVE_ANNOTATION_LIMIT = 25;
@@ -557,12 +552,17 @@ class SelectionEngine {
                     });
                 });
 
+                // In subtract mode the lasso reports the graphics it removed from the
+                // selection — only those actually selected, so the count is accurate and
+                // we don't fire spurious selectionChange events for unselected graphics.
+                let affected = hit;
                 if (opts?.subtract) {
-                    hit.forEach(g => this.deselectGraphic(g));
-                    if (hit.length > 0) {
+                    affected = hit.filter(g => this.isSelected(g));
+                    affected.forEach(g => this.deselectGraphic(g));
+                    if (affected.length > 0) {
                         EngineLogger.success(
                             'Selection Engine',
-                            `${hit.length} symbol${hit.length !== 1 ? 's' : ''} removed from selection`,
+                            `${affected.length} symbol${affected.length !== 1 ? 's' : ''} removed from selection`,
                         );
                     } else {
                         EngineLogger.nextStep('Selection Engine', 'No selected symbols inside the subtract area');
@@ -580,7 +580,7 @@ class SelectionEngine {
                     }
                 }
 
-                if (onComplete) onComplete(hit);
+                if (onComplete) onComplete(affected);
             }
 
             if (evt.state === "cancel") {
