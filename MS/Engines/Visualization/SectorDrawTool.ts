@@ -53,6 +53,8 @@ export default class SectorDrawTool {
     this._center = null;
     this._rangeKm = 0;
     this._sweep = 0;
+    this._azStart = 0;
+    this._lastAz = 0;
     this._handles.forEach(h => h.remove());
     this._handles = [];
     if (this._keyHandler) { document.removeEventListener("keydown", this._keyHandler); this._keyHandler = null; }
@@ -70,6 +72,8 @@ export default class SectorDrawTool {
 
   private _rangeKmTo(pt: Point): number {
     if (!this._center) return 0;
+    // .longitude/.latitude are populated for WebMercator (3857) and WGS84 points — the
+    // only spatial references this app uses — matching how the analysis engines read map points.
     const line = new Polyline({
       paths: [[[this._center.longitude as number, this._center.latitude as number],
                [pt.longitude as number, pt.latitude as number]]],
@@ -84,7 +88,7 @@ export default class SectorDrawTool {
     if (this._phase === "range") {
       this._rangeKm = this._rangeKmTo(pt);
       const az = GeoTools.bearing(this._center, pt);
-      this._viz.renderSectorPreview(this._center, this._rangeKm, az, az + 1);
+      this._viz.renderSectorPreview(this._center, this._rangeKm, az, az + 1); // 1° sliver: range-phase preview before the sweep begins
     } else if (this._phase === "sweep") {
       const az = GeoTools.bearing(this._center, pt);
       const d = ((az - this._lastAz + 540) % 360) - 180; // shortest signed step
@@ -100,13 +104,15 @@ export default class SectorDrawTool {
     if (!pt) return;
     if (this._phase === "range") {
       if (!this._center) { this._center = pt; return; } // first click sets center if not seeded
-      this._rangeKm = this._rangeKmTo(pt);
+      const km = this._rangeKmTo(pt);
+      if (!(km > 0.001)) return; // click on/near the center — ignore, stay in range phase
+      this._rangeKm = km;
       this._azStart = GeoTools.bearing(this._center, pt);
       this._lastAz = this._azStart;
       this._sweep = 0;
       this._phase = "sweep";
     } else if (this._phase === "sweep") {
-      if (!this._center) return;
+      if (!this._center) return; // defensive: sweep phase always has a center
       const { start, end } = this._clockwise(this._azStart, this._sweep);
       this._viz.clearSectorPreview();
       this._viz.showSector(this._center, { rangeKm: this._rangeKm, azStartDeg: start, azEndDeg: end });
