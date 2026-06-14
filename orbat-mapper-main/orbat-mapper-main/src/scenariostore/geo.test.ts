@@ -1,0 +1,361 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { useNewScenarioStore } from "@/scenariostore/newScenarioStore";
+import { useGeo } from "@/scenariostore/geo";
+import * as fileHandling from "@/importexport/fileHandling";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+function createUnitScenario() {
+  return {
+    id: "scenario-1",
+    type: "ORBAT-mapper",
+    version: "2.7.0",
+    name: "Scenario",
+    startTime: "2025-01-01T00:00:00Z",
+    sides: [
+      {
+        id: "side-1",
+        name: "Blue",
+        standardIdentity: "3",
+        symbolOptions: {},
+        subUnits: [],
+        groups: [
+          {
+            id: "group-1",
+            name: "Units",
+            symbolOptions: {},
+            subUnits: [
+              {
+                id: "unit-1",
+                name: "1st Unit",
+                sidc: "10031000000000000000",
+                location: [10, 60],
+                subUnits: [],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    events: [],
+    layers: [],
+    mapLayers: [],
+    settings: {
+      rangeRingGroups: [],
+      statuses: [],
+      supplyClasses: [],
+      supplyUoMs: [],
+      symbolFillColors: [],
+    },
+  } as any;
+}
+
+describe("scenario geo item accessors", () => {
+  it("keeps addUnitPosition redraw signal undo/redo aware", () => {
+    const store = useNewScenarioStore(createUnitScenario());
+    const geo = useGeo(store);
+    const before = store.state.unitStateCounter;
+
+    geo.addUnitPosition("unit-1", [11, 61]);
+
+    expect(store.state.unitStateCounter).toBe(before + 1);
+    expect(store.state.unitMap["unit-1"]._state?.location).toEqual([11, 61]);
+
+    store.undo();
+    expect(store.state.unitStateCounter).toBe(before);
+    expect(store.state.unitMap["unit-1"]._state?.location).toEqual([10, 60]);
+
+    store.redo();
+    expect(store.state.unitStateCounter).toBe(before + 1);
+    expect(store.state.unitMap["unit-1"]._state?.location).toEqual([11, 61]);
+  });
+
+  it("exposes layer-item accessors backed by the current feature store", () => {
+    const store = useNewScenarioStore({
+      id: "scenario-1",
+      type: "ORBAT-mapper",
+      version: "2.7.0",
+      name: "Scenario",
+      startTime: 0,
+      sides: [],
+      events: [],
+      layers: [
+        {
+          id: "layer-1",
+          name: "Features",
+          features: [
+            {
+              id: "feature-1",
+              type: "Feature",
+              geometry: { type: "Point", coordinates: [10, 60] },
+              properties: {},
+              meta: { type: "Point", name: "HQ" },
+              style: { showLabel: true },
+            },
+          ],
+        },
+      ],
+      mapLayers: [],
+      settings: {
+        rangeRingGroups: [],
+        statuses: [],
+        supplyClasses: [],
+        supplyUoMs: [],
+        symbolFillColors: [],
+      },
+    } as any);
+
+    const geo = useGeo(store);
+    const itemResult = geo.getLayerItemById("feature-1");
+    const fullItemsLayer = geo.getFullLayerItemsLayer("layer-1");
+    const geometryItemResult = geo.getGeometryLayerItemById("feature-1");
+
+    expect(itemResult.layerItem?.id).toBe("feature-1");
+    expect(itemResult.layer?.id).toBe("layer-1");
+    expect(geometryItemResult.layerItem).toEqual(itemResult.layerItem);
+    expect(fullItemsLayer?.items).toHaveLength(1);
+    expect(geo.layerItemsLayers.value[0].items).toHaveLength(1);
+    expect(geo.layersItems.value[0].items[0].id).toBe("feature-1");
+  });
+
+  it("retains and releases KMZ image cache for blob-backed KML map layers", () => {
+    const retainSpy = vi
+      .spyOn(fileHandling, "retainImageCache")
+      .mockImplementation(() => {});
+    const releaseSpy = vi
+      .spyOn(fileHandling, "releaseImageCache")
+      .mockImplementation(() => {});
+    const store = useNewScenarioStore({
+      id: "scenario-1",
+      type: "ORBAT-mapper",
+      version: "2.7.0",
+      name: "Scenario",
+      startTime: 0,
+      sides: [],
+      events: [],
+      layers: [],
+      mapLayers: [],
+      settings: {
+        rangeRingGroups: [],
+        statuses: [],
+        supplyClasses: [],
+        supplyUoMs: [],
+        symbolFillColors: [],
+      },
+    } as any);
+
+    const geo = useGeo(store);
+    const layer = geo.addMapLayer({
+      id: "kml-1",
+      type: "KMLLayer",
+      name: "KMZ",
+      url: "blob:kmz-layer",
+      extractStyles: true,
+      showPointNames: true,
+    });
+
+    expect(retainSpy).toHaveBeenCalledTimes(1);
+    geo.deleteMapLayer(layer.id);
+    expect(releaseSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not touch the KMZ image cache for remote KML map layers", () => {
+    const retainSpy = vi
+      .spyOn(fileHandling, "retainImageCache")
+      .mockImplementation(() => {});
+    const releaseSpy = vi
+      .spyOn(fileHandling, "releaseImageCache")
+      .mockImplementation(() => {});
+    const store = useNewScenarioStore({
+      id: "scenario-1",
+      type: "ORBAT-mapper",
+      version: "2.7.0",
+      name: "Scenario",
+      startTime: 0,
+      sides: [],
+      events: [],
+      layers: [],
+      mapLayers: [],
+      settings: {
+        rangeRingGroups: [],
+        statuses: [],
+        supplyClasses: [],
+        supplyUoMs: [],
+        symbolFillColors: [],
+      },
+    } as any);
+
+    const geo = useGeo(store);
+    const layer = geo.addMapLayer({
+      id: "kml-2",
+      type: "KMLLayer",
+      name: "Remote KML",
+      url: "https://example.com/layer.kml",
+      extractStyles: true,
+      showPointNames: true,
+    });
+
+    expect(retainSpy).not.toHaveBeenCalled();
+    geo.deleteMapLayer(layer.id);
+    expect(releaseSpy).not.toHaveBeenCalled();
+  });
+
+  it("keeps the item event hook aligned with the existing feature event hook", () => {
+    const store = useNewScenarioStore({
+      id: "scenario-1",
+      type: "ORBAT-mapper",
+      version: "2.7.0",
+      name: "Scenario",
+      startTime: 0,
+      sides: [],
+      events: [],
+      layers: [{ id: "layer-1", name: "Features", features: [] }],
+      mapLayers: [],
+      settings: {
+        rangeRingGroups: [],
+        statuses: [],
+        supplyClasses: [],
+        supplyUoMs: [],
+        symbolFillColors: [],
+      },
+    } as any);
+
+    const geo = useGeo(store);
+    expect(geo.onLayerItemEvent).toBe(geo.onFeatureLayerEvent);
+  });
+
+  it("replaces geometryMeta on update so a transformed rectangle drops its shape marker", () => {
+    const store = useNewScenarioStore({
+      id: "scenario-1",
+      type: "ORBAT-mapper",
+      version: "3.2.0",
+      name: "Scenario",
+      startTime: 0,
+      sides: [],
+      events: [],
+      layers: [
+        {
+          id: "layer-1",
+          kind: "overlay",
+          name: "Features",
+          items: [
+            {
+              kind: "geometry",
+              id: "rect-1",
+              geometry: {
+                type: "Polygon",
+                coordinates: [
+                  [
+                    [0, 0],
+                    [2, 0],
+                    [2, 2],
+                    [0, 2],
+                    [0, 0],
+                  ],
+                ],
+              },
+              geometryMeta: { geometryKind: "Polygon", shape: "rectangle" },
+              style: {},
+            },
+          ],
+        },
+      ],
+      mapLayers: [],
+      settings: {
+        rangeRingGroups: [],
+        statuses: [],
+        supplyClasses: [],
+        supplyUoMs: [],
+        symbolFillColors: [],
+      },
+    } as any);
+
+    const geo = useGeo(store);
+    expect(geo.getGeometryLayerItemById("rect-1").layerItem?.geometryMeta).toEqual({
+      geometryKind: "Polygon",
+      shape: "rectangle",
+    });
+
+    // A transform replaces the geometry with a fresh, complete meta that has no
+    // shape — the result is no longer an axis-aligned rectangle.
+    geo.updateFeature("rect-1", {
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [0, 0],
+            [3, 1],
+            [2, 3],
+            [0, 0],
+          ],
+        ],
+      },
+      geometryMeta: { geometryKind: "Polygon" },
+    });
+
+    const updatedMeta = geo.getGeometryLayerItemById("rect-1").layerItem?.geometryMeta;
+    expect(updatedMeta).toEqual({ geometryKind: "Polygon" });
+    // toEqual ignores undefined keys, so assert the marker is actually absent.
+    expect(updatedMeta).not.toHaveProperty("shape");
+  });
+
+  it("creates patch-based geometry state entries at runtime", () => {
+    const store = useNewScenarioStore({
+      id: "scenario-1",
+      type: "ORBAT-mapper",
+      version: "3.0.0",
+      name: "Scenario",
+      startTime: 0,
+      sides: [],
+      events: [],
+      layers: [
+        {
+          id: "layer-1",
+          name: "Features",
+          items: [
+            {
+              kind: "geometry",
+              id: "feature-1",
+              type: "Feature",
+              geometry: { type: "Point", coordinates: [10, 60] },
+              properties: {},
+              meta: { type: "Point", name: "HQ" },
+              style: {},
+            },
+          ],
+        },
+      ],
+      mapLayers: [],
+      settings: {
+        rangeRingGroups: [],
+        statuses: [],
+        supplyClasses: [],
+        supplyUoMs: [],
+        symbolFillColors: [],
+      },
+    } as any);
+
+    const geo = useGeo(store);
+    geo.addFeatureStateGeometry("feature-1", {
+      type: "Point",
+      coordinates: [11, 61],
+    });
+
+    const feature = geo.getGeometryLayerItemById("feature-1").layerItem;
+    expect(feature?.state).toEqual([
+      {
+        id: expect.any(String),
+        t: 0,
+        patch: {
+          geometry: { type: "Point", coordinates: [11, 61] },
+        },
+      },
+    ]);
+    expect(feature?._state).toMatchObject({
+      t: 0,
+      geometry: { type: "Point", coordinates: [11, 61] },
+    });
+  });
+});

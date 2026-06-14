@@ -48,6 +48,7 @@ export interface KeyboardShortcutDeps {
  *   I           Show symbol details
  *   C           Center on graphic
  *   L           Lasso select (or cancel active lasso)
+ *   Alt+L       Subtract lasso — remove enclosed symbols from selection
  *   Ctrl+Z      Undo
  *   Ctrl+Y / Ctrl+Shift+Z   Redo
  *   Ctrl+C      Copy
@@ -194,7 +195,13 @@ export default class KeyboardShortcutManager {
       case 'l':
       case 'L':
         e.preventDefault();
-        if (this.deps.selectionEngine.isLassoActive) {
+        if (e.altKey) {
+          if (this.deps.selectionEngine.isLassoActive) {
+            this.deps.selectionEngine.cancelLasso();
+          } else {
+            this.deps.selectionEngine.lassoSelect({ subtract: true });
+          }
+        } else if (this.deps.selectionEngine.isLassoActive) {
           this.deps.selectionEngine.cancelLasso();
         } else {
           this.deps.closeActiveWorkflow();

@@ -1,0 +1,713 @@
+<script setup lang="ts">
+import PanelHeading from "@/components/PanelHeading.vue";
+import { injectStrict, sortBy } from "@/utils";
+import { activeScenarioKey } from "@/components/injects";
+import { computed, ref, watchEffect } from "vue";
+import { Sidc } from "@/symbology/sidc";
+import { useSelectedItems } from "@/stores/selectedStore";
+import {
+  echelonValues,
+  HQTFDummyValues,
+  standardIdentityValues,
+  statusValues,
+} from "@/symbology/values";
+import type { NUnit } from "@/types/internalModels";
+import { useSymbologyData } from "@/composables/symbolData";
+import FilterTree, {
+  type NestedUnitStatItem,
+} from "@/modules/scenarioeditor/FilterTree.vue";
+import { IconCollapseAll, IconExpandAll } from "@iconify-prerendered/vue-mdi";
+import IconButton from "@/components/IconButton.vue";
+import { Button } from "@/components/ui/button";
+import NewAccordionPanel from "@/components/NewAccordionPanel.vue";
+import { Badge } from "@/components/ui/badge";
+import { getFullUnitSidc } from "@/symbology/helpers.ts";
+
+const VISIBILITY_INITIAL_LOCATION_KEY = "visibility-initial-location";
+const VISIBILITY_CURRENT_LOCATION_KEY = "visibility-current-location";
+const VISIBILITY_HAS_LOCATIONS_KEY = "visibility-has-locations";
+const VISIBILITY_NO_LOCATIONS_KEY = "visibility-no-locations";
+const GENERIC_FILTER_SIDC = "10031000100000000000";
+
+const {
+  store: { state },
+} = injectStrict(activeScenarioKey);
+
+const { symbology, resolveIconLabel, resolveModifierLabel, loadData } =
+  useSymbologyData();
+
+// Trigger the lazy symbology load so labels resolve against the selected standard.
+loadData();
+
+const sideTree = ref<NestedUnitStatItem[]>([]);
+const emtTree = ref<NestedUnitStatItem[]>([]);
+const iconTree = ref<NestedUnitStatItem[]>([]);
+const modifierTree = ref<NestedUnitStatItem[]>([]);
+const statusTree = ref<NestedUnitStatItem[]>([]);
+const sidTree = ref<NestedUnitStatItem[]>([]);
+const visibilityTree = ref<NestedUnitStatItem[]>([]);
+const { selectedUnitIds } = useSelectedItems();
+
+const excludedKeys = ref<Set<string>>(new Set());
+const expandedKeys = ref<string[]>([]);
+const flatStats = ref<Record<string, number>>({});
+
+const panelsOpen = ref({
+  commandLevel: false,
+  mainIcon: true,
+  side: false,
+  visibility: false,
+  identity: false,
+  status: false,
+  modifiers: false,
+});
+
+const isAnyPanelOpen = computed(() => Object.values(panelsOpen.value).some((v) => v));
+
+function collapseAll() {
+  Object.keys(panelsOpen.value).forEach((key) => {
+    panelsOpen.value[key as keyof typeof panelsOpen.value] = false;
+  });
+}
+
+function expandAll() {
+  Object.keys(panelsOpen.value).forEach((key) => {
+    panelsOpen.value[key as keyof typeof panelsOpen.value] = true;
+  });
+}
+
+watchEffect(() => {
+  // Track the lazy symbology data so the trees recompute once it loads and the
+  // labels resolve against the selected standard.
+  void symbology.value;
+  const stats: Record<string, number> = {};
+  const sidStatItems: NestedUnitStatItem[] = [];
+  const sideStatItems: NestedUnitStatItem[] = [];
+  const emtStatItems: NestedUnitStatItem[] = [];
+  const iconStatItems: NestedUnitStatItem[] = [];
+  const modifierStatItems: NestedUnitStatItem[] = [];
+  const statusStatItems: NestedUnitStatItem[] = [];
+  Object.values(state.unitMap).forEach((unit) => {
+    const {
+      sideKey,
+      sideGroupKey,
+      emtKey,
+      symbolSetKey,
+      entityKey,
+      entityTypeKey,
+      mod1Key,
+      mod2Key,
+      modSymbolSetKey,
+      statusKey,
+      hqtfdKey,
+      sidKey,
+    } = updateUnitStats(unit, stats);
+
+    const iconSidc = new Sidc(getFullUnitSidc(unit.sidc));
+    const originalEmt = iconSidc.emt;
+    const originalMod1 = iconSidc.modifierOne;
+    const originalMod2 = iconSidc.modifierTwo;
+    iconSidc.emt = "00";
+    iconSidc.hqtfd = "0";
+    iconSidc.standardIdentity = "3";
+    iconSidc.entitySubType = "00";
+    iconSidc.modifierOne = "00";
+    iconSidc.modifierTwo = "00";
+    const sidc = iconSidc.toString();
+    iconSidc.mainIcon = "000000";
+    const sidcSymbolSet = iconSidc.toString();
+    iconSidc.modifierOne = originalMod1;
+    iconSidc.modifierTwo = originalMod2;
+    iconSidc.modifierOne = "00";
+    iconSidc.modifierTwo = "00";
+    iconSidc.emt = originalEmt;
+    const sidcEmt = iconSidc.toString();
+    if (stats[sideKey] === 1) {
+      sideStatItems.push({
+        key: sideKey,
+        label: getSideLabel(unit._sid),
+        sidc: sidc,
+      });
+    }
+    if (stats[sideGroupKey] === 1) {
+      const sideItem = sideStatItems.find((item) => item.key === sideKey);
+      if (sideItem) {
+        const children = sideItem.children || [];
+        if (unit._gid)
+          children.push({
+            key: sideGroupKey,
+            label: getSideGroupLabel(unit._gid),
+            sidc: "10031000100000000000",
+          });
+
+        sideItem.children = children;
+        sideItem.sidc = "10031000100000000000";
+      }
+    }
+    if (stats[emtKey] === 1) {
+      emtStatItems.push({ key: emtKey, label: getEchelonLabel(emtKey), sidc: sidcEmt });
+    }
+    if (stats[symbolSetKey] === 1) {
+      const symbolSetLabel = resolveIconLabel({ symbolSet: symbolSetKey });
+      iconStatItems.push({
+        key: symbolSetKey,
+        label: symbolSetLabel,
+        sidc: sidcSymbolSet,
+      });
+      modifierStatItems.push({
+        key: modSymbolSetKey,
+        label: symbolSetLabel,
+        sidc: sidcSymbolSet,
+      });
+    }
+    if (stats[entityKey] === 1) {
+      const iconItem = iconStatItems.find((item) => item.key === symbolSetKey);
+      if (iconItem) {
+        const children = iconItem.children || [];
+        children.push({
+          key: entityKey,
+          label: resolveIconLabel({
+            symbolSet: symbolSetKey,
+            entity: entityKey.split("-")[1],
+          }),
+          sidc: sidc,
+        });
+        iconItem.children = sortBy(children, "label");
+      }
+    }
+    if (stats[entityTypeKey] === 1) {
+      const entityItem = iconStatItems
+        .find((item) => item.key === symbolSetKey)
+        ?.children?.find((item) => item.key === entityKey);
+      if (entityItem) {
+        const children = entityItem.children || [];
+        children.push({
+          key: entityTypeKey,
+          label: resolveIconLabel({
+            symbolSet: symbolSetKey,
+            entity: entityKey.split("-")[1],
+            entityType: entityTypeKey.split("-")[2],
+          }),
+          sidc: sidc,
+        });
+        entityItem.children = sortBy(children, "label");
+      }
+    }
+    if (stats[mod1Key] === 1) {
+      const modifierItem = modifierStatItems.find((item) => item.key === modSymbolSetKey);
+      if (modifierItem) {
+        const children = modifierItem.children || [];
+        const sidc = new Sidc(sidcSymbolSet);
+        sidc.modifierOne = mod1Key.split("-")[2];
+
+        children.push({
+          key: mod1Key,
+          label: resolveModifierLabel({
+            symbolSet: symbolSetKey,
+            mod1: mod1Key.split("-")[2],
+          }),
+          sidc: sidc.toString(),
+        });
+        modifierItem.children = sortBy(children, "label");
+      }
+    }
+    if (stats[mod2Key] === 1) {
+      const modifierItem = modifierStatItems.find((item) => item.key === modSymbolSetKey);
+      if (modifierItem) {
+        const children = modifierItem.children || [];
+        const sidc = new Sidc(sidcSymbolSet);
+        sidc.modifierTwo = mod2Key.split("-")[2];
+        children.push({
+          key: mod2Key,
+          label: resolveModifierLabel({
+            symbolSet: symbolSetKey,
+            mod2: mod2Key.split("-")[2],
+          }),
+          sidc: sidc.toString(),
+        });
+        modifierItem.children = sortBy(children, "label");
+      }
+    }
+    if (stats[statusKey] === 1) {
+      const tmpSidc = new Sidc("10031000100000000000");
+      const statusCode = statusKey.split("-")[1];
+      tmpSidc.status = statusCode;
+      statusStatItems.push({
+        key: statusKey,
+        label: getStatusLabel(statusCode),
+        sidc: tmpSidc.toString(),
+      });
+    }
+    if (stats[hqtfdKey] === 1) {
+      const tmpSidc = new Sidc("10031000100000000000");
+      const hqtfdCode = hqtfdKey.split("-")[1];
+      tmpSidc.hqtfd = hqtfdCode;
+      statusStatItems.push({
+        key: hqtfdKey,
+        label: getHqtfdLabel(hqtfdCode),
+        sidc: tmpSidc.toString(),
+      });
+    }
+
+    if (stats[sidKey] === 1) {
+      const tmpSidc = new Sidc("10031000000000000000");
+      const sidCode = sidKey.split("-")[1];
+      tmpSidc.standardIdentity = sidCode;
+      sidStatItems.push({
+        key: sidKey,
+        label: getSidLabel(sidCode),
+        sidc: tmpSidc.toString(),
+      });
+    }
+  });
+
+  flatStats.value = stats;
+  visibilityTree.value = [
+    {
+      key: VISIBILITY_CURRENT_LOCATION_KEY,
+      label: "Has location at current time",
+      sidc: GENERIC_FILTER_SIDC,
+    },
+    {
+      key: VISIBILITY_HAS_LOCATIONS_KEY,
+      label: "Has locations",
+      sidc: GENERIC_FILTER_SIDC,
+    },
+    {
+      key: VISIBILITY_NO_LOCATIONS_KEY,
+      label: "No locations at all",
+      sidc: GENERIC_FILTER_SIDC,
+    },
+    {
+      key: VISIBILITY_INITIAL_LOCATION_KEY,
+      label: "Has initial location",
+      sidc: GENERIC_FILTER_SIDC,
+    },
+  ];
+  stats[VISIBILITY_INITIAL_LOCATION_KEY] = stats[VISIBILITY_INITIAL_LOCATION_KEY] || 0;
+  stats[VISIBILITY_CURRENT_LOCATION_KEY] = stats[VISIBILITY_CURRENT_LOCATION_KEY] || 0;
+  stats[VISIBILITY_HAS_LOCATIONS_KEY] = stats[VISIBILITY_HAS_LOCATIONS_KEY] || 0;
+  stats[VISIBILITY_NO_LOCATIONS_KEY] = stats[VISIBILITY_NO_LOCATIONS_KEY] || 0;
+  sideTree.value = sortBy(sideStatItems, "label");
+  emtTree.value = sortBy(emtStatItems, "label");
+  iconTree.value = sortBy(iconStatItems, "label");
+  modifierTree.value = sortBy(
+    modifierStatItems.filter((i) => i.children?.length),
+    "label",
+  );
+  statusTree.value = sortBy(statusStatItems, "label");
+  sidTree.value = sortBy(sidStatItems, "label");
+});
+
+const selectedStats = computed(() => {
+  const stats: Record<string, number> = {};
+  selectedUnitIds.value.forEach((unitId) => {
+    updateUnitStats(unitId, stats);
+  });
+  return stats;
+});
+
+function updateUnitStats(unitOrUnitId: string | NUnit, stats: Record<string, number>) {
+  const unit =
+    typeof unitOrUnitId === "string" ? state.unitMap[unitOrUnitId] : unitOrUnitId;
+  const keys = createKeys(unit);
+  const {
+    symbolSetKey,
+    entityKey,
+    entityTypeKey,
+    emtKey,
+    sideKey,
+    sideGroupKey,
+    mod1Key,
+    mod2Key,
+    modSymbolSetKey,
+    statusKey,
+    hqtfdKey,
+    sidKey,
+    initialLocationKey,
+    currentLocationKey,
+    hasLocationsKey,
+    noLocationsKey,
+  } = keys;
+  stats[symbolSetKey] = (stats[symbolSetKey] || 0) + 1;
+  stats[entityKey] = (stats[entityKey] || 0) + 1;
+  stats[entityTypeKey] = (stats[entityTypeKey] || 0) + 1;
+  stats[emtKey] = (stats[emtKey] || 0) + 1;
+  stats[sideKey] = (stats[sideKey] || 0) + 1;
+  stats[sideGroupKey] = (stats[sideGroupKey] || 0) + 1;
+  stats[modSymbolSetKey] = (stats[modSymbolSetKey] || 0) + 1;
+  stats[statusKey] = (stats[statusKey] || 0) + 1;
+  stats[sidKey] = (stats[sidKey] || 0) + 1;
+  if (initialLocationKey)
+    stats[initialLocationKey] = (stats[initialLocationKey] || 0) + 1;
+  if (currentLocationKey)
+    stats[currentLocationKey] = (stats[currentLocationKey] || 0) + 1;
+  if (hasLocationsKey) stats[hasLocationsKey] = (stats[hasLocationsKey] || 0) + 1;
+  if (noLocationsKey) stats[noLocationsKey] = (stats[noLocationsKey] || 0) + 1;
+  if (!hqtfdKey.endsWith("0")) stats[hqtfdKey] = (stats[hqtfdKey] || 0) + 1;
+  if (!mod1Key.endsWith("00")) stats[mod1Key] = (stats[mod1Key] || 0) + 1;
+  if (!mod2Key.endsWith("00")) stats[mod2Key] = (stats[mod2Key] || 0) + 1;
+  return keys;
+}
+
+function createKeys(unit: NUnit) {
+  const sidc = new Sidc(getFullUnitSidc(unit.sidc));
+  const sidKey = `sid-${sidc.standardIdentity}`;
+  const symbolSetKey = `${sidc.symbolSet}`;
+  const entityKey = `${sidc.symbolSet}-${sidc.entity}`;
+  const entityTypeKey = `${sidc.symbolSet}-${sidc.entity}-${sidc.entityType}`;
+  const emtKey = `emt-${sidc.emt}`;
+  const sideKey = `side-${unit._sid}`;
+  const sideGroupKey = `side-${unit._sid}-${unit._gid}`;
+  const modSymbolSetKey = `mod-${sidc.symbolSet}`;
+  const mod1Key = `mod1-${symbolSetKey}-${sidc.modifierOne}`;
+  const mod2Key = `mod2-${symbolSetKey}-${sidc.modifierTwo}`;
+  const statusKey = `status-${sidc.status}`;
+  const hqtfdKey = `hqtfd-${sidc.hqtfd}`;
+  const hasInitialLocation = Boolean(unit.location);
+  const hasCurrentLocation = Boolean(unit._state?.location);
+  const hasAnyStateLocation = Boolean(unit.state?.some((s) => !!s.location));
+  const hasLocations = hasInitialLocation || hasAnyStateLocation;
+  const hasNoLocations = !hasLocations;
+  const initialLocationKey = hasInitialLocation
+    ? VISIBILITY_INITIAL_LOCATION_KEY
+    : undefined;
+  const currentLocationKey = hasCurrentLocation
+    ? VISIBILITY_CURRENT_LOCATION_KEY
+    : undefined;
+  const hasLocationsKey = hasLocations ? VISIBILITY_HAS_LOCATIONS_KEY : undefined;
+  const noLocationsKey = hasNoLocations ? VISIBILITY_NO_LOCATIONS_KEY : undefined;
+  return {
+    sidKey,
+    symbolSetKey,
+    entityKey,
+    entityTypeKey,
+    emtKey,
+    sideKey,
+    sideGroupKey,
+    modSymbolSetKey,
+    mod1Key,
+    mod2Key,
+    statusKey,
+    hqtfdKey,
+    initialLocationKey,
+    currentLocationKey,
+    hasLocationsKey,
+    noLocationsKey,
+  };
+}
+
+function selectByKey(key: string) {
+  Object.values(state.unitMap).forEach((unit) => {
+    const {
+      symbolSetKey,
+      entityKey,
+      entityTypeKey,
+      emtKey,
+      sideKey,
+      sideGroupKey,
+      modSymbolSetKey,
+      mod1Key,
+      mod2Key,
+      statusKey,
+      hqtfdKey,
+      sidKey,
+      initialLocationKey,
+      currentLocationKey,
+      hasLocationsKey,
+      noLocationsKey,
+    } = createKeys(unit);
+
+    if (
+      excludedKeys.value.has(symbolSetKey) ||
+      excludedKeys.value.has(entityKey) ||
+      excludedKeys.value.has(entityTypeKey) ||
+      excludedKeys.value.has(emtKey) ||
+      excludedKeys.value.has(sideKey) ||
+      excludedKeys.value.has(sideGroupKey) ||
+      excludedKeys.value.has(modSymbolSetKey) ||
+      excludedKeys.value.has(mod1Key) ||
+      excludedKeys.value.has(mod2Key) ||
+      excludedKeys.value.has(statusKey) ||
+      excludedKeys.value.has(hqtfdKey) ||
+      excludedKeys.value.has(sidKey) ||
+      (!!initialLocationKey && excludedKeys.value.has(initialLocationKey)) ||
+      (!!currentLocationKey && excludedKeys.value.has(currentLocationKey)) ||
+      (!!hasLocationsKey && excludedKeys.value.has(hasLocationsKey)) ||
+      (!!noLocationsKey && excludedKeys.value.has(noLocationsKey))
+    ) {
+      return;
+    }
+    if (key === symbolSetKey) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === entityKey) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === entityTypeKey) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === emtKey) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === sideKey) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === sideGroupKey && !excludedKeys.value.has(sideGroupKey)) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === modSymbolSetKey) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === mod1Key) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === mod2Key) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === statusKey) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === hqtfdKey) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === sidKey) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === initialLocationKey) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === currentLocationKey) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === hasLocationsKey) {
+      selectedUnitIds.value.add(unit.id);
+    } else if (key === noLocationsKey) {
+      selectedUnitIds.value.add(unit.id);
+    }
+  });
+}
+
+function clearByKey(key: string) {
+  selectedUnitIds.value.forEach((unitId) => {
+    const unit = state.unitMap[unitId];
+    const {
+      symbolSetKey,
+      entityKey,
+      entityTypeKey,
+      emtKey,
+      sideKey,
+      sideGroupKey,
+      mod2Key,
+      mod1Key,
+      modSymbolSetKey,
+      statusKey,
+      hqtfdKey,
+      sidKey,
+      initialLocationKey,
+      currentLocationKey,
+      hasLocationsKey,
+      noLocationsKey,
+    } = createKeys(unit);
+    if (key === symbolSetKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === entityKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === entityTypeKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === emtKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === sideKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === sideGroupKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === mod1Key) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === mod2Key) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === modSymbolSetKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === statusKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === hqtfdKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === sidKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === initialLocationKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === currentLocationKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === hasLocationsKey) {
+      selectedUnitIds.value.delete(unit.id);
+    } else if (key === noLocationsKey) {
+      selectedUnitIds.value.delete(unit.id);
+    }
+  });
+}
+
+function getEchelonLabel(echelon: string) {
+  if (echelon.startsWith("emt-")) {
+    const [, nechelon] = echelon.split("-");
+    return echelonValues.find((v) => v.code === nechelon)?.text || echelon;
+  }
+  return echelonValues.find((v) => v.code === echelon)?.text || echelon;
+}
+
+function getStatusLabel(code: string) {
+  return statusValues.find((v) => v.code === code)?.text || code;
+}
+
+function getHqtfdLabel(code: string) {
+  return HQTFDummyValues.find((v) => v.code === code)?.text || code;
+}
+
+function getSidLabel(code: string) {
+  return standardIdentityValues.find((v) => v.code === code)?.text || code;
+}
+
+function getSideLabel(sideId: string) {
+  return state.sideMap[sideId]?.name || sideId;
+}
+
+function getSideGroupLabel(sideGroupId: string) {
+  return state.sideGroupMap[sideGroupId]?.name || sideGroupId;
+}
+
+function onSelect(event: CustomEvent<{ value: { key: string } }>) {
+  const key = event.detail.value.key as string;
+
+  if (selectedStats.value[key]) {
+    clearByKey(key);
+  } else {
+    selectByKey(key);
+  }
+}
+
+function expandAllIcons() {
+  const keys = Object.keys(flatStats.value).filter((key) => !key.startsWith("side-"));
+  const expandedSideKeys = keys.filter((key) => key.startsWith("side-"));
+  if (expandedKeys.value.length - expandedSideKeys.length === keys.length) {
+    expandedKeys.value = [];
+  } else {
+    expandedKeys.value = keys;
+  }
+}
+</script>
+<template>
+  <div class="px-4">
+    <header
+      class="bg-sidebar sticky top-0 z-10 -mx-4 flex h-12 items-center justify-between px-4 py-2"
+    >
+      <PanelHeading>Select units</PanelHeading>
+      <div class="flex items-center space-x-1">
+        <IconButton
+          v-if="isAnyPanelOpen"
+          title="Collapse all filter sections"
+          @click="collapseAll()"
+        >
+          <IconCollapseAll class="h-5 w-5" />
+        </IconButton>
+        <IconButton v-else title="Expand all filter sections" @click="expandAll()">
+          <IconExpandAll class="h-5 w-5" />
+        </IconButton>
+        <Button
+          v-if="excludedKeys.size"
+          variant="outline"
+          size="sm"
+          @click="excludedKeys.clear()"
+          >Clear excluded
+          <Badge variant="secondary">{{ excludedKeys.size }}</Badge></Button
+        >
+        <Button
+          v-if="selectedUnitIds.size"
+          variant="outline"
+          size="sm"
+          @click="selectedUnitIds.clear()"
+          >Clear selected
+          <Badge variant="secondary">{{ selectedUnitIds.size }}</Badge></Button
+        >
+      </div>
+    </header>
+    <NewAccordionPanel label="Command level" v-model="panelsOpen.commandLevel">
+      <FilterTree
+        :tree="emtTree"
+        v-model:expandedKeys="expandedKeys"
+        :stats="flatStats"
+        :selectedStats="selectedStats"
+        :excludedKeys="excludedKeys"
+        @select="onSelect"
+        @clear="clearByKey"
+        @exclude="excludedKeys.add($event)"
+        @clearExclude="excludedKeys.delete($event)"
+      />
+    </NewAccordionPanel>
+    <NewAccordionPanel label="Main unit icon" v-model="panelsOpen.mainIcon">
+      <template #header
+        ><IconButton title="Expand all icons" @click.stop="expandAllIcons()"
+          ><IconExpandAll /></IconButton
+      ></template>
+      <FilterTree
+        :tree="iconTree"
+        v-model:expandedKeys="expandedKeys"
+        :stats="flatStats"
+        :selectedStats="selectedStats"
+        :excludedKeys="excludedKeys"
+        @select="onSelect"
+        @clear="clearByKey"
+        @exclude="excludedKeys.add($event)"
+        @clearExclude="excludedKeys.delete($event)"
+      />
+    </NewAccordionPanel>
+    <NewAccordionPanel label="Side" v-model="panelsOpen.side">
+      <FilterTree
+        :tree="sideTree"
+        v-model:expandedKeys="expandedKeys"
+        :stats="flatStats"
+        :selectedStats="selectedStats"
+        :excludedKeys="excludedKeys"
+        @select="onSelect"
+        @clear="clearByKey"
+        @exclude="excludedKeys.add($event)"
+        @clearExclude="excludedKeys.delete($event)"
+      />
+    </NewAccordionPanel>
+    <NewAccordionPanel label="Map visibility" v-model="panelsOpen.visibility">
+      <FilterTree
+        :tree="visibilityTree"
+        v-model:expandedKeys="expandedKeys"
+        :stats="flatStats"
+        :selectedStats="selectedStats"
+        :excludedKeys="excludedKeys"
+        @select="onSelect"
+        @clear="clearByKey"
+        @exclude="excludedKeys.add($event)"
+        @clearExclude="excludedKeys.delete($event)"
+      />
+    </NewAccordionPanel>
+    <NewAccordionPanel label="Standard identity" v-model="panelsOpen.identity">
+      <FilterTree
+        :tree="sidTree"
+        v-model:expandedKeys="expandedKeys"
+        :stats="flatStats"
+        :selectedStats="selectedStats"
+        :excludedKeys="excludedKeys"
+        @select="onSelect"
+        @clear="clearByKey"
+        @exclude="excludedKeys.add($event)"
+        @clearExclude="excludedKeys.delete($event)"
+      />
+    </NewAccordionPanel>
+    <NewAccordionPanel label="Status" v-model="panelsOpen.status">
+      <FilterTree
+        :tree="statusTree"
+        v-model:expandedKeys="expandedKeys"
+        :stats="flatStats"
+        :selectedStats="selectedStats"
+        :excludedKeys="excludedKeys"
+        @select="onSelect"
+        @clear="clearByKey"
+        @exclude="excludedKeys.add($event)"
+        @clearExclude="excludedKeys.delete($event)"
+      />
+    </NewAccordionPanel>
+    <NewAccordionPanel label="Symbol modifiers" v-model="panelsOpen.modifiers">
+      <FilterTree
+        :tree="modifierTree"
+        v-model:expandedKeys="expandedKeys"
+        :stats="flatStats"
+        :selectedStats="selectedStats"
+        :excludedKeys="excludedKeys"
+        @select="onSelect"
+        @clear="clearByKey"
+        @exclude="excludedKeys.add($event)"
+        @clearExclude="excludedKeys.delete($event)"
+      />
+    </NewAccordionPanel>
+  </div>
+</template>

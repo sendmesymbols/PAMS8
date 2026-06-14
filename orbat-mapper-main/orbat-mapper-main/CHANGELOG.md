@@ -1,0 +1,510 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## June 2026
+
+### Added
+
+- Added a copy-to-clipboard button to the MapLibre image export panel for copying the rendered map straight to the clipboard as a PNG.
+
+## May 2026
+
+### Added
+
+- Added a rectangle tool to the draw toolbar for drawing box-shaped polygons.
+- Added an add-multiple toggle to the draw toolbar for repeated feature drawing and unit placement.
+- Added a toolbar toggle to disable great-circle (geodesic) measurement paths in MapLibre Mercator mode.
+- Added experimental KML support for MapLibre mode.
+- Added an unsaved changes indicator and quick save button to the navbar.
+- Added twilight zones to the day/night terminator overlay (MapLibre mode only).
+- Added raster tile layer rendering and management to MapLibre mode.
+- Added image layer rendering and transform support to MapLibre mode.
+- Added line-placement label rendering in MapLibre mode so labels with `text-placement: line` follow the line geometry.
+- Added high-quality map image export to MapLibre mode via the Tools sidebar, with an adjustable viewfinder for framing the output (aspect-ratio presets and a safe-zone guide), an output-resolution scale for crisp symbols and labels, and optional scale bar, north arrow, and attribution overlays.
+
+### Changed
+
+- MapLibre is now the default map mode.
+
+### Fixed
+
+- Fixed the Delete key not removing selected scenario features in MapLibre mode.
+- Improved MapLibre feature selection with a click hit tolerance and better shift+click handling.
+- Improved MapLibre draw and modify snapping.
+- Improved MapLibre geometry editing on touch devices.
+- Fixed MapLibre unit redraw after undo/redo.
+- Temporary KML/KMZ reference layers are no longer saved into serialized scenarios.
+- MapLibre scenario feature labels now honor the configured `text-offset-x`/`text-offset-y` (previously a fixed offset was used). Pixel values are converted to ems to match OpenLayers sizing.
+- Circle drawing now works in MapLibre mode.
+- Fixed scenario timeline alignment across daylight saving time transitions by recomputing the timezone offset from the current scenario time.
+- Map symbol sizes can now be adjusted in MapLibre mode.
+- Added a day/night terminator overlay to MapLibre mode.
+- Added box zoom support to MapLibre mode.
+- Added feature hover tooltips to MapLibre mode.
+- Fixed MapLibre scenario feature marker sizes so point features match OpenLayers sizing.
+- Fixed MapLibre scenario feature rendering for null polygon fills and zero-opacity fills.
+- Added MapLibre support for custom unit symbols, including clearer selected-state highlighting.
+- Fixed MapLibre unit labels so they shift correctly for scaled ordinary and custom icons, including hostile diamond frames.
+- Fixed MapLibre scenario layer ordering so feature, raster, image, and KML reference layers stay below unit and range ring layers and respect the scenario stack order.
+- MapLibre measurement lines and polygon edges now follow great-circle paths, so paths bend correctly across the globe and across the antimeridian instead of being drawn as straight lng/lat chords.
+- Fixed MapLibre measurement on mobile so panning the map (especially in globe mode) no longer drops a measurement vertex when the touch gesture moves only slightly.
+
+## April 2026
+
+### Added
+
+- Added snapping support to MapLibre draw and modify tools.
+- Added support for route planning with obstacles.
+- Added support for pasting GeoJSON from the clipboard directly into the scenario editor as scenario features, including `Ctrl/Cmd+V` import into the active feature layer.
+- Added GPX import support, including track conversion and unit track assignment.
+- Added draw and modify support for scenario features in MapLibre mode.
+- Added measurement tools to MapLibre mode.
+- Added symbol text amplifier rendering in MapLibre mode.
+- Added geometry statistics to scenario feature details.
+- Clicking KML/KMZ features now opens a read-only details view with attached properties, including richer HTML description rendering.
+- Added view constraints support (max extent, min/max zoom) to map settings. Constraints are saved as part of the scenario.
+- Added experimental MapLibre mode with globe support. Functionality from the main map view will be gradually ported over. 
+- Added a standalone symbol browser page at `/symbol-browser`.
+- Added symbol export with copy and download as PNG and SVG, with configurable size and display options.
+- Added "Copy as GeoJSON" to the feature layer menu, individual feature menu, and feature details panel. Circles are exported as polygons.
+- Added a missing short name input to the unit details form, including automatic short-name mode support.
+- Added multi-select batch delete for stored scenarios in the landing page and import scenario browsers, including filtered select-all and confirmation dialog support.
+- Added a sort direction control to the stored scenario browser dropdown, with an icon indicating ascending or descending order.
+- Added a recording control dropdown to the navbar.
+- Added recovery drafts for scenario editing, along with "Revert to opened state" and "Revert to saved version" actions.
+- Added Ctrl/Cmd + drag box select for units in MapLibre mode.
+
+### Changed
+
+- Added a "Paste from clipboard" entry to the Edit menu for scenario and GeoJSON clipboard imports.
+- KML/KMZ features with labels are now decluttered by default.
+- Moved the dark mode toggle into the main menu on mobile devices.
+- Reworked the ORBAT panel footer recording controls into compact direct toggles for hierarchy and position recording.
+- Simplified recording button and indicator styling so active states no longer rely on dynamic red styling.
+- The stored scenario browser now keeps its header controls visible while long scenario lists scroll within a capped results area.
+- The stored scenario browser sort dropdown now shows the active sort field with radio-item selection.
+- Scenario editing now uses a hybrid save model: "Save scenario" updates the stored scenario, autosave writes recovery drafts, and leaving or reloading warns only about changes not explicitly saved.
+- Switching between OpenLayers and MapLibre now preserves the in-memory map view.
+- Feature style slider drags now collapse into a single undo entry.
+- The Transform tab now defaults its update target to the selected feature.
+
+### Fixed
+
+- Fixed dragging an unselected unit also moving previously selected units.
+- Fixed map selection so clicking a unit or scenario feature switches selection in one click instead of requiring an intermediate deselect.
+- Fixed overlapping unit/feature selection on the map so the topmost item takes priority.
+- Fixed blank map clicks so they clear selected scenario features.
+- Fixed shift-click selection on the map so it only extends the current selection type instead of switching between units and scenario features.
+- Fixed KMZ/KML feature clicks in the OpenLayers editor so imported reference features no longer crash the map renderer. 
+- Fixed transform tool updates so existing features update their geometry kind when a transformation changes the geometry type.
+- Fixed the MapLibre scale control so it responds to dynamic measurement unit changes.
+
+## March 2026
+
+### Added
+
+- Added support for time varying ORBATs.
+- Show feature name on map hover.
+- Added a "Load from file" button to the landing page header for faster local scenario imports.
+- Added scenario browser search and filtering.
+- Added map symbol size override support per unit.
+- Added a button to the unit filters panel to quickly collapse or expand all filter sections.
+- Added clipboard and drag and drop functionality to the "Text to ORBAT" tool.
+- Added a scratch pad panel to the "Text to ORBAT" tool with undo/redo support.
+- Added syntax highlighting and metadata parsing for unit definitions in "Text to ORBAT".
+- Added support for comma-separated fields (short name, name, description) in "Text to ORBAT".
+- Added a standard identity dropdown to both panels in "Text to ORBAT".
+- Added support for dropping ORBAT units as indented text into the "Text to ORBAT" editor.
+- Added a clear input button to the "Text to ORBAT" view.
+- Added "Text to ORBAT" documentation page.
+- Added user-defined pattern mappings to "Text to ORBAT" — add custom icon/echelon aliases or entirely new icon mappings.
+- Added inline editing and deletion for pattern mapping entries in "Text to ORBAT".
+- Added localStorage persistence for custom pattern mappings with undo/redo support.
+- Added a visual symbol picker for selecting icons when adding or editing pattern mappings in "Text to ORBAT".
+- Added priority numbers and drag-handle reordering for pattern mappings in "Text to ORBAT".
+- Added a configurable default starting echelon setting to "Text to ORBAT".
+- Added a "Generate short names" action to the "Text to ORBAT" input toolbar.
+- Added short-name settings to the "Text to ORBAT" settings menu, including max length, uppercase, whitespace, force-length, and clear-all actions.
+- Added a copy to clipboard button to the export modal.
+- Added `//` as an alternative metadata syntax in "Text to ORBAT" and a link to the documentation.
+- Added overlay and sidebar display modes for the unit details panel, each with independent pin toggles.
+- Added `initiallyOpen` field to sides and side groups, allowing scenario files to specify whether they start collapsed. Toggleable via context menu.
+
+### Changed
+
+- Moved the ORBAT panel from a map overlay to a flex sidebar layout — the map now physically resizes instead of being overlaid.
+- Restyled the ORBAT panel open button as a tab on the left edge of the map.
+- The ORBAT panel now opens automatically when using the locate-in-orbat action.
+- Moved zoom controls to the top-left of the map on mobile.
+- Map controls now reposition above the toolbar on narrow screens using container queries.
+- Expanded scenario timeline zoom-out range.
+- Moved "Copy scenario to clipboard" action from the File menu to the Edit menu.
+- Improved dark mode support in the Chart Edit view.
+- Added support for symbol outlines in ORBAT charts to improve visibility.
+- Moved unit symbol rotation settings from the "Map display" tab to the "Map symbol" tab.
+- Improved map editor UX on mobile.
+- Improved the text editor in the "Text to ORBAT" tool with better keyboard support and editing features.
+- Consolidated "Text to ORBAT" settings (autocomplete, match case, split fields, field order) into a dropdown menu.
+- Made right panel toolbars horizontally scrollable on mobile.
+
+### Fixed
+
+- Fixed ORBAT drag-and-drop so that selected units can be used as drop targets.
+- Fixed dropping a unit above a side group to make it a side root unit.
+- Fixed issue where layer edit form "Change" and clear timestamp buttons submitted the form and closed it immediately.
+- Fixed issue where changing a unit symbol in the details panel did not immediately refresh the symbol in the panel or on the map.
+- Fixed an issue where TO&E would not update if a unit had no state entries.
+- Fixed an issue where "Go to next on save" in TO&E edit mode would not work for sorted tables.
+- Fixed timed reinforced/reduced symbol updates so that they be edited in unit events and animated correctly over time.
+
+## February 2026
+
+### Added
+
+- Added resizable columns to the Grid Edit view.
+- Added support for dragging and dropping ORBAT units between different browser tabs and windows.
+- Added custom icon support for KMZ export.
+- Added virtualization to the Grid Edit view to improve performance with large unit lists.
+- Added a **"Collapse"** option to the unit context menu to quickly collapse child units.
+- Added **"Expand units"** and **"Collapse units"** actions to side and side-group dropdown menus in the ORBAT panel.
+- Added scenario details to the conflict alert in the Import view.
+- Added virtualization to the ORBAT panel to improve performance with large ORBATs.
+- Added a resizable mobile panel.
+- Added a new **"Map Visibility"** section to the unit filters panel.
+- Added timeline-aware unit symbol rotation with panel controls and a dedicated map rotation mode.
+- Added a freehand drawing mode for scenario features.
+- Added a UI for setting the scenario bounding box.
+- Added support for generic unit spreadsheet imports (CSV/TSV), including custom field mapping and update mode functionality.
+- Added a **"Recently Shared"** submenu to the File menu, providing quick access to the history of shared scenario links.
+- Added a "Share Scenario" button to the main toolbar.
+- Added a CSV/TSV export option with a configurable separator.
+- Added support in Text to ORBAT for concatenated echelon abbreviations (for example `2bn`, `1bde`, `Aco`) during echelon detection.
+- Added a **"Move up in hierarchy"** action to the unit context menu.
+
+### Changed
+
+- Removed the **"beta"** label from the application name.
+- Switched to a dropdown menu for selecting the scenario edit mode on mobile devices.
+- Added a dark mode toggle to the main toolbar on mobile devices.
+- Optimized unit map rendering by incrementally updating positions instead of recreating features.
+
+### Fixed
+
+- Fixed issue where changing the symbol fill color for a side would immediately update before saving.
+- Fixed issue where saving side or side-group symbol fill color did not immediately refresh map symbols.
+
+## January 2026
+
+- Added "Paste scenario from clipboard" feature to the landing page and map editor (includes button and keyboard shortcut detection).
+- Added options to include start and end arrowheads on lines.
+- Added support for password-protected and encrypted scenarios (export, import, and online sharing).
+- Added ability to hide individual scenario features.
+- Added `radioFolder` list style option for KML/KMZ export in "multiple events" time mode.
+- Added "Share scenario online" feature.
+- Added "Share scenario as URL" feature.
+- Added a map base layer switcher to the map context menu.
+- Improved tab navigation with scrollable tabs.
+- Added military time zone support.
+
+## December 2025
+
+- Added support for selecting which KML/KMZ folders to load.
+- Added support for loading multiple KML/KMZ files simultaneously.
+- Added a dark mode toggle.
+
+## November 2025
+
+- Added support for dragging and dropping multiple units.
+
+## October 2025
+
+- Added support for custom unit symbols.
+- Added support for adding custom symbol fill colors.
+- New options for customizing map unit labels:
+  - show below unit icon
+  - adjust font size
+  - wrap long names
+
+## September 2025
+
+- New KML/KMZ export options:
+  - export scenario events as KML folders
+  - draw symbol outline
+  - adjust icon and label scale
+  - render symbol amplifiers
+  - nested folders for sides and groups
+  - export only selected units
+- Units can now be added directly to a side. A side group is no longer required.
+
+## May 2025
+
+- Add 'add point/marker' action to the map context menu.
+
+## April 2025
+
+- Added support for chaining multiple transformations.
+- Added union transformation.
+- Added dashed and dotted stroke/line styles.
+- Added concave hull transformation.
+- Added explode, centroid, center(absolute) and center of mass transformations.
+- Added transform panel for units.
+- Added zoom level controls for scenario feature labels.
+
+## March 2025
+
+- Use file system access API for file export in supported browsers (Chrome and Edge).
+
+## February 2025
+
+- Added a button to the unit panel for locating the unit in the ORBAT panel.
+- Added a keyboard shortcut `l` for locating the active unit in the ORBAT panel.
+- Added a new filter panel for selecting units based on their unit icon.
+
+## January 2025
+
+- Added range circle to length measurement tool. Can be switched on/off in the measurement toolbar.
+- Added zoom level visibility controls for units and scenario features.
+- Added custom fill and stroke color for range rings and scenario features.
+- Improved display and editing of unit TO&E.
+- Added support for unit supplies (including partial scenario import).
+
+## December 2024
+
+- Added an "Add unit" entry to the map context menu.
+- Added support for changing the available / on hand attribute of equipment and personnel through unit events.
+- Added an available / on hand attribute to equipment and personnel.
+- Added equipment, personnel and units statuses to the scenario data import options.
+- Added a "hide timeline" option to the timeline context menu.
+
+## November 2024
+
+- Added more feature label styling options.
+- Added edit submenu to the main menu.
+- Added basic scenario event support.
+- Added support for hiding sides and groups from the map.
+- Added multi edit support to the map overlay unit details panel.
+- Added support for importing sides and groups from another scenario.
+
+## October 2024
+
+- Added a "smooth" option to the scenario feature transformation panel.
+- Added import from browser option to the import dialog.
+- Added clone/duplicate side and side group actions.
+- Added indicator when dragging using copy mode (ctrl+drag or ctrl+alt+drag).
+
+## September 2024
+
+- Added side, group and unit locking to prevent accidental changes.
+- Added preview and more options to the Spatial Illusions unit generator ORBAT import.
+- Added support for transforming multiple features simultaneously.
+- Enabled drag and drop for unit breadcrumbs onto the map.
+- Introduced experimental support for time-varying scenario feature geometries.
+- Enabled copying unit hierarchy with state using Ctrl/Meta+Alt+Drag-and-Drop.
+- Added an option to duplicate a unit (and its hierarchy) along with its state.
+- Added playback keyboard shortcuts: Alt+P or K to play/pause, < and > to adjust playback speed.
+- Improved MilX/map.army import functionality.
+- Added reinforced/reduced symbol modifier.
+
+## August 2024
+
+- Added more paper sizes.
+- Added unit breadcrumb navigation toolbar.
+- Enabled opening the symbol browser from the command palette or main menu.
+- Enabled copying unit hierarchy using Ctrl/Meta+drag-and-drop.
+- Enabled moving a feature by dragging it from the layers panel to the desired location.
+- Enabled reordering and moving sides and groups in the ORBAT panel using drag and drop.
+- Added basic scenario feature transformations (buffer, convex hull, and bounding box).
+
+## July 2024
+
+- Reorder and move scenario features between layers using drag and drop.
+- Modify unit coordinates manually in the unit state panel. Activate the edit mode by double-clicking on the
+  coordinates.
+- Select multiple features in the layers panel with shift+click.
+- Add a duplicate scenario feature action.
+
+## June 2024
+
+- Show list of scenario features under the pointer in the map context menu.
+- Add GeoJSON feature import.
+- Add a playback dropdown menu to the main navbar.
+- Add an "Open in" item to the map context menu to open the current location in a selection of online map providers.
+
+## May 2024
+
+- Add a clear unit state action.
+- Add search/filter to symbol picker browser tab.
+- Show unit icons in map context menu.
+- Add export map as image feature.
+- Add translate feature mode to the drawing toolbar.
+
+## April 2024
+
+- Show list of units under the pointer in the map context menu.
+- Add custom date and time formatting.
+- Select multiple units in the ORBAT panel with shift+click.
+- Add basic support for unit text amplifiers.
+
+## March 2024
+
+- Add support for importing data from a URL.
+- Add day/night terminator to the map.
+- Add unit path timestamp toggle.
+- Add a unit path panel to the main toolbar.
+
+## February 2024
+
+- Add [Decisive Action Training Environment (DATE)](https://odin.tradoc.army.mil/DATEWORLD) force structures import .
+- Add support for copying and pasting unit hierarchies to and from the clipboard.
+
+## January 2024
+
+- Replace the file menu with a nested main application dropdown menu.
+- Show the total number of units in the scenario information panel.
+- Add new base map: OpenStreetMap DE. Includes translations of place names.
+
+## December 2023
+
+- Add automatic scenario save.
+- Add support for storing multiple scenarios in the browser's local storage.
+- Add `loadScenarioURL` URL query parameter for loading a scenario from a URL.
+
+## November 2023
+
+- Add average speed and maximum speed unit properties.
+- Add unit status property.
+
+## October 2023
+
+- Delete selected waypoints with the delete key.
+- Select multiple waypoints on map with shift+click.
+- Show great circle lines between waypoints in a unit path.
+
+## September 2023
+
+- Add symbol modifier search in symbol picker.
+- Add navigation sidebar to symbol set browser.
+- Make unit name and short name inline editable in the unit panel.
+- Add support for adding an image to a feature.
+- Add markdown support to scenario feature descriptions.
+- Add support for adding an image to a unit.
+
+## August 2023
+
+- Add drag and drop support for temporary KML and KMZ files.
+- Add timeline control to scenario editor.
+- Add range ring groups. Range rings in the same group will be merged if they overlap.
+- Add toggle option for toolbar visibility.
+- Add basic support for adding equipment and personnel to units.
+
+## July 2023
+
+- Add basic range ring styling.
+- Add unit range rings.
+- Add support for image layers.
+- Add support for TileJSON layers.
+- Add support for XYZ layers.
+
+## June 2023
+
+- Make ORBAT and details panel resizable.
+- Add scale bar to map.
+
+## May 2023
+
+- Add place name search.
+- New map editing mode layout.
+
+## April 2023
+
+- Add 'DEL' keyboard shortcut for deleting selected units.
+- Snap to every feature in drawing mode.
+- Add snapping to measurement tool.
+- Add a copy current location entry to map context menu.
+- Add Order of Battle Generator import (https://www.orbatgenerator.com/) .
+- Add Spatial Illusions ORBAT builder import.
+- Add Spatial Illusions ORBAT builder export.
+- Add imperial and nautical measurement units.
+- You can now select a root unit in the chart edit view by searching.
+
+## March 2023
+
+- Add download menu to chart edit mode view.
+- Add name field to units when exporting to MilX format.
+- Add support for custom symbol fill colors for MilX import and export.
+- Add custom symbol fill color support for groups.
+- Add custom symbol fill color support for sides.
+- Add setting for selecting simple status modifier.
+- Create one folder per side when exporting KML.
+
+## February 2023
+
+- Add tool panel for adding units to the map.
+- Add 'm' keyboard shortcut for toggling move unit interaction.
+- Add context menu to map.
+- Make chart mode sidebar resizable.
+- Allow adding an arbitrary number of sides and root units in the 'create new scenario form'.
+
+## January 2023
+
+- Add basic root unit icon and echelon selection to 'Create new scenario' form.
+- Add basic XLSX export.
+- Drop files directly on scenario editor to start import process. No need to select File->Import first.
+- Add setting for displaying short unit names in ORBAT panel.
+
+## December 2022
+
+- Add basic chart edit view (work in process).
+- Make keyboard shortcuts dialog context aware.
+- Add action for cloning a unit with subordinates.
+- Simplified standard identity selection.
+- Add zooming and panning to ORBAT charts.
+- Add vitepress-powered documentation https://docs.orbat-mapper.app (work in progress).
+
+## November 2022
+
+- Improved new scenario form. Contains initial sides and root units.
+- Select multiple units on the map with Ctrl+Drag (Command+Drag on Mac)
+- Basic MilX (.milxlyz) import from map.army.
+
+## October 2022
+
+- Add letter based SIDC to number SIDC converter to symbol picker
+- Grid cell copy/paste
+- Grid edit mode keyboard navigation
+
+## September 2022
+
+- Change unit symbol at specific timestamps.
+- Add 'remove unit from map/clear location' state action.
+- Make sidebars resizable.
+- Add filtering to grid edit mode.
+
+## August 2022
+
+- Add grid edit mode (work in progress).
+- Embed unit icons in KMZ export.
+- Basic KML/KMZ export.
+- Basic GeoJSON export.
+- Add a configurable widget/control for showing mouse position coordinates on map.
+- Zoom to multiple units (z keyboard shortcut).
+- Apply actions on multiple units at once (change symbol, duplicate etc.).
+- Add button for changing unit symbol directly.
+- Add undo and redo buttons to navigation bar.
+- Add toggles to unit panel for controlling unit track visibility and unit track editing.
+- Select multiple units in the ORBAT panel with shift+click.
+- Select multiple units on the map with shift+click.
+- Deselect units/features by pressing the escape key.
+- Unit state change entries can now have a title.
+
+## July 2022
+
+- Add scenario events panel with a basic timeline to the scenario editor.
+- Add button for clearing selected features.
+- Edit visibility of multiple features at once.
+- Add button for clearing feature visibility timestamp.
+- On zoom to a unit with no location zoom to show subordinates instead.
+- Add button to the unit panel for setting unit location by clicking on the map.
+- Zoom to multiple features using z keyboard shortcut or the zoom button on the feature details panel.
+- Select multiple scenario features with shift+click on the features list, or by shift+click on the map.

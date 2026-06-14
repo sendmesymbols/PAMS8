@@ -1,0 +1,88 @@
+import { defineStore } from "pinia";
+import { useLocalStorage } from "@vueuse/core";
+import { TAB_ORBAT } from "@/types/constants";
+
+export type DetailsPanelMode = "overlay" | "sidebar";
+
+export const prevToeIncludeSubordinates: boolean | undefined = undefined;
+
+export const useUiStore = defineStore("ui", {
+  state: () => ({
+    modalOpen: false,
+    editToolbarActive: false,
+    measurementActive: false,
+    getLocationActive: false,
+    activeItem: null,
+    activeStateItem: null,
+    debugMode: useLocalStorage("debugMode", false),
+    showFps: useLocalStorage("showFps", false),
+    mobilePanelOpen: false,
+    mobilePanelHeight: useLocalStorage("mobilePanelHeight", 360),
+    layersPanelActive: false,
+    activeTabIndex: TAB_ORBAT,
+    // Set when an external trigger (e.g. the context menu) should open the
+    // image export form in the Tools tab; the Tools panel consumes and resets it.
+    requestExportTool: false,
+    showSearch: false,
+    searchGeoMode: false,
+    mapLayersPanelOpen: true,
+    showToolbar: true,
+    showTimeline: useLocalStorage("showTimeline", true),
+    showLeftPanel: true,
+    showOrbatBreadcrumbs: useLocalStorage("showOrbatBreadcrumbs", true),
+    goToNextOnSubmit: useLocalStorage("goToNextOnSubmit", true),
+    toeTabIndex: 0,
+    toeIncludeSubordinates: useLocalStorage("toeIncludeSubordinates", true),
+    prevToeIncludeSubordinates: undefined as boolean | undefined,
+    prevSuppliesIncludeSubordinates: undefined as boolean | undefined,
+    detailsPanelMode: useLocalStorage<DetailsPanelMode>("detailsPanelMode", "overlay", {
+      serializer: {
+        read: (v) => (v === "overlay" || v === "sidebar" ? v : "overlay"),
+        write: (v) => v,
+      },
+    }),
+    detailsPanelSidebarPinned: useLocalStorage("detailsPanelSidebarPinned", true),
+    detailsPanelOverlayPinned: useLocalStorage("detailsPanelOverlayPinned", false),
+    popperCounter: 0,
+  }),
+  getters: {
+    shortcutsEnabled: (state) => !state.modalOpen,
+    escEnabled: (state) =>
+      !(
+        state.modalOpen ||
+        state.editToolbarActive ||
+        state.measurementActive ||
+        state.getLocationActive ||
+        state.popperCounter > 0
+      ),
+    detailsPanelPinned: (state) =>
+      state.detailsPanelMode === "sidebar"
+        ? state.detailsPanelSidebarPinned
+        : state.detailsPanelOverlayPinned,
+  },
+  actions: {
+    toggleDetailsPanelPinned() {
+      if (this.detailsPanelMode === "sidebar") {
+        this.detailsPanelSidebarPinned = !this.detailsPanelSidebarPinned;
+      } else {
+        this.detailsPanelOverlayPinned = !this.detailsPanelOverlayPinned;
+      }
+    },
+  },
+});
+
+export const useWidthStore = defineStore("panelWidth", {
+  state: () => ({
+    orbatPanelWidth: useLocalStorage("orbatPanelWidth", 400),
+    detailsWidth: useLocalStorage("detailsPanelWidth", 400),
+  }),
+  actions: {
+    resetOrbatPanelWidth() {
+      this.orbatPanelWidth = 400;
+    },
+
+    resetDetailsWidth() {
+      this.detailsWidth = 400;
+    },
+  },
+});

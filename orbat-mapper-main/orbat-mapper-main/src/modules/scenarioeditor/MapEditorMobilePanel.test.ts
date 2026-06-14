@@ -1,0 +1,189 @@
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mount } from "@vue/test-utils";
+import { computed, defineComponent, nextTick, ref } from "vue";
+import { createPinia, setActivePinia } from "pinia";
+import MapEditorMobilePanel from "@/modules/scenarioeditor/MapEditorMobilePanel.vue";
+import { activeScenarioKey, routeDetailsPanelKey } from "@/components/injects";
+import { useMainToolbarStore } from "@/stores/mainToolbarStore";
+import { useUiStore } from "@/stores/uiStore";
+
+// The panel lazy-loads ScenarioToolsTabPanel (maplibre-gl, ui/item) via
+// defineAsyncComponent; that heavy import can resolve after the test env is
+// torn down and surface as an unhandled rejection. Stub it out here.
+// `__esModule` lets Vue unwrap the default export when resolving the async
+// component.
+vi.mock("@/modules/scenarioeditor/ScenarioToolsTabPanel.vue", () => ({
+  __esModule: true,
+  default: defineComponent({ name: "ScenarioToolsTabPanel", template: "<div />" }),
+}));
+
+vi.mock("@vueuse/core", async () => {
+  const actual = await vi.importActual<typeof import("@vueuse/core")>("@vueuse/core");
+  return {
+    ...actual,
+    useSwipe: () => ({
+      isSwiping: ref(false),
+      direction: ref<"up" | "down" | "left" | "right" | null>(null),
+    }),
+    useWindowSize: () => ({ width: ref(1024), height: ref(900) }),
+    useThrottleFn: (fn: (...args: any[]) => any) => fn,
+  };
+});
+
+const ScrollTabsStub = defineComponent({
+  name: "ScrollTabs",
+  template: "<div><slot /><slot name='right' /></div>",
+});
+
+const TabsContentStub = defineComponent({
+  name: "TabsContent",
+  template: "<div><slot /></div>",
+});
+
+function mountPanel() {
+  const wrapper = mount(MapEditorMobilePanel, {
+    global: {
+      stubs: {
+        ScrollTabs: ScrollTabsStub,
+        TabsContent: TabsContentStub,
+        ScenarioEventsPanel: true,
+        OrbatPanel: true,
+        CloseButton: true,
+        MapTimeController: true,
+        ScenarioLayersTabPanel: true,
+        ScenarioSettingsPanel: true,
+        GripHorizontal: true,
+        IconChevronDoubleUp: true,
+      },
+      provide: {
+        [activeScenarioKey as symbol]: {
+          store: {
+            state: {
+              currentTime: 0,
+              info: { timeZone: "UTC" },
+            },
+          },
+          geo: {
+            layerItemsLayers: computed(() => []),
+          },
+          helpers: {
+            getUnitById: vi.fn(() => null),
+          },
+        } as any,
+        [routeDetailsPanelKey as symbol]: {
+          activeRoutingUnitName: computed(() => "Unit 1"),
+          addRouteLeg: vi.fn(),
+          clearCurrentLeg: vi.fn(),
+          finishRoute: vi.fn(),
+          closeRouting: vi.fn(),
+          endRouting: vi.fn(),
+          handleEscape: vi.fn(),
+        },
+      },
+    },
+  });
+  const uiStore = useUiStore();
+  const toolbarStore = useMainToolbarStore();
+  return { wrapper, uiStore, toolbarStore };
+}
+
+async function pointerGesture(
+  target: ReturnType<typeof mountPanel>["wrapper"],
+  {
+    downY,
+    upY,
+    moveY,
+    pointerId = 1,
+  }: { downY: number; upY: number; moveY?: number; pointerId?: number },
+) {
+  const handle = target.get("[data-testid='mobile-panel-resize-strip']");
+  handle.element.dispatchEvent(
+    new PointerEvent("pointerdown", { bubbles: true, clientY: downY, pointerId }),
+  );
+  if (moveY !== undefined) {
+    handle.element.dispatchEvent(
+      new PointerEvent("pointermove", { bubbles: true, clientY: moveY, pointerId }),
+    );
+  }
+  handle.element.dispatchEvent(
+    new PointerEvent("pointerup", { bubbles: true, clientY: upY, pointerId }),
+  );
+  await nextTick();
+  return handle;
+}
+
+beforeEach(() => {
+  setActivePinia(createPinia());
+  Object.defineProperty(HTMLElement.prototype, "setPointerCapture", {
+    configurable: true,
+    value: vi.fn(),
+  });
+  Object.defineProperty(HTMLElement.prototype, "hasPointerCapture", {
+    configurable: true,
+    value: vi.fn(() => true),
+  });
+  Object.defineProperty(HTMLElement.prototype, "releasePointerCapture", {
+    configurable: true,
+    value: vi.fn(),
+  });
+});
+
+describe("MapEditorMobilePanel", () => {
+  it("toggles the panel from the dedicated toggle button", async () => {
+    const { wrapper, uiStore } = mountPanel();
+    uiStore.mobilePanelOpen = true;
+    await nextTick();
+
+    await wrapper.get("[data-testid='mobile-panel-toggle']").trigger("click");
+    await nextTick();
+    expect(uiStore.mobilePanelOpen).toBe(false);
+
+    await wrapper.get("[data-testid='mobile-panel-toggle']").trigger("click");
+    await nextTick();
+    expect(uiStore.mobilePanelOpen).toBe(true);
+  });
+
+  it("resizes from the separator drag and keeps the panel open", async () => {
+    const { wrapper, uiStore } = mountPanel();
+    uiStore.mobilePanelOpen = true;
+    uiStore.mobilePanelHeight = 360;
+    await nextTick();
+
+    await pointerGesture(wrapper, { downY: 500, moveY: 460, upY: 460 });
+
+    expect(uiStore.mobilePanelOpen).toBe(true);
+    expect(uiStore.mobilePanelHeight).toBe(400);
+  });
+
+  it("does not toggle panel state on pointerup without resize movement", async () => {
+    const { wrapper, uiStore } = mountPanel();
+    uiStore.mobilePanelOpen = true;
+    await nextTick();
+
+    await pointerGesture(wrapper, { downY: 500, upY: 498 });
+
+    expect(uiStore.mobilePanelOpen).toBe(true);
+  });
+
+  it("hides the resize strip when the panel is closed", async () => {
+    const { wrapper, uiStore } = mountPanel();
+    uiStore.mobilePanelOpen = false;
+    await nextTick();
+
+    expect(wrapper.find("[data-testid='mobile-panel-toggle']").exists()).toBe(true);
+    expect(wrapper.find("[data-testid='mobile-panel-resize-strip']").exists()).toBe(
+      false,
+    );
+  });
+
+  it("renders route controls in the details tab while routing is active", async () => {
+    const { wrapper, toolbarStore } = mountPanel();
+    toolbarStore.currentToolbar = "route";
+
+    await nextTick();
+
+    expect(wrapper.text()).toContain("Buffer (m)");
+    expect(wrapper.text()).toContain("Obstacles: 0 selected");
+  });
+});

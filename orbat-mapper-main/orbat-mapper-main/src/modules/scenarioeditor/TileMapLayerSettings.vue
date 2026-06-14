@@ -1,0 +1,88 @@
+<script setup lang="ts">
+import type { ScenarioTileJSONLayer, ScenarioXYZLayer } from "@/types/scenarioGeoModels";
+import { activeScenarioMapEngineKey } from "@/components/injects";
+import { injectStrict } from "@/utils";
+import { computed, ref, watch } from "vue";
+import { getChangedValues } from "@/utils";
+import TileMapLayerSettingsForm from "@/modules/scenarioeditor/TileMapLayerSettingsForm.vue";
+import DescriptionItem from "@/components/DescriptionItem.vue";
+import type {
+  ScenarioTileJSONLayerUpdate,
+  ScenarioXYZLayerUpdate,
+} from "@/types/internalModels";
+import { useMapLayerInfo } from "@/composables/geoMapLayers";
+import { Button } from "@/components/ui/button";
+
+interface Props {
+  layer: ScenarioTileJSONLayer | ScenarioXYZLayer;
+}
+const props = defineProps<Props>();
+const emit = defineEmits(["update"]);
+const engineRef = injectStrict(activeScenarioMapEngineKey);
+const { status, isInitialized, layerTypeLabel } = useMapLayerInfo(props.layer);
+const hasLoadFailed = computed(() => status.value === "error" && !props.layer._isNew);
+const canZoomMapLayer = () =>
+  Boolean(engineRef.value?.layers.capabilities.zoomToMapLayer) &&
+  Boolean(engineRef.value?.layers.capabilities.mapLayerExtent);
+
+const urlLabel = computed(() => {
+  if (props.layer.type === "TileJSONLayer") {
+    return "TileJSON URL";
+  } else {
+    return "XYZ tile URL template";
+  }
+});
+
+watch(status, (v) => {
+  if (v === "initialized") {
+    if (canZoomMapLayer()) {
+      engineRef.value?.layers.zoomToMapLayer(props.layer.id);
+    }
+  }
+});
+
+const editMode = ref(false);
+
+watch(
+  () => props.layer,
+  (v) => {
+    editMode.value = props.layer._isNew ?? false;
+  },
+  { immediate: true },
+);
+function updateData(formData: ScenarioTileJSONLayerUpdate | ScenarioXYZLayerUpdate) {
+  const diff = getChangedValues({ ...formData }, props.layer);
+  emit("update", diff);
+  editMode.value = false;
+}
+</script>
+
+<template>
+  <section>
+    <header class="flex justify-end">
+      <span class="badge">{{ layerTypeLabel }}</span>
+    </header>
+    <p class="text-muted-foreground mt-3 text-sm">
+      Only raster tiles are supported for TileJSON and XYZ map layers.
+    </p>
+    <TileMapLayerSettingsForm
+      v-if="editMode"
+      :key="layer.id"
+      :layer="layer"
+      @cancel="editMode = false"
+      @update="updateData"
+    />
+    <div v-else>
+      <DescriptionItem :label="urlLabel" dd-class="truncate">{{
+        layer.url || "Not set"
+      }}</DescriptionItem>
+      <footer class="mt-4 flex justify-end space-x-2">
+        <Button variant="outline" size="sm" @click="editMode = true">Edit</Button>
+      </footer>
+    </div>
+    <p v-if="!isInitialized" class="text-muted-foreground mt-2 text-sm">
+      This layer has not been initialized yet.
+    </p>
+    <p v-if="hasLoadFailed" class="mt-2 text-sm text-red-600">Failed to load layer.</p>
+  </section>
+</template>

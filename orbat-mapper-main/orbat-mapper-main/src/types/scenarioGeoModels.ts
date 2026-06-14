@@ -1,0 +1,165 @@
+import type { Feature as GeoJsonFeature, Geometry } from "geojson";
+import type { FillStyleSpec, SimpleStyleSpec, StrokeStyleSpec } from "@/geo/simplestyle";
+import type { ScenarioTime } from "@/types/base";
+import type {
+  CurrentStateType,
+  Media,
+  ScenarioEventDescription,
+} from "@/types/scenarioModels";
+
+export interface VisibilityInfo {
+  visibleFromT: ScenarioTime;
+  visibleUntilT: ScenarioTime;
+}
+
+export type FeatureId = string | number;
+export type LayerId = string | number;
+export type Position = number[];
+export type ScenarioFeatureType =
+  | "Point"
+  | "LineString"
+  | "Polygon"
+  | "Circle"
+  | "MultiPoint"
+  | "MultiLineString"
+  | "MultiPolygon"
+  | "GeometryCollection";
+
+export interface ScenarioFeatureProperties
+  extends Partial<SimpleStyleSpec>, Partial<VisibilityInfo> {
+  type: ScenarioFeatureType;
+  name?: string;
+  description?: string;
+
+  [attribute: string]: any;
+}
+
+export interface ScenarioFeatureMeta extends Partial<VisibilityInfo> {
+  type: ScenarioFeatureType;
+  name?: string;
+  description?: string;
+  externalUrl?: string;
+  radius?: number;
+  locked?: boolean;
+  // internal runtime only state
+  _zIndex?: number;
+  isHidden?: boolean;
+}
+
+// Legacy geometry-only compatibility state used for upgrade/import bridges.
+export interface ScenarioFeatureState extends Partial<ScenarioEventDescription> {
+  id: string;
+  t: ScenarioTime;
+  geometry?: Geometry;
+  properties?: ScenarioFeatureProperties;
+}
+
+export interface CurrentScenarioFeatureState extends Omit<ScenarioFeatureState, "id"> {
+  type?: CurrentStateType;
+}
+
+// Legacy geometry-only compatibility model used for upgrade/import bridges.
+// New top-level scenario typing should use ScenarioLayerItem/Scenario instead.
+export interface ScenarioFeature extends GeoJsonFeature {
+  id: FeatureId;
+  meta: ScenarioFeatureMeta;
+  style: Partial<SimpleStyleSpec>;
+  state?: ScenarioFeatureState[];
+  media?: Media[];
+  // internal runtime only state
+  _hidden?: boolean;
+  _state?: CurrentScenarioFeatureState | null;
+}
+
+// Legacy geometry-only compatibility layer used for upgrade/import bridges.
+// New top-level scenario typing should use ScenarioLayerItemsLayer/Scenario instead.
+export interface ScenarioLayer extends Partial<VisibilityInfo> {
+  id: FeatureId;
+  name: string;
+  description?: string;
+  attributions?: string;
+  externalUrl?: string;
+  features: ScenarioFeature[];
+  isHidden?: boolean;
+  opacity?: number;
+  locked?: boolean;
+  _isNew?: boolean;
+  _isOpen?: boolean;
+  _hidden?: boolean;
+}
+
+interface ScenarioMapLayerBase extends Partial<VisibilityInfo> {
+  id: FeatureId;
+  name: string;
+  description?: string;
+  attributions?: string;
+  externalUrl?: string;
+  isHidden?: boolean;
+  opacity?: number;
+  extent?: number[];
+  _isNew?: boolean;
+  _status?: "uninitialized" | "loading" | "initialized" | "error";
+  _isTemporary?: boolean;
+}
+
+export interface ScenarioImageLayer extends ScenarioMapLayerBase {
+  type: "ImageLayer";
+  url: string;
+  imageCenter?: number[];
+  imageScale?: number | number[];
+  imageRotate?: number;
+}
+
+export interface ScenarioKMLLayer extends ScenarioMapLayerBase {
+  type: "KMLLayer";
+  url: string;
+  extractStyles?: boolean;
+  showPointNames?: boolean;
+}
+
+export interface ScenarioXYZLayer extends ScenarioMapLayerBase {
+  type: "XYZLayer";
+  url: string;
+}
+
+export interface ScenarioTileJSONLayer extends ScenarioMapLayerBase {
+  type: "TileJSONLayer";
+  url: string;
+}
+
+export type ScenarioMapLayer =
+  | ScenarioImageLayer
+  | ScenarioTileJSONLayer
+  | ScenarioXYZLayer
+  | ScenarioKMLLayer;
+
+export type ScenarioMapLayerType = ScenarioMapLayer["type"];
+
+export interface ScenarioLayerInstance extends ScenarioLayer {
+  //isVisible?: boolean;
+}
+
+export interface LayerFeatureItem {
+  id: FeatureId;
+  type: "layer" | ScenarioFeatureType;
+  name: string;
+  description?: string;
+  _pid?: FeatureId;
+}
+
+export interface RangeRing {
+  name: string;
+  range: number;
+  uom: "m" | "km" | "ft" | "mi" | "nmi";
+  hidden?: boolean;
+  style?: Partial<RangeRingStyle>;
+  group?: string | null;
+  _counter?: number;
+}
+
+export interface RangeRingGroup {
+  name: string;
+  style?: Partial<RangeRingStyle>;
+}
+
+export interface RangeRingStyle extends StrokeStyleSpec, FillStyleSpec {}

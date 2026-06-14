@@ -1,0 +1,374 @@
+import type { NewScenarioStore } from "./newScenarioStore";
+import type { CurrentState, ScenarioEvent } from "@/types/scenarioModels";
+import type {
+  NScenarioEvent,
+  NGeometryLayerItem,
+  NUnit,
+  ScenarioEventUpdate,
+} from "@/types/internalModels";
+import dayjs, { type ManipulateType } from "dayjs";
+import { computed } from "vue";
+import turfLength from "@turf/length";
+import turfAlong from "@turf/along";
+import { lineString } from "@turf/helpers";
+import type { EntityId } from "@/types/base";
+import { klona } from "klona";
+import { createEventHook } from "@vueuse/core";
+import { invalidateUnitStyle } from "@/geo/unitStyles";
+import { nanoid } from "@/utils";
+import { resolveTimeZone } from "@/utils/militaryTimeZones";
+import { syncTimedHierarchyProjection } from "@/scenariostore/hierarchy";
+import {
+  applyResourceDiff,
+  applyResourceUpdate,
+  RESOURCE_KINDS,
+} from "@/scenariostore/unitResources";
+import {
+  createInitialGeometryLayerItemState,
+  type CurrentGeometryLayerItemState,
+  isNGeometryLayerItem,
+  projectGeometryLayerItemState,
+} from "@/types/scenarioLayerItems";
+import { isScenarioOverlayLayer } from "@/types/scenarioStackLayers";
+
+export type GoToScenarioEventOptions = {
+  silent?: boolean;
+};
+
+export type GoToScenarioEventEvent = {
+  event: NScenarioEvent;
+};
+
+export function createInitialState(unit: NUnit): CurrentState | null {
+  if (
+    unit.location ||
+    unit.reinforcedStatus !== undefined ||
+    unit.equipment?.length ||
+    unit.personnel?.length ||
+    unit.supplies?.length
+  )
+    return {
+      t: Number.MIN_SAFE_INTEGER,
+      location: unit.location,
+      type: "initial",
+      sidc: unit.sidc,
+      symbolRotation: 0,
+      reinforcedStatus: unit.reinforcedStatus,
+      equipment: klona(unit.equipment),
+      personnel: klona(unit.personnel),
+      supplies: klona(unit.supplies),
+    };
+  return null;
+}
+
+export function updateCurrentUnitState(
+  unit: NUnit,
+  timestamp: number,
+  options: { markMapStylesDirty?: () => void } = {},
+) {
+  if (!unit.state || !unit.state.length) {
+    if (!unit._state) {
+      unit._state = createInitialState(unit);
+    }
+    return;
+  }
+  let currentState = createInitialState(unit);
+  for (const s of unit.state) {
+    if (s.t <= timestamp) {
+      const { diff, update, ...rest } = s;
+      if (update || diff) {
+        for (const kind of RESOURCE_KINDS) {
+          applyResourceUpdate(currentState?.[kind], update?.[kind], kind);
+          applyResourceDiff(currentState?.[kind], diff?.[kind], kind);
+        }
+      }
+      currentState = { ...currentState, ...rest };
+    } else {
+      if (
+        currentState?.location &&
+        s.location &&
+        !(s.interpolate === false) &&
+        (s.viaStartTime ?? -Infinity) <= timestamp
+      ) {
+        const n = lineString(
+          s.via
+            ? [currentState.location, ...s.via, s.location]
+            : [currentState.location, s.location],
+        );
+        const timeDiff = s.t - (s.viaStartTime ?? currentState.t);
+        const pathLength = turfLength(n);
+        const averageSpeed = pathLength / timeDiff;
+        const p = turfAlong(
+          n,
+          averageSpeed * (timestamp - (s.viaStartTime ?? currentState.t)),
+        );
+        currentState = {
+          ...currentState,
+          t: timestamp,
+          location: p.geometry.coordinates,
+          type: "interpolated",
+        };
+      }
+      break;
+    }
+  }
+  if (
+    currentState?.sidc !== unit._state?.sidc ||
+    currentState?.symbolRotation !== unit._state?.symbolRotation ||
+    currentState?.reinforcedStatus !== unit._state?.reinforcedStatus
+  ) {
+    if (unit._ikey) {
+      invalidateUnitStyle(unit._ikey);
+    }
+    unit._ikey = undefined;
+    invalidateUnitStyle(unit.id);
+    options.markMapStylesDirty?.();
+  }
+  unit._state = currentState;
+}
+
+export function useScenarioTime(store: NewScenarioStore) {
+  const { state, update } = store;
+
+  const goToScenarioEventHook = createEventHook<GoToScenarioEventEvent>();
+
+  function setCurrentTime(timestamp: number) {
+    Object.values(state.unitMap).forEach((unit) =>
+      updateCurrentUnitState(unit, timestamp, {
+        markMapStylesDirty: () => {
+          state.isMapStylesDirty = true;
+        },
+      }),
+    );
+    syncTimedHierarchyProjection(state, timestamp);
+    (
+      Object.values(state.layerStackMap).filter(
+        isScenarioOverlayLayer,
+      ) as import("@/types/scenarioStackLayers").NScenarioOverlayLayer[]
+    ).forEach((layer) => {
+      const visibleFromT = layer.visibleFromT ?? Number.MIN_SAFE_INTEGER;
+      const visibleUntilT = layer.visibleUntilT ?? Number.MAX_SAFE_INTEGER;
+      const oldHidden = layer._hidden;
+      layer._hidden = timestamp <= visibleFromT || timestamp >= visibleUntilT;
+      if (oldHidden !== layer._hidden) {
+        state.featureStateCounter++;
+      }
+      layer.items.forEach((featureId) => {
+        const feature = state.layerItemMap[featureId];
+        if (!feature || !isNGeometryLayerItem(feature)) return;
+        const visibleFromT = feature.visibleFromT ?? Number.MIN_SAFE_INTEGER;
+        const visibleUntilT = feature.visibleUntilT ?? Number.MAX_SAFE_INTEGER;
+        const oldHidden = feature._hidden;
+        feature._hidden =
+          timestamp <= visibleFromT || timestamp >= visibleUntilT || !!feature.isHidden;
+        if (oldHidden !== feature._hidden) {
+          state.featureStateCounter++;
+        }
+        if (feature.state?.length) {
+          let currentState = createInitialGeometryLayerItemState(feature);
+          for (const s of feature.state) {
+            if (s.t <= timestamp) {
+              currentState = {
+                ...currentState,
+                ...projectGeometryLayerItemState(s),
+              };
+            } else {
+              break;
+            }
+          }
+          feature._state = currentState;
+          state.featureStateCounter++;
+        }
+      });
+    });
+    state.currentTime = timestamp;
+  }
+
+  function add(amount: number, unit: ManipulateType, normalize = false) {
+    const newTime = normalize
+      ? dayjs(state.currentTime)
+          .add(amount, unit)
+          .tz(resolveTimeZone(timeZone.value || "UTC"))
+          .hour(12)
+      : dayjs(state.currentTime).add(amount, unit);
+    setCurrentTime(newTime.valueOf());
+  }
+
+  function subtract(amount: number, unit: ManipulateType, normalize = false) {
+    const newTime = normalize
+      ? dayjs(state.currentTime)
+          .subtract(amount, unit)
+          .tz(resolveTimeZone(timeZone.value || "UTC"))
+          .hour(12)
+      : dayjs(state.currentTime).subtract(amount, unit);
+    setCurrentTime(newTime.valueOf());
+  }
+
+  function jumpToNextEvent() {
+    let newTime = Number.MAX_SAFE_INTEGER;
+    Object.values(state.unitMap).forEach((unit) => {
+      if (!unit?.state?.length) {
+        return;
+      }
+      for (const s of unit.state) {
+        if (s.t > state.currentTime) {
+          if (s.t < newTime) newTime = s.t;
+          break;
+        }
+      }
+    });
+    if (newTime < Number.MAX_SAFE_INTEGER) setCurrentTime(newTime);
+  }
+
+  function jumpToPrevEvent() {
+    let newTime = Number.MIN_SAFE_INTEGER;
+    Object.values(state.unitMap).forEach((unit) => {
+      if (!unit?.state?.length) {
+        return;
+      }
+      for (const s of unit.state) {
+        if (s.t < state.currentTime) {
+          if (s.t > newTime) newTime = s.t;
+          break;
+        }
+      }
+    });
+    if (newTime > Number.MIN_SAFE_INTEGER) setCurrentTime(newTime);
+  }
+
+  function computeTimeHistogram() {
+    const histogram: Record<number, number> = {};
+    let max = 1;
+
+    Object.values(state.unitMap).forEach((unit) => {
+      (unit?.state || []).forEach((s) => {
+        // round to nearest hour
+        const t = Math.round(s.t / 3600000) * 3600000;
+        histogram[t] = (histogram[t] || 0) + 1;
+        max = Math.max(max, histogram[t]);
+      });
+    });
+
+    Object.values(state.layerItemMap)
+      .filter(isNGeometryLayerItem)
+      .forEach((feature) => {
+        (feature?.state || []).forEach((s) => {
+          // round to nearest hour
+          const t = Math.round(s.t / 3600000) * 3600000;
+          histogram[t] = (histogram[t] || 0) + 1;
+          max = Math.max(max, histogram[t]);
+        });
+      });
+
+    return {
+      histogram: Object.entries(histogram).map(([k, v]) => ({ t: +k, count: v })),
+      max,
+    };
+  }
+
+  function goToNextScenarioEvent(options: GoToScenarioEventOptions = {}) {
+    const nextEventId = state.events.find(
+      (event) => state.eventMap[event].startTime > state.currentTime,
+    );
+    const nextEvent = nextEventId && state.eventMap[nextEventId];
+    const newTime = nextEvent ? nextEvent.startTime : Number.MAX_SAFE_INTEGER;
+    if (newTime < Number.MAX_SAFE_INTEGER) goToScenarioEvent(nextEvent!, options);
+  }
+
+  function goToPrevScenarioEvent(options: GoToScenarioEventOptions = {}) {
+    const prevEventId = state.events
+      .slice()
+      .reverse()
+      .find((event) => state.eventMap[event].startTime < state.currentTime);
+    const prevEvent = prevEventId && state.eventMap[prevEventId];
+    const newTime = prevEvent ? prevEvent.startTime : Number.MIN_SAFE_INTEGER;
+    if (newTime > Number.MIN_SAFE_INTEGER) goToScenarioEvent(prevEvent!, options);
+  }
+
+  function goToScenarioEvent(
+    eventOrEventId: EntityId | NScenarioEvent,
+    options: GoToScenarioEventOptions = {},
+  ) {
+    const event =
+      typeof eventOrEventId === "string"
+        ? state.eventMap[eventOrEventId]
+        : eventOrEventId;
+    if (event) {
+      setCurrentTime(event.startTime);
+      if (!options.silent) {
+        goToScenarioEventHook.trigger({ event }).then();
+      }
+    }
+  }
+  const utcTime = computed(() => {
+    return dayjs.utc(state.currentTime);
+  });
+
+  const scenarioTime = computed(() => {
+    return dayjs(state.currentTime).tz(resolveTimeZone(state.info.timeZone || "UTC"));
+  });
+
+  const timeZone = computed(() => {
+    return state.info.timeZone;
+  });
+
+  function getEventById(id: EntityId) {
+    return state.eventMap[id];
+  }
+
+  function addScenarioEvent(event: NScenarioEvent | ScenarioEvent) {
+    const newEvent = klona(event) as NScenarioEvent;
+    if (!newEvent.id) newEvent.id = nanoid();
+    if (!newEvent._type) newEvent._type = "scenario";
+    update((s) => {
+      s.events.push(newEvent.id);
+      s.eventMap[newEvent.id] = newEvent;
+      s.events.sort((a, b) => s.eventMap[a].startTime - s.eventMap[b].startTime);
+    });
+    return newEvent.id;
+  }
+
+  function deleteScenarioEvent(id: EntityId) {
+    update((s) => {
+      s.events = s.events.filter((e) => e !== id);
+      delete s.eventMap[id];
+    });
+  }
+
+  function updateScenarioEvent(id: EntityId, data: ScenarioEventUpdate) {
+    const event = getEventById(id);
+    if (!event) return;
+    if (event._type === "scenario") {
+      update((s) => {
+        const e = s.eventMap[id];
+        if (!e) return;
+        s.eventMap[e.id] = klona(Object.assign(e, { ...data }));
+        if ("startTime" in data) {
+          s.events.sort((a, b) => s.eventMap[a].startTime - s.eventMap[b].startTime);
+        }
+      });
+    } else {
+      console.warn("Cannot update non-scenario event yet");
+    }
+  }
+
+  return {
+    setCurrentTime,
+    add,
+    subtract,
+    utcTime,
+    scenarioTime,
+    timeZone,
+    jumpToNextEvent,
+    jumpToPrevEvent,
+    goToScenarioEvent,
+    goToNextScenarioEvent,
+    goToPrevScenarioEvent,
+    getEventById,
+    addScenarioEvent,
+    updateScenarioEvent,
+    deleteScenarioEvent,
+    computeTimeHistogram,
+    onGoToScenarioEventEvent: goToScenarioEventHook.on,
+  };
+}

@@ -1,0 +1,414 @@
+<script setup lang="ts">
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconCogOutline as SettingsIcon,
+  IconCursorDefaultOutline as SelectIcon,
+  IconCursorMove as MoveIcon,
+  IconLockOpenVariantOutline,
+  IconLockOutline,
+  IconMapMarkerPath,
+  IconPencil as DrawIcon,
+  IconPlus as AddSymbolIcon,
+  IconRedoVariant as RedoIcon,
+  IconRulerSquareCompass as MeasurementIcon,
+  IconSkipNext,
+  IconSkipPrevious,
+  IconUndoVariant as UndoIcon,
+} from "@iconify-prerendered/vue-mdi";
+import { RotateCwIcon } from "@lucide/vue";
+import MainToolbarButton from "@/components/MainToolbarButton.vue";
+import { type ToolbarType, useMainToolbarStore } from "@/stores/mainToolbarStore";
+import { injectStrict } from "@/utils";
+import { activeScenarioKey, activeScenarioMapEngineKey } from "@/components/injects";
+import { storeToRefs } from "pinia";
+import { useUnitSettingsStore } from "@/stores/geoStore";
+import { useEventBus, useToggle } from "@vueuse/core";
+import PanelSymbolButton from "@/components/PanelSymbolButton.vue";
+import FloatingPanel from "@/components/FloatingPanel.vue";
+import { computed, onMounted, type Ref, watch, watchEffect } from "vue";
+import { SID_INDEX, Sidc } from "@/symbology/sidc";
+import { useGetMapLocation } from "@/composables/geoMapLocation";
+import { useMapSelectStore } from "@/stores/mapSelectStore";
+import { useToolbarUnitSymbolData } from "@/composables/mainToolbarData";
+import { useActiveUnitStore } from "@/stores/dragStore";
+import { orbatUnitClick } from "@/components/eventKeys";
+import { CalendarIcon } from "@heroicons/vue/24/solid";
+import SymbolPickerPopover from "@/modules/scenarioeditor/SymbolPickerPopover.vue";
+import EchelonPickerPopover from "@/modules/scenarioeditor/EchelonPickerPopover.vue";
+import { Button } from "@/components/ui/button";
+import { CUSTOM_SYMBOL_PREFIX } from "@/config/constants.ts";
+import { useRecordingStore } from "@/stores/recordingStore";
+
+const props = withDefaults(
+  defineProps<{
+    canMoveUnits?: boolean;
+    canRotateUnits?: boolean;
+    canMeasure?: boolean;
+    canDraw?: boolean;
+    canTrack?: boolean;
+    canAddUnits?: boolean;
+    locationPickerEventSource?: "map" | "dom";
+  }>(),
+  {
+    canMoveUnits: true,
+    canRotateUnits: true,
+    canMeasure: true,
+    canDraw: true,
+    canTrack: true,
+    canAddUnits: true,
+    locationPickerEventSource: "map",
+  },
+);
+
+const emit = defineEmits([
+  "open-time-modal",
+  "inc-day",
+  "dec-day",
+  "next-event",
+  "prev-event",
+  "show-settings",
+]);
+
+const {
+  store: { undo, redo, canRedo, canUndo, groupUpdate, state },
+  unitActions,
+  geo: { addUnitPosition },
+  helpers: { getSideById },
+} = injectStrict(activeScenarioKey);
+const engineRef = injectStrict(activeScenarioMapEngineKey);
+
+const store = useMainToolbarStore();
+const { addMultiple } = storeToRefs(store);
+const { moveUnitEnabled, rotateUnitEnabled } = storeToRefs(useUnitSettingsStore());
+const selectStore = useMapSelectStore();
+const toggleAddMultiple = useToggle(addMultiple);
+const bus = useEventBus(orbatUnitClick);
+const recordingStore = useRecordingStore();
+const { activeUnitId, resetActiveParent, activeParent, activeParentId } =
+  useActiveUnitStore();
+
+const { currentSid, currentEchelon, activeSidc } = useToolbarUnitSymbolData();
+
+const computedSidc = computed(() => {
+  const computedActiveSidc = activeSidc.value.startsWith(CUSTOM_SYMBOL_PREFIX)
+    ? "10031000141211000000"
+    : activeSidc.value;
+  const parsedSidc = new Sidc(computedActiveSidc);
+  parsedSidc.standardIdentity = currentSid.value;
+  parsedSidc.emt = "00";
+  parsedSidc.hqtfd = "0";
+  return parsedSidc.toString();
+});
+
+const symbolOptions = computed(() =>
+  activeParent.value
+    ? {
+        ...unitActions.getCombinedSymbolOptions(activeParent.value, true),
+        outlineWidth: 5,
+      }
+    : {},
+);
+
+const {
+  start: startGetLocation,
+  isActive: isGetLocationActive,
+  cancel: cancelGetLocation,
+  onGetLocation,
+  onCancel,
+  onStart,
+} = useGetMapLocation(() => engineRef.value?.map, {
+  cancelOnClickOutside: false,
+  stopPropagationOnClickOutside: false,
+  eventSource: props.locationPickerEventSource,
+});
+
+function addUnit(sidc: string, closePopover?: (ref?: Ref | HTMLElement) => void) {
+  if (!props.canAddUnits) return;
+  activeSidc.value = sidc;
+  closePopover && closePopover();
+  startGetLocation();
+}
+
+onMounted(() => {
+  if (!activeParentId.value) resetActiveParent();
+});
+
+onCancel(() => {
+  selectStore.hoverEnabled = true;
+});
+
+onStart(() => {
+  selectStore.hoverEnabled = false;
+  store.clearToolbar();
+});
+
+onGetLocation((location) => {
+  selectStore.hoverEnabled = true;
+  groupUpdate(() => {
+    if (!activeParentId.value || unitActions.isUnitLocked(activeParentId.value)) return;
+    const name = `${(activeParent.value?.subUnits?.length ?? 0) + 1}`;
+    const sidc = new Sidc(activeSidc.value!);
+    sidc.emt = currentEchelon.value;
+    sidc.standardIdentity = currentSid.value;
+    const unitId = unitActions.createSubordinateUnit(activeParentId.value, {
+      sidc: sidc.toString(),
+      name,
+    });
+    unitId && addUnitPosition(unitId, location);
+  });
+  if (addMultiple.value && activeSidc.value) {
+    addUnit(activeSidc.value);
+  }
+});
+
+bus.on((unit) => {
+  if (isGetLocationActive.value) {
+    if (!(addMultiple.value && activeSidc.value)) {
+      cancelGetLocation();
+    }
+    const name = `${(activeParent.value?.subUnits?.length ?? 0) + 1}`;
+    const sidc = new Sidc(activeSidc.value!);
+    sidc.emt = currentEchelon.value;
+    sidc.standardIdentity = unit.sidc[SID_INDEX];
+    const unitId = unitActions.createSubordinateUnit(unit.id, {
+      sidc: sidc.toString(),
+      name,
+    });
+  }
+});
+
+watch(activeParent, (unitOrSideGroup) => {
+  if (!unitOrSideGroup) return;
+  const hasCustomSymbol =
+    "sidc" in unitOrSideGroup && unitOrSideGroup.sidc.startsWith(CUSTOM_SYMBOL_PREFIX);
+  if ("sidc" in unitOrSideGroup && !hasCustomSymbol) {
+    currentSid.value = unitOrSideGroup.sidc[SID_INDEX];
+  } else {
+    if (hasCustomSymbol) {
+      currentSid.value = getSideById(unitOrSideGroup._sid).standardIdentity;
+    } else {
+      currentSid.value = getSideById(unitOrSideGroup._pid).standardIdentity;
+    }
+  }
+});
+
+function selectEchelon(sidc: string) {
+  currentEchelon.value = new Sidc(sidc).emt;
+}
+
+function setSelectMode() {
+  moveUnitEnabled.value = false;
+  rotateUnitEnabled.value = false;
+}
+
+function setMoveMode() {
+  if (!props.canMoveUnits || !recordingStore.isRecordingLocation) return;
+  moveUnitEnabled.value = true;
+  rotateUnitEnabled.value = false;
+}
+
+function setRotateMode() {
+  if (!props.canRotateUnits) return;
+  rotateUnitEnabled.value = true;
+  moveUnitEnabled.value = false;
+}
+
+function toggleToolbarIfSupported(toolbar: ToolbarType) {
+  if (
+    (toolbar === "measurements" && !props.canMeasure) ||
+    (toolbar === "draw" && !props.canDraw) ||
+    (toolbar === "track" && !props.canTrack)
+  ) {
+    return;
+  }
+  store.toggleToolbar(toolbar);
+}
+
+watchEffect(() => {
+  if (!props.canMoveUnits && moveUnitEnabled.value) {
+    moveUnitEnabled.value = false;
+  }
+  if (!props.canRotateUnits && rotateUnitEnabled.value) {
+    rotateUnitEnabled.value = false;
+  }
+  if (
+    (store.currentToolbar === "measurements" && !props.canMeasure) ||
+    (store.currentToolbar === "draw" && !props.canDraw) ||
+    (store.currentToolbar === "track" && !props.canTrack)
+  ) {
+    store.clearToolbar();
+  }
+});
+</script>
+
+<template>
+  <FloatingPanel
+    v-if="isGetLocationActive"
+    class="bg-popover/75! absolute bottom-14 overflow-visible p-2 px-4 text-sm sm:bottom-16 sm:left-1/2 sm:-translate-x-1/2"
+  >
+    Click on map or ORBAT to place unit.
+    <Button type="button" variant="link" size="sm" @click="cancelGetLocation()">
+      Cancel
+    </Button>
+  </FloatingPanel>
+  <nav
+    class="no-scrollbar bg-sidebar border-border pointer-events-auto flex w-full max-w-full items-center justify-between gap-2 overflow-x-auto overscroll-x-contain border p-1 text-sm shadow-sm sm:rounded-xl sm:p-2 md:w-auto"
+  >
+    <section class="flex shrink-0 items-center justify-between">
+      <MainToolbarButton
+        title="Keep tool active to add multiple"
+        @click="toggleAddMultiple()"
+        class="hidden sm:flex"
+      >
+        <IconLockOutline v-if="addMultiple" class="size-5" />
+        <IconLockOpenVariantOutline v-else class="size-5" />
+      </MainToolbarButton>
+      <MainToolbarButton
+        @click="setSelectMode()"
+        :active="!moveUnitEnabled && !rotateUnitEnabled"
+        title="Select unit"
+      >
+        <SelectIcon class="size-6" />
+      </MainToolbarButton>
+      <MainToolbarButton
+        :active="moveUnitEnabled && !rotateUnitEnabled"
+        @click="setMoveMode()"
+        :title="
+          !props.canMoveUnits
+            ? 'Move unit not supported in MapLibre mode yet'
+            : recordingStore.isRecordingLocation
+              ? 'Move unit'
+              : 'Move unit disabled. Enable Unit position in Rec first.'
+        "
+        :disabled="!props.canMoveUnits || !recordingStore.isRecordingLocation"
+      >
+        <MoveIcon class="size-6" />
+      </MainToolbarButton>
+      <MainToolbarButton
+        :active="rotateUnitEnabled"
+        @click="setRotateMode()"
+        :title="props.canRotateUnits ? 'Rotate unit' : 'Rotate unit not supported'"
+        :disabled="!props.canRotateUnits"
+      >
+        <RotateCwIcon class="size-5" />
+      </MainToolbarButton>
+      <MainToolbarButton
+        @click="emit('show-settings')"
+        title="Show settings"
+        class="hidden md:flex"
+      >
+        <SettingsIcon class="size-6" />
+      </MainToolbarButton>
+      <div class="border-border h-7 border-l-2 sm:mx-1" />
+      <MainToolbarButton
+        :active="store.currentToolbar === 'measurements'"
+        @click="toggleToolbarIfSupported('measurements')"
+        :title="
+          props.canMeasure
+            ? 'Measurements'
+            : 'Measurements not supported in MapLibre mode yet'
+        "
+        :disabled="!props.canMeasure"
+      >
+        <MeasurementIcon class="size-6" />
+      </MainToolbarButton>
+      <MainToolbarButton
+        :active="store.currentToolbar === 'draw'"
+        @click="toggleToolbarIfSupported('draw')"
+        :title="props.canDraw ? 'Draw' : 'Draw not supported in MapLibre mode yet'"
+        :disabled="!props.canDraw"
+      >
+        <DrawIcon class="size-6" />
+      </MainToolbarButton>
+      <MainToolbarButton
+        :title="
+          props.canTrack ? 'Unit track' : 'Unit track not supported in MapLibre mode yet'
+        "
+        :active="store.currentToolbar === 'track'"
+        @click="toggleToolbarIfSupported('track')"
+        :disabled="!props.canTrack"
+      >
+        <IconMapMarkerPath class="size-6" />
+      </MainToolbarButton>
+      <div class="border-border h-7 border-l-2 sm:mx-1" />
+      <div class="ml-2 flex items-center">
+        <EchelonPickerPopover
+          :symbol-options="symbolOptions"
+          :select-echelon="selectEchelon"
+        />
+        <PanelSymbolButton
+          :size="22"
+          :sidc="computedSidc"
+          class="group relative ml-2 sm:ml-5"
+          :symbol-options="symbolOptions"
+          @click="addUnit(activeSidc)"
+          :title="
+            props.canAddUnits ? 'Add unit' : 'Add unit not supported in MapLibre mode yet'
+          "
+          :disabled="
+            !props.canAddUnits ||
+            !activeParentId ||
+            unitActions.isUnitLocked(activeParentId)
+          "
+        >
+          <AddSymbolIcon
+            class="text-muted-foreground group-hover:text-foreground bg-background/70 absolute -right-2 bottom-0 h-4 w-4 rounded-full"
+          />
+        </PanelSymbolButton>
+        <SymbolPickerPopover
+          v-if="props.canAddUnits"
+          :symbol-options="symbolOptions"
+          :add-unit="addUnit"
+        />
+      </div>
+      <slot name="extra-tools" />
+    </section>
+    <section class="flex shrink-0 items-center">
+      <div class="border-border -mx-1 h-7 border-l-2 sm:mx-1" />
+      <MainToolbarButton title="Undo" @click="undo()" :disabled="!canUndo">
+        <UndoIcon class="size-6" />
+      </MainToolbarButton>
+      <MainToolbarButton title="Redo" @click="redo()" :disabled="!canRedo">
+        <RedoIcon class="size-6" />
+      </MainToolbarButton>
+      <div class="border-border mx-1 hidden h-7 border-l-2 sm:block" />
+      <MainToolbarButton
+        title="Select Time and Date"
+        class="hidden sm:flex"
+        @click="emit('open-time-modal')"
+      >
+        <span class="sr-only">Select Time and Date</span>
+        <CalendarIcon class="size-5" aria-hidden="true" />
+      </MainToolbarButton>
+      <MainToolbarButton
+        title="Previous Day"
+        class="hidden sm:flex"
+        @click="emit('dec-day')"
+      >
+        <span class="sr-only">Previous Day</span>
+        <IconChevronLeft class="size-5" aria-hidden="true" />
+      </MainToolbarButton>
+      <MainToolbarButton title="Next Day" class="hidden sm:flex" @click="emit('inc-day')">
+        <span class="sr-only">Next Day</span>
+        <IconChevronRight class="size-5" aria-hidden="true" />
+      </MainToolbarButton>
+      <MainToolbarButton
+        title="Previous Event"
+        class="hidden sm:flex"
+        @click="emit('prev-event')"
+      >
+        <span class="sr-only">Previous Event</span>
+        <IconSkipPrevious class="size-5" aria-hidden="true" />
+      </MainToolbarButton>
+      <MainToolbarButton
+        title="Next Event"
+        class="hidden sm:flex"
+        @click="emit('next-event')"
+      >
+        <span class="sr-only">Next Event</span>
+        <IconSkipNext class="size-5 w-5" aria-hidden="true" />
+      </MainToolbarButton>
+    </section>
+  </nav>
+</template>

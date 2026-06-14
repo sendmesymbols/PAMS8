@@ -31,6 +31,16 @@ const LASSO_SYM = new SimpleFillSymbol({
     outline: { color: new Color([0, 200, 100, 0.8]), width: 1.5, style: "dash" }
 });
 
+// ── Subtract (deselect) lasso polygon symbol ─────────────────────────────────
+const LASSO_SUBTRACT_SYM = new SimpleFillSymbol({
+    color: new Color([220, 50, 50, 0.12]),
+    outline: new SimpleLineSymbol({
+        color: new Color([220, 50, 50, 0.9]),
+        width: 1.5,
+        style: "dash",
+    }),
+});
+
 const CLONE_DRAG_LIVE_ANNOTATION_LIMIT = 25;
 
 interface UndoEntry {
@@ -499,7 +509,7 @@ class SelectionEngine {
      * @param onComplete  Called with the newly-selected graphics when done.
      */
     lassoSelect(
-        opts?: { freehand?: boolean; addToSelection?: boolean },
+        opts?: { freehand?: boolean; addToSelection?: boolean; subtract?: boolean },
         onComplete?: (selected: Graphic[]) => void
     ): void {
         if (this._lassoVM) { this._lassoVM.cancel(); this._lassoVM.destroy(); }
@@ -510,12 +520,12 @@ class SelectionEngine {
         this._lassoVM = new SketchViewModel({
             view: this.view,
             layer: lassoLayer,
-            polygonSymbol: LASSO_SYM,
+            polygonSymbol: opts?.subtract ? LASSO_SUBTRACT_SYM : LASSO_SYM,
         });
 
         EngineLogger.nextStep(
             'Selection Engine',
-            `Lasso active — draw a polygon to select symbols. ${opts?.freehand ? 'Release mouse' : 'Double-click'} to finish`,
+            `${opts?.subtract ? 'Subtract' : 'Lasso'} active — draw a polygon to ${opts?.subtract ? 'deselect' : 'select'} symbols. ${opts?.freehand ? 'Release mouse' : 'Double-click'} to finish`,
         );
 
         const mode = opts?.freehand ? "freehand" : "click";
@@ -547,16 +557,27 @@ class SelectionEngine {
                     });
                 });
 
-                if (!opts?.addToSelection) this.clearSelection();
-                hit.forEach(g => this.selectGraphic(g));
-
-                if (hit.length > 0) {
-                    EngineLogger.success(
-                        'Selection Engine',
-                        `${hit.length} symbol${hit.length !== 1 ? 's' : ''} selected via lasso`,
-                    );
+                if (opts?.subtract) {
+                    hit.forEach(g => this.deselectGraphic(g));
+                    if (hit.length > 0) {
+                        EngineLogger.success(
+                            'Selection Engine',
+                            `${hit.length} symbol${hit.length !== 1 ? 's' : ''} removed from selection`,
+                        );
+                    } else {
+                        EngineLogger.nextStep('Selection Engine', 'No selected symbols inside the subtract area');
+                    }
                 } else {
-                    EngineLogger.nextStep('Selection Engine', 'No symbols found in lasso area — try a wider selection');
+                    if (!opts?.addToSelection) this.clearSelection();
+                    hit.forEach(g => this.selectGraphic(g));
+                    if (hit.length > 0) {
+                        EngineLogger.success(
+                            'Selection Engine',
+                            `${hit.length} symbol${hit.length !== 1 ? 's' : ''} selected via lasso`,
+                        );
+                    } else {
+                        EngineLogger.nextStep('Selection Engine', 'No symbols found in lasso area — try a wider selection');
+                    }
                 }
 
                 if (onComplete) onComplete(hit);

@@ -1,0 +1,620 @@
+<script setup lang="ts">
+import {
+  computed,
+  defineAsyncComponent,
+  ref,
+  useTemplateRef,
+  watch,
+  watchEffect,
+} from "vue";
+import {
+  IconCrosshairsGps,
+  IconFileTreeOutline as TreeLocateIcon,
+  IconImage as ImageIcon,
+  IconLockOutline,
+  IconMagnifyExpand as ZoomIcon,
+  IconPencil as EditIcon,
+} from "@iconify-prerendered/vue-mdi";
+import { useGeoStore, useUnitSettingsStore } from "@/stores/geoStore";
+import { GlobalEvents } from "vue-global-events";
+import { inputEventFilter, setCharAt } from "@/components/helpers";
+import DescriptionItem from "@/components/DescriptionItem.vue";
+import { unrefElement, useToggle } from "@vueuse/core";
+import { renderMarkdown } from "@/composables/formatting";
+import UnitPanelState from "./UnitPanelState.vue";
+import { useUnitActions } from "@/composables/scenarioActions";
+import { type UnitAction, UnitActions } from "@/types/constants";
+import SplitButton from "@/components/SplitButton.vue";
+import { type EntityId } from "@/types/base";
+import { injectStrict } from "@/utils";
+import { activeScenarioKey, searchActionsKey, sidcModalKey } from "@/components/injects";
+import type { MediaUpdate, UnitUpdate } from "@/types/internalModels";
+import { formatPosition } from "@/geo/utils";
+import IconButton from "@/components/IconButton.vue";
+import { useGetMapLocation } from "@/composables/geoMapLocation";
+
+import { useUiStore } from "@/stores/uiStore";
+import { CUSTOM_SYMBOL_SID_INDEX, SID_INDEX } from "@/symbology/sidc";
+import { useSelectedItems } from "@/stores/selectedStore";
+import { TabsContent } from "@/components/ui/tabs";
+import EditableLabel from "@/components/EditableLabel.vue";
+import UnitDetailsMapDisplay from "@/modules/scenarioeditor/UnitDetailsMapDisplay.vue";
+import { useTabStore } from "@/stores/tabStore";
+import { storeToRefs } from "pinia";
+import UnitDetailsToe from "@/modules/scenarioeditor/UnitDetailsToe.vue";
+import ScrollTabs from "@/components/ScrollTabs.vue";
+import DotsMenu from "@/components/DotsMenu.vue";
+import { type MenuItemData } from "@/components/types";
+import EditMediaForm from "@/modules/scenarioeditor/EditMediaForm.vue";
+import EditMetaForm from "@/modules/scenarioeditor/EditMetaForm.vue";
+import UnitDetailsProperties from "@/modules/scenarioeditor/UnitDetailsProperties.vue";
+import UnitDetailsSymbol from "@/modules/scenarioeditor/UnitDetailsSymbol.vue";
+import { Button } from "@/components/ui/button";
+import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
+import { getUnitDragItem } from "@/types/draggables.ts";
+import UnitSymbol from "@/components/UnitSymbol.vue";
+import { CUSTOM_SYMBOL_PREFIX } from "@/config/constants.ts";
+import { Badge } from "@/components/ui/badge";
+import { useRecordingStore } from "@/stores/recordingStore";
+import DetailsPanelHeader from "@/modules/scenarioeditor/DetailsPanelHeader.vue";
+import PanelTitle from "@/modules/scenarioeditor/PanelTitle.vue";
+
+const FeatureTransformations = defineAsyncComponent(
+  () => import("@/modules/scenarioeditor/FeatureTransformations.vue"),
+);
+
+const props = defineProps<{ unitId: EntityId }>();
+const activeScenario = injectStrict(activeScenarioKey);
+const {
+  store,
+  helpers: { getUnitById },
+  geo: { addUnitPosition },
+  unitActions: {
+    updateUnit,
+    getUnitHierarchy,
+    getCombinedSymbolOptions,
+    isUnitLocked,
+    updateUnitLocked,
+  },
+} = activeScenario;
+
+const { onUnitSelectHook } = injectStrict(searchActionsKey);
+
+const {
+  state: { unitStatusMap },
+} = store;
+const { unitDetailsTab: selectedTab } = storeToRefs(useTabStore());
+
+const unitName = ref("");
+const shortName = ref("");
+const truncateUnits = ref(true);
+const isDragged = ref(false);
+const elRef = useTemplateRef("elRef");
+
+const tabList = computed(() => {
+  const base = [
+    { label: "Details", value: "0" },
+    { label: "Map symbol", value: "1" },
+    { label: "Unit state", value: "2" },
+    { label: "TO&E/S", value: "3" },
+    { label: "Map display", value: "4" },
+    { label: "Properties", value: "5" },
+    { label: "Transform", value: "6" },
+  ];
+  if (uiStore.debugMode) {
+    base.push({ label: "Debug", value: "7" });
+  }
+  return base;
+});
+
+const selectedTabString = computed({
+  get: () => selectedTab.value.toString(),
+  set: (v) => {
+    selectedTab.value = Number(v);
+  },
+});
+
+const unit = computed(() => {
+  return getUnitById(props.unitId);
+});
+
+const unitStatus = computed(() => {
+  const status = unit.value._state?.status || unit.value.status;
+  return status ? unitStatusMap[status]?.name : undefined;
+});
+
+const isLocked = computed(() => isUnitLocked(props.unitId));
+
+const geoStore = useGeoStore();
+const recordingStore = useRecordingStore();
+const unitSettings = useUnitSettingsStore();
+const { getModalSidc } = injectStrict(sidcModalKey);
+
+const unitMenuItems = computed((): MenuItemData[] => [
+  {
+    label: "Change symbol",
+    action: () => handleChangeSymbol(),
+    disabled: isLocked.value,
+  },
+  { label: "Edit unit data", action: () => toggleEditMode(), disabled: isLocked.value },
+  {
+    label: "Add or change image",
+    action: () => toggleEditMediaMode(),
+    disabled: isLocked.value,
+  },
+  { label: "Remove unit image", action: () => removeMedia(), disabled: isLocked.value },
+  unit.value.locked
+    ? {
+        label: "Unlock unit",
+        action: () => setLocked(false),
+        disabled: isUnitLocked(props.unitId, { excludeUnit: true }),
+      }
+    : {
+        label: "Lock unit",
+        action: () => setLocked(true),
+        disabled: isUnitLocked(props.unitId, { excludeUnit: true }),
+      },
+]);
+
+watchEffect((onCleanup) => {
+  const el = unrefElement(elRef.value) as HTMLElement | null;
+  if (!el) return;
+  const dndFunction = draggable({
+    element: el,
+    getInitialData: () => getUnitDragItem({ unit: unit.value }, "detailsPanel"),
+    onDragStart: () => (isDragged.value = true),
+    onDrop: () => (isDragged.value = false),
+    canDrag: () => !isUnitLocked(unit.value.id),
+    // onGenerateDragPreview({ nativeSetDragImage }) {
+    //   setCustomNativeDragPreview({
+    //     getOffset: pointerOutsideOfPreview({ x: "16px", y: "8px" }),
+    //     render: ({ container }) => {
+    //       return render(
+    //         h(UnitSymbol, {
+    //           sidc: unit.value.sidc,
+    //           options: combinedSymbolOptions.value,
+    //           size: 25,
+    //         }),
+    //         container,
+    //       );
+    //     },
+    //     nativeSetDragImage,
+    //   });
+    // },
+  });
+
+  onCleanup(() => dndFunction());
+});
+
+watch(
+  () => unit.value?.name,
+  () => {
+    unitName.value = unit.value?.name;
+  },
+  { immediate: true },
+);
+
+watch(
+  () => unit.value?.shortName,
+  () => {
+    shortName.value = unit.value?.shortName || "";
+  },
+  { immediate: true },
+);
+
+watch(
+  () => unitSettings.editHistory,
+  (v) => {
+    if (v && !unitSettings.showHistory) {
+      unitSettings.showHistory = true;
+    }
+  },
+);
+
+const combinedSymbolOptions = computed(() => {
+  return { ...getCombinedSymbolOptions(unit.value), outlineWidth: 8 };
+});
+
+const unitSidc = computed(() => unit.value._state?.sidc || unit.value.sidc);
+
+const {
+  start: startGetLocation,
+  isActive: isGetLocationActive,
+  onGetLocation,
+} = useGetMapLocation(() => geoStore.mapAdapter);
+const uiStore = useUiStore();
+const { selectedUnitIds, clear: clearSelection } = useSelectedItems();
+const isMultiMode = computed(() => selectedUnitIds.value.size > 1);
+const selectedUnits = computed(() =>
+  [...selectedUnitIds.value].map((id) => getUnitById(id)),
+);
+
+const visibleSelectedUnits = computed(() => {
+  if (selectedUnits.value.length > 50 && truncateUnits.value) {
+    return selectedUnits.value.slice(0, 50);
+  }
+  return selectedUnits.value;
+});
+
+const isTruncated = computed(
+  () => selectedUnits.value.length > visibleSelectedUnits.value.length,
+);
+
+onGetLocation((location) => addUnitPosition(props.unitId, location));
+const isEditMode = ref(false);
+const toggleEditMode = useToggle(isEditMode);
+
+const isEditMediaMode = ref(false);
+const toggleEditMediaMode = useToggle(isEditMediaMode);
+
+const onFormSubmit = (unitUpdate: UnitUpdate) => {
+  updateUnit(props.unitId, unitUpdate);
+  toggleEditMode();
+};
+
+function removeMedia() {
+  updateUnit(props.unitId, { media: [] });
+}
+
+function setLocked(locked: boolean) {
+  updateUnitLocked(props.unitId, locked);
+}
+
+const hDescription = computed(() => renderMarkdown(unit.value.description || ""));
+const hasPosition = computed(() => Boolean(unit.value._state?.location));
+const media = computed(() => {
+  const { media } = unit.value;
+  if (!media || isMultiMode.value) return;
+  return media[0];
+});
+
+watch(
+  isEditMode,
+  (v) => {
+    if (!v) return;
+    isEditMediaMode.value = false;
+    selectedTab.value = 0;
+  },
+  { immediate: true },
+);
+
+watch(isEditMediaMode, (v) => {
+  if (!v) return;
+  isEditMode.value = false;
+  selectedTab.value = 0;
+});
+
+watch(
+  isGetLocationActive,
+  (isActive) => {
+    uiStore.getLocationActive = isActive;
+  },
+  { immediate: true },
+);
+
+const { onUnitAction } = useUnitActions();
+
+function actionWrapper(action: UnitAction) {
+  if (isMultiMode.value) {
+    onUnitAction(selectedUnits.value, action);
+    return;
+  }
+  onUnitAction(unit.value, action);
+}
+
+function updateMedia(mediaUpdate: MediaUpdate) {
+  if (!mediaUpdate) return;
+  const { media = [] } = unit.value;
+  const newMedia = { ...media[0], ...mediaUpdate };
+  updateUnit(props.unitId, { media: [newMedia] });
+  isEditMediaMode.value = false;
+}
+
+const buttonItems = computed(() => [
+  {
+    label: "Duplicate",
+    onClick: () => actionWrapper(UnitActions.Clone),
+    disabled: isLocked.value,
+  },
+  {
+    label: "Duplicate (with state)",
+    onClick: () => actionWrapper(UnitActions.CloneWithState),
+    disabled: isLocked.value,
+  },
+  {
+    label: "Duplicate hierarchy",
+    onClick: () => actionWrapper(UnitActions.CloneWithSubordinates),
+    disabled: isLocked.value,
+  },
+  {
+    label: "Duplicate hierarchy (with state)",
+    onClick: () => actionWrapper(UnitActions.CloneWithSubordinatesAndState),
+    disabled: isLocked.value,
+  },
+  {
+    label: "Move up",
+    onClick: () => actionWrapper(UnitActions.MoveUp),
+    disabled: isLocked.value,
+  },
+  {
+    label: "Move down",
+    onClick: () => actionWrapper(UnitActions.MoveDown),
+    disabled: isLocked.value,
+  },
+  {
+    label: "Create subordinate",
+    onClick: () => actionWrapper(UnitActions.AddSubordinate),
+    disabled: isLocked.value,
+  },
+  {
+    label: "Zoom",
+    onClick: () => actionWrapper(UnitActions.Zoom),
+  },
+  {
+    label: "Pan",
+    onClick: () => actionWrapper(UnitActions.Pan),
+    disabled: !hasPosition.value,
+  },
+  {
+    label: "Delete",
+    onClick: () => actionWrapper(UnitActions.Delete),
+    disabled: isLocked.value,
+  },
+  {
+    label: "Clear state",
+    onClick: () => actionWrapper(UnitActions.ClearState),
+    disabled: isLocked.value,
+  },
+]);
+
+async function handleChangeSymbol() {
+  if (isLocked.value) return;
+  const newSidcValue = await getModalSidc(unit.value.sidc, {
+    symbolOptions: unit.value.symbolOptions,
+    inheritedSymbolOptions: getCombinedSymbolOptions(unit.value, true),
+    reinforcedStatus: unit.value.reinforcedStatus,
+  });
+  if (newSidcValue !== undefined) {
+    const { sidc, symbolOptions = {}, reinforcedStatus } = newSidcValue;
+    const isCustomSymbol = sidc.startsWith(CUSTOM_SYMBOL_PREFIX);
+    if (isMultiMode.value) {
+      store.groupUpdate(() =>
+        selectedUnitIds.value.forEach((unitId) => {
+          const { side } = getUnitHierarchy(unitId);
+          const nextSidc = setCharAt(
+            sidc,
+            isCustomSymbol ? CUSTOM_SYMBOL_SID_INDEX : SID_INDEX,
+            side.standardIdentity,
+          );
+          const dataUpdate: UnitUpdate = { sidc: nextSidc, symbolOptions };
+          if (reinforcedStatus) dataUpdate.reinforcedStatus = reinforcedStatus;
+          updateUnit(unitId, dataUpdate, { doUpdateUnitState: true });
+        }),
+      );
+    } else {
+      const dataUpdate: UnitUpdate = { sidc, symbolOptions };
+      if (reinforcedStatus) dataUpdate.reinforcedStatus = reinforcedStatus;
+      updateUnit(props.unitId, dataUpdate, { doUpdateUnitState: true });
+    }
+  }
+}
+
+function locateInOrbat() {
+  onUnitSelectHook.trigger({ unitId: props.unitId, options: { noZoom: true } });
+}
+</script>
+<template>
+  <div v-if="unit" class="@container" :key="unit.id">
+    <DetailsPanelHeader :media="media" density="compact">
+      <template v-if="!isMultiMode" #leading>
+        <button
+          type="button"
+          class="inline-flex w-16 justify-start"
+          @click="handleChangeSymbol()"
+          ref="elRef"
+        >
+          <UnitSymbol
+            class="w-16"
+            :sidc="unitSidc"
+            :size="34"
+            :options="combinedSymbolOptions"
+          />
+        </button>
+      </template>
+      <template v-if="!isMultiMode" #title>
+        <EditableLabel
+          v-model="unitName"
+          @update-value="updateUnit(unitId, { name: $event })"
+          class="relative z-10 bg-transparent"
+          :disabled="isLocked"
+        />
+      </template>
+      <template v-else #title>
+        <PanelTitle> {{ selectedUnitIds.size }} units selected </PanelTitle>
+      </template>
+      <template v-if="!isMultiMode" #subtitle>
+        <EditableLabel
+          v-model="shortName"
+          @update-value="updateUnit(unitId, { shortName: $event })"
+          text-class="text-sm text-muted-foreground"
+          :disabled="isLocked"
+        />
+      </template>
+      <template #trailing>
+        <IconLockOutline v-if="isLocked" class="text-muted-foreground size-5" />
+        <Badge v-if="unitStatus">{{ unitStatus }}</Badge>
+        <Button
+          v-if="isMultiMode"
+          type="button"
+          size="sm"
+          variant="outline"
+          @click="clearSelection()"
+        >
+          Clear
+        </Button>
+      </template>
+      <template v-if="isMultiMode" #summary>
+        <ul class="relative mt-2 flex w-full flex-wrap gap-1 pb-4">
+          <li v-for="sUnit in visibleSelectedUnits" class="relative flex">
+            <UnitSymbol
+              :sidc="sUnit.sidc"
+              :size="24"
+              class="block w-9"
+              :options="{ ...getCombinedSymbolOptions(sUnit), outlineWidth: 8 }"
+            />
+            <span v-if="sUnit._state?.location" class="text-red-700">&deg;</span>
+          </li>
+          <li v-if="isTruncated">
+            <button
+              type="button"
+              class="bg-opacity-80 bg-muted text-muted-foreground absolute right-0 bottom-0 left-0 border p-2 text-center"
+              @click="truncateUnits = !truncateUnits"
+            >
+              +{{ selectedUnits.length - visibleSelectedUnits.length }}
+            </button>
+          </li>
+        </ul>
+      </template>
+      <template #actions>
+        <div class="flex min-w-0 flex-1 items-center gap-0.5">
+          <IconButton title="Zoom to" @click="actionWrapper(UnitActions.Zoom)">
+            <ZoomIcon class="size-5" />
+          </IconButton>
+          <IconButton
+            title="Edit unit"
+            @click="toggleEditMode()"
+            :disabled="isMultiMode || isLocked"
+          >
+            <EditIcon class="size-5" />
+          </IconButton>
+          <IconButton
+            title="Add/modify unit image"
+            @click="toggleEditMediaMode()"
+            :disabled="isMultiMode || isLocked"
+          >
+            <ImageIcon class="size-5" />
+          </IconButton>
+
+          <IconButton
+            @click="recordingStore.isRecordingLocation && startGetLocation()"
+            :title="
+              recordingStore.isRecordingLocation
+                ? 'Set unit location'
+                : 'Set unit location disabled. Enable Unit position in Rec first.'
+            "
+            :disabled="isMultiMode || isLocked || !recordingStore.isRecordingLocation"
+          >
+            <IconCrosshairsGps class="size-5" aria-hidden="true" />
+          </IconButton>
+          <IconButton
+            title="Show in ORBAT"
+            :disabled="isMultiMode"
+            @click="locateInOrbat()"
+          >
+            <TreeLocateIcon class="size-5" aria-hidden="true" />
+          </IconButton>
+          <SplitButton
+            class="ml-1"
+            triggerClass="max-w-24"
+            :items="buttonItems"
+            v-model:active-item="uiStore.activeItem"
+          />
+        </div>
+        <DotsMenu :items="unitMenuItems" />
+      </template>
+    </DetailsPanelHeader>
+    <div class="-mx-4">
+      <ScrollTabs :items="tabList" v-model="selectedTabString" class="">
+        <TabsContent value="0" class="mx-4 pt-4">
+          <section class="relative" v-if="!isMultiMode">
+            <EditMetaForm
+              v-if="isEditMode"
+              :item="unit"
+              @update="onFormSubmit"
+              @cancel="toggleEditMode()"
+            />
+            <EditMediaForm
+              v-else-if="isEditMediaMode"
+              :media="media"
+              @cancel="toggleEditMediaMode()"
+              @update="updateMedia"
+            />
+            <div v-else-if="!isMultiMode" class="mb-4 space-y-4">
+              <DescriptionItem label="Name">{{ unit.name }}</DescriptionItem>
+              <DescriptionItem v-if="unit.shortName" label="Short name"
+                >{{ unit.shortName }}
+              </DescriptionItem>
+              <DescriptionItem
+                v-if="unit.externalUrl"
+                label="External URL"
+                dd-class="truncate"
+                ><a
+                  target="_blank"
+                  draggable="false"
+                  class="underline"
+                  :href="unit.externalUrl"
+                  >{{ unit.externalUrl }}</a
+                ></DescriptionItem
+              >
+              <DescriptionItem v-if="unit.description" label="Description">
+                <div class="prose prose-sm dark:prose-invert" v-html="hDescription"></div>
+              </DescriptionItem>
+
+              <DescriptionItem v-if="unit.location" label="Initial location">
+                <div class="flex items-center justify-between">
+                  <p>{{ formatPosition(unit.location) }}</p>
+                  <IconButton @click="geoStore.panToLocation(unit.location)">
+                    <IconCrosshairsGps class="h-5 w-5" />
+                  </IconButton>
+                </div>
+              </DescriptionItem>
+            </div>
+          </section>
+          <p v-else class="p-2 pt-4 text-sm">Multi edit mode not supported yet.</p>
+        </TabsContent>
+        <TabsContent value="1" class="mx-4">
+          <UnitDetailsSymbol
+            :unit="unit"
+            :key="unit.id"
+            :is-multi-mode="isMultiMode"
+            :is-locked="isLocked"
+          />
+        </TabsContent>
+        <TabsContent value="2" class="mx-4">
+          <UnitPanelState v-if="!isMultiMode" :unit="unit" :is-locked="isLocked" />
+          <p v-else class="p-2 pt-4 text-sm">Multi edit mode not supported yet.</p>
+        </TabsContent>
+        <TabsContent value="3" class="mx-4">
+          <UnitDetailsToe :unit="unit" :is-locked="isLocked" />
+        </TabsContent>
+        <TabsContent value="4" class="mx-4">
+          <UnitDetailsMapDisplay
+            :unit="unit"
+            :is-multi-mode="isMultiMode"
+            :is-locked="isLocked"
+          />
+        </TabsContent>
+        <TabsContent value="5" class="mx-4">
+          <UnitDetailsProperties v-if="!isMultiMode" :unit="unit" :is-locked="isLocked" />
+          <p v-else class="p-2 pt-4 text-sm">Multi edit mode not supported yet.</p>
+        </TabsContent>
+        <TabsContent value="6" class="mx-4">
+          <FeatureTransformations class="mt-4" unitMode />
+        </TabsContent>
+
+        <TabsContent
+          value="7"
+          v-if="uiStore.debugMode"
+          class="prose prose-sm dark:prose-invert mx-4 max-w-none"
+        >
+          <pre>{{ unit }}</pre>
+        </TabsContent>
+      </ScrollTabs>
+    </div>
+    <GlobalEvents
+      v-if="uiStore.shortcutsEnabled"
+      :filter="inputEventFilter"
+      @keyup.e="toggleEditMode()"
+    />
+  </div>
+</template>

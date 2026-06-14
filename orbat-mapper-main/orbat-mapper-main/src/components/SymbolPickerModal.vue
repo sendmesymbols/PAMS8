@@ -1,0 +1,518 @@
+<script setup lang="ts">
+import {
+  computed,
+  defineAsyncComponent,
+  inject,
+  nextTick,
+  ref,
+  watch,
+  watchEffect,
+} from "vue";
+import {
+  ComboboxContent,
+  ComboboxGroup,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxLabel,
+  ComboboxRoot,
+} from "reka-ui";
+
+import PrimaryButton from "./PrimaryButton.vue";
+import SymbolCodeSelect from "./SymbolCodeSelect.vue";
+import { breakpointsTailwind, useBreakpoints, useDebounce, whenever } from "@vueuse/core";
+import SymbolCodeMultilineSelect from "./SymbolCodeMultilineSelect.vue";
+import { useSymbolItems } from "@/composables/symbolData";
+import NProgress from "nprogress";
+import ScrollTabs from "./ScrollTabs.vue";
+import TabsContent from "@/components/ui/tabs/TabsContent.vue";
+import SymbolBrowseTab from "./SymbolBrowseTab.vue";
+import SecondaryButton from "./SecondaryButton.vue";
+import MilitarySymbol from "@/components/MilitarySymbol.vue";
+import {
+  mapReinforcedStatus2Field,
+  type ReinforcedStatus,
+  type SymbologyStandard,
+  type UnitSymbolOptions,
+} from "@/types/scenarioModels";
+import SymbolFillColorSelect from "@/components/SymbolFillColorSelect.vue";
+import SymbolCodeViewer from "@/components/SymbolCodeViewer.vue";
+import {
+  sidcVersionForStandard,
+  standardForSidcVersion,
+  Sidc,
+} from "@/symbology/sidc";
+import {
+  type MainIconSearchResult,
+  type ModifierOneSearchResult,
+  type ModifierTwoSearchResult,
+  useSymbologySearch,
+} from "@/composables/symbolSearching";
+import { MagnifyingGlassIcon } from "@heroicons/vue/20/solid";
+import BaseButton from "@/components/BaseButton.vue";
+import NewSimpleModal from "@/components/NewSimpleModal.vue";
+import { Button } from "@/components/ui/button";
+import PopoverColorPicker from "@/components/PopoverColorPicker.vue";
+import { activeScenarioKey } from "@/components/injects.ts";
+import SymbolPickerCustomSymbol from "@/components/SymbolPickerCustomSymbol.vue";
+import { CUSTOM_SYMBOL_PREFIX, CUSTOM_SYMBOL_SLICE } from "@/config/constants.ts";
+import { getFullUnitSidc } from "@/symbology/helpers.ts";
+import SymbolExportMenu from "@/components/SymbolExportMenu.vue";
+import { useSymbolSettingsStore } from "@/stores/settingsStore.ts";
+import { getSymbologyStandardName } from "@/symbology/standards.ts";
+
+const LegacyConverter = defineAsyncComponent(
+  () => import("@/components/LegacyConverter.vue"),
+);
+
+interface Props {
+  initialSidc?: string;
+  dialogTitle?: string;
+  hideModifiers?: boolean;
+  hideSymbolColor?: boolean;
+  hideCustomSymbols?: boolean;
+  inheritedSymbolOptions?: UnitSymbolOptions;
+  symbolOptions?: UnitSymbolOptions;
+  initialTab?: number;
+  reinforcedStatus?: ReinforcedStatus;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  dialogTitle: "Symbol picker",
+  hideModifiers: false,
+  hideSymbolColor: false,
+});
+const open = defineModel<boolean>("isVisible", { default: true });
+const emit = defineEmits(["update:sidc", "cancel"]);
+const scn = inject(activeScenarioKey, null);
+const symbolSettingsStore = useSymbolSettingsStore();
+const breakpoints = useBreakpoints(breakpointsTailwind);
+const isMobile = breakpoints.smallerOrEqual("md");
+
+const customSymbolId = ref(
+  props.initialSidc?.startsWith(CUSTOM_SYMBOL_PREFIX)
+    ? props.initialSidc.slice(CUSTOM_SYMBOL_SLICE)
+    : null,
+);
+
+const customSymbol = computed(() => {
+  if (!customSymbolId.value || !scn) return null;
+  return scn.store.state.customSymbolMap[customSymbolId.value];
+});
+
+const searchInputRef = ref();
+const searchQuery = ref("");
+const debouncedQuery = useDebounce(searchQuery, 100);
+const currentTab = ref((props.initialTab ?? 0).toString());
+
+const tabItems = computed(() => {
+  const items = ["Select", "Browse"];
+  if (!props.hideCustomSymbols) items.push("Custom symbol");
+  items.push("Legacy convert");
+  return items;
+});
+
+const groupedHits = ref<ReturnType<typeof search>["groups"]>();
+
+const hitCount = ref(0);
+
+const internalSymbolOptions = ref<UnitSymbolOptions>({
+  ...(props.symbolOptions || {}),
+});
+
+const combinedSymbolOptions = computed(() => ({
+  ...{ outlineWidth: 8, outlineColor: "rgba(255,255,255,0.80)" },
+  ...(props.inheritedSymbolOptions || {}),
+  ...cleanObject(internalSymbolOptions.value || {}),
+}));
+
+const finalSymbolOptions = computed(() => ({
+  ...combinedSymbolOptions.value,
+  ...cleanObject({
+    reinforcedReduced: mapReinforcedStatus2Field(reinforcedReducedValue.value),
+  }),
+}));
+
+// remove empty values in object
+const cleanObject = (obj: any) => {
+  Object.keys(obj).forEach((key) => {
+    if (obj[key] && typeof obj[key] === "object") cleanObject(obj[key]);
+    else if (obj[key] === "" || obj[key] === null || obj[key] === undefined)
+      delete obj[key];
+  });
+  return obj;
+};
+
+const initialFullSidc = computed(() => {
+  return getFullUnitSidc(props.initialSidc || "10031000001211000000");
+});
+const activeSymbologyStandard = ref<SymbologyStandard>(
+  standardForSidcVersion(
+    new Sidc(initialFullSidc.value).version,
+    symbolSettingsStore.symbologyStandard,
+  ),
+);
+
+const standardName = computed(() =>
+  getSymbologyStandardName(activeSymbologyStandard.value),
+);
+const standardBadge = computed(() => standardName.value.replace("MIL-STD-", ""));
+
+const {
+  csidc,
+  sidcVersion,
+  loadData,
+  isLoaded,
+  sidValue,
+  symbolSetValue,
+  iconValue,
+  statusValue,
+  statusItems,
+  hqtfdItems,
+  hqtfdValue,
+  emtValue,
+  emtItems,
+  mod1Value,
+  mod2Value,
+  mod1Items,
+  mod2Items,
+  icons,
+  symbolSets,
+  reinforcedReducedItems,
+  reinforcedReducedValue,
+} = useSymbolItems(initialFullSidc, props.reinforcedStatus, activeSymbologyStandard);
+loadData();
+
+whenever(isLoaded, () => NProgress.done(), { immediate: true });
+
+const { search } = useSymbologySearch(sidValue, sidcVersion, activeSymbologyStandard);
+
+watch(activeSymbologyStandard, (standard) => {
+  sidcVersion.value = sidcVersionForStandard(standard);
+});
+
+watch(sidcVersion, (version) => {
+  activeSymbologyStandard.value = standardForSidcVersion(
+    version,
+    activeSymbologyStandard.value,
+  );
+});
+
+const showReinforcedStatus = computed(() => {
+  return symbolSetValue.value === "10" || symbolSetValue.value === "11";
+});
+
+watchEffect(() => {
+  const { numberOfHits, groups } = search(debouncedQuery.value);
+  hitCount.value = numberOfHits;
+  groupedHits.value = groups;
+});
+
+const onSubmit = () => {
+  if (customSymbolId.value) {
+    emit("update:sidc", {
+      sidc: `${CUSTOM_SYMBOL_PREFIX}${csidc.value}:${customSymbolId.value}`,
+    });
+  } else {
+    emit("update:sidc", {
+      sidc: csidc.value,
+      reinforcedStatus: reinforcedReducedValue.value,
+      symbolOptions: internalSymbolOptions.value.fillColor
+        ? { fillColor: internalSymbolOptions.value.fillColor }
+        : {},
+    });
+    if (internalSymbolOptions.value.fillColor && scn)
+      scn.settings.addColorIfAbsent(internalSymbolOptions.value.fillColor);
+  }
+  open.value = false;
+};
+
+function onSelect(value: unknown) {
+  if (!value || typeof value !== "object" || !("sidc" in value)) return;
+  const hit = value as
+    | MainIconSearchResult
+    | ModifierOneSearchResult
+    | ModifierTwoSearchResult;
+  const newSidc = new Sidc(hit.sidc);
+  symbolSetValue.value = newSidc.symbolSet;
+  if (hit.category === "Main icon") {
+    iconValue.value = newSidc.mainIcon;
+  } else if (hit.category === "Modifier 1") {
+    mod1Value.value = newSidc.modifierOne;
+  } else if (hit.category === "Modifier 2") {
+    mod2Value.value = newSidc.modifierTwo;
+  }
+}
+
+function clearModifiers() {
+  mod1Value.value = "00";
+  mod2Value.value = "00";
+  emtValue.value = "00";
+  hqtfdValue.value = "0";
+}
+
+function updateFromBrowseTab(sidc: string) {
+  customSymbolId.value = null;
+  csidc.value = sidc;
+}
+
+function updateFromCustomSymbol(symbolId: string) {
+  const customSymbol = scn?.store.state.customSymbolMap[symbolId];
+  const sidc = new Sidc(customSymbol ? customSymbol.sidc : "10031000001100000000");
+  sidc.standardIdentity = sidValue.value;
+  csidc.value = sidc.toString();
+  customSymbolId.value = symbolId;
+}
+
+function updateFromSidcInput(sidc: string) {
+  if (!/^[\dA-Fa-f]+$/.test(sidc)) {
+    return;
+  }
+  const oldSidc = new Sidc(csidc.value);
+  const ns = new Sidc(sidc.toUpperCase());
+  ns.standardIdentity = oldSidc.standardIdentity;
+
+  csidc.value = ns.toString();
+}
+
+watch(currentTab, async (v) => {
+  if (v === "0" && !isMobile.value) {
+    await nextTick();
+    searchInputRef.value?.el.focus();
+  }
+});
+
+// watch(csidc, (value) => {
+//   customSymbolId.value = null;
+// });
+</script>
+
+<template>
+  <NewSimpleModal
+    v-model="open"
+    :dialog-title="dialogTitle"
+    @cancel="emit('cancel')"
+    class="md:max-w-(--breakpoint-md) lg:max-w-(--breakpoint-lg)"
+  >
+    <div class="flex h-full flex-col overflow-hidden" @keyup.ctrl.enter="onSubmit">
+      <header
+        class="@container mt-4 flex h-20 w-full shrink-0 items-center justify-between gap-2"
+      >
+        <template v-if="!customSymbol">
+          <div class="flex shrink-0 items-center gap-1">
+            <MilitarySymbol :sidc="csidc" :size="34" :options="finalSymbolOptions" />
+            <SymbolExportMenu
+              :sidc="csidc"
+              :symbol-options="combinedSymbolOptions"
+              v-model:symbology-standard="activeSymbologyStandard"
+            />
+            <span
+              class="bg-muted-foreground/15 text-muted-foreground rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide whitespace-nowrap tabular-nums"
+              :title="`Symbology standard: ${standardName}`"
+            >
+              {{ standardBadge }}
+            </span>
+          </div>
+          <SymbolCodeViewer :sidc="csidc" @update="updateFromSidcInput" />
+        </template>
+        <img
+          v-else
+          :src="customSymbol.src"
+          :alt="customSymbol.name"
+          class="w-16 object-contain"
+        />
+      </header>
+
+      <ScrollTabs
+        class="flex-auto"
+        v-model="currentTab"
+        :items="tabItems"
+        :unmountOnHide="false"
+      >
+        <TabsContent value="0" class="mt-6 max-h-[50vh] overflow-auto sm:max-h-[60vh]">
+          <ComboboxRoot
+            :ignore-filter="true"
+            :open="hitCount > 0"
+            @update:modelValue="onSelect"
+          >
+            <div class="relative">
+              <div class="relative">
+                <MagnifyingGlassIcon
+                  class="text-muted-foreground absolute top-3.5 left-4 h-5 w-5"
+                  aria-hidden="true"
+                />
+                <ComboboxInput
+                  v-model="searchQuery"
+                  class="placeholder:text-muted-foreground h-12 w-full border-0 bg-transparent pr-4 pl-11 focus:ring-0 sm:text-sm"
+                  placeholder="Search..."
+                  ref="searchInputRef"
+                  :auto-focus="true"
+                />
+              </div>
+              <ComboboxContent
+                v-if="groupedHits && hitCount > 0"
+                class="border-border bg-popover absolute z-50 max-h-80 w-full scroll-py-10 scroll-pb-2 space-y-4 overflow-y-auto rounded border p-4 pb-2 shadow-lg"
+                :disable-outside-pointer-events="false"
+              >
+                <ComboboxGroup v-for="[source, hits] in groupedHits" :key="source">
+                  <ComboboxLabel class="text-xs font-semibold">{{
+                    source
+                  }}</ComboboxLabel>
+                  <div class="-mx-4 mt-2 text-sm font-medium">
+                    <ComboboxItem
+                      v-for="item in hits"
+                      :key="item.sidc"
+                      :value="item"
+                      class="even:bg-muted/40 data-[highlighted]:bg-army flex cursor-default items-center px-4 py-2 select-none data-[highlighted]:text-white"
+                    >
+                      <div class="relative flex w-12 justify-center">
+                        <MilitarySymbol
+                          :sidc="item.sidc"
+                          :size="30"
+                          aria-hidden="true"
+                          :options="{
+                            ...combinedSymbolOptions,
+                            outlineColor: 'white',
+                            outlineWidth: 4,
+                          }"
+                        />
+                      </div>
+                      <p
+                        class="ml-3 flex-auto truncate"
+                        v-html="item.highlight ? item.highlight : item.text"
+                      />
+                    </ComboboxItem>
+                  </div>
+                </ComboboxGroup>
+              </ComboboxContent>
+            </div>
+          </ComboboxRoot>
+
+          <form
+            class="space-y-4 p-0.5"
+            @submit.prevent="onSubmit"
+            v-if="isLoaded"
+            @keydown.ctrl.enter.exact="onSubmit"
+            @keydown.meta.enter.exact="onSubmit"
+          >
+            <div class="flex w-full items-end gap-1">
+              <SymbolCodeSelect
+                class="flex-auto"
+                v-model="symbolSetValue"
+                label="Symbol set"
+                :items="symbolSets"
+                :symbol-options="combinedSymbolOptions"
+              />
+              <div class="mr-1 hidden flex-none sm:block">
+                <BaseButton type="button" class="h-10" @click="currentTab = '1'"
+                  >Browse</BaseButton
+                >
+              </div>
+            </div>
+
+            <template v-if="!hideModifiers">
+              <div class="grid gap-4 sm:grid-cols-2" v-if="showReinforcedStatus">
+                <SymbolCodeSelect
+                  v-model="statusValue"
+                  label="Status"
+                  :items="statusItems"
+                  :symbol-options="combinedSymbolOptions"
+                />
+                <SymbolCodeSelect
+                  v-model="reinforcedReducedValue"
+                  label="Reinforced / Reduced"
+                  :items="reinforcedReducedItems"
+                  :symbol-options="combinedSymbolOptions"
+                />
+              </div>
+              <SymbolCodeSelect
+                v-else
+                v-model="statusValue"
+                label="Status"
+                :items="statusItems"
+                :symbol-options="combinedSymbolOptions"
+              />
+              <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <SymbolCodeSelect
+                  v-model="hqtfdValue"
+                  label="Headquarters / Task force / Dummy"
+                  :items="hqtfdItems"
+                  :symbol-options="combinedSymbolOptions"
+                />
+                <SymbolCodeSelect
+                  v-model="emtValue"
+                  label="Echelon / Mobility / Towed array"
+                  :items="emtItems"
+                  :symbol-options="combinedSymbolOptions"
+                />
+              </div>
+            </template>
+
+            <SymbolCodeMultilineSelect
+              v-model="iconValue"
+              label="Main icon"
+              :items="icons"
+              :symbol-options="combinedSymbolOptions"
+            />
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <SymbolCodeSelect
+                v-model="mod1Value"
+                label="Modifier 1"
+                :items="mod1Items"
+                :symbol-options="combinedSymbolOptions"
+              />
+              <SymbolCodeSelect
+                v-model="mod2Value"
+                label="Modifier 2"
+                :items="mod2Items"
+                :symbol-options="combinedSymbolOptions"
+              />
+            </div>
+            <div
+              v-if="!hideSymbolColor && !customSymbolId"
+              class="flex w-full items-end gap-2"
+            >
+              <SymbolFillColorSelect
+                v-model="internalSymbolOptions.fillColor"
+                :default-fill-color="inheritedSymbolOptions?.fillColor"
+                class="flex-auto"
+              /><PopoverColorPicker v-model="internalSymbolOptions.fillColor"
+                ><template #trigger
+                  ><Button type="button" variant="outline" size="lg"
+                    >Custom color</Button
+                  ></template
+                ></PopoverColorPicker
+              >
+            </div>
+          </form>
+        </TabsContent>
+        <TabsContent value="1" class="mt-6 max-h-[50vh] sm:max-h-[60vh]">
+          <keep-alive>
+            <SymbolBrowseTab
+              v-if="currentTab === '1'"
+              :initial-sidc="csidc"
+              :symbology-standard="activeSymbologyStandard"
+              @update-sidc="updateFromBrowseTab"
+              :symbol-options="combinedSymbolOptions"
+            />
+          </keep-alive>
+        </TabsContent>
+        <TabsContent v-if="!hideCustomSymbols" value="2" class="px-4 py-6"
+          ><SymbolPickerCustomSymbol
+            :initialSidc="customSymbolId"
+            @update-sidc="updateFromCustomSymbol"
+        /></TabsContent>
+        <TabsContent :value="!hideCustomSymbols ? '3' : '2'" class="mt-6">
+          <keep-alive>
+            <LegacyConverter v-if="currentTab === (!hideCustomSymbols ? '3' : '2')" />
+          </keep-alive>
+        </TabsContent>
+      </ScrollTabs>
+      <div class="flex shrink-0 justify-end space-x-2 pt-4">
+        <SecondaryButton type="button" @click="clearModifiers()" class=""
+          >Clear modifiers
+        </SecondaryButton>
+        <PrimaryButton @click="onSubmit()" class="">Select symbol </PrimaryButton>
+      </div>
+    </div>
+  </NewSimpleModal>
+</template>

@@ -1,0 +1,1116 @@
+// @vitest-environment jsdom
+import { mount } from "@vue/test-utils";
+import { defineComponent, ref } from "vue";
+import { describe, expect, it, vi } from "vitest";
+import { useMapLibreDrawInteraction } from "@/composables/maplibreDrawInteraction";
+import type { GeometryLayerItem } from "@/types/scenarioLayerItems";
+
+function createEvent(
+  lng: number,
+  lat: number,
+  options: {
+    buttons?: number;
+    timeStamp?: number;
+    cancelable?: boolean;
+    type?: string;
+  } = {},
+) {
+  return {
+    lngLat: { lng, lat },
+    point: { x: lng, y: lat * lat },
+    preventDefault: vi.fn(),
+    originalEvent: {
+      buttons: options.buttons ?? 0,
+      timeStamp: options.timeStamp,
+      cancelable: options.cancelable,
+      type: options.type,
+      shiftKey: false,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    },
+  } as any;
+}
+
+function createHarness(
+  options: {
+    selectedFeatures?: GeometryLayerItem[];
+    queryRenderedFeatures?: (point: unknown, options?: unknown) => any[];
+    translate?: boolean;
+    freehand?: boolean;
+    snap?: boolean;
+    projection?: "mercator" | "globe";
+    doubleClickZoomEnabled?: boolean;
+  } = {},
+) {
+  const handlers = new Map<string, Function[]>();
+  const addFeature = vi.fn();
+  const updateFeatures = vi.fn();
+  const overlays = new Map<string, unknown>();
+  const translate = ref(options.translate ?? false);
+  const freehand = ref(options.freehand ?? false);
+  const snap = ref(options.snap ?? true);
+  let doubleClickZoomEnabled = options.doubleClickZoomEnabled ?? true;
+  const mlMap = {
+    on: vi.fn((name: string, handler: Function) => {
+      handlers.set(name, [...(handlers.get(name) ?? []), handler]);
+    }),
+    off: vi.fn(),
+    getCanvas: () => ({ style: { cursor: "" } }),
+    project: vi.fn(([lng, lat]: [number, number]) => ({ x: lng, y: lat * lat })),
+    unproject: vi.fn(([x, y]: [number, number]) => ({ lng: x, lat: Math.sqrt(y) })),
+    getProjection: vi.fn(() => ({ type: options.projection ?? "mercator" })),
+    queryRenderedFeatures: vi.fn(
+      (point: unknown, queryOptions?: unknown) =>
+        options.queryRenderedFeatures?.(point, queryOptions) ?? [],
+    ),
+    dragPan: {
+      isEnabled: vi.fn(() => true),
+      disable: vi.fn(),
+      enable: vi.fn(),
+    },
+    touchZoomRotate: {
+      isEnabled: vi.fn(() => true),
+      disable: vi.fn(),
+      enable: vi.fn(),
+    },
+    doubleClickZoom: {
+      isEnabled: vi.fn(() => doubleClickZoomEnabled),
+      disable: vi.fn(() => {
+        doubleClickZoomEnabled = false;
+      }),
+      enable: vi.fn(() => {
+        doubleClickZoomEnabled = true;
+      }),
+    },
+  };
+  const mapAdapter = {
+    getNativeMap: () => mlMap,
+    addGeoJsonOverlay: vi.fn((id: string, geojson: unknown, overlayOptions: unknown) =>
+      overlays.set(id, { geojson, options: overlayOptions }),
+    ),
+    removeGeoJsonOverlay: vi.fn((id: string) => overlays.delete(id)),
+  } as any;
+
+  const wrapper = mount(
+    defineComponent({
+      setup() {
+        const draw = useMapLibreDrawInteraction(mapAdapter, {
+          translate,
+          freehand,
+          snap,
+          getSelectedFeatures: () => options.selectedFeatures ?? [],
+          addFeature,
+          updateFeatures,
+        });
+        return { draw };
+      },
+      template: "<div />",
+    }),
+  );
+
+  function trigger(name: string, event: any) {
+    for (const handler of handlers.get(name) ?? []) handler(event);
+  }
+
+  return {
+    trigger,
+    addFeature,
+    updateFeatures,
+    overlays,
+    mlMap,
+    mapAdapter,
+    draw: wrapper.vm.draw,
+  };
+}
+
+function selectedLine(): GeometryLayerItem {
+  return {
+    kind: "geometry",
+    id: "feature-1",
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [10, 20],
+        [11, 21],
+      ],
+    },
+    geometryMeta: { geometryKind: "LineString" },
+    style: {},
+  };
+}
+
+function selectedRectangle(): GeometryLayerItem {
+  return {
+    kind: "geometry",
+    id: "rect-1",
+    geometry: {
+      type: "Polygon",
+      coordinates: [
+        [
+          [0, 0],
+          [2, 0],
+          [2, 2],
+          [0, 2],
+          [0, 0],
+        ],
+      ],
+    },
+    geometryMeta: { geometryKind: "Polygon", shape: "rectangle" },
+    style: {},
+  };
+}
+
+describe("useMapLibreDrawInteraction", () => {
+  it("preserves disabled double-click zoom after drawing is cancelled", () => {
+    const harness = createHarness({ doubleClickZoomEnabled: false });
+
+    harness.draw.startDrawing("LineString");
+    harness.draw.cancel();
+
+    expect(harness.mlMap.doubleClickZoom.disable).not.toHaveBeenCalled();
+    expect(harness.mlMap.doubleClickZoom.enable).not.toHaveBeenCalled();
+  });
+
+  it("creates point, line, polygon, and circle features", () => {
+    const harness = createHarness();
+    expect(harness.mlMap.on).toHaveBeenCalled();
+
+    harness.draw.startDrawing("Point");
+    harness.trigger("click", createEvent(1, 2));
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: { type: "Point", coordinates: [1, 2] },
+        geometryMeta: { geometryKind: "Point" },
+      }),
+    );
+
+    harness.draw.startDrawing("LineString");
+    harness.trigger("click", createEvent(1, 2));
+    harness.trigger("click", createEvent(3, 4));
+    harness.trigger("click", createEvent(3, 4));
+    harness.trigger("dblclick", createEvent(3, 4));
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [1, 2],
+            [3, 4],
+          ],
+        },
+      }),
+    );
+
+    harness.draw.startDrawing("Polygon");
+    harness.trigger("click", createEvent(1, 2));
+    harness.trigger("click", createEvent(3, 4));
+    harness.trigger("click", createEvent(5, 6));
+    harness.trigger("click", createEvent(5, 6));
+    harness.trigger("dblclick", createEvent(5, 6));
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [1, 2],
+              [3, 4],
+              [5, 6],
+              [1, 2],
+            ],
+          ],
+        },
+      }),
+    );
+    const polygonFeature = harness.addFeature.mock.lastCall?.[0] as GeometryLayerItem;
+    const ring = (polygonFeature.geometry as any).coordinates[0];
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+    expect(ring[0]).not.toBe(ring[ring.length - 1]);
+
+    harness.draw.startDrawing("Circle");
+    harness.trigger("click", createEvent(10, 20));
+    harness.trigger("click", createEvent(10.1, 20));
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: { type: "Point", coordinates: [10, 20] },
+        geometryMeta: expect.objectContaining({ geometryKind: "Circle" }),
+      }),
+    );
+  });
+
+  it("creates a rectangle as a box-shaped polygon from two corner clicks", () => {
+    const harness = createHarness();
+
+    harness.draw.startDrawing("Rectangle");
+    harness.trigger("click", createEvent(1, 2));
+    harness.trigger("click", createEvent(5, 8));
+
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [1, 2],
+              [5, 2],
+              [5, 8],
+              [1, 8],
+              [1, 2],
+            ],
+          ],
+        },
+        geometryMeta: { geometryKind: "Polygon", shape: "rectangle" },
+      }),
+    );
+  });
+
+  it("unwraps rectangle corners across the antimeridian", () => {
+    const harness = createHarness();
+
+    harness.draw.startDrawing("Rectangle");
+    harness.trigger("click", createEvent(179, 10));
+    harness.trigger("click", createEvent(-179, 12));
+
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [179, 10],
+              [181, 10],
+              [181, 12],
+              [179, 12],
+              [179, 10],
+            ],
+          ],
+        },
+      }),
+    );
+  });
+
+  it("edits a rectangle with four corner handles and no midpoint handles", () => {
+    const harness = createHarness({ selectedFeatures: [selectedRectangle()] });
+
+    harness.draw.startModify();
+
+    const vertexOverlay = harness.overlays.get("maplibre-draw-vertex-handles") as any;
+    const midpointOverlay = harness.overlays.get("maplibre-draw-midpoint-handles") as any;
+    expect(vertexOverlay.geojson.features).toHaveLength(4);
+    expect(midpointOverlay.geojson.features).toHaveLength(0);
+  });
+
+  it("resizes a rectangle by dragging a corner, anchoring the opposite corner", () => {
+    const harness = createHarness({
+      selectedFeatures: [selectedRectangle()],
+      snap: false,
+      queryRenderedFeatures: () => [
+        {
+          properties: {
+            featureId: "rect-1",
+            kind: "vertex",
+            path: JSON.stringify([0, 0]),
+          },
+        },
+      ],
+    });
+
+    harness.draw.startModify();
+    harness.trigger("mousedown", createEvent(0, 0));
+    harness.trigger("mouseup", createEvent(-1, -1));
+
+    expect(harness.updateFeatures).toHaveBeenCalledWith([
+      expect.objectContaining({
+        featureId: "rect-1",
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [-1, -1],
+              [2, -1],
+              [2, 2],
+              [-1, 2],
+              [-1, -1],
+            ],
+          ],
+        },
+      }),
+    ]);
+  });
+
+  it("snaps point drawing to nearby rendered scenario vertices", () => {
+    const harness = createHarness({
+      queryRenderedFeatures: (_point, queryOptions) => {
+        if ((queryOptions as any)?.layers) return [];
+        return [
+          {
+            layer: { id: "scenario-feature-layer-1" },
+            geometry: {
+              type: "Point",
+              coordinates: [5, 5],
+            },
+          },
+        ];
+      },
+    });
+
+    harness.draw.startDrawing("Point");
+    harness.trigger("click", createEvent(5.1, 5.1));
+
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: { type: "Point", coordinates: [5, 5] },
+      }),
+    );
+  });
+
+  it("snaps line drawing vertices to nearby rendered scenario segments", () => {
+    const harness = createHarness({
+      queryRenderedFeatures: (_point, queryOptions) => {
+        if ((queryOptions as any)?.layers) return [];
+        return [
+          {
+            layer: { id: "scenario-feature-layer-1" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [0, 0],
+                [100, 0],
+              ],
+            },
+          },
+        ];
+      },
+    });
+
+    harness.draw.startDrawing("LineString");
+    harness.trigger("click", createEvent(40, 1));
+    harness.trigger("click", createEvent(100, 0));
+    harness.trigger("dblclick", createEvent(100, 0));
+
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [40, 0],
+            [100, 0],
+          ],
+        },
+      }),
+    );
+  });
+
+  it("preserves raw draw coordinates when snapping is disabled", () => {
+    const harness = createHarness({
+      snap: false,
+      queryRenderedFeatures: () => [
+        {
+          layer: { id: "scenario-feature-layer-1" },
+          geometry: {
+            type: "Point",
+            coordinates: [5, 5],
+          },
+        },
+      ],
+    });
+
+    harness.draw.startDrawing("Point");
+    harness.trigger("click", createEvent(5.1, 5.1));
+
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: { type: "Point", coordinates: [5.1, 5.1] },
+      }),
+    );
+  });
+
+  it("translates selected features", () => {
+    const feature = selectedLine();
+    const harness = createHarness({ selectedFeatures: [feature], translate: true });
+    harness.trigger("mousedown", createEvent(10, 20));
+    harness.trigger("mousemove", createEvent(10.5, 21));
+    harness.trigger("mouseup", createEvent(11, 22));
+
+    expect(harness.mapAdapter.addGeoJsonOverlay).toHaveBeenCalledWith(
+      "maplibre-draw-preview",
+      expect.anything(),
+      expect.objectContaining({
+        style: expect.objectContaining({ fillColor: "rgba(37,99,235,0)" }),
+      }),
+    );
+    expect(harness.updateFeatures).toHaveBeenCalledWith([
+      expect.objectContaining({
+        featureId: "feature-1",
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [11, 22],
+            [12, 23],
+          ],
+        },
+      }),
+    ]);
+  });
+
+  it("unwraps draw vertices across the antimeridian", () => {
+    const harness = createHarness();
+
+    harness.draw.startDrawing("LineString");
+    harness.trigger("click", createEvent(179, 10));
+    harness.trigger("mousemove", createEvent(-179.5, 10));
+    harness.trigger("click", createEvent(-179, 11));
+    harness.trigger("dblclick", createEvent(-179, 11));
+
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [179, 10],
+            [181, 11],
+          ],
+        },
+      }),
+    );
+    expect(harness.mapAdapter.addGeoJsonOverlay).toHaveBeenCalledWith(
+      "maplibre-draw-preview",
+      expect.objectContaining({
+        features: expect.arrayContaining([
+          expect.objectContaining({
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [179, 10],
+                [180.5, 10],
+              ],
+            },
+          }),
+        ]),
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("unwraps circle preview and radius across the antimeridian", () => {
+    const harness = createHarness();
+
+    harness.draw.startDrawing("Circle");
+    harness.trigger("click", createEvent(179, 10));
+    harness.trigger("mousemove", createEvent(-179, 10));
+    harness.trigger("click", createEvent(-179, 10));
+
+    expect(harness.mapAdapter.addGeoJsonOverlay).toHaveBeenCalledWith(
+      "maplibre-draw-preview",
+      expect.objectContaining({
+        features: expect.arrayContaining([
+          expect.objectContaining({
+            geometry: expect.objectContaining({
+              type: "Polygon",
+              coordinates: expect.arrayContaining([
+                expect.arrayContaining([
+                  expect.arrayContaining([
+                    expect.toSatisfy((longitude: number) => longitude > 180),
+                    expect.any(Number),
+                  ]),
+                ]),
+              ]),
+            }),
+          }),
+        ]),
+      }),
+      expect.anything(),
+    );
+
+    const feature = harness.addFeature.mock.lastCall?.[0] as GeometryLayerItem;
+    const meta = feature.geometryMeta;
+    if (meta.geometryKind !== "Circle") throw new Error("expected a circle");
+    expect(meta.radius).toBeGreaterThan(200_000);
+    expect(meta.radius).toBeLessThan(250_000);
+  });
+
+  it("creates a freehand line from drag samples", () => {
+    const harness = createHarness({ freehand: true });
+
+    harness.draw.startDrawing("LineString");
+    harness.trigger("mousedown", createEvent(1, 2));
+    harness.trigger("mousemove", createEvent(2, 3, { buttons: 1 }));
+    harness.trigger("mousemove", createEvent(3, 4, { buttons: 1 }));
+    harness.trigger("mouseup", createEvent(3, 4));
+
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [1, 2],
+            [2, 3],
+            [3, 4],
+          ],
+        },
+      }),
+    );
+  });
+
+  it("finishes a line drawing with a mobile double tap", () => {
+    const harness = createHarness();
+
+    harness.draw.startDrawing("LineString");
+    harness.trigger("click", createEvent(1, 2));
+    harness.trigger("touchend", createEvent(1, 2, { timeStamp: 0 }));
+    harness.trigger("click", createEvent(3, 4));
+    harness.trigger("touchend", createEvent(3, 4, { timeStamp: 1000 }));
+    harness.trigger("click", createEvent(3, 4));
+    harness.trigger("touchend", createEvent(3, 4, { timeStamp: 1200 }));
+
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [1, 2],
+            [3, 4],
+          ],
+        },
+      }),
+    );
+  });
+
+  it("ignores effectively zero-length line drawing segments from touch jitter", () => {
+    const harness = createHarness();
+
+    harness.draw.startDrawing("LineString");
+    harness.trigger("click", createEvent(0, 0));
+    harness.trigger("click", createEvent(0, 0.00000000001));
+    harness.trigger("click", createEvent(0, 1));
+    harness.trigger("dblclick", createEvent(0, 1));
+
+    expect(harness.addFeature).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [0, 0],
+            [0, 1],
+          ],
+        },
+      }),
+    );
+  });
+
+  it("updates a dragged vertex in modify mode", () => {
+    const feature = selectedLine();
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      queryRenderedFeatures: () => [
+        {
+          properties: {
+            featureId: "feature-1",
+            kind: "vertex",
+            path: JSON.stringify([1]),
+          },
+        },
+      ],
+    });
+    harness.draw.startModify();
+    harness.trigger("mousedown", createEvent(11, 21));
+    harness.trigger("mouseup", createEvent(12, 24));
+
+    expect(harness.updateFeatures).toHaveBeenCalledWith([
+      expect.objectContaining({
+        featureId: "feature-1",
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [10, 20],
+            [12, 24],
+          ],
+        },
+      }),
+    ]);
+  });
+
+  it("snaps dragged vertices in modify mode", () => {
+    const feature = selectedLine();
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      queryRenderedFeatures: (_point, queryOptions) => {
+        if ((queryOptions as any)?.layers) {
+          return [
+            {
+              properties: {
+                featureId: "feature-1",
+                kind: "vertex",
+                path: JSON.stringify([1]),
+              },
+            },
+          ];
+        }
+        return [
+          {
+            layer: { id: "scenario-feature-layer-2" },
+            geometry: {
+              type: "Point",
+              coordinates: [15, 25],
+            },
+          },
+        ];
+      },
+    });
+    harness.draw.startModify();
+    harness.trigger("mousedown", createEvent(11, 21));
+    harness.trigger("mousemove", createEvent(15.1, 25.02));
+    harness.trigger("mouseup", createEvent(15.1, 25.02));
+
+    expect(harness.updateFeatures).toHaveBeenCalledWith([
+      expect.objectContaining({
+        featureId: "feature-1",
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [10, 20],
+            [15, 25],
+          ],
+        },
+      }),
+    ]);
+    expect(harness.mapAdapter.addGeoJsonOverlay).toHaveBeenCalledWith(
+      "maplibre-draw-preview",
+      expect.objectContaining({
+        features: expect.arrayContaining([
+          expect.objectContaining({
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [10, 20],
+                [15, 25],
+              ],
+            },
+          }),
+        ]),
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("preserves raw dragged vertices when modify snapping is disabled", () => {
+    const feature = selectedLine();
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      snap: false,
+      queryRenderedFeatures: (_point, queryOptions) => {
+        if ((queryOptions as any)?.layers) {
+          return [
+            {
+              properties: {
+                featureId: "feature-1",
+                kind: "vertex",
+                path: JSON.stringify([1]),
+              },
+            },
+          ];
+        }
+        return [
+          {
+            layer: { id: "scenario-feature-layer-2" },
+            geometry: {
+              type: "Point",
+              coordinates: [15, 25],
+            },
+          },
+        ];
+      },
+    });
+    harness.draw.startModify();
+    harness.trigger("mousedown", createEvent(11, 21));
+    harness.trigger("mouseup", createEvent(15.1, 25.02));
+
+    const update = harness.updateFeatures.mock.lastCall?.[0][0];
+    expect(update).toEqual(
+      expect.objectContaining({
+        featureId: "feature-1",
+        geometry: expect.objectContaining({ type: "LineString" }),
+      }),
+    );
+    const coordinates = (update?.geometry as any).coordinates;
+    expect(coordinates[0]).toEqual([10, 20]);
+    expect(coordinates[1][0]).toBeCloseTo(15.1);
+    expect(coordinates[1][1]).toBeCloseTo(25.02);
+  });
+
+  it("does not call DOM preventDefault for passive touch vertex drags", () => {
+    const feature = selectedLine();
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      queryRenderedFeatures: () => [
+        {
+          properties: {
+            featureId: "feature-1",
+            kind: "vertex",
+            path: JSON.stringify([1]),
+          },
+        },
+      ],
+    });
+    const event = createEvent(11, 21, { cancelable: false });
+
+    harness.draw.startModify();
+    harness.trigger("touchstart", event);
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(event.originalEvent.preventDefault).not.toHaveBeenCalled();
+    expect(event.originalEvent.stopPropagation).toHaveBeenCalled();
+  });
+
+  it("does not call DOM preventDefault for touch vertex drags even when cancelable is true", () => {
+    const feature = selectedLine();
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      queryRenderedFeatures: () => [
+        {
+          properties: {
+            featureId: "feature-1",
+            kind: "vertex",
+            path: JSON.stringify([1]),
+          },
+        },
+      ],
+    });
+    const event = createEvent(11, 21, { cancelable: true, type: "touchstart" });
+
+    harness.draw.startModify();
+    harness.trigger("touchstart", event);
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(event.originalEvent.preventDefault).not.toHaveBeenCalled();
+    expect(event.originalEvent.stopPropagation).toHaveBeenCalled();
+  });
+
+  it("keeps vertex drags continuous across the antimeridian", () => {
+    const feature: GeometryLayerItem = {
+      ...selectedLine(),
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [179, 0],
+          [181, 1],
+        ],
+      },
+    };
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      projection: "globe",
+      queryRenderedFeatures: () => [
+        {
+          properties: {
+            featureId: "feature-1",
+            kind: "vertex",
+            path: JSON.stringify([0]),
+          },
+        },
+      ],
+    });
+
+    harness.draw.startModify();
+    harness.trigger("mousedown", createEvent(179, 0));
+    harness.trigger("mouseup", createEvent(-179.5, 0.5));
+
+    expect(harness.updateFeatures).toHaveBeenCalledWith([
+      expect.objectContaining({
+        featureId: "feature-1",
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [180.5, 0.5],
+            [181, 1],
+          ],
+        },
+      }),
+    ]);
+  });
+
+  it("inserts a point by dragging an edge midpoint in modify mode", () => {
+    const feature = selectedLine();
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      queryRenderedFeatures: () => [
+        {
+          properties: {
+            featureId: "feature-1",
+            kind: "midpoint",
+            path: JSON.stringify([1]),
+          },
+        },
+      ],
+    });
+    harness.draw.startModify();
+
+    expect(harness.mapAdapter.addGeoJsonOverlay).toHaveBeenCalledWith(
+      "maplibre-draw-midpoint-handles",
+      expect.objectContaining({
+        features: expect.arrayContaining([
+          expect.objectContaining({
+            geometry: {
+              type: "Point",
+              coordinates: [10.5, Math.sqrt((20 * 20 + 21 * 21) / 2)],
+            },
+          }),
+        ]),
+      }),
+      expect.objectContaining({
+        style: expect.objectContaining({
+          circleRadius: 4,
+          circleFillColor: "#60a5fa",
+        }),
+      }),
+    );
+
+    harness.trigger("mousedown", createEvent(10.5, 20.5));
+    harness.trigger("mouseup", createEvent(10.25, 22));
+
+    expect(harness.updateFeatures).toHaveBeenCalledWith([
+      expect.objectContaining({
+        featureId: "feature-1",
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [10, 20],
+            [10.25, 22],
+            [11, 21],
+          ],
+        },
+      }),
+    ]);
+  });
+
+  it("snaps inserted midpoint vertices in modify mode", () => {
+    const feature = selectedLine();
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      queryRenderedFeatures: (_point, queryOptions) => {
+        if ((queryOptions as any)?.layers) {
+          return [
+            {
+              properties: {
+                featureId: "feature-1",
+                kind: "midpoint",
+                path: JSON.stringify([1]),
+              },
+            },
+          ];
+        }
+        return [
+          {
+            layer: { id: "scenario-feature-layer-2" },
+            geometry: {
+              type: "Point",
+              coordinates: [15, 25],
+            },
+          },
+        ];
+      },
+    });
+    harness.draw.startModify();
+    harness.trigger("mousedown", createEvent(10.5, 20.5));
+    harness.trigger("mouseup", createEvent(15.1, 25.02));
+
+    expect(harness.updateFeatures).toHaveBeenCalledWith([
+      expect.objectContaining({
+        featureId: "feature-1",
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [10, 20],
+            [15, 25],
+            [11, 21],
+          ],
+        },
+      }),
+    ]);
+  });
+
+  it("keeps inserted midpoint drags continuous across the antimeridian", () => {
+    const feature: GeometryLayerItem = {
+      ...selectedLine(),
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [179, 0],
+          [181, 1],
+        ],
+      },
+    };
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      projection: "globe",
+      queryRenderedFeatures: () => [
+        {
+          properties: {
+            featureId: "feature-1",
+            kind: "midpoint",
+            path: JSON.stringify([1]),
+          },
+        },
+      ],
+    });
+
+    harness.draw.startModify();
+    harness.trigger("mousedown", createEvent(180, 0.5));
+    harness.trigger("mouseup", createEvent(-179.5, 0.75));
+
+    expect(harness.updateFeatures).toHaveBeenCalledWith([
+      expect.objectContaining({
+        featureId: "feature-1",
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [179, 0],
+            [180.5, 0.75],
+            [181, 1],
+          ],
+        },
+      }),
+    ]);
+  });
+
+  it("places midpoint handles on projected Mercator segments in globe mode", () => {
+    const feature: GeometryLayerItem = {
+      ...selectedLine(),
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [0, 0],
+          [90, 60],
+        ],
+      },
+    };
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      projection: "globe",
+    });
+
+    harness.draw.startModify();
+
+    const midpointOverlay = harness.overlays.get("maplibre-draw-midpoint-handles") as any;
+    const coordinates = midpointOverlay.geojson.features[0].geometry.coordinates as [
+      number,
+      number,
+    ];
+
+    expect(coordinates[0]).toBeCloseTo(55.968, 3);
+    expect(coordinates[1]).toBeCloseTo(42.415, 3);
+  });
+
+  it("previews a vertex drag live on touchmove", () => {
+    const feature = selectedLine();
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      snap: false,
+      queryRenderedFeatures: () => [
+        {
+          properties: {
+            featureId: "feature-1",
+            kind: "vertex",
+            path: JSON.stringify([1]),
+          },
+        },
+      ],
+    });
+
+    harness.draw.startModify();
+    harness.trigger("touchstart", createEvent(11, 21, { type: "touchstart" }));
+    harness.trigger("touchmove", createEvent(12, 24, { type: "touchmove" }));
+
+    // Without a touchmove handler the drag had no feedback until the finger
+    // lifted; the preview overlay must now track the moving vertex.
+    const preview = harness.overlays.get("maplibre-draw-preview") as any;
+    expect(preview.geojson.features[0].geometry.coordinates).toEqual([
+      [10, 20],
+      [12, 24],
+    ]);
+  });
+
+  it("grabs the handle nearest the tap rather than the topmost hit", () => {
+    const feature = selectedLine();
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      snap: false,
+      // The midpoint is returned first (it renders on top) but the tap lands on
+      // the vertex, so the closer vertex handle should win.
+      queryRenderedFeatures: (_point, queryOptions) => {
+        if (!(queryOptions as any)?.layers) return [];
+        return [
+          {
+            properties: {
+              featureId: "feature-1",
+              kind: "midpoint",
+              path: JSON.stringify([1]),
+            },
+            geometry: { type: "Point", coordinates: [10.5, 20.5] },
+          },
+          {
+            properties: {
+              featureId: "feature-1",
+              kind: "vertex",
+              path: JSON.stringify([0]),
+            },
+            geometry: { type: "Point", coordinates: [10, 20] },
+          },
+        ];
+      },
+    });
+
+    harness.draw.startModify();
+    harness.trigger("mousedown", createEvent(10, 20));
+    harness.trigger("mouseup", createEvent(13, 23));
+
+    expect(harness.updateFeatures).toHaveBeenCalledWith([
+      expect.objectContaining({
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [13, 23],
+            [11, 21],
+          ],
+        },
+      }),
+    ]);
+  });
+
+  it("buffers the tap into a box so offset taps still hit a handle", () => {
+    const feature = selectedLine();
+    const queryRenderedFeatures = vi.fn((_point: unknown, queryOptions?: unknown) => {
+      if (!(queryOptions as any)?.layers) return [];
+      return [
+        {
+          properties: {
+            featureId: "feature-1",
+            kind: "vertex",
+            path: JSON.stringify([1]),
+          },
+          geometry: { type: "Point", coordinates: [11, 21] },
+        },
+      ];
+    });
+    const harness = createHarness({
+      selectedFeatures: [feature],
+      snap: false,
+      queryRenderedFeatures,
+    });
+
+    harness.draw.startModify();
+    harness.trigger("mousedown", createEvent(11, 21));
+
+    const boxQuery = queryRenderedFeatures.mock.calls.find(
+      ([geometry, queryOptions]) =>
+        (queryOptions as any)?.layers && Array.isArray(geometry),
+    );
+    expect(boxQuery).toBeDefined();
+    const [[minX, minY], [maxX, maxY]] = boxQuery![0] as [
+      [number, number],
+      [number, number],
+    ];
+    expect(maxX - minX).toBe(24);
+    expect(maxY - minY).toBe(24);
+  });
+});

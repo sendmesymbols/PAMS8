@@ -1,0 +1,373 @@
+<script setup lang="ts">
+import { onMounted, onUnmounted, ref, useAttrs, useTemplateRef, watch } from "vue";
+import { useThrottleFn } from "@vueuse/core";
+import {
+  GlobeControl,
+  Map as MlMap,
+  NavigationControl,
+  type MapProjectionEvent,
+  ScaleControl,
+  type MapMouseEvent,
+} from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { storeToRefs } from "pinia";
+import type { MaplibreBasemapStyle } from "@/modules/maplibreview/maplibreBasemaps";
+import type { MapProjection } from "@/stores/mapSettingsStore";
+import { applyProjection } from "@/modules/maplibreview/maplibreProjection";
+import { useMapSettingsStore } from "@/stores/mapSettingsStore";
+import { useMeasurementsStore } from "@/stores/geoStore";
+import { getCoordinateFormatFunction } from "@/utils/geoConvert";
+import type { Position } from "geojson";
+import {
+  bearingDegreesToRadians,
+  radiansToBearingDegrees,
+  toLngLatPair,
+  type ScenarioMapViewSnapshot,
+} from "@/modules/scenarioeditor/scenarioMapViewSnapshot";
+
+defineOptions({
+  inheritAttrs: false,
+});
+
+const props = defineProps<{
+  basemapId: string;
+  styleSpec: MaplibreBasemapStyle;
+  projection: MapProjection;
+  initialView?: ScenarioMapViewSnapshot;
+}>();
+const emit = defineEmits<{
+  ready: [map: MlMap];
+  "update:projection": [projection: MapProjection];
+  "map-view-change": [snapshot: ScenarioMapViewSnapshot];
+}>();
+const attrs = useAttrs();
+
+const mapContainerElement = useTemplateRef("mapContainerElement");
+const formattedLocation = ref("");
+let mlMap: MlMap;
+let replayingContextMenu = false;
+let scaleControl: ScaleControl | null = null;
+let scaleControlAttached = false;
+let lastPointerLocation: Position | null = null;
+let mouseLeaveHandler: (() => void) | null = null;
+let mapContainerDomElement: HTMLElement | null = null;
+
+const { showLocation, coordinateFormat, showScaleLine } =
+  storeToRefs(useMapSettingsStore());
+const { measurementUnit } = storeToRefs(useMeasurementsStore());
+
+function applyFormattedLocation(position: Position | null) {
+  if (!position) {
+    formattedLocation.value = "";
+    return;
+  }
+  formattedLocation.value = getCoordinateFormatFunction(coordinateFormat.value)(position);
+}
+
+const throttledApplyFormattedLocation = useThrottleFn(
+  () => {
+    if (!showLocation.value) return;
+    applyFormattedLocation(lastPointerLocation);
+  },
+  16,
+  true,
+  true,
+) as ReturnType<typeof useThrottleFn> & {
+  cancel?: () => void;
+};
+
+function syncScaleControl() {
+  if (!mlMap || !scaleControl) return;
+  if (showScaleLine.value && !scaleControlAttached) {
+    mlMap.addControl(scaleControl, "bottom-left");
+    scaleControlAttached = true;
+    scaleControl.setUnit(measurementUnit.value);
+    return;
+  }
+  if (!showScaleLine.value && scaleControlAttached) {
+    mlMap.removeControl(scaleControl);
+    scaleControlAttached = false;
+  }
+}
+
+function handleStyleLoad() {
+  applyProjection(mlMap, props.projection);
+}
+
+function handleMapLoad() {
+  emit("ready", mlMap);
+}
+
+function handleMouseMove(event: MapMouseEvent) {
+  lastPointerLocation = [event.lngLat.lng, event.lngLat.lat];
+  if (!showLocation.value) return;
+  throttledApplyFormattedLocation();
+}
+
+function handleProjectionTransition(event: MapProjectionEvent) {
+  const newProjection = event.newProjection as MapProjection;
+  if (newProjection === "globe" || newProjection === "mercator") {
+    emit("update:projection", newProjection);
+  }
+}
+
+function emitMapViewChange() {
+  const center = mlMap.getCenter();
+  emit("map-view-change", {
+    center: [center.lng, center.lat],
+    zoom: mlMap.getZoom(),
+    rotation: bearingDegreesToRadians(mlMap.getBearing()),
+  });
+}
+
+function handleContextMenu(event: MapMouseEvent) {
+  if (replayingContextMenu || !mapContainerElement.value) return;
+
+  const originalEvent = event.originalEvent as MouseEvent;
+  originalEvent.preventDefault();
+  originalEvent.stopPropagation();
+
+  replayingContextMenu = true;
+  mapContainerElement.value.dispatchEvent(
+    new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      button: 2,
+      buttons: originalEvent.buttons,
+      clientX: originalEvent.clientX,
+      clientY: originalEvent.clientY,
+      ctrlKey: originalEvent.ctrlKey,
+      altKey: originalEvent.altKey,
+      shiftKey: originalEvent.shiftKey,
+      metaKey: originalEvent.metaKey,
+      screenX: originalEvent.screenX,
+      screenY: originalEvent.screenY,
+    }),
+  );
+  replayingContextMenu = false;
+}
+
+onMounted(async () => {
+  mlMap = new MlMap({
+    container: mapContainerElement.value as HTMLElement,
+    style: props.styleSpec,
+    center: props.initialView ? toLngLatPair(props.initialView.center) : [0, 0],
+    zoom: props.initialView?.zoom ?? 3,
+    bearing: radiansToBearingDegrees(props.initialView?.rotation ?? 0),
+    canvasContextAttributes: {
+      preserveDrawingBuffer: true,
+    },
+  });
+  scaleControl = new ScaleControl({
+    maxWidth: 100,
+    unit: measurementUnit.value,
+  });
+  mlMap.addControl(new GlobeControl(), "top-left");
+  mlMap.addControl(
+    new NavigationControl({
+      visualizePitch: true,
+      visualizeRoll: true,
+      showZoom: true,
+      showCompass: true,
+    }),
+    "top-left",
+  );
+  syncScaleControl();
+
+  mlMap.on("style.load", handleStyleLoad);
+  mlMap.on("projectiontransition", handleProjectionTransition);
+  mlMap.on("load", handleMapLoad);
+  mlMap.on("mousemove", handleMouseMove);
+  mlMap.on("moveend", emitMapViewChange);
+  mlMap.on("contextmenu", handleContextMenu);
+
+  mouseLeaveHandler = () => {
+    lastPointerLocation = null;
+    formattedLocation.value = "";
+  };
+  mapContainerDomElement = mapContainerElement.value;
+  mapContainerDomElement?.addEventListener("mouseleave", mouseLeaveHandler);
+});
+
+watch(
+  () => [props.basemapId, props.styleSpec] as const,
+  () => {
+    if (!mlMap) return;
+    mlMap.setStyle(props.styleSpec, { diff: false });
+  },
+);
+
+watch(
+  () => props.projection,
+  (projection) => {
+    if (!mlMap) return;
+    applyProjection(mlMap, projection);
+  },
+);
+
+watch(coordinateFormat, () => {
+  if (!showLocation.value) return;
+  applyFormattedLocation(lastPointerLocation);
+});
+
+watch(measurementUnit, (unit) => {
+  if (!scaleControlAttached) return;
+  scaleControl?.setUnit(unit);
+});
+
+watch(showLocation, (enabled) => {
+  if (enabled) {
+    applyFormattedLocation(lastPointerLocation);
+    return;
+  }
+  formattedLocation.value = "";
+});
+
+watch(showScaleLine, () => {
+  syncScaleControl();
+});
+
+onUnmounted(() => {
+  if (mouseLeaveHandler && mapContainerDomElement) {
+    mapContainerDomElement.removeEventListener("mouseleave", mouseLeaveHandler);
+  }
+  throttledApplyFormattedLocation.cancel?.();
+  mlMap?.off("style.load", handleStyleLoad);
+  mlMap?.off("projectiontransition", handleProjectionTransition);
+  mlMap?.off("load", handleMapLoad);
+  mlMap?.off("mousemove", handleMouseMove);
+  mlMap?.off("moveend", emitMapViewChange);
+  mlMap?.off("contextmenu", handleContextMenu);
+  mlMap?.remove();
+});
+</script>
+<template>
+  <div
+    ref="mapContainerElement"
+    class="map-ui-root relative h-full w-full"
+    v-bind="attrs"
+  >
+    <div
+      v-if="showLocation && formattedLocation"
+      class="location-control pointer-events-none z-10"
+    >
+      {{ formattedLocation }}
+    </div>
+  </div>
+</template>
+
+<style>
+.maplibregl-ctrl-scale {
+  background-color: var(--color-card);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+  font-weight: 500;
+  box-shadow: none;
+}
+
+/* --- Refined navigation / globe controls --------------------------------- */
+.map-ui-root .maplibregl-ctrl-top-left {
+  top: 0.5rem;
+  left: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.map-ui-root .maplibregl-ctrl-top-left .maplibregl-ctrl {
+  margin: 0;
+}
+
+.map-ui-root .maplibregl-ctrl-group {
+  background-color: color-mix(in oklab, var(--color-card) 85%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) - 2px);
+  box-shadow:
+    0 1px 2px -1px oklch(0 0 0 / 0.18),
+    0 4px 14px -6px oklch(0 0 0 / 0.25);
+  backdrop-filter: blur(8px) saturate(1.1);
+  -webkit-backdrop-filter: blur(8px) saturate(1.1);
+  overflow: hidden;
+}
+
+.map-ui-root .maplibregl-ctrl-group:not(:empty) {
+  /* Override MapLibre's default white shadow ring */
+  box-shadow:
+    0 1px 2px -1px oklch(0 0 0 / 0.18),
+    0 4px 14px -6px oklch(0 0 0 / 0.25);
+}
+
+.map-ui-root .maplibregl-ctrl-group button {
+  width: 2rem;
+  height: 2rem;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  position: relative;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.map-ui-root .maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--color-border);
+}
+
+.map-ui-root .maplibregl-ctrl-group button:hover {
+  background-color: var(--color-accent);
+}
+
+.map-ui-root .maplibregl-ctrl-group button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--color-ring);
+}
+
+.map-ui-root .maplibregl-ctrl-group button:active {
+  background-color: color-mix(
+    in oklab,
+    var(--color-accent) 80%,
+    var(--color-foreground) 10%
+  );
+}
+
+.map-ui-root .maplibregl-ctrl-group button:disabled {
+  opacity: 0.45;
+}
+
+.map-ui-root .maplibregl-ctrl-group button:disabled:hover {
+  background-color: transparent;
+}
+
+/* Recolor MapLibre's dark SVG glyphs to follow the app foreground.
+   The default icons are encoded as dark SVGs in CSS background-image,
+   so we drop them through a filter that maps black -> currentColor. */
+.map-ui-root .maplibregl-ctrl-group .maplibregl-ctrl-icon {
+  filter: var(--ml-ctrl-icon-filter, none);
+  opacity: 0.85;
+  transition: opacity 140ms ease;
+}
+
+.map-ui-root .maplibregl-ctrl-group button:hover .maplibregl-ctrl-icon {
+  opacity: 1;
+}
+
+/* Light theme: the default icons are already dark — leave them, just soften. */
+:root .map-ui-root {
+  --ml-ctrl-icon-filter: none;
+}
+
+/* Dark theme: invert the dark glyphs to light. */
+.dark .map-ui-root {
+  --ml-ctrl-icon-filter: invert(0.92) hue-rotate(180deg) brightness(1.05);
+}
+
+/* Compass needle: snappier rotation feedback. */
+.map-ui-root .maplibregl-ctrl-compass .maplibregl-ctrl-icon {
+  transition:
+    opacity 140ms ease,
+    transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+/* Scale control sits in bottom-left; keep its tighter look. */
+</style>

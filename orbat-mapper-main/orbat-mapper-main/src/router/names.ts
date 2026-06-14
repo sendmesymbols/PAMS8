@@ -1,0 +1,12 @@
+export const OLD_MAP_ROUTE = "ScenarioRoute";
+export const NEW_SCENARIO_ROUTE = "NewScenarioRoute";
+export const LANDING_PAGE_ROUTE = "LandingPageRoute";
+export const ORBAT_CHART_ROUTE = "OrbatChartRoute";
+export const GRID_EDIT_ROUTE = "GridEditRoute";
+export const CHART_EDIT_MODE_ROUTE = "ChartModeRoute";
+export const MAP_EDIT_MODE_ROUTE = "MapBetaModeRoute";
+export const MAPLIBRE_ROUTE = "MaplibreRoute";
+export const LEGACY_MAP_ROUTE = "LegacyMapRoute";
+export const TEXT_TO_ORBAT_ROUTE = "TextToOrbatRoute";
+export const IMPORT_SCENARIO_ROUTE = "ImportScenarioRoute";
+export const SYMBOL_BROWSER_ROUTE = "SymbolBrowserRoute";

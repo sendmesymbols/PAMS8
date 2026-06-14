@@ -1,0 +1,356 @@
+import type { OrbatItemData, Unit } from "@/types/scenarioModels";
+import { TAB_SCENARIO_SETTINGS, type UnitAction, UnitActions } from "@/types/constants";
+import { useGeoStore } from "@/stores/geoStore";
+import { computed, type ComputedRef } from "vue";
+import type { NOrbatItemData, NUnit } from "@/types/internalModels";
+import { injectStrict } from "@/utils";
+import { activeScenarioKey } from "@/components/injects";
+import type { MenuItemData } from "@/components/types";
+import { multiPoint } from "@turf/helpers";
+import type { TScenario } from "@/scenariostore";
+import type { FeatureId } from "@/types/scenarioGeoModels";
+import OLMap from "ol/Map";
+import { useFeatureLayerUtils } from "@/modules/scenarioeditor/featureLayerUtils";
+import { useSelectedItems } from "@/stores/selectedStore";
+import { useScenarioInfoPanelStore } from "@/stores/scenarioInfoPanelStore";
+import { useUiStore } from "@/stores/uiStore";
+import type { EntityId } from "@/types/base";
+
+export function useUnitActions(
+  options: Partial<{
+    activeScenario: TScenario;
+  }> = {},
+) {
+  const {
+    unitActions,
+    store: { groupUpdate },
+  } = options.activeScenario || injectStrict(activeScenarioKey);
+  const { selectedUnitIds, activeUnitId } = useSelectedItems();
+  const geoStore = useGeoStore();
+
+  const _onUnitAction = (
+    unit: NUnit | undefined | null,
+    action: UnitAction,
+    waypointIds?: EntityId[],
+  ) => {
+    if (!unit) return;
+
+    if (action === UnitActions.Expand) {
+      unitActions.walkSubUnits(
+        unit.id,
+        (unit1) => {
+          unit1._isOpen = true;
+        },
+        { includeParent: true },
+      );
+    }
+    if (action === UnitActions.Collapse) {
+      unitActions.walkSubUnits(
+        unit.id,
+        (unit1) => {
+          unit1._isOpen = false;
+        },
+        { includeParent: true },
+      );
+    }
+
+    if (action === UnitActions.Zoom) {
+      if (unit._state?.location) {
+        geoStore.zoomToUnit(unit);
+      } else {
+        const subUnits: NUnit[] = [];
+        unitActions.walkSubUnits(
+          unit.id,
+          (unit1) => {
+            subUnits.push(unit1);
+          },
+          {},
+        );
+        const locations = subUnits.flatMap((u) =>
+          u._state?.location ? [u._state.location] : [],
+        );
+
+        if (locations.length === 0) return;
+        geoStore.mapAdapter?.fitGeometry(multiPoint(locations), { maxZoom: 17 });
+      }
+    }
+    if (action === UnitActions.Pan) geoStore.panToUnit(unit, 500);
+    if (action === UnitActions.Lock) {
+      unitActions.updateUnitLocked(unit.id, true);
+    }
+    if (action === UnitActions.Unlock) {
+      unitActions.updateUnitLocked(unit.id, false);
+    }
+
+    if (unitActions.isUnitLocked(unit.id)) return;
+
+    if (action === UnitActions.AddSubordinate) {
+      unit._isOpen = true;
+      unitActions.createSubordinateUnit(unit.id);
+    }
+
+    if (action === UnitActions.Edit) {
+      selectedUnitIds.value.clear();
+      selectedUnitIds.value.add(unit.id);
+    }
+
+    if (action === UnitActions.Clone) {
+      unitActions.cloneUnit(unit.id);
+    }
+    if (action === UnitActions.CloneWithState) {
+      unitActions.cloneUnit(unit.id, { includeState: true });
+    }
+    if (action === UnitActions.CloneWithSubordinates) {
+      unitActions.cloneUnit(unit.id, { includeSubordinates: true });
+    }
+    if (action === UnitActions.CloneWithSubordinatesAndState) {
+      unitActions.cloneUnit(unit.id, {
+        includeSubordinates: true,
+        includeState: true,
+      });
+    }
+    if (action === UnitActions.MoveUp) {
+      unitActions.reorderUnit(unit.id, "up");
+    }
+    if (action === UnitActions.MoveDown) {
+      unitActions.reorderUnit(unit.id, "down");
+    }
+    if (action === UnitActions.MoveUpInHierarchy) {
+      const parentUnit = unitActions.getUnitById(unit._pid);
+      if (parentUnit) {
+        unitActions.changeUnitParent(unit.id, parentUnit.id, "below");
+      }
+    }
+
+    if (
+      action === UnitActions.Delete ||
+      (action === UnitActions.ClearStateOrDelete && !unit.state?.length)
+    ) {
+      if (activeUnitId.value === unit.id) {
+        activeUnitId.value = null;
+      }
+      unitActions.deleteUnit(unit.id);
+      selectedUnitIds.value.delete(unit.id);
+    }
+
+    if (action === UnitActions.DeleteWaypoints && waypointIds && waypointIds.length) {
+      waypointIds.forEach((wid) =>
+        unitActions.deleteUnitStateEntryByStateId(unit.id, wid),
+      );
+    }
+
+    if (action === UnitActions.ClearState || action === UnitActions.ClearStateOrDelete) {
+      unitActions.clearUnitState(unit.id);
+    }
+  };
+
+  function onUnitAction(
+    unitOrUnits: NUnit | NUnit[] | null,
+    action: UnitAction,
+    waypointIds?: EntityId[],
+  ) {
+    if (!unitOrUnits) return;
+    if (Array.isArray(unitOrUnits)) {
+      groupUpdate(() => {
+        if (action === UnitActions.Zoom || action === UnitActions.Pan) {
+          geoStore.zoomToUnits(unitOrUnits, { duration: 500 });
+        } else unitOrUnits.forEach((unit) => _onUnitAction(unit, action, waypointIds));
+      });
+    } else _onUnitAction(unitOrUnits, action, waypointIds);
+  }
+
+  return { onUnitAction };
+}
+
+export function useUnitMenu(
+  item: OrbatItemData | NOrbatItemData | Unit,
+  isLocked: ComputedRef<boolean>,
+  isSideGroupLocked: ComputedRef<boolean>,
+) {
+  const { store } = injectStrict(activeScenarioKey);
+  const unit = "unit" in item ? item.unit : item;
+
+  const hasChildren = computed(() => {
+    return Boolean(unit.subUnits && unit.subUnits.length);
+  });
+
+  const isFirstSibling = computed(() => {
+    if (!("_pid" in unit) || !unit._pid) return false;
+    const parentId = unit._pid;
+    const parent =
+      store.state.unitMap[parentId] ?? store.state.sideGroupMap[parentId] ?? null;
+    if (!parent) return false;
+    return parent.subUnits[0] === unit.id;
+  });
+
+  const isLastSibling = computed(() => {
+    if (!("_pid" in unit) || !unit._pid) return false;
+    const parentId = unit._pid;
+    const parent =
+      store.state.unitMap[parentId] ?? store.state.sideGroupMap[parentId] ?? null;
+    if (!parent?.subUnits?.length) return false;
+    return parent.subUnits[parent.subUnits.length - 1] === unit.id;
+  });
+
+  const canMoveUpInHierarchy = computed(() => {
+    if (!("_pid" in unit) || !unit._pid) return false;
+    return Boolean(store.state.unitMap[unit._pid]);
+  });
+
+  const unitMenuItems = computed((): MenuItemData<UnitAction>[] => {
+    return [
+      {
+        label: "Add subordinate",
+        action: UnitActions.AddSubordinate,
+        disabled: isLocked.value,
+      },
+      { label: "Delete", action: UnitActions.Delete, disabled: isLocked.value },
+      { label: "Clear state", action: UnitActions.ClearState, disabled: isLocked.value },
+      { label: "Edit", action: UnitActions.Edit, disabled: isLocked.value },
+      {
+        label: "Expand branch",
+        action: UnitActions.Expand,
+        disabled: !hasChildren.value,
+      },
+      {
+        label: "Collapse branch",
+        action: UnitActions.Collapse,
+        disabled: !hasChildren.value,
+      },
+      {
+        label: "Zoom to",
+        action: UnitActions.Zoom,
+        disabled: !unit._state?.location,
+      },
+      // { label: "Copy", action: UnitActions.Copy },
+      // { label: "Paste", action: UnitActions.Paste },
+      { label: "Duplicate", action: UnitActions.Clone, disabled: isLocked.value },
+      {
+        label: "Duplicate (with state)",
+        action: UnitActions.CloneWithState,
+        disabled: isLocked.value,
+      },
+      {
+        label: "Duplicate hierarchy",
+        action: UnitActions.CloneWithSubordinates,
+        disabled: isLocked.value,
+      },
+      {
+        label: "Duplicate hierarchy (with state)",
+        action: UnitActions.CloneWithSubordinatesAndState,
+        disabled: isLocked.value,
+      },
+      {
+        label: "Move up",
+        action: UnitActions.MoveUp,
+        disabled: isLocked.value || isFirstSibling.value,
+      },
+      {
+        label: "Move down",
+        action: UnitActions.MoveDown,
+        disabled: isLocked.value || isLastSibling.value,
+      },
+      {
+        label: "Move up in hierarchy",
+        action: UnitActions.MoveUpInHierarchy,
+        disabled: isLocked.value || !canMoveUpInHierarchy.value,
+      },
+      unit.locked
+        ? {
+            label: "Unlock",
+            action: UnitActions.Unlock,
+            disabled: isSideGroupLocked.value,
+          }
+        : {
+            label: "Lock",
+            action: UnitActions.Lock,
+            disabled: isSideGroupLocked.value,
+          },
+    ];
+  });
+
+  return { unitMenuItems };
+}
+
+export function useScenarioFeatureActions(
+  options: Partial<{
+    activeScenario: TScenario;
+    olMap: OLMap | null;
+  }> = {},
+) {
+  const geoStore = useGeoStore();
+  const activeScenario = options.activeScenario || injectStrict(activeScenarioKey);
+  const {
+    store: { groupUpdate },
+    geo,
+  } = activeScenario;
+
+  const initialMapRef = options.olMap ?? geoStore.olMap;
+  const initialFeatureLayerUtils = initialMapRef
+    ? useFeatureLayerUtils(initialMapRef, { activeScenario })
+    : null;
+
+  function getFeatureLayerUtils() {
+    if (initialFeatureLayerUtils) return initialFeatureLayerUtils;
+    const mapRef = options.olMap ?? geoStore.olMap;
+    return mapRef ? useFeatureLayerUtils(mapRef, { activeScenario }) : null;
+  }
+
+  function onFeatureAction(
+    featureOrFeaturesId: FeatureId | FeatureId[],
+    action: "zoom" | "pan" | "delete" | string,
+  ) {
+    const featureLayerUtils = getFeatureLayerUtils();
+    const isArray = Array.isArray(featureOrFeaturesId);
+    if (isArray && (action === "zoom" || action === "pan")) {
+      featureLayerUtils?.zoomToFeatures(featureOrFeaturesId);
+      return;
+    }
+    groupUpdate(
+      () => {
+        (isArray ? featureOrFeaturesId : [featureOrFeaturesId]).forEach((featureId) => {
+          if (action === "zoom") featureLayerUtils?.zoomToFeature(featureId);
+          if (action === "pan") featureLayerUtils?.panToFeature(featureId);
+          if (action === "delete") geo.deleteFeature(featureId);
+          if (action === "duplicate") {
+            geo.duplicateFeature(featureId);
+          }
+        });
+      },
+      { label: "batchLayer", value: "dummy" },
+    );
+  }
+
+  return { onFeatureAction };
+}
+
+export function useToeActions() {
+  const uiStore = useUiStore();
+  const scenarioInfoPanelStore = useScenarioInfoPanelStore();
+
+  function goToAddEquipment() {
+    uiStore.activeTabIndex = TAB_SCENARIO_SETTINGS;
+    scenarioInfoPanelStore.showAddEquipment = true;
+    scenarioInfoPanelStore.tabIndex = 1;
+  }
+
+  function goToAddPersonnel() {
+    uiStore.activeTabIndex = TAB_SCENARIO_SETTINGS;
+    scenarioInfoPanelStore.showAddPersonnel = true;
+    scenarioInfoPanelStore.tabIndex = 2;
+  }
+
+  function goToAddSupplies() {
+    uiStore.activeTabIndex = TAB_SCENARIO_SETTINGS;
+    scenarioInfoPanelStore.showAddSupplies = true;
+    scenarioInfoPanelStore.tabIndex = 3;
+  }
+
+  function goToAddGroup() {
+    uiStore.activeTabIndex = TAB_SCENARIO_SETTINGS;
+    scenarioInfoPanelStore.tabIndex = 4;
+    scenarioInfoPanelStore.showAddGroup = true;
+  }
+
+  return { goToAddEquipment, goToAddPersonnel, goToAddSupplies, goToAddGroup };
+}

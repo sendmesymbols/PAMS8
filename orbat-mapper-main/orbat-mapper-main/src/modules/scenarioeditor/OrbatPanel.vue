@@ -1,0 +1,487 @@
+<script setup lang="ts">
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
+import OrbatPanelAddSide from "@/components/OrbatPanelAddSide.vue";
+import { injectStrict, triggerPostMoveFlash } from "@/utils";
+import { activeParentKey, activeScenarioKey } from "@/components/injects";
+import OrbatSide from "@/components/OrbatSide.vue";
+import type { NSide, NSideGroup, NUnit } from "@/types/internalModels";
+import { type SideAction, SideActions } from "@/types/constants";
+import { type DropTarget } from "@/components/types";
+import { useUnitActions } from "@/composables/scenarioActions";
+import { useEventBus, useEventListener } from "@vueuse/core";
+import { orbatUnitClick } from "@/components/eventKeys";
+import { useSelectedItems } from "@/stores/selectedStore";
+import { useUiStore } from "@/stores/uiStore";
+import { useRecordingStore } from "@/stores/recordingStore";
+import { serializeUnit } from "@/scenariostore/io";
+import {
+  addUnitHierarchy,
+  orbatToText,
+  parseApplicationOrbat,
+} from "@/importexport/convertUtils";
+import { type EntityId } from "@/types/base";
+import { monitorForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
+import { monitorForExternal } from "@atlaskit/pragmatic-drag-and-drop/external/adapter";
+import { isSideDragItem, isSideGroupDragItem, isUnitDragItem } from "@/types/draggables";
+
+import {
+  extractInstruction,
+  type Instruction,
+} from "@atlaskit/pragmatic-drag-and-drop-hitbox/tree-item";
+
+interface Props {
+  hideFilter?: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), { hideFilter: false });
+const activeScenario = injectStrict(activeScenarioKey);
+const { store, unitActions, io, time } = activeScenario;
+const activeParentId = injectStrict(activeParentKey);
+
+const isDragging = ref(false);
+const isDraggingUnit = ref(false);
+const isCopying = ref(false);
+const isCopyingState = ref(false);
+
+const { state, groupUpdate } = store;
+const { changeUnitParent, addSide } = unitActions;
+const bus = useEventBus(orbatUnitClick);
+
+useEventListener(document, "paste", onPaste);
+useEventListener(document, "copy", onCopy);
+const sides = computed(() => {
+  return state.sides.map((id) => state.sideMap[id]);
+});
+
+const { onUnitAction } = useUnitActions();
+const { selectedUnitIds, activeUnitId } = useSelectedItems();
+const uiStore = useUiStore();
+const recordStore = useRecordingStore();
+const showHierarchyDragStatus = computed(
+  () => isDraggingUnit.value && recordStore.isRecordingHierarchy,
+);
+
+let dndCleanup: () => void = () => {};
+let externalCleanup: () => void = () => {};
+onMounted(() => {
+  dndCleanup = monitorForElements({
+    canMonitor: ({ source }) =>
+      isUnitDragItem(source.data) ||
+      isSideGroupDragItem(source.data) ||
+      isSideDragItem(source.data),
+    onDragStart: ({ location, source }) => {
+      isDragging.value = true;
+      isCopying.value = location.initial.input.ctrlKey || location.initial.input.metaKey;
+      isCopyingState.value = isCopying.value && location.initial.input.altKey;
+      isDraggingUnit.value = isUnitDragItem(source.data);
+    },
+
+    onDrop: ({ source, location }) => {
+      isDragging.value = false;
+      isDraggingUnit.value = false;
+      const destination = location.current.dropTargets[0];
+      if (!destination) {
+        return;
+      }
+      const instruction = extractInstruction(destination.data);
+      const sourceData = source.data;
+      const destinationData = destination.data;
+      if (!instruction) return;
+      const isDuplicateAction =
+        location.initial.input.ctrlKey || location.initial.input.metaKey;
+      const isDuplicateState = isDuplicateAction && location.initial.input.altKey;
+      if (isUnitDragItem(sourceData)) {
+        const target = mapInstructionToTarget(instruction);
+        if (isUnitDragItem(destinationData)) {
+          onUnitDrop(sourceData.unit, destinationData.unit, target, {
+            isDuplicateAction,
+            isDuplicateState,
+          });
+          if (instruction.type === "make-child") {
+            destinationData.unit._isOpen = true;
+          }
+        } else if (isSideGroupDragItem(destinationData)) {
+          onUnitDrop(sourceData.unit, destinationData.sideGroup, target, {
+            isDuplicateAction,
+            isDuplicateState,
+          });
+        } else if (isSideDragItem(destinationData)) {
+          onUnitDrop(sourceData.unit, destinationData.side, "on", {
+            isDuplicateAction,
+            isDuplicateState,
+          });
+        }
+        const unitId = sourceData.unit.id;
+        nextTick(() => {
+          const el = document.getElementById(`ou-${unitId}`);
+          if (el) {
+            triggerPostMoveFlash(el);
+          }
+        });
+      } else if (isSideGroupDragItem(sourceData)) {
+        const target = mapInstructionToTarget(instruction);
+        if (isSideGroupDragItem(destinationData)) {
+          let sourceId = sourceData.sideGroup.id;
+          groupUpdate(() => {
+            if (isDuplicateAction) {
+              sourceId = unitActions.cloneSideGroup(sourceId, {
+                includeState: isDuplicateState,
+              })!;
+            }
+            unitActions.changeSideGroupParent(
+              sourceId,
+              destinationData.sideGroup.id,
+              target,
+            );
+          });
+
+          nextTick(() => {
+            const el = document.getElementById(`osg-${sourceId}`);
+            if (el) {
+              triggerPostMoveFlash(el);
+            }
+          });
+        } else if (isSideDragItem(destinationData)) {
+          let sourceId = sourceData.sideGroup.id;
+          groupUpdate(() => {
+            if (isDuplicateAction) {
+              sourceId = unitActions.cloneSideGroup(sourceId, {
+                includeState: isDuplicateState,
+              })!;
+            }
+            unitActions.changeSideGroupParent(sourceId, destinationData.side.id, "on");
+          });
+          nextTick(() => {
+            const el = document.getElementById(`os-${sourceId}`);
+            if (el) {
+              triggerPostMoveFlash(el);
+            }
+          });
+        }
+      } else if (isSideDragItem(sourceData)) {
+        const target = mapInstructionToTarget(instruction);
+        groupUpdate(() => {
+          let sourceId = sourceData.side.id;
+          if (isDuplicateAction) {
+            sourceId = unitActions.cloneSide(sourceData.side.id, {
+              includeState: isDuplicateState,
+            })!;
+          }
+          if (isSideDragItem(destinationData)) {
+            unitActions.moveSide(sourceId, destinationData.side.id, target);
+            nextTick(() => {
+              const el = document.getElementById(`os-${sourceId}`);
+              if (el) {
+                triggerPostMoveFlash(el);
+              }
+            });
+          }
+        });
+      }
+    },
+  });
+
+  externalCleanup = monitorForExternal({
+    canMonitor: ({ source }) => source.types.includes("application/orbat"),
+    onDrop: ({ location, source }) => {
+      const destination = location.current.dropTargets[0];
+      if (!destination) return;
+
+      const instruction = extractInstruction(destination.data);
+      if (!instruction) return;
+
+      const orbatData = source.getStringData("application/orbat");
+      if (!orbatData) return;
+
+      const pastedOrbat = parseApplicationOrbat(orbatData);
+      if (!pastedOrbat) return;
+
+      const targetUnitId = isUnitDragItem(destination.data)
+        ? destination.data.unit.id
+        : undefined;
+
+      const handleDroppedUnits = (
+        units: ReturnType<typeof parseApplicationOrbat>,
+        parentId: EntityId,
+        dropTarget: DropTarget,
+      ) => {
+        if (!units) return;
+        units.forEach((unit) => {
+          groupUpdate(() => {
+            const insertedUnitId = addUnitHierarchy(unit, parentId, activeScenario, {
+              newIds: false,
+            });
+            if (insertedUnitId) {
+              changeUnitParent(insertedUnitId, parentId, dropTarget);
+            }
+          });
+        });
+      };
+
+      if (!targetUnitId) {
+        // Fallback: If dropped on side or sidegroup, add to side/group
+        if (isSideGroupDragItem(destination.data)) {
+          handleDroppedUnits(pastedOrbat, destination.data.sideGroup.id, "on");
+        } else if (isSideDragItem(destination.data)) {
+          handleDroppedUnits(pastedOrbat, destination.data.side.id, "on");
+        }
+        return;
+      }
+
+      const dropTarget = mapInstructionToTarget(instruction);
+
+      // We need to resolve the effective parent based on whether the instruction is
+      // 'above', 'below', or 'on' (make-child). addUnitHierarchy requires the parent ID.
+      let effectiveParentId = targetUnitId;
+      if (dropTarget === "above" || dropTarget === "below") {
+        const destUnit = state.unitMap[targetUnitId];
+        effectiveParentId = destUnit._pid;
+      }
+
+      if (pastedOrbat) {
+        let insertionTargetId = targetUnitId;
+        pastedOrbat.forEach((unit) => {
+          let insertedUnitId: EntityId | undefined;
+          groupUpdate(() => {
+            // addUnitHierarchy registers the unit and its subordinates into the store
+            insertedUnitId = addUnitHierarchy(unit, effectiveParentId, activeScenario, {
+              newIds: false,
+            });
+
+            // Then we re-parent/order it correctly based on the drop target
+            if (insertedUnitId) {
+              changeUnitParent(insertedUnitId, insertionTargetId, dropTarget);
+            }
+          });
+          if (dropTarget === "below" && insertedUnitId) {
+            insertionTargetId = insertedUnitId;
+          }
+        });
+      }
+
+      if (instruction.type === "make-child" && isUnitDragItem(destination.data)) {
+        destination.data.unit._isOpen = true;
+      }
+    },
+  });
+});
+
+onUnmounted(() => {
+  dndCleanup();
+  externalCleanup();
+});
+
+function mapInstructionToTarget(instruction: Instruction): DropTarget {
+  if (instruction.type === "make-child") {
+    return "on";
+  } else if (instruction.type === "reorder-above") {
+    return "above";
+  } else {
+    return "below";
+  }
+}
+
+function onUnitDrop(
+  unit: NUnit,
+  destinationUnit: NUnit | NSideGroup | NSide,
+  target: DropTarget,
+  options: { isDuplicateAction?: boolean; isDuplicateState?: boolean } = {},
+) {
+  const isDuplicateAction = options.isDuplicateAction ?? false;
+  const isDuplicateState = options.isDuplicateState ?? false;
+  groupUpdate(() => {
+    const selUnits = selectedUnitIds.value.has(unit.id)
+      ? new Set([...selectedUnitIds.value])
+      : new Set([unit.id]);
+    selUnits.delete(destinationUnit.id);
+    for (const id of selUnits) {
+      let unitId = id;
+      if (isDuplicateAction) {
+        unitId = unitActions.cloneUnit(id, {
+          includeSubordinates: true,
+          includeState: isDuplicateState,
+        })!;
+      }
+      if (recordStore.isRecordingHierarchy) {
+        unitActions.recordUnitHierarchyMove(unitId, destinationUnit.id, target);
+      } else {
+        changeUnitParent(unitId, destinationUnit.id, target);
+      }
+    }
+  });
+  if (isDuplicateState) {
+    time.setCurrentTime(state.currentTime);
+  }
+}
+
+function onUnitClick(unit: NUnit, event: MouseEvent) {
+  const ids = selectedUnitIds.value;
+  if (event.shiftKey) {
+    const selectedIds = calculateSelectedUnitIds(unit.id);
+    selectedIds.forEach((id) => {
+      ids.add(id);
+    });
+  } else if (event.ctrlKey || event.metaKey) {
+    if (ids.has(unit.id)) {
+      ids.delete(unit.id);
+    } else {
+      ids.add(unit.id);
+    }
+  } else {
+    activeUnitId.value = unit.id;
+    activeParentId.value = unit.id;
+  }
+  bus.emit(unit);
+}
+
+function calculateSelectedUnitIds(newUnitId: EntityId): EntityId[] {
+  const lastSelectedId = [...selectedUnitIds.value].pop();
+  if (lastSelectedId === undefined) return [newUnitId];
+  const allOpenUnits: EntityId[] = [];
+  for (const side of state.sides) {
+    unitActions.walkSide(side, (unit) => {
+      allOpenUnits.push(unit.id);
+      if (!unit._isOpen) return false;
+    });
+  }
+  const lastSelectedIndex = allOpenUnits.indexOf(lastSelectedId);
+  const newUnitIndex = allOpenUnits.indexOf(newUnitId);
+  if (lastSelectedIndex === -1 || newUnitIndex === -1) return [newUnitId];
+  return allOpenUnits.slice(
+    Math.min(lastSelectedIndex, newUnitIndex),
+    Math.max(lastSelectedIndex, newUnitIndex) + 1,
+  );
+}
+
+function onSideAction(side: NSide, action: SideAction) {
+  if (action === SideActions.Delete) {
+    unitActions.deleteSide(side.id);
+  } else if (action === SideActions.MoveDown) {
+    unitActions.reorderSide(side.id, "down");
+  } else if (action === SideActions.MoveUp) {
+    unitActions.reorderSide(side.id, "up");
+  } else if (action === SideActions.Add) {
+    addSide();
+  } else if (action === SideActions.Lock) {
+    unitActions.updateSide(side.id, { locked: true }, { noUndo: true });
+  } else if (action === SideActions.Unlock) {
+    unitActions.updateSide(side.id, { locked: false }, { noUndo: true });
+  } else if (action === SideActions.Clone) {
+    unitActions.cloneSide(side.id);
+  } else if (action === SideActions.CloneWithState) {
+    unitActions.cloneSide(side.id, { includeState: true });
+  } else if (action === SideActions.Hide) {
+    unitActions.updateSide(side.id, { isHidden: true });
+  } else if (action === SideActions.Show) {
+    unitActions.updateSide(side.id, { isHidden: false });
+  } else if (action === SideActions.ToggleInitiallyClosed) {
+    const value = side.initiallyOpen === false ? undefined : false;
+    unitActions.updateSide(side.id, { initiallyOpen: value });
+  }
+}
+
+function getUnitIdFromElement(element: Element | null | undefined): string | undefined {
+  if (element?.id.startsWith("ou-")) {
+    return element.id.slice(3);
+  }
+}
+
+function resolveClipboardUnitId(): EntityId | undefined {
+  const target = document.activeElement as HTMLElement | null;
+  const focusedUnitId = getUnitIdFromElement(target?.closest('[id^="ou-"]'));
+  if (focusedUnitId) return focusedUnitId;
+  if (activeUnitId.value) return activeUnitId.value;
+  if (selectedUnitIds.value.size === 1) return [...selectedUnitIds.value][0];
+}
+
+function clipboardEventFilter(event: Event) {
+  const target = event.target as HTMLElement | null;
+  return !(
+    ["INPUT", "TEXTAREA"].includes(target?.tagName ?? "") || target?.isContentEditable
+  );
+}
+
+function onCopy(c: ClipboardEvent) {
+  if (!clipboardEventFilter(c)) return;
+
+  const fallbackUnitId = resolveClipboardUnitId();
+  const sourceUnitIds = selectedUnitIds.value.size
+    ? [...selectedUnitIds.value]
+    : fallbackUnitId
+      ? [fallbackUnitId]
+      : [];
+
+  if (!sourceUnitIds.length) return;
+  const serializedUnits = sourceUnitIds.map((id) =>
+    serializeUnit(id, state, { newId: true }),
+  );
+  c.clipboardData?.setData("application/orbat", io.stringifyObject(serializedUnits));
+
+  const txt = serializedUnits.map((unit) => orbatToText(unit).join("")).join("");
+  c.clipboardData?.setData("text/plain", txt);
+
+  c.preventDefault();
+}
+
+function onPaste(e: ClipboardEvent) {
+  if (!clipboardEventFilter(e)) return;
+  const parentId = resolveClipboardUnitId();
+  if (!parentId) return;
+  const pastedOrbat =
+    parseApplicationOrbat(e.clipboardData?.getData("application/orbat") ?? "") ||
+    parseApplicationOrbat(e.clipboardData?.getData("text/plain") ?? "");
+  if (!pastedOrbat) return;
+  pastedOrbat?.forEach((unit) => addUnitHierarchy(unit, parentId, activeScenario));
+  unitActions.getUnitById(parentId)._isOpen = true;
+
+  e.preventDefault();
+}
+</script>
+
+<template>
+  <div class="space-y-1 pt-2" data-orbat-nav="panel-root">
+    <slot name="header" />
+    <OrbatSide
+      v-for="side in sides"
+      :key="side.id"
+      :side="side"
+      @unit-action="onUnitAction"
+      @unit-click="onUnitClick"
+      @side-action="onSideAction"
+      :hide-filter="props.hideFilter"
+    />
+    <OrbatPanelAddSide
+      v-if="sides.length < 2"
+      :simple="sides.length >= 1"
+      class="mt-8"
+      @add="addSide()"
+    />
+  </div>
+  <div
+    v-if="showHierarchyDragStatus"
+    class="pointer-events-none fixed top-1 left-1 z-10 mt-0 w-full px-3 sm:sticky sm:right-0 sm:bottom-3 sm:left-0"
+    data-testid="orbat-hierarchy-overlay"
+  >
+    <div
+      class="bg-opacity-10 border-border bg-background/90 text-foreground rounded border p-2 text-center text-sm shadow-sm"
+    >
+      <p>Recording hierarchy changes during drag and drop</p>
+    </div>
+  </div>
+  <div
+    v-if="isDragging && isCopying"
+    class="bg-opacity-50 border-border bg-background/50 text-foreground fixed top-2 right-1/2 z-50 rounded border p-2 text-center text-sm"
+  >
+    <p>Dragging copy mode <span v-if="isCopyingState">(including state)</span></p>
+  </div>
+  <div
+    v-if="isDraggingUnit && selectedUnitIds.size > 1"
+    class="bg-opacity-50 border-border bg-background/50 text-foreground fixed top-2 right-1/2 z-50 rounded border p-2 text-center text-sm"
+  >
+    <p>
+      Dragging
+      <span class="bg-muted rounded-full border px-1">{{ selectedUnitIds.size }}</span>
+      units
+    </p>
+  </div>
+</template>
