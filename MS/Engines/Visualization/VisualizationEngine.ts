@@ -12,6 +12,8 @@ import TextSymbol from "@arcgis/core/symbols/TextSymbol";
 import Color from "@arcgis/core/Color";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
+import { buildSectorRing } from "./sectorGeometry";
+import { latLonToUTM, utmToLatLon } from "../MGRSEngine";
 import GraphicsLayerManager, { LAYER_NAMES } from "../../Managers/GraphicsLayerManager";
 import type { DeclutterEngine } from "../Declutter/DeclutterEngine";
 
@@ -467,6 +469,13 @@ export class VisualizationEngine {
   private _clearWatchers(): void {
     this._watchers.forEach(h => h.remove());
     this._watchers = [];
+    // The force-point drop-line watcher lives outside the _watchers array and
+    // is bound to the current view's force layer — dispose it here too so a
+    // 2D/3D switch (onViewChanged) doesn't leak it and pin the discarded view.
+    if (this._dropLineWatcher) {
+      this._dropLineWatcher.remove();
+      this._dropLineWatcher = null;
+    }
   }
 
   // ─── Refresh scheduling ────────────────────────────────────────────────────
@@ -955,6 +964,194 @@ export class VisualizationEngine {
     if (!this._vizLayer) return;
     this._vizLayer.graphics
       .filter((g: Graphic) => g.attributes?.[VIZ_TAG] === "threatfan")
+      .toArray()
+      .forEach((g: Graphic) => this._vizLayer!.remove(g));
+  }
+
+  // ─── Threat / Engagement Sector (azimuth-bounded wedge) ────────────────────
+
+  /**
+   * Draw a geodesic engagement/threat sector (wedge) centered on a point.
+   * Sweeps CLOCKWISE from azStartDeg to azEndDeg. Multiple sectors may coexist;
+   * use clearSectors() to remove them all.
+   */
+  public showSector(
+    center: Point | Graphic,
+    opts: {
+      rangeKm: number;
+      azStartDeg: number;
+      azEndDeg: number;
+      color?: [number, number, number];
+      opacity?: number;
+    },
+  ): void {
+    if (!this._vizLayer) return;
+    const pt = ("geometry" in center ? center.geometry : center) as Point | null;
+    if (!pt || pt.type !== "point") return;
+    if (!(opts.rangeKm > 0)) return;
+    if (((opts.azEndDeg - opts.azStartDeg) % 360 + 360) % 360 === 0) return; // degenerate
+
+    const ring = buildSectorRing(
+      pt.longitude as number, pt.latitude as number,
+      opts.rangeKm, opts.azStartDeg, opts.azEndDeg,
+    );
+    const polygon = new Polygon({ rings: [ring], spatialReference: { wkid: 4326 } });
+    const [r, g, b] = opts.color ?? [220, 50, 50];
+    const a = opts.opacity ?? 0.30;
+    this._vizLayer.add(new Graphic({
+      geometry: polygon,
+      symbol: new SimpleFillSymbol({
+        color: new Color([r, g, b, a]),
+        outline: new SimpleLineSymbol({ color: new Color([r, g, b, 0.85]), width: 1.5, style: "solid" }),
+      }),
+      attributes: { [VIZ_TAG]: "sector" },
+    }));
+  }
+
+  /** Remove all sector overlays (committed and preview). */
+  public clearSectors(): void {
+    if (!this._vizLayer) return;
+    this._vizLayer.graphics
+      .filter((g: Graphic) => g.attributes?.[VIZ_TAG] === "sector" || g.attributes?.[VIZ_TAG] === "sector-preview")
+      .toArray()
+      .forEach((g: Graphic) => this._vizLayer!.remove(g));
+  }
+
+  /** Internal: draw/replace the live preview wedge while the SectorDrawTool is active. */
+  public _renderSectorPreview(
+    pt: Point, rangeKm: number, azStartDeg: number, azEndDeg: number,
+  ): void {
+    if (!this._vizLayer) return;
+    this._vizLayer.graphics
+      .filter((g: Graphic) => g.attributes?.[VIZ_TAG] === "sector-preview")
+      .toArray()
+      .forEach((g: Graphic) => this._vizLayer!.remove(g));
+    if (!(rangeKm > 0)) return;
+    const ring = buildSectorRing(
+      pt.longitude as number, pt.latitude as number, rangeKm, azStartDeg, azEndDeg,
+    );
+    this._vizLayer.add(new Graphic({
+      geometry: new Polygon({ rings: [ring], spatialReference: { wkid: 4326 } }),
+      symbol: new SimpleFillSymbol({
+        color: new Color([220, 50, 50, 0.15]),
+        outline: new SimpleLineSymbol({ color: new Color([220, 50, 50, 0.9]), width: 1.5, style: "dash" }),
+      }),
+      attributes: { [VIZ_TAG]: "sector-preview" },
+    }));
+  }
+
+  public clearSectorPreview(): void {
+    if (!this._vizLayer) return;
+    this._vizLayer.graphics
+      .filter((g: Graphic) => g.attributes?.[VIZ_TAG] === "sector-preview")
+      .toArray()
+      .forEach((g: Graphic) => this._vizLayer!.remove(g));
+  }
+
+  // ─── MGRS Density Heatmap (cells snapped to the MGRS/UTM grid) ─────────────
+
+  /**
+   * Shade MGRS grid cells by the symbols they contain. Cells are true UTM-aligned
+   * squares at the chosen precision (0 = 100 km, 1 = 10 km, 2 = 1 km). In "ratio"
+   * mode each cell is coloured by friendly:hostile force ratio (favourable / parity /
+   * unfavourable, contested = mixed) reusing the force-ratio palette; in "count" mode
+   * cells are a single amber hue whose opacity scales with total symbol density.
+   * Opacity always scales with how busy the cell is relative to the busiest cell.
+   */
+  public showMgrsDensity(opts?: { precision?: 0 | 1 | 2; mode?: "ratio" | "count" }): void {
+    if (!this._vizLayer) return;
+    const precision = opts?.precision ?? 1;
+    const intervalM = precision === 0 ? 100000 : precision === 1 ? 10000 : 1000;
+    const mode = opts?.mode ?? "ratio";
+    const { friendly, enemy } = this._getPointGraphics();
+    if (friendly.length + enemy.length === 0) return;
+
+    this.clearMgrsDensity();
+
+    type Cell = { f: number; e: number; zone: number; south: boolean; ce: number; cn: number };
+    const cells = new Map<string, Cell>();
+    const bin = (graphics: Graphic[], key: "f" | "e") => {
+      graphics.forEach(g => {
+        const pt = g.geometry as Point;
+        if (!pt) return;
+        const lon = pt.longitude as number;
+        const lat = pt.latitude as number;
+        if (lon == null || lat == null || Number.isNaN(lon) || Number.isNaN(lat)) return;
+        const zone = Math.floor((lon + 180) / 6) + 1;
+        const utm = latLonToUTM(lat, lon, zone);
+        const south = lat < 0;
+        const ce = Math.floor(utm.e / intervalM);
+        const cn = Math.floor(utm.n / intervalM);
+        const id = `${zone}:${south ? "S" : "N"}:${ce}:${cn}`;
+        let cell = cells.get(id);
+        if (!cell) { cell = { f: 0, e: 0, zone, south, ce, cn }; cells.set(id, cell); }
+        cell[key]++;
+      });
+    };
+    bin(friendly, "f");
+    bin(enemy, "e");
+
+    let maxTotal = 1;
+    cells.forEach(c => { maxTotal = Math.max(maxTotal, c.f + c.e); });
+
+    cells.forEach(cell => {
+      const e0 = cell.ce * intervalM, n0 = cell.cn * intervalM;
+      const e1 = e0 + intervalM,      n1 = n0 + intervalM;
+      const sw = utmToLatLon(cell.zone, cell.south, e0, n0);
+      const se = utmToLatLon(cell.zone, cell.south, e1, n0);
+      const ne = utmToLatLon(cell.zone, cell.south, e1, n1);
+      const nw = utmToLatLon(cell.zone, cell.south, e0, n1);
+      const ring: number[][] = [
+        [sw.lon, sw.lat], [se.lon, se.lat], [ne.lon, ne.lat], [nw.lon, nw.lat], [sw.lon, sw.lat],
+      ];
+      const poly = new Polygon({ rings: [ring], spatialReference: { wkid: 4326 } });
+
+      const total = cell.f + cell.e;
+      const heat = total / maxTotal;
+      let fill: number[];
+      let alpha: number;
+      if (mode === "count") {
+        fill = [255, 140, 0];
+        alpha = 0.15 + 0.5 * heat;
+      } else {
+        fill = this._ratioColor(cell.f, cell.e, this._options.forceRatioGrid);
+        alpha = 0.20 + 0.35 * heat;
+      }
+
+      this._vizLayer!.add(new Graphic({
+        geometry: poly,
+        symbol: new SimpleFillSymbol({
+          color: new Color([fill[0], fill[1], fill[2], alpha]),
+          outline: new SimpleLineSymbol({ color: new Color([fill[0], fill[1], fill[2], 0.5]), width: 0.75 }),
+        }),
+        attributes: { [VIZ_TAG]: "mgrs-density" },
+      }));
+
+      const c = utmToLatLon(cell.zone, cell.south, e0 + intervalM / 2, n0 + intervalM / 2);
+      const label = mode === "count"
+        ? `${total}`
+        : (cell.e === 0 ? `${cell.f}:0` : `${cell.f}:${cell.e}`);
+      this._vizLayer!.add(new Graphic({
+        geometry: new Point({ x: c.lon, y: c.lat, spatialReference: { wkid: 4326 } }),
+        symbol: new TextSymbol({
+          text: label,
+          color: new Color([255, 255, 255, 1]),
+          haloColor: new Color([0, 0, 0, 0.85]),
+          haloSize: 2,
+          font: { size: 13, weight: "bold" },
+          verticalAlignment: "middle",
+          horizontalAlignment: "center",
+        }),
+        attributes: { [VIZ_TAG]: "mgrs-density-label" },
+      }));
+    });
+  }
+
+  /** Remove all MGRS density-heatmap overlays. */
+  public clearMgrsDensity(): void {
+    if (!this._vizLayer) return;
+    this._vizLayer.graphics
+      .filter((g: Graphic) => g.attributes?.[VIZ_TAG] === "mgrs-density" || g.attributes?.[VIZ_TAG] === "mgrs-density-label")
       .toArray()
       .forEach((g: Graphic) => this._vizLayer!.remove(g));
   }
