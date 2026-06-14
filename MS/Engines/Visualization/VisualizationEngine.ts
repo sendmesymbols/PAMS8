@@ -13,7 +13,7 @@ import Color from "@arcgis/core/Color";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
 import { buildSectorRing } from "./sectorGeometry";
-import { latLonToUTM, utmToLatLon } from "../MGRSEngine";
+import { latLonToUTM, utmToLatLon } from "../MGRSEngine.ts";
 import GraphicsLayerManager, { LAYER_NAMES } from "../../Managers/GraphicsLayerManager";
 import type { DeclutterEngine } from "../Declutter/DeclutterEngine";
 
@@ -1017,15 +1017,12 @@ export class VisualizationEngine {
       .forEach((g: Graphic) => this._vizLayer!.remove(g));
   }
 
-  /** Internal: draw/replace the live preview wedge while the SectorDrawTool is active. */
-  public _renderSectorPreview(
+  /** Draw/replace the live preview wedge while the SectorDrawTool is active. Intended for SectorDrawTool. */
+  public renderSectorPreview(
     pt: Point, rangeKm: number, azStartDeg: number, azEndDeg: number,
   ): void {
     if (!this._vizLayer) return;
-    this._vizLayer.graphics
-      .filter((g: Graphic) => g.attributes?.[VIZ_TAG] === "sector-preview")
-      .toArray()
-      .forEach((g: Graphic) => this._vizLayer!.remove(g));
+    this.clearSectorPreview();
     if (!(rangeKm > 0)) return;
     const ring = buildSectorRing(
       pt.longitude as number, pt.latitude as number, rangeKm, azStartDeg, azEndDeg,
@@ -1040,6 +1037,7 @@ export class VisualizationEngine {
     }));
   }
 
+  /** Remove the live sector preview wedge (leaves committed sectors intact). */
   public clearSectorPreview(): void {
     if (!this._vizLayer) return;
     this._vizLayer.graphics
