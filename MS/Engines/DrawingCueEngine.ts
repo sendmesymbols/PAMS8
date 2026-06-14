@@ -35,6 +35,7 @@ import type Geometry from "@arcgis/core/geometry/Geometry";
 
 export interface DrawingCueOptions {
   enabled?: boolean;
+  closeCue?: boolean;
   rubberBand?: {
     enabled?: boolean;
     lineColor?: [number, number, number];
@@ -201,6 +202,12 @@ class DrawingCueEngine {
   private _adaptiveCoverageFraction: number = 0.25;
   private _adaptiveMaxOuterKm: number = 200;
 
+  // ── Option fields — close-ring cue ────────────────────────────────────────
+  private _closeCueEnabled: boolean = true;
+  private _closeFirstVertex: Point | null = null;
+  private _closeRingG: Graphic | null = null;
+  private static readonly CLOSE_PX = 16;
+
   // ── Magnetic compass child engine ──────────────────────────────────────────
   private _compass: MagneticCompass | null = null;
 
@@ -313,6 +320,7 @@ class DrawingCueEngine {
     if (containerEl) {
       this._boundPointerMove = (e: PointerEvent) => {
         if (!this._isActive || !this._view) return;
+        this._updateCloseCue(e);
         const now = Date.now();
         if (now - this._lastTick < 16) return; // ~60 fps
         this._lastTick = now;
@@ -360,6 +368,16 @@ class DrawingCueEngine {
       if (this._ringsEnabled) this._updateDistanceRings(this._lastCtrlPt);
       if (this._guidesShowArc) this._updateProtractorRing(this._lastCtrlPt!);
     }
+
+    // Close-cue: armed only while drawing a polygon with >= 3 committed anchors.
+    // ctrlPts[last] is the live cursor, so committed anchors = ctrlPts.length - 1.
+    const committed = ctrlPts.length - 1;
+    if (this._closeCueEnabled && _geom?.type === "polygon" && committed >= 3) {
+      this._closeFirstVertex = ctrlPts[0] ?? null;
+    } else {
+      this._closeFirstVertex = null;
+      this._clearCloseRing();
+    }
   }
 
   public deactivate(): void {
@@ -381,6 +399,8 @@ class DrawingCueEngine {
     }
     this._candidateInfo = [];
 
+    this._closeFirstVertex = null;
+    this._clearCloseRing();
     this._clearDrawingGraphics();
     for (const g of this._needleGs) this._removeGraphic(g);
     this._needleGs = [];
@@ -410,6 +430,14 @@ class DrawingCueEngine {
 
   public setOptions(opts: DrawingCueOptions): void {
     if (opts.enabled !== undefined) { opts.enabled ? this.enable() : this.disable(); }
+
+    if (opts.closeCue !== undefined) {
+      this._closeCueEnabled = opts.closeCue;
+      if (!opts.closeCue) {
+        this._closeFirstVertex = null;
+        this._clearCloseRing();
+      }
+    }
 
     const rb = opts.rubberBand;
     if (rb) {
@@ -1269,6 +1297,40 @@ class DrawingCueEngine {
       xoffset:   5,
       yoffset:   8,
     });
+  }
+
+  /** Show a "close ring" over the first vertex when the cursor is within CLOSE_PX. */
+  private _updateCloseCue(e: PointerEvent): void {
+    if (!this._closeCueEnabled || !this._closeFirstVertex || !this._view || !this._layer) {
+      this._clearCloseRing();
+      return;
+    }
+    const screen = this._view.toScreen(this._closeFirstVertex);
+    if (!screen) { this._clearCloseRing(); return; }
+    const rect = (this._view.container as HTMLElement).getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const dist = Math.hypot(px - screen.x, py - screen.y);
+    if (dist > DrawingCueEngine.CLOSE_PX) { this._clearCloseRing(); return; }
+    if (!this._closeRingG) {
+      this._closeRingG = new Graphic({
+        geometry: this._closeFirstVertex,
+        symbol: new SimpleMarkerSymbol({
+          style: "circle",
+          color: [0, 0, 0, 0],
+          size: DrawingCueEngine.CLOSE_PX * 2,
+          outline: { color: [80, 220, 120, 0.95], width: 2 },
+        }),
+      });
+      this._layer.add(this._closeRingG);
+    } else {
+      this._closeRingG.geometry = this._closeFirstVertex;
+    }
+  }
+
+  private _clearCloseRing(): void {
+    if (this._closeRingG && this._layer) this._layer.remove(this._closeRingG);
+    this._closeRingG = null;
   }
 
   private _clearDrawingGraphics(): void {

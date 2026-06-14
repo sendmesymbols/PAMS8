@@ -425,6 +425,7 @@
   },
   "drawingCues": {
     "enabled": true,
+    "closeCue": true,
     "rubberBand": {
       "enabled": true,
       "lineColor": [255, 200, 0],
