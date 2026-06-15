@@ -549,6 +549,9 @@ export class VisualizationEngine {
     if (showGrid)                     this._computeForceRatioGrid();
     if (showHull)                     this._computeConvexHull();
     if (o.extrudedFootprints.enabled) this._computeExtrudedFootprints();
+    // Re-add tracked threat sectors — removeAll() above clears them, and unlike
+    // the other overlays they are not recomputed from options.
+    for (const s of this._sectors) this._vizLayer.add(s.graphic);
   }
 
   /** True when aggregate mode is active for the current view zoom. */
@@ -1029,7 +1032,7 @@ export class VisualizationEngine {
     if (!(opts.rangeKm > 0)) return "";
     if (((opts.azEndDeg - opts.azStartDeg) % 360 + 360) % 360 === 0) return ""; // degenerate
 
-    const color          = opts.color          ?? this._sectorDefaultColor;
+    const color          = [...(opts.color ?? this._sectorDefaultColor)] as [number, number, number];
     const fillOpacity    = opts.fillOpacity    ?? opts.opacity ?? this._sectorDefaultFillOpacity;
     const outlineOpacity = opts.outlineOpacity ?? this._sectorDefaultOutlineOpacity;
     const outlineWidth   = opts.outlineWidth   ?? this._sectorDefaultOutlineWidth;
@@ -1053,6 +1056,7 @@ export class VisualizationEngine {
   /**
    * Back-compat wrapper kept for existing callers (SectorDrawTool, SymbolEngine
    * API passthrough). Delegates to createSector so drawn sectors are tracked.
+   * @see createSector
    */
   public showSector(
     center: Point | Graphic,
@@ -1091,14 +1095,14 @@ export class VisualizationEngine {
   public listSectors(): SectorListItem[] {
     return this._sectors.map(s => ({
       id: s.id, label: s.label, rangeKm: s.rangeKm, azStartDeg: s.azStartDeg, azEndDeg: s.azEndDeg,
-      color: s.color, fillOpacity: s.fillOpacity, outlineOpacity: s.outlineOpacity, outlineWidth: s.outlineWidth,
+      color: [...s.color] as [number, number, number], fillOpacity: s.fillOpacity, outlineOpacity: s.outlineOpacity, outlineWidth: s.outlineWidth,
     }));
   }
 
   /** Current in-memory default appearance applied to new sectors. */
   public getSectorDefaults(): { color: [number, number, number]; fillOpacity: number; outlineOpacity: number; outlineWidth: number } {
     return {
-      color: this._sectorDefaultColor,
+      color: [...this._sectorDefaultColor] as [number, number, number],
       fillOpacity: this._sectorDefaultFillOpacity,
       outlineOpacity: this._sectorDefaultOutlineOpacity,
       outlineWidth: this._sectorDefaultOutlineWidth,
@@ -1107,7 +1111,7 @@ export class VisualizationEngine {
 
   /** Update the in-memory default appearance for subsequently created sectors. */
   public setSectorDefaults(patch: { color?: [number, number, number]; fillOpacity?: number; outlineOpacity?: number; outlineWidth?: number }): void {
-    if (patch.color          !== undefined) this._sectorDefaultColor          = patch.color;
+    if (patch.color          !== undefined) this._sectorDefaultColor          = [...patch.color] as [number, number, number];
     if (patch.fillOpacity    !== undefined) this._sectorDefaultFillOpacity    = patch.fillOpacity;
     if (patch.outlineOpacity !== undefined) this._sectorDefaultOutlineOpacity = patch.outlineOpacity;
     if (patch.outlineWidth   !== undefined) this._sectorDefaultOutlineWidth   = patch.outlineWidth;
