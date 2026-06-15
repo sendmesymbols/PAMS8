@@ -38,6 +38,20 @@ export const visualizationSettingsManifest: SettingDescriptor[] = [
     help: 'Master switch for tactical overlays: coverage rings, force ratio grid, footprints, layer glow.',
     keywords: ['enable', 'disable'],
   },
+  {
+    path: ['visualization', 'sector', '__openPanel'],
+    label: 'Threat sector panel',
+    buttonLabel: '🎯 Open Threat Sector Panel',
+    group: 'Threat sectors',
+    type: 'action',
+    help: 'Open the threat-sector management panel: draw, list, recolor, and edit sectors.',
+    keywords: ['sector', 'threat', 'wedge', 'arc', 'fan', 'engagement'],
+    onClick: () => {
+      const se = (window as any).symbolEngine;
+      if (se?.openSectorPanel) se.openSectorPanel();
+      else console.warn('SymbolEngine not ready yet');
+    },
+  },
 
   // ── 3D render settings ────────────────────────────────────────────────────
   {
