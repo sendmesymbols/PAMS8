@@ -38,6 +38,51 @@ const LASSO_SUBTRACT_SYM = new SimpleFillSymbol({
 
 const CLONE_DRAG_LIVE_ANNOTATION_LIMIT = 25;
 
+// ── Selection-by-criteria support ────────────────────────────────────────────
+
+/** How a criteria-based selection composes with the current selection.
+ *  replace = clear then select matches · add = union matches · refine = keep
+ *  only currently-selected graphics that match (narrow the selection). */
+export type SelectMode = 'replace' | 'add' | 'refine';
+
+/**
+ * Standard-identity (affiliation) code → label, keyed to the 2-char field the
+ * SelectionEngine reads at SIDC positions 2–4 (see `_getGraphicIdentity`).
+ * Mirrors the identity table in MS/Support/SIDC.ts.
+ */
+const IDENTITY_LABELS: Record<string, string> = {
+    '01': 'Unknown',
+    '02': 'Assumed Friend',
+    '03': 'Friend',
+    '04': 'Neutral',
+    '05': 'Suspect',
+    '06': 'Hostile',
+    '07': 'Hostile (Red)',
+};
+
+/**
+ * Echelon code → label, keyed to the 2-char field read at SIDC positions 8–10
+ * (see `_getGraphicEchelon`) — the same field the existing "Same Echelon" filter
+ * compares. Codes with no entry fall back to `Echelon {code}`; selection is by
+ * code-equality, so an unknown label never affects which symbols are picked.
+ */
+const ECHELON_LABELS: Record<string, string> = {
+    '11': 'Team/Crew',
+    '12': 'Squad',
+    '13': 'Section',
+    '14': 'Platoon/Detachment',
+    '15': 'Company/Battery/Troop',
+    '16': 'Battalion/Squadron',
+    '17': 'Regiment/Group',
+    '18': 'Brigade',
+    '21': 'Division',
+    '22': 'Corps/MEF',
+    '23': 'Army',
+    '24': 'Army Group/Front',
+    '25': 'Region/Theater',
+    '26': 'Command',
+};
+
 interface UndoEntry {
     label: string;
     undo: () => void;
@@ -630,7 +675,12 @@ class SelectionEngine {
         return null;
     }
 
-    private _selectAllMatching(predicate: (g: Graphic) => boolean): void {
+    private _selectAllMatching(predicate: (g: Graphic) => boolean, mode: SelectMode = 'replace'): void {
+        // Refine narrows the current selection in place — no layer walk needed.
+        if (mode === 'refine') {
+            this.selectedGraphics.forEach(g => { if (!predicate(g)) this.deselectGraphic(g); });
+            return;
+        }
         const hit: Graphic[] = [];
         const targetIds = this._targetLayerIds.length ? this._targetLayerIds : this._layerManager.listLayers();
         targetIds.forEach(id => {
@@ -644,8 +694,8 @@ class SelectionEngine {
                 }
             });
         });
-        this.clearSelection();
-        hit.forEach(g => this.selectGraphic(g));
+        if (mode === 'replace') this.clearSelection();
+        hit.forEach(g => this.selectGraphic(g)); // selectGraphic dedupes → 'add' unions cleanly
     }
 
     selectSimilarSameSIDC(graphic: Graphic): void {
@@ -660,39 +710,165 @@ class SelectionEngine {
         this._selectAllMatching(g => this._getGraphicEchelon(g) === echelon);
     }
 
-    selectOwnOnly(): void {
+    selectOwnOnly(mode: SelectMode = 'replace'): void {
         this._selectAllMatching(g => {
             const id = this._getGraphicIdentity(g);
             return id === "03" || id === "02"; // Friend, Assumed Friend
-        });
+        }, mode);
     }
 
-    selectEnemy(): void {
+    selectEnemy(mode: SelectMode = 'replace'): void {
         this._selectAllMatching(g => {
             const id = this._getGraphicIdentity(g);
             return id === "06" || id === "05" || id === "07"; // Hostile, Suspect, Red
-        });
+        }, mode);
     }
 
-    selectPointSymbols(): void {
+    selectPointSymbols(mode: SelectMode = 'replace'): void {
         this._selectAllMatching(g => {
             const t = this._getGraphicGeomType(g);
             return t === "Point" || t === "FPoint";
-        });
+        }, mode);
     }
 
-    selectAreaSymbols(): void {
+    selectAreaSymbols(mode: SelectMode = 'replace'): void {
         this._selectAllMatching(g => {
             const t = this._getGraphicGeomType(g);
             return t === "Area" || t === "Polygon";
-        });
+        }, mode);
     }
 
-    selectLineSymbols(): void {
+    selectLineSymbols(mode: SelectMode = 'replace'): void {
         this._selectAllMatching(g => {
             const t = this._getGraphicGeomType(g);
             return t === "Line" || t === "Polyline";
+        }, mode);
+    }
+
+    // ── Select all / invert / by attribute / within radius ───────────────────
+
+    /** Select every symbol across the target layers. */
+    selectAll(mode: SelectMode = 'replace'): void {
+        this._selectAllMatching(() => true, mode);
+    }
+
+    /** Select every unselected symbol and deselect every selected one. */
+    invertSelection(): void {
+        const toAdd: Graphic[] = [];
+        const toRemove: Graphic[] = [];
+        const targetIds = this._targetLayerIds.length ? this._targetLayerIds : this._layerManager.listLayers();
+        targetIds.forEach(id => {
+            if (id === "_LassoLayer") return;
+            const layer = this._layerManager.getLayer(id);
+            if (!layer) return;
+            (layer.graphics as any).forEach((g: Graphic) => {
+                if (!g.geometry) return;
+                (this.isSelected(g) ? toRemove : toAdd).push(g);
+            });
         });
+        toRemove.forEach(g => this.deselectGraphic(g));
+        toAdd.forEach(g => this.selectGraphic(g));
+    }
+
+    /** Select all symbols whose standard-identity (affiliation) code matches. */
+    selectByIdentity(code: string, mode: SelectMode = 'replace'): void {
+        if (!code) return;
+        this._selectAllMatching(g => this._getGraphicIdentity(g) === code, mode);
+    }
+
+    /** Select all symbols whose echelon code matches. */
+    selectByEchelon(code: string, mode: SelectMode = 'replace'): void {
+        if (!code) return;
+        this._selectAllMatching(g => this._getGraphicEchelon(g) === code, mode);
+    }
+
+    /** Select all symbols within `meters` of `center`'s location (geodesic buffer). */
+    selectWithinRadius(center: Graphic, meters: number, mode: SelectMode = 'replace'): void {
+        const pt = this._centerPointOf(center);
+        if (!pt || !(meters > 0)) return;
+        const buffer = geometryEngine.geodesicBuffer(pt, meters, 'meters') as Polygon | Polygon[] | null;
+        const poly = Array.isArray(buffer) ? buffer[0] : buffer;
+        if (!poly) return;
+        this._selectAllMatching(g => geometryEngine.intersects(poly, g.geometry as any), mode);
+    }
+
+    // ── Discovery helpers (for menu `visible` guards + action-panel dropdowns) ─
+
+    /** True if any target-layer graphic satisfies the predicate. Early-exits. */
+    private _anyMatch(predicate: (g: Graphic) => boolean): boolean {
+        const targetIds = this._targetLayerIds.length ? this._targetLayerIds : this._layerManager.listLayers();
+        return targetIds.some(id => {
+            if (id === "_LassoLayer") return false;
+            const layer = this._layerManager.getLayer(id);
+            if (!layer) return false;
+            return (layer.graphics as any).some((g: Graphic) => !!g.geometry && predicate(g));
+        });
+    }
+
+    /** Total selectable graphics across the target layers. */
+    private _countAll(): number {
+        let n = 0;
+        const targetIds = this._targetLayerIds.length ? this._targetLayerIds : this._layerManager.listLayers();
+        targetIds.forEach(id => {
+            if (id === "_LassoLayer") return;
+            const layer = this._layerManager.getLayer(id);
+            if (!layer) return;
+            (layer.graphics as any).forEach((g: Graphic) => { if (g.geometry) n++; });
+        });
+        return n;
+    }
+
+    /** True if any drawn symbol carries the given affiliation code. */
+    public hasIdentity(code: string): boolean {
+        return this._anyMatch(g => this._getGraphicIdentity(g) === code);
+    }
+
+    /** True if any drawn symbol carries the given echelon code. */
+    public hasEchelon(code: string): boolean {
+        return this._anyMatch(g => this._getGraphicEchelon(g) === code);
+    }
+
+    private _tally(
+        extract: (g: Graphic) => string | null,
+        labels: Record<string, string>,
+        prefix: string,
+    ): { code: string; label: string; count: number }[] {
+        const counts = new Map<string, number>();
+        const targetIds = this._targetLayerIds.length ? this._targetLayerIds : this._layerManager.listLayers();
+        targetIds.forEach(id => {
+            if (id === "_LassoLayer") return;
+            const layer = this._layerManager.getLayer(id);
+            if (!layer) return;
+            (layer.graphics as any).forEach((g: Graphic) => {
+                if (!g.geometry) return;
+                const code = extract(g);
+                if (!code) return;
+                counts.set(code, (counts.get(code) ?? 0) + 1);
+            });
+        });
+        return Array.from(counts.entries())
+            .map(([code, count]) => ({ code, label: labels[code] ?? `${prefix} ${code}`, count }))
+            .sort((a, b) => a.code.localeCompare(b.code));
+    }
+
+    /** Distinct affiliations currently on the map (for filter dropdowns). */
+    public getPresentIdentities(): { code: string; label: string; count: number }[] {
+        return this._tally(g => this._getGraphicIdentity(g), IDENTITY_LABELS, 'Identity');
+    }
+
+    /** Distinct echelons currently on the map (for filter dropdowns). */
+    public getPresentEchelons(): { code: string; label: string; count: number }[] {
+        return this._tally(g => this._getGraphicEchelon(g), ECHELON_LABELS, 'Echelon');
+    }
+
+    /** Representative point for a graphic: the point itself, a polygon centroid,
+     *  or an extent centre — used as the centre for radius selection. */
+    private _centerPointOf(graphic: Graphic): Point | null {
+        const geom = graphic.geometry as any;
+        if (!geom) return null;
+        if (geom.type === 'point') return geom as Point;
+        if (geom.type === 'polygon' && geom.centroid) return geom.centroid as Point;
+        return (geom.extent && geom.extent.center) ? geom.extent.center as Point : null;
     }
 
     selectWithin(graphic: Graphic, includeSelf: boolean = false): void {
@@ -1540,6 +1716,40 @@ class SelectionEngine {
         pushUndo: (e: any) => void,
         closeActiveWorkflow: () => void
     ): ContextMenuItem[] {
+        // Affiliation / echelon children — one per known code, each hidden unless
+        // a matching symbol is on the map (so empty buckets never clutter the menu).
+        const affiliationItems: ContextMenuItem[] = Object.entries(IDENTITY_LABELS).map(([code, label]) => ({
+            id: `select-affiliation-${code}`,
+            label,
+            icon: '<span class="menu-icon-text">◈</span>',
+            visible: () => this.hasIdentity(code),
+            action: () => this.selectByIdentity(code),
+        }));
+        const echelonItems: ContextMenuItem[] = Object.entries(ECHELON_LABELS).map(([code, label]) => ({
+            id: `select-echelon-${code}`,
+            label,
+            icon: '<span class="menu-icon-text">▣</span>',
+            visible: () => this.hasEchelon(code),
+            action: () => this.selectByEchelon(code),
+        }));
+        const radiusItems: ContextMenuItem[] = ([
+            ['250 m', 250], ['500 m', 500], ['1 km', 1000], ['2 km', 2000], ['5 km', 5000],
+        ] as [string, number][]).map(([label, meters]) => ({
+            id: `select-radius-${meters}`,
+            label,
+            icon: '<span class="menu-icon-text">◌</span>',
+            action: (graphic: any) => this.selectWithinRadius(graphic, meters),
+        }));
+        radiusItems.push({
+            id: 'select-radius-custom',
+            label: 'Custom…',
+            icon: '<span class="menu-icon-text">◌</span>',
+            action: (graphic: any) => {
+                const input = window.prompt('Select within radius (metres):', '1000');
+                const meters = input ? parseFloat(input) : NaN;
+                if (meters > 0) this.selectWithinRadius(graphic, meters);
+            },
+        });
         return [
             // ── Selection submenu ────────────────────────────────────────────────
             {
@@ -1576,6 +1786,19 @@ class SelectionEngine {
                         icon: '<span class="menu-icon-text">✕</span>',
                         visible: () => this.count > 0,
                         action: (_graphic: any) => this.clearSelection(),
+                    },
+                    {
+                        id: 'select-all',
+                        label: () => `Select All (${this._countAll()})`,
+                        icon: '<span class="menu-icon-text">▦</span>',
+                        action: (_graphic: any) => this.selectAll(),
+                    },
+                    {
+                        id: 'invert-selection',
+                        label: 'Invert Selection',
+                        icon: '<span class="menu-icon-text">◑</span>',
+                        visible: () => this.count > 0,
+                        action: (_graphic: any) => this.invertSelection(),
                     },
                     {
                         id: 'move-selected',
@@ -1635,6 +1858,22 @@ class SelectionEngine {
                             },
                         ],
                     },
+                    // ── Select by Affiliation submenu ───────────────────────────
+                    {
+                        id: 'select-affiliation-submenu',
+                        label: 'By Affiliation',
+                        icon: '<span class="menu-icon-text">◈</span>',
+                        visible: () => this._anyMatch(g => !!this._getGraphicIdentity(g)),
+                        children: affiliationItems,
+                    },
+                    // ── Select by Echelon submenu ───────────────────────────────
+                    {
+                        id: 'select-echelon-submenu',
+                        label: 'By Echelon',
+                        icon: '<span class="menu-icon-text">▣</span>',
+                        visible: () => this._anyMatch(g => !!this._getGraphicEchelon(g)),
+                        children: echelonItems,
+                    },
                     // ── Select Within submenu ───────────────────────────────────
                     {
                         id: 'select-within-submenu',
@@ -1654,6 +1893,13 @@ class SelectionEngine {
                                 action: (graphic: any) => this.selectWithin(graphic, true),
                             },
                         ],
+                    },
+                    // ── Select Within Radius submenu ────────────────────────────
+                    {
+                        id: 'select-radius-submenu',
+                        label: 'Within Radius',
+                        icon: '<span class="menu-icon-text">◌</span>',
+                        children: radiusItems,
                     },
                     // ── Filter by Type submenu ──────────────────────────────────
                     {

@@ -1360,6 +1360,78 @@ class SymbolEngine implements Evented {
         run: clickEl('#analysis-hub-btn'),
       },
 
+      // ── Selection ───────────────────────────────────────────────────────
+      {
+        id: 'selection.all',
+        label: 'Select All',
+        hint: 'Select every symbol on the map',
+        keywords: ['select', 'all', 'everything'],
+        run: () => this._selectionEngine.selectAll(),
+      },
+      {
+        id: 'selection.invert',
+        label: 'Invert Selection',
+        hint: 'Select what is not selected, deselect what is',
+        keywords: ['invert', 'selection', 'flip'],
+        run: () => this._selectionEngine.invertSelection(),
+      },
+      {
+        id: 'selection.clear',
+        label: 'Clear Selection',
+        hint: 'Deselect all symbols',
+        keywords: ['clear', 'deselect', 'none'],
+        run: () => this._selectionEngine.clearSelection(),
+      },
+      {
+        id: 'selection.friend',
+        label: 'Select Friendly',
+        hint: 'Select all friendly / assumed-friend symbols',
+        keywords: ['friend', 'own', 'blue', 'affiliation'],
+        run: () => this._selectionEngine.selectOwnOnly(),
+      },
+      {
+        id: 'selection.hostile',
+        label: 'Select Hostile',
+        hint: 'Select all hostile / suspect symbols',
+        keywords: ['enemy', 'hostile', 'red', 'affiliation'],
+        run: () => this._selectionEngine.selectEnemy(),
+      },
+      {
+        id: 'selection.neutral',
+        label: 'Select Neutral',
+        hint: 'Select all neutral-affiliation symbols',
+        keywords: ['neutral', 'green', 'affiliation'],
+        run: () => this._selectionEngine.selectByIdentity('04'),
+      },
+      {
+        id: 'selection.unknown',
+        label: 'Select Unknown',
+        hint: 'Select all unknown-affiliation symbols',
+        keywords: ['unknown', 'affiliation'],
+        run: () => this._selectionEngine.selectByIdentity('01'),
+      },
+      {
+        id: 'selection.points',
+        label: 'Select Points',
+        hint: 'Select all point symbols',
+        keywords: ['points', 'geometry', 'select'],
+        run: () => this._selectionEngine.selectPointSymbols(),
+      },
+      {
+        id: 'selection.lines',
+        label: 'Select Lines',
+        hint: 'Select all line graphics',
+        keywords: ['lines', 'geometry', 'select'],
+        run: () => this._selectionEngine.selectLineSymbols(),
+      },
+      {
+        id: 'selection.areas',
+        label: 'Select Areas',
+        hint: 'Select all area / polygon graphics',
+        keywords: ['areas', 'polygons', 'geometry', 'select'],
+        run: () => this._selectionEngine.selectAreaSymbols(),
+      },
+
       // ── Analysis Hub · Terrain ─────────────────────────────────────────
       hubTool('keyTerrain', 'Key Terrain',
         'Hills, saddles, spurs, reentrants — tactically significant features',

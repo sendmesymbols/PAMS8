@@ -2,7 +2,7 @@ import Graphic from "@arcgis/core/Graphic";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 
-import SelectionEngine from "./SelectionEngine.ts";
+import SelectionEngine, { SelectMode } from "./SelectionEngine.ts";
 import EditEngine from "./EditEngine.ts";
 
 /**
@@ -33,7 +33,7 @@ export interface SelectionActionPanelCallbacks {
  */
 type Category = 'A' | 'B' | 'C' | 'D' | 'E';
 
-type TabId = 'transform' | 'align' | 'distribute' | 'arrange';
+type TabId = 'transform' | 'align' | 'distribute' | 'arrange' | 'filter';
 
 /**
  * SelectionActionPanel
@@ -58,6 +58,8 @@ class SelectionActionPanel {
 
     private _activeTab: TabId = 'transform';
     private _similarPopup: HTMLElement | null = null;
+    /** Compose mode for the Filter tab — persists across panel rebuilds. */
+    private _filterMode: SelectMode = 'replace';
 
     constructor(
         selectionEngine: SelectionEngine,
@@ -156,10 +158,10 @@ class SelectionActionPanel {
     private _tabsForCategory(c: Category): TabId[] {
         switch (c) {
             case 'A':
-            case 'B': return ['transform'];
-            case 'C': return ['transform', 'align', 'distribute', 'arrange'];
-            case 'D': return ['transform', 'align', 'distribute'];
-            case 'E': return ['transform', 'align'];
+            case 'B': return ['transform', 'filter'];
+            case 'C': return ['transform', 'align', 'distribute', 'arrange', 'filter'];
+            case 'D': return ['transform', 'align', 'distribute', 'filter'];
+            case 'E': return ['transform', 'align', 'filter'];
         }
     }
 
@@ -240,6 +242,7 @@ class SelectionActionPanel {
                 align: 'Align',
                 distribute: 'Distribute',
                 arrange: 'Arrange',
+                filter: 'Filter',
             };
             visibleTabs.forEach(tab => {
                 const btn = document.createElement('button');
@@ -332,6 +335,7 @@ class SelectionActionPanel {
             case 'align':      this._renderAlignActions(row);                          break;
             case 'distribute': this._renderDistributeActions(row);                     break;
             case 'arrange':    this._renderArrangeActions(row);                        break;
+            case 'filter':     this._renderFilterActions(row, selected);              break;
         }
 
         return row;
@@ -407,9 +411,106 @@ class SelectionActionPanel {
         row.appendChild(this._mkBtn('○ Circle',       () => this._selectionEngine.arrangeCircle(undefined, pushUndo)));
     }
 
+    /**
+     * Filter tab — refine / extend / replace the selection by criteria.
+     * The mode switch (Replace / Add / Refine) persists on the panel; every
+     * button below calls the matching SelectionEngine method with that mode.
+     */
+    private _renderFilterActions(row: HTMLElement, selected: Graphic[]): void {
+        const se = this._selectionEngine;
+
+        // ── Mode switch ────────────────────────────────────────────────────
+        const modeWrap = document.createElement('div');
+        modeWrap.style.cssText = 'display:flex; align-items:center; gap:4px; margin-right:6px;';
+        const modeLbl = document.createElement('span');
+        modeLbl.textContent = 'Mode:';
+        modeLbl.style.cssText = 'font-size:10px; color:rgba(155,180,215,0.7); text-transform:uppercase; letter-spacing:0.05em;';
+        modeWrap.appendChild(modeLbl);
+        (['replace', 'add', 'refine'] as SelectMode[]).forEach(m => {
+            const active = this._filterMode === m;
+            const b = document.createElement('button');
+            b.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+            b.style.cssText = `
+                padding:4px 8px; font-size:10px; font-family:inherit; font-weight:600;
+                text-transform:uppercase; letter-spacing:0.04em; cursor:pointer; border-radius:4px;
+                background:${active ? 'rgba(239,159,39,0.14)' : 'transparent'};
+                border:1px solid ${active ? '#EF9F27' : 'rgba(90,140,220,0.25)'};
+                color:${active ? '#EF9F27' : 'rgba(155,180,215,0.72)'};
+            `;
+            b.addEventListener('click', (e) => { e.stopPropagation(); this._filterMode = m; this.refresh(); });
+            modeWrap.appendChild(b);
+        });
+        row.appendChild(modeWrap);
+
+        // ── Quick actions ──────────────────────────────────────────────────
+        row.appendChild(this._mkBtn('▦ All',    () => se.selectAll(this._filterMode)));
+        row.appendChild(this._mkBtn('◑ Invert', () => se.invertSelection()));
+
+        // ── Affiliation / echelon dropdowns (present codes only) ───────────
+        const ids = se.getPresentIdentities();
+        if (ids.length) {
+            row.appendChild(this._mkSelect('Affiliation…',
+                ids.map(i => [i.code, `${i.label} (${i.count})`] as [string, string]),
+                code => se.selectByIdentity(code, this._filterMode)));
+        }
+        const ech = se.getPresentEchelons();
+        if (ech.length) {
+            row.appendChild(this._mkSelect('Echelon…',
+                ech.map(e => [e.code, `${e.label} (${e.count})`] as [string, string]),
+                code => se.selectByEchelon(code, this._filterMode)));
+        }
+
+        // ── Geometry ───────────────────────────────────────────────────────
+        row.appendChild(this._mkBtn('● Points', () => se.selectPointSymbols(this._filterMode)));
+        row.appendChild(this._mkBtn('╱ Lines',  () => se.selectLineSymbols(this._filterMode)));
+        row.appendChild(this._mkBtn('■ Areas',  () => se.selectAreaSymbols(this._filterMode)));
+
+        // ── Within radius of the first selected graphic ────────────────────
+        const radiusWrap = document.createElement('div');
+        radiusWrap.style.cssText = 'display:flex; align-items:center; gap:4px;';
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = '1';
+        input.value = '1000';
+        input.title = 'Radius in metres (from the first selected symbol)';
+        input.style.cssText = `
+            width:64px; padding:4px 6px; font-family:inherit; font-size:10.5px;
+            background:rgba(0,0,0,0.3); color:rgba(220,232,245,0.92);
+            border:1px solid rgba(90,140,220,0.25); border-radius:4px;
+        `;
+        input.addEventListener('click', e => e.stopPropagation());
+        radiusWrap.appendChild(input);
+        radiusWrap.appendChild(this._mkBtn('◌ Within Radius (m)', () => {
+            const meters = parseFloat(input.value);
+            if (meters > 0 && selected[0]) se.selectWithinRadius(selected[0], meters, this._filterMode);
+        }));
+        row.appendChild(radiusWrap);
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /** Small <select> styled for the panel; calls `onPick(code)` on change. */
+    private _mkSelect(placeholder: string, options: [string, string][], onPick: (code: string) => void): HTMLSelectElement {
+        const sel = document.createElement('select');
+        sel.style.cssText = `
+            padding:4px 6px; font-family:inherit; font-size:10.5px; cursor:pointer;
+            background:rgba(0,0,0,0.3); color:rgba(220,232,245,0.92);
+            border:1px solid rgba(90,140,220,0.25); border-radius:4px;
+        `;
+        const ph = document.createElement('option');
+        ph.value = ''; ph.textContent = placeholder; ph.disabled = true; ph.selected = true;
+        sel.appendChild(ph);
+        options.forEach(([value, label]) => {
+            const o = document.createElement('option');
+            o.value = value; o.textContent = label;
+            sel.appendChild(o);
+        });
+        sel.addEventListener('click', e => e.stopPropagation());
+        sel.addEventListener('change', () => { if (sel.value) onPick(sel.value); });
+        return sel;
+    }
 
     private _mkBtn(label: string, onClick: () => void, variant: 'default' | 'danger' = 'default'): HTMLButtonElement {
         const btn = document.createElement('button');
