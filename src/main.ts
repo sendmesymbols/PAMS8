@@ -146,6 +146,10 @@ const symbolEngine = new SymbolEngine(() => appConfig.activeView);
 
 // Expose symbolEngine globally so the settings panel can communicate with it
 (window as any).symbolEngine = symbolEngine;
+// Threat Sector panel — open button in the Visualization settings panel
+document.getElementById('sector-open-panel-btn')?.addEventListener('click', () => {
+  (window as any).symbolEngine?.openSectorPanel?.();
+});
 Object.defineProperty(window as any, 'keyTerrainEngine', {
   configurable: true,
   get() {
