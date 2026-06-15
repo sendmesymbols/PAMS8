@@ -114,6 +114,7 @@ class ContextMenuManager extends Evented {
   private _airspaceEngine: AirspaceEngine | null = null;
   private _trafficabilityEngine: TrafficabilityEngine | null = null;
   private _deploymentBuilderEngine: { openWidget(): void } | null = null;
+  private _sectorPanel: { openPanel(): void } | null = null;
 
   private _enabled: boolean = true;
 
@@ -434,6 +435,15 @@ class ContextMenuManager extends Evented {
    */
   public linkTrafficabilityEngine(engine: TrafficabilityEngine | null): void {
     this._trafficabilityEngine = engine;
+  }
+
+  /**
+   * Link the threat-sector panel so "Threat Sector Panel" appears in the
+   * More Actions palette. SymbolEngine links it only when the visualization
+   * engine is active, which is the gating.
+   */
+  public linkSectorPanel(panel: { openPanel(): void } | null): void {
+    this._sectorPanel = panel;
   }
 
   /**
@@ -1067,6 +1077,12 @@ class ContextMenuManager extends Evented {
         if (this._trafficabilityEngine && this.view) {
           this._trafficabilityEngine.open(graphic, this.view);
         }
+      }));
+    }
+
+    if (this._sectorPanel) {
+      actions.push(this.createPaletteAction('viz-threat-sector-panel', 'Threat Sector Panel', 'Visualization', undefined, () => {
+        this._sectorPanel!.openPanel();
       }));
     }
 
