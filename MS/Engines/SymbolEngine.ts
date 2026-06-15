@@ -64,6 +64,7 @@ import DrawingCueEngine from './DrawingCueEngine.ts';
 import MGRSEngine from './MGRSEngine.ts';
 import VisualizationEngine from './Visualization/VisualizationEngine.ts';
 import SectorDrawTool from './Visualization/SectorDrawTool.ts';
+import SectorPanel from './Visualization/SectorPanel.ts';
 import RouteProfileEngine from './RouteProfileEngine.ts';
 import IntervisibilityEngine from './Analysis/Intervisibility/IntervisibilityEngine.ts';
 import EngineLogger from '../Support/EngineLogger';
@@ -171,6 +172,7 @@ class SymbolEngine implements Evented {
   private _mgrsEngine: MGRSEngine | null = null;
   private _visualizationEngine: VisualizationEngine | null = null;
   private _sectorDrawTool: SectorDrawTool | null = null;
+  private _sectorPanel: SectorPanel | null = null;
   private _routeProfileEngine: RouteProfileEngine = new RouteProfileEngine(() => this.view);
   private _intervisibilityEngine: IntervisibilityEngine = new IntervisibilityEngine(() => this.view);
   /** Optional adapter for the external pgRouting road-network service (intermittent). */
@@ -611,6 +613,7 @@ class SymbolEngine implements Evented {
     // Re-attach visualization engine to the new view
     this._visualizationEngine?.onViewChanged(newView);
     this._sectorDrawTool?.onViewChanged(newView);
+    this._sectorPanel?.onViewChanged(newView);
     this._intervisibilityEngine.onViewChanged(newView);
     // Re-attach road network engine (moves the optional roads layer to the new map)
     this._roadNetworkEngine?.onViewChanged(newView);
@@ -775,6 +778,8 @@ class SymbolEngine implements Evented {
     this._visualizationEngine.setOptions(vizCfg as VisualizationOptions);
     this._visualizationEngine.enable();
     this._sectorDrawTool = new SectorDrawTool(() => this.view, this._visualizationEngine);
+    this._sectorPanel = new SectorPanel(() => this.view, this._visualizationEngine, () => this.beginSectorDraw());
+    this._contextMenuManager?.linkSectorPanel(this._sectorPanel);
     this.emitEvent('visualizationEngineReady', { engine: this._visualizationEngine });
     console.info('[SymbolEngine] VisualizationEngine loaded');
   }
@@ -1473,6 +1478,12 @@ class SymbolEngine implements Evented {
   public beginSectorDraw(center?: Point | Graphic): void {
     this._sectorDrawTool?.begin(center);
   }
+
+  /** Open the interactive threat-sector management panel. */
+  public openSectorPanel(): void { this._sectorPanel?.openPanel(); }
+
+  /** Close the threat-sector management panel. */
+  public closeSectorPanel(): void { this._sectorPanel?.closePanel(); }
 
   /** Clear all drawn threat sectors. */
   public clearSectors(): void {
