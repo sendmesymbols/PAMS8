@@ -144,7 +144,7 @@ const _ep2 = _e2 / (1 - _e2);       // second eccentricity squared
 const _e = Math.sqrt(_e2);
 
 /** WGS-84 lat/lon → UTM {easting, northing} for a given zone number. */
-function latLonToUTM(latDeg: number, lonDeg: number, zone: number): { e: number; n: number } {
+export function latLonToUTM(latDeg: number, lonDeg: number, zone: number): { e: number; n: number } {
   const lat = (latDeg * Math.PI) / 180;
   const lon = (lonDeg * Math.PI) / 180;
   const lon0 = ((zone - 1) * 6 - 180 + 3) * (Math.PI / 180);
@@ -178,7 +178,7 @@ function latLonToUTM(latDeg: number, lonDeg: number, zone: number): { e: number;
 }
 
 /** UTM → WGS-84 lat/lon (degrees). */
-function utmToLatLon(zone: number, southern: boolean, easting: number, northing: number): { lat: number; lon: number } {
+export function utmToLatLon(zone: number, southern: boolean, easting: number, northing: number): { lat: number; lon: number } {
   const x = easting - 500000;
   const y = southern ? northing - 10000000 : northing;
 

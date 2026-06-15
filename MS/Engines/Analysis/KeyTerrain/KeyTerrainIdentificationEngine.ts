@@ -765,7 +765,7 @@ export class KeyTerrainIdentificationEngine {
       if (this._overlayState.viewshed && rankedFeatures.length > 0) {
         this._setProgress(0.95, 'Computing top feature viewshed');
         await this._tick();
-        this._viewshedLayer = this._buildTopViewshedGraphic(
+        this._viewshedLayer = await this._buildTopViewshedGraphic(
           rankedFeatures[0],
           extent,
           cols,
@@ -814,16 +814,23 @@ export class KeyTerrainIdentificationEngine {
     const dLat = (extent.ymax - extent.ymin) / rows;
     const grid = new Float32Array(cols * rows);
 
+    // Reuse one scratch Point (mutate lon/lat) instead of allocating one per
+    // cell, and yield every 16 rows so a large grid stays off the UI thread —
+    // an uncapped grid is tens of thousands of samples and would otherwise block
+    // synchronously. queryElevation returns a fresh point, so reusing the input
+    // is safe (same pattern as OpRankerEngine._computeViewshedRaster).
+    const pt = new Point({
+      longitude: extent.xmin,
+      latitude: extent.ymax,
+      spatialReference: WGS84,
+    });
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const lon = extent.xmin + (c + 0.5) * dLon;
-        const lat = extent.ymax - (r + 0.5) * dLat;
-        const z =
-          sampler.queryElevation(
-            new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 }),
-          )?.z ?? 0;
-        grid[r * cols + c] = z;
+        pt.longitude = extent.xmin + (c + 0.5) * dLon;
+        pt.latitude = extent.ymax - (r + 0.5) * dLat;
+        grid[r * cols + c] = sampler.queryElevation(pt)?.z ?? 0;
       }
+      if (r % 16 === 0) await this._tick();
     }
     return { grid, sampler };
   }
@@ -1089,6 +1096,9 @@ export class KeyTerrainIdentificationEngine {
     const stepM = Math.max(cellM, 40);
     const numSteps = Math.ceil(radiusM / stepM);
 
+    // Reused scratch Point for the ray-march samples — avoids one Point per step.
+    const scratchPt = new Point({ longitude: extent.xmin, latitude: extent.ymax, spatialReference: WGS84 });
+
     for (const feat of features) {
       const lon = extent.xmin + (feat.c + 0.5) * dLon;
       const lat = extent.ymax - (feat.r + 0.5) * dLat;
@@ -1104,8 +1114,9 @@ export class KeyTerrainIdentificationEngine {
         for (let s = 1; s <= numSteps; s++) {
           const dist = s * stepM;
           const { longitude, latitude } = destinationPoint(lon, lat, bearing, dist);
-          const pt = new Point({ longitude, latitude, spatialReference: WGS84 });
-          const z = sampler.queryElevation(pt)?.z ?? 0;
+          scratchPt.longitude = longitude;
+          scratchPt.latitude = latitude;
+          const z = sampler.queryElevation(scratchPt)?.z ?? 0;
           const slope = (Math.atan2(z - obsZ, dist) * 180) / Math.PI;
           total++;
           if (slope >= maxSlopeDeg) {
@@ -1287,7 +1298,7 @@ export class KeyTerrainIdentificationEngine {
     });
   }
 
-  private _buildTopViewshedGraphic(
+  private async _buildTopViewshedGraphic(
     topFeature: RankedFeature,
     extent: Extent,
     cols: number,
@@ -1295,7 +1306,7 @@ export class KeyTerrainIdentificationEngine {
     grid: Float32Array,
     sampler: any,
     cellM: number,
-  ): MediaLayer {
+  ): Promise<MediaLayer> {
     const dLon = (extent.xmax - extent.xmin) / cols;
     const dLat = (extent.ymax - extent.ymin) / rows;
     const step = Math.max(cellM, 40);
@@ -1310,16 +1321,21 @@ export class KeyTerrainIdentificationEngine {
     const imgD = ctx.createImageData(cols, rows);
 
     const horizons: Record<number, number> = {};
+    // Reused scratch Point for the horizon ray-march — avoids one Point per step
+    // (~54k allocations) and yields periodically so the scan doesn't freeze the UI.
+    const scratchPt = new Point({ longitude: topFeature.lon, latitude: topFeature.lat, spatialReference: WGS84 });
     for (let deg = 0; deg < 360; deg += 2) {
       let maxSlope = -90;
       for (let dist = step; dist <= 12_000; dist += step) {
         const { longitude, latitude } = destinationPoint(topFeature.lon, topFeature.lat, deg, dist);
-        const z =
-          sampler.queryElevation(new Point({ longitude, latitude, spatialReference: WGS84 }))?.z ?? 0;
+        scratchPt.longitude = longitude;
+        scratchPt.latitude = latitude;
+        const z = sampler.queryElevation(scratchPt)?.z ?? 0;
         const slope = (Math.atan2(z - obsZ, dist) * 180) / Math.PI;
         if (slope > maxSlope) maxSlope = slope;
       }
       horizons[deg] = maxSlope;
+      if (deg % 30 === 0) await this._tick();
     }
 
     for (let row = 0; row < rows; row++) {

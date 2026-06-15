@@ -105,7 +105,10 @@
       "Bash(Select-Object -First 30)",
       "WebSearch",
       "Bash(xargs wc -l)",
-      "Bash(xargs cat)"
+      "Bash(xargs cat)",
+      "Bash(grep -E \"\\\\.\\(ts|js\\)$\")",
+      "Bash(git checkout *)",
+      "Bash(git merge *)"
     ]
   }
 }

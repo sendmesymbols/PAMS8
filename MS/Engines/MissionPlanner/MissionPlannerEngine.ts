@@ -373,6 +373,8 @@ export class MissionPlannerEngine {
   private _corridors: OcokaCorridor[] = [];
   private _hostileObsExtents: Extent[] = []; // bounding extents of enemy analysis areas — fallback exposure test only when DEM sampler is unavailable
   private _runSampler: any = null; // shared AOI elevation sampler for the current run (built once, reused by every probe/LOS/march call)
+  // Reused scratch Point for _queryZ — synchronous helper, so one shared point is safe.
+  private _scratchZPt = new Point({ longitude: 0, latitude: 0, spatialReference: WGS84 });
   private _roadEgress: { distanceKm: number; travelTimeMin: number; traffic: TrafficabilitySummary } | null = null; // optional road-following egress (when road service is up)
   private _coaSnapshots: CoaSnapshot[] = [];
   private _customAoi: Polygon | Extent | null = null;
@@ -1102,7 +1104,9 @@ export class MissionPlannerEngine {
 
   /** queryElevation wrapper that rejects non-finite / no-data samples (returns null). */
   private _queryZ(sampler: any, lon: number, lat: number): number | null {
-    const z = sampler.queryElevation(new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 }))?.z;
+    this._scratchZPt.longitude = lon;
+    this._scratchZPt.latitude = lat;
+    const z = sampler.queryElevation(this._scratchZPt)?.z;
     return Number.isFinite(z) ? z : null;
   }
 
@@ -1134,7 +1138,9 @@ export class MissionPlannerEngine {
       if (xmax - xmin > MAX_SPAN) { const cx = (xmin + xmax) / 2; xmin = cx - MAX_SPAN / 2; xmax = cx + MAX_SPAN / 2; }
       if (ymax - ymin > MAX_SPAN) { const cy = (ymin + ymax) / 2; ymin = cy - MAX_SPAN / 2; ymax = cy + MAX_SPAN / 2; }
       const ext = new Extent({ xmin, ymin, xmax, ymax, spatialReference: WGS84 });
-      return await (this._view.map as any).ground.createElevationSampler(ext, { noDataValue: 0 });
+      // noDataValue NaN (not 0): _queryZ()'s finite guard rejects no-data samples so LOS/march
+      // probes skip gaps instead of treating them as real sea-level terrain.
+      return await (this._view.map as any).ground.createElevationSampler(ext, { noDataValue: NaN });
     } catch {
       return null;
     }
@@ -1194,13 +1200,13 @@ export class MissionPlannerEngine {
           xmin: lonOf(point) - 0.05, ymin: latOf(point) - 0.05,
           xmax: lonOf(point) + 0.05, ymax: latOf(point) + 0.05,
           spatialReference: WGS84,
-        }), { noDataValue: 0 });
+        }), { noDataValue: NaN });
       const out: number[] = [];
       for (let i = 0; i < samples; i++) {
         const t = (i - samples / 2) * (spanM / samples);
         const p = destinationPt(lonOf(point), latOf(point), bearing, t);
-        const z = sampler.queryElevation(new Point({ longitude: p.longitude, latitude: p.latitude, spatialReference: WGS84 }))?.z ?? 0;
-        out.push(z);
+        const z = sampler.queryElevation(new Point({ longitude: p.longitude, latitude: p.latitude, spatialReference: WGS84 }))?.z ?? NaN;
+        out.push(Number.isFinite(z) ? z : 0);
       }
       return out;
     } catch { return []; }

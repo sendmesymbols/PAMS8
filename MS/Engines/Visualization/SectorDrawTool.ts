@@ -4,7 +4,7 @@ import Graphic from "@arcgis/core/Graphic";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
-import { GeoTools } from "../../Support/GeoTools";
+import { GeoTools } from "../../Support/GeoTools.ts";
 import type VisualizationEngine from "./VisualizationEngine";
 
 type Phase = "idle" | "range" | "sweep";

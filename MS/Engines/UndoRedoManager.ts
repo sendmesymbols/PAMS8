@@ -42,6 +42,14 @@ interface PreEditSnapshot {
  * so external call sites are unchanged.
  */
 export default class UndoRedoManager {
+  /**
+   * Cap on undo depth. The stack only ever grew (entries leave only via undo()
+   * → redo stack, or clear()), and each entry's undo/redo closures pin Graphic
+   * instances + cloned geometry / CTRL_PTS / BASE_LN_PTS — so without a cap a
+   * long editing session leaks memory proportional to the number of operations.
+   */
+  private static readonly MAX_UNDO_DEPTH = 100;
+
   private _undoStack: UndoEntry[] = [];
   private _redoStack: UndoEntry[] = [];
   private _preEditSnapshot: PreEditSnapshot | null = null;
@@ -52,6 +60,11 @@ export default class UndoRedoManager {
 
   /** Push an undo entry and clear the redo stack. */
   public push(entry: UndoEntry): void {
+    // Evict the oldest entry when at capacity so its captured graphics/geometry
+    // clones become GC-able — bounds memory over a long editing session.
+    if (this._undoStack.length >= UndoRedoManager.MAX_UNDO_DEPTH) {
+      this._undoStack.shift();
+    }
     this._undoStack.push(entry);
     this._redoStack = [];
   }

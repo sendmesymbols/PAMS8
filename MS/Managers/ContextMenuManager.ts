@@ -128,6 +128,16 @@ class ContextMenuManager extends Evented {
   private _paletteFilteredActions: PaletteAction[] = [];
   private _paletteSelectedIndex = 0;
 
+  // Bound document-listener references, stored so destroy() can remove the SAME
+  // function objects. Passing a fresh .bind(this) to removeEventListener creates
+  // a new reference that never matches what was added — so the listeners (and
+  // this dead singleton) would otherwise leak and stack up on every re-init.
+  private readonly _onDocClickHideMenu: () => void = this.hideMenu.bind(this);
+  private readonly _onDocClickHidePalette: () => void =
+    this.hideActionPalette.bind(this);
+  private readonly _onDocKeyDown: (e: KeyboardEvent) => void = (e) =>
+    this.handlePaletteKeyDown(e);
+
   private constructor() {
     super();
 
@@ -163,10 +173,11 @@ class ContextMenuManager extends Evented {
     // Apply default styling
     this.applyDefaultStyles();
 
-    // Document click handler to hide menu
-    document.addEventListener('click', this.hideMenu.bind(this));
-    document.addEventListener('click', this.hideActionPalette.bind(this));
-    document.addEventListener('keydown', (e) => this.handlePaletteKeyDown(e));
+    // Document handlers — registered with the stored bound references so
+    // destroy() can remove these exact listeners.
+    document.addEventListener('click', this._onDocClickHideMenu);
+    document.addEventListener('click', this._onDocClickHidePalette);
+    document.addEventListener('keydown', this._onDocKeyDown);
   }
 
   /**
@@ -1975,8 +1986,13 @@ class ContextMenuManager extends Evented {
     if (this.menuElement && this.menuElement.parentNode) {
       this.menuElement.parentNode.removeChild(this.menuElement);
     }
+    if (this.paletteElement && this.paletteElement.parentNode) {
+      this.paletteElement.parentNode.removeChild(this.paletteElement);
+    }
 
-    document.removeEventListener('click', this.hideMenu.bind(this));
+    document.removeEventListener('click', this._onDocClickHideMenu);
+    document.removeEventListener('click', this._onDocClickHidePalette);
+    document.removeEventListener('keydown', this._onDocKeyDown);
     this.menuItems.clear();
     this.view = null;
     this.activeGraphic = null;

@@ -515,7 +515,7 @@ export class DeadGroundMapper {
       ymax: (observerPt.latitude ?? observerPt.y) + pad / M_PER_DEG,
       spatialReference: WGS84,
     });
-    const sampler = await (this._view!.map as any).ground.createElevationSampler(extent, { noDataValue: 0 });
+    const sampler = await (this._view!.map as any).ground.createElevationSampler(extent, { noDataValue: NaN });
     const cols = Math.ceil((radiusM * 2) / cellM);
     const rows = Math.ceil((radiusM * 2) / cellM);
     const N = cols * rows;
@@ -524,6 +524,12 @@ export class DeadGroundMapper {
     const horizonCache = new Map<string, number>();
     const lon0 = observerPt.longitude ?? observerPt.x;
     const lat0 = observerPt.latitude ?? observerPt.y;
+
+    // Scratch Points reused across the grid + ray-march (mutate lon/lat) instead
+    // of allocating a new Point per cell and per ray step — queryElevation returns
+    // a fresh point, so reuse is safe. Cuts up to hundreds of thousands of allocs.
+    const rayPt = new Point({ longitude: lon0, latitude: lat0, spatialReference: WGS84 });
+    const cellPt = new Point({ longitude: lon0, latitude: lat0, spatialReference: WGS84 });
 
     const getHorizon = (bearing: number, targetRange: number): number => {
       const bKey = ((Math.round(bearing) % 360) + 360) % 360;
@@ -534,8 +540,10 @@ export class DeadGroundMapper {
       let maxSlopeDeg = -90;
       for (let d = stepM; d <= targetRange; d += stepM) {
         const tip = this._destPt(lon0, lat0, bKey, d);
-        const pt = new Point({ longitude: tip.longitude, latitude: tip.latitude, spatialReference: WGS84 });
-        const terrZ = sampler.queryElevation(pt)?.z ?? 0;
+        rayPt.longitude = tip.longitude;
+        rayPt.latitude = tip.latitude;
+        const terrZ = sampler.queryElevation(rayPt)?.z ?? NaN;
+        if (!Number.isFinite(terrZ)) continue; // no-data: skip, don't fake a sea-level horizon
         const slopeDeg = (Math.atan2(terrZ - obsZ, d) * 180) / Math.PI;
         if (slopeDeg > maxSlopeDeg) maxSlopeDeg = slopeDeg;
       }
@@ -556,10 +564,10 @@ export class DeadGroundMapper {
           depthGrid[idx] = Number.NaN;
           continue;
         }
-        const cellLon = lon0 + east / (M_PER_DEG * cosLat);
-        const cellLat = lat0 + north / M_PER_DEG;
-        const cellPt = new Point({ longitude: cellLon, latitude: cellLat, spatialReference: WGS84 });
-        const terrZ = sampler.queryElevation(cellPt)?.z ?? 0;
+        cellPt.longitude = lon0 + east / (M_PER_DEG * cosLat);
+        cellPt.latitude = lat0 + north / M_PER_DEG;
+        const terrZ = sampler.queryElevation(cellPt)?.z ?? NaN;
+        if (!Number.isFinite(terrZ)) { depthGrid[idx] = Number.NaN; continue; } // no-data cell: exclude
         const bearing = ((Math.atan2(east, north) * 180) / Math.PI + 360) % 360;
         const horizonDeg = getHorizon(bearing, range);
         const losZ = obsZ + range * Math.tan((horizonDeg * Math.PI) / 180);
@@ -715,7 +723,7 @@ export class DeadGroundMapper {
       observerPt: Point;
     },
   ): Promise<Graphic> {
-    const sampler = await (this._view!.map as any).ground.createElevationSampler(extent, { noDataValue: 0 });
+    const sampler = await (this._view!.map as any).ground.createElevationSampler(extent, { noDataValue: NaN });
     const dLon = (extent.xmax - extent.xmin) / cols;
     const dLat = (extent.ymax - extent.ymin) / rows;
     const N = cols * rows;
@@ -724,14 +732,18 @@ export class DeadGroundMapper {
     const colors = new Uint8Array(totalVerts * 4);
     let baseZ = Number.POSITIVE_INFINITY;
 
+    // Reused scratch Point — avoids one Point per cell over the (uncapped) grid.
+    const pt = new Point({ longitude: extent.xmin, latitude: extent.ymax, spatialReference: WGS84 });
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const i = row * cols + col;
         const depth = depthGrid[i];
         const lon = extent.xmin + (col + 0.5) * dLon;
         const lat = extent.ymax - (row + 0.5) * dLat;
-        const pt = new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 });
-        const z = (sampler.queryElevation(pt)?.z ?? 0) + 0.5;
+        pt.longitude = lon;
+        pt.latitude = lat;
+        const zr = sampler.queryElevation(pt)?.z ?? NaN; // mesh vertex Z must stay finite (NaN breaks the buffer)
+        const z = (Number.isFinite(zr) ? zr : 0) + 0.5;
         if (z < baseZ) baseZ = z;
         positions[i * 3] = lon;
         positions[i * 3 + 1] = lat;
@@ -757,6 +769,7 @@ export class DeadGroundMapper {
           colors[i * 4 + 3] = 0;
         }
       }
+      if (row % 16 === 0) await new Promise((r) => setTimeout(r, 0));
     }
 
     if (opts.showCap && Number.isFinite(baseZ)) {
@@ -871,7 +884,7 @@ export class DeadGroundMapper {
       ymax: lat0 + pad / M_PER_DEG,
       spatialReference: WGS84,
     });
-    const sampler = await (this._view!.map as any).ground.createElevationSampler(extent, { noDataValue: 0 });
+    const sampler = await (this._view!.map as any).ground.createElevationSampler(extent, { noDataValue: NaN });
     const horizonAngles = new Float32Array(opts.numAz);
     const numSteps = Math.max(1, Math.ceil(opts.maxRangeM / opts.stepM));
     const halfAz = opts.azSpreadDeg / 2;
@@ -883,7 +896,8 @@ export class DeadGroundMapper {
         const dist = Math.min(opts.maxRangeM, s * opts.stepM);
         const tip = this._destPt(lon0, lat0, bearing, dist);
         const samplePt = new Point({ longitude: tip.longitude, latitude: tip.latitude, spatialReference: WGS84 });
-        const terrainZ = sampler.queryElevation(samplePt)?.z ?? 0;
+        const terrainZ = sampler.queryElevation(samplePt)?.z ?? NaN;
+        if (!Number.isFinite(terrainZ)) continue; // no-data: skip, don't fake a sea-level horizon
         const slopeDeg = (Math.atan2(terrainZ - obsZ, dist) * 180) / Math.PI;
         if (slopeDeg > maxSlopeDeg) maxSlopeDeg = slopeDeg;
       }

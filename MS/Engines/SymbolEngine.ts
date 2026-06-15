@@ -65,6 +65,7 @@ import MGRSEngine from './MGRSEngine.ts';
 import VisualizationEngine from './Visualization/VisualizationEngine.ts';
 import SectorDrawTool from './Visualization/SectorDrawTool.ts';
 import RouteProfileEngine from './RouteProfileEngine.ts';
+import IntervisibilityEngine from './Analysis/Intervisibility/IntervisibilityEngine.ts';
 import EngineLogger from '../Support/EngineLogger';
 import type { DrawingCueOptions } from './DrawingCueEngine.ts';
 import type { MGRSEngineOptions } from './MGRSEngine.ts';
@@ -171,6 +172,7 @@ class SymbolEngine implements Evented {
   private _visualizationEngine: VisualizationEngine | null = null;
   private _sectorDrawTool: SectorDrawTool | null = null;
   private _routeProfileEngine: RouteProfileEngine = new RouteProfileEngine(() => this.view);
+  private _intervisibilityEngine: IntervisibilityEngine = new IntervisibilityEngine(() => this.view);
   /** Optional adapter for the external pgRouting road-network service (intermittent). */
   private _roadNetworkEngine: RoadNetworkEngine | null = null;
   /** Trafficability / trafficability / route-planning widget over the road network. */
@@ -609,6 +611,7 @@ class SymbolEngine implements Evented {
     // Re-attach visualization engine to the new view
     this._visualizationEngine?.onViewChanged(newView);
     this._sectorDrawTool?.onViewChanged(newView);
+    this._intervisibilityEngine.onViewChanged(newView);
     // Re-attach road network engine (moves the optional roads layer to the new map)
     this._roadNetworkEngine?.onViewChanged(newView);
     // Re-attach trafficability widget (moves its analysis/marker/committed layers)
@@ -1500,6 +1503,32 @@ class SymbolEngine implements Evented {
   /** Remove the route elevation-profile panel. */
   public clearRouteProfile(): void {
     this._routeProfileEngine.clearProfile();
+  }
+
+  /**
+   * Compute the intervisibility (mutual-LOS) matrix for a set of OPs and draw
+   * the visibility network. Uses the selected point symbols; if fewer than two
+   * are selected, falls back to all point symbols on the force + tactical-point
+   * layers.
+   */
+  public showIntervisibility(opts?: { observerHeightM?: number }): Promise<unknown> {
+    let pts: Graphic[] = (this._selectionEngine?.selectedGraphics ?? [])
+      .filter(g => g.geometry?.type === 'point');
+    if (pts.length < 2) {
+      const all: Graphic[] = [];
+      [LAYER_NAMES.FORCE, LAYER_NAMES.TACT_PT].forEach(name => {
+        this._layerManager.getOrCreateLayer(name).graphics.forEach((g: Graphic) => {
+          if (g.geometry?.type === 'point') all.push(g);
+        });
+      });
+      pts = all;
+    }
+    return this._intervisibilityEngine.analyze(pts, opts);
+  }
+
+  /** Remove the intervisibility network overlay + matrix panel. */
+  public clearIntervisibility(): void {
+    this._intervisibilityEngine.clear();
   }
 
   /** Access the RoadNetworkEngine â€” optional external routing/service-area adapter. */

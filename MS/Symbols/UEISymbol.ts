@@ -104,6 +104,9 @@ export class UEISymbol {
     private placeSymbolImmediately(geometry: Point, options: UEISymbolOptions): void {
         if (!this._ptSymbol) return;
         this.emitDrawEnd(geometry, this._ptSymbol, this.createDrawEssentials(geometry, options));
+        // GEOM path (plan load / paste / Morphix re-render) never armed interactive
+        // drawing, so it otherwise leaks the constructor handlers — release them.
+        this.cleanUp();
     }
 
     private startInteractiveDrawing(): void {
@@ -172,6 +175,9 @@ export class UEISymbol {
             this.symbolLayer.remove(this.tempGraphic);
             this.tempGraphic = null;
         }
+        // Drop the view listeners registered in the constructor — the engine
+        // creates a fresh instance per draw, so this instance is done.
+        this.removeEventHandlers();
     }
 
     private removeEventHandlers(): void {

@@ -870,6 +870,9 @@ export class WeaponEffectEngine {
       const numSteps = Math.ceil(maxR / STEP_M);
       const maskedIndices: number[] = [];
 
+      // Reused scratch Point for the ray-march samples — avoids one Point per step.
+      const samplePt = new Point({ longitude: 0, latitude: 0, spatialReference: { wkid: 4326 } });
+
       for (let ray = 0; ray < NUM_RAYS; ray++) {
         const bearing = (ray / NUM_RAYS) * 360;
         let maxSlope = -Infinity;
@@ -882,7 +885,8 @@ export class WeaponEffectEngine {
             this._observerPoint?.latitude ?? 0,
             bearing, dist
           );
-          const samplePt = new Point({ longitude, latitude, spatialReference: { wkid: 4326 } });
+          samplePt.longitude = longitude;
+          samplePt.latitude = latitude;
           const terrainZ = ElevationUtils.queryPointElevation(sampler, samplePt);
           const slope = Math.atan2(terrainZ - obsZ, dist);
 

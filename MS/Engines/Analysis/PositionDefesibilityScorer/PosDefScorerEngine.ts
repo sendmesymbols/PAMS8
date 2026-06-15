@@ -650,9 +650,13 @@ export class PosDefScorerEngine {
       spatialReference: WGS84,
     });
     const sampler = await (this._view.map as any).ground.createElevationSampler(extent);
+    // Reused scratch Point — getZ is synchronous, so one shared point is safe.
+    const zPt = new Point({ longitude: 0, latitude: 0, spatialReference: WGS84 });
     const getZ = (lon: number, lat: number): number => {
       try {
-        const result = sampler.queryElevation(new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 }));
+        zPt.longitude = lon;
+        zPt.latitude = lat;
+        const result = sampler.queryElevation(zPt);
         return Number.isFinite(result?.z) ? result.z : 0;
       } catch {
         return 0;

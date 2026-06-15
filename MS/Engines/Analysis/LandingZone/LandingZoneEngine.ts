@@ -336,9 +336,13 @@ export class LandingZoneEngine {
     }
 
     const sampler = await (this._view.map as any).ground.createElevationSampler(extent);
+    // Reused scratch Point — getZ is synchronous, so one shared point is safe.
+    const zPt = new Point({ longitude: 0, latitude: 0, spatialReference: WGS84 });
     const getZ = (lon: number, lat: number): number => {
       try {
-        const r = sampler.queryElevation(new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 }));
+        zPt.longitude = lon;
+        zPt.latitude = lat;
+        const r = sampler.queryElevation(zPt);
         return Number.isFinite(r?.z) ? r.z : 0;
       } catch { return 0; }
     };

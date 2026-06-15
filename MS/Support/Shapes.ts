@@ -818,29 +818,6 @@ class Shapes {
     }
 
     /**
-     * Create letter P as separate strokes to avoid auto-closing
-     */
-    static createPStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const strokes: Point[][] = [];
-        
-        // Vertical line
-        strokes.push([
-            new Point({ x: dx - ((dr / 2) / 3), y: dy - dr, spatialReference: sp }),
-            new Point({ x: dx - ((dr / 2) / 3), y: dy + dr, spatialReference: sp })
-        ]);
-        
-        // Get the D-shape strokes for the upper part and break them into separate strokes
-        const dPts = this.createDD(dx, dy + (dr / 2), dr / 2, sp);
-        
-        // Break the D shape into stroke segments to avoid auto-closing
-        for (let i = 0; i < dPts.length - 1; i++) {
-            strokes.push([dPts[i], dPts[i + 1]]);
-        }
-        
-        return strokes;
-    }
-
-    /**
      * Create letter Y
      */
     static createY(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
@@ -1813,24 +1790,6 @@ class Shapes {
         return this.strokesToRings(this.createSHORADEZStrokes(dx, dy, dr, sp));
     }
 
-    /**
-     * Letter L as two clean strokes — vertical stem + horizontal foot.
-     * The single-path createL retraces its vertical segment (bottom → top →
-     * bottom), which the 3D polyline tessellator collapses, dropping part of
-     * the glyph. Separate paths render identically in 2D and 3D.
-     */
-    static createLStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        return [
-            [
-                new Point({ x: dx, y: dy + dr, spatialReference: sp }),
-                new Point({ x: dx, y: dy - dr, spatialReference: sp }),
-            ],
-            [
-                new Point({ x: dx, y: dy - dr, spatialReference: sp }),
-                new Point({ x: dx + dr, y: dy - dr, spatialReference: sp }),
-            ],
-        ];
-    }
 
     /**
      * Letter P as clean strokes — vertical stem + upper-right bowl — with no
@@ -1971,6 +1930,11 @@ class Shapes {
         return [pts1, pts2];
     }
 
+    /**
+     * Letter L as two clean strokes — vertical stem + horizontal foot. The
+     * single-path createL retraces its vertical segment, which the 3D polyline
+     * tessellator collapses; separate paths render identically in 2D and 3D.
+     */
     static createLStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         return [
             // Vertical line

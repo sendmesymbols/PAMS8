@@ -283,6 +283,9 @@ export class TacticalPoint {
             this.tempGraphic = null;
         }
         this._point = null;
+        // Drop the view listeners registered in the constructor — the engine
+        // creates a fresh instance per draw, so this instance is done.
+        this.removeEventHandlers();
     }
 
     private removeEventHandlers(): void {

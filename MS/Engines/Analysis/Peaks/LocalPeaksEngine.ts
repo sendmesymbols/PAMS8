@@ -366,11 +366,13 @@ export class LocalPeaksEngine {
     const dLon = (extent.xmax - extent.xmin) / cols;
     const dLat = (extent.ymax - extent.ymin) / rows;
     const grid = new Float32Array(cols * rows);
+    // Reused scratch Point — avoids one Point allocation per cell.
+    const pt = new Point({ x: extent.xmin, y: extent.ymax, spatialReference: extent.spatialReference });
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const x = extent.xmin + (c + 0.5) * dLon;
-        const y = extent.ymax - (r + 0.5) * dLat;
-        const z = sampler.queryElevation(new Point({ x, y, spatialReference: extent.spatialReference }))?.z ?? 0;
+        pt.x = extent.xmin + (c + 0.5) * dLon;
+        pt.y = extent.ymax - (r + 0.5) * dLat;
+        const z = sampler.queryElevation(pt)?.z ?? 0;
         grid[r * cols + c] = z;
       }
       if (r % 16 === 0) {

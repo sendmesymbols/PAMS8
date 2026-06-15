@@ -167,6 +167,8 @@ export class OcokaEngine {
   // ground/DEM cannot produce one, in which case terrain degrades to the
   // synthetic pseudoTerrain proxy (documented in each corridor note).
   private _runSampler: any = null;
+  // Reused scratch Point for _queryZ — synchronous helper, so one shared point is safe.
+  private _scratchZPt = new Point({ longitude: 0, latitude: 0, spatialReference: WGS84 });
   private _corridorLayer!: GraphicsLayer;
   private _widthLayer!: GraphicsLayer;
   private _chokeLayer!: GraphicsLayer;
@@ -762,7 +764,9 @@ export class OcokaEngine {
         ymax: center.latitude + padDeg,
         spatialReference: WGS84,
       });
-      return await (this._view.map as any).ground.createElevationSampler(ext, { noDataValue: 0 });
+      // noDataValue NaN (not 0): _queryZ()'s finite guard then rejects no-data samples and
+      // falls back to the synthetic surface, instead of treating gaps as real sea-level terrain.
+      return await (this._view.map as any).ground.createElevationSampler(ext, { noDataValue: NaN });
     } catch {
       return null;
     }
@@ -771,9 +775,9 @@ export class OcokaEngine {
   /** queryElevation wrapper that rejects non-finite / no-data samples. */
   private _queryZ(lon: number, lat: number): number | null {
     if (!this._runSampler) return null;
-    const z = this._runSampler.queryElevation(
-      new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 }),
-    )?.z;
+    this._scratchZPt.longitude = lon;
+    this._scratchZPt.latitude = lat;
+    const z = this._runSampler.queryElevation(this._scratchZPt)?.z;
     return Number.isFinite(z) ? z : null;
   }
 
