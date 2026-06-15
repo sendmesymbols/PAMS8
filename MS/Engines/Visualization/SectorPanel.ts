@@ -26,7 +26,8 @@ export default class SectorPanel {
   public openPanel(): void {
     this._injectStyles();
     if (!this._widget) this._createWidget();
-    if (this._widget) { this._widget.style.display = "block"; this._open = true; }
+    this._widget!.style.display = "block";
+    this._open = true;
     this._viz.setSectorsChangedHandler(() => this._update());
     this._update();
   }
@@ -144,9 +145,9 @@ export default class SectorPanel {
       const center = this._getView()?.center as Point | undefined;
       if (!center) return;
       this._viz.createSector(center, {
-        rangeKm:    parseFloat(q<HTMLInputElement>("ts-range")!.value),
-        azStartDeg: parseFloat(q<HTMLInputElement>("ts-start")!.value),
-        azEndDeg:   parseFloat(q<HTMLInputElement>("ts-end")!.value),
+        rangeKm:    this._num(q<HTMLInputElement>("ts-range")!.value, 1),
+        azStartDeg: this._num(q<HTMLInputElement>("ts-start")!.value, 0),
+        azEndDeg:   this._num(q<HTMLInputElement>("ts-end")!.value, 90),
       });
     });
 
@@ -200,7 +201,9 @@ export default class SectorPanel {
       color.addEventListener("change", () => this._viz.updateSector(s.id, { color: this._hex2rgb(color.value) }));
       del.addEventListener("click", () => this._viz.removeSector(s.id));
       const applyGeom = () => this._viz.updateSector(s.id, {
-        rangeKm: parseFloat(range.value), azStartDeg: parseFloat(start.value), azEndDeg: parseFloat(end.value),
+        rangeKm:    this._num(range.value, s.rangeKm),
+        azStartDeg: this._num(start.value, s.azStartDeg),
+        azEndDeg:   this._num(end.value, s.azEndDeg),
       });
       range.addEventListener("change", applyGeom);
       start.addEventListener("change", applyGeom);
@@ -219,6 +222,11 @@ export default class SectorPanel {
     const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
     if (!m) return [220, 50, 50];
     return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+  }
+
+  private _num(value: string, fallback: number): number {
+    const n = parseFloat(value);
+    return Number.isFinite(n) ? n : fallback;
   }
 
   private _injectStyles(): void {
