@@ -139,6 +139,32 @@ export interface VisualizationOptions {
   aggregate: AggregateOptions;
 }
 
+/** Options accepted when creating a threat sector. `opacity` is a back-compat alias for `fillOpacity`. */
+export interface SectorOptions {
+  rangeKm: number;
+  azStartDeg: number;
+  azEndDeg: number;
+  color?: [number, number, number];
+  fillOpacity?: number;
+  opacity?: number;
+  outlineOpacity?: number;
+  outlineWidth?: number;
+  label?: string;
+}
+
+/** Read-only snapshot of a tracked sector, for the panel UI. */
+export interface SectorListItem {
+  id: string;
+  label: string;
+  rangeKm: number;
+  azStartDeg: number;
+  azEndDeg: number;
+  color: [number, number, number];
+  fillOpacity: number;
+  outlineOpacity: number;
+  outlineWidth: number;
+}
+
 // ─── Defaults ───────────────────────────────────────────────────────────────
 
 const DEFAULT_OPTIONS: VisualizationOptions = {
@@ -253,6 +279,27 @@ export class VisualizationEngine {
   } | null = null;
   /** Watcher that rebuilds drop lines whenever the FORCE layer's graphic count changes. */
   private _dropLineWatcher: { remove(): void } | null = null;
+
+  // ── Threat sector instances + in-memory appearance defaults ────────────────
+  private _sectors: Array<{
+    id: string;
+    center: Point;
+    rangeKm: number;
+    azStartDeg: number;
+    azEndDeg: number;
+    color: [number, number, number];
+    fillOpacity: number;
+    outlineOpacity: number;
+    outlineWidth: number;
+    label: string;
+    graphic: Graphic;
+  }> = [];
+  private _sectorSeq = 0;
+  private _sectorDefaultColor: [number, number, number] = [220, 50, 50];
+  private _sectorDefaultFillOpacity = 0.30;
+  private _sectorDefaultOutlineOpacity = 0.85;
+  private _sectorDefaultOutlineWidth = 1.5;
+  private _onSectorsChanged: (() => void) | null = null;
 
   private constructor() {
     this._options = JSON.parse(JSON.stringify(DEFAULT_OPTIONS)) as VisualizationOptions;
@@ -971,51 +1018,130 @@ export class VisualizationEngine {
   // ─── Threat / Engagement Sector (azimuth-bounded wedge) ────────────────────
 
   /**
-   * Draw a geodesic engagement/threat sector (wedge) centered on a point.
-   * Sweeps CLOCKWISE from azStartDeg to azEndDeg. Multiple sectors may coexist;
-   * use clearSectors() to remove them all.
+   * Draw a geodesic engagement/threat sector (wedge) centered on a point and
+   * track it as an editable instance. Sweeps CLOCKWISE from azStartDeg to azEndDeg.
+   * Returns the new sector's id, or "" if the inputs are invalid/degenerate.
+   */
+  public createSector(center: Point | Graphic, opts: SectorOptions): string {
+    if (!this._vizLayer) return "";
+    const pt = ("geometry" in center ? center.geometry : center) as Point | null;
+    if (!pt || pt.type !== "point") return "";
+    if (!(opts.rangeKm > 0)) return "";
+    if (((opts.azEndDeg - opts.azStartDeg) % 360 + 360) % 360 === 0) return ""; // degenerate
+
+    const color          = opts.color          ?? this._sectorDefaultColor;
+    const fillOpacity    = opts.fillOpacity    ?? opts.opacity ?? this._sectorDefaultFillOpacity;
+    const outlineOpacity = opts.outlineOpacity ?? this._sectorDefaultOutlineOpacity;
+    const outlineWidth   = opts.outlineWidth   ?? this._sectorDefaultOutlineWidth;
+
+    const id    = `sector_${++this._sectorSeq}`;
+    const label = opts.label ?? `Sector ${this._sectorSeq}`;
+    const graphic = new Graphic({
+      geometry: this._buildSectorPolygon(pt, opts.rangeKm, opts.azStartDeg, opts.azEndDeg),
+      symbol:   this._makeSectorSymbol(color, fillOpacity, outlineOpacity, outlineWidth),
+      attributes: { [VIZ_TAG]: "sector", sectorId: id },
+    });
+    this._vizLayer.add(graphic);
+    this._sectors.push({
+      id, center: pt.clone(), rangeKm: opts.rangeKm, azStartDeg: opts.azStartDeg, azEndDeg: opts.azEndDeg,
+      color, fillOpacity, outlineOpacity, outlineWidth, label, graphic,
+    });
+    this._emitSectorsChanged();
+    return id;
+  }
+
+  /**
+   * Back-compat wrapper kept for existing callers (SectorDrawTool, SymbolEngine
+   * API passthrough). Delegates to createSector so drawn sectors are tracked.
    */
   public showSector(
     center: Point | Graphic,
-    opts: {
-      rangeKm: number;
-      azStartDeg: number;
-      azEndDeg: number;
-      color?: [number, number, number];
-      opacity?: number;
-    },
+    opts: { rangeKm: number; azStartDeg: number; azEndDeg: number; color?: [number, number, number]; opacity?: number },
   ): void {
-    if (!this._vizLayer) return;
-    const pt = ("geometry" in center ? center.geometry : center) as Point | null;
-    if (!pt || pt.type !== "point") return;
-    if (!(opts.rangeKm > 0)) return;
-    if (((opts.azEndDeg - opts.azStartDeg) % 360 + 360) % 360 === 0) return; // degenerate
+    this.createSector(center, opts);
+  }
 
-    const ring = buildSectorRing(
-      pt.longitude as number, pt.latitude as number,
-      opts.rangeKm, opts.azStartDeg, opts.azEndDeg,
-    );
-    const polygon = new Polygon({ rings: [ring], spatialReference: { wkid: 4326 } });
-    const [r, g, b] = opts.color ?? [220, 50, 50];
-    const a = opts.opacity ?? 0.30;
-    this._vizLayer.add(new Graphic({
-      geometry: polygon,
-      symbol: new SimpleFillSymbol({
-        color: new Color([r, g, b, a]),
-        outline: new SimpleLineSymbol({ color: new Color([r, g, b, 0.85]), width: 1.5, style: "solid" }),
-      }),
-      attributes: { [VIZ_TAG]: "sector" },
+  /** Patch a sector's geometry and/or appearance in place. */
+  public updateSector(id: string, patch: Partial<Omit<SectorListItem, "id">>): void {
+    const s = this._sectors.find(x => x.id === id);
+    if (!s || !this._vizLayer) return;
+    if (patch.rangeKm        !== undefined && patch.rangeKm > 0) s.rangeKm = patch.rangeKm;
+    if (patch.azStartDeg     !== undefined) s.azStartDeg     = patch.azStartDeg;
+    if (patch.azEndDeg       !== undefined) s.azEndDeg       = patch.azEndDeg;
+    if (patch.color          !== undefined) s.color          = patch.color;
+    if (patch.fillOpacity    !== undefined) s.fillOpacity    = patch.fillOpacity;
+    if (patch.outlineOpacity !== undefined) s.outlineOpacity = patch.outlineOpacity;
+    if (patch.outlineWidth   !== undefined) s.outlineWidth   = patch.outlineWidth;
+    if (patch.label          !== undefined) s.label          = patch.label;
+    s.graphic.geometry = this._buildSectorPolygon(s.center, s.rangeKm, s.azStartDeg, s.azEndDeg);
+    s.graphic.symbol   = this._makeSectorSymbol(s.color, s.fillOpacity, s.outlineOpacity, s.outlineWidth);
+    this._emitSectorsChanged();
+  }
+
+  /** Remove a single tracked sector by id. */
+  public removeSector(id: string): void {
+    const idx = this._sectors.findIndex(x => x.id === id);
+    if (idx < 0) return;
+    if (this._vizLayer) this._vizLayer.remove(this._sectors[idx].graphic);
+    this._sectors.splice(idx, 1);
+    this._emitSectorsChanged();
+  }
+
+  /** Snapshot of all tracked sectors (for the panel). */
+  public listSectors(): SectorListItem[] {
+    return this._sectors.map(s => ({
+      id: s.id, label: s.label, rangeKm: s.rangeKm, azStartDeg: s.azStartDeg, azEndDeg: s.azEndDeg,
+      color: s.color, fillOpacity: s.fillOpacity, outlineOpacity: s.outlineOpacity, outlineWidth: s.outlineWidth,
     }));
   }
 
-  /** Remove all sector overlays (committed and preview). */
-  public clearSectors(): void {
-    if (!this._vizLayer) return;
-    this._vizLayer.graphics
-      .filter((g: Graphic) => g.attributes?.[VIZ_TAG] === "sector" || g.attributes?.[VIZ_TAG] === "sector-preview")
-      .toArray()
-      .forEach((g: Graphic) => this._vizLayer!.remove(g));
+  /** Current in-memory default appearance applied to new sectors. */
+  public getSectorDefaults(): { color: [number, number, number]; fillOpacity: number; outlineOpacity: number; outlineWidth: number } {
+    return {
+      color: this._sectorDefaultColor,
+      fillOpacity: this._sectorDefaultFillOpacity,
+      outlineOpacity: this._sectorDefaultOutlineOpacity,
+      outlineWidth: this._sectorDefaultOutlineWidth,
+    };
   }
+
+  /** Update the in-memory default appearance for subsequently created sectors. */
+  public setSectorDefaults(patch: { color?: [number, number, number]; fillOpacity?: number; outlineOpacity?: number; outlineWidth?: number }): void {
+    if (patch.color          !== undefined) this._sectorDefaultColor          = patch.color;
+    if (patch.fillOpacity    !== undefined) this._sectorDefaultFillOpacity    = patch.fillOpacity;
+    if (patch.outlineOpacity !== undefined) this._sectorDefaultOutlineOpacity = patch.outlineOpacity;
+    if (patch.outlineWidth   !== undefined) this._sectorDefaultOutlineWidth   = patch.outlineWidth;
+  }
+
+  /** Register (or clear with null) a callback fired when the sector set changes. */
+  public setSectorsChangedHandler(cb: (() => void) | null): void { this._onSectorsChanged = cb; }
+
+  /** Remove all sector overlays (committed instances + transient preview). */
+  public clearSectors(): void {
+    if (this._vizLayer) {
+      this._vizLayer.graphics
+        .filter((g: Graphic) => g.attributes?.[VIZ_TAG] === "sector" || g.attributes?.[VIZ_TAG] === "sector-preview")
+        .toArray()
+        .forEach((g: Graphic) => this._vizLayer!.remove(g));
+    }
+    this._sectors = [];
+    this._emitSectorsChanged();
+  }
+
+  private _buildSectorPolygon(center: Point, rangeKm: number, azStartDeg: number, azEndDeg: number): Polygon {
+    const ring = buildSectorRing(center.longitude as number, center.latitude as number, rangeKm, azStartDeg, azEndDeg);
+    return new Polygon({ rings: [ring], spatialReference: { wkid: 4326 } });
+  }
+
+  private _makeSectorSymbol(color: [number, number, number], fillOpacity: number, outlineOpacity: number, outlineWidth: number): SimpleFillSymbol {
+    const [r, g, b] = color;
+    return new SimpleFillSymbol({
+      color: new Color([r, g, b, fillOpacity]),
+      outline: new SimpleLineSymbol({ color: new Color([r, g, b, outlineOpacity]), width: outlineWidth, style: "solid" }),
+    });
+  }
+
+  private _emitSectorsChanged(): void { try { this._onSectorsChanged?.(); } catch { /* ignore */ } }
 
   /** Draw/replace the live preview wedge while the SectorDrawTool is active. Intended for SectorDrawTool. */
   public renderSectorPreview(
