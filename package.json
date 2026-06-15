@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=24.14.1"
+  },
   "scripts": {
     "copy-assets": "node -e \"const fs=require('fs');if(!fs.existsSync('public/assets')){fs.cpSync('node_modules/@arcgis/core/assets','public/assets',{recursive:true});console.log('Copied @arcgis/core assets -> public/assets')}\"",
     "predev": "npm run copy-assets",

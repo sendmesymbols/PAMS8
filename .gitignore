@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Project-embedded Node toolchain (populated by setup.ps1) — regenerable, not committed
+/node/
+
 # ArcGIS runtime assets copied from node_modules/@arcgis/core/assets at dev/build
 # time (see the "copy-assets" npm script). Regenerable — not committed (~53 MB).
 public/assets
