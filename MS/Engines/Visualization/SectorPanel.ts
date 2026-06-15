@@ -94,6 +94,7 @@ export default class SectorPanel {
       <div class="ts-row"><label>Fill</label><input type="range" id="ts-fill" min="0" max="1" step="0.05" value="${d.fillOpacity}" style="width:80px"/><span class="ts-val" id="ts-fill-val">${d.fillOpacity.toFixed(2)}</span></div>
       <div class="ts-row"><label>Outline</label><input type="range" id="ts-out" min="0" max="1" step="0.05" value="${d.outlineOpacity}" style="width:80px"/><span class="ts-val" id="ts-out-val">${d.outlineOpacity.toFixed(2)}</span></div>
       <div class="ts-row"><label>Width</label><input type="number" id="ts-width" value="${d.outlineWidth}" min="0.5" max="6" step="0.5" style="width:64px"/></div>
+      <div class="ts-row"><label>Height m (3D)</label><input type="number" id="ts-height" value="${d.extrudeHeightM}" min="0" step="50" style="width:64px" title="Extrusion height in metres — visible only in 3D (SceneView). 0 = flat."/></div>
     </div>
 
     <div class="ts-section">
@@ -161,11 +162,13 @@ export default class SectorPanel {
       fillOpacity:    parseFloat(fill.value),
       outlineOpacity: parseFloat(out.value),
       outlineWidth:   parseFloat(q<HTMLInputElement>("ts-width")!.value),
+      extrudeHeightM: this._num(q<HTMLInputElement>("ts-height")!.value, 0),
     });
     q("ts-color")?.addEventListener("change", pushDefaults);
     fill.addEventListener("change", pushDefaults);
     out.addEventListener("change", pushDefaults);
     q("ts-width")?.addEventListener("change", pushDefaults);
+    q("ts-height")?.addEventListener("change", pushDefaults);
   }
 
   // ── List rendering ────────────────────────────────────────────────────────
@@ -192,12 +195,16 @@ export default class SectorPanel {
           <label>R</label><input type="number" class="ts-i-range" value="${s.rangeKm}" min="0.1" step="0.1"/>
           <label>S</label><input type="number" class="ts-i-start" value="${s.azStartDeg}" min="0" max="360" step="1"/>
           <label>E</label><input type="number" class="ts-i-end" value="${s.azEndDeg}" min="0" max="360" step="1"/>
+        </div>
+        <div class="ts-item-row">
+          <label>H m (3D)</label><input type="number" class="ts-i-height" value="${s.extrudeHeightM}" min="0" step="50"/>
         </div>`;
       const color = row.querySelector(".ts-i-color") as HTMLInputElement;
       const del   = row.querySelector(".ts-i-del")   as HTMLElement;
       const range = row.querySelector(".ts-i-range") as HTMLInputElement;
       const start = row.querySelector(".ts-i-start") as HTMLInputElement;
       const end   = row.querySelector(".ts-i-end")   as HTMLInputElement;
+      const height = row.querySelector(".ts-i-height") as HTMLInputElement;
       color.addEventListener("change", () => this._viz.updateSector(s.id, { color: this._hex2rgb(color.value) }));
       del.addEventListener("click", () => this._viz.removeSector(s.id));
       const applyGeom = () => this._viz.updateSector(s.id, {
@@ -208,6 +215,7 @@ export default class SectorPanel {
       range.addEventListener("change", applyGeom);
       start.addEventListener("change", applyGeom);
       end.addEventListener("change", applyGeom);
+      height.addEventListener("change", () => this._viz.updateSector(s.id, { extrudeHeightM: this._num(height.value, s.extrudeHeightM) }));
       listEl.appendChild(row);
     }
   }

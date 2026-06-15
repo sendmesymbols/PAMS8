@@ -8,6 +8,9 @@ import Polygon from "@arcgis/core/geometry/Polygon";
 import Polyline from "@arcgis/core/geometry/Polyline";
 import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
+import PolygonSymbol3D from "@arcgis/core/symbols/PolygonSymbol3D";
+import FillSymbol3DLayer from "@arcgis/core/symbols/FillSymbol3DLayer";
+import ExtrudeSymbol3DLayer from "@arcgis/core/symbols/ExtrudeSymbol3DLayer";
 import TextSymbol from "@arcgis/core/symbols/TextSymbol";
 import Color from "@arcgis/core/Color";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
@@ -149,6 +152,8 @@ export interface SectorOptions {
   opacity?: number;
   outlineOpacity?: number;
   outlineWidth?: number;
+  /** Extrusion height in metres. Only visible in 3D (SceneView); 0 = flat. */
+  extrudeHeightM?: number;
   label?: string;
 }
 
@@ -163,6 +168,7 @@ export interface SectorListItem {
   fillOpacity: number;
   outlineOpacity: number;
   outlineWidth: number;
+  extrudeHeightM: number;
 }
 
 // ─── Defaults ───────────────────────────────────────────────────────────────
@@ -291,6 +297,7 @@ export class VisualizationEngine {
     fillOpacity: number;
     outlineOpacity: number;
     outlineWidth: number;
+    extrudeHeightM: number;
     label: string;
     graphic: Graphic;
   }> = [];
@@ -299,6 +306,7 @@ export class VisualizationEngine {
   private _sectorDefaultFillOpacity = 0.30;
   private _sectorDefaultOutlineOpacity = 0.85;
   private _sectorDefaultOutlineWidth = 1.5;
+  private _sectorDefaultExtrudeHeightM = 0;
   private _onSectorsChanged: (() => void) | null = null;
 
   private constructor() {
@@ -551,7 +559,11 @@ export class VisualizationEngine {
     if (o.extrudedFootprints.enabled) this._computeExtrudedFootprints();
     // Re-add tracked threat sectors — removeAll() above clears them, and unlike
     // the other overlays they are not recomputed from options.
-    for (const s of this._sectors) this._vizLayer.add(s.graphic);
+    for (const s of this._sectors) {
+      // Rebuild the symbol for the CURRENT view so a 2D↔3D switch swaps flat↔extruded.
+      s.graphic.symbol = this._makeSectorSymbol(s.color, s.fillOpacity, s.outlineOpacity, s.outlineWidth, s.extrudeHeightM) as any;
+      this._vizLayer.add(s.graphic);
+    }
   }
 
   /** True when aggregate mode is active for the current view zoom. */
@@ -1036,18 +1048,19 @@ export class VisualizationEngine {
     const fillOpacity    = opts.fillOpacity    ?? opts.opacity ?? this._sectorDefaultFillOpacity;
     const outlineOpacity = opts.outlineOpacity ?? this._sectorDefaultOutlineOpacity;
     const outlineWidth   = opts.outlineWidth   ?? this._sectorDefaultOutlineWidth;
+    const extrudeHeightM = opts.extrudeHeightM ?? this._sectorDefaultExtrudeHeightM;
 
     const id    = `sector_${++this._sectorSeq}`;
     const label = opts.label ?? `Sector ${this._sectorSeq}`;
     const graphic = new Graphic({
       geometry: this._buildSectorPolygon(pt, opts.rangeKm, opts.azStartDeg, opts.azEndDeg),
-      symbol:   this._makeSectorSymbol(color, fillOpacity, outlineOpacity, outlineWidth),
+      symbol:   this._makeSectorSymbol(color, fillOpacity, outlineOpacity, outlineWidth, extrudeHeightM) as any,
       attributes: { [VIZ_TAG]: "sector", sectorId: id },
     });
     this._vizLayer.add(graphic);
     this._sectors.push({
       id, center: pt.clone(), rangeKm: opts.rangeKm, azStartDeg: opts.azStartDeg, azEndDeg: opts.azEndDeg,
-      color, fillOpacity, outlineOpacity, outlineWidth, label, graphic,
+      color, fillOpacity, outlineOpacity, outlineWidth, extrudeHeightM, label, graphic,
     });
     this._emitSectorsChanged();
     return id;
@@ -1076,9 +1089,10 @@ export class VisualizationEngine {
     if (patch.fillOpacity    !== undefined) s.fillOpacity    = patch.fillOpacity;
     if (patch.outlineOpacity !== undefined) s.outlineOpacity = patch.outlineOpacity;
     if (patch.outlineWidth   !== undefined) s.outlineWidth   = patch.outlineWidth;
+    if (patch.extrudeHeightM !== undefined) s.extrudeHeightM = patch.extrudeHeightM;
     if (patch.label          !== undefined) s.label          = patch.label;
     s.graphic.geometry = this._buildSectorPolygon(s.center, s.rangeKm, s.azStartDeg, s.azEndDeg);
-    s.graphic.symbol   = this._makeSectorSymbol(s.color, s.fillOpacity, s.outlineOpacity, s.outlineWidth);
+    s.graphic.symbol   = this._makeSectorSymbol(s.color, s.fillOpacity, s.outlineOpacity, s.outlineWidth, s.extrudeHeightM) as any;
     this._emitSectorsChanged();
   }
 
@@ -1095,26 +1109,28 @@ export class VisualizationEngine {
   public listSectors(): SectorListItem[] {
     return this._sectors.map(s => ({
       id: s.id, label: s.label, rangeKm: s.rangeKm, azStartDeg: s.azStartDeg, azEndDeg: s.azEndDeg,
-      color: [...s.color] as [number, number, number], fillOpacity: s.fillOpacity, outlineOpacity: s.outlineOpacity, outlineWidth: s.outlineWidth,
+      color: [...s.color] as [number, number, number], fillOpacity: s.fillOpacity, outlineOpacity: s.outlineOpacity, outlineWidth: s.outlineWidth, extrudeHeightM: s.extrudeHeightM,
     }));
   }
 
   /** Current in-memory default appearance applied to new sectors. */
-  public getSectorDefaults(): { color: [number, number, number]; fillOpacity: number; outlineOpacity: number; outlineWidth: number } {
+  public getSectorDefaults(): { color: [number, number, number]; fillOpacity: number; outlineOpacity: number; outlineWidth: number; extrudeHeightM: number } {
     return {
       color: [...this._sectorDefaultColor] as [number, number, number],
       fillOpacity: this._sectorDefaultFillOpacity,
       outlineOpacity: this._sectorDefaultOutlineOpacity,
       outlineWidth: this._sectorDefaultOutlineWidth,
+      extrudeHeightM: this._sectorDefaultExtrudeHeightM,
     };
   }
 
   /** Update the in-memory default appearance for subsequently created sectors. */
-  public setSectorDefaults(patch: { color?: [number, number, number]; fillOpacity?: number; outlineOpacity?: number; outlineWidth?: number }): void {
+  public setSectorDefaults(patch: { color?: [number, number, number]; fillOpacity?: number; outlineOpacity?: number; outlineWidth?: number; extrudeHeightM?: number }): void {
     if (patch.color          !== undefined) this._sectorDefaultColor          = [...patch.color] as [number, number, number];
     if (patch.fillOpacity    !== undefined) this._sectorDefaultFillOpacity    = patch.fillOpacity;
     if (patch.outlineOpacity !== undefined) this._sectorDefaultOutlineOpacity = patch.outlineOpacity;
     if (patch.outlineWidth   !== undefined) this._sectorDefaultOutlineWidth   = patch.outlineWidth;
+    if (patch.extrudeHeightM !== undefined) this._sectorDefaultExtrudeHeightM = patch.extrudeHeightM;
   }
 
   /** Register (or clear with null) a callback fired when the sector set changes. */
@@ -1137,11 +1153,43 @@ export class VisualizationEngine {
     return new Polygon({ rings: [ring], spatialReference: { wkid: 4326 } });
   }
 
-  private _makeSectorSymbol(color: [number, number, number], fillOpacity: number, outlineOpacity: number, outlineWidth: number): SimpleFillSymbol {
+  private _makeSectorSymbol(
+    color: [number, number, number], fillOpacity: number, outlineOpacity: number, outlineWidth: number, extrudeHeightM = 0,
+  ): SimpleFillSymbol | PolygonSymbol3D {
     const [r, g, b] = color;
-    return new SimpleFillSymbol({
-      color: new Color([r, g, b, fillOpacity]),
-      outline: new SimpleLineSymbol({ color: new Color([r, g, b, outlineOpacity]), width: outlineWidth, style: "solid" }),
+
+    // 2D MapView (or unknown view): flat draped polygon.
+    if (this._view?.type !== "3d") {
+      return new SimpleFillSymbol({
+        color: new Color([r, g, b, fillOpacity]),
+        outline: new SimpleLineSymbol({ color: new Color([r, g, b, outlineOpacity]), width: outlineWidth, style: "solid" }),
+      });
+    }
+
+    // 3D SceneView with a positive height: extruded wedge wall + cap.
+    if (extrudeHeightM > 0) {
+      return new PolygonSymbol3D({
+        symbolLayers: [
+          new FillSymbol3DLayer({
+            material: { color: [r, g, b, Math.max(0.35, fillOpacity)] },
+            outline:  { color: [r, g, b, outlineOpacity], size: outlineWidth },
+          }),
+          new ExtrudeSymbol3DLayer({
+            material: { color: [r, g, b, Math.max(0.55, fillOpacity)] },
+            size: extrudeHeightM,
+          }),
+        ],
+      });
+    }
+
+    // 3D, flat (height 0): on-ground 3D fill so it renders correctly in the SceneView.
+    return new PolygonSymbol3D({
+      symbolLayers: [
+        new FillSymbol3DLayer({
+          material: { color: [r, g, b, Math.max(0.45, fillOpacity)] },
+          outline:  { color: [r, g, b, outlineOpacity], size: outlineWidth },
+        }),
+      ],
     });
   }
 
