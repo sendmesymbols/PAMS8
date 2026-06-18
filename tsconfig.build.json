@@ -2,7 +2,8 @@
   "extends": "./tsconfig.json",
   "include": ["MS/**/*"],
   "exclude": ["src", "index.html",
-    "MS/ThirdParty/MilSymbols/milsymbol.js"
+    "MS/ThirdParty/MilSymbols/milsymbol.js",
+    "MS/**/*.test.ts"
   ],
   "compilerOptions": {
     "noEmit": true
