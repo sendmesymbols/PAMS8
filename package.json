@@ -13,6 +13,7 @@
     "prebuild": "npm run copy-assets",
     "preview": "vite preview",
     "dev": "vite",
+    "dev:dist": "vite build && npm run copy-data && vite --mode dist",
     "build": "vite build && npm run copy-data && tsc -p tsconfig.build.json"
   },
   "devDependencies": {

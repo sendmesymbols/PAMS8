@@ -7,7 +7,21 @@ import terser from '@rollup/plugin-terser';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export default defineConfig({
+// `npm run dev`        → serves the harness against the MS/ TypeScript source.
+// `npm run dev:dist`   → runs with `--mode dist`; the `@lib` alias is repointed at
+//   the built dist/MS/*.min.js so the SAME harness exercises the shipped output
+//   (catches terser `_`-property mangling, tree-shaking, missing-export divergences).
+export default defineConfig(({ mode }) => {
+    const useDist = mode === 'dist';
+    return {
+    resolve: {
+        // Harness library imports use the `@lib/...` specifier; remap it per mode.
+        alias: { '@lib': resolve(__dirname, useDist ? 'dist/MS' : 'MS') },
+        // dist emits `*.min.js`; allow extensionless `@lib/...` specifiers to resolve it.
+        extensions: useDist
+            ? ['.min.js', '.mjs', '.js', '.ts', '.json']
+            : ['.mjs', '.js', '.ts', '.json'],
+    },
     build: {
         target: 'esnext',
         lib: {
@@ -49,10 +63,15 @@ export default defineConfig({
                         toplevel: true           // Perform top-level optimizations
                     },
                     mangle: {
-                        toplevel: true,          // Mangle top-level variable names
-                        properties: {
-                            regex: /^_/            // Mangle object properties starting with "_"
-                        }
+                        toplevel: true,          // Mangle top-level variable names (chunk-local, safe)
+                        // Property mangling REMOVED. With preserveModules,
+                        // @rollup/plugin-terser minifies each chunk with an independent
+                        // name table, so `_`-prefixed methods/props shared across modules
+                        // (e.g. GeoTools._2PtLen / _vertexAngle / _ptCollectionLen, called
+                        // from MainAttack, PhaseLine, …) got DIFFERENT mangled names in the
+                        // caller vs the definition → "not a function" at runtime, swallowed by
+                        // try/catch + drop_console → symbols silently failed to draw in dist.
+                        // Property mangling is incompatible with code-splitting; do not re-add.
                     },
                     format: {
                         comments: false,         // Remove all comments
@@ -67,7 +86,8 @@ export default defineConfig({
     },
     server: {
         host: "0.0.0.0",
-        port: 6547,
+        // Different port per mode so source (:6547) and dist (:6548) can run together.
+        port: useDist ? 6548 : 6547,
         proxy: {
             '/roadnet': {
                 target: 'http://localhost:9191',
@@ -83,6 +103,7 @@ export default defineConfig({
             tsconfigPath: 'tsconfig.build.json',
         }),
     ],
+    };
 });
 
 

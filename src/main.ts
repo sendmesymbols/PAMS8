@@ -10,26 +10,15 @@ import settingsData from '../MS/Data/Settings.json';
 // "copy-assets" npm script, run automatically before dev/build).
 esriConfig.assetsPath = '/assets';
 esriConfig.fontsUrl = '/fonts';
-import PlotPoint from '../MS/PlotPoint.ts';
-import SymbolEngine from '../MS/Engines/SymbolEngine.ts';
-import SettingsMenu from '../MS/Support/SettingsMenu.ts';
-import VisualizationEngine from '../MS/Engines/Visualization/VisualizationEngine.ts';
-import CombatPowerEngine from '../MS/Engines/Planning/CombatPowerEngine.ts';
+import SymbolEngine from '@lib/Engines/SymbolEngine';
+import SettingsMenu from '@lib/Support/SettingsMenu';
+import VisualizationEngine from '@lib/Engines/Visualization/VisualizationEngine';
+import CombatPowerEngine from '@lib/Engines/Planning/CombatPowerEngine';
 //import SymbolEngine from "../dist/MS/Engines/SymbolEngine.min.js";
 import type { SymbolOptions } from '../MS/ThirdParty/MilSymbols/UEITypes.ts';
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
-import { watch } from '@arcgis/core/core/reactiveUtils';
-import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel';
-import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
-import Graphic from '@arcgis/core/Graphic';
-import PictureMarkerSymbol from '@arcgis/core/symbols/PictureMarkerSymbol';
-import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
-import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
-import Polygon from '@arcgis/core/geometry/Polygon';
-import Polyline from '@arcgis/core/geometry/Polyline';
-import Point from '@arcgis/core/geometry/Point';
-import Amplifier from '../MS/Support/Amplifier.ts';
-import DrawEssentials from '../MS/Support/DrawEssentials.ts';
+import Amplifier from '@lib/Support/Amplifier';
+import DrawEssentials from '@lib/Support/DrawEssentials';
 
 // Render settings (lift / drop lines / scene quality / shadows / atmosphere)
 // are owned by VisualizationEngine — see `applyRenderSettings()` below for the
@@ -41,15 +30,11 @@ import DrawEssentials from '../MS/Support/DrawEssentials.ts';
 
 // Import milsymbol types
 import '../MS/ThirdParty/MilSymbols/milsymbol.d.ts';
-import GeoTools from '../MS/Support/GeoTools.ts';
 import { generateTestField, generateClutteredField, clearTestField } from './testDataGenerator';
 
 // Define button to switch views
 const switchButton: HTMLElement | null = document.getElementById('switch-btn');
 const drawButton: HTMLElement | null = document.getElementById('draw-btn');
-const createButton: HTMLElement | null =
-  document.getElementById('createButton');
-const drawAmbushButton = document.getElementById('drawAmbushButton');
 const savePlanButton = document.getElementById('savePlanButton');
 const loadPlanButton = document.getElementById('loadPlanButton');
 const deploymentManagerBtn = document.getElementById('deployment-manager-btn');
@@ -200,7 +185,7 @@ Object.defineProperty(window as any, 'airspaceEngine', {
 });
 
 // Expose DrawingCueEngine singleton so index.html plain JS can call openCompassWidget() etc.
-import DrawingCueEngine from '../MS/Engines/DrawingCueEngine';
+import DrawingCueEngine from '@lib/Engines/DrawingCueEngine';
 (window as any).drawingCueEngine = DrawingCueEngine.getInstance();
 
 // ── Engine log listener ───────────────────────────────────────────────────────
@@ -255,53 +240,6 @@ if (drawButton) {
   });
 }
 
-if (createButton) {
-  createButton.addEventListener('click', () => {
-    console.log('----');
-    const sidcInput = document.getElementById('sidcText') as HTMLInputElement;
-    const sidc = sidcInput?.value.trim();
-  });
-}
-
-if (drawAmbushButton) {
-  drawAmbushButton.addEventListener('click', () => {
-    const view = appConfig.activeView;
-
-    // Create or get a graphics layer for tactical graphics
-    let graphicsLayer = view.map.findLayerById(
-      'tacticalGraphicsLayer',
-    ) as GraphicsLayer;
-    if (!graphicsLayer) {
-      graphicsLayer = new GraphicsLayer({ id: 'tacticalGraphicsLayer' });
-      view.map.add(graphicsLayer);
-    }
-
-    // Set up SketchViewModel for line drawing
-    const sketchVM = new SketchViewModel({
-      view,
-      layer: graphicsLayer,
-      creationMode: 'single',
-    });
-
-    sketchVM.create('polyline');
-
-    sketchVM.on('create', (event) => {
-      if (event.state === 'complete') {
-        // Remove the plain line
-        graphicsLayer.remove(event.graphic);
-
-        // Get the geometry of the drawn line
-        const lineGeometry = event.graphic.geometry as Polyline;
-
-        // Create ambush symbol from the line
-        createAmbushSymbol(lineGeometry, graphicsLayer);
-
-        sketchVM.destroy();
-      }
-    });
-  });
-}
-
 // Initialize autocomplete functionality
 console.log('Checking autocomplete elements:', {
   symbolSearchInput: !!symbolSearchInput,
@@ -320,187 +258,6 @@ if (
   initializeAutocomplete();
 } else {
   console.error('Some autocomplete elements are missing!');
-}
-
-function createAmbushSymbol(
-  lineGeometry: Polyline,
-  layer: GraphicsLayer,
-) {
-  const coords = lineGeometry.paths[0];
-  if (coords.length < 2) return;
-
-  const startPoint = coords[0];
-  const endPoint = coords[coords.length - 1];
-
-  // Calculate line properties
-  const dx = endPoint[0] - startPoint[0];
-  const dy = endPoint[1] - startPoint[1];
-  const length = Math.sqrt(dx * dx + dy * dy);
-  const angle = Math.atan2(dy, dx);
-
-  // Ambush symbol parameters
-  const width = length * 0.3; // Width of the ambush zone
-  const radius = Math.hypot(width, length);
-
-  // Calculate perpendicular points for the ambush zone
-  const perpAngle = angle + Math.PI / 2;
-  const perpAngleNeg = angle - Math.PI / 2;
-
-  // Create the ambush zone polygon
-  const ambushPoints = [];
-
-  // Add points along the curved ambush zone
-  const numPoints = 20;
-  for (let i = 0; i <= numPoints; i++) {
-    const t = i / numPoints;
-    const currentAngle = angle + ((t - 0.5) * Math.PI) / 2; // Curve from -45° to +45°
-
-    // Calculate point on the curve
-    const curveX = startPoint[0] + Math.cos(currentAngle) * radius;
-    const curveY = startPoint[1] + Math.sin(currentAngle) * radius;
-
-    ambushPoints.push([curveX, curveY]);
-  }
-
-  // Add points on the opposite side
-  for (let i = numPoints; i >= 0; i--) {
-    const t = i / numPoints;
-    const currentAngle = angle + ((0.5 - t) * Math.PI) / 2;
-
-    const curveX = startPoint[0] + Math.cos(currentAngle) * radius * 0.7;
-    const curveY = startPoint[1] + Math.sin(currentAngle) * radius * 0.7;
-
-    ambushPoints.push([curveX, curveY]);
-  }
-
-  // Close the polygon
-  ambushPoints.push(ambushPoints[0]);
-
-  // Create the ambush zone polygon
-  const ambushPolygon = new Polygon({
-    rings: [ambushPoints],
-    spatialReference: lineGeometry.spatialReference,
-  });
-
-  // Create parallel lines within the ambush zone
-  const parallelLines = [];
-  const numLines = 8;
-  for (let i = 1; i <= numLines; i++) {
-    const offset = ((width * 0.7) / (numLines + 1)) * i;
-
-    const line1 = [
-      [
-        startPoint[0] + Math.cos(perpAngle) * offset,
-        startPoint[1] + Math.sin(perpAngle) * offset,
-      ],
-      [
-        endPoint[0] + Math.cos(perpAngle) * offset,
-        endPoint[1] + Math.sin(perpAngle) * offset,
-      ],
-    ];
-
-    const line2 = [
-      [
-        startPoint[0] + Math.cos(perpAngleNeg) * offset,
-        startPoint[1] + Math.sin(perpAngleNeg) * offset,
-      ],
-      [
-        endPoint[0] + Math.cos(perpAngleNeg) * offset,
-        endPoint[1] + Math.sin(perpAngleNeg) * offset,
-      ],
-    ];
-
-    parallelLines.push(
-      new Polyline({
-        paths: [line1],
-        spatialReference: lineGeometry.spatialReference,
-      }),
-    );
-
-    parallelLines.push(
-      new Polyline({
-        paths: [line2],
-        spatialReference: lineGeometry.spatialReference,
-      }),
-    );
-  }
-
-  // Create arrow at the end
-  const arrowLength = length * 0.2;
-  const arrowWidth = arrowLength * 0.3;
-
-  const arrowPoints = [
-    [endPoint[0], endPoint[1]],
-    [
-      endPoint[0] - Math.cos(angle) * arrowLength,
-      endPoint[1] - Math.sin(angle) * arrowLength,
-    ],
-    [
-      endPoint[0] -
-        Math.cos(angle) * arrowLength +
-        Math.cos(perpAngle) * arrowWidth,
-      endPoint[1] -
-        Math.sin(angle) * arrowLength +
-        Math.sin(perpAngle) * arrowWidth,
-    ],
-    [
-      endPoint[0] -
-        Math.cos(angle) * arrowLength -
-        Math.cos(perpAngle) * arrowWidth,
-      endPoint[1] -
-        Math.sin(angle) * arrowLength -
-        Math.sin(perpAngle) * arrowWidth,
-    ],
-    [endPoint[0], endPoint[1]],
-  ];
-
-  const arrowPolygon = new Polygon({
-    rings: [arrowPoints],
-    spatialReference: lineGeometry.spatialReference,
-  });
-
-  // Add graphics to the layer
-  const ambushZoneGraphic = new Graphic({
-    geometry: ambushPolygon,
-    symbol: new SimpleFillSymbol({
-      color: [255, 0, 0, 0.2], // Semi-transparent red
-      outline: new SimpleLineSymbol({
-        color: [255, 0, 0, 1],
-        width: 2,
-      }),
-    }),
-    attributes: { type: 'ambush', symbolType: 'tacticalGraphic' },
-  });
-
-  layer.add(ambushZoneGraphic);
-
-  // Add parallel lines
-  parallelLines.forEach((line) => {
-    const lineGraphic = new Graphic({
-      geometry: line,
-      symbol: new SimpleLineSymbol({
-        color: [255, 0, 0, 0.8],
-        width: 1,
-      }),
-      attributes: { type: 'ambush', symbolType: 'tacticalGraphic' },
-    });
-    layer.add(lineGraphic);
-  });
-
-  // Add arrow
-  const arrowGraphic = new Graphic({
-    geometry: arrowPolygon,
-    symbol: new SimpleFillSymbol({
-      color: [255, 0, 0, 1], // Solid red
-      outline: new SimpleLineSymbol({
-        color: [255, 0, 0, 1],
-        width: 1,
-      }),
-    }),
-    attributes: { type: 'ambush', symbolType: 'tacticalGraphic' },
-  });
-
-  layer.add(arrowGraphic);
 }
 
 appConfig.sceneView.when(() => {
@@ -844,17 +601,6 @@ function initializeAutocomplete() {
       console.error('No symbol data found for key:', symbol.key);
     }
 
-    const options: SymbolOptions = {
-      sidc: fullSIDC,
-      size: 35,
-      quantity: '200',
-      staffComments: 'REINFORCEMENTS',
-      additionalInformation: 'SUPPORT FOR JJ',
-      type: 'MACHINE GUN',
-      dtg: '30140000ZSEP97',
-      location: '0900000.0E570306.0N',
-    };
-
     var amplifier = new Amplifier();
     /*
     amplifier.DTG = "DDHHMMSSZMONYYYY";
@@ -870,13 +616,6 @@ function initializeAutocomplete() {
 
     amplifier.SIZE = 60;
     //amplifier.SIZE = 10;
-
-    var attr = {
-      plnOrdrOverlayId: 2000,
-      plnOrdrId: 300,
-      creatorId: 700,
-      symbolId: '500',
-    };
 
     var drawEssentials = new DrawEssentials();
 
