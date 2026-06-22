@@ -327,18 +327,21 @@ export class Ambush {
                         const firstPath = paths.slice(0, 60);
                         result.addPath(this.toPointPath(firstPath));
 
-                        // Compute fixed teeth params from arc-only geometry
+                        // Compute teeth params from arc-only geometry. Prefer the true circle
+                        // center (in map space) so each tooth points radially inward — the
+                        // extent center is only a fallback.
+                        const arcCenterPt = this.view.toMap({ x: circle.center.x, y: circle.center.y } as any);
                         const midPt = new Point({ x: firstPath[30][0], y: firstPath[30][1], spatialReference: this.view.spatialReference });
                         const extent = result.extent;
-                        const centerPt = extent ? extent.center : null;
+                        const centerPt = arcCenterPt || (extent ? extent.center : null);
                         if (centerPt) {
                         const length = Utils.calculateDistance(endPt, midPt) / 10;
                             const teethSize = length * this.setDefault(drawEssentials, "TEETH_SIZE", this._teethSize);
                         const angle = Utils.calculateAngle(centerPt, midPt);
                             const teethGap = this.setDefault(drawEssentials, "TEETH_GAP", this._teethGap);
 
-                            // Add teeth with fixed angle/size (won’t follow mouse)
-                            this.addTeethFromArc(firstPath, angle, teethSize, teethGap, result);
+                            // Per-point radial teeth (won’t follow mouse)
+                            this.addTeethFromArc(firstPath, angle, teethSize, teethGap, result, centerPt);
                         }
                     }
                 }
@@ -371,10 +374,13 @@ export class Ambush {
                         const firstPath = paths.slice(0, 60);
                         result.addPath(this.toPointPath(firstPath));
 
-                        // Compute fixed teeth params from arc-only geometry
+                        // Compute teeth params from arc-only geometry. Prefer the true circle
+                        // center (in map space) so each tooth points radially inward — the
+                        // extent center is only a fallback.
+                        const arcCenterPt = this.view.toMap({ x: circle.center.x, y: circle.center.y } as any);
                         const midPt = new Point({ x: firstPath[30][0], y: firstPath[30][1], spatialReference: this.view.spatialReference });
                         const extent = result.extent;
-                        const centerPt = extent ? extent.center : null;
+                        const centerPt = arcCenterPt || (extent ? extent.center : null);
                         const length = Utils.calculateDistance(endPt, midPt) / 10;
                         const teethSize = length * this.setDefault(drawEssentials, "TEETH_SIZE", this._teethSize);
                         const angle = centerPt ? Utils.calculateAngle(centerPt, midPt) : 0;
@@ -389,9 +395,9 @@ export class Ambush {
                         connectionPath.push([lastPt.x, lastPt.y]);
                         result.addPath(this.toPointPath(connectionPath));
 
-                        // Add teeth with fixed angle/size (won’t follow mouse)
+                        // Per-point radial teeth (won’t follow mouse)
                         if (centerPt) {
-                            this.addTeethFromArc(firstPath, angle, teethSize, teethGap, result);
+                            this.addTeethFromArc(firstPath, angle, teethSize, teethGap, result, centerPt);
                         }
 
                         // Add arrow head
@@ -438,16 +444,18 @@ export class Ambush {
         }
     }
 
-    private addTeethFromArc(firstPath: number[][], angle: number, teethSize: number, teethGap: number, polyline: Polyline): void {
+    private addTeethFromArc(firstPath: number[][], angle: number, teethSize: number, teethGap: number, polyline: Polyline, centerPt?: Point | null): void {
         try {
             if (!firstPath || firstPath.length < 30) return;
             for (let i = teethGap; i < 60; i += teethGap) {
                 if (firstPath[i]) {
-                    const teethPath = this.createTeeth(
-                        new Point({ x: firstPath[i][0], y: firstPath[i][1], spatialReference: this.view.spatialReference }),
-                        angle,
-                        teethSize
-                    );
+                    const arcPt = new Point({ x: firstPath[i][0], y: firstPath[i][1], spatialReference: this.view.spatialReference });
+                    // Each tooth points radially inward (center -> arc point). Using a fixed
+                    // angle works for shallow arcs but makes teeth point the wrong way once the
+                    // arc closes toward a full circle. A per-point angle keeps them correct for
+                    // any arc span. Falls back to the fixed angle if the center is unavailable.
+                    const teethAngle = centerPt ? Utils.calculateAngle(centerPt, arcPt) : angle;
+                    const teethPath = this.createTeeth(arcPt, teethAngle, teethSize);
                     polyline.addPath(this.toPointPath(teethPath));
                 }
             }
