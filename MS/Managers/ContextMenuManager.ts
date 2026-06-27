@@ -508,7 +508,10 @@ class ContextMenuManager extends Evented {
     if (graphicType && this.menuItems.has(graphicType)) {
       items = this.menuItems.get(graphicType)!;
     } else if (this.menuItems.size > 0) {
-      items = this.menuItems.values().next().value;
+      // Fallback to the first registered set. Most drawn graphics carry a
+      // graphicType that isn't an exact menuItems key, so this fallback is what
+      // actually surfaces their context menu — do not remove it.
+      items = this.menuItems.values().next().value ?? [];
     } else {
       console.warn(`No menu items registered for graphic type: ${graphicType}`);
       return;
@@ -1424,11 +1427,13 @@ class ContextMenuManager extends Evented {
       this.activeGraphic.attributes?.type;
 
     // Resolve items: exact type match → fallback to first registered set
+    // (kept intentionally — drawn graphics often don't match an exact key and
+    // rely on this fallback to resolve their menu actions).
     let items: ContextMenuItem[];
     if (graphicType && this.menuItems.has(graphicType)) {
       items = this.menuItems.get(graphicType)!;
     } else if (this.menuItems.size > 0) {
-      items = this.menuItems.values().next().value;
+      items = this.menuItems.values().next().value ?? [];
     } else {
       return;
     }

@@ -79,10 +79,13 @@ export function castTerrainRay(sampler, observer, target, {
   stepDistM      = 20,      // elevation sample interval along ray
   observerHeightM = 2,      // eye height above terrain
 } = {}) {
-  const groundDist = Math.sqrt(
-    (target.lon - observer.longitude) ** 2 +  // approximate for short distances
-    (target.lat - observer.latitude) ** 2
-  ) * 111_320; // deg → m, rough
+  // Equirectangular approximation: longitude degrees shrink by cos(lat), so the
+  // east-west delta MUST be scaled or distance is overstated (≈1.4x at 45°, 2x at
+  // 60°), which biases every intervisibility result toward "visible".
+  const cosLat = Math.cos((observer.latitude * Math.PI) / 180);
+  const dLon = (target.lon - observer.longitude) * cosLat;
+  const dLat = target.lat - observer.latitude;
+  const groundDist = Math.sqrt(dLon ** 2 + dLat ** 2) * 111_320; // deg → m
 
   const obsGroundZ = sampler.queryElevation(observer)?.z ?? 0;
   const obsZ = obsGroundZ + observerHeightM;

@@ -38,37 +38,45 @@ export const SYMBOL_LAYER_IDS: readonly string[] = [
 ];
 
 // Singleton pattern to ensure layers are created only once per view
+let _glmViewSeq = 0;
 class GraphicsLayerManager {
     private static instances: Map<string, GraphicsLayerManager> = new Map();
     private layers: Map<string, GraphicsLayer> = new Map();
     private view: MapView | SceneView;
     private viewId: string;
 
-    private constructor(view: MapView | SceneView) {
+    private constructor(view: MapView | SceneView, viewId: string) {
         this.view = view;
-        // Create a unique identifier for the view based on its type and container id
-        this.viewId = `${view.type}-${view.container?.id || Date.now()}`;
+        this.viewId = viewId;
     }
 
-    // Factory method that returns the existing instance or creates a new one
+    // Factory method that returns the existing instance or creates a new one.
     public static getInstance(view: MapView | SceneView): GraphicsLayerManager {
-        // Generate view identifier based on type and other properties
-        const viewType = view.type; // '2d' or '3d'
-        const containerId = view.container?.id || "unknown";
-        const viewId = `${viewType}-${containerId}`;
-
-        if (!this.instances.has(viewId)) {
-            this.instances.set(viewId, new GraphicsLayerManager(view));
+        // Key by type + container id. Fall back to a stable per-view id (cached on
+        // the view) rather than "unknown"/Date.now(), so two container-less views of
+        // the same type can't collide onto one manager, and getInstance() and the
+        // constructor agree on the same key.
+        let containerId = view.container?.id;
+        if (!containerId) {
+            containerId = (view as any).__glmViewId
+                || ((view as any).__glmViewId = `view-${++_glmViewSeq}`);
         }
+        const viewId = `${view.type}-${containerId}`;
 
-        return this.instances.get(viewId)!;
+        const cached = this.instances.get(viewId);
+        // Rebuild if the view was destroyed and recreated in the same container,
+        // so we never return layers bound to a dead view.
+        if (cached && cached.view === view) return cached;
+
+        const mgr = new GraphicsLayerManager(view, viewId);
+        this.instances.set(viewId, mgr);
+        return mgr;
     }
 
     public initializeLayers(): void {
         // Initialize standard layers
         this.getOrCreateLayer(LAYER_NAMES.TACT);
         this.getOrCreateLayer(LAYER_NAMES.TACT_PT);
-        this.getOrCreateLayer(LAYER_NAMES.TACT);
         this.getOrCreateLayer(LAYER_NAMES.FORCE);
         this.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
 

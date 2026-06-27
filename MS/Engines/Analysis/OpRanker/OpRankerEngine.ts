@@ -215,6 +215,11 @@ export class OpRankerEngine {
     const cols = Math.max(8, Math.ceil((padM * 2) / cellM));
     const rows = Math.max(8, Math.ceil((padM * 2) / cellM));
 
+    // Elevation sampler created once over the AO and shared across all candidates.
+    // This is the required 8th arg of _computeViewshedRaster — its absence made
+    // this headless API throw a TypeError on the first candidate.
+    const sampler = await (this._view as any).map.ground.createElevationSampler(extent, { noDataValue: 0 });
+
     const rasters: Uint8Array[] = [];
     const obsZs: number[] = [];
     for (const pt of points) {
@@ -224,7 +229,7 @@ export class OpRankerEngine {
         obsZ = ((er?.geometry?.z ?? 0) as number) + eyeH;
       } catch {}
       obsZs.push(obsZ);
-      const { raster } = await this._computeViewshedRaster(pt, obsZ, extent, cols, rows, cellM, maxRangeM);
+      const { raster } = await this._computeViewshedRaster(pt, obsZ, extent, cols, rows, cellM, maxRangeM, sampler);
       rasters.push(raster);
     }
 
@@ -248,7 +253,10 @@ export class OpRankerEngine {
     const ranked = points.map((point, index) => {
       const s = result.opStats[index];
       const normElev = (elevAdvs[index] - minElev) / elevRange;
-      const composite = Math.round((W_UNIQUE * (s.uniquePct / 100) + W_TOTAL * (s.totalPct / 100) + W_ELEV * normElev) * 100);
+      // Neutral mutual (0) + neutral access (0.35 — the interactive no-road default)
+      // so headless uses the SAME formula/weights as the panel and isn't capped near
+      // 0.80. Full mutual-LOS parity in headless is a deferred enhancement (no live caller).
+      const composite = OpRankerEngine._composite(s.uniquePct / 100, s.totalPct / 100, normElev, 0, 0.35);
       return {
         point, rank: 0,
         uniquePct: s?.uniquePct ?? 0,
@@ -998,13 +1006,31 @@ export class OpRankerEngine {
                     : 0.15;
       }
 
-      const raw = W_UNIQUE  * uniqueFrac
-                + W_TOTAL   * totalFrac
-                + W_ELEV    * normElev
-                + W_MUTUAL  * normMutual
-                + W_ACCESS  * accessScore;
-      op.compositeScore = Math.round(raw * 100);
+      op.compositeScore = OpRankerEngine._composite(uniqueFrac, totalFrac, normElev, normMutual, accessScore);
     });
+  }
+
+  /**
+   * Single source of truth for the 5-term composite OP score, so the interactive
+   * and headless paths can't drift. (Headless previously inlined only 3 terms —
+   * omitting mutual-LOS and access — which capped its scores near 0.80 and
+   * diverged from the panel ordering.)
+   */
+  private static _composite(
+    uniqueFrac: number,
+    totalFrac: number,
+    normElev: number,
+    normMutual: number,
+    accessScore: number,
+  ): number {
+    return Math.round(
+      (W_UNIQUE * uniqueFrac +
+        W_TOTAL * totalFrac +
+        W_ELEV * normElev +
+        W_MUTUAL * normMutual +
+        W_ACCESS * accessScore) *
+        100,
+    );
   }
 
   private async _computeViewshedRaster(

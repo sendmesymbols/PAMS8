@@ -1159,7 +1159,7 @@ class SelectionEngine {
 
         const centroids = graphics.map(g => this._centroid(g));
         const snapshots = graphics.map((g, i) => ({
-            graphic: g, prevGeom: g.geometry.clone(), prevCtrlPts: null as any
+            graphic: g, prevGeom: g.geometry.clone(), prevCtrlPts: this._snapshotDe(g)
         }));
 
         if (axis === "horizontal") {
@@ -1264,7 +1264,7 @@ class SelectionEngine {
         const spacing = spacingOverride ?? this._computeSpacing(graphics);
 
         const snapshots = graphics.map(g => ({
-            graphic: g, prevGeom: g.geometry.clone(), prevCtrlPts: null as any
+            graphic: g, prevGeom: g.geometry.clone(), prevCtrlPts: this._snapshotDe(g)
         }));
 
         // Centre of the formation = collective centroid of current positions
@@ -1467,8 +1467,53 @@ class SelectionEngine {
     }
 
     /** Snapshot geometries before a bulk operation so undo can restore them. */
-    private _snapshots(graphics: Graphic[]): { graphic: Graphic; prevGeom: any }[] {
-        return graphics.map(g => ({ graphic: g, prevGeom: g.geometry?.clone() }));
+    private _snapshots(graphics: Graphic[]): { graphic: Graphic; prevGeom: any; prevCtrlPts: any }[] {
+        return graphics.map(g => ({ graphic: g, prevGeom: g.geometry?.clone(), prevCtrlPts: this._snapshotDe(g) }));
+    }
+
+    /** Clone a Point-like / geometry value, preferring the esri .clone(). */
+    private _clonePtLike(p: any): any {
+        return p?.clone?.() ?? (p && typeof p === "object" ? { ...p } : p);
+    }
+
+    /**
+     * Deep-clone the control-point structures held on a graphic's drawEssentials
+     * (CTRL_PTS / BASE_LN_PTS / GEOM / OPTIONS.GEOM). Align/Arrange shift these in
+     * `_applyDelta`, so undo/redo MUST restore them alongside geometry — otherwise
+     * the stored control points stay at the moved position and the next edit,
+     * re-render, or save reads the desynced points and corrupts the symbol.
+     */
+    private _snapshotDe(g: Graphic): any | null {
+        const de = g.attributes?.drawEssentials as any;
+        if (!de) return null;
+        const snap: any = {};
+        if (de.CTRL_PTS) snap.CTRL_PTS = de.CTRL_PTS.map((p: any) => this._clonePtLike(p));
+        if (de.BASE_LN_PTS) snap.BASE_LN_PTS = {
+            ...de.BASE_LN_PTS,
+            startPt: this._clonePtLike(de.BASE_LN_PTS.startPt),
+            midPt: this._clonePtLike(de.BASE_LN_PTS.midPt),
+            endPt: this._clonePtLike(de.BASE_LN_PTS.endPt),
+        };
+        if (de.GEOM) snap.GEOM = this._clonePtLike(de.GEOM);
+        if (de.OPTIONS?.GEOM) snap.OPTIONS_GEOM = this._clonePtLike(de.OPTIONS.GEOM);
+        return snap;
+    }
+
+    /** Restore a drawEssentials control-point snapshot produced by `_snapshotDe`.
+     *  Re-clones so the stored snapshot stays pristine across repeated undo/redo. */
+    private _restoreDe(g: Graphic, snap: any | null): void {
+        if (!snap) return;
+        const de = g.attributes?.drawEssentials as any;
+        if (!de) return;
+        if ("CTRL_PTS" in snap) de.CTRL_PTS = (snap.CTRL_PTS || []).map((p: any) => this._clonePtLike(p));
+        if ("BASE_LN_PTS" in snap) de.BASE_LN_PTS = {
+            ...snap.BASE_LN_PTS,
+            startPt: this._clonePtLike(snap.BASE_LN_PTS?.startPt),
+            midPt: this._clonePtLike(snap.BASE_LN_PTS?.midPt),
+            endPt: this._clonePtLike(snap.BASE_LN_PTS?.endPt),
+        };
+        if ("GEOM" in snap) de.GEOM = this._clonePtLike(snap.GEOM);
+        if ("OPTIONS_GEOM" in snap) de.OPTIONS = { ...de.OPTIONS, GEOM: this._clonePtLike(snap.OPTIONS_GEOM) };
     }
 
     /**
@@ -1680,13 +1725,15 @@ class SelectionEngine {
 
     private _pushAlignUndo(
         label: string,
-        snapshots: { graphic: Graphic; prevGeom: any }[],
+        snapshots: { graphic: Graphic; prevGeom: any; prevCtrlPts?: any }[],
         onEntry?: (e: any) => void
     ): void {
         if (!onEntry) return;
+        // Capture the post-move state (geometry + control points) for redo.
         const afterStates = snapshots.map(s => ({
             graphic: s.graphic,
             afterGeom: s.graphic.geometry.clone(),
+            afterCtrlPts: this._snapshotDe(s.graphic),
         }));
 
         onEntry({
@@ -1694,12 +1741,14 @@ class SelectionEngine {
             undo: () => {
                 snapshots.forEach(s => {
                     s.graphic.geometry = s.prevGeom;
+                    this._restoreDe(s.graphic, s.prevCtrlPts);
                     this._annotationRefresh?.(s.graphic);
                 });
             },
             redo: () => {
                 afterStates.forEach(s => {
                     s.graphic.geometry = s.afterGeom;
+                    this._restoreDe(s.graphic, s.afterCtrlPts);
                     this._annotationRefresh?.(s.graphic);
                 });
             },

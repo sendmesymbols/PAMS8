@@ -297,8 +297,7 @@ export class ObstacleRestrictedZone {
             return this.applySawtooth(base);
 
         } catch (e) {
-            console.error(e);
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            /* invalid geometry mid-draw is expected; ignore */
             return null;
         }
     }

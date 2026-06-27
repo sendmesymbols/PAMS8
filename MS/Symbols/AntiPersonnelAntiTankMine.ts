@@ -14,7 +14,7 @@ import Amplifier from "../Support/Amplifier";
 import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
-import Utils from "../Support/Utils.ts";
+import Utils from "../Support/utils.ts";
 
 import SymbolEvents from "../Support/SymbolEvents";
 import {
@@ -329,7 +329,7 @@ export class AntiPersonnelAntiTankMine {
             return result;
             
         } catch (e) {
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            /* invalid geometry mid-draw is expected; ignore */
             return null;
         }
     }

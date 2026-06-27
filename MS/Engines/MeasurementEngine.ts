@@ -468,7 +468,9 @@ class MeasurementEngine {
 
         const height = this._segLen(ll, ul);
         const width  = this._segLen(ll, lr);
-        const area   = this._area(this._extentToPolygon(ext));
+        // Use the actual polygon rings for area (not the bounding box, which
+        // overstates diagonal/thin/rotated shapes); polylines/points have no area.
+        const area   = geom.type === "polygon" ? this._area(geom as Polygon) : "";
 
         let total = "";
         if (geom.type === "polyline") {

@@ -105,16 +105,25 @@ export default class CombatPowerEngine {
   }
 
   /**
-   * Affiliation from the 2525 standard-identity field (positions 3-4). The
-   * affiliation digit is the 4th character: 2/3 = friendly, 5/6 = hostile,
-   * 4 = neutral, 0/1 = pending/unknown.
+   * Affiliation from the 2525 standard-identity field (the 2-digit value at
+   * positions 3-4 = substring(2,4)). The full two-digit code must be matched:
+   * reading only charAt(3) mis-maps presentation/colour identities 07-19
+   * (e.g. 12->'2'->friendly, 15->'5'->hostile). Mirrors classifyAffiliation.
    */
   private _affiliationOf(sidc: string): Affiliation {
-    const d = sidc.charAt(3);
-    if (d === '2' || d === '3') return 'friendly';
-    if (d === '5' || d === '6') return 'hostile';
-    if (d === '4') return 'neutral';
-    return 'unknown';
+    const id = sidc.length >= 4 ? sidc.substring(2, 4) : '';
+    switch (id) {
+      case '02': // assumed friend
+      case '03': // friend
+        return 'friendly';
+      case '05': // suspect / joker
+      case '06': // hostile / faker
+        return 'hostile';
+      case '04': // neutral
+        return 'neutral';
+      default:   // 00 pending, 01 unknown, 07-25 presentation colours
+        return 'unknown';
+    }
   }
 
   /** Echelon code = SIDC positions 9-10. '00' (none) maps to NO_ECHELON. */

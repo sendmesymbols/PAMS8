@@ -11,7 +11,7 @@ import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import BaseLine from "../Support/BaseLine.ts";
 import Shapes from "../Support/Shapes.ts";
-import Utils from "../Support/Utils.ts";
+import Utils from "../Support/utils.ts";
 
 import SymbolEvents from "../Support/SymbolEvents";
 export interface CLineOfDenialOptions {
@@ -289,8 +289,7 @@ export class CLineOfDenial {
 
             return result;
         } catch (e) {
-            console.error(e);
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            /* invalid geometry mid-draw is expected; ignore */
             return null;
         }
     }

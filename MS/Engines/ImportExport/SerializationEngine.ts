@@ -511,10 +511,12 @@ class SerializationEngine {
     }
 
     let count = 0;
+    let failed = 0;
+    let skippedForeign = 0;
     for (const feature of geojson.features) {
       try {
         const props = feature.properties ?? {};
-        if (!props.pams8) continue;
+        if (!props.pams8) { skippedForeign++; continue; }
 
         const deData = props.drawEssentials ?? {};
         const deOut: any = { ...deData };
@@ -560,11 +562,20 @@ class SerializationEngine {
           drawEssentials: deOut,
         });
         count++;
-      } catch {
-        /* skip */
+      } catch (e) {
+        failed++;
+        EngineLogger.error(SerializationEngine.ENGINE_NAME, `Skipped a GeoJSON feature that failed to import: ${(e as Error)?.message ?? String(e)}`);
       }
     }
-    EngineLogger.success(SerializationEngine.ENGINE_NAME, `Imported ${count} symbols from GeoJSON`);
+    if (count > 0) {
+      EngineLogger.success(SerializationEngine.ENGINE_NAME, `Imported ${count} symbols from GeoJSON`);
+    }
+    if (failed > 0) {
+      EngineLogger.error(SerializationEngine.ENGINE_NAME, `${failed} feature(s) could not be imported and were skipped`);
+    }
+    if (count === 0 && skippedForeign > 0) {
+      EngineLogger.error(SerializationEngine.ENGINE_NAME, `No PAMS8 symbols imported — ${skippedForeign} feature(s) are not PAMS8 GeoJSON (missing the 'pams8' property)`);
+    }
   }
 
   /** Download all symbols as a standard GeoJSON file. */

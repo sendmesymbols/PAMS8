@@ -258,10 +258,12 @@ export class GeoTools {
          * Calculate distance between two points
          */
         static distance(from: Point, to: Point, unit: string): number {
-            const dLat = this.degreesToRadians(to.y - from.y);
-            const dLon = this.degreesToRadians(to.x - from.x);
-            const lat1 = this.degreesToRadians(from.y);
-            const lat2 = this.degreesToRadians(to.y);
+            const gFrom = this._toGeographic(from);
+            const gTo = this._toGeographic(to);
+            const dLat = this.degreesToRadians(gTo.y - gFrom.y);
+            const dLon = this.degreesToRadians(gTo.x - gFrom.x);
+            const lat1 = this.degreesToRadians(gFrom.y);
+            const lat2 = this.degreesToRadians(gTo.y);
             const a = Math.pow(Math.sin(dLat / 2), 2) + Math.pow(Math.sin(dLon / 2), 2) * Math.cos(lat1) * Math.cos(lat2);
             return this.radiansToLength(2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)), unit);
         }
@@ -313,6 +315,12 @@ export class GeoTools {
             currentDashLength = dashArrayFinal[dashIndex++ % dashArrayFinal.length];
         }
 
+        // The loop stops one partial dash short of the endpoint; push a terminal
+        // point so the dashed line actually reaches (x2, y2) instead of leaving a gap.
+        if (distRemaining > 1e-9) {
+            points.push(new Point({ x: x2, y: y2, spatialReference }));
+        }
+
         return points;
     }
 
@@ -320,15 +328,30 @@ export class GeoTools {
     /**
      * Calculate bearing between two points
      */
+    /**
+     * Convert a point to geographic (lon/lat) degrees when it is in a projected
+     * spatial reference (e.g. Web Mercator). The great-circle formulas in
+     * bearing()/distance() assume degrees, so a projected point fed in raw
+     * (metres) produces a meaningless result. Mirrors the guard in destination().
+     */
+    private static _toGeographic(p: Point): Point {
+        const sr = p.spatialReference;
+        return sr && !sr.isGeographic
+            ? (webMercatorUtils.webMercatorToGeographic(p) as Point)
+            : p;
+    }
+
     static bearing(start: Point, end: Point, final?: boolean): number {
         if (final === true) {
             return this.calculateFinalBearing(start, end);
         }
 
-        const lon1 = this.degreesToRadians(start.x);
-        const lon2 = this.degreesToRadians(end.x);
-        const lat1 = this.degreesToRadians(start.y);
-        const lat2 = this.degreesToRadians(end.y);
+        const gStart = this._toGeographic(start);
+        const gEnd = this._toGeographic(end);
+        const lon1 = this.degreesToRadians(gStart.x);
+        const lon2 = this.degreesToRadians(gEnd.x);
+        const lat1 = this.degreesToRadians(gStart.y);
+        const lat2 = this.degreesToRadians(gEnd.y);
 
         const a = Math.sin(lon2 - lon1) * Math.cos(lat2);
         const b = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);

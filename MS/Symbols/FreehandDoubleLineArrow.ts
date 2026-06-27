@@ -10,7 +10,7 @@ import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
-import Utils from "../Support/Utils";
+import Utils from "../Support/utils";
 import SymbolEvents from "../Support/SymbolEvents";
 export interface FreehandDoubleLineArrowOptions {
     CTRL_PTS?: Point[];
@@ -431,7 +431,7 @@ export class FreehandDoubleLineArrow {
             return result;
 
         } catch (e) {
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            /* invalid geometry mid-draw is expected; ignore */
             return null;
         }
     }

@@ -17,6 +17,7 @@ import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import SpatialReference from '@arcgis/core/geometry/SpatialReference';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
+import * as projectOperator from '@arcgis/core/geometry/operators/projectOperator';
 
 //import  from "esri/core/reactiveUtils";
 
@@ -238,6 +239,12 @@ class SymbolEngine implements Evented {
 
   constructor(viewProvider: () => MapView | SceneView) {
     this._getView = viewProvider;
+    // Pre-load the general projection operator (fire-and-forget) so reProject can
+    // synchronously project arbitrary (non-WebMercator) spatial references when a
+    // scenario is later loaded. Surfaced lazily in reProject if not yet ready.
+    projectOperator.load().catch(() => {
+      /* readiness is checked via projectOperator.isLoaded() in reProject */
+    });
     this._layerManager = GraphicsLayerManager.getInstance(this.view);
     this._layerManager.initializeLayers();
     this._editEngine = new EditEngine(viewProvider, this._layerManager);
@@ -585,6 +592,9 @@ class SymbolEngine implements Evented {
     // listeners (and the discarded-view reference) don't leak across the switch.
     this._cancelActiveDraw();
     this._editEngine.deactivate();
+    // Cancel any armed paste mode bound to the old view so its click/keydown
+    // listeners don't leak across the switch.
+    this._clipboardEngine.cancelPasteMode();
     this._layerManager = GraphicsLayerManager.getInstance(newView);
     this._layerManager.initializeLayers();
     this._clipboardEngine.rewireLayerManager(this._layerManager);
@@ -1369,6 +1379,20 @@ class SymbolEngine implements Evented {
         run: () => this._selectionEngine.selectAll(),
       },
       {
+        id: 'selection.lasso',
+        label: 'Lasso Select',
+        hint: 'Draw a polygon to select enclosed symbols — hotkey: L',
+        keywords: ['lasso', 'select', 'polygon', 'marquee', 'area', 'draw'],
+        run: () => this._selectionEngine.lassoSelect(),
+      },
+      {
+        id: 'selection.lassoSubtract',
+        label: 'Subtract Lasso',
+        hint: 'Draw a polygon to deselect enclosed symbols — hotkey: Alt+L',
+        keywords: ['lasso', 'subtract', 'deselect', 'remove', 'polygon'],
+        run: () => this._selectionEngine.lassoSelect({ subtract: true }),
+      },
+      {
         id: 'selection.invert',
         label: 'Invert Selection',
         hint: 'Select what is not selected, deselect what is',
@@ -2051,26 +2075,28 @@ class SymbolEngine implements Evented {
     );
     if (d?.labels?.enabled === true) this._labelPlacer.enable();
 
-    // MarkerDisperser — radial fan-out for symbols stacked at the same
-    // point at high zoom. Complements clustering (which handles dense
-    // scenes at low/mid zoom).
-    this._markerDisperser = new MarkerDisperser(
-      this._getView,
-      this._layerManager,
-      this._declutterEngine,
-    );
-    if (d?.disperse?.enabled === true) this._markerDisperser.enable();
-
     // LadderEngine — vertical-stack ("flag halyard") alternative to the
     // radial disperser at high zoom. Same activation range as Disperse;
-    // when both are enabled, ladder claims qualifying stacks first
-    // (via __ladderRung guard) and disperser handles the residue.
+    // when both are enabled, ladder must claim qualifying stacks FIRST (via the
+    // __ladderRung guard), so it must register its solve step before the
+    // disperser. Solve steps run in registration order, so LadderEngine is
+    // constructed + enabled ahead of MarkerDisperser below.
     this._ladderEngine = new LadderEngine(
       this._getView,
       this._layerManager,
       this._declutterEngine,
     );
     if (d?.ladder?.enabled === true) this._ladderEngine.enable();
+
+    // MarkerDisperser — radial fan-out for symbols stacked at the same
+    // point at high zoom. Complements clustering (which handles dense
+    // scenes at low/mid zoom). Registered after Ladder so ladder wins shared stacks.
+    this._markerDisperser = new MarkerDisperser(
+      this._getView,
+      this._layerManager,
+      this._declutterEngine,
+    );
+    if (d?.disperse?.enabled === true) this._markerDisperser.enable();
   }
 
   // -----------------------------------------------------------------------
@@ -2916,12 +2942,33 @@ class SymbolEngine implements Evented {
       if (projected) return projected;
     }
 
-    // Fallback: keep coordinates and retag SR so downstream draw code stays consistent.
-    return new Point({
-      x: point.x,
-      y: point.y,
-      spatialReference,
-    });
+    // Arbitrary SR pair (UTM, State Plane, non-default geographic, ...): use the
+    // general projection operator (pre-loaded in the constructor). execute() is
+    // synchronous once loaded, so initialize() stays synchronous.
+    if (projectOperator.isLoaded()) {
+      try {
+        const projected = projectOperator.execute(point, spatialReference) as Point | null;
+        if (projected) return projected;
+        EngineLogger.error(
+          'Symbol Engine',
+          `reProject ${srcWkid} -> ${dstWkid} returned no geometry; left in source SR (symbol may misplace).`,
+        );
+      } catch (e) {
+        EngineLogger.error(
+          'Symbol Engine',
+          `reProject ${srcWkid} -> ${dstWkid} failed: ${(e as Error)?.message ?? String(e)}; left in source SR.`,
+        );
+      }
+    } else {
+      EngineLogger.error(
+        'Symbol Engine',
+        `Cannot reproject ${srcWkid} -> ${dstWkid}: projection engine not ready; geometry left in source SR (symbol may misplace).`,
+      );
+    }
+
+    // No silent retag: never stamp the target SR onto unconverted coordinates —
+    // that silently misplaces symbols. Preserve the original point + SR instead.
+    return point;
   }
 
   createSymbolCacheKey(options: SymbolOptions, scaleFactor: number): string {
@@ -3265,48 +3312,18 @@ class SymbolEngine implements Evented {
       this._suppressDrawLifecycleCount++;
       this._suppressNextAddUndoCount++;
 
-      // ── [Morphix DEBUG] remove after diagnosis ───────────────────────────
-      const _dbgDe = editedState.drawEssentials as any;
-      console.log('[Morphix DEBUG] applyMorphixEdit → initialize', {
-        oldId,
-        oldGeomType: (oldGraphic.geometry as any)?.type,
-        SYM_GEO_TYPE: _dbgDe?.SYM_GEO_TYPE,
-        symbolKey: editedState.symbolKey,
-        sidc: editedState.sidc,
-        hasGEOM: !!_dbgDe?.GEOM,
-        ctrlPtsLen: Array.isArray(_dbgDe?.CTRL_PTS) ? _dbgDe.CTRL_PTS.length : 'none',
-        hasBASE_LN_PTS: !!_dbgDe?.BASE_LN_PTS,
-        hasOPTIONS: !!_dbgDe?.OPTIONS,
-        UNIQUE_DESIG: editedState.amplifier?.UNIQUE_DESIG,
-        opacity: _dbgDe?.opacity,
-        DRAW_TYPE: _dbgDe?.DRAW_TYPE,
-      });
-      // ─────────────────────────────────────────────────────────────────────
-
       this.initialize(
         editedState.drawEssentials,
         editedState.amplifier,
         true,
       );
 
-      const _viaLastCreated = !!this._lastCreatedGraphic;
       const newGraphic =
         this._lastCreatedGraphic ||
         Array.from(this._layerManager.getSymbolLayer().graphics).find(
           (g: any) => g.attributes?.id === oldId,
         ) ||
         null;
-
-      // ── [Morphix DEBUG] remove after diagnosis ───────────────────────────
-      console.log('[Morphix DEBUG] applyMorphixEdit ← initialize result', {
-        oldId,
-        synchronousEmit: _viaLastCreated,
-        newGraphicFound: !!newGraphic,
-        newGraphicId: newGraphic?.attributes?.id,
-        newGeomType: (newGraphic?.geometry as any)?.type,
-        newLayerId: (newGraphic?.origin?.layer as any)?.id,
-      });
-      // ─────────────────────────────────────────────────────────────────────
 
       this._suppressDrawLifecycleCount = suppressBefore;
       this._pendingAttrs = previousPendingAttrs;

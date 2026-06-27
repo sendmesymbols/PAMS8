@@ -346,11 +346,16 @@ export class BaseLine {
         }
     }
 
-    public on(eventName: string, callback: Function): void {
+    public on(eventName: string, callback: Function): { remove: () => void } {
         if (!this.eventListeners.has(eventName)) {
             this.eventListeners.set(eventName, []);
         }
         this.eventListeners.get(eventName)!.push(callback);
+        // Return a removable handle. ~20 symbol classes do
+        // `this.baseLineClickHandler = baseLine.on(...)` then guard cleanup with
+        // `if (handler) handler.remove()`; previously on() returned void, so that
+        // cleanup was permanently dead. Callers that ignore the return are unaffected.
+        return { remove: () => this.off(eventName, callback) };
     }
 
     public off(eventName: string, callback?: Function): void {

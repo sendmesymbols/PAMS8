@@ -1119,10 +1119,12 @@ export class KeyTerrainIdentificationEngine {
           const z = sampler.queryElevation(scratchPt)?.z ?? 0;
           const slope = (Math.atan2(z - obsZ, dist) * 180) / Math.PI;
           total++;
-          if (slope >= maxSlopeDeg) {
-            visible++;
-            maxSlopeDeg = slope;
-          }
+          // Visible iff this cell rises above the horizon set by all CLOSER cells
+          // (the running max) — test BEFORE raising the horizon, and skip the first
+          // step (trivially above the -90 seed). The previous form counted every
+          // horizon-advancing step, which scored rising valleys ~100% and peaks low.
+          if (s > 1 && slope >= maxSlopeDeg) visible++;
+          if (slope > maxSlopeDeg) maxSlopeDeg = slope;
         }
       }
 

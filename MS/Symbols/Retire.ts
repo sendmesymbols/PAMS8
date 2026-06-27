@@ -352,9 +352,7 @@ export class Retire {
 
       return result;
     } catch (e) {
-      console.log(
-        this.declaredClass + ' Cannot create Symbol due to invalid geometry',
-      );
+      /* invalid geometry mid-draw is expected; ignore */
       return new Polyline({ spatialReference: this.view.spatialReference });
     }
   }

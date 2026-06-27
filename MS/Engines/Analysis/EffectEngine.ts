@@ -321,16 +321,12 @@ export class EffectEngine {
     const showDome    = this._inp('effects-opt-dome')?.checked ?? true;
     const domeOpacity = Number(this._inp('effects-dome-opacity')?.value ?? 95) / 100;
 
-    const munKey = this._inp('effects-inp-munition')?.value ?? 'mortar_81mm';
-    const struct = this._inp('effects-inp-structure')?.value ?? 'open_area';
-    const tntOvStr2 = this._inp('effects-inp-tnt')?.value?.trim() ?? '';
-    const tntOvParsed2 = tntOvStr2 !== '' ? parseFloat(tntOvStr2) : NaN;
-    const tntOv = Number.isFinite(tntOvParsed2) ? tntOvParsed2 : null;
-    const hOv    = parseFloat(this._inp('effects-inp-height')?.value ?? '0') || 0;
-
     this._strikes.forEach(s => {
-      // Recompute with current panel values
-      s.result = computeEffects(munKey, struct, tntOv, hOv);
+      // Recompute each strike from ITS OWN stored munition / structure / overrides
+      // (captured in _addStrike), so multiple strikes with different munitions can
+      // coexist. The panel controls configure the NEXT strike to be placed — they
+      // must not retroactively homogenise already-placed strikes.
+      s.result = computeEffects(s.munKey, s.struct, s.tntOv, s.hOv);
 
       // Rings
       const ringGfx = this._buildRingGraphics(s.point, s.result, { asDonut: donut, showLabels: labels });

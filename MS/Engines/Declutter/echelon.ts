@@ -49,6 +49,18 @@ export function getIdentityCode(g: Graphic): string {
   const attrs = g.attributes ?? {};
   const de = attrs.drawEssentials;
   const sidc: string = de?.SIDC || attrs.sidc || attrs.SIDC || "";
+  // 2525C (15-char): affiliation is a LETTER at index 1 — map it to the numeric
+  // taxonomy the consumers (cluster / ladder / priority) compare against
+  // ("2"/"3" friend, "5"/"6"/"7" hostile, "4" neutral), mirroring getEchelonCode's
+  // length-awareness. Previously the raw letter matched none of those, so 2525C
+  // friend and hostile symbols were lumped together as "other".
+  if (sidc.length === 15) {
+    const a = sidc.charAt(1).toUpperCase();
+    if (a === "F" || a === "A" || a === "D" || a === "M") return "3"; // friend
+    if (a === "H" || a === "S" || a === "J" || a === "K") return "6"; // hostile
+    if (a === "N" || a === "L") return "4";                            // neutral
+    return "";                                                         // pending/unknown
+  }
   if (sidc.length >= 2) return sidc.charAt(1);
   return "";
 }

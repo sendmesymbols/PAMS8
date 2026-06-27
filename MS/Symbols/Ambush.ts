@@ -11,7 +11,7 @@ import Amplifier from "../Support/Amplifier";
 import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
-import Utils from "../Support/Utils.ts";
+import Utils from "../Support/utils.ts";
 import SymbolEvents from "../Support/SymbolEvents";
 // import type SpatialReference from "@arcgis/core/geometry/SpatialReference";
 
@@ -224,7 +224,15 @@ export class Ambush {
             spatialReference: this.view.spatialReference
         });
         
-        this._points.push(point);
+        // Avoid a duplicate trailing vertex: the finishing click was already
+        // pushed by _onClickHandler, so only add this point if it isn't
+        // coincident with the last (a zero-length final segment feeds NaN into
+        // arrow-head / angle math).
+        const last = this._points[this._points.length - 1];
+        const eps = ((this.view as any).resolution ?? 0) || 1e-6;
+        if (!last || Math.abs(point.x - last.x) > eps || Math.abs(point.y - last.y) > eps) {
+            this._points.push(point);
+        }
         this.cleanUp();
     }
 
@@ -412,8 +420,7 @@ export class Ambush {
             return result;
             
         } catch (e) {
-            console.error(e);
-            console.log(this.constructor.name + ' Cannot create Symbol due to invalid geometry');
+            /* invalid geometry mid-draw is expected; ignore */
             return null;
         }
     }

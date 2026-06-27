@@ -593,7 +593,14 @@ export class TrajectoryEngine {
       t += dt;
     }
 
-    termIdx = pts.length - 1;   // default: no terminal phase found → collapses to zero length at end
+    // Default terminal phase = the final ~25% of the post-apogee descent, so a
+    // flat / direct-fire trajectory (whose descent speed never reaches 25% of
+    // muzzle velocity) still renders a non-empty terminal segment instead of
+    // collapsing to a single discarded point.
+    const postApogee = pts.length - 1 - apogeeIdx;
+    termIdx = postApogee > 0
+      ? pts.length - 1 - Math.max(1, Math.floor(postApogee * 0.25))
+      : pts.length - 1;
     for (let i = apogeeIdx + 1; i < pts.length; i++) {
       if (Math.abs(pts[i].vU) >= 0.25 * muzzleVelocity) {
         termIdx = i;

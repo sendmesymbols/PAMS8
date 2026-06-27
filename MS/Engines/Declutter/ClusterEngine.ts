@@ -56,6 +56,8 @@ export class ClusterEngine {
   /** Member IDs the user clicked to expand — skipped from re-clustering until they click elsewhere or zoom. */
   private _pinnedExpanded = new Set<string>();
   private _clickHandle: { remove(): void } | null = null;
+  /** In-flight cluster fade animation frame, tracked so it can be cancelled on disable / view-switch. */
+  private _fadeRaf: number | null = null;
 
   constructor(
     viewProvider: () => MapView | SceneView,
@@ -81,6 +83,7 @@ export class ClusterEngine {
   disable(): void {
     if (!this._enabled) return;
     this._enabled = false;
+    if (this._fadeRaf !== null) { cancelAnimationFrame(this._fadeRaf); this._fadeRaf = null; }
     this._declutter.unregisterSolveStep(SOLVE_STEP_NAME);
     this._clickHandle?.remove();
     this._clickHandle = null;
@@ -100,6 +103,7 @@ export class ClusterEngine {
 
   onViewChanged(_view: MapView | SceneView, newLayerManager?: GraphicsLayerManager): void {
     if (this._enabled) {
+      if (this._fadeRaf !== null) { cancelAnimationFrame(this._fadeRaf); this._fadeRaf = null; }
       this._clickHandle?.remove();
       this._clickHandle = null;
       this._pinnedExpanded.clear();
@@ -425,19 +429,22 @@ export class ClusterEngine {
     ms: number,
     onComplete?: () => void,
   ): void {
+    if (this._fadeRaf !== null) cancelAnimationFrame(this._fadeRaf);
     layer.opacity = from;
     const start = performance.now();
     const step = (now: number) => {
       const t = Math.min((now - start) / ms, 1);
       const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
       layer.opacity = from + (to - from) * ease;
-      if (t < 1) requestAnimationFrame(step);
-      else {
+      if (t < 1) {
+        this._fadeRaf = requestAnimationFrame(step);
+      } else {
+        this._fadeRaf = null;
         layer.opacity = to;
         onComplete?.();
       }
     };
-    requestAnimationFrame(step);
+    this._fadeRaf = requestAnimationFrame(step);
   }
 
   private _cfg() {

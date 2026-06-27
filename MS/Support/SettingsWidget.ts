@@ -196,6 +196,10 @@ export function mountSettingsWidget(opts: MountWidgetOptions): SettingsWidgetHan
     cleanupRows();
     dragCleanup();
     unsubBus();
+    // Remove the document keydown listener here (not only in handle.close), so the
+    // X button and Esc — which call close() directly — don't leak it (with the
+    // detached panel/helpPopover its closure retains) on every open→close cycle.
+    document.removeEventListener('keydown', onKey);
     panel.classList.remove('ms-visible');
     panel.remove();
     MOUNTED.delete(opts.id);
@@ -226,7 +230,6 @@ export function mountSettingsWidget(opts: MountWidgetOptions): SettingsWidgetHan
       if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
     close() {
-      document.removeEventListener('keydown', onKey);
       close();
     },
   };

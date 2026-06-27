@@ -3,7 +3,7 @@ import Point from "@arcgis/core/geometry/Point";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
 import GeoTools from './GeoTools.ts';
 import Echelons from './Echelons.ts';
-import Utils from "./Utils";
+import Utils from "./utils";
 import DrawEssentials from "./DrawEssentials";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import MapView from "@arcgis/core/views/MapView";

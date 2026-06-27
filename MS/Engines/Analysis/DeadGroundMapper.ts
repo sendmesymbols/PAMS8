@@ -538,17 +538,23 @@ export class DeadGroundMapper {
       const cached = horizonCache.get(cacheKey);
       if (cached != null) return cached;
       let maxSlopeDeg = -90;
+      let sawFinite = false;
       for (let d = stepM; d <= targetRange; d += stepM) {
         const tip = this._destPt(lon0, lat0, bKey, d);
         rayPt.longitude = tip.longitude;
         rayPt.latitude = tip.latitude;
         const terrZ = sampler.queryElevation(rayPt)?.z ?? NaN;
         if (!Number.isFinite(terrZ)) continue; // no-data: skip, don't fake a sea-level horizon
+        sawFinite = true;
         const slopeDeg = (Math.atan2(terrZ - obsZ, d) * 180) / Math.PI;
         if (slopeDeg > maxSlopeDeg) maxSlopeDeg = slopeDeg;
       }
-      horizonCache.set(cacheKey, maxSlopeDeg);
-      return maxSlopeDeg;
+      // An entirely-no-data ray has no horizon. Return NaN rather than the -90
+      // sentinel — tan(-90°) ≈ -1.6e16 drives losZ hugely negative and would
+      // mislabel far cells "visible". The consumer treats NaN as no-data.
+      const horizon = sawFinite ? maxSlopeDeg : NaN;
+      horizonCache.set(cacheKey, horizon);
+      return horizon;
     };
 
     let deadCount = 0;
@@ -570,6 +576,8 @@ export class DeadGroundMapper {
         if (!Number.isFinite(terrZ)) { depthGrid[idx] = Number.NaN; continue; } // no-data cell: exclude
         const bearing = ((Math.atan2(east, north) * 180) / Math.PI + 360) % 360;
         const horizonDeg = getHorizon(bearing, range);
+        // Ray crossed only no-data terrain → no horizon → cell is no-data, not visible.
+        if (!Number.isFinite(horizonDeg)) { depthGrid[idx] = Number.NaN; continue; }
         const losZ = obsZ + range * Math.tan((horizonDeg * Math.PI) / 180);
         const depth = losZ - terrZ;
         depthGrid[idx] = depth;

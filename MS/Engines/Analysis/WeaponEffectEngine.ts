@@ -356,9 +356,12 @@ export class WeaponEffectEngine {
       ? (geometryEngine.difference(clipped, minRing) as Polygon | null)
       : clipped;
 
-    const extrudeHeightM = Math.min(
-      maxRangeM * Math.tan((elevMaxDeg * Math.PI) / 180),
-      50_000
+    // Clamp non-negative: depressed-elevation weapons (negative elevMax) would
+    // otherwise produce a negative extrude height that gets persisted into the
+    // graphic attributes (meaningless in 2D, bad data for any downstream consumer).
+    const extrudeHeightM = Math.max(
+      0,
+      Math.min(maxRangeM * Math.tan((elevMaxDeg * Math.PI) / 180), 50_000)
     );
 
     return { zone, minRing, maxRing, extrudeHeightM, preset };
@@ -1304,6 +1307,10 @@ export class WeaponEffectEngine {
 
   private _startReposition(): void {
     if (!this._view) return;
+    // Tear down any prior reposition arming first, so pressing Pick twice (or
+    // opening with no symbol then Pick) doesn't leave multiple live click handlers
+    // that each fire and re-run a full redraw on the next map click.
+    this._cancelReposition();
     const coordsEl = this._panelEl?.querySelector<HTMLElement>('#wez-coords');
     if (coordsEl) coordsEl.textContent = '⊕  Click map to place observer…';
     this._setStatus('picking');

@@ -581,7 +581,7 @@ export class DisruptObstacleEffect {
 
       return result;
     } catch (e) {
-      console.log(this.constructor.name + " Cannot create Symbol due to invalid geometry");
+      /* invalid geometry mid-draw is expected; ignore */
       return null;
     }
   }

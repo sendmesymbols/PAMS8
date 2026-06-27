@@ -624,8 +624,11 @@ export class MissionPlannerEngine {
     if (!aoiGeom) return [];
     const aoiExtent = (aoiGeom as any).extent ?? (aoiGeom as Extent);
 
-    // optional observer seeding
-    if (options.observers?.length) {
+    // optional observer seeding — reset first so repeated headless runs don't
+    // accumulate observers from prior calls (neither runHeadless nor clearResults
+    // ever cleared _observers, so threat bearings/exposure drifted across calls).
+    if (options.observers) {
+      this._observers = [];
       options.observers.forEach((o) => this._addObserver(o.side, o.point));
     }
     const threatBrg = options.threatBearingDeg ?? this._derivedThreatBearing();

@@ -423,67 +423,80 @@ export default class ClipboardEngine {
     dialog.style.display = 'block';
   }
 
+  /** Cleanup for an armed paste mode (its click + keydown listeners), so it can be
+   *  cancelled on view switch / workflow close instead of leaking when the user
+   *  never clicks or presses Esc. */
+  private _pasteCleanup: (() => void) | null = null;
+
   public activatePasteModeWithOffset(
     expandDistance: number,
     expandUnit: string,
   ): void {
     if (!this._clipboard) return;
 
+    this.cancelPasteMode(); // tear down any prior arming first
     this.deps.closeActiveWorkflow();
     this.deps.emitEvent('pasteMode', { active: true });
-    console.info('[CopyPaste] Paste offset mode active — click map to paste');
 
-    const clickHandle = this.view.on('click', (evt) => {
+    const cleanup = () => {
       clickHandle.remove();
-      keyHandle();
+      document.removeEventListener('keydown', keyHandler);
+      this._pasteCleanup = null;
+    };
+    const clickHandle = this.view.on('click', (evt) => {
+      cleanup();
       const pt = this.view.toMap({ x: evt.x, y: evt.y });
       if (pt) this.paste(pt, expandDistance, expandUnit);
       this.deps.emitEvent('pasteMode', { active: false });
     });
-
     const keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        clickHandle.remove();
-        keyHandle();
+        cleanup();
         this.deps.emitEvent('pasteMode', { active: false });
-        console.info('[CopyPaste] Paste offset mode cancelled');
       }
     };
     document.addEventListener('keydown', keyHandler, { once: false });
-    const keyHandle = () =>
-      document.removeEventListener('keydown', keyHandler);
+    this._pasteCleanup = cleanup;
   }
 
   public activatePasteMode(): void {
     if (!this._clipboard) return;
 
+    this.cancelPasteMode(); // tear down any prior arming first
     this.deps.closeActiveWorkflow();
     this.deps.emitEvent('pasteMode', { active: true });
     EngineLogger.nextStep(
       'Symbol Engine',
       'Paste mode active — click the map to place the copied symbol(s). Press Esc to cancel',
     );
-    console.info('[CopyPaste] Paste mode active — click map to paste');
 
-    const clickHandle = this.view.on('click', (evt) => {
+    const cleanup = () => {
       clickHandle.remove();
-      keyHandle();
+      document.removeEventListener('keydown', keyHandler);
+      this._pasteCleanup = null;
+    };
+    const clickHandle = this.view.on('click', (evt) => {
+      cleanup();
       const pt = this.view.toMap({ x: evt.x, y: evt.y });
       if (pt) this.paste(pt);
       this.deps.emitEvent('pasteMode', { active: false });
     });
-
     const keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        clickHandle.remove();
-        keyHandle();
+        cleanup();
         this.deps.emitEvent('pasteMode', { active: false });
-        console.info('[CopyPaste] Paste mode cancelled');
       }
     };
     document.addEventListener('keydown', keyHandler, { once: false });
-    const keyHandle = () =>
-      document.removeEventListener('keydown', keyHandler);
+    this._pasteCleanup = cleanup;
+  }
+
+  /** Cancel an armed paste mode so its click + keydown listeners don't leak when
+   *  the user switches view or closes the workflow without clicking / pressing Esc. */
+  public cancelPasteMode(): void {
+    if (!this._pasteCleanup) return;
+    this._pasteCleanup();
+    this.deps.emitEvent('pasteMode', { active: false });
   }
 
   // ---------------------------------------------------------------------

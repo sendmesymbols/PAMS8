@@ -16,7 +16,6 @@ import VisualizationEngine from '@lib/Engines/Visualization/VisualizationEngine'
 import CombatPowerEngine from '@lib/Engines/Planning/CombatPowerEngine';
 //import SymbolEngine from "../dist/MS/Engines/SymbolEngine.min.js";
 import type { SymbolOptions } from '../MS/ThirdParty/MilSymbols/UEITypes.ts';
-import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import Amplifier from '@lib/Support/Amplifier';
 import DrawEssentials from '@lib/Support/DrawEssentials';
 
@@ -289,24 +288,7 @@ function switchView() {
   // Remove reference to container for the previous view
   appConfig.activeView.container = null;
 
-  reactiveUtils.watch(
-    () => appConfig.activeView?.type,
-    (newType: string | undefined, oldType: string | undefined) => {
-      // Use lowercase 'string' for primitive type
-      console.log(
-        'SymbolEngine ---0000000--- TYPE watcher FIRED. New:',
-        newType,
-        'Old:',
-        oldType,
-      );
-      // Potentially re-initialize or update SymbolEngine based on new view type
-    },
-    { initial: true }, // This makes it fire once on setup
-  );
-
   if (is3D) {
-    console.log('Clicked');
-
     activeViewpoint.scale /= scaleConversionFactor;
 
     // Switch to 2D view
@@ -314,14 +296,6 @@ function switchView() {
     appConfig.mapView.container = appConfig.container;
     appConfig.activeView = appConfig.mapView;
     (switchButton as HTMLInputElement).value = '3D';
-
-    appConfig.mapView.on('click', (event: MouseEvent) => {
-      console.log('---00---');
-      if (event.button === 2) {
-        // Right-click
-        console.log('------');
-      }
-    });
   } else {
     activeViewpoint.scale *= scaleConversionFactor;
 
@@ -334,14 +308,6 @@ function switchView() {
       (window as any).symbolEngine?.settings ?? settingsData,
     );
     (switchButton as HTMLInputElement).value = '2D';
-
-    appConfig.sceneView.on('click', (event: MouseEvent) => {
-      console.log('---SS---');
-      if (event.button === 2) {
-        // Right-click
-        console.log('---SS---');
-      }
-    });
   }
 }
 
@@ -870,10 +836,12 @@ function initializeAutocomplete() {
         }
       `;
 
-      // Show the popup with slide-in animation
+      // Show the popup with slide-in animation. Clear the inline display left by
+      // the auto-vanish timeout below — otherwise the toast only ever shows once
+      // (inline display:none beats the .show class rule on every later selection).
+      symbolDetails.style.display = '';
       symbolDetails.classList.remove('fade-out');
       symbolDetails.classList.add('show');
-      console.log('Symbol details displayed successfully');
 
       // Auto-vanish after 2 seconds with slide-out animation
       setTimeout(() => {

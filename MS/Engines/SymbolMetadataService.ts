@@ -42,12 +42,7 @@ export default class SymbolMetadataService {
     try {
       if (!options.sidc) throw new Error('Missing SIDC in symbol options');
 
-      console.log('SIDC:', options.sidc);
       const parsed = parseSIDC(options.sidc);
-      console.log('Parsed SIDC:', parsed);
-      console.log('Standard Identity', parsed.setA.standardIdentityLabel);
-      console.log('Symbol Set', parsed.setA.symbolSetLabel);
-      console.log('Echelon', parsed.setA.echelonMobilityLabel);
 
       return {
         ...options,
