@@ -536,6 +536,18 @@
     "fontSize": 11,
     "fontColor": [0, 80, 200]
   },
+  "stylus": {
+    "mode": "off",
+    "paradigm": "freehand",
+    "perSymbol": {},
+    "freehand": {
+      "simplifyTolerancePx": 4
+    },
+    "tap": {
+      "tapTolerancePx": 6,
+      "showFinishToolbar": true
+    }
+  },
   "logging": {
     "enabled": true
   },

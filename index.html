@@ -1394,6 +1394,29 @@
               <option value="continuous">Continuous</option>
             </select>
           </div>
+          <div class="setting-row">
+            <label>Pen Mode</label>
+            <select id="setting-stylusMode" title="Stylus drawing: Auto-detect engages on pen/touch; Always on forces it for any input; Off keeps classic click / double-click drawing.">
+              <option value="auto" selected>Auto-detect</option>
+              <option value="on">Always on</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <label>Draw Paradigm</label>
+            <select id="setting-stylusParadigm" title="Default stylus paradigm: Freehand (press &amp; drag to draw, lift to finish) or Tap (tap each vertex, then Finish).">
+              <option value="freehand" selected>Freehand</option>
+              <option value="tap">Tap to place</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <label id="stylus-persymbol-label">Per-symbol (none)</label>
+            <select id="setting-stylusPerSymbol" title="Override the pen paradigm for the most recently selected symbol. 'Use default' falls back to the global paradigm." disabled>
+              <option value="">Use default</option>
+              <option value="freehand">Freehand</option>
+              <option value="tap">Tap to place</option>
+            </select>
+          </div>
         </div>
 
         <!-- MEASUREMENT FEATURE PANEL -->
@@ -2792,6 +2815,11 @@
           path: ['freeHandLineWidth'],
           value: +v,
         }),
+        'setting-stylusMode': (v) => ({ path: ['stylus', 'mode'], value: v }),
+        'setting-stylusParadigm': (v) => ({
+          path: ['stylus', 'paradigm'],
+          value: v,
+        }),
         // Render settings (owned by Visualization Engine)
         'setting-renderHighQuality3D': (v) => ({
           path: ['visualization', 'render', 'highQuality3D'],
@@ -3224,6 +3252,14 @@
         // Read current settings from SymbolEngine and update UI
         const settings = window.symbolEngine.settings;
         if (settings) {
+          // Stylus / pen drawing
+          if (settings.stylus) {
+            const sm = document.getElementById('setting-stylusMode');
+            if (sm && settings.stylus.mode) sm.value = settings.stylus.mode;
+            const sp = document.getElementById('setting-stylusParadigm');
+            if (sp && settings.stylus.paradigm)
+              sp.value = settings.stylus.paradigm;
+          }
           // Update size settings
           if (settings.size)
             document.getElementById('setting-size').value = settings.size;

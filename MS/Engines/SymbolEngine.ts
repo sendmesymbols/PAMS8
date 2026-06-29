@@ -108,6 +108,7 @@ import RoadNetworkEngine from './Analysis/RoadNetworkEngine';
 import TrafficabilityEngine from './Analysis/TrafficabilityEngine';
 import SymbolMetadataService from './SymbolMetadataService';
 import KeyboardShortcutManager from './KeyboardShortcutManager';
+import StylusDrawController from './Stylus/StylusDrawController';
 import CommandPalette from '../Support/CommandPalette';
 // Each widget self-registers with the Ctrl+K palette + ⚙ Settings menu when
 // imported. One side-effect import per engine keeps the wiring discoverable.
@@ -120,6 +121,7 @@ import './DeclutterSettingsWidget';
 import './MGRSSettingsWidget';
 import './VisualizationSettingsWidget';
 import './AnalysisSettingsWidget';
+import './StylusSettingsWidget';
 import './LandingZoneCommands';
 import './AirspaceCommands';
 import './Planning/CombatPowerCommand';
@@ -237,6 +239,11 @@ class SymbolEngine implements Evented {
   // Contextual on-map toolbar for the current selection
   private _selectionActionPanel?: SelectionActionPanel;
 
+  // Central stylus/pen drawing controller (freehand stroke + tap-to-place).
+  // Engaged for line/area symbols when pen/touch is detected (mode 'auto') or
+  // forced via settings ('on'); bypasses each symbol's mouse-centric handlers.
+  private _stylusController!: StylusDrawController;
+
   constructor(viewProvider: () => MapView | SceneView) {
     this._getView = viewProvider;
     // Pre-load the general projection operator (fire-and-forget) so reProject can
@@ -248,6 +255,11 @@ class SymbolEngine implements Evented {
     this._layerManager = GraphicsLayerManager.getInstance(this.view);
     this._layerManager.initializeLayers();
     this._editEngine = new EditEngine(viewProvider, this._layerManager);
+    this._stylusController = new StylusDrawController({
+      getView: () => this.view,
+      getLayerManager: () => this._layerManager,
+      getSettings: () => settingsData,
+    });
     this._undoRedoManager = new UndoRedoManager({
       layerManager: this._layerManager,
       editEngine: this._editEngine,
@@ -606,6 +618,8 @@ class SymbolEngine implements Evented {
     // discarded engine bound to the previous view.
     this._selectionActionPanel?.rewireEditEngine(this._editEngine);
     this._keyboardShortcutManager?.rewireEditEngine(this._editEngine);
+    // Drop any in-flight stylus capture bound to the old view/container.
+    this._stylusController?.onViewChanged(newView);
     this._selectionEngine.onViewChanged(newView);
     this._selectionActionPanel?.refresh();
     this._morphixEngine.initialize(newView, this._layerManager, {
@@ -1170,6 +1184,9 @@ class SymbolEngine implements Evented {
    * Escape, or a 2D/3D view switch. Null-guarded — safe to call when idle.
    */
   private _cancelActiveDraw(): void {
+    // A deferred stylus draw keeps its capture listeners + preview on the
+    // controller (not on the un-init'd symbol instance) — tear it down too.
+    this._stylusController?.deactivate();
     if (this._activeDrawSymbol) {
       this._activeDrawSymbol.deactivate?.();
       this._activeDrawSymbol = null;
@@ -1316,6 +1333,9 @@ class SymbolEngine implements Evented {
       pushUndo: (entry) => this._pushUndo(entry),
       stopContinuousMode: () => this.stopContinuousMode(),
       getCreationMode: () => this._creationMode,
+      stylusIsEngaged: () => this._stylusController.isEngaged,
+      stylusFinish: () => this._stylusController.finish(),
+      stylusCancel: () => this._stylusController.cancel(),
     });
     this._keyboardShortcutManager.attach();
   }
@@ -2876,7 +2896,25 @@ class SymbolEngine implements Evented {
                 ); // Changed this.map to this.view
             }
           }
-          symbol.init(drawEssentials, marker);
+          if (
+            !isPassive &&
+            this._stylusController.shouldEngage(this.currentSymbol)
+          ) {
+            // Stylus mode: bypass the symbol's mouse-centric click/double-click
+            // handlers. The classic proximity + cue overlays were armed above
+            // for an interactive draw but depend on hover / onDrawProgress,
+            // which the controller doesn't drive — turn them off for this draw.
+            this._proximityEngine?.deactivate();
+            this._drawingCueEngine?.deactivate();
+            this._stylusController.begin(
+              symbol,
+              marker,
+              drawEssentials,
+              this.currentSymbol,
+            );
+          } else {
+            symbol.init(drawEssentials, marker);
+          }
         }
 
         // Passive placement (plan load / paste / programmatic) completes

@@ -32,6 +32,10 @@ export interface KeyboardShortcutDeps {
   pushUndo: (entry: UndoEntry) => void;
   stopContinuousMode: () => void;
   getCreationMode: () => 'single' | 'continuous';
+  // Stylus drawing — finish/cancel an in-flight pen capture (Enter / Escape).
+  stylusIsEngaged: () => boolean;
+  stylusFinish: () => void;
+  stylusCancel: () => void;
 }
 
 /**
@@ -155,7 +159,22 @@ export default class KeyboardShortcutManager {
           this.deps.activateEditControlPoints(graphic);
         }
         break;
+      case 'Enter':
+        // A live stylus capture finishes on Enter — a keyboard alternative to
+        // the on-screen Finish button (tap) or lifting the pen (freehand).
+        if (this.deps.stylusIsEngaged()) {
+          e.preventDefault();
+          this.deps.stylusFinish();
+        }
+        break;
       case 'Escape':
+        // A live stylus capture swallows Escape first (cancel the draw) before
+        // the edit-mode / continuous-mode handling below.
+        if (this.deps.stylusIsEngaged()) {
+          e.preventDefault();
+          this.deps.stylusCancel();
+          break;
+        }
         if (
           this.deps.editEngine.isModifyingSymbol ||
           this.deps.editEngine.isEditingControlPoints

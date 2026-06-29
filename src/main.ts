@@ -567,6 +567,9 @@ function initializeAutocomplete() {
       console.error('No symbol data found for key:', symbol.key);
     }
 
+    // Reflect this symbol in the per-symbol pen-paradigm override control.
+    updateStylusPerSymbolUI(symbolData?.Class ?? null);
+
     var amplifier = new Amplifier();
     /*
     amplifier.DTG = "DDHHMMSSZMONYYYY";
@@ -861,6 +864,47 @@ function initializeAutocomplete() {
     console.log('=== displaySymbolDetails function completed ===');
   }
 }
+
+
+// ── Stylus / pen per-symbol paradigm override (settings panel) ──────────────────
+// The global Pen Mode / Draw Paradigm selects are wired via index.html's
+// settingMappings. The per-symbol override has a dynamic key (the symbol Class),
+// so it's wired here and targets the most-recently-selected symbol. Writes go
+// straight to the live settings object the StylusDrawController reads at draw time.
+let lastSelectedSymbolClass: string | null = null;
+function updateStylusPerSymbolUI(cls: string | null): void {
+  lastSelectedSymbolClass = cls;
+  const sel = document.getElementById(
+    'setting-stylusPerSymbol',
+  ) as HTMLSelectElement | null;
+  const label = document.getElementById('stylus-persymbol-label');
+  if (!sel) return;
+  if (!cls) {
+    sel.disabled = true;
+    sel.value = '';
+    if (label) label.textContent = 'Per-symbol (none)';
+    return;
+  }
+  sel.disabled = false;
+  const cur = (window as any).symbolEngine?.settings?.stylus?.perSymbol?.[cls];
+  sel.value = cur === 'freehand' || cur === 'tap' ? cur : '';
+  if (label) label.textContent = `Per-symbol (${cls})`;
+}
+(function initStylusPerSymbolControl() {
+  const sel = document.getElementById(
+    'setting-stylusPerSymbol',
+  ) as HTMLSelectElement | null;
+  if (!sel) return;
+  sel.addEventListener('change', () => {
+    const cls = lastSelectedSymbolClass;
+    const st = (window as any).symbolEngine?.settings?.stylus;
+    if (!cls || !st) return;
+    if (!st.perSymbol) st.perSymbol = {};
+    const v = sel.value;
+    if (v === 'freehand' || v === 'tap') st.perSymbol[cls] = v;
+    else delete st.perSymbol[cls];
+  });
+})();
 
 
 // ── Measurement Panel Controller ───────────────────────────────────────────────
