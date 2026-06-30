@@ -31,11 +31,12 @@ export const stylusSettingsManifest: SettingDescriptor[] = [
     group: 'Drawing',
     type: 'enum',
     options: [
+      { value: 'native', label: 'Native (live symbol preview)' },
       { value: 'freehand', label: 'Freehand stroke' },
       { value: 'tap', label: 'Tap to place' },
     ],
-    help: 'Global default. Freehand: press, drag to draw, lift to finish. Tap: tap each vertex then Finish. Per-symbol overrides take precedence.',
-    keywords: ['freehand', 'tap', 'draw'],
+    help: "Global default. Native: drives each symbol's own interactive drawing — the live preview is the real symbol (uses CTRL_PTS + the native baseline phase); touch gets a synthetic-hover preview; finish via the toolbar / Enter / double-tap. Freehand: press, drag to draw, lift to finish. Tap: tap each vertex then Finish. Per-symbol overrides take precedence.",
+    keywords: ['native', 'freehand', 'tap', 'draw', 'preview'],
   },
 
   // ── Freehand ────────────────────────────────────────────────────────────────

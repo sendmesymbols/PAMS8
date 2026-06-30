@@ -41,13 +41,18 @@ import type GraphicsLayerManager from '../../Managers/GraphicsLayerManager';
 import { LAYER_NAMES } from '../../Managers/GraphicsLayerManager';
 
 type View = MapView | SceneView;
-type Paradigm = 'freehand' | 'tap';
+type Paradigm = 'freehand' | 'tap' | 'native';
 type StylusMode = 'auto' | 'on' | 'off';
 
 export interface StylusDrawDeps {
   getView: () => View;
   getLayerManager: () => GraphicsLayerManager;
   getSettings: () => any;
+  // 'native' paradigm only: SymbolEngine drives finish/cancel so we don't need
+  // per-symbol APIs. finishNativeDraw re-emits the symbol's own terminator at
+  // the last tapped screen point; cancelNativeDraw tears the native draw down.
+  finishNativeDraw?: (screen?: { x: number; y: number } | null) => void;
+  cancelNativeDraw?: () => void;
 }
 
 interface CurrentSymbol {
@@ -69,6 +74,10 @@ interface Session {
   handles: any[];
   capturing: boolean;
   tapDownScreen: { x: number; y: number } | null;
+  // 'native' paradigm extras (unused by freehand/tap):
+  mode?: 'native' | 'legacy';
+  lastScreen?: { x: number; y: number } | null;
+  nativeOnEnd?: () => void;
 }
 
 // Minimum screen-pixel travel between captured freehand samples — keeps the raw
@@ -173,7 +182,22 @@ export default class StylusDrawController {
     const s = this._deps.getSettings()?.stylus ?? {};
     const per = s.perSymbol?.[currentSymbol?.Class];
     const p = per ?? s.paradigm ?? 'freehand';
-    return p === 'tap' ? 'tap' : 'freehand';
+    if (p === 'tap') return 'tap';
+    if (p === 'native') return 'native';
+    return 'freehand';
+  }
+
+  /**
+   * True when this draw should run through the symbol's OWN interactive draw
+   * (real createSymbol preview + native baseline phase) rather than begin()'s
+   * freehand/tap capture. SymbolEngine uses this to pick the fork.
+   */
+  usesNativeDraw(currentSymbol: CurrentSymbol | undefined): boolean {
+    return (
+      this.shouldEngage(currentSymbol) &&
+      !!currentSymbol &&
+      this.resolveParadigm(currentSymbol) === 'native'
+    );
   }
 
   /**
@@ -278,10 +302,116 @@ export default class StylusDrawController {
     if (this._deps.getSettings()?.stylus?.tap?.showFinishToolbar !== false) this._showToolbar();
   }
 
+  // ── Native paradigm: delegate to the symbol's own interactive draw ──────────
+  /**
+   * The symbol's native init() has already been called by SymbolEngine, so its
+   * real createSymbol preview + (for baseline classes) the two-phase BaseLine
+   * flow are live. We add only a thin layer on top: a Finish/Cancel toolbar and
+   * — because touch can't hover — a synthetic pointer-move after each tap that
+   * drives the symbol's own move handler so the preview updates. No geometry is
+   * reimplemented here and no symbol class is edited.
+   */
+  attachNative(symbol: any, currentSymbol: CurrentSymbol): void {
+    this.deactivate(); // never stack sessions
+    const view = this._deps.getView();
+    const session: Session = {
+      symbol,
+      marker: null,
+      drawEssentials: null,
+      currentSymbol,
+      paradigm: 'native',
+      points: [],
+      previewGraphic: null,
+      vertexGraphics: [],
+      handles: [],
+      capturing: false,
+      tapDownScreen: null,
+      mode: 'native',
+      lastScreen: null,
+    };
+    this._session = session;
+
+    // Passive observer — the symbol's own click handler (registered in init(),
+    // BEFORE this attach) adds the control point; we never stopPropagation, we
+    // only watch so we can record the finish location and drive a touch preview.
+    session.handles.push(
+      view.on('click', (evt: any) => {
+        session.lastScreen = { x: evt.x, y: evt.y };
+        this._positionToolbarAt(evt.x, evt.y);
+        // Pen hover already previews; touch has no hover, so nudge the symbol's
+        // move handler with a synthetic pointer-move at the just-tapped point.
+        if (this._lastPointerType !== 'mouse') this._emitSyntheticHover(evt.x, evt.y);
+      }),
+    );
+
+    // Auto-clear when the draw finishes by ANY route (double-tap, Finish button,
+    // or a click-count terminator). Guarded inside deactivate() / re-entrancy.
+    const onEnd = () => this.deactivate();
+    session.nativeOnEnd = onEnd;
+    try {
+      symbol.on?.('onDrawEnd', onEnd);
+    } catch {
+      /* symbol without a public .on still finishes via SymbolEngine's bus */
+    }
+
+    if (this._deps.getSettings()?.stylus?.tap?.showFinishToolbar !== false) {
+      this._showToolbar(false); // no Undo: native draw has no remove-last-vertex
+    }
+  }
+
+  /**
+   * Dispatch a synthetic 'pointermove' on the view surface so a no-hover (touch)
+   * tap still drives the symbol's createSymbol preview. ArcGIS 5.0.19's input
+   * pipeline has no isTrusted gate, so this reaches view.on('pointer-move')
+   * exactly like a real hover. Only 'pointermove' is sent (never down/up) and a
+   * sentinel pointerId is used so no drag / device state is affected.
+   */
+  private _emitSyntheticHover(x: number, y: number): void {
+    const view = this._deps.getView();
+    const container = view.container as HTMLElement | null;
+    if (!container) return;
+    const surface =
+      (container.querySelector('.esri-view-surface') as HTMLElement | null) ?? container;
+    try {
+      const rect = surface.getBoundingClientRect();
+      surface.dispatchEvent(
+        new PointerEvent('pointermove', {
+          clientX: rect.left + x,
+          clientY: rect.top + y,
+          bubbles: true,
+          cancelable: true,
+          pointerType: 'touch',
+          pointerId: 99999,
+          isPrimary: true,
+          button: 0,
+          buttons: 0,
+        }),
+      );
+    } catch {
+      /* PointerEvent unsupported → no touch preview, not fatal */
+    }
+  }
+
+  private _positionToolbarAt(x: number, y: number): void {
+    const el = this._toolbarEl;
+    if (!el) return;
+    el.style.left = `${Math.max(8, x)}px`;
+    el.style.top = `${Math.max(8, y - 56)}px`;
+    el.style.transform = 'translateX(-50%)';
+  }
+
   // ── Completion ──────────────────────────────────────────────────────────────
   finish(): void {
     const s = this._session;
     if (!s) return;
+    if (s.mode === 'native') {
+      // SymbolEngine re-emits the symbol's own terminator; on success the
+      // symbol's onDrawEnd → our nativeOnEnd → deactivate(). If the draw isn't
+      // actually finishable yet (e.g. baseline phase), this is a harmless no-op
+      // and the session stays armed.
+      this._deps.finishNativeDraw?.(s.lastScreen ?? null);
+      return;
+    }
     let pts = this._dedupe(s.points);
     if (s.paradigm === 'freehand') pts = this._simplify(pts);
     // Baseline-first symbols need 2 baseline points + >=1 control point; the
@@ -307,6 +437,13 @@ export default class StylusDrawController {
   }
 
   cancel(): void {
+    const s = this._session;
+    if (s?.mode === 'native') {
+      // SymbolEngine._cancelActiveDraw deactivates the symbol AND calls our
+      // deactivate(), which clears the session — don't double-tear-down here.
+      this._deps.cancelNativeDraw?.();
+      return;
+    }
     this.deactivate();
   }
 
@@ -454,7 +591,7 @@ export default class StylusDrawController {
   }
 
   // ── Finish / Undo / Cancel toolbar (tap mode) ───────────────────────────────
-  private _showToolbar(): void {
+  private _showToolbar(includeUndo: boolean = true): void {
     const view = this._deps.getView();
     const container = view.container as HTMLElement | null;
     if (!container) return;
@@ -473,7 +610,7 @@ export default class StylusDrawController {
       el.appendChild(hint);
     }
     el.appendChild(this._mkBtn('✓ Finish', '#1f6feb', () => this.finish()));
-    el.appendChild(this._mkBtn('⤺ Undo', '#30363d', () => this.undoLast()));
+    if (includeUndo) el.appendChild(this._mkBtn('⤺ Undo', '#30363d', () => this.undoLast()));
     el.appendChild(this._mkBtn('✕ Cancel', '#30363d', () => this.cancel()));
     // Keep button taps from reaching the map (would add a stray vertex).
     el.addEventListener('pointerdown', (e) => e.stopPropagation());
@@ -521,6 +658,13 @@ export default class StylusDrawController {
   deactivate(): void {
     const s = this._session;
     if (s) {
+      if (s.nativeOnEnd) {
+        try {
+          s.symbol?.off?.('onDrawEnd', s.nativeOnEnd);
+        } catch {
+          /* no-op */
+        }
+      }
       for (const h of s.handles) {
         try {
           h.remove();

@@ -887,7 +887,8 @@ function updateStylusPerSymbolUI(cls: string | null): void {
   }
   sel.disabled = false;
   const cur = (window as any).symbolEngine?.settings?.stylus?.perSymbol?.[cls];
-  sel.value = cur === 'freehand' || cur === 'tap' ? cur : '';
+  sel.value =
+    cur === 'native' || cur === 'freehand' || cur === 'tap' ? cur : '';
   if (label) label.textContent = `Per-symbol (${cls})`;
 }
 (function initStylusPerSymbolControl() {
@@ -901,7 +902,7 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     if (!cls || !st) return;
     if (!st.perSymbol) st.perSymbol = {};
     const v = sel.value;
-    if (v === 'freehand' || v === 'tap') st.perSymbol[cls] = v;
+    if (v === 'native' || v === 'freehand' || v === 'tap') st.perSymbol[cls] = v;
     else delete st.perSymbol[cls];
   });
 })();

@@ -1404,8 +1404,9 @@
           </div>
           <div class="setting-row">
             <label>Draw Paradigm</label>
-            <select id="setting-stylusParadigm" title="Default stylus paradigm: Freehand (press &amp; drag to draw, lift to finish) or Tap (tap each vertex, then Finish).">
-              <option value="freehand" selected>Freehand</option>
+            <select id="setting-stylusParadigm" title="Default stylus paradigm: Native (drives each symbol's own live preview + baseline phase), Freehand (press &amp; drag to draw, lift to finish), or Tap (tap each vertex, then Finish).">
+              <option value="native" selected>Native (live preview)</option>
+              <option value="freehand">Freehand</option>
               <option value="tap">Tap to place</option>
             </select>
           </div>
@@ -1413,6 +1414,7 @@
             <label id="stylus-persymbol-label">Per-symbol (none)</label>
             <select id="setting-stylusPerSymbol" title="Override the pen paradigm for the most recently selected symbol. 'Use default' falls back to the global paradigm." disabled>
               <option value="">Use default</option>
+              <option value="native">Native (live preview)</option>
               <option value="freehand">Freehand</option>
               <option value="tap">Tap to place</option>
             </select>

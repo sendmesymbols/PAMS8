@@ -538,7 +538,7 @@
   },
   "stylus": {
     "mode": "off",
-    "paradigm": "freehand",
+    "paradigm": "native",
     "perSymbol": {},
     "freehand": {
       "simplifyTolerancePx": 4

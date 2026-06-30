@@ -259,6 +259,8 @@ class SymbolEngine implements Evented {
       getView: () => this.view,
       getLayerManager: () => this._layerManager,
       getSettings: () => settingsData,
+      finishNativeDraw: (screen) => this._finishActiveDraw(screen),
+      cancelNativeDraw: () => this._cancelActiveDraw(),
     });
     this._undoRedoManager = new UndoRedoManager({
       layerManager: this._layerManager,
@@ -1190,6 +1192,42 @@ class SymbolEngine implements Evented {
     if (this._activeDrawSymbol) {
       this._activeDrawSymbol.deactivate?.();
       this._activeDrawSymbol = null;
+    }
+  }
+
+  /**
+   * Finish a NATIVE-paradigm stylus draw without per-symbol APIs: re-emit the
+   * symbol's own terminator (the `double-click` it listens for) at the last
+   * tapped screen point. No-op when no draw is active — so a click-count symbol
+   * that already finished can't be double-fired — and when the point can't be
+   * resolved (3D off-globe). Driven by the stylus controller's Finish button /
+   * the Enter key.
+   */
+  private _finishActiveDraw(screen?: { x: number; y: number } | null): void {
+    if (!this._activeDrawSymbol) return;
+    const view: any = this.view;
+    if (!view) return;
+    const pt = screen ?? { x: view.width / 2, y: view.height / 2 };
+    let mapPoint: any = null;
+    try {
+      mapPoint = view.toMap(pt);
+    } catch {
+      mapPoint = null;
+    }
+    if (!mapPoint) return; // unresolved (off-globe) — don't finish on a bad point
+    try {
+      view.emit('double-click', {
+        x: pt.x,
+        y: pt.y,
+        mapPoint,
+        button: 0,
+        buttons: 0,
+        native: { pointerType: 'pen' },
+        stopPropagation() {},
+        preventDefault() {},
+      });
+    } catch (err) {
+      console.warn('[SymbolEngine] native stylus finish failed', err);
     }
   }
 
@@ -2900,18 +2938,27 @@ class SymbolEngine implements Evented {
             !isPassive &&
             this._stylusController.shouldEngage(this.currentSymbol)
           ) {
-            // Stylus mode: bypass the symbol's mouse-centric click/double-click
-            // handlers. The classic proximity + cue overlays were armed above
-            // for an interactive draw but depend on hover / onDrawProgress,
-            // which the controller doesn't drive — turn them off for this draw.
-            this._proximityEngine?.deactivate();
-            this._drawingCueEngine?.deactivate();
-            this._stylusController.begin(
-              symbol,
-              marker,
-              drawEssentials,
-              this.currentSymbol,
-            );
+            if (this._stylusController.usesNativeDraw(this.currentSymbol)) {
+              // Native paradigm: run the symbol's OWN interactive draw so the
+              // real createSymbol preview + native baseline phase drive it, then
+              // attach only a thin Finish/Cancel + touch-preview layer. Leave
+              // proximity/cue armed — the native draw uses them like a mouse draw.
+              symbol.init(drawEssentials, marker);
+              this._stylusController.attachNative(symbol, this.currentSymbol);
+            } else {
+              // Legacy freehand/tap paradigms: bypass the symbol's mouse-centric
+              // click/double-click handlers. The classic proximity + cue overlays
+              // depend on hover / onDrawProgress, which begin() doesn't drive —
+              // turn them off for this draw.
+              this._proximityEngine?.deactivate();
+              this._drawingCueEngine?.deactivate();
+              this._stylusController.begin(
+                symbol,
+                marker,
+                drawEssentials,
+                this.currentSymbol,
+              );
+            }
           } else {
             symbol.init(drawEssentials, marker);
           }
