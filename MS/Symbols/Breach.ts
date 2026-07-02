@@ -13,6 +13,7 @@ import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
 import SymbolEvents from "../Support/SymbolEvents";
+import DrawSeam from "../Support/DrawSeam";
 export interface BreachOptions {
     CTRL_PTS?: Point[];
     BASE_LN_PTS?: { startPt: Point; endPt: Point };
@@ -198,8 +199,8 @@ export class Breach {
      */
     private _onClickHandler(clickEvent: any): void {
         if (!this.baselineDrawn) return;
-        
-        const mapPoint = this.view.toMap(clickEvent);
+
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickEvent);
         if (!mapPoint) return;
 
         const point = new Point({
@@ -222,8 +223,8 @@ export class Breach {
      */
     private _onDoubleClickHandler(clickEvent: any): void {
         if (!this.baselineDrawn) return;
-        
-        const mapPoint = this.view.toMap(clickEvent);
+
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickEvent);
         if (!mapPoint) return;
 
         const point = new Point({
@@ -242,7 +243,7 @@ export class Breach {
     private _onMouseMoveHandler(inputEvent: any): void {
         if (!this.baselineDrawn || !this.tempGraphic) return;
 
-        const mapPoint = this.view.toMap(inputEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, inputEvent);
         if (!mapPoint) return;
 
         const candidatePoint = new Point({
@@ -580,6 +581,17 @@ export class Breach {
             this.baseLineClickHandler.remove();
             this.baseLineClickHandler = null;
         }
+    }
+
+    /** Premium stylus seam: remove the last placed vertex (undo). Re-render is
+     *  driven by the premium layer's next move. */
+    public removeLastPoint(): boolean {
+        if (!this._points || this._points.length === 0) return false;
+        this._points.pop();
+        if (this._points.length === 0 && this.tempGraphic) {
+            this.tempGraphic.geometry = null;
+        }
+        return true;
     }
 
     /**

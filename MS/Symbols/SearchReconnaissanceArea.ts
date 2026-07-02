@@ -11,6 +11,7 @@ import GraphicsLayerManager, {
 } from '../Managers/GraphicsLayerManager';
 import Amplifier from '../Support/Amplifier';
 import DrawEssentials from '../Support/DrawEssentials';
+import DrawSeam from '../Support/DrawSeam';
 import SymbolEvents from '../Support/SymbolEvents';
 
 export interface SearchReconnaissanceAreaOptions {
@@ -146,7 +147,7 @@ export class SearchReconnaissanceArea {
   }
 
   private toPoint(event: any): Point | null {
-    const mapPoint = this.view.toMap(event);
+    const mapPoint = DrawSeam.resolvePoint(this.view, event);
     if (!mapPoint) return null;
 
     return new Point({
@@ -309,6 +310,17 @@ export class SearchReconnaissanceArea {
     this.mouseMoveHandler?.remove();
     this.clickHandler = null;
     this.mouseMoveHandler = null;
+  }
+
+  /** Premium stylus seam: remove the last placed vertex (undo). Re-render is
+   *  driven by the premium layer's next move. */
+  public removeLastPoint(): boolean {
+    if (!this._points || this._points.length === 0) return false;
+    this._points.pop();
+    if (this._points.length === 0 && this.tempGraphic) {
+      this.tempGraphic.geometry = null;
+    }
+    return true;
   }
 
   public deactivate(): void {

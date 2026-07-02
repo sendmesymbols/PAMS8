@@ -9,6 +9,7 @@ import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerMana
 import DrawEssentials from "../Support/DrawEssentials";
 import GeoTools from "./GeoTools.ts";
 import Shapes from "./Shapes.ts";
+import DrawSeam from "./DrawSeam";
 
 export interface BaseLineOptions {
     letter?: string;
@@ -59,7 +60,7 @@ export class BaseLine {
      * Handle click events
      */
     private _onClickHandler(clickEvent: any): void {
-        const mapPoint = this.view.toMap(clickEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickEvent);
         if (!mapPoint) return;
 
         this._points.push(new Point({
@@ -118,7 +119,7 @@ export class BaseLine {
     private _onMouseMoveHandler(inputEvent: any): void {
         if (this._points.length === 0 || !this._tGraphic) return;
 
-        const mapPoint = this.view.toMap(inputEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, inputEvent);
         if (!mapPoint) return;
 
         const firstPoint = this._points[0];
@@ -148,7 +149,7 @@ export class BaseLine {
     private _onMouseMoveHandlerC(inputEvent: any): void {
         if (this._points.length === 0 || !this._tGraphic) return;
 
-        const mapPoint = this.view.toMap(inputEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, inputEvent);
         if (!mapPoint) return;
 
         const firstPoint = this._points[0];

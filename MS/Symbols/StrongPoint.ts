@@ -17,6 +17,7 @@ import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 import SymbolEvents from "../Support/SymbolEvents";
+import DrawSeam from "../Support/DrawSeam";
 
 export interface StrongPointOptions {
     ECHELON?: any;
@@ -202,7 +203,7 @@ class StrongPoint {
     }
 
     private _onMMoveHdler(inputEvent: any): void {
-        const mapPoint = this.view.toMap(inputEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, inputEvent);
         if (!mapPoint || !this._tGraphic) return;
 
         const candidatePoint = new Point({ x: mapPoint.x, y: mapPoint.y, spatialReference: this.view.spatialReference });
@@ -219,7 +220,7 @@ class StrongPoint {
     }
 
     private _onClckHdler(clickEvent: any): void {
-        const mapPoint = this.view.toMap(clickEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickEvent);
         if (!mapPoint) return;
 
         const point = new Point({ x: mapPoint.x, y: mapPoint.y, spatialReference: this.view.spatialReference });
@@ -240,7 +241,7 @@ class StrongPoint {
     }
 
     private _onDblClkHandler(clickEvent: any): void {
-        const mapPoint = this.view.toMap(clickEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickEvent);
         if (!mapPoint) return;
 
         const point = new Point({ x: mapPoint.x, y: mapPoint.y, spatialReference: this.view.spatialReference });

@@ -39,6 +39,20 @@ import type SceneView from '@arcgis/core/views/SceneView';
 import type GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import type GraphicsLayerManager from '../../Managers/GraphicsLayerManager';
 import { LAYER_NAMES } from '../../Managers/GraphicsLayerManager';
+import PremiumStylus from './PremiumStylus';
+import EngineLogger from '../../Support/EngineLogger';
+
+// Default OFF. Enable via Settings.json → stylus.debug = true, or
+// window.__stylusDebug = true, to trace the tablet-side pointer flow through
+// the Engine Log panel.
+function stylusDebug(deps: { getSettings: () => any }): boolean {
+  try {
+    if (typeof window !== 'undefined' && (window as any).__stylusDebug) return true;
+    return !!deps.getSettings?.()?.stylus?.debug;
+  } catch {
+    return false;
+  }
+}
 
 type View = MapView | SceneView;
 type Paradigm = 'freehand' | 'tap' | 'native';
@@ -143,6 +157,7 @@ export default class StylusDrawController {
   private _session: Session | null = null;
   private _toolbarEl: HTMLDivElement | null = null;
   private _winPointerDown: ((e: PointerEvent) => void) | null = null;
+  private _premium: PremiumStylus | null = null;
 
   constructor(deps: StylusDrawDeps) {
     this._deps = deps;
@@ -331,18 +346,135 @@ export default class StylusDrawController {
     };
     this._session = session;
 
+    // Premium layer (glide cursor, smoothing, snap-to-cursor, palm rejection,
+    // dwell-to-finish) — only when enabled. It composes ON TOP of the native
+    // draw; it never replaces geometry. Strictly draw-time: we're already inside
+    // the !isPassive interactive branch, and it is torn down in deactivate().
+    const premiumOn = this._deps.getSettings()?.stylus?.premium?.enabled !== false;
+    if (premiumOn) {
+      this._premium = new PremiumStylus({
+        getView: () => this._deps.getView(),
+        getSettings: () => this._deps.getSettings(),
+        finishNativeDraw: (screen) =>
+          this._deps.finishNativeDraw?.(screen ?? this._session?.lastScreen ?? null),
+        emitHoverAt: (x, y) => this._emitSyntheticHover(x, y),
+        // Authoritative — updated on every pointerdown via a persistent
+        // capture-phase window probe, so it's correct on the very first touch
+        // tap (where pointer-move never fires beforehand).
+        getPointerType: () => this._lastPointerType,
+      });
+      this._premium.attach(symbol, currentSymbol);
+    }
+
+    if (stylusDebug(this._deps)) {
+      EngineLogger.nextStep(
+        'Stylus Native',
+        `attachNative class=${currentSymbol?.Class} pt=${this._lastPointerType} premium=${!!this._premium}`,
+      );
+    }
+
+    if (stylusDebug(this._deps)) {
+      // Diagnostic-only: see whether raw pointer events even reach the view on
+      // this tablet, and whether ArcGIS classifies the tap as a drag (which
+      // would suppress 'click'). Never stopPropagation — this is read-only.
+      session.handles.push(
+        view.on('pointer-down' as any, (evt: any) => {
+          EngineLogger.nextStep(
+            'Stylus Native',
+            `view pointer-down x=${evt.x} y=${evt.y} pt=${evt?.native?.pointerType} btn=${evt.button}`,
+          );
+        }),
+      );
+      session.handles.push(
+        view.on('pointer-up' as any, (evt: any) => {
+          EngineLogger.nextStep(
+            'Stylus Native',
+            `view pointer-up x=${evt.x} y=${evt.y} pt=${evt?.native?.pointerType}`,
+          );
+        }),
+      );
+      session.handles.push(
+        view.on('drag' as any, (evt: any) => {
+          EngineLogger.nextStep(
+            'Stylus Native',
+            `view drag action=${evt.action} x=${evt.x} y=${evt.y} pt=${evt?.native?.pointerType ?? evt.pointerType}`,
+          );
+        }),
+      );
+      // Witness: an independent pointer-move listener. Real hover AND our
+      // synthetic dispatch should BOTH fire this. If our emitHover logs "ok"
+      // but this witness never fires with pointerId=99999, ArcGIS is dropping
+      // the synthetic event in its own pipeline (a real regression from what
+      // the memory noted worked on desktop).
+      session.handles.push(
+        view.on('pointer-move' as any, (evt: any) => {
+          const nat = evt?.native as PointerEvent | undefined;
+          EngineLogger.nextStep(
+            'Stylus Native',
+            `view pointer-move x=${evt.x?.toFixed?.(0)} y=${evt.y?.toFixed?.(0)} pt=${nat?.pointerType ?? evt.pointerType} id=${nat?.pointerId} trusted=${nat?.isTrusted}`,
+          );
+        }),
+      );
+    }
+
     // Passive observer — the symbol's own click handler (registered in init(),
     // BEFORE this attach) adds the control point; we never stopPropagation, we
     // only watch so we can record the finish location and drive a touch preview.
     session.handles.push(
       view.on('click', (evt: any) => {
+        // Leak insurance: a view click whose screen point falls inside the
+        // toolbar is a tap on OUR UI that escaped into ArcGIS's pipeline —
+        // never treat it as a map point (it would corrupt lastScreen, and the
+        // Finish re-emission would land a vertex under the button).
+        if (this._isInsideToolbar(evt.x, evt.y)) {
+          if (stylusDebug(this._deps)) {
+            EngineLogger.error('Stylus Native', `click LEAKED from toolbar x=${evt.x} y=${evt.y} — ignored`);
+          }
+          return;
+        }
         session.lastScreen = { x: evt.x, y: evt.y };
-        this._positionToolbarAt(evt.x, evt.y);
-        // Pen hover already previews; touch has no hover, so nudge the symbol's
-        // move handler with a synthetic pointer-move at the just-tapped point.
-        if (this._lastPointerType !== 'mouse') this._emitSyntheticHover(evt.x, evt.y);
+        if (stylusDebug(this._deps)) {
+          EngineLogger.nextStep(
+            'Stylus Native',
+            `click x=${evt.x} y=${evt.y} pt=${evt?.native?.pointerType ?? this._lastPointerType}`,
+          );
+        }
+        if (this._premium?.isActive) {
+          // Premium owns the (smoothed / snapped) touch preview + glide cursor.
+          this._premium.onTap(evt.x, evt.y);
+        } else if (this._lastPointerType !== 'mouse') {
+          // Plain native: touch has no hover, so nudge the symbol's move handler
+          // with a synthetic pointer-move at the just-tapped point.
+          this._emitSyntheticHover(evt.x, evt.y);
+        }
       }),
     );
+
+    // Fallback trigger: if 'click' never fires on this tablet (e.g. ArcGIS treats
+    // touch as a drag), a same-spot pointer-down → pointer-up pair also drives
+    // the symbol's own click handler indirectly via ArcGIS, but at minimum we
+    // want the synthetic hover to fire. Use immediate-click so the 300 ms
+    // double-click delay never eats the tap.
+    try {
+      session.handles.push(
+        (view as any).on('immediate-click', (evt: any) => {
+          if (stylusDebug(this._deps)) {
+            EngineLogger.nextStep(
+              'Stylus Native',
+              `immediate-click x=${evt.x} y=${evt.y} pt=${evt?.native?.pointerType ?? this._lastPointerType}`,
+            );
+          }
+          // Only trigger the synthetic-hover nudge if we're on touch AND premium
+          // isn't going to do it (premium.onTap runs from 'click'). This is a
+          // pure diagnostic path when 'click' turns out to be missing on tablet.
+          if (!this._premium?.isActive && this._lastPointerType === 'touch') {
+            this._emitSyntheticHover(evt.x, evt.y);
+          }
+        }),
+      );
+    } catch {
+      /* older builds may not expose immediate-click */
+    }
 
     // Auto-clear when the draw finishes by ANY route (double-tap, Finish button,
     // or a click-count terminator). Guarded inside deactivate() / re-entrancy.
@@ -355,7 +487,8 @@ export default class StylusDrawController {
     }
 
     if (this._deps.getSettings()?.stylus?.tap?.showFinishToolbar !== false) {
-      this._showToolbar(false); // no Undo: native draw has no remove-last-vertex
+      // Undo only when the active symbol supports it (premium removeLastPoint seam).
+      this._showToolbar(!!this._premium?.canUndo);
     }
   }
 
@@ -369,35 +502,54 @@ export default class StylusDrawController {
   private _emitSyntheticHover(x: number, y: number): void {
     const view = this._deps.getView();
     const container = view.container as HTMLElement | null;
-    if (!container) return;
+    const dbg = stylusDebug(this._deps);
+    if (!container) {
+      if (dbg) EngineLogger.error('Stylus Native', 'emitHover ABORT no container');
+      return;
+    }
     const surface =
       (container.querySelector('.esri-view-surface') as HTMLElement | null) ?? container;
+    const usingSurface = surface !== container;
+    const rect = surface.getBoundingClientRect();
+    const clientX = rect.left + x;
+    const clientY = rect.top + y;
     try {
-      const rect = surface.getBoundingClientRect();
       surface.dispatchEvent(
         new PointerEvent('pointermove', {
-          clientX: rect.left + x,
-          clientY: rect.top + y,
+          clientX,
+          clientY,
           bubbles: true,
           cancelable: true,
-          pointerType: 'touch',
+          pointerType: this._lastPointerType || 'touch',
           pointerId: 99999,
           isPrimary: true,
           button: 0,
           buttons: 0,
         }),
       );
-    } catch {
+      if (dbg) {
+        EngineLogger.success(
+          'Stylus Native',
+          `emitHover ok pt=${this._lastPointerType} surfaceEl=${usingSurface} client=${clientX.toFixed(0)},${clientY.toFixed(0)}`,
+        );
+      }
+    } catch (err) {
+      if (dbg) EngineLogger.error('Stylus Native', `emitHover THREW ${String((err as any)?.message ?? err)}`);
       /* PointerEvent unsupported → no touch preview, not fatal */
     }
   }
 
-  private _positionToolbarAt(x: number, y: number): void {
+  /** Screen point (view coords) inside the floating toolbar's current rect? */
+  private _isInsideToolbar(x: number, y: number): boolean {
     const el = this._toolbarEl;
-    if (!el) return;
-    el.style.left = `${Math.max(8, x)}px`;
-    el.style.top = `${Math.max(8, y - 56)}px`;
-    el.style.transform = 'translateX(-50%)';
+    if (!el) return false;
+    const container = this._deps.getView().container as HTMLElement | null;
+    if (!container) return false;
+    const c = container.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const cx = c.left + x;
+    const cy = c.top + y;
+    return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
   }
 
   // ── Completion ──────────────────────────────────────────────────────────────
@@ -429,7 +581,13 @@ export default class StylusDrawController {
 
   undoLast(): void {
     const s = this._session;
-    if (!s || s.points.length === 0) return;
+    if (!s) return;
+    if (s.mode === 'native') {
+      // Native draw: the symbol owns its points — undo via the premium seam.
+      this._premium?.undo();
+      return;
+    }
+    if (s.points.length === 0) return;
     s.points.pop();
     this._renderPreview();
     this._renderVertices();
@@ -612,9 +770,24 @@ export default class StylusDrawController {
     el.appendChild(this._mkBtn('✓ Finish', '#1f6feb', () => this.finish()));
     if (includeUndo) el.appendChild(this._mkBtn('⤺ Undo', '#30363d', () => this.undoLast()));
     el.appendChild(this._mkBtn('✕ Cancel', '#30363d', () => this.cancel()));
-    // Keep button taps from reaching the map (would add a stray vertex).
-    el.addEventListener('pointerdown', (e) => e.stopPropagation());
-    el.addEventListener('pointerup', (e) => e.stopPropagation());
+    // Keep toolbar taps from reaching the map (a leaked tap becomes a stray
+    // vertex). Block the WHOLE event family: on touch browsers a tap also
+    // produces touchstart/touchend and compatibility mouse events, and blocking
+    // only pointer* + click leaves those paths open into ArcGIS's pipeline.
+    for (const type of [
+      'pointerdown',
+      'pointerup',
+      'pointercancel',
+      'mousedown',
+      'mouseup',
+      'click',
+      'dblclick',
+      'touchstart',
+      'touchend',
+      'contextmenu',
+    ]) {
+      el.addEventListener(type, (e) => e.stopPropagation());
+    }
     container.appendChild(el);
     this._toolbarEl = el;
   }
@@ -626,10 +799,24 @@ export default class StylusDrawController {
     b.style.cssText =
       `border:0;border-radius:6px;padding:7px 11px;cursor:pointer;color:#fff;background:${bg};` +
       'font:inherit;touch-action:none;';
+    // Act on pointerup, not click: on tablets the browser may never synthesize a
+    // click for the button (slop / preventDefault upstream), and ArcGIS's own
+    // ~250 ms click delay makes click-based UI feel dead. pointerup is instant
+    // and fires for pen, touch, and mouse alike.
+    let fired = false;
+    b.addEventListener('pointerup', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (fired) return;
+      fired = true;
+      // Swallow the follow-up click; re-arm for the next tap.
+      setTimeout(() => (fired = false), 400);
+      onClick();
+    });
     b.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      onClick();
+      if (!fired) onClick(); // mouse/browser path where pointerup was eaten
     });
     return b;
   }
@@ -656,6 +843,15 @@ export default class StylusDrawController {
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
   deactivate(): void {
+    // Premium layer first — it owns DOM overlays + capture-phase listeners.
+    if (this._premium) {
+      try {
+        this._premium.detach();
+      } catch {
+        /* no-op */
+      }
+      this._premium = null;
+    }
     const s = this._session;
     if (s) {
       if (s.nativeOnEnd) {

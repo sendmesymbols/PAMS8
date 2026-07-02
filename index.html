@@ -1419,6 +1419,10 @@
               <option value="tap">Tap to place</option>
             </select>
           </div>
+          <div class="setting-row">
+            <label>Premium drawing</label>
+            <input type="checkbox" id="setting-stylusPremium" checked title="Premium stylus experience (glide cursor, input smoothing, snap-to-cursor, palm rejection). Native paradigm only. Uncheck for plain native drawing. (More toggles in Ctrl+K → Stylus › Premium.)" />
+          </div>
         </div>
 
         <!-- MEASUREMENT FEATURE PANEL -->
@@ -2822,6 +2826,10 @@
           path: ['stylus', 'paradigm'],
           value: v,
         }),
+        'setting-stylusPremium': (v) => ({
+          path: ['stylus', 'premium', 'enabled'],
+          value: v,
+        }),
         // Render settings (owned by Visualization Engine)
         'setting-renderHighQuality3D': (v) => ({
           path: ['visualization', 'render', 'highQuality3D'],
@@ -3261,6 +3269,9 @@
             const sp = document.getElementById('setting-stylusParadigm');
             if (sp && settings.stylus.paradigm)
               sp.value = settings.stylus.paradigm;
+            const spr = document.getElementById('setting-stylusPremium');
+            if (spr && settings.stylus.premium)
+              spr.checked = settings.stylus.premium.enabled !== false;
           }
           // Update size settings
           if (settings.size)
@@ -4699,12 +4710,6 @@
       // Listen for engine-log events emitted by any MS engine
       document.addEventListener('engine-log', (e) => {
         const { engine, type, message, timestamp } = e.detail;
-
-        // Auto-expand panel on first message if collapsed
-        if (engineLogPanel.classList.contains('log-collapsed')) {
-          engineLogPanel.classList.remove('log-collapsed');
-          engineLogPanel.classList.add('log-expanded');
-        }
 
         logEmpty.style.display = 'none';
 

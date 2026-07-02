@@ -11,6 +11,7 @@ import Amplifier from "../Support/Amplifier";
 import BaseLine from "../Support/BaseLine.ts";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
+import DrawSeam from "../Support/DrawSeam";
 
 import SymbolEvents from "../Support/SymbolEvents";
 export interface DropZoneOptions {
@@ -151,7 +152,7 @@ export class DropZone {
      * Handle click events
      */
     private _onClickHandler(clickEvent: any): void {
-        const mapPoint = this.view.toMap(clickEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickEvent);
         if (!mapPoint) return;
 
         const point = new Point({
@@ -188,7 +189,7 @@ export class DropZone {
      * Handle double click events
      */
     private _onDoubleClickHandler(clickEvent: any): void {
-        const mapPoint = this.view.toMap(clickEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickEvent);
         if (!mapPoint) return;
 
         const point = new Point({
@@ -207,7 +208,7 @@ export class DropZone {
     private _onMouseMoveHandler(inputEvent: any): void {
         if (!this.isDrawing || !this.tempGraphic) return;
 
-        const mapPoint = this.view.toMap(inputEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, inputEvent);
         if (!mapPoint) return;
 
         const candidatePoint = new Point({
@@ -428,6 +429,17 @@ export class DropZone {
             this.mouseMoveHandler.remove();
             this.mouseMoveHandler = null;
         }
+    }
+
+    /** Premium stylus seam: remove the last placed vertex (undo). Re-render is
+     *  driven by the premium layer's next move. */
+    public removeLastPoint(): boolean {
+        if (!this._points || this._points.length === 0) return false;
+        this._points.pop();
+        if (this._points.length === 0 && this.tempGraphic) {
+            (this.tempGraphic as any).geometry = null;
+        }
+        return true;
     }
 
     /**

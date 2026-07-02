@@ -11,6 +11,7 @@ import Shapes from "../Support/Shapes.ts";
 import BaseLine from "../Support/BaseLine.ts";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import Amplifier from "../Support/Amplifier";
+import DrawSeam from "../Support/DrawSeam";
 
 import SymbolEvents from "../Support/SymbolEvents";
 export interface ObstacleBypassImpossibleOptions {
@@ -379,7 +380,7 @@ class ObstacleBypassImpossible {
      * Handle mouse move events
      */
     private _onMouseMoveHandler(inputPoint: any): void {
-        const candidatePoint = this.view.toMap(inputPoint);
+        const candidatePoint = DrawSeam.resolvePoint(this.view, inputPoint);
         if (!candidatePoint) return;
 
         const drawEssentials = new DrawEssentials();
@@ -401,7 +402,7 @@ class ObstacleBypassImpossible {
      * Handle click events
      */
     private _onClickHandler(clickPoint: any): void {
-        const mapPoint = this.view.toMap(clickPoint);
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickPoint);
         if (!mapPoint) return;
 
         this._points.push(new Point({
@@ -422,7 +423,7 @@ class ObstacleBypassImpossible {
      * Handle double click events
      */
     private _onDblClickHandler(clickPoint: any): void {
-        const mapPoint = this.view.toMap(clickPoint);
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickPoint);
         if (!mapPoint) return;
 
         this._points.push(new Point({

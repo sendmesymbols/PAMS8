@@ -12,6 +12,7 @@ import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
 
 import SymbolEvents from "../Support/SymbolEvents";
+import DrawSeam from "../Support/DrawSeam";
 export interface FreehandLineOptions {
     CTRL_PTS?: Point[];
     GEOM?: Polyline;
@@ -160,7 +161,7 @@ export class FreehandLine {
      * Handle click events
      */
     private _onClickHandler(clickEvent: any): void {
-        const mapPoint = this.view.toMap(clickEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickEvent);
         if (!mapPoint) return;
 
         const point = new Point({
@@ -191,7 +192,7 @@ export class FreehandLine {
      * Handle double click events
      */
     private _onDoubleClickHandler(clickEvent: any): void {
-        const mapPoint = this.view.toMap(clickEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickEvent);
         if (!mapPoint) return;
 
         const point = new Point({
@@ -210,7 +211,7 @@ export class FreehandLine {
     private _onMouseMoveHandler(inputEvent: any): void {
         if (!this.isDrawing || !this.tempGraphic) return;
 
-        const mapPoint = this.view.toMap(inputEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, inputEvent);
         if (!mapPoint) return;
 
         const candidatePoint = new Point({
@@ -390,6 +391,48 @@ export class FreehandLine {
         if (this.mouseMoveHandler) {
             this.mouseMoveHandler.remove();
             this.mouseMoveHandler = null;
+        }
+    }
+
+    // ── Premium stylus seam (optional; called only by the premium layer) ─────────
+    /** Remove the last placed vertex and re-render the live preview. */
+    public removeLastPoint(): boolean {
+        if (this._points.length === 0) return false;
+        this._points.pop();
+        this._refreshPreview();
+        this.events.emit("onDrawClick", { currentPts: this._points });
+        return true;
+    }
+
+    /** Drive a live REAL-symbol preview from an external (smoothed) stroke. */
+    public setStrokePoints(points: Point[]): void {
+        if (!this.tempGraphic || !points || points.length === 0) return;
+        this._points = points.slice();
+        this._refreshPreview();
+    }
+
+    /** Finalize the current points as the committed symbol (lift-to-finish). */
+    public finishStroke(): void {
+        if (this._points.length === 0) return;
+        this.cleanUp();
+    }
+
+    /** Re-render the in-progress preview from the current _points. */
+    private _refreshPreview(): void {
+        if (!this.tempGraphic) return;
+        if (this._points.length === 0) {
+            this.tempGraphic.geometry = null;
+            return;
+        }
+        const drawEssentials = this.createDrawEssentials(this._points.slice(), this._drawType);
+        const geometry = this.createSymbol(drawEssentials);
+        if (geometry) {
+            this.tempGraphic.geometry = geometry;
+            this.events.emit("onDrawProgress", {
+                currentGeometry: geometry,
+                currentDrawEssentials: drawEssentials,
+                currentMarker: this._lineSym
+            });
         }
     }
 

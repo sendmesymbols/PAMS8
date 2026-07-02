@@ -537,7 +537,7 @@
     "fontColor": [0, 80, 200]
   },
   "stylus": {
-    "mode": "off",
+    "mode": "auto",
     "paradigm": "native",
     "perSymbol": {},
     "freehand": {
@@ -546,6 +546,41 @@
     "tap": {
       "tapTolerancePx": 6,
       "showFinishToolbar": true
+    },
+    "premium": {
+      "enabled": true,
+      "cursor": {
+        "enabled": true,
+        "size": 22,
+        "color": [0, 200, 255],
+        "snapColor": [120, 255, 140]
+      },
+      "smoothing": {
+        "enabled": true,
+        "minCutoff": 1.0,
+        "beta": 0.02,
+        "dCutoff": 1.0
+      },
+      "snap": {
+        "enabled": true,
+        "pullPx": 24
+      },
+      "palmReject": true,
+      "palmWindowMs": 1200,
+      "palmSizePx": 45,
+      "finish": {
+        "dwellMs": 0
+      },
+      "precision": {
+        "enabled": false,
+        "snapCommit": true,
+        "angleLock": { "enabled": false, "intervalDeg": 45, "thresholdDeg": 8 },
+        "lengthLock": { "enabled": false, "intervalKm": 1 }
+      },
+      "freehandStroke": false,
+      "ink": {
+        "pressure": false
+      }
     }
   },
   "logging": {

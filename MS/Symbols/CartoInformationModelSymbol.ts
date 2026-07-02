@@ -13,6 +13,7 @@ import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import GeoTools from "../Support/GeoTools.ts";
 import Shapes from "../Support/Shapes.ts";
+import DrawSeam from "../Support/DrawSeam";
 
 
 export interface CartoInformationModelSymbolOptions {
@@ -263,7 +264,7 @@ export class CartoInformationModelSymbol {
      * Handle click events
      */
     private _onClickHandler(clickEvent: any): void {
-        const mapPoint = this.view.toMap(clickEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickEvent);
         if (!mapPoint) return;
 
         const point = new Point({
@@ -300,7 +301,7 @@ export class CartoInformationModelSymbol {
      * Handle double click events
      */
     private _onDoubleClickHandler(clickEvent: any): void {
-        const mapPoint = this.view.toMap(clickEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, clickEvent);
         if (!mapPoint) return;
 
         const point = new Point({
@@ -319,7 +320,7 @@ export class CartoInformationModelSymbol {
     private _onMouseMoveHandler(inputEvent: any): void {
         if (!this.isDrawing || !this.tempGraphic) return;
 
-        const mapPoint = this.view.toMap(inputEvent);
+        const mapPoint = DrawSeam.resolvePoint(this.view, inputEvent);
         if (!mapPoint) return;
 
         const candidatePoint = new Point({
