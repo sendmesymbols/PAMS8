@@ -90,9 +90,11 @@
         position: absolute;
         top: 12px;
         left: 50px;
+        right: 12px;
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        gap: 10px;
+        gap: 8px 10px;
         padding: 9px 12px;
         background: rgba(20, 24, 32, 0.92);
         border: 1px solid var(--ms-border);
@@ -108,11 +110,37 @@
         display: flex;
         align-items: center;
         gap: 7px;
+        flex-wrap: wrap;
+      }
+
+      /* Push a section (and everything after it) to the right edge of the bar,
+         so the toolbar fills the full width. Neutralised when the bar wraps. */
+      .infobar-push {
+        margin-left: auto;
       }
 
       .infobar-section:not(:last-child) {
         border-right: 1px solid var(--ms-divider);
         padding-right: 10px;
+      }
+
+      /* ── Responsive top bar ─────────────────────────────────────────────── */
+      @media (max-width: 1180px) {
+        #infoDiv { gap: 6px 8px; padding: 8px 10px; }
+        .infobar-push { margin-left: 0; }
+        #infoDiv .autocomplete-container { min-width: 140px; }
+        #infoDiv .ms-input { width: 120px; }
+        #sidcText { width: 150px !important; }
+      }
+      @media (max-width: 720px) {
+        #infoDiv { left: 12px; }
+        .infobar-section:not(:last-child) {
+          border-right: none;
+          padding-right: 0;
+        }
+        #infoDiv .autocomplete-container { min-width: 120px; flex: 1; }
+        #infoDiv .ms-input { width: 100%; }
+        #sidcText { width: 100% !important; min-width: 120px; }
       }
 
       #infoDiv .autocomplete-container {
@@ -187,6 +215,114 @@
       }
 
       /* ═══════════════════════════════════════════════════════════════════════
+         DEMO QUICK-PICK MENU (pen-friendly large targets)
+         ═══════════════════════════════════════════════════════════════════════ */
+      .demo-symbol-menu {
+        position: absolute;
+        top: calc(100% + 10px);
+        left: 0;
+        z-index: 1000;
+        display: none; /* toggled to grid */
+        gap: 5px;
+        padding: 7px;
+        background: rgba(20, 24, 30, 0.96);
+        border: 1px solid var(--ms-divider);
+        border-radius: 10px;
+        box-shadow: var(--ms-shadow);
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+      /* Common Symbols: slim, two-column to save vertical space */
+      #demoSymbolMenu {
+        grid-template-columns: repeat(2, minmax(128px, 1fr));
+        min-width: 264px;
+      }
+      /* Pen Style / Pen Mode: single column, name + hint on two lines */
+      #penStyleMenu,
+      #penModeMenu {
+        grid-template-columns: 1fr;
+        min-width: 188px;
+      }
+      .demo-symbol-btn {
+        min-height: 30px;
+        padding: 5px 12px;
+        border: 1px solid var(--ms-divider);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--ms-text);
+        font: 600 12px/1.2 var(--ms-font);
+        cursor: pointer;
+        touch-action: manipulation;
+        text-align: center;
+      }
+      .demo-symbol-btn:hover,
+      .demo-symbol-btn:active {
+        background: var(--ms-accent);
+        color: #fff;
+        border-color: var(--ms-accent);
+      }
+      .demo-symbol-btn.is-active {
+        border-color: var(--ms-accent);
+        color: var(--ms-accent);
+        background: rgba(239, 159, 39, 0.14);
+      }
+      .demo-symbol-btn.is-active:hover {
+        color: #fff;
+      }
+      #penStyleMenu .demo-symbol-btn,
+      #penModeMenu .demo-symbol-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1px;
+        text-align: left;
+        min-height: 34px;
+      }
+      .pen-style-name { font: 600 12px/1.2 var(--ms-font); }
+      .pen-style-sub {
+        font: 500 9.5px/1.1 var(--ms-font);
+        opacity: 0.6;
+        text-transform: none;
+      }
+      #penStyleMenu .demo-symbol-btn:hover .pen-style-sub,
+      #penStyleMenu .demo-symbol-btn.is-active .pen-style-sub,
+      #penModeMenu .demo-symbol-btn:hover .pen-style-sub,
+      #penModeMenu .demo-symbol-btn.is-active .pen-style-sub { opacity: 0.85; }
+      #demoMenuBtn.ms-btn-active,
+      #penStyleBtn.ms-btn-active,
+      #penModeBtn.ms-btn-active {
+        border-color: var(--ms-accent) !important;
+        color: var(--ms-accent) !important;
+      }
+      /* Anchors a dropdown directly beneath its own trigger button */
+      .infobar-menu-anchor {
+        position: relative;
+        display: inline-flex;
+      }
+      /* Action dropdowns (Menu / Generate): full-width, left-aligned list items */
+      .infobar-action-menu {
+        grid-template-columns: 1fr;
+        min-width: 194px;
+      }
+      .infobar-action-menu .infobar-btn {
+        width: 100%;
+        justify-content: flex-start;
+        text-transform: none;
+        letter-spacing: 0;
+        padding: 7px 12px !important;
+      }
+      /* Toolbar-summoned widgets (Settings / API Test) start hidden */
+      .ms-hidden { display: none !important; }
+      /* Active state for toolbar dropdown triggers + the widgets they summon */
+      #menuBtn.ms-btn-active,
+      #generateBtn.ms-btn-active,
+      #settingsPanelBtn.ms-btn-active,
+      #apiTestBtn.ms-btn-active {
+        border-color: var(--ms-accent) !important;
+        color: var(--ms-accent) !important;
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════════
          AUTOCOMPLETE STYLES
          ═══════════════════════════════════════════════════════════════════════ */
       .autocomplete-container {
@@ -241,12 +377,13 @@
         right: 20px;
         background: rgba(20, 24, 32, 0.97);
         border: 1px solid rgba(239, 159, 39, 0.28);
-        padding: 14px 18px;
-        border-radius: 9px;
+        padding: 8px 14px;
+        border-radius: 8px;
         box-shadow: 0 8px 36px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-        max-width: 300px;
+        max-width: 260px;
         z-index: 1000;
         display: none;
+        pointer-events: none; /* toast never intercepts map clicks */
         animation: symbol-toast-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
 
@@ -280,30 +417,25 @@
         }
       }
 
-      .symbol-details h3 {
-        margin: 0 0 10px 0;
+      .symbol-details .toast-title {
         color: #ef9f27;
-        font-size: 12px;
+        font-size: 12.5px;
         font-weight: 700;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        padding-bottom: 8px;
-        border-bottom: 1px solid rgba(239, 159, 39, 0.2);
+        line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
-      .symbol-details p {
-        margin: 5px 0;
-        font-size: 11px;
-        color: rgba(155, 180, 215, 0.8);
-        line-height: 1.5;
-      }
-
-      .symbol-details .key {
-        font-weight: 700;
-        color: #ef9f27;
-        font-size: 10px;
+      .symbol-details .toast-meta {
+        margin-top: 2px;
+        font-size: 9.5px;
+        color: rgba(155, 180, 215, 0.72);
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       /* ═══════════════════════════════════════════════════════════════════════
@@ -995,24 +1127,49 @@
 
       <!-- Section 2: Draw & View Controls -->
       <div class="infobar-section">
+        <div class="infobar-menu-anchor">
+          <button class="ms-btn ms-btn-primary infobar-btn" id="demoMenuBtn" title="Pick a common symbol — tapping a symbol starts drawing immediately, exactly as if it was chosen from the search box. Edit the DEMO_SYMBOLS list in src/main.ts to change the menu."><span class="infobar-icon">★</span>Common Symbols</button>
+          <div id="demoSymbolMenu" class="demo-symbol-menu"></div>
+        </div>
+        <div class="infobar-menu-anchor">
+          <button class="ms-btn infobar-btn" id="penStyleBtn" title="Pen Style — choose how the pen/mouse draws (Scrub, Native, Freehand, Tap). Same as Draw Paradigm in the Settings panel."><span class="infobar-icon">✒</span>Pen Style</button>
+          <div id="penStyleMenu" class="demo-symbol-menu"></div>
+        </div>
+        <div class="infobar-menu-anchor">
+          <button class="ms-btn infobar-btn" id="penModeBtn" title="Pen Mode — when stylus drawing engages (Auto-detect, Always on, Off). Same as Pen Mode in the Settings panel."><span class="infobar-icon">✐</span>Pen Mode</button>
+          <div id="penModeMenu" class="demo-symbol-menu"></div>
+        </div>
         <button class="ms-btn ms-btn-primary infobar-btn" id="draw-btn" title="Start interactive drawing of the selected tactical symbol on the map using current settings."><span class="infobar-icon">✎</span>Draw</button>
         <button class="ms-btn infobar-btn" id="switch-btn" title="Toggle between 2D map view and 3D scene view. Updates all engines to use the new view context."><span class="infobar-icon">⊞</span>2D</button>
       </div>
 
       <!-- Section 3: Analysis & Management -->
-      <div class="infobar-section">
+      <div class="infobar-section infobar-push">
         <button class="ms-btn infobar-btn" id="measureToggleBtn" title="Toggle live measurement panel on/off. Shortcut: M. Shows distance, area, bearing for drawn symbols via MeasurementEngine."><span class="infobar-icon">∟</span></button>
-        <button class="ms-btn infobar-btn" id="settingsMenuBtn" title="Open Settings menu — pick a feature to configure (Measurement, …). Tip: Ctrl+K to search everything."><span class="infobar-icon">⚙</span>Settings</button>
-        <button class="ms-btn infobar-btn" id="deployment-manager-btn" title="Open the Deployment Manager to manage and place formation templates."><span class="infobar-icon">⚙</span>Mgr</button>
-        <button class="ms-btn infobar-btn" id="analysis-hub-btn" title="Open Analysis Hub — quick access to all terrain, force, weapons and mission analysis engines"><span class="infobar-icon">⬢</span>Hub</button>
-        <button class="ms-btn infobar-btn" id="savePlanButton" title="Save current symbol set, annotations, and settings as a reusable plan to local storage via ImportExportEngine."><span class="infobar-icon">⬇</span></button>
-        <button class="ms-btn infobar-btn" id="loadPlanButton" title="Load a previously saved plan from local storage, restoring all symbols, annotations, and settings."><span class="infobar-icon">⬆</span></button>
-      </div>
 
-      <!-- Section 4: Test Field (declutter demo) -->
-      <div class="infobar-section">
-        <button class="ms-btn infobar-btn" id="topbar-testfield-generate" title="Drop a mixed field of UEI symbols (varied identity + echelon + designator) inside the current view. Uses Count/Stacks from the API Test panel. Tests cluster badges, echelon ladder, disperse, label placer, and abbreviation in one click."><span class="infobar-icon">⊹</span>Test Field</button>
-        <button class="ms-btn infobar-btn" id="topbar-testfield-clutter" title="Drop the same mixed field but deliberately jumbled — a tight footprint with many overlapping same-coordinate stacks. Stresses every declutter path at once. Uses the API Test panel Count input; Stacks is auto-boosted."><span class="infobar-icon">⁂</span>Cluttered</button>
+        <!-- Menu: Settings + API Test panels + command palette -->
+        <div class="infobar-menu-anchor">
+          <button class="ms-btn infobar-btn" id="menuBtn" title="Settings panel, API Test panel, and the command palette."><span class="infobar-icon">☰</span>Menu</button>
+          <div id="toolMenu" class="demo-symbol-menu infobar-action-menu">
+            <button class="ms-btn infobar-btn" id="settingsPanelBtn" title="Open the Settings panel widget (symbol sizes, pen, measurement, declutter, …)."><span class="infobar-icon">⚙</span>Settings</button>
+            <button class="ms-btn infobar-btn" id="apiTestBtn" title="Open the API Test panel widget — buttons that exercise the public engine API."><span class="infobar-icon">⧉</span>API Test</button>
+            <button class="ms-btn infobar-btn" id="settingsMenuBtn" title="Open the command palette — every engine widget in one popover. Tip: Ctrl+K anywhere."><span class="infobar-icon">▤</span>Command Palette</button>
+          </div>
+        </div>
+
+        <button class="ms-btn infobar-btn" id="deployment-manager-btn" title="Open the Deployment Manager to manage and place formation templates."><span class="infobar-icon">▦</span>Mgr</button>
+        <button class="ms-btn infobar-btn" id="analysis-hub-btn" title="Open Analysis Hub — quick access to all terrain, force, weapons and mission analysis engines"><span class="infobar-icon">⬢</span>Hub</button>
+
+        <!-- Generate: test data + plan save/load -->
+        <div class="infobar-menu-anchor">
+          <button class="ms-btn infobar-btn" id="generateBtn" title="Generate test symbol fields and manage saved plans."><span class="infobar-icon">⊕</span>Generate</button>
+          <div id="generateMenu" class="demo-symbol-menu infobar-action-menu">
+            <button class="ms-btn infobar-btn" id="topbar-testfield-generate" title="Drop a mixed field of UEI symbols (varied identity + echelon + designator) inside the current view. Uses Count/Stacks from the API Test panel. Tests cluster badges, echelon ladder, disperse, label placer, and abbreviation in one click."><span class="infobar-icon">⊹</span>Test Field</button>
+            <button class="ms-btn infobar-btn" id="topbar-testfield-clutter" title="Drop the same mixed field but deliberately jumbled — a tight footprint with many overlapping same-coordinate stacks. Stresses every declutter path at once. Uses the API Test panel Count input; Stacks is auto-boosted."><span class="infobar-icon">⁂</span>Cluttered</button>
+            <button class="ms-btn infobar-btn" id="savePlanButton" title="Save current symbol set, annotations, and settings as a reusable plan to local storage via ImportExportEngine."><span class="infobar-icon">⬇</span>Save Plan</button>
+            <button class="ms-btn infobar-btn" id="loadPlanButton" title="Load a previously saved plan from local storage, restoring all symbols, annotations, and settings."><span class="infobar-icon">⬆</span>Load Plan</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1225,12 +1382,11 @@
     </div>
 
     <div id="symbolDetails" class="symbol-details">
-      <h3>Symbol Details</h3>
       <div id="symbolDetailsContent"></div>
     </div>
 
     <!-- Settings Control Panel -->
-    <div id="settingsPanel" class="ms-panel ms-theme-ops-dark collapsed">
+    <div id="settingsPanel" class="ms-panel ms-theme-ops-dark ms-hidden expanded">
       <div id="settingsHeader" class="ms-header">
         <div class="ms-header-icon">⚙️</div>
         <div class="ms-header-title">Settings</div>
@@ -1404,8 +1560,9 @@
           </div>
           <div class="setting-row">
             <label>Draw Paradigm</label>
-            <select id="setting-stylusParadigm" title="Default stylus paradigm: Native (drives each symbol's own live preview + baseline phase), Freehand (press &amp; drag to draw, lift to finish), or Tap (tap each vertex, then Finish).">
-              <option value="native" selected>Native (live preview)</option>
+            <select id="setting-stylusParadigm" title="Default stylus paradigm: Scrub (freehand press-drag-lift gesture with the live real-symbol preview + premium layer), Native (drives each symbol's own live preview + baseline phase), Freehand (press &amp; drag to draw, lift to finish, generic dashed preview), or Tap (tap each vertex, then Finish).">
+              <option value="scrub" selected>Scrub (live preview)</option>
+              <option value="native">Native (live preview)</option>
               <option value="freehand">Freehand</option>
               <option value="tap">Tap to place</option>
             </select>
@@ -1417,6 +1574,7 @@
               <option value="native">Native (live preview)</option>
               <option value="freehand">Freehand</option>
               <option value="tap">Tap to place</option>
+              <option value="scrub">Scrub (live preview)</option>
             </select>
           </div>
           <div class="setting-row">
@@ -2473,7 +2631,7 @@
     </div>
 
     <!-- API Test Panel -->
-    <div id="apiPanel" class="ms-panel ms-theme-ops-dark collapsed">
+    <div id="apiPanel" class="ms-panel ms-theme-ops-dark ms-hidden expanded">
       <div id="apiHeader" class="ms-header">
         <div class="ms-header-icon">🧪</div>
         <div class="ms-header-title">API Test</div>
@@ -3693,6 +3851,63 @@
         apiPanel.classList.toggle('collapsed');
         apiPanel.classList.toggle('expanded');
       });
+
+      // ── Toolbar buttons that summon the Settings / API Test widgets ──────────
+      // Each panel is hidden by default (.ms-hidden); its toolbar button shows or
+      // hides it and reflects open state via .ms-btn-active. Opening always brings
+      // the panel up expanded (never stuck in the 42px header-only state).
+      function wireWidgetToggle(btnId, panel) {
+        const btn = document.getElementById(btnId);
+        if (!btn || !panel) return;
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const nowHidden = panel.classList.toggle('ms-hidden');
+          if (!nowHidden) {
+            panel.classList.remove('collapsed');
+            panel.classList.add('expanded');
+          }
+          btn.classList.toggle('ms-btn-active', !nowHidden);
+        });
+      }
+      wireWidgetToggle('settingsPanelBtn', settingsPanel);
+      wireWidgetToggle('apiTestBtn', apiPanel);
+
+      // ── Toolbar dropdown menus (Menu / Generate) ────────────────────────────
+      // A lightweight show/hide container styled like the Common Symbols menu.
+      // The items inside keep their own ids + handlers (wired elsewhere); this
+      // only toggles the container and closes it once any item is chosen. The
+      // capture-phase close runs before an item's own handler, so item clicks
+      // that stopPropagation still dismiss the menu.
+      function initToolbarDropdown(btnId, menuId) {
+        const btn = document.getElementById(btnId);
+        const menu = document.getElementById(menuId);
+        if (!btn || !menu) return;
+        const hide = () => {
+          menu.style.display = 'none';
+          btn.classList.remove('ms-btn-active');
+        };
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (menu.style.display === 'grid') {
+            hide();
+          } else {
+            menu.style.display = 'grid';
+            btn.classList.add('ms-btn-active');
+          }
+        });
+        menu.addEventListener(
+          'click',
+          (e) => {
+            if (e.target.closest('button')) hide();
+          },
+          true,
+        );
+        document.addEventListener('click', (e) => {
+          if (menu.style.display === 'grid' && !menu.contains(e.target)) hide();
+        });
+      }
+      initToolbarDropdown('menuBtn', 'toolMenu');
+      initToolbarDropdown('generateBtn', 'generateMenu');
 
       // Helper to get engines from window.symbolEngine
       function getEngines() {

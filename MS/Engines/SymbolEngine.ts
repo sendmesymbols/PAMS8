@@ -2939,10 +2939,11 @@ class SymbolEngine implements Evented {
             this._stylusController.shouldEngage(this.currentSymbol)
           ) {
             if (this._stylusController.usesNativeDraw(this.currentSymbol)) {
-              // Native paradigm: run the symbol's OWN interactive draw so the
-              // real createSymbol preview + native baseline phase drive it, then
-              // attach only a thin Finish/Cancel + touch-preview layer. Leave
-              // proximity/cue armed — the native draw uses them like a mouse draw.
+              // Native/scrub paradigms: run the symbol's OWN interactive draw so
+              // the real createSymbol preview + native baseline phase drive it,
+              // then attach only a thin Finish/Cancel + touch-preview layer
+              // (scrub adds a drag capture on top). Leave proximity/cue armed —
+              // the native draw uses them like a mouse draw.
               symbol.init(drawEssentials, marker);
               this._stylusController.attachNative(symbol, this.currentSymbol);
             } else {

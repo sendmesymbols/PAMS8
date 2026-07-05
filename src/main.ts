@@ -39,9 +39,12 @@ const loadPlanButton = document.getElementById('loadPlanButton');
 const deploymentManagerBtn = document.getElementById('deployment-manager-btn');
 const analysisHubBtn = document.getElementById('analysis-hub-btn');
 
-// ── ⚙ Settings menu — single topbar button opening a popover of all widgets ───
+// ── Command palette — popover of all widgets (a "Menu" dropdown item) ─────────
+// The trigger now lives inside the "Menu" dropdown, which hides on selection, so
+// anchor the popover to the always-visible dropdown button instead of the item.
 const settingsMenuBtn = document.getElementById('settingsMenuBtn');
-settingsMenuBtn?.addEventListener('click', () => SettingsMenu.open(settingsMenuBtn));
+const menuDropdownBtn = document.getElementById('menuBtn') ?? settingsMenuBtn;
+settingsMenuBtn?.addEventListener('click', () => SettingsMenu.open(menuDropdownBtn));
 
 // Autocomplete elements
 const symbolSearchInput = document.getElementById(
@@ -806,37 +809,16 @@ function initializeAutocomplete() {
     console.log('symbolDetails element:', symbolDetails);
 
     try {
+      // Compact toast: symbol name headline + one muted meta line. The heavy
+      // Description / Parameters / Tools dump was removed (it was display-only —
+      // the draw type is read from #drawTypesSelectPre, not the old toast select).
+      const meta = [data.Class, data.SymGeoType]
+        .filter(Boolean)
+        .concat(data.isFreeHand ? ['Freehand'] : [])
+        .join(' · ');
       symbolDetailsContent.innerHTML = `
-        <p><span class="key">Key:</span> ${key}</p>
-        <p><span class="key">Name:</span> ${data.Name || 'N/A'}</p>
-        <p><span class="key">Class:</span> ${data.Class || 'N/A'}</p>
-        <p><span class="key">Description:</span> ${data.Description || 'N/A'}</p>
-        <p><span class="key">SymGeoType:</span> ${data.SymGeoType || 'N/A'}</p>
-        <p><span class="key">Is Freehand:</span> ${data.isFreeHand || 'N/A'}</p>
-        ${data.Cat ? `<p><span class="key">Categories:</span> ${data.Cat.join(', ')}</p>` : ''}
-        ${
-          data.Parameters && data.Parameters.length > 0
-            ? `<p><span class="key">Parameters:</span></p><ul>${data.Parameters.map(
-                (param: any) =>
-                  `<li>${param.Name}: ${param.description || 'N/A'}</li>`,
-              ).join('')}</ul>`
-            : ''
-        }
-        ${
-          data.Tools && data.Tools.length > 0
-            ? `<p><span class="key">Tools:</span></p><ul>${data.Tools.map(
-                (tool: any) =>
-                  `<li>${tool.Name}: ${tool.description || 'N/A'}</li>`,
-              ).join(
-                '',
-              )}</ul> <select id="drawTypesSelect" class="drawTypesSelect">
-           ${data.Tools.map(
-             (tool: any) =>
-               `<option value="${tool.DRAW_TYPE}">${tool.Name}</option>`,
-           ).join('')}
-         </select>`
-            : ''
-        }
+        <div class="toast-title">${data.Name || key || 'Symbol'}</div>
+        <div class="toast-meta">${meta || 'N/A'}</div>
       `;
 
       // Show the popup with slide-in animation. Clear the inline display left by
@@ -863,7 +845,164 @@ function initializeAutocomplete() {
 
     console.log('=== displaySymbolDetails function completed ===');
   }
+
+  // Demo quick-pick menu: buttons that run the EXACT selectSymbol path above,
+  // as if the name had been picked from the autocomplete list. Deferred one
+  // microtask so the module finishes evaluating first — DEMO_SYMBOLS (const)
+  // is declared below this function and is TDZ until the module body
+  // completes; initializeAutocomplete is called synchronously at module top.
+  queueMicrotask(() => initDemoQuickPick(allSymbols, selectSymbol));
 }
+
+// ── Demo quick-pick symbol menu (★ Demo button in the top bar) ──────────────
+// Symbols offered for one-tap demo drawing. EDIT THIS LIST to change the menu:
+// label = button text, name = the exact "Name" from MS/Data/Symbols.json.
+// Unknown names are skipped with a console warning, never an error.
+const DEMO_SYMBOLS: Array<{ label: string; name: string }> = [
+  { label: 'Infantry', name: 'Inf' },
+  { label: 'Main Attack', name: 'Main Attk' },
+  { label: 'Ambush', name: 'Ambush' },
+  { label: 'Barbed Wire', name: 'Wire Obs - Triple Strand Concertina' },
+  { label: 'Freehand Line', name: 'Freehand - Line' },
+  { label: 'Freehand Arrow', name: 'Freehand - Arrow' },
+  { label: 'Freehand Area', name: 'Freehand - Area' },
+  { label: 'Phase Line', name: 'Phase Line' },
+  { label: 'Assembly Area', name: 'Assy Area / AA' },
+  { label: 'Battle Position', name: 'Battle Posn' },
+  { label: 'Objective', name: 'Obj Area' },
+  { label: 'Attack Position', name: 'Attack Position' },
+];
+
+function initDemoQuickPick(
+  symbols: Array<{ key: string; name: string }>,
+  selectSymbol: (s: { key: string; name: string }) => void,
+): void {
+  const btn = document.getElementById('demoMenuBtn');
+  const menu = document.getElementById('demoSymbolMenu');
+  if (!btn || !menu) return;
+
+  const hide = () => {
+    menu.style.display = 'none';
+    btn.classList.remove('ms-btn-active');
+  };
+
+  menu.innerHTML = '';
+  for (const entry of DEMO_SYMBOLS) {
+    const match = symbols.find(
+      (s) => s.name.toLowerCase() === entry.name.toLowerCase(),
+    );
+    if (!match) {
+      console.warn('[DemoMenu] symbol name not found in Symbols.json:', entry.name);
+      continue;
+    }
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'demo-symbol-btn';
+    b.textContent = entry.label;
+    b.title = match.name;
+    b.addEventListener('click', () => {
+      hide();
+      selectSymbol(match); // identical code path to an autocomplete pick
+    });
+    menu.appendChild(b);
+  }
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (menu.style.display === 'grid') {
+      hide();
+    } else {
+      menu.style.display = 'grid';
+      btn.classList.add('ms-btn-active');
+    }
+  });
+  // Tap anywhere else closes the menu.
+  document.addEventListener('click', (e) => {
+    if (menu.style.display === 'grid' && !menu.contains(e.target as Node)) hide();
+  });
+}
+
+
+// ── Pen Style / Pen Mode menus (✒ / ✍ buttons in the top bar) ───────────────
+// "Common Symbols"-style dropdowns for the two global stylus settings. The
+// backing <select> in the Settings panel is the single source of truth: each
+// menu reads its current value on open (to highlight the active option) and, on
+// pick, sets that select's value and dispatches a native 'change' — the exact
+// same code path as changing it in the panel, so index.html's settingMappings
+// publishes the change to the SymbolEngine. No settings state is duplicated here.
+type StylusChoice = { label: string; sub: string; value: string };
+
+// Options mirror the <option>s of #setting-stylusParadigm in index.html.
+const PEN_STYLES: StylusChoice[] = [
+  { label: 'Scrub', sub: 'freehand gesture · live preview', value: 'scrub' },
+  { label: 'Native', sub: 'symbol’s own live preview', value: 'native' },
+  { label: 'Freehand', sub: 'press & drag, lift to finish', value: 'freehand' },
+  { label: 'Tap to place', sub: 'tap each vertex, then finish', value: 'tap' },
+];
+
+// Options mirror the <option>s of #setting-stylusMode in index.html.
+const PEN_MODES: StylusChoice[] = [
+  { label: 'Auto-detect', sub: 'engages on pen / touch', value: 'auto' },
+  { label: 'Always on', sub: 'force for any input', value: 'on' },
+  { label: 'Off', sub: 'classic click / double-click', value: 'off' },
+];
+
+function initStylusChoiceMenu(
+  btnId: string,
+  menuId: string,
+  selectId: string,
+  items: StylusChoice[],
+): void {
+  const btn = document.getElementById(btnId);
+  const menu = document.getElementById(menuId);
+  const select = document.getElementById(selectId) as HTMLSelectElement | null;
+  if (!btn || !menu || !select) return;
+
+  const hide = () => {
+    menu.style.display = 'none';
+    btn.classList.remove('ms-btn-active');
+  };
+
+  const render = () => {
+    const cur = select.value; // read the source of truth
+    menu.innerHTML = '';
+    for (const p of items) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'demo-symbol-btn' + (p.value === cur ? ' is-active' : '');
+      b.title = p.sub;
+      const name = document.createElement('span');
+      name.className = 'pen-style-name';
+      name.textContent = p.label;
+      const sub = document.createElement('span');
+      sub.className = 'pen-style-sub';
+      sub.textContent = p.sub;
+      b.append(name, sub);
+      b.addEventListener('click', () => {
+        hide();
+        select.value = p.value; // update the source of truth …
+        select.dispatchEvent(new Event('change', { bubbles: true })); // … same path as the panel
+      });
+      menu.appendChild(b);
+    }
+  };
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (menu.style.display === 'grid') {
+      hide();
+    } else {
+      render(); // rebuild each open so the active option is highlighted
+      menu.style.display = 'grid';
+      btn.classList.add('ms-btn-active');
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (menu.style.display === 'grid' && !menu.contains(e.target as Node)) hide();
+  });
+}
+initStylusChoiceMenu('penStyleBtn', 'penStyleMenu', 'setting-stylusParadigm', PEN_STYLES);
+initStylusChoiceMenu('penModeBtn', 'penModeMenu', 'setting-stylusMode', PEN_MODES);
 
 
 // ── Stylus / pen per-symbol paradigm override (settings panel) ──────────────────
@@ -888,7 +1027,9 @@ function updateStylusPerSymbolUI(cls: string | null): void {
   sel.disabled = false;
   const cur = (window as any).symbolEngine?.settings?.stylus?.perSymbol?.[cls];
   sel.value =
-    cur === 'native' || cur === 'freehand' || cur === 'tap' ? cur : '';
+    cur === 'native' || cur === 'freehand' || cur === 'tap' || cur === 'scrub'
+      ? cur
+      : '';
   if (label) label.textContent = `Per-symbol (${cls})`;
 }
 (function initStylusPerSymbolControl() {
@@ -902,7 +1043,8 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     if (!cls || !st) return;
     if (!st.perSymbol) st.perSymbol = {};
     const v = sel.value;
-    if (v === 'native' || v === 'freehand' || v === 'tap') st.perSymbol[cls] = v;
+    if (v === 'native' || v === 'freehand' || v === 'tap' || v === 'scrub')
+      st.perSymbol[cls] = v;
     else delete st.perSymbol[cls];
   });
 })();

@@ -23,10 +23,13 @@
  * Holds no state that outlives a single draw. Never reached on passive /
  * programmatic placement (plan load, paste, updateSymbol).
  *
- * Snap-to-COMMIT (moving the actually-placed vertex onto the snap target) and
- * pen-input smoothing of the live preview both require intercepting + re-issuing
- * the symbol's own pointer events; that needs on-device tuning and is therefore
- * deliberately NOT done here yet — the visible cursor already conveys the snap.
+ * Snap-to-COMMIT (moving the actually-placed vertex onto the snap target), plus
+ * angle-lock and length-lock, ARE implemented — via the DrawSeam resolver below
+ * (stylus.premium.precision.*, off by default until validated on a real
+ * device); no pointer events are intercepted or re-issued. Pen-input smoothing
+ * of the live preview itself remains deliberately undone: the smoothed glide
+ * cursor already conveys the position, and re-driving the symbol's preview from
+ * filtered coordinates needs on-device tuning first.
  */
 
 import Point from '@arcgis/core/geometry/Point';
@@ -381,35 +384,40 @@ export default class PremiumStylus {
    * Invoked via DrawSeam for EVERY draw-point read (candidate + commit) while
    * precision is on. Returns the map Point the symbol should use, so the live
    * preview AND the committed vertex land on the same resolved target.
-   * Priority: snap-to-vertex > angle-lock > length-lock > raw.
+   * Priority: snap-to-vertex is absolute; otherwise angle-lock and length-lock
+   * COMPOSE (45° + 1 km = a polar grid around the previous vertex).
    */
   private _resolveDrawPoint(raw: Point): Point {
     const view = this._deps.getView();
     const sr = view.spatialReference;
     const p = this._cfg().precision ?? {};
     let out: Point = raw;
+    let snapped = false;
 
-    // 1) Snap to a nearby existing vertex/coordinate (ProximityEngine target).
+    // 1) Snap to a nearby existing vertex/coordinate (ProximityEngine target) —
+    //    an absolute target, so the locks below don't apply on top.
     if (p.snapCommit !== false && this._snapMap) {
       try {
         const sp = (view as any).toScreen(raw);
         const snapSp = this._snapScreenNow();
         if (sp && snapSp && Math.hypot(sp.x - snapSp.x, sp.y - snapSp.y) <= this._snapPullPx()) {
           out = this._snapMap;
+          snapped = true;
         }
       } catch {
         /* fall through to raw */
       }
     }
 
-    // 2) Else angle-lock relative to the last committed vertex.
-    if (out === raw && p.angleLock?.enabled && this._lastCommittedMap) {
-      out = this._applyAngleLock(raw, this._lastCommittedMap, sr, p.angleLock) ?? raw;
+    // 2) Angle-lock relative to the last committed vertex.
+    if (!snapped && p.angleLock?.enabled && this._lastCommittedMap) {
+      out = this._applyAngleLock(raw, this._lastCommittedMap, sr, p.angleLock) ?? out;
     }
 
-    // 3) Else length-lock relative to the last committed vertex.
-    if (out === raw && p.lengthLock?.enabled && this._lastCommittedMap) {
-      out = this._applyLengthLock(raw, this._lastCommittedMap, sr, p.lengthLock) ?? raw;
+    // 3) Length-lock, applied to the (possibly angle-locked) point so both
+    //    locks combine instead of angle silently winning.
+    if (!snapped && p.lengthLock?.enabled && this._lastCommittedMap) {
+      out = this._applyLengthLock(out, this._lastCommittedMap, sr, p.lengthLock) ?? out;
     }
 
     this._lastResolvedMap = out;

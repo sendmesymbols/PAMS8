@@ -538,7 +538,7 @@
   },
   "stylus": {
     "mode": "auto",
-    "paradigm": "native",
+    "paradigm": "scrub",
     "perSymbol": {},
     "freehand": {
       "simplifyTolerancePx": 4
@@ -546,6 +546,13 @@
     "tap": {
       "tapTolerancePx": 6,
       "showFinishToolbar": true
+    },
+    "scrub": {
+      "detail": "balanced",
+      "tolerancePx": 6
+    },
+    "native": {
+      "tapFallbackMs": 400
     },
     "premium": {
       "enabled": true,

@@ -55,7 +55,7 @@ function stylusDebug(deps: { getSettings: () => any }): boolean {
 }
 
 type View = MapView | SceneView;
-type Paradigm = 'freehand' | 'tap' | 'native';
+type Paradigm = 'freehand' | 'tap' | 'native' | 'scrub';
 type StylusMode = 'auto' | 'on' | 'off';
 
 export interface StylusDrawDeps {
@@ -151,11 +151,20 @@ function isBaselineClass(cls: string | undefined): boolean {
   return !!cls && BASELINE_CLASSES.has(cls);
 }
 
+// A pen contact within this window means the user is actively drawing with the
+// pen — touch drags then PAN the map in scrub mode (Procreate convention)
+// instead of starting a stroke. Composes with premium palm rejection, which
+// separately drops quick-after-pen touch contacts entirely.
+const PEN_ACTIVE_MS = 2500;
+
 export default class StylusDrawController {
   private _deps: StylusDrawDeps;
   private _lastPointerType: string = 'mouse';
+  private _lastPenTs = -Infinity;
   private _session: Session | null = null;
   private _toolbarEl: HTMLDivElement | null = null;
+  private _hintEl: HTMLDivElement | null = null;
+  private _hintShown = false;
   private _winPointerDown: ((e: PointerEvent) => void) | null = null;
   private _premium: PremiumStylus | null = null;
 
@@ -166,9 +175,19 @@ export default class StylusDrawController {
     if (typeof window !== 'undefined') {
       this._winPointerDown = (e: PointerEvent) => {
         if (e.pointerType) this._lastPointerType = e.pointerType;
+        if (e.pointerType === 'pen') this._lastPenTs = this._now();
       };
       window.addEventListener('pointerdown', this._winPointerDown, true);
     }
+  }
+
+  private _now(): number {
+    return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+  }
+
+  /** A pen touched the surface recently — the user is drawing with the pen. */
+  private _penActive(): boolean {
+    return this._now() - this._lastPenTs < PEN_ACTIVE_MS;
   }
 
   /** True while a stylus capture session is live (read by keyboard Enter/Escape routing). */
@@ -199,20 +218,21 @@ export default class StylusDrawController {
     const p = per ?? s.paradigm ?? 'freehand';
     if (p === 'tap') return 'tap';
     if (p === 'native') return 'native';
+    if (p === 'scrub') return 'scrub';
     return 'freehand';
   }
 
   /**
    * True when this draw should run through the symbol's OWN interactive draw
    * (real createSymbol preview + native baseline phase) rather than begin()'s
-   * freehand/tap capture. SymbolEngine uses this to pick the fork.
+   * freehand/tap capture. SymbolEngine uses this to pick the fork. Covers both
+   * 'native' (tap per vertex) and 'scrub' (freehand gesture feeding the native
+   * draw) — scrub only adds a drag capture on top of the same machinery.
    */
   usesNativeDraw(currentSymbol: CurrentSymbol | undefined): boolean {
-    return (
-      this.shouldEngage(currentSymbol) &&
-      !!currentSymbol &&
-      this.resolveParadigm(currentSymbol) === 'native'
-    );
+    if (!this.shouldEngage(currentSymbol) || !currentSymbol) return false;
+    const p = this.resolveParadigm(currentSymbol);
+    return p === 'native' || p === 'scrub';
   }
 
   /**
@@ -329,12 +349,13 @@ export default class StylusDrawController {
   attachNative(symbol: any, currentSymbol: CurrentSymbol): void {
     this.deactivate(); // never stack sessions
     const view = this._deps.getView();
+    const paradigm = this.resolveParadigm(currentSymbol);
     const session: Session = {
       symbol,
       marker: null,
       drawEssentials: null,
       currentSymbol,
-      paradigm: 'native',
+      paradigm,
       points: [],
       previewGraphic: null,
       vertexGraphics: [],
@@ -486,23 +507,320 @@ export default class StylusDrawController {
       /* symbol without a public .on still finishes via SymbolEngine's bus */
     }
 
+    // Scrub capture: freehand press-drag-lift gesture committing vertices into
+    // this same native draw (live real-symbol preview + premium layer intact).
+    // Installed on EVERY native-mode session but gated on session.paradigm at
+    // event time, so the toolbar's ✏ Draw / ⊙ Points chip can switch modes
+    // mid-draw without re-attaching anything.
+    this._installScrub(session);
+
+    // Tablet rescue: some tablets classify a stationary tap as a micro-drag and
+    // never emit 'click' — the native draw goes dead. Self-disarming fallback.
+    this._installTapFallback(session);
+
     if (this._deps.getSettings()?.stylus?.tap?.showFinishToolbar !== false) {
-      // Undo only when the active symbol supports it (premium removeLastPoint seam).
-      this._showToolbar(!!this._premium?.canUndo);
+      // Undo is always offered: premium seam or the direct removeLastPoint
+      // fallback in undoLast() covers every drawable symbol (uniform sweep).
+      this._showToolbar(
+        !!this._premium?.canUndo || typeof symbol?.removeLastPoint === 'function',
+      );
     }
   }
 
+  // ── Scrub: freehand gesture driving the symbol's OWN live preview ────────────
   /**
-   * Dispatch a synthetic 'pointermove' on the view surface so a no-hover (touch)
-   * tap still drives the symbol's createSymbol preview. ArcGIS 5.0.19's input
-   * pipeline has no isTrusted gate, so this reaches view.on('pointer-move')
-   * exactly like a real hover. Only 'pointermove' is sent (never down/up) and a
-   * sentinel pointerId is used so no drag / device state is affected.
+   * Fourth paradigm — the press-drag-lift gesture of 'freehand', but the live
+   * preview is the REAL symbol (the native interactive draw is running, so the
+   * premium cursor / smoothing / snap layer applies unchanged). While dragging,
+   * a vertex is committed by re-emitting the symbol's own 'click' whenever the
+   * stroke bows away from the straight segment since the last vertex by more
+   * than stylus.scrub.tolerancePx — a live Douglas-Peucker, so straight runs
+   * stay sparse and curves gain vertices. Between commits a synthetic hover
+   * drives the symbol's rubber-band (real hover never fires mid-drag). Lift
+   * commits the final point and finishes via the native double-click
+   * terminator. Stationary taps still add vertices (ArcGIS emits a real click
+   * for those), so scrub degrades gracefully into the native paradigm.
+   */
+  private _installScrub(session: Session): void {
+    const view = this._deps.getView();
+    let stroking = false;
+    let lastVertex: { x: number; y: number } | null = null; // last committed, screen px
+    let samples: { x: number; y: number }[] = [];
+
+    session.handles.push(
+      view.on('drag', (evt: any) => {
+        if (this._session !== session) return;
+        if (evt.action === 'start') {
+          // Only the scrub paradigm captures strokes; in ⊙ Points mode drags
+          // stay with the map (pan), exactly like the plain native paradigm.
+          if (session.paradigm !== 'scrub') return;
+          // Leave right/middle-button drags (rotate / classic pan) to the map.
+          if (evt.button !== undefined && evt.button !== 0) return;
+          // Pen draws, finger pans: while the pen is in active use, a touch
+          // drag moves the map instead of starting a stroke.
+          const ptype = evt?.native?.pointerType ?? this._lastPointerType;
+          if (ptype === 'touch' && this._penActive()) return;
+          stroking = true;
+          evt.stopPropagation(); // suppress map pan for this stroke
+          const x = evt.origin?.x ?? evt.x;
+          const y = evt.origin?.y ?? evt.y;
+          samples = [];
+          lastVertex = this._emitSyntheticClick(x, y) ? { x, y } : null;
+          return;
+        }
+        if (!stroking) return;
+        evt.stopPropagation();
+        if (!isFinite(evt.x) || !isFinite(evt.y)) return;
+
+        if (evt.action === 'update') {
+          if (!lastVertex) {
+            // Start landed off-map (3D off-globe) — retry the first vertex here.
+            lastVertex = this._emitSyntheticClick(evt.x, evt.y) ? { x: evt.x, y: evt.y } : null;
+            return;
+          }
+          const prev = samples[samples.length - 1] ?? lastVertex;
+          if (Math.hypot(evt.x - prev.x, evt.y - prev.y) < FREEHAND_MIN_PX) return;
+          samples.push({ x: evt.x, y: evt.y });
+          const cur = { x: evt.x, y: evt.y };
+          if (this._maxDeviationPx(lastVertex, cur, samples) > this._scrubTolerancePx()) {
+            if (this._emitSyntheticClick(cur.x, cur.y)) {
+              lastVertex = cur;
+              samples = [];
+            }
+          }
+          // Live rubber band between commits — drive the symbol's move handler.
+          this._emitSyntheticHover(evt.x, evt.y);
+          return;
+        }
+
+        if (evt.action === 'end') {
+          stroking = false;
+          if (!lastVertex) return; // whole stroke off-map — stay armed
+          // Final vertex at the lift point, then the native terminator (mirrors
+          // the Finish button; a doubled last point is already tolerated).
+          if (Math.hypot(evt.x - lastVertex.x, evt.y - lastVertex.y) >= FREEHAND_MIN_PX) {
+            this._emitSyntheticClick(evt.x, evt.y);
+          }
+          session.lastScreen = { x: evt.x, y: evt.y };
+          lastVertex = null;
+          samples = [];
+          this._deps.finishNativeDraw?.({ x: evt.x, y: evt.y });
+        }
+      }),
+    );
+  }
+
+  /**
+   * Re-emit the symbol's own 'click' on the view event bus — the same trick as
+   * the native double-click terminator (SymbolEngine._finishActiveDraw) — so
+   * the vertex is added by the symbol's OWN handler: DrawSeam resolution,
+   * click-count terminators and baseline phases all behave exactly like a real
+   * tap. Returns false when the point can't be resolved (off-globe).
+   */
+  private _emitSyntheticClick(x: number, y: number): boolean {
+    const view: any = this._deps.getView();
+    let mapPoint: any = null;
+    try {
+      mapPoint = view.toMap({ x, y });
+    } catch {
+      mapPoint = null;
+    }
+    if (!mapPoint) return false;
+    try {
+      view.emit('click', {
+        x,
+        y,
+        mapPoint,
+        button: 0,
+        buttons: 0,
+        native: { pointerType: this._lastPointerType || 'pen' },
+        // Marks the event as ours: the tap fallback must not read synthetic
+        // clicks as proof that the device delivers real ones.
+        _msSynthetic: true,
+        stopPropagation() {},
+        preventDefault() {},
+      });
+      return true;
+    } catch (err) {
+      if (stylusDebug(this._deps)) {
+        EngineLogger.error('Stylus Scrub', `emitClick THREW ${String((err as any)?.message ?? err)}`);
+      }
+      return false;
+    }
+  }
+
+  /** Max perpendicular deviation (px) of the samples from the segment a→b. */
+  private _maxDeviationPx(
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+    pts: { x: number; y: number }[],
+  ): number {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    let max = 0;
+    for (const p of pts) {
+      const d =
+        len < 1e-6
+          ? Math.hypot(p.x - a.x, p.y - a.y)
+          : Math.abs(dy * p.x - dx * p.y + b.x * a.y - b.y * a.x) / len;
+      if (d > max) max = d;
+    }
+    return max;
+  }
+
+  private _scrubTolerancePx(): number {
+    const s = this._deps.getSettings()?.stylus?.scrub ?? {};
+    // Novice-friendly presets; the raw pixel number applies on 'custom' (or
+    // when the preset is absent, preserving pre-preset configs).
+    if (s.detail === 'smooth') return 10;
+    if (s.detail === 'balanced') return 6;
+    if (s.detail === 'fine') return 3;
+    return Number(s.tolerancePx ?? 6);
+  }
+
+  // ── Tablet tap fallback (native / scrub sessions) ────────────────────────────
+  /**
+   * Failure mode seen on some tablets: ArcGIS classifies a stationary pen/touch
+   * tap as a micro-drag and never emits 'click', so the symbol's own click
+   * handler never runs and the native draw is completely dead. Rescue: watch raw
+   * pointer-down/up pairs; when a qualifying tap (small travel, short press,
+   * pen/touch, outside the toolbar) produces no REAL click or double-click
+   * within stylus.native.tapFallbackMs, commit the vertex by re-emitting the
+   * symbol's own 'click' (bus emit, as everywhere else).
+   *
+   * Self-disarming: the first real click proves the device delivers clicks and
+   * turns the fallback off for the whole session — on healthy hardware it can
+   * never fire, so there is no duplicate-vertex risk (ArcGIS's ~250 ms click
+   * delay sits well inside the default 400 ms window). Synthetic clicks carry
+   * the _msSynthetic marker and don't count as proof.
+   */
+  private _installTapFallback(session: Session): void {
+    const windowMs = Number(this._deps.getSettings()?.stylus?.native?.tapFallbackMs ?? 400);
+    if (windowMs <= 0) return;
+    const view = this._deps.getView();
+    let downAt: { x: number; y: number; t: number } | null = null;
+    let clicksWork = false;
+    const pending = new Set<any>();
+    const clearPending = () => {
+      for (const t of pending) clearTimeout(t);
+      pending.clear();
+    };
+    const now = () =>
+      typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+
+    session.handles.push(
+      view.on('pointer-down', (evt: any) => {
+        if (clicksWork || evt.button !== 0) return;
+        if (this._lastPointerType === 'mouse') return; // mouse clicks are reliable
+        if (this._isInsideToolbar(evt.x, evt.y)) return;
+        downAt = { x: evt.x, y: evt.y, t: now() };
+      }),
+    );
+
+    session.handles.push(
+      view.on('pointer-up', (evt: any) => {
+        const d = downAt;
+        downAt = null;
+        if (clicksWork || !d) return;
+        if (Math.hypot(evt.x - d.x, evt.y - d.y) > this._tapTolerancePx()) return; // pan
+        if (now() - d.t > 600) return; // long-press ≠ tap
+        const x = evt.x;
+        const y = evt.y;
+        const timer = setTimeout(() => {
+          pending.delete(timer);
+          // Session ended (draw finished/cancelled) or a later real click
+          // disarmed us while the timer was in flight.
+          if (this._session !== session || clicksWork) return;
+          if (stylusDebug(this._deps)) {
+            EngineLogger.nextStep(
+              'Stylus Native',
+              `tap fallback FIRED x=${x} y=${y} (no click within ${windowMs}ms)`,
+            );
+          }
+          // The session's own 'click' observer handles the side effects
+          // (lastScreen, premium.onTap / synthetic hover) — same as a real tap.
+          this._emitSyntheticClick(x, y);
+        }, windowMs);
+        pending.add(timer);
+      }),
+    );
+
+    const disarm = (evt: any) => {
+      if (evt?._msSynthetic) return; // our own emission proves nothing
+      clicksWork = true;
+      clearPending();
+    };
+    session.handles.push(view.on('click', disarm));
+    session.handles.push(view.on('double-click', disarm));
+
+    // Scrub handles drags itself (drag start commits a vertex) — a pending tap
+    // that turns into a stroke must not also fallback-commit. In ⊙ Points mode
+    // a micro-drag is exactly the broken-click signature, so there the
+    // pointer-up distance gate alone decides. Checked at event time because the
+    // toolbar chip can switch session.paradigm mid-draw.
+    session.handles.push(
+      view.on('drag', (evt: any) => {
+        if (session.paradigm !== 'scrub') return;
+        if (evt.action === 'start') {
+          downAt = null;
+          clearPending();
+        }
+      }),
+    );
+
+    // Timers are cleared with the session (handles can't carry timeouts).
+    session.handles.push({ remove: clearPending });
+  }
+
+  /**
+   * Drive every view.on('pointer-move') handler (the symbol's preview, premium
+   * cursor, proximity, cues) with a synthetic hover so a no-hover (touch) tap —
+   * or a mid-drag scrub — still updates the symbol's createSymbol preview.
+   *
+   * Primary path: emit straight on the VIEW EVENT BUS — the same proven trick
+   * as the click / double-click re-emission. Delivery to view.on handlers is
+   * synchronous and deterministic, and it does not depend on ArcGIS's DOM input
+   * pipeline lacking an isTrusted gate (which an SDK upgrade could add).
+   * Fallback: the original DOM 'pointermove' dispatch on the view surface.
+   * Either way a sentinel pointerId is used so no drag / device state is
+   * affected.
    */
   private _emitSyntheticHover(x: number, y: number): void {
     const view = this._deps.getView();
-    const container = view.container as HTMLElement | null;
     const dbg = stylusDebug(this._deps);
+    try {
+      (view as any).emit('pointer-move', {
+        x,
+        y,
+        button: 0,
+        buttons: 0,
+        pointerType: this._lastPointerType || 'touch',
+        native: {
+          pointerType: this._lastPointerType || 'touch',
+          pointerId: 99999,
+          isPrimary: true,
+          isTrusted: false,
+        },
+        stopPropagation() {},
+        preventDefault() {},
+      });
+      if (dbg) {
+        EngineLogger.success(
+          'Stylus Native',
+          `emitHover bus ok pt=${this._lastPointerType} x=${x.toFixed(0)} y=${y.toFixed(0)}`,
+        );
+      }
+      return;
+    } catch (err) {
+      if (dbg) {
+        EngineLogger.error(
+          'Stylus Native',
+          `emitHover bus THREW ${String((err as any)?.message ?? err)} — falling back to DOM dispatch`,
+        );
+      }
+    }
+    const container = view.container as HTMLElement | null;
     if (!container) {
       if (dbg) EngineLogger.error('Stylus Native', 'emitHover ABORT no container');
       return;
@@ -583,8 +901,17 @@ export default class StylusDrawController {
     const s = this._session;
     if (!s) return;
     if (s.mode === 'native') {
-      // Native draw: the symbol owns its points — undo via the premium seam.
-      this._premium?.undo();
+      // Native draw: the symbol owns its points — undo via the premium seam,
+      // or hit the uniform removeLastPoint() seam directly when the premium
+      // layer is disabled (Undo must ALWAYS work; it's the novice safety net).
+      if (this._premium?.undo()) return;
+      try {
+        if (s.symbol?.removeLastPoint?.() && s.lastScreen) {
+          this._emitSyntheticHover(s.lastScreen.x, s.lastScreen.y);
+        }
+      } catch {
+        /* no-op */
+      }
       return;
     }
     if (s.points.length === 0) return;
@@ -748,18 +1075,24 @@ export default class StylusDrawController {
     s.points = [];
   }
 
-  // ── Finish / Undo / Cancel toolbar (tap mode) ───────────────────────────────
+  // ── Finish / Undo / Cancel toolbar (tap + native/scrub modes) ───────────────
   private _showToolbar(includeUndo: boolean = true): void {
     const view = this._deps.getView();
     const container = view.container as HTMLElement | null;
     if (!container) return;
+    // Finger-sized targets whenever the last physical input wasn't a mouse.
+    const touchUI = this._lastPointerType !== 'mouse';
     const el = document.createElement('div');
     el.className = 'ms-stylus-toolbar';
     el.style.cssText =
       'position:absolute;z-index:50;display:flex;gap:6px;padding:6px;border-radius:8px;' +
       'background:rgba(20,24,30,0.92);box-shadow:0 2px 8px rgba(0,0,0,0.45);' +
-      'font:600 13px/1 system-ui,sans-serif;color:#e6edf3;top:12px;left:50%;transform:translateX(-50%);' +
+      `font:600 ${touchUI ? 15 : 13}px/1 system-ui,sans-serif;color:#e6edf3;top:12px;left:50%;transform:translateX(-50%);` +
       'touch-action:none;user-select:none;align-items:center;';
+    // ✏ Draw / ⊙ Points chip — native-mode sessions only. Novices switch modes
+    // right where they draw instead of hunting through settings; the choice
+    // sticks as the new default.
+    if (this._session?.mode === 'native') this._appendModeChip(el, touchUI);
     // Baseline-first symbols take their first two taps as the baseline — cue it.
     if (isBaselineClass(this._session?.currentSymbol?.Class)) {
       const hint = document.createElement('span');
@@ -790,14 +1123,97 @@ export default class StylusDrawController {
     }
     container.appendChild(el);
     this._toolbarEl = el;
+    this._maybeShowHint(container, touchUI);
+  }
+
+  /** Segmented ✏ Draw / ⊙ Points control that flips session.paradigm live. */
+  private _appendModeChip(toolbar: HTMLDivElement, touchUI: boolean): void {
+    const wrap = document.createElement('div');
+    wrap.style.cssText =
+      'display:flex;border:1px solid #30363d;border-radius:6px;overflow:hidden;margin-right:4px;';
+    const mk = (label: string, mode: 'scrub' | 'native') => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.dataset.mode = mode;
+      b.style.cssText =
+        `border:0;padding:${touchUI ? '12px 16px' : '6px 10px'};cursor:pointer;` +
+        'font:inherit;touch-action:none;background:transparent;color:#9da7b3;';
+      // pointerup (not click) for the same tablet-responsiveness reason as _mkBtn.
+      b.addEventListener('pointerup', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this._setSessionParadigm(mode);
+        paint();
+      });
+      b.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      return b;
+    };
+    const scrubBtn = mk('✏ Draw', 'scrub');
+    const tapBtn = mk('⊙ Points', 'native');
+    const paint = () => {
+      const cur = this._session?.paradigm === 'scrub' ? 'scrub' : 'native';
+      for (const b of [scrubBtn, tapBtn]) {
+        const active = b.dataset.mode === cur;
+        b.style.background = active ? '#1f6feb' : 'transparent';
+        b.style.color = active ? '#fff' : '#9da7b3';
+      }
+    };
+    paint();
+    wrap.appendChild(scrubBtn);
+    wrap.appendChild(tapBtn);
+    toolbar.appendChild(wrap);
+  }
+
+  private _setSessionParadigm(p: 'scrub' | 'native'): void {
+    const s = this._session;
+    if (s) s.paradigm = p;
+    // Persist as the new global default — same live-settings write the
+    // harness's per-symbol override control uses — so the choice sticks.
+    try {
+      const st = this._deps.getSettings();
+      if (st?.stylus) st.stylus.paradigm = p;
+    } catch {
+      /* no-op */
+    }
+  }
+
+  /** One-time transient coach line under the toolbar — then never again. */
+  private _maybeShowHint(container: HTMLElement, touchUI: boolean): void {
+    if (this._hintShown || this._session?.mode !== 'native') return;
+    this._hintShown = true;
+    const scrub = this._session?.paradigm === 'scrub';
+    const hint = document.createElement('div');
+    hint.className = 'ms-stylus-hint';
+    hint.textContent = scrub
+      ? 'Drag to sketch — lift to finish. Tap to place single points.'
+      : 'Tap to place points — ✓ Finish when done.';
+    hint.style.cssText =
+      `position:absolute;z-index:49;top:${touchUI ? 74 : 58}px;left:50%;transform:translateX(-50%);` +
+      'padding:7px 14px;border-radius:14px;background:rgba(20,24,30,0.85);color:#c9d4df;' +
+      'font:500 13px/1.3 system-ui,sans-serif;pointer-events:none;white-space:nowrap;' +
+      'opacity:1;transition:opacity 0.6s ease;';
+    container.appendChild(hint);
+    this._hintEl = hint;
+    setTimeout(() => {
+      hint.style.opacity = '0';
+    }, 5500);
+    setTimeout(() => {
+      if (hint.parentElement) hint.parentElement.removeChild(hint);
+      if (this._hintEl === hint) this._hintEl = null;
+    }, 6200);
   }
 
   private _mkBtn(label: string, bg: string, onClick: () => void): HTMLButtonElement {
+    const touchUI = this._lastPointerType !== 'mouse';
     const b = document.createElement('button');
     b.type = 'button';
     b.textContent = label;
     b.style.cssText =
-      `border:0;border-radius:6px;padding:7px 11px;cursor:pointer;color:#fff;background:${bg};` +
+      `border:0;border-radius:6px;padding:${touchUI ? '12px 18px' : '7px 11px'};cursor:pointer;color:#fff;background:${bg};` +
       'font:inherit;touch-action:none;';
     // Act on pointerup, not click: on tablets the browser may never synthesize a
     // click for the button (slop / preventDefault upstream), and ArcGIS's own
@@ -839,6 +1255,8 @@ export default class StylusDrawController {
   private _removeToolbar(): void {
     if (this._toolbarEl?.parentElement) this._toolbarEl.parentElement.removeChild(this._toolbarEl);
     this._toolbarEl = null;
+    if (this._hintEl?.parentElement) this._hintEl.parentElement.removeChild(this._hintEl);
+    this._hintEl = null;
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
  *
  * Stylus / pen drawing — lets line/area symbols be drawn with a stylus on a
  * mixed hardware fleet (active pens AND passive/touch, neither guaranteed to
- * hover). Two paradigms (freehand stroke vs tap-to-place) selectable as a
+ * hover). Four paradigms (native / freehand / tap / scrub) selectable as a
  * global default; per-symbol overrides live in `stylus.perSymbol` and are set
  * contextually from the draw panel rather than from this manifest (the manifest
  * renderer has no map/dictionary control).
@@ -34,9 +34,10 @@ export const stylusSettingsManifest: SettingDescriptor[] = [
       { value: 'native', label: 'Native (live symbol preview)' },
       { value: 'freehand', label: 'Freehand stroke' },
       { value: 'tap', label: 'Tap to place' },
+      { value: 'scrub', label: 'Scrub (freehand + live symbol preview)' },
     ],
-    help: "Global default. Native: drives each symbol's own interactive drawing — the live preview is the real symbol (uses CTRL_PTS + the native baseline phase); touch gets a synthetic-hover preview; finish via the toolbar / Enter / double-tap. Freehand: press, drag to draw, lift to finish. Tap: tap each vertex then Finish. Per-symbol overrides take precedence.",
-    keywords: ['native', 'freehand', 'tap', 'draw', 'preview'],
+    help: "Global default. Native: drives each symbol's own interactive drawing — the live preview is the real symbol (uses CTRL_PTS + the native baseline phase); touch gets a synthetic-hover preview; finish via the toolbar / Enter / double-tap. Freehand: press, drag to draw, lift to finish (generic dashed preview). Tap: tap each vertex then Finish. Scrub: the freehand press-drag-lift gesture, but the live preview is the real symbol and the premium layer (cursor, smoothing, snap) applies. Per-symbol overrides take precedence.",
+    keywords: ['native', 'freehand', 'tap', 'scrub', 'draw', 'preview'],
   },
 
   // ── Freehand ────────────────────────────────────────────────────────────────
@@ -49,6 +50,45 @@ export const stylusSettingsManifest: SettingDescriptor[] = [
     max: 50,
     step: 0.5,
     help: 'Douglas-Peucker tolerance, in screen pixels, used to reduce a freehand stroke to control points. Higher = fewer, smoother control points.',
+  },
+
+  // ── Native ────────────────────────────────────────────────────────────────
+  {
+    path: ['stylus', 'native', 'tapFallbackMs'],
+    label: 'Tap fallback (ms)',
+    group: 'Native',
+    type: 'number',
+    min: 0,
+    max: 2000,
+    step: 50,
+    help: "Rescue window for tablets where ArcGIS never emits a click for a stationary pen/touch tap: if a tap produces no click within this many ms, the vertex is committed synthetically. Auto-disarms for the whole draw as soon as one real click is seen, so healthy devices are unaffected. 0 = off.",
+    keywords: ['tablet', 'tap', 'fallback', 'click', 'dead'],
+  },
+
+  // ── Scrub ───────────────────────────────────────────────────────────────────
+  {
+    path: ['stylus', 'scrub', 'detail'],
+    label: 'Detail level',
+    group: 'Scrub',
+    type: 'enum',
+    options: [
+      { value: 'smooth', label: 'Smooth (fewer points)' },
+      { value: 'balanced', label: 'Balanced' },
+      { value: 'fine', label: 'Fine (follows the pen)' },
+      { value: 'custom', label: 'Custom (use tolerance below)' },
+    ],
+    help: 'How closely a scrubbed stroke follows the pen. Smooth gives fewer, cleaner vertices; Fine tracks every curve; Custom uses the raw tolerance value below.',
+    keywords: ['scrub', 'detail', 'smooth', 'fine'],
+  },
+  {
+    path: ['stylus', 'scrub', 'tolerancePx'],
+    label: 'Scrub tolerance (px)',
+    group: 'Scrub',
+    type: 'number',
+    min: 1,
+    max: 50,
+    step: 0.5,
+    help: 'Advanced — applies when Detail level is Custom. How far (screen px) the stroke may bow away from a straight segment before a vertex is committed. Higher = fewer, smoother vertices.',
   },
 
   // ── Tap ───────────────────────────────────────────────────────────────────
@@ -156,14 +196,14 @@ export const stylusSettingsManifest: SettingDescriptor[] = [
     label: 'Length lock',
     group: 'Premium precision',
     type: 'boolean',
-    help: 'When Precision is on, snap a segment length to the nearest interval (default 1 km) from the previous vertex.',
+    help: 'When Precision is on, snap a segment length to the nearest interval (default 1 km) from the previous vertex. Combines with Angle lock (both on = a polar grid).',
   },
   {
     path: ['stylus', 'premium', 'freehandStroke'],
     label: 'Freehand smooth stroke',
     group: 'Premium precision',
     type: 'boolean',
-    help: 'For the freehand symbols (FreehandArea/Line/Arrow), draw by dragging a smoothed pen stroke with a live real-symbol preview, lift to finish. Off by default.',
+    help: 'For the freehand symbols (FreehandArea/Line/Arrow), draw by dragging a smoothed pen stroke with a live real-symbol preview, lift to finish. Off by default. For the same experience on ALL line/area symbols use the Scrub paradigm instead.',
   },
   {
     path: ['stylus', 'premium', 'ink', 'pressure'],
