@@ -546,6 +546,8 @@ export default class StylusDrawController {
     let stroking = false;
     let lastVertex: { x: number; y: number } | null = null; // last committed, screen px
     let samples: { x: number; y: number }[] = [];
+    let startOrigin: { x: number; y: number } | null = null; // drag-start screen px
+    let committed = 0; // vertices committed during THIS stroke (start = 1)
 
     session.handles.push(
       view.on('drag', (evt: any) => {
@@ -565,7 +567,9 @@ export default class StylusDrawController {
           const x = evt.origin?.x ?? evt.x;
           const y = evt.origin?.y ?? evt.y;
           samples = [];
+          startOrigin = { x, y };
           lastVertex = this._emitSyntheticClick(x, y) ? { x, y } : null;
+          committed = lastVertex ? 1 : 0;
           return;
         }
         if (!stroking) return;
@@ -576,6 +580,10 @@ export default class StylusDrawController {
           if (!lastVertex) {
             // Start landed off-map (3D off-globe) — retry the first vertex here.
             lastVertex = this._emitSyntheticClick(evt.x, evt.y) ? { x: evt.x, y: evt.y } : null;
+            if (lastVertex) {
+              startOrigin = lastVertex;
+              committed = 1;
+            }
             return;
           }
           const prev = samples[samples.length - 1] ?? lastVertex;
@@ -586,6 +594,7 @@ export default class StylusDrawController {
             if (this._emitSyntheticClick(cur.x, cur.y)) {
               lastVertex = cur;
               samples = [];
+              committed++;
             }
           }
           // Live rubber band between commits — drive the symbol's move handler.
@@ -595,15 +604,35 @@ export default class StylusDrawController {
 
         if (evt.action === 'end') {
           stroking = false;
-          if (!lastVertex) return; // whole stroke off-map — stay armed
-          // Final vertex at the lift point, then the native terminator (mirrors
-          // the Finish button; a doubled last point is already tolerated).
-          if (Math.hypot(evt.x - lastVertex.x, evt.y - lastVertex.y) >= FREEHAND_MIN_PX) {
-            this._emitSyntheticClick(evt.x, evt.y);
-          }
-          session.lastScreen = { x: evt.x, y: evt.y };
+          const last = lastVertex;
+          const origin = startOrigin;
           lastVertex = null;
           samples = [];
+          startOrigin = null;
+          if (!last) return; // whole stroke off-map — stay armed
+          session.lastScreen = { x: evt.x, y: evt.y };
+          // Distinguish a genuine stroke from a stylus TAP that the tablet
+          // reported as a micro-drag. A tap (only the start vertex committed and
+          // negligible travel) must NOT finish — the start-click already placed
+          // the vertex, so leave it and stay armed. Successive taps then
+          // accumulate exactly like native tap-to-place; the user completes via
+          // the ✓ Finish button / Enter / double-tap. Without this, every tap
+          // becomes a one-vertex stroke that immediately tries (and fails) to
+          // finish, so nothing draws until a real drag happens.
+          const netTravel = origin
+            ? Math.hypot(evt.x - origin.x, evt.y - origin.y)
+            : 0;
+          const genuineStroke = committed >= 2 || netTravel > this._tapTolerancePx();
+          if (!genuineStroke) {
+            // Render the just-placed vertex (pen may not hover) and stay armed.
+            this._emitSyntheticHover(evt.x, evt.y);
+            return;
+          }
+          // Final vertex at the lift point, then the native terminator (mirrors
+          // the Finish button; a doubled last point is already tolerated).
+          if (Math.hypot(evt.x - last.x, evt.y - last.y) >= FREEHAND_MIN_PX) {
+            this._emitSyntheticClick(evt.x, evt.y);
+          }
           this._deps.finishNativeDraw?.({ x: evt.x, y: evt.y });
         }
       }),

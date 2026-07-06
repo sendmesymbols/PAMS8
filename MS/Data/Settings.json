@@ -538,7 +538,7 @@
   },
   "stylus": {
     "mode": "auto",
-    "paradigm": "scrub",
+    "paradigm": "freehand",
     "perSymbol": {},
     "freehand": {
       "simplifyTolerancePx": 4

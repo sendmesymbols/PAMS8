@@ -10,10 +10,11 @@ import Polyline from "@arcgis/core/geometry/Polyline";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
-import GraphicsLayerManager from "../Managers/GraphicsLayerManager";
+import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import { ContextMenuItem } from "../Managers/ContextMenuManager";
 import * as promiseUtils from "@arcgis/core/core/promiseUtils";
 import EngineLogger from "../Support/EngineLogger";
+import AnnotationEngine from "./AnnotationEngine.ts";
 import settingsData from "../Data/Settings.json";
 
 // ── Proxy bounding-box symbol (used as drag handle for batch move) ───────────
@@ -1043,6 +1044,7 @@ class SelectionEngine {
     ): void {
         if (this._selected.size === 0) return;
 
+        const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
         const toDelete = this.selectedGraphics.map(g => ({
             graphic: g,
             layer: this._findContainingLayer(g),
@@ -1050,7 +1052,18 @@ class SelectionEngine {
 
         this.clearSelection();
 
-        toDelete.forEach(({ graphic, layer }) => layer?.remove(graphic));
+        // Remove each symbol AND its AnnotationEngine labels (keyed by parentId ===
+        // graphic id) so labels aren't orphaned on the annotation layer.
+        const remove = () => toDelete.forEach(({ graphic, layer }) => {
+            layer?.remove(graphic);
+            this._deAnnotate(graphic, annotationLayer);
+        });
+        const restore = () => toDelete.forEach(({ graphic, layer }) => {
+            layer?.add(graphic);
+            this._reAnnotate(graphic, annotationLayer);
+        });
+
+        remove();
 
         EngineLogger.success(
             'Selection Engine',
@@ -1060,10 +1073,61 @@ class SelectionEngine {
         if (onEntry) {
             onEntry({
                 label: `Delete ${toDelete.length} Symbol${toDelete.length > 1 ? "s" : ""}`,
-                undo: () => toDelete.forEach(({ graphic, layer }) => layer?.add(graphic)),
-                redo: () => toDelete.forEach(({ graphic, layer }) => layer?.remove(graphic)),
+                undo: restore,
+                redo: remove,
             });
         }
+    }
+
+    /**
+     * Delete a single graphic (and its labels), pushing one undo entry.
+     * Used by the SelectionActionPanel single-symbol Delete so it removes labels
+     * exactly like the context-menu delete path (SymbolEngine.removeGraphic).
+     */
+    deleteGraphic(
+        graphic: Graphic,
+        onEntry?: (entry: { label: string; undo: () => void; redo: () => void }) => void
+    ): void {
+        const layer = this._findContainingLayer(graphic);
+        if (!layer) return;
+
+        const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
+        this.clearSelection();
+
+        const remove = () => { layer.remove(graphic); this._deAnnotate(graphic, annotationLayer); };
+        const restore = () => { layer.add(graphic); this._reAnnotate(graphic, annotationLayer); };
+
+        remove();
+
+        if (onEntry) {
+            onEntry({ label: 'Delete Symbol', undo: restore, redo: remove });
+        }
+    }
+
+    /** Remove a graphic's labels (parentId === graphic id) from the annotation layer. */
+    private _deAnnotate(graphic: Graphic, annotationLayer: GraphicsLayer): void {
+        const id = graphic.attributes?.id;
+        if (id) AnnotationEngine.deAnnotate(annotationLayer, id);
+    }
+
+    /** Recreate a graphic's labels on undo — mirrors drawSymEnd's annotate call. */
+    private _reAnnotate(graphic: Graphic, annotationLayer: GraphicsLayer): void {
+        const id = graphic.attributes?.id;
+        const de = graphic.attributes?.drawEssentials;
+        // AMPLIFIER is only annotatable once it's the resolved Amplifier object;
+        // skip the raw string form some symbols stamp before placement.
+        if (!id || !graphic.geometry || !de?.AMPLIFIER || typeof de.AMPLIFIER === "string") return;
+        AnnotationEngine.annotate(
+            annotationLayer,
+            graphic.geometry,
+            de.AMPLIFIER,
+            de,
+            id,
+            settingsData.textSize,
+            de.ISFHAND ?? 0,
+            de.labelOptions ?? {},
+            {},
+        );
     }
 
     // ── Align & Distribute ────────────────────────────────────────────────────

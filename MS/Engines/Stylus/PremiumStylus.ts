@@ -318,8 +318,13 @@ export default class PremiumStylus {
     // every pointerdown); fall back to our pointer-move sniff. Touch never
     // fires pointer-move before the first tap, so the sniff alone stays 'mouse'
     // and the synthetic hover would be skipped — that's the bug this fixes.
+    // Emit for pen too, not just touch: some digitizers (e.g. rugged-tablet
+    // active styli) report 'pen' but deliver NO hover between contacts, so the
+    // symbol's preview would never render after a tap. On a pen that DOES hover,
+    // this extra hover at the tap point is idempotent — a real pointer-move
+    // supersedes it immediately.
     const ptype = this._deps.getPointerType?.() ?? this._movePointerType;
-    const willEmit = ptype !== 'mouse' && ptype !== 'pen';
+    const willEmit = ptype !== 'mouse';
     if (stylusDebug(this._deps.getSettings)) {
       EngineLogger.nextStep(
         'Stylus Premium',
@@ -327,7 +332,8 @@ export default class PremiumStylus {
       );
     }
     if (willEmit) {
-      // Touch: no hover, so nudge the symbol's preview to the (snapped) point.
+      // Touch / non-hovering pen: no hover, so nudge the symbol's preview to the
+      // (snapped) point.
       this._deps.emitHoverAt(target.x, target.y);
     }
   }

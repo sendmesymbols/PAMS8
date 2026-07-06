@@ -620,19 +620,12 @@ class SelectionActionPanel {
     }
 
     private _deleteOne(graphic: Graphic): void {
-        // ArcGIS 5.0 does not populate Graphic.origin.layer for plain
-        // `new Graphic({...})` added to a GraphicsLayer (how drawn symbols are
-        // created), so fall back to the SelectionEngine's robust layer scan —
-        // the same resolver the context-menu delete path uses.
-        const layer = (graphic.origin?.layer ?? this._selectionEngine.findContainingLayer(graphic)) as any;
-        if (!layer) return;
-        this._selectionEngine.clearSelection();
-        layer.remove(graphic);
-        this._cb.pushUndo({
-            label: 'Delete Symbol',
-            undo: () => layer.add(graphic),
-            redo: () => layer.remove(graphic),
-        });
+        // Delegate to SelectionEngine so the symbol's AnnotationEngine labels are
+        // removed with it (and re-created on undo) — same behaviour as the
+        // context-menu delete path (SymbolEngine.removeGraphic). SelectionEngine
+        // resolves the layer robustly (ArcGIS 5.0 leaves origin.layer unset for
+        // plain graphics added to a GraphicsLayer).
+        this._selectionEngine.deleteGraphic(graphic, (entry) => this._cb.pushUndo(entry));
     }
 
     private _centerOn(graphic: Graphic): void {
