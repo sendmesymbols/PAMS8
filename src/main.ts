@@ -861,7 +861,7 @@ function initializeAutocomplete() {
 const DEMO_SYMBOLS: Array<{ label: string; name: string }> = [
   { label: 'Infantry', name: 'Inf' },
   { label: 'Main Attack', name: 'Main Attk' },
-  { label: 'Ambush', name: 'Ambush' },
+  { label: 'Strong Pt', name: 'Strong Pt' },
   { label: 'Barbed Wire', name: 'Wire Obs - Triple Strand Concertina' },
   { label: 'Freehand Line', name: 'Freehand - Line' },
   { label: 'Freehand Arrow', name: 'Freehand - Arrow' },
@@ -1055,7 +1055,9 @@ function updateStylusPerSymbolUI(cls: string | null): void {
 
 (function initMeasurementPanel() {
   const panel = document.getElementById('measurePanel')!;
-  const toggleBtn = document.getElementById('measureToggleBtn')!;
+  // Optional: the top-bar measure button was removed; measurement still toggles
+  // via the M key and the API Test panel. Guard every use so its absence is fine.
+  const toggleBtn = document.getElementById('measureToggleBtn');
   const dataTable = document.getElementById(
     'measureDataTable',
   ) as HTMLTableElement;
@@ -1090,14 +1092,16 @@ function updateStylusPerSymbolUI(cls: string | null): void {
 
   function applyState(isEnabled: boolean) {
     panel.classList.toggle('ms-on', isEnabled);
-    toggleBtn.classList.toggle('ms-btn-active', isEnabled);
-    toggleBtn.title = isEnabled
-      ? 'Measurements ON  — click or press M to disable'
-      : 'Measurements OFF — click or press M to enable';
+    if (toggleBtn) {
+      toggleBtn.classList.toggle('ms-btn-active', isEnabled);
+      toggleBtn.title = isEnabled
+        ? 'Measurements ON  — click or press M to disable'
+        : 'Measurements OFF — click or press M to enable';
+    }
     if (!isEnabled) resetRows();
   }
 
-  toggleBtn.addEventListener('click', () => {
+  toggleBtn?.addEventListener('click', () => {
     panel.classList.add('ms-active'); // show panel on first click
     void symbolEngine.toggleMeasurement();
   });

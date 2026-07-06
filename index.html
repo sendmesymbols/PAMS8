@@ -197,16 +197,6 @@
         color: var(--ms-accent) !important;
       }
 
-      #measureToggleBtn {
-        min-width: 36px;
-        font-size: 13px;
-      }
-
-      #measureToggleBtn.ms-btn-active {
-        border-color: var(--ms-success) !important;
-        color: var(--ms-success) !important;
-      }
-
       #fabricCanvas {
         position: absolute;
         top: 0;
@@ -481,12 +471,6 @@
 
       #measurePanel .ms-btn.ms-active-unit:hover {
         background: rgba(100, 160, 230, 0.3);
-      }
-
-      /* Measurement toggle button active state */
-      #measureToggleBtn.ms-btn-active {
-        background: rgba(100, 160, 230, 0.2) !important;
-        box-shadow: inset 0 0 0 2px rgba(100, 160, 230, 0.6);
       }
 
       /* Snap toast (measurement-graphic-measured result) */
@@ -1145,8 +1129,6 @@
 
       <!-- Section 3: Analysis & Management -->
       <div class="infobar-section infobar-push">
-        <button class="ms-btn infobar-btn" id="measureToggleBtn" title="Toggle live measurement panel on/off. Shortcut: M. Shows distance, area, bearing for drawn symbols via MeasurementEngine."><span class="infobar-icon">∟</span></button>
-
         <!-- Menu: Settings + API Test panels + command palette -->
         <div class="infobar-menu-anchor">
           <button class="ms-btn infobar-btn" id="menuBtn" title="Settings panel, API Test panel, and the command palette."><span class="infobar-icon">☰</span>Menu</button>
