@@ -579,7 +579,7 @@ function initializeAutocomplete() {
     amplifier.EDTG = "DDHHMMSSZMONYYYY00";
     */
     //amplifier.UNIQUE_DESIG = "Tact";
-    amplifier.UNIQUE_DESIG = 'Unique Designation';
+    amplifier.UNIQUE_DESIG = '';
     amplifier.HIGHER_FORM = 'Higher Formation';
     amplifier.STAFF_COM = 'Staff Comments';
     amplifier.ADDL_INFO = 'Additional Information';
