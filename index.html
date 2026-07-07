@@ -124,13 +124,41 @@
         padding-right: 10px;
       }
 
+      /* Keep a set of related buttons together on one row. The group is itself a
+         flex item, so the whole trio wraps as a unit rather than splitting up. */
+      .infobar-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        flex-wrap: nowrap;
+      }
+
+      /* Attach the search box and draw-type combo into one segmented control —
+         no gap between them, flush inner edges, overlapping 1px borders. */
+      .infobar-attached {
+        display: inline-flex;
+        align-items: center;
+      }
+      #infoDiv .infobar-attached .autocomplete-container {
+        min-width: 0; /* shrink to the input so the combo sits flush against it */
+      }
+      .infobar-attached #symbolSearch {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+      .infobar-attached #drawTypesSelectPre {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        margin-left: -1px; /* overlap borders so there's a single divider line */
+      }
+
       /* ── Responsive top bar ─────────────────────────────────────────────── */
       @media (max-width: 1180px) {
         #infoDiv { gap: 6px 8px; padding: 8px 10px; }
         .infobar-push { margin-left: 0; }
         #infoDiv .autocomplete-container { min-width: 140px; }
         #infoDiv .ms-input { width: 120px; }
-        #sidcText { width: 150px !important; }
+        #sidcText { width: 110px !important; }
       }
       @media (max-width: 720px) {
         #infoDiv { left: 12px; }
@@ -193,7 +221,7 @@
       #sidcText {
         font-family: var(--ms-font-mono) !important;
         letter-spacing: 0.5px;
-        width: 200px !important;
+        width: 120px !important;
         color: var(--ms-accent) !important;
       }
 
@@ -280,7 +308,8 @@
       #penModeMenu .demo-symbol-btn.is-active .pen-style-sub { opacity: 0.85; }
       #demoMenuBtn.ms-btn-active,
       #penStyleBtn.ms-btn-active,
-      #penModeBtn.ms-btn-active {
+      #penModeBtn.ms-btn-active,
+      #creationModeBtn.ms-btn-active {
         border-color: var(--ms-accent) !important;
         color: var(--ms-accent) !important;
       }
@@ -1079,27 +1108,30 @@
     <div id="infoDiv">
       <!-- Section 1: Symbol/Code Controls -->
       <div class="infobar-section">
-        <div class="autocomplete-container">
-          <input
-            class="ms-input"
-            type="text"
-            id="symbolSearch"
-            placeholder="Search symbols..."
-            title="Search tactical symbols by name or SIDC code. Autocomplete shows matching MIL-STD-2525D symbols."
-            autocomplete="off"
-          />
-          <div
-            id="autocompleteList"
-            class="autocomplete-list"
-            style="display: none"
-          ></div>
+        <!-- Search + draw-type combo are attached (no gap) into one segmented control. -->
+        <div class="infobar-attached">
+          <div class="autocomplete-container">
+            <input
+              class="ms-input"
+              type="text"
+              id="symbolSearch"
+              placeholder="Search symbols..."
+              title="Search tactical symbols by name or SIDC code. Autocomplete shows matching MIL-STD-2525D symbols."
+              autocomplete="off"
+            />
+            <div
+              id="autocompleteList"
+              class="autocomplete-list"
+              style="display: none"
+            ></div>
+          </div>
+          <select id="drawTypesSelectPre" class="ms-select" title="Sets symbol draw type (1-4) to control geometry configuration and control point behavior for the selected symbol.">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
         </div>
-        <select id="drawTypesSelectPre" class="ms-select" title="Sets symbol draw type (1-4) to control geometry configuration and control point behavior for the selected symbol.">
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-        </select>
         <input
           class="ms-input"
           type="text"
@@ -1123,8 +1155,12 @@
           <button class="ms-btn infobar-btn" id="penModeBtn" title="Pen Mode — when stylus drawing engages (Auto-detect, Always on, Off). Same as Pen Mode in the Settings panel."><span class="infobar-icon">✐</span>Mode</button>
           <div id="penModeMenu" class="demo-symbol-menu"></div>
         </div>
-        <button class="ms-btn ms-btn-primary infobar-btn" id="draw-btn" title="Start interactive drawing of the selected tactical symbol on the map using current settings."><span class="infobar-icon">✎</span>Draw</button>
         <button class="ms-btn infobar-btn" id="switch-btn" title="Toggle between 2D map view and 3D scene view. Updates all engines to use the new view context."><span class="infobar-icon">⊞</span>2D</button>
+        <!-- Creation Mode toggle + quick edit actions — grouped so they stay on one row (the group wraps as a unit on narrow screens). -->
+        <div class="infobar-group">
+          <button class="ms-btn infobar-btn" id="creationModeBtn" aria-pressed="false" title="Creation Mode — Single draws one symbol at a time; Continuous keeps re-arming the same symbol so you can place several in a row. Toggles the same setting as ‘Creation Mode’ in the Settings panel."><span class="infobar-icon">⟳</span><span id="creationModeLabel">Single</span></button>
+          <button class="ms-btn infobar-btn danger" id="clearAllBtn" title="Clear All — removes all symbols and graphics from every layer and clears the undo history. Cannot be undone."><span class="infobar-icon">✕</span>Clear All</button>
+        </div>
       </div>
 
       <!-- Section 3: Analysis & Management -->
@@ -1139,19 +1175,22 @@
           </div>
         </div>
 
-        <button class="ms-btn infobar-btn" id="deployment-manager-btn" title="Open the Deployment Manager to manage and place formation templates."><span class="infobar-icon">▦</span>Mgr</button>
         <button class="ms-btn infobar-btn" id="analysis-hub-btn" title="Open Analysis Hub — quick access to all terrain, force, weapons and mission analysis engines"><span class="infobar-icon">⬢</span>Hub</button>
 
-        <!-- Generate: test data + plan save/load -->
+        <!-- Generate: test data + plan save/load + deployment manager -->
         <div class="infobar-menu-anchor">
           <button class="ms-btn infobar-btn" id="generateBtn" title="Generate test symbol fields and manage saved plans."><span class="infobar-icon">⊕</span>Generate</button>
           <div id="generateMenu" class="demo-symbol-menu infobar-action-menu">
+            <button class="ms-btn infobar-btn" id="deployment-manager-btn" title="Open the Deployment Manager to manage and place formation templates."><span class="infobar-icon">▦</span>Deployment Mgr</button>
             <button class="ms-btn infobar-btn" id="topbar-testfield-generate" title="Drop a mixed field of UEI symbols (varied identity + echelon + designator) inside the current view. Uses Count/Stacks from the API Test panel. Tests cluster badges, echelon ladder, disperse, label placer, and abbreviation in one click."><span class="infobar-icon">⊹</span>Test Field</button>
             <button class="ms-btn infobar-btn" id="topbar-testfield-clutter" title="Drop the same mixed field but deliberately jumbled — a tight footprint with many overlapping same-coordinate stacks. Stresses every declutter path at once. Uses the API Test panel Count input; Stacks is auto-boosted."><span class="infobar-icon">⁂</span>Cluttered</button>
             <button class="ms-btn infobar-btn" id="savePlanButton" title="Save current symbol set, annotations, and settings as a reusable plan to local storage via ImportExportEngine."><span class="infobar-icon">⬇</span>Save Plan</button>
             <button class="ms-btn infobar-btn" id="loadPlanButton" title="Load a previously saved plan from local storage, restoring all symbols, annotations, and settings."><span class="infobar-icon">⬆</span>Load Plan</button>
           </div>
         </div>
+
+        <!-- Draw: primary action, kept at the far-right end of the bar. Draws the SIDC in the SIDC box with demo amplifiers. -->
+        <button class="ms-btn ms-btn-primary infobar-btn" id="draw-btn" title="Start interactive drawing of the symbol for the SIDC in the SIDC box, using current settings."><span class="infobar-icon">✎</span>Draw</button>
       </div>
     </div>
 

@@ -1009,6 +1009,60 @@ initStylusChoiceMenu('penStyleBtn', 'penStyleMenu', 'setting-stylusParadigm', PE
 initStylusChoiceMenu('penModeBtn', 'penModeMenu', 'setting-stylusMode', PEN_MODES);
 
 
+// ── Creation Mode toggle + quick edit actions (top bar) ─────────────────────
+// Creation Mode is a two-state setting (single / continuous). The top-bar button
+// is a plain toggle that flips the #setting-creationMode <select> — the same
+// single source of truth the Settings panel edits — and dispatches a native
+// 'change', so both stay in agreement no matter which one is used. It also
+// listens for the engine's own 'creationModeChanged' event (fired when the engine
+// auto-reverts continuous→single, e.g. on Escape) and re-syncs the button face
+// AND the panel select, closing the gap where the combo used to go stale.
+(function initCreationModeToggle() {
+  const btn = document.getElementById('creationModeBtn');
+  const label = document.getElementById('creationModeLabel');
+  const select = document.getElementById(
+    'setting-creationMode',
+  ) as HTMLSelectElement | null;
+  if (!btn || !label || !select) return;
+
+  const syncFace = () => {
+    const continuous = select.value === 'continuous';
+    label.textContent = continuous ? 'Continuous' : 'Single';
+    btn.classList.toggle('ms-btn-active', continuous);
+    btn.setAttribute('aria-pressed', String(continuous));
+  };
+
+  btn.addEventListener('click', () => {
+    select.value = select.value === 'continuous' ? 'single' : 'continuous';
+    // Same path the Settings panel uses — index.html's settingMappings picks
+    // this up and publishes it to the SymbolEngine.
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+
+  // Panel edits (and our own toggle) fire 'change' → keep the button face in sync.
+  select.addEventListener('change', syncFace);
+
+  // Engine auto-revert (continuous → single): update the panel select too so the
+  // combo doesn't go stale, then refresh the button face.
+  document.addEventListener('creationModeChanged', (e: Event) => {
+    const mode = (e as CustomEvent).detail?.mode;
+    if (mode && select.value !== mode) select.value = mode;
+    syncFace();
+  });
+
+  syncFace(); // reflect the initial value
+})();
+
+// Clear All — removes every symbol/graphic. Irreversible (also wipes the undo
+// history), so confirm before wiping the map.
+document.getElementById('clearAllBtn')?.addEventListener('click', () => {
+  const ok = window.confirm(
+    'Clear all symbols and graphics? This wipes the map and cannot be undone.',
+  );
+  if (ok) symbolEngine.clearAllGraphics();
+});
+
+
 // ── Stylus / pen per-symbol paradigm override (settings panel) ──────────────────
 // The global Pen Mode / Draw Paradigm selects are wired via index.html's
 // settingMappings. The per-symbol override has a dynamic key (the symbol Class),
