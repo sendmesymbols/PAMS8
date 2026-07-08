@@ -205,6 +205,16 @@ class SymbolEngine implements Evented {
   private _lastDrawEssentials: DrawEssentials | null = null;
   private _lastAmplifier: Amplifier | null = null;
   private _continuousTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  // True while a freehand interactive draw is armed but hasn't placed its first
+  // point yet. In that window a live drawStyle change (fill / colour / width)
+  // re-arms the draw so the new style is baked in — the freehand style is
+  // otherwise snapshotted at pick time and a later colour change is discarded.
+  // Cleared once the user starts drawing (first onDrawProgress), on completion
+  // (drawSymEnd), and on abandon (_cancelActiveDraw).
+  private _freehandDrawArmed = false;
+  // Debounces the drawStyle-driven re-arm so a colour-picker / opacity-slider
+  // drag (which fires many `input` events) coalesces into a single re-arm.
+  private _drawStyleRearmTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private _suppressDrawLifecycleCount = 0;
   private _suppressNextAddUndoCount = 0;
   /** While > 0, applyMorphixEdit() re-renders without pushing an undo entry — used by settings-driven bulk re-renders (e.g. global force-symbol resize). */
@@ -537,6 +547,10 @@ class SymbolEngine implements Evented {
   public setupGlobalEventListener(): void {
     // Listen to custom events on the document
     document.addEventListener('onDrawProgress', (event: any) => {
+      // Drawing has started — stop re-arming the freehand draw on drawStyle
+      // changes so a colour change mid-shape can't discard the placed points.
+      this._freehandDrawArmed = false;
+
       // Arm proximity indicator on first progress event (idempotent â€” no-ops if already active)
       this._proximityEngine?.activate();
 
@@ -1187,6 +1201,12 @@ class SymbolEngine implements Evented {
    * Escape, or a 2D/3D view switch. Null-guarded — safe to call when idle.
    */
   private _cancelActiveDraw(): void {
+    // Draw abandoned — drop any armed freehand re-style state.
+    this._freehandDrawArmed = false;
+    if (this._drawStyleRearmTimeoutId !== null) {
+      clearTimeout(this._drawStyleRearmTimeoutId);
+      this._drawStyleRearmTimeoutId = null;
+    }
     // A deferred stylus draw keeps its capture listeners + preview on the
     // controller (not on the un-init'd symbol instance) — tear it down too.
     this._stylusController?.deactivate();
@@ -1797,6 +1817,32 @@ class SymbolEngine implements Evented {
 
     // Apply specific setting changes to active engines
     const fullPath = path.join('.');
+
+    // Freehand draw-style palette changed while a freehand draw is armed but not
+    // yet started: re-arm so the new fill / colour / width is baked into the
+    // in-flight symbol. The style is snapshotted at pick time, so without this a
+    // colour picked AFTER selecting the symbol is silently discarded. Debounced
+    // so a colour-picker or slider drag coalesces into a single re-arm.
+    if (
+      fullPath.startsWith('drawStyle.') &&
+      this._freehandDrawArmed &&
+      this._lastDrawEssentials &&
+      this._lastAmplifier
+    ) {
+      if (this._drawStyleRearmTimeoutId !== null) {
+        clearTimeout(this._drawStyleRearmTimeoutId);
+      }
+      this._drawStyleRearmTimeoutId = setTimeout(() => {
+        this._drawStyleRearmTimeoutId = null;
+        if (
+          this._freehandDrawArmed &&
+          this._lastDrawEssentials &&
+          this._lastAmplifier
+        ) {
+          this.initialize(this._lastDrawEssentials!, this._lastAmplifier!);
+        }
+      }, 80);
+    }
 
     if (fullPath.startsWith('features.')) {
       const feature = path[1];
@@ -2713,6 +2759,9 @@ class SymbolEngine implements Evented {
       if (!isPassive) {
         this._lastDrawEssentials = drawEssentials;
         this._lastAmplifier = amplifier;
+        // Re-armed below only when this turns out to be an interactive freehand
+        // draw; reset here so switching to a non-freehand tool clears the flag.
+        this._freehandDrawArmed = false;
       }
 
       // Close any active edit/move workflow before starting a new draw
@@ -2897,6 +2946,9 @@ class SymbolEngine implements Evented {
           // — passive placements (plan load / paste / programmatic) keep the
           // appearance baked into their loaded state.
           if (!isPassive && this.currentSymbol?.isFreeHand === '1') {
+            // Armed for interactive freehand drawing — a drawStyle change now
+            // (before the first point) re-arms this draw with the new style.
+            this._freehandDrawArmed = true;
             const ds = (settingsData as any).drawStyle;
             if (ds) {
               if (ds.lineWidth != null) {
@@ -3129,6 +3181,8 @@ class SymbolEngine implements Evented {
       });
       this.isDrawing = false;
       this._selectionEngine.setDrawing(false);
+      // Draw completed — no armed freehand draw to re-style anymore.
+      this._freehandDrawArmed = false;
 
       // Generate a temporary ID
       const tempId = this.generateUUID();

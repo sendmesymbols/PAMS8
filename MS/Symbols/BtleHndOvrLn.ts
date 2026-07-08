@@ -251,6 +251,7 @@ export class BtleHndOvrLn {
         // Store additional properties
         (drawEssentials as any).SCOPE = this;
         (drawEssentials as any).CTRL_PTS = ctrlPts;
+        (drawEssentials as any).DRAW_TYPE = this._drawType;   // persist draw type so curve survives save/load & re-render
 
         return drawEssentials;
     }
