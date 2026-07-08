@@ -61,19 +61,38 @@ class Utils {
             points.pop();
         }
 
+        // A closed ring (Polygon) is fed as [P0..Pn, P0]; drop the trailing copy of the
+        // first point so the seam can be smoothed by wrapping neighbours instead of
+        // clamping (which produced a hard cusp at the start vertex).
+        const closed = !isPloyLine &&
+            points.length > 3 &&
+            points[0].x === points[points.length - 1].x &&
+            points[0].y === points[points.length - 1].y;
+        if (closed) {
+            points.pop();
+        }
+
         const path: number[][] = [];
         if (points.length === 1) {
             path.push([points[0].x, points[0].y]);
         } else {
-            const segmentCount = points.length - 1;
+            const n = points.length;
+            // Periodic Catmull-Rom for closed rings (>= 3 distinct points): neighbour
+            // indices wrap modulo n, giving a matched tangent at the start/end seam.
+            // Open lines keep the original clamped-endpoint behaviour untouched.
+            const periodic = closed && n >= 3;
+            const segmentCount = periodic ? n : n - 1;
+            const idx = (k: number) => periodic
+                ? ((k % n) + n) % n
+                : Math.min(Math.max(k, 0), n - 1);
             for (let i = 0; i <= numberOfPts; i++) {
                 const position = (i / numberOfPts) * segmentCount;
                 const segment = Math.min(Math.floor(position), segmentCount - 1);
                 const t = Math.min(position - segment, 1);
-                const p0 = points[Math.max(0, segment - 1)];
-                const p1 = points[segment];
-                const p2 = points[Math.min(points.length - 1, segment + 1)];
-                const p3 = points[Math.min(points.length - 1, segment + 2)];
+                const p0 = points[idx(segment - 1)];
+                const p1 = points[idx(segment)];
+                const p2 = points[idx(segment + 1)];
+                const p3 = points[idx(segment + 2)];
                 const t2 = t * t;
                 const t3 = t2 * t;
 
