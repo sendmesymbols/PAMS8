@@ -94,6 +94,16 @@ export default defineConfig(({ mode }) => {
                 changeOrigin: true,
                 rewrite: (p) => p.replace(/^\/roadnet/, ''),
             },
+            // Local ArcGIS Server (Pakistan MapServer). It ships no CORS headers
+            // and uses a self-signed cert, so the browser cannot fetch it directly.
+            // Proxy it same-origin through Vite instead: `secure:false` accepts the
+            // self-signed cert, and the `/arcgis` prefix maps 1:1 to the target so
+            // no path rewrite is needed. main.ts points the layer at `/arcgis/...`.
+            '/arcgis': {
+                target: 'https://localhost:6443',
+                changeOrigin: true,
+                secure: false,
+            },
         },
     },
     plugins: [

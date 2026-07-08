@@ -2,6 +2,7 @@ import esriConfig from '@arcgis/core/config';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import Map from '@arcgis/core/map';
+import MapImageLayer from '@arcgis/core/layers/MapImageLayer';
 import settingsData from '../MS/Data/Settings.json';
 
 // Serve ArcGIS runtime assets (CSS, i18n bundles, web workers, basemap defs)
@@ -106,6 +107,26 @@ const initialViewParams: {
 const baseMap = new Map({
   basemap: 'satellite',
   ground: 'world-elevation',
+});
+
+// Pakistan ArcGIS Server operational overlay. It is a dynamic (non-cached)
+// MapServer — singleFusedMapCache:false — so it is consumed as a MapImageLayer
+// (not a TileLayer). Both the 2D MapView and 3D SceneView share this one
+// `baseMap`, so adding the layer here surfaces it in both views at once.
+// The service (https://localhost:6443/arcgis) ships no CORS headers and uses a
+// self-signed cert, so the browser cannot hit it directly — we reach it via the
+// same-origin `/arcgis` Vite dev proxy (see vite.config.ts). If it is unreachable
+// (server offline) the layer load fails softly and is removed instead of breaking
+// app startup — honouring "add if available".
+const pakistanLayer = new MapImageLayer({
+  url: '/arcgis/rest/services/pakistan/MapServer',
+  title: 'Pakistan',
+  listMode: 'show',
+});
+baseMap.add(pakistanLayer);
+pakistanLayer.load().catch((error: unknown) => {
+  console.warn('[PAMS8] Pakistan MapServer unavailable — removing layer.', error);
+  baseMap.remove(pakistanLayer);
 });
 
 // Create 3D view first (as we want it active on startup)
