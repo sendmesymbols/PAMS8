@@ -335,6 +335,95 @@
         border-color: var(--ms-accent) !important;
         color: var(--ms-accent) !important;
       }
+      /* Right-docked draw parameters panel — mirrors the ⛭ Params popup and the
+         draw-type combo. Auto-shows on symbol selection; ✕ hides it until the
+         next selection. Translucent + compact so it stays unobtrusive. */
+      #symbolParamsDock {
+        position: fixed;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 99;
+        width: 226px;
+        display: none;
+        padding: 8px;
+        background: rgba(20, 24, 30, 0.82);
+        border: 1px solid var(--ms-divider);
+        border-radius: 10px;
+        box-shadow: var(--ms-shadow);
+        backdrop-filter: blur(10px);
+        font-family: var(--ms-font);
+        color: var(--ms-text);
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+      #symbolParamsDock.show {
+        display: block;
+        animation: params-dock-in 0.18s ease;
+      }
+      @keyframes params-dock-in {
+        from { opacity: 0; transform: translateY(-50%) translateX(12px); }
+        to { opacity: 1; transform: translateY(-50%); }
+      }
+      .params-dock-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+      .params-dock-title {
+        font: 700 11px/1.2 var(--ms-font);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        opacity: 0.8;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .params-dock-close {
+        flex: none;
+        border: none;
+        background: none;
+        color: var(--ms-text);
+        opacity: 0.6;
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1;
+        padding: 2px 5px;
+        border-radius: 4px;
+      }
+      .params-dock-close:hover {
+        opacity: 1;
+        background: var(--ms-divider);
+      }
+      #symbolParamsDockDrawType {
+        width: 100%;
+        margin-bottom: 6px;
+      }
+      #symbolParamsDockList {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2px;
+      }
+      #symbolParamsDockList input[type='number'] {
+        width: 92px;
+      }
+      /* Freehand colour/fill section of the dock — separated by a divider */
+      #symbolParamsDockStyle {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2px;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid var(--ms-divider);
+      }
+      #symbolParamsDockStyle input[type='range'] {
+        width: 90px;
+      }
+      #symbolParamsDockStyle .drawstyle-swatches {
+        padding: 0 6px 5px;
+      }
       .drawstyle-row {
         display: flex;
         align-items: center;
@@ -1202,6 +1291,29 @@
   <body>
     <div id="viewDiv"></div>
     <canvas id="fabricCanvas"></canvas>
+
+    <!-- Right-docked draw parameters panel. Same tool (draw-type) + parameter
+         inputs as the top-bar ⛭ Params popup, kept in sync with it; the draw
+         path still reads the popup (readSymbolParamsInto in src/main.ts). -->
+    <div id="symbolParamsDock">
+      <div class="params-dock-head">
+        <span class="params-dock-title" id="symbolParamsDockTitle">Draw Parameters</span>
+        <button
+          class="params-dock-close"
+          id="symbolParamsDockClose"
+          title="Hide this panel — it reappears on the next symbol selection"
+        >✕</button>
+      </div>
+      <select
+        id="symbolParamsDockDrawType"
+        class="ms-select"
+        title="Draw type for the selected symbol (mirrors the combo in the top bar)."
+      ></select>
+      <div id="symbolParamsDockList"></div>
+      <!-- Freehand-only: colour + fill controls (same drawStyle settings as the
+           top-bar Freehand Style popup and the ⚙ widget). Built in src/main.ts. -->
+      <div id="symbolParamsDockStyle" style="display: none"></div>
+    </div>
 
     <div id="infoDiv">
       <!-- Section 1: Symbol/Code Controls -->

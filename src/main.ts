@@ -912,10 +912,31 @@ function initializeAutocomplete() {
   const drawTypeSelectEl = () =>
     document.getElementById('drawTypesSelectPre') as HTMLSelectElement | null;
 
+  // Copy an edited value to the same-token input in the other container
+  // (⛭ popup ↔ right dock) so both views of a parameter always agree.
+  function mirrorParamInput(from: HTMLInputElement): void {
+    const token = from.dataset.token;
+    if (!token) return;
+    document
+      .querySelectorAll<HTMLInputElement>(
+        `#symbolParamsMenu input[data-token="${token}"], #symbolParamsDockList input[data-token="${token}"]`,
+      )
+      .forEach((el) => {
+        if (el !== from) el.value = from.value;
+      });
+  }
+
   function buildSymbolParamControls(symbolData: any): void {
     const select = drawTypeSelectEl();
     const anchor = document.getElementById('symbolParamsAnchor');
     const menu = document.getElementById('symbolParamsMenu');
+    const dock = document.getElementById('symbolParamsDock');
+    const dockSelect = document.getElementById(
+      'symbolParamsDockDrawType',
+    ) as HTMLSelectElement | null;
+    const dockList = document.getElementById('symbolParamsDockList');
+    const dockTitle = document.getElementById('symbolParamsDockTitle');
+    const dockStyle = document.getElementById('symbolParamsDockStyle');
 
     const params: any[] = Array.isArray(symbolData?.Parameters)
       ? symbolData.Parameters
@@ -923,9 +944,10 @@ function initializeAutocomplete() {
     const tools: any[] = Array.isArray(symbolData?.Tools) ? symbolData.Tools : [];
 
     // 1) Draw-type <select> ← Tools. Hide it when the symbol offers no choice.
+    const drawTypeParam = params.find((p) => p?.value === 'DRAW_TYPE');
+    const hasDrawType = Boolean(drawTypeParam && tools.length);
     if (select) {
-      const drawTypeParam = params.find((p) => p?.value === 'DRAW_TYPE');
-      if (drawTypeParam && tools.length) {
+      if (hasDrawType) {
         const def = String(drawTypeParam.default ?? tools[0].DRAW_TYPE ?? '1');
         select.innerHTML = '';
         for (const t of tools) {
@@ -941,35 +963,81 @@ function initializeAutocomplete() {
         select.style.display = 'none';
       }
     }
+    // Mirror the same options into the dock's draw-type select.
+    if (dockSelect) {
+      if (hasDrawType && select) {
+        dockSelect.innerHTML = select.innerHTML;
+        dockSelect.value = select.value;
+        dockSelect.style.display = '';
+      } else {
+        dockSelect.innerHTML = '';
+        dockSelect.style.display = 'none';
+      }
+    }
 
-    // 2) Numeric parameters (everything except DRAW_TYPE) ← ⛭ Params popup.
+    // 2) Numeric parameters (everything except DRAW_TYPE) — a row per param in
+    // BOTH the ⛭ Params popup and the right dock; edits in either mirror to
+    // the other. The draw path (readSymbolParamsInto) reads the popup only.
+    const numeric = params.filter((p) => p?.value && p.value !== 'DRAW_TYPE');
+    const makeRow = (p: any): HTMLLabelElement => {
+      const row = document.createElement('label');
+      row.className = 'drawstyle-row';
+      if (p.description) row.title = p.description;
+      const span = document.createElement('span');
+      span.textContent = p.Name || p.value;
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.className = 'ms-input';
+      input.dataset.token = p.value;
+      const defStr = String(p.default ?? '');
+      input.value = defStr;
+      input.step = /\./.test(defStr) ? '0.01' : '1';
+      input.addEventListener('input', () => mirrorParamInput(input));
+      // Committing a value re-arms the pending draw with the new parameter.
+      input.addEventListener('change', () => {
+        mirrorParamInput(input);
+        rearmDraw();
+      });
+      row.appendChild(span);
+      row.appendChild(input);
+      return row;
+    };
     if (menu && anchor) {
-      const numeric = params.filter((p) => p?.value && p.value !== 'DRAW_TYPE');
       menu.innerHTML = '';
       if (!numeric.length) {
         anchor.style.display = 'none';
       } else {
-        for (const p of numeric) {
-          const row = document.createElement('label');
-          row.className = 'drawstyle-row';
-          if (p.description) row.title = p.description;
-          const span = document.createElement('span');
-          span.textContent = p.Name || p.value;
-          const input = document.createElement('input');
-          input.type = 'number';
-          input.className = 'ms-input';
-          input.dataset.token = p.value;
-          const defStr = String(p.default ?? '');
-          input.value = defStr;
-          input.step = /\./.test(defStr) ? '0.01' : '1';
-          // Committing a value re-arms the pending draw with the new parameter.
-          input.addEventListener('change', rearmDraw);
-          row.appendChild(span);
-          row.appendChild(input);
-          menu.appendChild(row);
-        }
+        for (const p of numeric) menu.appendChild(makeRow(p));
         anchor.style.display = '';
       }
+    }
+    if (dockList) {
+      dockList.innerHTML = '';
+      for (const p of numeric) dockList.appendChild(makeRow(p));
+    }
+
+    // 2b) Freehand symbols additionally get colour + fill controls in the dock
+    // (same drawStyle settings as the top-bar Freehand Style popup / ⚙ widget).
+    // Symbols.json stores the flag as the string "1", not a boolean.
+    const isFreehand =
+      symbolData?.isFreeHand === '1' ||
+      symbolData?.isFreeHand === 1 ||
+      symbolData?.isFreeHand === true;
+    if (dockStyle) {
+      if (isFreehand) {
+        buildDockFreehandStyle(dockStyle);
+        dockStyle.style.display = '';
+      } else {
+        dockStyle.innerHTML = '';
+        dockStyle.style.display = 'none';
+      }
+    }
+
+    // 3) Auto-show the right dock whenever the symbol has any inputs to offer.
+    // ✕ hides it; the next symbol selection re-opens it.
+    if (dock) {
+      if (dockTitle) dockTitle.textContent = symbolData?.Name || 'Draw Parameters';
+      dock.classList.toggle('show', hasDrawType || numeric.length > 0 || isFreehand);
     }
   }
 
@@ -992,7 +1060,38 @@ function initializeAutocomplete() {
 
   function initSymbolParamsMenu(): void {
     // Draw-type change re-arms the pending draw with the new geometry mode.
-    drawTypeSelectEl()?.addEventListener('change', rearmDraw);
+    // The top-bar combo and its right-dock copy mirror each other.
+    const dockSelect = document.getElementById(
+      'symbolParamsDockDrawType',
+    ) as HTMLSelectElement | null;
+    drawTypeSelectEl()?.addEventListener('change', () => {
+      const top = drawTypeSelectEl();
+      if (dockSelect && top) dockSelect.value = top.value;
+      rearmDraw();
+    });
+    dockSelect?.addEventListener('change', () => {
+      const top = drawTypeSelectEl();
+      if (top) top.value = dockSelect.value;
+      rearmDraw();
+    });
+
+    // ✕ hides the right dock; the next symbol selection re-opens it.
+    document
+      .getElementById('symbolParamsDockClose')
+      ?.addEventListener('click', () =>
+        document.getElementById('symbolParamsDock')?.classList.remove('show'),
+      );
+
+    // Drawing finished → the dock has served its purpose; close it. In
+    // continuous creation mode the next draw arms immediately with the same
+    // symbol, so keep it open there.
+    document.addEventListener('onDrawEnd', () => {
+      const mode = (
+        document.getElementById('setting-creationMode') as HTMLSelectElement | null
+      )?.value;
+      if (mode !== 'continuous')
+        document.getElementById('symbolParamsDock')?.classList.remove('show');
+    });
 
     const btn = document.getElementById('symbolParamsBtn');
     const menu = document.getElementById('symbolParamsMenu');
@@ -1179,6 +1278,22 @@ function initStylusChoiceMenu(
 initStylusChoiceMenu('penStyleBtn', 'penStyleMenu', 'setting-stylusParadigm', PEN_STYLES);
 initStylusChoiceMenu('penModeBtn', 'penModeMenu', 'setting-stylusMode', PEN_MODES);
 
+// Common colour presets (friendly blue, hostile red, neutral green, unknown
+// yellow, plus a few extras). Rendered as swatch buttons under each colour
+// picker — shared by the top-bar Freehand Style popup and the right dock.
+const PRESET_COLORS: Array<{ name: string; rgb: [number, number, number] }> = [
+  { name: 'Blue', rgb: [0, 92, 230] },
+  { name: 'Red', rgb: [214, 40, 40] },
+  { name: 'Green', rgb: [46, 158, 60] },
+  { name: 'Yellow', rgb: [240, 200, 20] },
+  { name: 'Orange', rgb: [240, 130, 20] },
+  { name: 'Purple', rgb: [150, 70, 200] },
+  { name: 'Black', rgb: [20, 20, 20] },
+  { name: 'White', rgb: [240, 240, 240] },
+];
+const rgbToHex = (rgb: number[]) =>
+  '#' + rgb.map((v) => (v | 0).toString(16).padStart(2, '0')).join('');
+
 // ── Freehand Style palette (top bar) ────────────────────────────────────────
 // Compact popup mirroring the ⚙ "Freehand Style" widget. Reads the current
 // drawStyle settings on open and writes each change back through the same
@@ -1244,20 +1359,6 @@ function initDrawStyleMenu(): void {
     }
   };
 
-  // Common colour presets (friendly blue, hostile red, neutral green, unknown
-  // yellow, plus a few extras). Rendered as swatch buttons under each picker.
-  const PRESET_COLORS: Array<{ name: string; rgb: [number, number, number] }> = [
-    { name: 'Blue', rgb: [0, 92, 230] },
-    { name: 'Red', rgb: [214, 40, 40] },
-    { name: 'Green', rgb: [46, 158, 60] },
-    { name: 'Yellow', rgb: [240, 200, 20] },
-    { name: 'Orange', rgb: [240, 130, 20] },
-    { name: 'Purple', rgb: [150, 70, 200] },
-    { name: 'Black', rgb: [20, 20, 20] },
-    { name: 'White', rgb: [240, 240, 240] },
-  ];
-  const rgbToHex = (rgb: number[]) =>
-    '#' + rgb.map((v) => (v | 0).toString(16).padStart(2, '0')).join('');
   const buildPresets = (
     containerId: string,
     onPick: (rgb: number[], hex: string) => void,
@@ -1330,6 +1431,133 @@ function initDrawStyleMenu(): void {
   });
 }
 initDrawStyleMenu();
+
+// ── Right-dock freehand style section ───────────────────────────────────────
+// Colour + fill controls rendered into the right params dock when the picked
+// symbol is freehand. Reads the current drawStyle settings at build time and
+// writes each change through the same `settingsChanged` bus as the ⚙ widget
+// and the top-bar Freehand Style popup, so every surface stays in sync — the
+// engine reads drawStyle live at draw time.
+function buildDockFreehandStyle(container: HTMLElement): void {
+  const ds = (window as any).symbolEngine?.settings?.drawStyle ?? {};
+  const toHex = (c: unknown): string =>
+    Array.isArray(c)
+      ? '#' +
+        c
+          .slice(0, 3)
+          .map((v: number) => (v | 0).toString(16).padStart(2, '0'))
+          .join('')
+      : '#003399';
+  const toRgb = (hex: string): number[] => {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m
+      ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)]
+      : [0, 51, 204];
+  };
+  const write = (key: string, value: unknown) =>
+    window.dispatchEvent(
+      new CustomEvent('settingsChanged', {
+        detail: { path: ['drawStyle', key], value, fullPath: 'drawStyle.' + key },
+      }),
+    );
+
+  container.innerHTML = '';
+  const row = (text: string, input: HTMLElement, isCheck = false): void => {
+    const r = document.createElement('label');
+    r.className = 'drawstyle-row' + (isCheck ? ' drawstyle-check' : '');
+    const span = document.createElement('span');
+    span.textContent = text;
+    if (isCheck) r.append(input, span);
+    else r.append(span, input);
+    container.appendChild(r);
+  };
+  // Swatch strip of the common preset colours under a colour picker.
+  const swatches = (onPick: (rgb: number[], hex: string) => void): void => {
+    const strip = document.createElement('div');
+    strip.className = 'drawstyle-swatches';
+    for (const p of PRESET_COLORS) {
+      const hex = rgbToHex(p.rgb);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'drawstyle-swatch';
+      b.style.background = hex;
+      b.title = p.name;
+      b.addEventListener('click', () => onPick(p.rgb.slice(), hex));
+      strip.appendChild(b);
+    }
+    container.appendChild(strip);
+  };
+
+  const aff = document.createElement('input');
+  aff.type = 'checkbox';
+  aff.checked = ds.useAffiliationColor !== false;
+  aff.addEventListener('change', () =>
+    write('useAffiliationColor', aff.checked),
+  );
+  row('Affiliation color', aff, true);
+
+  // Picking a custom line colour turns affiliation colour off — otherwise the
+  // chosen colour would be ignored (affiliation colour takes precedence).
+  const enableCustomLine = () => {
+    if (aff.checked) {
+      aff.checked = false;
+      write('useAffiliationColor', false);
+    }
+  };
+  const lineColor = document.createElement('input');
+  lineColor.type = 'color';
+  lineColor.value = toHex(ds.lineColor);
+  lineColor.addEventListener('input', () => {
+    enableCustomLine();
+    write('lineColor', toRgb(lineColor.value));
+  });
+  row('Line color', lineColor);
+  swatches((rgb, hex) => {
+    lineColor.value = hex;
+    enableCustomLine();
+    write('lineColor', rgb);
+  });
+
+  const lineWidth = document.createElement('input');
+  lineWidth.type = 'range';
+  lineWidth.min = '0.5';
+  lineWidth.max = '20';
+  lineWidth.step = '0.5';
+  lineWidth.value = String(ds.lineWidth ?? 3);
+  lineWidth.addEventListener('input', () =>
+    write('lineWidth', parseFloat(lineWidth.value)),
+  );
+  row('Line width', lineWidth);
+
+  const fill = document.createElement('input');
+  fill.type = 'checkbox';
+  fill.checked = ds.fill === true;
+  fill.addEventListener('change', () => write('fill', fill.checked));
+  row('Fill', fill, true);
+
+  const fillColor = document.createElement('input');
+  fillColor.type = 'color';
+  fillColor.value = toHex(ds.fillColor);
+  fillColor.addEventListener('input', () =>
+    write('fillColor', toRgb(fillColor.value)),
+  );
+  row('Fill color', fillColor);
+  swatches((rgb, hex) => {
+    fillColor.value = hex;
+    write('fillColor', rgb);
+  });
+
+  const fillOpacity = document.createElement('input');
+  fillOpacity.type = 'range';
+  fillOpacity.min = '0';
+  fillOpacity.max = '1';
+  fillOpacity.step = '0.05';
+  fillOpacity.value = String(ds.fillOpacity ?? 0.5);
+  fillOpacity.addEventListener('input', () =>
+    write('fillOpacity', parseFloat(fillOpacity.value)),
+  );
+  row('Fill opacity', fillOpacity);
+}
 
 
 // ── Creation Mode toggle + quick edit actions (top bar) ─────────────────────
