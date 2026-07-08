@@ -283,11 +283,18 @@ export class DoubleFenceWire {
       let cLenLimit = baseLineLen / 7;
       if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
 
-      // Sample points and place double-fence marker (Echelon '21')
+      // Sample points and place double-fence marker (two X's), each rotated to the
+      // fence's local bearing so the marks stay perpendicular to the centerline.
       const resPts = GeoTools.getDashPts(pts, [gapRatio, gapRatio]);
       for (let i = 0; i < resPts.length; i++) {
-        const echelons = Shapes.createEchelon('21', resPts[i], cLenLimit) as any;
-        const paths: Point[][] = Array.isArray(echelons[0]) ? (echelons as Point[][]) : [echelons as Point[]];
+        const a = resPts[i];
+        const b = resPts[i + 1] ?? resPts[i - 1];       // neighbour along the line
+        const angle = b
+          ? (i + 1 < resPts.length
+              ? GeoTools.angleInRadians(a, b)            // forward tangent
+              : GeoTools.angleInRadians(b, a))           // last point: backward tangent
+          : 0;
+        const paths = Shapes.createOrientedCross(a, cLenLimit, angle, 2);
         for (let j = 0; j < paths.length; j++) {
           const pathPairs = paths[j].map(p => [p.x, p.y]);
           result.addPath(pathPairs);

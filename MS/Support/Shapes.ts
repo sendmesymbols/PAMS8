@@ -2475,6 +2475,45 @@ class Shapes {
     }
 
     /**
+     * Oriented cross-mark(s) for wire-obstacle line symbols (Double Apron Fence,
+     * Single/Double/High/Low wire fences, Unspecified wire).
+     * Standalone: reproduces the brigade/division/corps "X" echelon glyphs
+     * ('18'/'21'/'22') and rotates them to the supplied line bearing so the marks
+     * stay perpendicular to the fence centerline. Does NOT touch createEchelon
+     * (shared by ~124 symbols).
+     *
+     * @param pt     sample centre on the fence spine
+     * @param radius half-size control (cLenLimit)
+     * @param angle  local line bearing in radians (GeoTools.angleInRadians)
+     * @param count  number of side-by-side X's: 1 = '18', 2 = '21', 3 = '22' (default 1)
+     */
+    static createOrientedCross(pt: Point, radius: number, angle: number, count: number = 1): Point[][] {
+        const sp = pt.spatialReference;
+        const cx = pt.x, cy = pt.y;
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        // X centres along the local x-axis, matching Echelons.createDIV / createCORPS
+        const centres = count === 2 ? [-radius * 0.75, radius * 0.75]
+            : count === 3 ? [-radius * 1.5, 0, radius * 1.5]
+            : [0];
+        const out: Point[][] = [];
+        for (const c of centres) {
+            // one X per centre, matching Echelons.createX (tall X: ±r/2 in x, ±r in y)
+            const base: [number, number][][] = [
+                [[c - radius / 2, -radius], [c + radius / 2,  radius]],
+                [[c + radius / 2, -radius], [c - radius / 2,  radius]],
+            ];
+            for (const seg of base) {
+                out.push(seg.map(([ox, oy]) => new Point({
+                    x: cx + ox * cos - oy * sin,
+                    y: cy + ox * sin + oy * cos,
+                    spatialReference: sp,
+                })));
+            }
+        }
+        return out;
+    }
+
+    /**
      * Create Bezier path from points
      * Note: This requires TweenMax library which may not be available in 4.x
      */

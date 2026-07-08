@@ -284,11 +284,18 @@ export class DoubleApronFence {
       let cLenLimit = baseLineLen / 7;
       if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
 
-      // Sample points and place cross (Echelon '18') at each sample
+      // Sample points and place cross marks, each rotated to the fence's local bearing
+      // so the cross stays perpendicular to the centerline at every draw angle.
       const resPts = GeoTools.getDashPts(pts, [gapRatio, gapRatio]);
       for (let i = 0; i < resPts.length; i++) {
-        const echelons = Shapes.createEchelon('18', resPts[i], cLenLimit) as any;
-        const paths: Point[][] = Array.isArray(echelons[0]) ? (echelons as Point[][]) : [echelons as Point[]];
+        const a = resPts[i];
+        const b = resPts[i + 1] ?? resPts[i - 1];       // neighbour along the line
+        const angle = b
+          ? (i + 1 < resPts.length
+              ? GeoTools.angleInRadians(a, b)            // forward tangent
+              : GeoTools.angleInRadians(b, a))           // last point: backward tangent
+          : 0;
+        const paths = Shapes.createOrientedCross(a, cLenLimit, angle);
         for (let j = 0; j < paths.length; j++) {
           const pathPairs = paths[j].map(p => [p.x, p.y]);
           result.addPath(pathPairs);
