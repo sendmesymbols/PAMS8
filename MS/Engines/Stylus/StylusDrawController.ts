@@ -712,27 +712,33 @@ export default class StylusDrawController {
   /**
    * Failure mode seen on some tablets: ArcGIS classifies a stationary pen/touch
    * tap as a micro-drag and never emits 'click', so the symbol's own click
-   * handler never runs and the native draw is completely dead. Rescue: watch raw
-   * pointer-down/up pairs; when a qualifying tap (small travel, short press,
-   * pen/touch, outside the toolbar) produces no REAL click or double-click
+   * handler never runs and the vertex is silently lost. Crucially this happens
+   * PER GESTURE (it depends on how much that particular tap drifted), not per
+   * device — a draw can get real clicks for some taps and nothing for others.
+   * Rescue: watch raw pointer-down/up pairs; when a qualifying tap (small
+   * travel, short press, pen/touch, outside the toolbar) produces no REAL click
    * within stylus.native.tapFallbackMs, commit the vertex by re-emitting the
    * symbol's own 'click' (bus emit, as everywhere else).
    *
-   * Self-disarming: the first real click proves the device delivers clicks and
-   * turns the fallback off for the whole session — on healthy hardware it can
-   * never fire, so there is no duplicate-vertex risk (ArcGIS's ~250 ms click
-   * delay sits well inside the default 400 ms window). Synthetic clicks carry
-   * the _msSynthetic marker and don't count as proof.
+   * Cancellation is PER TAP, matched by position: a real click near a pending
+   * tap proves ArcGIS delivered THAT tap, so only that rescue is cancelled.
+   * (An earlier build disarmed the whole session on the first real click —
+   * on tablets with intermittent click delivery that lost every subsequent
+   * drifting tap, i.e. control points went missing mid-draw.) On healthy
+   * hardware every rescue is cancelled by its own click (ArcGIS's ~250 ms click
+   * delay sits well inside the default 400 ms window), so there is no
+   * duplicate-vertex risk. Synthetic clicks carry the _msSynthetic marker and
+   * never cancel anything.
    */
   private _installTapFallback(session: Session): void {
     const windowMs = Number(this._deps.getSettings()?.stylus?.native?.tapFallbackMs ?? 400);
     if (windowMs <= 0) return;
     const view = this._deps.getView();
     let downAt: { x: number; y: number; t: number } | null = null;
-    let clicksWork = false;
-    const pending = new Set<any>();
+    type PendingTap = { timer: any; x: number; y: number };
+    const pending = new Set<PendingTap>();
     const clearPending = () => {
-      for (const t of pending) clearTimeout(t);
+      for (const p of pending) clearTimeout(p.timer);
       pending.clear();
     };
     const now = () =>
@@ -740,7 +746,7 @@ export default class StylusDrawController {
 
     session.handles.push(
       view.on('pointer-down', (evt: any) => {
-        if (clicksWork || evt.button !== 0) return;
+        if (evt.button !== 0) return;
         if (this._lastPointerType === 'mouse') return; // mouse clicks are reliable
         if (this._isInsideToolbar(evt.x, evt.y)) return;
         downAt = { x: evt.x, y: evt.y, t: now() };
@@ -751,37 +757,49 @@ export default class StylusDrawController {
       view.on('pointer-up', (evt: any) => {
         const d = downAt;
         downAt = null;
-        if (clicksWork || !d) return;
+        if (!d) return;
         if (Math.hypot(evt.x - d.x, evt.y - d.y) > this._tapTolerancePx()) return; // pan
         if (now() - d.t > 600) return; // long-press ≠ tap
-        const x = evt.x;
-        const y = evt.y;
-        const timer = setTimeout(() => {
-          pending.delete(timer);
-          // Session ended (draw finished/cancelled) or a later real click
-          // disarmed us while the timer was in flight.
-          if (this._session !== session || clicksWork) return;
+        const entry: PendingTap = { timer: null, x: evt.x, y: evt.y };
+        entry.timer = setTimeout(() => {
+          pending.delete(entry);
+          // Session ended (draw finished/cancelled) while the timer was in flight.
+          if (this._session !== session) return;
           if (stylusDebug(this._deps)) {
             EngineLogger.nextStep(
               'Stylus Native',
-              `tap fallback FIRED x=${x} y=${y} (no click within ${windowMs}ms)`,
+              `tap fallback FIRED x=${entry.x} y=${entry.y} (no click within ${windowMs}ms)`,
             );
           }
           // The session's own 'click' observer handles the side effects
           // (lastScreen, premium.onTap / synthetic hover) — same as a real tap.
-          this._emitSyntheticClick(x, y);
+          this._emitSyntheticClick(entry.x, entry.y);
         }, windowMs);
-        pending.add(timer);
+        pending.add(entry);
       }),
     );
 
-    const disarm = (evt: any) => {
-      if (evt?._msSynthetic) return; // our own emission proves nothing
-      clicksWork = true;
-      clearPending();
-    };
-    session.handles.push(view.on('click', disarm));
-    session.handles.push(view.on('double-click', disarm));
+    // A real click cancels only the pending rescue(s) at its own position —
+    // the next tap starts with the fallback fully armed again.
+    const cancelRadius = Math.max(12, this._tapTolerancePx() * 2);
+    session.handles.push(
+      view.on('click', (evt: any) => {
+        if (evt?._msSynthetic) return; // our own emission cancels nothing
+        for (const p of pending) {
+          if (Math.hypot(evt.x - p.x, evt.y - p.y) <= cancelRadius) {
+            clearTimeout(p.timer);
+            pending.delete(p);
+          }
+        }
+      }),
+    );
+    // A real double-click is the draw terminator — nothing left to rescue.
+    session.handles.push(
+      view.on('double-click', (evt: any) => {
+        if (evt?._msSynthetic) return;
+        clearPending();
+      }),
+    );
 
     // Scrub handles drags itself (drag start commits a vertex) — a pending tap
     // that turns into a stroke must not also fallback-commit. In ⊙ Points mode
