@@ -81,7 +81,27 @@ export class FreehandSemiCircle {
      * Initialize the freehand semi circle drawing
      */
     public init(options: FreehandSemiCircleOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void {
-        this._lineSym = marker;
+        // Draw-style palette: FILL === true upgrades this semi-circle to a filled
+        // polygon with an independent fill colour/opacity; absent or false keeps
+        // the outline-only pass-through (legacy behaviour).
+        if (options.FILL === true) {
+            const line = marker as SimpleLineSymbol;
+            const rgb = Array.isArray(options.FILL_COLOR)
+                ? options.FILL_COLOR
+                : [line.color?.r ?? 0, line.color?.g ?? 51, line.color?.b ?? 204];
+            const alpha = options.FILL_OPACITY != null ? options.FILL_OPACITY : 0.5;
+            this._lineSym = new SimpleFillSymbol({
+                style: "solid",
+                color: [rgb[0], rgb[1], rgb[2], alpha],
+                outline: new SimpleLineSymbol({
+                    style: line.style,
+                    color: line.color,
+                    width: line.width,
+                }),
+            });
+        } else {
+            this._lineSym = marker;
+        }
 
         const drawEssentials = new DrawEssentials();
 

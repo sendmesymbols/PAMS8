@@ -38,7 +38,7 @@ export class FreehandCloseSupportingAttack {
     private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
     private _tailFactor: number = 0.05;
-    private _headPercentage: number = 0.07;
+    private _headPercentage: number = 0.15;
     private amplifier: Amplifier;
     
     // Drawing state
@@ -74,7 +74,7 @@ export class FreehandCloseSupportingAttack {
     public init(options: FreehandCloseSupportingAttackOptions, marker: SimpleLineSymbol): void {
         this._lineSym = marker;
         
-        this._headPercentage = GeoTools.setDefault(options, "HEAD_RATIO", 0.07);
+        this._headPercentage = GeoTools.setDefault(options, "HEAD_RATIO", 0.15);
         this._tailFactor = GeoTools.setDefault(options, "TAIL_FACTOR", 0.05);
         
         // Set up event handlers

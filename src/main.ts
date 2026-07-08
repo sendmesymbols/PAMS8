@@ -373,6 +373,10 @@ function initializeAutocomplete() {
   let filteredSymbols: Array<{ key: string; name: string }> = [];
   let selectedIndex = -1;
 
+  // Remembers the most recent pick so a param / draw-type change can re-arm the
+  // draw with the same symbol (see initSymbolParamsMenu / rearmDraw below).
+  let lastSelectedSymbol: { key: string; name: string } | null = null;
+
   // Get all symbols from SymbolEngine
   allSymbols = symbolEngine.getSymbolNamesForAutocomplete();
   console.log(`Loaded ${allSymbols.length} symbols for autocomplete`);
@@ -520,12 +524,22 @@ function initializeAutocomplete() {
     });
   }
 
-  function selectSymbol(symbol: { key: string; name: string }) {
+  function selectSymbol(
+    symbol: { key: string; name: string },
+    opts?: { rearm?: boolean },
+  ) {
+    // rearm = a re-invoke triggered by a param / draw-type change. Keep the
+    // current control values (don't rebuild them) and skip the search-box /
+    // detail-toast churn — just rebuild drawEssentials and re-arm the draw.
+    const rearm = opts?.rearm === true;
     console.log('=== selectSymbol function called ===');
     console.log('Symbol object:', symbol);
 
-    symbolSearchInput.value = symbol.name;
-    hideAutocompleteList();
+    lastSelectedSymbol = symbol;
+    if (!rearm) {
+      symbolSearchInput.value = symbol.name;
+      hideAutocompleteList();
+    }
 
     // Log the selected JSON key to console
     console.log('Selected symbol key:', symbol.key);
@@ -564,14 +578,23 @@ function initializeAutocomplete() {
     console.log('Symbol data returned:', symbolData);
 
     if (symbolData) {
-      console.log('Displaying symbol details...');
-      displaySymbolDetails(symbol.key, symbolData);
+      if (!rearm) {
+        console.log('Displaying symbol details...');
+        displaySymbolDetails(symbol.key, symbolData);
+      }
     } else {
       console.error('No symbol data found for key:', symbol.key);
     }
 
     // Reflect this symbol in the per-symbol pen-paradigm override control.
     updateStylusPerSymbolUI(symbolData?.Class ?? null);
+
+    // On a fresh pick, (re)build the schema-driven draw-type options and the
+    // per-symbol numeric parameter inputs from the symbol's definition. On a
+    // re-arm we keep the user's current control values and only re-read them.
+    if (!rearm) {
+      buildSymbolParamControls(symbolData);
+    }
 
     var amplifier = new Amplifier();
     /*
@@ -722,13 +745,19 @@ function initializeAutocomplete() {
 
     //drawEssentials.TEETH_SIZE = 2;
 
-    // Set default draw type from Parameters if available
+    // Draw type comes from the schema-driven select (options built from the
+    // symbol's Tools). When the symbol offers no draw-type choice the select is
+    // hidden — fall back to 1 (all DRAW_TYPE defaults are "1"; such symbols
+    // ignore DRAW_TYPE anyway).
     const drawTypesSelect = document.getElementById(
       'drawTypesSelectPre',
-    ) as HTMLSelectElement;
-    const selectedValue = parseInt(drawTypesSelect.value);
-    console.log('DRAW_TYPE updated to:', selectedValue);
-    drawEssentials.DRAW_TYPE = selectedValue;
+    ) as HTMLSelectElement | null;
+    const hasDrawType =
+      !!drawTypesSelect && drawTypesSelect.style.display !== 'none';
+    const selectedValue = parseInt(drawTypesSelect?.value ?? '1', 10);
+    drawEssentials.DRAW_TYPE =
+      hasDrawType && Number.isFinite(selectedValue) ? selectedValue : 1;
+    console.log('DRAW_TYPE updated to:', drawEssentials.DRAW_TYPE);
 
     //drawEssentials.DRAW_TYPE = 1;
     //drawEssentials.FACE_GAP = 0;
@@ -786,6 +815,12 @@ function initializeAutocomplete() {
     };
     //var labelOptions = {'haloColor': [255,0,0], 'haloColorSize': 5, 'color': [0,255, 0]};
     //symEngine.initialize(drawEssentials, extraSettings, labelOptions);
+
+    // Apply the per-symbol numeric parameters (HEAD_RATIO, TAIL_FACTOR,
+    // TEETH_GAP, SIZE, ANGLE, FLAP_ANGLE, …) from the ⛭ Params popup LAST so
+    // the user's values win over the hardcoded demo defaults above. The symbol
+    // class reads them via GeoTools.setDefault at draw time.
+    readSymbolParamsInto(drawEssentials);
 
     symbolEngine.initialize(drawEssentials, amplifier);
 
@@ -845,6 +880,121 @@ function initializeAutocomplete() {
 
     console.log('=== displaySymbolDetails function completed ===');
   }
+
+  // ── Per-symbol draw parameters (schema-driven from Symbols.json) ───────────
+  // A symbol definition carries `Tools` (the labelled choices for DRAW_TYPE)
+  // and `Parameters` (numeric geometry knobs like HEAD_RATIO / TAIL_FACTOR /
+  // TEETH_GAP / SIZE / ANGLE). buildSymbolParamControls renders these into the
+  // draw-type <select> + the ⛭ Params popup; readSymbolParamsInto copies the
+  // current values onto a DrawEssentials just before the draw is armed.
+
+  const drawTypeSelectEl = () =>
+    document.getElementById('drawTypesSelectPre') as HTMLSelectElement | null;
+
+  function buildSymbolParamControls(symbolData: any): void {
+    const select = drawTypeSelectEl();
+    const anchor = document.getElementById('symbolParamsAnchor');
+    const menu = document.getElementById('symbolParamsMenu');
+
+    const params: any[] = Array.isArray(symbolData?.Parameters)
+      ? symbolData.Parameters
+      : [];
+    const tools: any[] = Array.isArray(symbolData?.Tools) ? symbolData.Tools : [];
+
+    // 1) Draw-type <select> ← Tools. Hide it when the symbol offers no choice.
+    if (select) {
+      const drawTypeParam = params.find((p) => p?.value === 'DRAW_TYPE');
+      if (drawTypeParam && tools.length) {
+        const def = String(drawTypeParam.default ?? tools[0].DRAW_TYPE ?? '1');
+        select.innerHTML = '';
+        for (const t of tools) {
+          const opt = document.createElement('option');
+          opt.value = String(t.DRAW_TYPE);
+          opt.textContent = t.Name || `Type ${t.DRAW_TYPE}`;
+          if (t.description) opt.title = t.description;
+          select.appendChild(opt);
+        }
+        select.value = def;
+        select.style.display = '';
+      } else {
+        select.style.display = 'none';
+      }
+    }
+
+    // 2) Numeric parameters (everything except DRAW_TYPE) ← ⛭ Params popup.
+    if (menu && anchor) {
+      const numeric = params.filter((p) => p?.value && p.value !== 'DRAW_TYPE');
+      menu.innerHTML = '';
+      if (!numeric.length) {
+        anchor.style.display = 'none';
+      } else {
+        for (const p of numeric) {
+          const row = document.createElement('label');
+          row.className = 'drawstyle-row';
+          if (p.description) row.title = p.description;
+          const span = document.createElement('span');
+          span.textContent = p.Name || p.value;
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.className = 'ms-input';
+          input.dataset.token = p.value;
+          const defStr = String(p.default ?? '');
+          input.value = defStr;
+          input.step = /\./.test(defStr) ? '0.01' : '1';
+          // Committing a value re-arms the pending draw with the new parameter.
+          input.addEventListener('change', rearmDraw);
+          row.appendChild(span);
+          row.appendChild(input);
+          menu.appendChild(row);
+        }
+        anchor.style.display = '';
+      }
+    }
+  }
+
+  function readSymbolParamsInto(drawEssentials: any): void {
+    const menu = document.getElementById('symbolParamsMenu');
+    if (!menu) return;
+    menu
+      .querySelectorAll<HTMLInputElement>('input[data-token]')
+      .forEach((input) => {
+        const token = input.dataset.token;
+        if (!token) return;
+        const n = parseFloat(input.value);
+        if (Number.isFinite(n)) drawEssentials[token] = n;
+      });
+  }
+
+  function rearmDraw(): void {
+    if (lastSelectedSymbol) selectSymbol(lastSelectedSymbol, { rearm: true });
+  }
+
+  function initSymbolParamsMenu(): void {
+    // Draw-type change re-arms the pending draw with the new geometry mode.
+    drawTypeSelectEl()?.addEventListener('change', rearmDraw);
+
+    const btn = document.getElementById('symbolParamsBtn');
+    const menu = document.getElementById('symbolParamsMenu');
+    if (!btn || !menu) return;
+    const hide = () => {
+      menu.style.display = 'none';
+      btn.classList.remove('ms-btn-active');
+    };
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (menu.style.display === 'grid') {
+        hide();
+      } else {
+        menu.style.display = 'grid';
+        btn.classList.add('ms-btn-active');
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (menu.style.display === 'grid' && !menu.contains(e.target as Node))
+        hide();
+    });
+  }
+  initSymbolParamsMenu();
 
   // Demo quick-pick menu: buttons that run the EXACT selectSymbol path above,
   // as if the name had been picked from the autocomplete list. Deferred one
@@ -1008,6 +1158,158 @@ function initStylusChoiceMenu(
 initStylusChoiceMenu('penStyleBtn', 'penStyleMenu', 'setting-stylusParadigm', PEN_STYLES);
 initStylusChoiceMenu('penModeBtn', 'penModeMenu', 'setting-stylusMode', PEN_MODES);
 
+// ── Freehand Style palette (top bar) ────────────────────────────────────────
+// Compact popup mirroring the ⚙ "Freehand Style" widget. Reads the current
+// drawStyle settings on open and writes each change back through the same
+// `settingsChanged` bus the Settings panel + widgets use, so both surfaces stay
+// in sync. The engine reads drawStyle live at draw time for freehand symbols.
+function initDrawStyleMenu(): void {
+  const btn = document.getElementById('drawStyleBtn');
+  const menu = document.getElementById('drawStyleMenu');
+  if (!btn || !menu) return;
+
+  const el = <T extends HTMLElement>(id: string) =>
+    document.getElementById(id) as T | null;
+  const useAff = el<HTMLInputElement>('ds-useAffiliationColor');
+  const lineColorEl = el<HTMLInputElement>('ds-lineColor');
+  const lineWidthEl = el<HTMLInputElement>('ds-lineWidth');
+  const lineWidthOut = el<HTMLElement>('ds-lineWidth-out');
+  const fillEl = el<HTMLInputElement>('ds-fill');
+  const fillColorEl = el<HTMLInputElement>('ds-fillColor');
+  const fillOpacityEl = el<HTMLInputElement>('ds-fillOpacity');
+  const fillOpacityOut = el<HTMLElement>('ds-fillOpacity-out');
+
+  const toHex = (c: unknown): string =>
+    Array.isArray(c)
+      ? '#' +
+        c
+          .slice(0, 3)
+          .map((v: number) => (v | 0).toString(16).padStart(2, '0'))
+          .join('')
+      : '#003399';
+  const toRgb = (hex: string): number[] => {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m
+      ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)]
+      : [0, 51, 204];
+  };
+  const write = (key: string, value: unknown) =>
+    window.dispatchEvent(
+      new CustomEvent('settingsChanged', {
+        detail: { path: ['drawStyle', key], value, fullPath: 'drawStyle.' + key },
+      }),
+    );
+
+  const hide = () => {
+    menu.style.display = 'none';
+    btn.classList.remove('ms-btn-active');
+  };
+
+  // Reflect current settings each time the popup opens (keeps it consistent with
+  // changes made in the ⚙ widget or the legacy Settings panel).
+  const sync = () => {
+    const ds = (window as any).symbolEngine?.settings?.drawStyle ?? {};
+    if (useAff) useAff.checked = ds.useAffiliationColor !== false;
+    if (lineColorEl) lineColorEl.value = toHex(ds.lineColor);
+    if (lineWidthEl) {
+      lineWidthEl.value = String(ds.lineWidth ?? 3);
+      if (lineWidthOut) lineWidthOut.textContent = lineWidthEl.value;
+    }
+    if (fillEl) fillEl.checked = ds.fill === true;
+    if (fillColorEl) fillColorEl.value = toHex(ds.fillColor);
+    if (fillOpacityEl) {
+      fillOpacityEl.value = String(ds.fillOpacity ?? 0.5);
+      if (fillOpacityOut) fillOpacityOut.textContent = fillOpacityEl.value;
+    }
+  };
+
+  // Common colour presets (friendly blue, hostile red, neutral green, unknown
+  // yellow, plus a few extras). Rendered as swatch buttons under each picker.
+  const PRESET_COLORS: Array<{ name: string; rgb: [number, number, number] }> = [
+    { name: 'Blue', rgb: [0, 92, 230] },
+    { name: 'Red', rgb: [214, 40, 40] },
+    { name: 'Green', rgb: [46, 158, 60] },
+    { name: 'Yellow', rgb: [240, 200, 20] },
+    { name: 'Orange', rgb: [240, 130, 20] },
+    { name: 'Purple', rgb: [150, 70, 200] },
+    { name: 'Black', rgb: [20, 20, 20] },
+    { name: 'White', rgb: [240, 240, 240] },
+  ];
+  const rgbToHex = (rgb: number[]) =>
+    '#' + rgb.map((v) => (v | 0).toString(16).padStart(2, '0')).join('');
+  const buildPresets = (
+    containerId: string,
+    onPick: (rgb: number[], hex: string) => void,
+  ) => {
+    const c = document.getElementById(containerId);
+    if (!c || c.childElementCount) return; // build once
+    for (const p of PRESET_COLORS) {
+      const hex = rgbToHex(p.rgb);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'drawstyle-swatch';
+      b.style.background = hex;
+      b.title = p.name;
+      b.addEventListener('click', () => onPick(p.rgb.slice(), hex));
+      c.appendChild(b);
+    }
+  };
+
+  // Selecting any line colour turns off "Use affiliation color" — otherwise the
+  // chosen colour would be ignored (affiliation colour takes precedence).
+  const enableCustomLine = () => {
+    if (useAff && useAff.checked) {
+      useAff.checked = false;
+      write('useAffiliationColor', false);
+    }
+  };
+
+  buildPresets('ds-lineColor-presets', (rgb, hex) => {
+    if (lineColorEl) lineColorEl.value = hex;
+    enableCustomLine();
+    write('lineColor', rgb);
+  });
+  buildPresets('ds-fillColor-presets', (rgb, hex) => {
+    if (fillColorEl) fillColorEl.value = hex;
+    write('fillColor', rgb);
+  });
+
+  useAff?.addEventListener('change', () =>
+    write('useAffiliationColor', useAff.checked),
+  );
+  lineColorEl?.addEventListener('input', () => {
+    enableCustomLine();
+    write('lineColor', toRgb(lineColorEl.value));
+  });
+  lineWidthEl?.addEventListener('input', () => {
+    if (lineWidthOut) lineWidthOut.textContent = lineWidthEl.value;
+    write('lineWidth', parseFloat(lineWidthEl.value));
+  });
+  fillEl?.addEventListener('change', () => write('fill', fillEl.checked));
+  fillColorEl?.addEventListener('input', () =>
+    write('fillColor', toRgb(fillColorEl.value)),
+  );
+  fillOpacityEl?.addEventListener('input', () => {
+    if (fillOpacityOut) fillOpacityOut.textContent = fillOpacityEl.value;
+    write('fillOpacity', parseFloat(fillOpacityEl.value));
+  });
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (menu.style.display === 'grid') {
+      hide();
+    } else {
+      sync();
+      menu.style.display = 'grid';
+      btn.classList.add('ms-btn-active');
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (menu.style.display === 'grid' && !menu.contains(e.target as Node)) hide();
+  });
+}
+initDrawStyleMenu();
+
 
 // ── Creation Mode toggle + quick edit actions (top bar) ─────────────────────
 // Creation Mode is a two-state setting (single / continuous). The top-bar button
@@ -1056,10 +1358,7 @@ initStylusChoiceMenu('penModeBtn', 'penModeMenu', 'setting-stylusMode', PEN_MODE
 // Clear All — removes every symbol/graphic. Irreversible (also wipes the undo
 // history), so confirm before wiping the map.
 document.getElementById('clearAllBtn')?.addEventListener('click', () => {
-  const ok = window.confirm(
-    'Clear all symbols and graphics? This wipes the map and cannot be undone.',
-  );
-  if (ok) symbolEngine.clearAllGraphics();
+  symbolEngine.clearAllGraphics();
 });
 
 

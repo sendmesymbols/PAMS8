@@ -85,13 +85,23 @@ export class FreehandSemiCircleFilled {
      * Initialize the freehand semi circle filled drawing
      */
     public init(options: FreehandSemiCircleFilledOptions, marker: SimpleLineSymbol | SimpleFillSymbol): void {
-        // Set opacity from options
+        // Set opacity from options; the draw-style palette's fill opacity wins.
         this._opacity = options.opacity || 1;
+        if ((options as any).FILL_OPACITY != null) {
+            this._opacity = (options as any).FILL_OPACITY;
+        }
 
-        // Create filled symbol
-        if (marker) {
+        if ((options as any).FILL === false) {
+            // Palette turned fill off — render outline only.
+            this._lineSym = marker;
+        } else if (marker) {
+            // Fill colour: use the palette's independent fill colour when set,
+            // otherwise derive it from the (SIDC/line) marker colour as before.
             let color: Color;
-            if ('color' in marker) {
+            const fc = (options as any).FILL_COLOR;
+            if (Array.isArray(fc)) {
+                color = new Color([fc[0], fc[1], fc[2], this._opacity]);
+            } else if ('color' in marker) {
                 color = new Color((marker as any).color);
                 color.a = this._opacity;
             } else {

@@ -633,7 +633,18 @@ export default class ClipboardEngine {
     const newId = ClipboardEngine.generateUUID();
     const newGraphic = source.clone();
     newGraphic.geometry = newGeom;
-    const clonedAttrs = JSON.parse(JSON.stringify(source.attributes ?? {}));
+    // Clone the source's data attributes WITHOUT `drawEssentials`: that key holds a
+    // DrawEssentials instance whose SCOPE back-references the live symbol/view
+    // (circular via ArcGIS handles/observers), so JSON.stringify throws on it. We
+    // replace drawEssentials with the freshly-transformed `shiftedDe` below anyway.
+    const { drawEssentials: _omitDe, ...restAttrs } = (source.attributes ??
+      {}) as Record<string, any>;
+    let clonedAttrs: Record<string, any>;
+    try {
+      clonedAttrs = JSON.parse(JSON.stringify(restAttrs));
+    } catch {
+      clonedAttrs = { ...restAttrs };
+    }
     newGraphic.attributes = {
       ...clonedAttrs,
       id: newId,

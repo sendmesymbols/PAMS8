@@ -201,7 +201,7 @@
         "Name": "Freehand - Main Attk Like Arrow",
         "Parameters": [{
                 "Name": "Arrowhead Ratio",
-                "default": "0.07",
+                "default": "0.15",
                 "description": "Arrowhead Ratio",
                 "paramThumbnail": "",
                 "value": "HEAD_RATIO"
@@ -227,7 +227,7 @@
         "Name": "Freehand - Sp Attk Like Arrow",
         "Parameters": [{
                 "Name": "Arrowhead Ratio",
-                "default": "0.07",
+                "default": "0.15",
                 "description": "Arrowhead Ratio",
                 "paramThumbnail": "",
                 "value": "HEAD_RATIO"
@@ -253,7 +253,7 @@
         "Name": "Freehand - Close Sp Attk Like Arrow",
         "Parameters": [{
                 "Name": "Arrowhead Ratio",
-                "default": "0.07",
+                "default": "0.15",
                 "description": "Arrowhead Ratio",
                 "paramThumbnail": "",
                 "value": "HEAD_RATIO"
@@ -8657,7 +8657,7 @@
         "Name": "Avenue of Apchs",
         "Parameters": [{
                 "Name": "Arrowhead Ratio",
-                "default": "0.07",
+                "default": "0.15",
                 "description": "Arrowhead Ratio",
                 "paramThumbnail": "",
                 "value": "HEAD_RATIO"
@@ -10072,7 +10072,7 @@
         "Name": "Main Attk",
         "Parameters": [{
                 "Name": "Arrowhead Ratio",
-                "default": "0.07",
+                "default": "0.15",
                 "description": "Arrowhead Ratio",
                 "paramThumbnail": "",
                 "value": "HEAD_RATIO"
@@ -10097,7 +10097,7 @@
         "Name": "Friendly Airborne Aviation",
         "Parameters": [{
                 "Name": "Arrowhead Ratio",
-                "default": "0.07",
+                "default": "0.15",
                 "description": "Arrowhead Ratio",
                 "paramThumbnail": "",
                 "value": "HEAD_RATIO"
@@ -10122,7 +10122,7 @@
         "Name": "Attack Helicopter",
         "Parameters": [{
                 "Name": "Arrowhead Ratio",
-                "default": "0.07",
+                "default": "0.15",
                 "description": "Arrowhead Ratio",
                 "paramThumbnail": "",
                 "value": "HEAD_RATIO"
@@ -10147,7 +10147,7 @@
         "Name": "Sp Attk",
         "Parameters": [{
                 "Name": "Arrowhead Ratio",
-                "default": "0.07",
+                "default": "0.15",
                 "description": "Arrowhead Ratio",
                 "paramThumbnail": "",
                 "value": "HEAD_RATIO"
@@ -10172,7 +10172,7 @@
         "Name": "Axis Of Advance For Feint",
         "Parameters": [{
                 "Name": "Arrowhead Ratio",
-                "default": "0.07",
+                "default": "0.15",
                 "description": "Arrowhead Ratio",
                 "paramThumbnail": "",
                 "value": "HEAD_RATIO"
@@ -10229,7 +10229,7 @@
         "Name": "Multi Head Main Attk",
         "Parameters": [{
             "Name": "Arrowhead Ratio",
-            "default": "0.07",
+            "default": "0.15",
             "description": "Arrowhead Ratio",
             "paramThumbnail": "",
             "value": "HEAD_RATIO"
@@ -19300,7 +19300,7 @@
         "Name": "Counter Attk",
         "Parameters": [{
                 "Name": "Arrowhead Ratio",
-                "default": "0.07",
+                "default": "0.15",
                 "description": "Arrowhead Ratio",
                 "paramThumbnail": "",
                 "value": "HEAD_RATIO"

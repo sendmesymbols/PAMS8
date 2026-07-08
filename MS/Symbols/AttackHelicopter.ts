@@ -50,7 +50,7 @@ export class AttackHelicopter {
 
     // Symbol parameters
     private _tailFactor: number = 0.05;
-    private _headPercentage: number = 0.07;
+    private _headPercentage: number = 0.15;
     private _bodyHalfWidthScale: number = 1.9;
     private _headLengthScale: number = 2;
     private _arrowHeadRatio: number = 1.32;

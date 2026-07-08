@@ -82,20 +82,32 @@ export class FreehandAreaFilled {
         if (options.hasOwnProperty('opacity')) {
             this._opacity = options.opacity!;
         }
+        // Draw-style palette: independent fill opacity overrides the default.
+        if ((options as any).FILL_OPACITY != null) {
+            this._opacity = (options as any).FILL_OPACITY;
+        }
 
-        // Create filled symbol from line marker
-        const fillColor = new Color([marker.color.r, marker.color.g, marker.color.b, this._opacity]);
-        //const fillColor = new Color(marker.color);
+        if ((options as any).FILL === false) {
+            // Palette turned fill off — render outline only.
+            this._lineSym = marker;
+        } else {
+            // Fill colour: use the palette's independent fill colour when set,
+            // otherwise derive it from the (SIDC/line) marker colour as before.
+            const fc = (options as any).FILL_COLOR;
+            const fillColor = Array.isArray(fc)
+                ? new Color([fc[0], fc[1], fc[2], this._opacity])
+                : new Color([marker.color.r, marker.color.g, marker.color.b, this._opacity]);
 
-        this._lineSym = new SimpleFillSymbol({
-            style: "solid",
-            color: fillColor,
-            outline: new SimpleLineSymbol({
-                style: marker.style,
-                color: marker.color,
-                width: marker.width,
-            })
-        });
+            this._lineSym = new SimpleFillSymbol({
+                style: "solid",
+                color: fillColor,
+                outline: new SimpleLineSymbol({
+                    style: marker.style,
+                    color: marker.color,
+                    width: marker.width,
+                })
+            });
+        }
         
         // Set up event handlers
         this.setupEventHandlers();

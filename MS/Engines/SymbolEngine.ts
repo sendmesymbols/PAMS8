@@ -114,6 +114,7 @@ import CommandPalette from '../Support/CommandPalette';
 // imported. One side-effect import per engine keeps the wiring discoverable.
 import './MeasurementSettingsWidget';
 import './AppearanceSettingsWidget';
+import './DrawStyleSettingsWidget';
 import './CoreFeaturesSettingsWidget';
 import './ProximitySettingsWidget';
 import './DrawingCuesSettingsWidget';
@@ -2888,6 +2889,27 @@ class SymbolEngine implements Evented {
             if (drawEssentials.extraSettings.hasOwnProperty('opacity')) {
               marker.color.a = drawEssentials.extraSettings.opacity;
               drawEssentials.opacity = drawEssentials.extraSettings.opacity;
+            }
+          }
+
+          // Freehand draw-style palette: override stroke colour/width and pass
+          // fill intent to the symbol class. Only for interactive freehand draws
+          // — passive placements (plan load / paste / programmatic) keep the
+          // appearance baked into their loaded state.
+          if (!isPassive && this.currentSymbol?.isFreeHand === '1') {
+            const ds = (settingsData as any).drawStyle;
+            if (ds) {
+              if (ds.lineWidth != null) {
+                marker.width = ds.lineWidth;
+              }
+              if (ds.useAffiliationColor === false && Array.isArray(ds.lineColor)) {
+                marker.color = new Color([...ds.lineColor, marker.color?.a ?? 1]);
+              }
+              drawEssentials.FILL = ds.fill;
+              drawEssentials.FILL_COLOR = Array.isArray(ds.fillColor)
+                ? [...ds.fillColor]
+                : undefined;
+              drawEssentials.FILL_OPACITY = ds.fillOpacity;
             }
           }
 

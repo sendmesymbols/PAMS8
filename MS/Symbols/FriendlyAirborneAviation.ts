@@ -49,7 +49,7 @@ export class FriendlyAirborneAviation {
 
     // Symbol parameters
     private _tailFactor: number = 0.05;
-    private _headPercentage: number = 0.07;
+    private _headPercentage: number = 0.15;
     private _headLengthScale: number = 1.15;
     private _arrowHeadRatio: number = 1.35;
     private _shoulderFraction: number = 0.48;

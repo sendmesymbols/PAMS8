@@ -8,6 +8,14 @@
   "textSize": 12,
   "freeHandTextSize": 14,
   "freeHandLineWidth": 2.5,
+  "drawStyle": {
+    "useAffiliationColor": false,
+    "lineColor": [0, 51, 204],
+    "lineWidth": 3,
+    "fill": true,
+    "fillColor": [0, 51, 204],
+    "fillOpacity": 0.5
+  },
   "standardIdentities": [
     {
       "00": "[255, 255, 0]",

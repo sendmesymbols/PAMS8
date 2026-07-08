@@ -47,6 +47,13 @@ export class DrawEssentials {
     public opacity?: number;
     public SIDC?: string;
 
+    // Freehand draw-style overrides (set from the drawStyle palette; absent by
+    // default so legacy/programmatic draws keep the SIDC-derived appearance).
+    public LINE_COLOR?: number[];
+    public FILL?: boolean;
+    public FILL_COLOR?: number[];
+    public FILL_OPACITY?: number;
+
     // Label settings
     public labelOptions: {
         haloColor: number[];
@@ -129,6 +136,10 @@ export class DrawEssentials {
         this.ISFHAND = undefined;
         this.opacity = undefined;
         this.SIDC = undefined;
+        this.LINE_COLOR = undefined;
+        this.FILL = undefined;
+        this.FILL_COLOR = undefined;
+        this.FILL_OPACITY = undefined;
         this.labelOptions = {
             haloColor: [255, 0, 0],
             haloColorSize: 5,
@@ -179,6 +190,10 @@ export class DrawEssentials {
             ISFHAND: this.ISFHAND,
             opacity: this.opacity,
             SIDC: this.SIDC,
+            LINE_COLOR: this.LINE_COLOR ? [...this.LINE_COLOR] : undefined,
+            FILL: this.FILL,
+            FILL_COLOR: this.FILL_COLOR ? [...this.FILL_COLOR] : undefined,
+            FILL_OPACITY: this.FILL_OPACITY,
             labelOptions: this.labelOptions,
             extraSettings: this.extraSettings,
             uniqueDesignation: this.uniqueDesignation,

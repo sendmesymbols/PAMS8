@@ -45,7 +45,7 @@ export class MultiHeadMainAttack {
     private amplifier: Amplifier;
 
     private _tailFactor: number = 0.05;
-    private _headPercentage: number = 0.07;
+    private _headPercentage: number = 0.15;
     private _arrowHeadRatio: number = 1.07;
 
     // Drawing state — mirrors the original Draw.js MULTIHEAD logic exactly: - SHIFT+CLICK

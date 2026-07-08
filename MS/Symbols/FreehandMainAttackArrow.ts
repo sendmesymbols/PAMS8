@@ -51,7 +51,7 @@ export class FreehandMainAttackArrow {
     
     // Symbol parameters
     private _tailFactor: number = 0.05;
-    private _headPercentage: number = 0.07;
+    private _headPercentage: number = 0.15;
     
     // Drawing state
     private isDrawing: boolean = false;

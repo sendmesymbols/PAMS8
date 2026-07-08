@@ -313,6 +313,104 @@
         border-color: var(--ms-accent) !important;
         color: var(--ms-accent) !important;
       }
+      /* Freehand Style palette: single-column form (checkboxes, colour swatches, sliders) */
+      #drawStyleMenu {
+        grid-template-columns: 1fr;
+        min-width: 236px;
+      }
+      /* Per-symbol draw parameters popup: single-column list of number inputs */
+      #symbolParamsMenu {
+        grid-template-columns: 1fr;
+        min-width: 220px;
+      }
+      #symbolParamsMenu input[type='number'] {
+        width: 92px;
+      }
+      .symbol-params-empty {
+        padding: 6px;
+        opacity: 0.6;
+        font-size: 12px;
+      }
+      #symbolParamsBtn.ms-btn-active {
+        border-color: var(--ms-accent) !important;
+        color: var(--ms-accent) !important;
+      }
+      .drawstyle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 5px 6px;
+        color: var(--ms-text);
+        font: 600 12px/1.2 var(--ms-font);
+        cursor: pointer;
+      }
+      .drawstyle-row.drawstyle-check {
+        justify-content: flex-start;
+        gap: 8px;
+      }
+      .drawstyle-row input[type='color'] {
+        width: 42px;
+        height: 24px;
+        padding: 0;
+        border: 1px solid var(--ms-divider);
+        border-radius: 4px;
+        background: none;
+        cursor: pointer;
+      }
+      .drawstyle-range {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .drawstyle-range input[type='range'] {
+        width: 108px;
+      }
+      .drawstyle-range output {
+        min-width: 30px;
+        text-align: right;
+        opacity: 0.75;
+        font-weight: 500;
+      }
+      .drawstyle-row.drawstyle-color {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        cursor: default;
+      }
+      .drawstyle-colorhead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .drawstyle-swatches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      .drawstyle-swatch {
+        width: 18px;
+        height: 18px;
+        padding: 0;
+        border: 1px solid var(--ms-divider);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: transform 0.08s ease, border-color 0.08s ease;
+      }
+      .drawstyle-swatch:hover {
+        transform: scale(1.12);
+        border-color: var(--ms-accent);
+      }
+      .drawstyle-sep {
+        height: 1px;
+        background: var(--ms-divider);
+        margin: 4px 2px;
+      }
+      #drawStyleBtn.ms-btn-active {
+        border-color: var(--ms-accent) !important;
+        color: var(--ms-accent) !important;
+      }
       /* Anchors a dropdown directly beneath its own trigger button */
       .infobar-menu-anchor {
         position: relative;
@@ -1125,12 +1223,16 @@
               style="display: none"
             ></div>
           </div>
-          <select id="drawTypesSelectPre" class="ms-select" title="Sets symbol draw type (1-4) to control geometry configuration and control point behavior for the selected symbol.">
+          <select id="drawTypesSelectPre" class="ms-select" title="Draw type for the selected symbol. Options are built from the symbol's Tools (e.g. Line/Curve, or Smooth Polygon/Rectangle/Circle); hidden when the symbol has no draw-type choice.">
             <option value="1">1</option>
             <option value="2">2</option>
             <option value="3">3</option>
             <option value="4">4</option>
           </select>
+        </div>
+        <div class="infobar-menu-anchor" id="symbolParamsAnchor" style="display: none">
+          <button class="ms-btn infobar-btn" id="symbolParamsBtn" title="Draw parameters for the selected symbol — geometry knobs (e.g. arrowhead ratio, tail ratio, teeth gap, size, angle) read from the symbol's definition in Symbols.json."><span class="infobar-icon">⛭</span>Params</button>
+          <div id="symbolParamsMenu" class="demo-symbol-menu drawstyle-menu"></div>
         </div>
         <input
           class="ms-input"
@@ -1154,6 +1256,42 @@
         <div class="infobar-menu-anchor">
           <button class="ms-btn infobar-btn" id="penModeBtn" title="Pen Mode — when stylus drawing engages (Auto-detect, Always on, Off). Same as Pen Mode in the Settings panel."><span class="infobar-icon">✐</span>Mode</button>
           <div id="penModeMenu" class="demo-symbol-menu"></div>
+        </div>
+        <div class="infobar-menu-anchor">
+          <button class="ms-btn infobar-btn" id="drawStyleBtn" title="Freehand Style — fill, line & fill color, and line width for freehand symbols. Shares state with the Freehand Style widget (⚙ / Ctrl+K)."><span class="infobar-icon">◧</span>Fill/Color</button>
+          <div id="drawStyleMenu" class="demo-symbol-menu drawstyle-menu">
+            <label class="drawstyle-row drawstyle-check">
+              <input type="checkbox" id="ds-useAffiliationColor" />
+              <span>Use affiliation color</span>
+            </label>
+            <div class="drawstyle-row drawstyle-color">
+              <div class="drawstyle-colorhead">
+                <span>Line color</span>
+                <input type="color" id="ds-lineColor" />
+              </div>
+              <div class="drawstyle-swatches" id="ds-lineColor-presets"></div>
+            </div>
+            <label class="drawstyle-row">
+              <span>Line width</span>
+              <span class="drawstyle-range"><input type="range" id="ds-lineWidth" min="0.5" max="20" step="0.5" /><output id="ds-lineWidth-out"></output></span>
+            </label>
+            <div class="drawstyle-sep"></div>
+            <label class="drawstyle-row drawstyle-check">
+              <input type="checkbox" id="ds-fill" />
+              <span>Fill areas</span>
+            </label>
+            <div class="drawstyle-row drawstyle-color">
+              <div class="drawstyle-colorhead">
+                <span>Fill color</span>
+                <input type="color" id="ds-fillColor" />
+              </div>
+              <div class="drawstyle-swatches" id="ds-fillColor-presets"></div>
+            </div>
+            <label class="drawstyle-row">
+              <span>Fill opacity</span>
+              <span class="drawstyle-range"><input type="range" id="ds-fillOpacity" min="0" max="1" step="0.05" /><output id="ds-fillOpacity-out"></output></span>
+            </label>
+          </div>
         </div>
         <button class="ms-btn infobar-btn" id="switch-btn" title="Toggle between 2D map view and 3D scene view. Updates all engines to use the new view context."><span class="infobar-icon">⊞</span>2D</button>
         <!-- Creation Mode toggle + quick edit actions — grouped so they stay on one row (the group wraps as a unit on narrow screens). -->

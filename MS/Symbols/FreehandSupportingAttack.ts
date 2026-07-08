@@ -43,7 +43,7 @@ export class FreehandSupportingAttack {
     
     // Symbol parameters
     private _tailFactor: number = 0.05;
-    private _headPercentage: number = 0.07;
+    private _headPercentage: number = 0.15;
     
     // Drawing state
     private isDrawing: boolean = false;
@@ -79,7 +79,7 @@ export class FreehandSupportingAttack {
         this._lineSym = marker;
         
         // Set parameters from options
-        this._headPercentage = GeoTools.setDefault(options, "HEAD_RATIO", 0.07);
+        this._headPercentage = GeoTools.setDefault(options, "HEAD_RATIO", 0.15);
         this._tailFactor = GeoTools.setDefault(options, "TAIL_FACTOR", 0.05);
 
         if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null) {

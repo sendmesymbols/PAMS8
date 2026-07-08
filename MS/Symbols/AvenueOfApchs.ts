@@ -46,7 +46,7 @@ export class AvenueOfApchs {
 
     // Arrow parameters
     private _tailFactor: number = 0.05;
-    private _headPercentage: number = 0.07;
+    private _headPercentage: number = 0.15;
 
     // Drawing state
     private isDrawing: boolean = false;
@@ -95,7 +95,7 @@ export class AvenueOfApchs {
         });
 
         // Set arrow parameters with defaults
-        this._headPercentage = this.setDefault(options, "HEAD_RATIO", 0.07);
+        this._headPercentage = this.setDefault(options, "HEAD_RATIO", 0.15);
         this._tailFactor = this.setDefault(options, "TAIL_FACTOR", 0.05);
 
         // Set up event handlers
