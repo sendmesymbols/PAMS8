@@ -3,6 +3,8 @@ import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import Map from '@arcgis/core/map';
 import MapImageLayer from '@arcgis/core/layers/MapImageLayer';
+import Basemap from '@arcgis/core/Basemap';
+import ElevationLayer from '@arcgis/core/layers/ElevationLayer';
 import settingsData from '../MS/Data/Settings.json';
 
 // Serve ArcGIS runtime assets (CSS, i18n bundles, web workers, basemap defs)
@@ -103,31 +105,83 @@ const initialViewParams: {
   container: appConfig.container,
 };
 
-// Create 3D Map (scene view) and 2D Map
-const baseMap = new Map({
-  basemap: 'satellite',
-  ground: 'world-elevation',
-});
+// Create 3D Map (scene view) and 2D Map — offline vs online layer sourcing.
+//
+// `offline` (MS/Data/Settings.json) selects where the map's imagery/terrain and
+// overlays come from:
+//   • true  → the local ArcGIS Server (https://localhost:6443/arcgis), reached
+//             via the same-origin `/arcgis` Vite dev proxy (see vite.config.ts:
+//             `secure:false` accepts the self-signed cert, no CORS needed).
+//   • false → Esri's online world basemap ('satellite' + 'world-elevation').
+//
+// It is a clean either/or swap: online mode loads ONLY the Esri basemap, offline
+// mode loads ONLY the local services. Both the 2D MapView and 3D SceneView share
+// this one `baseMap`, so the choice applies to 2D and 3D at once.
+const offline = (settingsData as { offline?: boolean }).offline === true;
 
-// Pakistan ArcGIS Server operational overlay. It is a dynamic (non-cached)
-// MapServer — singleFusedMapCache:false — so it is consumed as a MapImageLayer
-// (not a TileLayer). Both the 2D MapView and 3D SceneView share this one
-// `baseMap`, so adding the layer here surfaces it in both views at once.
-// The service (https://localhost:6443/arcgis) ships no CORS headers and uses a
-// self-signed cert, so the browser cannot hit it directly — we reach it via the
-// same-origin `/arcgis` Vite dev proxy (see vite.config.ts). If it is unreachable
-// (server offline) the layer load fails softly and is removed instead of breaking
-// app startup — honouring "add if available".
-const pakistanLayer = new MapImageLayer({
-  url: '/arcgis/rest/services/pakistan/MapServer',
-  title: 'Pakistan',
-  listMode: 'show',
-});
-baseMap.add(pakistanLayer);
-pakistanLayer.load().catch((error: unknown) => {
-  console.warn('[PAMS8] Pakistan MapServer unavailable — removing layer.', error);
-  baseMap.remove(pakistanLayer);
-});
+// The local services are dynamic (non-cached) MapServers — singleFusedMapCache
+// false — so they are consumed as MapImageLayers (not TileLayers). Each layer
+// loads with the existing "add if available" pattern: on load failure it warns
+// and removes itself, so an unreachable service never breaks app startup.
+const softLoad = (map: Map, layer: MapImageLayer, label: string): void => {
+  layer.load().catch((error: unknown) => {
+    console.warn(`[PAMS8] ${label} unavailable — removing layer.`, error);
+    map.remove(layer);
+  });
+};
+
+let baseMap: Map;
+if (offline) {
+  // Base imagery (bottom of the stack) → served as the map's basemap.
+  const baseImagery = new MapImageLayer({
+    url: '/arcgis/rest/services/PakImagery/MapServer',
+    title: 'Imagery (Local)',
+    listMode: 'show',
+  });
+  baseMap = new Map({
+    basemap: new Basemap({ baseLayers: [baseImagery], title: 'Imagery (Local)' }),
+  });
+
+  // 3D ground / terrain from the same local service. If it is not an
+  // elevation-capable endpoint (or is unreachable) it is removed → flat ground.
+  const elevation = new ElevationLayer({
+    url: '/arcgis/rest/services/PakImagery/MapServer',
+  });
+  baseMap.ground.layers.add(elevation);
+  elevation.load().catch((error: unknown) => {
+    console.warn('[PAMS8] Local elevation unavailable — using flat ground.', error);
+    baseMap.ground.layers.remove(elevation);
+  });
+
+  // Operational overlays, added bottom→top: general map data (city labels at low
+  // zoom) → road network → Pakistan boundary on top.
+  const mapData = new MapImageLayer({
+    url: '/arcgis/rest/services/Map_Data/MapServer',
+    title: 'Map Data',
+    listMode: 'show',
+  });
+  const roadNetwork = new MapImageLayer({
+    url: '/arcgis/rest/services/Network_Analysis/MapServer',
+    title: 'Road Network',
+    listMode: 'show',
+  });
+  const pakistanLayer = new MapImageLayer({
+    url: '/arcgis/rest/services/pakistan/MapServer',
+    title: 'Pakistan',
+    listMode: 'show',
+  });
+  baseMap.addMany([mapData, roadNetwork, pakistanLayer]);
+  softLoad(baseMap, baseImagery, 'LowResImagery_3d MapServer');
+  softLoad(baseMap, mapData, 'Map_Data MapServer');
+  softLoad(baseMap, roadNetwork, 'Network_Analysis MapServer');
+  softLoad(baseMap, pakistanLayer, 'Pakistan MapServer');
+} else {
+  // Online: Esri world imagery + elevation, no local overlays.
+  baseMap = new Map({
+    basemap: 'satellite',
+    ground: 'world-elevation',
+  });
+}
 
 // Create 3D view first (as we want it active on startup)
 initialViewParams.map = baseMap;

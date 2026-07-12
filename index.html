@@ -517,11 +517,16 @@
         letter-spacing: 0;
         padding: 7px 12px !important;
       }
+      /* Hairline group separator inside the action menu */
+      .infobar-action-menu .infobar-menu-sep {
+        height: 1px;
+        margin: 1px 6px;
+        background: var(--ms-divider);
+      }
       /* Toolbar-summoned widgets (Settings / API Test) start hidden */
       .ms-hidden { display: none !important; }
       /* Active state for toolbar dropdown triggers + the widgets they summon */
       #menuBtn.ms-btn-active,
-      #generateBtn.ms-btn-active,
       #settingsPanelBtn.ms-btn-active,
       #apiTestBtn.ms-btn-active {
         border-color: var(--ms-accent) !important;
@@ -1281,6 +1286,145 @@
 
       .ah-status.ah-ok  { color: #50d878; font-style: normal; }
       .ah-status.ah-err { color: var(--accent-danger); font-style: normal; }
+
+      /* ── Dynamic Layer Manager panel ─────────────────────────────────────
+         Floating, draggable panel listing every non-graphics map layer
+         (operational overlays, basemap, ground/elevation). Reuses the Analysis
+         Hub's panel-in animation and .ah-close-btn styling; blue accent to
+         distinguish it from the green Hub. */
+      #layerManagerPanel {
+        position: absolute;
+        top: 60px;
+        right: 12px;
+        width: 300px;
+        background: var(--bg-surface);
+        color: var(--neutral-200);
+        font-family: var(--font-sans);
+        font-size: var(--text-sm);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg), var(--shadow-inset);
+        z-index: 1070;
+        overflow: hidden;
+        display: none;
+      }
+      #layerManagerPanel.lm-visible {
+        display: block;
+        animation: ah-panel-in 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      #layerManagerPanel header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 12px 9px 14px;
+        background: linear-gradient(135deg, rgba(100, 170, 255, 0.08) 0%, rgba(60, 120, 200, 0.04) 100%);
+        border-bottom: 1px solid var(--border-subtle);
+        user-select: none;
+        cursor: grab;
+      }
+      #layerManagerPanel header:active { cursor: grabbing; }
+      #layerManagerPanel header > .lm-title {
+        font-weight: 600;
+        color: #7ab8ff;
+        font-size: var(--text-base);
+        flex: 1;
+        letter-spacing: 0.2px;
+      }
+
+      .lm-content {
+        max-height: min(70vh, 480px);
+        overflow-y: auto;
+        padding-bottom: 4px;
+      }
+      .lm-content::-webkit-scrollbar { width: 3px; }
+      .lm-content::-webkit-scrollbar-track { background: transparent; }
+      .lm-content::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
+      .lm-content::-webkit-scrollbar-thumb:hover { background: rgba(100, 170, 255, 0.5); }
+
+      .lm-group + .lm-group { border-top: 1px solid var(--border-subtle); }
+      .lm-group-title {
+        font-size: 7.5px;
+        font-weight: 700;
+        color: rgba(120, 180, 255, 0.55);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        padding: 8px 13px 3px;
+      }
+
+      .lm-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px 6px 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.025);
+        border-left: 2px solid transparent;
+        transition: background 0.1s, border-left-color 0.1s, opacity 0.1s;
+      }
+      .lm-row:hover { background: rgba(100, 170, 255, 0.06); border-left-color: rgba(100, 170, 255, 0.3); }
+      .lm-row.lm-dragging { opacity: 0.35; }
+      .lm-row.lm-drop-target { border-top-color: #7ab8ff; }
+
+      .lm-handle {
+        cursor: grab;
+        color: var(--neutral-600);
+        font-size: 12px;
+        line-height: 1;
+        flex-shrink: 0;
+        user-select: none;
+        letter-spacing: -2px;
+        padding: 0 2px 0 0;
+      }
+      .lm-handle:active { cursor: grabbing; }
+      .lm-row.lm-no-reorder .lm-handle { visibility: hidden; }
+
+      .lm-eye {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--neutral-400);
+        font-size: 12px;
+        line-height: 1;
+        padding: 2px;
+        flex-shrink: 0;
+        transition: color 0.12s;
+      }
+      .lm-eye:hover { color: var(--neutral-100); }
+      .lm-eye.lm-hidden-layer { color: var(--neutral-700); }
+
+      .lm-name {
+        flex: 1;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--neutral-300);
+        line-height: 1.2;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+      }
+      .lm-row.lm-off .lm-name { color: var(--neutral-600); }
+
+      .lm-opacity {
+        width: 60px;
+        flex-shrink: 0;
+        accent-color: #7ab8ff;
+        cursor: pointer;
+      }
+      .lm-opacity-val {
+        font-size: 8.5px;
+        font-family: var(--font-mono);
+        color: var(--neutral-500);
+        width: 28px;
+        text-align: right;
+        flex-shrink: 0;
+      }
+      .lm-empty {
+        padding: 18px 14px;
+        font-size: 11px;
+        color: var(--neutral-600);
+        font-style: italic;
+        text-align: center;
+      }
     </style>
     <link rel="stylesheet" href="/assets/esri/themes/light/main.css" />
     <link rel="stylesheet" href="/MS/Styles/Widgets.css" />
@@ -1415,22 +1559,18 @@
 
       <!-- Section 3: Analysis & Management -->
       <div class="infobar-section infobar-push">
-        <!-- Menu: Settings + API Test panels + command palette -->
+        <!-- Menu: one dropdown housing the panels, palette, Analysis Hub, Draw,
+             and all former Generate actions (test data + plan save/load). -->
         <div class="infobar-menu-anchor">
-          <button class="ms-btn infobar-btn" id="menuBtn" title="Settings panel, API Test panel, and the command palette."><span class="infobar-icon">☰</span>Menu</button>
+          <button class="ms-btn infobar-btn" id="menuBtn" title="Menu — Settings / API Test panels, command palette, Analysis Hub, Draw, and test-data / plan actions."><span class="infobar-icon">☰</span>Menu</button>
           <div id="toolMenu" class="demo-symbol-menu infobar-action-menu">
             <button class="ms-btn infobar-btn" id="settingsPanelBtn" title="Open the Settings panel widget (symbol sizes, pen, measurement, declutter, …)."><span class="infobar-icon">⚙</span>Settings</button>
             <button class="ms-btn infobar-btn" id="apiTestBtn" title="Open the API Test panel widget — buttons that exercise the public engine API."><span class="infobar-icon">⧉</span>API Test</button>
             <button class="ms-btn infobar-btn" id="settingsMenuBtn" title="Open the command palette — every engine widget in one popover. Tip: Ctrl+K anywhere."><span class="infobar-icon">▤</span>Command Palette</button>
-          </div>
-        </div>
-
-        <button class="ms-btn infobar-btn" id="analysis-hub-btn" title="Open Analysis Hub — quick access to all terrain, force, weapons and mission analysis engines"><span class="infobar-icon">⬢</span>Hub</button>
-
-        <!-- Generate: test data + plan save/load + deployment manager -->
-        <div class="infobar-menu-anchor">
-          <button class="ms-btn infobar-btn" id="generateBtn" title="Generate test symbol fields and manage saved plans."><span class="infobar-icon">⊕</span>Generate</button>
-          <div id="generateMenu" class="demo-symbol-menu infobar-action-menu">
+            <div class="infobar-menu-sep"></div>
+            <button class="ms-btn infobar-btn" id="analysis-hub-btn" title="Open Analysis Hub — quick access to all terrain, force, weapons and mission analysis engines"><span class="infobar-icon">⬢</span>Hub</button>
+            <button class="ms-btn ms-btn-primary infobar-btn" id="draw-btn" title="Start interactive drawing of the symbol for the SIDC in the SIDC box, using current settings."><span class="infobar-icon">✎</span>Draw</button>
+            <div class="infobar-menu-sep"></div>
             <button class="ms-btn infobar-btn" id="deployment-manager-btn" title="Open the Deployment Manager to manage and place formation templates."><span class="infobar-icon">▦</span>Deployment Mgr</button>
             <button class="ms-btn infobar-btn" id="topbar-testfield-generate" title="Drop a mixed field of UEI symbols (varied identity + echelon + designator) inside the current view. Uses Count/Stacks from the API Test panel. Tests cluster badges, echelon ladder, disperse, label placer, and abbreviation in one click."><span class="infobar-icon">⊹</span>Test Field</button>
             <button class="ms-btn infobar-btn" id="topbar-testfield-clutter" title="Drop the same mixed field but deliberately jumbled — a tight footprint with many overlapping same-coordinate stacks. Stresses every declutter path at once. Uses the API Test panel Count input; Stacks is auto-boosted."><span class="infobar-icon">⁂</span>Cluttered</button>
@@ -1439,8 +1579,7 @@
           </div>
         </div>
 
-        <!-- Draw: primary action, kept at the far-right end of the bar. Draws the SIDC in the SIDC box with demo amplifiers. -->
-        <button class="ms-btn ms-btn-primary infobar-btn" id="draw-btn" title="Start interactive drawing of the symbol for the SIDC in the SIDC box, using current settings."><span class="infobar-icon">✎</span>Draw</button>
+        <button class="ms-btn infobar-btn" id="layerManagerBtn" title="Open the Layer Manager — reorder, set opacity, and show/hide the map's layers (overlays, basemap, terrain). Symbol/graphics layers are managed elsewhere."><span class="infobar-icon">⛃</span>Layers</button>
       </div>
     </div>
 
@@ -1650,6 +1789,17 @@
 
       </div>
       <div class="ah-status" id="ah-status">Ready — select a symbol for context-based tools</div>
+    </div>
+
+    <!-- Dynamic Layer Manager — reorder / opacity / visibility for every
+         non-graphics map layer. Rows are built at runtime from the live map
+         (see the wiring IIFE near makeDraggable). -->
+    <div id="layerManagerPanel">
+      <header>
+        <span class="lm-title">Layer Manager</span>
+        <button class="ah-close-btn" id="lm-close-btn" title="Close">✕</button>
+      </header>
+      <div class="lm-content" id="lm-content"></div>
     </div>
 
     <div id="symbolDetails" class="symbol-details">
@@ -4178,7 +4328,6 @@
         });
       }
       initToolbarDropdown('menuBtn', 'toolMenu');
-      initToolbarDropdown('generateBtn', 'generateMenu');
 
       // Helper to get engines from window.symbolEngine
       function getEngines() {
@@ -5366,6 +5515,230 @@
         const panel  = document.getElementById('analysisHubPanel');
         const handle = panel?.querySelector('header');
         if (panel && handle) makeDraggable(panel, handle);
+      })();
+
+      // ── Dynamic Layer Manager widget ─────────────────────────────────────
+      // Lists every non-graphics map layer — operational overlays (map.layers),
+      // basemap layers, and 3D ground/elevation — and lets the user reorder
+      // (drag within a group), set opacity, and toggle visibility. Graphics
+      // layers (FORCE/TACT/annotations/sketch/cluster) are excluded via
+      // layer.type. The map is shared by the 2D & 3D views, so one list serves
+      // both; reached lazily via window.symbolEngine.view.map so timing/async
+      // startup never matters (rows are built when the panel is opened).
+      (function () {
+        const panel   = document.getElementById('layerManagerPanel');
+        const btn     = document.getElementById('layerManagerBtn');
+        const content = document.getElementById('lm-content');
+        const closeBtn = document.getElementById('lm-close-btn');
+        if (!panel || !btn || !content) return;
+
+        const header = panel.querySelector('header');
+        if (header) makeDraggable(panel, header);
+
+        const uidToLayer = new Map();
+        let uidCounter = 0;
+        let wiredMap = null;        // map we've attached change-listeners to
+        let suppressRebuild = false; // guards the burst of reorder() calls
+        let refreshTimer = null;
+        let dragArmed = false;       // true only while a drag started on a handle
+
+        // A single document mouseup disarms drag (avoids per-row listeners).
+        document.addEventListener('mouseup', () => { dragArmed = false; });
+
+        function getMap() {
+          const eng = window.symbolEngine;
+          return eng && eng.view ? eng.view.map : null;
+        }
+
+        // Controllable = not a graphics layer (those hold the tactical symbols)
+        // and not explicitly hidden from layer lists.
+        function isManaged(layer) {
+          return layer && layer.type !== 'graphics' && layer.listMode !== 'hide';
+        }
+
+        // The three collections we surface. Each layer array is reversed so the
+        // panel reads top→bottom exactly as the map draws (front-most on top).
+        function getGroups(map) {
+          const groups = [];
+          const push = (title, coll) => {
+            if (!coll) return;
+            const arr = coll.toArray().filter(isManaged);
+            if (arr.length) {
+              groups.push({ title, coll, layers: arr.slice().reverse(), reorder: arr.length > 1 });
+            }
+          };
+          push('Overlays', map.layers);
+          push('Basemap', map.basemap && map.basemap.baseLayers);
+          push('Ground / Elevation', map.ground && map.ground.layers);
+          return groups;
+        }
+
+        function scheduleRefresh() {
+          if (refreshTimer) return;
+          refreshTimer = setTimeout(() => {
+            refreshTimer = null;
+            if (panel.classList.contains('lm-visible')) render();
+          }, 60);
+        }
+
+        // Attach collection change-listeners once so the list stays live when a
+        // layer is added/removed at runtime (e.g. startup softLoad removing an
+        // unreachable service).
+        function ensureWired(map) {
+          if (wiredMap === map) return;
+          wiredMap = map;
+          const onChange = () => {
+            if (!suppressRebuild && panel.classList.contains('lm-visible')) scheduleRefresh();
+          };
+          const wire = (coll) => { try { coll && coll.on && coll.on('change', onChange); } catch (_) {} };
+          wire(map.layers);
+          wire(map.basemap && map.basemap.baseLayers);
+          wire(map.ground && map.ground.layers);
+        }
+
+        // Commit the current DOM row order back to the collection. Top→bottom in
+        // the panel is front→back, so the collection order (index 0 = back) is
+        // the reverse of the visual order.
+        function commitOrder(group, container) {
+          const rows = Array.from(container.querySelectorAll('.lm-row'));
+          const visual = rows.map((r) => uidToLayer.get(r.dataset.uid)).filter(Boolean);
+          const desired = visual.slice().reverse();
+          suppressRebuild = true;
+          desired.forEach((layer, i) => { try { group.coll.reorder(layer, i); } catch (_) {} });
+          suppressRebuild = false;
+          scheduleRefresh();
+        }
+
+        function attachRowDnD(row, group, container) {
+          row.addEventListener('dragstart', (e) => {
+            if (!dragArmed) { e.preventDefault(); return; } // only handle starts a drag
+            row.classList.add('lm-dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            try { e.dataTransfer.setData('text/plain', row.dataset.uid); } catch (_) {}
+          });
+          row.addEventListener('dragend', () => {
+            dragArmed = false;
+            row.classList.remove('lm-dragging');
+            container.querySelectorAll('.lm-drop-target').forEach((r) => r.classList.remove('lm-drop-target'));
+            commitOrder(group, container);
+          });
+          row.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const dragging = container.querySelector('.lm-dragging');
+            if (!dragging || dragging === row) return;
+            container.querySelectorAll('.lm-drop-target').forEach((r) => r.classList.remove('lm-drop-target'));
+            const rect = row.getBoundingClientRect();
+            const before = (e.clientY - rect.top) < rect.height / 2;
+            row.classList.add('lm-drop-target');
+            container.insertBefore(dragging, before ? row : row.nextSibling);
+          });
+          row.addEventListener('drop', (e) => { e.preventDefault(); });
+        }
+
+        function buildRow(layer, group, container) {
+          const uid = 'lm' + (uidCounter++);
+          uidToLayer.set(uid, layer);
+          const canReorder = group.reorder;
+
+          const row = document.createElement('div');
+          row.className = 'lm-row' + (canReorder ? '' : ' lm-no-reorder') + (layer.visible ? '' : ' lm-off');
+          row.dataset.uid = uid;
+
+          const handle = document.createElement('span');
+          handle.className = 'lm-handle';
+          handle.textContent = '⋮⋮';
+          if (canReorder) {
+            handle.title = 'Drag to reorder';
+            handle.addEventListener('mousedown', () => { dragArmed = true; });
+          }
+          row.appendChild(handle);
+
+          const eye = document.createElement('button');
+          eye.type = 'button';
+          eye.className = 'lm-eye' + (layer.visible ? '' : ' lm-hidden-layer');
+          eye.textContent = layer.visible ? '◉' : '◌';
+          eye.title = 'Show / hide layer';
+          eye.addEventListener('click', () => {
+            layer.visible = !layer.visible;
+            eye.textContent = layer.visible ? '◉' : '◌';
+            eye.classList.toggle('lm-hidden-layer', !layer.visible);
+            row.classList.toggle('lm-off', !layer.visible);
+          });
+          row.appendChild(eye);
+
+          const name = document.createElement('span');
+          name.className = 'lm-name';
+          name.textContent = layer.title || layer.id || '(untitled layer)';
+          name.title = name.textContent;
+          row.appendChild(name);
+
+          // Opacity is capability-gated — elevation layers have no opacity, so
+          // the slider is simply omitted for them.
+          if (typeof layer.opacity === 'number') {
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.className = 'lm-opacity';
+            slider.min = '0'; slider.max = '100'; slider.step = '1';
+            slider.value = String(Math.round(layer.opacity * 100));
+            slider.title = 'Layer opacity';
+            const val = document.createElement('span');
+            val.className = 'lm-opacity-val';
+            val.textContent = slider.value + '%';
+            slider.addEventListener('input', () => {
+              layer.opacity = Number(slider.value) / 100;
+              val.textContent = slider.value + '%';
+            });
+            row.appendChild(slider);
+            row.appendChild(val);
+          }
+
+          if (canReorder) {
+            row.draggable = true;
+            attachRowDnD(row, group, container);
+          }
+          return row;
+        }
+
+        function render() {
+          const map = getMap();
+          content.innerHTML = '';
+          uidToLayer.clear();
+          if (!map) { content.innerHTML = '<div class="lm-empty">Map not ready yet.</div>'; return; }
+          ensureWired(map);
+          const groups = getGroups(map);
+          if (!groups.length) { content.innerHTML = '<div class="lm-empty">No adjustable layers.</div>'; return; }
+          groups.forEach((group) => {
+            const gEl = document.createElement('div');
+            gEl.className = 'lm-group';
+            const title = document.createElement('div');
+            title.className = 'lm-group-title';
+            title.textContent = group.title;
+            gEl.appendChild(title);
+            const list = document.createElement('div');
+            list.className = 'lm-list';
+            group.layers.forEach((layer) => list.appendChild(buildRow(layer, group, list)));
+            gEl.appendChild(list);
+            content.appendChild(gEl);
+          });
+        }
+
+        function openPanel() {
+          panel.classList.add('lm-visible');
+          btn.classList.add('ms-btn-active');
+          render();
+        }
+        function closePanel() {
+          panel.classList.remove('lm-visible');
+          btn.classList.remove('ms-btn-active');
+        }
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (panel.classList.contains('lm-visible')) closePanel();
+          else openPanel();
+        });
+        if (closeBtn) closeBtn.addEventListener('click', closePanel);
       })();
 
       // Magnetic Compass panel open button

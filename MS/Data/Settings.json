@@ -2,6 +2,7 @@
   "name": "Military Symbology Settings File",
   "version": "0.1.1",
   "date": "13-Feb-2017",
+  "offline": true,
   "lineWidth": 2.5,
   "PtlineWidth": 14,
   "size": 25,
