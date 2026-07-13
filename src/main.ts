@@ -389,6 +389,17 @@ function switchView() {
   }
 }
 
+// Stack the bottom-right navigation widgets into a single vertical column
+// (undo on top, then the zoom controls, plus compass/navigation-toggle in 3D)
+// instead of ArcGIS's default horizontal row-reverse layout for that corner.
+// The attribution bar is absolutely positioned, so it is unaffected.
+const navStackStyle = document.createElement('style');
+navStackStyle.textContent = `
+  .esri-ui .esri-ui-bottom-right { flex-flow: column; align-items: flex-end; }
+  .esri-ui .esri-ui-bottom-right .esri-component { margin-left: 0; }
+`;
+document.head.appendChild(navStackStyle);
+
 // Function to create the view based on the type
 function createView(params: any, type: '2d' | '3d'): MapView | SceneView {
   let view: MapView | SceneView;
@@ -404,6 +415,34 @@ function createView(params: any, type: '2d' | '3d'): MapView | SceneView {
   view.on('double-click', (event) => {
     event.stopPropagation();
   });
+
+  // Relocate the default navigation widgets to the bottom-right corner.
+  // MapView ships a "zoom" widget; SceneView adds "navigation-toggle" and
+  // "compass" (pan/rotate). ui.move() ignores ids that aren't present.
+  view.ui.move(
+    type === '3d' ? ['zoom', 'navigation-toggle', 'compass'] : ['zoom'],
+    'bottom-right',
+  );
+
+  // Small "Undo" button sitting on top of the zoom controls. Reuses the stock
+  // esri-widget button styling so it matches the zoom +/- buttons in any theme.
+  // index: 0 places it first in the bottom-right stack (topmost).
+  const undoBtn = document.createElement('div');
+  undoBtn.className = 'esri-widget esri-widget--button';
+  undoBtn.setAttribute('role', 'button');
+  undoBtn.setAttribute('tabindex', '0');
+  undoBtn.setAttribute('aria-label', 'Undo');
+  undoBtn.title = 'Undo (Ctrl+Z)';
+  undoBtn.innerHTML = '<span aria-hidden="true" class="esri-icon esri-icon-undo"></span>';
+  const doUndo = () => (window as any).symbolEngine?.undo?.();
+  undoBtn.addEventListener('click', doUndo);
+  undoBtn.addEventListener('keydown', (event: KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      doUndo();
+    }
+  });
+  view.ui.add(undoBtn, { position: 'bottom-right', index: 0 });
 
   view
     .when(() => {})
