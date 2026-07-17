@@ -399,11 +399,11 @@
     "clipboard": true,
     "editMoveScaleRotate": true,
     "editControlPoints": true,
-    "drawingCues": false,
+    "drawingCues": true,
     "mgrsEngine": false,
     "analysisEngines": true,
     "deploymentBuilder": true,
-    "visualizationEngine": false,
+    "visualizationEngine": true,
     "roadNetwork": true
   },
   "measurement": {
