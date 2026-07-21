@@ -116,6 +116,8 @@ class EditEngine {
     // the mode without going through the right-click context menu.
     private _modeBanner: HTMLElement | null = null;
     private _modeBannerAbort: AbortController | null = null;
+    /** Persists across banner recreation (e.g. move-scale-rotate → control-points). */
+    private _modeBannerMinimized = false;
 
     constructor(viewProvider: () => MapView | SceneView, layerManager: GraphicsLayerManager) {
         this._getView = viewProvider;
@@ -1449,12 +1451,15 @@ class EditEngine {
         const kbd = `<kbd style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:4px;padding:1px 6px;font-size:10.5px;color:#f08060;font-family:inherit">Esc</kbd>`;
         el.innerHTML = `
             <span><span style="color:#64b4ff;font-weight:700;margin-right:4px">${cfg.icon}</span><strong style="color:#c8dff5">${cfg.title}</strong></span>
-            ${sep}
-            <span style="opacity:0.85">${cfg.hint}</span>
-            ${sep}
-            <button class="edit-banner-disable" style="background:rgba(220,80,80,0.18);border:1px solid rgba(220,80,80,0.5);border-radius:4px;padding:3px 10px;color:#f08060;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:0.02em">Disable</button>
-            ${sep}
-            <span style="opacity:0.7">or press ${kbd}</span>
+            <span class="edit-banner-body" style="display:flex; gap:12px; align-items:center;">
+                ${sep}
+                <span style="opacity:0.85">${cfg.hint}</span>
+                ${sep}
+                <button class="edit-banner-disable" style="background:rgba(220,80,80,0.18);border:1px solid rgba(220,80,80,0.5);border-radius:4px;padding:3px 10px;color:#f08060;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:0.02em">Disable</button>
+                ${sep}
+                <span style="opacity:0.7">or press ${kbd}</span>
+            </span>
+            <button class="edit-banner-min" title="Minimize" style="background:transparent;border:1px solid rgba(90,140,220,0.25);color:rgba(155,180,215,0.72);font-family:inherit;font-size:11px;cursor:pointer;border-radius:4px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
         `;
         this._modeBannerAbort = new AbortController();
         el.querySelector('.edit-banner-disable')?.addEventListener(
@@ -1465,6 +1470,7 @@ class EditEngine {
         document.body.appendChild(el);
         this._modeBanner = el;
         this._wireBannerDrag(el);
+        this._wireBannerMinimize(el);
     }
 
     /**
@@ -1514,6 +1520,32 @@ class EditEngine {
             banner.style.cursor = 'grab';
             document.body.style.userSelect = '';
         }, { signal });
+    }
+
+    /**
+     * Wires the minimize toggle — collapses the banner to just its icon/title
+     * by hiding `.edit-banner-body` (hint + Disable button + Esc note).
+     * Reapplies `_modeBannerMinimized` immediately so switching between edit
+     * modes (which recreates the banner) keeps the collapsed state.
+     */
+    private _wireBannerMinimize(banner: HTMLElement): void {
+        if (!this._modeBannerAbort) return;
+        const signal = this._modeBannerAbort.signal;
+        const body = banner.querySelector<HTMLElement>('.edit-banner-body');
+        const btn = banner.querySelector<HTMLElement>('.edit-banner-min');
+        if (!body || !btn) return;
+
+        const apply = () => {
+            body.style.display = this._modeBannerMinimized ? 'none' : 'flex';
+            btn.textContent = this._modeBannerMinimized ? '▢' : '−';
+            btn.title = this._modeBannerMinimized ? 'Restore' : 'Minimize';
+        };
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this._modeBannerMinimized = !this._modeBannerMinimized;
+            apply();
+        }, { signal });
+        apply();
     }
 
     private _removeModeBanner(): void {

@@ -60,6 +60,9 @@ class SelectionActionPanel {
     private _similarPopup: HTMLElement | null = null;
     /** Compose mode for the Filter tab — persists across panel rebuilds. */
     private _filterMode: SelectMode = 'replace';
+    /** Minimized state — persists across panel rebuilds (selection changes, tab switches). */
+    private _minimized = false;
+    private _dragAbort: AbortController | null = null;
 
     constructor(
         selectionEngine: SelectionEngine,
@@ -192,13 +195,64 @@ class SelectionActionPanel {
         `;
         document.body.appendChild(el);
         this._container = el;
+        this._wireDrag(el);
     }
 
     private _removeContainer(): void {
         if (this._container) {
+            this._dragAbort?.abort();
+            this._dragAbort = null;
             this._container.remove();
             this._container = null;
         }
+    }
+
+    /**
+     * Drag by the header (badge/tabs area), same convention as the EditEngine
+     * mode banner — mousedown anywhere in `.sap-header` except an actual
+     * button/select/input starts a drag. Position is applied as explicit
+     * left/top so it survives `_render()` rebuilds (only innerHTML is cleared
+     * there, not the container's own style).
+     */
+    private _wireDrag(container: HTMLElement): void {
+        this._dragAbort = new AbortController();
+        const signal = this._dragAbort.signal;
+        let dragging = false;
+        let ox = 0;
+        let oy = 0;
+
+        container.addEventListener('mousedown', (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('button, select, input, kbd')) return;
+            if (!target.closest('.sap-header')) return;
+            const rect = container.getBoundingClientRect();
+            container.style.left = rect.left + 'px';
+            container.style.top = rect.top + 'px';
+            container.style.right = 'auto';
+            container.style.bottom = 'auto';
+            container.style.transform = 'none';
+            ox = e.clientX - rect.left;
+            oy = e.clientY - rect.top;
+            dragging = true;
+            document.body.style.cursor = 'grabbing';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        }, { signal });
+
+        document.addEventListener('mousemove', (e: MouseEvent) => {
+            if (!dragging) return;
+            const maxLeft = window.innerWidth - container.offsetWidth - 4;
+            const maxTop = window.innerHeight - container.offsetHeight - 4;
+            container.style.left = Math.max(0, Math.min(e.clientX - ox, maxLeft)) + 'px';
+            container.style.top = Math.max(0, Math.min(e.clientY - oy, maxTop)) + 'px';
+        }, { signal });
+
+        document.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        }, { signal });
     }
 
     // -----------------------------------------------------------------------
@@ -208,14 +262,18 @@ class SelectionActionPanel {
     private _render(selected: Graphic[], category: Category, visibleTabs: TabId[]): void {
         if (!this._container) return;
         this._container.innerHTML = '';
+        this._container.style.minWidth = this._minimized ? '0' : '380px';
 
         this._container.appendChild(this._renderHeader(selected, category, visibleTabs));
-        this._container.appendChild(this._renderActions(selected, category));
+        if (!this._minimized) {
+            this._container.appendChild(this._renderActions(selected, category));
+        }
     }
 
     private _renderHeader(selected: Graphic[], category: Category, visibleTabs: TabId[]): HTMLElement {
         const header = document.createElement('div');
-        header.style.cssText = 'display:flex; align-items:center; gap:10px;';
+        header.className = 'sap-header';
+        header.style.cssText = 'display:flex; align-items:center; gap:10px; cursor:grab;';
 
         // ── Selection badge ────────────────────────────────────────────────
         const badge = document.createElement('span');
@@ -233,8 +291,8 @@ class SelectionActionPanel {
         badge.appendChild(label);
         header.appendChild(badge);
 
-        // ── Tab pills (only if more than one) ──────────────────────────────
-        if (visibleTabs.length > 1) {
+        // ── Tab pills (only if more than one, and not minimized) ───────────
+        if (!this._minimized && visibleTabs.length > 1) {
             const tabRow = document.createElement('div');
             tabRow.style.cssText = 'display:flex; gap:4px; flex:1;';
             const tabLabels: Record<TabId, string> = {
@@ -275,11 +333,26 @@ class SelectionActionPanel {
             header.appendChild(filler);
         }
 
+        // ── Minimize / Restore ──────────────────────────────────────────────
+        const minBtn = this._mkIconBtn(this._minimized ? '▢' : '−', this._minimized ? 'Restore' : 'Minimize', () => {
+            this._minimized = !this._minimized;
+            this.refresh();
+        });
+        header.appendChild(minBtn);
+
         // ── Deselect (✕) ───────────────────────────────────────────────────
-        const close = document.createElement('button');
-        close.title = 'Clear selection (Esc)';
-        close.innerHTML = '✕';
-        close.style.cssText = `
+        const close = this._mkIconBtn('✕', 'Clear selection (Esc)', () => this._selectionEngine.clearSelection(), '#f08060');
+        header.appendChild(close);
+
+        return header;
+    }
+
+    /** Small square icon button used for the header's minimize/close controls. */
+    private _mkIconBtn(icon: string, title: string, onClick: () => void, hoverColor = '#EF9F27'): HTMLButtonElement {
+        const btn = document.createElement('button');
+        btn.title = title;
+        btn.innerHTML = icon;
+        btn.style.cssText = `
             background: transparent;
             border: 1px solid rgba(90,140,220,0.25);
             color: rgba(155,180,215,0.72);
@@ -289,13 +362,12 @@ class SelectionActionPanel {
             border-radius: 4px;
             width: 22px; height: 22px;
             display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
         `;
-        close.addEventListener('mouseenter', () => close.style.color = '#f08060');
-        close.addEventListener('mouseleave', () => close.style.color = 'rgba(155,180,215,0.72)');
-        close.addEventListener('click', () => this._selectionEngine.clearSelection());
-        header.appendChild(close);
-
-        return header;
+        btn.addEventListener('mouseenter', () => btn.style.color = hoverColor);
+        btn.addEventListener('mouseleave', () => btn.style.color = 'rgba(155,180,215,0.72)');
+        btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+        return btn;
     }
 
     private _summary(selected: Graphic[], category: Category): string {
