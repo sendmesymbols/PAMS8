@@ -651,6 +651,9 @@ function initializeAutocomplete() {
 
     lastSelectedSymbol = symbol;
     if (!rearm) {
+      // A fresh pick returns the dock to draw mode (restoring the user's
+      // draw-mode Identity/Echelon/Name before they're read below).
+      exitDockEditMode();
       symbolSearchInput.value = symbol.name;
       hideAutocompleteList();
     }
@@ -663,12 +666,19 @@ function initializeAutocomplete() {
     const symbolSet = symbol.key.slice(0, 2); // positions 5–6
     const symbolId = symbol.key.slice(2); // becomes positions 11–16 or more
 
-    // Step 2: Define static/default values for remaining SIDC parts
+    // Step 2: Define values for remaining SIDC parts. Identity and echelon
+    // come from the dock's segmented buttons (Friend / Pl by default).
     const codingScheme = '10'; // positions 1–2 (Warfighting)
-    const standardIdentity = '03'; // positions 3–4 (Friendly)
+    const standardIdentity = dockSelectedCode(
+      'symbolParamsDockIdentity',
+      DEFAULT_IDENTITY,
+    ); // positions 3–4
     const status = '0'; // position 7 (Present)
     const hqModifier = '0'; // position 8 (None)
-    const amplifier1 = '22'; // positions 9–10 (Default)
+    const amplifier1 = dockSelectedCode(
+      'symbolParamsDockEchelon',
+      DEFAULT_ECHELON,
+    ); // positions 9–10 (echelon)
     const modifiers = '0000'; // positions 17–20 (sector modifiers or padding)
 
     // Step 3: Pad symbolId to 10 digits (entity + type + subtype + modifiers)
@@ -715,8 +725,8 @@ function initializeAutocomplete() {
     amplifier.DTG = "DDHHMMSSZMONYYYY";
     amplifier.EDTG = "DDHHMMSSZMONYYYY00";
     */
-    //amplifier.UNIQUE_DESIG = "Tact";
-    amplifier.UNIQUE_DESIG = '';
+    // Unique designation comes from the dock's Name field.
+    amplifier.UNIQUE_DESIG = dockName();
     amplifier.HIGHER_FORM = 'Higher Formation';
     amplifier.STAFF_COM = 'Staff Comments';
     amplifier.ADDL_INFO = 'Additional Information';
@@ -728,7 +738,7 @@ function initializeAutocomplete() {
 
     var drawEssentials = new DrawEssentials();
 
-    drawEssentials.uniqueDesignation = 'FORCE 123456';
+    drawEssentials.uniqueDesignation = dockName();
     drawEssentials.infoFields = true;
 
     /*
@@ -1005,6 +1015,234 @@ function initializeAutocomplete() {
   const drawTypeSelectEl = () =>
     document.getElementById('drawTypesSelectPre') as HTMLSelectElement | null;
 
+  // ── Identity / Echelon / Name dock controls ─────────────────────────────
+  // Codes are SIDC fragments: identity = chars 3–4 (context + standard
+  // identity), echelon = chars 9–10 (amplifier/descriptor). Labels are the
+  // exact display forms requested for the dock.
+  const STD_IDENTITIES: Array<{ code: string; label: string; dot: string }> = [
+    { code: '00', label: 'Pending', dot: '#FFFF80' },
+    { code: '01', label: 'Unknown', dot: '#FFFF80' },
+    { code: '02', label: 'Assumed Friend', dot: '#80E0FF' },
+    { code: '03', label: 'Friend', dot: '#80E0FF' },
+    { code: '04', label: 'Neutral', dot: '#AAFFAA' },
+    { code: '05', label: 'Suspect', dot: '#FF8080' },
+    { code: '06', label: 'Hostile', dot: '#FF8080' },
+  ];
+  const ECHELONS: Array<{ code: string; label: string }> = [
+    { code: '00', label: 'Unspecified' },
+    { code: '11', label: 'Team/Crew' },
+    { code: '12', label: 'Squad' },
+    { code: '13', label: 'Sec' },
+    { code: '14', label: 'Pl' },
+    { code: '15', label: 'Coy/Bty' },
+    { code: '16', label: 'Bn' },
+    { code: '17', label: 'Gp' },
+    { code: '18', label: 'Bde' },
+    { code: '21', label: 'Div' },
+    { code: '22', label: 'Corps' },
+    { code: '22', label: 'Comd' },
+    { code: '23', label: 'Army' },
+  ];
+  const DEFAULT_IDENTITY = '03'; // Friend
+  const DEFAULT_ECHELON = '14'; // Pl
+
+  // Graphic currently being edited via the context menu's "Show Details"
+  // (null = draw mode, where the controls parameterise the NEXT drawn symbol).
+  let dockEditGraphic: any = null;
+  // Draw-mode selections stashed while the dock shows an edited symbol's values.
+  let stashedDrawSelections: {
+    identity: string;
+    echelon: string;
+    name: string;
+  } | null = null;
+
+  const dockNameInputEl = () =>
+    document.getElementById('symbolParamsDockName') as HTMLInputElement | null;
+
+  function dockSelectedCode(containerId: string, fallback: string): string {
+    const sel = document.querySelector<HTMLButtonElement>(
+      `#${containerId} .dock-seg-btn.selected`,
+    );
+    return sel?.dataset.code || fallback;
+  }
+
+  function dockSetSelected(containerId: string, code: string): void {
+    // First match wins — Corps and Comd intentionally share code 22.
+    let hit = false;
+    document
+      .querySelectorAll<HTMLButtonElement>(`#${containerId} .dock-seg-btn`)
+      .forEach((b) => {
+        const sel = !hit && b.dataset.code === code;
+        if (sel) hit = true;
+        b.classList.toggle('selected', sel);
+      });
+  }
+
+  function dockName(): string {
+    return dockNameInputEl()?.value.trim() ?? '';
+  }
+
+  function onDockIdentityChanged(): void {
+    if (dockEditGraphic) applyDockEditPatch();
+    else rearmDraw();
+  }
+
+  function buildDockIdentityControls(): void {
+    const idGrid = document.getElementById('symbolParamsDockIdentity');
+    const echGrid = document.getElementById('symbolParamsDockEchelon');
+    const nameInput = dockNameInputEl();
+    if (!idGrid || !echGrid || !nameInput) return;
+
+    const makeBtn = (
+      grid: HTMLElement,
+      code: string,
+      label: string,
+      dot?: string,
+    ): void => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'dock-seg-btn';
+      btn.dataset.code = code;
+      if (dot) {
+        const d = document.createElement('span');
+        d.className = 'dock-seg-dot';
+        d.style.background = dot;
+        btn.appendChild(d);
+      }
+      btn.appendChild(document.createTextNode(label));
+      btn.addEventListener('click', () => {
+        grid
+          .querySelectorAll('.dock-seg-btn')
+          .forEach((b) => b.classList.toggle('selected', b === btn));
+        onDockIdentityChanged();
+      });
+      grid.appendChild(btn);
+    };
+
+    for (const i of STD_IDENTITIES) makeBtn(idGrid, i.code, i.label, i.dot);
+    for (const e of ECHELONS) makeBtn(echGrid, e.code, e.label);
+    dockSetSelected('symbolParamsDockIdentity', DEFAULT_IDENTITY);
+    dockSetSelected('symbolParamsDockEchelon', DEFAULT_ECHELON);
+
+    nameInput.addEventListener('change', () => onDockIdentityChanged());
+
+    // "More details…" (edit mode only) — hand off to the full Morphix editor.
+    document
+      .getElementById('symbolParamsDockMoreBtn')
+      ?.addEventListener('click', () => {
+        const graphic = dockEditGraphic;
+        if (!graphic) return;
+        exitDockEditMode();
+        document.getElementById('symbolParamsDock')?.classList.remove('show');
+        symbolEngine.openSymbolEditor(graphic);
+      });
+
+    // Context menu "Show Details" → claim the event and edit in the dock
+    // instead of the Morphix modal.
+    document.addEventListener('symbolDetailsRequested', (e: Event) => {
+      const ce = e as CustomEvent;
+      if (!ce.detail?.graphic) return;
+      ce.preventDefault();
+      enterDockEditMode(ce.detail.graphic, ce.detail.state);
+    });
+  }
+
+  function enterDockEditMode(graphic: any, state: any): void {
+    const dock = document.getElementById('symbolParamsDock');
+    const nameInput = dockNameInputEl();
+    if (!dock || !nameInput) return;
+
+    if (!dockEditGraphic) {
+      stashedDrawSelections = {
+        identity: dockSelectedCode('symbolParamsDockIdentity', DEFAULT_IDENTITY),
+        echelon: dockSelectedCode('symbolParamsDockEchelon', DEFAULT_ECHELON),
+        name: nameInput.value,
+      };
+    }
+    dockEditGraphic = graphic;
+
+    const sidc = String(state?.sidc || '').padEnd(20, '0');
+    dockSetSelected('symbolParamsDockIdentity', sidc.slice(2, 4));
+    dockSetSelected('symbolParamsDockEchelon', sidc.slice(8, 10));
+    nameInput.value =
+      state?.kind === 'FPoint'
+        ? state?.options?.uniqueDesignation || ''
+        : state?.amplifier?.UNIQUE_DESIG ||
+          state?.drawEssentials?.uniqueDesignation ||
+          '';
+
+    const hint = document.getElementById('symbolParamsDockEditHint');
+    if (hint) {
+      hint.textContent = `Editing: ${state?.symbolName || 'Symbol'}`;
+      hint.style.display = '';
+    }
+    const title = document.getElementById('symbolParamsDockTitle');
+    if (title) title.textContent = 'Symbol Details';
+    const moreBtn = document.getElementById('symbolParamsDockMoreBtn');
+    if (moreBtn) moreBtn.style.display = '';
+
+    // Draw-only sections make no sense while editing a placed symbol.
+    for (const id of [
+      'symbolParamsDockDivider',
+      'symbolParamsDockDrawType',
+      'symbolParamsDockList',
+      'symbolParamsDockStyle',
+    ]) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    }
+
+    dock.classList.add('show');
+  }
+
+  function exitDockEditMode(): void {
+    if (!dockEditGraphic) return;
+    dockEditGraphic = null;
+    const hint = document.getElementById('symbolParamsDockEditHint');
+    if (hint) hint.style.display = 'none';
+    const moreBtn = document.getElementById('symbolParamsDockMoreBtn');
+    if (moreBtn) moreBtn.style.display = 'none';
+    if (stashedDrawSelections) {
+      dockSetSelected('symbolParamsDockIdentity', stashedDrawSelections.identity);
+      dockSetSelected('symbolParamsDockEchelon', stashedDrawSelections.echelon);
+      const nameInput = dockNameInputEl();
+      if (nameInput) nameInput.value = stashedDrawSelections.name;
+      stashedDrawSelections = null;
+    }
+  }
+
+  function applyDockEditPatch(): void {
+    const graphic = dockEditGraphic;
+    if (!graphic) return;
+    try {
+      const state = symbolEngine.getSymbolState(graphic);
+      const sidc = String(state.sidc || '').padEnd(20, '0');
+      const identity = dockSelectedCode(
+        'symbolParamsDockIdentity',
+        sidc.slice(2, 4),
+      );
+      const echelon = dockSelectedCode(
+        'symbolParamsDockEchelon',
+        sidc.slice(8, 10),
+      );
+      const newSidc =
+        sidc.slice(0, 2) + identity + sidc.slice(4, 8) + echelon + sidc.slice(10);
+
+      const patch: any = { sidc: newSidc };
+      if (state.kind === 'FPoint') {
+        patch.options = { uniqueDesignation: dockName() };
+      } else {
+        patch.amplifier = { UNIQUE_DESIG: dockName() };
+      }
+
+      // updateSymbol re-renders into a NEW graphic — keep editing that one.
+      const updated = symbolEngine.updateSymbol(graphic, patch);
+      if (updated) dockEditGraphic = updated;
+    } catch (error) {
+      console.error('Failed to apply symbol details edit:', error);
+    }
+  }
+
   // Copy an edited value to the same-token input in the other container
   // (⛭ popup ↔ right dock) so both views of a parameter always agree.
   function mirrorParamInput(from: HTMLInputElement): void {
@@ -1106,6 +1344,7 @@ function initializeAutocomplete() {
     }
     if (dockList) {
       dockList.innerHTML = '';
+      dockList.style.display = ''; // edit mode may have hidden it
       for (const p of numeric) dockList.appendChild(makeRow(p));
     }
 
@@ -1126,11 +1365,17 @@ function initializeAutocomplete() {
       }
     }
 
-    // 3) Auto-show the right dock whenever the symbol has any inputs to offer.
-    // ✕ hides it; the next symbol selection re-opens it.
+    // 3) Auto-show the right dock on every symbol selection — Identity /
+    // Echelon / Name are always available even when the symbol has no draw
+    // parameters. ✕ hides it; the next symbol selection re-opens it.
+    const divider = document.getElementById('symbolParamsDockDivider');
+    if (divider) {
+      divider.style.display =
+        hasDrawType || numeric.length > 0 || isFreehand ? '' : 'none';
+    }
     if (dock) {
       if (dockTitle) dockTitle.textContent = symbolData?.Name || 'Draw Parameters';
-      dock.classList.toggle('show', hasDrawType || numeric.length > 0 || isFreehand);
+      dock.classList.add('show');
     }
   }
 
@@ -1168,12 +1413,17 @@ function initializeAutocomplete() {
       rearmDraw();
     });
 
-    // ✕ hides the right dock; the next symbol selection re-opens it.
+    // Identity / Echelon / Name segmented controls + Details edit-mode wiring.
+    buildDockIdentityControls();
+
+    // ✕ hides the right dock (and leaves Details edit mode); the next symbol
+    // selection re-opens it.
     document
       .getElementById('symbolParamsDockClose')
-      ?.addEventListener('click', () =>
-        document.getElementById('symbolParamsDock')?.classList.remove('show'),
-      );
+      ?.addEventListener('click', () => {
+        exitDockEditMode();
+        document.getElementById('symbolParamsDock')?.classList.remove('show');
+      });
 
     // Drawing finished → the dock has served its purpose; close it. In
     // continuous creation mode the next draw arms immediately with the same

@@ -3,8 +3,11 @@
   "configurations": [
     {
       "name": "pams8-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": [
+        "/c",
+        "set PATH=C:\\Users\\USER\\AppData\\Roaming\\fnm\\node-versions\\v24.0.0\\installation;%PATH% && npm run dev"
+      ],
       "port": 6548
     }
   ]

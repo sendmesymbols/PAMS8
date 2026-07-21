@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
     />
 
     <title>PAMS8</title>
@@ -85,21 +85,39 @@
 
       /* ═══════════════════════════════════════════════════════════════════════
          TOP BAR (infoDiv)
+
+         Full-bleed app chrome. Responsiveness is content-driven, not
+         viewport-driven: a ResizeObserver (script right after the bar's markup)
+         sets .is-wrapped on #infoDiv whenever the controls occupy more than one
+         row, and every "narrow" style hangs off that class. The bar therefore
+         behaves identically on any monitor, DPI, or zoom level, and adapts
+         automatically when buttons are added.
+
+         Extension contract — adding controls never requires touching a
+         breakpoint:
+         · .infobar-section  — a labelled cluster of controls; the last one
+                               (.infobar-push) is right-aligned while the bar
+                               fits on one row.
+         · .infobar-group    — atomic run of related controls inside a section;
+                               wraps as one unit, never splits.
+         · New button        — drop a .ms-btn.infobar-btn into a section or
+                               group; overflow wraps and restyles on its own.
          ═══════════════════════════════════════════════════════════════════════ */
       #infoDiv {
         position: absolute;
-        top: 12px;
-        left: 50px;
-        right: 12px;
+        top: 0;
+        left: 0;
+        right: 0;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 8px 10px;
-        padding: 9px 12px;
+        gap: 6px clamp(8px, 0.8vw, 14px);
+        padding: 7px clamp(10px, 1.2vw, 20px);
+        padding-left: max(clamp(10px, 1.2vw, 20px), env(safe-area-inset-left));
+        padding-right: max(clamp(10px, 1.2vw, 20px), env(safe-area-inset-right));
         background: rgba(20, 24, 32, 0.92);
-        border: 1px solid var(--ms-border);
-        border-radius: var(--ms-radius);
-        box-shadow: var(--ms-shadow);
+        border-bottom: 1px solid var(--ms-border);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
         backdrop-filter: blur(12px);
         z-index: 100;
         font-family: var(--ms-font);
@@ -152,23 +170,31 @@
         margin-left: -1px; /* overlap borders so there's a single divider line */
       }
 
-      /* ── Responsive top bar ─────────────────────────────────────────────── */
-      @media (max-width: 1180px) {
-        #infoDiv { gap: 6px 8px; padding: 8px 10px; }
-        .infobar-push { margin-left: 0; }
-        #infoDiv .autocomplete-container { min-width: 140px; }
-        #infoDiv .ms-input { width: 120px; }
-        #sidcText { width: 110px !important; }
+      /* ── Responsive top bar (content-driven) ────────────────────────────────
+         .is-wrapped is toggled by the ResizeObserver script after the bar's
+         markup. IMPORTANT: rules in this block must not change any horizontal
+         metric (widths, paddings, borders, flex-basis) — that would shift the
+         wrap point and make the class oscillate. Only paint properties and
+         auto-margins (which flexbox ignores when breaking lines) are safe. */
+      #infoDiv.is-wrapped .infobar-section:not(:last-child) {
+        border-right-color: transparent; /* hide divider, keep its 1px space */
       }
-      @media (max-width: 720px) {
-        #infoDiv { left: 12px; }
-        .infobar-section:not(:last-child) {
-          border-right: none;
-          padding-right: 0;
-        }
-        #infoDiv .autocomplete-container { min-width: 120px; flex: 1; }
-        #infoDiv .ms-input { width: 100%; }
-        #sidcText { width: 100% !important; min-width: 120px; }
+      #infoDiv.is-wrapped .infobar-push {
+        margin-left: 0; /* wrapped rows all flow left for a predictable grid */
+      }
+      /* While everything fits on one row, the pushed section hugs the right
+         viewport edge — its dropdowns must open right-aligned so they never
+         overflow the screen. When wrapped, the section sits left again and
+         the default left anchoring is restored. */
+      #infoDiv:not(.is-wrapped) .infobar-push .demo-symbol-menu {
+        left: auto;
+        right: 0;
+      }
+      /* Comfortable touch targets on touch-first devices (tablets). */
+      @media (pointer: coarse) {
+        #infoDiv .ms-btn { min-height: 36px; }
+        #infoDiv .ms-input,
+        #infoDiv .ms-select { min-height: 34px; }
       }
 
       #infoDiv .autocomplete-container {
@@ -221,7 +247,9 @@
       #sidcText {
         font-family: var(--ms-font-mono) !important;
         letter-spacing: 0.5px;
-        width: 120px !important;
+        /* Fluid: shows more of the 30-char SIDC as the screen grows; clamp is
+           continuous so the wrap point never jumps between monitors. */
+        width: clamp(120px, 11vw, 300px) !important;
         color: var(--ms-accent) !important;
       }
 
@@ -423,6 +451,71 @@
       }
       #symbolParamsDockStyle .drawstyle-swatches {
         padding: 0 6px 5px;
+      }
+      /* Identity / Echelon / Name section of the dock — segmented buttons sized
+         for stylus/pen use (large tap targets, obvious selected state). */
+      .dock-field-label {
+        margin: 8px 2px 4px;
+        font: 700 11px/1 var(--ms-font);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        opacity: 0.65;
+        display: block;
+      }
+      .dock-seg-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .dock-seg-btn {
+        flex: 1 1 auto;
+        min-height: 34px;
+        min-width: 44px;
+        padding: 4px 8px;
+        border: 1px solid var(--ms-divider);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--ms-text);
+        font: 600 12px/1.15 var(--ms-font);
+        cursor: pointer;
+        touch-action: manipulation;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+      }
+      .dock-seg-btn:hover {
+        border-color: var(--ms-accent);
+      }
+      .dock-seg-btn.selected {
+        border-color: var(--ms-accent);
+        background: color-mix(in srgb, var(--ms-accent) 28%, transparent);
+        box-shadow: inset 0 0 0 1px var(--ms-accent);
+      }
+      .dock-seg-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex: none;
+      }
+      #symbolParamsDockName {
+        width: 100%;
+        margin-top: 2px;
+      }
+      #symbolParamsDockMoreBtn {
+        width: 100%;
+        margin-top: 8px;
+      }
+      .dock-divider {
+        margin: 8px 0 6px;
+        border-top: 1px solid var(--ms-divider);
+      }
+      .dock-edit-hint {
+        margin-bottom: 4px;
+        padding: 5px 8px;
+        border-radius: 6px;
+        background: color-mix(in srgb, var(--ms-accent) 18%, transparent);
+        font: 600 11px/1.3 var(--ms-font);
       }
       .drawstyle-row {
         display: flex;
@@ -1448,6 +1541,32 @@
           title="Hide this panel — it reappears on the next symbol selection"
         >✕</button>
       </div>
+      <!-- Identity / Echelon / Name — stylus-friendly segmented buttons.
+           Draw mode: these feed the SIDC + unique designation of the next
+           drawn symbol. Details (edit) mode: filled from the picked symbol
+           and applied live via symbolEngine.updateSymbol (see the identity
+           controls section in src/main.ts). -->
+      <div id="symbolParamsDockEditHint" class="dock-edit-hint" style="display: none"></div>
+      <div class="dock-field-label">Identity</div>
+      <div id="symbolParamsDockIdentity" class="dock-seg-grid"></div>
+      <div class="dock-field-label">Echelon</div>
+      <div id="symbolParamsDockEchelon" class="dock-seg-grid"></div>
+      <label class="dock-field-label" for="symbolParamsDockName">Name</label>
+      <input
+        id="symbolParamsDockName"
+        class="ms-input"
+        type="text"
+        autocomplete="off"
+        placeholder="Unique designation"
+        title="Unique designation label shown with the symbol."
+      />
+      <button
+        id="symbolParamsDockMoreBtn"
+        class="ms-btn"
+        style="display: none"
+        title="Open the full symbol editor for all amplifier and style fields"
+      >More details…</button>
+      <div id="symbolParamsDockDivider" class="dock-divider" style="display: none"></div>
       <select
         id="symbolParamsDockDrawType"
         class="ms-select"
@@ -1505,6 +1624,8 @@
           <button class="ms-btn ms-btn-primary infobar-btn" id="demoMenuBtn" title="Pick a common symbol — tapping a symbol starts drawing immediately, exactly as if it was chosen from the search box. Edit the DEMO_SYMBOLS list in src/main.ts to change the menu."><span class="infobar-icon">★</span>Symbols</button>
           <div id="demoSymbolMenu" class="demo-symbol-menu"></div>
         </div>
+        <!-- Pen pickers (Style / Mode / Fill-Color) wrap as one unit. -->
+        <div class="infobar-group">
         <div class="infobar-menu-anchor">
           <button class="ms-btn infobar-btn" id="penStyleBtn" title="Pen Style — choose how the pen/mouse draws (Scrub, Native, Freehand, Tap). Same as Draw Paradigm in the Settings panel."><span class="infobar-icon">✒</span>Style</button>
           <div id="penStyleMenu" class="demo-symbol-menu"></div>
@@ -1549,6 +1670,7 @@
             </label>
           </div>
         </div>
+        </div>
         <button class="ms-btn infobar-btn" id="switch-btn" title="Toggle between 2D map view and 3D scene view. Updates all engines to use the new view context."><span class="infobar-icon">⊞</span>2D</button>
         <!-- Creation Mode toggle + quick edit actions — grouped so they stay on one row (the group wraps as a unit on narrow screens). -->
         <div class="infobar-group">
@@ -1582,6 +1704,49 @@
         <button class="ms-btn infobar-btn" id="layerManagerBtn" title="Open the Layer Manager — reorder, set opacity, and show/hide the map's layers (overlays, basemap, terrain). Symbol/graphics layers are managed elsewhere."><span class="infobar-icon">⛃</span>Layers</button>
       </div>
     </div>
+
+    <!-- Content-driven top-bar responsiveness: flags #infoDiv with .is-wrapped
+         whenever its controls occupy more than one row, so the CSS adapts to
+         the bar's real content instead of guessing from viewport breakpoints.
+         The .is-wrapped styles change no horizontal metrics, so toggling the
+         class can never re-trigger wrapping (no oscillation). -->
+    <script>
+      (function () {
+        var bar = document.getElementById('infoDiv');
+        if (!bar) return;
+        function isWrapped() {
+          // Compare the vertical centres of the first and last visible
+          // controls (centres, not tops: controls of different heights sit
+          // centre-aligned on the same flex row). Controls inside dropdown
+          // menus don't count — open menus overlay rows below the bar.
+          var controls = bar.querySelectorAll('.ms-btn, .ms-input, .ms-select');
+          var first = null;
+          var last = null;
+          for (var i = 0; i < controls.length; i++) {
+            var el = controls[i];
+            if (!el.offsetParent || el.closest('.demo-symbol-menu')) continue;
+            var rect = el.getBoundingClientRect();
+            if (!rect.width) continue;
+            var center = rect.top + rect.height / 2;
+            if (first === null) first = center;
+            last = center;
+          }
+          return first !== null && last - first > 8;
+        }
+        // Synchronous on purpose: it's a dozen rect reads, ResizeObserver
+        // already batches per frame, and rAF-deferred updates freeze in
+        // hidden/occluded tabs, leaving a stale class behind.
+        function refresh() {
+          bar.classList.toggle('is-wrapped', isWrapped());
+        }
+        if (typeof ResizeObserver !== 'undefined') {
+          new ResizeObserver(refresh).observe(bar);
+        }
+        window.addEventListener('resize', refresh);
+        window.addEventListener('load', refresh);
+        refresh();
+      })();
+    </script>
 
     <!-- ── Measurement Panel (Widgets.css) ────────────────────────────────── -->
     <div id="measurePanel" class="ms-panel ms-theme-ops-dark">

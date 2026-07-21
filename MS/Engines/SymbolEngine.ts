@@ -1120,10 +1120,22 @@ class SymbolEngine implements Evented {
   }
 
   /**
-   * Show details for a symbol
+   * Show details for a symbol.
+   *
+   * Dispatches a cancelable `symbolDetailsRequested` CustomEvent first so a host
+   * application can present its own details editor (e.g. the harness's Symbol
+   * Params dock) — call `event.preventDefault()` to claim it. When unclaimed,
+   * falls back to the built-in Morphix editor modal.
    */
   private showSymbolDetails(graphic: Graphic): void {
-    this._morphixEngine.open(graphic);
+    const event = new CustomEvent('symbolDetailsRequested', {
+      detail: { graphic, state: this.getSymbolState(graphic) },
+      bubbles: true,
+      cancelable: true,
+    });
+    const target = this.view?.container ?? document;
+    const unclaimed = target.dispatchEvent(event);
+    if (unclaimed) this._morphixEngine.open(graphic);
   }
 
   /**
