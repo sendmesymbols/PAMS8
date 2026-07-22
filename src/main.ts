@@ -926,14 +926,28 @@ function initializeAutocomplete() {
     symDrawClickEvent.remove();
     */
 
+    // Label styling comes from the live Text Style settings (font family / size /
+    // colour / bold / italic / underline / highlight). Highlight is rendered as a
+    // thick coloured halo (2D/3D-safe); when off, a thin white readability halo is
+    // used. Per-symbol overrides can still be applied later via Morphix.
+    const textStyle = (settingsData as any).textStyle || {};
+    const highlightOn = textStyle.highlight === true;
     drawEssentials.labelOptions = {
-      haloColor: [255, 0, 0],
-      haloColorSize: 5,
-      color: [0, 255, 0],
-      textSize: 20,
-      bold: 1,
-      italic: 0,
-      uLine: 0,
+      fontFamily: textStyle.fontFamily || 'Arial',
+      color: Array.isArray(textStyle.textColor) ? [...textStyle.textColor] : [0, 0, 0],
+      textSize: typeof textStyle.textSize === 'number' ? textStyle.textSize : 14,
+      haloColor:
+        highlightOn && Array.isArray(textStyle.highlightColor)
+          ? [...textStyle.highlightColor]
+          : [255, 255, 255],
+      haloColorSize: highlightOn
+        ? typeof textStyle.highlightSize === 'number'
+          ? textStyle.highlightSize
+          : 4
+        : 2,
+      bold: textStyle.bold ? 1 : 0,
+      italic: textStyle.italic ? 1 : 0,
+      uLine: textStyle.underline ? 1 : 0,
       oLine: 0,
       tLine: 0,
     };
@@ -1057,7 +1071,9 @@ function initializeAutocomplete() {
   } | null = null;
 
   const dockNameInputEl = () =>
-    document.getElementById('symbolParamsDockName') as HTMLInputElement | null;
+    document.getElementById('symbolParamsDockName') as
+      | HTMLTextAreaElement
+      | null;
 
   function dockSelectedCode(containerId: string, fallback: string): string {
     const sel = document.querySelector<HTMLButtonElement>(
@@ -1388,7 +1404,16 @@ function initializeAutocomplete() {
         const token = input.dataset.token;
         if (!token) return;
         const n = parseFloat(input.value);
-        if (Number.isFinite(n)) drawEssentials[token] = n;
+        if (!Number.isFinite(n)) return;
+        // UEISymbol (FPoint) declares its Size parameter with the lowercase
+        // token "size" — the milsymbol renderer reads it from
+        // extraSettings.size, not a flat drawEssentials.size, so route it
+        // there. Every other token (SIZE, ANGLE, HEAD_RATIO, ...) stays flat.
+        if (token === 'size') {
+          drawEssentials.extraSettings = { ...drawEssentials.extraSettings, size: n };
+        } else {
+          drawEssentials[token] = n;
+        }
       });
   }
 
@@ -1471,7 +1496,10 @@ function initializeAutocomplete() {
 // Symbols offered for one-tap demo drawing. EDIT THIS LIST to change the menu:
 // label = button text, name = the exact "Name" from MS/Data/Symbols.json.
 // Unknown names are skipped with a console warning, never an error.
-const DEMO_SYMBOLS: Array<{ label: string; name: string }> = [
+// `name` must match a Symbols.json entry Name exactly. `drawType` (optional)
+// quick-picks a specific shape within a multi-shape entry (e.g. an Auto Shape
+// category) — it is applied to the draw-type selector right after the pick.
+const DEMO_SYMBOLS: Array<{ label: string; name: string; drawType?: number }> = [
   { label: 'Infantry', name: 'Inf' },
   { label: 'Main Attack', name: 'Main Attk' },
   { label: 'Strong Pt', name: 'Strong Pt' },
@@ -1488,6 +1516,14 @@ const DEMO_SYMBOLS: Array<{ label: string; name: string }> = [
   { label: 'Battle Position', name: 'Battle Posn' },
   { label: 'Objective', name: 'Obj Area' },
   { label: 'Attack Position', name: 'Attack Position' },
+  // ── Auto Shapes (a few shapes + lines; skipped if features.autoShapes off) ──
+  { label: 'Rectangle', name: 'Auto Shape - Area', drawType: 1 },
+  { label: 'Ellipse', name: 'Auto Shape - Area', drawType: 3 },
+  { label: 'Hexagon', name: 'Auto Shape - Area', drawType: 11 },
+  { label: 'Star', name: 'Auto Shape - Area', drawType: 4 },
+  { label: 'Right Arrow', name: 'Auto Shape - Block Arrows', drawType: 7 },
+  { label: 'Railway', name: 'Auto Shape - Line', drawType: 7 },
+  { label: 'Road', name: 'Auto Shape - Line', drawType: 6 },
 ];
 
 function initDemoQuickPick(
@@ -1517,9 +1553,19 @@ function initDemoQuickPick(
     b.className = 'demo-symbol-btn';
     b.textContent = entry.label;
     b.title = match.name;
+    const drawType = entry.drawType;
     b.addEventListener('click', () => {
       hide();
       selectSymbol(match); // identical code path to an autocomplete pick
+      // Quick-pick a specific shape within a multi-shape entry: set the draw-type
+      // selector and fire its change handler (which re-arms the draw).
+      if (drawType != null) {
+        const sel = document.getElementById('drawTypesSelectPre') as HTMLSelectElement | null;
+        if (sel && sel.querySelector(`option[value="${drawType}"]`)) {
+          sel.value = String(drawType);
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
     });
     menu.appendChild(b);
   }
@@ -1871,6 +1917,32 @@ function buildDockFreehandStyle(container: HTMLElement): void {
     write('lineWidth', parseFloat(lineWidth.value)),
   );
   row('Line width', lineWidth);
+
+  // Line style (stroke dash pattern). Applies to freehand lines/arrows and area
+  // outlines; decorated auto-shape lines (border/road/railway/pathway) keep their
+  // own signature style.
+  const lineStyle = document.createElement('select');
+  lineStyle.className = 'ms-select';
+  const LINE_STYLES: Array<[string, string]> = [
+    ['solid', 'Solid'],
+    ['dash', 'Dash'],
+    ['dot', 'Dot'],
+    ['dash-dot', 'Dash-Dot'],
+    ['short-dash', 'Short Dash'],
+    ['short-dot', 'Short Dot'],
+    ['long-dash', 'Long Dash'],
+    ['long-dash-dot', 'Long Dash-Dot'],
+    ['long-dash-dot-dot', 'Long Dash-Dot-Dot'],
+  ];
+  for (const [value, label] of LINE_STYLES) {
+    const o = document.createElement('option');
+    o.value = value;
+    o.textContent = label;
+    lineStyle.appendChild(o);
+  }
+  lineStyle.value = String(ds.lineStyle ?? 'solid');
+  lineStyle.addEventListener('change', () => write('lineStyle', lineStyle.value));
+  row('Line style', lineStyle);
 
   const fill = document.createElement('input');
   fill.type = 'checkbox';

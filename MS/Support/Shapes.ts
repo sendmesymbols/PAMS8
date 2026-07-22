@@ -2718,6 +2718,431 @@ class Shapes {
         return result;
     }
 
+    // ── Auto-shape (PowerPoint-style) generators ────────────────────────────────
+    // All follow createSymbolByRect's signature and conventions: MAP coordinates,
+    // Y-up, explicitly-closed ring, bare Polygon (no edit/selection metadata). The
+    // frame is derived from the EXTENT of the whole control-point set so each shape
+    // renders correctly whether it receives two drag corners or a full (simplified)
+    // freehand point cloud.
+
+    /** Axis-aligned bounding box of a control-point set, in map units. */
+    static bboxOf(pts: Point[]): { xmin: number; ymin: number; xmax: number; ymax: number; cx: number; cy: number; w: number; h: number } {
+        let xmin = Infinity, ymin = Infinity, xmax = -Infinity, ymax = -Infinity;
+        for (const p of pts) {
+            if (p.x < xmin) xmin = p.x;
+            if (p.x > xmax) xmax = p.x;
+            if (p.y < ymin) ymin = p.y;
+            if (p.y > ymax) ymax = p.y;
+        }
+        return { xmin, ymin, xmax, ymax, cx: (xmin + xmax) / 2, cy: (ymin + ymax) / 2, w: xmax - xmin, h: ymax - ymin };
+    }
+
+    /** Rounded rectangle — rectangle with quarter-arc corners. */
+    static createRoundedRect(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const r = Math.min(b.w, b.h) * 0.18;
+        if (!(r > 0)) { // degenerate frame — fall back to a plain rectangle
+            result.addRing([[b.xmin, b.ymin], [b.xmin, b.ymax], [b.xmax, b.ymax], [b.xmax, b.ymin], [b.xmin, b.ymin]]);
+            return result;
+        }
+        const seg = 6; // arc resolution per corner
+        const ring: number[][] = [];
+        const arc = (cx: number, cy: number, start: number, end: number) => {
+            for (let i = 0; i <= seg; i++) {
+                const a = start + (end - start) * (i / seg);
+                ring.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+            }
+        };
+        // Corners (map coords, Y-up): BL, BR, TR, TL
+        arc(b.xmin + r, b.ymin + r, Math.PI, Math.PI * 1.5);       // bottom-left
+        arc(b.xmax - r, b.ymin + r, Math.PI * 1.5, Math.PI * 2);   // bottom-right
+        arc(b.xmax - r, b.ymax - r, 0, Math.PI * 0.5);             // top-right
+        arc(b.xmin + r, b.ymax - r, Math.PI * 0.5, Math.PI);       // top-left
+        ring.push(ring[0].slice()); // close
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Five-point star inscribed in the frame. */
+    static createStar(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const rxO = b.w / 2, ryO = b.h / 2, rxI = rxO * 0.4, ryI = ryO * 0.4;
+        const points = 5;
+        const ring: number[][] = [];
+        for (let i = 0; i < points * 2; i++) {
+            const outer = i % 2 === 0;
+            // Start at the top (+90°) and step by half-points.
+            const a = Math.PI / 2 + (i * Math.PI) / points;
+            const rx = outer ? rxO : rxI;
+            const ry = outer ? ryO : ryI;
+            ring.push([b.cx + rx * Math.cos(a), b.cy + ry * Math.sin(a)]);
+        }
+        ring.push(ring[0].slice()); // close
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Rightward chevron (block "greater-than" with a back notch). */
+    static createChevron(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const t = b.w * 0.4; // horizontal depth of the point / notch
+        const ring: number[][] = [
+            [b.xmin, b.ymax],            // top-left
+            [b.xmax - t, b.ymax],        // top, before the tip
+            [b.xmax, b.cy],              // right tip
+            [b.xmax - t, b.ymin],        // bottom, after the tip
+            [b.xmin, b.ymin],            // bottom-left
+            [b.xmin + t, b.cy],          // inner back notch
+            [b.xmin, b.ymax],            // close
+        ];
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Cloud — scalloped ellipse (lumpy lobes around the frame). */
+    static createCloud(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const lobes = 9;
+        const steps = 120;
+        const ring: number[][] = [];
+        for (let i = 0; i <= steps; i++) {
+            const theta = (2 * Math.PI * i) / steps;
+            const bump = Math.abs(Math.sin((lobes * theta) / 2));
+            const rx = (b.w / 2) * (0.80 + 0.20 * bump);
+            const ry = (b.h / 2) * (0.80 + 0.20 * bump);
+            ring.push([b.cx + rx * Math.cos(theta), b.cy + ry * Math.sin(theta)]);
+        }
+        ring.push(ring[0].slice()); // explicit close (float sin(2π) ≠ 0)
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Rightward block arrow (rectangular shaft + triangular head). */
+    static createBlockArrow(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const sh = b.h * 0.5;        // shaft height (centred vertically)
+        const headW = b.w * 0.4;     // triangular head width
+        const top = b.cy + sh / 2, bot = b.cy - sh / 2, headX = b.xmax - headW;
+        const ring: number[][] = [
+            [b.xmin, top],           // shaft top-left
+            [headX, top],            // shaft top-right
+            [headX, b.ymax],         // head base top
+            [b.xmax, b.cy],          // tip
+            [headX, b.ymin],         // head base bottom
+            [headX, bot],            // shaft bottom-right
+            [b.xmin, bot],           // shaft bottom-left
+            [b.xmin, top],           // close
+        ];
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Callout / speech box — rectangle with a pointer tail toward the bottom-left. */
+    static createCalloutBox(pts: Point[], firstPoint: Point, lastPoint: Point, drawEssentials: DrawEssentials, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const boxBottom = b.ymin + b.h * 0.25; // box occupies the top 75%
+        const ring: number[][] = [
+            [b.xmin, b.ymax],                    // top-left
+            [b.xmax, b.ymax],                    // top-right
+            [b.xmax, boxBottom],                 // bottom-right of box
+            [b.xmin + b.w * 0.45, boxBottom],    // box bottom edge, right of tail
+            [b.xmin + b.w * 0.15, b.ymin],       // tail tip (points down)
+            [b.xmin + b.w * 0.30, boxBottom],    // box bottom edge, left of tail
+            [b.xmin, boxBottom],                 // bottom-left of box
+            [b.xmin, b.ymax],                    // close
+        ];
+        result.addRing(ring);
+        return result;
+    }
+
+    // ── Extended auto-shape generators (regular polygons, cross, cylinder,
+    //    explosions, directional/compound block arrows) ─────────────────────────
+    // All follow createSymbolByRect's convention: MAP coordinates, Y-up, explicitly
+    // closed ring(s), bare Polygon, frame from the EXTENT of CTRL_PTS. Every shape is
+    // a pure deterministic function of CTRL_PTS (+ fixed params) so it reshapes on
+    // handle-drag and reproduces on reload.
+
+    /** Rotate a ring's [x,y] pairs about (cx,cy) by angle (radians). */
+    static rotateRing(ring: number[][], cx: number, cy: number, ang: number): number[][] {
+        const c = Math.cos(ang), s = Math.sin(ang);
+        return ring.map(([x, y]) => {
+            const dx = x - cx, dy = y - cy;
+            return [cx + dx * c - dy * s, cy + dx * s + dy * c];
+        });
+    }
+
+    /** Regular N-gon inscribed in the frame; startDeg orients the first vertex. */
+    static createRegularPolygon(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference, sides: number, startDeg: number): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const rx = b.w / 2, ry = b.h / 2;
+        const start = (startDeg || 0) * Math.PI / 180;
+        const ring: number[][] = [];
+        for (let i = 0; i <= sides; i++) {
+            const a = start + (2 * Math.PI * i) / sides;
+            ring.push([b.cx + rx * Math.cos(a), b.cy + ry * Math.sin(a)]);
+        }
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Plus / cross (12-vertex) inscribed in the frame. */
+    static createCrossShape(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const hw = b.w / 2, hh = b.h / 2, aw = Math.min(b.w, b.h) * 0.2; // arm half-width
+        const cx = b.cx, cy = b.cy;
+        const ring: number[][] = [
+            [cx - aw, cy + hh], [cx + aw, cy + hh],                 // top arm
+            [cx + aw, cy + aw], [cx + hw, cy + aw],                 // to right arm
+            [cx + hw, cy - aw], [cx + aw, cy - aw],                 // right arm
+            [cx + aw, cy - hh], [cx - aw, cy - hh],                 // bottom arm
+            [cx - aw, cy - aw], [cx - hw, cy - aw],                 // to left arm
+            [cx - hw, cy + aw], [cx - aw, cy + aw],                 // left arm
+            [cx - aw, cy + hh],                                     // close
+        ];
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Flat 2D cylinder ("can") glyph — vertical sides + elliptical top & bottom
+     *  caps. NOT a 3D volume (that would be SceneView-only); this draped polygon
+     *  renders identically in 2D and 3D. */
+    static createCylinderGlyph(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const rx = b.w / 2, ry = b.h * 0.14; // cap ellipse vertical radius
+        const topY = b.ymax - ry, botY = b.ymin + ry;
+        const steps = 24;
+        const ring: number[][] = [];
+        // top cap: back half (bulge up) from left to right
+        for (let i = 0; i <= steps; i++) {
+            const a = Math.PI - (Math.PI * i) / steps; // π → 0
+            ring.push([b.cx + rx * Math.cos(a), topY + ry * Math.sin(a)]);
+        }
+        // right side down
+        ring.push([b.cx + rx, botY]);
+        // bottom cap: front half (bulge down) from right to left
+        for (let i = 0; i <= steps; i++) {
+            const a = (Math.PI * i) / steps; // 0 → π
+            ring.push([b.cx + rx * Math.cos(a), botY - ry * Math.sin(a)]);
+        }
+        // left side up
+        ring.push([b.cx - rx, topY]);
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Explosion / starburst: alternating outer/inner radii with a deterministic
+     *  per-spike jitter so it reads as a jagged detonation (no randomness). */
+    static createExplosion(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference, spikes: number, innerRatio: number): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const rx = b.w / 2, ry = b.h / 2;
+        const ring: number[][] = [];
+        const n = spikes * 2;
+        for (let i = 0; i < n; i++) {
+            const outer = i % 2 === 0;
+            // deterministic jitter: outer spikes alternate long/short, inner steady
+            const jitter = outer ? (i % 4 === 0 ? 1.0 : 0.82) : innerRatio;
+            const a = Math.PI / 2 + (2 * Math.PI * i) / n;
+            ring.push([b.cx + rx * jitter * Math.cos(a), b.cy + ry * jitter * Math.sin(a)]);
+        }
+        ring.push(ring[0].slice()); // close
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Canonical rightward block-arrow ring for a given frame. */
+    static _blockArrowRing(b: { xmin: number; ymin: number; xmax: number; ymax: number; cx: number; cy: number; w: number; h: number }, headRatio: number, shaftRatio: number): number[][] {
+        const sh = b.h * shaftRatio, headW = b.w * headRatio;
+        const top = b.cy + sh / 2, bot = b.cy - sh / 2, headX = b.xmax - headW;
+        return [
+            [b.xmin, top], [headX, top], [headX, b.ymax], [b.xmax, b.cy],
+            [headX, b.ymin], [headX, bot], [b.xmin, bot], [b.xmin, top],
+        ];
+    }
+
+    /** Directional block arrow: canonical rightward arrow rotated by angle (rad). */
+    static createDirBlockArrow(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference, angle: number): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        let ring = this._blockArrowRing(b, 0.4, 0.5);
+        if (angle) ring = this.rotateRing(ring, b.cx, b.cy, angle);
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Double-headed block arrow (heads on both ends). vertical=true → up-down. */
+    static createDoubleBlockArrow(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference, vertical: boolean): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const sh = b.h * 0.5, headW = b.w * 0.28;
+        const top = b.cy + sh / 2, bot = b.cy - sh / 2;
+        const lHeadX = b.xmin + headW, rHeadX = b.xmax - headW;
+        let ring: number[][] = [
+            [lHeadX, top], [rHeadX, top], [rHeadX, b.ymax], [b.xmax, b.cy],
+            [rHeadX, b.ymin], [rHeadX, bot], [lHeadX, bot], [lHeadX, b.ymin],
+            [b.xmin, b.cy], [lHeadX, b.ymax], [lHeadX, top],
+        ];
+        if (vertical) ring = this.rotateRing(ring, b.cx, b.cy, Math.PI / 2);
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Quad (4-way) arrow: horizontal + vertical double arrows unioned. */
+    static createQuadArrow(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const sh = Math.min(b.w, b.h) * 0.28, headW = Math.min(b.w, b.h) * 0.30;
+        const top = b.cy + sh / 2, bot = b.cy - sh / 2;
+        const lHeadX = b.xmin + headW, rHeadX = b.xmax - headW;
+        const horiz: number[][] = [
+            [lHeadX, top], [rHeadX, top], [rHeadX, b.ymax], [b.xmax, b.cy],
+            [rHeadX, b.ymin], [rHeadX, bot], [lHeadX, bot], [lHeadX, b.ymin],
+            [b.xmin, b.cy], [lHeadX, b.ymax], [lHeadX, top],
+        ];
+        result.addRing(horiz);
+        result.addRing(this.rotateRing(horiz, b.cx, b.cy, Math.PI / 2)); // vertical (union)
+        return result;
+    }
+
+    /** Pentagon arrow ("home plate"): rectangle with a pointed right end. */
+    static createPentagonArrow(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const baseX = b.xmax - Math.min(b.w, b.h) * 0.5;
+        const ring: number[][] = [
+            [b.xmin, b.ymax], [baseX, b.ymax], [b.xmax, b.cy],
+            [baseX, b.ymin], [b.xmin, b.ymin], [b.xmin, b.ymax],
+        ];
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Notched right arrow (concave V cut into the tail edge). */
+    static createNotchedArrow(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const sh = b.h * 0.5, headW = b.w * 0.4, notch = b.w * 0.15;
+        const top = b.cy + sh / 2, bot = b.cy - sh / 2, headX = b.xmax - headW;
+        const ring: number[][] = [
+            [b.xmin, top], [headX, top], [headX, b.ymax], [b.xmax, b.cy],
+            [headX, b.ymin], [headX, bot], [b.xmin, bot],
+            [b.xmin + notch, b.cy], [b.xmin, top], // V-notch tail
+        ];
+        result.addRing(ring);
+        return result;
+    }
+
+    /** Striped right arrow: triangular head + 3 shaft blocks with gaps (union). */
+    static createStripedArrow(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const sh = b.h * 0.5, headW = b.w * 0.4;
+        const top = b.cy + sh / 2, bot = b.cy - sh / 2, headX = b.xmax - headW;
+        // arrowhead
+        result.addRing([[headX, b.ymax], [b.xmax, b.cy], [headX, b.ymin], [headX, b.ymax]]);
+        // 3 shaft blocks with gaps across [xmin, headX]
+        const shaftW = headX - b.xmin;
+        const blockW = shaftW / 3.5, gap = (shaftW - blockW * 3) / 2;
+        for (let i = 0; i < 3; i++) {
+            const x0 = b.xmin + i * (blockW + gap);
+            const x1 = x0 + blockW;
+            result.addRing([[x0, top], [x1, top], [x1, bot], [x0, bot], [x0, top]]);
+        }
+        return result;
+    }
+
+    /** Curved / circular / U-turn block arrow: a ribbon following an elliptical arc
+     *  (startRad→endRad) with a triangular head at the end. Pure map-coord math. */
+    static createArcBlockArrow(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference, startRad: number, endRad: number): Polygon {
+        const result = new Polygon({ spatialReference });
+        const b = this.bboxOf(pts);
+        const halfW = Math.min(b.w, b.h) * 0.11;
+        const rxMid = b.w / 2 - halfW, ryMid = b.h / 2 - halfW;
+        const steps = 40;
+        const headSpan = (endRad - startRad) * 0.14; // arc portion given to the head
+        const arcEnd = endRad - headSpan;
+        const outer: number[][] = [], inner: number[][] = [];
+        for (let i = 0; i <= steps; i++) {
+            const a = startRad + (arcEnd - startRad) * (i / steps);
+            const ca = Math.cos(a), sa = Math.sin(a);
+            outer.push([b.cx + (rxMid + halfW) * ca, b.cy + (ryMid + halfW) * sa]);
+            inner.push([b.cx + (rxMid - halfW) * ca, b.cy + (ryMid - halfW) * sa]);
+        }
+        // arrowhead at arcEnd → endRad, widened
+        const ah = Math.cos(arcEnd), ahs = Math.sin(arcEnd);
+        const tip = [b.cx + rxMid * Math.cos(endRad), b.cy + ryMid * Math.sin(endRad)];
+        const headOuter = [b.cx + (rxMid + halfW * 2) * ah, b.cy + (ryMid + halfW * 2) * ahs];
+        const headInner = [b.cx + (rxMid - halfW * 2) * ah, b.cy + (ryMid - halfW * 2) * ahs];
+        const ring: number[][] = [];
+        outer.forEach(p => ring.push(p));      // outer edge forward
+        ring.push(headOuter, tip, headInner);  // arrowhead
+        for (let i = inner.length - 1; i >= 0; i--) ring.push(inner[i]); // inner edge back
+        ring.push(ring[0].slice());            // close
+        result.addRing(ring);
+        return result;
+    }
+
+    // ── Decorated-line generators (Polyline; view-agnostic geometry) ────────────
+
+    /** Railway: centre spine + perpendicular tie paths, all on one Polyline. */
+    static createRailwayLine(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference): Polyline {
+        const result = new Polyline({ spatialReference });
+        result.addPath(pts.map(p => [p.x, p.y])); // spine
+        // total length → tie spacing as a fraction of length (scale-independent)
+        let len = 0;
+        for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+        if (len <= 0) return result;
+        const ties = Math.max(2, Math.round(len / (len / 12))); // ~12 ties
+        const half = (len / 12) * 0.4;                          // tie half-length
+        for (let t = 0; t <= ties; t++) {
+            const target = (len * t) / ties;
+            // walk to arc-length `target`
+            let acc = 0, seg = 1;
+            while (seg < pts.length && acc + Math.hypot(pts[seg].x - pts[seg - 1].x, pts[seg].y - pts[seg - 1].y) < target) {
+                acc += Math.hypot(pts[seg].x - pts[seg - 1].x, pts[seg].y - pts[seg - 1].y); seg++;
+            }
+            if (seg >= pts.length) seg = pts.length - 1;
+            const a = pts[seg - 1], bb = pts[seg];
+            const segLen = Math.hypot(bb.x - a.x, bb.y - a.y) || 1;
+            const f = Math.min(1, Math.max(0, (target - acc) / segLen));
+            const mx = a.x + (bb.x - a.x) * f, my = a.y + (bb.y - a.y) * f;
+            const ux = (bb.x - a.x) / segLen, uy = (bb.y - a.y) / segLen; // unit tangent
+            const nx = -uy, ny = ux;                                      // perpendicular normal
+            result.addPath([[mx - nx * half, my - ny * half], [mx + nx * half, my + ny * half]]);
+        }
+        return result;
+    }
+
+    /** Road: centre spine + two parallel casing paths, all on one Polyline. */
+    static createRoadLine(pts: Point[], firstPoint: Point, lastPoint: Point, spatialReference: SpatialReference): Polyline {
+        const result = new Polyline({ spatialReference });
+        let len = 0;
+        for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+        const hw = (len > 0 ? len : 1) * 0.012; // casing half-width, scale-relative
+        const left: number[][] = [], right: number[][] = [];
+        for (let i = 0; i < pts.length; i++) {
+            const a = pts[Math.max(0, i - 1)], bb = pts[Math.min(pts.length - 1, i + 1)];
+            const segLen = Math.hypot(bb.x - a.x, bb.y - a.y) || 1;
+            const ux = (bb.x - a.x) / segLen, uy = (bb.y - a.y) / segLen;
+            const nx = -uy, ny = ux;
+            left.push([pts[i].x + nx * hw, pts[i].y + ny * hw]);
+            right.push([pts[i].x - nx * hw, pts[i].y - ny * hw]);
+        }
+        result.addPath(left);
+        result.addPath(right);
+        result.addPath(pts.map(p => [p.x, p.y])); // centreline
+        return result;
+    }
+
     // Polyline symbol creators moved from symbol classes
     static createPolylineByLine(
         pts: Point[],

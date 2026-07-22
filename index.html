@@ -278,10 +278,10 @@
         max-height: 70vh;
         overflow-y: auto;
       }
-      /* Common Symbols: slim, two-column to save vertical space */
+      /* Common Symbols: slim, three-column to save vertical space */
       #demoSymbolMenu {
-        grid-template-columns: repeat(2, minmax(128px, 1fr));
-        min-width: 264px;
+        grid-template-columns: repeat(3, minmax(112px, 1fr));
+        min-width: 360px;
       }
       /* Pen Style / Pen Mode: single column, name + hint on two lines */
       #penStyleMenu,
@@ -389,9 +389,12 @@
         display: block;
         animation: params-dock-in 0.18s ease;
       }
+      /* Opacity-only entrance so the animation never injects a transform that
+         would fight the draggable inline transform:none (the base rule keeps the
+         translateY(-50%) centering, which inline transform cleanly overrides). */
       @keyframes params-dock-in {
-        from { opacity: 0; transform: translateY(-50%) translateX(12px); }
-        to { opacity: 1; transform: translateY(-50%); }
+        from { opacity: 0; }
+        to { opacity: 1; }
       }
       .params-dock-head {
         display: flex;
@@ -399,6 +402,25 @@
         justify-content: space-between;
         gap: 8px;
         margin-bottom: 6px;
+        cursor: grab;
+        user-select: none;
+      }
+      .params-dock-btns {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+      /* Minimized: collapse everything but the header into a compact title bar. */
+      #symbolParamsDock.minimized {
+        width: auto;
+        min-width: 150px;
+      }
+      #symbolParamsDock.minimized > *:not(.params-dock-head) {
+        display: none !important;
+      }
+      #symbolParamsDock.minimized .params-dock-head {
+        margin-bottom: 0;
       }
       .params-dock-title {
         font: 700 11px/1.2 var(--ms-font);
@@ -1535,11 +1557,18 @@
     <div id="symbolParamsDock">
       <div class="params-dock-head">
         <span class="params-dock-title" id="symbolParamsDockTitle">Draw Parameters</span>
-        <button
-          class="params-dock-close"
-          id="symbolParamsDockClose"
-          title="Hide this panel — it reappears on the next symbol selection"
-        >✕</button>
+        <span class="params-dock-btns">
+          <button
+            class="params-dock-close"
+            id="symbolParamsDockMin"
+            title="Minimize this panel"
+          >–</button>
+          <button
+            class="params-dock-close"
+            id="symbolParamsDockClose"
+            title="Hide this panel — it reappears on the next symbol selection"
+          >✕</button>
+        </span>
       </div>
       <!-- Identity / Echelon / Name — stylus-friendly segmented buttons.
            Draw mode: these feed the SIDC + unique designation of the next
@@ -1551,15 +1580,16 @@
       <div id="symbolParamsDockIdentity" class="dock-seg-grid"></div>
       <div class="dock-field-label">Echelon</div>
       <div id="symbolParamsDockEchelon" class="dock-seg-grid"></div>
-      <label class="dock-field-label" for="symbolParamsDockName">Name</label>
-      <input
+      <label class="dock-field-label" for="symbolParamsDockName">Name / Text</label>
+      <textarea
         id="symbolParamsDockName"
         class="ms-input"
-        type="text"
+        rows="2"
         autocomplete="off"
-        placeholder="Unique designation"
-        title="Unique designation label shown with the symbol."
-      />
+        placeholder="Unique designation (Enter for a new line)"
+        title="Label / text shown with the symbol. Press Enter to add a new line (multi-line text)."
+        style="resize: vertical; min-height: 30px; font: inherit;"
+      ></textarea>
       <button
         id="symbolParamsDockMoreBtn"
         class="ms-btn"
@@ -5646,11 +5676,14 @@
           if (e.target.closest('button, input, select')) return;
           dragging = true;
           const rect = panel.getBoundingClientRect();
-          // Anchor to explicit left/top so right/bottom positioning doesn't fight us
-          panel.style.left   = rect.left + 'px';
-          panel.style.top    = rect.top  + 'px';
-          panel.style.right  = 'auto';
-          panel.style.bottom = 'auto';
+          // Anchor to explicit left/top so right/bottom positioning doesn't fight us.
+          // Clear any centering transform (e.g. translateY(-50%)) — rect already
+          // reflects the transformed position, so this keeps the panel put.
+          panel.style.left      = rect.left + 'px';
+          panel.style.top       = rect.top  + 'px';
+          panel.style.right     = 'auto';
+          panel.style.bottom    = 'auto';
+          panel.style.transform = 'none';
           ox = e.clientX - rect.left;
           oy = e.clientY - rect.top;
           document.body.style.userSelect = 'none';
@@ -5680,6 +5713,21 @@
         const panel  = document.getElementById('analysisHubPanel');
         const handle = panel?.querySelector('header');
         if (panel && handle) makeDraggable(panel, handle);
+      })();
+
+      // Draw Parameters dock: draggable by its header + minimize/expand toggle.
+      (function () {
+        const panel  = document.getElementById('symbolParamsDock');
+        const handle = panel?.querySelector('.params-dock-head');
+        const minBtn = document.getElementById('symbolParamsDockMin');
+        if (panel && handle) makeDraggable(panel, handle);
+        if (panel && minBtn) {
+          minBtn.addEventListener('click', () => {
+            const minimized = panel.classList.toggle('minimized');
+            minBtn.textContent = minimized ? '□' : '–';
+            minBtn.title = minimized ? 'Expand this panel' : 'Minimize this panel';
+          });
+        }
       })();
 
       // ── Dynamic Layer Manager widget ─────────────────────────────────────

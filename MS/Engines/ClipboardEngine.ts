@@ -261,6 +261,90 @@ export default class ClipboardEngine {
     return clones;
   }
 
+  /**
+   * Duplicate the given graphics in place at a small offset — the one-step
+   * "make another one" (Ctrl+D). Reuses the same paste builder as copy/paste, so
+   * CTRL_PTS, labels, and undo are handled identically; but it sources from the
+   * passed graphics instead of the clipboard and does NOT touch the clipboard.
+   * The new graphics are added to their layers; returns them (or null).
+   */
+  public duplicate(sources: CloneSource[], offsetPx: number = 18): Graphic[] | null {
+    if (!sources || sources.length === 0) return null;
+
+    const annotationLayer = this.deps.layerManager.getOrCreateLayer(
+      LAYER_NAMES.ANNOTATION_LAYER,
+    );
+
+    // A small, zoom-independent nudge (right + down). Prefer a screen-pixel offset
+    // from the map resolution; fall back to a fraction of the symbol's size.
+    let d = 0;
+    const res = (this.deps.getView() as any).resolution;
+    if (typeof res === 'number' && res > 0) {
+      d = res * offsetPx;
+    } else {
+      const ext = sources[0].graphic.geometry?.extent;
+      const size = ext ? Math.max(ext.width, ext.height) : 0;
+      d = size > 0 ? size * 0.12 : 1000;
+    }
+
+    const pasted: Graphic[] = [];
+    const undos: Array<() => void> = [];
+    const redos: Array<() => void> = [];
+
+    for (const src of sources) {
+      const newGeom = this._shiftGeometry(src.graphic.geometry, d, -d); // +x right, -y down
+      if (!newGeom) continue;
+      const { graphic, undo, redo } = this._buildPastedGraphic(
+        { graphic: src.graphic, layerId: src.layerId },
+        newGeom,
+        annotationLayer,
+      );
+      const layer =
+        this.deps.layerManager.getOrCreateLayer(src.layerId) ??
+        this.deps.layerManager.getSymbolLayer();
+      layer.add(graphic);
+      pasted.push(graphic);
+      undos.push(undo);
+      redos.push(redo);
+    }
+
+    if (pasted.length === 0) return null;
+
+    this.deps.pushUndo({
+      label: `Duplicate ${pasted.length} Symbol${pasted.length !== 1 ? 's' : ''}`,
+      undo: () => undos.forEach((fn) => fn()),
+      redo: () => redos.forEach((fn) => fn()),
+    });
+    this.deps.emitEvent('symbolPasted', { graphics: pasted, count: pasted.length });
+    return pasted;
+  }
+
+  /** Translate a geometry by (dx, dy) map units, preserving any z/m components. */
+  private _shiftGeometry(geom: any, dx: number, dy: number): any {
+    if (!geom) return null;
+    try {
+      const g = geom.clone();
+      if (g.type === 'point') {
+        g.x += dx;
+        g.y += dy;
+        return g;
+      }
+      const shift = (coords: number[][]) =>
+        coords.map((c: number[]) => [c[0] + dx, c[1] + dy, ...c.slice(2)]);
+      if (g.type === 'polyline' && Array.isArray(g.paths)) {
+        g.paths = g.paths.map(shift);
+        return g;
+      }
+      if (g.type === 'polygon' && Array.isArray(g.rings)) {
+        g.rings = g.rings.map(shift);
+        return g;
+      }
+      return g;
+    } catch {
+      return geom;
+    }
+  }
+
   public showPasteOffsetDialog(): void {
     if (!this._clipboard || this._clipboard.length === 0) {
       console.warn('[CopyPaste] Clipboard is empty.');

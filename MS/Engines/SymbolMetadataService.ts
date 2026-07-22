@@ -23,12 +23,23 @@ export default class SymbolMetadataService {
     return (symbolData as any)[key] || null;
   }
 
-  /** Flat list suitable for autocomplete: { key, name } for every symbol. */
-  static getNamesForAutocomplete(): Array<{ key: string; name: string }> {
-    return Object.entries(symbolData).map(([key, data]: [string, any]) => ({
-      key,
-      name: data.Name || 'Unnamed Symbol',
-    }));
+  /**
+   * Flat list suitable for autocomplete: { key, name } for every symbol.
+   * When `includeAutoShapes` is false, entries flagged `isAutoShape` are omitted
+   * — this is the pluggable gate for the PowerPoint-style Auto Shapes group
+   * (driven by Settings.json `features.autoShapes`).
+   */
+  static getNamesForAutocomplete(
+    includeAutoShapes: boolean = true,
+  ): Array<{ key: string; name: string }> {
+    return Object.entries(symbolData)
+      .filter(([, data]: [string, any]) =>
+        includeAutoShapes || String(data?.isAutoShape ?? '') !== '1',
+      )
+      .map(([key, data]: [string, any]) => ({
+        key,
+        name: data.Name || 'Unnamed Symbol',
+      }));
   }
 
   /**

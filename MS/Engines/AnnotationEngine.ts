@@ -13,6 +13,7 @@ import GeoTools from "../Support/GeoTools.ts";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import Amplifier from "../Support/Amplifier";
 import DrawEssentials from "../Support/DrawEssentials";
+import settingsData from "../Data/Settings.json";
 
 // Interface for label options
 interface LabelOptions {
@@ -25,6 +26,7 @@ interface LabelOptions {
     uLine?: number; // underline
     oLine?: number; // overline
     tLine?: number; // through line
+    fontFamily?: string; // font family (default Arial); must be a cross-platform, 3D-safe family
 }
 
 // Interface for annotation options
@@ -71,9 +73,12 @@ class AnnotationEngine {
             return;
         }
 
-        // Create font for text symbols
+        // Create font for text symbols. Family resolves from the per-symbol
+        // labelOptions, then the global Text Style setting, then Arial. This one
+        // Font is threaded into all three annotators (and cloned downstream), so
+        // it governs font-family for Point, Area, and Line labels.
         const font = new Font({
-            family: "Arial",
+            family: labelOptions.fontFamily || (settingsData as any).textStyle?.fontFamily || "Arial",
             size: textSize + "pt"
         });
 
@@ -81,15 +86,54 @@ class AnnotationEngine {
 
         try {
             if (symGeoType === 'Area') {
-                this.annotateAreaSymbol(textGraphicsLayer, geometry, amplifier, drawEssentials, parentId, font, opacity, isFreeHand);
+                this.annotateAreaSymbol(textGraphicsLayer, geometry, amplifier, drawEssentials, parentId, font, opacity, isFreeHand, labelOptions);
             } else if (symGeoType === 'Line') {
-                this.annotateLineSymbol(textGraphicsLayer, geometry, amplifier, drawEssentials, parentId, font, opacity, isFreeHand);
+                this.annotateLineSymbol(textGraphicsLayer, geometry, amplifier, drawEssentials, parentId, font, opacity, isFreeHand, labelOptions);
             } else if (symGeoType === 'Point') {
                 this.annotatePointSymbol(textGraphicsLayer, geometry, amplifier, drawEssentials, parentId, font, opacity, isFreeHand, labelOptions);
             }
         } catch (error) {
             console.error("Error in AnnotationEngine.annotate:", error);
         }
+    }
+
+    /**
+     * Build a TextSymbol honoring labelOptions (color, halo, size, bold, italic,
+     * font family via the shared font, and text decoration) with sensible
+     * defaults (black text / white halo, size 1) when a field is unset. Shared by
+     * the Area, Line and Point annotators so every label styles consistently.
+     * `extraProps` (offsets / alignment) merges last.
+     */
+    private static styledTextSymbol(
+        text: string,
+        font: Font,
+        opacity: number,
+        labelOptions: LabelOptions = {},
+        extraProps: any = {}
+    ): TextSymbol {
+        const opts: any = {
+            text,
+            font,
+            color: labelOptions.color ? new Color([...labelOptions.color]) : new Color([0, 0, 0, opacity]),
+            haloColor: labelOptions.haloColor ? new Color([...labelOptions.haloColor]) : new Color([255, 255, 255, opacity]),
+            haloSize: labelOptions.haloColorSize != null ? labelOptions.haloColorSize : 1,
+        };
+
+        // Size / bold / italic / decoration all live on the Font (not the
+        // TextSymbol) — clone off the shared font so its family + size survive.
+        // ArcGIS Font.decoration is single-valued and supports only 'underline' /
+        // 'line-through' (there is no 'overline'), so uLine wins, then tLine.
+        let f: Font | null = null;
+        if (labelOptions.textSize) { f = (f || font).clone(); f.size = labelOptions.textSize + "pt"; }
+        if (labelOptions.bold === 1) { f = (f || font).clone(); f.weight = "bold"; }
+        if (labelOptions.italic === 1) { f = (f || font).clone(); f.style = "italic"; }
+        const decoration = labelOptions.uLine === 1 ? "underline"
+            : labelOptions.tLine === 1 ? "line-through"
+            : null;
+        if (decoration) { f = (f || font).clone(); (f as any).decoration = decoration; }
+        if (f) opts.font = f;
+
+        return new TextSymbol(Object.assign(opts, extraProps));
     }
 
     /**
@@ -103,7 +147,8 @@ class AnnotationEngine {
         parentId: string,
         font: Font,
         opacity: number,
-        isFreeHand: number
+        isFreeHand: number,
+        labelOptions: LabelOptions = {}
     ): void {
         if (!geometry.extent) {
             console.warn("Cannot annotate area symbol: geometry extent is null");
@@ -111,22 +156,29 @@ class AnnotationEngine {
         }
 
         const extent = geometry.extent;
-        
+
         // Calculate area (for potential future use)
         const area = GeoTools.getArea(extent);
+
+        // Callout Box (AutoShape DRAW_TYPE 8) has a downward tail, so its box
+        // region is only the top ~75% of the extent. Bias the centred text up so
+        // it sits inside the box rather than over the tail. Ordinary areas keep
+        // the true extent centre.
+        const isCalloutBox = Number((drawEssentials as any).DRAW_TYPE) === 8;
+        const centerY = isCalloutBox
+            ? extent.ymin + extent.height * 0.625
+            : extent.center.y;
 
         // Unique Designation - Center
         if (amplifier.hasOwnProperty("UNIQUE_DESIG") && amplifier.UNIQUE_DESIG && amplifier.UNIQUE_DESIG.length > 0) {
             try {
-                const uniqueDesigPt = extent.center;
+                const uniqueDesigPt = new Point({
+                    x: extent.center.x,
+                    y: centerY,
+                    spatialReference: geometry.spatialReference
+                });
                 if (uniqueDesigPt && !isNaN(uniqueDesigPt.x) && !isNaN(uniqueDesigPt.y)) {
-                    const uniqueDesigText = new TextSymbol({
-                        text: amplifier.UNIQUE_DESIG,
-                        font: font,
-                        color: new Color([0, 0, 0, opacity]),
-                        haloColor: new Color([255, 255, 255, opacity]),
-                        haloSize: 1
-                    });
+                    const uniqueDesigText = this.styledTextSymbol(amplifier.UNIQUE_DESIG, font, opacity, labelOptions);
 
                     const uniqueDesigGraphic = new Graphic({
                         geometry: uniqueDesigPt,
@@ -153,13 +205,7 @@ class AnnotationEngine {
                     spatialReference: geometry.spatialReference
                 });
 
-                const dtgText = new TextSymbol({
-                    text: amplifier.DTG,
-                    font: font,
-                    color: new Color([0, 0, 0, opacity]),
-                    haloColor: new Color([255, 255, 255, opacity]),
-                    haloSize: 1
-                });
+                const dtgText = this.styledTextSymbol(amplifier.DTG, font, opacity, labelOptions);
 
                 const dtgGraphic = new Graphic({
                     geometry: centerTop,
@@ -185,13 +231,7 @@ class AnnotationEngine {
                     spatialReference: geometry.spatialReference
                 });
 
-                const edtgText = new TextSymbol({
-                    text: amplifier.EDTG,
-                    font: font,
-                    color: new Color([0, 0, 0, opacity]),
-                    haloColor: new Color([255, 255, 255, opacity]),
-                    haloSize: 1
-                });
+                const edtgText = this.styledTextSymbol(amplifier.EDTG, font, opacity, labelOptions);
 
                 const edtgGraphic = new Graphic({
                     geometry: centerBottom,
@@ -220,7 +260,8 @@ class AnnotationEngine {
         parentId: string,
         font: Font,
         opacity: number,
-        isFreeHand: number
+        isFreeHand: number,
+        labelOptions: LabelOptions = {}
     ): void {
         if (!geometry.extent) {
             console.warn("Cannot annotate line symbol: geometry extent is null");
@@ -236,25 +277,11 @@ class AnnotationEngine {
                 let uniqueDesigText: TextSymbol;
                 let position: Point = extent.center;
 
-                // Special handling for Boundary symbols
+                // Special handling for Boundary symbols (offset the label off the line)
                 if (drawEssentials.SYM_NAME === "Boundary") {
-                    uniqueDesigText = new TextSymbol({
-                        text: amplifier.UNIQUE_DESIG,
-                        font: font,
-                        color: new Color([0, 0, 0, opacity]),
-                        haloColor: new Color([255, 255, 255, opacity]),
-                        haloSize: 1,
-                        yoffset: 30,
-                        xoffset: -20
-                    });
+                    uniqueDesigText = this.styledTextSymbol(amplifier.UNIQUE_DESIG, font, opacity, labelOptions, { yoffset: 30, xoffset: -20 });
                 } else {
-                    uniqueDesigText = new TextSymbol({
-                        text: amplifier.UNIQUE_DESIG,
-                        font: font,
-                        color: new Color([0, 0, 0, opacity]),
-                        haloColor: new Color([255, 255, 255, opacity]),
-                        haloSize: 1
-                    });
+                    uniqueDesigText = this.styledTextSymbol(amplifier.UNIQUE_DESIG, font, opacity, labelOptions);
                 }
 
                 const uniqueDesigGraphic = new Graphic({
@@ -275,15 +302,7 @@ class AnnotationEngine {
         // Higher Formation for Boundary symbols
         if (drawEssentials.SYM_NAME === "Boundary" && amplifier.hasOwnProperty("HIGHER_FORM") && amplifier.HIGHER_FORM && amplifier.HIGHER_FORM.length > 0) {
             try {
-                const highFormText = new TextSymbol({
-                    text: amplifier.HIGHER_FORM,
-                    font: font,
-                    color: new Color([0, 0, 0, opacity]),
-                    haloColor: new Color([255, 255, 255, opacity]),
-                    haloSize: 1,
-                    yoffset: -30,
-                    xoffset: 30
-                });
+                const highFormText = this.styledTextSymbol(amplifier.HIGHER_FORM, font, opacity, labelOptions, { yoffset: -30, xoffset: 30 });
 
                 const highFormGraphic = new Graphic({
                     geometry: extent.center,
@@ -306,13 +325,7 @@ class AnnotationEngine {
                 // Get first point of the polyline
                 const firstPoint = this.getFirstPoint(polyline);
                 if (firstPoint) {
-                    const dtgText = new TextSymbol({
-                        text: amplifier.DTG,
-                        font: font,
-                        color: new Color([0, 0, 0, opacity]),
-                        haloColor: new Color([255, 255, 255, opacity]),
-                        haloSize: 1
-                    });
+                    const dtgText = this.styledTextSymbol(amplifier.DTG, font, opacity, labelOptions);
 
                     const dtgGraphic = new Graphic({
                         geometry: firstPoint,
@@ -336,13 +349,7 @@ class AnnotationEngine {
                 // Get last point of the polyline
                 const lastPoint = this.getLastPoint(polyline);
                 if (lastPoint) {
-                    const edtgText = new TextSymbol({
-                        text: amplifier.EDTG,
-                        font: font,
-                        color: new Color([0, 0, 0, opacity]),
-                        haloColor: new Color([255, 255, 255, opacity]),
-                        haloSize: 1
-                    });
+                    const edtgText = this.styledTextSymbol(amplifier.EDTG, font, opacity, labelOptions);
 
                     const edtgGraphic = new Graphic({
                         geometry: lastPoint,
@@ -422,72 +429,25 @@ class AnnotationEngine {
 
         try {
             const text = amplifier[property];
-            
-            // Create text symbol with base properties
-            const textSymbolOptions: any = {
-                text: text,
-                font: font,
-                color: new Color([0, 0, 0, opacity]),
-                haloColor: new Color([255, 255, 255, opacity]),
-                haloSize: 1
-            };
 
-            // Apply alignment if specified
-            if (verticalAlignment) {
-                textSymbolOptions.verticalAlignment = verticalAlignment;
-            }
-            if (horizontalAlignment) {
-                textSymbolOptions.horizontalAlignment = horizontalAlignment;
-            }
+            // Alignment + offset go into extraProps; all colour/halo/font/decoration
+            // styling is handled by the shared styledTextSymbol helper (so Point,
+            // Area and Line labels style identically and the decoration mapping is
+            // correct in one place).
+            const extraProps: any = {};
+            if (verticalAlignment) extraProps.verticalAlignment = verticalAlignment;
+            if (horizontalAlignment) extraProps.horizontalAlignment = horizontalAlignment;
 
-            // Apply offsets
             if (drawEssentials.OFFSET === "0") {
-                if (xOffset !== undefined) textSymbolOptions.xoffset = xOffset;
-                if (yOffset !== undefined) textSymbolOptions.yoffset = yOffset;
+                if (xOffset !== undefined) extraProps.xoffset = xOffset;
+                if (yOffset !== undefined) extraProps.yoffset = yOffset;
             } else if (drawEssentials.OFFSET === "1") {
-                textSymbolOptions.yoffset = (drawEssentials.SIZE || 35) / 2;
+                extraProps.yoffset = (drawEssentials.SIZE || 35) / 2;
             } else {
-                textSymbolOptions.yoffset = (drawEssentials.SIZE || 35) - 8;
+                extraProps.yoffset = (drawEssentials.SIZE || 35) - 8;
             }
 
-            // Apply label options
-            if (labelOptions.color) {
-                textSymbolOptions.color = new Color(labelOptions.color);
-            }
-
-            if (labelOptions.haloColorSize) {
-                textSymbolOptions.haloSize = labelOptions.haloColorSize;
-                if (labelOptions.haloColor) {
-                    textSymbolOptions.haloColor = new Color(labelOptions.haloColor);
-                }
-            }
-
-            if (labelOptions.textSize) {
-                const newFont = font.clone();
-                newFont.size = labelOptions.textSize + "pt";
-                textSymbolOptions.font = newFont;
-            }
-
-            if (labelOptions.bold === 1) {
-                const newFont = textSymbolOptions.font ? textSymbolOptions.font.clone() : font.clone();
-                newFont.weight = "bold";
-                textSymbolOptions.font = newFont;
-            }
-
-            if (labelOptions.italic === 1) {
-                const newFont = textSymbolOptions.font ? textSymbolOptions.font.clone() : font.clone();
-                newFont.style = "italic";
-                textSymbolOptions.font = newFont;
-            }
-
-            // Apply decorations (underline, overline, line-through)
-            const decorations: string[] = [];
-            if (labelOptions.uLine === 1) decorations.push("underline");
-            if (labelOptions.oLine === 1) decorations.push("line-through");
-            if (labelOptions.tLine === 1) decorations.push("overline");
-            if (decorations.length > 0) textSymbolOptions.decoration = decorations.join(" ");
-
-            const textSymbol = new TextSymbol(textSymbolOptions);
+            const textSymbol = this.styledTextSymbol(text, font, opacity, labelOptions, extraProps);
 
             const graphic = new Graphic({
                 geometry: geometry,

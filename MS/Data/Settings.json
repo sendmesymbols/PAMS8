@@ -13,9 +13,21 @@
     "useAffiliationColor": false,
     "lineColor": [0, 51, 204],
     "lineWidth": 3,
+    "lineStyle": "solid",
     "fill": true,
     "fillColor": [0, 51, 204],
     "fillOpacity": 0.5
+  },
+  "textStyle": {
+    "fontFamily": "Arial",
+    "textSize": 14,
+    "textColor": [0, 0, 0],
+    "bold": false,
+    "italic": false,
+    "underline": false,
+    "highlight": false,
+    "highlightColor": [255, 235, 60],
+    "highlightSize": 4
   },
   "standardIdentities": [
     {
@@ -404,7 +416,8 @@
     "analysisEngines": true,
     "deploymentBuilder": true,
     "visualizationEngine": true,
-    "roadNetwork": true
+    "roadNetwork": true,
+    "autoShapes": true
   },
   "measurement": {
     "distUnit": "kilometers",

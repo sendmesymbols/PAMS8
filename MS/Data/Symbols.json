@@ -395,6 +395,123 @@
         "Cat": ["attk", "def"],
         "Grp": ["Freehand", "Shapes"]
     },
+    "00000200": {
+        "Class": "AutoShape",
+        "Description": "",
+        "Name": "Auto Shape - Area",
+        "Parameters": [{
+            "Name": "Shape",
+            "default": "1",
+            "description": "Basic auto shapes: rectangle, rounded rect, ellipse, polygons, cross, star, chevron, cloud, cylinder, explosions, callout.",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [
+            { "DRAW_TYPE": "1", "Name": "Rectangle", "description": "Rectangle" },
+            { "DRAW_TYPE": "2", "Name": "Rounded Rectangle", "description": "Rounded rectangle" },
+            { "DRAW_TYPE": "3", "Name": "Ellipse", "description": "Circle or ellipse" },
+            { "DRAW_TYPE": "9", "Name": "Diamond", "description": "Diamond" },
+            { "DRAW_TYPE": "10", "Name": "Pentagon", "description": "Pentagon" },
+            { "DRAW_TYPE": "11", "Name": "Hexagon", "description": "Hexagon" },
+            { "DRAW_TYPE": "12", "Name": "Heptagon", "description": "Heptagon" },
+            { "DRAW_TYPE": "13", "Name": "Octagon", "description": "Octagon" },
+            { "DRAW_TYPE": "14", "Name": "Cross", "description": "Cross / plus" },
+            { "DRAW_TYPE": "4", "Name": "Star", "description": "Star" },
+            { "DRAW_TYPE": "5", "Name": "Chevron", "description": "Chevron" },
+            { "DRAW_TYPE": "6", "Name": "Cloud", "description": "Cloud" },
+            { "DRAW_TYPE": "15", "Name": "Can (Cylinder)", "description": "Flat cylinder glyph (2D/3D safe)" },
+            { "DRAW_TYPE": "16", "Name": "Explosion 1", "description": "Explosion / starburst" },
+            { "DRAW_TYPE": "17", "Name": "Explosion 2", "description": "Explosion / starburst (jagged)" },
+            { "DRAW_TYPE": "8", "Name": "Callout Box", "description": "Callout box" }
+        ],
+        "isFreeHand": "1",
+        "isAutoShape": "1",
+        "Cat": ["attk", "def"],
+        "Grp": ["Freehand", "AutoShapes"]
+    },
+    "00000201": {
+        "Class": "AutoShape",
+        "Description": "",
+        "Name": "Auto Shape - Block Arrows",
+        "Parameters": [{
+            "Name": "Block Arrow",
+            "default": "7",
+            "description": "Filled directional block arrows.",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [
+            { "DRAW_TYPE": "7", "Name": "Right Arrow", "description": "Rightward block arrow" },
+            { "DRAW_TYPE": "18", "Name": "Left Arrow", "description": "Leftward block arrow" },
+            { "DRAW_TYPE": "19", "Name": "Up Arrow", "description": "Upward block arrow" },
+            { "DRAW_TYPE": "20", "Name": "Down Arrow", "description": "Downward block arrow" },
+            { "DRAW_TYPE": "21", "Name": "Left-Right Arrow", "description": "Double-headed horizontal" },
+            { "DRAW_TYPE": "22", "Name": "Up-Down Arrow", "description": "Double-headed vertical" },
+            { "DRAW_TYPE": "23", "Name": "Quad Arrow", "description": "Four-way arrow" },
+            { "DRAW_TYPE": "24", "Name": "Pentagon Arrow", "description": "Home-plate / pentagon arrow" },
+            { "DRAW_TYPE": "25", "Name": "Circular Arrow", "description": "Circular arrow" },
+            { "DRAW_TYPE": "26", "Name": "U-Turn Arrow", "description": "U-turn arrow" },
+            { "DRAW_TYPE": "27", "Name": "Curved Arrow", "description": "Curved block arrow" },
+            { "DRAW_TYPE": "28", "Name": "Notched Arrow", "description": "Notched-tail arrow" },
+            { "DRAW_TYPE": "29", "Name": "Striped Arrow", "description": "Striped-shaft arrow" }
+        ],
+        "isFreeHand": "1",
+        "isAutoShape": "1",
+        "Cat": ["attk", "def"],
+        "Grp": ["Freehand", "AutoShapes"]
+    },
+    "00000210": {
+        "Class": "AutoShapeArrow",
+        "Description": "",
+        "Name": "Auto Shape - Arrow",
+        "Parameters": [{
+            "Name": "Arrow",
+            "default": "1",
+            "description": "1 Straight, 2 Elbow, 3 Curved, 4 Double-Headed",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [
+            { "DRAW_TYPE": "1", "Name": "Straight", "description": "Straight arrow" },
+            { "DRAW_TYPE": "2", "Name": "Elbow", "description": "Elbow / orthogonal arrow" },
+            { "DRAW_TYPE": "3", "Name": "Curved", "description": "Curved arrow" },
+            { "DRAW_TYPE": "4", "Name": "Double-Headed", "description": "Double-headed arrow" }
+        ],
+        "isFreeHand": "1",
+        "isAutoShape": "1",
+        "Cat": ["attk", "def"],
+        "Grp": ["Freehand", "AutoShapes"]
+    },
+    "00000211": {
+        "Class": "AutoShapeArrow",
+        "Description": "",
+        "Name": "Auto Shape - Line",
+        "Parameters": [{
+            "Name": "Line",
+            "default": "5",
+            "description": "Decorated lines for borders, roads, railways and pathways. Multi-click; double-click to finish.",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [
+            { "DRAW_TYPE": "5", "Name": "Border", "description": "Dashed border line" },
+            { "DRAW_TYPE": "6", "Name": "Road", "description": "Cased road (parallel edges + centreline)" },
+            { "DRAW_TYPE": "7", "Name": "Railway", "description": "Railway with cross-ties" },
+            { "DRAW_TYPE": "8", "Name": "Pathway", "description": "Dotted pathway" }
+        ],
+        "isFreeHand": "1",
+        "isAutoShape": "1",
+        "Cat": ["attk", "def"],
+        "Grp": ["Freehand", "AutoShapes"]
+    },
     "01110104": {
         "Class": "UEISymbol",
         "Description": "",

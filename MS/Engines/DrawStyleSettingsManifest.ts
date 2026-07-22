@@ -42,6 +42,25 @@ export const drawStyleSettingsManifest: SettingDescriptor[] = [
     help: 'Stroke width in pixels for freehand lines, arrows, and area outlines.',
     keywords: ['thickness', 'weight'],
   },
+  {
+    path: ['drawStyle', 'lineStyle'],
+    label: 'Line style',
+    group: 'Line',
+    type: 'enum',
+    options: [
+      { value: 'solid', label: 'Solid' },
+      { value: 'dash', label: 'Dash' },
+      { value: 'dot', label: 'Dot' },
+      { value: 'dash-dot', label: 'Dash-Dot' },
+      { value: 'short-dash', label: 'Short Dash' },
+      { value: 'short-dot', label: 'Short Dot' },
+      { value: 'long-dash', label: 'Long Dash' },
+      { value: 'long-dash-dot', label: 'Long Dash-Dot' },
+      { value: 'long-dash-dot-dot', label: 'Long Dash-Dot-Dot' },
+    ],
+    help: 'Stroke dash pattern for freehand lines, arrows, and area outlines. Renders the same in 2D and 3D. (Border/Road/Railway/Pathway auto-shape lines keep their own signature style.)',
+    keywords: ['dash', 'dot', 'dashed', 'dotted', 'stroke', 'pattern'],
+  },
 
   // ── Fill ────────────────────────────────────────────────────────────────────
   {

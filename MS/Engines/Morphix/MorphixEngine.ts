@@ -296,7 +296,14 @@ const DRAW_FIELDS_AREA: FieldSpec[] = [
   fs('drawEssentials', 'FRHNDWDTH', 'Freehand Width', 'number'),
 ];
 
-const LABEL_FIELDS: Array<[string, string, 'number' | 'color' | 'bool']> = [
+// Cross-platform, 3D-safe font families (kept in sync with TextStyleSettingsManifest).
+const FONT_FAMILIES: string[] = [
+  'Arial', 'Times New Roman', 'Courier New', 'Verdana', 'Tahoma', 'Georgia', 'Trebuchet MS',
+];
+
+// A LABEL field is [key, label, type, options?]; options only for 'select'.
+const LABEL_FIELDS: Array<[string, string, 'number' | 'color' | 'bool' | 'select', string[]?]> = [
+  ['fontFamily', 'Font', 'select', FONT_FAMILIES],
   ['textSize', 'Text Size', 'number'],
   ['haloColorSize', 'Halo Size', 'number'],
   ['color', 'Text Color', 'color'],
@@ -980,9 +987,10 @@ class MorphixEngine {
 
   private renderLabelSection(): string {
     const s = this.state!;
-    const cells = LABEL_FIELDS.map(([k, l, t]) => {
+    const cells = LABEL_FIELDS.map(([k, l, t, opts]) => {
       if (t === 'color') return this.colorField('labelOptions', k, l, s.labelOptions[k]);
       if (t === 'bool') return this.boolField('labelOptions', k, l, s.labelOptions[k]);
+      if (t === 'select') return this.selectField('labelOptions', k, l, s.labelOptions[k], opts || []);
       return this.textField('labelOptions', k, l, s.labelOptions[k], 'number');
     }).join('');
 
@@ -1089,6 +1097,22 @@ class MorphixEngine {
     `;
   }
 
+  private selectField(group: string, key: string, label: string, value: any, options: string[]): string {
+    const current = value == null ? '' : String(value);
+    const opts = options
+      .map((o) => `<option value="${this.esc(o)}" ${o === current ? 'selected' : ''}>${this.esc(o)}</option>`)
+      .join('');
+    return `
+      <div class="ms-field">
+        <span class="ms-label">${this.esc(label)}</span>
+        <select class="ms-input" data-kind="value-select"
+                data-group="${this.esc(group)}" data-key="${this.esc(key)}">
+          ${opts}
+        </select>
+      </div>
+    `;
+  }
+
   // ────────────────────────────────────────────────────────────────────────────
   // Event wiring
 
@@ -1171,6 +1195,14 @@ class MorphixEngine {
         const group = t.dataset.group!;
         const key = t.dataset.key!;
         (this.state as any)[group][key] = this.hexToRgb(t.value);
+        this.refreshDynamic();
+        return;
+      }
+
+      case 'value-select': {
+        const group = t.dataset.group!;
+        const key = t.dataset.key!;
+        (this.state as any)[group][key] = t.value;
         this.refreshDynamic();
         return;
       }

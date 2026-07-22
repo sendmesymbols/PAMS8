@@ -25,6 +25,7 @@ export interface KeyboardShortcutDeps {
   copySymbol: (g: Graphic) => void;
   activatePasteMode: () => void;
   showPasteOffsetDialog: () => void;
+  duplicateSelection: () => void;
   removeGraphic: (g: Graphic) => void;
   showSymbolDetails: (g: Graphic) => void;
   centerOnGraphic: (g: Graphic) => void;
@@ -58,6 +59,7 @@ export interface KeyboardShortcutDeps {
  *   Ctrl+C      Copy
  *   Ctrl+V      Paste
  *   Ctrl+Shift+V    Paste with offset dialog
+ *   Ctrl+D      Duplicate selection in place
  */
 export default class KeyboardShortcutManager {
   private _handler: ((e: KeyboardEvent) => void) | null = null;
@@ -137,6 +139,12 @@ export default class KeyboardShortcutManager {
           } else {
             this.deps.activatePasteMode();
           }
+        }
+      } else if (e.key === 'd' || e.key === 'D') {
+        // Duplicate the current selection in place (no clipboard, no click).
+        if ((settingsData as any).features?.clipboard !== false) {
+          e.preventDefault();
+          this.deps.duplicateSelection();
         }
       }
       return;

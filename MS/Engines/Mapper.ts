@@ -9,6 +9,8 @@ import FreehandArea from "../Symbols/FreehandArea.ts";
 import FreehandAreaFilled from "../Symbols/FreehandAreaFilled.ts";
 import CartoInformationModelSymbol from "../Symbols/CartoInformationModelSymbol.ts";
 import FreehandArrow from "../Symbols/FreehandArrow.ts";
+import AutoShape from "../Symbols/AutoShape.ts";
+import AutoShapeArrow from "../Symbols/AutoShapeArrow.ts";
 import FreehandDottedArrow from "../Symbols/FreehandDottedArrow.ts";
 import FreehandDoubleLineArrow from "../Symbols/FreehandDoubleLineArrow.ts";
 import ArcOfFireSD from "../Symbols/ArcOfFireSD.ts";
@@ -209,6 +211,8 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "FreehandDottedArrow": FreehandDottedArrow,
     "FreehandDoubleLineArrow": FreehandDoubleLineArrow,
     "FreehandArrow": FreehandArrow,
+    "AutoShape": AutoShape,
+    "AutoShapeArrow": AutoShapeArrow,
     "FreehandLine": FreehandLine,
     "FreehandArea": FreehandArea,
     "FreehandAreaFilled": FreehandAreaFilled,

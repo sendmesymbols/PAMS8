@@ -115,6 +115,7 @@ import CommandPalette from '../Support/CommandPalette';
 import './MeasurementSettingsWidget';
 import './AppearanceSettingsWidget';
 import './DrawStyleSettingsWidget';
+import './TextStyleSettingsWidget';
 import './CoreFeaturesSettingsWidget';
 import './ProximitySettingsWidget';
 import './DrawingCuesSettingsWidget';
@@ -1397,6 +1398,7 @@ class SymbolEngine implements Evented {
       copySymbol: (g) => this.copySymbol(g),
       activatePasteMode: () => this._activatePasteMode(),
       showPasteOffsetDialog: () => this._showPasteOffsetDialog(),
+      duplicateSelection: () => this.duplicateSelection(),
       removeGraphic: (g) => this.removeGraphic(g),
       showSymbolDetails: (g) => this.showSymbolDetails(g),
       centerOnGraphic: (g) => this.centerOnGraphic(g),
@@ -1836,7 +1838,7 @@ class SymbolEngine implements Evented {
     // colour picked AFTER selecting the symbol is silently discarded. Debounced
     // so a colour-picker or slider drag coalesces into a single re-arm.
     if (
-      fullPath.startsWith('drawStyle.') &&
+      (fullPath.startsWith('drawStyle.') || fullPath.startsWith('textStyle.')) &&
       this._freehandDrawArmed &&
       this._lastDrawEssentials &&
       this._lastAmplifier
@@ -2326,6 +2328,31 @@ class SymbolEngine implements Evented {
    */
   public copySymbol(graphic: Graphic): void {
     this._clipboardEngine.copy(graphic);
+  }
+
+  /**
+   * Duplicate the current selection in place at a small offset (Ctrl+D). Reuses
+   * the ClipboardEngine clone builder (so CTRL_PTS, labels and undo behave exactly
+   * like copy/paste) but does NOT touch the clipboard. The new copies become the
+   * selection, so repeated Ctrl+D stamps a row of duplicates.
+   */
+  public duplicateSelection(): void {
+    if ((settingsData as any).features?.clipboard === false) return;
+    const selected = this._selectionEngine.selectedGraphics;
+    if (!selected || selected.length === 0) return;
+
+    const sources = selected.map((g) => ({
+      graphic: g,
+      layerId:
+        this._resolveGraphicLayer(g)?.id ?? (g as any).layer?.id ?? '',
+    }));
+
+    const pasted = this._clipboardEngine.duplicate(sources);
+    if (!pasted || pasted.length === 0) return;
+
+    // Select only the new copies so a follow-up Ctrl+D duplicates from here.
+    this._selectionEngine.clearSelection();
+    pasted.forEach((g) => this._selectionEngine.selectGraphic(g));
   }
 
   /**
@@ -2880,12 +2907,19 @@ class SymbolEngine implements Evented {
               }
             }
             if (this.currentSymbol.SymGeoType === 'FPoint') {
-              // The Settings-panel "Size" (settingsData.size) is the source of
-              // truth for force-symbol marker size — drive every freshly drawn
-              // FPoint from it so changing the setting actually takes effect.
-              // Passive re-renders (Morphix edits, plan loads, global resize)
+              // The Settings-panel "Size" (settingsData.size) is the default
+              // force-symbol marker size — but only for symbols that don't
+              // declare their own per-symbol Size parameter. When the symbol
+              // has one (every UEISymbol entry does), the ⛭/dock Parameters
+              // box already seeded drawEssentials.extraSettings.size and that
+              // explicit value must win over the global setting. Passive
+              // re-renders (Morphix edits, plan loads, global resize) always
               // keep the size already baked into extraSettings.
-              if (!isPassive) {
+              const hasOwnSizeParam = Array.isArray(this.currentSymbol.Parameters) &&
+                this.currentSymbol.Parameters.some(
+                  (p: any) => String(p?.value).toLowerCase() === 'size',
+                );
+              if (!isPassive && !hasOwnSizeParam) {
                 const panelSize = Number((settingsData as any).size);
                 if (Number.isFinite(panelSize) && panelSize > 0) {
                   drawEssentials.extraSettings.size = panelSize;
@@ -2965,6 +2999,12 @@ class SymbolEngine implements Evented {
             if (ds) {
               if (ds.lineWidth != null) {
                 marker.width = ds.lineWidth;
+              }
+              // Stroke dash pattern (solid/dash/dot/…). Only applied when set, so an
+              // unset value keeps the SIDC-derived style. AutoShapeArrow's decorated
+              // lines (border/pathway/road) override this in their own init().
+              if (typeof ds.lineStyle === 'string' && ds.lineStyle) {
+                marker.style = ds.lineStyle;
               }
               if (ds.useAffiliationColor === false && Array.isArray(ds.lineColor)) {
                 marker.color = new Color([...ds.lineColor, marker.color?.a ?? 1]);
@@ -3778,9 +3818,14 @@ class SymbolEngine implements Evented {
     return SymbolMetadataService.getByKey(key);
   }
 
-  /** Autocomplete list of { key, name } entries. Delegated to SymbolMetadataService. */
+  /**
+   * Autocomplete list of { key, name } entries. Delegated to SymbolMetadataService.
+   * Auto Shapes are gated behind Settings.json `features.autoShapes` (default on).
+   */
   public getSymbolNamesForAutocomplete(): Array<{ key: string; name: string }> {
-    return SymbolMetadataService.getNamesForAutocomplete();
+    const includeAutoShapes =
+      (settingsData as any).features?.autoShapes !== false;
+    return SymbolMetadataService.getNamesForAutocomplete(includeAutoShapes);
   }
 
   // -----------------------------------------------------------------------
