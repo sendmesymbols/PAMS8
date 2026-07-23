@@ -9,12 +9,13 @@
   "scripts": {
     "copy-assets": "node -e \"const fs=require('fs');if(!fs.existsSync('public/assets')){fs.cpSync('node_modules/@arcgis/core/assets','public/assets',{recursive:true});console.log('Copied @arcgis/core assets -> public/assets')}\"",
     "copy-data": "node -e \"const fs=require('fs');fs.cpSync('MS/Data','dist/MS/Data',{recursive:true});console.log('Copied MS/Data -> dist/MS/Data')\"",
+    "copy-thirdparty": "node -e \"const fs=require('fs');fs.cpSync('MS/ThirdParty','dist/MS/ThirdParty',{recursive:true});console.log('Copied MS/ThirdParty -> dist/MS/ThirdParty')\"",
     "predev": "npm run copy-assets",
     "prebuild": "npm run copy-assets",
     "preview": "vite preview",
     "dev": "vite",
-    "dev:dist": "vite build && npm run copy-data && vite --mode dist",
-    "build": "vite build && npm run copy-data && tsc -p tsconfig.build.json"
+    "dev:dist": "vite build && npm run copy-data && npm run copy-thirdparty && vite --mode dist",
+    "build": "vite build && npm run copy-data && npm run copy-thirdparty && tsc -p tsconfig.build.json"
   },
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.4",
@@ -25,7 +26,6 @@
     "vite-plugin-dts": "^4.5.3"
   },
   "dependencies": {
-    "@arcgis/core": "5.0.19",
-    "pptxgenjs": "^4.0.1"
+    "@arcgis/core": "5.0.19"
   }
 }

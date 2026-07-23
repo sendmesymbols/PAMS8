@@ -96,10 +96,18 @@ export interface Slide {
   thumbnailDataUrl?: string;
   /** PowerPoint-like annotations added in the slide editor (normalized coords). */
   overlays?: SlideOverlay[];
+  /**
+   * Lazy full-resolution capture-time screenshot. Falls back into the slide
+   * editor's background when the live map's symbol graphics are missing —
+   * e.g. this briefing was imported without also loading the plan/session
+   * its graphic ids point into. Absent when the screenshot path was
+   * unavailable at capture time (3D-headless) — same caveat as thumbnailDataUrl.
+   */
+  backgroundDataUrl?: string;
 }
 
 export interface BriefingDocument {
-  /** 2 = slides may carry overlays; 1 accepted on import. */
-  version: 1 | 2;
+  /** 3 = slides may carry a full-res backgroundDataUrl fallback; 2 = overlays; 1/2 accepted on import. */
+  version: 1 | 2 | 3;
   slides: Slide[];
 }

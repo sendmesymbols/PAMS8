@@ -88,6 +88,8 @@ class BriefingEngine {
   // Panel UI
   private _panel: HTMLElement | null = null;
   private _strip: HTMLElement | null = null;
+  private _panelCountEl: HTMLElement | null = null;
+  private _panelMinimized = false;
 
   // Slide-sorter UI
   private _sorter: HTMLElement | null = null;
@@ -222,6 +224,12 @@ class BriefingEngine {
         slide.thumbnailDataUrl = dataUrl;
         this._refreshStrip();
       }
+    });
+    // Frozen full-res fallback for the slide editor — captured now because
+    // this is the only time the live map is guaranteed to hold this slide's
+    // symbol graphics (see _symbolGraphicsMissing / prepareBackground).
+    void this._tryFullScreenshot().then((dataUrl) => {
+      if (dataUrl) slide.backgroundDataUrl = dataUrl;
     });
     return slide;
   }
@@ -788,8 +796,9 @@ class BriefingEngine {
   // ── Persistence ────────────────────────────────────────────────────────────
 
   public exportBriefing(): BriefingDocument {
-    // version 2 = slides may carry editor overlays; import accepts 1 or 2.
-    return { version: 2, slides: this._slides.map((s) => ({ ...s })) };
+    // version 3 = slides may carry a full-res backgroundDataUrl fallback
+    // (2 = editor overlays); import accepts 1, 2 or 3.
+    return { version: 3, slides: this._slides.map((s) => ({ ...s })) };
   }
 
   public importBriefing(doc: BriefingDocument | null | undefined): void {
@@ -802,6 +811,9 @@ class BriefingEngine {
     this._current = -1;
     this._refreshStrip();
     EngineLogger.success(ENGINE_NAME, `Briefing imported — ${this._slides.length} slides`);
+    // Surface completion + slide count by popping the strip open — importing
+    // a briefing with no visible feedback otherwise looks like it did nothing.
+    this.openPanel();
   }
 
   public saveBriefingToFile(filename?: string): void {
@@ -832,35 +844,47 @@ class BriefingEngine {
 
   public openPanel(): void {
     if (!this._panel) this._buildPanel();
-    this._panel!.style.display = 'flex';
+    this._panel!.classList.add('ms-visible');
+    this._panelMinimized = false;
+    this._applyPanelMinimizeState();
     this._refreshStrip();
   }
 
   public closePanel(): void {
-    if (this._panel) this._panel.style.display = 'none';
+    if (this._panel) this._panel.classList.remove('ms-visible');
   }
 
   private _buildPanel(): void {
     const panel = document.createElement('div');
     panel.id = 'briefingPanel';
     panel.innerHTML = `
-      <div class="ms-briefing-header">
-        <span class="ms-briefing-title">🎬 Briefing</span>
-        <button class="ms-briefing-btn primary" data-act="capture" title="Capture the current view, layer visibility and hidden graphics as a new slide.">＋ Capture</button>
-        <button class="ms-briefing-btn" data-act="prev" title="Previous slide (goTo transition).">◀</button>
-        <button class="ms-briefing-btn" data-act="next" title="Next slide (goTo transition).">▶</button>
-        <button class="ms-briefing-btn" data-act="present" title="Enter full-screen present mode — Esc exits, arrows/space/click advance.">▶ Present</button>
-        <button class="ms-briefing-btn" data-act="sorter" title="Open the slide sorter — drag tiles to reorder, duplicate or remove slides.">⊞ Sorter</button>
-        <button class="ms-briefing-btn" data-act="save" title="Download this briefing as a JSON file.">⬇</button>
-        <button class="ms-briefing-btn" data-act="load" title="Load a briefing JSON file.">⬆</button>
-        <button class="ms-briefing-btn" data-act="close" title="Close the briefing panel.">✕</button>
+      <div class="ms-briefing-head" id="briefing-drag-handle">
+        <span class="ms-briefing-icon">🎬</span>
+        <span class="ms-briefing-title">Briefing</span>
+        <span class="ms-briefing-count"></span>
+        <span class="ms-briefing-head-spacer"></span>
+        <button class="ms-briefing-iconbtn" data-act="minimize" title="Minimize">﹀</button>
+        <button class="ms-briefing-iconbtn" data-act="close" title="Close the briefing panel.">✕</button>
       </div>
-      <div class="ms-briefing-strip"></div>`;
+      <div class="ms-briefing-body">
+        <div class="ms-briefing-toolbar">
+          <button class="ms-briefing-btn primary" data-act="capture" title="Adds Current Map View as Slide">＋ Add Slide</button>
+          <button class="ms-briefing-btn" data-act="prev" title="Previous slide (goTo transition).">◀ Prev</button>
+          <button class="ms-briefing-btn" data-act="next" title="Next slide (goTo transition).">Next ▶</button>
+          <button class="ms-briefing-btn" data-act="present" title="Enter full-screen present mode — Esc exits, arrows/space/click advance.">▶ Present</button>
+          <button class="ms-briefing-btn" data-act="sorter" title="Open the slide sorter — drag tiles to reorder, duplicate or remove slides.">⊞ Sorter</button>
+          <button class="ms-briefing-btn" data-act="save" title="Download this briefing as a JSON file.">⬇ Save</button>
+          <button class="ms-briefing-btn" data-act="load" title="Load a briefing JSON file.">⬆ Load</button>
+        </div>
+        <div class="ms-briefing-strip"></div>
+      </div>
+      <div class="ms-briefing-resize" data-resize="e" title="Drag to resize the panel width"></div>`;
     document.body.appendChild(panel);
     this._panel = panel;
     this._strip = panel.querySelector('.ms-briefing-strip') as HTMLElement;
+    this._panelCountEl = panel.querySelector('.ms-briefing-count') as HTMLElement;
 
-    panel.querySelector('.ms-briefing-header')!.addEventListener('click', (e) => {
+    panel.addEventListener('click', (e) => {
       const btn = (e.target as HTMLElement).closest('[data-act]') as HTMLElement | null;
       if (!btn) return;
       switch (btn.dataset.act) {
@@ -885,10 +909,119 @@ class BriefingEngine {
         case 'load':
           this.loadBriefingFromFile();
           break;
+        case 'minimize':
+          this._togglePanelMinimize();
+          break;
         case 'close':
           this.closePanel();
           break;
       }
+    });
+
+    this._makeDraggable(panel.querySelector('#briefing-drag-handle') as HTMLElement, panel);
+    this._makeResizable(panel);
+  }
+
+  private _togglePanelMinimize(): void {
+    this._panelMinimized = !this._panelMinimized;
+    this._applyPanelMinimizeState();
+  }
+
+  private _applyPanelMinimizeState(): void {
+    if (!this._panel) return;
+    const body = this._panel.querySelector('.ms-briefing-body') as HTMLElement | null;
+    const btn = this._panel.querySelector('[data-act="minimize"]') as HTMLElement | null;
+    body?.classList.toggle('ms-minimized', this._panelMinimized);
+    this._panel.classList.toggle('ms-briefing-minimized', this._panelMinimized);
+    if (btn) {
+      btn.textContent = this._panelMinimized ? '︿' : '﹀';
+      btn.title = this._panelMinimized ? 'Expand' : 'Minimize';
+    }
+  }
+
+  /**
+   * Pointer-events drag (mouse + touch + pen in one code path) — same pattern
+   * as the top-bar's makeDraggable(). Buttons/inputs inside the handle never
+   * start a drag, so the header's own action buttons stay clickable.
+   */
+  private _makeDraggable(handle: HTMLElement, panel: HTMLElement): void {
+    let dragging = false;
+    let ox = 0;
+    let oy = 0;
+    handle.style.touchAction = 'none';
+
+    handle.addEventListener('pointerdown', (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest('button, input, select')) return;
+      dragging = true;
+      const rect = panel.getBoundingClientRect();
+      panel.style.left = `${rect.left}px`;
+      panel.style.top = `${rect.top}px`;
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+      panel.style.transform = 'none';
+      ox = e.clientX - rect.left;
+      oy = e.clientY - rect.top;
+      document.body.style.userSelect = 'none';
+      try {
+        handle.setPointerCapture(e.pointerId);
+      } catch {
+        /* best-effort only — dragging still works via the pointermove listener below */
+      }
+      e.preventDefault();
+    });
+
+    handle.addEventListener('pointermove', (e: PointerEvent) => {
+      if (!dragging) return;
+      const maxLeft = window.innerWidth - panel.offsetWidth - 4;
+      const maxTop = window.innerHeight - panel.offsetHeight - 4;
+      panel.style.left = `${Math.max(0, Math.min(e.clientX - ox, maxLeft))}px`;
+      panel.style.top = `${Math.max(0, Math.min(e.clientY - oy, maxTop))}px`;
+    });
+
+    const endDrag = () => {
+      dragging = false;
+      document.body.style.userSelect = '';
+    };
+    handle.addEventListener('pointerup', endDrag);
+    handle.addEventListener('pointercancel', endDrag);
+  }
+
+  /** Right-edge width resize — pointer-events, so a finger drag works as well as a mouse. */
+  private _makeResizable(panel: HTMLElement): void {
+    const handle = panel.querySelector('[data-resize="e"]') as HTMLElement | null;
+    if (!handle) return;
+    handle.style.touchAction = 'none';
+    const MIN_W = 460;
+
+    handle.addEventListener('pointerdown', (e: PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startW = panel.getBoundingClientRect().width;
+      // Capture is best-effort: a throw here (unsupported browser, pointer not
+      // recognized as active) must not stop the move/up listeners from being
+      // wired below — without capture, the drag still tracks fine as long as
+      // the pointer stays over the (9px-wide, easy to overshoot) handle.
+      try {
+        handle.setPointerCapture(e.pointerId);
+      } catch {
+        /* best-effort only */
+      }
+      document.body.style.userSelect = 'none';
+
+      const onMove = (me: PointerEvent) => {
+        const maxW = window.innerWidth * 0.96;
+        const w = Math.max(MIN_W, Math.min(maxW, startW + (me.clientX - startX)));
+        panel.style.width = `${w}px`;
+        panel.style.maxWidth = 'none';
+      };
+      const onUp = () => {
+        document.body.style.userSelect = '';
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', onUp);
+      };
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onUp);
     });
   }
 
@@ -896,6 +1029,12 @@ class BriefingEngine {
     // Every slide mutation funnels through here — keep the sorter in sync
     // even when the strip panel was never built.
     this._refreshSorter();
+    if (this._panelCountEl) {
+      const n = this._slides.length;
+      this._panelCountEl.textContent = this._current >= 0
+        ? `${this._current + 1} / ${n}`
+        : n === 1 ? '1 slide' : `${n} slides`;
+    }
     if (!this._strip) return;
     this._strip.innerHTML = '';
     this._slides.forEach((slide, i) => {
@@ -1153,7 +1292,16 @@ class BriefingEngine {
       prepareBackground: async (i: number) => {
         await this.applySlideForExport(i);
         await this._settleView();
-        return (await this._tryFullScreenshot()) ?? null;
+        const slide = this._slides[i];
+        const missingSymbols = slide ? this._symbolGraphicsMissing(slide) : false;
+        // Live symbols are gone (usual cause: briefing imported without its
+        // matching plan/session) but this slide has its own capture-time
+        // snapshot — use that instead of a fresh (symbol-less) screenshot.
+        const usedFallback = missingSymbols && !!slide?.backgroundDataUrl;
+        const dataUrl = usedFallback
+          ? slide!.backgroundDataUrl!
+          : (await this._tryFullScreenshot()) ?? null;
+        return { dataUrl, missingSymbols, usedFallback };
       },
       onSaved: (i: number, patch) => {
         const s = this._slides[i];
@@ -1241,6 +1389,20 @@ class BriefingEngine {
   }
 
   /**
+   * True when the slide was captured with symbol layers visible but none of
+   * those layers currently hold any graphics — the usual cause is importing
+   * a Briefing JSON without also loading the matching plan/session, since
+   * slides only reference graphics by id rather than owning their geometry.
+   */
+  private _symbolGraphicsMissing(slide: Slide): boolean {
+    const lm = this._layerManager;
+    if (!lm) return false;
+    const expected = SYMBOL_LAYER_IDS.some((id) => slide.visibleLayers?.[id] === true);
+    if (!expected) return false;
+    return !SYMBOL_LAYER_IDS.some((id) => ((lm.getLayer(id)?.graphics as any)?.length ?? 0) > 0);
+  }
+
+  /**
    * Screenshot guarded with a timeout — takeScreenshot HANGS in a 3D
    * SceneView under headless preview (rAF frozen); never let it block.
    */
@@ -1269,7 +1431,10 @@ class BriefingEngine {
     const height = Math.round(width * (viewH / viewW));
     try {
       const shot: any = await Promise.race([
-        v.takeScreenshot({ width, height }),
+        // jpg keeps this — and the backgroundDataUrl fallback stored per
+        // slide — from bloating the briefing JSON; png default was several
+        // times larger for the same map imagery.
+        v.takeScreenshot({ width, height, format: 'jpg', quality: 80 }),
         new Promise<null>((resolve) =>
           setTimeout(() => resolve(null), FULL_SCREENSHOT_TIMEOUT_MS),
         ),
@@ -1349,35 +1514,97 @@ class BriefingEngine {
 
       #briefingPanel {
         position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
-        z-index: 9500; display: none; flex-direction: column; gap: 6px;
-        max-width: min(92vw, 980px); padding: 8px 10px;
-        background: rgba(18, 22, 26, 0.92); border: 1px solid rgba(255,255,255,0.14);
-        border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,0.45);
-        font: 12px/1.4 system-ui, sans-serif; color: #dde3e8;
+        z-index: 9500; display: none; flex-direction: column;
+        width: min(94vw, 760px); max-width: min(94vw, 760px); min-width: 460px;
+        background: var(--ms-bg, #141820); border: 1px solid var(--ms-border, rgba(90,140,220,0.25));
+        border-radius: var(--ms-radius, 9px); box-shadow: var(--ms-shadow, 0 8px 36px rgba(0,0,0,0.55));
+        font: var(--ms-fs, 12px)/1.4 var(--ms-font, 'Segoe UI', system-ui, sans-serif);
+        color: var(--ms-text, #dce8f5); overflow: visible;
+        animation: msBriefingIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
-      .ms-briefing-header { display: flex; align-items: center; gap: 6px; }
-      .ms-briefing-title { font-weight: 600; margin-right: 4px; white-space: nowrap; }
+      #briefingPanel.ms-visible { display: flex; }
+      @keyframes msBriefingIn {
+        from { opacity: 0; transform: translateX(-50%) scale(0.97) translateY(6px); }
+        to   { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
+      }
+
+      .ms-briefing-head {
+        display: flex; align-items: center; gap: 7px;
+        padding: 8px 8px 8px 10px;
+        background: var(--ms-bg-header, rgba(26,32,48,0.97));
+        border-bottom: 1px solid var(--ms-divider, rgba(80,100,150,0.18));
+        border-radius: var(--ms-radius, 9px) var(--ms-radius, 9px) 0 0;
+        cursor: grab; flex-shrink: 0; touch-action: none;
+      }
+      .ms-briefing-head:active { cursor: grabbing; }
+      .ms-briefing-icon { font-size: 15px; line-height: 1; flex-shrink: 0; }
+      .ms-briefing-title {
+        font-weight: 700; font-size: 13px; letter-spacing: 0.04em;
+        color: var(--ms-accent, #EF9F27); white-space: nowrap;
+      }
+      .ms-briefing-count {
+        font-family: var(--ms-font-mono, Consolas, monospace);
+        font-size: var(--ms-fs-xs, 10px); font-weight: 600; padding: 2px 7px;
+        color: var(--ms-text-dim, rgba(155,180,215,0.72));
+        background: rgba(255,255,255,0.06); border: 1px solid var(--ms-divider, rgba(80,100,150,0.18));
+        border-radius: 9px; white-space: nowrap;
+      }
+      .ms-briefing-head-spacer { flex: 1; }
+      .ms-briefing-iconbtn {
+        width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+        background: none; border: 1px solid transparent; border-radius: var(--ms-radius-sm, 4px);
+        color: var(--ms-text-dim, rgba(155,180,215,0.72)); cursor: pointer; font-size: 13px;
+        transition: var(--ms-transition, all 0.15s ease); flex-shrink: 0; touch-action: manipulation;
+      }
+      .ms-briefing-iconbtn:hover {
+        color: var(--ms-text, #dce8f5); background: rgba(255,255,255,0.08);
+        border-color: var(--ms-border, rgba(90,140,220,0.25));
+      }
+      .ms-briefing-iconbtn:last-child:hover {
+        color: var(--ms-danger, #DC3C30); border-color: var(--ms-danger, #DC3C30);
+        background: rgba(220,60,48,0.14);
+      }
+
+      .ms-briefing-body { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; }
+      .ms-briefing-body.ms-minimized { display: none; }
+
+      .ms-briefing-toolbar { display: flex; flex-wrap: wrap; gap: 6px; }
       .ms-briefing-btn {
-        background: rgba(255,255,255,0.08); color: #dde3e8;
-        border: 1px solid rgba(255,255,255,0.16); border-radius: 5px;
-        padding: 4px 9px; cursor: pointer; font: inherit; white-space: nowrap;
+        background: var(--ms-bg-input, rgba(0,0,0,0.28)); color: var(--ms-text, #dce8f5);
+        border: 1px solid var(--ms-border, rgba(90,140,220,0.25)); border-radius: var(--ms-radius-sm, 4px);
+        padding: 6px 10px; cursor: pointer; font: inherit; font-size: var(--ms-fs-xs, 10px);
+        white-space: nowrap; transition: var(--ms-transition, all 0.15s ease); touch-action: manipulation;
       }
-      .ms-briefing-btn:hover { background: rgba(255,255,255,0.16); }
-      .ms-briefing-btn.primary { background: #2d6cdf; border-color: #2d6cdf; color: #fff; }
-      .ms-briefing-btn.primary:hover { background: #3f7ceb; }
+      .ms-briefing-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--ms-accent, #EF9F27); }
+      .ms-briefing-btn.primary {
+        background: var(--ms-accent, #EF9F27); border-color: var(--ms-accent, #EF9F27);
+        color: #14181f; font-weight: 700;
+      }
+      .ms-briefing-btn.primary:hover { filter: brightness(1.1); }
+
       .ms-briefing-strip {
-        display: flex; gap: 8px; overflow-x: auto; padding: 2px;
-        min-height: 68px; scrollbar-width: thin;
+        display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px;
+        min-height: 68px; scrollbar-width: thin; scroll-snap-type: x proximity;
+        scrollbar-color: var(--ms-border, rgba(90,140,220,0.25)) transparent;
       }
+      .ms-briefing-strip::-webkit-scrollbar { height: 6px; }
+      .ms-briefing-strip::-webkit-scrollbar-thumb {
+        background: var(--ms-border, rgba(90,140,220,0.25)); border-radius: 3px;
+      }
+      .ms-briefing-strip::-webkit-scrollbar-thumb:hover { background: var(--ms-accent, #EF9F27); }
       .ms-briefing-tile {
         position: relative; flex: 0 0 auto; width: 108px; height: 64px;
-        border: 2px solid rgba(255,255,255,0.18); border-radius: 6px;
+        scroll-snap-align: start;
+        border: 2px solid var(--ms-border, rgba(90,140,220,0.25)); border-radius: 6px;
         background: linear-gradient(135deg, #26313a, #17202a) center/cover no-repeat;
-        cursor: pointer; overflow: hidden;
+        cursor: pointer; overflow: hidden; transition: border-color 0.12s ease, transform 0.12s ease;
       }
-      .ms-briefing-tile.active { border-color: #2d6cdf; }
+      .ms-briefing-tile:hover { transform: translateY(-1px); }
+      .ms-briefing-tile.active {
+        border-color: var(--ms-accent, #EF9F27); box-shadow: 0 0 0 1px var(--ms-accent, #EF9F27);
+      }
       .ms-briefing-tile-num {
-        position: absolute; top: 3px; left: 5px; font-weight: 700;
+        position: absolute; top: 3px; left: 5px; font-weight: 700; font-size: 11px;
         color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.9);
       }
       .ms-briefing-tile-title {
@@ -1385,20 +1612,47 @@ class BriefingEngine {
         background: rgba(0,0,0,0.55); color: #eef2f5; font-size: 10px;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
-      .ms-briefing-tile-del {
-        position: absolute; top: 2px; right: 2px; width: 16px; height: 16px;
-        border: none; border-radius: 3px; background: rgba(0,0,0,0.55);
-        color: #f1b0b0; font-size: 10px; line-height: 1; cursor: pointer;
-        display: none;
+      .ms-briefing-tile-del, .ms-briefing-tile-edit {
+        position: absolute; top: 2px; width: 18px; height: 18px;
+        border: none; border-radius: 3px; background: rgba(0,0,0,0.6);
+        font-size: 10px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity 0.12s ease;
       }
-      .ms-briefing-tile:hover .ms-briefing-tile-del { display: block; }
-      .ms-briefing-tile-edit {
-        position: absolute; top: 2px; right: 22px; width: 16px; height: 16px;
-        border: none; border-radius: 3px; background: rgba(0,0,0,0.55);
-        color: #9ecbff; font-size: 10px; line-height: 1; cursor: pointer;
-        display: none;
+      .ms-briefing-tile-edit { right: 22px; color: #9ecbff; }
+      .ms-briefing-tile-del { right: 2px; color: #f1b0b0; }
+      .ms-briefing-tile:hover .ms-briefing-tile-del,
+      .ms-briefing-tile:hover .ms-briefing-tile-edit { opacity: 1; }
+
+      .ms-briefing-resize {
+        position: absolute; top: 0; right: -4px; bottom: 0; width: 9px;
+        cursor: ew-resize; touch-action: none; z-index: 2;
       }
-      .ms-briefing-tile:hover .ms-briefing-tile-edit { display: block; }
+      .ms-briefing-resize::after {
+        content: ''; position: absolute; top: 50%; right: 3px; width: 3px; height: 28px;
+        transform: translateY(-50%); border-radius: 2px;
+        background: var(--ms-border, rgba(90,140,220,0.25));
+      }
+      .ms-briefing-resize:hover::after, .ms-briefing-resize:active::after {
+        background: var(--ms-accent, #EF9F27);
+      }
+
+      /* Touch: bigger tap targets; edit/remove affordances can't rely on hover. */
+      @media (pointer: coarse) {
+        .ms-briefing-btn { min-height: 38px; padding: 8px 12px; }
+        .ms-briefing-iconbtn { width: 32px; height: 32px; font-size: 16px; }
+        .ms-briefing-tile { width: 128px; height: 76px; }
+        .ms-briefing-tile-del, .ms-briefing-tile-edit { opacity: 1; width: 22px; height: 22px; }
+        .ms-briefing-resize { width: 16px; right: -8px; }
+      }
+
+      /* Small screens: dock full-width at the bottom instead of a floating bar —
+         free dragging/resizing on a phone-sized viewport does more harm than good. */
+      @media (max-width: 640px) {
+        #briefingPanel {
+          left: 8px !important; right: 8px !important; bottom: 8px !important; top: auto !important;
+          transform: none !important; width: auto !important; max-width: none !important; min-width: 0;
+        }
+        .ms-briefing-resize { display: none; }
+      }
       /* Present-mode annotation overlay — above the map, below the counter. */
       .ms-briefing-overlay-canvas {
         position: absolute; inset: 0; pointer-events: none; z-index: 40;

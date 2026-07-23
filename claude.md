@@ -26,7 +26,7 @@ engines on top. It runs in both **2D (MapView)** and **3D (SceneView)**.
 | Dependency | Version | Notes |
 | --- | --- | --- |
 | `@arcgis/core` | **5.0.19** | ArcGIS Maps SDK for JS, consumed as an ES module (not the CDN/AMD build). Assets copied to `public/assets` via the `copy-assets` script. |
-| `pptxgenjs` | ^4.0.1 | PowerPoint (.pptx) briefing export. |
+| `pptxgenjs` | 4.0.1, bundled | PowerPoint (.pptx) briefing export — offline browser bundle at `MS/ThirdParty/PptxGenJS/pptxgen.bundle.js`, injected as a `<script>` tag on first export (NOT the npm ES module), exposed as `window.PptxGenJS`. |
 | `milsymbol.js` | bundled | Legacy JS lib for UEI symbols — loaded via `<script>` tag in `index.html`, exposed as `window.MS` (NOT an ES module). |
 | `fabric.js` 4.5.0 | CDN | Canvas overlay (`#fabricCanvas`) for certain freehand/overlay drawing. |
 | `tween.js` | bundled | Animation easing (loaded via script tag). |
@@ -87,6 +87,7 @@ MS/
 │   └── [Block, Breach, Boundary, AssemblyArea, AxisOfAdvance, Ambush, ...]
 ├── ThirdParty/
 │   ├── MilSymbols/             # milsymbol.js + .d.ts + UEITypes.ts
+│   ├── PptxGenJS/              # pptxgen.bundle.js — offline PowerPoint export, script-tag loaded
 │   ├── Tacticals/              # Tactical-graphics generator (SIDCFormatter, constants, ...)
 │   ├── MGRS/                   # mgrs grid conversion lib
 │   └── TweenJS/                # tween animation

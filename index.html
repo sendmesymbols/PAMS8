@@ -821,12 +821,43 @@
         margin: 1px 6px;
         background: var(--ms-divider);
       }
+      /* Briefing menu — mixes action buttons with inline settings rows, so it
+         needs more room than the plain action list and a couple of extras:
+         a section-header label and a two-up row for Prev/Next + Save/Load. */
+      .briefing-menu {
+        min-width: 250px;
+      }
+      .briefing-menu-label {
+        margin: 2px 6px -2px;
+        font: 700 10px/1.4 var(--ms-font);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--ms-accent);
+        opacity: 0.85;
+      }
+      .briefing-menu .drawstyle-row .ms-select,
+      .briefing-menu .drawstyle-row .ms-input {
+        width: 108px;
+        padding: 4px 6px;
+        font-size: var(--ms-fs-xs);
+      }
+      .briefing-menu-row {
+        display: flex;
+        gap: 6px;
+        padding: 0 0;
+      }
+      .briefing-menu-row .infobar-btn {
+        width: auto;
+        flex: 1 1 0;
+        justify-content: center;
+      }
       /* Toolbar-summoned widgets (Settings / API Test) start hidden */
       .ms-hidden { display: none !important; }
       /* Active state for toolbar dropdown triggers + the widgets they summon */
       #menuBtn.ms-btn-active,
       #settingsPanelBtn.ms-btn-active,
-      #apiTestBtn.ms-btn-active {
+      #apiTestBtn.ms-btn-active,
+      #briefingMenuBtn.ms-btn-active {
         border-color: var(--ms-accent) !important;
         color: var(--ms-accent) !important;
       }
@@ -1893,6 +1924,85 @@
 
       <!-- Section 3: Analysis & Management -->
       <div class="infobar-section infobar-push">
+        <!-- Briefing: one dropdown housing everything from MS/Engines/Briefing —
+             mode toggle, slide capture/playback/present/sorter/editor, save/load,
+             PPTX export mode/format, and the underlying settings. -->
+        <div class="infobar-menu-anchor">
+          <button class="ms-btn infobar-btn" id="briefingMenuBtn" title="Briefing — capture map states as slides, present full-screen, edit slides, export a PowerPoint deck, and configure it all from one menu."><span class="infobar-icon">⛶</span>Briefing</button>
+          <div id="briefingMenu" class="demo-symbol-menu infobar-action-menu briefing-menu">
+            <label class="drawstyle-row drawstyle-check">
+              <input class="ms-input" type="checkbox" id="briefingMenuEnable" title="Master switch for the Briefing engine (features.briefing) — capture slides, playback, present mode, staged-reveal builds." />
+              <span>Briefing mode</span>
+            </label>
+            <div class="infobar-menu-sep"></div>
+
+            <div class="briefing-menu-label">Slides</div>
+            <button class="ms-btn infobar-btn" data-briefing-act="panel" title="Open the slide-strip panel — capture, thumbnails, quick navigation.">🎞 Slide Panel</button>
+            <button class="ms-btn ms-btn-primary infobar-btn" data-briefing-act="capture" title="Adds Current Map View as Slide">＋ Add Slide</button>
+            <div class="briefing-menu-row">
+              <button class="ms-btn infobar-btn" data-briefing-act="prev" title="Previous slide (goTo transition).">◀ Prev</button>
+              <button class="ms-btn infobar-btn" data-briefing-act="next" title="Next slide (goTo transition).">Next ▶</button>
+            </div>
+            <button class="ms-btn infobar-btn" data-briefing-act="present" title="Toggle full-screen present mode — Esc exits, arrows/space/click advance.">▶ Present Mode</button>
+            <button class="ms-btn infobar-btn" data-briefing-act="sorter" title="Open the slide sorter — drag to reorder, duplicate, or remove slides.">⊞ Slide Sorter</button>
+            <button class="ms-btn infobar-btn" data-briefing-act="edit" title="Open the full-screen slide editor for the current slide — text, shapes, arrows, colors.">✎ Edit Current Slide</button>
+            <div class="briefing-menu-row">
+              <button class="ms-btn infobar-btn" data-briefing-act="save" title="Download this briefing as a JSON file.">⬇ Save JSON</button>
+              <button class="ms-btn infobar-btn" data-briefing-act="load" title="Load a briefing JSON file.">⬆ Load JSON</button>
+            </div>
+
+            <div class="infobar-menu-sep"></div>
+            <div class="briefing-menu-label">Playback settings</div>
+            <div class="drawstyle-row">
+              <span>Transition (ms)</span>
+              <input class="ms-input" type="number" id="briefingMenuTransitionMs" min="0" max="5000" step="100" title="Default goTo duration when entering a slide (briefing.defaultTransitionMs). Stored per slide at capture time." />
+            </div>
+            <div class="drawstyle-row">
+              <span>Default build effect</span>
+              <select class="ms-select" id="briefingMenuEffect" title="Effect used when a build step is added without an explicit effect (briefing.defaultEffect).">
+                <option value="appear">Appear</option>
+                <option value="fade">Fade</option>
+                <option value="flyIn">Fly in</option>
+                <option value="drawOn">Draw on</option>
+              </select>
+            </div>
+            <div class="drawstyle-row">
+              <span>Autoplay interval (ms)</span>
+              <input class="ms-input" type="number" id="briefingMenuAutoplayMs" min="500" max="60000" step="500" title="Delay between slides when autoplay is running (briefing.autoplayIntervalMs)." />
+            </div>
+
+            <div class="infobar-menu-sep"></div>
+            <label class="drawstyle-row drawstyle-check">
+              <input class="ms-input" type="checkbox" id="briefingMenuExportEnable" title="Master switch for the PowerPoint deck exporter (features.exportTools)." />
+              <span>Export tools</span>
+            </label>
+            <div class="briefing-menu-label">Export (.pptx)</div>
+            <div class="drawstyle-row">
+              <span>Mode</span>
+              <select class="ms-select" id="briefingMenuExportMode" title="Flat: one full screenshot per slide. Editable: simple lines/areas/text become native, selectable PowerPoint shapes over a basemap raster — exact in 2D, approximate in 3D (exportTools.mode).">
+                <option value="flat">Flat screenshots</option>
+                <option value="editable">Editable shapes</option>
+              </select>
+            </div>
+            <div class="drawstyle-row">
+              <span>Image format</span>
+              <select class="ms-select" id="briefingMenuExportFormat" title="Format of the map screenshot placed on each slide (exportTools.format).">
+                <option value="png">PNG (lossless)</option>
+                <option value="jpeg">JPEG (smaller file)</option>
+              </select>
+            </div>
+            <label class="drawstyle-row drawstyle-check">
+              <input class="ms-input" type="checkbox" id="briefingMenuExplodeBuilds" title="Emit one extra slide per staged-reveal build step (exportTools.explodeBuilds)." />
+              <span>Explode builds</span>
+            </label>
+            <label class="drawstyle-row drawstyle-check">
+              <input class="ms-input" type="checkbox" id="briefingMenuIncludeNotes" title="Attach each slide's notes as PowerPoint speaker notes (exportTools.includeNotes)." />
+              <span>Include speaker notes</span>
+            </label>
+            <button class="ms-btn ms-btn-primary infobar-btn" id="briefingMenuExportBtn" data-briefing-act="export" title="Export a PowerPoint (.pptx) deck — one slide per captured briefing slide, or the current view if no slides exist, using the settings above.">⬒ Export PPTX</button>
+          </div>
+        </div>
+
         <!-- Menu: one dropdown housing the panels, palette, Analysis Hub, Draw,
              and all former Generate actions (test data + plan save/load). -->
         <div class="infobar-menu-anchor">
@@ -1906,8 +2016,6 @@
             <button class="ms-btn ms-btn-primary infobar-btn" id="draw-btn" title="Start interactive drawing of the symbol for the SIDC in the SIDC box, using current settings."><span class="infobar-icon">✎</span>Draw</button>
             <div class="infobar-menu-sep"></div>
             <button class="ms-btn infobar-btn" id="deployment-manager-btn" title="Open the Deployment Manager to manage and place formation templates."><span class="infobar-icon">▦</span>Deployment Mgr</button>
-            <button class="ms-btn infobar-btn" id="briefing-btn" title="Open the Briefing panel — capture map states as slides, play them back with smooth transitions, reorder them in the slide sorter, and present full-screen (requires Briefing / Present in Settings)."><span class="infobar-icon">🎬</span>Briefing</button>
-            <button class="ms-btn infobar-btn" id="exportPptxButton" title="Export a PowerPoint (.pptx) deck — one slide per captured briefing slide, or the current view if no slides exist (requires Export Tools in Settings)."><span class="infobar-icon">⬒</span>Export PPTX</button>
             <button class="ms-btn infobar-btn" id="topbar-testfield-generate" title="Drop a mixed field of UEI symbols (varied identity + echelon + designator) inside the current view. Uses Count/Stacks from the API Test panel. Tests cluster badges, echelon ladder, disperse, label placer, and abbreviation in one click."><span class="infobar-icon">⊹</span>Test Field</button>
             <button class="ms-btn infobar-btn" id="topbar-testfield-clutter" title="Drop the same mixed field but deliberately jumbled — a tight footprint with many overlapping same-coordinate stacks. Stresses every declutter path at once. Uses the API Test panel Count input; Stacks is auto-boosted."><span class="infobar-icon">⁂</span>Cluttered</button>
             <button class="ms-btn infobar-btn" id="savePlanButton" title="Save current symbol set, annotations, and settings as a reusable plan to local storage via ImportExportEngine."><span class="infobar-icon">⬇</span>Save Plan</button>
@@ -4733,6 +4841,7 @@
         });
       }
       initToolbarDropdown('menuBtn', 'toolMenu');
+      initToolbarDropdown('briefingMenuBtn', 'briefingMenu');
 
       // Helper to get engines from window.symbolEngine
       function getEngines() {
@@ -5201,7 +5310,7 @@
           const be = window.briefingEngine;
           if (!be || !be.getSlides?.().length) {
             document.getElementById('api-save-status').textContent =
-              'No briefing slides yet (enable features.briefing, then ＋ Capture)';
+              'No briefing slides yet (enable features.briefing, then ＋ Add Slide)';
             return;
           }
           document.getElementById('api-save-status').textContent =

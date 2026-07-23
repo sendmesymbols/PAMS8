@@ -28,8 +28,19 @@ const THUMB_WIDTH = 240;
 
 export interface SlideEditorHost {
   getSlide(index: number): Slide | null;
-  /** Apply slide state headlessly and return a full-res screenshot dataUrl (null on failure). */
-  prepareBackground(index: number): Promise<string | null>;
+  /**
+   * Apply slide state headlessly and return a full-res screenshot dataUrl
+   * (null on failure) plus whether symbol graphics the slide expects are
+   * absent from the live map (e.g. a Briefing was imported without also
+   * loading the plan/session its graphic ids point into). When symbols are
+   * missing but the slide has its own capture-time snapshot, dataUrl is that
+   * frozen snapshot instead and usedFallback is true.
+   */
+  prepareBackground(index: number): Promise<{
+    dataUrl: string | null;
+    missingSymbols: boolean;
+    usedFallback: boolean;
+  }>;
   onSaved(
     index: number,
     patch: {
@@ -124,8 +135,15 @@ export default class SlideEditor {
 
       const bg = await host.prepareBackground(index);
       if (!this._stage) return false; // closed while preparing
-      const size = await this._loadImage(bg);
-      this._initCanvas(fabric, slide, size);
+      const size = await this._loadImage(bg.dataUrl);
+      // Only warn persistently when we truly have nothing to show — a
+      // successful fallback gets a toast instead (see below), not a banner.
+      this._initCanvas(fabric, slide, size, bg.missingSymbols && !bg.usedFallback);
+      if (bg.usedFallback) {
+        this._showToast(
+          'Live symbol graphics not found — showing the snapshot captured with this slide.',
+        );
+      }
       this._attachKeys();
       EngineLogger.success(ENGINE_NAME, `Editing "${slide.title}"`);
       return true;
@@ -373,14 +391,22 @@ export default class SlideEditor {
     fabric: any,
     slide: Slide,
     size: { img: HTMLImageElement; w: number; h: number } | null,
+    missingSymbols?: boolean,
   ): void {
     if (!this._stageWrap) return;
     this._stageWrap.innerHTML = '';
 
-    if (!size) {
+    const warnings: string[] = [];
+    if (!size) warnings.push('Screenshot unavailable — annotations are still editable');
+    if (missingSymbols) {
+      warnings.push(
+        'Symbol graphics not found on the map — load the matching plan/session to show them here',
+      );
+    }
+    if (warnings.length) {
       const warn = document.createElement('div');
       warn.className = 'ms-sledit-warn';
-      warn.textContent = 'Screenshot unavailable — annotations are still editable';
+      warn.textContent = warnings.join(' · ');
       this._stage!.appendChild(warn);
     }
 
@@ -424,6 +450,16 @@ export default class SlideEditor {
     this._fc.on('selection:created', () => this._syncControlsFromSelection());
     this._fc.on('selection:updated', () => this._syncControlsFromSelection());
     this._fc.requestRenderAll();
+  }
+
+  /** Transient bottom-center notice — CSS-driven fade so it needs no rAF. */
+  private _showToast(message: string): void {
+    if (!this._stage) return;
+    const toast = document.createElement('div');
+    toast.className = 'ms-sledit-toast';
+    toast.textContent = message;
+    this._stage.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
   }
 
   // ── Tools ──────────────────────────────────────────────────────────────────
@@ -796,6 +832,20 @@ export default class SlideEditor {
         position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
         background: rgba(180,120,20,0.92); color: #fff; padding: 4px 12px;
         border-radius: 6px; z-index: 2; pointer-events: none;
+      }
+      .ms-sledit-toast {
+        position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+        max-width: 80%; background: rgba(20,24,30,0.94); color: #dde3e8;
+        border: 1px solid rgba(255,255,255,0.16); border-radius: 7px;
+        padding: 9px 16px; font-size: 12.5px; text-align: center;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.4); z-index: 5; pointer-events: none;
+        animation: msSlEditToast 3.5s ease forwards;
+      }
+      @keyframes msSlEditToast {
+        0%   { opacity: 0; transform: translateX(-50%) translateY(8px); }
+        8%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        88%  { opacity: 1; }
+        100% { opacity: 0; }
       }`;
     document.head.appendChild(style);
   }

@@ -40,8 +40,6 @@ const drawButton: HTMLElement | null = document.getElementById('draw-btn');
 const savePlanButton = document.getElementById('savePlanButton');
 const loadPlanButton = document.getElementById('loadPlanButton');
 const deploymentManagerBtn = document.getElementById('deployment-manager-btn');
-const briefingBtn = document.getElementById('briefing-btn');
-const exportPptxBtn = document.getElementById('exportPptxButton');
 const analysisHubBtn = document.getElementById('analysis-hub-btn');
 
 // ── Command palette — popover of all widgets (a "Menu" dropdown item) ─────────
@@ -2376,26 +2374,145 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     });
   }
 
-  if (briefingBtn) {
-    briefingBtn.addEventListener('click', () => {
-      const be = (window as any).briefingEngine;
-      if (be) {
-        be.openPanel();
-      } else {
-        console.warn('Briefing engine not ready yet (enable features.briefing in Settings)');
-      }
-    });
-  }
+  // ── Briefing menu ──────────────────────────────────────────────────────────
+  // One dropdown for everything in MS/Engines/Briefing: mode toggle, slide
+  // capture/playback/present/sorter/editor, save/load, and the PPTX export
+  // (mode/format/explode-builds/notes) it hands off to. Settings inputs publish
+  // through the same 'settingsChanged' event the legacy Settings panel uses, so
+  // settingsData (and every other surface reading it — Ctrl+K, PptxExporter at
+  // export time) stays a single source of truth.
+  {
+    const briefingMenu = document.getElementById('briefingMenu');
+    const briefingMenuBtn = document.getElementById('briefingMenuBtn');
+    const enableChk = document.getElementById('briefingMenuEnable') as HTMLInputElement | null;
+    const exportEnableChk = document.getElementById('briefingMenuExportEnable') as HTMLInputElement | null;
+    const transitionMsInput = document.getElementById('briefingMenuTransitionMs') as HTMLInputElement | null;
+    const effectSelect = document.getElementById('briefingMenuEffect') as HTMLSelectElement | null;
+    const autoplayMsInput = document.getElementById('briefingMenuAutoplayMs') as HTMLInputElement | null;
+    const exportModeSelect = document.getElementById('briefingMenuExportMode') as HTMLSelectElement | null;
+    const exportFormatSelect = document.getElementById('briefingMenuExportFormat') as HTMLSelectElement | null;
+    const explodeBuildsChk = document.getElementById('briefingMenuExplodeBuilds') as HTMLInputElement | null;
+    const includeNotesChk = document.getElementById('briefingMenuIncludeNotes') as HTMLInputElement | null;
+    const exportBtn = document.getElementById('briefingMenuExportBtn') as HTMLButtonElement | null;
 
-  if (exportPptxBtn) {
-    exportPptxBtn.addEventListener('click', () => {
-      const exportDeck = (window as any).exportPptxDeck;
-      if (typeof exportDeck === 'function') {
-        void exportDeck().catch((err: any) =>
-          console.error('PPTX export failed:', err),
-        );
-      } else {
-        console.warn('PPTX export not ready yet (enable features.exportTools in Settings)');
+    const publishSetting = (path: string[], value: any) => {
+      window.dispatchEvent(
+        new CustomEvent('settingsChanged', { detail: { path, value, fullPath: path.join('.') } }),
+      );
+    };
+
+    // Read-only mirror of settingsData — refreshed every time the menu opens so
+    // it reflects changes made elsewhere (Settings panel, Ctrl+K palette, API).
+    const refreshBriefingMenu = () => {
+      const cfg: any = settingsData as any;
+      const features = cfg.features ?? {};
+      const briefing = cfg.briefing ?? {};
+      const exportTools = cfg.exportTools ?? {};
+      if (enableChk) enableChk.checked = features.briefing === true;
+      if (exportEnableChk) exportEnableChk.checked = features.exportTools === true;
+      if (transitionMsInput) transitionMsInput.value = String(briefing.defaultTransitionMs ?? 1000);
+      if (effectSelect) effectSelect.value = briefing.defaultEffect ?? 'appear';
+      if (autoplayMsInput) autoplayMsInput.value = String(briefing.autoplayIntervalMs ?? 5000);
+      if (exportModeSelect) exportModeSelect.value = exportTools.mode === 'editable' ? 'editable' : 'flat';
+      if (exportFormatSelect) exportFormatSelect.value = exportTools.format === 'jpeg' ? 'jpeg' : 'png';
+      if (explodeBuildsChk) explodeBuildsChk.checked = exportTools.explodeBuilds === true;
+      if (includeNotesChk) includeNotesChk.checked = exportTools.includeNotes !== false;
+    };
+    briefingMenuBtn?.addEventListener('click', refreshBriefingMenu);
+
+    enableChk?.addEventListener('change', () => publishSetting(['features', 'briefing'], enableChk.checked));
+    exportEnableChk?.addEventListener('change', () =>
+      publishSetting(['features', 'exportTools'], exportEnableChk.checked),
+    );
+    transitionMsInput?.addEventListener('change', () =>
+      publishSetting(['briefing', 'defaultTransitionMs'], Math.max(0, Number(transitionMsInput.value) || 0)),
+    );
+    effectSelect?.addEventListener('change', () =>
+      publishSetting(['briefing', 'defaultEffect'], effectSelect.value),
+    );
+    autoplayMsInput?.addEventListener('change', () =>
+      publishSetting(['briefing', 'autoplayIntervalMs'], Math.max(500, Number(autoplayMsInput.value) || 500)),
+    );
+    exportModeSelect?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'mode'], exportModeSelect.value),
+    );
+    exportFormatSelect?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'format'], exportFormatSelect.value),
+    );
+    explodeBuildsChk?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'explodeBuilds'], explodeBuildsChk.checked),
+    );
+    includeNotesChk?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'includeNotes'], includeNotesChk.checked),
+    );
+
+    // Action buttons (Capture / Prev / Next / Present / Sorter / Edit / Save /
+    // Load / Export) are delegated off data-briefing-act — mirrors how
+    // BriefingEngine wires its own slide-strip panel.
+    briefingMenu?.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('[data-briefing-act]') as HTMLElement | null;
+      if (!btn) return;
+      const be = (window as any).briefingEngine;
+      const warnNotReady = () =>
+        console.warn('Briefing engine not ready yet (enable features.briefing in Settings)');
+
+      switch (btn.dataset.briefingAct) {
+        case 'panel':
+          be ? be.openPanel() : warnNotReady();
+          break;
+        case 'capture':
+          be ? be.captureSlide() : warnNotReady();
+          break;
+        case 'prev':
+          be ? void be.prevSlide() : warnNotReady();
+          break;
+        case 'next':
+          be ? void be.nextSlide() : warnNotReady();
+          break;
+        case 'present':
+          be ? be.togglePresent() : warnNotReady();
+          break;
+        case 'sorter':
+          be ? be.toggleSorter() : warnNotReady();
+          break;
+        case 'edit':
+          if (be && be.getSlides().length) {
+            void be.openSlideEditor(Math.max(0, be.currentIndex));
+          } else if (be) {
+            console.warn('No briefing slides yet — capture one first.');
+          } else {
+            warnNotReady();
+          }
+          break;
+        case 'save':
+          be ? be.saveBriefingToFile() : warnNotReady();
+          break;
+        case 'load':
+          be ? be.loadBriefingFromFile() : warnNotReady();
+          break;
+        case 'export': {
+          const exportDeck = (window as any).exportPptxDeck;
+          if (typeof exportDeck === 'function') {
+            const orig = exportBtn?.textContent ?? '';
+            if (exportBtn) exportBtn.textContent = 'Exporting…';
+            void exportDeck()
+              .then(() => {
+                if (exportBtn) exportBtn.textContent = '✓ Exported';
+              })
+              .catch((err: any) => {
+                console.error('PPTX export failed:', err);
+                if (exportBtn) exportBtn.textContent = '✕ Export failed';
+              })
+              .finally(() => {
+                setTimeout(() => {
+                  if (exportBtn) exportBtn.textContent = orig;
+                }, 1800);
+              });
+          } else {
+            console.warn('PPTX export not ready yet (enable features.exportTools in Settings)');
+          }
+          break;
+        }
       }
     });
   }

@@ -26,8 +26,10 @@
  * horizon stay in the raster.
  *
  * Gated behind `features.exportTools` (checked at call time against the live
- * settings tree). pptxgenjs is dynamically imported so it stays out of the
- * main bundle.
+ * settings tree). PptxGenJS ships as the offline browser bundle in
+ * `MS/ThirdParty/PptxGenJS/pptxgen.bundle.js` (not the npm ES module — this
+ * app must also run offline) and is injected as a `<script>` tag on first
+ * use, so the ~450KB bundle never loads unless export is actually used.
  */
 
 import Point from '@arcgis/core/geometry/Point';
@@ -55,6 +57,34 @@ const SCREENSHOT_TIMEOUT_MS = 15000;
 /** 16:9 pptx layout is 10 × 5.625 inches. */
 const SLIDE_W_IN = 10;
 const SLIDE_H_IN = 5.625;
+
+/** Offline browser bundle — see the file banner above. */
+const PPTXGENJS_SCRIPT_SRC = 'MS/ThirdParty/PptxGenJS/pptxgen.bundle.js';
+
+let pptxGenJSLoadPromise: Promise<any> | null = null;
+
+/** Injects the PptxGenJS `<script>` tag on first use and resolves `window.PptxGenJS`. */
+function loadPptxGenJS(): Promise<any> {
+  const existing = (window as any).PptxGenJS;
+  if (existing) return Promise.resolve(existing);
+  if (pptxGenJSLoadPromise) return pptxGenJSLoadPromise;
+  pptxGenJSLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = PPTXGENJS_SCRIPT_SRC;
+    script.async = true;
+    script.onload = () => {
+      const ctor = (window as any).PptxGenJS;
+      if (ctor) resolve(ctor);
+      else reject(new Error(`${PPTXGENJS_SCRIPT_SRC} loaded but window.PptxGenJS is undefined`));
+    };
+    script.onerror = () => {
+      pptxGenJSLoadPromise = null;
+      reject(new Error(`Failed to load ${PPTXGENJS_SCRIPT_SRC}`));
+    };
+    document.head.appendChild(script);
+  });
+  return pptxGenJSLoadPromise;
+}
 
 export interface PptxExportOptions {
   /**
@@ -180,9 +210,9 @@ class PptxExporter {
         : 'Exporting PowerPoint deck (Mode A — flat screenshots)',
     );
 
-    // Dynamic import keeps pptxgenjs out of the main bundle.
-    const { default: pptxgen } = await import('pptxgenjs');
-    const pptx = new pptxgen();
+    // Script-injected on first use — keeps the bundle out of the main app until needed.
+    const PptxGenJS = await loadPptxGenJS();
+    const pptx = new PptxGenJS();
     pptx.layout = 'LAYOUT_16x9';
 
     const briefing: any = (window as any).briefingEngine;
