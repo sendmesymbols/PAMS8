@@ -95,6 +95,13 @@ class SerializationEngine {
           try {
             const drawEssObj = this._buildPlanDrawEss(g);
             if (!drawEssObj) return;
+            // Pin-to-Screen state (ScreenAnchorEngine) — attribute-level, since
+            // drawEssentials is rebuilt from scratch by symbol classes on load.
+            if (g.attributes?.pinned === true) {
+              drawEssObj.PINNED = true;
+              drawEssObj.PIN_X_PCT = g.attributes.xPct;
+              drawEssObj.PIN_Y_PCT = g.attributes.yPct;
+            }
             const symbolId = g.attributes?.id || this._generateUUID();
             symbols.push(
               Plan.createSymbol(planId, overlayId, symbolId, JSON.stringify(drawEssObj)),
@@ -220,6 +227,7 @@ class SerializationEngine {
         try {
           const sourceSymbolId = sym.plnOrdrSymbolPK.plnOrdrSymbolId;
           const drawEssObj = JSON.parse(sym.drawEss);
+          const pinned = drawEssObj?.PINNED === true;
           const normalizedDrawEss = Plan.normalizeDrawEssForRuntime(drawEssObj);
           const amplifier: any = normalizedDrawEss?.AMPLIFIER ?? {};
           if (normalizedDrawEss?.SIDC && !amplifier.SIDC) amplifier.SIDC = normalizedDrawEss.SIDC;
@@ -251,6 +259,9 @@ class SerializationEngine {
             sidc: amplifier?.SIDC || normalizedDrawEss?.SIDC,
             amplifier,
             drawEssentials: de,
+            ...(pinned
+              ? { pinned: true, xPct: drawEssObj.PIN_X_PCT, yPct: drawEssObj.PIN_Y_PCT }
+              : {}),
           });
           loaded++;
         } catch (err) {
@@ -312,6 +323,14 @@ class SerializationEngine {
       sidc: amplifier?.SIDC || de?.SIDC,
       amplifier: amplifier ? { ...amplifier } : {},
       drawEssentials: deJson,
+      // Pin-to-Screen state (ScreenAnchorEngine) — attribute-level round-trip.
+      ...(graphic.attributes?.pinned === true
+        ? {
+            pinned: true,
+            xPct: graphic.attributes.xPct,
+            yPct: graphic.attributes.yPct,
+          }
+        : {}),
     };
   }
 
@@ -425,6 +444,10 @@ class SerializationEngine {
 
       (layer.graphics as any).forEach((g: Graphic) => {
         try {
+          // Pinned (screen-anchored) graphics carry a screen-position snapshot,
+          // not real geography — exclude them from geographic exports.
+          if (g.attributes?.pinned === true) return;
+
           const de: any = g.attributes?.drawEssentials;
           const amplifier = de?.AMPLIFIER;
 

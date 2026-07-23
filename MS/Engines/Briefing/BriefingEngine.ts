@@ -1,0 +1,1572 @@
+/**
+ * BriefingEngine.ts
+ *
+ * Briefing / Present mode — capture map states as slides, play them back with
+ * smooth goTo transitions, run a distraction-free full-screen present mode,
+ * stage reveal "builds" (appear / fade / flyIn / drawOn) driven by the
+ * bundled GSAP ticker (window.TweenMax — durations in SECONDS), and arrange
+ * slides in a drag-and-drop slide sorter (openSorter / moveSlide / duplicateSlide).
+ *
+ * Singleton mirroring the DeploymentBuilderEngine lifecycle, dynamically
+ * loaded by SymbolEngine behind the `features.briefing` flag.
+ *
+ * Slides reference graphics by stable `graphic.attributes.id`, which
+ * round-trips through plan save/load. A briefing is persisted as its own
+ * JSON document (exportBriefing / importBriefing / saveBriefingToFile /
+ * loadBriefingFromFile).
+ */
+
+import MapView from '@arcgis/core/views/MapView';
+import SceneView from '@arcgis/core/views/SceneView';
+import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
+import Graphic from '@arcgis/core/Graphic';
+import Extent from '@arcgis/core/geometry/Extent';
+import Camera from '@arcgis/core/Camera';
+import Polyline from '@arcgis/core/geometry/Polyline';
+import Polygon from '@arcgis/core/geometry/Polygon';
+
+import GraphicsLayerManager, {
+  LAYER_NAMES,
+  LEGACY_MIL_SYMBOLS_LAYER_ID,
+  SYMBOL_LAYER_IDS,
+} from '../../Managers/GraphicsLayerManager';
+import type SerializationEngine from '../ImportExport/SerializationEngine';
+import EngineLogger from '../../Support/EngineLogger';
+import settingsData from '../../Data/Settings.json';
+import { overlayToFabric } from './OverlayFabric';
+import type { SlideEditorHost } from './SlideEditor';
+import type {
+  BriefingDocument,
+  BuildStep,
+  CapturedViewState,
+  Slide,
+} from './BriefingTypes';
+
+const ENGINE_NAME = 'BriefingEngine';
+
+/** 3D-headless takeScreenshot hangs — never await a thumbnail longer than this. */
+const THUMBNAIL_TIMEOUT_MS = 2500;
+const THUMB_WIDTH = 240;
+const THUMB_HEIGHT = 135;
+/** Full-res editor background gets longer, but still bounded. */
+const FULL_SCREENSHOT_TIMEOUT_MS = 8000;
+
+/** All layer ids a slide snapshots visibility for. */
+const BRIEFING_LAYER_IDS: readonly string[] = [
+  ...Object.values(LAYER_NAMES),
+  LEGACY_MIL_SYMBOLS_LAYER_ID,
+];
+
+interface ActiveBuild {
+  cancel: () => void;
+}
+
+class BriefingEngine {
+  private static _instance: BriefingEngine | null = null;
+
+  private _view: MapView | SceneView | null = null;
+  private _enabled = false;
+
+  private _slides: Slide[] = [];
+  private _current = -1;
+  private _transitioning = false;
+
+  // Builds
+  private _activeBuilds: ActiveBuild[] = [];
+  /** Graphic ids this engine itself hid (slide exceptions + pending builds). */
+  private _hiddenByBriefing: Set<string> = new Set();
+
+  // Present mode
+  private _presentMode = false;
+  private _savedUiComponents: any = null;
+  private _presentKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+  private _presentClickHandler: ((e: MouseEvent) => void) | null = null;
+  private _presentContainer: HTMLElement | null = null;
+  private _counterEl: HTMLElement | null = null;
+  private _autoplayTimer: number | null = null;
+
+  // Panel UI
+  private _panel: HTMLElement | null = null;
+  private _strip: HTMLElement | null = null;
+
+  // Slide-sorter UI
+  private _sorter: HTMLElement | null = null;
+  private _sorterGrid: HTMLElement | null = null;
+  private _sorterKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+  private _dragIndex: number | null = null;
+
+  // Slide editor + present-mode annotation overlays
+  private _slideEditor: any = null;
+  private _presentOverlay: { el: HTMLCanvasElement; canvas: any } | null = null;
+
+  private constructor() {}
+
+  public static getInstance(): BriefingEngine {
+    if (!BriefingEngine._instance) {
+      BriefingEngine._instance = new BriefingEngine();
+    }
+    return BriefingEngine._instance;
+  }
+
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
+
+  public start(view: MapView | SceneView, _serialEngine?: SerializationEngine): void {
+    this._view = view;
+    this._injectStyles();
+    EngineLogger.success(ENGINE_NAME, 'BriefingEngine started');
+  }
+
+  public onViewChanged(view: MapView | SceneView): void {
+    // Present mode must never survive a view switch — restore HUD/UI first.
+    this.exitPresent();
+    this._slideEditor?.close(false);
+    this._cancelBuilds();
+    this._view = view;
+  }
+
+  public enable(): void {
+    this._enabled = true;
+  }
+
+  public disable(): void {
+    this._enabled = false;
+    this.exitPresent();
+    this._slideEditor?.close(false);
+    this._cancelBuilds();
+    this.closePanel();
+    this.closeSorter();
+  }
+
+  public destroy(): void {
+    this.disable();
+    if (this._panel) {
+      this._panel.remove();
+      this._panel = null;
+      this._strip = null;
+    }
+    if (this._sorter) {
+      this._sorter.remove();
+      this._sorter = null;
+      this._sorterGrid = null;
+    }
+    this._view = null;
+    BriefingEngine._instance = null;
+  }
+
+  private get _layerManager(): GraphicsLayerManager | null {
+    return this._view ? GraphicsLayerManager.getInstance(this._view) : null;
+  }
+
+  private get _cfg(): any {
+    // settingsData is mutated in place by SymbolEngine.onSettingChanged, so
+    // reading lazily always sees the live briefing.* values.
+    return (settingsData as any).briefing ?? {};
+  }
+
+  // ── Slides: capture / query / edit ─────────────────────────────────────────
+
+  /**
+   * Snapshot the current view (2D extent or 3D camera), layer visibility and
+   * per-graphic hidden exceptions into a new slide. The thumbnail is fetched
+   * lazily behind a timeout so a stuck 3D-headless takeScreenshot never
+   * freezes capture.
+   */
+  public captureSlide(title?: string): Slide | null {
+    const v: any = this._view;
+    if (!v || !this._enabled) return null;
+
+    const viewState: CapturedViewState = { capturedIn: v.type === '3d' ? '3d' : '2d' };
+    try {
+      if (viewState.capturedIn === '2d') {
+        viewState.extent = v.extent?.toJSON();
+        if (typeof v.rotation === 'number') viewState.rotation = v.rotation;
+      } else {
+        viewState.camera = v.camera?.toJSON();
+      }
+    } catch (err) {
+      EngineLogger.error(ENGINE_NAME, `Could not snapshot view state: ${err}`);
+    }
+
+    const lm = this._layerManager;
+    const visibleLayers: Record<string, boolean> = {};
+    for (const name of BRIEFING_LAYER_IDS) {
+      const layer = lm?.getLayer(name);
+      if (layer) visibleLayers[name] = layer.visible !== false;
+    }
+
+    // Exceptions only: record graphics currently hidden, keyed by stable id.
+    const graphicVisibility: Record<string, boolean> = {};
+    for (const layerId of SYMBOL_LAYER_IDS) {
+      const layer = lm?.getLayer(layerId);
+      (layer?.graphics as any)?.forEach((g: Graphic) => {
+        const id = g.attributes?.id;
+        if (id && g.visible === false) graphicVisibility[id] = false;
+      });
+    }
+
+    const slide: Slide = {
+      id: this._uuid(),
+      title: title ?? `Slide ${this._slides.length + 1}`,
+      view: viewState,
+      visibleLayers,
+      graphicVisibility: Object.keys(graphicVisibility).length ? graphicVisibility : undefined,
+      transitionMs: Number(this._cfg.defaultTransitionMs) || 1000,
+    };
+    this._slides.push(slide);
+    this._current = this._slides.length - 1;
+    this._refreshStrip();
+    EngineLogger.success(ENGINE_NAME, `Captured "${slide.title}" (${this._slides.length} slides)`);
+
+    void this._tryThumbnail().then((dataUrl) => {
+      if (dataUrl) {
+        slide.thumbnailDataUrl = dataUrl;
+        this._refreshStrip();
+      }
+    });
+    return slide;
+  }
+
+  public getSlides(): readonly Slide[] {
+    return this._slides;
+  }
+
+  public get currentIndex(): number {
+    return this._current;
+  }
+
+  public removeSlide(ref: number | string): void {
+    const idx = this._slideIndex(ref);
+    if (idx < 0) return;
+    this._slides.splice(idx, 1);
+    if (this._current >= this._slides.length) this._current = this._slides.length - 1;
+    this._refreshStrip();
+  }
+
+  public renameSlide(ref: number | string, title: string): void {
+    const idx = this._slideIndex(ref);
+    if (idx < 0) return;
+    this._slides[idx].title = title;
+    this._refreshStrip();
+  }
+
+  public setSlideNotes(ref: number | string, notes: string): void {
+    const idx = this._slideIndex(ref);
+    if (idx >= 0) this._slides[idx].notes = notes;
+  }
+
+  /**
+   * Move a slide so it ends up at index `to`. The current-slide marker keeps
+   * following the slide it was on. Order is the persistence format — the
+   * exported BriefingDocument simply serializes the array.
+   */
+  public moveSlide(from: number | string, to: number): void {
+    const fromIdx = this._slideIndex(from);
+    if (fromIdx < 0) return;
+    const currentId = this._slides[this._current]?.id;
+    const [slide] = this._slides.splice(fromIdx, 1);
+    const clamped = Math.max(0, Math.min(Math.round(to), this._slides.length));
+    this._slides.splice(clamped, 0, slide);
+    if (currentId) this._current = this._slides.findIndex((s) => s.id === currentId);
+    this._refreshStrip();
+  }
+
+  /** Deep-copy a slide (new id, " (copy)" title) and insert it right after the original. */
+  public duplicateSlide(ref: number | string): Slide | null {
+    const idx = this._slideIndex(ref);
+    if (idx < 0) return null;
+    const copy: Slide = JSON.parse(JSON.stringify(this._slides[idx]));
+    copy.id = this._uuid();
+    copy.title = `${this._slides[idx].title} (copy)`;
+    const currentId = this._slides[this._current]?.id;
+    this._slides.splice(idx + 1, 0, copy);
+    if (currentId) this._current = this._slides.findIndex((s) => s.id === currentId);
+    this._refreshStrip();
+    return copy;
+  }
+
+  /** Append a staged-reveal step to a slide (defaults from briefing settings). */
+  public addBuildStep(
+    ref: number | string,
+    step: Partial<BuildStep> & { graphicId: string },
+  ): BuildStep | null {
+    const idx = this._slideIndex(ref);
+    if (idx < 0 || !step.graphicId) return null;
+    const slide = this._slides[idx];
+    const full: BuildStep = {
+      graphicId: step.graphicId,
+      effect: step.effect ?? (this._cfg.defaultEffect as any) ?? 'appear',
+      delayMs: step.delayMs ?? 0,
+      durationMs: step.durationMs ?? 800,
+      flyFrom: step.flyFrom,
+    };
+    (slide.builds ??= []).push(full);
+    return full;
+  }
+
+  public clearBuildSteps(ref: number | string): void {
+    const idx = this._slideIndex(ref);
+    if (idx >= 0) this._slides[idx].builds = undefined;
+  }
+
+  private _slideIndex(ref: number | string): number {
+    if (typeof ref === 'number') {
+      return ref >= 0 && ref < this._slides.length ? ref : -1;
+    }
+    return this._slides.findIndex((s) => s.id === ref);
+  }
+
+  // ── Playback ───────────────────────────────────────────────────────────────
+
+  /**
+   * Fly to a slide, re-apply its layer/graphic visibility, then run its
+   * builds. Rapid Next/Prev is debounced: advances during an in-flight goTo
+   * are ignored (the transition itself swallows AbortError via .catch).
+   */
+  public async goToSlide(index: number): Promise<void> {
+    const v: any = this._view;
+    if (!v || index < 0 || index >= this._slides.length) return;
+    if (this._transitioning) return;
+    this._transitioning = true;
+
+    this._cancelBuilds();
+    this._clearPresentOverlays();
+    this._current = index;
+    const slide = this._slides[index];
+    this._refreshStrip();
+    this._updateCounter();
+
+    try {
+      const target = this._resolveGoToTarget(slide.view);
+      if (target) {
+        await v
+          .goTo(target, {
+            duration: slide.transitionMs ?? 1000,
+            easing: 'ease-in-out',
+          })
+          .catch(() => {}); // user-interrupt AbortError is expected
+      }
+    } finally {
+      this._transitioning = false;
+    }
+
+    this._applySlideState(slide);
+    this._runBuilds(slide);
+    if (this._presentMode) this._renderPresentOverlays(slide);
+  }
+
+  public async nextSlide(): Promise<void> {
+    if (this._current + 1 < this._slides.length) await this.goToSlide(this._current + 1);
+  }
+
+  public async prevSlide(): Promise<void> {
+    if (this._current > 0) await this.goToSlide(this._current - 1);
+  }
+
+  /**
+   * Headless slide apply for the PPTX exporter: jump (no animation) to the
+   * slide's view state and apply its visibility instantly. `revealedBuilds`
+   * is the number of leading build steps whose targets are shown — omit for
+   * the slide's final (all-revealed) state, pass 0..n for explode-builds.
+   */
+  public async applySlideForExport(index: number, revealedBuilds?: number): Promise<Slide | null> {
+    const v: any = this._view;
+    if (!v || index < 0 || index >= this._slides.length) return null;
+    this._cancelBuilds();
+    this._clearPresentOverlays();
+    this._current = index;
+    const slide = this._slides[index];
+    this._refreshStrip();
+
+    const target = this._resolveGoToTarget(slide.view);
+    if (target) await v.goTo(target, { animate: false }).catch(() => {});
+
+    this._applySlideState(slide);
+    const builds = slide.builds ?? [];
+    const reveal = revealedBuilds ?? builds.length;
+    builds.forEach((step, i) => {
+      const g = this._findGraphicById(step.graphicId);
+      if (!g) return;
+      g.visible = i < reveal;
+      if (!g.visible) this._hiddenByBriefing.add(step.graphicId);
+    });
+    return slide;
+  }
+
+  /**
+   * Resolve the goTo target from stored state — prefer the representation
+   * matching the active view type; fall back to the other and let goTo adapt.
+   */
+  private _resolveGoToTarget(state: CapturedViewState): any {
+    const is3D = this._view?.type === '3d';
+    try {
+      if (is3D && state.camera) return Camera.fromJSON(state.camera);
+      if (!is3D && state.extent) {
+        const extent = Extent.fromJSON(state.extent);
+        return state.rotation != null ? { target: extent, rotation: state.rotation } : extent;
+      }
+      if (state.camera) {
+        const camera = Camera.fromJSON(state.camera);
+        // MapView.goTo does not accept a Camera — a 3D-captured slide played
+        // in 2D degrades to centering on the camera position (zoom untouched).
+        return is3D ? camera : { target: camera.position };
+      }
+      if (state.extent) return Extent.fromJSON(state.extent);
+    } catch (err) {
+      EngineLogger.error(ENGINE_NAME, `Could not resolve slide view state: ${err}`);
+    }
+    return null;
+  }
+
+  /** Re-apply a slide's layer visibility and per-graphic exceptions. */
+  private _applySlideState(slide: Slide): void {
+    const lm = this._layerManager;
+    if (!lm) return;
+
+    // Restore everything this engine hid on previous slides before applying
+    // the new slide's exceptions — never stomp visibility managed elsewhere
+    // (declutter zoom-hiding etc.).
+    for (const id of this._hiddenByBriefing) {
+      const g = this._findGraphicById(id);
+      if (g) g.visible = true;
+    }
+    this._hiddenByBriefing.clear();
+
+    for (const [name, vis] of Object.entries(slide.visibleLayers ?? {})) {
+      const layer = lm.getLayer(name);
+      if (layer) layer.visible = vis;
+    }
+
+    for (const [id, vis] of Object.entries(slide.graphicVisibility ?? {})) {
+      const g = this._findGraphicById(id);
+      if (!g) continue;
+      g.visible = vis;
+      if (!vis) this._hiddenByBriefing.add(id);
+    }
+  }
+
+  // ── Build effects ──────────────────────────────────────────────────────────
+
+  /**
+   * Schedule every BuildStep at its delayMs from slide-enter (shared clock,
+   * steps may overlap). Build targets start hidden and reveal via the effect.
+   */
+  private _runBuilds(slide: Slide): void {
+    const steps = slide.builds ?? [];
+    if (!steps.length) return;
+
+    // Hide all build targets up front so staggered steps reveal them.
+    for (const step of steps) {
+      const g = this._findGraphicById(step.graphicId);
+      if (g) {
+        g.visible = false;
+        this._hiddenByBriefing.add(step.graphicId);
+      }
+    }
+
+    for (const step of steps) {
+      const timer = window.setTimeout(() => this._startEffect(step), Math.max(0, step.delayMs));
+      this._activeBuilds.push({
+        cancel: () => {
+          clearTimeout(timer);
+          const g = this._findGraphicById(step.graphicId);
+          if (g) g.visible = true;
+        },
+      });
+    }
+  }
+
+  private _startEffect(step: BuildStep): void {
+    const g = this._findGraphicById(step.graphicId);
+    if (!g) return;
+    const TweenMax = (window as any).TweenMax;
+    const durationSec = Math.max(0, step.durationMs) / 1000; // GSAP wants SECONDS
+
+    if (!TweenMax || step.durationMs <= 0 || step.effect === 'appear') {
+      g.visible = true;
+      return;
+    }
+
+    switch (step.effect) {
+      case 'fade':
+        this._runFade(g, durationSec, TweenMax);
+        break;
+      case 'flyIn':
+        this._runFlyIn(g, step, durationSec, TweenMax);
+        break;
+      case 'drawOn':
+        this._runDrawOn(g, durationSec, TweenMax);
+        break;
+      default:
+        g.visible = true;
+    }
+  }
+
+  /**
+   * ArcGIS graphics have no per-graphic opacity — fade through a private temp
+   * layer's opacity, then restore the graphic to its origin layer.
+   */
+  private _runFade(g: Graphic, durationSec: number, TweenMax: any): void {
+    const v: any = this._view;
+    const origin: any = (g as any).layer;
+    if (!v?.map || !origin) {
+      g.visible = true;
+      return;
+    }
+
+    const temp = new GraphicsLayer({
+      listMode: 'hide',
+      elevationInfo: { mode: 'on-the-ground' },
+    } as any);
+    v.map.add(temp);
+    origin.remove(g);
+    temp.add(g);
+    temp.opacity = 0;
+    g.visible = true;
+
+    let finalized = false;
+    const finalize = () => {
+      if (finalized) return;
+      finalized = true;
+      try {
+        temp.remove(g);
+        origin.add(g);
+        this._view?.map?.remove(temp);
+      } catch {
+        /* view may be tearing down */
+      }
+    };
+
+    const tween = TweenMax.to(temp, durationSec, { opacity: 1, onComplete: finalize });
+    this._activeBuilds.push({
+      cancel: () => {
+        try {
+          tween?.kill?.();
+        } catch {}
+        finalize();
+        g.visible = true;
+      },
+    });
+  }
+
+  /** Translate in from an offset, easing back to the true position. */
+  private _runFlyIn(g: Graphic, step: BuildStep, durationSec: number, TweenMax: any): void {
+    const geom: any = g.geometry;
+    if (!geom) {
+      g.visible = true;
+      return;
+    }
+    const original = geom.clone();
+    const extentWidth = (this._view as any)?.extent?.width ?? 4000;
+    const dx = step.flyFrom?.dx ?? -extentWidth / 4;
+    const dy = step.flyFrom?.dy ?? 0;
+
+    const state = { t: 1 };
+    g.geometry = this._translateGeometry(original, dx, dy);
+    g.visible = true;
+
+    const tween = TweenMax.to(state, durationSec, {
+      t: 0,
+      onUpdate: () => {
+        g.geometry = this._translateGeometry(original, dx * state.t, dy * state.t);
+      },
+      onComplete: () => {
+        g.geometry = original;
+      },
+    });
+    this._activeBuilds.push({
+      cancel: () => {
+        try {
+          tween?.kill?.();
+        } catch {}
+        g.geometry = original;
+        g.visible = true;
+      },
+    });
+  }
+
+  /** Progressive polyline/ring reveal by re-assigning a growing vertex slice. */
+  private _runDrawOn(g: Graphic, durationSec: number, TweenMax: any): void {
+    const geom: any = g.geometry;
+    if (!geom || (geom.type !== 'polyline' && geom.type !== 'polygon')) {
+      // Points / other geometries have nothing to trace — appear instead.
+      g.visible = true;
+      return;
+    }
+    const original = geom.clone();
+    const isLine = original.type === 'polyline';
+    const paths: number[][][] = isLine ? original.paths : original.rings;
+    const total = paths.reduce((n: number, p: number[][]) => n + p.length, 0);
+    if (total < 3) {
+      g.visible = true;
+      return;
+    }
+
+    const sr = original.spatialReference;
+    const state = { p: 0 };
+    const applyFraction = (fraction: number) => {
+      let budget = Math.max(2, Math.round(total * fraction));
+      const partial: number[][][] = [];
+      for (const path of paths) {
+        if (budget <= 0) break;
+        const take = Math.min(path.length, Math.max(2, budget));
+        partial.push(path.slice(0, take));
+        budget -= take;
+      }
+      g.geometry = isLine
+        ? new Polyline({ paths: partial, spatialReference: sr })
+        : new Polygon({ rings: partial, spatialReference: sr });
+    };
+
+    applyFraction(0);
+    g.visible = true;
+
+    const tween = TweenMax.to(state, durationSec, {
+      p: 1,
+      onUpdate: () => applyFraction(state.p),
+      onComplete: () => {
+        g.geometry = original;
+      },
+    });
+    this._activeBuilds.push({
+      cancel: () => {
+        try {
+          tween?.kill?.();
+        } catch {}
+        g.geometry = original;
+        g.visible = true;
+      },
+    });
+  }
+
+  /** Pure translation clone — geometry only; builds always end at the true position. */
+  private _translateGeometry(original: any, dx: number, dy: number): any {
+    const clone = original.clone();
+    if (clone.type === 'point') {
+      clone.x += dx;
+      clone.y += dy;
+    } else if (clone.type === 'polyline') {
+      clone.paths = clone.paths.map((path: number[][]) =>
+        path.map((pt: number[]) => [pt[0] + dx, pt[1] + dy, ...pt.slice(2)]),
+      );
+    } else if (clone.type === 'polygon') {
+      clone.rings = clone.rings.map((ring: number[][]) =>
+        ring.map((pt: number[]) => [pt[0] + dx, pt[1] + dy, ...pt.slice(2)]),
+      );
+    }
+    return clone;
+  }
+
+  private _cancelBuilds(): void {
+    const builds = this._activeBuilds;
+    this._activeBuilds = [];
+    for (const b of builds) {
+      try {
+        b.cancel();
+      } catch {}
+    }
+  }
+
+  // ── Present mode ───────────────────────────────────────────────────────────
+
+  /**
+   * Distraction-free playback: hides the HUD via a body class, clears the
+   * ArcGIS view UI, and drives navigation from the engine's OWN keydown
+   * listener (KeyboardShortcutManager swallows keys inside inputs and owns an
+   * Esc chain — present mode must not route through it).
+   */
+  public enterPresent(): void {
+    if (this._presentMode || !this._enabled) return;
+    if (!this._slides.length) {
+      EngineLogger.error(ENGINE_NAME, 'Cannot present: no slides captured');
+      return;
+    }
+    this.closeSorter();
+    const v: any = this._view;
+    this._presentMode = true;
+    document.body.classList.add('ms-present-mode');
+
+    try {
+      this._savedUiComponents = v?.ui ? [...(v.ui.components ?? [])] : null;
+      if (v?.ui) v.ui.components = [];
+    } catch {
+      this._savedUiComponents = null;
+    }
+
+    this._presentKeyHandler = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'Escape':
+          e.stopPropagation();
+          e.preventDefault();
+          this.exitPresent();
+          break;
+        case 'ArrowRight':
+        case ' ':
+        case 'PageDown':
+          e.stopPropagation();
+          e.preventDefault();
+          void this.nextSlide();
+          break;
+        case 'ArrowLeft':
+        case 'PageUp':
+          e.stopPropagation();
+          e.preventDefault();
+          void this.prevSlide();
+          break;
+      }
+    };
+    // Capture phase so present-mode keys win over every other document handler.
+    document.addEventListener('keydown', this._presentKeyHandler, true);
+
+    this._presentClickHandler = () => {
+      void this.nextSlide();
+    };
+    this._presentContainer = v?.container ?? null;
+    this._presentContainer?.addEventListener('click', this._presentClickHandler);
+
+    this._ensureCounter();
+    if (this._current < 0) {
+      void this.goToSlide(0);
+    } else {
+      this._updateCounter();
+      const cur = this._slides[this._current];
+      if (cur) this._renderPresentOverlays(cur);
+    }
+    EngineLogger.success(ENGINE_NAME, 'Present mode entered (Esc to exit)');
+  }
+
+  /** Idempotent — also called from onViewChanged / disable / destroy. */
+  public exitPresent(): void {
+    if (!this._presentMode && !document.body.classList.contains('ms-present-mode')) return;
+    this._presentMode = false;
+    document.body.classList.remove('ms-present-mode');
+
+    const v: any = this._view;
+    try {
+      if (v?.ui && this._savedUiComponents) v.ui.components = this._savedUiComponents;
+    } catch {}
+    this._savedUiComponents = null;
+
+    if (this._presentKeyHandler) {
+      document.removeEventListener('keydown', this._presentKeyHandler, true);
+      this._presentKeyHandler = null;
+    }
+    if (this._presentClickHandler && this._presentContainer) {
+      this._presentContainer.removeEventListener('click', this._presentClickHandler);
+    }
+    this._presentClickHandler = null;
+    this._presentContainer = null;
+
+    this._clearPresentOverlays();
+    this.stopAutoplay();
+    this._removeCounter();
+    EngineLogger.success(ENGINE_NAME, 'Present mode exited');
+  }
+
+  public togglePresent(): void {
+    this._presentMode ? this.exitPresent() : this.enterPresent();
+  }
+
+  public startAutoplay(intervalMs?: number): void {
+    this.stopAutoplay();
+    const interval = intervalMs ?? Number(this._cfg.autoplayIntervalMs) ?? 5000;
+    this._autoplayTimer = window.setInterval(() => {
+      if (this._current + 1 >= this._slides.length) {
+        this.stopAutoplay();
+        return;
+      }
+      void this.nextSlide();
+    }, Math.max(500, interval));
+  }
+
+  public stopAutoplay(): void {
+    if (this._autoplayTimer !== null) {
+      clearInterval(this._autoplayTimer);
+      this._autoplayTimer = null;
+    }
+  }
+
+  // ── Persistence ────────────────────────────────────────────────────────────
+
+  public exportBriefing(): BriefingDocument {
+    // version 2 = slides may carry editor overlays; import accepts 1 or 2.
+    return { version: 2, slides: this._slides.map((s) => ({ ...s })) };
+  }
+
+  public importBriefing(doc: BriefingDocument | null | undefined): void {
+    if (!doc || !Array.isArray(doc.slides)) {
+      EngineLogger.error(ENGINE_NAME, 'Invalid briefing document');
+      return;
+    }
+    this._cancelBuilds();
+    this._slides = doc.slides.map((s) => ({ ...s }));
+    this._current = -1;
+    this._refreshStrip();
+    EngineLogger.success(ENGINE_NAME, `Briefing imported — ${this._slides.length} slides`);
+  }
+
+  public saveBriefingToFile(filename?: string): void {
+    this._downloadJSON(this.exportBriefing(), filename ?? `pams8_briefing_${Date.now()}.json`);
+  }
+
+  public loadBriefingFromFile(): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          this.importBriefing(JSON.parse(String(reader.result)));
+        } catch (err) {
+          EngineLogger.error(ENGINE_NAME, `Could not parse briefing file: ${err}`);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
+  // ── Slide-strip panel ──────────────────────────────────────────────────────
+
+  public openPanel(): void {
+    if (!this._panel) this._buildPanel();
+    this._panel!.style.display = 'flex';
+    this._refreshStrip();
+  }
+
+  public closePanel(): void {
+    if (this._panel) this._panel.style.display = 'none';
+  }
+
+  private _buildPanel(): void {
+    const panel = document.createElement('div');
+    panel.id = 'briefingPanel';
+    panel.innerHTML = `
+      <div class="ms-briefing-header">
+        <span class="ms-briefing-title">🎬 Briefing</span>
+        <button class="ms-briefing-btn primary" data-act="capture" title="Capture the current view, layer visibility and hidden graphics as a new slide.">＋ Capture</button>
+        <button class="ms-briefing-btn" data-act="prev" title="Previous slide (goTo transition).">◀</button>
+        <button class="ms-briefing-btn" data-act="next" title="Next slide (goTo transition).">▶</button>
+        <button class="ms-briefing-btn" data-act="present" title="Enter full-screen present mode — Esc exits, arrows/space/click advance.">▶ Present</button>
+        <button class="ms-briefing-btn" data-act="sorter" title="Open the slide sorter — drag tiles to reorder, duplicate or remove slides.">⊞ Sorter</button>
+        <button class="ms-briefing-btn" data-act="save" title="Download this briefing as a JSON file.">⬇</button>
+        <button class="ms-briefing-btn" data-act="load" title="Load a briefing JSON file.">⬆</button>
+        <button class="ms-briefing-btn" data-act="close" title="Close the briefing panel.">✕</button>
+      </div>
+      <div class="ms-briefing-strip"></div>`;
+    document.body.appendChild(panel);
+    this._panel = panel;
+    this._strip = panel.querySelector('.ms-briefing-strip') as HTMLElement;
+
+    panel.querySelector('.ms-briefing-header')!.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('[data-act]') as HTMLElement | null;
+      if (!btn) return;
+      switch (btn.dataset.act) {
+        case 'capture':
+          this.captureSlide();
+          break;
+        case 'prev':
+          void this.prevSlide();
+          break;
+        case 'next':
+          void this.nextSlide();
+          break;
+        case 'present':
+          this.enterPresent();
+          break;
+        case 'sorter':
+          this.toggleSorter();
+          break;
+        case 'save':
+          this.saveBriefingToFile();
+          break;
+        case 'load':
+          this.loadBriefingFromFile();
+          break;
+        case 'close':
+          this.closePanel();
+          break;
+      }
+    });
+  }
+
+  private _refreshStrip(): void {
+    // Every slide mutation funnels through here — keep the sorter in sync
+    // even when the strip panel was never built.
+    this._refreshSorter();
+    if (!this._strip) return;
+    this._strip.innerHTML = '';
+    this._slides.forEach((slide, i) => {
+      const tile = document.createElement('div');
+      tile.className = 'ms-briefing-tile' + (i === this._current ? ' active' : '');
+      tile.title = `${slide.title}${slide.notes ? `\n${slide.notes}` : ''}\n(click: go to · dblclick/✎: edit)`;
+      if (slide.thumbnailDataUrl) {
+        tile.style.backgroundImage = `url(${slide.thumbnailDataUrl})`;
+      }
+      tile.innerHTML = `
+        <span class="ms-briefing-tile-num">${i + 1}</span>
+        <span class="ms-briefing-tile-title">${this._escapeHtml(slide.title)}</span>
+        <button class="ms-briefing-tile-edit" title="Edit slide — text, shapes, arrows, colors.">✎</button>
+        <button class="ms-briefing-tile-del" title="Remove this slide.">✕</button>`;
+      tile.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('.ms-briefing-tile-edit')) {
+          void this.openSlideEditor(i);
+        } else if ((e.target as HTMLElement).closest('.ms-briefing-tile-del')) {
+          this.removeSlide(i);
+        } else {
+          void this.goToSlide(i);
+        }
+      });
+      tile.addEventListener('dblclick', (e) => {
+        if ((e.target as HTMLElement).closest('.ms-briefing-tile-del, .ms-briefing-tile-edit')) {
+          return;
+        }
+        void this.openSlideEditor(i);
+      });
+      this._strip!.appendChild(tile);
+    });
+  }
+
+  // ── Slide sorter ───────────────────────────────────────────────────────────
+
+  /**
+   * Full-screen sorter grid — drag tiles to reorder, click to go to a slide,
+   * double-click to rename, ⧉/✕ to duplicate/remove. Esc (capture phase, same
+   * rationale as present mode) or Done closes it.
+   */
+  public openSorter(): void {
+    if (!this._enabled) return;
+    if (!this._sorter) this._buildSorter();
+    this._sorter!.style.display = 'flex';
+    this._refreshSorter();
+    if (!this._sorterKeyHandler) {
+      this._sorterKeyHandler = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          e.preventDefault();
+          this.closeSorter();
+        }
+      };
+      document.addEventListener('keydown', this._sorterKeyHandler, true);
+    }
+  }
+
+  public closeSorter(): void {
+    if (this._sorter) this._sorter.style.display = 'none';
+    if (this._sorterKeyHandler) {
+      document.removeEventListener('keydown', this._sorterKeyHandler, true);
+      this._sorterKeyHandler = null;
+    }
+    this._dragIndex = null;
+  }
+
+  public toggleSorter(): void {
+    this._sorter?.style.display === 'flex' ? this.closeSorter() : this.openSorter();
+  }
+
+  private _buildSorter(): void {
+    const el = document.createElement('div');
+    el.id = 'briefingSorter';
+    el.innerHTML = `
+      <div class="ms-sorter-header">
+        <span class="ms-sorter-icon">⊞</span>
+        <span class="ms-sorter-title">Slide Sorter</span>
+        <span class="ms-sorter-count"></span>
+        <span class="ms-sorter-hint">drag to reorder · click: go to · double-click: rename · ⧉ duplicate · ✕ remove</span>
+        <button class="ms-sorter-done" data-act="close" title="Close the slide sorter (Esc).">Done</button>
+      </div>
+      <div class="ms-sorter-grid"></div>`;
+    document.body.appendChild(el);
+    this._sorter = el;
+    this._sorterGrid = el.querySelector('.ms-sorter-grid') as HTMLElement;
+
+    el.querySelector('[data-act="close"]')!.addEventListener('click', () => this.closeSorter());
+
+    // Dropping in empty grid space (past the last tile) moves to the end.
+    this._sorterGrid.addEventListener('dragover', (e) => {
+      if (this._dragIndex !== null) e.preventDefault();
+    });
+    this._sorterGrid.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (this._dragIndex === null) return;
+      const from = this._dragIndex;
+      this._dragIndex = null;
+      this.moveSlide(from, this._slides.length - 1);
+    });
+  }
+
+  private _refreshSorter(): void {
+    const grid = this._sorterGrid;
+    if (!grid || this._sorter?.style.display !== 'flex') return;
+    grid.innerHTML = '';
+
+    const count = this._sorter!.querySelector('.ms-sorter-count');
+    if (count) {
+      count.textContent =
+        this._slides.length === 1 ? '1 slide' : `${this._slides.length} slides`;
+    }
+
+    if (!this._slides.length) {
+      const empty = document.createElement('div');
+      empty.className = 'ms-sorter-empty';
+      empty.textContent = 'No slides yet — capture some from the Briefing panel.';
+      grid.appendChild(empty);
+      return;
+    }
+
+    this._slides.forEach((slide, i) => {
+      const tile = document.createElement('div');
+      tile.className = 'ms-sorter-tile' + (i === this._current ? ' active' : '');
+      tile.draggable = true;
+      tile.title = `${slide.title}${slide.notes ? `\n${slide.notes}` : ''}`;
+      if (slide.thumbnailDataUrl) {
+        tile.style.backgroundImage = `url(${slide.thumbnailDataUrl})`;
+      }
+      const buildCount = slide.builds?.length ?? 0;
+      tile.innerHTML = `
+        <span class="ms-sorter-tile-num">${i + 1}</span>
+        ${buildCount ? `<span class="ms-sorter-tile-builds" title="${buildCount} build step(s)">⚡${buildCount}</span>` : ''}
+        <span class="ms-sorter-tile-title">${this._escapeHtml(slide.title)}</span>
+        <span class="ms-sorter-tile-actions">
+          <button class="ms-sorter-tile-btn" data-act="dup" title="Duplicate this slide.">⧉</button>
+          <button class="ms-sorter-tile-btn" data-act="del" title="Remove this slide.">✕</button>
+        </span>`;
+
+      tile.addEventListener('click', (e) => {
+        const act = ((e.target as HTMLElement).closest('[data-act]') as HTMLElement | null)
+          ?.dataset.act;
+        if (act === 'del') {
+          this.removeSlide(i);
+        } else if (act === 'dup') {
+          this.duplicateSlide(i);
+        } else {
+          void this.goToSlide(i);
+        }
+      });
+      tile.addEventListener('dblclick', (e) => {
+        if ((e.target as HTMLElement).closest('[data-act]')) return;
+        const title = prompt('Slide title', slide.title);
+        if (title != null && title.trim()) this.renameSlide(i, title.trim());
+      });
+
+      tile.addEventListener('dragstart', (e) => {
+        this._dragIndex = i;
+        tile.classList.add('dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', String(i)); // Firefox needs data set
+          this._setDragImage(e, slide, i);
+        }
+      });
+      tile.addEventListener('dragend', () => {
+        this._dragIndex = null;
+        this._clearDropMarkers();
+      });
+      tile.addEventListener('dragover', (e) => {
+        if (this._dragIndex === null || this._dragIndex === i) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        this._clearDropMarkers();
+        tile.classList.add(this._dropsBefore(e, tile) ? 'drop-before' : 'drop-after');
+      });
+      tile.addEventListener('dragleave', () => {
+        tile.classList.remove('drop-before', 'drop-after');
+      });
+      tile.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this._dragIndex === null || this._dragIndex === i) return;
+        const from = this._dragIndex;
+        this._dragIndex = null;
+        // Insertion point in the pre-move array, shifted for the removal.
+        let insertAt = this._dropsBefore(e, tile) ? i : i + 1;
+        if (insertAt > from) insertAt -= 1;
+        this.moveSlide(from, insertAt);
+      });
+
+      grid.appendChild(tile);
+    });
+  }
+
+  /** Left half of a tile inserts before it, right half after. */
+  private _dropsBefore(e: DragEvent, tile: HTMLElement): boolean {
+    const rect = tile.getBoundingClientRect();
+    return e.clientX < rect.left + rect.width / 2;
+  }
+
+  /**
+   * Custom drag preview — the native ghost is an oversized translucent
+   * snapshot of the grid tile; replace it with a compact card. The browser
+   * rasterizes the element synchronously during dragstart, so it can leave
+   * the DOM on the next tick.
+   */
+  private _setDragImage(e: DragEvent, slide: Slide, index: number): void {
+    const ghost = document.createElement('div');
+    ghost.className = 'ms-sorter-ghost';
+    if (slide.thumbnailDataUrl) {
+      ghost.style.backgroundImage = `url(${slide.thumbnailDataUrl})`;
+    }
+    ghost.innerHTML = `
+      <span class="ms-sorter-tile-num">${index + 1}</span>
+      <span class="ms-sorter-tile-title">${this._escapeHtml(slide.title)}</span>`;
+    document.body.appendChild(ghost);
+    e.dataTransfer!.setDragImage(ghost, 88, 50);
+    setTimeout(() => ghost.remove(), 0);
+  }
+
+  private _clearDropMarkers(): void {
+    this._sorterGrid
+      ?.querySelectorAll('.drop-before, .drop-after, .dragging')
+      .forEach((el) => el.classList.remove('drop-before', 'drop-after', 'dragging'));
+  }
+
+  // ── Slide editor (annotations) ─────────────────────────────────────────────
+
+  /**
+   * Open the full-screen PowerPoint-like editor for a slide. The editor works
+   * on a frozen full-res screenshot of the slide's map state; saved
+   * annotations live on slide.overlays, render in present mode, and re-emit
+   * as native objects in the PPTX export.
+   */
+  public async openSlideEditor(ref: number | string): Promise<void> {
+    const idx = this._slideIndex(ref);
+    if (idx < 0 || !this._enabled) return;
+    this.exitPresent(); // editor and present mode are mutually exclusive
+    this.closeSorter();
+    try {
+      const { default: SlideEditor } = await import('./SlideEditor');
+      const editor = SlideEditor.getInstance();
+      if (editor.isOpen()) return;
+      this._slideEditor = editor;
+      await editor.open(this._editorHost(), idx);
+    } catch (err) {
+      EngineLogger.error(ENGINE_NAME, `Could not open slide editor: ${err}`);
+    }
+  }
+
+  private _editorHost(): SlideEditorHost {
+    return {
+      getSlide: (i: number) => this._slides[i] ?? null,
+      prepareBackground: async (i: number) => {
+        await this.applySlideForExport(i);
+        await this._settleView();
+        return (await this._tryFullScreenshot()) ?? null;
+      },
+      onSaved: (i: number, patch) => {
+        const s = this._slides[i];
+        if (!s) return;
+        s.title = patch.title;
+        s.notes = patch.notes;
+        s.overlays = patch.overlays;
+        if (patch.thumbnailDataUrl) s.thumbnailDataUrl = patch.thumbnailDataUrl;
+        this._refreshStrip();
+        EngineLogger.success(
+          ENGINE_NAME,
+          `Slide "${s.title}" saved (${patch.overlays?.length ?? 0} annotations)`,
+        );
+      },
+    };
+  }
+
+  /**
+   * Present-mode annotation overlays — a transparent StaticCanvas stretched
+   * over the view (pointer-events none; takeScreenshot never captures DOM,
+   * so exports are unaffected). Static in v1: drawn after the transition,
+   * cleared on slide change / exit.
+   */
+  private _renderPresentOverlays(slide: Slide): void {
+    this._clearPresentOverlays();
+    const fabric = (window as any).fabric;
+    const v: any = this._view;
+    if (!fabric || !v?.container || !slide.overlays?.length) return;
+    const el = document.createElement('canvas');
+    el.className = 'ms-briefing-overlay-canvas';
+    v.container.appendChild(el);
+    const sc = new fabric.StaticCanvas(el, { width: v.width, height: v.height });
+    for (const o of slide.overlays) {
+      const obj = overlayToFabric(o, v.width, v.height);
+      if (obj) sc.add(obj);
+    }
+    sc.renderAll();
+    this._presentOverlay = { el, canvas: sc };
+  }
+
+  private _clearPresentOverlays(): void {
+    if (!this._presentOverlay) return;
+    try {
+      this._presentOverlay.canvas.dispose();
+    } catch {}
+    this._presentOverlay.el.remove();
+    this._presentOverlay = null;
+  }
+
+  // ── Present-mode counter HUD ───────────────────────────────────────────────
+
+  private _ensureCounter(): void {
+    if (this._counterEl) return;
+    const el = document.createElement('div');
+    el.className = 'ms-briefing-counter';
+    document.body.appendChild(el);
+    this._counterEl = el;
+    this._updateCounter();
+  }
+
+  private _updateCounter(): void {
+    if (!this._counterEl) return;
+    const slide = this._slides[this._current];
+    this._counterEl.textContent = slide
+      ? `${this._current + 1} / ${this._slides.length} — ${slide.title}`
+      : `${this._slides.length} slides`;
+  }
+
+  private _removeCounter(): void {
+    this._counterEl?.remove();
+    this._counterEl = null;
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  private _findGraphicById(id: string): Graphic | null {
+    const lm = this._layerManager;
+    if (!lm) return null;
+    for (const layerId of SYMBOL_LAYER_IDS) {
+      const layer = lm.getLayer(layerId);
+      const hit = (layer?.graphics as any)?.find((g: Graphic) => g.attributes?.id === id);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  /**
+   * Screenshot guarded with a timeout — takeScreenshot HANGS in a 3D
+   * SceneView under headless preview (rAF frozen); never let it block.
+   */
+  private async _tryThumbnail(): Promise<string | undefined> {
+    const v: any = this._view;
+    if (!v?.takeScreenshot) return undefined;
+    try {
+      const shot: any = await Promise.race([
+        v.takeScreenshot({ width: THUMB_WIDTH, height: THUMB_HEIGHT }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), THUMBNAIL_TIMEOUT_MS)),
+      ]);
+      return shot?.dataUrl ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Full-view screenshot for the slide-editor background (same hang guard). */
+  private async _tryFullScreenshot(): Promise<string | undefined> {
+    const v: any = this._view;
+    if (!v?.takeScreenshot) return undefined;
+    const viewW = Number(v.width) || 1280;
+    const viewH = Number(v.height) || 720;
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    const width = Math.min(Math.round(viewW * pixelRatio), 1920);
+    const height = Math.round(width * (viewH / viewW));
+    try {
+      const shot: any = await Promise.race([
+        v.takeScreenshot({ width, height }),
+        new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), FULL_SCREENSHOT_TIMEOUT_MS),
+        ),
+      ]);
+      return shot?.dataUrl ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Give the renderer a beat after a headless slide-apply (always bounded). */
+  private _settleView(): Promise<void> {
+    const v: any = this._view;
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (!done) {
+          done = true;
+          resolve();
+        }
+      };
+      try {
+        const handle = v?.watch?.('updating', (updating: boolean) => {
+          if (!updating) {
+            handle?.remove?.();
+            finish();
+          }
+        });
+        if (v?.updating === false) {
+          handle?.remove?.();
+          finish();
+        }
+      } catch {
+        /* fall through to timer */
+      }
+      setTimeout(finish, 1500);
+    });
+  }
+
+  private _downloadJSON(data: any, filename: string): void {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private _uuid(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  private _escapeHtml(s: string): string {
+    return s.replace(/[&<>"']/g, (ch) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!,
+    );
+  }
+
+  private _injectStyles(): void {
+    if (document.getElementById('ms-briefing-style')) return;
+    const style = document.createElement('style');
+    style.id = 'ms-briefing-style';
+    style.textContent = `
+      /* Present mode hides the HUD (top bar + panels + the briefing strip). */
+      .ms-present-mode #infoDiv,
+      .ms-present-mode #settingsPanel,
+      .ms-present-mode #apiPanel,
+      .ms-present-mode #analysisHubPanel,
+      .ms-present-mode #engineLogPanel,
+      .ms-present-mode #briefingPanel,
+      .ms-present-mode #briefingSorter { display: none !important; }
+
+      #briefingPanel {
+        position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+        z-index: 9500; display: none; flex-direction: column; gap: 6px;
+        max-width: min(92vw, 980px); padding: 8px 10px;
+        background: rgba(18, 22, 26, 0.92); border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+        font: 12px/1.4 system-ui, sans-serif; color: #dde3e8;
+      }
+      .ms-briefing-header { display: flex; align-items: center; gap: 6px; }
+      .ms-briefing-title { font-weight: 600; margin-right: 4px; white-space: nowrap; }
+      .ms-briefing-btn {
+        background: rgba(255,255,255,0.08); color: #dde3e8;
+        border: 1px solid rgba(255,255,255,0.16); border-radius: 5px;
+        padding: 4px 9px; cursor: pointer; font: inherit; white-space: nowrap;
+      }
+      .ms-briefing-btn:hover { background: rgba(255,255,255,0.16); }
+      .ms-briefing-btn.primary { background: #2d6cdf; border-color: #2d6cdf; color: #fff; }
+      .ms-briefing-btn.primary:hover { background: #3f7ceb; }
+      .ms-briefing-strip {
+        display: flex; gap: 8px; overflow-x: auto; padding: 2px;
+        min-height: 68px; scrollbar-width: thin;
+      }
+      .ms-briefing-tile {
+        position: relative; flex: 0 0 auto; width: 108px; height: 64px;
+        border: 2px solid rgba(255,255,255,0.18); border-radius: 6px;
+        background: linear-gradient(135deg, #26313a, #17202a) center/cover no-repeat;
+        cursor: pointer; overflow: hidden;
+      }
+      .ms-briefing-tile.active { border-color: #2d6cdf; }
+      .ms-briefing-tile-num {
+        position: absolute; top: 3px; left: 5px; font-weight: 700;
+        color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+      }
+      .ms-briefing-tile-title {
+        position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 5px;
+        background: rgba(0,0,0,0.55); color: #eef2f5; font-size: 10px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .ms-briefing-tile-del {
+        position: absolute; top: 2px; right: 2px; width: 16px; height: 16px;
+        border: none; border-radius: 3px; background: rgba(0,0,0,0.55);
+        color: #f1b0b0; font-size: 10px; line-height: 1; cursor: pointer;
+        display: none;
+      }
+      .ms-briefing-tile:hover .ms-briefing-tile-del { display: block; }
+      .ms-briefing-tile-edit {
+        position: absolute; top: 2px; right: 22px; width: 16px; height: 16px;
+        border: none; border-radius: 3px; background: rgba(0,0,0,0.55);
+        color: #9ecbff; font-size: 10px; line-height: 1; cursor: pointer;
+        display: none;
+      }
+      .ms-briefing-tile:hover .ms-briefing-tile-edit { display: block; }
+      /* Present-mode annotation overlay — above the map, below the counter. */
+      .ms-briefing-overlay-canvas {
+        position: absolute; inset: 0; pointer-events: none; z-index: 40;
+      }
+      .ms-briefing-counter {
+        position: fixed; right: 16px; bottom: 12px; z-index: 9600;
+        padding: 4px 10px; border-radius: 6px;
+        background: rgba(18, 22, 26, 0.75); color: #dde3e8;
+        font: 12px/1.4 system-ui, sans-serif; pointer-events: none;
+      }
+
+      /* Slide sorter overlay — shares the Widgets.css ops-dark design tokens
+         (fallbacks keep it usable if a host app doesn't load that stylesheet). */
+      #briefingSorter {
+        position: fixed; inset: 0; z-index: 9550; display: none;
+        flex-direction: column;
+        background: rgba(13, 16, 22, 0.93);
+        backdrop-filter: blur(10px);
+        font-family: var(--ms-font, 'Segoe UI', system-ui, sans-serif);
+        font-size: 12.5px; color: var(--ms-text, #dce8f5);
+        animation: msSorterIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      @keyframes msSorterIn {
+        from { opacity: 0; transform: scale(0.985); }
+        to   { opacity: 1; transform: scale(1); }
+      }
+      .ms-sorter-header {
+        display: flex; align-items: center; gap: 10px;
+        padding: 11px 18px; flex-shrink: 0;
+        background: var(--ms-bg-header, rgba(26, 32, 48, 0.97));
+        border-bottom: 1px solid var(--ms-divider, rgba(80, 100, 150, 0.18));
+      }
+      .ms-sorter-icon {
+        font-size: 12px; font-weight: 700; padding: 2px 6px;
+        color: var(--ms-accent, #EF9F27);
+        border: 1px solid var(--ms-border, rgba(90, 140, 220, 0.25));
+        border-radius: 3px;
+      }
+      .ms-sorter-title {
+        font-size: 15px; font-weight: 700; letter-spacing: 0.12em;
+        text-transform: uppercase; color: var(--ms-accent, #EF9F27);
+        white-space: nowrap;
+      }
+      .ms-sorter-count {
+        font-family: var(--ms-font-mono, Consolas, monospace);
+        font-size: 11px; font-weight: 700; padding: 1px 9px;
+        color: var(--ms-accent, #EF9F27);
+        background: rgba(239, 159, 39, 0.12);
+        border: 1px solid rgba(239, 159, 39, 0.32);
+        border-radius: 10px; white-space: nowrap;
+      }
+      .ms-sorter-hint {
+        flex: 1; text-align: right; font-size: 11px; letter-spacing: 0.04em;
+        color: var(--ms-text-label, rgba(120, 150, 185, 0.75));
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .ms-sorter-done {
+        padding: 7px 22px; cursor: pointer;
+        font-family: inherit; font-size: 11px; font-weight: 700;
+        letter-spacing: 0.08em; text-transform: uppercase;
+        border-radius: var(--ms-radius-sm, 4px);
+        border: 1px solid var(--ms-accent, #EF9F27);
+        background: rgba(239, 159, 39, 0.10);
+        color: var(--ms-accent, #EF9F27);
+        transition: all 0.15s ease;
+      }
+      .ms-sorter-done:hover { background: rgba(239, 159, 39, 0.22); color: #fff; }
+      .ms-sorter-done:active { transform: scale(0.97); }
+      .ms-sorter-grid {
+        flex: 1; overflow-y: auto; padding: 20px;
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 16px; align-content: start; scrollbar-width: thin;
+      }
+      .ms-sorter-grid::-webkit-scrollbar { width: 6px; }
+      .ms-sorter-grid::-webkit-scrollbar-thumb {
+        background: var(--ms-border, rgba(90, 140, 220, 0.25)); border-radius: 3px;
+      }
+      .ms-sorter-empty {
+        grid-column: 1 / -1; text-align: center; padding: 56px 0;
+        color: var(--ms-text-label, rgba(120, 150, 185, 0.75)); font-style: italic;
+      }
+      .ms-sorter-tile {
+        position: relative; aspect-ratio: 16 / 9;
+        border: 1px solid var(--ms-border, rgba(90, 140, 220, 0.25));
+        border-radius: var(--ms-radius, 9px);
+        background: linear-gradient(135deg, #1d2735, #12181f) center/cover no-repeat;
+        cursor: grab; overflow: hidden;
+        transition: border-color 0.15s ease, transform 0.15s ease,
+                    box-shadow 0.15s ease, opacity 0.15s ease;
+      }
+      .ms-sorter-tile:hover {
+        border-color: var(--ms-accent, #EF9F27);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+      }
+      .ms-sorter-tile.active {
+        border-color: var(--ms-accent, #EF9F27);
+        box-shadow: 0 0 0 1px var(--ms-accent, #EF9F27), 0 0 16px rgba(239, 159, 39, 0.28);
+      }
+      .ms-sorter-tile.dragging { opacity: 0.35; cursor: grabbing; transform: none; }
+      .ms-sorter-tile.drop-before {
+        box-shadow: -5px 0 0 -1px var(--ms-accent, #EF9F27), -5px 0 14px rgba(239, 159, 39, 0.45);
+      }
+      .ms-sorter-tile.drop-after {
+        box-shadow: 5px 0 0 -1px var(--ms-accent, #EF9F27), 5px 0 14px rgba(239, 159, 39, 0.45);
+      }
+      .ms-sorter-tile-num {
+        position: absolute; top: 6px; left: 6px; min-width: 20px;
+        padding: 2px 6px; text-align: center;
+        font-family: var(--ms-font-mono, Consolas, monospace);
+        font-size: 11px; font-weight: 700; color: var(--ms-accent, #EF9F27);
+        background: rgba(10, 13, 18, 0.78);
+        border: 1px solid rgba(239, 159, 39, 0.35);
+        border-radius: 4px;
+      }
+      .ms-sorter-tile-title {
+        position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 9px 5px;
+        background: linear-gradient(transparent, rgba(8, 11, 16, 0.88) 55%);
+        color: var(--ms-text, #dce8f5); font-size: 11.5px; font-weight: 600;
+        letter-spacing: 0.02em;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .ms-sorter-tile-builds {
+        position: absolute; top: 6px; right: 6px; padding: 2px 7px;
+        font-family: var(--ms-font-mono, Consolas, monospace);
+        font-size: 10px; font-weight: 700;
+        color: var(--ms-warning, #e5a540);
+        background: rgba(10, 13, 18, 0.78);
+        border: 1px solid rgba(229, 165, 64, 0.35);
+        border-radius: 10px;
+      }
+      .ms-sorter-tile-actions {
+        position: absolute; top: 5px; right: 5px; display: none; gap: 4px;
+      }
+      .ms-sorter-tile:hover .ms-sorter-tile-actions { display: flex; }
+      .ms-sorter-tile:hover .ms-sorter-tile-builds { display: none; }
+      .ms-sorter-tile-btn {
+        width: 22px; height: 22px; padding: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 1px solid var(--ms-border, rgba(90, 140, 220, 0.25));
+        border-radius: var(--ms-radius-sm, 4px);
+        background: rgba(10, 13, 18, 0.82);
+        color: var(--ms-text-dim, rgba(155, 180, 215, 0.72));
+        font-size: 11px; line-height: 1; cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .ms-sorter-tile-btn:hover {
+        color: var(--ms-accent, #EF9F27);
+        border-color: var(--ms-accent, #EF9F27);
+        background: rgba(239, 159, 39, 0.14);
+      }
+      .ms-sorter-tile-btn[data-act="del"]:hover {
+        color: #ff8d80;
+        border-color: var(--ms-danger, #DC3C30);
+        background: rgba(220, 60, 48, 0.16);
+      }
+
+      /* Drag-preview card — rendered offscreen only for setDragImage(). */
+      .ms-sorter-ghost {
+        position: fixed; top: -200px; left: -200px;
+        width: 176px; height: 99px; overflow: hidden;
+        border: 1px solid var(--ms-accent, #EF9F27);
+        border-radius: 8px;
+        background: linear-gradient(135deg, #1d2735, #12181f) center/cover no-repeat;
+        font-family: var(--ms-font, 'Segoe UI', system-ui, sans-serif);
+      }`;
+    document.head.appendChild(style);
+  }
+}
+
+export default BriefingEngine;

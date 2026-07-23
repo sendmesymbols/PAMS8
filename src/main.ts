@@ -40,6 +40,8 @@ const drawButton: HTMLElement | null = document.getElementById('draw-btn');
 const savePlanButton = document.getElementById('savePlanButton');
 const loadPlanButton = document.getElementById('loadPlanButton');
 const deploymentManagerBtn = document.getElementById('deployment-manager-btn');
+const briefingBtn = document.getElementById('briefing-btn');
+const exportPptxBtn = document.getElementById('exportPptxButton');
 const analysisHubBtn = document.getElementById('analysis-hub-btn');
 
 // ── Command palette — popover of all widgets (a "Menu" dropdown item) ─────────
@@ -388,6 +390,10 @@ function switchView() {
     (switchButton as HTMLInputElement).value = '2D';
   }
 }
+
+// Let library code trigger the same 2D/3D toggle as the top-bar button —
+// used by PptxExporter's "Switch to 2D & export" prompt.
+(window as any).pams8SwitchView = switchView;
 
 // Stack the bottom-right navigation widgets into a single vertical column
 // (undo on top, then the zoom controls, plus compass/navigation-toggle in 3D)
@@ -2366,6 +2372,30 @@ function updateStylusPerSymbolUI(cls: string | null): void {
         dbe.openWidget();
       } else {
         console.warn('Deployment Manager not ready yet');
+      }
+    });
+  }
+
+  if (briefingBtn) {
+    briefingBtn.addEventListener('click', () => {
+      const be = (window as any).briefingEngine;
+      if (be) {
+        be.openPanel();
+      } else {
+        console.warn('Briefing engine not ready yet (enable features.briefing in Settings)');
+      }
+    });
+  }
+
+  if (exportPptxBtn) {
+    exportPptxBtn.addEventListener('click', () => {
+      const exportDeck = (window as any).exportPptxDeck;
+      if (typeof exportDeck === 'function') {
+        void exportDeck().catch((err: any) =>
+          console.error('PPTX export failed:', err),
+        );
+      } else {
+        console.warn('PPTX export not ready yet (enable features.exportTools in Settings)');
       }
     });
   }

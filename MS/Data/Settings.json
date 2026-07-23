@@ -417,7 +417,23 @@
     "deploymentBuilder": true,
     "visualizationEngine": true,
     "roadNetwork": true,
-    "autoShapes": true
+    "autoShapes": true,
+    "briefing": true,
+    "exportTools": true,
+    "screenAnchor": false
+  },
+  "briefing": {
+    "defaultTransitionMs": 1000,
+    "defaultEffect": "appear",
+    "autoplayIntervalMs": 5000
+  },
+  "exportTools": {
+    "mode": "flat",
+    "format": "png",
+    "explodeBuilds": false,
+    "includeNotes": true,
+    "deckWidth": 1280,
+    "deckHeight": 720
   },
   "measurement": {
     "distUnit": "kilometers",

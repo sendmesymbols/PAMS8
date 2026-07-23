@@ -60,6 +60,10 @@ import SelectionActionPanel from './SelectionActionPanel.ts';
 import type MeasurementEngine from './MeasurementEngine.ts';
 // DeploymentBuilderEngine is loaded dynamically based on Settings.json features.deploymentBuilder
 import type DeploymentBuilderEngine from './DeploymentBuilder/DeploymentBuilderEngine.ts';
+// BriefingEngine is loaded dynamically based on Settings.json features.briefing
+import type BriefingEngine from './Briefing/BriefingEngine.ts';
+// ScreenAnchorEngine is loaded dynamically based on Settings.json features.screenAnchor
+import type ScreenAnchorEngine from './ScreenAnchorEngine.ts';
 import ProximityEngine from './ProximityEngine.ts';
 import DrawingCueEngine from './DrawingCueEngine.ts';
 import MGRSEngine from './MGRSEngine.ts';
@@ -127,6 +131,10 @@ import './StylusSettingsWidget';
 import './LandingZoneCommands';
 import './AirspaceCommands';
 import './Planning/CombatPowerCommand';
+import './BriefingSettingsWidget';
+import './ScreenAnchorSettingsWidget';
+import './PptxExportCommands';
+import './ExportToolsSettingsWidget';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -187,6 +195,8 @@ class SymbolEngine implements Evented {
   /** Owns construction/destruction/view-attach for the 14 analysis engines. */
   private _analysisRegistry!: AnalysisEngineRegistry;
   private _deploymentBuilderEngine: DeploymentBuilderEngine | null = null;
+  private _briefingEngine: BriefingEngine | null = null;
+  private _screenAnchorEngine: ScreenAnchorEngine | null = null;
   private _declutterEngine: DeclutterEngine | null = null;
   private _clusterEngine: ClusterEngine | null = null;
   private _labelPlacer: LabelPlacer | null = null;
@@ -423,6 +433,12 @@ class SymbolEngine implements Evented {
 
     // Conditionally load DeploymentBuilderEngine based on Settings.json feature flag
     this._initDeploymentBuilderEngine();
+
+    // Conditionally load BriefingEngine based on Settings.json feature flag
+    this._initBriefingEngine();
+
+    // Conditionally load ScreenAnchorEngine based on Settings.json feature flag
+    this._initScreenAnchorEngine();
 
     // Initialise the 14 analysis engines (each respects its own analysis.* flag)
     this._analysisRegistry = new AnalysisEngineRegistry({
@@ -664,6 +680,10 @@ class SymbolEngine implements Evented {
 
     // Re-attach DeploymentBuilderEngine to the new view
     this._deploymentBuilderEngine?.onViewChanged(newView);
+    // Re-attach BriefingEngine (also force-exits present mode on view switch)
+    this._briefingEngine?.onViewChanged(newView);
+    // Re-attach ScreenAnchorEngine (re-binds its extent watch to the new view)
+    this._screenAnchorEngine?.onViewChanged(newView);
     // Re-attach declutter engines to the new view. Each must also adopt the
     // new GraphicsLayerManager — 2D and 3D resolve to different manager
     // instances, so without this they keep querying the old view's layers.
@@ -895,6 +915,67 @@ class SymbolEngine implements Evented {
     }
   }
 
+
+  private async _initBriefingEngine(): Promise<void> {
+    const features = (settingsData as any).features ?? {};
+    if (features.briefing !== true) {
+      console.info('[SymbolEngine] BriefingEngine disabled via Settings.json');
+      return;
+    }
+    try {
+      const { default: BE } = await import('./Briefing/BriefingEngine.ts');
+      this._briefingEngine = BE.getInstance();
+      this._briefingEngine!.start(this.view, this.serializationEngine);
+      this._briefingEngine!.enable();
+      (window as any).briefingEngine = this._briefingEngine;
+      this.emitEvent('briefingEngineReady', { engine: this._briefingEngine });
+      console.info('[SymbolEngine] BriefingEngine loaded');
+    } catch (err) {
+      console.error('[SymbolEngine] Failed to load BriefingEngine:', err);
+    }
+  }
+
+  private async _initScreenAnchorEngine(): Promise<void> {
+    const features = (settingsData as any).features ?? {};
+    if (features.screenAnchor !== true) {
+      console.info('[SymbolEngine] ScreenAnchorEngine disabled via Settings.json');
+      return;
+    }
+    try {
+      const { default: SAE } = await import('./ScreenAnchorEngine.ts');
+      this._screenAnchorEngine = SAE.getInstance();
+      this._screenAnchorEngine!.start(this.view, this._contextMenuManager);
+      this._screenAnchorEngine!.enable();
+      (window as any).screenAnchorEngine = this._screenAnchorEngine;
+      this.emitEvent('screenAnchorEngineReady', { engine: this._screenAnchorEngine });
+      console.info('[SymbolEngine] ScreenAnchorEngine loaded');
+    } catch (err) {
+      console.error('[SymbolEngine] Failed to load ScreenAnchorEngine:', err);
+    }
+  }
+
+  /**
+   * Re-apply Pin-to-Screen state saved by SerializationEngine (attribute-level
+   * — drawEssentials is rebuilt by the symbol classes on load, so the pin
+   * cannot ride there). The ScreenAnchorEngine re-anchors the graphic against
+   * the NEW view size once its debounced watch fires.
+   */
+  private _applyLoadedPin(data: any, graphic: Graphic | null): void {
+    if (!graphic || data?.pinned !== true) return;
+    if (typeof data.xPct !== 'number' || typeof data.yPct !== 'number') return;
+    graphic.attributes.pinned = true;
+    graphic.attributes.xPct = data.xPct;
+    graphic.attributes.yPct = data.yPct;
+    this._screenAnchorEngine?.registerSavedPin(graphic);
+  }
+
+  public get briefingEngine(): BriefingEngine | null {
+    return this._briefingEngine;
+  }
+
+  public get screenAnchorEngine(): ScreenAnchorEngine | null {
+    return this._screenAnchorEngine;
+  }
 
   get view() {
     return this._getView();
@@ -2069,6 +2150,26 @@ class SymbolEngine implements Evented {
       } else if (value && this._deploymentBuilderEngine) {
         this._deploymentBuilderEngine.enable();
         this._contextMenuManager.linkDeploymentBuilderEngine(this._deploymentBuilderEngine);
+      }
+    }
+
+    if (fullPath === 'features.briefing') {
+      if (value && !this._briefingEngine) {
+        this._initBriefingEngine();
+      } else if (!value && this._briefingEngine) {
+        this._briefingEngine.disable();
+      } else if (value && this._briefingEngine) {
+        this._briefingEngine.enable();
+      }
+    }
+
+    if (fullPath === 'features.screenAnchor') {
+      if (value && !this._screenAnchorEngine) {
+        this._initScreenAnchorEngine();
+      } else if (!value && this._screenAnchorEngine) {
+        this._screenAnchorEngine.disable();
+      } else if (value && this._screenAnchorEngine) {
+        this._screenAnchorEngine.enable();
       }
     }
 
@@ -3984,6 +4085,7 @@ class SymbolEngine implements Evented {
         // reset above and can't see that initialize() may mutate it.
         const created = this._lastCreatedGraphic as Graphic | null;
         if (created?.attributes?.id === symbolId) {
+          this._applyLoadedPin(data, created);
           return created;
         }
 
@@ -4039,6 +4141,7 @@ class SymbolEngine implements Evented {
           );
         }
         console.info('[SaveLoad] Symbol added via fallback path:', symbolId);
+        this._applyLoadedPin(data, fallbackGraphic);
         return fallbackGraphic;
       }
 

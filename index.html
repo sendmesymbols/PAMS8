@@ -365,25 +365,43 @@
       }
       /* Right-docked draw parameters panel — mirrors the ⛭ Params popup and the
          draw-type combo. Auto-shows on symbol selection; ✕ hides it until the
-         next selection. Translucent + compact so it stays unobtrusive. */
+         next selection. Pen-first: uniform ≥40px tap targets in aligned grids,
+         calm glass surface, one accent ring for the selected state. */
       #symbolParamsDock {
         position: fixed;
-        right: 10px;
+        right: 12px;
         top: 50%;
         transform: translateY(-50%);
         z-index: 99;
-        width: 226px;
+        width: 240px;
         display: none;
-        padding: 8px;
-        background: rgba(20, 24, 30, 0.82);
-        border: 1px solid var(--ms-divider);
-        border-radius: 10px;
-        box-shadow: var(--ms-shadow);
-        backdrop-filter: blur(10px);
+        padding: 12px;
+        background: rgba(17, 21, 28, 0.88);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        box-shadow:
+          0 16px 44px rgba(0, 0, 0, 0.45),
+          inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(16px) saturate(1.25);
         font-family: var(--ms-font);
         color: var(--ms-text);
-        max-height: 70vh;
+        max-height: min(78vh, calc(100vh - 96px));
         overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #symbolParamsDock::-webkit-scrollbar {
+        width: 9px;
+      }
+      #symbolParamsDock::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.14);
+        border-radius: 5px;
+        background-clip: padding-box;
+        border: 2px solid transparent;
+      }
+      #symbolParamsDock::-webkit-scrollbar-thumb:hover {
+        background: var(--ms-accent);
+        background-clip: padding-box;
       }
       #symbolParamsDock.show {
         display: block;
@@ -396,148 +414,313 @@
         from { opacity: 0; }
         to { opacity: 1; }
       }
+      /* Title bar doubles as the drag handle; sticky so the grab affordance and
+         the −/✕ controls survive scrolling a long parameter list. */
       .params-dock-head {
+        position: sticky;
+        top: -12px;
+        z-index: 1;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        margin-bottom: 6px;
+        margin: -12px -12px 8px;
+        padding: 5px 6px 5px 12px;
+        background: rgba(24, 29, 38, 0.97);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 13px 13px 0 0;
         cursor: grab;
         user-select: none;
+        touch-action: none;
+      }
+      .params-dock-head:active {
+        cursor: grabbing;
       }
       .params-dock-btns {
         flex: none;
         display: flex;
         align-items: center;
-        gap: 2px;
+        gap: 4px;
       }
       /* Minimized: collapse everything but the header into a compact title bar. */
       #symbolParamsDock.minimized {
         width: auto;
-        min-width: 150px;
+        min-width: 168px;
+        padding: 0;
       }
       #symbolParamsDock.minimized > *:not(.params-dock-head) {
         display: none !important;
       }
       #symbolParamsDock.minimized .params-dock-head {
-        margin-bottom: 0;
+        margin: 0;
+        border-bottom: none;
+        border-radius: 13px;
       }
       .params-dock-title {
         font: 700 11px/1.2 var(--ms-font);
-        letter-spacing: 0.04em;
+        letter-spacing: 0.07em;
         text-transform: uppercase;
-        opacity: 0.8;
+        opacity: 0.85;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
       .params-dock-close {
         flex: none;
+        width: 26px;
+        height: 26px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         border: none;
         background: none;
         color: var(--ms-text);
-        opacity: 0.6;
+        opacity: 0.55;
         cursor: pointer;
-        font-size: 13px;
+        font-size: 14px;
         line-height: 1;
-        padding: 2px 5px;
-        border-radius: 4px;
+        border-radius: 8px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
       }
       .params-dock-close:hover {
         opacity: 1;
-        background: var(--ms-divider);
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .params-dock-close:active {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.14);
+        transform: scale(0.94);
       }
       #symbolParamsDockDrawType {
         width: 100%;
-        margin-bottom: 6px;
+        min-height: 34px;
+        margin-bottom: 8px;
+        padding: 6px 30px 6px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 8px;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23aebdd0' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 12px;
       }
       #symbolParamsDockList {
         display: grid;
         grid-template-columns: 1fr;
-        gap: 2px;
+        gap: 4px;
+      }
+      /* Dock-scoped row treatment — the same .drawstyle-row markup also lives in
+         the top-bar popups, which keep the compact global style. */
+      #symbolParamsDock .drawstyle-row {
+        padding: 3px 2px;
+        font: 600 12px/1.25 var(--ms-font);
+      }
+      #symbolParamsDock .drawstyle-row > span {
+        opacity: 0.8;
       }
       #symbolParamsDockList input[type='number'] {
-        width: 92px;
+        width: 88px;
+        min-height: 30px;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 12.5px;
+        font-weight: 600;
+        text-align: center;
+      }
+      #symbolParamsDock .ms-input:focus,
+      #symbolParamsDock .ms-select:focus {
+        border-color: var(--ms-accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--ms-accent) 22%, transparent);
       }
       /* Freehand colour/fill section of the dock — separated by a divider */
       #symbolParamsDockStyle {
         display: grid;
         grid-template-columns: 1fr;
-        gap: 2px;
-        margin-top: 6px;
-        padding-top: 6px;
-        border-top: 1px solid var(--ms-divider);
+        gap: 4px;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
       }
       #symbolParamsDockStyle input[type='range'] {
-        width: 90px;
+        width: 100px;
+        height: 18px;
+        accent-color: var(--ms-accent);
+      }
+      #symbolParamsDockStyle .ms-select {
+        min-height: 28px;
+        max-width: 120px;
+        padding: 4px 8px;
+        border-radius: 7px;
       }
       #symbolParamsDockStyle .drawstyle-swatches {
-        padding: 0 6px 5px;
+        padding: 2px 2px 6px;
+        gap: 5px;
+      }
+      #symbolParamsDock .drawstyle-swatch {
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        border-color: rgba(255, 255, 255, 0.16);
+      }
+      #symbolParamsDock .drawstyle-row input[type='color'] {
+        width: 36px;
+        height: 24px;
+        border-radius: 6px;
+        border-color: rgba(255, 255, 255, 0.16);
+      }
+      #symbolParamsDock input[type='checkbox'] {
+        width: 15px;
+        height: 15px;
+        accent-color: var(--ms-accent);
+        cursor: pointer;
       }
       /* Identity / Echelon / Name section of the dock — segmented buttons sized
          for stylus/pen use (large tap targets, obvious selected state). */
       .dock-field-label {
-        margin: 8px 2px 4px;
-        font: 700 11px/1 var(--ms-font);
-        letter-spacing: 0.06em;
+        margin: 12px 2px 6px;
+        font: 700 10.5px/1 var(--ms-font);
+        letter-spacing: 0.1em;
         text-transform: uppercase;
-        opacity: 0.65;
+        opacity: 0.5;
         display: block;
       }
+      /* Aligned grids beat ragged wrapped chips for pen accuracy: every target
+         is the same size in a predictable place. A lone trailing button
+         stretches across the rest of its row. */
       .dock-seg-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+      }
+      #symbolParamsDockEchelon {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      #symbolParamsDockIdentity .dock-seg-btn:last-child:nth-child(2n + 1) {
+        grid-column: span 2;
+      }
+      #symbolParamsDockEchelon .dock-seg-btn:last-child:nth-child(3n + 1) {
+        grid-column: span 3;
+      }
+      #symbolParamsDockEchelon .dock-seg-btn:last-child:nth-child(3n + 2) {
+        grid-column: span 2;
       }
       .dock-seg-btn {
-        flex: 1 1 auto;
-        min-height: 34px;
-        min-width: 44px;
-        padding: 4px 8px;
-        border: 1px solid var(--ms-divider);
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.05);
+        min-height: 28px;
+        min-width: 0;
+        padding: 3px 4px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.04);
         color: var(--ms-text);
-        font: 600 12px/1.15 var(--ms-font);
+        font: 600 11px/1.15 var(--ms-font);
         cursor: pointer;
         touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 5px;
+        gap: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        transition:
+          background 0.12s ease,
+          border-color 0.12s ease,
+          color 0.12s ease,
+          transform 0.08s ease;
+      }
+      #symbolParamsDockEchelon .dock-seg-btn {
+        font-size: 10.5px;
       }
       .dock-seg-btn:hover {
-        border-color: var(--ms-accent);
+        border-color: color-mix(in srgb, var(--ms-accent) 55%, transparent);
+        background: rgba(255, 255, 255, 0.07);
+      }
+      .dock-seg-btn:active {
+        transform: scale(0.96);
       }
       .dock-seg-btn.selected {
         border-color: var(--ms-accent);
-        background: color-mix(in srgb, var(--ms-accent) 28%, transparent);
-        box-shadow: inset 0 0 0 1px var(--ms-accent);
+        background: color-mix(in srgb, var(--ms-accent) 17%, transparent);
+        color: color-mix(in srgb, var(--ms-accent) 78%, white);
+        box-shadow: 0 0 12px -6px var(--ms-accent);
       }
       .dock-seg-dot {
-        width: 8px;
-        height: 8px;
+        width: 7px;
+        height: 7px;
         border-radius: 50%;
         flex: none;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
       }
       #symbolParamsDockName {
         width: 100%;
         margin-top: 2px;
+        min-height: 32px;
+        padding: 6px 9px;
+        border-radius: 8px;
+        font: 500 12px/1.35 var(--ms-font);
+        resize: vertical;
       }
       #symbolParamsDockMoreBtn {
         width: 100%;
         margin-top: 8px;
+        min-height: 30px;
+        padding: 4px 8px;
+        border-radius: 8px;
+        border-color: color-mix(in srgb, var(--ms-accent) 55%, transparent);
+        color: var(--ms-accent);
+        background: color-mix(in srgb, var(--ms-accent) 10%, transparent);
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        touch-action: manipulation;
+      }
+      #symbolParamsDockMoreBtn:hover {
+        border-color: var(--ms-accent);
+        color: var(--ms-accent);
+        background: color-mix(in srgb, var(--ms-accent) 18%, transparent);
       }
       .dock-divider {
-        margin: 8px 0 6px;
-        border-top: 1px solid var(--ms-divider);
+        margin: 12px -2px 10px;
+        border: none;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.14),
+          transparent
+        );
       }
       .dock-edit-hint {
-        margin-bottom: 4px;
-        padding: 5px 8px;
-        border-radius: 6px;
-        background: color-mix(in srgb, var(--ms-accent) 18%, transparent);
-        font: 600 11px/1.3 var(--ms-font);
+        margin-bottom: 6px;
+        padding: 6px 9px;
+        border-radius: 7px;
+        border: 1px solid color-mix(in srgb, var(--ms-accent) 40%, transparent);
+        background: color-mix(in srgb, var(--ms-accent) 13%, transparent);
+        color: color-mix(in srgb, var(--ms-accent) 70%, white);
+        font: 600 11px/1.35 var(--ms-font);
+      }
+      /* Fingers need more room than a pen tip — bump back up to comfortable
+         touch targets only on coarse-pointer (touch) devices. */
+      @media (pointer: coarse) {
+        .dock-seg-btn {
+          min-height: 40px;
+        }
+        #symbolParamsDockList input[type='number'],
+        #symbolParamsDockDrawType {
+          min-height: 40px;
+        }
+        #symbolParamsDock .drawstyle-swatch {
+          width: 28px;
+          height: 28px;
+        }
+        #symbolParamsDockName {
+          min-height: 40px;
+        }
+        #symbolParamsDockMoreBtn {
+          min-height: 38px;
+        }
       }
       .drawstyle-row {
         display: flex;
@@ -1555,7 +1738,7 @@
          inputs as the top-bar ⛭ Params popup, kept in sync with it; the draw
          path still reads the popup (readSymbolParamsInto in src/main.ts). -->
     <div id="symbolParamsDock">
-      <div class="params-dock-head">
+      <div class="params-dock-head" title="Drag to move">
         <span class="params-dock-title" id="symbolParamsDockTitle">Draw Parameters</span>
         <span class="params-dock-btns">
           <button
@@ -1588,7 +1771,6 @@
         autocomplete="off"
         placeholder="Unique designation (Enter for a new line)"
         title="Label / text shown with the symbol. Press Enter to add a new line (multi-line text)."
-        style="resize: vertical; min-height: 30px; font: inherit;"
       ></textarea>
       <button
         id="symbolParamsDockMoreBtn"
@@ -1724,6 +1906,8 @@
             <button class="ms-btn ms-btn-primary infobar-btn" id="draw-btn" title="Start interactive drawing of the symbol for the SIDC in the SIDC box, using current settings."><span class="infobar-icon">✎</span>Draw</button>
             <div class="infobar-menu-sep"></div>
             <button class="ms-btn infobar-btn" id="deployment-manager-btn" title="Open the Deployment Manager to manage and place formation templates."><span class="infobar-icon">▦</span>Deployment Mgr</button>
+            <button class="ms-btn infobar-btn" id="briefing-btn" title="Open the Briefing panel — capture map states as slides, play them back with smooth transitions, reorder them in the slide sorter, and present full-screen (requires Briefing / Present in Settings)."><span class="infobar-icon">🎬</span>Briefing</button>
+            <button class="ms-btn infobar-btn" id="exportPptxButton" title="Export a PowerPoint (.pptx) deck — one slide per captured briefing slide, or the current view if no slides exist (requires Export Tools in Settings)."><span class="infobar-icon">⬒</span>Export PPTX</button>
             <button class="ms-btn infobar-btn" id="topbar-testfield-generate" title="Drop a mixed field of UEI symbols (varied identity + echelon + designator) inside the current view. Uses Count/Stacks from the API Test panel. Tests cluster badges, echelon ladder, disperse, label placer, and abbreviation in one click."><span class="infobar-icon">⊹</span>Test Field</button>
             <button class="ms-btn infobar-btn" id="topbar-testfield-clutter" title="Drop the same mixed field but deliberately jumbled — a tight footprint with many overlapping same-coordinate stacks. Stresses every declutter path at once. Uses the API Test panel Count input; Stacks is auto-boosted."><span class="infobar-icon">⁂</span>Cluttered</button>
             <button class="ms-btn infobar-btn" id="savePlanButton" title="Save current symbol set, annotations, and settings as a reusable plan to local storage via ImportExportEngine."><span class="infobar-icon">⬇</span>Save Plan</button>
@@ -2148,6 +2332,18 @@
           <div class="setting-row">
             <label>Deployment Manager</label>
             <input type="checkbox" id="setting-deploymentBuilder" title="Enable the Deployment Manager widget — place pre-built tactical plans from the context menu (DeploymentBuilderEngine)." />
+          </div>
+          <div class="setting-row">
+            <label>Briefing / Present</label>
+            <input type="checkbox" id="setting-briefing" title="Enable the Briefing engine — capture map states as slides, play them back, and run full-screen present mode (BriefingEngine)." />
+          </div>
+          <div class="setting-row">
+            <label>Export Tools (PPTX)</label>
+            <input type="checkbox" id="setting-exportTools" title="Enable PowerPoint (.pptx) deck export of the current view / briefing slides (PptxExporter)." />
+          </div>
+          <div class="setting-row">
+            <label>Pin to Screen</label>
+            <input type="checkbox" id="setting-screenAnchor" title="Enable per-item Pin to Screen — pinned items stay fixed on screen while the map pans and zooms beneath them (ScreenAnchorEngine)." />
           </div>
           <div class="setting-row">
             <label>UI Theme</label>
@@ -3365,6 +3561,8 @@
           <button class="ms-btn" id="api-import-geojson">
             Import GeoJSON
           </button>
+          <button class="ms-btn" id="api-export-pptx">Export PPTX</button>
+          <button class="ms-btn" id="api-briefing-edit" title="Open the full-screen slide editor for the current briefing slide — text, shapes, arrows, colors (requires Briefing in Settings and at least one captured slide).">Edit Slide</button>
           <div class="ms-status" id="api-save-status">Ready</div>
         </div>
         <div class="api-section">
@@ -3793,6 +3991,12 @@
         'setting-logging': (v) => ({ path: ['logging', 'enabled'], value: v }),
         // Deployment Builder
         'setting-deploymentBuilder': (v) => ({ path: ['features', 'deploymentBuilder'], value: v }),
+        // Briefing / Present mode
+        'setting-briefing': (v) => ({ path: ['features', 'briefing'], value: v }),
+        // PPTX export tools
+        'setting-exportTools': (v) => ({ path: ['features', 'exportTools'], value: v }),
+        // Pin to Screen
+        'setting-screenAnchor': (v) => ({ path: ['features', 'screenAnchor'], value: v }),
         // Drawing Cues
         'setting-drawingCues': (v) => ({ path: ['features', 'drawingCues'], value: v }),
         'setting-rubberBand':  (v) => ({ path: ['drawingCues', 'rubberBand', 'enabled'], value: v }),
@@ -4206,6 +4410,12 @@
             features.analysisEngines !== false;
           document.getElementById('setting-deploymentBuilder').checked =
             features.deploymentBuilder === true;
+          document.getElementById('setting-briefing').checked =
+            features.briefing === true;
+          document.getElementById('setting-exportTools').checked =
+            features.exportTools === true;
+          document.getElementById('setting-screenAnchor').checked =
+            features.screenAnchor === true;
           document.getElementById('setting-visualizationEngine').checked =
             features.visualizationEngine === true;
 
@@ -4964,6 +5174,44 @@
         });
 
       document
+        .getElementById('api-export-pptx')
+        .addEventListener('click', () => {
+          if (typeof window.exportPptxDeck === 'function') {
+            document.getElementById('api-save-status').textContent =
+              'Exporting PPTX…';
+            window
+              .exportPptxDeck()
+              .then(() => {
+                document.getElementById('api-save-status').textContent =
+                  'PPTX exported';
+              })
+              .catch((err) => {
+                document.getElementById('api-save-status').textContent =
+                  'PPTX export failed: ' + (err?.message ?? err);
+              });
+          } else {
+            document.getElementById('api-save-status').textContent =
+              'Export Tools not ready (enable features.exportTools)';
+          }
+        });
+
+      document
+        .getElementById('api-briefing-edit')
+        .addEventListener('click', () => {
+          const be = window.briefingEngine;
+          if (!be || !be.getSlides?.().length) {
+            document.getElementById('api-save-status').textContent =
+              'No briefing slides yet (enable features.briefing, then ＋ Capture)';
+            return;
+          }
+          document.getElementById('api-save-status').textContent =
+            'Opening slide editor…';
+          be.openSlideEditor(Math.max(0, be.currentIndex)).then(() => {
+            document.getElementById('api-save-status').textContent = 'Ready';
+          });
+        });
+
+      document
         .getElementById('api-import-geojson')
         .addEventListener('click', () => {
           const engine = getEngines();
@@ -5667,11 +5915,15 @@
       setInterval(updateLoggerApiStatus, 2000);
 
       // ── Draggable panels utility ─────────────────────────────────────────────
+      // Pointer events (not mouse events) so pen and touch can drag panels too;
+      // pointer capture keeps the drag alive when the pointer leaves the handle.
       function makeDraggable(panel, handle) {
         let dragging = false;
         let ox = 0, oy = 0; // offset from panel origin to pointer at drag start
+        // A pen/finger press on the handle must start a drag, never a scroll.
+        handle.style.touchAction = 'none';
 
-        handle.addEventListener('mousedown', (e) => {
+        handle.addEventListener('pointerdown', (e) => {
           // Don't interfere with buttons or inputs inside the header
           if (e.target.closest('button, input, select')) return;
           dragging = true;
@@ -5688,10 +5940,11 @@
           oy = e.clientY - rect.top;
           document.body.style.userSelect = 'none';
           handle.style.cursor = 'grabbing';
+          handle.setPointerCapture(e.pointerId);
           e.preventDefault();
         });
 
-        document.addEventListener('mousemove', (e) => {
+        handle.addEventListener('pointermove', (e) => {
           if (!dragging) return;
           // Clamp so the panel can't be dragged fully off-screen
           const maxLeft = window.innerWidth  - panel.offsetWidth  - 4;
@@ -5700,12 +5953,14 @@
           panel.style.top  = Math.max(0, Math.min(e.clientY - oy, maxTop))  + 'px';
         });
 
-        document.addEventListener('mouseup', () => {
+        const endDrag = () => {
           if (!dragging) return;
           dragging = false;
           document.body.style.userSelect = '';
           handle.style.cursor = '';
-        });
+        };
+        handle.addEventListener('pointerup', endDrag);
+        handle.addEventListener('pointercancel', endDrag);
       }
 
       // Wire Analysis Hub panel drag
