@@ -10,7 +10,11 @@
 export type ViewKind = '2d' | '3d';
 
 export interface CapturedViewState {
-  /** JSON of view.extent (2D). Present when captured in a MapView. */
+  /**
+   * JSON of view.extent (2D). Present when captured in a MapView.
+   * Screen-only slides (imported from PPTX) carry NEITHER extent nor camera —
+   * playback leaves the map untouched and backgroundDataUrl is the slide.
+   */
   extent?: any;
   /** JSON of view.camera (3D). Present when captured in a SceneView. */
   camera?: any;
@@ -107,7 +111,10 @@ export interface Slide {
 }
 
 export interface BriefingDocument {
-  /** 3 = slides may carry a full-res backgroundDataUrl fallback; 2 = overlays; 1/2 accepted on import. */
-  version: 1 | 2 | 3;
+  /**
+   * 4 = slides may be screen-only (imported PPTX: no extent/camera);
+   * 3 = full-res backgroundDataUrl fallback; 2 = overlays; 1–4 accepted on import.
+   */
+  version: 1 | 2 | 3 | 4;
   slides: Slide[];
 }

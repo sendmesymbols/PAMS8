@@ -63,8 +63,12 @@ const PPTXGENJS_SCRIPT_SRC = 'MS/ThirdParty/PptxGenJS/pptxgen.bundle.js';
 
 let pptxGenJSLoadPromise: Promise<any> | null = null;
 
-/** Injects the PptxGenJS `<script>` tag on first use and resolves `window.PptxGenJS`. */
-function loadPptxGenJS(): Promise<any> {
+/**
+ * Injects the PptxGenJS `<script>` tag on first use and resolves
+ * `window.PptxGenJS`. Exported: the bundle's first UMD segment also assigns
+ * `window.JSZip`, which PptxImporter reuses to unzip .pptx files.
+ */
+export function loadPptxGenJS(): Promise<any> {
   const existing = (window as any).PptxGenJS;
   if (existing) return Promise.resolve(existing);
   if (pptxGenJSLoadPromise) return pptxGenJSLoadPromise;
@@ -224,6 +228,19 @@ class PptxExporter {
     if (slides.length && briefing) {
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
+        // Screen-only slide (imported PPTX — no extent/camera): its stored
+        // background IS the slide. Nothing to apply to the map, no screenshot,
+        // no Mode-B projection.
+        if (!slide.view?.extent && !slide.view?.camera && slide.backgroundDataUrl) {
+          await this._addSlide(pptx, view, format, 'flat', {
+            title: slide.title,
+            notes: includeNotes ? slide.notes : undefined,
+            overlays: slide.overlays,
+            background: slide.backgroundDataUrl,
+          }, stats);
+          emitted++;
+          continue;
+        }
         const builds = slide.builds ?? [];
         if (explodeBuilds && builds.length) {
           // Base state (builds hidden), then one cumulative reveal per step.
@@ -278,7 +295,13 @@ class PptxExporter {
     view: any,
     format: 'png' | 'jpeg',
     mode: 'flat' | 'editable',
-    meta: { title?: string; notes?: string; overlays?: readonly SlideOverlay[] },
+    meta: {
+      title?: string;
+      notes?: string;
+      overlays?: readonly SlideOverlay[];
+      /** Screen-only slide raster — used instead of a live map screenshot. */
+      background?: string;
+    },
     stats?: { shapes: number },
   ): Promise<void> {
     const slide = pptx.addSlide();
@@ -288,7 +311,7 @@ class PptxExporter {
     // the raster underneath holds everything else. 2D is exact; 3D projects
     // through the current camera (elevation-sampled + densified — approximate).
     let convertibles: ConvertibleGraphic[] = [];
-    if (mode === 'editable') {
+    if (mode === 'editable' && !meta.background) {
       if (view.type === '3d') {
         EngineLogger.nextStep(
           ENGINE_NAME,
@@ -313,15 +336,23 @@ class PptxExporter {
       }
     }
 
-    let dataUrl: string | null = null;
+    let dataUrl: string | null = meta.background ?? null;
     try {
-      if (hidden.length) await this._settle(view);
-      dataUrl = await this._takeScreenshot(view, format);
+      if (!dataUrl) {
+        if (hidden.length) await this._settle(view);
+        dataUrl = await this._takeScreenshot(view, format);
+      }
     } finally {
       for (const g of hidden) g.visible = true;
     }
 
-    const fit = this._containFit(view);
+    // Screen-only backgrounds carry the SOURCE deck's aspect — contain-fit by
+    // the image itself, not the live view.
+    let fit = this._containFit(view);
+    if (meta.background) {
+      const size = await this._imageSize(meta.background);
+      if (size) fit = this._containFitAspect(size.w / Math.max(1, size.h));
+    }
     if (dataUrl) {
       // Screenshot keeps the view's native aspect; contain-fit it on the
       // 16:9 slide so nothing distorts (letterbox bars only when the view
@@ -375,7 +406,10 @@ class PptxExporter {
   private _containFit(view: any): ContainFit {
     const vw = Number(view.width) || 16;
     const vh = Number(view.height) || 9;
-    const imgAspect = vw / vh;
+    return this._containFitAspect(vw / vh);
+  }
+
+  private _containFitAspect(imgAspect: number): ContainFit {
     const slideAspect = SLIDE_W_IN / SLIDE_H_IN;
     let w = SLIDE_W_IN;
     let h = SLIDE_H_IN;
@@ -385,6 +419,16 @@ class PptxExporter {
       w = SLIDE_H_IN * imgAspect;
     }
     return { x: (SLIDE_W_IN - w) / 2, y: (SLIDE_H_IN - h) / 2, w, h };
+  }
+
+  /** Natural pixel size of a data-URL image (null on decode failure). */
+  private _imageSize(dataUrl: string): Promise<{ w: number; h: number } | null> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve(null);
+      img.src = dataUrl;
+    });
   }
 
   /**

@@ -372,6 +372,11 @@ function switchView() {
     // Switch to 2D view
     appConfig.mapView.viewpoint = activeViewpoint;
     appConfig.mapView.container = appConfig.container;
+    // First-ever switch to 2D: the MapView was built with container: null,
+    // so its earlier relocateNavWidgets() call ran before ArcGIS built the
+    // default UI — re-apply now that a real container exists (see
+    // relocateNavWidgets' doc comment).
+    relocateNavWidgets(appConfig.mapView!, '2d');
     appConfig.activeView = appConfig.mapView;
     (switchButton as HTMLInputElement).value = '3D';
   } else {
@@ -404,6 +409,21 @@ navStackStyle.textContent = `
 `;
 document.head.appendChild(navStackStyle);
 
+/**
+ * Relocate the default navigation widgets to the bottom-right corner.
+ * MapView ships a "zoom" widget; SceneView adds "navigation-toggle" and
+ * "compass" (pan/rotate). ui.move() ignores ids that aren't present.
+ *
+ * Must be re-run whenever a view's container is (re)assigned, not just once
+ * at construction: the 2D MapView starts with `container: null` (it isn't
+ * attached until the first 2D/3D switch), and ArcGIS re-establishes the
+ * default UI — zoom back at its default 'top-left' — once a container is
+ * actually attached, undoing an earlier move that ran against no container.
+ */
+function relocateNavWidgets(view: MapView | SceneView, type: '2d' | '3d'): void {
+  view.ui.move(type === '3d' ? ['zoom', 'navigation-toggle', 'compass'] : ['zoom'], 'bottom-right');
+}
+
 // Function to create the view based on the type
 function createView(params: any, type: '2d' | '3d'): MapView | SceneView {
   let view: MapView | SceneView;
@@ -420,13 +440,7 @@ function createView(params: any, type: '2d' | '3d'): MapView | SceneView {
     event.stopPropagation();
   });
 
-  // Relocate the default navigation widgets to the bottom-right corner.
-  // MapView ships a "zoom" widget; SceneView adds "navigation-toggle" and
-  // "compass" (pan/rotate). ui.move() ignores ids that aren't present.
-  view.ui.move(
-    type === '3d' ? ['zoom', 'navigation-toggle', 'compass'] : ['zoom'],
-    'bottom-right',
-  );
+  relocateNavWidgets(view, type);
 
   // Small "Undo" button sitting on top of the zoom controls. Reuses the stock
   // esri-widget button styling so it matches the zoom +/- buttons in any theme.
@@ -2446,9 +2460,10 @@ function updateStylusPerSymbolUI(cls: string | null): void {
       publishSetting(['exportTools', 'includeNotes'], includeNotesChk.checked),
     );
 
-    // Action buttons (Capture / Prev / Next / Present / Sorter / Edit / Save /
-    // Load / Export) are delegated off data-briefing-act — mirrors how
-    // BriefingEngine wires its own slide-strip panel.
+    // Action buttons (Capture / Capture-into / Prev / Next / Present / Sorter /
+    // Edit / Save / Load / Import PPTX / Export) are delegated off
+    // data-briefing-act — mirrors how BriefingEngine wires its own
+    // slide-strip panel.
     briefingMenu?.addEventListener('click', (e) => {
       const btn = (e.target as HTMLElement).closest('[data-briefing-act]') as HTMLElement | null;
       if (!btn) return;
@@ -2462,6 +2477,12 @@ function updateStylusPerSymbolUI(cls: string | null): void {
           break;
         case 'capture':
           be ? be.captureSlide() : warnNotReady();
+          break;
+        case 'recapture':
+          be ? be.captureIntoSlide() : warnNotReady();
+          break;
+        case 'importPptx':
+          be ? be.importPptxFromFile() : warnNotReady();
           break;
         case 'prev':
           be ? void be.prevSlide() : warnNotReady();

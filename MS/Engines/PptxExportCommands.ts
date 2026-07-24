@@ -53,6 +53,20 @@ CommandPalette.registerActions([
       );
     },
   },
+  {
+    id: 'import.pptx',
+    label: 'Import PowerPoint deck (.pptx) into Briefing',
+    hint: 'Text, shapes, pictures, tables and notes become editable briefing slides (appended)',
+    keywords: ['pptx', 'powerpoint', 'import', 'open', 'deck', 'briefing', 'slides'],
+    run: () => {
+      const be = (window as any).briefingEngine;
+      if (be?.importPptxFromFile) {
+        be.importPptxFromFile();
+      } else {
+        console.warn('[PptxImporter] Briefing engine not ready — enable features.briefing in Settings');
+      }
+    },
+  },
 ]);
 
 export default exportPptxDeck;

@@ -3,6 +3,7 @@
   "include": ["MS/**/*"],
   "exclude": ["src", "index.html",
     "MS/ThirdParty/MilSymbols/milsymbol.js",
+    "MS/ThirdParty/PptxGenJS/pptxgen.bundle.js",
     "MS/**/*.test.ts"
   ],
   "compilerOptions": {

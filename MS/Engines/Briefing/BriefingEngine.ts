@@ -13,7 +13,9 @@
  * Slides reference graphics by stable `graphic.attributes.id`, which
  * round-trips through plan save/load. A briefing is persisted as its own
  * JSON document (exportBriefing / importBriefing / saveBriefingToFile /
- * loadBriefingFromFile).
+ * loadBriefingFromFile). PowerPoint decks import as screen-only slides via
+ * importPptxFromFile (PptxImporter), and captureIntoSlide re-shoots the map
+ * into an existing slide beneath its annotations.
  */
 
 import MapView from '@arcgis/core/views/MapView';
@@ -40,6 +42,7 @@ import type {
   BuildStep,
   CapturedViewState,
   Slide,
+  SlideOverlay,
 } from './BriefingTypes';
 
 const ENGINE_NAME = 'BriefingEngine';
@@ -177,7 +180,86 @@ class BriefingEngine {
     const v: any = this._view;
     if (!v || !this._enabled) return null;
 
-    const viewState: CapturedViewState = { capturedIn: v.type === '3d' ? '3d' : '2d' };
+    const snap = this._snapshotMapState();
+    const slide: Slide = {
+      id: this._uuid(),
+      title: title ?? `Slide ${this._slides.length + 1}`,
+      view: snap.view,
+      visibleLayers: snap.visibleLayers,
+      graphicVisibility: snap.graphicVisibility,
+      transitionMs: Number(this._cfg.defaultTransitionMs) || 1000,
+    };
+    this._slides.push(slide);
+    this._current = this._slides.length - 1;
+    this._refreshStrip();
+    EngineLogger.success(ENGINE_NAME, `Captured "${slide.title}" (${this._slides.length} slides)`);
+
+    void this._tryThumbnail().then((dataUrl) => {
+      if (dataUrl) {
+        slide.thumbnailDataUrl = dataUrl;
+        this._refreshStrip();
+      }
+    });
+    // Frozen full-res fallback for the slide editor — captured now because
+    // this is the only time the live map is guaranteed to hold this slide's
+    // symbol graphics (see _symbolGraphicsMissing / prepareBackground).
+    void this._tryFullScreenshot().then((dataUrl) => {
+      if (dataUrl) slide.backgroundDataUrl = dataUrl;
+    });
+    return slide;
+  }
+
+  /**
+   * Re-shoot the current map into an EXISTING slide: view state, layer
+   * visibility, background and thumbnail are refreshed while title, notes,
+   * annotation overlays and builds are kept — the new capture slides in
+   * BENEATH the slide's elements. Works on imported (screen-only) slides
+   * too, turning them into live map slides. With no target slide the call
+   * degrades to captureSlide().
+   */
+  public captureIntoSlide(ref?: number | string): Slide | null {
+    const v: any = this._view;
+    if (!v || !this._enabled) return null;
+    const idx = ref == null ? this._current : this._slideIndex(ref);
+    if (idx < 0 || idx >= this._slides.length) {
+      EngineLogger.nextStep(ENGINE_NAME, 'No slide selected — capturing a new slide instead');
+      return this.captureSlide();
+    }
+
+    const slide = this._slides[idx];
+    const snap = this._snapshotMapState();
+    slide.view = snap.view;
+    slide.visibleLayers = snap.visibleLayers;
+    slide.graphicVisibility = snap.graphicVisibility;
+    this._current = idx;
+    this._refreshStrip();
+    EngineLogger.success(
+      ENGINE_NAME,
+      `Captured map into "${slide.title}" — beneath ${slide.overlays?.length ?? 0} annotation(s)`,
+    );
+
+    void this._tryThumbnail().then(async (dataUrl) => {
+      if (!dataUrl) return;
+      // The strip tile should show what the slide really contains — overlays
+      // composited over the fresh map shot (plain map shot when compositing
+      // is unavailable).
+      slide.thumbnailDataUrl = (await this._composeThumbnail(dataUrl, slide.overlays)) ?? dataUrl;
+      this._refreshStrip();
+    });
+    void this._tryFullScreenshot().then((dataUrl) => {
+      if (dataUrl) slide.backgroundDataUrl = dataUrl;
+    });
+    return slide;
+  }
+
+  /** Current view + layer visibility + hidden-graphic exceptions, slide-shaped. */
+  private _snapshotMapState(): {
+    view: CapturedViewState;
+    visibleLayers: Record<string, boolean>;
+    graphicVisibility?: Record<string, boolean>;
+  } {
+    const v: any = this._view;
+    const viewState: CapturedViewState = { capturedIn: v?.type === '3d' ? '3d' : '2d' };
     try {
       if (viewState.capturedIn === '2d') {
         viewState.extent = v.extent?.toJSON();
@@ -206,32 +288,52 @@ class BriefingEngine {
       });
     }
 
-    const slide: Slide = {
-      id: this._uuid(),
-      title: title ?? `Slide ${this._slides.length + 1}`,
+    return {
       view: viewState,
       visibleLayers,
       graphicVisibility: Object.keys(graphicVisibility).length ? graphicVisibility : undefined,
-      transitionMs: Number(this._cfg.defaultTransitionMs) || 1000,
     };
-    this._slides.push(slide);
-    this._current = this._slides.length - 1;
-    this._refreshStrip();
-    EngineLogger.success(ENGINE_NAME, `Captured "${slide.title}" (${this._slides.length} slides)`);
+  }
 
-    void this._tryThumbnail().then((dataUrl) => {
-      if (dataUrl) {
-        slide.thumbnailDataUrl = dataUrl;
-        this._refreshStrip();
-      }
+  /**
+   * Draw a slide's overlays onto a fresh map thumbnail via an offscreen
+   * StaticCanvas. Resolves undefined when there is nothing to compose or
+   * fabric is unavailable — callers fall back to the plain map shot.
+   */
+  private _composeThumbnail(
+    mapThumb: string,
+    overlays: readonly SlideOverlay[] | undefined,
+  ): Promise<string | undefined> {
+    const fabric = (window as any).fabric;
+    if (!fabric || !overlays?.length) return Promise.resolve(undefined);
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const w = img.naturalWidth || THUMB_WIDTH;
+          const h = img.naturalHeight || THUMB_HEIGHT;
+          const sc = new fabric.StaticCanvas(null, { width: w, height: h });
+          sc.setBackgroundImage(new fabric.Image(img), () => {
+            try {
+              for (const o of overlays) {
+                const obj = overlayToFabric(o, w, h);
+                if (obj) sc.add(obj);
+              }
+              sc.renderAll();
+              const out = sc.toDataURL({ format: 'jpeg', quality: 0.72 });
+              sc.dispose();
+              resolve(out);
+            } catch {
+              resolve(undefined);
+            }
+          });
+        } catch {
+          resolve(undefined);
+        }
+      };
+      img.onerror = () => resolve(undefined);
+      img.src = mapThumb;
     });
-    // Frozen full-res fallback for the slide editor — captured now because
-    // this is the only time the live map is guaranteed to hold this slide's
-    // symbol graphics (see _symbolGraphicsMissing / prepareBackground).
-    void this._tryFullScreenshot().then((dataUrl) => {
-      if (dataUrl) slide.backgroundDataUrl = dataUrl;
-    });
-    return slide;
   }
 
   public getSlides(): readonly Slide[] {
@@ -796,9 +898,10 @@ class BriefingEngine {
   // ── Persistence ────────────────────────────────────────────────────────────
 
   public exportBriefing(): BriefingDocument {
-    // version 3 = slides may carry a full-res backgroundDataUrl fallback
-    // (2 = editor overlays); import accepts 1, 2 or 3.
-    return { version: 3, slides: this._slides.map((s) => ({ ...s })) };
+    // version 4 = slides may be screen-only (imported PPTX: no extent/camera,
+    // backgroundDataUrl is the slide); 3 = full-res background fallback;
+    // 2 = editor overlays. Import accepts 1–4.
+    return { version: 4, slides: this._slides.map((s) => ({ ...s })) };
   }
 
   public importBriefing(doc: BriefingDocument | null | undefined): void {
@@ -840,6 +943,57 @@ class BriefingEngine {
     input.click();
   }
 
+  /**
+   * Import a PowerPoint (.pptx) file — its slides (text, shapes, pictures,
+   * tables, speaker notes) are parsed by PptxImporter and APPENDED to the
+   * current briefing as screen-only slides (no map state; playback leaves
+   * the map untouched). pptxgenjs cannot read .pptx, so the parser is our
+   * own OOXML reader over the bundle's JSZip — see PptxImporter.ts.
+   */
+  public importPptxFromFile(): void {
+    if (!this._enabled) {
+      EngineLogger.error(ENGINE_NAME, 'Briefing disabled — enable features.briefing first');
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept =
+      '.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        EngineLogger.nextStep(ENGINE_NAME, `Importing "${file.name}"…`);
+        // Parser (and the pptxgen bundle it piggybacks on for JSZip) loads on
+        // first use only.
+        const { parsePptx } = await import('../ImportExport/PptxImporter');
+        const v: any = this._view;
+        const result = await parsePptx(await file.arrayBuffer(), {
+          capturedIn: v?.type === '3d' ? '3d' : '2d',
+          defaultTransitionMs: Number(this._cfg.defaultTransitionMs) || 1000,
+        });
+        for (const w of result.warnings) EngineLogger.nextStep(ENGINE_NAME, w);
+        if (!result.slides.length) {
+          EngineLogger.error(ENGINE_NAME, `No slides could be read from "${file.name}"`);
+          return;
+        }
+        const firstNew = this._slides.length;
+        this._slides.push(...result.slides);
+        this._current = firstNew;
+        this._refreshStrip();
+        this.openPanel();
+        EngineLogger.success(
+          ENGINE_NAME,
+          `Imported ${result.slides.length} slide(s) from "${file.name}"` +
+            (firstNew ? ` — appended after slide ${firstNew}` : ''),
+        );
+      } catch (err) {
+        EngineLogger.error(ENGINE_NAME, `PPTX import failed: ${err}`);
+      }
+    };
+    input.click();
+  }
+
   // ── Slide-strip panel ──────────────────────────────────────────────────────
 
   public openPanel(): void {
@@ -869,12 +1023,14 @@ class BriefingEngine {
       <div class="ms-briefing-body">
         <div class="ms-briefing-toolbar">
           <button class="ms-briefing-btn primary" data-act="capture" title="Adds Current Map View as Slide">＋ Add Slide</button>
+          <button class="ms-briefing-btn" data-act="recapture" title="Re-shoot the map into the selected slide — the image goes beneath the slide's annotations. With no slide selected, adds a new slide.">📷 Capture into Slide</button>
           <button class="ms-briefing-btn" data-act="prev" title="Previous slide (goTo transition).">◀ Prev</button>
           <button class="ms-briefing-btn" data-act="next" title="Next slide (goTo transition).">Next ▶</button>
           <button class="ms-briefing-btn" data-act="present" title="Enter full-screen present mode — Esc exits, arrows/space/click advance.">▶ Present</button>
           <button class="ms-briefing-btn" data-act="sorter" title="Open the slide sorter — drag tiles to reorder, duplicate or remove slides.">⊞ Sorter</button>
           <button class="ms-briefing-btn" data-act="save" title="Download this briefing as a JSON file.">⬇ Save</button>
           <button class="ms-briefing-btn" data-act="load" title="Load a briefing JSON file.">⬆ Load</button>
+          <button class="ms-briefing-btn" data-act="importPptx" title="Import a PowerPoint (.pptx) — its text, shapes, pictures, tables and notes become editable slides appended to this briefing.">⬆ Import PPTX</button>
         </div>
         <div class="ms-briefing-strip"></div>
       </div>
@@ -890,6 +1046,12 @@ class BriefingEngine {
       switch (btn.dataset.act) {
         case 'capture':
           this.captureSlide();
+          break;
+        case 'recapture':
+          this.captureIntoSlide();
+          break;
+        case 'importPptx':
+          this.importPptxFromFile();
           break;
         case 'prev':
           void this.prevSlide();
@@ -1113,7 +1275,8 @@ class BriefingEngine {
         <span class="ms-sorter-icon">⊞</span>
         <span class="ms-sorter-title">Slide Sorter</span>
         <span class="ms-sorter-count"></span>
-        <span class="ms-sorter-hint">drag to reorder · click: go to · double-click: rename · ⧉ duplicate · ✕ remove</span>
+        <span class="ms-sorter-hint">drag to reorder · click: go to · double-click: rename · ✎ edit · ⧉ duplicate · ✕ remove</span>
+        <button class="ms-sorter-done" data-act="present" title="Start the slide show (Esc exits).">▶ Present</button>
         <button class="ms-sorter-done" data-act="close" title="Close the slide sorter (Esc).">Done</button>
       </div>
       <div class="ms-sorter-grid"></div>`;
@@ -1122,6 +1285,8 @@ class BriefingEngine {
     this._sorterGrid = el.querySelector('.ms-sorter-grid') as HTMLElement;
 
     el.querySelector('[data-act="close"]')!.addEventListener('click', () => this.closeSorter());
+    // enterPresent() closes the sorter itself before taking over the screen.
+    el.querySelector('[data-act="present"]')!.addEventListener('click', () => this.enterPresent());
 
     // Dropping in empty grid space (past the last tile) moves to the end.
     this._sorterGrid.addEventListener('dragover', (e) => {
@@ -1169,6 +1334,7 @@ class BriefingEngine {
         ${buildCount ? `<span class="ms-sorter-tile-builds" title="${buildCount} build step(s)">⚡${buildCount}</span>` : ''}
         <span class="ms-sorter-tile-title">${this._escapeHtml(slide.title)}</span>
         <span class="ms-sorter-tile-actions">
+          <button class="ms-sorter-tile-btn" data-act="edit" title="Edit this slide — text, shapes, arrows, colors.">✎</button>
           <button class="ms-sorter-tile-btn" data-act="dup" title="Duplicate this slide.">⧉</button>
           <button class="ms-sorter-tile-btn" data-act="del" title="Remove this slide.">✕</button>
         </span>`;
@@ -1180,6 +1346,9 @@ class BriefingEngine {
           this.removeSlide(i);
         } else if (act === 'dup') {
           this.duplicateSlide(i);
+        } else if (act === 'edit') {
+          // openSlideEditor closes the sorter itself.
+          void this.openSlideEditor(i);
         } else {
           void this.goToSlide(i);
         }
@@ -1289,7 +1458,20 @@ class BriefingEngine {
   private _editorHost(): SlideEditorHost {
     return {
       getSlide: (i: number) => this._slides[i] ?? null,
+      getSlideCount: () => this._slides.length,
+      onPresent: (i: number) => {
+        // Editor's ⛶ Slideshow — it saved & closed itself; present from there.
+        if (i >= 0 && i < this._slides.length) this._current = i;
+        this._refreshStrip();
+        this.enterPresent();
+      },
       prepareBackground: async (i: number) => {
+        // Screen-only slide (imported PPTX): the stored background IS the
+        // slide — no map state to apply, no screenshot to take.
+        const pre = this._slides[i];
+        if (pre && this._isScreenOnly(pre) && pre.backgroundDataUrl) {
+          return { dataUrl: pre.backgroundDataUrl, missingSymbols: false, usedFallback: false };
+        }
         await this.applySlideForExport(i);
         await this._settleView();
         const slide = this._slides[i];
@@ -1323,23 +1505,62 @@ class BriefingEngine {
    * Present-mode annotation overlays — a transparent StaticCanvas stretched
    * over the view (pointer-events none; takeScreenshot never captures DOM,
    * so exports are unaffected). Static in v1: drawn after the transition,
-   * cleared on slide change / exit.
+   * cleared on slide change / exit. Screen-only slides (imported PPTX) also
+   * draw their stored background contain-fit beneath the overlays, since the
+   * map itself shows nothing for them.
    */
   private _renderPresentOverlays(slide: Slide): void {
     this._clearPresentOverlays();
     const fabric = (window as any).fabric;
     const v: any = this._view;
-    if (!fabric || !v?.container || !slide.overlays?.length) return;
+    const screenBg = this._isScreenOnly(slide) ? slide.backgroundDataUrl : undefined;
+    if (!fabric || !v?.container || (!slide.overlays?.length && !screenBg)) return;
     const el = document.createElement('canvas');
     el.className = 'ms-briefing-overlay-canvas';
     v.container.appendChild(el);
     const sc = new fabric.StaticCanvas(el, { width: v.width, height: v.height });
-    for (const o of slide.overlays) {
-      const obj = overlayToFabric(o, v.width, v.height);
-      if (obj) sc.add(obj);
-    }
-    sc.renderAll();
     this._presentOverlay = { el, canvas: sc };
+
+    // Map slides: overlays span the live view rect. Screen-only slides:
+    // everything is normalized to the imported slide box — contain-fit it
+    // (like the editor/exporter do) and offset the overlays into that rect.
+    const draw = (fit: { x: number; y: number; w: number; h: number }) => {
+      for (const o of slide.overlays ?? []) {
+        const obj = overlayToFabric(o, fit.w, fit.h);
+        if (!obj) continue;
+        if (fit.x || fit.y) {
+          obj.set({ left: (obj.left ?? 0) + fit.x, top: (obj.top ?? 0) + fit.y });
+          obj.setCoords?.();
+        }
+        sc.add(obj);
+      }
+      sc.renderAll();
+    };
+
+    if (!screenBg) {
+      draw({ x: 0, y: 0, w: v.width, h: v.height });
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      if (this._presentOverlay?.canvas !== sc) return; // slide changed meanwhile
+      const iw = img.naturalWidth || 1;
+      const ih = img.naturalHeight || 1;
+      const scale = Math.min(v.width / iw, v.height / ih);
+      const fit = {
+        x: (v.width - iw * scale) / 2,
+        y: (v.height - ih * scale) / 2,
+        w: iw * scale,
+        h: ih * scale,
+      };
+      sc.setBackgroundColor('#101418');
+      sc.setBackgroundImage(
+        new fabric.Image(img, { left: fit.x, top: fit.y, scaleX: scale, scaleY: scale }),
+        () => draw(fit),
+      );
+    };
+    img.onerror = () => draw({ x: 0, y: 0, w: v.width, h: v.height });
+    img.src = screenBg;
   }
 
   private _clearPresentOverlays(): void {
@@ -1386,6 +1607,11 @@ class BriefingEngine {
       if (hit) return hit;
     }
     return null;
+  }
+
+  /** Imported PPTX slides are screen-only: no captured extent/camera. */
+  private _isScreenOnly(slide: Slide): boolean {
+    return !slide.view?.extent && !slide.view?.camera;
   }
 
   /**
@@ -1515,7 +1741,7 @@ class BriefingEngine {
       #briefingPanel {
         position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
         z-index: 9500; display: none; flex-direction: column;
-        width: min(94vw, 760px); max-width: min(94vw, 760px); min-width: 460px;
+        width: min(94vw, 960px); max-width: min(94vw, 960px); min-width: 460px;
         background: var(--ms-bg, #141820); border: 1px solid var(--ms-border, rgba(90,140,220,0.25));
         border-radius: var(--ms-radius, 9px); box-shadow: var(--ms-shadow, 0 8px 36px rgba(0,0,0,0.55));
         font: var(--ms-fs, 12px)/1.4 var(--ms-font, 'Segoe UI', system-ui, sans-serif);

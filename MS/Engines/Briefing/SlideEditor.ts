@@ -28,6 +28,10 @@ const THUMB_WIDTH = 240;
 
 export interface SlideEditorHost {
   getSlide(index: number): Slide | null;
+  /** Total slide count — drives the editor's ◀ / ▶ slide navigation. */
+  getSlideCount(): number;
+  /** Optional: start present mode at `index` (editor saves & closes first). */
+  onPresent?(index: number): void;
   /**
    * Apply slide state headlessly and return a full-res screenshot dataUrl
    * (null on failure) plus whether symbol graphics the slide expects are
@@ -126,63 +130,121 @@ export default class SlideEditor {
     const slide = host.getSlide(index);
     if (!slide) return false;
 
+    this._host = host;
+    this._index = index;
+    this._injectStyles();
+    this._buildStage(slide);
+    await this._loadSlide(index);
+    if (!this._stage) return false; // closed while preparing
+    this._attachKeys();
+    EngineLogger.success(ENGINE_NAME, `Editing "${slide.title}"`);
+    return true;
+  }
+
+  /** Persist the current canvas + title/notes to the slide — used by Save & Close, slide navigation and Slideshow. */
+  private _saveCurrent(): void {
+    const host = this._host;
+    const index = this._index;
+    if (!this._fc || !host || index < 0) return;
+    try {
+      const active: any = this._fc.getActiveObject?.();
+      active?.exitEditing?.();
+      this._fc.discardActiveObject();
+      this._fc.renderAll();
+
+      const overlays = (this._fc.getObjects() as any[])
+        .map((o) => fabricToOverlay(o, this._W, this._H))
+        .filter(Boolean) as SlideOverlay[];
+      const thumbnailDataUrl = this._fc.toDataURL({
+        format: 'jpeg',
+        quality: 0.72,
+        multiplier: THUMB_WIDTH / this._W,
+      });
+      const slide = host.getSlide(index);
+      host.onSaved(index, {
+        title: (this._titleInput?.value ?? '').trim() || slide?.title || `Slide ${index + 1}`,
+        notes: (this._notesArea?.value ?? '').trim() || undefined,
+        overlays: overlays.length ? overlays : undefined,
+        thumbnailDataUrl,
+      });
+    } catch (err) {
+      EngineLogger.error(ENGINE_NAME, `Save failed: ${err}`);
+    }
+  }
+
+  /**
+   * Load `index` into the already-open stage: swap title/notes, rebuild the
+   * fabric canvas on the slide's background. Shared by open() and ◀ / ▶
+   * navigation (which saves first — PowerPoint-style, moving slides commits).
+   */
+  private async _loadSlide(index: number): Promise<void> {
+    const host = this._host;
+    const fabric = (window as any).fabric;
+    if (!host || !fabric || !this._stage) return;
+    const slide = host.getSlide(index);
+    if (!slide) return;
+
     this._opening = true;
     try {
-      this._host = host;
       this._index = index;
-      this._injectStyles();
-      this._buildStage(slide);
+      if (this._titleInput) this._titleInput.value = slide.title ?? '';
+      if (this._notesArea) {
+        this._notesArea.value = slide.notes ?? '';
+        if (slide.notes) this._notesArea.style.display = '';
+      }
+      this._updateNavState();
+
+      try {
+        this._fc?.dispose?.();
+      } catch {}
+      this._fc = null;
+      this._drawing = null;
+      if (this._stageWrap) {
+        this._stageWrap.innerHTML = '<span class="ms-sledit-loading">Preparing slide…</span>';
+      }
 
       const bg = await host.prepareBackground(index);
-      if (!this._stage) return false; // closed while preparing
+      if (!this._stage) return; // closed while preparing
       const size = await this._loadImage(bg.dataUrl);
       // Only warn persistently when we truly have nothing to show — a
       // successful fallback gets a toast instead (see below), not a banner.
       this._initCanvas(fabric, slide, size, bg.missingSymbols && !bg.usedFallback);
+      this._setTool('select'); // never carry a draw tool across slides
       if (bg.usedFallback) {
         this._showToast(
           'Live symbol graphics not found — showing the snapshot captured with this slide.',
         );
       }
-      this._attachKeys();
-      EngineLogger.success(ENGINE_NAME, `Editing "${slide.title}"`);
-      return true;
     } finally {
       this._opening = false;
     }
   }
 
+  /** Save the current slide, then edit its neighbor (◀ / ▶). */
+  private async _navigate(delta: number): Promise<void> {
+    if (this._opening || !this._host) return;
+    const count = this._host.getSlideCount();
+    const next = this._index + delta;
+    if (next < 0 || next >= count) return;
+    this._saveCurrent();
+    await this._loadSlide(next);
+  }
+
+  private _updateNavState(): void {
+    if (!this._bar || !this._host) return;
+    const count = this._host.getSlideCount();
+    const counter = this._bar.querySelector('.ms-sledit-navcount');
+    if (counter) counter.textContent = `${this._index + 1} / ${count}`;
+    const prev = this._bar.querySelector('[data-act="prevSlide"]') as HTMLButtonElement | null;
+    const next = this._bar.querySelector('[data-act="nextSlide"]') as HTMLButtonElement | null;
+    if (prev) prev.disabled = this._index <= 0;
+    if (next) next.disabled = this._index >= count - 1;
+  }
+
   public close(save: boolean): void {
     if (!this._stage) return;
-    const host = this._host;
-    const index = this._index;
 
-    if (save && this._fc && host) {
-      try {
-        const active: any = this._fc.getActiveObject?.();
-        active?.exitEditing?.();
-        this._fc.discardActiveObject();
-        this._fc.renderAll();
-
-        const overlays = (this._fc.getObjects() as any[])
-          .map((o) => fabricToOverlay(o, this._W, this._H))
-          .filter(Boolean) as SlideOverlay[];
-        const thumbnailDataUrl = this._fc.toDataURL({
-          format: 'jpeg',
-          quality: 0.72,
-          multiplier: THUMB_WIDTH / this._W,
-        });
-        const slide = host.getSlide(index);
-        host.onSaved(index, {
-          title: (this._titleInput?.value ?? '').trim() || slide?.title || `Slide ${index + 1}`,
-          notes: (this._notesArea?.value ?? '').trim() || undefined,
-          overlays: overlays.length ? overlays : undefined,
-          thumbnailDataUrl,
-        });
-      } catch (err) {
-        EngineLogger.error(ENGINE_NAME, `Save failed: ${err}`);
-      }
-    }
+    if (save) this._saveCurrent();
 
     if (this._keyHandler) {
       document.removeEventListener('keydown', this._keyHandler, true);
@@ -247,6 +309,11 @@ export default class SlideEditor {
         <span class="ms-sledit-sep"></span>
         <input type="text" class="ms-sledit-title" placeholder="Slide title" title="Slide title (saved with the slide)">
         <button data-act="notes" title="Toggle speaker notes">📝</button>
+        <span class="ms-sledit-sep"></span>
+        <button data-act="prevSlide" title="Save this slide and edit the previous one">◀</button>
+        <span class="ms-sledit-navcount">– / –</span>
+        <button data-act="nextSlide" title="Save this slide and edit the next one">▶</button>
+        <button data-act="present" title="Save this slide and start the slide show from here (Esc exits)">⛶ Slideshow</button>
         <span class="ms-sledit-spring"></span>
         <button data-act="save" class="primary" title="Save annotations, title and notes to the slide">Save &amp; Close</button>
         <button data-act="cancel" title="Discard changes (Esc)">Cancel</button>
@@ -326,6 +393,22 @@ export default class SlideEditor {
       case 'cancel':
         this.close(false);
         break;
+      case 'prevSlide':
+        void this._navigate(-1);
+        break;
+      case 'nextSlide':
+        void this._navigate(1);
+        break;
+      case 'present': {
+        // Save, close, then hand off to the host's present mode — the two
+        // surfaces are mutually exclusive (BriefingEngine enforces the same).
+        const host = this._host;
+        const index = this._index;
+        this._saveCurrent();
+        this.close(false); // already saved
+        host?.onPresent?.(index);
+        break;
+      }
       case 'notes':
         if (this._notesArea) {
           this._notesArea.style.display = this._notesArea.style.display === 'none' ? '' : 'none';
@@ -395,6 +478,8 @@ export default class SlideEditor {
   ): void {
     if (!this._stageWrap) return;
     this._stageWrap.innerHTML = '';
+    // Slide navigation re-inits the canvas — drop the previous slide's banner.
+    this._stage?.querySelectorAll('.ms-sledit-warn').forEach((el) => el.remove());
 
     const warnings: string[] = [];
     if (!size) warnings.push('Screenshot unavailable — annotations are still editable');
@@ -798,6 +883,12 @@ export default class SlideEditor {
         padding: 4px 8px; cursor: pointer; font: inherit; white-space: nowrap;
       }
       .ms-sledit-bar button:hover { background: rgba(255,255,255,0.16); }
+      .ms-sledit-bar button:disabled { opacity: 0.35; cursor: default; }
+      .ms-sledit-bar button:disabled:hover { background: rgba(255,255,255,0.08); }
+      .ms-sledit-navcount {
+        min-width: 46px; text-align: center; white-space: nowrap;
+        color: #8a97a5; font-variant-numeric: tabular-nums;
+      }
       .ms-sledit-bar button.active,
       .ms-sledit-bar button.primary { background: #2d6cdf; border-color: #2d6cdf; color: #fff; }
       .ms-sledit-bar button.primary:hover { background: #3f7ceb; }
