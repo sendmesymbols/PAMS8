@@ -2478,6 +2478,9 @@ function updateStylusPerSymbolUI(cls: string | null): void {
         case 'capture':
           be ? be.captureSlide() : warnNotReady();
           break;
+        case 'blank':
+          be ? be.addBlankSlide() : warnNotReady();
+          break;
         case 'recapture':
           be ? be.captureIntoSlide() : warnNotReady();
           break;

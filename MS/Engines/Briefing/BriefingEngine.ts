@@ -210,6 +210,54 @@ class BriefingEngine {
   }
 
   /**
+   * Append an empty screen-only slide (same shape as an imported PPTX slide:
+   * no extent/camera, playback leaves the map untouched, `visibleLayers` is
+   * empty so nothing gets toggled). The solid-white background raster is what
+   * the editor, present mode and PPTX export all show — open the slide in the
+   * editor (✎) to put text and shapes on it. captureIntoSlide() can later
+   * turn it into a live map slide.
+   */
+  public addBlankSlide(title?: string): Slide | null {
+    if (!this._enabled) return null;
+    const v: any = this._view;
+    const bg = this._makeBlankBackground();
+    const slide: Slide = {
+      id: this._uuid(),
+      title: title ?? `Slide ${this._slides.length + 1}`,
+      view: { capturedIn: v?.type === '3d' ? '3d' : '2d' },
+      visibleLayers: {},
+      transitionMs: Number(this._cfg.defaultTransitionMs) || 1000,
+      backgroundDataUrl: bg?.background,
+      thumbnailDataUrl: bg?.thumbnail,
+    };
+    this._slides.push(slide);
+    this._current = this._slides.length - 1;
+    this._refreshStrip();
+    EngineLogger.success(
+      ENGINE_NAME,
+      `Added blank slide "${slide.title}" (${this._slides.length} slides)`,
+    );
+    return slide;
+  }
+
+  /** Solid-white rasters a blank slide stores as its background + thumbnail. */
+  private _makeBlankBackground(): { background: string; thumbnail: string } | null {
+    const paint = (w: number, h: number): string | null => {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const g = c.getContext('2d');
+      if (!g) return null;
+      g.fillStyle = '#ffffff';
+      g.fillRect(0, 0, w, h);
+      return c.toDataURL('image/png');
+    };
+    const background = paint(1280, 720);
+    const thumbnail = paint(THUMB_WIDTH, THUMB_HEIGHT);
+    return background && thumbnail ? { background, thumbnail } : null;
+  }
+
+  /**
    * Re-shoot the current map into an EXISTING slide: view state, layer
    * visibility, background and thumbnail are refreshed while title, notes,
    * annotation overlays and builds are kept — the new capture slides in
@@ -1023,6 +1071,7 @@ class BriefingEngine {
       <div class="ms-briefing-body">
         <div class="ms-briefing-toolbar">
           <button class="ms-briefing-btn primary" data-act="capture" title="Adds Current Map View as Slide">＋ Add Slide</button>
+          <button class="ms-briefing-btn" data-act="blank" title="Add an empty slide — the map stays untouched; open it in the editor (✎) to add text and shapes.">◻ Blank Slide</button>
           <button class="ms-briefing-btn" data-act="recapture" title="Re-shoot the map into the selected slide — the image goes beneath the slide's annotations. With no slide selected, adds a new slide.">📷 Capture into Slide</button>
           <button class="ms-briefing-btn" data-act="prev" title="Previous slide (goTo transition).">◀ Prev</button>
           <button class="ms-briefing-btn" data-act="next" title="Next slide (goTo transition).">Next ▶</button>
@@ -1046,6 +1095,9 @@ class BriefingEngine {
       switch (btn.dataset.act) {
         case 'capture':
           this.captureSlide();
+          break;
+        case 'blank':
+          this.addBlankSlide();
           break;
         case 'recapture':
           this.captureIntoSlide();
