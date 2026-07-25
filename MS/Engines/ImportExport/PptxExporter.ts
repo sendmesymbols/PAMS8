@@ -844,7 +844,10 @@ class PptxExporter {
 
   /** line / arrow / freehand — custGeom path; arrows get a triangle head. */
   private _emitOverlayPath(slide: any, o: SlideOverlay, fit: ContainFit): void {
-    const pts = (o.points ?? []).map((p) => ({
+    const rawPts = o.points ?? [];
+    const normPts =
+      o.kind === 'arrow' && o.arrowType === 'elbow' ? this._elbowWaypoints(rawPts) : rawPts;
+    const pts = normPts.map((p) => ({
       x: fit.x + p.x * fit.w,
       y: fit.y + p.y * fit.h,
     }));
@@ -874,6 +877,29 @@ class PptxExporter {
         dashType: this._ovDashType(o),
       },
     });
+  }
+
+  /**
+   * Expand an elbow arrow's clicked points into the orthogonal
+   * (horizontal-then-vertical) waypoint sequence it actually renders as —
+   * pptx custGeom has no fillet/curve concept, so this needs the straight
+   * dogleg vertices only (unlike OverlayFabric's buildElbowArrowPath, which
+   * also adds a rounded-corner fillet for on-screen rendering).
+   */
+  private _elbowWaypoints(
+    points: Array<{ x: number; y: number }>,
+  ): Array<{ x: number; y: number }> {
+    if (points.length < 2) return points;
+    const ortho: Array<{ x: number; y: number }> = [points[0]];
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      if (Math.abs(b.x - a.x) > 1e-4 && Math.abs(b.y - a.y) > 1e-4) {
+        ortho.push({ x: b.x, y: a.y });
+      }
+      ortho.push(b);
+    }
+    return ortho;
   }
 
   /** SimpleLineSymbol → pptx ShapeLineProps (px → pt, dash style, alpha). */
