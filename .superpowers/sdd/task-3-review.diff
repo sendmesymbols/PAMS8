@@ -1,0 +1,166 @@
+# Review package (snapshot-based, no commits): Task 3
+
+## Files changed
+MS/Engines/Briefing/OverlayFabric.ts
+MS/Engines/Briefing/SlideEditor.ts
+
+## Diff: OverlayFabric.ts
+diff --git .superpowers/sdd/task-3-before/OverlayFabric.ts MS/Engines/Briefing/OverlayFabric.ts
+index abe4c9a..3e32f3b 100644
+--- .superpowers/sdd/task-3-before/OverlayFabric.ts
++++ MS/Engines/Briefing/OverlayFabric.ts
+@@ -246,30 +246,34 @@ export function makeShapeObject(
+ }
+ 
+ /**
+- * Line + triangle head grouped as one selectable arrow. Creation-time
+- * endpoints are stored group-center-relative in data.localPoints so
+- * fabricToOverlay can recover them through the group's transform matrix
+- * after any move/scale/rotate.
++ * Path (+ triangle head) grouped as one selectable arrow, built from N
++ * points via buildArrowPath (sharp/curved/elbow). Creation-time points are
++ * stored group-center-relative in data.localPoints so fabricToOverlay can
++ * recover them through the group's transform matrix after any
++ * move/scale/rotate.
+  */
+ export function makeArrowGroup(
+-  p0: { x: number; y: number },
+-  p1: { x: number; y: number },
++  points: Array<{ x: number; y: number }>,
+   stroke: string,
+   strokeWidthPx: number,
+   extra: Record<string, any> = {},
+   strokeDash?: 'dashed' | 'dotted',
++  arrowType: ArrowType = 'sharp',
+ ): any {
+   const fabric = (window as any).fabric;
++  const { d, endAngleRad } = buildArrowPath(points, arrowType);
+   const head = strokeWidthPx * 4 + 6;
+-  const angleDeg = (Math.atan2(p1.y - p0.y, p1.x - p0.x) * 180) / Math.PI + 90;
+-  const line = new fabric.Line([p0.x, p0.y, p1.x, p1.y], {
++  const angleDeg = (endAngleRad * 180) / Math.PI + 90;
++  const last = points[points.length - 1];
++  const path = new fabric.Path(d, {
++    fill: '',
+     stroke,
+     strokeWidth: strokeWidthPx,
+     ...dashProps(strokeDash, strokeWidthPx),
+   });
+   const tri = new fabric.Triangle({
+-    left: p1.x,
+-    top: p1.y,
++    left: last.x,
++    top: last.y,
+     originX: 'center',
+     originY: 'center',
+     width: head,
+@@ -277,15 +281,17 @@ export function makeArrowGroup(
+     angle: angleDeg,
+     fill: stroke,
+   });
+-  const grp = new fabric.Group([line, tri], {
++  const grp = new fabric.Group([path, tri], {
+     ...extra,
+-    data: { id: extra?.data?.id ?? overlayUuid(), kind: 'arrow' as OverlayKind, strokeDash },
++    data: {
++      id: extra?.data?.id ?? overlayUuid(),
++      kind: 'arrow' as OverlayKind,
++      strokeDash,
++      arrowType,
++    },
+   });
+   const c = grp.getCenterPoint();
+-  grp.data.localPoints = [
+-    { x: p0.x - c.x, y: p0.y - c.y },
+-    { x: p1.x - c.x, y: p1.y - c.y },
+-  ];
++  grp.data.localPoints = points.map((p) => ({ x: p.x - c.x, y: p.y - c.y }));
+   return grp;
+ }
+ 
+@@ -368,15 +374,15 @@ export function overlayToFabric(o: SlideOverlay, W: number, H: number): any | nu
+       });
+     }
+     case 'arrow': {
+-      const [p0, p1] = o.points ?? [];
+-      if (!p0 || !p1) return null;
++      const pts = o.points ?? [];
++      if (pts.length < 2) return null;
+       return makeArrowGroup(
+-        { x: p0.x * W, y: p0.y * H },
+-        { x: p1.x * W, y: p1.y * H },
++        pts.map((p) => ({ x: p.x * W, y: p.y * H })),
+         o.stroke ?? '#FF3B30',
+         strokePx,
+         common,
+         o.strokeDash,
++        o.arrowType ?? 'sharp',
+       );
+     }
+     case 'freehand':
+@@ -502,6 +508,9 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay |
+   base.stroke = parseColor(strokeSrc?.stroke)?.hex ?? '#FF3B30';
+   base.strokeWidth = ((strokeSrc?.strokeWidth ?? 2) * avgScale) / H;
+   if (obj.data.strokeDash) base.strokeDash = obj.data.strokeDash;
++  if (kind === 'arrow' && obj.data.arrowType && obj.data.arrowType !== 'sharp') {
++    base.arrowType = obj.data.arrowType;
++  }
+   // Highlight restores with a 0.45 default, so a full-opacity highlight must
+   // still write opacity explicitly or it would darken on reload.
+   if (kind === 'highlight') base.opacity = Number(Number(obj.opacity ?? 0.45).toFixed(3));
+
+## Diff: SlideEditor.ts
+diff --git .superpowers/sdd/task-3-before/SlideEditor.ts MS/Engines/Briefing/SlideEditor.ts
+index 2710ce6..03e3a4f 100644
+--- .superpowers/sdd/task-3-before/SlideEditor.ts
++++ MS/Engines/Briefing/SlideEditor.ts
+@@ -766,8 +766,7 @@ export default class SlideEditor {
+       this._fc.remove(obj);
+       const style = this._creationStyle();
+       finalObj = makeArrowGroup(
+-        p0,
+-        p1,
++        [p0, p1],
+         style.stroke,
+         style.strokeWidth,
+         { opacity: this._defaults.opacity },
+@@ -1154,7 +1153,7 @@ export default class SlideEditor {
+       case 'stroke':
+         if (kind === 'arrow') {
+           obj.getObjects?.()?.forEach((ch: any) => {
+-            if (ch.type === 'line') ch.set({ stroke: d.stroke });
++            if (ch.type === 'path') ch.set({ stroke: d.stroke });
+             else ch.set({ fill: d.stroke });
+           });
+           obj.dirty = true;
+@@ -1164,7 +1163,7 @@ export default class SlideEditor {
+         break;
+       case 'strokeWidthPx':
+         if (kind === 'arrow') {
+-          const line = obj.getObjects?.()?.find((ch: any) => ch.type === 'line');
++          const line = obj.getObjects?.()?.find((ch: any) => ch.type === 'path');
+           line?.set({
+             strokeWidth: d.strokeWidthPx,
+             ...dashProps(obj.data.strokeDash, d.strokeWidthPx),
+@@ -1185,10 +1184,10 @@ export default class SlideEditor {
+         obj.data.strokeDash = dashVal;
+         const width =
+           kind === 'arrow'
+-            ? obj.getObjects?.()?.find((ch: any) => ch.type === 'line')?.strokeWidth ?? 3
++            ? obj.getObjects?.()?.find((ch: any) => ch.type === 'path')?.strokeWidth ?? 3
+             : obj.strokeWidth ?? 3;
+         if (kind === 'arrow') {
+-          const line = obj.getObjects?.()?.find((ch: any) => ch.type === 'line');
++          const line = obj.getObjects?.()?.find((ch: any) => ch.type === 'path');
+           line?.set(dashProps(dashVal, width));
+           obj.dirty = true;
+         } else {
+@@ -1265,7 +1264,7 @@ export default class SlideEditor {
+         }
+       }
+       const strokeSrc =
+-        kind === 'arrow' ? obj.getObjects?.()?.find((ch: any) => ch.type === 'line') : obj;
++        kind === 'arrow' ? obj.getObjects?.()?.find((ch: any) => ch.type === 'path') : obj;
+       const stroke = parseColor(strokeSrc?.stroke);
+       if (stroke) d.stroke = stroke.hex;
+       if (strokeSrc?.strokeWidth) {

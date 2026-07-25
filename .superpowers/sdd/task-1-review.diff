@@ -1,0 +1,28 @@
+# Review package (snapshot-based, no commits): Task 1
+
+## Files changed
+MS/Engines/Briefing/BriefingTypes.ts
+
+## Diff
+diff --git .superpowers/sdd/task-1-before/BriefingTypes.ts MS/Engines/Briefing/BriefingTypes.ts
+index 7f494f6..d47ed5b 100644
+--- .superpowers/sdd/task-1-before/BriefingTypes.ts
++++ MS/Engines/Briefing/BriefingTypes.ts
+@@ -70,7 +70,7 @@ export interface SlideOverlay {
+   h: number;
+   /** Degrees clockwise about the box center — text/rect/ellipse only. */
+   rotation?: number;
+-  /** line/arrow: [start, end]; freehand: sampled polyline. Normalized. */
++  /** line: [start, end]; arrow: 2+ points (bend points in between); freehand: sampled polyline. Normalized. */
+   points?: Array<{ x: number; y: number }>;
+   /** '#RRGGBB'; absent = no fill. */
+   fill?: string;
+@@ -82,6 +82,8 @@ export interface SlideOverlay {
+   strokeWidth?: number;
+   /** Stroke dash pattern; absent = solid. */
+   strokeDash?: 'dashed' | 'dotted';
++  /** arrow only. Absent = 'sharp' (today's straight 2-point look). */
++  arrowType?: 'sharp' | 'curved' | 'elbow';
+   /** Whole-object opacity 0..1, default 1. */
+   opacity?: number;
+   // text only:

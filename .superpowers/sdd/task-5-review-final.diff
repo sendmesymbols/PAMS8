@@ -1,0 +1,441 @@
+# Review package (snapshot-based, no commits): Task 5 — FINAL (scoped styleSelectionControls re-add)
+
+## Files changed
+MS/Engines/Briefing/SlideEditor.ts
+MS/Engines/Briefing/OverlayFabric.ts
+
+## Diff: SlideEditor.ts (vs. pre-Task-5 baseline)
+diff --git .superpowers/sdd/task-5-before/SlideEditor.ts MS/Engines/Briefing/SlideEditor.ts
+index 7135c8c..d7e3140 100644
+--- .superpowers/sdd/task-5-before/SlideEditor.ts
++++ MS/Engines/Briefing/SlideEditor.ts
+@@ -29,7 +29,10 @@ import {
+   overlayToFabric,
+   overlayUuid,
+   parseColor,
++  restoreSelectionControls,
++  styleSelectionControls,
+   withAlpha,
++  type ArrowType,
+ } from './OverlayFabric';
+ import SlideEditorUI, { TOOL_DEFS } from './SlideEditorUI';
+ import type { PanelContext, StyleDefaults, StyleProp, Tool } from './SlideEditorUI';
+@@ -109,6 +112,8 @@ export default class SlideEditor {
+   private _arrowChain: Array<{ x: number; y: number }> | null = null;
+   private _arrowPreview: any = null;
+   private _arrowLastClickAt = 0;
++  private _bendDrag: { obj: any; segmentIndex: number; lastPoint: { x: number; y: number } } | null = null;
++  private _bendPreview: any = null;
+   private _erasing = false;
+   private _erasedAny = false;
+   private _undo: string[] = [];
+@@ -285,6 +290,7 @@ export default class SlideEditor {
+     }
+     this._laser?.dispose();
+     this._laser = null;
++    restoreSelectionControls();
+     try {
+       this._fc?.dispose?.();
+     } catch {}
+@@ -375,6 +381,13 @@ export default class SlideEditor {
+   private _deleteSelection(): void {
+     const objs: any[] = this._fc?.getActiveObjects?.() ?? [];
+     if (!objs.length) return;
++    if (this._bendDrag) {
++      if (this._bendPreview) {
++        this._fc.remove(this._bendPreview);
++        this._bendPreview = null;
++      }
++      this._bendDrag = null;
++    }
+     objs.forEach((o) => this._fc.remove(o));
+     this._fc.discardActiveObject();
+     this._fc.requestRenderAll();
+@@ -404,6 +417,7 @@ export default class SlideEditor {
+   ): void {
+     const ui = this._ui;
+     if (!ui?.stageWrap) return;
++    styleSelectionControls();
+     ui.stageWrap.innerHTML = '';
+     // Slide navigation re-inits the canvas — drop the previous slide's banner.
+     this._stage?.querySelectorAll('.ms-sledit-warn').forEach((el) => el.remove());
+@@ -454,8 +468,12 @@ export default class SlideEditor {
+ 
+     for (const o of slide.overlays ?? []) {
+       const obj = overlayToFabric(o, this._W, this._H);
+-      if (obj) this._fc.add(obj);
+-      else EngineLogger.error(ENGINE_NAME, `Skipped invalid overlay entry (${o?.kind ?? '?'})`);
++      if (obj) {
++        if (obj.data?.kind === 'arrow') this._attachArrowControls(obj);
++        this._fc.add(obj);
++      } else {
++        EngineLogger.error(ENGINE_NAME, `Skipped invalid overlay entry (${o?.kind ?? '?'})`);
++      }
+     }
+ 
+     this._fc.on('mouse:down', (opt: any) => this._onMouseDown(opt));
+@@ -465,7 +483,13 @@ export default class SlideEditor {
+     this._fc.on('selection:created', () => this._syncControlsFromSelection());
+     this._fc.on('selection:updated', () => this._syncControlsFromSelection());
+     this._fc.on('selection:cleared', () => this._syncPanelContext());
+-    this._fc.on('object:modified', () => this._commit());
++    this._fc.on('object:modified', () => {
++      if (this._bendDrag) {
++        this._finalizeArrowBend();
++        return;
++      }
++      this._commit();
++    });
+     this._fc.on('text:editing:exited', (e: any) => {
+       const t = e?.target;
+       if (t && !String(t.text ?? '').trim()) this._fc.remove(t);
+@@ -931,6 +955,7 @@ export default class SlideEditor {
+       style.strokeDash,
+       this._defaults.arrowType,
+     );
++    this._attachArrowControls(finalObj);
+     this._fc.add(finalObj);
+     this._setTool('select');
+     this._fc.setActiveObject(finalObj);
+@@ -938,6 +963,129 @@ export default class SlideEditor {
+     this._commit();
+   }
+ 
++  /** Adds a small draggable "bow" control at each segment's midpoint so dragging one inserts a bend. */
++  private _attachArrowControls(grp: any): void {
++    const fabric = (window as any).fabric;
++    const pts: Array<{ x: number; y: number }> = grp.data?.localPoints ?? [];
++    const controls: Record<string, any> = { ...fabric.Object.prototype.controls };
++    for (let i = 0; i < pts.length - 1; i++) {
++      controls[`bow${i}`] = new fabric.Control({
++        x: 0,
++        y: 0,
++        cursorStyle: 'crosshair',
++        positionHandler: (_dim: any, finalMatrix: number[], obj: any) => {
++          const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
++          const a = lp[i];
++          const b = lp[i + 1];
++          if (!a || !b) return new fabric.Point(0, 0);
++          const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
++          return fabric.util.transformPoint(new fabric.Point(mid.x, mid.y), finalMatrix);
++        },
++        actionHandler: (_eventData: any, transform: any, x: number, y: number) => {
++          this._dragArrowBend(transform.target, i, x, y);
++          return true;
++        },
++        actionName: 'insertArrowBend',
++        render: (ctx: CanvasRenderingContext2D, left: number, top: number) => {
++          ctx.save();
++          ctx.fillStyle = '#2d6cdf';
++          ctx.strokeStyle = '#ffffff';
++          ctx.lineWidth = 1.5;
++          ctx.beginPath();
++          ctx.arc(left, top, 5, 0, Math.PI * 2);
++          ctx.fill();
++          ctx.stroke();
++          ctx.restore();
++        },
++      });
++    }
++    grp.controls = controls;
++    grp.setCoords();
++  }
++
++  /**
++   * Per-tick bow-handle drag callback. Never mutates/removes the pinned arrow
++   * object itself (fabric keeps `transform.target` fixed to it for the whole
++   * gesture) — only swaps a cheap, throwaway dashed preview path, mirroring
++   * `_updateArrowPreview`'s already-proven pattern in this file. The real
++   * geometry swap happens once, at drag end, via `_finalizeArrowBend`.
++   */
++  private _dragArrowBend(obj: any, segmentIndex: number, canvasX: number, canvasY: number): void {
++    if (!obj || obj.data?.kind !== 'arrow') return;
++    const fabric = (window as any).fabric;
++    const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
++    if (segmentIndex < 0 || segmentIndex + 1 >= lp.length) return;
++    this._bendDrag = { obj, segmentIndex, lastPoint: { x: canvasX, y: canvasY } };
++    const m = obj.calcTransformMatrix();
++    const absPoints = lp.map((p) => {
++      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
++      return { x: abs.x, y: abs.y };
++    });
++    absPoints.splice(segmentIndex + 1, 0, { x: canvasX, y: canvasY });
++    const pathChild = obj.getObjects()[0];
++    const { d } = buildArrowPath(absPoints, obj.data?.arrowType ?? 'sharp');
++    if (this._bendPreview) this._fc.remove(this._bendPreview);
++    this._bendPreview = new fabric.Path(d, {
++      fill: '',
++      stroke: pathChild.stroke,
++      strokeWidth: pathChild.strokeWidth,
++      strokeDashArray: [6, 4],
++      selectable: false,
++      evented: false,
++      opacity: 0.9,
++    });
++    this._fc.add(this._bendPreview);
++    this._fc.requestRenderAll();
++  }
++
++  /** Called once at bow-handle drag end (via the `object:modified` listener in `_initCanvas`). */
++  private _finalizeArrowBend(): void {
++    const drag = this._bendDrag;
++    this._bendDrag = null;
++    if (this._bendPreview) {
++      this._fc.remove(this._bendPreview);
++      this._bendPreview = null;
++    }
++    if (!drag) return;
++    this._insertArrowBend(drag.obj, drag.segmentIndex, drag.lastPoint.x, drag.lastPoint.y);
++  }
++
++  /** Splices a new point into an arrow's geometry at the drag location and rebuilds it in place. */
++  private _insertArrowBend(obj: any, segmentIndex: number, canvasX: number, canvasY: number): void {
++    if (!obj || obj.data?.kind !== 'arrow') return;
++    const fabric = (window as any).fabric;
++    const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
++    if (segmentIndex < 0 || segmentIndex + 1 >= lp.length) return;
++    const m = obj.calcTransformMatrix();
++    const absPoints = lp.map((p) => {
++      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
++      return { x: abs.x, y: abs.y };
++    });
++    absPoints.splice(segmentIndex + 1, 0, { x: canvasX, y: canvasY });
++    const rebuilt = this._rebuildArrow(obj, absPoints);
++    this._fc.setActiveObject(rebuilt);
++    this._fc.requestRenderAll();
++  }
++
++  /** Replaces an arrow group with a freshly-built one from an absolute-coordinate point list, preserving style/id. Reused by Task 6. */
++  private _rebuildArrow(obj: any, absPoints: Array<{ x: number; y: number }>): any {
++    const arrowType: ArrowType = obj.data?.arrowType ?? 'sharp';
++    const pathChild = obj.getObjects()[0];
++    this._fc.remove(obj);
++    const rebuilt = makeArrowGroup(
++      absPoints,
++      pathChild.stroke,
++      pathChild.strokeWidth,
++      { opacity: obj.opacity, data: { id: obj.data.id } },
++      obj.data.strokeDash,
++      arrowType,
++    );
++    this._attachArrowControls(rebuilt);
++    this._fc.add(rebuilt);
++    this._commit();
++    return rebuilt;
++  }
++
+   private _clearArrowChain(): void {
+     if (this._arrowPreview) {
+       this._fc?.remove(this._arrowPreview);
+@@ -1083,6 +1231,7 @@ export default class SlideEditor {
+       if (!obj) continue;
+       obj.set({ left: (obj.left ?? 0) + offsetPx, top: (obj.top ?? 0) + offsetPx });
+       obj.setCoords();
++      if (obj.data?.kind === 'arrow') this._attachArrowControls(obj);
+       this._fc.add(obj);
+       added.push(obj);
+     }
+@@ -1174,11 +1323,21 @@ export default class SlideEditor {
+     } catch {
+       return;
+     }
++    if (this._bendDrag) {
++      if (this._bendPreview) {
++        this._fc.remove(this._bendPreview);
++        this._bendPreview = null;
++      }
++      this._bendDrag = null;
++    }
+     this._fc.discardActiveObject();
+     (this._fc.getObjects() as any[]).slice().forEach((o) => this._fc.remove(o));
+     for (const o of overlays) {
+       const obj = overlayToFabric(o, this._W, this._H);
+-      if (obj) this._fc.add(obj);
++      if (obj) {
++        if (obj.data?.kind === 'arrow') this._attachArrowControls(obj);
++        this._fc.add(obj);
++      }
+     }
+     this._fc.requestRenderAll();
+     this._syncPanelContext();
+
+## Diff: OverlayFabric.ts (vs. post-Task-3 state, the true pre-Task-5 baseline for this file)
+diff --git .superpowers/sdd/task-3-before/OverlayFabric.ts MS/Engines/Briefing/OverlayFabric.ts
+index abe4c9a..8047e42 100644
+--- .superpowers/sdd/task-3-before/OverlayFabric.ts
++++ MS/Engines/Briefing/OverlayFabric.ts
+@@ -62,6 +62,75 @@ export function withAlpha(hex: string, alpha: number): string {
+   return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
+ }
+ 
++let _controlsStyled = false;
++let _savedControlsState: Record<string, any> | null = null;
++
++/**
++ * One-time restyle of fabric's selection handles (Excalidraw-like: filled
++ * square handles in the editor's accent blue, circular rotate handle) so
++ * every shape kind picks it up with no per-object code. This is a
++ * prototype-level change — `fabric.Object.prototype` is shared with the
++ * OTHER fabric.Canvas in this app (`index.html`'s `#fabricCanvas`), so it
++ * must be paired with `restoreSelectionControls()` when this editor closes.
++ */
++export function styleSelectionControls(): void {
++  if (_controlsStyled) return;
++  _controlsStyled = true;
++  const fabric = (window as any).fabric;
++  const proto = fabric.Object.prototype;
++  _savedControlsState = {
++    cornerStyle: proto.cornerStyle,
++    cornerColor: proto.cornerColor,
++    cornerStrokeColor: proto.cornerStrokeColor,
++    cornerSize: proto.cornerSize,
++    transparentCorners: proto.transparentCorners,
++    borderColor: proto.borderColor,
++    borderScaleFactor: proto.borderScaleFactor,
++    padding: proto.padding,
++    rotatingPointOffset: proto.rotatingPointOffset,
++    mtrRender: proto.controls.mtr.render,
++  };
++  proto.cornerStyle = 'rect';
++  proto.cornerColor = '#ffffff';
++  proto.cornerStrokeColor = '#2d6cdf';
++  proto.cornerSize = 8;
++  proto.transparentCorners = false;
++  proto.borderColor = '#2d6cdf';
++  proto.borderScaleFactor = 1.5;
++  proto.padding = 4;
++  proto.rotatingPointOffset = 24;
++  proto.controls.mtr.render = (ctx: CanvasRenderingContext2D, left: number, top: number) => {
++    ctx.save();
++    ctx.fillStyle = '#ffffff';
++    ctx.strokeStyle = '#2d6cdf';
++    ctx.lineWidth = 1.5;
++    ctx.beginPath();
++    ctx.arc(left, top, 6, 0, Math.PI * 2);
++    ctx.fill();
++    ctx.stroke();
++    ctx.restore();
++  };
++}
++
++/** Undo `styleSelectionControls()` — call when the Briefing editor closes. */
++export function restoreSelectionControls(): void {
++  if (!_controlsStyled || !_savedControlsState) return;
++  const fabric = (window as any).fabric;
++  const proto = fabric.Object.prototype;
++  proto.cornerStyle = _savedControlsState.cornerStyle;
++  proto.cornerColor = _savedControlsState.cornerColor;
++  proto.cornerStrokeColor = _savedControlsState.cornerStrokeColor;
++  proto.cornerSize = _savedControlsState.cornerSize;
++  proto.transparentCorners = _savedControlsState.transparentCorners;
++  proto.borderColor = _savedControlsState.borderColor;
++  proto.borderScaleFactor = _savedControlsState.borderScaleFactor;
++  proto.padding = _savedControlsState.padding;
++  proto.rotatingPointOffset = _savedControlsState.rotatingPointOffset;
++  proto.controls.mtr.render = _savedControlsState.mtrRender;
++  _controlsStyled = false;
++  _savedControlsState = null;
++}
++
+ /**
+  * Dash pattern → fabric stroke props, scaled by width so dashes stay legible
+  * at any thickness. Solid explicitly resets both (style changes reuse this).
+@@ -246,30 +315,34 @@ export function makeShapeObject(
+ }
+ 
+ /**
+- * Line + triangle head grouped as one selectable arrow. Creation-time
+- * endpoints are stored group-center-relative in data.localPoints so
+- * fabricToOverlay can recover them through the group's transform matrix
+- * after any move/scale/rotate.
++ * Path (+ triangle head) grouped as one selectable arrow, built from N
++ * points via buildArrowPath (sharp/curved/elbow). Creation-time points are
++ * stored group-center-relative in data.localPoints so fabricToOverlay can
++ * recover them through the group's transform matrix after any
++ * move/scale/rotate.
+  */
+ export function makeArrowGroup(
+-  p0: { x: number; y: number },
+-  p1: { x: number; y: number },
++  points: Array<{ x: number; y: number }>,
+   stroke: string,
+   strokeWidthPx: number,
+   extra: Record<string, any> = {},
+   strokeDash?: 'dashed' | 'dotted',
++  arrowType: ArrowType = 'sharp',
+ ): any {
+   const fabric = (window as any).fabric;
++  const { d, endAngleRad } = buildArrowPath(points, arrowType);
+   const head = strokeWidthPx * 4 + 6;
+-  const angleDeg = (Math.atan2(p1.y - p0.y, p1.x - p0.x) * 180) / Math.PI + 90;
+-  const line = new fabric.Line([p0.x, p0.y, p1.x, p1.y], {
++  const angleDeg = (endAngleRad * 180) / Math.PI + 90;
++  const last = points[points.length - 1];
++  const path = new fabric.Path(d, {
++    fill: '',
+     stroke,
+     strokeWidth: strokeWidthPx,
+     ...dashProps(strokeDash, strokeWidthPx),
+   });
+   const tri = new fabric.Triangle({
+-    left: p1.x,
+-    top: p1.y,
++    left: last.x,
++    top: last.y,
+     originX: 'center',
+     originY: 'center',
+     width: head,
+@@ -277,15 +350,17 @@ export function makeArrowGroup(
+     angle: angleDeg,
+     fill: stroke,
+   });
+-  const grp = new fabric.Group([line, tri], {
++  const grp = new fabric.Group([path, tri], {
+     ...extra,
+-    data: { id: extra?.data?.id ?? overlayUuid(), kind: 'arrow' as OverlayKind, strokeDash },
++    data: {
++      id: extra?.data?.id ?? overlayUuid(),
++      kind: 'arrow' as OverlayKind,
++      strokeDash,
++      arrowType,
++    },
+   });
+   const c = grp.getCenterPoint();
+-  grp.data.localPoints = [
+-    { x: p0.x - c.x, y: p0.y - c.y },
+-    { x: p1.x - c.x, y: p1.y - c.y },
+-  ];
++  grp.data.localPoints = points.map((p) => ({ x: p.x - c.x, y: p.y - c.y }));
+   return grp;
+ }
+ 
+@@ -368,15 +443,15 @@ export function overlayToFabric(o: SlideOverlay, W: number, H: number): any | nu
+       });
+     }
+     case 'arrow': {
+-      const [p0, p1] = o.points ?? [];
+-      if (!p0 || !p1) return null;
++      const pts = o.points ?? [];
++      if (pts.length < 2) return null;
+       return makeArrowGroup(
+-        { x: p0.x * W, y: p0.y * H },
+-        { x: p1.x * W, y: p1.y * H },
++        pts.map((p) => ({ x: p.x * W, y: p.y * H })),
+         o.stroke ?? '#FF3B30',
+         strokePx,
+         common,
+         o.strokeDash,
++        o.arrowType ?? 'sharp',
+       );
+     }
+     case 'freehand':
+@@ -502,6 +577,9 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay |
+   base.stroke = parseColor(strokeSrc?.stroke)?.hex ?? '#FF3B30';
+   base.strokeWidth = ((strokeSrc?.strokeWidth ?? 2) * avgScale) / H;
+   if (obj.data.strokeDash) base.strokeDash = obj.data.strokeDash;
++  if (kind === 'arrow' && obj.data.arrowType && obj.data.arrowType !== 'sharp') {
++    base.arrowType = obj.data.arrowType;
++  }
+   // Highlight restores with a 0.45 default, so a full-opacity highlight must
+   // still write opacity explicitly or it would darken on reload.
+   if (kind === 'highlight') base.opacity = Number(Number(obj.opacity ?? 0.45).toFixed(3));

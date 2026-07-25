@@ -61,6 +61,16 @@ const SLIDE_H_IN = 5.625;
 /** Offline browser bundle — see the file banner above. */
 const PPTXGENJS_SCRIPT_SRC = 'MS/ThirdParty/PptxGenJS/pptxgen.bundle.js';
 
+/** Box-persisted overlay kinds → native pptx preset shapes. */
+const OVERLAY_SHAPE_TYPES: Partial<Record<SlideOverlay['kind'], string>> = {
+  rect: 'rect',
+  ellipse: 'ellipse',
+  diamond: 'diamond',
+  triangle: 'triangle',
+  star: 'star5',
+  callout: 'wedgeRoundRectCallout',
+};
+
 let pptxGenJSLoadPromise: Promise<any> | null = null;
 
 /**
@@ -755,8 +765,8 @@ class PptxExporter {
     for (const o of overlays) {
       try {
         if (o.kind === 'text') this._emitOverlayText(slide, o, fit);
-        else if (o.kind === 'rect' || o.kind === 'ellipse') this._emitOverlayBox(slide, o, fit);
-        else this._emitOverlayPath(slide, o, fit); // line | arrow | freehand
+        else if (OVERLAY_SHAPE_TYPES[o.kind]) this._emitOverlayBox(slide, o, fit);
+        else this._emitOverlayPath(slide, o, fit); // line | arrow | freehand | highlight
         emitted++;
       } catch (err) {
         EngineLogger.error(ENGINE_NAME, `Annotation emit failed (${o?.kind}): ${err}`);
@@ -770,6 +780,13 @@ class PptxExporter {
   /** Overlay strokeWidth is a fraction of view height → slide points. */
   private _ovStrokePt(o: SlideOverlay, fit: ContainFit): number {
     return Math.max(0.25, Math.round((o.strokeWidth ?? 0.004) * fit.h * 72 * 4) / 4);
+  }
+
+  /** Overlay strokeDash → pptx dashType (absent = solid). */
+  private _ovDashType(o: SlideOverlay): string | undefined {
+    if (o.strokeDash === 'dashed') return 'dash';
+    if (o.strokeDash === 'dotted') return 'sysDot';
+    return undefined;
   }
 
   private _ovHex(c: string | undefined, fallback: string): string {
@@ -805,7 +822,7 @@ class PptxExporter {
 
   private _emitOverlayBox(slide: any, o: SlideOverlay, fit: ContainFit): void {
     const alpha = (o.fillOpacity ?? 1) * (o.opacity ?? 1);
-    slide.addShape(o.kind === 'rect' ? 'rect' : 'ellipse', {
+    slide.addShape(OVERLAY_SHAPE_TYPES[o.kind] ?? 'rect', {
       x: fit.x + o.x * fit.w,
       y: fit.y + o.y * fit.h,
       w: Math.max(0.02, o.w * fit.w),
@@ -818,6 +835,7 @@ class PptxExporter {
             color: this._ovHex(o.stroke, 'FF3B30'),
             width: this._ovStrokePt(o, fit),
             transparency: Math.round((1 - (o.opacity ?? 1)) * 100),
+            dashType: this._ovDashType(o),
           }
         : { color: 'FFFFFF', width: 0.5, transparency: 100 },
       rotate: this._ovRotate(o),
@@ -853,6 +871,7 @@ class PptxExporter {
         width: this._ovStrokePt(o, fit),
         transparency: Math.round((1 - (o.opacity ?? 1)) * 100),
         endArrowType: o.kind === 'arrow' ? 'triangle' : undefined,
+        dashType: this._ovDashType(o),
       },
     });
   }

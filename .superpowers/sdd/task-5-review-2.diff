@@ -1,0 +1,250 @@
+# Review package (snapshot-based, no commits): Task 5 — final round (post Important-finding fix)
+
+## Files changed
+MS/Engines/Briefing/SlideEditor.ts
+
+## Diff: SlideEditor.ts
+diff --git .superpowers/sdd/task-5-before/SlideEditor.ts MS/Engines/Briefing/SlideEditor.ts
+index 7135c8c..6702bab 100644
+--- .superpowers/sdd/task-5-before/SlideEditor.ts
++++ MS/Engines/Briefing/SlideEditor.ts
+@@ -29,7 +29,9 @@ import {
+   overlayToFabric,
+   overlayUuid,
+   parseColor,
++  styleSelectionControls,
+   withAlpha,
++  type ArrowType,
+ } from './OverlayFabric';
+ import SlideEditorUI, { TOOL_DEFS } from './SlideEditorUI';
+ import type { PanelContext, StyleDefaults, StyleProp, Tool } from './SlideEditorUI';
+@@ -109,6 +111,8 @@ export default class SlideEditor {
+   private _arrowChain: Array<{ x: number; y: number }> | null = null;
+   private _arrowPreview: any = null;
+   private _arrowLastClickAt = 0;
++  private _bendDrag: { obj: any; segmentIndex: number; lastPoint: { x: number; y: number } } | null = null;
++  private _bendPreview: any = null;
+   private _erasing = false;
+   private _erasedAny = false;
+   private _undo: string[] = [];
+@@ -375,6 +379,13 @@ export default class SlideEditor {
+   private _deleteSelection(): void {
+     const objs: any[] = this._fc?.getActiveObjects?.() ?? [];
+     if (!objs.length) return;
++    if (this._bendDrag) {
++      if (this._bendPreview) {
++        this._fc.remove(this._bendPreview);
++        this._bendPreview = null;
++      }
++      this._bendDrag = null;
++    }
+     objs.forEach((o) => this._fc.remove(o));
+     this._fc.discardActiveObject();
+     this._fc.requestRenderAll();
+@@ -404,6 +415,7 @@ export default class SlideEditor {
+   ): void {
+     const ui = this._ui;
+     if (!ui?.stageWrap) return;
++    styleSelectionControls();
+     ui.stageWrap.innerHTML = '';
+     // Slide navigation re-inits the canvas — drop the previous slide's banner.
+     this._stage?.querySelectorAll('.ms-sledit-warn').forEach((el) => el.remove());
+@@ -454,8 +466,12 @@ export default class SlideEditor {
+ 
+     for (const o of slide.overlays ?? []) {
+       const obj = overlayToFabric(o, this._W, this._H);
+-      if (obj) this._fc.add(obj);
+-      else EngineLogger.error(ENGINE_NAME, `Skipped invalid overlay entry (${o?.kind ?? '?'})`);
++      if (obj) {
++        if (obj.data?.kind === 'arrow') this._attachArrowControls(obj);
++        this._fc.add(obj);
++      } else {
++        EngineLogger.error(ENGINE_NAME, `Skipped invalid overlay entry (${o?.kind ?? '?'})`);
++      }
+     }
+ 
+     this._fc.on('mouse:down', (opt: any) => this._onMouseDown(opt));
+@@ -465,7 +481,13 @@ export default class SlideEditor {
+     this._fc.on('selection:created', () => this._syncControlsFromSelection());
+     this._fc.on('selection:updated', () => this._syncControlsFromSelection());
+     this._fc.on('selection:cleared', () => this._syncPanelContext());
+-    this._fc.on('object:modified', () => this._commit());
++    this._fc.on('object:modified', () => {
++      if (this._bendDrag) {
++        this._finalizeArrowBend();
++        return;
++      }
++      this._commit();
++    });
+     this._fc.on('text:editing:exited', (e: any) => {
+       const t = e?.target;
+       if (t && !String(t.text ?? '').trim()) this._fc.remove(t);
+@@ -931,6 +953,7 @@ export default class SlideEditor {
+       style.strokeDash,
+       this._defaults.arrowType,
+     );
++    this._attachArrowControls(finalObj);
+     this._fc.add(finalObj);
+     this._setTool('select');
+     this._fc.setActiveObject(finalObj);
+@@ -938,6 +961,129 @@ export default class SlideEditor {
+     this._commit();
+   }
+ 
++  /** Adds a small draggable "bow" control at each segment's midpoint so dragging one inserts a bend. */
++  private _attachArrowControls(grp: any): void {
++    const fabric = (window as any).fabric;
++    const pts: Array<{ x: number; y: number }> = grp.data?.localPoints ?? [];
++    const controls: Record<string, any> = { ...fabric.Object.prototype.controls };
++    for (let i = 0; i < pts.length - 1; i++) {
++      controls[`bow${i}`] = new fabric.Control({
++        x: 0,
++        y: 0,
++        cursorStyle: 'crosshair',
++        positionHandler: (_dim: any, finalMatrix: number[], obj: any) => {
++          const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
++          const a = lp[i];
++          const b = lp[i + 1];
++          if (!a || !b) return new fabric.Point(0, 0);
++          const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
++          return fabric.util.transformPoint(new fabric.Point(mid.x, mid.y), finalMatrix);
++        },
++        actionHandler: (_eventData: any, transform: any, x: number, y: number) => {
++          this._dragArrowBend(transform.target, i, x, y);
++          return true;
++        },
++        actionName: 'insertArrowBend',
++        render: (ctx: CanvasRenderingContext2D, left: number, top: number) => {
++          ctx.save();
++          ctx.fillStyle = '#2d6cdf';
++          ctx.strokeStyle = '#ffffff';
++          ctx.lineWidth = 1.5;
++          ctx.beginPath();
++          ctx.arc(left, top, 5, 0, Math.PI * 2);
++          ctx.fill();
++          ctx.stroke();
++          ctx.restore();
++        },
++      });
++    }
++    grp.controls = controls;
++    grp.setCoords();
++  }
++
++  /**
++   * Per-tick bow-handle drag callback. Never mutates/removes the pinned arrow
++   * object itself (fabric keeps `transform.target` fixed to it for the whole
++   * gesture) — only swaps a cheap, throwaway dashed preview path, mirroring
++   * `_updateArrowPreview`'s already-proven pattern in this file. The real
++   * geometry swap happens once, at drag end, via `_finalizeArrowBend`.
++   */
++  private _dragArrowBend(obj: any, segmentIndex: number, canvasX: number, canvasY: number): void {
++    if (!obj || obj.data?.kind !== 'arrow') return;
++    const fabric = (window as any).fabric;
++    const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
++    if (segmentIndex < 0 || segmentIndex + 1 >= lp.length) return;
++    this._bendDrag = { obj, segmentIndex, lastPoint: { x: canvasX, y: canvasY } };
++    const m = obj.calcTransformMatrix();
++    const absPoints = lp.map((p) => {
++      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
++      return { x: abs.x, y: abs.y };
++    });
++    absPoints.splice(segmentIndex + 1, 0, { x: canvasX, y: canvasY });
++    const pathChild = obj.getObjects()[0];
++    const { d } = buildArrowPath(absPoints, obj.data?.arrowType ?? 'sharp');
++    if (this._bendPreview) this._fc.remove(this._bendPreview);
++    this._bendPreview = new fabric.Path(d, {
++      fill: '',
++      stroke: pathChild.stroke,
++      strokeWidth: pathChild.strokeWidth,
++      strokeDashArray: [6, 4],
++      selectable: false,
++      evented: false,
++      opacity: 0.9,
++    });
++    this._fc.add(this._bendPreview);
++    this._fc.requestRenderAll();
++  }
++
++  /** Called once at bow-handle drag end (via the `object:modified` listener in `_initCanvas`). */
++  private _finalizeArrowBend(): void {
++    const drag = this._bendDrag;
++    this._bendDrag = null;
++    if (this._bendPreview) {
++      this._fc.remove(this._bendPreview);
++      this._bendPreview = null;
++    }
++    if (!drag) return;
++    this._insertArrowBend(drag.obj, drag.segmentIndex, drag.lastPoint.x, drag.lastPoint.y);
++  }
++
++  /** Splices a new point into an arrow's geometry at the drag location and rebuilds it in place. */
++  private _insertArrowBend(obj: any, segmentIndex: number, canvasX: number, canvasY: number): void {
++    if (!obj || obj.data?.kind !== 'arrow') return;
++    const fabric = (window as any).fabric;
++    const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
++    if (segmentIndex < 0 || segmentIndex + 1 >= lp.length) return;
++    const m = obj.calcTransformMatrix();
++    const absPoints = lp.map((p) => {
++      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
++      return { x: abs.x, y: abs.y };
++    });
++    absPoints.splice(segmentIndex + 1, 0, { x: canvasX, y: canvasY });
++    const rebuilt = this._rebuildArrow(obj, absPoints);
++    this._fc.setActiveObject(rebuilt);
++    this._fc.requestRenderAll();
++  }
++
++  /** Replaces an arrow group with a freshly-built one from an absolute-coordinate point list, preserving style/id. Reused by Task 6. */
++  private _rebuildArrow(obj: any, absPoints: Array<{ x: number; y: number }>): any {
++    const arrowType: ArrowType = obj.data?.arrowType ?? 'sharp';
++    const pathChild = obj.getObjects()[0];
++    this._fc.remove(obj);
++    const rebuilt = makeArrowGroup(
++      absPoints,
++      pathChild.stroke,
++      pathChild.strokeWidth,
++      { opacity: obj.opacity, data: { id: obj.data.id } },
++      obj.data.strokeDash,
++      arrowType,
++    );
++    this._attachArrowControls(rebuilt);
++    this._fc.add(rebuilt);
++    this._commit();
++    return rebuilt;
++  }
++
+   private _clearArrowChain(): void {
+     if (this._arrowPreview) {
+       this._fc?.remove(this._arrowPreview);
+@@ -1083,6 +1229,7 @@ export default class SlideEditor {
+       if (!obj) continue;
+       obj.set({ left: (obj.left ?? 0) + offsetPx, top: (obj.top ?? 0) + offsetPx });
+       obj.setCoords();
++      if (obj.data?.kind === 'arrow') this._attachArrowControls(obj);
+       this._fc.add(obj);
+       added.push(obj);
+     }
+@@ -1174,11 +1321,21 @@ export default class SlideEditor {
+     } catch {
+       return;
+     }
++    if (this._bendDrag) {
++      if (this._bendPreview) {
++        this._fc.remove(this._bendPreview);
++        this._bendPreview = null;
++      }
++      this._bendDrag = null;
++    }
+     this._fc.discardActiveObject();
+     (this._fc.getObjects() as any[]).slice().forEach((o) => this._fc.remove(o));
+     for (const o of overlays) {
+       const obj = overlayToFabric(o, this._W, this._H);
+-      if (obj) this._fc.add(obj);
++      if (obj) {
++        if (obj.data?.kind === 'arrow') this._attachArrowControls(obj);
++        this._fc.add(obj);
++      }
+     }
+     this._fc.requestRenderAll();
+     this._syncPanelContext();

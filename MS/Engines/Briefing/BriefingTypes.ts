@@ -26,7 +26,32 @@ export interface CapturedViewState {
 
 export type BuildEffect = 'appear' | 'fade' | 'flyIn' | 'drawOn';
 
-export type OverlayKind = 'text' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'freehand';
+export type OverlayKind =
+  | 'text'
+  | 'rect'
+  | 'ellipse'
+  | 'diamond'
+  | 'triangle'
+  | 'star'
+  | 'callout'
+  | 'line'
+  | 'arrow'
+  | 'freehand'
+  | 'highlight';
+
+/**
+ * Box-geometry kinds persist identically (bbox + rotation + fill/stroke) and
+ * regenerate their vertices from the bbox on load. Shared by OverlayFabric
+ * and the slide editor's style plumbing.
+ */
+export const BOX_OVERLAY_KINDS = [
+  'rect',
+  'ellipse',
+  'diamond',
+  'triangle',
+  'star',
+  'callout',
+] as const;
 
 /**
  * A PowerPoint-like annotation added in the slide editor. All coordinates are
@@ -45,7 +70,7 @@ export interface SlideOverlay {
   h: number;
   /** Degrees clockwise about the box center — text/rect/ellipse only. */
   rotation?: number;
-  /** line/arrow: [start, end]; freehand: sampled polyline. Normalized. */
+  /** line: [start, end]; arrow: 2+ points (bend points in between); freehand: sampled polyline. Normalized. */
   points?: Array<{ x: number; y: number }>;
   /** '#RRGGBB'; absent = no fill. */
   fill?: string;
@@ -55,6 +80,10 @@ export interface SlideOverlay {
   stroke?: string;
   /** Fraction of view height. */
   strokeWidth?: number;
+  /** Stroke dash pattern; absent = solid. */
+  strokeDash?: 'dashed' | 'dotted';
+  /** arrow only. Absent = 'sharp' (today's straight 2-point look). */
+  arrowType?: 'sharp' | 'curved' | 'elbow';
   /** Whole-object opacity 0..1, default 1. */
   opacity?: number;
   // text only:

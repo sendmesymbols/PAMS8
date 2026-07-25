@@ -1,0 +1,257 @@
+# Review package (snapshot-based, no commits): Task 4
+
+## Files changed
+MS/Engines/Briefing/SlideEditor.ts
+MS/Engines/Briefing/SlideEditorUI.ts
+
+## Diff: SlideEditor.ts
+diff --git .superpowers/sdd/task-4-before/SlideEditor.ts MS/Engines/Briefing/SlideEditor.ts
+index 03e3a4f..7135c8c 100644
+--- .superpowers/sdd/task-4-before/SlideEditor.ts
++++ MS/Engines/Briefing/SlideEditor.ts
+@@ -20,6 +20,7 @@ import EngineLogger from '../../Support/EngineLogger';
+ import type { Slide, SlideOverlay } from './BriefingTypes';
+ import LaserTrail from './LaserTrail';
+ import {
++  buildArrowPath,
+   dashProps,
+   fabricToOverlay,
+   isBoxKind,
+@@ -105,6 +106,9 @@ export default class SlideEditor {
+   private _drawing: { obj: any; startX: number; startY: number } | null = null;
+   private _laser: LaserTrail | null = null;
+   private _lassoPts: Array<{ x: number; y: number }> | null = null;
++  private _arrowChain: Array<{ x: number; y: number }> | null = null;
++  private _arrowPreview: any = null;
++  private _arrowLastClickAt = 0;
+   private _erasing = false;
+   private _erasedAny = false;
+   private _undo: string[] = [];
+@@ -126,6 +130,7 @@ export default class SlideEditor {
+     strokeDash: 'solid',
+     opacity: 1,
+     highlightWidthPx: 20,
++    arrowType: 'sharp',
+   };
+ 
+   private constructor() {}
+@@ -483,6 +488,9 @@ export default class SlideEditor {
+ 
+   private _setTool(t: Tool): void {
+     if (!this._fc) return;
++    if (this._arrowChain && t !== 'arrow') {
++      this._clearArrowChain();
++    }
+     const prev = this._tool;
+ 
+     if (prev !== t) {
+@@ -595,6 +603,10 @@ export default class SlideEditor {
+       this._lassoPts = [{ x: p.x, y: p.y }];
+       return;
+     }
++    if (t === 'arrow') {
++      this._onArrowClick(p);
++      return;
++    }
+ 
+     if (t === 'text') {
+       const tb = new fabric.Textbox('Text', {
+@@ -652,8 +664,6 @@ export default class SlideEditor {
+         data: { id: overlayUuid(), kind: 'ellipse', strokeDash: style.strokeDash },
+       });
+     } else if (SCALED_BOX_TOOLS.has(t)) {
+-      // Diamond/star/callout can't reflow from width/height — preview by
+-      // scaling a base-size shape, then regenerate crisp geometry on mouse-up.
+       obj = makeShapeObject(
+         t as 'diamond' | 'star' | 'callout',
+         { left: p.x, top: p.y, width: SCALE_BASE, height: SCALE_BASE },
+@@ -661,7 +671,7 @@ export default class SlideEditor {
+         { opacity: d.opacity },
+       );
+       obj.set({ scaleX: 0.02, scaleY: 0.02 });
+-    } else if (t === 'line' || t === 'arrow') {
++    } else if (t === 'line') {
+       obj = new fabric.Line([p.x, p.y, p.x, p.y], {
+         stroke: style.stroke,
+         strokeWidth: style.strokeWidth,
+@@ -681,6 +691,10 @@ export default class SlideEditor {
+   private _onMouseMove(opt: any): void {
+     if (!this._fc) return;
+     const t = this._tool;
++    if (t === 'arrow') {
++      if (this._arrowChain) this._updateArrowPreview(this._fc.getPointer(opt.e));
++      return;
++    }
+     if (t === 'laser') {
+       const p = this._fc.getPointer(opt.e);
+       this._laser?.onMove(p.x, p.y);
+@@ -749,7 +763,7 @@ export default class SlideEditor {
+     const { obj, startX, startY } = this._drawing;
+     this._drawing = null;
+ 
+-    const isLineKind = t === 'line' || t === 'arrow';
++    const isLineKind = t === 'line';
+     const degenerate = isLineKind
+       ? Math.hypot((obj.x2 ?? 0) - (obj.x1 ?? 0), (obj.y2 ?? 0) - (obj.y1 ?? 0)) < 4
+       : obj.getScaledWidth() < 4 && obj.getScaledHeight() < 4;
+@@ -760,22 +774,7 @@ export default class SlideEditor {
+     }
+ 
+     let finalObj: any = obj;
+-    if (t === 'arrow') {
+-      const p0 = { x: obj.x1, y: obj.y1 };
+-      const p1 = { x: obj.x2, y: obj.y2 };
+-      this._fc.remove(obj);
+-      const style = this._creationStyle();
+-      finalObj = makeArrowGroup(
+-        [p0, p1],
+-        style.stroke,
+-        style.strokeWidth,
+-        { opacity: this._defaults.opacity },
+-        style.strokeDash,
+-      );
+-      this._fc.add(finalObj);
+-    } else if (SCALED_BOX_TOOLS.has(t)) {
+-      // Replace the scaled drag preview with clean geometry at the final size
+-      // (uniform stroke, exact bbox) — persistence is bbox-only either way.
++    if (SCALED_BOX_TOOLS.has(t)) {
+       const p = this._fc.getPointer(opt.e);
+       this._fc.remove(obj);
+       finalObj = makeShapeObject(
+@@ -867,6 +866,86 @@ export default class SlideEditor {
+     this._commit();
+   }
+ 
++  private _onArrowClick(p: { x: number; y: number }): void {
++    const now = Date.now();
++    const isFinish =
++      !!this._arrowChain &&
++      now - this._arrowLastClickAt < 400 &&
++      Math.hypot(
++        p.x - this._arrowChain[this._arrowChain.length - 1].x,
++        p.y - this._arrowChain[this._arrowChain.length - 1].y,
++      ) < 6;
++    this._arrowLastClickAt = now;
++    if (isFinish) {
++      this._onArrowFinish();
++      return;
++    }
++    if (!this._arrowChain) this._arrowChain = [p];
++    else this._arrowChain.push(p);
++    this._updateArrowPreview(p);
++  }
++
++  private _updateArrowPreview(cursor: { x: number; y: number }): void {
++    if (!this._fc || !this._arrowChain) return;
++    const fabric = (window as any).fabric;
++    const style = this._creationStyle();
++    const pts = [...this._arrowChain, cursor];
++    const { d } = buildArrowPath(pts, this._defaults.arrowType);
++    if (this._arrowPreview) this._fc.remove(this._arrowPreview);
++    this._arrowPreview = new fabric.Path(d, {
++      fill: '',
++      stroke: style.stroke,
++      strokeWidth: style.strokeWidth,
++      strokeDashArray: [6, 4],
++      selectable: false,
++      evented: false,
++      opacity: 0.85,
++    });
++    this._fc.add(this._arrowPreview);
++    this._fc.requestRenderAll();
++  }
++
++  private _onArrowFinish(): void {
++    if (this._tool !== 'arrow' || !this._arrowChain) return;
++    const pts = [...this._arrowChain];
++    if (this._arrowPreview) {
++      this._fc.remove(this._arrowPreview);
++      this._arrowPreview = null;
++    }
++    this._arrowChain = null;
++    if (pts.length >= 2) {
++      const a = pts[pts.length - 2];
++      const b = pts[pts.length - 1];
++      if (Math.hypot(b.x - a.x, b.y - a.y) < 4) pts.pop();
++    }
++    if (pts.length < 2) {
++      this._setTool('select');
++      return;
++    }
++    const style = this._creationStyle();
++    const finalObj = makeArrowGroup(
++      pts,
++      style.stroke,
++      style.strokeWidth,
++      { opacity: this._defaults.opacity },
++      style.strokeDash,
++      this._defaults.arrowType,
++    );
++    this._fc.add(finalObj);
++    this._setTool('select');
++    this._fc.setActiveObject(finalObj);
++    this._fc.requestRenderAll();
++    this._commit();
++  }
++
++  private _clearArrowChain(): void {
++    if (this._arrowPreview) {
++      this._fc?.remove(this._arrowPreview);
++      this._arrowPreview = null;
++    }
++    this._arrowChain = null;
++  }
++
+   // ── Eraser ─────────────────────────────────────────────────────────────────
+ 
+   private _eraseAt(opt: any): void {
+@@ -1307,6 +1386,12 @@ export default class SlideEditor {
+           active.exitEditing();
+           return;
+         }
++        if (this._arrowChain) {
++          this._clearArrowChain();
++          this._fc?.requestRenderAll();
++          this._setTool('select');
++          return;
++        }
+         if (this._tool !== 'select') {
+           this._setTool('select');
+           return;
+@@ -1324,6 +1409,13 @@ export default class SlideEditor {
+       // native — including Ctrl+C/V for real text clipboard.
+       if (inInput || editingText) return;
+ 
++      if (e.key === 'Enter' && this._arrowChain) {
++        e.preventDefault();
++        e.stopPropagation();
++        this._onArrowFinish();
++        return;
++      }
++
+       const mod = e.ctrlKey || e.metaKey;
+       if (mod && !e.altKey) {
+         const k = e.key.toLowerCase();
+
+## Diff: SlideEditorUI.ts
+diff --git .superpowers/sdd/task-4-before/SlideEditorUI.ts MS/Engines/Briefing/SlideEditorUI.ts
+index 5a6b583..046a011 100644
+--- .superpowers/sdd/task-4-before/SlideEditorUI.ts
++++ MS/Engines/Briefing/SlideEditorUI.ts
+@@ -13,6 +13,7 @@
+  */
+ 
+ import type { Slide } from './BriefingTypes';
++import type { ArrowType } from './OverlayFabric';
+ 
+ export type Tool =
+   | 'select'
+@@ -49,6 +50,8 @@ export interface StyleDefaults {
+   opacity: number;
+   /** Highlighter keeps its own width slot — marker vs pen are different tools. */
+   highlightWidthPx: number;
++  /** Arrow tool only. */
++  arrowType: ArrowType;
+ }
+ 
+ export type StyleProp =

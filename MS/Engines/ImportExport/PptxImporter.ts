@@ -284,9 +284,18 @@ function groupCtx(grpXfrm: Element, parent: Ctx): Ctx {
 /** a:ln summary — stroke color, width, arrowheads. */
 interface LnInfo {
   stroke?: string;
+  /** Stroke alpha 0..1 (only meaningful alongside `stroke`); undefined = opaque. */
+  strokeAlpha?: number;
   widthEmu: number;
   headArrow: boolean;
   tailArrow: boolean;
+  dash?: 'dashed' | 'dotted';
+}
+
+function dashKind(ln: Element): 'dashed' | 'dotted' | undefined {
+  const val = childByLocal(ln, 'prstDash')?.getAttribute('val');
+  if (!val || val === 'solid') return undefined;
+  return /dot/i.test(val) && !/dashDot/i.test(val) ? 'dotted' : 'dashed';
 }
 
 function lnInfo(spPr: Element | null): LnInfo {
@@ -298,11 +307,21 @@ function lnInfo(spPr: Element | null): LnInfo {
   if (!ln || childByLocal(ln, 'noFill')) {
     return { widthEmu: Number(ln?.getAttribute('w')) || 9525, headArrow: false, tailArrow: false };
   }
+  const fill = parseSolidFill(ln);
+  // Our own exporter's "invisible shape" sentinel is a fully-transparent
+  // solidFill (not noFill — see PptxExporter._emitOverlayBox), which the
+  // noFill guard above misses; treat alpha≈0 as no stroke too so fill-only
+  // shapes don't reimport with a spurious ~1px outline.
+  if (fill && fill.alpha <= 0.004) {
+    return { widthEmu: Number(ln.getAttribute('w')) || 9525, headArrow: false, tailArrow: false };
+  }
   return {
-    stroke: parseSolidFill(ln)?.hex,
+    stroke: fill?.hex,
+    strokeAlpha: fill && fill.alpha < 1 ? fill.alpha : undefined,
     widthEmu: Number(ln.getAttribute('w')) || 9525, // 0.75pt PowerPoint default
     headArrow: isArrow(childByLocal(ln, 'headEnd')),
     tailArrow: isArrow(childByLocal(ln, 'tailEnd')),
+    dash: dashKind(ln),
   };
 }
 
@@ -449,13 +468,28 @@ export async function parsePptx(
     };
 
     const shapeOverlay = (
-      kind: 'rect' | 'ellipse',
+      kind: 'rect' | 'ellipse' | 'diamond' | 'triangle' | 'star' | 'callout',
       box: BoxEMU,
       fill: { hex: string; alpha: number } | null,
       ln: LnInfo,
     ): SlideOverlay | null => {
       const hasFill = !!fill && fill.alpha > 0;
       if (!hasFill && !ln.stroke) return null; // invisible shape (e.g. a plain text box)
+
+      let rotation = box.rot ? Math.round(box.rot * 10) / 10 : 0;
+      // rect/ellipse/diamond are symmetric on both axes — any flip is a
+      // visual no-op. triangle/star are only symmetric on the vertical axis
+      // (our renderers draw both point-up — see OverlayFabric.ts), so a
+      // vertical flip (PowerPoint's "Flip Vertical", far more common than
+      // the rotate handle) needs +180° or it silently imports point-up.
+      if (box.flipV && (kind === 'triangle' || kind === 'star')) {
+        rotation = ((rotation + 180) % 360 + 360) % 360;
+      } else if ((box.flipH || box.flipV) && kind === 'callout') {
+        // The tail is hard-coded bottom-left (OverlayFabric.ts) — no
+        // rotation reproduces a flipped callout, so just flag the loss.
+        bump('callout flip ignored — tail position may not match the source');
+      }
+
       return {
         id: overlayUuid(),
         kind,
@@ -463,11 +497,12 @@ export async function parsePptx(
         y: ny(box.y),
         w: Math.max(0.001, nx(box.w)),
         h: Math.max(0.001, ny(box.h)),
-        rotation: box.rot ? Math.round(box.rot * 10) / 10 : undefined,
+        rotation: rotation || undefined,
         fill: hasFill ? fill!.hex : undefined,
         fillOpacity: hasFill && fill!.alpha < 1 ? Number(fill!.alpha.toFixed(3)) : undefined,
         stroke: ln.stroke,
         strokeWidth: ln.stroke ? ln.widthEmu / sldCy : undefined,
+        strokeDash: ln.stroke ? ln.dash : undefined,
       };
     };
 
@@ -503,6 +538,8 @@ export async function parsePptx(
         points: [p0, p1],
         stroke: ln.stroke ?? '#000000',
         strokeWidth: ln.widthEmu / sldCy,
+        strokeDash: ln.dash,
+        opacity: ln.strokeAlpha != null ? Number(ln.strokeAlpha.toFixed(3)) : undefined,
       };
     };
 
@@ -575,6 +612,11 @@ export async function parsePptx(
             points: twoPoint && ln.headArrow && !ln.tailArrow ? [pts[1], pts[0]] : pts,
             stroke: ln.stroke ?? '#FF3B30',
             strokeWidth: ln.widthEmu / sldCy,
+            strokeDash: ln.dash,
+            // A highlighter overlay exports through this same custGeom path
+            // (translucent line) — without this, it would reimport fully
+            // opaque and obscure the map it was meant to highlight.
+            opacity: ln.strokeAlpha != null ? Number(ln.strokeAlpha.toFixed(3)) : undefined,
           });
         }
       }
@@ -600,11 +642,25 @@ export async function parsePptx(
       const prst = firstByLocal(spPr, 'prstGeom')?.getAttribute('prst') ?? null;
       const cust = spPr ? firstByLocal(spPr, 'custGeom') : null;
 
+      const PRST_BOX_KINDS: Record<
+        string,
+        'rect' | 'ellipse' | 'diamond' | 'triangle' | 'star' | 'callout'
+      > = {
+        rect: 'rect',
+        roundRect: 'rect',
+        ellipse: 'ellipse',
+        diamond: 'diamond',
+        triangle: 'triangle',
+        star5: 'star',
+        wedgeRoundRectCallout: 'callout',
+        wedgeRectCallout: 'callout',
+      };
+
       if (box) {
         if (cust) {
           custGeomOverlays(cust, box, ln).forEach(pushOverlay);
-        } else if (prst === 'rect' || prst === 'roundRect' || prst === 'ellipse') {
-          pushOverlay(shapeOverlay(prst === 'ellipse' ? 'ellipse' : 'rect', box, fill, ln));
+        } else if (prst && Object.prototype.hasOwnProperty.call(PRST_BOX_KINDS, prst)) {
+          pushOverlay(shapeOverlay(PRST_BOX_KINDS[prst], box, fill, ln));
         } else if (prst === 'line' || /Connector/.test(prst ?? '')) {
           pushOverlay(connectorOverlay(box, ln));
         } else if (prst && !textInfo) {
