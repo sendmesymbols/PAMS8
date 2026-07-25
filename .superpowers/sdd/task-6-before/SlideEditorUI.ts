@@ -68,12 +68,11 @@ export type StyleProp =
   | 'strokeWidthPx'
   | 'strokeDash'
   | 'opacity'
-  | 'highlightWidthPx'
-  | 'arrowType';
+  | 'highlightWidthPx';
 
 /** What the properties island is currently editing. */
 export interface PanelContext {
-  kind: 'none' | 'text' | 'box' | 'linework' | 'highlight' | 'arrow' | 'mixed';
+  kind: 'none' | 'text' | 'box' | 'linework' | 'highlight' | 'mixed';
   /** Layers/actions rows only make sense on a live selection. */
   hasSelection: boolean;
 }
@@ -111,7 +110,7 @@ export const TOOL_DEFS: ToolDef[] = [
   { tool: 'star', letter: 'x', title: 'Star (drag)' },
   { tool: 'callout', letter: 'c', title: 'Callout — drag bubble, then type its text' },
   { tool: 'line', letter: 'l', num: '6', title: 'Line (drag)', startsGroup: true },
-  { tool: 'arrow', letter: 'a', num: '5', title: 'Arrow — click points, double-click or Enter to finish' },
+  { tool: 'arrow', letter: 'a', num: '5', title: 'Arrow (drag)' },
   { tool: 'freehand', letter: 'p', num: '7', title: 'Freehand ink' },
   { tool: 'highlighter', letter: 'h', title: 'Highlighter — wide translucent marker' },
   { tool: 'text', letter: 't', num: '8', title: 'Text (click on slide)' },
@@ -140,9 +139,6 @@ const ICONS: Record<string, string> = {
   callout: svg('<path d="M4 5h16v10h-9l-4 4v-4H4z"/>'),
   line: svg('<path d="M4.5 19.5L19.5 4.5"/>'),
   arrow: svg('<path d="M4.5 19.5L18.5 5.5M18.5 5.5h-6.2M18.5 5.5v6.2"/>'),
-  arrowSharp: svg('<path d="M4.5 19.5L18.5 5.5M18.5 5.5h-6.2M18.5 5.5v6.2"/>'),
-  arrowCurved: svg('<path d="M4.5 19.5C4.5 10 9 5 18.5 5.5M18.5 5.5h-6.2M18.5 5.5v6.2"/>'),
-  arrowElbow: svg('<path d="M4.5 19.5V9.5h14V5.5M18.5 5.5h-6.2M18.5 5.5v6.2"/>'),
   freehand: svg('<path d="M4 17.5c2-6.5 4.8-8.4 6-6.4s-2.2 7.3.8 7.3 4-9.4 7.2-9.4"/>'),
   highlighter: svg('<path d="M13.6 4.4l6 6-7.6 7.6H8l-2-2z"/><path d="M4 20.5h8"/>'),
   text: svg('<path d="M5.5 5.5h13M12 5.5v13"/>'),
@@ -176,7 +172,6 @@ const SECTIONS_BY_CONTEXT: Record<PanelContext['kind'], string[]> = {
   box: ['stroke', 'fill', 'fillop', 'width', 'dash', 'opacity'],
   linework: ['stroke', 'width', 'dash', 'opacity'],
   highlight: ['stroke', 'width', 'opacity'],
-  arrow: ['stroke', 'width', 'dash', 'arrowtype', 'opacity'],
   mixed: ['stroke', 'width', 'dash', 'opacity'],
 };
 
@@ -272,14 +267,6 @@ export default class SlideEditorUI {
               <button data-dash="dotted" title="Dotted">${ICONS.dashDotted}</button>
             </div>
           </div>
-          <div class="ms-sledit-sec" data-sec="arrowtype">
-            <div class="ms-sledit-seclabel">Arrow type</div>
-            <div class="ms-sledit-row">
-              <button data-arrowtype="sharp" title="Sharp">${ICONS.arrowSharp}</button>
-              <button data-arrowtype="curved" title="Curved">${ICONS.arrowCurved}</button>
-              <button data-arrowtype="elbow" title="Elbow">${ICONS.arrowElbow}</button>
-            </div>
-          </div>
           <div class="ms-sledit-sec" data-sec="text">
             <div class="ms-sledit-seclabel">Text</div>
             <div class="ms-sledit-row">
@@ -369,7 +356,7 @@ export default class SlideEditorUI {
 
     panel.addEventListener('click', (e) => {
       const el = (e.target as HTMLElement).closest(
-        '[data-color],[data-width],[data-dash],[data-arrowtype],[data-style],[data-align],[data-act]',
+        '[data-color],[data-width],[data-dash],[data-style],[data-align],[data-act]',
       ) as HTMLElement | null;
       if (!el) return;
       if (el.dataset.act) {
@@ -397,9 +384,6 @@ export default class SlideEditorUI {
       } else if (el.dataset.dash) {
         d().strokeDash = el.dataset.dash as StyleDefaults['strokeDash'];
         this._host.onStyleChanged('strokeDash');
-      } else if (el.dataset.arrowtype) {
-        d().arrowType = el.dataset.arrowtype as StyleDefaults['arrowType'];
-        this._host.onStyleChanged('arrowType');
       } else if (el.dataset.style) {
         const key = el.dataset.style as 'bold' | 'italic' | 'underline';
         d()[key] = !d()[key];
@@ -533,9 +517,6 @@ export default class SlideEditorUI {
     });
     panel.querySelectorAll('[data-dash]').forEach((el: any) => {
       el.classList.toggle('active', el.dataset.dash === d.strokeDash);
-    });
-    panel.querySelectorAll('[data-arrowtype]').forEach((el: any) => {
-      el.classList.toggle('active', el.dataset.arrowtype === d.arrowType);
     });
     q('.ms-sledit-op').value = String(Math.round(d.opacity * 100));
 

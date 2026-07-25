@@ -110,7 +110,6 @@ export default class SlideEditor {
   private _laser: LaserTrail | null = null;
   private _lassoPts: Array<{ x: number; y: number }> | null = null;
   private _arrowChain: Array<{ x: number; y: number }> | null = null;
-  private _arrowReopenedObj: any = null;
   private _arrowPreview: any = null;
   private _arrowLastClickAt = 0;
   private _bendDrag: { obj: any; segmentIndex: number; lastPoint: { x: number; y: number } } | null = null;
@@ -179,7 +178,6 @@ export default class SlideEditor {
     const host = this._host;
     const index = this._index;
     if (!this._fc || !host || index < 0) return;
-    if (this._arrowChain) this._clearArrowChain();
     try {
       const active: any = this._fc.getActiveObject?.();
       active?.exitEditing?.();
@@ -237,11 +235,6 @@ export default class SlideEditor {
       this._drawing = null;
       this._lassoPts = null;
       this._erasing = false;
-      this._arrowChain = null;
-      this._arrowPreview = null;
-      this._arrowReopenedObj = null;
-      this._bendDrag = null;
-      this._bendPreview = null;
       // _fc is about to be null for the whole await below — assign the field
       // directly (never through _setTool, which no-ops without a canvas) so
       // Escape's "de-arm the tool" rung can still reach close() mid-load.
@@ -310,11 +303,6 @@ export default class SlideEditor {
     this._drawing = null;
     this._lassoPts = null;
     this._erasing = false;
-    this._arrowChain = null;
-    this._arrowPreview = null;
-    this._arrowReopenedObj = null;
-    this._bendDrag = null;
-    this._bendPreview = null;
     this._undo = [];
     this._redo = [];
     this._tool = 'select';
@@ -555,10 +543,6 @@ export default class SlideEditor {
     }
     if (t === 'laser' && !this._laser) {
       this._laser = new LaserTrail(this._fc);
-    }
-    if (t === 'arrow' && prev !== 'arrow') {
-      const active = this._fc.getActiveObject();
-      if (active?.data?.kind === 'arrow') this._onArrowReopen(active);
     }
 
     const drawingMode = t === 'freehand' || t === 'highlighter';
@@ -948,23 +932,17 @@ export default class SlideEditor {
   private _onArrowFinish(): void {
     if (this._tool !== 'arrow' || !this._arrowChain) return;
     const pts = [...this._arrowChain];
-    const reopened = this._arrowReopenedObj;
     if (this._arrowPreview) {
       this._fc.remove(this._arrowPreview);
       this._arrowPreview = null;
     }
     this._arrowChain = null;
-    this._arrowReopenedObj = null;
     if (pts.length >= 2) {
       const a = pts[pts.length - 2];
       const b = pts[pts.length - 1];
       if (Math.hypot(b.x - a.x, b.y - a.y) < 4) pts.pop();
     }
     if (pts.length < 2) {
-      if (reopened) {
-        this._fc.add(reopened);
-        this._fc.setActiveObject(reopened);
-      }
       this._setTool('select');
       return;
     }
@@ -973,7 +951,7 @@ export default class SlideEditor {
       pts,
       style.stroke,
       style.strokeWidth,
-      { opacity: this._defaults.opacity, data: reopened ? { id: reopened.data.id } : undefined },
+      { opacity: this._defaults.opacity },
       style.strokeDash,
       this._defaults.arrowType,
     );
@@ -985,38 +963,8 @@ export default class SlideEditor {
     this._commit();
   }
 
-  /** Removes an existing arrow from the canvas and seeds `_arrowChain` with its points (converted to
-   * absolute canvas coordinates) so click-chain placement can append to it; `_onArrowFinish`/
-   * `_clearArrowChain` consult `_arrowReopenedObj` to preserve identity or restore on cancel. */
-  private _onArrowReopen(obj: any): void {
-    const fabric = (window as any).fabric;
-    const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
-    if (lp.length < 2) return;
-    const m = obj.calcTransformMatrix();
-    const pts = lp.map((p) => {
-      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
-      return { x: abs.x, y: abs.y };
-    });
-    const pathChild = obj.getObjects()[0];
-    const avgScale = ((obj.scaleX ?? 1) + (obj.scaleY ?? 1)) / 2;
-    const d = this._defaults;
-    d.stroke = parseColor(pathChild?.stroke)?.hex ?? d.stroke;
-    d.strokeWidthPx = Math.max(1, Math.round((pathChild?.strokeWidth ?? d.strokeWidthPx) * avgScale));
-    d.strokeDash = (obj.data?.strokeDash ?? 'solid') as StyleDefaults['strokeDash'];
-    d.opacity = obj.opacity ?? 1;
-    d.arrowType = (obj.data?.arrowType ?? 'sharp') as ArrowType;
-    this._fc.discardActiveObject();
-    this._fc.remove(obj);
-    this._arrowReopenedObj = obj;
-    this._arrowChain = pts;
-    this._arrowLastClickAt = 0;
-    this._updateArrowPreview(pts[pts.length - 1]);
-    this._ui?.refreshPanelValues();
-  }
-
   /** Adds a small draggable "bow" control at each segment's midpoint so dragging one inserts a bend. */
   private _attachArrowControls(grp: any): void {
-    if (grp.data?.arrowType === 'elbow') return;
     const fabric = (window as any).fabric;
     const pts: Array<{ x: number; y: number }> = grp.data?.localPoints ?? [];
     const controls: Record<string, any> = { ...fabric.Object.prototype.controls };
@@ -1119,24 +1067,21 @@ export default class SlideEditor {
     this._fc.requestRenderAll();
   }
 
-  /** Replaces an arrow group with a freshly-built one from an absolute-coordinate point list, preserving style/id. */
+  /** Replaces an arrow group with a freshly-built one from an absolute-coordinate point list, preserving style/id. Reused by Task 6. */
   private _rebuildArrow(obj: any, absPoints: Array<{ x: number; y: number }>): any {
     const arrowType: ArrowType = obj.data?.arrowType ?? 'sharp';
     const pathChild = obj.getObjects()[0];
-    const avgScale = ((obj.scaleX ?? 1) + (obj.scaleY ?? 1)) / 2;
-    const idx = this._fc.getObjects().indexOf(obj);
     this._fc.remove(obj);
     const rebuilt = makeArrowGroup(
       absPoints,
       pathChild.stroke,
-      pathChild.strokeWidth * avgScale,
+      pathChild.strokeWidth,
       { opacity: obj.opacity, data: { id: obj.data.id } },
       obj.data.strokeDash,
       arrowType,
     );
     this._attachArrowControls(rebuilt);
     this._fc.add(rebuilt);
-    if (idx >= 0) this._fc.moveTo(rebuilt, idx);
     this._commit();
     return rebuilt;
   }
@@ -1145,11 +1090,6 @@ export default class SlideEditor {
     if (this._arrowPreview) {
       this._fc?.remove(this._arrowPreview);
       this._arrowPreview = null;
-    }
-    if (this._arrowReopenedObj) {
-      this._fc?.add(this._arrowReopenedObj);
-      this._fc?.setActiveObject(this._arrowReopenedObj);
-      this._arrowReopenedObj = null;
     }
     this._arrowChain = null;
   }
@@ -1389,14 +1329,6 @@ export default class SlideEditor {
         this._bendPreview = null;
       }
       this._bendDrag = null;
-    }
-    if (this._arrowChain) {
-      if (this._arrowPreview) {
-        this._fc.remove(this._arrowPreview);
-        this._arrowPreview = null;
-      }
-      this._arrowChain = null;
-      this._arrowReopenedObj = null;
     }
     this._fc.discardActiveObject();
     (this._fc.getObjects() as any[]).slice().forEach((o) => this._fc.remove(o));

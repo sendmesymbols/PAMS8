@@ -1,0 +1,786 @@
+# Final whole-branch review package (ROUND 2, post-fix): Curved Arrows plan
+
+## Files changed
+MS/Engines/Briefing/BriefingTypes.ts
+MS/Engines/Briefing/OverlayFabric.ts
+MS/Engines/Briefing/SlideEditor.ts
+MS/Engines/Briefing/SlideEditorUI.ts
+
+## Diff: SlideEditor.ts (vs. pre-plan baseline) -- this is where all 7 fixes landed
+diff --git .superpowers/sdd/task-3-before/SlideEditor.ts MS/Engines/Briefing/SlideEditor.ts
+index 2710ce6..f373553 100644
+--- .superpowers/sdd/task-3-before/SlideEditor.ts
++++ MS/Engines/Briefing/SlideEditor.ts
+@@ -20,6 +20,7 @@ import EngineLogger from '../../Support/EngineLogger';
+ import type { Slide, SlideOverlay } from './BriefingTypes';
+ import LaserTrail from './LaserTrail';
+ import {
++  buildArrowPath,
+   dashProps,
+   fabricToOverlay,
+   isBoxKind,
+@@ -28,7 +29,10 @@ import {
+   overlayToFabric,
+   overlayUuid,
+   parseColor,
++  restoreSelectionControls,
++  styleSelectionControls,
+   withAlpha,
++  type ArrowType,
+ } from './OverlayFabric';
+ import SlideEditorUI, { TOOL_DEFS } from './SlideEditorUI';
+ import type { PanelContext, StyleDefaults, StyleProp, Tool } from './SlideEditorUI';
+@@ -105,6 +109,12 @@ export default class SlideEditor {
+   private _drawing: { obj: any; startX: number; startY: number } | null = null;
+   private _laser: LaserTrail | null = null;
+   private _lassoPts: Array<{ x: number; y: number }> | null = null;
++  private _arrowChain: Array<{ x: number; y: number }> | null = null;
++  private _arrowReopenedObj: any = null;
++  private _arrowPreview: any = null;
++  private _arrowLastClickAt = 0;
++  private _bendDrag: { obj: any; segmentIndex: number; lastPoint: { x: number; y: number } } | null = null;
++  private _bendPreview: any = null;
+   private _erasing = false;
+   private _erasedAny = false;
+   private _undo: string[] = [];
+@@ -126,6 +136,7 @@ export default class SlideEditor {
+     strokeDash: 'solid',
+     opacity: 1,
+     highlightWidthPx: 20,
++    arrowType: 'sharp',
+   };
+ 
+   private constructor() {}
+@@ -168,6 +179,7 @@ export default class SlideEditor {
+     const host = this._host;
+     const index = this._index;
+     if (!this._fc || !host || index < 0) return;
++    if (this._arrowChain) this._clearArrowChain();
+     try {
+       const active: any = this._fc.getActiveObject?.();
+       active?.exitEditing?.();
+@@ -225,6 +237,11 @@ export default class SlideEditor {
+       this._drawing = null;
+       this._lassoPts = null;
+       this._erasing = false;
++      this._arrowChain = null;
++      this._arrowPreview = null;
++      this._arrowReopenedObj = null;
++      this._bendDrag = null;
++      this._bendPreview = null;
+       // _fc is about to be null for the whole await below — assign the field
+       // directly (never through _setTool, which no-ops without a canvas) so
+       // Escape's "de-arm the tool" rung can still reach close() mid-load.
+@@ -280,6 +297,7 @@ export default class SlideEditor {
+     }
+     this._laser?.dispose();
+     this._laser = null;
++    restoreSelectionControls();
+     try {
+       this._fc?.dispose?.();
+     } catch {}
+@@ -292,6 +310,11 @@ export default class SlideEditor {
+     this._drawing = null;
+     this._lassoPts = null;
+     this._erasing = false;
++    this._arrowChain = null;
++    this._arrowPreview = null;
++    this._arrowReopenedObj = null;
++    this._bendDrag = null;
++    this._bendPreview = null;
+     this._undo = [];
+     this._redo = [];
+     this._tool = 'select';
+@@ -370,6 +393,13 @@ export default class SlideEditor {
+   private _deleteSelection(): void {
+     const objs: any[] = this._fc?.getActiveObjects?.() ?? [];
+     if (!objs.length) return;
++    if (this._bendDrag) {
++      if (this._bendPreview) {
++        this._fc.remove(this._bendPreview);
++        this._bendPreview = null;
++      }
++      this._bendDrag = null;
++    }
+     objs.forEach((o) => this._fc.remove(o));
+     this._fc.discardActiveObject();
+     this._fc.requestRenderAll();
+@@ -399,6 +429,7 @@ export default class SlideEditor {
+   ): void {
+     const ui = this._ui;
+     if (!ui?.stageWrap) return;
++    styleSelectionControls();
+     ui.stageWrap.innerHTML = '';
+     // Slide navigation re-inits the canvas — drop the previous slide's banner.
+     this._stage?.querySelectorAll('.ms-sledit-warn').forEach((el) => el.remove());
+@@ -449,8 +480,12 @@ export default class SlideEditor {
+ 
+     for (const o of slide.overlays ?? []) {
+       const obj = overlayToFabric(o, this._W, this._H);
+-      if (obj) this._fc.add(obj);
+-      else EngineLogger.error(ENGINE_NAME, `Skipped invalid overlay entry (${o?.kind ?? '?'})`);
++      if (obj) {
++        if (obj.data?.kind === 'arrow') this._attachArrowControls(obj);
++        this._fc.add(obj);
++      } else {
++        EngineLogger.error(ENGINE_NAME, `Skipped invalid overlay entry (${o?.kind ?? '?'})`);
++      }
+     }
+ 
+     this._fc.on('mouse:down', (opt: any) => this._onMouseDown(opt));
+@@ -460,7 +495,13 @@ export default class SlideEditor {
+     this._fc.on('selection:created', () => this._syncControlsFromSelection());
+     this._fc.on('selection:updated', () => this._syncControlsFromSelection());
+     this._fc.on('selection:cleared', () => this._syncPanelContext());
+-    this._fc.on('object:modified', () => this._commit());
++    this._fc.on('object:modified', () => {
++      if (this._bendDrag) {
++        this._finalizeArrowBend();
++        return;
++      }
++      this._commit();
++    });
+     this._fc.on('text:editing:exited', (e: any) => {
+       const t = e?.target;
+       if (t && !String(t.text ?? '').trim()) this._fc.remove(t);
+@@ -483,6 +524,9 @@ export default class SlideEditor {
+ 
+   private _setTool(t: Tool): void {
+     if (!this._fc) return;
++    if (this._arrowChain && t !== 'arrow') {
++      this._clearArrowChain();
++    }
+     const prev = this._tool;
+ 
+     if (prev !== t) {
+@@ -512,6 +556,10 @@ export default class SlideEditor {
+     if (t === 'laser' && !this._laser) {
+       this._laser = new LaserTrail(this._fc);
+     }
++    if (t === 'arrow' && prev !== 'arrow') {
++      const active = this._fc.getActiveObject();
++      if (active?.data?.kind === 'arrow') this._onArrowReopen(active);
++    }
+ 
+     const drawingMode = t === 'freehand' || t === 'highlighter';
+     this._fc.isDrawingMode = drawingMode;
+@@ -595,6 +643,10 @@ export default class SlideEditor {
+       this._lassoPts = [{ x: p.x, y: p.y }];
+       return;
+     }
++    if (t === 'arrow') {
++      this._onArrowClick(p);
++      return;
++    }
+ 
+     if (t === 'text') {
+       const tb = new fabric.Textbox('Text', {
+@@ -652,8 +704,6 @@ export default class SlideEditor {
+         data: { id: overlayUuid(), kind: 'ellipse', strokeDash: style.strokeDash },
+       });
+     } else if (SCALED_BOX_TOOLS.has(t)) {
+-      // Diamond/star/callout can't reflow from width/height — preview by
+-      // scaling a base-size shape, then regenerate crisp geometry on mouse-up.
+       obj = makeShapeObject(
+         t as 'diamond' | 'star' | 'callout',
+         { left: p.x, top: p.y, width: SCALE_BASE, height: SCALE_BASE },
+@@ -661,7 +711,7 @@ export default class SlideEditor {
+         { opacity: d.opacity },
+       );
+       obj.set({ scaleX: 0.02, scaleY: 0.02 });
+-    } else if (t === 'line' || t === 'arrow') {
++    } else if (t === 'line') {
+       obj = new fabric.Line([p.x, p.y, p.x, p.y], {
+         stroke: style.stroke,
+         strokeWidth: style.strokeWidth,
+@@ -681,6 +731,10 @@ export default class SlideEditor {
+   private _onMouseMove(opt: any): void {
+     if (!this._fc) return;
+     const t = this._tool;
++    if (t === 'arrow') {
++      if (this._arrowChain) this._updateArrowPreview(this._fc.getPointer(opt.e));
++      return;
++    }
+     if (t === 'laser') {
+       const p = this._fc.getPointer(opt.e);
+       this._laser?.onMove(p.x, p.y);
+@@ -749,7 +803,7 @@ export default class SlideEditor {
+     const { obj, startX, startY } = this._drawing;
+     this._drawing = null;
+ 
+-    const isLineKind = t === 'line' || t === 'arrow';
++    const isLineKind = t === 'line';
+     const degenerate = isLineKind
+       ? Math.hypot((obj.x2 ?? 0) - (obj.x1 ?? 0), (obj.y2 ?? 0) - (obj.y1 ?? 0)) < 4
+       : obj.getScaledWidth() < 4 && obj.getScaledHeight() < 4;
+@@ -760,23 +814,7 @@ export default class SlideEditor {
+     }
+ 
+     let finalObj: any = obj;
+-    if (t === 'arrow') {
+-      const p0 = { x: obj.x1, y: obj.y1 };
+-      const p1 = { x: obj.x2, y: obj.y2 };
+-      this._fc.remove(obj);
+-      const style = this._creationStyle();
+-      finalObj = makeArrowGroup(
+-        p0,
+-        p1,
+-        style.stroke,
+-        style.strokeWidth,
+-        { opacity: this._defaults.opacity },
+-        style.strokeDash,
+-      );
+-      this._fc.add(finalObj);
+-    } else if (SCALED_BOX_TOOLS.has(t)) {
+-      // Replace the scaled drag preview with clean geometry at the final size
+-      // (uniform stroke, exact bbox) — persistence is bbox-only either way.
++    if (SCALED_BOX_TOOLS.has(t)) {
+       const p = this._fc.getPointer(opt.e);
+       this._fc.remove(obj);
+       finalObj = makeShapeObject(
+@@ -868,6 +906,254 @@ export default class SlideEditor {
+     this._commit();
+   }
+ 
++  private _onArrowClick(p: { x: number; y: number }): void {
++    const now = Date.now();
++    const isFinish =
++      !!this._arrowChain &&
++      now - this._arrowLastClickAt < 400 &&
++      Math.hypot(
++        p.x - this._arrowChain[this._arrowChain.length - 1].x,
++        p.y - this._arrowChain[this._arrowChain.length - 1].y,
++      ) < 6;
++    this._arrowLastClickAt = now;
++    if (isFinish) {
++      this._onArrowFinish();
++      return;
++    }
++    if (!this._arrowChain) this._arrowChain = [p];
++    else this._arrowChain.push(p);
++    this._updateArrowPreview(p);
++  }
++
++  private _updateArrowPreview(cursor: { x: number; y: number }): void {
++    if (!this._fc || !this._arrowChain) return;
++    const fabric = (window as any).fabric;
++    const style = this._creationStyle();
++    const pts = [...this._arrowChain, cursor];
++    const { d } = buildArrowPath(pts, this._defaults.arrowType);
++    if (this._arrowPreview) this._fc.remove(this._arrowPreview);
++    this._arrowPreview = new fabric.Path(d, {
++      fill: '',
++      stroke: style.stroke,
++      strokeWidth: style.strokeWidth,
++      strokeDashArray: [6, 4],
++      selectable: false,
++      evented: false,
++      opacity: 0.85,
++    });
++    this._fc.add(this._arrowPreview);
++    this._fc.requestRenderAll();
++  }
++
++  private _onArrowFinish(): void {
++    if (this._tool !== 'arrow' || !this._arrowChain) return;
++    const pts = [...this._arrowChain];
++    const reopened = this._arrowReopenedObj;
++    if (this._arrowPreview) {
++      this._fc.remove(this._arrowPreview);
++      this._arrowPreview = null;
++    }
++    this._arrowChain = null;
++    this._arrowReopenedObj = null;
++    if (pts.length >= 2) {
++      const a = pts[pts.length - 2];
++      const b = pts[pts.length - 1];
++      if (Math.hypot(b.x - a.x, b.y - a.y) < 4) pts.pop();
++    }
++    if (pts.length < 2) {
++      if (reopened) {
++        this._fc.add(reopened);
++        this._fc.setActiveObject(reopened);
++      }
++      this._setTool('select');
++      return;
++    }
++    const style = this._creationStyle();
++    const finalObj = makeArrowGroup(
++      pts,
++      style.stroke,
++      style.strokeWidth,
++      { opacity: this._defaults.opacity, data: reopened ? { id: reopened.data.id } : undefined },
++      style.strokeDash,
++      this._defaults.arrowType,
++    );
++    this._attachArrowControls(finalObj);
++    this._fc.add(finalObj);
++    this._setTool('select');
++    this._fc.setActiveObject(finalObj);
++    this._fc.requestRenderAll();
++    this._commit();
++  }
++
++  /** Removes an existing arrow from the canvas and seeds `_arrowChain` with its points (converted to
++   * absolute canvas coordinates) so click-chain placement can append to it; `_onArrowFinish`/
++   * `_clearArrowChain` consult `_arrowReopenedObj` to preserve identity or restore on cancel. */
++  private _onArrowReopen(obj: any): void {
++    const fabric = (window as any).fabric;
++    const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
++    if (lp.length < 2) return;
++    const m = obj.calcTransformMatrix();
++    const pts = lp.map((p) => {
++      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
++      return { x: abs.x, y: abs.y };
++    });
++    const pathChild = obj.getObjects()[0];
++    const avgScale = ((obj.scaleX ?? 1) + (obj.scaleY ?? 1)) / 2;
++    const d = this._defaults;
++    d.stroke = parseColor(pathChild?.stroke)?.hex ?? d.stroke;
++    d.strokeWidthPx = Math.max(1, Math.round((pathChild?.strokeWidth ?? d.strokeWidthPx) * avgScale));
++    d.strokeDash = (obj.data?.strokeDash ?? 'solid') as StyleDefaults['strokeDash'];
++    d.opacity = obj.opacity ?? 1;
++    d.arrowType = (obj.data?.arrowType ?? 'sharp') as ArrowType;
++    this._fc.discardActiveObject();
++    this._fc.remove(obj);
++    this._arrowReopenedObj = obj;
++    this._arrowChain = pts;
++    this._arrowLastClickAt = 0;
++    this._updateArrowPreview(pts[pts.length - 1]);
++    this._ui?.refreshPanelValues();
++  }
++
++  /** Adds a small draggable "bow" control at each segment's midpoint so dragging one inserts a bend. */
++  private _attachArrowControls(grp: any): void {
++    if (grp.data?.arrowType === 'elbow') return;
++    const fabric = (window as any).fabric;
++    const pts: Array<{ x: number; y: number }> = grp.data?.localPoints ?? [];
++    const controls: Record<string, any> = { ...fabric.Object.prototype.controls };
++    for (let i = 0; i < pts.length - 1; i++) {
++      controls[`bow${i}`] = new fabric.Control({
++        x: 0,
++        y: 0,
++        cursorStyle: 'crosshair',
++        positionHandler: (_dim: any, finalMatrix: number[], obj: any) => {
++          const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
++          const a = lp[i];
++          const b = lp[i + 1];
++          if (!a || !b) return new fabric.Point(0, 0);
++          const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
++          return fabric.util.transformPoint(new fabric.Point(mid.x, mid.y), finalMatrix);
++        },
++        actionHandler: (_eventData: any, transform: any, x: number, y: number) => {
++          this._dragArrowBend(transform.target, i, x, y);
++          return true;
++        },
++        actionName: 'insertArrowBend',
++        render: (ctx: CanvasRenderingContext2D, left: number, top: number) => {
++          ctx.save();
++          ctx.fillStyle = '#2d6cdf';
++          ctx.strokeStyle = '#ffffff';
++          ctx.lineWidth = 1.5;
++          ctx.beginPath();
++          ctx.arc(left, top, 5, 0, Math.PI * 2);
++          ctx.fill();
++          ctx.stroke();
++          ctx.restore();
++        },
++      });
++    }
++    grp.controls = controls;
++    grp.setCoords();
++  }
++
++  /**
++   * Per-tick bow-handle drag callback. Never mutates/removes the pinned arrow
++   * object itself (fabric keeps `transform.target` fixed to it for the whole
++   * gesture) — only swaps a cheap, throwaway dashed preview path, mirroring
++   * `_updateArrowPreview`'s already-proven pattern in this file. The real
++   * geometry swap happens once, at drag end, via `_finalizeArrowBend`.
++   */
++  private _dragArrowBend(obj: any, segmentIndex: number, canvasX: number, canvasY: number): void {
++    if (!obj || obj.data?.kind !== 'arrow') return;
++    const fabric = (window as any).fabric;
++    const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
++    if (segmentIndex < 0 || segmentIndex + 1 >= lp.length) return;
++    this._bendDrag = { obj, segmentIndex, lastPoint: { x: canvasX, y: canvasY } };
++    const m = obj.calcTransformMatrix();
++    const absPoints = lp.map((p) => {
++      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
++      return { x: abs.x, y: abs.y };
++    });
++    absPoints.splice(segmentIndex + 1, 0, { x: canvasX, y: canvasY });
++    const pathChild = obj.getObjects()[0];
++    const { d } = buildArrowPath(absPoints, obj.data?.arrowType ?? 'sharp');
++    if (this._bendPreview) this._fc.remove(this._bendPreview);
++    this._bendPreview = new fabric.Path(d, {
++      fill: '',
++      stroke: pathChild.stroke,
++      strokeWidth: pathChild.strokeWidth,
++      strokeDashArray: [6, 4],
++      selectable: false,
++      evented: false,
++      opacity: 0.9,
++    });
++    this._fc.add(this._bendPreview);
++    this._fc.requestRenderAll();
++  }
++
++  /** Called once at bow-handle drag end (via the `object:modified` listener in `_initCanvas`). */
++  private _finalizeArrowBend(): void {
++    const drag = this._bendDrag;
++    this._bendDrag = null;
++    if (this._bendPreview) {
++      this._fc.remove(this._bendPreview);
++      this._bendPreview = null;
++    }
++    if (!drag) return;
++    this._insertArrowBend(drag.obj, drag.segmentIndex, drag.lastPoint.x, drag.lastPoint.y);
++  }
++
++  /** Splices a new point into an arrow's geometry at the drag location and rebuilds it in place. */
++  private _insertArrowBend(obj: any, segmentIndex: number, canvasX: number, canvasY: number): void {
++    if (!obj || obj.data?.kind !== 'arrow') return;
++    const fabric = (window as any).fabric;
++    const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
++    if (segmentIndex < 0 || segmentIndex + 1 >= lp.length) return;
++    const m = obj.calcTransformMatrix();
++    const absPoints = lp.map((p) => {
++      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
++      return { x: abs.x, y: abs.y };
++    });
++    absPoints.splice(segmentIndex + 1, 0, { x: canvasX, y: canvasY });
++    const rebuilt = this._rebuildArrow(obj, absPoints);
++    this._fc.setActiveObject(rebuilt);
++    this._fc.requestRenderAll();
++  }
++
++  /** Replaces an arrow group with a freshly-built one from an absolute-coordinate point list, preserving style/id. */
++  private _rebuildArrow(obj: any, absPoints: Array<{ x: number; y: number }>): any {
++    const arrowType: ArrowType = obj.data?.arrowType ?? 'sharp';
++    const pathChild = obj.getObjects()[0];
++    const avgScale = ((obj.scaleX ?? 1) + (obj.scaleY ?? 1)) / 2;
++    const idx = this._fc.getObjects().indexOf(obj);
++    this._fc.remove(obj);
++    const rebuilt = makeArrowGroup(
++      absPoints,
++      pathChild.stroke,
++      pathChild.strokeWidth * avgScale,
++      { opacity: obj.opacity, data: { id: obj.data.id } },
++      obj.data.strokeDash,
++      arrowType,
++    );
++    this._attachArrowControls(rebuilt);
++    this._fc.add(rebuilt);
++    if (idx >= 0) this._fc.moveTo(rebuilt, idx);
++    this._commit();
++    return rebuilt;
++  }
++
++  private _clearArrowChain(): void {
++    if (this._arrowPreview) {
++      this._fc?.remove(this._arrowPreview);
++      this._arrowPreview = null;
++    }
++    if (this._arrowReopenedObj) {
++      this._fc?.add(this._arrowReopenedObj);
++      this._fc?.setActiveObject(this._arrowReopenedObj);
++      this._arrowReopenedObj = null;
++    }
++    this._arrowChain = null;
++  }
++
+   // ── Eraser ─────────────────────────────────────────────────────────────────
+ 
+   private _eraseAt(opt: any): void {
+@@ -1005,6 +1291,7 @@ export default class SlideEditor {
+       if (!obj) continue;
+       obj.set({ left: (obj.left ?? 0) + offsetPx, top: (obj.top ?? 0) + offsetPx });
+       obj.setCoords();
++      if (obj.data?.kind === 'arrow') this._attachArrowControls(obj);
+       this._fc.add(obj);
+       added.push(obj);
+     }
+@@ -1096,11 +1383,29 @@ export default class SlideEditor {
+     } catch {
+       return;
+     }
++    if (this._bendDrag) {
++      if (this._bendPreview) {
++        this._fc.remove(this._bendPreview);
++        this._bendPreview = null;
++      }
++      this._bendDrag = null;
++    }
++    if (this._arrowChain) {
++      if (this._arrowPreview) {
++        this._fc.remove(this._arrowPreview);
++        this._arrowPreview = null;
++      }
++      this._arrowChain = null;
++      this._arrowReopenedObj = null;
++    }
+     this._fc.discardActiveObject();
+     (this._fc.getObjects() as any[]).slice().forEach((o) => this._fc.remove(o));
+     for (const o of overlays) {
+       const obj = overlayToFabric(o, this._W, this._H);
+-      if (obj) this._fc.add(obj);
++      if (obj) {
++        if (obj.data?.kind === 'arrow') this._attachArrowControls(obj);
++        this._fc.add(obj);
++      }
+     }
+     this._fc.requestRenderAll();
+     this._syncPanelContext();
+@@ -1110,6 +1415,20 @@ export default class SlideEditor {
+ 
+   private _onStyleChanged(prop: StyleProp): void {
+     const objs: any[] = this._fc?.getActiveObjects?.() ?? [];
++    if (prop === 'arrowType') {
++      const rebuilt = objs
++        .filter((o) => o?.data?.kind === 'arrow')
++        .map((o) => this._applyArrowTypeChange(o));
++      if (rebuilt.length > 1) {
++        const fabric = (window as any).fabric;
++        this._fc.setActiveObject(new fabric.ActiveSelection(rebuilt, { canvas: this._fc }));
++        this._fc.requestRenderAll();
++      } else if (rebuilt.length === 1) {
++        this._fc.setActiveObject(rebuilt[0]);
++      }
++      if (this._fc?.isDrawingMode) this._configureBrush();
++      return;
++    }
+     for (const obj of objs) this._applyStyleTo(obj, prop);
+     if (objs.length) {
+       this._fc.requestRenderAll();
+@@ -1118,6 +1437,18 @@ export default class SlideEditor {
+     if (this._fc?.isDrawingMode) this._configureBrush();
+   }
+ 
++  private _applyArrowTypeChange(obj: any): any {
++    const fabric = (window as any).fabric;
++    const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
++    const m = obj.calcTransformMatrix();
++    const absPoints = lp.map((p) => {
++      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
++      return { x: abs.x, y: abs.y };
++    });
++    obj.data.arrowType = this._defaults.arrowType;
++    return this._rebuildArrow(obj, absPoints);
++  }
++
+   private _applyStyleTo(obj: any, prop: StyleProp): void {
+     const d = this._defaults;
+     const kind = obj?.data?.kind;
+@@ -1154,7 +1485,7 @@ export default class SlideEditor {
+       case 'stroke':
+         if (kind === 'arrow') {
+           obj.getObjects?.()?.forEach((ch: any) => {
+-            if (ch.type === 'line') ch.set({ stroke: d.stroke });
++            if (ch.type === 'path') ch.set({ stroke: d.stroke });
+             else ch.set({ fill: d.stroke });
+           });
+           obj.dirty = true;
+@@ -1164,7 +1495,7 @@ export default class SlideEditor {
+         break;
+       case 'strokeWidthPx':
+         if (kind === 'arrow') {
+-          const line = obj.getObjects?.()?.find((ch: any) => ch.type === 'line');
++          const line = obj.getObjects?.()?.find((ch: any) => ch.type === 'path');
+           line?.set({
+             strokeWidth: d.strokeWidthPx,
+             ...dashProps(obj.data.strokeDash, d.strokeWidthPx),
+@@ -1185,10 +1516,10 @@ export default class SlideEditor {
+         obj.data.strokeDash = dashVal;
+         const width =
+           kind === 'arrow'
+-            ? obj.getObjects?.()?.find((ch: any) => ch.type === 'line')?.strokeWidth ?? 3
++            ? obj.getObjects?.()?.find((ch: any) => ch.type === 'path')?.strokeWidth ?? 3
+             : obj.strokeWidth ?? 3;
+         if (kind === 'arrow') {
+-          const line = obj.getObjects?.()?.find((ch: any) => ch.type === 'line');
++          const line = obj.getObjects?.()?.find((ch: any) => ch.type === 'path');
+           line?.set(dashProps(dashVal, width));
+           obj.dirty = true;
+         } else {
+@@ -1211,7 +1542,15 @@ export default class SlideEditor {
+       if (kinds.size === 1) {
+         const k = [...kinds][0] as string;
+         kind =
+-          k === 'text' ? 'text' : isBoxKind(k) ? 'box' : k === 'highlight' ? 'highlight' : 'linework';
++          k === 'text'
++            ? 'text'
++            : isBoxKind(k)
++              ? 'box'
++              : k === 'highlight'
++                ? 'highlight'
++                : k === 'arrow'
++                  ? 'arrow'
++                  : 'linework';
+       }
+       return { kind, hasSelection: true };
+     }
+@@ -1219,8 +1558,9 @@ export default class SlideEditor {
+     switch (this._tool) {
+       case 'text':
+         return { kind: 'text', hasSelection: false };
+-      case 'line':
+       case 'arrow':
++        return { kind: 'arrow', hasSelection: false };
++      case 'line':
+       case 'freehand':
+         return { kind: 'linework', hasSelection: false };
+       case 'highlighter':
+@@ -1265,7 +1605,7 @@ export default class SlideEditor {
+         }
+       }
+       const strokeSrc =
+-        kind === 'arrow' ? obj.getObjects?.()?.find((ch: any) => ch.type === 'line') : obj;
++        kind === 'arrow' ? obj.getObjects?.()?.find((ch: any) => ch.type === 'path') : obj;
+       const stroke = parseColor(strokeSrc?.stroke);
+       if (stroke) d.stroke = stroke.hex;
+       if (strokeSrc?.strokeWidth) {
+@@ -1273,6 +1613,7 @@ export default class SlideEditor {
+         else d.strokeWidthPx = Math.round(strokeSrc.strokeWidth);
+       }
+       d.strokeDash = obj.data.strokeDash ?? 'solid';
++      if (kind === 'arrow') d.arrowType = (obj.data.arrowType ?? 'sharp') as ArrowType;
+     }
+     d.opacity = obj.opacity ?? 1;
+     this._syncPanelContext();
+@@ -1308,6 +1649,12 @@ export default class SlideEditor {
+           active.exitEditing();
+           return;
+         }
++        if (this._arrowChain) {
++          this._clearArrowChain();
++          this._fc?.requestRenderAll();
++          this._setTool('select');
++          return;
++        }
+         if (this._tool !== 'select') {
+           this._setTool('select');
+           return;
+@@ -1325,6 +1672,13 @@ export default class SlideEditor {
+       // native — including Ctrl+C/V for real text clipboard.
+       if (inInput || editingText) return;
+ 
++      if (e.key === 'Enter' && this._arrowChain) {
++        e.preventDefault();
++        e.stopPropagation();
++        this._onArrowFinish();
++        return;
++      }
++
+       const mod = e.ctrlKey || e.metaKey;
+       if (mod && !e.altKey) {
+         const k = e.key.toLowerCase();
+
+## Diff: SlideEditorUI.ts (vs. pre-plan baseline) -- tooltip fix landed here
+diff --git .superpowers/sdd/task-4-before/SlideEditorUI.ts MS/Engines/Briefing/SlideEditorUI.ts
+index 5a6b583..8d7b851 100644
+--- .superpowers/sdd/task-4-before/SlideEditorUI.ts
++++ MS/Engines/Briefing/SlideEditorUI.ts
+@@ -13,6 +13,7 @@
+  */
+ 
+ import type { Slide } from './BriefingTypes';
++import type { ArrowType } from './OverlayFabric';
+ 
+ export type Tool =
+   | 'select'
+@@ -49,6 +50,8 @@ export interface StyleDefaults {
+   opacity: number;
+   /** Highlighter keeps its own width slot — marker vs pen are different tools. */
+   highlightWidthPx: number;
++  /** Arrow tool only. */
++  arrowType: ArrowType;
+ }
+ 
+ export type StyleProp =
+@@ -65,11 +68,12 @@ export type StyleProp =
+   | 'strokeWidthPx'
+   | 'strokeDash'
+   | 'opacity'
+-  | 'highlightWidthPx';
++  | 'highlightWidthPx'
++  | 'arrowType';
+ 
+ /** What the properties island is currently editing. */
+ export interface PanelContext {
+-  kind: 'none' | 'text' | 'box' | 'linework' | 'highlight' | 'mixed';
++  kind: 'none' | 'text' | 'box' | 'linework' | 'highlight' | 'arrow' | 'mixed';
+   /** Layers/actions rows only make sense on a live selection. */
+   hasSelection: boolean;
+ }
+@@ -107,7 +111,7 @@ export const TOOL_DEFS: ToolDef[] = [
+   { tool: 'star', letter: 'x', title: 'Star (drag)' },
+   { tool: 'callout', letter: 'c', title: 'Callout — drag bubble, then type its text' },
+   { tool: 'line', letter: 'l', num: '6', title: 'Line (drag)', startsGroup: true },
+-  { tool: 'arrow', letter: 'a', num: '5', title: 'Arrow (drag)' },
++  { tool: 'arrow', letter: 'a', num: '5', title: 'Arrow — click points, double-click or Enter to finish' },
+   { tool: 'freehand', letter: 'p', num: '7', title: 'Freehand ink' },
+   { tool: 'highlighter', letter: 'h', title: 'Highlighter — wide translucent marker' },
+   { tool: 'text', letter: 't', num: '8', title: 'Text (click on slide)' },
+@@ -136,6 +140,9 @@ const ICONS: Record<string, string> = {
+   callout: svg('<path d="M4 5h16v10h-9l-4 4v-4H4z"/>'),
+   line: svg('<path d="M4.5 19.5L19.5 4.5"/>'),
+   arrow: svg('<path d="M4.5 19.5L18.5 5.5M18.5 5.5h-6.2M18.5 5.5v6.2"/>'),
++  arrowSharp: svg('<path d="M4.5 19.5L18.5 5.5M18.5 5.5h-6.2M18.5 5.5v6.2"/>'),
++  arrowCurved: svg('<path d="M4.5 19.5C4.5 10 9 5 18.5 5.5M18.5 5.5h-6.2M18.5 5.5v6.2"/>'),
++  arrowElbow: svg('<path d="M4.5 19.5V9.5h14V5.5M18.5 5.5h-6.2M18.5 5.5v6.2"/>'),
+   freehand: svg('<path d="M4 17.5c2-6.5 4.8-8.4 6-6.4s-2.2 7.3.8 7.3 4-9.4 7.2-9.4"/>'),
+   highlighter: svg('<path d="M13.6 4.4l6 6-7.6 7.6H8l-2-2z"/><path d="M4 20.5h8"/>'),
+   text: svg('<path d="M5.5 5.5h13M12 5.5v13"/>'),
+@@ -169,6 +176,7 @@ const SECTIONS_BY_CONTEXT: Record<PanelContext['kind'], string[]> = {
+   box: ['stroke', 'fill', 'fillop', 'width', 'dash', 'opacity'],
+   linework: ['stroke', 'width', 'dash', 'opacity'],
+   highlight: ['stroke', 'width', 'opacity'],
++  arrow: ['stroke', 'width', 'dash', 'arrowtype', 'opacity'],
+   mixed: ['stroke', 'width', 'dash', 'opacity'],
+ };
+ 
+@@ -264,6 +272,14 @@ export default class SlideEditorUI {
+               <button data-dash="dotted" title="Dotted">${ICONS.dashDotted}</button>
+             </div>
+           </div>
++          <div class="ms-sledit-sec" data-sec="arrowtype">
++            <div class="ms-sledit-seclabel">Arrow type</div>
++            <div class="ms-sledit-row">
++              <button data-arrowtype="sharp" title="Sharp">${ICONS.arrowSharp}</button>
++              <button data-arrowtype="curved" title="Curved">${ICONS.arrowCurved}</button>
++              <button data-arrowtype="elbow" title="Elbow">${ICONS.arrowElbow}</button>
++            </div>
++          </div>
+           <div class="ms-sledit-sec" data-sec="text">
+             <div class="ms-sledit-seclabel">Text</div>
+             <div class="ms-sledit-row">
+@@ -353,7 +369,7 @@ export default class SlideEditorUI {
+ 
+     panel.addEventListener('click', (e) => {
+       const el = (e.target as HTMLElement).closest(
+-        '[data-color],[data-width],[data-dash],[data-style],[data-align],[data-act]',
++        '[data-color],[data-width],[data-dash],[data-arrowtype],[data-style],[data-align],[data-act]',
+       ) as HTMLElement | null;
+       if (!el) return;
+       if (el.dataset.act) {
+@@ -381,6 +397,9 @@ export default class SlideEditorUI {
+       } else if (el.dataset.dash) {
+         d().strokeDash = el.dataset.dash as StyleDefaults['strokeDash'];
+         this._host.onStyleChanged('strokeDash');
++      } else if (el.dataset.arrowtype) {
++        d().arrowType = el.dataset.arrowtype as StyleDefaults['arrowType'];
++        this._host.onStyleChanged('arrowType');
+       } else if (el.dataset.style) {
+         const key = el.dataset.style as 'bold' | 'italic' | 'underline';
+         d()[key] = !d()[key];
+@@ -515,6 +534,9 @@ export default class SlideEditorUI {
+     panel.querySelectorAll('[data-dash]').forEach((el: any) => {
+       el.classList.toggle('active', el.dataset.dash === d.strokeDash);
+     });
++    panel.querySelectorAll('[data-arrowtype]').forEach((el: any) => {
++      el.classList.toggle('active', el.dataset.arrowtype === d.arrowType);
++    });
+     q('.ms-sledit-op').value = String(Math.round(d.opacity * 100));
+ 
+     q('.ms-sledit-font').value = d.fontFamily;

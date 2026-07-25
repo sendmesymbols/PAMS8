@@ -1,0 +1,170 @@
+# Review package (snapshot-based, no commits): Task 6
+
+## Files changed
+MS/Engines/Briefing/SlideEditor.ts
+MS/Engines/Briefing/SlideEditorUI.ts
+
+## Diff: SlideEditor.ts
+diff --git .superpowers/sdd/task-6-before/SlideEditor.ts MS/Engines/Briefing/SlideEditor.ts
+index d7e3140..3f381e2 100644
+--- .superpowers/sdd/task-6-before/SlideEditor.ts
++++ MS/Engines/Briefing/SlideEditor.ts
+@@ -1347,6 +1347,20 @@ export default class SlideEditor {
+ 
+   private _onStyleChanged(prop: StyleProp): void {
+     const objs: any[] = this._fc?.getActiveObjects?.() ?? [];
++    if (prop === 'arrowType') {
++      const rebuilt = objs
++        .filter((o) => o?.data?.kind === 'arrow')
++        .map((o) => this._applyArrowTypeChange(o));
++      if (rebuilt.length > 1) {
++        const fabric = (window as any).fabric;
++        this._fc.setActiveObject(new fabric.ActiveSelection(rebuilt, { canvas: this._fc }));
++        this._fc.requestRenderAll();
++      } else if (rebuilt.length === 1) {
++        this._fc.setActiveObject(rebuilt[0]);
++      }
++      if (this._fc?.isDrawingMode) this._configureBrush();
++      return;
++    }
+     for (const obj of objs) this._applyStyleTo(obj, prop);
+     if (objs.length) {
+       this._fc.requestRenderAll();
+@@ -1355,6 +1369,18 @@ export default class SlideEditor {
+     if (this._fc?.isDrawingMode) this._configureBrush();
+   }
+ 
++  private _applyArrowTypeChange(obj: any): any {
++    const fabric = (window as any).fabric;
++    const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
++    const m = obj.calcTransformMatrix();
++    const absPoints = lp.map((p) => {
++      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
++      return { x: abs.x, y: abs.y };
++    });
++    obj.data.arrowType = this._defaults.arrowType;
++    return this._rebuildArrow(obj, absPoints);
++  }
++
+   private _applyStyleTo(obj: any, prop: StyleProp): void {
+     const d = this._defaults;
+     const kind = obj?.data?.kind;
+@@ -1448,7 +1474,15 @@ export default class SlideEditor {
+       if (kinds.size === 1) {
+         const k = [...kinds][0] as string;
+         kind =
+-          k === 'text' ? 'text' : isBoxKind(k) ? 'box' : k === 'highlight' ? 'highlight' : 'linework';
++          k === 'text'
++            ? 'text'
++            : isBoxKind(k)
++              ? 'box'
++              : k === 'highlight'
++                ? 'highlight'
++                : k === 'arrow'
++                  ? 'arrow'
++                  : 'linework';
+       }
+       return { kind, hasSelection: true };
+     }
+@@ -1456,8 +1490,9 @@ export default class SlideEditor {
+     switch (this._tool) {
+       case 'text':
+         return { kind: 'text', hasSelection: false };
+-      case 'line':
+       case 'arrow':
++        return { kind: 'arrow', hasSelection: false };
++      case 'line':
+       case 'freehand':
+         return { kind: 'linework', hasSelection: false };
+       case 'highlighter':
+@@ -1510,6 +1545,7 @@ export default class SlideEditor {
+         else d.strokeWidthPx = Math.round(strokeSrc.strokeWidth);
+       }
+       d.strokeDash = obj.data.strokeDash ?? 'solid';
++      if (kind === 'arrow') d.arrowType = (obj.data.arrowType ?? 'sharp') as ArrowType;
+     }
+     d.opacity = obj.opacity ?? 1;
+     this._syncPanelContext();
+
+## Diff: SlideEditorUI.ts
+diff --git .superpowers/sdd/task-6-before/SlideEditorUI.ts MS/Engines/Briefing/SlideEditorUI.ts
+index 046a011..c72dc43 100644
+--- .superpowers/sdd/task-6-before/SlideEditorUI.ts
++++ MS/Engines/Briefing/SlideEditorUI.ts
+@@ -68,11 +68,12 @@ export type StyleProp =
+   | 'strokeWidthPx'
+   | 'strokeDash'
+   | 'opacity'
+-  | 'highlightWidthPx';
++  | 'highlightWidthPx'
++  | 'arrowType';
+ 
+ /** What the properties island is currently editing. */
+ export interface PanelContext {
+-  kind: 'none' | 'text' | 'box' | 'linework' | 'highlight' | 'mixed';
++  kind: 'none' | 'text' | 'box' | 'linework' | 'highlight' | 'arrow' | 'mixed';
+   /** Layers/actions rows only make sense on a live selection. */
+   hasSelection: boolean;
+ }
+@@ -139,6 +140,9 @@ const ICONS: Record<string, string> = {
+   callout: svg('<path d="M4 5h16v10h-9l-4 4v-4H4z"/>'),
+   line: svg('<path d="M4.5 19.5L19.5 4.5"/>'),
+   arrow: svg('<path d="M4.5 19.5L18.5 5.5M18.5 5.5h-6.2M18.5 5.5v6.2"/>'),
++  arrowSharp: svg('<path d="M4.5 19.5L18.5 5.5M18.5 5.5h-6.2M18.5 5.5v6.2"/>'),
++  arrowCurved: svg('<path d="M4.5 19.5C4.5 10 9 5 18.5 5.5M18.5 5.5h-6.2M18.5 5.5v6.2"/>'),
++  arrowElbow: svg('<path d="M4.5 19.5V9.5h14V5.5M18.5 5.5h-6.2M18.5 5.5v6.2"/>'),
+   freehand: svg('<path d="M4 17.5c2-6.5 4.8-8.4 6-6.4s-2.2 7.3.8 7.3 4-9.4 7.2-9.4"/>'),
+   highlighter: svg('<path d="M13.6 4.4l6 6-7.6 7.6H8l-2-2z"/><path d="M4 20.5h8"/>'),
+   text: svg('<path d="M5.5 5.5h13M12 5.5v13"/>'),
+@@ -172,6 +176,7 @@ const SECTIONS_BY_CONTEXT: Record<PanelContext['kind'], string[]> = {
+   box: ['stroke', 'fill', 'fillop', 'width', 'dash', 'opacity'],
+   linework: ['stroke', 'width', 'dash', 'opacity'],
+   highlight: ['stroke', 'width', 'opacity'],
++  arrow: ['stroke', 'width', 'dash', 'arrowtype', 'opacity'],
+   mixed: ['stroke', 'width', 'dash', 'opacity'],
+ };
+ 
+@@ -267,6 +272,14 @@ export default class SlideEditorUI {
+               <button data-dash="dotted" title="Dotted">${ICONS.dashDotted}</button>
+             </div>
+           </div>
++          <div class="ms-sledit-sec" data-sec="arrowtype">
++            <div class="ms-sledit-seclabel">Arrow type</div>
++            <div class="ms-sledit-row">
++              <button data-arrowtype="sharp" title="Sharp">${ICONS.arrowSharp}</button>
++              <button data-arrowtype="curved" title="Curved">${ICONS.arrowCurved}</button>
++              <button data-arrowtype="elbow" title="Elbow">${ICONS.arrowElbow}</button>
++            </div>
++          </div>
+           <div class="ms-sledit-sec" data-sec="text">
+             <div class="ms-sledit-seclabel">Text</div>
+             <div class="ms-sledit-row">
+@@ -356,7 +369,7 @@ export default class SlideEditorUI {
+ 
+     panel.addEventListener('click', (e) => {
+       const el = (e.target as HTMLElement).closest(
+-        '[data-color],[data-width],[data-dash],[data-style],[data-align],[data-act]',
++        '[data-color],[data-width],[data-dash],[data-arrowtype],[data-style],[data-align],[data-act]',
+       ) as HTMLElement | null;
+       if (!el) return;
+       if (el.dataset.act) {
+@@ -384,6 +397,9 @@ export default class SlideEditorUI {
+       } else if (el.dataset.dash) {
+         d().strokeDash = el.dataset.dash as StyleDefaults['strokeDash'];
+         this._host.onStyleChanged('strokeDash');
++      } else if (el.dataset.arrowtype) {
++        d().arrowType = el.dataset.arrowtype as StyleDefaults['arrowType'];
++        this._host.onStyleChanged('arrowType');
+       } else if (el.dataset.style) {
+         const key = el.dataset.style as 'bold' | 'italic' | 'underline';
+         d()[key] = !d()[key];
+@@ -518,6 +534,9 @@ export default class SlideEditorUI {
+     panel.querySelectorAll('[data-dash]').forEach((el: any) => {
+       el.classList.toggle('active', el.dataset.dash === d.strokeDash);
+     });
++    panel.querySelectorAll('[data-arrowtype]').forEach((el: any) => {
++      el.classList.toggle('active', el.dataset.arrowtype === d.arrowType);
++    });
+     q('.ms-sledit-op').value = String(Math.round(d.opacity * 100));
+ 
+     q('.ms-sledit-font').value = d.fontFamily;
