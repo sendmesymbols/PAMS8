@@ -29,6 +29,7 @@ export type Tool =
   | 'freehand'
   | 'highlighter'
   | 'text'
+  | 'image'
   | 'eraser'
   | 'laser';
 
@@ -55,6 +56,8 @@ export interface StyleDefaults {
   /** Arrow terminators, per end. */
   arrowStart: ArrowHead;
   arrowEnd: ArrowHead;
+  /** Line only — closed path (a polygon), which is what allows a fill. */
+  closed: boolean;
 }
 
 /**
@@ -91,7 +94,8 @@ export type StyleProp =
   | 'highlightWidthPx'
   | 'arrowType'
   | 'arrowStart'
-  | 'arrowEnd';
+  | 'arrowEnd'
+  | 'closed';
 
 /** What the properties island is currently editing. */
 export interface PanelContext {
@@ -102,6 +106,7 @@ export interface PanelContext {
     | 'box'
     | 'linework'
     | 'line'
+    | 'image'
     | 'highlight'
     | 'arrow'
     | 'labeled'
@@ -112,6 +117,8 @@ export interface PanelContext {
   hasSelection: boolean;
   /** Selected object count — gates Arrange (align needs 2, distribute needs 3). */
   count: number;
+  /** A closed line is the only linework that can take a fill, so it gates those rows. */
+  closed: boolean;
   /** True when every selected object is locked (drives the lock button's state). */
   locked: boolean;
 }
@@ -124,6 +131,8 @@ export interface ContextMenuState {
   canUngroup: boolean;
   canPaste: boolean;
   canPasteStyles: boolean;
+  /** The menu was opened on a vertex handle of a linework object with a point to spare. */
+  canDeletePoint: boolean;
 }
 
 export interface EditorUIHost {
@@ -167,6 +176,7 @@ export const TOOL_DEFS: ToolDef[] = [
   { tool: 'freehand', letter: 'p', num: '7', title: 'Freehand ink' },
   { tool: 'highlighter', letter: 'h', title: 'Highlighter — wide translucent marker' },
   { tool: 'text', letter: 't', num: '8', title: 'Text (click on slide)' },
+  { tool: 'image', letter: 'i', num: '9', title: 'Image — pick a file, or paste / drop one on the slide' },
   { tool: 'eraser', letter: 'e', num: '0', title: 'Eraser — drag over objects to delete', startsGroup: true },
   { tool: 'laser', letter: 'k', title: 'Laser pointer — fading trail, never saved' },
 ];
@@ -198,6 +208,7 @@ const ICONS: Record<string, string> = {
   freehand: svg('<path d="M4 17.5c2-6.5 4.8-8.4 6-6.4s-2.2 7.3.8 7.3 4-9.4 7.2-9.4"/>'),
   highlighter: svg('<path d="M13.6 4.4l6 6-7.6 7.6H8l-2-2z"/><path d="M4 20.5h8"/>'),
   text: svg('<path d="M5.5 5.5h13M12 5.5v13"/>'),
+  image: svg('<rect x="3.5" y="5" width="17" height="14" rx="1.8"/><circle cx="8.6" cy="10" r="1.6"/><path d="M4 16.5l4.6-4.2 3.4 3 3-2.6 5 4.3"/>'),
   eraser: svg('<path d="M8 19.5l-4.1-4.1a1.8 1.8 0 010-2.6l7.9-7.9a1.8 1.8 0 012.6 0l5.2 5.2a1.8 1.8 0 010 2.6l-6.8 6.8H8z"/><path d="M8.6 10.7l5.7 5.7"/>'),
   laser: svg(
     '<circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>' +
@@ -234,6 +245,7 @@ const ICONS: Record<string, string> = {
   objAlignBottom: svg('<path d="M3.5 20.5h17"/><rect x="6" y="5.5" width="4.4" height="12" rx="1"/><rect x="13.6" y="9.5" width="4.4" height="8" rx="1"/>'),
   distributeH: svg('<path d="M3.5 3.5v17M20.5 3.5v17"/><rect x="10.4" y="7" width="3.2" height="10" rx="1"/>'),
   distributeV: svg('<path d="M3.5 3.5h17M3.5 20.5h17"/><rect x="7" y="10.4" width="10" height="3.2" rx="1"/>'),
+  polygon: svg('<path d="M12 3.5l8.2 6-3.1 9.6H6.9L3.8 9.5z"/>'),
   toolLock: svg('<rect x="5" y="10.5" width="14" height="9.5" rx="1.8"/><path d="M8.2 10.5V8a3.8 3.8 0 017.6 0v2.5"/>'),
   help: svg('<circle cx="12" cy="12" r="8.8"/><path d="M9.6 9.4a2.5 2.5 0 114.3 1.8c-.9.8-1.9 1.3-1.9 2.6"/><circle cx="12" cy="17.2" r="0.9" fill="currentColor" stroke="none"/>'),
 };
@@ -248,10 +260,16 @@ interface CtxItem {
   /** Minimum selected-object count for this row to be enabled. */
   min?: number;
   /** Extra state flag that must also be true. */
-  needs?: 'canGroup' | 'canUngroup' | 'canPaste' | 'canPasteStyles';
+  needs?: 'canGroup' | 'canUngroup' | 'canPaste' | 'canPasteStyles' | 'canDeletePoint';
+  /** Omit the row entirely when unavailable, instead of greying it out. */
+  hideWhenOff?: true;
 }
 
 const CTX_ITEMS: CtxItem[] = [
+  // Only meaningful when the menu was opened right on a vertex, so it comes and
+  // goes rather than sitting greyed at the top of every menu.
+  { act: 'deletePoint', label: 'Delete point', needs: 'canDeletePoint', hideWhenOff: true },
+  { sep: true },
   { act: 'cut', label: 'Cut', hint: 'Ctrl+X', min: 1 },
   { act: 'copy', label: 'Copy', hint: 'Ctrl+C', min: 1 },
   { act: 'paste', label: 'Paste', hint: 'Ctrl+V', needs: 'canPaste' },
@@ -305,11 +323,15 @@ const HELP_GROUPS: Array<{ title: string; rows: Array<[string, string]> }> = [
   {
     title: 'Canvas',
     rows: [
+      ['Zoom', 'Ctrl+wheel · Ctrl+± · Ctrl+0'],
+      ['Pan', 'Space+drag · middle-drag'],
       ['Proportional resize', 'Shift+drag a corner'],
       ['Rotate snaps to 15°', 'near each multiple'],
       ['Label a shape or arrow', 'Double-click it'],
       ['Finish an arrow', 'Enter or double-click'],
-      ['Insert an arrow bend', 'drag a midpoint dot'],
+      ['Move a point', 'drag a square handle'],
+      ['Insert a point', 'drag a round dot'],
+      ['Delete a point', 'right-click it'],
       ['Context menu', 'Right-click'],
       ['Shortcuts', '?'],
       ['Back out / close', 'Esc'],
@@ -324,13 +346,17 @@ const SECTIONS_BY_CONTEXT: Record<PanelContext['kind'], string[]> = {
   // freehand ink — no shape control, its points are already sampled.
   linework: ['stroke', 'width', 'dash', 'opacity'],
   // A line is an arrow without terminators, so it shares the shape control.
-  line: ['stroke', 'width', 'dash', 'arrowtype', 'opacity'],
+  // Fill rows are added by showPanel only when the line is closed.
+  line: ['stroke', 'width', 'dash', 'arrowtype', 'closepath', 'opacity'],
+  // A picture has no stroke or fill of its own — only opacity, plus the
+  // layers/actions rows every selection gets.
+  image: ['opacity'],
   highlight: ['stroke', 'width', 'opacity'],
   arrow: ['stroke', 'width', 'dash', 'arrowtype', 'arrowheads', 'opacity'],
   // A labelled shape edits the shape and its text from one island — style
   // changes route per-object by kind, so fill hits the shape and font the text.
   labeled: ['stroke', 'fill', 'fillop', 'width', 'dash', 'text', 'opacity'],
-  labeledLine: ['stroke', 'width', 'dash', 'arrowtype', 'text', 'opacity'],
+  labeledLine: ['stroke', 'width', 'dash', 'arrowtype', 'closepath', 'text', 'opacity'],
   labeledArrow: ['stroke', 'width', 'dash', 'arrowtype', 'arrowheads', 'text', 'opacity'],
   mixed: ['stroke', 'width', 'dash', 'opacity'],
 };
@@ -343,7 +369,13 @@ export default class SlideEditorUI {
   private _ctxMenu: HTMLElement | null = null;
   private _ctxDismiss: ((e: MouseEvent) => void) | null = null;
   private _help: HTMLElement | null = null;
-  private _ctx: PanelContext = { kind: 'none', hasSelection: false, count: 0, locked: false };
+  private _ctx: PanelContext = {
+    kind: 'none',
+    hasSelection: false,
+    count: 0,
+    locked: false,
+    closed: false,
+  };
 
   public titleInput: HTMLInputElement | null = null;
   public notesArea: HTMLTextAreaElement | null = null;
@@ -395,6 +427,11 @@ export default class SlideEditorUI {
       <div class="ms-sledit-bar">
         <span class="ms-sledit-tools">${toolButtons}<span class="ms-sledit-sep"></span><button data-act="toolLock" title="Keep the active shape tool armed after each draw — Q">${ICONS.toolLock}<kbd>Q</kbd></button></span>
         <span class="ms-sledit-spring"></span>
+        <span class="ms-sledit-sep"></span>
+        <button data-act="zoomOut" title="Zoom out (Ctrl+−)">−</button>
+        <button data-act="zoomReset" class="ms-sledit-zoom" title="Reset zoom to 100% (Ctrl+0)">100%</button>
+        <button data-act="zoomIn" title="Zoom in (Ctrl++)">+</button>
+        <span class="ms-sledit-sep"></span>
         <button data-act="help" class="ms-sledit-iconbtn" title="Keyboard shortcuts (?)">${ICONS.help}</button>
         <input type="text" class="ms-sledit-title" placeholder="Slide title" title="Slide title (saved with the slide)">
         <button data-act="notes" class="ms-sledit-iconbtn" title="Toggle speaker notes">${ICONS.notes}</button>
@@ -453,6 +490,13 @@ export default class SlideEditorUI {
               <button data-arrowtype="sharp" title="Sharp">${ICONS.arrowSharp}</button>
               <button data-arrowtype="curved" title="Curved">${ICONS.arrowCurved}</button>
               <button data-arrowtype="elbow" title="Elbow">${ICONS.arrowElbow}</button>
+            </div>
+          </div>
+          <div class="ms-sledit-sec" data-sec="closepath">
+            <div class="ms-sledit-seclabel">Path</div>
+            <div class="ms-sledit-row">
+              <button data-style="closed" class="ms-sledit-closedbtn" title="Close the path into a fillable polygon">${ICONS.polygon}</button>
+              <span class="ms-sledit-mini">Closed polygon</span>
             </div>
           </div>
           <div class="ms-sledit-sec" data-sec="arrowheads">
@@ -617,7 +661,8 @@ export default class SlideEditorUI {
         d().arrowType = el.dataset.arrowtype as StyleDefaults['arrowType'];
         this._host.onStyleChanged('arrowType');
       } else if (el.dataset.style) {
-        const key = el.dataset.style as 'bold' | 'italic' | 'underline';
+        // Every data-style control is a boolean toggle in StyleDefaults.
+        const key = el.dataset.style as 'bold' | 'italic' | 'underline' | 'closed';
         d()[key] = !d()[key];
         this._host.onStyleChanged(key);
       } else if (el.dataset.align) {
@@ -751,7 +796,11 @@ export default class SlideEditorUI {
       const visible =
         secs.includes(name) ||
         ((name === 'layers' || name === 'actions') && ctx.hasSelection) ||
-        (name === 'arrange' && ctx.count > 1);
+        (name === 'arrange' && ctx.count > 1) ||
+        // An open line can't show a fill it would ignore.
+        ((name === 'fill' || name === 'fillop') &&
+          ctx.closed &&
+          (ctx.kind === 'line' || ctx.kind === 'labeledLine'));
       el.style.display = visible ? '' : 'none';
       // Rule above every section except the first one actually on screen. A CSS
       // adjacent-sibling selector can't express this: a display:none section
@@ -818,6 +867,7 @@ export default class SlideEditorUI {
     q('[data-style="bold"]').classList.toggle('active', d.bold);
     q('[data-style="italic"]').classList.toggle('active', d.italic);
     q('[data-style="underline"]').classList.toggle('active', d.underline);
+    q('[data-style="closed"]').classList.toggle('active', d.closed);
     panel.querySelectorAll('[data-align]').forEach((el: any) => {
       el.classList.toggle('active', el.dataset.align === d.align);
     });
@@ -834,6 +884,12 @@ export default class SlideEditorUI {
     }
   }
 
+  /** Show the current canvas zoom in the tool strip. */
+  public setZoom(zoom: number): void {
+    const el = this._bar?.querySelector('.ms-sledit-zoom');
+    if (el) el.textContent = `${Math.round(zoom * 100)}%`;
+  }
+
   /** Reflect the Q tool-lock toggle in the tool strip. */
   public setToolLock(on: boolean): void {
     const btn = this._bar?.querySelector('[data-act="toolLock"]') as HTMLElement | null;
@@ -847,17 +903,26 @@ export default class SlideEditorUI {
     const stage = this._stage;
     if (!stage) return;
 
+    const enabledOf = (it: CtxItem) =>
+      state.count >= (it.min ?? 0) && (!it.needs || !!state[it.needs]);
+    // Drop hidden rows first, then any separator left leading, trailing or
+    // doubled up by that removal.
+    const rows = CTX_ITEMS.filter((it) => it.sep || !it.hideWhenOff || enabledOf(it)).filter(
+      (it, i, arr) =>
+        !it.sep || (i > 0 && i < arr.length - 1 && !arr[i - 1].sep && !arr[i + 1].sep),
+    );
+
     const menu = document.createElement('div');
     menu.className = 'ms-sledit-ctx';
-    menu.innerHTML = CTX_ITEMS.map((it) => {
-      if (it.sep) return '<div class="ms-sledit-ctxsep"></div>';
-      const enabled =
-        state.count >= (it.min ?? 0) && (!it.needs || state[it.needs]);
-      const label = it.act === 'lock' && state.locked ? 'Unlock' : it.label;
-      return `<button data-act="${it.act}"${enabled ? '' : ' disabled'}><span>${label}</span><kbd>${
-        it.hint ?? ''
-      }</kbd></button>`;
-    }).join('');
+    menu.innerHTML = rows
+      .map((it) => {
+        if (it.sep) return '<div class="ms-sledit-ctxsep"></div>';
+        const label = it.act === 'lock' && state.locked ? 'Unlock' : it.label;
+        return `<button data-act="${it.act}"${
+          enabledOf(it) ? '' : ' disabled'
+        }><span>${label}</span><kbd>${it.hint ?? ''}</kbd></button>`;
+      })
+      .join('');
     stage.appendChild(menu);
     this._ctxMenu = menu;
 

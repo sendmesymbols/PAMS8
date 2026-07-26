@@ -78,6 +78,12 @@ export default class LaserTrail {
     const pts = this._pts;
     if (pts.length >= 2) {
       ctx.save();
+      // Points arrive in scene coordinates but contextTop paints in screen
+      // space, so the canvas viewport transform has to be applied here or the
+      // trail lands somewhere else entirely once the editor is zoomed/panned.
+      const vpt = fc.viewportTransform;
+      const zoom = fc.getZoom?.() || 1;
+      if (vpt) ctx.transform(vpt[0], vpt[1], vpt[2], vpt[3], vpt[4], vpt[5]);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       for (let i = 1; i < pts.length; i++) {
@@ -86,14 +92,15 @@ export default class LaserTrail {
         const k = Math.min(age, tail);
         if (k <= 0.01) continue;
         // Soft halo pass under a bright core, like a real laser dot smear.
+        // Widths divide out the zoom so the beam stays the same on-screen size.
         ctx.strokeStyle = `rgba(${COLOR}, ${0.22 * k})`;
-        ctx.lineWidth = 10 * k;
+        ctx.lineWidth = (10 * k) / zoom;
         ctx.beginPath();
         ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
         ctx.lineTo(pts[i].x, pts[i].y);
         ctx.stroke();
         ctx.strokeStyle = `rgba(${COLOR}, ${0.9 * k})`;
-        ctx.lineWidth = 3.5 * k;
+        ctx.lineWidth = (3.5 * k) / zoom;
         ctx.beginPath();
         ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
         ctx.lineTo(pts[i].x, pts[i].y);

@@ -25,11 +25,13 @@ import {
   dashProps,
   fabricToOverlay,
   isBoxKind,
+  loadOverlayImage,
   makeArrowGroup,
   makeShapeObject,
   overlayToFabric,
   overlayUuid,
   parseColor,
+  preloadOverlayImages,
   restoreSelectionControls,
   styleSelectionControls,
   withAlpha,
@@ -42,6 +44,9 @@ const ENGINE_NAME = 'SlideEditor';
 const THUMB_WIDTH = 240;
 const UNDO_CAP = 50;
 const PASTE_OFFSET_PX = 16;
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 5;
+const ZOOM_STEP = 1.2;
 
 export interface SlideEditorHost {
   getSlide(index: number): Slide | null;
@@ -125,6 +130,15 @@ function isLinework(obj: any): boolean {
   return LINEWORK_KINDS.has(obj?.data?.kind);
 }
 
+/** Overlay kind → properties-island context, for the kinds that map 1:1. */
+const PANEL_KIND_BY_OVERLAY: Record<string, PanelContext['kind']> = {
+  text: 'text',
+  image: 'image',
+  highlight: 'highlight',
+  arrow: 'arrow',
+  line: 'line',
+};
+
 /**
  * Where a bound label sits inside its container: `w` is the fraction of the
  * container's width the text box may use, `dy` shifts the text's center off the
@@ -161,6 +175,9 @@ export default class SlideEditor {
   private _tool: Tool = 'select';
   private _opening = false;
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
+  private _keyUpHandler: ((e: KeyboardEvent) => void) | null = null;
+  private _pasteHandler: ((e: ClipboardEvent) => void) | null = null;
+  private _blurHandler: (() => void) | null = null;
   private _drawing: { obj: any; startX: number; startY: number } | null = null;
   private _laser: LaserTrail | null = null;
   private _lassoPts: Array<{ x: number; y: number }> | null = null;
@@ -174,11 +191,18 @@ export default class SlideEditor {
    */
   private _arrowFinishedByDblClickAt = 0;
   private _bendDrag: { obj: any; segmentIndex: number; lastPoint: { x: number; y: number } } | null = null;
+  private _vertexDrag: { obj: any; index: number; lastPoint: { x: number; y: number } } | null = null;
   private _bendPreview: any = null;
+  /** Vertex the right-click menu was opened on, if any — drives "Delete point". */
+  private _ctxVertex: { obj: any; index: number } | null = null;
   private _erasing = false;
   private _erasedAny = false;
   /** Q — keep the active shape tool armed after each completed draw. */
   private _toolLock = false;
+  /** Held space arms panning, so a drag pans instead of drawing or selecting. */
+  private _spaceDown = false;
+  /** Tears down an in-flight pan's document listeners; null when not panning. */
+  private _panCleanup: (() => void) | null = null;
   private _undo: string[] = [];
   private _redo: string[] = [];
   private _commitTimer: ReturnType<typeof setTimeout> | null = null;
@@ -201,6 +225,7 @@ export default class SlideEditor {
     arrowType: 'sharp',
     arrowStart: 'none',
     arrowEnd: 'triangle',
+    closed: false,
   };
 
   private constructor() {}
@@ -308,7 +333,9 @@ export default class SlideEditor {
       this._arrowPreview = null;
       this._arrowReopenedObj = null;
       this._bendDrag = null;
+      this._vertexDrag = null;
       this._bendPreview = null;
+      this._ctxVertex = null;
       // _fc is about to be null for the whole await below — assign the field
       // directly (never through _setTool, which no-ops without a canvas) so
       // Escape's "de-arm the tool" rung can still reach close() mid-load.
@@ -320,6 +347,10 @@ export default class SlideEditor {
       const bg = await host.prepareBackground(index);
       if (!this._stage) return; // closed while preparing
       const size = await this._loadImage(bg.dataUrl);
+      // overlayToFabric is synchronous, so picture overlays must be decoded
+      // before the canvas is built or they'd be skipped.
+      await preloadOverlayImages(slide.overlays);
+      if (!this._stage) return;
       // Only warn persistently when we truly have nothing to show — a
       // successful fallback gets a toast instead (see below), not a banner.
       this._initCanvas(fabric, slide, size, bg.missingSymbols && !bg.usedFallback);
@@ -328,6 +359,7 @@ export default class SlideEditor {
       this._commitTimer = null;
       this._undo = [this._snapshotJson()];
       this._redo = [];
+      ui.setZoom(1); // fresh canvas per slide, so zoom always starts at 1:1
       this._setTool('select'); // never carry a draw tool across slides
       if (bg.usedFallback) {
         this._showToast(
@@ -358,6 +390,21 @@ export default class SlideEditor {
       document.removeEventListener('keydown', this._keyHandler, true);
       this._keyHandler = null;
     }
+    if (this._keyUpHandler) {
+      document.removeEventListener('keyup', this._keyUpHandler, true);
+      this._keyUpHandler = null;
+    }
+    if (this._pasteHandler) {
+      document.removeEventListener('paste', this._pasteHandler, true);
+      this._pasteHandler = null;
+    }
+    if (this._blurHandler) {
+      window.removeEventListener('blur', this._blurHandler);
+      this._blurHandler = null;
+    }
+    // Closing mid-pan must not leave the pan's document listeners behind.
+    this._endPan();
+    this._spaceDown = false;
     if (this._commitTimer) {
       clearTimeout(this._commitTimer);
       this._commitTimer = null;
@@ -383,7 +430,9 @@ export default class SlideEditor {
     this._arrowPreview = null;
     this._arrowReopenedObj = null;
     this._bendDrag = null;
+    this._vertexDrag = null;
     this._bendPreview = null;
+    this._ctxVertex = null;
     this._undo = [];
     this._redo = [];
     this._tool = 'select';
@@ -403,6 +452,7 @@ export default class SlideEditor {
       onStyleChanged: (prop) => this._onStyleChanged(prop),
     });
     this._ui.build(stage, slide);
+    this._attachImageDrop(stage);
   }
 
   private _onAction(act: string): void {
@@ -439,6 +489,15 @@ export default class SlideEditor {
       case 'help':
         this._ui?.toggleHelp();
         break;
+      case 'zoomIn':
+        this._zoomTo((this._fc?.getZoom() ?? 1) * ZOOM_STEP);
+        break;
+      case 'zoomOut':
+        this._zoomTo((this._fc?.getZoom() ?? 1) / ZOOM_STEP);
+        break;
+      case 'zoomReset':
+        this._resetZoom();
+        break;
       case 'toolLock':
         this._setToolLock(!this._toolLock);
         break;
@@ -468,6 +527,9 @@ export default class SlideEditor {
         break;
       case 'flipV':
         this._flipSelection('y');
+        break;
+      case 'deletePoint':
+        this._deleteVertex();
         break;
       case 'copy':
         this._copySelection();
@@ -522,12 +584,10 @@ export default class SlideEditor {
   private _deleteSelection(): void {
     const objs = this._withBoundLabels(this._unlockedSelection());
     if (!objs.length) return;
-    if (this._bendDrag) {
-      if (this._bendPreview) {
-        this._fc.remove(this._bendPreview);
-        this._bendPreview = null;
-      }
+    if (this._bendDrag || this._vertexDrag) {
+      this._clearLineworkPreview();
       this._bendDrag = null;
+      this._vertexDrag = null;
     }
     objs.forEach((o) => this._fc.remove(o));
     this._fc.discardActiveObject();
@@ -599,6 +659,8 @@ export default class SlideEditor {
       // corner drags resize freely, Shift constrains to the aspect ratio.
       uniformScaling: false,
       uniScaleKey: 'shiftKey',
+      // Needed for middle-drag panning — fabric swallows the middle button otherwise.
+      fireMiddleClick: true,
     });
     if (size) {
       const bgImg = new fabric.Image(size.img, { originX: 'left', originY: 'top' });
@@ -639,12 +701,17 @@ export default class SlideEditor {
     this._fc.on('selection:updated', () => this._syncControlsFromSelection());
     this._fc.on('selection:cleared', () => this._syncPanelContext());
     this._fc.on('object:modified', () => {
+      if (this._vertexDrag) {
+        this._finalizeVertexDrag();
+        return;
+      }
       if (this._bendDrag) {
         this._finalizeArrowBend();
         return;
       }
       this._commit();
     });
+    this._fc.on('mouse:wheel', (opt: any) => this._onWheel(opt));
     this._fc.on('mouse:dblclick', (opt: any) => this._onDoubleClick(opt));
     this._fc.on('text:editing:exited', (e: any) => {
       const t = e?.target;
@@ -720,11 +787,175 @@ export default class SlideEditor {
     setTimeout(() => toast.remove(), 3500);
   }
 
+  // ── Images ─────────────────────────────────────────────────────────────────
+
+  /** Opens a file dialog. The image "tool" is really this action — see _setTool. */
+  private _pickImage(): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    input.onchange = () => {
+      const file = input.files?.[0];
+      input.remove();
+      if (file) void this._insertImageFile(file);
+    };
+    document.body.appendChild(input);
+    input.click();
+  }
+
+  /** Shared by the file dialog, paste and drop. */
+  private async _insertImageFile(file: File, at?: { x: number; y: number }): Promise<void> {
+    if (!file.type?.startsWith('image/')) return;
+    const src = await new Promise<string | null>((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(typeof fr.result === 'string' ? fr.result : null);
+      fr.onerror = () => resolve(null);
+      fr.readAsDataURL(file);
+    });
+    if (src) await this._insertImageSrc(src, at);
+  }
+
+  /**
+   * Place a picture, scaled to fit comfortably inside the slide and centred on
+   * `at` (the drop point) or the canvas centre.
+   */
+  private async _insertImageSrc(src: string, at?: { x: number; y: number }): Promise<void> {
+    const el = await loadOverlayImage(src);
+    if (!el || !this._fc || !this._stage) return;
+    const nw = el.naturalWidth || 1;
+    const nh = el.naturalHeight || 1;
+    const k = Math.min((this._W * 0.4) / nw, (this._H * 0.4) / nh, 1);
+    const w = Math.max(8, nw * k);
+    const h = Math.max(8, nh * k);
+    const cx = at?.x ?? this._W / 2;
+    const cy = at?.y ?? this._H / 2;
+    this._setTool('select');
+    this._addOverlays(
+      [
+        {
+          id: overlayUuid(),
+          kind: 'image',
+          src,
+          x: (cx - w / 2) / this._W,
+          y: (cy - h / 2) / this._H,
+          w: w / this._W,
+          h: h / this._H,
+        },
+      ],
+      0,
+    );
+  }
+
+  /**
+   * Drag-and-drop onto the stage. Registered on the stage rather than the canvas
+   * so a drop just outside the artwork still lands (clamped into the frame).
+   */
+  private _attachImageDrop(stage: HTMLElement): void {
+    stage.addEventListener('dragover', (e) => {
+      if (e.dataTransfer?.types?.includes('Files')) e.preventDefault();
+    });
+    stage.addEventListener('drop', (e) => {
+      const file = e.dataTransfer?.files?.[0];
+      if (!file) return;
+      e.preventDefault();
+      let at: { x: number; y: number } | undefined;
+      const canvasEl = this._fc?.upperCanvasEl as HTMLCanvasElement | undefined;
+      if (canvasEl) {
+        const r = canvasEl.getBoundingClientRect();
+        const zoom = this._fc.getZoom?.() || 1;
+        const vpt = this._fc.viewportTransform ?? [1, 0, 0, 1, 0, 0];
+        at = {
+          x: Math.max(0, Math.min(this._W, (e.clientX - r.left - vpt[4]) / zoom)),
+          y: Math.max(0, Math.min(this._H, (e.clientY - r.top - vpt[5]) / zoom)),
+        };
+      }
+      void this._insertImageFile(file, at);
+    });
+  }
+
+  // ── Zoom / pan ─────────────────────────────────────────────────────────────
+
+  /**
+   * Ctrl+wheel zooms about the pointer. Plain wheel is left alone so it keeps
+   * scrolling the stage, which is what it does today when the canvas overflows.
+   */
+  private _onWheel(opt: any): void {
+    const e: WheelEvent = opt?.e;
+    if (!this._fc || !e) return;
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    this._zoomTo(this._fc.getZoom() * 0.999 ** e.deltaY, {
+      x: e.offsetX,
+      y: e.offsetY,
+    });
+  }
+
+  /**
+   * Apply a clamped zoom, about `point` in canvas-element coordinates when
+   * given, otherwise about the canvas centre.
+   */
+  private _zoomTo(zoom: number, point?: { x: number; y: number }): void {
+    const fc = this._fc;
+    if (!fc) return;
+    const fabric = (window as any).fabric;
+    const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom));
+    const about = point ?? { x: this._W / 2, y: this._H / 2 };
+    fc.zoomToPoint(new fabric.Point(about.x, about.y), next);
+    fc.requestRenderAll();
+    this._ui?.setZoom(next);
+  }
+
+  /** Back to 1:1, with the slide re-centred in the frame. */
+  private _resetZoom(): void {
+    const fc = this._fc;
+    if (!fc) return;
+    fc.setViewportTransform([1, 0, 0, 1, 0, 0]);
+    fc.requestRenderAll();
+    this._ui?.setZoom(1);
+  }
+
+  /**
+   * Space-drag or middle-drag panning. Runs off document-level listeners so the
+   * gesture survives the pointer leaving the canvas, and registers a cleanup so
+   * closing the editor mid-drag can't leak them.
+   */
+  private _beginPan(e: MouseEvent): void {
+    const fabric = (window as any).fabric;
+    let last = { x: e.clientX, y: e.clientY };
+    const move = (ev: MouseEvent) => {
+      if (!this._fc) return;
+      this._fc.relativePan(new fabric.Point(ev.clientX - last.x, ev.clientY - last.y));
+      last = { x: ev.clientX, y: ev.clientY };
+    };
+    const end = () => this._endPan();
+    this._panCleanup = () => {
+      document.removeEventListener('mousemove', move, true);
+      document.removeEventListener('mouseup', end, true);
+      this._panCleanup = null;
+      if (this._fc) this._fc.defaultCursor = this._tool === 'select' ? 'default' : 'crosshair';
+    };
+    document.addEventListener('mousemove', move, true);
+    document.addEventListener('mouseup', end, true);
+    this._fc.defaultCursor = 'grabbing';
+  }
+
+  private _endPan(): void {
+    this._panCleanup?.();
+  }
+
   // ── Tools ──────────────────────────────────────────────────────────────────
 
   private _setTool(t: Tool): void {
     if (!this._fc) return;
     this._ui?.hideContextMenu();
+    if (t === 'image') {
+      // Not a mode — picking a file is the whole interaction, so the armed tool
+      // never changes and the strip button acts as a one-shot.
+      this._pickImage();
+      return;
+    }
     if (this._arrowChain && t !== 'arrow') {
       this._clearArrowChain();
     }
@@ -1059,7 +1290,7 @@ export default class SlideEditor {
         { opacity: this._defaults.opacity },
         style.strokeDash,
         this._defaults.arrowType,
-        { kind: 'line' },
+        { kind: 'line', closed: this._defaults.closed, fill: style.fill },
       );
       this._attachArrowControls(finalObj);
       this._fc.add(finalObj);
@@ -1239,70 +1470,114 @@ export default class SlideEditor {
     this._ui?.refreshPanelValues();
   }
 
-  /** Adds a small draggable "bow" control at each segment's midpoint so dragging one inserts a bend. */
+  /** Absolute canvas coordinates of a linework group's vertices. */
+  private _absPointsOf(obj: any): Array<{ x: number; y: number }> {
+    const fabric = (window as any).fabric;
+    const lp: Array<{ x: number; y: number }> = obj?.data?.localPoints ?? [];
+    if (!lp.length) return [];
+    const m = obj.calcTransformMatrix();
+    return lp.map((p) => {
+      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
+      return { x: abs.x, y: abs.y };
+    });
+  }
+
+  /**
+   * Editing handles for a linework group: a square at every vertex (drag to move
+   * it) and a round dot at every segment midpoint (drag to insert a bend).
+   * Elbow arrows get vertices only — splicing a bend into a derived dogleg has
+   * no well-defined meaning. Removing a vertex is on the right-click menu.
+   */
   private _attachArrowControls(grp: any): void {
-    if (grp.data?.arrowType === 'elbow') return;
     const fabric = (window as any).fabric;
     const pts: Array<{ x: number; y: number }> = grp.data?.localPoints ?? [];
-    const controls: Record<string, any> = { ...fabric.Object.prototype.controls };
-    for (let i = 0; i < pts.length - 1; i++) {
-      controls[`bow${i}`] = new fabric.Control({
+    // Point handles are registered BEFORE the inherited bbox controls, because
+    // fabric hit-tests controls in key order: a line's endpoints land exactly on
+    // the bbox corners (or the mid-edge handles, when it's axis-aligned), and
+    // whichever is declared first wins. Moving a point is what you want there;
+    // the remaining edge handles and the rotate handle still scale/rotate.
+    const controls: Record<string, any> = {};
+
+    for (let i = 0; i < pts.length; i++) {
+      controls[`vtx${i}`] = new fabric.Control({
         x: 0,
         y: 0,
-        cursorStyle: 'crosshair',
+        cursorStyle: 'move',
         positionHandler: (_dim: any, finalMatrix: number[], obj: any) => {
           const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
-          const a = lp[i];
-          const b = lp[i + 1];
-          if (!a || !b) return new fabric.Point(0, 0);
-          const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-          return fabric.util.transformPoint(new fabric.Point(mid.x, mid.y), finalMatrix);
+          const p = lp[i];
+          if (!p) return new fabric.Point(0, 0);
+          return fabric.util.transformPoint(new fabric.Point(p.x, p.y), finalMatrix);
         },
         actionHandler: (_eventData: any, transform: any, x: number, y: number) => {
-          this._dragArrowBend(transform.target, i, x, y);
+          this._dragVertex(transform.target, i, x, y);
           return true;
         },
-        actionName: 'insertArrowBend',
+        actionName: 'moveVertex',
+        // Square, to read as "this is a point" against the round insert dots.
         render: (ctx: CanvasRenderingContext2D, left: number, top: number) => {
           ctx.save();
-          ctx.fillStyle = '#2d6cdf';
-          ctx.strokeStyle = '#ffffff';
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#2d6cdf';
           ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.arc(left, top, 5, 0, Math.PI * 2);
+          ctx.rect(left - 4.5, top - 4.5, 9, 9);
           ctx.fill();
           ctx.stroke();
           ctx.restore();
         },
       });
     }
-    grp.controls = controls;
+
+    if (grp.data?.arrowType !== 'elbow') {
+      for (let i = 0; i < pts.length - 1; i++) {
+        controls[`bow${i}`] = new fabric.Control({
+          x: 0,
+          y: 0,
+          cursorStyle: 'crosshair',
+          positionHandler: (_dim: any, finalMatrix: number[], obj: any) => {
+            const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
+            const a = lp[i];
+            const b = lp[i + 1];
+            if (!a || !b) return new fabric.Point(0, 0);
+            const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+            return fabric.util.transformPoint(new fabric.Point(mid.x, mid.y), finalMatrix);
+          },
+          actionHandler: (_eventData: any, transform: any, x: number, y: number) => {
+            this._dragArrowBend(transform.target, i, x, y);
+            return true;
+          },
+          actionName: 'insertArrowBend',
+          render: (ctx: CanvasRenderingContext2D, left: number, top: number) => {
+            ctx.save();
+            ctx.fillStyle = '#2d6cdf';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(left, top, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+          },
+        });
+      }
+    }
+    grp.controls = { ...controls, ...fabric.Object.prototype.controls };
     grp.setCoords();
   }
 
   /**
-   * Per-tick bow-handle drag callback. Never mutates/removes the pinned arrow
-   * object itself (fabric keeps `transform.target` fixed to it for the whole
-   * gesture) — only swaps a cheap, throwaway dashed preview path, mirroring
-   * `_updateArrowPreview`'s already-proven pattern in this file. The real
-   * geometry swap happens once, at drag end, via `_finalizeArrowBend`.
+   * Throwaway dashed preview of a point list, shown while a vertex or bend
+   * handle is being dragged. The pinned object itself is never mutated or
+   * removed mid-gesture — fabric keeps `transform.target` fixed for the whole
+   * drag, so the real geometry swap happens once, at drag end.
    */
-  private _dragArrowBend(obj: any, segmentIndex: number, canvasX: number, canvasY: number): void {
-    if (!obj || !isLinework(obj)) return;
+  private _showLineworkPreview(obj: any, absPoints: Array<{ x: number; y: number }>): void {
     const fabric = (window as any).fabric;
-    const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
-    if (segmentIndex < 0 || segmentIndex + 1 >= lp.length) return;
-    this._bendDrag = { obj, segmentIndex, lastPoint: { x: canvasX, y: canvasY } };
-    const m = obj.calcTransformMatrix();
-    const absPoints = lp.map((p) => {
-      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
-      return { x: abs.x, y: abs.y };
-    });
-    absPoints.splice(segmentIndex + 1, 0, { x: canvasX, y: canvasY });
     const pathChild = obj.getObjects()[0];
     const { d } = buildArrowPath(absPoints, obj.data?.arrowType ?? 'sharp');
-    if (this._bendPreview) this._fc.remove(this._bendPreview);
-    this._bendPreview = new fabric.Path(d, {
+    this._clearLineworkPreview();
+    this._bendPreview = new fabric.Path(obj.data?.closed ? `${d} Z` : d, {
       fill: '',
       stroke: pathChild.stroke,
       strokeWidth: pathChild.strokeWidth,
@@ -1315,31 +1590,99 @@ export default class SlideEditor {
     this._fc.requestRenderAll();
   }
 
+  private _clearLineworkPreview(): void {
+    if (this._bendPreview) {
+      this._fc?.remove(this._bendPreview);
+      this._bendPreview = null;
+    }
+  }
+
+  /** Per-tick vertex-handle drag callback. */
+  private _dragVertex(obj: any, index: number, canvasX: number, canvasY: number): void {
+    if (!obj || !isLinework(obj)) return;
+    const absPoints = this._absPointsOf(obj);
+    if (index < 0 || index >= absPoints.length) return;
+    this._vertexDrag = { obj, index, lastPoint: { x: canvasX, y: canvasY } };
+    absPoints[index] = { x: canvasX, y: canvasY };
+    this._showLineworkPreview(obj, absPoints);
+  }
+
+  /** Called once at vertex-handle drag end (via the `object:modified` listener). */
+  private _finalizeVertexDrag(): void {
+    const drag = this._vertexDrag;
+    this._vertexDrag = null;
+    this._clearLineworkPreview();
+    if (!drag) return;
+    const absPoints = this._absPointsOf(drag.obj);
+    if (drag.index < 0 || drag.index >= absPoints.length) return;
+    absPoints[drag.index] = drag.lastPoint;
+    const rebuilt = this._rebuildArrow(drag.obj, absPoints);
+    this._fc.setActiveObject(rebuilt);
+    this._fc.requestRenderAll();
+  }
+
+  /** Per-tick bow-handle drag callback — see _showLineworkPreview. */
+  private _dragArrowBend(obj: any, segmentIndex: number, canvasX: number, canvasY: number): void {
+    if (!obj || !isLinework(obj)) return;
+    const absPoints = this._absPointsOf(obj);
+    if (segmentIndex < 0 || segmentIndex + 1 >= absPoints.length) return;
+    this._bendDrag = { obj, segmentIndex, lastPoint: { x: canvasX, y: canvasY } };
+    absPoints.splice(segmentIndex + 1, 0, { x: canvasX, y: canvasY });
+    this._showLineworkPreview(obj, absPoints);
+  }
+
   /** Called once at bow-handle drag end (via the `object:modified` listener in `_initCanvas`). */
   private _finalizeArrowBend(): void {
     const drag = this._bendDrag;
     this._bendDrag = null;
-    if (this._bendPreview) {
-      this._fc.remove(this._bendPreview);
-      this._bendPreview = null;
-    }
+    this._clearLineworkPreview();
     if (!drag) return;
     this._insertArrowBend(drag.obj, drag.segmentIndex, drag.lastPoint.x, drag.lastPoint.y);
   }
 
-  /** Splices a new point into an arrow's geometry at the drag location and rebuilds it in place. */
+  /** Splices a new point into a linework group's geometry at the drag location and rebuilds it in place. */
   private _insertArrowBend(obj: any, segmentIndex: number, canvasX: number, canvasY: number): void {
     if (!obj || !isLinework(obj)) return;
-    const fabric = (window as any).fabric;
-    const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
-    if (segmentIndex < 0 || segmentIndex + 1 >= lp.length) return;
-    const m = obj.calcTransformMatrix();
-    const absPoints = lp.map((p) => {
-      const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
-      return { x: abs.x, y: abs.y };
-    });
+    const absPoints = this._absPointsOf(obj);
+    if (segmentIndex < 0 || segmentIndex + 1 >= absPoints.length) return;
     absPoints.splice(segmentIndex + 1, 0, { x: canvasX, y: canvasY });
     const rebuilt = this._rebuildArrow(obj, absPoints);
+    this._fc.setActiveObject(rebuilt);
+    this._fc.requestRenderAll();
+  }
+
+  /**
+   * The vertex handle under a pointer event, if the single selected linework
+   * object has one there. Used by the right-click menu to offer "Delete point";
+   * a 2-point line has none to spare.
+   */
+  private _vertexHitAt(e: MouseEvent): { obj: any; index: number } | null {
+    const fc = this._fc;
+    const objs = this._selectedObjects();
+    if (!fc || objs.length !== 1) return null;
+    const obj = objs[0];
+    if (!isLinework(obj) || obj.data.locked) return null;
+    const pts = this._absPointsOf(obj);
+    if (pts.length <= 2) return null;
+    const p = fc.getPointer(e);
+    // Handles are drawn at a fixed screen size, so the hit radius has to shrink
+    // as the canvas zooms in.
+    const tol = 10 / (fc.getZoom?.() || 1);
+    for (let i = 0; i < pts.length; i++) {
+      if (Math.hypot(pts[i].x - p.x, pts[i].y - p.y) <= tol) return { obj, index: i };
+    }
+    return null;
+  }
+
+  /** Removes the right-clicked vertex and rebuilds the linework without it. */
+  private _deleteVertex(): void {
+    const hit = this._ctxVertex;
+    this._ctxVertex = null;
+    if (!hit) return;
+    const absPoints = this._absPointsOf(hit.obj);
+    if (absPoints.length <= 2 || hit.index < 0 || hit.index >= absPoints.length) return;
+    absPoints.splice(hit.index, 1);
+    const rebuilt = this._rebuildArrow(hit.obj, absPoints);
     this._fc.setActiveObject(rebuilt);
     this._fc.requestRenderAll();
   }
@@ -1358,7 +1701,19 @@ export default class SlideEditor {
       { opacity: obj.opacity, data: { id: obj.data.id } },
       obj.data.strokeDash,
       arrowType,
-      { start: obj.data.arrowStart, end: obj.data.arrowEnd, kind: obj.data.kind },
+      {
+        start: obj.data.arrowStart,
+        end: obj.data.arrowEnd,
+        kind: obj.data.kind,
+        closed: obj.data.closed,
+        // Closing an open line has no fill to carry over — seed it from the
+        // panel so the polygon doesn't come back invisible.
+        fill:
+          pathChild.fill ||
+          (obj.data.closed && this._defaults.fill
+            ? withAlpha(this._defaults.fill, this._defaults.fillOpacity)
+            : ''),
+      },
     );
     // makeArrowGroup rebuilds `data` from its arguments, so the cross-kind
     // state that doesn't describe geometry has to be carried over by hand or a
@@ -1420,9 +1775,15 @@ export default class SlideEditor {
     if (!ctx || !pts || pts.length < 2) return;
     fc.clearContext(ctx);
     ctx.save();
+    // Lasso points are scene coordinates; contextTop paints in screen space, so
+    // the viewport transform has to be applied (and the stroke divided back out
+    // of the zoom to stay a hairline).
+    const vpt = fc.viewportTransform;
+    const zoom = fc.getZoom?.() || 1;
+    if (vpt) ctx.transform(vpt[0], vpt[1], vpt[2], vpt[3], vpt[4], vpt[5]);
     ctx.strokeStyle = 'rgba(90, 155, 255, 0.9)';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 1.5 / zoom;
+    ctx.setLineDash([5 / zoom, 4 / zoom]);
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
@@ -1834,7 +2195,16 @@ export default class SlideEditor {
    */
   private _onPreMouseDown(e: MouseEvent): void {
     const fc = this._fc;
-    if (!fc || this._tool !== 'select' || e.button !== 0) return;
+    if (!fc) return;
+    // Panning outranks every tool, so it's resolved before the tool check —
+    // and swallowing the event here stops fabric starting a draw or a selection.
+    if (this._spaceDown || e.button === 1) {
+      e.preventDefault();
+      e.stopPropagation();
+      this._beginPan(e);
+      return;
+    }
+    if (this._tool !== 'select' || e.button !== 0) return;
     const target: any = fc.findTarget?.(e, false);
     if (!target?.data?.kind) return;
 
@@ -2180,8 +2550,13 @@ export default class SlideEditor {
       fc.requestRenderAll();
     }
 
+    // Resolved after the selection settles — the hit test needs the object that
+    // is actually selected now.
+    this._ctxVertex = this._vertexHitAt(e);
+
     const objs = this._selectedObjects();
     ui.showContextMenu(e.clientX, e.clientY, {
+      canDeletePoint: !!this._ctxVertex,
       count: objs.length,
       locked: objs.length > 0 && objs.every((o) => !!o.data.locked),
       canGroup: objs.length > 1,
@@ -2249,12 +2624,10 @@ export default class SlideEditor {
     } catch {
       return;
     }
-    if (this._bendDrag) {
-      if (this._bendPreview) {
-        this._fc.remove(this._bendPreview);
-        this._bendPreview = null;
-      }
+    if (this._bendDrag || this._vertexDrag) {
+      this._clearLineworkPreview();
       this._bendDrag = null;
+      this._vertexDrag = null;
     }
     if (this._arrowChain) {
       if (this._arrowPreview) {
@@ -2286,16 +2659,19 @@ export default class SlideEditor {
     // arrows get rebuilt instead of patched — which replaces the object and so
     // re-forms the selection. Stroke width joins them because terminators are
     // sized from it: patching alone would leave a thick arrow with a tiny head.
-    const shapeOnly = prop === 'arrowType' || prop === 'arrowStart' || prop === 'arrowEnd';
+    const shapeOnly =
+      prop === 'arrowType' || prop === 'arrowStart' || prop === 'arrowEnd' || prop === 'closed';
     if (!shapeOnly) {
       for (const obj of objs) this._applyStyleTo(obj, prop);
     }
     if (shapeOnly || prop === 'strokeWidthPx') {
       // Terminators are arrow-only; the shape control and stroke width apply to
       // every linework kind.
-      const arrows = objs.filter((o) =>
-        prop === 'arrowStart' || prop === 'arrowEnd' ? o?.data?.kind === 'arrow' : isLinework(o),
-      );
+      const arrows = objs.filter((o) => {
+        if (prop === 'arrowStart' || prop === 'arrowEnd') return o?.data?.kind === 'arrow';
+        if (prop === 'closed') return o?.data?.kind === 'line';
+        return isLinework(o);
+      });
       if (arrows.length) {
         const kept = objs.filter((o) => !arrows.includes(o));
         // Only stamp the panel's arrow slots when the arrow slots are what
@@ -2331,6 +2707,8 @@ export default class SlideEditor {
       if (obj.data.kind === 'arrow') {
         obj.data.arrowStart = this._defaults.arrowStart;
         obj.data.arrowEnd = this._defaults.arrowEnd;
+      } else {
+        obj.data.closed = this._defaults.closed;
       }
     }
     return this._rebuildArrow(obj, absPoints);
@@ -2370,11 +2748,17 @@ export default class SlideEditor {
         if (kind === 'text') obj.set('fill', d.textColor);
         break;
       case 'fill':
-      case 'fillOpacity':
+      case 'fillOpacity': {
+        const paint = d.fill ? withAlpha(d.fill, d.fillOpacity) : '';
         if (isBoxKind(kind)) {
-          obj.set('fill', d.fill ? withAlpha(d.fill, d.fillOpacity) : '');
+          obj.set('fill', paint);
+        } else if (kind === 'line' && obj.data.closed) {
+          // Only a closed line has an interior to paint.
+          this._lineworkPath(obj)?.set({ fill: paint });
+          obj.dirty = true;
         }
         break;
+      }
       case 'stroke':
         if (linework) {
           obj.getObjects?.()?.forEach((ch: any) => {
@@ -2431,6 +2815,7 @@ export default class SlideEditor {
       // Counted in units, not objects — a bound label isn't independently
       // alignable, so a labelled shape must not read as a two-object selection.
       const count = objs.filter((o) => !o.data.labelOf).length;
+      const closed = objs.some((o) => o.data.kind === 'line' && o.data.closed);
       // A shape with its label shows both sets of controls in one island —
       // style changes route per-object by kind, so they can't collide.
       const pair = this._labeledPair(objs);
@@ -2441,28 +2826,28 @@ export default class SlideEditor {
           hasSelection: true,
           count,
           locked,
+          closed,
         };
       }
       const kinds = new Set(objs.map((o) => o?.data?.kind).filter(Boolean));
       let kind: PanelContext['kind'] = 'mixed';
       if (kinds.size === 1) {
         const k = [...kinds][0] as string;
-        kind =
-          k === 'text'
-            ? 'text'
-            : isBoxKind(k)
-              ? 'box'
-              : k === 'highlight'
-                ? 'highlight'
-                : k === 'arrow'
-                  ? 'arrow'
-                  : k === 'line'
-                    ? 'line'
-                    : 'linework'; // freehand
+        // Every box shape shares one context; the rest map to themselves, and
+        // freehand is the only thing left over as generic 'linework'.
+        if (isBoxKind(k)) kind = 'box';
+        else if (PANEL_KIND_BY_OVERLAY[k]) kind = PANEL_KIND_BY_OVERLAY[k];
+        else kind = 'linework';
       }
-      return { kind, hasSelection: true, count, locked };
+      return { kind, hasSelection: true, count, locked, closed };
     }
-    const idle = { hasSelection: false, count: 0, locked: false };
+    // No selection — the panel edits the tool's defaults instead.
+    const idle = {
+      hasSelection: false,
+      count: 0,
+      locked: false,
+      closed: this._defaults.closed,
+    };
     if (BOX_TOOLS.has(this._tool)) return { kind: 'box', ...idle };
     switch (this._tool) {
       case 'text':
@@ -2517,8 +2902,9 @@ export default class SlideEditor {
       d.align = obj.textAlign === 'center' || obj.textAlign === 'right' ? obj.textAlign : 'left';
       d.textColor = parseColor(obj.fill)?.hex ?? d.textColor;
     } else {
-      if (isBoxKind(kind)) {
-        const fill = parseColor(obj.fill);
+      const closedLine = kind === 'line' && !!obj.data.closed;
+      if (isBoxKind(kind) || closedLine) {
+        const fill = parseColor(closedLine ? this._lineworkPath(obj)?.fill : obj.fill);
         if (fill) {
           d.fill = fill.hex;
           d.fillOpacity = fill.alpha;
@@ -2526,6 +2912,7 @@ export default class SlideEditor {
           d.fill = null;
         }
       }
+      if (kind === 'line') d.closed = closedLine;
       const strokeSrc = isLinework(obj) ? this._lineworkPath(obj) : obj;
       const stroke = parseColor(strokeSrc?.stroke);
       if (stroke) d.stroke = stroke.hex;
@@ -2642,7 +3029,12 @@ export default class SlideEditor {
             this._cutSelection();
             break;
           case 'v':
-            this._paste();
+            // Only claim Ctrl+V when there is something of ours to paste.
+            // Otherwise let it through: preventDefault here would suppress the
+            // native paste event, which is the only way to reach an image on
+            // the OS clipboard (see the paste listener in _attachKeys).
+            if (SlideEditor._clipboard.length) this._paste();
+            else handled = false;
             break;
           case 'd':
             this._duplicateSelection();
@@ -2672,6 +3064,16 @@ export default class SlideEditor {
             // No editor use for Ctrl+K — swallow it so the command palette
             // can't open (invisibly, behind this full-screen modal) underneath.
             break;
+          case '0':
+            this._resetZoom();
+            break;
+          case '=':
+          case '+':
+            this._zoomTo(this._fc.getZoom() * ZOOM_STEP);
+            break;
+          case '-':
+            this._zoomTo(this._fc.getZoom() / ZOOM_STEP);
+            break;
           default:
             handled = false;
         }
@@ -2684,6 +3086,16 @@ export default class SlideEditor {
 
       if (!mod && !e.altKey) {
         const k = e.key.toLowerCase();
+        if (e.key === ' ') {
+          // Arm panning; also swallow the key so it can't scroll the stage.
+          e.preventDefault();
+          e.stopPropagation();
+          if (!this._spaceDown) {
+            this._spaceDown = true;
+            if (this._fc) this._fc.defaultCursor = 'grab';
+          }
+          return;
+        }
         if (e.key === '?') {
           e.preventDefault();
           e.stopPropagation();
@@ -2746,5 +3158,38 @@ export default class SlideEditor {
     };
     // Capture phase so Esc/Delete win over app-level shortcut managers.
     document.addEventListener('keydown', this._keyHandler, true);
+
+    // Space is a held modifier for panning, so releasing it has to disarm —
+    // including on window blur, or the cursor stays stuck in grab mode.
+    this._keyUpHandler = (e: KeyboardEvent) => {
+      if (e.key !== ' ' || !this._spaceDown) return;
+      this._spaceDown = false;
+      this._endPan();
+      if (this._fc) this._fc.defaultCursor = this._tool === 'select' ? 'default' : 'crosshair';
+    };
+    this._blurHandler = () => {
+      this._spaceDown = false;
+      this._endPan();
+    };
+    // Images off the OS clipboard. Only reachable because the Ctrl+V branch
+    // above declines to preventDefault when our own clipboard is empty.
+    this._pasteHandler = (e: ClipboardEvent) => {
+      if (!this._stage) return;
+      const active: any = this._fc?.getActiveObject?.();
+      if (active?.isEditing) return; // typing in a textbox — that's a text paste
+      for (const item of Array.from(e.clipboardData?.items ?? [])) {
+        if (item.kind === 'file' && item.type?.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            void this._insertImageFile(file);
+            return;
+          }
+        }
+      }
+    };
+    document.addEventListener('keyup', this._keyUpHandler, true);
+    document.addEventListener('paste', this._pasteHandler, true);
+    window.addEventListener('blur', this._blurHandler);
   }
 }

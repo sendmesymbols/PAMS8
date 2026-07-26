@@ -40,7 +40,7 @@ import GraphicsLayerManager, {
 import type SerializationEngine from '../ImportExport/SerializationEngine';
 import EngineLogger from '../../Support/EngineLogger';
 import settingsData from '../../Data/Settings.json';
-import { overlayToFabric } from './OverlayFabric';
+import { overlayToFabric, preloadOverlayImages } from './OverlayFabric';
 import type { SlideEditorHost } from './SlideEditor';
 import type {
   BriefingDocument,
@@ -417,7 +417,8 @@ class BriefingEngine {
   ): Promise<string | undefined> {
     const fabric = (window as any).fabric;
     if (!fabric || !overlays?.length) return Promise.resolve(undefined);
-    return new Promise((resolve) => {
+    // Picture overlays need their decode cache warm before overlayToFabric.
+    return preloadOverlayImages(overlays).then(() => new Promise<string | undefined>((resolve) => {
       const img = new Image();
       img.onload = () => {
         try {
@@ -444,7 +445,7 @@ class BriefingEngine {
       };
       img.onerror = () => resolve(undefined);
       img.src = mapThumb;
-    });
+    }));
   }
 
   public getSlides(): readonly Slide[] {
@@ -1761,9 +1762,13 @@ class BriefingEngine {
       sc.renderAll();
     };
 
+    // Picture overlays render from a synchronous decode cache, so it has to be
+    // warm before draw() runs — see OverlayFabric.preloadOverlayImages.
     if (!screenBg) {
-      draw({ x: 0, y: 0, w: v.width, h: v.height });
-      return Promise.resolve(handle);
+      return preloadOverlayImages(slide.overlays).then(() => {
+        draw({ x: 0, y: 0, w: v.width, h: v.height });
+        return handle;
+      });
     }
     return new Promise((resolve) => {
       const img = new Image();
@@ -1781,14 +1786,18 @@ class BriefingEngine {
         sc.setBackgroundImage(
           new fabric.Image(img, { left: fit.x, top: fit.y, scaleX: scale, scaleY: scale }),
           () => {
-            draw(fit);
-            resolve(handle);
+            void preloadOverlayImages(slide.overlays).then(() => {
+              draw(fit);
+              resolve(handle);
+            });
           },
         );
       };
       img.onerror = () => {
-        draw({ x: 0, y: 0, w: v.width, h: v.height });
-        resolve(handle);
+        void preloadOverlayImages(slide.overlays).then(() => {
+          draw({ x: 0, y: 0, w: v.width, h: v.height });
+          resolve(handle);
+        });
       };
       img.src = screenBg;
     });

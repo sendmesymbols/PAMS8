@@ -25,6 +25,56 @@ export function isBoxKind(kind: string | undefined): kind is BoxKind {
   return !!kind && BOX_KINDS.has(kind);
 }
 
+/**
+ * Decoded images keyed by their data URL, so `overlayToFabric` can stay
+ * synchronous — every caller (editor load, present mode, thumbnails) awaits
+ * `preloadOverlayImages` for its overlay list first, and an image whose source
+ * hasn't decoded is skipped rather than drawn blank.
+ *
+ * Capped, because the keys and the decoded bitmaps are both large: a briefing
+ * with many photographs would otherwise pin all of them in memory for the
+ * lifetime of the page.
+ */
+const IMAGE_CACHE = new Map<string, HTMLImageElement>();
+
+/** Decode one image and cache it. Resolves null if the source is unusable. */
+export function loadOverlayImage(src: string): Promise<HTMLImageElement | null> {
+  const cached = IMAGE_CACHE.get(src);
+  if (cached) return Promise.resolve(cached);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      IMAGE_CACHE.set(src, img);
+      resolve(img);
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+/**
+ * Decode every image overlay in `overlays`. Await before calling
+ * overlayToFabric — a source that hasn't decoded is skipped, not drawn blank.
+ *
+ * Sources the incoming list doesn't need are dropped first, so the cache holds
+ * roughly one slide's pictures rather than every picture the session has seen.
+ * It is deliberately NOT size-capped: a count-based cap evicted entries during
+ * its own preload, so a slide with more pictures than the cap silently lost the
+ * ones it loaded first.
+ */
+export function preloadOverlayImages(
+  overlays: readonly SlideOverlay[] | undefined,
+): Promise<void> {
+  const srcs = new Set(
+    (overlays ?? []).filter((o) => o?.kind === 'image' && o.src).map((o) => o.src as string),
+  );
+  for (const key of [...IMAGE_CACHE.keys()]) {
+    if (!srcs.has(key)) IMAGE_CACHE.delete(key);
+  }
+  if (!srcs.size) return Promise.resolve();
+  return Promise.all([...srcs].map((src) => loadOverlayImage(src))).then(() => undefined);
+}
+
 export function overlayUuid(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -470,17 +520,28 @@ export function makeArrowGroup(
   extra: Record<string, any> = {},
   strokeDash?: 'dashed' | 'dotted',
   arrowType: ArrowType = 'sharp',
-  opts: { start?: ArrowHead; end?: ArrowHead; kind?: 'arrow' | 'line' } = {},
+  opts: {
+    start?: ArrowHead;
+    end?: ArrowHead;
+    kind?: 'arrow' | 'line';
+    /** line only — close the path and let it take `fill`. */
+    closed?: boolean;
+    /** Already alpha-baked; only used when closed. */
+    fill?: string;
+  } = {},
 ): any {
   const fabric = (window as any).fabric;
   const kind: OverlayKind = opts.kind ?? 'arrow';
+  const closed = kind === 'line' && !!opts.closed;
   const { d, startAngleRad, endAngleRad } = buildArrowPath(points, arrowType);
   // For arrows, absent means what it meant before per-end terminators: filled
   // head at the end, nothing at the start. A line never has either.
   const arrowEnd: ArrowHead = kind === 'line' ? 'none' : opts.end ?? 'triangle';
   const arrowStart: ArrowHead = kind === 'line' ? 'none' : opts.start ?? 'none';
-  const path = new fabric.Path(d, {
-    fill: '',
+  // 'Z' closes with a straight segment even on a curved path — pptx custGeom
+  // has no curved closing segment either, so the two surfaces agree.
+  const path = new fabric.Path(closed ? `${d} Z` : d, {
+    fill: closed ? opts.fill ?? '' : '',
     stroke,
     strokeWidth: strokeWidthPx,
     ...dashProps(strokeDash, strokeWidthPx),
@@ -508,6 +569,7 @@ export function makeArrowGroup(
       arrowType,
       arrowStart,
       arrowEnd,
+      closed,
     },
   });
   const c = grp.getCenterPoint();
@@ -525,9 +587,9 @@ export function overlayToFabric(o: SlideOverlay, W: number, H: number): any | nu
   if (!obj) return null;
   if (o.groupId) obj.data.groupId = o.groupId;
   if (o.labelOf && o.kind === 'text') obj.data.labelOf = o.labelOf;
-  // Box kinds mirror via fabric's flip flags; point-based kinds carry their
-  // mirroring inside `points`, and text is never mirrored (see _flipSelection).
-  if ((o.flipX || o.flipY) && isBoxKind(o.kind)) {
+  // Box kinds and images mirror via fabric's flip flags; point-based kinds carry
+  // their mirroring inside `points`, and text is never mirrored (see _flipSelection).
+  if ((o.flipX || o.flipY) && (isBoxKind(o.kind) || o.kind === 'image')) {
     obj.set({ flipX: !!o.flipX, flipY: !!o.flipY });
   }
   if (o.locked) applyLockState(obj, true);
@@ -545,6 +607,24 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
   const dash = dashProps(o.strokeDash, strokePx);
 
   switch (o.kind) {
+    case 'image': {
+      // Skipped rather than drawn blank when the source hasn't decoded — see
+      // preloadOverlayImages, which every render path awaits first.
+      const el = o.src ? IMAGE_CACHE.get(o.src) : null;
+      if (!el) return null;
+      const img = new fabric.Image(el, {
+        ...common,
+        left: o.x * W,
+        top: o.y * H,
+        angle: o.rotation ?? 0,
+      });
+      img.data.src = o.src;
+      img.set({
+        scaleX: (o.w * W) / (img.width || 1),
+        scaleY: (o.h * H) / (img.height || 1),
+      });
+      return img;
+    }
     case 'text':
       return new fabric.Textbox(o.text ?? '', {
         ...common,
@@ -613,7 +693,11 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
         common,
         o.strokeDash,
         o.lineType ?? 'sharp',
-        { kind: 'line' },
+        {
+          kind: 'line',
+          closed: o.closed,
+          fill: o.fill ? withAlpha(o.fill, o.fillOpacity ?? 1) : '',
+        },
       );
     }
     case 'arrow': {
@@ -679,6 +763,13 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
   // Only box kinds and text ever carry flip flags (see overlayToFabric).
   if (obj.flipX) base.flipX = true;
   if (obj.flipY) base.flipY = true;
+
+  if (kind === 'image') {
+    if (!obj.data.src) return null;
+    if (rotation) base.rotation = rotation;
+    base.src = obj.data.src;
+    return base;
+  }
 
   if (kind === 'text') {
     if (!String(obj.text ?? '').trim()) return null;
@@ -750,9 +841,17 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
   base.stroke = parseColor(strokeSrc?.stroke)?.hex ?? '#FF3B30';
   base.strokeWidth = ((strokeSrc?.strokeWidth ?? 2) * avgScale) / H;
   if (obj.data.strokeDash) base.strokeDash = obj.data.strokeDash;
-  if (kind === 'line' && obj.data.arrowType && obj.data.arrowType !== 'sharp') {
+  if (kind === 'line') {
     // Runtime keeps one shared field; persistence keeps them apart.
-    base.lineType = obj.data.arrowType;
+    if (obj.data.arrowType && obj.data.arrowType !== 'sharp') base.lineType = obj.data.arrowType;
+    if (obj.data.closed) {
+      base.closed = true;
+      const fill = parseColor(strokeSrc?.fill);
+      if (fill) {
+        base.fill = fill.hex;
+        if (fill.alpha < 1) base.fillOpacity = Number(fill.alpha.toFixed(3));
+      }
+    }
   }
   if (kind === 'arrow') {
     if (obj.data.arrowType && obj.data.arrowType !== 'sharp') base.arrowType = obj.data.arrowType;

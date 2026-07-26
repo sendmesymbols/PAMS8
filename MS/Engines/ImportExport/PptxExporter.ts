@@ -787,6 +787,7 @@ class PptxExporter {
     for (const o of overlays) {
       try {
         if (o.kind === 'text') this._emitOverlayText(slide, o, fit);
+        else if (o.kind === 'image') this._emitOverlayImage(slide, o, fit);
         else if (OVERLAY_SHAPE_TYPES[o.kind]) this._emitOverlayBox(slide, o, fit);
         else this._emitOverlayPath(slide, o, fit); // line | arrow | freehand | highlight
         emitted++;
@@ -842,6 +843,23 @@ class PptxExporter {
     });
   }
 
+  /** Picture overlays go out as real pptx pictures — the src is already a data URL. */
+  private _emitOverlayImage(slide: any, o: SlideOverlay, fit: ContainFit): void {
+    if (!o.src) return;
+    slide.addImage({
+      data: o.src,
+      x: fit.x + o.x * fit.w,
+      y: fit.y + o.y * fit.h,
+      w: Math.max(0.02, o.w * fit.w),
+      h: Math.max(0.02, o.h * fit.h),
+      rotate: this._ovRotate(o),
+      flipH: o.flipX || undefined,
+      flipV: o.flipY || undefined,
+      transparency:
+        o.opacity != null && o.opacity < 1 ? Math.round((1 - o.opacity) * 100) : undefined,
+    });
+  }
+
   private _emitOverlayBox(slide: any, o: SlideOverlay, fit: ContainFit): void {
     const alpha = (o.fillOpacity ?? 1) * (o.opacity ?? 1);
     slide.addShape(OVERLAY_SHAPE_TYPES[o.kind] ?? 'rect', {
@@ -891,13 +909,21 @@ class PptxExporter {
       if (p.x > maxX) maxX = p.x;
       if (p.y > maxY) maxY = p.y;
     }
+    // A closed line is a polygon: close the geometry and let it take its fill.
+    const closed = o.kind === 'line' && !!o.closed;
+    const geom: any[] = pts.map((p) => ({ x: p.x - minX, y: p.y - minY }));
+    if (closed) geom.push({ close: true });
+    const fillAlpha = (o.fillOpacity ?? 1) * (o.opacity ?? 1);
     slide.addShape('custGeom', {
       x: minX,
       y: minY,
       w: Math.max(0.02, maxX - minX),
       h: Math.max(0.02, maxY - minY),
-      points: pts.map((p) => ({ x: p.x - minX, y: p.y - minY })),
-      fill: { color: 'FFFFFF', transparency: 100 },
+      points: geom,
+      fill:
+        closed && o.fill
+          ? { color: this._ovHex(o.fill, 'FFD166'), transparency: Math.round((1 - fillAlpha) * 100) }
+          : { color: 'FFFFFF', transparency: 100 },
       line: {
         color: this._ovHex(o.stroke, 'FF3B30'),
         width: this._ovStrokePt(o, fit),

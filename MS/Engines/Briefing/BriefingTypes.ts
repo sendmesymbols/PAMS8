@@ -35,6 +35,7 @@ export type SlideTransitionType = 'fade' | 'pushLeft' | 'pushRight' | 'wipe';
 
 export type OverlayKind =
   | 'text'
+  | 'image'
   | 'rect'
   | 'ellipse'
   | 'diamond'
@@ -113,6 +114,12 @@ export interface SlideOverlay {
    */
   lineType?: 'sharp' | 'curved' | 'elbow';
   /**
+   * line only. Closes the path back to its first point and lets it take a
+   * fill — i.e. a polygon, Excalidraw's `ExcalidrawLineElement.polygon`.
+   * Absent = open. `fill` / `fillOpacity` are only honoured when this is set.
+   */
+  closed?: boolean;
+  /**
    * arrow only. Absent = 'triangle' — the single filled head every arrow had
    * before per-end terminators existed, so old slides keep their look.
    */
@@ -131,12 +138,18 @@ export interface SlideOverlay {
   /** Editor lock — still selectable (so it can be unlocked) but not movable, resizable, restylable or erasable. */
   locked?: boolean;
   /**
-   * Mirrored geometry, box kinds only — point-based kinds mirror their
-   * `points` instead, and text is never mirrored. Visible only on the
+   * Mirrored geometry, box kinds and images — point-based kinds mirror their
+   * `points` instead, and text is never mirrored. On boxes it shows only on the
    * asymmetric shapes (triangle, callout). Maps to PPTX xfrm flipH / flipV.
    */
   flipX?: boolean;
   flipY?: boolean;
+  /**
+   * image only — the picture itself, as a data URL. Self-contained like
+   * `backgroundDataUrl`, so a briefing stays portable; decoding is cached and
+   * pre-warmed by OverlayFabric.preloadOverlayImages before any render.
+   */
+  src?: string;
   // text only:
   text?: string;
   fontFamily?: string;
