@@ -14,7 +14,7 @@
  */
 
 import { BOX_OVERLAY_KINDS } from './BriefingTypes';
-import type { OverlayKind, SlideOverlay } from './BriefingTypes';
+import type { ArrowHead, OverlayKind, SlideOverlay } from './BriefingTypes';
 
 type BoxKind = (typeof BOX_OVERLAY_KINDS)[number];
 type ShapeKind = Exclude<BoxKind, 'rect' | 'ellipse'>;
@@ -88,6 +88,8 @@ export function styleSelectionControls(): void {
     borderScaleFactor: proto.borderScaleFactor,
     padding: proto.padding,
     rotatingPointOffset: proto.rotatingPointOffset,
+    snapAngle: proto.snapAngle,
+    snapThreshold: proto.snapThreshold,
   };
   proto.cornerStyle = 'circle';
   proto.cornerColor = '#ffffff';
@@ -98,6 +100,11 @@ export function styleSelectionControls(): void {
   proto.borderScaleFactor = 1.5;
   proto.padding = 4;
   proto.rotatingPointOffset = 24;
+  // Rotation snaps to 15° only inside a 4° window of each multiple, so free
+  // rotation still works everywhere else (fabric has no modifier-gated snap
+  // like Excalidraw's Shift, and an always-on snap would fight the user).
+  proto.snapAngle = 15;
+  proto.snapThreshold = 4;
 }
 
 /** Undo `styleSelectionControls()` — call when the Briefing editor closes. */
@@ -114,8 +121,35 @@ export function restoreSelectionControls(): void {
   proto.borderScaleFactor = _savedControlsState.borderScaleFactor;
   proto.padding = _savedControlsState.padding;
   proto.rotatingPointOffset = _savedControlsState.rotatingPointOffset;
+  proto.snapAngle = _savedControlsState.snapAngle;
+  proto.snapThreshold = _savedControlsState.snapThreshold;
   _controlsStyled = false;
   _savedControlsState = null;
+}
+
+/**
+ * Apply / clear an overlay's lock on a fabric object. A locked overlay stays
+ * selectable on purpose — that's the only way to reach the unlock control —
+ * but every transform is pinned and its handles are hidden. Delete, erase and
+ * restyle are refused by the editor separately (fabric has no flag for those).
+ */
+export function applyLockState(obj: any, locked: boolean): void {
+  if (!obj) return;
+  if (!obj.data) obj.data = {};
+  if (locked) obj.data.locked = true;
+  else delete obj.data.locked;
+  obj.set({
+    lockMovementX: locked,
+    lockMovementY: locked,
+    lockScalingX: locked,
+    lockScalingY: locked,
+    lockRotation: locked,
+    hasControls: !locked,
+  });
+  if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
+    obj.set('editable', !locked);
+  }
+  obj.setCoords?.();
 }
 
 /**
@@ -140,22 +174,34 @@ function pathN(v: number): number {
   return Number(v.toFixed(2));
 }
 
-export function buildSharpArrowPath(
-  points: Array<{ x: number; y: number }>,
-): { d: string; endAngleRad: number } {
-  if (points.length < 2) return { d: '', endAngleRad: 0 };
+/**
+ * `startAngleRad` points *outward* from the first vertex (i.e. back along the
+ * line, away from it) so a terminator drawn there faces the same way as one at
+ * the end. `endAngleRad` points outward from the last vertex, as before.
+ */
+export interface ArrowPath {
+  d: string;
+  startAngleRad: number;
+  endAngleRad: number;
+}
+
+export function buildSharpArrowPath(points: Array<{ x: number; y: number }>): ArrowPath {
+  if (points.length < 2) return { d: '', startAngleRad: 0, endAngleRad: 0 };
   let d = `M ${pathN(points[0].x)} ${pathN(points[0].y)}`;
   for (let i = 1; i < points.length; i++) d += ` L ${pathN(points[i].x)} ${pathN(points[i].y)}`;
   const p2 = points[points.length - 1];
   const p1 = points[points.length - 2];
-  return { d, endAngleRad: Math.atan2(p2.y - p1.y, p2.x - p1.x) };
+  return {
+    d,
+    startAngleRad: Math.atan2(points[0].y - points[1].y, points[0].x - points[1].x),
+    endAngleRad: Math.atan2(p2.y - p1.y, p2.x - p1.x),
+  };
 }
 
-export function buildCurvedArrowPath(
-  points: Array<{ x: number; y: number }>,
-): { d: string; endAngleRad: number } {
-  if (points.length < 2) return { d: '', endAngleRad: 0 };
+export function buildCurvedArrowPath(points: Array<{ x: number; y: number }>): ArrowPath {
+  if (points.length < 2) return { d: '', startAngleRad: 0, endAngleRad: 0 };
   let d = `M ${pathN(points[0].x)} ${pathN(points[0].y)}`;
+  let firstCp1 = points[1];
   let lastCp2 = points[0];
   let lastEnd = points[0];
   for (let i = 0; i < points.length - 1; i++) {
@@ -166,16 +212,21 @@ export function buildCurvedArrowPath(
     const cp1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
     const cp2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
     d += ` C ${pathN(cp1.x)} ${pathN(cp1.y)} ${pathN(cp2.x)} ${pathN(cp2.y)} ${pathN(p2.x)} ${pathN(p2.y)}`;
+    if (i === 0) firstCp1 = cp1;
     lastCp2 = cp2;
     lastEnd = p2;
   }
-  return { d, endAngleRad: Math.atan2(lastEnd.y - lastCp2.y, lastEnd.x - lastCp2.x) };
+  return {
+    d,
+    // The curve leaves its first vertex along cp1, so that's the tangent a
+    // start terminator has to align to — not the straight line to points[1].
+    startAngleRad: Math.atan2(points[0].y - firstCp1.y, points[0].x - firstCp1.x),
+    endAngleRad: Math.atan2(lastEnd.y - lastCp2.y, lastEnd.x - lastCp2.x),
+  };
 }
 
-export function buildElbowArrowPath(
-  points: Array<{ x: number; y: number }>,
-): { d: string; endAngleRad: number } {
-  if (points.length < 2) return { d: '', endAngleRad: 0 };
+export function buildElbowArrowPath(points: Array<{ x: number; y: number }>): ArrowPath {
+  if (points.length < 2) return { d: '', startAngleRad: 0, endAngleRad: 0 };
   const ortho: Array<{ x: number; y: number }> = [points[0]];
   for (let i = 0; i < points.length - 1; i++) {
     const a = points[i];
@@ -202,16 +253,114 @@ export function buildElbowArrowPath(
   const last = ortho[ortho.length - 1];
   const secondLast = ortho[ortho.length - 2];
   d += ` L ${pathN(last.x)} ${pathN(last.y)}`;
-  return { d, endAngleRad: Math.atan2(last.y - secondLast.y, last.x - secondLast.x) };
+  return {
+    d,
+    startAngleRad: Math.atan2(ortho[0].y - ortho[1].y, ortho[0].x - ortho[1].x),
+    endAngleRad: Math.atan2(last.y - secondLast.y, last.x - secondLast.x),
+  };
 }
 
 export function buildArrowPath(
   points: Array<{ x: number; y: number }>,
   arrowType: ArrowType,
-): { d: string; endAngleRad: number } {
+): ArrowPath {
   if (arrowType === 'curved') return buildCurvedArrowPath(points);
   if (arrowType === 'elbow') return buildElbowArrowPath(points);
   return buildSharpArrowPath(points);
+}
+
+/** Terminator scale — matches the head size arrows had before this was configurable. */
+function headSize(strokeWidthPx: number): number {
+  return strokeWidthPx * 4 + 6;
+}
+
+/**
+ * One arrow terminator as a standalone fabric object, ready to group with the
+ * arrow's path. `angleRad` points outward from the line at `tip`. Returns null
+ * for 'none'.
+ *
+ * Each head is tagged `data.arrowHead` with a `strokeOnly` flag so the editor's
+ * style plumbing knows whether a colour change belongs on its fill or its
+ * stroke. Symmetric heads centre on the tip (as the original triangle did);
+ * the open V and the bar are built in absolute coordinates instead, since
+ * centring their bounding box would push the tip past the line's end.
+ */
+export function makeArrowHead(
+  kind: ArrowHead | undefined,
+  tip: { x: number; y: number },
+  angleRad: number,
+  stroke: string,
+  strokeWidthPx: number,
+): any | null {
+  const fabric = (window as any).fabric;
+  if (!fabric || !kind || kind === 'none') return null;
+  const size = headSize(strokeWidthPx);
+  const lineWidth = Math.max(1, strokeWidthPx);
+  const strokeOnly = kind === 'arrow' || kind === 'bar' || kind.endsWith('Outline');
+  const paint = strokeOnly
+    ? { fill: '', stroke, strokeWidth: lineWidth, strokeLineCap: 'round', strokeLineJoin: 'round' }
+    : { fill: stroke, stroke: '', strokeWidth: 0 };
+  const data = { arrowHead: true, strokeOnly };
+  const centred = {
+    ...paint,
+    left: tip.x,
+    top: tip.y,
+    originX: 'center' as const,
+    originY: 'center' as const,
+    data,
+  };
+  const deg = (angleRad * 180) / Math.PI;
+
+  switch (kind) {
+    case 'triangle':
+    case 'triangleOutline':
+      // +90 because fabric.Triangle points up while angleRad measures along +x.
+      return new fabric.Triangle({ ...centred, width: size, height: size, angle: deg + 90 });
+    case 'circle':
+    case 'circleOutline':
+      return new fabric.Circle({ ...centred, radius: size * 0.34 });
+    case 'diamond':
+    case 'diamondOutline': {
+      const r = size * 0.46;
+      return new fabric.Polygon(
+        [
+          { x: r, y: 0 },
+          { x: 0, y: r },
+          { x: -r, y: 0 },
+          { x: 0, y: -r },
+        ],
+        { ...centred, angle: deg },
+      );
+    }
+    case 'bar': {
+      const perp = angleRad + Math.PI / 2;
+      const h = size * 0.36;
+      const dx = Math.cos(perp) * h;
+      const dy = Math.sin(perp) * h;
+      return new fabric.Path(
+        `M ${pathN(tip.x + dx)} ${pathN(tip.y + dy)} L ${pathN(tip.x - dx)} ${pathN(tip.y - dy)}`,
+        { ...paint, data },
+      );
+    }
+    case 'arrow': {
+      // Open V, barbs sweeping back from the tip.
+      const len = size * 0.85;
+      const spread = 0.42; // rad off the reversed direction
+      const a1 = angleRad + Math.PI + spread;
+      const a2 = angleRad + Math.PI - spread;
+      const p1 = { x: tip.x + Math.cos(a1) * len, y: tip.y + Math.sin(a1) * len };
+      const p2 = { x: tip.x + Math.cos(a2) * len, y: tip.y + Math.sin(a2) * len };
+      return new fabric.Path(
+        `M ${pathN(p1.x)} ${pathN(p1.y)} L ${pathN(tip.x)} ${pathN(tip.y)} ` +
+          `L ${pathN(p2.x)} ${pathN(p2.y)}`,
+        { ...paint, data },
+      );
+    }
+    default:
+      // Unrecognized terminator (hand-edited or newer document) — draw nothing
+      // rather than guessing, which is what 'none' would have done anyway.
+      return null;
+  }
 }
 
 export interface ShapeStyle {
@@ -302,11 +451,17 @@ export function makeShapeObject(
 }
 
 /**
- * Path (+ triangle head) grouped as one selectable arrow, built from N
- * points via buildArrowPath (sharp/curved/elbow). Creation-time points are
- * stored group-center-relative in data.localPoints so fabricToOverlay can
- * recover them through the group's transform matrix after any
- * move/scale/rotate.
+ * Multi-point linework — an arrow or a plain line — as one selectable group:
+ * a path built by buildArrowPath (sharp/curved/elbow) plus, for arrows, its
+ * terminators. Lines are the same object with no heads, which is what lets them
+ * share the shape control, the bend handles and the rebuild path.
+ *
+ * Creation-time points are stored group-center-relative in data.localPoints so
+ * fabricToOverlay can recover them through the group's transform matrix after
+ * any move/scale/rotate.
+ *
+ * The path is always child 0 — `fabricToOverlay` and the editor's style
+ * plumbing both read the stroke off it.
  */
 export function makeArrowGroup(
   points: Array<{ x: number; y: number }>,
@@ -315,35 +470,44 @@ export function makeArrowGroup(
   extra: Record<string, any> = {},
   strokeDash?: 'dashed' | 'dotted',
   arrowType: ArrowType = 'sharp',
+  opts: { start?: ArrowHead; end?: ArrowHead; kind?: 'arrow' | 'line' } = {},
 ): any {
   const fabric = (window as any).fabric;
-  const { d, endAngleRad } = buildArrowPath(points, arrowType);
-  const head = strokeWidthPx * 4 + 6;
-  const angleDeg = (endAngleRad * 180) / Math.PI + 90;
-  const last = points[points.length - 1];
+  const kind: OverlayKind = opts.kind ?? 'arrow';
+  const { d, startAngleRad, endAngleRad } = buildArrowPath(points, arrowType);
+  // For arrows, absent means what it meant before per-end terminators: filled
+  // head at the end, nothing at the start. A line never has either.
+  const arrowEnd: ArrowHead = kind === 'line' ? 'none' : opts.end ?? 'triangle';
+  const arrowStart: ArrowHead = kind === 'line' ? 'none' : opts.start ?? 'none';
   const path = new fabric.Path(d, {
     fill: '',
     stroke,
     strokeWidth: strokeWidthPx,
     ...dashProps(strokeDash, strokeWidthPx),
   });
-  const tri = new fabric.Triangle({
-    left: last.x,
-    top: last.y,
-    originX: 'center',
-    originY: 'center',
-    width: head,
-    height: head,
-    angle: angleDeg,
-    fill: stroke,
-  });
-  const grp = new fabric.Group([path, tri], {
+  const children = [path];
+  const endHead = makeArrowHead(
+    arrowEnd,
+    points[points.length - 1],
+    endAngleRad,
+    stroke,
+    strokeWidthPx,
+  );
+  if (endHead) children.push(endHead);
+  const startHead = makeArrowHead(arrowStart, points[0], startAngleRad, stroke, strokeWidthPx);
+  if (startHead) children.push(startHead);
+
+  const grp = new fabric.Group(children, {
     ...extra,
     data: {
       id: extra?.data?.id ?? overlayUuid(),
-      kind: 'arrow' as OverlayKind,
+      kind,
       strokeDash,
+      // Runtime field for BOTH kinds — the shape control is shared. Persistence
+      // splits it into arrowType / lineType (see fabricToOverlay).
       arrowType,
+      arrowStart,
+      arrowEnd,
     },
   });
   const c = grp.getCenterPoint();
@@ -351,8 +515,26 @@ export function makeArrowGroup(
   return grp;
 }
 
-/** Denormalize a persisted overlay into a fabric object (null = unusable entry, skip it). */
+/**
+ * Denormalize a persisted overlay into a fabric object (null = unusable entry,
+ * skip it). Wraps `buildOverlayObject` with the cross-kind state that isn't
+ * geometry: soft-group membership, mirroring and the editor lock.
+ */
 export function overlayToFabric(o: SlideOverlay, W: number, H: number): any | null {
+  const obj = buildOverlayObject(o, W, H);
+  if (!obj) return null;
+  if (o.groupId) obj.data.groupId = o.groupId;
+  if (o.labelOf && o.kind === 'text') obj.data.labelOf = o.labelOf;
+  // Box kinds mirror via fabric's flip flags; point-based kinds carry their
+  // mirroring inside `points`, and text is never mirrored (see _flipSelection).
+  if ((o.flipX || o.flipY) && isBoxKind(o.kind)) {
+    obj.set({ flipX: !!o.flipX, flipY: !!o.flipY });
+  }
+  if (o.locked) applyLockState(obj, true);
+  return obj;
+}
+
+function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
   const fabric = (window as any).fabric;
   if (!fabric || !o || !o.kind || !W || !H) return null;
   const common: Record<string, any> = {
@@ -420,14 +602,19 @@ export function overlayToFabric(o: SlideOverlay, W: number, H: number): any | nu
         { ...common, angle: o.rotation ?? 0 },
       );
     case 'line': {
-      const [p0, p1] = o.points ?? [];
-      if (!p0 || !p1) return null;
-      return new fabric.Line([p0.x * W, p0.y * H, p1.x * W, p1.y * H], {
-        ...common,
-        ...dash,
-        stroke: o.stroke ?? '#FF3B30',
-        strokeWidth: strokePx,
-      });
+      // Same group as an arrow, minus the terminators — that's what gives a
+      // line the shared shape control and bend handles.
+      const pts = o.points ?? [];
+      if (pts.length < 2) return null;
+      return makeArrowGroup(
+        pts.map((p) => ({ x: p.x * W, y: p.y * H })),
+        o.stroke ?? '#FF3B30',
+        strokePx,
+        common,
+        o.strokeDash,
+        o.lineType ?? 'sharp',
+        { kind: 'line' },
+      );
     }
     case 'arrow': {
       const pts = o.points ?? [];
@@ -439,6 +626,7 @@ export function overlayToFabric(o: SlideOverlay, W: number, H: number): any | nu
         common,
         o.strokeDash,
         o.arrowType ?? 'sharp',
+        { start: o.arrowStart, end: o.arrowEnd },
       );
     }
     case 'freehand':
@@ -486,9 +674,15 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
     h: Math.max(0.001, obj.getScaledHeight() / H),
   };
   if (opacity != null) base.opacity = opacity;
+  if (obj.data.groupId) base.groupId = obj.data.groupId;
+  if (obj.data.locked) base.locked = true;
+  // Only box kinds and text ever carry flip flags (see overlayToFabric).
+  if (obj.flipX) base.flipX = true;
+  if (obj.flipY) base.flipY = true;
 
   if (kind === 'text') {
     if (!String(obj.text ?? '').trim()) return null;
+    if (obj.data.labelOf) base.labelOf = obj.data.labelOf;
     if (rotation) base.rotation = rotation;
     base.text = String(obj.text);
     base.fontFamily = obj.fontFamily || 'Arial';
@@ -528,18 +722,10 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
 
   let pts: Array<{ x: number; y: number }> = [];
   let strokeSrc: any = obj;
-  if (kind === 'line') {
-    // A Line's object-plane center is the midpoint of its endpoints.
-    const cx = ((obj.x1 ?? 0) + (obj.x2 ?? 0)) / 2;
-    const cy = ((obj.y1 ?? 0) + (obj.y2 ?? 0)) / 2;
-    pts = [
-      toAbs((obj.x1 ?? 0) - cx, (obj.y1 ?? 0) - cy),
-      toAbs((obj.x2 ?? 0) - cx, (obj.y2 ?? 0) - cy),
-    ];
-  } else if (kind === 'arrow') {
+  if (kind === 'line' || kind === 'arrow') {
     const lp: Array<{ x: number; y: number }> = obj.data.localPoints ?? [];
     pts = lp.map((p) => toAbs(p.x, p.y));
-    strokeSrc = obj.getObjects?.()?.[0] ?? obj; // stroke lives on the child line
+    strokeSrc = obj.getObjects?.()?.[0] ?? obj; // stroke lives on the child path
   } else if (kind === 'freehand' || kind === 'highlight') {
     const off = obj.pathOffset ?? { x: 0, y: 0 };
     pts = (obj.points ?? []).map((p: any) => toAbs(p.x - off.x, p.y - off.y));
@@ -564,8 +750,16 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
   base.stroke = parseColor(strokeSrc?.stroke)?.hex ?? '#FF3B30';
   base.strokeWidth = ((strokeSrc?.strokeWidth ?? 2) * avgScale) / H;
   if (obj.data.strokeDash) base.strokeDash = obj.data.strokeDash;
-  if (kind === 'arrow' && obj.data.arrowType && obj.data.arrowType !== 'sharp') {
-    base.arrowType = obj.data.arrowType;
+  if (kind === 'line' && obj.data.arrowType && obj.data.arrowType !== 'sharp') {
+    // Runtime keeps one shared field; persistence keeps them apart.
+    base.lineType = obj.data.arrowType;
+  }
+  if (kind === 'arrow') {
+    if (obj.data.arrowType && obj.data.arrowType !== 'sharp') base.arrowType = obj.data.arrowType;
+    // Only written when they differ from the implied defaults, so an ordinary
+    // arrow persists exactly as it did before per-end terminators existed.
+    if (obj.data.arrowEnd && obj.data.arrowEnd !== 'triangle') base.arrowEnd = obj.data.arrowEnd;
+    if (obj.data.arrowStart && obj.data.arrowStart !== 'none') base.arrowStart = obj.data.arrowStart;
   }
   // Highlight restores with a 0.45 default, so a full-opacity highlight must
   // still write opacity explicitly or it would darken on reload.

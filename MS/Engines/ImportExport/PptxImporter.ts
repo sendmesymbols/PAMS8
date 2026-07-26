@@ -29,7 +29,7 @@
  */
 
 import { overlayUuid } from '../Briefing/OverlayFabric';
-import type { Slide, SlideOverlay, ViewKind } from '../Briefing/BriefingTypes';
+import type { ArrowHead, Slide, SlideOverlay, ViewKind } from '../Briefing/BriefingTypes';
 import { loadPptxGenJS } from './PptxExporter';
 
 export interface PptxImportOptions {
@@ -287,9 +287,31 @@ interface LnInfo {
   /** Stroke alpha 0..1 (only meaningful alongside `stroke`); undefined = opaque. */
   strokeAlpha?: number;
   widthEmu: number;
+  /** OOXML headEnd = the line's FIRST point; tailEnd = its last. */
+  headEnd: ArrowHead;
+  tailEnd: ArrowHead;
+  /** True when the respective end carries anything other than 'none'. */
   headArrow: boolean;
   tailArrow: boolean;
   dash?: 'dashed' | 'dotted';
+}
+
+/** OOXML line-end type → our terminator. Nothing maps back to the outline or bar variants. */
+const OOXML_ARROW_HEADS: Record<string, ArrowHead> = {
+  none: 'none',
+  arrow: 'arrow',
+  triangle: 'triangle',
+  stealth: 'triangle',
+  diamond: 'diamond',
+  oval: 'circle',
+};
+
+function arrowHeadOf(el: Element | null): ArrowHead {
+  const t = el?.getAttribute('type');
+  if (!t) return 'none';
+  return Object.prototype.hasOwnProperty.call(OOXML_ARROW_HEADS, t)
+    ? OOXML_ARROW_HEADS[t]
+    : 'triangle'; // unknown but present — something is drawn there
 }
 
 function dashKind(ln: Element): 'dashed' | 'dotted' | undefined {
@@ -300,12 +322,9 @@ function dashKind(ln: Element): 'dashed' | 'dotted' | undefined {
 
 function lnInfo(spPr: Element | null): LnInfo {
   const ln = childByLocal(spPr, 'ln');
-  const isArrow = (el: Element | null) => {
-    const t = el?.getAttribute('type');
-    return !!t && t !== 'none';
-  };
+  const noHeads = { headEnd: 'none' as ArrowHead, tailEnd: 'none' as ArrowHead, headArrow: false, tailArrow: false };
   if (!ln || childByLocal(ln, 'noFill')) {
-    return { widthEmu: Number(ln?.getAttribute('w')) || 9525, headArrow: false, tailArrow: false };
+    return { widthEmu: Number(ln?.getAttribute('w')) || 9525, ...noHeads };
   }
   const fill = parseSolidFill(ln);
   // Our own exporter's "invisible shape" sentinel is a fully-transparent
@@ -313,14 +332,18 @@ function lnInfo(spPr: Element | null): LnInfo {
   // noFill guard above misses; treat alpha≈0 as no stroke too so fill-only
   // shapes don't reimport with a spurious ~1px outline.
   if (fill && fill.alpha <= 0.004) {
-    return { widthEmu: Number(ln.getAttribute('w')) || 9525, headArrow: false, tailArrow: false };
+    return { widthEmu: Number(ln.getAttribute('w')) || 9525, ...noHeads };
   }
+  const headEnd = arrowHeadOf(childByLocal(ln, 'headEnd'));
+  const tailEnd = arrowHeadOf(childByLocal(ln, 'tailEnd'));
   return {
     stroke: fill?.hex,
     strokeAlpha: fill && fill.alpha < 1 ? fill.alpha : undefined,
     widthEmu: Number(ln.getAttribute('w')) || 9525, // 0.75pt PowerPoint default
-    headArrow: isArrow(childByLocal(ln, 'headEnd')),
-    tailArrow: isArrow(childByLocal(ln, 'tailEnd')),
+    headEnd,
+    tailEnd,
+    headArrow: headEnd !== 'none',
+    tailArrow: tailEnd !== 'none',
     dash: dashKind(ln),
   };
 }
@@ -524,10 +547,11 @@ export async function parsePptx(
         ({ x: x0, y: y0 } = rot(x0, y0));
         ({ x: x1, y: y1 } = rot(x1, y1));
       }
-      let p0 = { x: nx(x0), y: ny(y0) };
-      let p1 = { x: nx(x1), y: ny(y1) };
-      // Our arrow overlay draws its head at points[1].
-      if (ln.headArrow && !ln.tailArrow) [p0, p1] = [p1, p0];
+      const p0 = { x: nx(x0), y: ny(y0) };
+      const p1 = { x: nx(x1), y: ny(y1) };
+      // OOXML head/tail map straight onto our per-end terminators — point order
+      // is preserved (this used to swap the endpoints instead, back when an
+      // arrow overlay could only draw one head, always at points[1]).
       return {
         id: overlayUuid(),
         kind: ln.headArrow || ln.tailArrow ? 'arrow' : 'line',
@@ -536,6 +560,8 @@ export async function parsePptx(
         w: Math.max(0.001, Math.abs(p1.x - p0.x)),
         h: Math.max(0.001, Math.abs(p1.y - p0.y)),
         points: [p0, p1],
+        arrowStart: ln.headEnd,
+        arrowEnd: ln.tailEnd,
         stroke: ln.stroke ?? '#000000',
         strokeWidth: ln.widthEmu / sldCy,
         strokeDash: ln.dash,
@@ -602,14 +628,17 @@ export async function parsePptx(
             if (p.y > maxY) maxY = p.y;
           }
           const twoPoint = pts.length === 2;
+          const isArrow = twoPoint && (ln.headArrow || ln.tailArrow);
           out.push({
             id: overlayUuid(),
-            kind: twoPoint ? (ln.headArrow || ln.tailArrow ? 'arrow' : 'line') : 'freehand',
+            kind: twoPoint ? (isArrow ? 'arrow' : 'line') : 'freehand',
             x: minX,
             y: minY,
             w: Math.max(0.001, maxX - minX),
             h: Math.max(0.001, maxY - minY),
-            points: twoPoint && ln.headArrow && !ln.tailArrow ? [pts[1], pts[0]] : pts,
+            // Point order preserved — the terminators carry which end is which.
+            points: pts,
+            ...(isArrow ? { arrowStart: ln.headEnd, arrowEnd: ln.tailEnd } : {}),
             stroke: ln.stroke ?? '#FF3B30',
             strokeWidth: ln.widthEmu / sldCy,
             strokeDash: ln.dash,

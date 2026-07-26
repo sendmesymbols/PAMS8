@@ -47,6 +47,22 @@ export type OverlayKind =
   | 'highlight';
 
 /**
+ * An arrow terminator. Filled variants paint solid in the stroke colour;
+ * `*Outline` variants are hollow. `arrow` is the open two-barb V, `bar` a
+ * perpendicular tick ("terminates here").
+ */
+export type ArrowHead =
+  | 'none'
+  | 'arrow'
+  | 'triangle'
+  | 'triangleOutline'
+  | 'bar'
+  | 'circle'
+  | 'circleOutline'
+  | 'diamond'
+  | 'diamondOutline';
+
+/**
  * Box-geometry kinds persist identically (bbox + rotation + fill/stroke) and
  * regenerate their vertices from the bbox on load. Shared by OverlayFabric
  * and the slide editor's style plumbing.
@@ -77,7 +93,7 @@ export interface SlideOverlay {
   h: number;
   /** Degrees clockwise about the box center — text/rect/ellipse only. */
   rotation?: number;
-  /** line: [start, end]; arrow: 2+ points (bend points in between); freehand: sampled polyline. Normalized. */
+  /** line / arrow: 2+ points (bend points in between); freehand: sampled polyline. Normalized. */
   points?: Array<{ x: number; y: number }>;
   /** '#RRGGBB'; absent = no fill. */
   fill?: string;
@@ -91,8 +107,36 @@ export interface SlideOverlay {
   strokeDash?: 'dashed' | 'dotted';
   /** arrow only. Absent = 'sharp' (today's straight 2-point look). */
   arrowType?: 'sharp' | 'curved' | 'elbow';
+  /**
+   * line only — the same vocabulary as arrowType, kept as its own field so a
+   * line's persisted shape never reads as an arrow's. Absent = 'sharp'.
+   */
+  lineType?: 'sharp' | 'curved' | 'elbow';
+  /**
+   * arrow only. Absent = 'triangle' — the single filled head every arrow had
+   * before per-end terminators existed, so old slides keep their look.
+   */
+  arrowEnd?: ArrowHead;
+  /** arrow only. Absent = 'none'. */
+  arrowStart?: ArrowHead;
   /** Whole-object opacity 0..1, default 1. */
   opacity?: number;
+  /**
+   * Soft group membership. Members share one id and are selected / moved /
+   * deleted / copied as a unit in the editor, but stay independent objects —
+   * there is no nested transform, so persistence and PPTX emit are per-object
+   * exactly as for ungrouped overlays.
+   */
+  groupId?: string;
+  /** Editor lock — still selectable (so it can be unlocked) but not movable, resizable, restylable or erasable. */
+  locked?: boolean;
+  /**
+   * Mirrored geometry, box kinds only — point-based kinds mirror their
+   * `points` instead, and text is never mirrored. Visible only on the
+   * asymmetric shapes (triangle, callout). Maps to PPTX xfrm flipH / flipV.
+   */
+  flipX?: boolean;
+  flipY?: boolean;
   // text only:
   text?: string;
   fontFamily?: string;
@@ -103,6 +147,14 @@ export interface SlideOverlay {
   underline?: boolean;
   align?: 'left' | 'center' | 'right';
   textColor?: string;
+  /**
+   * text only — the overlay id of the shape or arrow this text labels. The
+   * label stays an independent overlay (fabric 4.5 cannot edit text inside a
+   * Group), so present mode and the PPTX exporter need no special case; the
+   * slide editor is what keeps the pair selected, moved and deleted together.
+   * Dangling links are dropped on load.
+   */
+  labelOf?: string;
 }
 
 export interface BuildStep {

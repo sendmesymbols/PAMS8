@@ -20,6 +20,7 @@ import EngineLogger from '../../Support/EngineLogger';
 import type { Slide, SlideOverlay, SlideTransitionType } from './BriefingTypes';
 import LaserTrail from './LaserTrail';
 import {
+  applyLockState,
   buildArrowPath,
   dashProps,
   fabricToOverlay,
@@ -92,10 +93,60 @@ const NUDGE_KEYS: Record<string, [number, number]> = {
   ArrowDown: [0, 1],
 };
 
+/** Every style slot Ctrl+Alt+V transfers directly. The arrow slots are excluded — they're geometry, not property sets. */
+const COPYABLE_STYLE_PROPS: readonly StyleProp[] = [
+  'fontFamily',
+  'fontSizePx',
+  'bold',
+  'italic',
+  'underline',
+  'align',
+  'textColor',
+  'fill',
+  'fillOpacity',
+  'stroke',
+  'strokeWidthPx',
+  'strokeDash',
+  'opacity',
+  'highlightWidthPx',
+];
+
+type AlignMode = 'left' | 'centerH' | 'right' | 'top' | 'centerV' | 'bottom';
+
+/**
+ * Kinds rendered as a multi-point group by OverlayFabric.makeArrowGroup: the
+ * shape control (sharp/curved/elbow), the bend handles, the rebuild path and
+ * the child-patching style cases are all shared between them. Their stroke
+ * lives on child 0, never on the group.
+ */
+const LINEWORK_KINDS: ReadonlySet<string> = new Set(['arrow', 'line']);
+
+function isLinework(obj: any): boolean {
+  return LINEWORK_KINDS.has(obj?.data?.kind);
+}
+
+/**
+ * Where a bound label sits inside its container: `w` is the fraction of the
+ * container's width the text box may use, `dy` shifts the text's center off the
+ * container's center as a fraction of height. Diamonds and stars only inscribe
+ * a narrow box; a point-up triangle's usable area is low; a callout's body is
+ * its top 78% (the rest is the tail — see OverlayFabric.makeShapeObject).
+ */
+const LABEL_FIT: Record<string, { w: number; dy: number }> = {
+  rect: { w: 0.86, dy: 0 },
+  ellipse: { w: 0.72, dy: 0 },
+  diamond: { w: 0.6, dy: 0 },
+  triangle: { w: 0.56, dy: 0.14 },
+  star: { w: 0.5, dy: 0.04 },
+  callout: { w: 0.86, dy: -0.11 },
+};
+
 export default class SlideEditor {
   private static _instance: SlideEditor | null = null;
   /** Static so copied annotations survive slide navigation → cross-slide paste. */
   private static _clipboard: SlideOverlay[] = [];
+  /** Ctrl+Alt+C style snapshot — static for the same reason as _clipboard. */
+  private static _styleClipboard: StyleDefaults | null = null;
 
   private _stage: HTMLElement | null = null;
   private _ui: SlideEditorUI | null = null;
@@ -117,10 +168,17 @@ export default class SlideEditor {
   private _arrowReopenedObj: any = null;
   private _arrowPreview: any = null;
   private _arrowLastClickAt = 0;
+  /**
+   * When the arrow tool was finished by a double-click. Expires on its own, so
+   * a genuine double-click later can never be swallowed. See _onArrowClick.
+   */
+  private _arrowFinishedByDblClickAt = 0;
   private _bendDrag: { obj: any; segmentIndex: number; lastPoint: { x: number; y: number } } | null = null;
   private _bendPreview: any = null;
   private _erasing = false;
   private _erasedAny = false;
+  /** Q — keep the active shape tool armed after each completed draw. */
+  private _toolLock = false;
   private _undo: string[] = [];
   private _redo: string[] = [];
   private _commitTimer: ReturnType<typeof setTimeout> | null = null;
@@ -141,6 +199,8 @@ export default class SlideEditor {
     opacity: 1,
     highlightWidthPx: 20,
     arrowType: 'sharp',
+    arrowStart: 'none',
+    arrowEnd: 'triangle',
   };
 
   private constructor() {}
@@ -229,6 +289,8 @@ export default class SlideEditor {
     this._opening = true;
     try {
       this._index = index;
+      ui.hideContextMenu();
+      ui.closeHelp();
       if (ui.titleInput) ui.titleInput.value = slide.title ?? '';
       ui.syncNotes(slide);
       ui.syncTransitionControl(slide);
@@ -302,6 +364,8 @@ export default class SlideEditor {
     }
     this._laser?.dispose();
     this._laser = null;
+    // Drops the menu's document-level dismiss listener as well as its DOM.
+    this._ui?.hideContextMenu();
     restoreSelectionControls();
     try {
       this._fc?.dispose?.();
@@ -372,6 +436,12 @@ export default class SlideEditor {
         // (which otherwise shows up as an unexpected scrollbar).
         this._resizeStageToFit();
         break;
+      case 'help':
+        this._ui?.toggleHelp();
+        break;
+      case 'toolLock':
+        this._setToolLock(!this._toolLock);
+        break;
       case 'del':
         this._deleteSelection();
         break;
@@ -384,6 +454,55 @@ export default class SlideEditor {
       case 'back':
         this._layerAction(act);
         break;
+      case 'group':
+        this._groupSelection();
+        break;
+      case 'ungroup':
+        this._ungroupSelection();
+        break;
+      case 'lock':
+        this._toggleLock();
+        break;
+      case 'flipH':
+        this._flipSelection('x');
+        break;
+      case 'flipV':
+        this._flipSelection('y');
+        break;
+      case 'copy':
+        this._copySelection();
+        break;
+      case 'cut':
+        this._cutSelection();
+        break;
+      case 'paste':
+        this._paste();
+        break;
+      case 'copyStyles':
+        this._copyStyles();
+        break;
+      case 'pasteStyles':
+        this._pasteStyles();
+        break;
+      case 'selectAll':
+        this._selectAll();
+        break;
+      case 'alignLeft':
+      case 'alignRight':
+      case 'alignTop':
+      case 'alignBottom':
+      case 'alignCenterH':
+      case 'alignCenterV': {
+        const mode = (act.slice(5, 6).toLowerCase() + act.slice(6)) as AlignMode;
+        this._alignSelection(mode);
+        break;
+      }
+      case 'distributeH':
+        this._distributeSelection('h');
+        break;
+      case 'distributeV':
+        this._distributeSelection('v');
+        break;
     }
   }
 
@@ -395,12 +514,13 @@ export default class SlideEditor {
     else if (act === 'forward') this._fc.bringForward(obj);
     else if (act === 'backward') this._fc.sendBackwards(obj);
     else this._fc.sendToBack(obj);
+    this._normalizeLabelStacking();
     this._fc.requestRenderAll();
     this._commit();
   }
 
   private _deleteSelection(): void {
-    const objs: any[] = this._fc?.getActiveObjects?.() ?? [];
+    const objs = this._withBoundLabels(this._unlockedSelection());
     if (!objs.length) return;
     if (this._bendDrag) {
       if (this._bendPreview) {
@@ -475,6 +595,10 @@ export default class SlideEditor {
       preserveObjectStacking: true,
       selection: true,
       backgroundColor: '#1a2129',
+      // Excalidraw's convention (fabric's default is the other way round):
+      // corner drags resize freely, Shift constrains to the aspect ratio.
+      uniformScaling: false,
+      uniScaleKey: 'shiftKey',
     });
     if (size) {
       const bgImg = new fabric.Image(size.img, { originX: 'left', originY: 'top' });
@@ -487,12 +611,25 @@ export default class SlideEditor {
     for (const o of slide.overlays ?? []) {
       const obj = overlayToFabric(o, this._W, this._H);
       if (obj) {
-        if (obj.data?.kind === 'arrow') this._attachArrowControls(obj);
+        if (isLinework(obj)) this._attachArrowControls(obj);
         this._fc.add(obj);
       } else {
         EngineLogger.error(ENGINE_NAME, `Skipped invalid overlay entry (${o?.kind ?? '?'})`);
       }
     }
+    // A label whose container was dropped above (or never saved) becomes plain text.
+    this._dropOrphanLabels();
+
+    // Both listeners below live on DOM nodes fabric created and destroys with
+    // the canvas (dispose() detaches wrapperEl), so they need no teardown.
+    this._fc.wrapperEl?.addEventListener(
+      'mousedown',
+      (e: MouseEvent) => this._onPreMouseDown(e),
+      true,
+    );
+    this._fc.upperCanvasEl?.addEventListener('contextmenu', (e: MouseEvent) =>
+      this._onCanvasContextMenu(e),
+    );
 
     this._fc.on('mouse:down', (opt: any) => this._onMouseDown(opt));
     this._fc.on('mouse:move', (opt: any) => this._onMouseMove(opt));
@@ -508,9 +645,17 @@ export default class SlideEditor {
       }
       this._commit();
     });
+    this._fc.on('mouse:dblclick', (opt: any) => this._onDoubleClick(opt));
     this._fc.on('text:editing:exited', (e: any) => {
       const t = e?.target;
-      if (t && !String(t.text ?? '').trim()) this._fc.remove(t);
+      if (t && !String(t.text ?? '').trim()) {
+        // Emptying a label is how you remove it — the container just loses its text.
+        this._fc.remove(t);
+      } else if (t?.data?.labelOf) {
+        // Typing changed the text's height — re-center it in its container.
+        const owner = this._containerFor(t);
+        if (owner) this._layoutLabel(owner, t);
+      }
       this._commit();
     });
     this._fc.requestRenderAll();
@@ -579,6 +724,7 @@ export default class SlideEditor {
 
   private _setTool(t: Tool): void {
     if (!this._fc) return;
+    this._ui?.hideContextMenu();
     if (this._arrowChain && t !== 'arrow') {
       this._clearArrowChain();
     }
@@ -704,6 +850,18 @@ export default class SlideEditor {
     }
 
     if (t === 'text') {
+      // Clicking a label-capable shape with the text tool labels it, exactly
+      // like double-clicking the shape. findTarget is gated by skipTargetFind
+      // (set for every armed tool), so it has to be bypassed for this probe.
+      const prevSkip = this._fc.skipTargetFind;
+      this._fc.skipTargetFind = false;
+      const under: any = this._fc.findTarget?.(opt.e, true);
+      this._fc.skipTargetFind = prevSkip;
+      if (under && this._canHoldLabel(under) && !under.data.locked) {
+        this._setTool('select');
+        this._editLabel(under);
+        return;
+      }
       const tb = new fabric.Textbox('Text', {
         left: p.x,
         top: p.y,
@@ -864,7 +1022,7 @@ export default class SlideEditor {
       : obj.getScaledWidth() < 4 && obj.getScaledHeight() < 4;
     if (degenerate) {
       this._fc.remove(obj);
-      this._setTool('select');
+      if (!this._toolLock) this._setTool('select');
       return;
     }
 
@@ -884,47 +1042,47 @@ export default class SlideEditor {
         { opacity: this._defaults.opacity },
       );
       this._fc.add(finalObj);
+    } else if (isLineKind) {
+      // The drag preview is a plain fabric.Line; a persisted line is the same
+      // multi-point group an arrow uses (minus terminators), which is what gives
+      // it the shape control and the bend handles. Swap it in now.
+      const p = this._fc.getPointer(opt.e);
+      const style = this._creationStyle();
+      this._fc.remove(obj);
+      finalObj = makeArrowGroup(
+        [
+          { x: startX, y: startY },
+          { x: p.x, y: p.y },
+        ],
+        style.stroke,
+        style.strokeWidth,
+        { opacity: this._defaults.opacity },
+        style.strokeDash,
+        this._defaults.arrowType,
+        { kind: 'line' },
+      );
+      this._attachArrowControls(finalObj);
+      this._fc.add(finalObj);
     } else {
       obj.set({ selectable: true, evented: true });
       obj.setCoords();
     }
 
+    // Tool lock keeps the tool armed and leaves the new shape unselected (a
+    // selection under an armed draw tool can't be interacted with anyway).
+    // Callouts always revert — their auto-spawned label needs select semantics.
     const wasCallout = t === 'callout';
-    this._setTool('select');
-    this._fc.setActiveObject(finalObj);
+    if (this._toolLock && !wasCallout) {
+      this._fc.discardActiveObject();
+    } else {
+      this._setTool('select');
+      this._fc.setActiveObject(finalObj);
+    }
     this._fc.requestRenderAll();
     this._commit();
-    if (wasCallout) this._addCalloutText(finalObj);
-  }
-
-  /**
-   * A callout is bubble + a separate centered text object (fabric 4.5 can't
-   * edit text inside a group) — spawn the text already in edit mode.
-   */
-  private _addCalloutText(bubble: any): void {
-    const fabric = (window as any).fabric;
-    const d = this._defaults;
-    const bw = bubble.getScaledWidth();
-    const bh = bubble.getScaledHeight() * 0.78; // body above the tail
-    const fontSize = Math.max(10, Math.min(d.fontSizePx, Math.round(bh * 0.32)));
-    const tb = new fabric.Textbox('Text', {
-      left: (bubble.left ?? 0) + bw * 0.12,
-      top: (bubble.top ?? 0) + bh / 2 - fontSize * 0.7,
-      width: bw * 0.76,
-      fontSize,
-      fontFamily: d.fontFamily,
-      fontWeight: d.bold ? 'bold' : 'normal',
-      fontStyle: d.italic ? 'italic' : 'normal',
-      underline: d.underline,
-      textAlign: 'center',
-      fill: d.textColor,
-      data: { id: overlayUuid(), kind: 'text' },
-    });
-    this._fc.add(tb);
-    this._fc.setActiveObject(tb);
-    tb.enterEditing();
-    tb.selectAll();
-    this._fc.requestRenderAll();
+    // A callout is a bubble plus its bound label — drawing one goes straight
+    // into typing, and from then on the pair moves and deletes as a unit.
+    if (wasCallout) this._editLabel(finalObj);
   }
 
   /** PencilBrush paths become Polylines so the persisted model stays point-based. */
@@ -972,6 +1130,11 @@ export default class SlideEditor {
       ) < 6;
     this._arrowLastClickAt = now;
     if (isFinish) {
+      // Finishing an arrow IS a double-click, and the browser's trailing
+      // dblclick arrives after _onArrowFinish has already switched to the
+      // select tool and made the new arrow active — so without this the same
+      // gesture would fall straight through to "label this arrow".
+      this._arrowFinishedByDblClickAt = now;
       this._onArrowFinish();
       return;
     }
@@ -1020,7 +1183,7 @@ export default class SlideEditor {
         this._fc.add(reopened);
         this._fc.setActiveObject(reopened);
       }
-      this._setTool('select');
+      if (!this._toolLock || reopened) this._setTool('select');
       return;
     }
     const style = this._creationStyle();
@@ -1031,11 +1194,16 @@ export default class SlideEditor {
       { opacity: this._defaults.opacity, data: reopened ? { id: reopened.data.id } : undefined },
       style.strokeDash,
       this._defaults.arrowType,
+      { start: this._defaults.arrowStart, end: this._defaults.arrowEnd },
     );
     this._attachArrowControls(finalObj);
     this._fc.add(finalObj);
-    this._setTool('select');
-    this._fc.setActiveObject(finalObj);
+    if (this._toolLock) {
+      this._fc.discardActiveObject();
+    } else {
+      this._setTool('select');
+      this._fc.setActiveObject(finalObj);
+    }
     this._fc.requestRenderAll();
     this._commit();
   }
@@ -1060,6 +1228,8 @@ export default class SlideEditor {
     d.strokeDash = (obj.data?.strokeDash ?? 'solid') as StyleDefaults['strokeDash'];
     d.opacity = obj.opacity ?? 1;
     d.arrowType = (obj.data?.arrowType ?? 'sharp') as ArrowType;
+    d.arrowStart = obj.data?.arrowStart ?? 'none';
+    d.arrowEnd = obj.data?.arrowEnd ?? 'triangle';
     this._fc.discardActiveObject();
     this._fc.remove(obj);
     this._arrowReopenedObj = obj;
@@ -1118,7 +1288,7 @@ export default class SlideEditor {
    * geometry swap happens once, at drag end, via `_finalizeArrowBend`.
    */
   private _dragArrowBend(obj: any, segmentIndex: number, canvasX: number, canvasY: number): void {
-    if (!obj || obj.data?.kind !== 'arrow') return;
+    if (!obj || !isLinework(obj)) return;
     const fabric = (window as any).fabric;
     const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
     if (segmentIndex < 0 || segmentIndex + 1 >= lp.length) return;
@@ -1159,7 +1329,7 @@ export default class SlideEditor {
 
   /** Splices a new point into an arrow's geometry at the drag location and rebuilds it in place. */
   private _insertArrowBend(obj: any, segmentIndex: number, canvasX: number, canvasY: number): void {
-    if (!obj || obj.data?.kind !== 'arrow') return;
+    if (!obj || !isLinework(obj)) return;
     const fabric = (window as any).fabric;
     const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
     if (segmentIndex < 0 || segmentIndex + 1 >= lp.length) return;
@@ -1174,7 +1344,7 @@ export default class SlideEditor {
     this._fc.requestRenderAll();
   }
 
-  /** Replaces an arrow group with a freshly-built one from an absolute-coordinate point list, preserving style/id. */
+  /** Replaces a linework group (arrow or line) with a freshly-built one from an absolute-coordinate point list, preserving kind/style/id. */
   private _rebuildArrow(obj: any, absPoints: Array<{ x: number; y: number }>): any {
     const arrowType: ArrowType = obj.data?.arrowType ?? 'sharp';
     const pathChild = obj.getObjects()[0];
@@ -1188,10 +1358,23 @@ export default class SlideEditor {
       { opacity: obj.opacity, data: { id: obj.data.id } },
       obj.data.strokeDash,
       arrowType,
+      { start: obj.data.arrowStart, end: obj.data.arrowEnd, kind: obj.data.kind },
     );
+    // makeArrowGroup rebuilds `data` from its arguments, so the cross-kind
+    // state that doesn't describe geometry has to be carried over by hand or a
+    // bend/head edit would silently unlink and unlock the arrow.
+    if (obj.data.groupId) rebuilt.data.groupId = obj.data.groupId;
+    if (obj.data.locked) applyLockState(rebuilt, true);
     this._attachArrowControls(rebuilt);
     this._fc.add(rebuilt);
     if (idx >= 0) this._fc.moveTo(rebuilt, idx);
+    // Bending or re-typing an arrow moves its midpoint — the label follows.
+    // (No-ops while the pair is inside an ActiveSelection; see _layoutLabel.)
+    const label = this._labelFor(rebuilt);
+    if (label) {
+      this._layoutLabel(rebuilt, label);
+      this._fc.moveTo(label, this._overlayIndex(rebuilt) + 1);
+    }
     this._commit();
     return rebuilt;
   }
@@ -1218,8 +1401,10 @@ export default class SlideEditor {
     // the target here too means a sweep still erases everything it passes
     // over even if that invariant is ever violated.
     const target = this._fc?.findTarget?.(opt.e, false);
-    if (target?.data?.kind) {
+    if (target?.data?.kind && !target.data.locked) {
+      const label = this._labelFor(target);
       this._fc.remove(target);
+      if (label) this._fc.remove(label); // never leave an orphaned label behind
       this._erasedAny = true;
       this._fc.requestRenderAll();
     }
@@ -1293,23 +1478,28 @@ export default class SlideEditor {
    * are flattened first (their left/top are group-relative while selected).
    */
   private _selectionOverlays(): SlideOverlay[] {
-    return this._withFlatSelection(() => {
-      const objs: any[] = this._fc?.getActiveObjects?.() ?? [];
-      return objs
+    return this._withFlatSelection((members) =>
+      this._withBoundLabels(members)
         .map((o) => fabricToOverlay(o, this._W, this._H))
-        .filter(Boolean) as SlideOverlay[];
-    });
+        .filter(Boolean) as SlideOverlay[],
+    );
   }
 
-  /** Run `fn` with any ActiveSelection temporarily dissolved (absolute coords), then re-select. */
-  private _withFlatSelection<T>(fn: () => T): T {
+  /**
+   * Run `fn` with any ActiveSelection temporarily dissolved (so members report
+   * absolute coordinates), then re-select. The member list is passed in because
+   * dissolving the selection empties `getActiveObjects()` — reading it inside
+   * the callback would see nothing.
+   */
+  private _withFlatSelection<T>(fn: (members: any[]) => T): T {
     const fc = this._fc;
     const sel: any = fc?.getActiveObject?.();
-    if (!sel || sel.type !== 'activeSelection') return fn();
+    if (!sel) return fn([]);
+    if (sel.type !== 'activeSelection') return fn(sel.data?.kind ? [sel] : []);
     const members: any[] = sel.getObjects().slice();
     fc.discardActiveObject();
     try {
-      return fn();
+      return fn(members.filter((o) => o?.data?.kind));
     } finally {
       const fabric = (window as any).fabric;
       const ns = new fabric.ActiveSelection(members, { canvas: fc });
@@ -1341,12 +1531,13 @@ export default class SlideEditor {
   private _addOverlays(overlays: readonly SlideOverlay[], offsetPx: number): void {
     if (!this._fc || !overlays.length) return;
     const added: any[] = [];
-    for (const o of overlays) {
-      const obj = overlayToFabric({ ...o, id: overlayUuid() }, this._W, this._H);
+    // Copies group and label among themselves, never back into the originals.
+    for (const o of this._reidOverlays(overlays)) {
+      const obj = overlayToFabric(o, this._W, this._H);
       if (!obj) continue;
       obj.set({ left: (obj.left ?? 0) + offsetPx, top: (obj.top ?? 0) + offsetPx });
       obj.setCoords();
-      if (obj.data?.kind === 'arrow') this._attachArrowControls(obj);
+      if (isLinework(obj)) this._attachArrowControls(obj);
       this._fc.add(obj);
       added.push(obj);
     }
@@ -1378,6 +1569,626 @@ export default class SlideEditor {
     }
     this._fc.requestRenderAll();
     this._syncControlsFromSelection();
+  }
+
+  // ── Bound text labels ──────────────────────────────────────────────────────
+
+  /** Every annotation object on the canvas (skips previews and the background). */
+  private _overlayObjects(): any[] {
+    return ((this._fc?.getObjects?.() ?? []) as any[]).filter((o) => o?.data?.kind);
+  }
+
+  private _overlayIndex(obj: any): number {
+    return ((this._fc?.getObjects?.() ?? []) as any[]).indexOf(obj);
+  }
+
+  /** The text object bound to `container`, if it has one. */
+  private _labelFor(container: any): any | null {
+    const id = container?.data?.id;
+    if (!id) return null;
+    return this._overlayObjects().find((o) => o.data.labelOf === id) ?? null;
+  }
+
+  private _containerFor(label: any): any | null {
+    const id = label?.data?.labelOf;
+    if (!id) return null;
+    return this._overlayObjects().find((o) => o.data.id === id) ?? null;
+  }
+
+  /** Kinds a label can be bound to: every box shape, plus arrows and lines. */
+  private _canHoldLabel(obj: any): boolean {
+    const k = obj?.data?.kind;
+    return !!k && (isBoxKind(k) || isLinework(obj));
+  }
+
+  /** Exactly one container plus its own label — the combined panel context. */
+  private _labeledPair(objs: any[]): { container: any; label: any } | null {
+    if (objs.length !== 2) return null;
+    const label = objs.find((o) => o.data.labelOf);
+    const container = objs.find((o) => o !== label);
+    if (!label || !container || label.data.labelOf !== container.data.id) return null;
+    return { container, label };
+  }
+
+  /** Add the bound label of every container in `objs` (a shape's label follows it). */
+  private _withBoundLabels(objs: any[]): any[] {
+    if (!objs.length) return objs;
+    const ids = new Set(objs.map((o) => o.data.id));
+    const labels = this._overlayObjects().filter(
+      (o) => o.data.labelOf && ids.has(o.data.labelOf) && !objs.includes(o),
+    );
+    return labels.length ? [...objs, ...labels] : objs;
+  }
+
+  /**
+   * Everything that must be selected together with `obj`: its soft group (if
+   * any) and every bound label on the result. A label resolves to its container
+   * first, so clicking either half of a labelled shape selects the pair — which
+   * is what makes moving, scaling and rotating carry the text along without any
+   * per-frame relayout.
+   */
+  private _cohortFor(obj: any): any[] {
+    const all = this._overlayObjects();
+    let seed = obj;
+    if (obj?.data?.labelOf) {
+      const owner = all.find((o) => o.data.id === obj.data.labelOf);
+      if (owner) seed = owner;
+    }
+    const gid: string | undefined = seed.data.groupId;
+    const base = gid ? all.filter((o) => o.data.groupId === gid) : [seed];
+    const ids = new Set(base.map((o) => o.data.id));
+    return [
+      ...base,
+      ...all.filter((o) => o.data.labelOf && ids.has(o.data.labelOf) && !base.includes(o)),
+    ];
+  }
+
+  /** Half-way along an arrow's polyline — a bent arrow's middle vertex can sit well off its visual center. */
+  private _arrowMidpoint(arrow: any): any | null {
+    const fabric = (window as any).fabric;
+    const lp: Array<{ x: number; y: number }> = arrow?.data?.localPoints ?? [];
+    if (lp.length < 2) return null;
+    const m = arrow.calcTransformMatrix();
+    const pts = lp.map((p) => fabric.util.transformPoint(new fabric.Point(p.x, p.y), m));
+    const segs: number[] = [];
+    let total = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+      segs.push(d);
+      total += d;
+    }
+    let walked = 0;
+    for (let i = 0; i < segs.length; i++) {
+      if (walked + segs[i] >= total / 2) {
+        const t = segs[i] ? (total / 2 - walked) / segs[i] : 0;
+        return new fabric.Point(
+          pts[i].x + (pts[i + 1].x - pts[i].x) * t,
+          pts[i].y + (pts[i + 1].y - pts[i].y) * t,
+        );
+      }
+      walked += segs[i];
+    }
+    return pts[pts.length - 1];
+  }
+
+  /**
+   * Re-fit and re-center a label on its container. Only ever called with both
+   * objects out of any ActiveSelection, so their coordinates are absolute.
+   * Any scale the label picked up from a container resize is preserved — the
+   * width is divided back out so the glyph size stays where the user left it.
+   */
+  private _layoutLabel(container: any, label: any): void {
+    const fabric = (window as any).fabric;
+    if (!container || !label) return;
+    // Inside an ActiveSelection every coordinate is group-relative, so any
+    // position computed here would be wrong — the pair moves as one anyway.
+    if (container.group || label.group) return;
+    const sx = label.scaleX || 1;
+    if (isLinework(container)) {
+      const mid = this._arrowMidpoint(container);
+      if (!mid) return;
+      label.set({ angle: 0, width: Math.max(40, (container.getScaledWidth() * 0.6) / sx) });
+      label.setPositionByOrigin(mid, 'center', 'center');
+    } else {
+      const fit = LABEL_FIT[container.data.kind] ?? { w: 0.86, dy: 0 };
+      const w = container.getScaledWidth();
+      const h = container.getScaledHeight();
+      const angle = container.angle ?? 0;
+      label.set({ angle, width: Math.max(24, (w * fit.w) / sx) });
+      const offset = fabric.util.rotateVector(
+        new fabric.Point(0, h * fit.dy),
+        fabric.util.degreesToRadians(angle),
+      );
+      label.setPositionByOrigin(container.getCenterPoint().add(offset), 'center', 'center');
+    }
+    label.setCoords();
+  }
+
+  /** Create the container's label if it has none, then drop straight into text editing. */
+  private _editLabel(container: any): void {
+    const fc = this._fc;
+    if (!fc || !this._canHoldLabel(container) || container.data.locked) return;
+    // Drop the selection FIRST: double-clicking a shape arrives with the
+    // container already promoted into an ActiveSelection (see _cohortFor), and
+    // _layoutLabel refuses group-relative coordinates — laying out before this
+    // would leave a brand-new label parked at the canvas origin.
+    fc.discardActiveObject();
+    let label = this._labelFor(container);
+    const created = !label;
+    if (!label) {
+      const fabric = (window as any).fabric;
+      const d = this._defaults;
+      // Start at a size that fits the shape; the user can set any size after.
+      const fontSize = isLinework(container)
+        ? d.fontSizePx
+        : Math.max(9, Math.min(d.fontSizePx, Math.round(container.getScaledHeight() * 0.3)));
+      label = new fabric.Textbox('Text', {
+        left: 0,
+        top: 0,
+        width: 60,
+        fontSize,
+        fontFamily: d.fontFamily,
+        fontWeight: d.bold ? 'bold' : 'normal',
+        fontStyle: d.italic ? 'italic' : 'normal',
+        underline: d.underline,
+        textAlign: 'center',
+        fill: d.textColor,
+        opacity: container.opacity ?? 1,
+        data: { id: overlayUuid(), kind: 'text', labelOf: container.data.id },
+      });
+      fc.add(label);
+    }
+    this._layoutLabel(container, label);
+    fc.moveTo(label, this._overlayIndex(container) + 1);
+    fc.setActiveObject(label);
+    label.enterEditing();
+    if (created) label.selectAll();
+    fc.requestRenderAll();
+  }
+
+  /** Double-click: label a shape / arrow, or edit an existing text object. */
+  private _onDoubleClick(opt: any): void {
+    const fc = this._fc;
+    if (!fc || this._tool !== 'select') return;
+    // Trailing half of the double-click that just finished an arrow — not a
+    // request to label it.
+    if (Date.now() - this._arrowFinishedByDblClickAt < 600) {
+      this._arrowFinishedByDblClickAt = 0;
+      return;
+    }
+    // skipGroup, so a container inside the live ActiveSelection resolves to the
+    // object itself rather than the selection frame.
+    const target: any = fc.findTarget?.(opt.e, true);
+    if (!target?.data?.kind || target.data.locked) return;
+    if (target.data.kind === 'text') {
+      // Reached explicitly: fabric's own double-click-to-edit only fires when
+      // the text is the sole active object, and a label never is (see _cohortFor).
+      fc.discardActiveObject();
+      fc.setActiveObject(target);
+      target.enterEditing?.();
+      fc.requestRenderAll();
+      return;
+    }
+    this._editLabel(target);
+  }
+
+  /** Bound labels always sit directly above their container in the stack. */
+  private _normalizeLabelStacking(): void {
+    const fc = this._fc;
+    if (!fc) return;
+    for (const label of this._overlayObjects()) {
+      if (!label.data.labelOf) continue;
+      const owner = this._containerFor(label);
+      if (!owner) continue;
+      const want = this._overlayIndex(owner) + 1;
+      if (this._overlayIndex(label) !== want) fc.moveTo(label, want);
+    }
+  }
+
+  /** A link into an overlay that no longer exists degrades to plain text. */
+  private _dropOrphanLabels(): void {
+    const objs = this._overlayObjects();
+    const ids = new Set(objs.map((o) => o.data.id));
+    for (const o of objs) {
+      if (o.data.labelOf && !ids.has(o.data.labelOf)) delete o.data.labelOf;
+    }
+  }
+
+  // ── Selection helpers ──────────────────────────────────────────────────────
+
+  /** Selected overlay objects — an ActiveSelection is already reported as its members. */
+  private _selectedObjects(): any[] {
+    return ((this._fc?.getActiveObjects?.() ?? []) as any[]).filter((o) => o?.data?.kind);
+  }
+
+  /** The selection minus locked objects — every mutating action works off this. */
+  private _unlockedSelection(): any[] {
+    return this._selectedObjects().filter((o) => !o.data.locked);
+  }
+
+  /** Select exactly `objs` (single object or ActiveSelection) and resync the panel. */
+  private _selectObjects(objs: any[]): void {
+    const fc = this._fc;
+    if (!fc) return;
+    fc.discardActiveObject();
+    if (objs.length === 1) {
+      fc.setActiveObject(objs[0]);
+    } else if (objs.length > 1) {
+      const fabric = (window as any).fabric;
+      fc.setActiveObject(new fabric.ActiveSelection(objs, { canvas: fc }));
+    }
+    fc.requestRenderAll();
+    this._syncControlsFromSelection();
+  }
+
+  /**
+   * Runs in the canvas wrapper's capture phase, i.e. BEFORE fabric's own
+   * mousedown listener on the child upper canvas (at the target element the
+   * capture flag no longer orders listeners, so the wrapper is the last place
+   * that reliably goes first). Both behaviours here have to land before
+   * fabric sets up its drag transform:
+   *
+   *  - Alt+drag leaves a copy behind, so the drag itself needs no special case.
+   *  - Clicking one member of a soft group promotes the selection to the whole
+   *    group, so the transform fabric is about to build covers every member.
+   */
+  private _onPreMouseDown(e: MouseEvent): void {
+    const fc = this._fc;
+    if (!fc || this._tool !== 'select' || e.button !== 0) return;
+    const target: any = fc.findTarget?.(e, false);
+    if (!target?.data?.kind) return;
+
+    if (e.altKey && !target.__corner && !target.data.locked) {
+      this._leaveCopyBehind(target);
+      return;
+    }
+    // Shift+click is fabric's add-to-selection gesture — leave it alone.
+    if (e.shiftKey) return;
+    const cohort = this._cohortFor(target);
+    if (cohort.length < 2) return;
+    const current = this._selectedObjects();
+    if (current.length === cohort.length && cohort.every((m) => current.includes(m))) return;
+    const fabric = (window as any).fabric;
+    fc.discardActiveObject();
+    fc.setActiveObject(new fabric.ActiveSelection(cohort, { canvas: fc }), e);
+    fc.requestRenderAll();
+  }
+
+  /**
+   * Alt+drag duplicate: drop an unselected copy at the object's current spot
+   * and let the user drag the original away. Same result as Excalidraw without
+   * swapping fabric's drag target mid-gesture. Groups and labels copy as a unit.
+   */
+  private _leaveCopyBehind(target: any): void {
+    const fc = this._fc;
+    if (!fc) return;
+    const pairs = this._cohortFor(target)
+      .map((obj) => ({ obj, overlay: fabricToOverlay(obj, this._W, this._H) }))
+      .filter((p) => !!p.overlay);
+    if (!pairs.length) return;
+    const clones = this._reidOverlays(pairs.map((p) => p.overlay as SlideOverlay));
+    let copied = 0;
+    clones.forEach((o, i) => {
+      const clone = overlayToFabric(o, this._W, this._H);
+      if (!clone) return;
+      if (isLinework(clone)) this._attachArrowControls(clone);
+      fc.add(clone);
+      fc.moveTo(clone, Math.max(0, this._overlayIndex(pairs[i].obj)));
+      copied++;
+    });
+    if (copied) this._commit();
+  }
+
+  /**
+   * Fresh ids for a batch of overlays, with `groupId` and `labelOf` rewritten
+   * to point inside the copy rather than back at the originals. A label copied
+   * without its container loses its link and becomes plain text.
+   */
+  private _reidOverlays(overlays: readonly SlideOverlay[]): SlideOverlay[] {
+    const ids = new Map<string, string>();
+    const groups = new Map<string, string>();
+    for (const o of overlays) ids.set(o.id, overlayUuid());
+    return overlays.map((o) => {
+      const next: SlideOverlay = { ...o, id: ids.get(o.id) ?? overlayUuid() };
+      if (o.groupId) {
+        if (!groups.has(o.groupId)) groups.set(o.groupId, overlayUuid());
+        next.groupId = groups.get(o.groupId);
+      }
+      if (o.labelOf) {
+        const owner = ids.get(o.labelOf);
+        if (owner) next.labelOf = owner;
+        else delete next.labelOf;
+      }
+      return next;
+    });
+  }
+
+  // ── Group / lock / flip / arrange ───────────────────────────────────────────
+
+  private _groupSelection(): void {
+    const objs = this._selectedObjects();
+    // Counted in units: a shape and its own label are already inseparable, so
+    // that pair alone is not a group.
+    if (objs.filter((o) => !o.data.labelOf).length < 2) return;
+    const gid = overlayUuid();
+    objs.forEach((o) => {
+      o.data.groupId = gid;
+    });
+    this._commit();
+    this._selectObjects(objs);
+    this._showToast(`Grouped ${objs.length} objects`);
+  }
+
+  private _ungroupSelection(): void {
+    const objs = this._selectedObjects();
+    if (!objs.some((o) => o.data.groupId)) return;
+    objs.forEach((o) => {
+      delete o.data.groupId;
+    });
+    this._commit();
+    this._selectObjects(objs);
+    this._showToast('Ungrouped');
+  }
+
+  /** Lock the selection unless it's already fully locked, in which case unlock it. */
+  private _toggleLock(): void {
+    const objs = this._selectedObjects();
+    if (!objs.length) return;
+    const lock = !objs.every((o) => !!o.data.locked);
+    objs.forEach((o) => applyLockState(o, lock));
+    // An ActiveSelection drags its members regardless of their own lock flags,
+    // so locking has to drop the selection to actually pin anything.
+    if (lock) this._fc.discardActiveObject();
+    this._fc.requestRenderAll();
+    this._commit();
+    this._syncPanelContext();
+    this._showToast(lock ? 'Locked' : 'Unlocked');
+  }
+
+  /**
+   * Mirror the selection about its own bounding box. Box kinds and text flip
+   * via fabric's flipX/flipY (persisted, and native in PPTX); point-based
+   * kinds mirror their `points` instead, so both round-trip with no
+   * shape-specific case. Rotated boxes mirror their bounding box rather than
+   * their rotated frame — the same approximation the resize handles make.
+   */
+  private _flipSelection(axis: 'x' | 'y'): void {
+    const objs = this._unlockedSelection();
+    if (!objs.length) return;
+    this._rebuildFromOverlays(objs, (list) => {
+      let min = Infinity;
+      let max = -Infinity;
+      for (const o of list) {
+        const lo = axis === 'x' ? o.x : o.y;
+        const hi = lo + (axis === 'x' ? o.w : o.h);
+        if (lo < min) min = lo;
+        if (hi > max) max = hi;
+      }
+      const c = (min + max) / 2;
+      return list.map((o) => {
+        const next: SlideOverlay = { ...o };
+        if (next.points) {
+          next.points = next.points.map((p) =>
+            axis === 'x' ? { x: 2 * c - p.x, y: p.y } : { x: p.x, y: 2 * c - p.y },
+          );
+        } else if (next.kind !== 'text') {
+          // Text mirrors its position with the rest of the selection but keeps
+          // its glyphs readable — mirrored type is never what's wanted, and
+          // PPTX text has no dependable flip either.
+          const key = axis === 'x' ? 'flipX' : 'flipY';
+          if (next[key]) delete next[key];
+          else next[key] = true;
+          // A mirror reverses the sense of rotation: M∘R(θ) = R(−θ)∘M, for
+          // either axis. Without this, flipping a rotated shape tilts it the
+          // wrong way.
+          if (next.rotation) next.rotation = (360 - next.rotation) % 360;
+        }
+        if (axis === 'x') next.x = 2 * c - (o.x + o.w);
+        else next.y = 2 * c - (o.y + o.h);
+        return next;
+      });
+    });
+  }
+
+  /**
+   * Round-trip `objs` through the persisted overlay model with `transform`
+   * applied, then swap the rebuilt objects back in at their original stacking
+   * positions. Ids, grouping and lock state survive because they live on the
+   * overlay. Used by geometry edits that no fabric property set expresses.
+   */
+  private _rebuildFromOverlays(
+    objs: any[],
+    transform: (list: SlideOverlay[]) => SlideOverlay[],
+  ): void {
+    const fc = this._fc;
+    if (!fc || !objs.length) return;
+    // Members of an ActiveSelection carry group-relative left/top — drop the
+    // selection first so fabricToOverlay sees absolute coordinates. (The usual
+    // _withFlatSelection helper can't be used here: it restores the selection
+    // from objects this method is about to remove.)
+    fc.discardActiveObject();
+
+    const stack = fc.getObjects() as any[];
+    const entries = objs
+      .map((obj) => ({
+        obj,
+        index: stack.indexOf(obj),
+        overlay: fabricToOverlay(obj, this._W, this._H),
+      }))
+      .filter((e) => !!e.overlay);
+    if (!entries.length) return;
+
+    const next = transform(entries.map((e) => e.overlay as SlideOverlay));
+    const rebuilt: any[] = [];
+    entries.forEach((e, i) => {
+      const obj = overlayToFabric(next[i], this._W, this._H);
+      if (!obj) return;
+      fc.remove(e.obj);
+      if (isLinework(obj)) this._attachArrowControls(obj);
+      fc.add(obj);
+      if (e.index >= 0) fc.moveTo(obj, e.index);
+      rebuilt.push(obj);
+    });
+    if (!rebuilt.length) return;
+    this._commit();
+    this._selectObjects(rebuilt);
+  }
+
+  /** Absolute bounding boxes of `objs`, valid only with the selection dissolved. */
+  private _boxesOf(objs: any[]): Array<{ obj: any; r: any }> {
+    return objs.map((obj) => ({ obj, r: obj.getBoundingRect(true, true) }));
+  }
+
+  private _shift(obj: any, dx: number, dy: number): void {
+    if (!dx && !dy) return;
+    obj.set({ left: (obj.left ?? 0) + dx, top: (obj.top ?? 0) + dy });
+    obj.setCoords();
+  }
+
+  /** Move an object and its bound label together — align/distribute move units, not objects. */
+  private _shiftUnit(obj: any, dx: number, dy: number): void {
+    this._shift(obj, dx, dy);
+    const label = this._labelFor(obj);
+    if (label && label !== obj) this._shift(label, dx, dy);
+  }
+
+  /**
+   * Align/distribute targets: the selection minus bound labels, which travel
+   * with their container instead of being positioned in their own right.
+   */
+  private _arrangeUnits(): any[] {
+    return this._unlockedSelection().filter((o) => !o.data.labelOf);
+  }
+
+  private _alignSelection(mode: AlignMode): void {
+    const objs = this._arrangeUnits();
+    if (objs.length < 2) return;
+    const horizontal = mode === 'left' || mode === 'right' || mode === 'centerH';
+    this._withFlatSelection(() => {
+      const boxes = this._boxesOf(objs);
+      let min = Infinity;
+      let max = -Infinity;
+      for (const b of boxes) {
+        const lo = horizontal ? b.r.left : b.r.top;
+        const hi = lo + (horizontal ? b.r.width : b.r.height);
+        if (lo < min) min = lo;
+        if (hi > max) max = hi;
+      }
+      for (const b of boxes) {
+        const lo = horizontal ? b.r.left : b.r.top;
+        const size = horizontal ? b.r.width : b.r.height;
+        let delta = 0;
+        switch (mode) {
+          case 'left':
+          case 'top':
+            delta = min - lo;
+            break;
+          case 'right':
+          case 'bottom':
+            delta = max - (lo + size);
+            break;
+          default: // centerH | centerV
+            delta = (min + max) / 2 - (lo + size / 2);
+        }
+        this._shiftUnit(b.obj, horizontal ? delta : 0, horizontal ? 0 : delta);
+      }
+    });
+    this._fc.requestRenderAll();
+    this._commit();
+  }
+
+  /** Even out the gaps between the outermost two objects' centers. */
+  private _distributeSelection(axis: 'h' | 'v'): void {
+    const objs = this._arrangeUnits();
+    if (objs.length < 3) return;
+    this._withFlatSelection(() => {
+      const center = (r: any) => (axis === 'h' ? r.left + r.width / 2 : r.top + r.height / 2);
+      const boxes = this._boxesOf(objs).sort((a, b) => center(a.r) - center(b.r));
+      const first = center(boxes[0].r);
+      const last = center(boxes[boxes.length - 1].r);
+      const step = (last - first) / (boxes.length - 1);
+      boxes.forEach((b, i) => {
+        if (i === 0 || i === boxes.length - 1) return;
+        const delta = first + step * i - center(b.r);
+        this._shiftUnit(b.obj, axis === 'h' ? delta : 0, axis === 'h' ? 0 : delta);
+      });
+    });
+    this._fc.requestRenderAll();
+    this._commit();
+  }
+
+  // ── Style clipboard ────────────────────────────────────────────────────────
+
+  private _copyStyles(): void {
+    if (!this._selectedObjects().length) return;
+    // _defaults already mirrors the selection — see _syncControlsFromSelection.
+    SlideEditor._styleClipboard = { ...this._defaults };
+    this._showToast('Styles copied');
+  }
+
+  private _pasteStyles(): void {
+    const clip = SlideEditor._styleClipboard;
+    const objs = this._unlockedSelection();
+    if (!clip || !objs.length) return;
+    this._defaults = { ...clip };
+    for (const obj of objs) {
+      for (const prop of COPYABLE_STYLE_PROPS) this._applyStyleTo(obj, prop);
+    }
+    // Arrow shape and terminators are geometry — those arrows have to be
+    // rebuilt, and the rebuild replaces the object, so the selection is
+    // re-formed from the new ones.
+    const stale = objs.filter(
+      (o) =>
+        isLinework(o) &&
+        ((o.data.arrowType ?? 'sharp') !== clip.arrowType ||
+          (o.data.kind === 'arrow' &&
+            ((o.data.arrowStart ?? 'none') !== clip.arrowStart ||
+              (o.data.arrowEnd ?? 'triangle') !== clip.arrowEnd))),
+    );
+    if (stale.length) {
+      const kept = objs.filter((o) => !stale.includes(o));
+      const rebuilt = stale.map((o) => this._applyArrowGeometryChange(o, true));
+      this._selectObjects([...kept, ...rebuilt]);
+    }
+    this._fc.requestRenderAll();
+    this._commit();
+    this._ui?.refreshPanelValues();
+  }
+
+  // ── Tool lock ──────────────────────────────────────────────────────────────
+
+  private _setToolLock(on: boolean): void {
+    this._toolLock = on;
+    this._ui?.setToolLock(on);
+    this._showToast(on ? 'Tool stays armed after each draw (Q)' : 'Tool reverts to Select (Q)');
+  }
+
+  // ── Right-click menu ───────────────────────────────────────────────────────
+
+  private _onCanvasContextMenu(e: MouseEvent): void {
+    e.preventDefault();
+    const fc = this._fc;
+    const ui = this._ui;
+    if (!fc || !ui) return;
+    if (this._tool !== 'select') this._setTool('select');
+
+    const target: any = fc.findTarget?.(e, false);
+    if (target?.data?.kind && !this._selectedObjects().includes(target)) {
+      this._selectObjects(this._cohortFor(target));
+    } else if (!target) {
+      fc.discardActiveObject();
+      fc.requestRenderAll();
+    }
+
+    const objs = this._selectedObjects();
+    ui.showContextMenu(e.clientX, e.clientY, {
+      count: objs.length,
+      locked: objs.length > 0 && objs.every((o) => !!o.data.locked),
+      canGroup: objs.length > 1,
+      canUngroup: objs.some((o) => !!o.data.groupId),
+      canPaste: SlideEditor._clipboard.length > 0,
+      canPasteStyles: !!SlideEditor._styleClipboard,
+    });
   }
 
   // ── Undo / redo ────────────────────────────────────────────────────────────
@@ -1458,10 +2269,11 @@ export default class SlideEditor {
     for (const o of overlays) {
       const obj = overlayToFabric(o, this._W, this._H);
       if (obj) {
-        if (obj.data?.kind === 'arrow') this._attachArrowControls(obj);
+        if (isLinework(obj)) this._attachArrowControls(obj);
         this._fc.add(obj);
       }
     }
+    this._dropOrphanLabels();
     this._fc.requestRenderAll();
     this._syncPanelContext();
   }
@@ -1469,22 +2281,30 @@ export default class SlideEditor {
   // ── Style controls ↔ selection ─────────────────────────────────────────────
 
   private _onStyleChanged(prop: StyleProp): void {
-    const objs: any[] = this._fc?.getActiveObjects?.() ?? [];
-    if (prop === 'arrowType') {
-      const rebuilt = objs
-        .filter((o) => o?.data?.kind === 'arrow')
-        .map((o) => this._applyArrowTypeChange(o));
-      if (rebuilt.length > 1) {
-        const fabric = (window as any).fabric;
-        this._fc.setActiveObject(new fabric.ActiveSelection(rebuilt, { canvas: this._fc }));
-        this._fc.requestRenderAll();
-      } else if (rebuilt.length === 1) {
-        this._fc.setActiveObject(rebuilt[0]);
-      }
-      if (this._fc?.isDrawingMode) this._configureBrush();
-      return;
+    const objs = this._unlockedSelection();
+    // An arrow's shape and terminators are geometry, not properties, so those
+    // arrows get rebuilt instead of patched — which replaces the object and so
+    // re-forms the selection. Stroke width joins them because terminators are
+    // sized from it: patching alone would leave a thick arrow with a tiny head.
+    const shapeOnly = prop === 'arrowType' || prop === 'arrowStart' || prop === 'arrowEnd';
+    if (!shapeOnly) {
+      for (const obj of objs) this._applyStyleTo(obj, prop);
     }
-    for (const obj of objs) this._applyStyleTo(obj, prop);
+    if (shapeOnly || prop === 'strokeWidthPx') {
+      // Terminators are arrow-only; the shape control and stroke width apply to
+      // every linework kind.
+      const arrows = objs.filter((o) =>
+        prop === 'arrowStart' || prop === 'arrowEnd' ? o?.data?.kind === 'arrow' : isLinework(o),
+      );
+      if (arrows.length) {
+        const kept = objs.filter((o) => !arrows.includes(o));
+        // Only stamp the panel's arrow slots when the arrow slots are what
+        // changed — a width change must not normalize every selected arrow's
+        // shape and terminators onto whatever the panel happens to show.
+        const rebuilt = arrows.map((o) => this._applyArrowGeometryChange(o, shapeOnly));
+        this._selectObjects([...kept, ...rebuilt]);
+      }
+    }
     if (objs.length) {
       this._fc.requestRenderAll();
       this._commitDebounced();
@@ -1492,7 +2312,13 @@ export default class SlideEditor {
     if (this._fc?.isDrawingMode) this._configureBrush();
   }
 
-  private _applyArrowTypeChange(obj: any): any {
+  /**
+   * Rebuild one arrow, optionally re-stamping its shape + terminators from the
+   * current panel defaults first. Without the stamp it just regenerates at its
+   * existing settings — which is what a stroke-width change needs, so the
+   * terminators come back out at the new size.
+   */
+  private _applyArrowGeometryChange(obj: any, stampDefaults: boolean): any {
     const fabric = (window as any).fabric;
     const lp: Array<{ x: number; y: number }> = obj.data?.localPoints ?? [];
     const m = obj.calcTransformMatrix();
@@ -1500,14 +2326,26 @@ export default class SlideEditor {
       const abs = fabric.util.transformPoint(new fabric.Point(p.x, p.y), m);
       return { x: abs.x, y: abs.y };
     });
-    obj.data.arrowType = this._defaults.arrowType;
+    if (stampDefaults) {
+      obj.data.arrowType = this._defaults.arrowType;
+      if (obj.data.kind === 'arrow') {
+        obj.data.arrowStart = this._defaults.arrowStart;
+        obj.data.arrowEnd = this._defaults.arrowEnd;
+      }
+    }
     return this._rebuildArrow(obj, absPoints);
+  }
+
+  /** The path child that carries a linework group's stroke — always child 0. */
+  private _lineworkPath(obj: any): any | null {
+    return obj?.getObjects?.()?.[0] ?? null;
   }
 
   private _applyStyleTo(obj: any, prop: StyleProp): void {
     const d = this._defaults;
     const kind = obj?.data?.kind;
     if (!kind) return;
+    const linework = isLinework(obj);
     const dashVal = d.strokeDash === 'solid' ? undefined : d.strokeDash;
     switch (prop) {
       case 'fontFamily':
@@ -1538,10 +2376,12 @@ export default class SlideEditor {
         }
         break;
       case 'stroke':
-        if (kind === 'arrow') {
+        if (linework) {
           obj.getObjects?.()?.forEach((ch: any) => {
-            if (ch.type === 'path') ch.set({ stroke: d.stroke });
-            else ch.set({ fill: d.stroke });
+            // Terminators say which slot their colour lives in; anything
+            // untagged is the linework's own path.
+            if (ch.data?.arrowHead && !ch.data.strokeOnly) ch.set({ fill: d.stroke });
+            else ch.set({ stroke: d.stroke });
           });
           obj.dirty = true;
         } else if (kind !== 'text') {
@@ -1549,9 +2389,8 @@ export default class SlideEditor {
         }
         break;
       case 'strokeWidthPx':
-        if (kind === 'arrow') {
-          const line = obj.getObjects?.()?.find((ch: any) => ch.type === 'path');
-          line?.set({
+        if (linework) {
+          this._lineworkPath(obj)?.set({
             strokeWidth: d.strokeWidthPx,
             ...dashProps(obj.data.strokeDash, d.strokeWidthPx),
           });
@@ -1569,16 +2408,12 @@ export default class SlideEditor {
       case 'strokeDash': {
         if (kind === 'text' || kind === 'highlight') break;
         obj.data.strokeDash = dashVal;
-        const width =
-          kind === 'arrow'
-            ? obj.getObjects?.()?.find((ch: any) => ch.type === 'path')?.strokeWidth ?? 3
-            : obj.strokeWidth ?? 3;
-        if (kind === 'arrow') {
-          const line = obj.getObjects?.()?.find((ch: any) => ch.type === 'path');
-          line?.set(dashProps(dashVal, width));
+        if (linework) {
+          const path = this._lineworkPath(obj);
+          path?.set(dashProps(dashVal, path.strokeWidth ?? 3));
           obj.dirty = true;
         } else {
-          obj.set(dashProps(dashVal, width));
+          obj.set(dashProps(dashVal, obj.strokeWidth ?? 3));
         }
         break;
       }
@@ -1590,8 +2425,24 @@ export default class SlideEditor {
   }
 
   private _panelContextFor(): PanelContext {
-    const objs: any[] = this._fc?.getActiveObjects?.() ?? [];
+    const objs = this._selectedObjects();
     if (objs.length) {
+      const locked = objs.every((o) => !!o.data.locked);
+      // Counted in units, not objects — a bound label isn't independently
+      // alignable, so a labelled shape must not read as a two-object selection.
+      const count = objs.filter((o) => !o.data.labelOf).length;
+      // A shape with its label shows both sets of controls in one island —
+      // style changes route per-object by kind, so they can't collide.
+      const pair = this._labeledPair(objs);
+      if (pair) {
+        const ck = pair.container.data.kind;
+        return {
+          kind: ck === 'arrow' ? 'labeledArrow' : ck === 'line' ? 'labeledLine' : 'labeled',
+          hasSelection: true,
+          count,
+          locked,
+        };
+      }
       const kinds = new Set(objs.map((o) => o?.data?.kind).filter(Boolean));
       let kind: PanelContext['kind'] = 'mixed';
       if (kinds.size === 1) {
@@ -1605,23 +2456,27 @@ export default class SlideEditor {
                 ? 'highlight'
                 : k === 'arrow'
                   ? 'arrow'
-                  : 'linework';
+                  : k === 'line'
+                    ? 'line'
+                    : 'linework'; // freehand
       }
-      return { kind, hasSelection: true };
+      return { kind, hasSelection: true, count, locked };
     }
-    if (BOX_TOOLS.has(this._tool)) return { kind: 'box', hasSelection: false };
+    const idle = { hasSelection: false, count: 0, locked: false };
+    if (BOX_TOOLS.has(this._tool)) return { kind: 'box', ...idle };
     switch (this._tool) {
       case 'text':
-        return { kind: 'text', hasSelection: false };
+        return { kind: 'text', ...idle };
       case 'arrow':
-        return { kind: 'arrow', hasSelection: false };
+        return { kind: 'arrow', ...idle };
       case 'line':
+        return { kind: 'line', ...idle };
       case 'freehand':
-        return { kind: 'linework', hasSelection: false };
+        return { kind: 'linework', ...idle };
       case 'highlighter':
-        return { kind: 'highlight', hasSelection: false };
+        return { kind: 'highlight', ...idle };
       default:
-        return { kind: 'none', hasSelection: false };
+        return { kind: 'none', ...idle };
     }
   }
 
@@ -1629,17 +2484,29 @@ export default class SlideEditor {
     this._ui?.showPanel(this._panelContextFor());
   }
 
-  /** Populate the properties island from the newly-selected object. */
+  /** Populate the properties island from the newly-selected object(s). */
   private _syncControlsFromSelection(): void {
     const obj: any = this._fc?.getActiveObject?.();
+    if (obj?.data?.kind) {
+      this._readStyleFrom(obj);
+    } else {
+      // Multi-select: an ActiveSelection carries no kind of its own, so only a
+      // shape-plus-its-label pair has an unambiguous style to show. Shape
+      // first, then the label — the text slots must be the ones that stick.
+      const pair = this._labeledPair(this._selectedObjects());
+      if (pair) {
+        this._readStyleFrom(pair.container);
+        this._readStyleFrom(pair.label);
+      }
+    }
+    this._syncPanelContext();
+  }
+
+  /** Copy one object's style into the panel defaults. */
+  private _readStyleFrom(obj: any): void {
     const kind = obj?.data?.kind;
     const d = this._defaults;
-    if (!kind) {
-      // Multi-select (ActiveSelection carries no kind) or nothing — just
-      // re-contextualize the panel around current defaults.
-      this._syncPanelContext();
-      return;
-    }
+    if (!kind) return;
 
     if (kind === 'text') {
       d.fontFamily = obj.fontFamily || 'Arial';
@@ -1659,8 +2526,7 @@ export default class SlideEditor {
           d.fill = null;
         }
       }
-      const strokeSrc =
-        kind === 'arrow' ? obj.getObjects?.()?.find((ch: any) => ch.type === 'path') : obj;
+      const strokeSrc = isLinework(obj) ? this._lineworkPath(obj) : obj;
       const stroke = parseColor(strokeSrc?.stroke);
       if (stroke) d.stroke = stroke.hex;
       if (strokeSrc?.strokeWidth) {
@@ -1668,10 +2534,14 @@ export default class SlideEditor {
         else d.strokeWidthPx = Math.round(strokeSrc.strokeWidth);
       }
       d.strokeDash = obj.data.strokeDash ?? 'solid';
-      if (kind === 'arrow') d.arrowType = (obj.data.arrowType ?? 'sharp') as ArrowType;
+      // One shared shape slot for both linework kinds; terminators are arrows only.
+      if (isLinework(obj)) d.arrowType = (obj.data.arrowType ?? 'sharp') as ArrowType;
+      if (kind === 'arrow') {
+        d.arrowStart = obj.data.arrowStart ?? 'none';
+        d.arrowEnd = obj.data.arrowEnd ?? 'triangle';
+      }
     }
     d.opacity = obj.opacity ?? 1;
-    this._syncPanelContext();
   }
 
   // ── Keys ───────────────────────────────────────────────────────────────────
@@ -1700,6 +2570,14 @@ export default class SlideEditor {
       if (e.key === 'Escape') {
         e.stopPropagation();
         e.preventDefault();
+        if (this._ui?.helpOpen) {
+          this._ui.closeHelp();
+          return;
+        }
+        if (this._ui?.contextMenuOpen) {
+          this._ui.hideContextMenu();
+          return;
+        }
         if (editingText) {
           active.exitEditing();
           return;
@@ -1735,12 +2613,30 @@ export default class SlideEditor {
       }
 
       const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.altKey) {
+        // Style clipboard — Excalidraw's Ctrl+Alt+C / Ctrl+Alt+V.
+        const k = e.key.toLowerCase();
+        if (k !== 'c' && k !== 'v') return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (k === 'c') this._copyStyles();
+        else this._pasteStyles();
+        return;
+      }
       if (mod && !e.altKey) {
         const k = e.key.toLowerCase();
         let handled = true;
         switch (k) {
           case 'c':
             this._copySelection();
+            break;
+          case 'g':
+            if (e.shiftKey) this._ungroupSelection();
+            else this._groupSelection();
+            break;
+          case 'l':
+            if (e.shiftKey) this._toggleLock();
+            else handled = false;
             break;
           case 'x':
             this._cutSelection();
@@ -1787,21 +2683,50 @@ export default class SlideEditor {
       }
 
       if (!mod && !e.altKey) {
-        // Single-key tool shortcuts (Excalidraw layout).
-        const def = TOOL_DEFS.find((t) => t.letter === e.key.toLowerCase() || t.num === e.key);
-        if (def) {
+        const k = e.key.toLowerCase();
+        if (e.key === '?') {
           e.preventDefault();
           e.stopPropagation();
-          this._setTool(def.tool);
+          this._ui?.toggleHelp();
           return;
+        }
+        // Shift+H / Shift+V flip. Checked before the tool table, which would
+        // otherwise see the same 'h' / 'v' and arm the highlighter / select.
+        if (e.shiftKey && (k === 'h' || k === 'v')) {
+          e.preventDefault();
+          e.stopPropagation();
+          this._flipSelection(k === 'h' ? 'x' : 'y');
+          return;
+        }
+        if (!e.shiftKey) {
+          if (k === 'q') {
+            e.preventDefault();
+            e.stopPropagation();
+            this._setToolLock(!this._toolLock);
+            return;
+          }
+          // Single-key tool shortcuts (Excalidraw layout).
+          const def = TOOL_DEFS.find((t) => t.letter === k || t.num === e.key);
+          if (def) {
+            e.preventDefault();
+            e.stopPropagation();
+            this._setTool(def.tool);
+            return;
+          }
         }
         if (NUDGE_KEYS[e.key] && active) {
           e.preventDefault();
           e.stopPropagation();
+          // Locked objects never move — drop them from the selection first so
+          // the ActiveSelection frame stays in step with what actually shifts.
+          const movable = this._unlockedSelection();
+          if (!movable.length) return;
+          if (movable.length !== this._selectedObjects().length) this._selectObjects(movable);
+          const target: any = this._fc.getActiveObject();
+          if (!target) return;
           const [dx, dy] = NUDGE_KEYS[e.key];
           const step = e.shiftKey ? 10 : 1;
-          active.set({ left: (active.left ?? 0) + dx * step, top: (active.top ?? 0) + dy * step });
-          active.setCoords();
+          this._shift(target, dx * step, dy * step);
           this._fc.requestRenderAll();
           this._commitDebounced();
           return;

@@ -43,7 +43,11 @@ import {
 } from '../../Support/Elevation/ElevationUtils';
 import EngineLogger from '../../Support/EngineLogger';
 import settingsData from '../../Data/Settings.json';
-import type { Slide as BriefingSlide, SlideOverlay } from '../Briefing/BriefingTypes';
+import type {
+  ArrowHead,
+  Slide as BriefingSlide,
+  SlideOverlay,
+} from '../Briefing/BriefingTypes';
 
 const ENGINE_NAME = 'PptxExporter';
 
@@ -69,6 +73,24 @@ const OVERLAY_SHAPE_TYPES: Partial<Record<SlideOverlay['kind'], string>> = {
   triangle: 'triangle',
   star: 'star5',
   callout: 'wedgeRoundRectCallout',
+};
+
+/**
+ * Arrow terminators → OOXML line-end types. Approximations, all of them
+ * lossless in position but not in detail: OOXML arrowheads always paint filled
+ * in the line colour, so the outline variants collapse onto their solid twins,
+ * and there is no perpendicular-bar terminator at all (it drops to none).
+ */
+const PPTX_ARROW_TYPES: Record<ArrowHead, string> = {
+  none: 'none',
+  arrow: 'arrow',
+  triangle: 'triangle',
+  triangleOutline: 'triangle',
+  bar: 'none',
+  circle: 'oval',
+  circleOutline: 'oval',
+  diamond: 'diamond',
+  diamondOutline: 'diamond',
 };
 
 let pptxGenJSLoadPromise: Promise<any> | null = null;
@@ -839,14 +861,21 @@ class PptxExporter {
           }
         : { color: 'FFFFFF', width: 0.5, transparency: 100 },
       rotate: this._ovRotate(o),
+      // Mirrored box overlays — pptxgenjs writes these straight into the xfrm.
+      flipH: o.flipX || undefined,
+      flipV: o.flipY || undefined,
     });
   }
 
   /** line / arrow / freehand — custGeom path; arrows get a triangle head. */
   private _emitOverlayPath(slide: any, o: SlideOverlay, fit: ContainFit): void {
     const rawPts = o.points ?? [];
-    const normPts =
-      o.kind === 'arrow' && o.arrowType === 'elbow' ? this._elbowWaypoints(rawPts) : rawPts;
+    // Elbow linework renders as a dogleg — export the orthogonal waypoints it
+    // actually draws, for arrows and lines alike.
+    const isElbow =
+      (o.kind === 'arrow' && o.arrowType === 'elbow') ||
+      (o.kind === 'line' && o.lineType === 'elbow');
+    const normPts = isElbow ? this._elbowWaypoints(rawPts) : rawPts;
     const pts = normPts.map((p) => ({
       x: fit.x + p.x * fit.w,
       y: fit.y + p.y * fit.h,
@@ -873,7 +902,11 @@ class PptxExporter {
         color: this._ovHex(o.stroke, 'FF3B30'),
         width: this._ovStrokePt(o, fit),
         transparency: Math.round((1 - (o.opacity ?? 1)) * 100),
-        endArrowType: o.kind === 'arrow' ? 'triangle' : undefined,
+        // Absent head fields mean the pre-per-end-terminator defaults.
+        beginArrowType:
+          o.kind === 'arrow' ? PPTX_ARROW_TYPES[o.arrowStart ?? 'none'] : undefined,
+        endArrowType:
+          o.kind === 'arrow' ? PPTX_ARROW_TYPES[o.arrowEnd ?? 'triangle'] : undefined,
         dashType: this._ovDashType(o),
       },
     });
