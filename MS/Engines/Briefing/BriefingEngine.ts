@@ -1056,12 +1056,12 @@ class BriefingEngine {
   // ── Persistence ────────────────────────────────────────────────────────────
 
   public exportBriefing(): BriefingDocument {
-    // version 5 = table overlays + text listStyle; 4 = slides may be
-    // screen-only (imported PPTX: no extent/camera, backgroundDataUrl is the
-    // slide); 3 = full-res background fallback; 2 = editor overlays.
-    // Import accepts 1–5 (every added field is optional, so it reads older
-    // documents unchanged).
-    return { version: 5, slides: this._slides.map((s) => ({ ...s })) };
+    // version 6 = milsym overlays + block/tactical arrows; 5 = table overlays +
+    // text listStyle; 4 = slides may be screen-only (imported PPTX: no
+    // extent/camera, backgroundDataUrl is the slide); 3 = full-res background
+    // fallback; 2 = editor overlays. Import accepts 1–6 (every added field is
+    // optional, so it reads older documents unchanged).
+    return { version: 6, slides: this._slides.map((s) => ({ ...s })) };
   }
 
   public importBriefing(doc: BriefingDocument | null | undefined): void {

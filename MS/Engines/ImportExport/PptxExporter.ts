@@ -53,6 +53,13 @@ import {
   DEFAULT_TABLE_STROKE_WIDTH,
   normalizeTable,
 } from '../Briefing/OverlayTable';
+import {
+  DEFAULT_BLOCK_HEAD_RATIO,
+  DEFAULT_TAC_WIDTH,
+  blockArrowPoints,
+} from '../Briefing/OverlayFabric';
+import { renderMilSym } from '../Briefing/MilSymFactory';
+import { buildTacArrowOutline, outlineBounds } from '../Briefing/TacArrowGeometry';
 
 const ENGINE_NAME = 'PptxExporter';
 
@@ -70,6 +77,20 @@ const SLIDE_H_IN = 5.625;
 /** Offline browser bundle — see the file banner above. */
 const PPTXGENJS_SCRIPT_SRC = 'MS/ThirdParty/PptxGenJS/pptxgen.bundle.js';
 
+/**
+ * Nominal pixels per slide inch. Only ever used to give the geometry helpers
+ * (which think in pixels) a working scale, and to size raster re-renders.
+ */
+const PPTX_EXPORT_DPI = 96;
+/** Military symbols re-render at this multiple of their on-slide size. */
+const MILSYM_EXPORT_SCALE = 4;
+/** Block-arrow kinds — head size decides preset vs exact geometry on export. */
+const BLOCK_ARROW_KINDS: ReadonlySet<string> = new Set([
+  'blockArrow',
+  'blockArrowDouble',
+  'chevron',
+]);
+
 /** Box-persisted overlay kinds → native pptx preset shapes. */
 const OVERLAY_SHAPE_TYPES: Partial<Record<SlideOverlay['kind'], string>> = {
   rect: 'rect',
@@ -78,6 +99,11 @@ const OVERLAY_SHAPE_TYPES: Partial<Record<SlideOverlay['kind'], string>> = {
   triangle: 'triangle',
   star: 'star5',
   callout: 'wedgeRoundRectCallout',
+  // The block arrows exist natively in OOXML, so they land in PowerPoint as
+  // real, editable arrow shapes rather than as flattened freeforms.
+  blockArrow: 'rightArrow',
+  blockArrowDouble: 'leftRightArrow',
+  chevron: 'chevron',
 };
 
 /**
@@ -793,7 +819,9 @@ class PptxExporter {
       try {
         if (o.kind === 'text') this._emitOverlayText(slide, o, fit);
         else if (o.kind === 'image') this._emitOverlayImage(slide, o, fit);
+        else if (o.kind === 'milsym') this._emitOverlayMilSym(slide, o, fit);
         else if (o.kind === 'table') this._emitOverlayTable(slide, o, fit);
+        else if (o.kind === 'tacArrow') this._emitOverlayTacArrow(slide, o, fit);
         else if (OVERLAY_SHAPE_TYPES[o.kind]) this._emitOverlayBox(slide, o, fit);
         else this._emitOverlayPath(slide, o, fit); // line | arrow | freehand | highlight
         emitted++;
@@ -948,7 +976,99 @@ class PptxExporter {
     });
   }
 
+  /**
+   * A military symbol is re-rendered from its SIDC at ~4× its on-slide size and
+   * emitted as a picture. PowerPoint has no notion of 2525D, so raster is the
+   * only faithful option; rendering fresh here (rather than reusing the editor's
+   * ~1000px canvas) is what keeps it sharp when the deck is projected or
+   * printed. This is the whole reason a milsym overlay stores a SIDC and not a
+   * bitmap — export resolution is decided at export time.
+   */
+  private _emitOverlayMilSym(slide: any, o: SlideOverlay, fit: ContainFit): void {
+    if (!o.sidc) return;
+    const hIn = Math.max(0.02, o.h * fit.h);
+    const render = renderMilSym(o.sidc, o.symOptions, hIn * PPTX_EXPORT_DPI * MILSYM_EXPORT_SCALE);
+    if (!render) {
+      EngineLogger.error(ENGINE_NAME, `Symbol could not be rendered for export (${o.sidc})`);
+      return;
+    }
+    slide.addImage({
+      data: render.canvas.toDataURL('image/png'),
+      x: fit.x + o.x * fit.w,
+      y: fit.y + o.y * fit.h,
+      // Height is authoritative; width follows the marker's own aspect, which
+      // amplifier text widens asymmetrically.
+      w: Math.max(0.02, hIn * (render.width / (render.height || 1))),
+      h: hIn,
+      rotate: this._ovRotate(o),
+      flipH: o.flipX || undefined,
+      flipV: o.flipY || undefined,
+      transparency:
+        o.opacity != null && o.opacity < 1 ? Math.round((1 - o.opacity) * 100) : undefined,
+    });
+  }
+
+  /**
+   * A filled tactical arrow — custGeom over the same outline the editor draws,
+   * regenerated at export scale so curves stay smooth. It lands as an editable
+   * PowerPoint freeform.
+   */
+  private _emitOverlayTacArrow(slide: any, o: SlideOverlay, fit: ContainFit): void {
+    const pts = (o.points ?? []).map((p) => ({
+      x: (fit.x + p.x * fit.w) * PPTX_EXPORT_DPI,
+      y: (fit.y + p.y * fit.h) * PPTX_EXPORT_DPI,
+    }));
+    if (pts.length < 2) return;
+    const outline = buildTacArrowOutline({
+      points: pts,
+      widthPx: (o.width ?? DEFAULT_TAC_WIDTH) * fit.h * PPTX_EXPORT_DPI,
+      headRatio: o.headRatio,
+      taper: o.taper,
+      headAtEnd: (o.arrowEnd ?? 'triangle') !== 'none',
+      headAtStart: (o.arrowStart ?? 'none') !== 'none',
+      arrowType: o.arrowType ?? 'sharp',
+    });
+    if (!outline) return;
+    const b = outlineBounds(outline.ring);
+    const fillAlpha = (o.fillOpacity ?? 1) * (o.opacity ?? 1);
+    slide.addShape('custGeom', {
+      x: b.x / PPTX_EXPORT_DPI,
+      y: b.y / PPTX_EXPORT_DPI,
+      w: Math.max(0.02, b.w / PPTX_EXPORT_DPI),
+      h: Math.max(0.02, b.h / PPTX_EXPORT_DPI),
+      points: [
+        ...outline.ring.map((p) => ({
+          x: (p.x - b.x) / PPTX_EXPORT_DPI,
+          y: (p.y - b.y) / PPTX_EXPORT_DPI,
+        })),
+        { close: true },
+      ],
+      fill: o.fill
+        ? { color: this._ovHex(o.fill, 'FFD166'), transparency: Math.round((1 - fillAlpha) * 100) }
+        : { color: 'FFFFFF', transparency: 100 },
+      line: o.stroke
+        ? {
+            color: this._ovHex(o.stroke, 'FF3B30'),
+            width: this._ovStrokePt(o, fit),
+            transparency: Math.round((1 - (o.opacity ?? 1)) * 100),
+            dashType: this._ovDashType(o),
+          }
+        : { color: 'FFFFFF', width: 0.5, transparency: 100 },
+    });
+  }
+
   private _emitOverlayBox(slide: any, o: SlideOverlay, fit: ContainFit): void {
+    // Block arrows are native presets, but pptxgenjs can't write a shape's
+    // adjustment values — so a head size other than OOXML's own default would
+    // silently change on export. Those go out as exact custGeom instead: still
+    // an editable vector shape, just not a preset with adjustment handles.
+    if (
+      BLOCK_ARROW_KINDS.has(o.kind) &&
+      Math.abs((o.headRatio ?? DEFAULT_BLOCK_HEAD_RATIO) - DEFAULT_BLOCK_HEAD_RATIO) > 0.01
+    ) {
+      this._emitOverlayBlockArrowGeom(slide, o, fit);
+      return;
+    }
     const alpha = (o.fillOpacity ?? 1) * (o.opacity ?? 1);
     slide.addShape(OVERLAY_SHAPE_TYPES[o.kind] ?? 'rect', {
       x: fit.x + o.x * fit.w,
@@ -968,6 +1088,44 @@ class PptxExporter {
         : { color: 'FFFFFF', width: 0.5, transparency: 100 },
       rotate: this._ovRotate(o),
       // Mirrored box overlays — pptxgenjs writes these straight into the xfrm.
+      flipH: o.flipX || undefined,
+      flipV: o.flipY || undefined,
+    });
+  }
+
+  /**
+   * A block arrow whose head size the preset can't carry, emitted as its exact
+   * vertices. Rotation and mirroring still ride on the xfrm, so only the
+   * "preset with handles" affordance is lost — see _emitOverlayBox.
+   */
+  private _emitOverlayBlockArrowGeom(slide: any, o: SlideOverlay, fit: ContainFit): void {
+    const w = Math.max(0.02, o.w * fit.w);
+    const h = Math.max(0.02, o.h * fit.h);
+    const alpha = (o.fillOpacity ?? 1) * (o.opacity ?? 1);
+    const pts = blockArrowPoints(
+      o.kind as 'blockArrow' | 'blockArrowDouble' | 'chevron',
+      w,
+      h,
+      o.headRatio ?? DEFAULT_BLOCK_HEAD_RATIO,
+    );
+    slide.addShape('custGeom', {
+      x: fit.x + o.x * fit.w,
+      y: fit.y + o.y * fit.h,
+      w,
+      h,
+      points: [...pts, { close: true }],
+      fill: o.fill
+        ? { color: this._ovHex(o.fill, 'FFD166'), transparency: Math.round((1 - alpha) * 100) }
+        : { color: 'FFFFFF', transparency: 100 },
+      line: o.stroke
+        ? {
+            color: this._ovHex(o.stroke, 'FF3B30'),
+            width: this._ovStrokePt(o, fit),
+            transparency: Math.round((1 - (o.opacity ?? 1)) * 100),
+            dashType: this._ovDashType(o),
+          }
+        : { color: 'FFFFFF', width: 0.5, transparency: 100 },
+      rotate: this._ovRotate(o),
       flipH: o.flipX || undefined,
       flipV: o.flipY || undefined,
     });

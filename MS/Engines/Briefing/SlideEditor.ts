@@ -29,6 +29,7 @@ import {
   loadOverlayImage,
   makeArrowGroup,
   makeShapeObject,
+  makeTacArrowGroup,
   overlayToFabric,
   overlayUuid,
   parseColor,
@@ -36,8 +37,22 @@ import {
   restoreSelectionControls,
   styleSelectionControls,
   withAlpha,
+  DEFAULT_BLOCK_HEAD_RATIO,
+  DEFAULT_TAC_HEAD_RATIO,
   type ArrowType,
 } from './OverlayFabric';
+import {
+  DEFAULT_MILSYM_STATE,
+  buildSidc,
+  cleanAmplifiers,
+  isMilSymAvailable,
+  keyFromSidc,
+  milSymAspect,
+  parseSidcToState,
+  sidcFromKey,
+} from './MilSymFactory';
+import MilSymPicker from './MilSymPicker';
+import { buildTacArrowOutline } from './TacArrowGeometry';
 import {
   DEFAULT_TABLE_COLS,
   DEFAULT_TABLE_HEADER_FILL,
@@ -103,10 +118,45 @@ const BOX_TOOLS: ReadonlySet<Tool> = new Set([
   'triangle',
   'star',
   'callout',
+  'blockArrow',
+  'blockArrowDouble',
+  'chevron',
 ]);
 /** Box tools whose geometry can't reflow from width/height — drag-preview via scale. */
-const SCALED_BOX_TOOLS: ReadonlySet<Tool> = new Set(['diamond', 'star', 'callout']);
+const SCALED_BOX_TOOLS: ReadonlySet<Tool> = new Set([
+  'diamond',
+  'star',
+  'callout',
+  'blockArrow',
+  'blockArrowDouble',
+  'chevron',
+]);
+/** Box kinds that carry a head proportion, so a change to it regenerates them. */
+const BLOCK_ARROW_KINDS: ReadonlySet<string> = new Set([
+  'blockArrow',
+  'blockArrowDouble',
+  'chevron',
+]);
+/** Tools whose interaction is the arrow tool's click-a-spine chain. */
+const CHAIN_TOOLS: ReadonlySet<Tool> = new Set(['arrow', 'tacArrow']);
+/** Style slots that change what a military symbol IS, so it must re-render. */
+const SYMBOL_STYLE_PROPS: ReadonlySet<StyleProp> = new Set<StyleProp>([
+  'symAffiliation',
+  'symStatus',
+  'symEchelon',
+  'symHqTfDummy',
+  'symSizePx',
+  'symOptions',
+]);
 const SCALE_BASE = 100;
+/** The kinds SCALED_BOX_TOOLS produces — makeShapeObject's own parameter type. */
+type ScaledBoxKind =
+  | 'diamond'
+  | 'star'
+  | 'callout'
+  | 'blockArrow'
+  | 'blockArrowDouble'
+  | 'chevron';
 
 const NUDGE_KEYS: Record<string, [number, number]> = {
   ArrowLeft: [-1, 0],
@@ -144,7 +194,7 @@ type AlignMode = 'left' | 'centerH' | 'right' | 'top' | 'centerV' | 'bottom';
  * the child-patching style cases are all shared between them. Their stroke
  * lives on child 0, never on the group.
  */
-const LINEWORK_KINDS: ReadonlySet<string> = new Set(['arrow', 'line']);
+const LINEWORK_KINDS: ReadonlySet<string> = new Set(['arrow', 'line', 'tacArrow']);
 
 function isLinework(obj: any): boolean {
   return LINEWORK_KINDS.has(obj?.data?.kind);
@@ -158,6 +208,13 @@ const PANEL_KIND_BY_OVERLAY: Record<string, PanelContext['kind']> = {
   highlight: 'highlight',
   arrow: 'arrow',
   line: 'line',
+  tacArrow: 'tacarrow',
+  milsym: 'milsym',
+  // Block arrows are box kinds, but they own one control the other boxes don't
+  // — so they're mapped explicitly and checked before the generic box test.
+  blockArrow: 'blockarrow',
+  blockArrowDouble: 'blockarrow',
+  chevron: 'blockarrow',
 };
 
 /**
@@ -250,7 +307,22 @@ export default class SlideEditor {
     listStyle: null,
     headerRow: true,
     headerFill: DEFAULT_TABLE_HEADER_FILL.toLowerCase(),
+    blockHeadRatio: DEFAULT_BLOCK_HEAD_RATIO,
+    tacWidthPx: 26,
+    tacHeadRatio: DEFAULT_TAC_HEAD_RATIO,
+    taper: false,
+    symAffiliation: DEFAULT_MILSYM_STATE.affiliation,
+    symStatus: DEFAULT_MILSYM_STATE.status,
+    symEchelon: DEFAULT_MILSYM_STATE.echelon,
+    symHqTfDummy: DEFAULT_MILSYM_STATE.hqTfDummy,
+    symSizePx: 64,
+    symOptions: {},
   };
+
+  /** The symbol picker's flyout — created lazily the first time it's opened. */
+  private _symPicker: MilSymPicker | null = null;
+  /** Symbol chosen in the picker and waiting for a click to place it. */
+  private _pendingSymKey: string | null = null;
 
   /**
    * Live cell edit in progress: the transient Textbox floating over the cell,
@@ -453,6 +525,12 @@ export default class SlideEditor {
     }
     this._laser?.dispose();
     this._laser = null;
+    // Same reason as the context menu below — the picker owns a document-level
+    // click-away listener that has to go with its DOM.
+    this._symPicker?.dispose();
+    this._symPicker = null;
+    this._pendingSymKey = null;
+    this._ui?.hideAmplifierDialog();
     // Drops the menu's document-level dismiss listener as well as its DOM.
     this._ui?.hideContextMenu();
     restoreSelectionControls();
@@ -530,6 +608,9 @@ export default class SlideEditor {
         break;
       case 'help':
         this._ui?.toggleHelp();
+        break;
+      case 'amplifiers':
+        this._ui?.toggleAmplifierDialog();
         break;
       case 'zoomIn':
         this._zoomTo((this._fc?.getZoom() ?? 1) * ZOOM_STEP);
@@ -911,6 +992,121 @@ export default class SlideEditor {
     );
   }
 
+  // ── Military symbols ───────────────────────────────────────────────────────
+
+  private _toggleSymPicker(): void {
+    if (!this._stage) return;
+    if (!this._symPicker) {
+      this._symPicker = new MilSymPicker({
+        onPick: (symKey) => {
+          this._pendingSymKey = symKey;
+          // The tool stays armed so the next canvas click places the symbol;
+          // the panel switches to the symbol controls in the meantime.
+          this._tool = 'milsym';
+          this._ui?.setActiveTool('milsym');
+          this._fc?.discardActiveObject();
+          if (this._fc) this._fc.skipTargetFind = true;
+          this._syncPanelContext();
+          this._fc?.requestRenderAll();
+        },
+        getAffiliation: () => this._defaults.symAffiliation,
+        setAffiliation: (v) => {
+          this._defaults.symAffiliation = v;
+          this._ui?.refreshPanelValues();
+        },
+      });
+    }
+    const wasOpen = this._symPicker.isOpen;
+    this._symPicker.toggle(this._stage);
+    // The strip button isn't a mode until a symbol is chosen, but it should
+    // still read as engaged while its browser is open.
+    this._ui?.setActiveTool(this._symPicker.isOpen ? 'milsym' : this._tool);
+    if (wasOpen) {
+      // Closing the browser without choosing anything shouldn't leave a
+      // half-armed tool behind.
+      this._pendingSymKey = null;
+      this._setTool('select');
+    }
+  }
+
+  /** Drop the armed symbol at `p`, sized from the panel's Size slot. */
+  private _placeMilSym(p: { x: number; y: number }): void {
+    const key = this._pendingSymKey;
+    if (!key || !this._fc) return;
+    const d = this._defaults;
+    const sidc = sidcFromKey(key, {
+      affiliation: d.symAffiliation,
+      status: d.symStatus,
+      echelon: d.symEchelon,
+      hqTfDummy: d.symHqTfDummy,
+    });
+    const symOptions = cleanAmplifiers(d.symOptions);
+    const h = Math.max(12, d.symSizePx);
+    const w = h * milSymAspect(sidc, symOptions, h);
+    if (!this._toolLock) {
+      this._pendingSymKey = null;
+      this._setTool('select');
+    }
+    this._addOverlays(
+      [
+        {
+          id: overlayUuid(),
+          kind: 'milsym',
+          sidc,
+          symKey: key,
+          ...(Object.keys(symOptions).length ? { symOptions } : {}),
+          x: (p.x - w / 2) / this._W,
+          y: (p.y - h / 2) / this._H,
+          w: w / this._W,
+          h: h / this._H,
+        },
+      ],
+      0,
+    );
+  }
+
+  /**
+   * Re-render one milsym object in place after its SIDC, amplifiers or size
+   * changed. The object is replaced rather than patched — a new marker has its
+   * own intrinsic size and aspect, which a fabric.Image can't adopt in place —
+   * so the identity-bearing state is carried across by hand, exactly as
+   * `_rebuildArrow` does.
+   */
+  private _rebuildMilSym(obj: any, patch: { sizePx?: number } = {}): any {
+    if (!this._fc || obj?.data?.kind !== 'milsym') return obj;
+    const overlay = fabricToOverlay(obj, this._W, this._H);
+    if (!overlay) return obj;
+    const d = this._defaults;
+    const state = parseSidcToState(overlay.sidc);
+    const sidc = buildSidc({
+      ...state,
+      affiliation: d.symAffiliation,
+      status: d.symStatus,
+      echelon: d.symEchelon,
+      hqTfDummy: d.symHqTfDummy,
+    });
+    const symOptions = cleanAmplifiers(d.symOptions);
+    // Height is authoritative and width follows the marker's aspect —
+    // amplifier text widens it asymmetrically, so `w` can never just be kept.
+    const hPx = Math.max(12, patch.sizePx ?? overlay.h * this._H);
+    const wPx = hPx * milSymAspect(sidc, symOptions, hPx);
+    const next: SlideOverlay = {
+      ...overlay,
+      sidc,
+      symKey: overlay.symKey ?? keyFromSidc(sidc),
+      symOptions: Object.keys(symOptions).length ? symOptions : undefined,
+      w: wPx / this._W,
+      h: hPx / this._H,
+    };
+    const idx = this._fc.getObjects().indexOf(obj);
+    const rebuilt = overlayToFabric(next, this._W, this._H);
+    if (!rebuilt) return obj;
+    this._fc.remove(obj);
+    this._fc.add(rebuilt);
+    if (idx >= 0) this._fc.moveTo(rebuilt, idx);
+    return rebuilt;
+  }
+
   /**
    * Drag-and-drop onto the stage. Registered on the stage rather than the canvas
    * so a drop just outside the artwork still lands (clamped into the frame).
@@ -1020,9 +1216,26 @@ export default class SlideEditor {
       this._pickImage();
       return;
     }
-    if (this._arrowChain && t !== 'arrow') {
+    if (t === 'milsym') {
+      // Two steps: the strip button opens the browser, and picking a symbol
+      // arms the click-to-place. Toggling it closed disarms whatever was held.
+      if (!isMilSymAvailable()) {
+        EngineLogger.error(ENGINE_NAME, 'milsymbol.js is unavailable — symbols cannot be placed');
+        return;
+      }
+      // This branch returns before the mid-gesture cleanup below, so an arrow
+      // left half-drawn has to be dropped here or its preview would survive
+      // into the symbol placement.
+      if (this._arrowChain) this._clearArrowChain();
+      this._toggleSymPicker();
+      return;
+    }
+    if (this._arrowChain && !CHAIN_TOOLS.has(t)) {
       this._clearArrowChain();
     }
+    // Every path to here is a tool other than 'milsym' (that one returned
+    // above), so arming anything else drops a symbol waiting to be placed.
+    this._pendingSymKey = null;
     const prev = this._tool;
 
     if (prev !== t) {
@@ -1056,6 +1269,7 @@ export default class SlideEditor {
       const active = this._fc.getActiveObject();
       if (active?.data?.kind === 'arrow') this._onArrowReopen(active);
     }
+    if (prev === 'milsym') this._symPicker?.hide();
 
     const drawingMode = t === 'freehand' || t === 'highlighter';
     this._fc.isDrawingMode = drawingMode;
@@ -1139,8 +1353,12 @@ export default class SlideEditor {
       this._lassoPts = [{ x: p.x, y: p.y }];
       return;
     }
-    if (t === 'arrow') {
+    if (CHAIN_TOOLS.has(t)) {
       this._onArrowClick(p);
+      return;
+    }
+    if (t === 'milsym') {
+      this._placeMilSym(p);
       return;
     }
 
@@ -1236,10 +1454,11 @@ export default class SlideEditor {
       });
     } else if (SCALED_BOX_TOOLS.has(t)) {
       obj = makeShapeObject(
-        t as 'diamond' | 'star' | 'callout',
+        t as ScaledBoxKind,
         { left: p.x, top: p.y, width: SCALE_BASE, height: SCALE_BASE },
         style,
         { opacity: d.opacity },
+        { headRatio: d.blockHeadRatio },
       );
       obj.set({ scaleX: 0.02, scaleY: 0.02 });
     } else if (t === 'line') {
@@ -1262,7 +1481,7 @@ export default class SlideEditor {
   private _onMouseMove(opt: any): void {
     if (!this._fc) return;
     const t = this._tool;
-    if (t === 'arrow') {
+    if (CHAIN_TOOLS.has(t)) {
       if (this._arrowChain) this._updateArrowPreview(this._fc.getPointer(opt.e));
       return;
     }
@@ -1380,7 +1599,7 @@ export default class SlideEditor {
       const p = this._fc.getPointer(opt.e);
       this._fc.remove(obj);
       finalObj = makeShapeObject(
-        t as 'diamond' | 'star' | 'callout',
+        t as ScaledBoxKind,
         {
           left: Math.min(startX, p.x),
           top: Math.min(startY, p.y),
@@ -1389,6 +1608,7 @@ export default class SlideEditor {
         },
         this._creationStyle(),
         { opacity: this._defaults.opacity },
+        { headRatio: this._defaults.blockHeadRatio },
       );
       this._fc.add(finalObj);
     } else if (isLineKind) {
@@ -1497,12 +1717,26 @@ export default class SlideEditor {
     const fabric = (window as any).fabric;
     const style = this._creationStyle();
     const pts = [...this._arrowChain, cursor];
-    const { d } = buildArrowPath(pts, this._defaults.arrowType);
+    // A tactical arrow previews as its actual filled outline — its body width
+    // and taper change the shape enough that a centreline would mislead.
+    const tac =
+      this._tool === 'tacArrow'
+        ? buildTacArrowOutline({
+            points: pts,
+            widthPx: this._defaults.tacWidthPx,
+            headRatio: this._defaults.tacHeadRatio,
+            taper: this._defaults.taper,
+            headAtEnd: this._defaults.arrowEnd !== 'none',
+            headAtStart: this._defaults.arrowStart !== 'none',
+            arrowType: this._defaults.arrowType,
+          })
+        : null;
+    const { d } = tac ?? buildArrowPath(pts, this._defaults.arrowType);
     if (this._arrowPreview) this._fc.remove(this._arrowPreview);
     this._arrowPreview = new fabric.Path(d, {
-      fill: '',
+      fill: tac ? style.fill || 'rgba(255,255,255,0.12)' : '',
       stroke: style.stroke,
-      strokeWidth: style.strokeWidth,
+      strokeWidth: tac ? 1 : style.strokeWidth,
       strokeDashArray: [6, 4],
       selectable: false,
       evented: false,
@@ -1513,7 +1747,7 @@ export default class SlideEditor {
   }
 
   private _onArrowFinish(): void {
-    if (this._tool !== 'arrow' || !this._arrowChain) return;
+    if (!CHAIN_TOOLS.has(this._tool) || !this._arrowChain) return;
     const pts = [...this._arrowChain];
     const reopened = this._arrowReopenedObj;
     if (this._arrowPreview) {
@@ -1536,15 +1770,38 @@ export default class SlideEditor {
       return;
     }
     const style = this._creationStyle();
-    const finalObj = makeArrowGroup(
-      pts,
-      style.stroke,
-      style.strokeWidth,
-      { opacity: this._defaults.opacity, data: reopened ? { id: reopened.data.id } : undefined },
-      style.strokeDash,
-      this._defaults.arrowType,
-      { start: this._defaults.arrowStart, end: this._defaults.arrowEnd },
-    );
+    const extra = {
+      opacity: this._defaults.opacity,
+      data: reopened ? { id: reopened.data.id } : undefined,
+    };
+    const finalObj =
+      this._tool === 'tacArrow'
+        ? makeTacArrowGroup(
+            pts,
+            style,
+            {
+              widthPx: this._defaults.tacWidthPx,
+              headRatio: this._defaults.tacHeadRatio,
+              taper: this._defaults.taper,
+              arrowType: this._defaults.arrowType,
+              start: this._defaults.arrowStart,
+              end: this._defaults.arrowEnd,
+            },
+            extra,
+          )
+        : makeArrowGroup(
+            pts,
+            style.stroke,
+            style.strokeWidth,
+            extra,
+            style.strokeDash,
+            this._defaults.arrowType,
+            { start: this._defaults.arrowStart, end: this._defaults.arrowEnd },
+          );
+    if (!finalObj) {
+      if (!this._toolLock) this._setTool('select');
+      return;
+    }
     this._attachArrowControls(finalObj);
     this._fc.add(finalObj);
     if (this._toolLock) {
@@ -1812,27 +2069,54 @@ export default class SlideEditor {
     const avgScale = ((obj.scaleX ?? 1) + (obj.scaleY ?? 1)) / 2;
     const idx = this._fc.getObjects().indexOf(obj);
     this._fc.remove(obj);
-    const rebuilt = makeArrowGroup(
-      absPoints,
-      pathChild.stroke,
-      pathChild.strokeWidth * avgScale,
-      { opacity: obj.opacity, data: { id: obj.data.id } },
-      obj.data.strokeDash,
-      arrowType,
-      {
-        start: obj.data.arrowStart,
-        end: obj.data.arrowEnd,
-        kind: obj.data.kind,
-        closed: obj.data.closed,
-        // Closing an open line has no fill to carry over — seed it from the
-        // panel so the polygon doesn't come back invisible.
-        fill:
-          pathChild.fill ||
-          (obj.data.closed && this._defaults.fill
-            ? withAlpha(this._defaults.fill, this._defaults.fillOpacity)
-            : ''),
-      },
-    );
+    const rebuilt =
+      obj.data.kind === 'tacArrow'
+        ? makeTacArrowGroup(
+            absPoints,
+            {
+              fill: pathChild.fill || '',
+              stroke: pathChild.stroke || '',
+              strokeWidth: (pathChild.strokeWidth ?? 0) * avgScale,
+              strokeDash: obj.data.strokeDash,
+            },
+            {
+              widthPx: (obj.data.tacWidthPx ?? this._defaults.tacWidthPx) * avgScale,
+              headRatio: obj.data.headRatio,
+              taper: obj.data.taper,
+              arrowType,
+              start: obj.data.arrowStart,
+              end: obj.data.arrowEnd,
+            },
+            { opacity: obj.opacity, data: { id: obj.data.id } },
+          )
+        : makeArrowGroup(
+            absPoints,
+            pathChild.stroke,
+            pathChild.strokeWidth * avgScale,
+            { opacity: obj.opacity, data: { id: obj.data.id } },
+            obj.data.strokeDash,
+            arrowType,
+            {
+              start: obj.data.arrowStart,
+              end: obj.data.arrowEnd,
+              kind: obj.data.kind,
+              closed: obj.data.closed,
+              // Closing an open line has no fill to carry over — seed it from the
+              // panel so the polygon doesn't come back invisible.
+              fill:
+                pathChild.fill ||
+                (obj.data.closed && this._defaults.fill
+                  ? withAlpha(this._defaults.fill, this._defaults.fillOpacity)
+                  : ''),
+            },
+          );
+    // A degenerate spine can't produce an outline — put the original back
+    // rather than dropping the arrow off the canvas.
+    if (!rebuilt) {
+      this._fc.add(obj);
+      if (idx >= 0) this._fc.moveTo(obj, idx);
+      return obj;
+    }
     // makeArrowGroup rebuilds `data` from its arguments, so the cross-kind
     // state that doesn't describe geometry has to be carried over by hand or a
     // bend/head edit would silently unlink and unlock the arrow.
@@ -3027,20 +3311,53 @@ export default class SlideEditor {
     // re-forms the selection. Stroke width joins them because terminators are
     // sized from it: patching alone would leave a thick arrow with a tiny head.
     const shapeOnly =
-      prop === 'arrowType' || prop === 'arrowStart' || prop === 'arrowEnd' || prop === 'closed';
+      prop === 'arrowType' ||
+      prop === 'arrowStart' ||
+      prop === 'arrowEnd' ||
+      prop === 'closed' ||
+      // A tactical arrow's body and head are its geometry, so the same
+      // rebuild-don't-patch rule applies to them.
+      prop === 'tacWidthPx' ||
+      prop === 'taper' ||
+      prop === 'headRatio';
     if (!shapeOnly) {
       for (const obj of objs) this._applyStyleTo(obj, prop);
+    }
+    // Block arrows regenerate their vertices from the bbox, so a head-size
+    // change replaces them the same way an arrow's shape change does.
+    if (prop === 'headRatio') {
+      const blocks = objs.filter((o) => BLOCK_ARROW_KINDS.has(o?.data?.kind));
+      if (blocks.length) {
+        const kept = objs.filter((o) => !blocks.includes(o));
+        this._selectObjects([...kept, ...blocks.map((o) => this._rebuildBlockArrow(o))]);
+      }
+    }
+    // Anything that changes the SIDC, the amplifiers or the size means a new
+    // marker — milsym objects re-render rather than being patched.
+    if (SYMBOL_STYLE_PROPS.has(prop)) {
+      const syms = objs.filter((o) => o?.data?.kind === 'milsym');
+      if (syms.length) {
+        const kept = objs.filter((o) => !syms.includes(o));
+        const patch = prop === 'symSizePx' ? { sizePx: this._defaults.symSizePx } : {};
+        this._selectObjects([...kept, ...syms.map((o) => this._rebuildMilSym(o, patch))]);
+      }
     }
     if (shapeOnly || prop === 'strokeWidthPx') {
       // Terminators are arrow-only; the shape control and stroke width apply to
       // every linework kind.
       const arrows = objs.filter((o) => {
-        if (prop === 'arrowStart' || prop === 'arrowEnd') return o?.data?.kind === 'arrow';
-        if (prop === 'closed') return o?.data?.kind === 'line';
+        const k = o?.data?.kind;
+        if (prop === 'arrowStart' || prop === 'arrowEnd') return k === 'arrow' || k === 'tacArrow';
+        if (prop === 'closed') return k === 'line';
+        if (prop === 'tacWidthPx' || prop === 'taper') return k === 'tacArrow';
+        if (prop === 'headRatio') return k === 'tacArrow';
         return isLinework(o);
       });
       if (arrows.length) {
-        const kept = objs.filter((o) => !arrows.includes(o));
+        // A block arrow or symbol replaced above is no longer on the canvas —
+        // the same guard the table branch below applies, and it matters here
+        // because one head-size change can hit both kinds at once.
+        const kept = objs.filter((o) => !arrows.includes(o) && this._overlayIndex(o) >= 0);
         // Only stamp the panel's arrow slots when the arrow slots are what
         // changed — a width change must not normalize every selected arrow's
         // shape and terminators onto whatever the panel happens to show.
@@ -3081,14 +3398,41 @@ export default class SlideEditor {
     });
     if (stampDefaults) {
       obj.data.arrowType = this._defaults.arrowType;
-      if (obj.data.kind === 'arrow') {
+      if (obj.data.kind === 'arrow' || obj.data.kind === 'tacArrow') {
         obj.data.arrowStart = this._defaults.arrowStart;
         obj.data.arrowEnd = this._defaults.arrowEnd;
       } else {
         obj.data.closed = this._defaults.closed;
       }
+      if (obj.data.kind === 'tacArrow') {
+        obj.data.tacWidthPx = this._defaults.tacWidthPx;
+        obj.data.headRatio = this._defaults.tacHeadRatio;
+        obj.data.taper = this._defaults.taper;
+      }
     }
     return this._rebuildArrow(obj, absPoints);
+  }
+
+  /**
+   * Regenerate one block arrow at the panel's head size. Its vertices come from
+   * the bbox (like every box kind), so the proportion can't be patched onto the
+   * existing polygon — the object is replaced in place instead.
+   */
+  private _rebuildBlockArrow(obj: any): any {
+    if (!this._fc) return obj;
+    const overlay = fabricToOverlay(obj, this._W, this._H);
+    if (!overlay) return obj;
+    const idx = this._fc.getObjects().indexOf(obj);
+    const rebuilt = overlayToFabric(
+      { ...overlay, headRatio: this._defaults.blockHeadRatio },
+      this._W,
+      this._H,
+    );
+    if (!rebuilt) return obj;
+    this._fc.remove(obj);
+    this._fc.add(rebuilt);
+    if (idx >= 0) this._fc.moveTo(rebuilt, idx);
+    return rebuilt;
   }
 
   /** Stamp every panel default onto one table and rebuild it. */
@@ -3162,8 +3506,9 @@ export default class SlideEditor {
         const paint = d.fill ? withAlpha(d.fill, d.fillOpacity) : '';
         if (isBoxKind(kind)) {
           obj.set('fill', paint);
-        } else if (kind === 'line' && obj.data.closed) {
-          // Only a closed line has an interior to paint.
+        } else if (kind === 'tacArrow' || (kind === 'line' && obj.data.closed)) {
+          // A tactical arrow is a filled body; a line only has an interior to
+          // paint once it's closed.
           this._lineworkPath(obj)?.set({ fill: paint });
           obj.dirty = true;
         }
@@ -3243,10 +3588,10 @@ export default class SlideEditor {
       let kind: PanelContext['kind'] = 'mixed';
       if (kinds.size === 1) {
         const k = [...kinds][0] as string;
-        // Every box shape shares one context; the rest map to themselves, and
-        // freehand is the only thing left over as generic 'linework'.
-        if (isBoxKind(k)) kind = 'box';
-        else if (PANEL_KIND_BY_OVERLAY[k]) kind = PANEL_KIND_BY_OVERLAY[k];
+        // Kinds with a context of their own win; every other box shape shares
+        // one context, and freehand is the only thing left over as 'linework'.
+        if (PANEL_KIND_BY_OVERLAY[k]) kind = PANEL_KIND_BY_OVERLAY[k];
+        else if (isBoxKind(k)) kind = 'box';
         else kind = 'linework';
       }
       return { kind, hasSelection: true, count, locked, closed };
@@ -3258,6 +3603,7 @@ export default class SlideEditor {
       locked: false,
       closed: this._defaults.closed,
     };
+    if (BLOCK_ARROW_KINDS.has(this._tool)) return { kind: 'blockarrow', ...idle };
     if (BOX_TOOLS.has(this._tool)) return { kind: 'box', ...idle };
     switch (this._tool) {
       case 'text':
@@ -3266,6 +3612,10 @@ export default class SlideEditor {
         return { kind: 'table', ...idle };
       case 'arrow':
         return { kind: 'arrow', ...idle };
+      case 'tacArrow':
+        return { kind: 'tacarrow', ...idle };
+      case 'milsym':
+        return { kind: 'milsym', ...idle };
       case 'line':
         return { kind: 'line', ...idle };
       case 'freehand':
@@ -3333,10 +3683,22 @@ export default class SlideEditor {
       d.align = obj.textAlign === 'center' || obj.textAlign === 'right' ? obj.textAlign : 'left';
       d.textColor = parseColor(obj.fill)?.hex ?? d.textColor;
       d.listStyle = obj.data.listStyle ?? null;
+    } else if (kind === 'milsym') {
+      // The panel edits SIDC slots, not paint — read them back off the symbol
+      // so switching selection shows what that symbol actually is.
+      const st = parseSidcToState(obj.data.sidc);
+      d.symAffiliation = st.affiliation;
+      d.symStatus = st.status;
+      d.symEchelon = st.echelon;
+      d.symHqTfDummy = st.hqTfDummy;
+      d.symSizePx = Math.max(12, Math.round(obj.getScaledHeight?.() ?? d.symSizePx));
+      d.symOptions = { ...(obj.data.symOptions ?? {}) };
     } else {
       const closedLine = kind === 'line' && !!obj.data.closed;
-      if (isBoxKind(kind) || closedLine) {
-        const fill = parseColor(closedLine ? this._lineworkPath(obj)?.fill : obj.fill);
+      if (isBoxKind(kind) || closedLine || kind === 'tacArrow') {
+        const fill = parseColor(
+          closedLine || kind === 'tacArrow' ? this._lineworkPath(obj)?.fill : obj.fill,
+        );
         if (fill) {
           d.fill = fill.hex;
           d.fillOpacity = fill.alpha;
@@ -3355,9 +3717,18 @@ export default class SlideEditor {
       d.strokeDash = obj.data.strokeDash ?? 'solid';
       // One shared shape slot for both linework kinds; terminators are arrows only.
       if (isLinework(obj)) d.arrowType = (obj.data.arrowType ?? 'sharp') as ArrowType;
-      if (kind === 'arrow') {
+      if (kind === 'arrow' || kind === 'tacArrow') {
         d.arrowStart = obj.data.arrowStart ?? 'none';
         d.arrowEnd = obj.data.arrowEnd ?? 'triangle';
+      }
+      if (kind === 'tacArrow') {
+        const avgScale = ((obj.scaleX ?? 1) + (obj.scaleY ?? 1)) / 2;
+        d.tacWidthPx = Math.max(4, Math.round((obj.data.tacWidthPx ?? d.tacWidthPx) * avgScale));
+        d.tacHeadRatio = obj.data.headRatio ?? DEFAULT_TAC_HEAD_RATIO;
+        d.taper = !!obj.data.taper;
+      }
+      if (BLOCK_ARROW_KINDS.has(kind)) {
+        d.blockHeadRatio = obj.data.headRatio ?? DEFAULT_BLOCK_HEAD_RATIO;
       }
     }
     d.opacity = obj.opacity ?? 1;
@@ -3395,6 +3766,12 @@ export default class SlideEditor {
         }
         if (this._ui?.contextMenuOpen) {
           this._ui.hideContextMenu();
+          return;
+        }
+        if (this._symPicker?.isOpen) {
+          this._symPicker.hide();
+          this._pendingSymKey = null;
+          this._setTool('select');
           return;
         }
         if (editingText) {

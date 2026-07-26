@@ -45,6 +45,25 @@ export interface PptxImportResult {
   warnings: string[];
 }
 
+/** The overlay kinds a preset (`prstGeom`) shape can import as. */
+type PrstBoxKind =
+  | 'rect'
+  | 'ellipse'
+  | 'diamond'
+  | 'triangle'
+  | 'star'
+  | 'callout'
+  | 'blockArrow'
+  | 'blockArrowDouble'
+  | 'chevron';
+
+/** Of those, the ones whose silhouette has a direction — see shapeOverlay. */
+const BLOCK_ARROW_PRST_KINDS: ReadonlySet<PrstBoxKind> = new Set<PrstBoxKind>([
+  'blockArrow',
+  'blockArrowDouble',
+  'chevron',
+]);
+
 /** 914400 EMU per inch; 12700 EMU per point. */
 const EMU_PER_PT = 12700;
 /** Rendered background raster width (slide aspect preserved). */
@@ -509,10 +528,12 @@ export async function parsePptx(
     };
 
     const shapeOverlay = (
-      kind: 'rect' | 'ellipse' | 'diamond' | 'triangle' | 'star' | 'callout',
+      kind: PrstBoxKind,
       box: BoxEMU,
       fill: { hex: string; alpha: number } | null,
       ln: LnInfo,
+      /** Extra degrees the preset itself implies — a leftArrow is a rotated rightArrow. */
+      presetRotation = 0,
     ): SlideOverlay | null => {
       const hasFill = !!fill && fill.alpha > 0;
       if (!hasFill && !ln.stroke) return null; // invisible shape (e.g. a plain text box)
@@ -523,13 +544,20 @@ export async function parsePptx(
       // (our renderers draw both point-up — see OverlayFabric.ts), so a
       // vertical flip (PowerPoint's "Flip Vertical", far more common than
       // the rotate handle) needs +180° or it silently imports point-up.
+      if (presetRotation) rotation += presetRotation;
       if (box.flipV && (kind === 'triangle' || kind === 'star')) {
         rotation = ((rotation + 180) % 360 + 360) % 360;
+      } else if (BLOCK_ARROW_PRST_KINDS.has(kind)) {
+        // Block arrows are symmetric about their horizontal midline, so a
+        // horizontal flip is exactly a half turn and a vertical one is a no-op.
+        if (box.flipH) rotation += 180;
       } else if ((box.flipH || box.flipV) && kind === 'callout') {
         // The tail is hard-coded bottom-left (OverlayFabric.ts) — no
         // rotation reproduces a flipped callout, so just flag the loss.
         bump('callout flip ignored — tail position may not match the source');
       }
+
+      rotation = (((rotation % 360) + 360) % 360) || 0;
 
       return {
         id: overlayUuid(),
@@ -689,10 +717,7 @@ export async function parsePptx(
       const prst = firstByLocal(spPr, 'prstGeom')?.getAttribute('prst') ?? null;
       const cust = spPr ? firstByLocal(spPr, 'custGeom') : null;
 
-      const PRST_BOX_KINDS: Record<
-        string,
-        'rect' | 'ellipse' | 'diamond' | 'triangle' | 'star' | 'callout'
-      > = {
+      const PRST_BOX_KINDS: Record<string, PrstBoxKind> = {
         rect: 'rect',
         roundRect: 'rect',
         ellipse: 'ellipse',
@@ -701,13 +726,23 @@ export async function parsePptx(
         star5: 'star',
         wedgeRoundRectCallout: 'callout',
         wedgeRectCallout: 'callout',
+        // The block arrows we export as presets come back as themselves. Their
+        // adjustment values are not read: the head size reverts to our default,
+        // which is the same OOXML default the preset was written with.
+        rightArrow: 'blockArrow',
+        leftArrow: 'blockArrow',
+        leftRightArrow: 'blockArrowDouble',
+        chevron: 'chevron',
+        homePlate: 'chevron',
       };
 
       if (box) {
         if (cust) {
           custGeomOverlays(cust, box, ln).forEach(pushOverlay);
         } else if (prst && Object.prototype.hasOwnProperty.call(PRST_BOX_KINDS, prst)) {
-          pushOverlay(shapeOverlay(PRST_BOX_KINDS[prst], box, fill, ln));
+          // A leftArrow is our blockArrow turned around; nothing else in the
+          // table carries a direction the preset name alone implies.
+          pushOverlay(shapeOverlay(PRST_BOX_KINDS[prst], box, fill, ln, prst === 'leftArrow' ? 180 : 0));
         } else if (prst === 'line' || /Connector/.test(prst ?? '')) {
           pushOverlay(connectorOverlay(box, ln));
         } else if (prst && !textInfo) {

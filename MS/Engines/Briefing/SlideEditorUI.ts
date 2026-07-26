@@ -14,6 +14,14 @@
 
 import type { ArrowHead, Slide } from './BriefingTypes';
 import type { ArrowType } from './OverlayFabric';
+import {
+  AFFILIATIONS,
+  AMPLIFIER_GROUPS,
+  ECHELONS,
+  HQ_TF_DUMMY,
+  STATUSES,
+  type SidcOption,
+} from './MilSymFactory';
 
 export type Tool =
   | 'select'
@@ -24,12 +32,17 @@ export type Tool =
   | 'triangle'
   | 'star'
   | 'callout'
+  | 'blockArrow'
+  | 'blockArrowDouble'
+  | 'chevron'
   | 'line'
   | 'arrow'
+  | 'tacArrow'
   | 'freehand'
   | 'highlighter'
   | 'text'
   | 'image'
+  | 'milsym'
   | 'table'
   | 'eraser'
   | 'laser';
@@ -65,6 +78,23 @@ export interface StyleDefaults {
   headerRow: boolean;
   /** Table only — the header row's fill. */
   headerFill: string;
+  /** Block arrows — head length as a fraction of the box. */
+  blockHeadRatio: number;
+  /** Tactical arrows — body thickness in px. */
+  tacWidthPx: number;
+  /** Tactical arrows — head length as a fraction of the spine. */
+  tacHeadRatio: number;
+  /** Tactical arrows — narrow the body toward the tail. */
+  taper: boolean;
+  /** Military symbols — SIDC slots the style bar owns (see MilSymFactory). */
+  symAffiliation: string;
+  symStatus: string;
+  symEchelon: string;
+  symHqTfDummy: string;
+  /** Military symbols — on-slide height in px. */
+  symSizePx: number;
+  /** Military symbols — milsymbol text amplifiers, edited in their own dialog. */
+  symOptions: Record<string, string>;
 }
 
 /**
@@ -105,7 +135,17 @@ export type StyleProp =
   | 'closed'
   | 'listStyle'
   | 'headerRow'
-  | 'headerFill';
+  | 'headerFill'
+  /** Shared by the block arrows and the tactical arrow; routed by panel context. */
+  | 'headRatio'
+  | 'tacWidthPx'
+  | 'taper'
+  | 'symAffiliation'
+  | 'symStatus'
+  | 'symEchelon'
+  | 'symHqTfDummy'
+  | 'symSizePx'
+  | 'symOptions';
 
 /** What the properties island is currently editing. */
 export interface PanelContext {
@@ -120,6 +160,9 @@ export interface PanelContext {
     | 'table'
     | 'highlight'
     | 'arrow'
+    | 'blockarrow'
+    | 'tacarrow'
+    | 'milsym'
     | 'labeled'
     | 'labeledLine'
     | 'labeledArrow'
@@ -183,12 +226,17 @@ export const TOOL_DEFS: ToolDef[] = [
   { tool: 'triangle', letter: 'y', title: 'Triangle (drag)' },
   { tool: 'star', letter: 'x', title: 'Star (drag)' },
   { tool: 'callout', letter: 'c', title: 'Callout — drag bubble, then type its text' },
+  { tool: 'blockArrow', letter: 'b', title: 'Block arrow (drag) — exports as a native PowerPoint arrow', startsGroup: true },
+  { tool: 'blockArrowDouble', letter: 'w', title: 'Double-headed block arrow (drag)' },
+  { tool: 'chevron', letter: 'u', title: 'Chevron (drag)' },
   { tool: 'line', letter: 'l', num: '6', title: 'Line (drag)', startsGroup: true },
   { tool: 'arrow', letter: 'a', num: '5', title: 'Arrow — click points, double-click or Enter to finish' },
+  { tool: 'tacArrow', letter: 'f', title: 'Attack arrow — click points along the axis, double-click or Enter to finish. Arrowheads ▸ Start adds a second head' },
   { tool: 'freehand', letter: 'p', num: '7', title: 'Freehand ink' },
   { tool: 'highlighter', letter: 'h', title: 'Highlighter — wide translucent marker' },
   { tool: 'text', letter: 't', num: '8', title: 'Text (click on slide)' },
   { tool: 'image', letter: 'i', num: '9', title: 'Image — pick a file, or paste / drop one on the slide' },
+  { tool: 'milsym', letter: 'm', title: 'Military symbol — search or browse MIL-STD-2525D, then click to place' },
   { tool: 'table', letter: 'g', title: 'Table — drag a grid, or click for 3×3. Double-click a cell to type; Tab moves on' },
   { tool: 'eraser', letter: 'e', num: '0', title: 'Eraser — drag over objects to delete', startsGroup: true },
   { tool: 'laser', letter: 'k', title: 'Laser pointer — fading trail, never saved' },
@@ -198,6 +246,10 @@ const STROKE_SWATCHES = ['#ffffff', '#1e1e1e', '#ff3b30', '#ffd166', '#2f9e44', 
 const FILL_SWATCHES = ['#ffd166', '#ffc9c9', '#b2f2bb', '#a5d8ff', '#ffec99', '#ff3b30', '#1e1e1e'];
 
 // ── Inline SVG icons (no dependency) ─────────────────────────────────────────
+
+/** Amplifier values are user text going straight into an attribute. */
+const escapeAttr = (v: string): string =>
+  String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
 const svg = (inner: string, filled = false): string =>
   `<svg viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="${
@@ -222,6 +274,12 @@ const ICONS: Record<string, string> = {
   highlighter: svg('<path d="M13.6 4.4l6 6-7.6 7.6H8l-2-2z"/><path d="M4 20.5h8"/>'),
   text: svg('<path d="M5.5 5.5h13M12 5.5v13"/>'),
   image: svg('<rect x="3.5" y="5" width="17" height="14" rx="1.8"/><circle cx="8.6" cy="10" r="1.6"/><path d="M4 16.5l4.6-4.2 3.4 3 3-2.6 5 4.3"/>'),
+  blockArrow: svg('<path d="M3 9.5h9V5.5l8 6.5-8 6.5v-4H3z"/>'),
+  blockArrowDouble: svg('<path d="M8 9.5h8V5.5l5 6.5-5 6.5v-4H8v4l-5-6.5L8 5.5z"/>'),
+  chevron: svg('<path d="M3 4.5h11l6 7.5-6 7.5H3l6-7.5z"/>'),
+  tacArrow: svg('<path d="M3 16.5c5-1 8.5-4.5 10.5-8.5l-3-1.2 8-2.3-1.2 8-2.6-2.2c-2.6 5-6.6 8.4-11.7 9.6z"/>', true),
+  milsym: svg('<path d="M3.5 7.5h17v9h-17z"/><path d="M7 11.2l2.6 2.6M9.6 11.2L7 13.8M14 11h3.2"/>'),
+  taper: svg('<path d="M3 10.5h17M3 13.5h17" stroke-dasharray="0"/><path d="M3 10.5L20 12 3 13.5"/>'),
   table: svg('<rect x="3.5" y="5" width="17" height="14" rx="1.4"/><path d="M3.5 9.6h17M3.5 14.3h17M9.2 5v14M14.8 5v14"/>'),
   bulletList: svg('<circle cx="5" cy="7" r="1.5" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="5" cy="17" r="1.5" fill="currentColor" stroke="none"/><path d="M9.5 7h11M9.5 12h11M9.5 17h11"/>'),
   numberList: svg('<path d="M9.5 7h11M9.5 12h11M9.5 17h11"/><text x="2.4" y="8.6" font-size="6.4" fill="currentColor" stroke="none">1</text><text x="2.4" y="13.8" font-size="6.4" fill="currentColor" stroke="none">2</text><text x="2.4" y="19" font-size="6.4" fill="currentColor" stroke="none">3</text>'),
@@ -365,6 +423,25 @@ const SECTIONS_BY_CONTEXT: Record<PanelContext['kind'], string[]> = {
   none: [],
   text: ['text', 'list', 'opacity'],
   box: ['stroke', 'fill', 'fillop', 'width', 'dash', 'opacity'],
+  // A block arrow is a box shape with one extra proportion: how much of the
+  // box the head takes. That value is also what PPTX carries as its adjustment.
+  blockarrow: ['stroke', 'fill', 'fillop', 'width', 'dash', 'headratio', 'opacity'],
+  // A filled attack arrow: the body is geometry (its own width + taper), the
+  // heads reuse the arrow terminator slots, and fill/stroke paint the outline.
+  tacarrow: [
+    'stroke',
+    'fill',
+    'fillop',
+    'width',
+    'dash',
+    'arrowtype',
+    'arrowheads',
+    'tacbody',
+    'headratio',
+    'opacity',
+  ],
+  // A symbol has no stroke or fill of its own — its look comes out of the SIDC.
+  milsym: ['milsym', 'amplifiers', 'opacity'],
   // A table shares the text and fill/stroke rows — those drive its cell font,
   // body fill and gridlines — plus its own row/column and header controls.
   // No 'list': the model has no per-cell bullets.
@@ -395,6 +472,7 @@ export default class SlideEditorUI {
   private _ctxMenu: HTMLElement | null = null;
   private _ctxDismiss: ((e: MouseEvent) => void) | null = null;
   private _help: HTMLElement | null = null;
+  private _amps: HTMLElement | null = null;
   private _ctx: PanelContext = {
     kind: 'none',
     hasSelection: false,
@@ -448,6 +526,12 @@ export default class SlideEditorUI {
     const headOptions = ARROW_HEAD_OPTIONS.map(
       (o) => `<option value="${o.value}">${o.label}</option>`,
     ).join('');
+    const sidcOptions = (list: SidcOption[]): string =>
+      list.map((o) => `<option value="${o.value}">${o.label}</option>`).join('');
+    const affiliationOptions = sidcOptions(AFFILIATIONS);
+    const statusOptions = sidcOptions(STATUSES);
+    const echelonOptions = sidcOptions(ECHELONS);
+    const hqOptions = sidcOptions(HQ_TF_DUMMY);
 
     stage.innerHTML = `
       <div class="ms-sledit-bar">
@@ -534,6 +618,41 @@ export default class SlideEditorUI {
             <div class="ms-sledit-row">
               <span class="ms-sledit-mini">End</span>
               <select class="ms-sledit-arrowend" title="Terminator at the arrow's last point">${headOptions}</select>
+            </div>
+          </div>
+          <div class="ms-sledit-sec" data-sec="headratio">
+            <div class="ms-sledit-seclabel">Head size</div>
+            <input type="range" class="ms-sledit-headratio" min="5" max="200" step="5" title="Head length — a block arrow measures it against its height (PowerPoint's own scale), a tactical arrow against its spine">
+          </div>
+          <div class="ms-sledit-sec" data-sec="tacbody">
+            <div class="ms-sledit-seclabel">Body</div>
+            <div class="ms-sledit-row">
+              <input type="number" class="ms-sledit-tacwidth" min="4" max="240" step="2" title="Body thickness (px)">
+              <button data-style="taper" title="Taper the body toward the tail">${ICONS.taper}</button>
+            </div>
+          </div>
+          <div class="ms-sledit-sec" data-sec="milsym">
+            <div class="ms-sledit-seclabel">Symbol</div>
+            <div class="ms-sledit-row">
+              <select class="ms-sledit-symaff" title="Standard identity — recolours the frame">${affiliationOptions}</select>
+            </div>
+            <div class="ms-sledit-row">
+              <select class="ms-sledit-symstatus" title="Present or planned (dashed frame)">${statusOptions}</select>
+            </div>
+            <div class="ms-sledit-row">
+              <select class="ms-sledit-symech" title="Echelon">${echelonOptions}</select>
+            </div>
+            <div class="ms-sledit-row">
+              <select class="ms-sledit-symhq" title="Headquarters / task force / dummy">${hqOptions}</select>
+            </div>
+            <div class="ms-sledit-row">
+              <span class="ms-sledit-mini">Size</span>
+              <input type="number" class="ms-sledit-symsize" min="12" max="600" step="4" title="Symbol height (px)">
+            </div>
+          </div>
+          <div class="ms-sledit-sec" data-sec="amplifiers">
+            <div class="ms-sledit-row">
+              <button data-act="amplifiers" class="ms-sledit-wide" title="Edit the symbol's text amplifiers — unique designation, higher formation, DTG…">Amplifiers…</button>
             </div>
           </div>
           <div class="ms-sledit-sec" data-sec="text">
@@ -709,7 +828,13 @@ export default class SlideEditorUI {
         this._host.onStyleChanged('arrowType');
       } else if (el.dataset.style) {
         // Every data-style control is a boolean toggle in StyleDefaults.
-        const key = el.dataset.style as 'bold' | 'italic' | 'underline' | 'closed' | 'headerRow';
+        const key = el.dataset.style as
+          | 'bold'
+          | 'italic'
+          | 'underline'
+          | 'closed'
+          | 'headerRow'
+          | 'taper';
         d()[key] = !d()[key];
         this._host.onStyleChanged(key);
       } else if (el.dataset.list) {
@@ -780,6 +905,113 @@ export default class SlideEditorUI {
     bind('.ms-sledit-arrowend', 'change', (el) => {
       d().arrowEnd = el.value as ArrowHead;
       this._host.onStyleChanged('arrowEnd');
+    });
+    // One slider, two meanings — a block arrow's head is a fraction of its box,
+    // a tactical arrow's a fraction of its spine, and the two contexts are
+    // mutually exclusive. Same routing the stroke-width control already does
+    // for the highlighter.
+    bind('.ms-sledit-headratio', 'input', (el) => {
+      // Two scales behind one slider: a tactical arrow's head is a fraction of
+      // its spine (≤ 0.6 stays an arrow rather than a triangle), a block
+      // arrow's is a multiple of its height, exactly as OOXML measures it.
+      const tac = this._ctx.kind === 'tacarrow';
+      const ratio = Math.max(0.05, Math.min(tac ? 0.6 : 2, Number(el.value) / 100));
+      if (tac) d().tacHeadRatio = ratio;
+      else d().blockHeadRatio = ratio;
+      this._host.onStyleChanged('headRatio');
+    });
+    bind('.ms-sledit-tacwidth', 'change', (el) => {
+      d().tacWidthPx = Math.max(4, Math.min(240, Number(el.value) || 24));
+      this._host.onStyleChanged('tacWidthPx');
+      this.refreshPanelValues();
+    });
+    bind('.ms-sledit-symaff', 'change', (el) => {
+      d().symAffiliation = el.value;
+      this._host.onStyleChanged('symAffiliation');
+    });
+    bind('.ms-sledit-symstatus', 'change', (el) => {
+      d().symStatus = el.value;
+      this._host.onStyleChanged('symStatus');
+    });
+    bind('.ms-sledit-symech', 'change', (el) => {
+      d().symEchelon = el.value;
+      this._host.onStyleChanged('symEchelon');
+    });
+    bind('.ms-sledit-symhq', 'change', (el) => {
+      d().symHqTfDummy = el.value;
+      this._host.onStyleChanged('symHqTfDummy');
+    });
+    bind('.ms-sledit-symsize', 'change', (el) => {
+      d().symSizePx = Math.max(12, Math.min(600, Number(el.value) || 64));
+      this._host.onStyleChanged('symSizePx');
+      this.refreshPanelValues();
+    });
+  }
+
+  // ── Amplifier dialog ───────────────────────────────────────────────────────
+
+  /**
+   * The 22 milsymbol text amplifiers, grouped. Too many fields for the
+   * properties island, so they get their own small floating dialog; edits apply
+   * live (the symbol re-renders as you type) and Close is the only exit.
+   */
+  public toggleAmplifierDialog(): void {
+    if (this._amps) {
+      this.hideAmplifierDialog();
+      return;
+    }
+    const stage = this._stage;
+    if (!stage) return;
+    const d = this._host.defaults;
+    const groups = AMPLIFIER_GROUPS.map(
+      (g) => `
+        <div class="ms-sledit-ampgroup">
+          <div class="ms-sledit-amplabel">${g.label}</div>
+          ${g.fields
+            .map(
+              (f) => `<label class="ms-sledit-amprow"><span>${f.label}</span>
+                <input type="text" data-amp="${f.key}" value="${escapeAttr(
+                  d.symOptions?.[f.key] ?? '',
+                )}"></label>`,
+            )
+            .join('')}
+        </div>`,
+    ).join('');
+
+    const el = document.createElement('div');
+    el.className = 'ms-sledit-amps';
+    el.innerHTML = `
+      <div class="ms-sledit-ampshead">
+        <span>Amplifiers</span>
+        <button data-close="1" title="Close">✕</button>
+      </div>
+      <div class="ms-sledit-ampsbody">${groups}</div>`;
+    stage.appendChild(el);
+    this._amps = el;
+
+    el.addEventListener('input', (e) => {
+      const input = e.target as HTMLInputElement;
+      const key = input?.dataset?.amp;
+      if (!key) return;
+      this._host.defaults.symOptions = { ...this._host.defaults.symOptions, [key]: input.value };
+      this._host.onStyleChanged('symOptions');
+    });
+    el.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('[data-close]')) this.hideAmplifierDialog();
+    });
+  }
+
+  public hideAmplifierDialog(): void {
+    this._amps?.remove();
+    this._amps = null;
+  }
+
+  /** Re-fill the dialog's inputs after the selection changed under it. */
+  public syncAmplifierDialog(): void {
+    if (!this._amps) return;
+    const opts = this._host.defaults.symOptions ?? {};
+    this._amps.querySelectorAll('input[data-amp]').forEach((el: any) => {
+      el.value = opts[el.dataset.amp] ?? '';
     });
   }
 
@@ -874,6 +1106,14 @@ export default class SlideEditorUI {
       shapeLabel.textContent =
         ctx.kind === 'line' || ctx.kind === 'labeledLine' ? 'Line type' : 'Arrow type';
     }
+    // A tactical arrow's heads are on/off, not shaped — the terminator kind is
+    // ignored, so say what the control actually does here.
+    const headsLabel = panel.querySelector(
+      '.ms-sledit-sec[data-sec="arrowheads"] .ms-sledit-seclabel',
+    );
+    if (headsLabel) {
+      headsLabel.textContent = ctx.kind === 'tacarrow' ? 'Heads (None = no head)' : 'Arrowheads';
+    }
     this.refreshPanelValues();
   }
 
@@ -925,6 +1165,28 @@ export default class SlideEditorUI {
     q('[data-style="underline"]').classList.toggle('active', d.underline);
     q('[data-style="closed"]').classList.toggle('active', d.closed);
     q('[data-style="headerRow"]').classList.toggle('active', d.headerRow);
+    q('[data-style="taper"]')?.classList.toggle('active', d.taper);
+    const tacCtx = this._ctx.kind === 'tacarrow';
+    const headRatio = tacCtx ? d.tacHeadRatio : d.blockHeadRatio;
+    const headRatioEl = q('.ms-sledit-headratio');
+    if (headRatioEl) {
+      // Range follows the meaning — see the slider's handler in _wirePanel.
+      headRatioEl.max = tacCtx ? '60' : '200';
+      headRatioEl.value = String(Math.round(headRatio * 100));
+    }
+    const tacWidthEl = q('.ms-sledit-tacwidth');
+    if (tacWidthEl) tacWidthEl.value = String(Math.round(d.tacWidthPx));
+    const symAff = q('.ms-sledit-symaff');
+    if (symAff) symAff.value = d.symAffiliation;
+    const symStatus = q('.ms-sledit-symstatus');
+    if (symStatus) symStatus.value = d.symStatus;
+    const symEch = q('.ms-sledit-symech');
+    if (symEch) symEch.value = d.symEchelon;
+    const symHq = q('.ms-sledit-symhq');
+    if (symHq) symHq.value = d.symHqTfDummy;
+    const symSize = q('.ms-sledit-symsize');
+    if (symSize) symSize.value = String(Math.round(d.symSizePx));
+    this.syncAmplifierDialog();
     const headerFill = q('.ms-sledit-headerfill');
     if (headerFill) headerFill.value = d.headerFill;
     panel.querySelectorAll('[data-list]').forEach((el: any) => {
@@ -1242,6 +1504,44 @@ export default class SlideEditorUI {
       }
       .ms-sledit-panel input[type="number"] { width: 54px; text-align: center; }
       .ms-sledit-panel input[type="range"] { width: 100%; margin: 0; }
+      /* The symbol selects carry long labels ("Company / Battery / Troop") and
+         are one per row, so they take the island's full content width. */
+      .ms-sledit-sec[data-sec="milsym"] .ms-sledit-row { flex-wrap: nowrap; }
+      .ms-sledit-sec[data-sec="milsym"] select { width: 100%; }
+      .ms-sledit-wide { width: 100%; }
+
+      /* Amplifier dialog — floats over the stage, next to the properties island. */
+      .ms-sledit-amps {
+        position: absolute; z-index: 30; top: 64px; left: 14px; width: 258px;
+        max-height: calc(100% - 96px); display: flex; flex-direction: column;
+        background: rgba(24,29,35,0.98); border: 1px solid rgba(255,255,255,0.16);
+        border-radius: 10px; box-shadow: 0 12px 34px rgba(0,0,0,0.5);
+      }
+      .ms-sledit-ampshead {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 7px 9px; border-bottom: 1px solid rgba(255,255,255,0.12);
+        font-weight: 600; letter-spacing: 0.02em;
+      }
+      .ms-sledit-ampshead button {
+        background: none; border: none; color: #8a97a5; cursor: pointer;
+        font: inherit; padding: 0 2px;
+      }
+      .ms-sledit-ampshead button:hover { color: #dde3e8; }
+      .ms-sledit-ampsbody { overflow: auto; padding: 8px 9px 10px; }
+      .ms-sledit-amplabel {
+        font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+        color: #7d8894; margin: 6px 0 4px;
+      }
+      .ms-sledit-amprow {
+        display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+      }
+      .ms-sledit-amprow span { flex: 0 0 104px; font-size: 11px; color: #aab4be; }
+      .ms-sledit-amprow input {
+        flex: 1; min-width: 0; background: rgba(255,255,255,0.06); color: #dde3e8;
+        border: 1px solid rgba(255,255,255,0.16); border-radius: 5px;
+        padding: 3px 6px; font: inherit; height: 24px; box-sizing: border-box;
+      }
+      .ms-sledit-amprow input:focus { outline: none; border-color: #2d6cdf; }
       .ms-sledit-swatches {
         display: flex; align-items: center; gap: 5px; flex-wrap: wrap; row-gap: 5px;
       }

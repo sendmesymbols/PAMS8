@@ -15,6 +15,8 @@
 
 import { BOX_OVERLAY_KINDS } from './BriefingTypes';
 import type { ArrowHead, OverlayKind, SlideOverlay } from './BriefingTypes';
+import { cleanAmplifiers, renderMilSym } from './MilSymFactory';
+import { buildTacArrowOutline } from './TacArrowGeometry';
 import { buildTableGroup, tableFromFabric } from './OverlayTable';
 // Colour/dash helpers live in OverlayStyle so OverlayTable can share them
 // without the two modules importing each other. Re-exported here because the
@@ -418,6 +420,73 @@ export interface ShapeStyle {
 }
 
 /**
+ * Head length as a fraction of the box HEIGHT — the same thing OOXML's
+ * `rightArrow` / `leftRightArrow` / `chevron` adjustment measures, and 0.5 is
+ * their default. Matching the preset's own units is what lets an unmodified
+ * block arrow export as a native, editable PowerPoint shape (see
+ * PptxExporter._emitOverlayBox); a customised one falls back to exact geometry.
+ */
+export const DEFAULT_BLOCK_HEAD_RATIO = 0.5;
+/** Shaft thickness as a fraction of the box height — PowerPoint's other adjustment. */
+const BLOCK_SHAFT = 0.5;
+
+/**
+ * Vertices for the PowerPoint-style block arrows, in box space, pointing right.
+ * Rotation is the overlay's own `rotation`, exactly as for every other box kind,
+ * so these never need an angled variant.
+ */
+export function blockArrowPoints(
+  kind: 'blockArrow' | 'blockArrowDouble' | 'chevron',
+  w: number,
+  h: number,
+  ratio: number,
+): Array<{ x: number; y: number }> {
+  const shaftTop = (h * (1 - BLOCK_SHAFT)) / 2;
+  const shaftBot = h - shaftTop;
+  const mid = h / 2;
+
+  if (kind === 'chevron') {
+    const notch = Math.min(h * ratio, w * 0.9);
+    return [
+      { x: 0, y: 0 },
+      { x: w - notch, y: 0 },
+      { x: w, y: mid },
+      { x: w - notch, y: h },
+      { x: 0, y: h },
+      { x: notch, y: mid },
+    ];
+  }
+
+  if (kind === 'blockArrowDouble') {
+    // Two heads share the width, so neither may take more than half of it.
+    const head = Math.min(h * ratio, w * 0.45);
+    return [
+      { x: 0, y: mid },
+      { x: head, y: 0 },
+      { x: head, y: shaftTop },
+      { x: w - head, y: shaftTop },
+      { x: w - head, y: 0 },
+      { x: w, y: mid },
+      { x: w - head, y: h },
+      { x: w - head, y: shaftBot },
+      { x: head, y: shaftBot },
+      { x: head, y: h },
+    ];
+  }
+
+  const head = Math.min(h * ratio, w * 0.95);
+  return [
+    { x: 0, y: shaftTop },
+    { x: w - head, y: shaftTop },
+    { x: w - head, y: 0 },
+    { x: w, y: mid },
+    { x: w - head, y: h },
+    { x: w - head, y: shaftBot },
+    { x: 0, y: shaftBot },
+  ];
+}
+
+/**
  * Vertex/path geometry for the box-persisted shape kinds beyond rect/ellipse.
  * Geometry is regenerated from the bbox on every load (and by the editor at
  * draw end), so persistence stays bbox-only exactly like rect/ellipse.
@@ -427,6 +496,7 @@ export function makeShapeObject(
   box: { left: number; top: number; width: number; height: number },
   style: ShapeStyle,
   extra: Record<string, any> = {},
+  shapeOpts: { headRatio?: number } = {},
 ): any {
   const fabric = (window as any).fabric;
   const w = Math.max(2, box.width);
@@ -448,6 +518,11 @@ export function makeShapeObject(
     },
   };
 
+  if (kind === 'blockArrow' || kind === 'blockArrowDouble' || kind === 'chevron') {
+    const ratio = Math.max(0.05, Math.min(2, shapeOpts.headRatio ?? DEFAULT_BLOCK_HEAD_RATIO));
+    opts.data.headRatio = ratio;
+    return new fabric.Polygon(blockArrowPoints(kind, w, h, ratio), opts);
+  }
   if (kind === 'triangle') return new fabric.Triangle({ ...opts, width: w, height: h });
   if (kind === 'diamond') {
     return new fabric.Polygon(
@@ -573,6 +648,110 @@ export function makeArrowGroup(
   return grp;
 }
 
+/** Default body thickness of a tactical arrow, as a fraction of view height. */
+export const DEFAULT_TAC_WIDTH = 0.05;
+/** Default head length of a tactical arrow, as a fraction of spine length. */
+export const DEFAULT_TAC_HEAD_RATIO = 0.15;
+
+/**
+ * A filled tactical arrow — the axis-of-advance silhouette — as the same
+ * single-child Group shape `makeArrowGroup` produces. Keeping that shape is
+ * deliberate: the editor's bend handles, vertex drags, rebuild path and
+ * child-0 stroke patching all key off it, so a tacArrow inherits point editing
+ * without a line of new interaction code.
+ *
+ * Heads are decided by the ordinary arrowStart / arrowEnd terminator slots —
+ * anything but 'none' means "put a head here", which is what makes a
+ * two-headed attack arrow reachable from the existing Arrowheads control
+ * rather than needing one of its own.
+ */
+export function makeTacArrowGroup(
+  points: Array<{ x: number; y: number }>,
+  style: ShapeStyle,
+  opts: {
+    widthPx: number;
+    headRatio?: number;
+    taper?: boolean;
+    arrowType?: ArrowType;
+    start?: ArrowHead;
+    end?: ArrowHead;
+  },
+  extra: Record<string, any> = {},
+): any | null {
+  const fabric = (window as any).fabric;
+  if (!fabric) return null;
+  const arrowType = opts.arrowType ?? 'sharp';
+  const arrowEnd: ArrowHead = opts.end ?? 'triangle';
+  const arrowStart: ArrowHead = opts.start ?? 'none';
+  const headRatio = opts.headRatio ?? DEFAULT_TAC_HEAD_RATIO;
+  const outline = buildTacArrowOutline({
+    points,
+    widthPx: opts.widthPx,
+    headRatio,
+    taper: opts.taper,
+    headAtEnd: arrowEnd !== 'none',
+    headAtStart: arrowStart !== 'none',
+    arrowType,
+  });
+  if (!outline) return null;
+
+  const path = new fabric.Path(outline.d, {
+    fill: style.fill || '',
+    stroke: style.stroke || '',
+    strokeWidth: style.stroke ? style.strokeWidth : 0,
+    ...dashProps(style.strokeDash, style.strokeWidth),
+    strokeLineJoin: 'round',
+  });
+  const grp = new fabric.Group([path], {
+    ...extra,
+    data: {
+      id: extra?.data?.id ?? overlayUuid(),
+      kind: 'tacArrow' as OverlayKind,
+      strokeDash: style.strokeDash,
+      arrowType,
+      arrowStart,
+      arrowEnd,
+      tacWidthPx: opts.widthPx,
+      headRatio,
+      taper: !!opts.taper,
+    },
+  });
+  const c = grp.getCenterPoint();
+  grp.data.localPoints = points.map((p) => ({ x: p.x - c.x, y: p.y - c.y }));
+  return grp;
+}
+
+/**
+ * Stand-in for a symbol that can't be drawn — milsymbol.js absent, or a SIDC it
+ * rejects. Deliberately still a milsym object carrying its sidc, so saving a
+ * slide that failed to render doesn't silently discard the symbol.
+ */
+function makeMilSymPlaceholder(
+  o: SlideOverlay,
+  W: number,
+  H: number,
+  common: Record<string, any>,
+): any {
+  const fabric = (window as any).fabric;
+  const rect = new fabric.Rect({
+    ...common,
+    left: o.x * W,
+    top: o.y * H,
+    width: Math.max(8, o.w * W),
+    height: Math.max(8, o.h * H),
+    fill: 'rgba(120, 140, 165, 0.16)',
+    stroke: '#8a97a5',
+    strokeWidth: 1,
+    strokeDashArray: [5, 4],
+    angle: o.rotation ?? 0,
+  });
+  rect.data.sidc = o.sidc;
+  rect.data.symKey = o.symKey;
+  rect.data.symOptions = o.symOptions ? { ...o.symOptions } : undefined;
+  rect.data.placeholder = true;
+  return rect;
+}
+
 /**
  * Denormalize a persisted overlay into a fabric object (null = unusable entry,
  * skip it). Wraps `buildOverlayObject` with the cross-kind state that isn't
@@ -585,7 +764,7 @@ export function overlayToFabric(o: SlideOverlay, W: number, H: number): any | nu
   if (o.labelOf && o.kind === 'text') obj.data.labelOf = o.labelOf;
   // Box kinds and images mirror via fabric's flip flags; point-based kinds carry
   // their mirroring inside `points`, and text is never mirrored (see _flipSelection).
-  if ((o.flipX || o.flipY) && (isBoxKind(o.kind) || o.kind === 'image')) {
+  if ((o.flipX || o.flipY) && (isBoxKind(o.kind) || o.kind === 'image' || o.kind === 'milsym')) {
     obj.set({ flipX: !!o.flipX, flipY: !!o.flipY });
   }
   if (o.locked) applyLockState(obj, true);
@@ -671,6 +850,9 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
     case 'triangle':
     case 'star':
     case 'callout':
+    case 'blockArrow':
+    case 'blockArrowDouble':
+    case 'chevron':
       return makeShapeObject(
         o.kind,
         { left: o.x * W, top: o.y * H, width: o.w * W, height: o.h * H },
@@ -681,6 +863,7 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
           strokeDash: o.strokeDash,
         },
         { ...common, angle: o.rotation ?? 0 },
+        { headRatio: o.headRatio },
       );
     case 'line': {
       // Same group as an arrow, minus the terminators — that's what gives a
@@ -713,6 +896,48 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
         o.arrowType ?? 'sharp',
         { start: o.arrowStart, end: o.arrowEnd },
       );
+    }
+    case 'tacArrow': {
+      const pts = o.points ?? [];
+      if (pts.length < 2) return null;
+      return makeTacArrowGroup(
+        pts.map((p) => ({ x: p.x * W, y: p.y * H })),
+        {
+          fill: o.fill ? withAlpha(o.fill, o.fillOpacity ?? 1) : '',
+          stroke: o.stroke ?? '',
+          strokeWidth: strokePx,
+          strokeDash: o.strokeDash,
+        },
+        {
+          widthPx: (o.width ?? DEFAULT_TAC_WIDTH) * H,
+          headRatio: o.headRatio,
+          taper: o.taper,
+          arrowType: o.arrowType ?? 'sharp',
+          start: o.arrowStart,
+          end: o.arrowEnd,
+        },
+        common,
+      );
+    }
+    case 'milsym': {
+      // Rendered from the SIDC, never from a stored bitmap — see MilSymFactory.
+      const hPx = Math.max(8, o.h * H);
+      const render = o.sidc ? renderMilSym(o.sidc, o.symOptions, hPx) : null;
+      if (!render) return makeMilSymPlaceholder(o, W, H, common);
+      const img = new fabric.Image(render.canvas, {
+        ...common,
+        left: o.x * W,
+        top: o.y * H,
+        angle: o.rotation ?? 0,
+      });
+      img.data.sidc = o.sidc;
+      img.data.symKey = o.symKey;
+      img.data.symOptions = cleanAmplifiers(o.symOptions);
+      img.set({
+        scaleX: (o.w * W) / (render.width || 1),
+        scaleY: hPx / (render.height || 1),
+      });
+      return img;
     }
     case 'freehand':
     case 'highlight': {
@@ -772,6 +997,18 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
     return base;
   }
 
+  if (kind === 'milsym') {
+    // No SIDC means nothing can be re-rendered, so the entry is dead weight —
+    // the same call the image kind makes about a missing src.
+    if (!obj.data.sidc) return null;
+    if (rotation) base.rotation = rotation;
+    base.sidc = obj.data.sidc;
+    if (obj.data.symKey) base.symKey = obj.data.symKey;
+    const amps = cleanAmplifiers(obj.data.symOptions);
+    if (Object.keys(amps).length) base.symOptions = amps;
+    return base;
+  }
+
   if (kind === 'table') {
     // A table's geometry is regenerated from its model, so only the bbox is
     // read off the fabric object — no rotation (tables can't rotate) and no
@@ -817,6 +1054,9 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
       base.strokeWidth = ((obj.strokeWidth ?? 1) * avgScale) / H;
       if (obj.data.strokeDash) base.strokeDash = obj.data.strokeDash;
     }
+    // Block arrows regenerate their vertices from the bbox like every other box
+    // kind, so their proportions have to persist alongside it.
+    if (obj.data.headRatio != null) base.headRatio = Number(obj.data.headRatio);
     return base;
   }
 
@@ -829,7 +1069,7 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
 
   let pts: Array<{ x: number; y: number }> = [];
   let strokeSrc: any = obj;
-  if (kind === 'line' || kind === 'arrow') {
+  if (kind === 'line' || kind === 'arrow' || kind === 'tacArrow') {
     const lp: Array<{ x: number; y: number }> = obj.data.localPoints ?? [];
     pts = lp.map((p) => toAbs(p.x, p.y));
     strokeSrc = obj.getObjects?.()?.[0] ?? obj; // stroke lives on the child path
@@ -857,6 +1097,28 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
   base.stroke = parseColor(strokeSrc?.stroke)?.hex ?? '#FF3B30';
   base.strokeWidth = ((strokeSrc?.strokeWidth ?? 2) * avgScale) / H;
   if (obj.data.strokeDash) base.strokeDash = obj.data.strokeDash;
+  if (kind === 'tacArrow') {
+    // The outline regenerates from the spine, so what persists is the recipe:
+    // body width (scaled with the object), head proportions and the fill.
+    base.width = ((obj.data.tacWidthPx ?? DEFAULT_TAC_WIDTH * H) * avgScale) / H;
+    if (obj.data.headRatio != null) base.headRatio = Number(obj.data.headRatio);
+    if (obj.data.taper) base.taper = true;
+    if (obj.data.arrowType && obj.data.arrowType !== 'sharp') base.arrowType = obj.data.arrowType;
+    if (obj.data.arrowEnd && obj.data.arrowEnd !== 'triangle') base.arrowEnd = obj.data.arrowEnd;
+    if (obj.data.arrowStart && obj.data.arrowStart !== 'none') base.arrowStart = obj.data.arrowStart;
+    const fill = parseColor(strokeSrc?.fill);
+    if (fill) {
+      base.fill = fill.hex;
+      if (fill.alpha < 1) base.fillOpacity = Number(fill.alpha.toFixed(3));
+    }
+    // A tactical arrow is a filled body; an outline is optional, so an absent
+    // stroke must persist as absent rather than as the linework default red.
+    if (!(strokeSrc?.strokeWidth > 0) || !parseColor(strokeSrc?.stroke)) {
+      delete base.stroke;
+      delete base.strokeWidth;
+    }
+    return base;
+  }
   if (kind === 'line') {
     // Runtime keeps one shared field; persistence keeps them apart.
     if (obj.data.arrowType && obj.data.arrowType !== 'sharp') base.lineType = obj.data.arrowType;
