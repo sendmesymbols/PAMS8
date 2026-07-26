@@ -170,6 +170,12 @@ interface TextInfo {
   color?: string;
   fontFamily?: string;
   align?: 'left' | 'center' | 'right';
+  /**
+   * Set when a paragraph carries an EXPLICIT a:buChar / a:buAutoNum. Bullets
+   * inherited from a layout placeholder are deliberately not inferred — the
+   * layout isn't resolved here, and guessing would put markers on plain text.
+   */
+  listStyle?: 'bullet' | 'number';
 }
 
 /**
@@ -183,12 +189,21 @@ function extractText(txBody: Element | null): TextInfo | null {
   let style: Partial<TextInfo> | null = null;
   let align: TextInfo['align'];
 
+  let listStyle: TextInfo['listStyle'];
+
   for (const p of childrenByLocal(txBody, 'p')) {
+    const pPr = childByLocal(p, 'pPr');
     if (align === undefined) {
-      const algn = childByLocal(p, 'pPr')?.getAttribute('algn');
+      const algn = pPr?.getAttribute('algn');
       if (algn === 'ctr') align = 'center';
       else if (algn === 'r') align = 'right';
       else if (algn) align = 'left';
+    }
+    // First paragraph that declares a bullet wins — one overlay text box has a
+    // single listStyle. buNone anywhere is respected as "not a list".
+    if (listStyle === undefined && pPr && !childByLocal(pPr, 'buNone')) {
+      if (childByLocal(pPr, 'buAutoNum')) listStyle = 'number';
+      else if (childByLocal(pPr, 'buChar')) listStyle = 'bullet';
     }
     let line = '';
     for (const node of Array.from(p.children)) {
@@ -221,7 +236,7 @@ function extractText(txBody: Element | null): TextInfo | null {
 
   const text = lines.join('\n').trim();
   if (!text) return null;
-  return { text, align, ...style };
+  return { text, align, listStyle, ...style };
 }
 
 // ── Geometry ───────────────────────────────────────────────────────────────────
@@ -487,6 +502,9 @@ export async function parsePptx(
         underline: info.underline,
         align: info.align,
         textColor: info.color ?? '#000000',
+        // PowerPoint stores list text clean with the bullet as a paragraph
+        // property, which is exactly how SlideOverlay stores it too.
+        listStyle: info.listStyle,
       });
     };
 
@@ -742,33 +760,103 @@ export async function parsePptx(
       });
     };
 
-    /** Tables flatten to text (rows as lines, cells " | "-separated) — confirmed design choice. */
+    /**
+     * a:tbl → a real `table` overlay, so a table survives the round-trip as an
+     * editable table rather than as prose. (It used to flatten to one text box
+     * with " | "-joined cells.)
+     *
+     * Merged cells are not in the overlay model: a gridSpan / hMerge / vMerge
+     * continuation cell imports EMPTY, with the row and column count of the
+     * underlying grid preserved. That keeps every other cell in its correct
+     * position, which matters more than reproducing the merge.
+     */
+    const tableOverlay = (tbl: Element, box: BoxEMU): SlideOverlay | null => {
+      const gridCols = childrenByLocal(firstByLocal(tbl, 'tblGrid'), 'gridCol');
+      const trs = childrenByLocal(tbl, 'tr');
+      if (!trs.length) return null;
+
+      // The grid is authoritative for the column count; a row with a gridSpan
+      // has fewer <tc> elements than there are columns.
+      const nCols = Math.max(
+        1,
+        gridCols.length || Math.max(...trs.map((tr) => childrenByLocal(tr, 'tc').length), 1),
+      );
+
+      let merged = false;
+      let cellStyle: TextInfo | null = null;
+      const rows: string[][] = [];
+
+      for (const tr of trs) {
+        const out = new Array<string>(nCols).fill('');
+        let col = 0;
+        for (const tc of childrenByLocal(tr, 'tc')) {
+          if (col >= nCols) break;
+          const span = Math.max(1, Number(tc.getAttribute('gridSpan')) || 1);
+          const isContinuation =
+            tc.getAttribute('hMerge') === '1' || tc.getAttribute('vMerge') === '1';
+          if (span > 1 || isContinuation || tc.getAttribute('rowSpan')) merged = true;
+          if (!isContinuation) {
+            const info = extractText(firstByLocal(tc, 'txBody'));
+            if (info) {
+              out[col] = info.text;
+              if (!cellStyle) cellStyle = info;
+            }
+          }
+          col += span;
+        }
+        rows.push(out);
+      }
+      if (merged) bump('table merged cells flattened — continuation cells are empty');
+
+      const totalGrid = gridCols.reduce((a, g) => a + (Number(g.getAttribute('w')) || 0), 0);
+      const colWidths =
+        gridCols.length === nCols && totalGrid > 0
+          ? gridCols.map((g) => (Number(g.getAttribute('w')) || 0) / totalGrid)
+          : undefined;
+      const rowH = trs.map((tr) => Number(tr.getAttribute('h')) || 0);
+      const totalRowH = rowH.reduce((a, b) => a + b, 0);
+      const rowHeights = totalRowH > 0 ? rowH.map((h) => h / totalRowH) : undefined;
+
+      // firstRow only means "the header is styled differently"; the actual
+      // header fill lives on the table style part, which isn't resolved here,
+      // so the overlay default stands in.
+      const headerRow = firstByLocal(tbl, 'tblPr')?.getAttribute('firstRow') === '1';
+      const firstCell = firstByLocal(trs[0], 'tc');
+      const cellFill = parseSolidFill(childByLocal(firstCell, 'tcPr'));
+      const border = lnInfo(childByLocal(firstCell, 'tcPr'));
+
+      return {
+        id: overlayUuid(),
+        kind: 'table',
+        x: nx(box.x),
+        y: ny(box.y),
+        w: Math.max(0.01, nx(box.w)),
+        h: Math.max(0.01, ny(box.h)),
+        rows,
+        colWidths,
+        rowHeights,
+        headerRow: headerRow || undefined,
+        fill: cellFill?.hex,
+        fillOpacity:
+          cellFill && cellFill.alpha < 1 ? Number(cellFill.alpha.toFixed(3)) : undefined,
+        stroke: border.stroke,
+        strokeWidth: border.stroke ? border.widthEmu / sldCy : undefined,
+        strokeDash: border.stroke ? border.dash : undefined,
+        fontFamily: cellStyle?.fontFamily ?? 'Arial',
+        fontSize: ptToFrac(cellStyle?.sizePt ?? 14),
+        italic: cellStyle?.italic,
+        underline: cellStyle?.underline,
+        align: cellStyle?.align,
+        textColor: cellStyle?.color ?? '#000000',
+      };
+    };
+
     const handleFrame = (frame: Element): void => {
       const box = readXfrm(childByLocal(frame, 'xfrm'), currentCtx);
       const tbl = firstByLocal(frame, 'tbl');
       if (tbl && box) {
-        const rows: string[] = [];
-        let cellStyle: TextInfo | null = null;
-        for (const tr of childrenByLocal(tbl, 'tr')) {
-          const cells: string[] = [];
-          for (const tc of childrenByLocal(tr, 'tc')) {
-            const info = extractText(firstByLocal(tc, 'txBody'));
-            if (info && !cellStyle) cellStyle = info;
-            cells.push(info?.text.replace(/\n+/g, ' ') ?? '');
-          }
-          rows.push(cells.join(' | '));
-        }
-        const text = rows.join('\n').trim();
-        if (text) {
-          emitText(box, {
-            text,
-            sizePt: cellStyle?.sizePt ?? 14,
-            bold: cellStyle?.bold,
-            color: cellStyle?.color,
-            fontFamily: cellStyle?.fontFamily,
-          });
-          bump('table flattened to text');
-        }
+        if (box.rot) bump('table rotation ignored');
+        pushOverlay(tableOverlay(tbl, box));
         return;
       }
       const uri = firstByLocal(frame, 'graphicData')?.getAttribute('uri') ?? '';

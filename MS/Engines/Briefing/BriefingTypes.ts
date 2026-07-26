@@ -36,6 +36,7 @@ export type SlideTransitionType = 'fade' | 'pushLeft' | 'pushRight' | 'wipe';
 export type OverlayKind =
   | 'text'
   | 'image'
+  | 'table'
   | 'rect'
   | 'ellipse'
   | 'diamond'
@@ -161,6 +162,32 @@ export interface SlideOverlay {
   align?: 'left' | 'center' | 'right';
   textColor?: string;
   /**
+   * text only — turns the box into a one-level list: every line becomes an
+   * item. The persisted `text` stays CLEAN (no marker characters); markers are
+   * synthesized when the fabric object is built and stripped again on
+   * read-back, so toggling the style off restores the original text exactly.
+   * Exports as a real PowerPoint list (`bullet: true` / `{ type: 'number' }`),
+   * not as literal '•' characters. Absent = not a list.
+   */
+  listStyle?: 'bullet' | 'number';
+  // table only:
+  /**
+   * Row-major cell text. Always rectangular once normalized — the loader pads
+   * short rows and truncates long ones to `rows[0].length`. Cells carry no
+   * per-cell style: the whole table shares one font, one gridline stroke and
+   * one body fill (plus the header row's own fill), which is exactly what maps
+   * onto pptxgenjs `addTable`.
+   */
+  rows?: string[][];
+  /** Fractions of `w`, summing to 1. Absent = equal columns. */
+  colWidths?: number[];
+  /** Fractions of `h`, summing to 1. Absent = equal rows. */
+  rowHeights?: number[];
+  /** Gives `rows[0]` its own fill and bold text. */
+  headerRow?: boolean;
+  /** '#RRGGBB' — only meaningful with `headerRow`. */
+  headerFill?: string;
+  /**
    * text only — the overlay id of the shape or arrow this text labels. The
    * label stays an independent overlay (fabric 4.5 cannot edit text inside a
    * Group), so present mode and the PPTX exporter need no special case; the
@@ -218,9 +245,10 @@ export interface Slide {
 
 export interface BriefingDocument {
   /**
-   * 4 = slides may be screen-only (imported PPTX: no extent/camera);
-   * 3 = full-res backgroundDataUrl fallback; 2 = overlays; 1–4 accepted on import.
+   * 5 = table overlays + text listStyle; 4 = slides may be screen-only
+   * (imported PPTX: no extent/camera); 3 = full-res backgroundDataUrl fallback;
+   * 2 = overlays; 1–5 accepted on import.
    */
-  version: 1 | 2 | 3 | 4;
+  version: 1 | 2 | 3 | 4 | 5;
   slides: Slide[];
 }

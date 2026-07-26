@@ -48,6 +48,11 @@ import type {
   Slide as BriefingSlide,
   SlideOverlay,
 } from '../Briefing/BriefingTypes';
+import {
+  DEFAULT_TABLE_HEADER_FILL,
+  DEFAULT_TABLE_STROKE_WIDTH,
+  normalizeTable,
+} from '../Briefing/OverlayTable';
 
 const ENGINE_NAME = 'PptxExporter';
 
@@ -788,6 +793,7 @@ class PptxExporter {
       try {
         if (o.kind === 'text') this._emitOverlayText(slide, o, fit);
         else if (o.kind === 'image') this._emitOverlayImage(slide, o, fit);
+        else if (o.kind === 'table') this._emitOverlayTable(slide, o, fit);
         else if (OVERLAY_SHAPE_TYPES[o.kind]) this._emitOverlayBox(slide, o, fit);
         else this._emitOverlayPath(slide, o, fit); // line | arrow | freehand | highlight
         emitted++;
@@ -823,7 +829,23 @@ class PptxExporter {
 
   private _emitOverlayText(slide: any, o: SlideOverlay, fit: ContainFit): void {
     const fontPt = Math.min(96, Math.max(6, Math.round((o.fontSize ?? 0.03) * fit.h * 72)));
-    slide.addText(o.text ?? '', {
+    // A list becomes real PowerPoint list paragraphs — one run per line with a
+    // bullet — rather than literal '•' characters, so PowerPoint keeps
+    // renumbering it after the deck is edited. `text` is stored clean (markers
+    // are display-only, see OverlayFabric.applyListMarkers), so nothing needs
+    // stripping here.
+    const body = o.listStyle
+      ? String(o.text ?? '')
+          .split('\n')
+          .map((line) => ({
+            text: line,
+            options: {
+              bullet: o.listStyle === 'number' ? { type: 'number' } : true,
+              breakLine: true,
+            },
+          }))
+      : (o.text ?? '');
+    slide.addText(body, {
       x: fit.x + o.x * fit.w,
       y: fit.y + o.y * fit.h,
       w: Math.max(0.2, o.w * fit.w),
@@ -836,10 +858,76 @@ class PptxExporter {
       color: this._ovHex(o.textColor, 'FFFFFF'),
       align: o.align ?? 'left',
       valign: 'top',
-      margin: 0,
+      // A bulleted paragraph needs room for its marker; 0 would clip it.
+      margin: o.listStyle ? 2 : 0,
       rotate: this._ovRotate(o),
       transparency:
         o.opacity != null && o.opacity < 1 ? Math.round((1 - o.opacity) * 100) : undefined,
+    });
+  }
+
+  /**
+   * Tables go out as a native `a:tbl` — clickable and editable in PowerPoint,
+   * with real column widths and row heights.
+   *
+   * Two documented lossy points, both forced by `addTable`'s option set:
+   * it takes no `rotate` (which is why the editor withholds table rotation
+   * entirely), and it has no object-level transparency, so `opacity` is folded
+   * into the per-cell fill and the border instead.
+   */
+  private _emitOverlayTable(slide: any, o: SlideOverlay, fit: ContainFit): void {
+    const { rows, colWidths, rowHeights } = normalizeTable(o);
+    const tableW = Math.max(0.4, o.w * fit.w);
+    const tableH = Math.max(0.2, o.h * fit.h);
+    const objAlpha = o.opacity ?? 1;
+    const bodyAlpha = (o.fillOpacity ?? 1) * objAlpha;
+    const fontPt = Math.min(96, Math.max(6, Math.round((o.fontSize ?? 0.025) * fit.h * 72)));
+
+    const bodyFill = o.fill
+      ? { color: this._ovHex(o.fill, '101418'), transparency: Math.round((1 - bodyAlpha) * 100) }
+      : undefined;
+    const headerFill = o.headerRow
+      ? {
+          color: this._ovHex(o.headerFill ?? DEFAULT_TABLE_HEADER_FILL, '2D6CDF'),
+          transparency: Math.round((1 - bodyAlpha) * 100),
+        }
+      : undefined;
+
+    const cells = rows.map((row, r) => {
+      const isHeader = r === 0 && !!o.headerRow;
+      return row.map((text) => ({
+        text: text ?? '',
+        options: {
+          fill: isHeader ? headerFill : bodyFill,
+          bold: isHeader || !!o.bold,
+          italic: !!o.italic,
+          underline: o.underline ? { style: 'sng' } : undefined,
+          color: this._ovHex(o.textColor, 'FFFFFF'),
+          align: o.align ?? 'left',
+          valign: 'middle',
+        },
+      }));
+    });
+
+    slide.addTable(cells, {
+      x: fit.x + o.x * fit.w,
+      y: fit.y + o.y * fit.h,
+      w: tableW,
+      h: tableH,
+      colW: colWidths.map((f) => f * tableW),
+      rowH: rowHeights.map((f) => f * tableH),
+      fontSize: fontPt,
+      fontFace: o.fontFamily || 'Arial',
+      border: {
+        type: o.strokeDash ? 'dash' : 'solid',
+        pt: Math.max(
+          0.25,
+          Math.round((o.strokeWidth ?? DEFAULT_TABLE_STROKE_WIDTH) * fit.h * 72 * 4) / 4,
+        ),
+        color: this._ovHex(o.stroke, 'FFFFFF'),
+      },
+      margin: 2,
+      valign: 'middle',
     });
   }
 

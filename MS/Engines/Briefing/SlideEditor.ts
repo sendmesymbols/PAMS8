@@ -21,6 +21,7 @@ import type { Slide, SlideOverlay, SlideTransitionType } from './BriefingTypes';
 import LaserTrail from './LaserTrail';
 import {
   applyLockState,
+  applyListMarkers,
   buildArrowPath,
   dashProps,
   fabricToOverlay,
@@ -37,6 +38,22 @@ import {
   withAlpha,
   type ArrowType,
 } from './OverlayFabric';
+import {
+  DEFAULT_TABLE_COLS,
+  DEFAULT_TABLE_HEADER_FILL,
+  DEFAULT_TABLE_ROWS,
+  cellRectAt,
+  emptyTable,
+  nextCell,
+  normalizeTable,
+  withCellText,
+  withColDeleted,
+  withColInserted,
+  withRowDeleted,
+  withRowInserted,
+  type CellHit,
+  type NormalizedTable,
+} from './OverlayTable';
 import SlideEditorUI, { TOOL_DEFS } from './SlideEditorUI';
 import type { PanelContext, StyleDefaults, StyleProp, Tool } from './SlideEditorUI';
 
@@ -114,6 +131,9 @@ const COPYABLE_STYLE_PROPS: readonly StyleProp[] = [
   'strokeDash',
   'opacity',
   'highlightWidthPx',
+  'listStyle',
+  'headerRow',
+  'headerFill',
 ];
 
 type AlignMode = 'left' | 'centerH' | 'right' | 'top' | 'centerV' | 'bottom';
@@ -134,6 +154,7 @@ function isLinework(obj: any): boolean {
 const PANEL_KIND_BY_OVERLAY: Record<string, PanelContext['kind']> = {
   text: 'text',
   image: 'image',
+  table: 'table',
   highlight: 'highlight',
   arrow: 'arrow',
   line: 'line',
@@ -226,7 +247,25 @@ export default class SlideEditor {
     arrowStart: 'none',
     arrowEnd: 'triangle',
     closed: false,
+    listStyle: null,
+    headerRow: true,
+    headerFill: DEFAULT_TABLE_HEADER_FILL.toLowerCase(),
   };
+
+  /**
+   * Live cell edit in progress: the transient Textbox floating over the cell,
+   * which table it belongs to, and where. The editor object deliberately has no
+   * `data.kind`, so `_overlayObjects()` never sees it and it can't be persisted,
+   * copied or erased.
+   */
+  private _cellEdit: {
+    editor: any;
+    tableId: string;
+    r: number;
+    c: number;
+    /** Set by Tab so `editing:exited` knows to reopen on the next cell. */
+    moveTo?: { r: number; c: number };
+  } | null = null;
 
   private constructor() {}
 
@@ -269,6 +308,9 @@ export default class SlideEditor {
     const index = this._index;
     if (!this._fc || !host || index < 0) return;
     if (this._arrowChain) this._clearArrowChain();
+    // An open cell editor holds text that isn't in any table yet — flush it
+    // before the overlays are collected, or the last thing typed is lost.
+    this._closeCellEdit();
     try {
       const active: any = this._fc.getActiveObject?.();
       active?.exitEditing?.();
@@ -559,6 +601,12 @@ export default class SlideEditor {
         this._alignSelection(mode);
         break;
       }
+      case 'tableRowAdd':
+      case 'tableRowDel':
+      case 'tableColAdd':
+      case 'tableColDel':
+        this._tableAction(act);
+        break;
       case 'distributeH':
         this._distributeSelection('h');
         break;
@@ -700,7 +748,7 @@ export default class SlideEditor {
     this._fc.on('selection:created', () => this._syncControlsFromSelection());
     this._fc.on('selection:updated', () => this._syncControlsFromSelection());
     this._fc.on('selection:cleared', () => this._syncPanelContext());
-    this._fc.on('object:modified', () => {
+    this._fc.on('object:modified', (e: any) => {
       if (this._vertexDrag) {
         this._finalizeVertexDrag();
         return;
@@ -708,6 +756,14 @@ export default class SlideEditor {
       if (this._bendDrag) {
         this._finalizeArrowBend();
         return;
+      }
+      // Resizing a table scales its Group, which thickens its gridlines and
+      // blurs its cell text. Regenerate the grid at the new size so it stays
+      // crisp — the read-back is scale-aware, so this is what a reload would
+      // have shown anyway; doing it now just avoids the interim look.
+      const t = e?.target;
+      if (t?.data?.kind === 'table' && ((t.scaleX ?? 1) !== 1 || (t.scaleY ?? 1) !== 1)) {
+        this._replaceTable(t, {});
       }
       this._commit();
     });
@@ -718,6 +774,14 @@ export default class SlideEditor {
       if (t && !String(t.text ?? '').trim()) {
         // Emptying a label is how you remove it — the container just loses its text.
         this._fc.remove(t);
+      } else if (t?.data?.listStyle) {
+        // Re-derive the list markers now rather than on every keystroke: doing
+        // it live would mean shifting the caret by each line's marker delta on
+        // every edit, and any slip there lands the caret in the wrong place.
+        // On commit it's pure string work — new lines gain a marker and a
+        // numbered list renumbers.
+        t.set('text', applyListMarkers(String(t.text ?? ''), t.data.listStyle));
+        this._fc.requestRenderAll();
       } else if (t?.data?.labelOf) {
         // Typing changed the text's height — re-center it in its container.
         const owner = this._containerFor(t);
@@ -1116,6 +1180,29 @@ export default class SlideEditor {
       return;
     }
 
+    if (t === 'table') {
+      // Drag out a plain dashed outline; the real table Group is built on
+      // mouse-up, once its final bbox is known (cell geometry is derived from
+      // the bbox, so previewing the grid itself would mean rebuilding it on
+      // every mouse-move).
+      const preview = new fabric.Rect({
+        left: p.x,
+        top: p.y,
+        width: 1,
+        height: 1,
+        fill: 'rgba(45, 108, 223, 0.12)',
+        stroke: '#2d6cdf',
+        strokeWidth: 1,
+        strokeDashArray: [4, 3],
+        selectable: false,
+        evented: false,
+      });
+      this._fc.add(preview);
+      this._fc.discardActiveObject();
+      this._drawing = { obj: preview, startX: p.x, startY: p.y };
+      return;
+    }
+
     const style = this._creationStyle();
     const dash = dashProps(style.strokeDash, style.strokeWidth);
     let obj: any = null;
@@ -1199,7 +1286,7 @@ export default class SlideEditor {
     if (!this._drawing) return;
     const p = this._fc.getPointer(opt.e);
     const { obj, startX, startY } = this._drawing;
-    if (t === 'rect' || t === 'triangle') {
+    if (t === 'rect' || t === 'triangle' || t === 'table') {
       obj.set({
         left: Math.min(startX, p.x),
         top: Math.min(startY, p.y),
@@ -1246,6 +1333,37 @@ export default class SlideEditor {
     if (!this._drawing) return;
     const { obj, startX, startY } = this._drawing;
     this._drawing = null;
+
+    if (t === 'table') {
+      this._fc.remove(obj); // the dashed preview
+      const p = this._fc.getPointer(opt.e);
+      // A click (rather than a drag) still makes a table — at a sensible
+      // default size, like PowerPoint's Insert ▸ Table.
+      const dragged = Math.abs(p.x - startX) > 12 && Math.abs(p.y - startY) > 12;
+      const w = dragged ? Math.abs(p.x - startX) : Math.min(this._W * 0.34, 420);
+      const h = dragged ? Math.abs(p.y - startY) : Math.min(this._H * 0.22, 200);
+      const left = dragged ? Math.min(startX, p.x) : p.x;
+      const top = dragged ? Math.min(startY, p.y) : p.y;
+      const table = this._buildTableObject(
+        emptyTable(DEFAULT_TABLE_ROWS, DEFAULT_TABLE_COLS),
+        { left, top, width: w, height: h },
+        overlayUuid(),
+      );
+      if (table) {
+        this._fc.add(table);
+        if (this._toolLock) {
+          this._fc.discardActiveObject();
+        } else {
+          this._setTool('select');
+          this._fc.setActiveObject(table);
+        }
+        this._fc.requestRenderAll();
+        this._commit();
+      } else if (!this._toolLock) {
+        this._setTool('select');
+      }
+      return;
+    }
 
     const isLineKind = t === 'line';
     const degenerate = isLineKind
@@ -2107,6 +2225,228 @@ export default class SlideEditor {
     fc.requestRenderAll();
   }
 
+  // ── Tables ─────────────────────────────────────────────────────────────────
+  //
+  // A table's grid and cell text are regenerated from its model rather than
+  // patched in place, because fabric 4.5's in-group surgery is unreliable. So
+  // every table mutation — a cell edit, a row/column change, a restyle — funnels
+  // through `_replaceTable`, which rebuilds the object and swaps it on the
+  // canvas while keeping the overlay id, z-order and selection.
+
+  /** Compose a table model + bbox + style defaults into a fabric object. */
+  private _buildTableObject(
+    model: NormalizedTable,
+    box: { left: number; top: number; width: number; height: number },
+    id: string,
+  ): any | null {
+    const d = this._defaults;
+    return overlayToFabric(
+      {
+        id,
+        kind: 'table',
+        x: box.left / this._W,
+        y: box.top / this._H,
+        w: Math.max(0.02, box.width / this._W),
+        h: Math.max(0.02, box.height / this._H),
+        rows: model.rows,
+        colWidths: model.colWidths,
+        rowHeights: model.rowHeights,
+        headerRow: d.headerRow,
+        headerFill: d.headerFill,
+        fill: d.fill ?? undefined,
+        fillOpacity: d.fillOpacity,
+        stroke: d.stroke,
+        strokeWidth: d.strokeWidthPx / this._H,
+        strokeDash: d.strokeDash === 'solid' ? undefined : d.strokeDash,
+        fontFamily: d.fontFamily,
+        fontSize: d.fontSizePx / this._H,
+        bold: d.bold,
+        italic: d.italic,
+        underline: d.underline,
+        align: d.align,
+        textColor: d.textColor,
+        opacity: d.opacity,
+      },
+      this._W,
+      this._H,
+    );
+  }
+
+  /**
+   * Rebuild `obj` from its own persisted form with `patch` applied, and swap the
+   * result in at the same stack position. Returns the new object (null if the
+   * rebuild failed, in which case the original is left untouched).
+   */
+  private _replaceTable(obj: any, patch: Partial<SlideOverlay>): any | null {
+    const fc = this._fc;
+    if (!fc || obj?.data?.kind !== 'table') return null;
+    const current = fabricToOverlay(obj, this._W, this._H);
+    if (!current) return null;
+    const next = overlayToFabric({ ...current, ...patch }, this._W, this._H);
+    if (!next) return null;
+    const at = this._overlayIndex(obj);
+    const wasActive = fc.getActiveObject() === obj;
+    if (obj.data.groupId) next.data.groupId = obj.data.groupId;
+    if (obj.data.locked) applyLockState(next, true);
+    fc.remove(obj);
+    fc.add(next);
+    if (at >= 0) fc.moveTo(next, at);
+    if (wasActive) fc.setActiveObject(next);
+    fc.requestRenderAll();
+    return next;
+  }
+
+  /** The single selected table, or null when the selection isn't exactly one. */
+  private _selectedTable(): any | null {
+    const objs = this._unlockedSelection();
+    if (objs.length !== 1 || objs[0]?.data?.kind !== 'table') return null;
+    return objs[0];
+  }
+
+  private _tableById(id: string): any | null {
+    return this._overlayObjects().find((o) => o.data.kind === 'table' && o.data.id === id) ?? null;
+  }
+
+  private _tableAction(act: string): void {
+    const table = this._selectedTable();
+    if (!table) return;
+    const model = normalizeTable(fabricToOverlay(table, this._W, this._H) ?? {});
+    const next =
+      act === 'tableRowAdd'
+        ? withRowInserted(model)
+        : act === 'tableRowDel'
+          ? withRowDeleted(model)
+          : act === 'tableColAdd'
+            ? withColInserted(model)
+            : withColDeleted(model);
+    // At a min/max bound the pure op returns its input unchanged — nothing to
+    // rebuild, and no undo entry for a no-op.
+    if (next === model) return;
+    if (
+      this._replaceTable(table, {
+        rows: next.rows,
+        colWidths: next.colWidths,
+        rowHeights: next.rowHeights,
+      })
+    ) {
+      this._commit();
+    }
+  }
+
+  /**
+   * Open a transient Textbox over one cell. The editor object carries no
+   * `data.kind`, so it is invisible to `_overlayObjects()` and can never be
+   * persisted, copied, erased or nudged.
+   */
+  private _editTableCell(table: any, hit: CellHit): void {
+    const fc = this._fc;
+    const fabric = (window as any).fabric;
+    if (!fc || !fabric || table.data.locked) return;
+    this._closeCellEdit(); // only one cell at a time
+
+    const model = normalizeTable(fabricToOverlay(table, this._W, this._H) ?? {});
+    const style = table.data.style ?? {};
+    const pad = Math.min(6, Math.max(1, Math.min(hit.width, hit.height) * 0.12));
+    const editor = new fabric.Textbox(model.rows[hit.r]?.[hit.c] ?? '', {
+      left: hit.left + pad,
+      top: hit.top + pad,
+      width: Math.max(8, hit.width - pad * 2),
+      fontSize: Math.max(6, (style.fontSize ?? 0.025) * this._H),
+      fontFamily: style.fontFamily || 'Arial',
+      fontWeight: (hit.r === 0 && table.data.headerRow) || style.bold ? 'bold' : 'normal',
+      fontStyle: style.italic ? 'italic' : 'normal',
+      underline: !!style.underline,
+      textAlign: style.align ?? 'left',
+      fill: style.textColor ?? '#FFFFFF',
+      backgroundColor: 'rgba(45, 108, 223, 0.35)',
+      hasControls: false,
+      hasBorders: false,
+      // No data.kind — see the doc comment.
+      data: { cellEditor: true },
+    });
+    editor.on('editing:exited', () => this._closeCellEdit());
+    fc.add(editor);
+    fc.setActiveObject(editor);
+    editor.enterEditing();
+    editor.selectAll();
+    fc.requestRenderAll();
+    this._cellEdit = { editor, tableId: table.data.id, r: hit.r, c: hit.c };
+  }
+
+  /**
+   * Commit the open cell editor back into its table and tear it down. Safe to
+   * call when nothing is being edited. When `moveTo` was set by Tab, reopens on
+   * the requested cell after the rebuild.
+   */
+  private _closeCellEdit(): void {
+    const state = this._cellEdit;
+    const fc = this._fc;
+    if (!state || !fc) return;
+    this._cellEdit = null; // first, so the editing:exited handler can't recurse
+
+    const { editor, tableId, r, c, moveTo } = state;
+    const text = String(editor.text ?? '');
+    editor.off?.('editing:exited');
+    if (editor.isEditing) editor.exitEditing();
+    fc.remove(editor);
+
+    const table = this._tableById(tableId);
+    if (!table) {
+      fc.requestRenderAll();
+      return;
+    }
+    const model = normalizeTable(fabricToOverlay(table, this._W, this._H) ?? {});
+    let next: any = table;
+    if ((model.rows[r]?.[c] ?? '') !== text) {
+      const updated = withCellText(model, r, c, text);
+      next =
+        this._replaceTable(table, {
+          rows: updated.rows,
+          colWidths: updated.colWidths,
+          rowHeights: updated.rowHeights,
+        }) ?? table;
+      this._commit();
+    } else {
+      fc.setActiveObject(table);
+      fc.requestRenderAll();
+    }
+
+    if (moveTo) {
+      const hit = this._cellHitFor(next, moveTo.r, moveTo.c);
+      if (hit) this._editTableCell(next, hit);
+    }
+  }
+
+  /** Geometry of cell (r, c) on `table`, via a probe at the cell's midpoint. */
+  private _cellHitFor(table: any, r: number, c: number): CellHit | null {
+    const model: NormalizedTable | undefined = table?.data?.table;
+    if (!model) return null;
+    const w = table.getScaledWidth?.() ?? 0;
+    const h = table.getScaledHeight?.() ?? 0;
+    let fx = 0;
+    for (let i = 0; i < c; i++) fx += model.colWidths[i] ?? 0;
+    let fy = 0;
+    for (let i = 0; i < r; i++) fy += model.rowHeights[i] ?? 0;
+    return cellRectAt(
+      table,
+      (table.left ?? 0) + (fx + (model.colWidths[c] ?? 0) / 2) * w,
+      (table.top ?? 0) + (fy + (model.rowHeights[r] ?? 0) / 2) * h,
+    );
+  }
+
+  /** Tab / Shift+Tab while a cell is open: commit and step to the next cell. */
+  private _advanceCellEdit(dir: 1 | -1): boolean {
+    const state = this._cellEdit;
+    if (!state) return false;
+    const table = this._tableById(state.tableId);
+    if (!table) return false;
+    const model: NormalizedTable = table.data.table ?? normalizeTable({});
+    const target = nextCell(model, state.r, state.c, dir);
+    state.moveTo = target ?? undefined;
+    this._closeCellEdit();
+    return true;
+  }
+
   /** Double-click: label a shape / arrow, or edit an existing text object. */
   private _onDoubleClick(opt: any): void {
     const fc = this._fc;
@@ -2121,6 +2461,19 @@ export default class SlideEditor {
     // object itself rather than the selection frame.
     const target: any = fc.findTarget?.(opt.e, true);
     if (!target?.data?.kind || target.data.locked) return;
+    if (target.data.kind === 'table') {
+      // Drop the selection FIRST, for the same reason _editLabel does: a
+      // double-clicked object arrives already promoted into an ActiveSelection
+      // (see _cohortFor), and inside one its left/top are group-relative, so
+      // cellRectAt would hit-test against the wrong origin and pick the wrong
+      // cell (or none).
+      fc.discardActiveObject();
+      fc.setActiveObject(target);
+      const p = fc.getPointer(opt.e);
+      const hit = cellRectAt(target, p.x, p.y);
+      if (hit) this._editTableCell(target, hit);
+      return;
+    }
     if (target.data.kind === 'text') {
       // Reached explicitly: fabric's own double-click-to-edit only fires when
       // the text is the sole active object, and a label never is (see _cohortFor).
@@ -2341,10 +2694,11 @@ export default class SlideEditor {
           next.points = next.points.map((p) =>
             axis === 'x' ? { x: 2 * c - p.x, y: p.y } : { x: p.x, y: 2 * c - p.y },
           );
-        } else if (next.kind !== 'text') {
-          // Text mirrors its position with the rest of the selection but keeps
-          // its glyphs readable — mirrored type is never what's wanted, and
-          // PPTX text has no dependable flip either.
+        } else if (next.kind !== 'text' && next.kind !== 'table') {
+          // Text and tables mirror their POSITION with the rest of the
+          // selection but keep their content readable — mirrored type is never
+          // what's wanted, PPTX text has no dependable flip either, and
+          // addTable takes no flip at all.
           const key = axis === 'x' ? 'flipX' : 'flipY';
           if (next[key]) delete next[key];
           else next[key] = true;
@@ -2504,6 +2858,13 @@ export default class SlideEditor {
     for (const obj of objs) {
       for (const prop of COPYABLE_STYLE_PROPS) this._applyStyleTo(obj, prop);
     }
+    // Tables ignore _applyStyleTo (their look is regenerated, not patched), so
+    // they take the pasted style through the same rebuild a panel change uses.
+    const tables = objs.filter((o) => o?.data?.kind === 'table');
+    if (tables.length) {
+      const kept = objs.filter((o) => !tables.includes(o));
+      this._selectObjects([...kept, ...tables.map((o) => this._restyleTable(o) ?? o)]);
+    }
     // Arrow shape and terminators are geometry — those arrows have to be
     // rebuilt, and the rebuild replaces the object, so the selection is
     // re-formed from the new ones.
@@ -2655,6 +3016,12 @@ export default class SlideEditor {
 
   private _onStyleChanged(prop: StyleProp): void {
     const objs = this._unlockedSelection();
+    // A table has no fabric-level style of its own — its look lives on
+    // regenerated children — so any style change rebuilds it wholesale. The
+    // rebuild runs at the END of this method, not here: it replaces the object,
+    // and re-forming the selection re-reads the panel defaults off it, which
+    // would overwrite `prop` before the other selected kinds got patched.
+    const tables = objs.filter((o) => o?.data?.kind === 'table');
     // An arrow's shape and terminators are geometry, not properties, so those
     // arrows get rebuilt instead of patched — which replaces the object and so
     // re-forms the selection. Stroke width joins them because terminators are
@@ -2680,6 +3047,16 @@ export default class SlideEditor {
         const rebuilt = arrows.map((o) => this._applyArrowGeometryChange(o, shapeOnly));
         this._selectObjects([...kept, ...rebuilt]);
       }
+    }
+    if (tables.length) {
+      const swap = new Map<any, any>();
+      for (const t of tables) swap.set(t, this._restyleTable(t) ?? t);
+      const next = objs
+        .map((o) => swap.get(o) ?? o)
+        // An arrow rebuilt just above is no longer on the canvas — selecting a
+        // removed object would leave an empty selection frame behind.
+        .filter((o) => this._overlayIndex(o) >= 0);
+      if (next.length > 1) this._selectObjects(next);
     }
     if (objs.length) {
       this._fc.requestRenderAll();
@@ -2714,6 +3091,28 @@ export default class SlideEditor {
     return this._rebuildArrow(obj, absPoints);
   }
 
+  /** Stamp every panel default onto one table and rebuild it. */
+  private _restyleTable(obj: any): any | null {
+    const d = this._defaults;
+    return this._replaceTable(obj, {
+      headerRow: d.headerRow,
+      headerFill: d.headerFill,
+      fill: d.fill ?? undefined,
+      fillOpacity: d.fillOpacity,
+      stroke: d.stroke,
+      strokeWidth: d.strokeWidthPx / this._H,
+      strokeDash: d.strokeDash === 'solid' ? undefined : d.strokeDash,
+      fontFamily: d.fontFamily,
+      fontSize: d.fontSizePx / this._H,
+      bold: d.bold,
+      italic: d.italic,
+      underline: d.underline,
+      align: d.align,
+      textColor: d.textColor,
+      opacity: d.opacity,
+    });
+  }
+
   /** The path child that carries a linework group's stroke — always child 0. */
   private _lineworkPath(obj: any): any | null {
     return obj?.getObjects?.()?.[0] ?? null;
@@ -2723,9 +3122,20 @@ export default class SlideEditor {
     const d = this._defaults;
     const kind = obj?.data?.kind;
     if (!kind) return;
+    // Tables are rebuilt by _restyleTable, never patched — see _onStyleChanged.
+    if (kind === 'table') return;
     const linework = isLinework(obj);
     const dashVal = d.strokeDash === 'solid' ? undefined : d.strokeDash;
     switch (prop) {
+      case 'listStyle':
+        if (kind === 'text') {
+          // The marker characters live in the fabric text; the persisted model
+          // stays clean (see OverlayFabric.applyListMarkers).
+          if (d.listStyle) obj.data.listStyle = d.listStyle;
+          else delete obj.data.listStyle;
+          obj.set('text', applyListMarkers(String(obj.text ?? ''), d.listStyle ?? undefined));
+        }
+        break;
       case 'fontFamily':
         if (kind === 'text') obj.set('fontFamily', d.fontFamily);
         break;
@@ -2852,6 +3262,8 @@ export default class SlideEditor {
     switch (this._tool) {
       case 'text':
         return { kind: 'text', ...idle };
+      case 'table':
+        return { kind: 'table', ...idle };
       case 'arrow':
         return { kind: 'arrow', ...idle };
       case 'line':
@@ -2893,7 +3305,26 @@ export default class SlideEditor {
     const d = this._defaults;
     if (!kind) return;
 
-    if (kind === 'text') {
+    if (kind === 'table') {
+      // A table's style lives on data.style — its children are regenerated, so
+      // reading fill/stroke off the Group itself would find nothing.
+      const st = obj.data.style ?? {};
+      d.fontFamily = st.fontFamily || 'Arial';
+      d.fontSizePx = Math.max(6, Math.round((st.fontSize ?? 0.025) * this._H));
+      d.bold = !!st.bold;
+      d.italic = !!st.italic;
+      d.underline = !!st.underline;
+      d.align = st.align === 'center' || st.align === 'right' ? st.align : 'left';
+      d.textColor = st.textColor ?? d.textColor;
+      d.fill = st.fill ?? d.fill;
+      d.fillOpacity = st.fillOpacity ?? d.fillOpacity;
+      d.stroke = st.stroke ?? d.stroke;
+      d.strokeWidthPx = Math.max(1, Math.round((st.strokeWidth ?? 0.0015) * this._H));
+      d.strokeDash = obj.data.strokeDash ?? 'solid';
+      d.headerRow = !!obj.data.headerRow;
+      d.headerFill = obj.data.headerFill ?? d.headerFill;
+      d.opacity = obj.opacity ?? 1;
+    } else if (kind === 'text') {
       d.fontFamily = obj.fontFamily || 'Arial';
       d.fontSizePx = Math.round(obj.fontSize ?? 28);
       d.bold = obj.fontWeight === 'bold';
@@ -2901,6 +3332,7 @@ export default class SlideEditor {
       d.underline = !!obj.underline;
       d.align = obj.textAlign === 'center' || obj.textAlign === 'right' ? obj.textAlign : 'left';
       d.textColor = parseColor(obj.fill)?.hex ?? d.textColor;
+      d.listStyle = obj.data.listStyle ?? null;
     } else {
       const closedLine = kind === 'line' && !!obj.data.closed;
       if (isBoxKind(kind) || closedLine) {
@@ -2986,6 +3418,15 @@ export default class SlideEditor {
           return;
         }
         this.close(false);
+        return;
+      }
+      // Tab traverses a table's cells — the one key that has to be intercepted
+      // mid-edit, before the blanket "leave typing alone" rule below (which is
+      // also why it can't just live with the other shortcuts).
+      if (e.key === 'Tab' && this._cellEdit) {
+        e.preventDefault();
+        e.stopPropagation();
+        this._advanceCellEdit(e.shiftKey ? -1 : 1);
         return;
       }
       // While typing (text object or chrome inputs) leave every other key

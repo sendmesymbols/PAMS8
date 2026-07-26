@@ -15,6 +15,13 @@
 
 import { BOX_OVERLAY_KINDS } from './BriefingTypes';
 import type { ArrowHead, OverlayKind, SlideOverlay } from './BriefingTypes';
+import { buildTableGroup, tableFromFabric } from './OverlayTable';
+// Colour/dash helpers live in OverlayStyle so OverlayTable can share them
+// without the two modules importing each other. Re-exported here because the
+// editor and BriefingEngine have always imported them from this module.
+import { dashProps, overlayUuid, parseColor, withAlpha } from './OverlayStyle';
+
+export { dashProps, overlayUuid, parseColor, withAlpha };
 
 type BoxKind = (typeof BOX_OVERLAY_KINDS)[number];
 type ShapeKind = Exclude<BoxKind, 'rect' | 'ellipse'>;
@@ -75,41 +82,44 @@ export function preloadOverlayImages(
   return Promise.all([...srcs].map((src) => loadOverlayImage(src))).then(() => undefined);
 }
 
-export function overlayUuid(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+/**
+ * Bullet / numbered lists live as literal marker characters inside the fabric
+ * Textbox — the user edits exactly what renders — while `SlideOverlay.text`
+ * stays clean. These two helpers are the only bridge between the two forms.
+ *
+ * `stripListMarkers` is deliberately tolerant: it removes '•', '-', '*' and
+ * '<n>.' / '<n>)' prefixes regardless of which style is active, so switching
+ * bullet → number (or pasting a hand-typed list) can't leave a doubled marker.
+ */
+const LIST_MARKER_RE = /^[ \t]*(?:[•▪◦*-]|\d+[.)])[ \t]+/;
+
+export function stripListMarkers(text: string): string {
+  return String(text ?? '')
+    .split('\n')
+    .map((line) => line.replace(LIST_MARKER_RE, ''))
+    .join('\n');
 }
 
-/** '#RGB' / '#RRGGBB' / 'rgb()' / 'rgba()' → hex + alpha. Null when unusable. */
-export function parseColor(c: any): { hex: string; alpha: number } | null {
-  if (!c || typeof c !== 'string') return null;
-  const s = c.trim();
-  if (!s) return null;
-  if (s[0] === '#') {
-    let hex = s.slice(1);
-    if (hex.length === 3) hex = hex.split('').map((ch) => ch + ch).join('');
-    if (hex.length < 6) return null;
-    return { hex: `#${hex.slice(0, 6).toUpperCase()}`, alpha: 1 };
-  }
-  const m = s.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/i);
-  if (!m) return null;
-  const to2 = (n: number) =>
-    Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0').toUpperCase();
-  const alpha = m[4] != null ? Math.max(0, Math.min(1, parseFloat(m[4]))) : 1;
-  return { hex: `#${to2(+m[1])}${to2(+m[2])}${to2(+m[3])}`, alpha };
-}
-
-/** '#RRGGBB' + alpha → 'rgba(r, g, b, a)' (fabric fill strings carry alpha inline). */
-export function withAlpha(hex: string, alpha: number): string {
-  const p = parseColor(hex);
-  if (!p) return hex;
-  const r = parseInt(p.hex.slice(1, 3), 16);
-  const g = parseInt(p.hex.slice(3, 5), 16);
-  const b = parseInt(p.hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
+/**
+ * Prefix each line for display. Blank lines stay blank — a spacer line in the
+ * middle of a list shouldn't get an orphan bullet, and numbering skips it so
+ * the visible sequence stays 1, 2, 3.
+ */
+export function applyListMarkers(
+  text: string,
+  style: 'bullet' | 'number' | undefined,
+): string {
+  const clean = stripListMarkers(text);
+  if (!style) return clean;
+  let n = 0;
+  return clean
+    .split('\n')
+    .map((line) => {
+      if (!line.trim()) return line;
+      n++;
+      return style === 'number' ? `${n}. ${line}` : `• ${line}`;
+    })
+    .join('\n');
 }
 
 let _controlsStyled = false;
@@ -200,20 +210,6 @@ export function applyLockState(obj: any, locked: boolean): void {
     obj.set('editable', !locked);
   }
   obj.setCoords?.();
-}
-
-/**
- * Dash pattern → fabric stroke props, scaled by width so dashes stay legible
- * at any thickness. Solid explicitly resets both (style changes reuse this).
- */
-export function dashProps(
-  dash: 'dashed' | 'dotted' | undefined | null,
-  strokeWidthPx: number,
-): Record<string, any> {
-  const w = Math.max(1, strokeWidthPx);
-  if (dash === 'dashed') return { strokeDashArray: [w * 3, w * 2], strokeLineCap: 'butt' };
-  if (dash === 'dotted') return { strokeDashArray: [1, w * 2], strokeLineCap: 'round' };
-  return { strokeDashArray: null, strokeLineCap: 'butt' };
 }
 
 export type ArrowType = 'sharp' | 'curved' | 'elbow';
@@ -625,8 +621,10 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
       });
       return img;
     }
-    case 'text':
-      return new fabric.Textbox(o.text ?? '', {
+    case 'table':
+      return buildTableGroup(o, W, H);
+    case 'text': {
+      const tb = new fabric.Textbox(applyListMarkers(o.text ?? '', o.listStyle), {
         ...common,
         left: o.x * W,
         top: o.y * H,
@@ -640,6 +638,9 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
         fill: o.textColor ?? '#FFFFFF',
         angle: o.rotation ?? 0,
       });
+      if (o.listStyle) tb.data.listStyle = o.listStyle;
+      return tb;
+    }
     case 'rect':
       return new fabric.Rect({
         ...common,
@@ -771,11 +772,26 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
     return base;
   }
 
+  if (kind === 'table') {
+    // A table's geometry is regenerated from its model, so only the bbox is
+    // read off the fabric object — no rotation (tables can't rotate) and no
+    // flip flags (which is why they were never applied in overlayToFabric).
+    delete base.flipX;
+    delete base.flipY;
+    return { ...base, ...tableFromFabric(obj) };
+  }
+
   if (kind === 'text') {
     if (!String(obj.text ?? '').trim()) return null;
     if (obj.data.labelOf) base.labelOf = obj.data.labelOf;
     if (rotation) base.rotation = rotation;
-    base.text = String(obj.text);
+    // The fabric object carries display markers; the model never does.
+    if (obj.data.listStyle) {
+      base.listStyle = obj.data.listStyle;
+      base.text = stripListMarkers(String(obj.text));
+    } else {
+      base.text = String(obj.text);
+    }
     base.fontFamily = obj.fontFamily || 'Arial';
     base.fontSize = ((obj.fontSize ?? 24) * (obj.scaleY ?? 1)) / H;
     if (obj.fontWeight === 'bold' || obj.fontWeight === 'bolder' || Number(obj.fontWeight) >= 600) {

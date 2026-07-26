@@ -30,6 +30,7 @@ export type Tool =
   | 'highlighter'
   | 'text'
   | 'image'
+  | 'table'
   | 'eraser'
   | 'laser';
 
@@ -58,6 +59,12 @@ export interface StyleDefaults {
   arrowEnd: ArrowHead;
   /** Line only — closed path (a polygon), which is what allows a fill. */
   closed: boolean;
+  /** Text only — one-level list marker. null = not a list. */
+  listStyle: 'bullet' | 'number' | null;
+  /** Table only — style row 0 as a header. */
+  headerRow: boolean;
+  /** Table only — the header row's fill. */
+  headerFill: string;
 }
 
 /**
@@ -95,7 +102,10 @@ export type StyleProp =
   | 'arrowType'
   | 'arrowStart'
   | 'arrowEnd'
-  | 'closed';
+  | 'closed'
+  | 'listStyle'
+  | 'headerRow'
+  | 'headerFill';
 
 /** What the properties island is currently editing. */
 export interface PanelContext {
@@ -107,6 +117,7 @@ export interface PanelContext {
     | 'linework'
     | 'line'
     | 'image'
+    | 'table'
     | 'highlight'
     | 'arrow'
     | 'labeled'
@@ -144,7 +155,8 @@ export interface EditorUIHost {
    * group | ungroup | lock | flipH | flipV |
    * copy | cut | paste | copyStyles | pasteStyles | selectAll |
    * alignLeft | alignCenterH | alignRight | alignTop | alignCenterV |
-   * alignBottom | distributeH | distributeV
+   * alignBottom | distributeH | distributeV |
+   * tableRowAdd | tableRowDel | tableColAdd | tableColDel
    */
   onAction(act: string): void;
   /** host.defaults[prop] was already updated — apply to selection + commit. */
@@ -177,6 +189,7 @@ export const TOOL_DEFS: ToolDef[] = [
   { tool: 'highlighter', letter: 'h', title: 'Highlighter — wide translucent marker' },
   { tool: 'text', letter: 't', num: '8', title: 'Text (click on slide)' },
   { tool: 'image', letter: 'i', num: '9', title: 'Image — pick a file, or paste / drop one on the slide' },
+  { tool: 'table', letter: 'g', title: 'Table — drag a grid, or click for 3×3. Double-click a cell to type; Tab moves on' },
   { tool: 'eraser', letter: 'e', num: '0', title: 'Eraser — drag over objects to delete', startsGroup: true },
   { tool: 'laser', letter: 'k', title: 'Laser pointer — fading trail, never saved' },
 ];
@@ -209,6 +222,13 @@ const ICONS: Record<string, string> = {
   highlighter: svg('<path d="M13.6 4.4l6 6-7.6 7.6H8l-2-2z"/><path d="M4 20.5h8"/>'),
   text: svg('<path d="M5.5 5.5h13M12 5.5v13"/>'),
   image: svg('<rect x="3.5" y="5" width="17" height="14" rx="1.8"/><circle cx="8.6" cy="10" r="1.6"/><path d="M4 16.5l4.6-4.2 3.4 3 3-2.6 5 4.3"/>'),
+  table: svg('<rect x="3.5" y="5" width="17" height="14" rx="1.4"/><path d="M3.5 9.6h17M3.5 14.3h17M9.2 5v14M14.8 5v14"/>'),
+  bulletList: svg('<circle cx="5" cy="7" r="1.5" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="5" cy="17" r="1.5" fill="currentColor" stroke="none"/><path d="M9.5 7h11M9.5 12h11M9.5 17h11"/>'),
+  numberList: svg('<path d="M9.5 7h11M9.5 12h11M9.5 17h11"/><text x="2.4" y="8.6" font-size="6.4" fill="currentColor" stroke="none">1</text><text x="2.4" y="13.8" font-size="6.4" fill="currentColor" stroke="none">2</text><text x="2.4" y="19" font-size="6.4" fill="currentColor" stroke="none">3</text>'),
+  rowAdd: svg('<rect x="3.5" y="4.5" width="17" height="6" rx="1.2"/><path d="M3.5 15.5h10M8.5 20.5v-10" stroke-dasharray="0"/><path d="M16 18h5M18.5 15.5v5"/>'),
+  rowDel: svg('<rect x="3.5" y="4.5" width="17" height="6" rx="1.2"/><path d="M3.5 15.5h10M8.5 20.5v-10"/><path d="M16 18h5"/>'),
+  colAdd: svg('<rect x="4.5" y="3.5" width="6" height="17" rx="1.2"/><path d="M15.5 3.5v10M20.5 8.5h-10"/><path d="M18 16v5M15.5 18.5h5"/>'),
+  colDel: svg('<rect x="4.5" y="3.5" width="6" height="17" rx="1.2"/><path d="M15.5 3.5v10M20.5 8.5h-10"/><path d="M15.5 18.5h5"/>'),
   eraser: svg('<path d="M8 19.5l-4.1-4.1a1.8 1.8 0 010-2.6l7.9-7.9a1.8 1.8 0 012.6 0l5.2 5.2a1.8 1.8 0 010 2.6l-6.8 6.8H8z"/><path d="M8.6 10.7l5.7 5.7"/>'),
   laser: svg(
     '<circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>' +
@@ -328,6 +348,8 @@ const HELP_GROUPS: Array<{ title: string; rows: Array<[string, string]> }> = [
       ['Proportional resize', 'Shift+drag a corner'],
       ['Rotate snaps to 15°', 'near each multiple'],
       ['Label a shape or arrow', 'Double-click it'],
+      ['Edit a table cell', 'Double-click the cell'],
+      ['Next / previous cell', 'Tab · Shift+Tab'],
       ['Finish an arrow', 'Enter or double-click'],
       ['Move a point', 'drag a square handle'],
       ['Insert a point', 'drag a round dot'],
@@ -341,8 +363,12 @@ const HELP_GROUPS: Array<{ title: string; rows: Array<[string, string]> }> = [
 
 const SECTIONS_BY_CONTEXT: Record<PanelContext['kind'], string[]> = {
   none: [],
-  text: ['text', 'opacity'],
+  text: ['text', 'list', 'opacity'],
   box: ['stroke', 'fill', 'fillop', 'width', 'dash', 'opacity'],
+  // A table shares the text and fill/stroke rows — those drive its cell font,
+  // body fill and gridlines — plus its own row/column and header controls.
+  // No 'list': the model has no per-cell bullets.
+  table: ['table', 'text', 'fill', 'fillop', 'stroke', 'width', 'dash', 'opacity'],
   // freehand ink — no shape control, its points are already sampled.
   linework: ['stroke', 'width', 'dash', 'opacity'],
   // A line is an arrow without terminators, so it shares the shape control.
@@ -536,6 +562,27 @@ export default class SlideEditorUI {
               <button data-align="right" title="Align right">${ICONS.alignRight}</button>
             </div>
           </div>
+          <div class="ms-sledit-sec" data-sec="list">
+            <div class="ms-sledit-seclabel">List</div>
+            <div class="ms-sledit-row">
+              <button data-list="bullet" title="Bulleted list — every line becomes an item. Exports as a real PowerPoint list">${ICONS.bulletList}</button>
+              <button data-list="number" title="Numbered list — renumbers itself as you edit. Exports as a real PowerPoint list">${ICONS.numberList}</button>
+            </div>
+          </div>
+          <div class="ms-sledit-sec" data-sec="table">
+            <div class="ms-sledit-seclabel">Table</div>
+            <div class="ms-sledit-row">
+              <button data-act="tableRowAdd" title="Add a row at the bottom">${ICONS.rowAdd}</button>
+              <button data-act="tableRowDel" title="Remove the last row">${ICONS.rowDel}</button>
+              <button data-act="tableColAdd" title="Add a column on the right">${ICONS.colAdd}</button>
+              <button data-act="tableColDel" title="Remove the last column">${ICONS.colDel}</button>
+            </div>
+            <div class="ms-sledit-row">
+              <button data-style="headerRow" title="Style the first row as a header">H</button>
+              <span class="ms-sledit-mini">Header row</span>
+              <input type="color" class="ms-sledit-headerfill" title="Header row fill">
+            </div>
+          </div>
           <div class="ms-sledit-sec" data-sec="opacity">
             <div class="ms-sledit-seclabel">Opacity</div>
             <input type="range" class="ms-sledit-op" min="10" max="100" step="5">
@@ -629,7 +676,7 @@ export default class SlideEditorUI {
 
     panel.addEventListener('click', (e) => {
       const el = (e.target as HTMLElement).closest(
-        '[data-color],[data-width],[data-dash],[data-arrowtype],[data-style],[data-align],[data-act]',
+        '[data-color],[data-width],[data-dash],[data-arrowtype],[data-style],[data-align],[data-list],[data-act]',
       ) as HTMLElement | null;
       if (!el) return;
       if (el.dataset.act) {
@@ -662,9 +709,14 @@ export default class SlideEditorUI {
         this._host.onStyleChanged('arrowType');
       } else if (el.dataset.style) {
         // Every data-style control is a boolean toggle in StyleDefaults.
-        const key = el.dataset.style as 'bold' | 'italic' | 'underline' | 'closed';
+        const key = el.dataset.style as 'bold' | 'italic' | 'underline' | 'closed' | 'headerRow';
         d()[key] = !d()[key];
         this._host.onStyleChanged(key);
+      } else if (el.dataset.list) {
+        // Mutually exclusive, and each button also turns its own style off.
+        const want = el.dataset.list as 'bullet' | 'number';
+        d().listStyle = d().listStyle === want ? null : want;
+        this._host.onStyleChanged('listStyle');
       } else if (el.dataset.align) {
         d().align = el.dataset.align as StyleDefaults['align'];
         this._host.onStyleChanged('align');
@@ -716,6 +768,10 @@ export default class SlideEditorUI {
     bind('.ms-sledit-textcolor', 'input', (el) => {
       d().textColor = el.value;
       this._host.onStyleChanged('textColor');
+    });
+    bind('.ms-sledit-headerfill', 'input', (el) => {
+      d().headerFill = el.value;
+      this._host.onStyleChanged('headerFill');
     });
     bind('.ms-sledit-arrowstart', 'change', (el) => {
       d().arrowStart = el.value as ArrowHead;
@@ -868,6 +924,12 @@ export default class SlideEditorUI {
     q('[data-style="italic"]').classList.toggle('active', d.italic);
     q('[data-style="underline"]').classList.toggle('active', d.underline);
     q('[data-style="closed"]').classList.toggle('active', d.closed);
+    q('[data-style="headerRow"]').classList.toggle('active', d.headerRow);
+    const headerFill = q('.ms-sledit-headerfill');
+    if (headerFill) headerFill.value = d.headerFill;
+    panel.querySelectorAll('[data-list]').forEach((el: any) => {
+      el.classList.toggle('active', el.dataset.list === d.listStyle);
+    });
     panel.querySelectorAll('[data-align]').forEach((el: any) => {
       el.classList.toggle('active', el.dataset.align === d.align);
     });
@@ -1065,7 +1127,23 @@ export default class SlideEditorUI {
         background: rgba(255,255,255,0.06); color: #dde3e8;
         border: 1px solid rgba(255,255,255,0.16); border-radius: 5px;
         padding: 3px 6px; font: inherit;
+        height: 26px; box-sizing: border-box;
       }
+      /* A select left with its native chrome reads as unstyled against the dark
+         bar — the OS paints the drop button and ignores the surrounding theme.
+         Drop the native appearance and draw our own chevron, as the panel does. */
+      .ms-sledit-bar select {
+        appearance: none; -webkit-appearance: none; cursor: pointer;
+        padding-right: 20px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1.5l4 4 4-4' fill='none' stroke='%238a97a5' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 6px center;
+      }
+      .ms-sledit-bar select:hover:not(:disabled) { background-color: rgba(255,255,255,0.12); }
+      .ms-sledit-bar select:focus, .ms-sledit-bar input:focus {
+        outline: none; border-color: #2d6cdf;
+      }
+      /* The native dropdown list is OS-painted — without this it opens white. */
+      .ms-sledit-bar option { background: #181d23; color: #dde3e8; }
       .ms-sledit-title { width: 170px; }
       .ms-sledit-transition { width: 104px; }
       .ms-sledit-transition:disabled { opacity: 0.4; cursor: not-allowed; }
