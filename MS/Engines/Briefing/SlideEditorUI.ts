@@ -24,7 +24,7 @@
  * values into `host.defaults` and then notifies `host.onStyleChanged(prop)`.
  */
 
-import type { ArrowHead, Slide } from './BriefingTypes';
+import type { ArrowHead, OverlayBlend, Slide } from './BriefingTypes';
 import { DEFAULT_TEXT_COLOR, type ArrowType } from './OverlayFabric';
 import { BUILTIN_LAYOUTS, LAYOUT_INK_DIM } from './SlideLayouts';
 import {
@@ -108,6 +108,22 @@ export interface StyleDefaults {
   symSizePx: number;
   /** Military symbols — milsymbol text amplifiers, edited in their own dialog. */
   symOptions: Record<string, string>;
+  /**
+   * Effects. The shadow is held in editor pixels (like strokeWidthPx) and
+   * normalizes on the way into the model; `shadowPreset` is a UI convenience
+   * that names a known X/Y/blur triple, and reads 'custom' for anything else.
+   */
+  shadowPreset: ShadowPreset;
+  shadowXPx: number;
+  shadowYPx: number;
+  shadowBlurPx: number;
+  /** '#RRGGBB' plus a separate 0..1 alpha — a colour input has no alpha channel. */
+  shadowColor: string;
+  shadowOpacity: number;
+  /** Canvas composite mode; 'normal' clears it. */
+  blend: 'normal' | OverlayBlend;
+  /** Images only — gaussian blur, 0..100 in the UI (see SlideOverlay.blur). */
+  blurPct: number;
 }
 
 /**
@@ -149,6 +165,14 @@ export type StyleProp =
   | 'listStyle'
   | 'headerRow'
   | 'headerFill'
+  | 'shadowPreset'
+  | 'shadowXPx'
+  | 'shadowYPx'
+  | 'shadowBlurPx'
+  | 'shadowColor'
+  | 'shadowOpacity'
+  | 'blend'
+  | 'blurPct'
   /** Shared by the block arrows and the tactical arrow; routed by panel context. */
   | 'headRatio'
   | 'tacWidthPx'
@@ -219,6 +243,21 @@ export interface RailHost {
   add(layoutId: string): void;
 }
 
+/** One object's frame, in slide pixels / degrees — see EditorUIHost.getGeometry. */
+export interface ObjectGeometry {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  angle: number;
+  /**
+   * The height is computed, not set — a text box grows with its content. The H
+   * field still reports it (useful) but is disabled, because typing there would
+   * do nothing.
+   */
+  lockH?: boolean;
+}
+
 export interface EditorUIHost {
   defaults: StyleDefaults;
   onToolSelected(t: Tool): void;
@@ -236,6 +275,15 @@ export interface EditorUIHost {
   onAction(act: string): void;
   /** host.defaults[prop] was already updated — apply to selection + commit. */
   onStyleChanged(prop: StyleProp): void;
+  /**
+   * The selected object's frame in slide pixels, or null when the selection
+   * isn't exactly one object. Unlike every other control in the rail this reads
+   * the OBJECT rather than the style defaults, because a position is not a
+   * style — there is nothing sensible to carry to the next thing you draw.
+   */
+  getGeometry?(): ObjectGeometry | null;
+  /** Apply the fields present in `patch` to the selected object + commit. */
+  setGeometry?(patch: Partial<ObjectGeometry>): void;
   /** Slide rail data + operations. Absent = no rail. */
   rail?: RailHost;
   /**
@@ -298,6 +346,41 @@ const TEXT_SWATCHES = [
   '#2f9e44',
   '#339af0',
 ];
+
+/**
+ * Named shadows, in editor pixels — the four bento offers, which cover the range
+ * from "lift it off the map slightly" to "float it". `glow` is the odd one out:
+ * no offset, warm colour, so a symbol or callout reads against dark imagery.
+ * Anything not matching a preset reads as 'custom' in the panel.
+ */
+export interface ShadowSpec {
+  x: number;
+  y: number;
+  blur: number;
+  color: string;
+  opacity: number;
+}
+
+export const SHADOW_PRESETS: Record<'subtle' | 'soft' | 'elevated' | 'glow', ShadowSpec> = {
+  subtle: { x: 0, y: 2, blur: 10, color: '#0a101c', opacity: 0.25 },
+  soft: { x: 0, y: 10, blur: 28, color: '#0a101c', opacity: 0.32 },
+  elevated: { x: 0, y: 24, blur: 56, color: '#080c16', opacity: 0.45 },
+  glow: { x: 0, y: 0, blur: 40, color: '#ffeed6', opacity: 0.55 },
+};
+
+export type ShadowPreset = 'none' | 'custom' | keyof typeof SHADOW_PRESETS;
+
+/** Composite modes the Effects section offers; 'normal' clears the field. */
+const BLEND_OPTIONS = [
+  'normal',
+  'multiply',
+  'screen',
+  'overlay',
+  'darken',
+  'lighten',
+  'difference',
+  'exclusion',
+] as const;
 
 /** Side-rail widths — bento's own defaults and bounds, in px. */
 const RAIL_DEFAULTS = { left: 188, right: 236 } as const;
@@ -496,7 +579,14 @@ const HELP_GROUPS: Array<{ title: string; rows: Array<[string, string]> }> = [
   },
 ];
 
-const SECTIONS_BY_CONTEXT: Record<PanelContext['kind'], string[]> = {
+/**
+ * Which property ROWS each selection kind offers, in the order the markup
+ * declares them. Names match `data-row` on the rows themselves — several rows
+ * may share one name (all of Typography is `text`), and a section disappears
+ * once none of its rows survive. `ops` / `layers` / `actions` / `geo` /
+ * `arrange` are selection-driven instead and handled in showPanel.
+ */
+const ROWS_BY_CONTEXT: Record<PanelContext['kind'], string[]> = {
   none: [],
   text: ['text', 'list', 'opacity'],
   box: ['stroke', 'fill', 'fillop', 'width', 'dash', 'opacity'],
@@ -539,6 +629,29 @@ const SECTIONS_BY_CONTEXT: Record<PanelContext['kind'], string[]> = {
   labeledLine: ['stroke', 'width', 'dash', 'arrowtype', 'closepath', 'text', 'opacity'],
   labeledArrow: ['stroke', 'width', 'dash', 'arrowtype', 'arrowheads', 'text', 'opacity'],
   mixed: ['stroke', 'width', 'dash', 'opacity'],
+};
+
+/**
+ * What the panel calls the current selection. Names the thing the user clicked,
+ * the way bento's element panel leads with "Text" / "Shape" / "Table" — a
+ * multi-selection overrides this with its count.
+ */
+const SELECTION_LABELS: Partial<Record<PanelContext['kind'], string>> = {
+  text: 'Text',
+  box: 'Shape',
+  blockarrow: 'Block arrow',
+  tacarrow: 'Tactical arrow',
+  milsym: 'Military symbol',
+  table: 'Table',
+  linework: 'Freehand',
+  line: 'Line',
+  image: 'Picture',
+  highlight: 'Highlight',
+  arrow: 'Arrow',
+  labeled: 'Shape + label',
+  labeledLine: 'Line + label',
+  labeledArrow: 'Arrow + label',
+  mixed: 'Mixed selection',
 };
 
 export default class SlideEditorUI {
@@ -614,6 +727,35 @@ export default class SlideEditorUI {
       const customClass = slot === 'text' ? 'ms-sledit-custom ms-sledit-textcolor' : 'ms-sledit-custom';
       return `<div class="ms-sledit-swatches">${none}${btns}<input type="color" class="${customClass}" data-slot="${slot}" title="Custom color"></div>`;
     };
+
+    // ── Property-row grammar (ported from bento/slides' panels.ts) ───────────
+    //
+    // Every control sits in a row that names it: label on the left, control on
+    // the right in a fixed column. `data-row` is the visibility key — showPanel
+    // hides rows, and a section hides itself once none of its rows are left, so
+    // one section can serve several kinds without going empty. Several rows may
+    // share a key (all five Typography rows are `text`).
+    const prow = (row: string, label: string, control: string, tip = ''): string =>
+      `<label class="ms-sledit-prow" data-row="${row}"${
+        tip ? ` title="${this._escape(tip)}"` : ''
+      }><span>${label}</span>${control}</label>`;
+    /** Icon clusters keep their own row — a <label> would fire the first button. */
+    const irow = (row: string, label: string, buttons: string, tip = ''): string =>
+      `<div class="ms-sledit-prow" data-row="${row}"${
+        tip ? ` title="${this._escape(tip)}"` : ''
+      }><span>${label}</span><span class="ms-sledit-iconset">${buttons}</span></div>`;
+    /**
+     * Row for a control that needs the rail's full width — a swatch strip is too
+     * wide to sit beside its name, so the name goes above it instead of being
+     * dropped. `cap` omitted = the control speaks for itself (the ops icons).
+     */
+    const wrow = (row: string, body: string, cap = ''): string =>
+      `<div class="ms-sledit-wrow${cap ? ' ms-sledit-caprow' : ''}" data-row="${row}">${
+        cap ? `<span class="ms-sledit-rowcap">${cap}</span>` : ''
+      }${body}</div>`;
+    const mini = (cls: string, label: string, tip: string): string =>
+      `<label class="ms-sledit-mini2"><span>${label}</span>` +
+      `<input type="number" class="${cls}" step="1" title="${this._escape(tip)}"></label>`;
 
     const headOptions = ARROW_HEAD_OPTIONS.map(
       (o) => `<option value="${o.value}">${o.label}</option>`,
@@ -705,186 +847,268 @@ export default class SlideEditorUI {
             </div>
           </div>
           <div class="ms-sledit-panel" style="display:none">
-          <div class="ms-sledit-sec" data-sec="stroke">
-            <div class="ms-sledit-seclabel">Stroke</div>
-            ${swatchRow('stroke', STROKE_SWATCHES)}
-          </div>
-          <div class="ms-sledit-sec" data-sec="fill">
-            <div class="ms-sledit-seclabel">Fill</div>
-            ${swatchRow('fill', FILL_SWATCHES)}
-          </div>
-          <div class="ms-sledit-sec" data-sec="fillop">
-            <div class="ms-sledit-seclabel">Fill opacity</div>
-            <input type="range" class="ms-sledit-fillop" min="0" max="100" step="5">
-          </div>
-          <div class="ms-sledit-sec" data-sec="width">
-            <div class="ms-sledit-seclabel">Stroke width</div>
-            <div class="ms-sledit-row">
-              <button data-width="2" title="Thin">${ICONS.wThin}</button>
-              <button data-width="4" title="Medium">${ICONS.wMed}</button>
-              <button data-width="8" title="Thick">${ICONS.wThick}</button>
-              <input type="number" class="ms-sledit-strokew" min="1" max="64" step="1" title="Width (px)">
+            <!-- What is selected, and the two things you do to it most. The
+                 label is rewritten per selection by showPanel. -->
+            <div class="ms-sledit-sec" data-sec="selection">
+              <div class="ms-sledit-seclabel"><span class="ms-sledit-selname">Selection</span></div>
+              ${wrow(
+                'ops',
+                `<span class="ms-sledit-iconset">
+                  <button data-act="dup" title="Duplicate (Ctrl+D)">${ICONS.dup}</button>
+                  <button data-act="del" title="Delete (Del)">${ICONS.del}</button>
+                  <button data-act="lock" class="ms-sledit-lockbtn" title="Lock / unlock (Ctrl+Shift+L)">${ICONS.lock}</button>
+                </span>`,
+              )}
             </div>
-          </div>
-          <div class="ms-sledit-sec" data-sec="dash">
-            <div class="ms-sledit-seclabel">Stroke style</div>
-            <div class="ms-sledit-row">
-              <button data-dash="solid" title="Solid">${ICONS.dashSolid}</button>
-              <button data-dash="dashed" title="Dashed">${ICONS.dashDashed}</button>
-              <button data-dash="dotted" title="Dotted">${ICONS.dashDotted}</button>
+            <div class="ms-sledit-sec" data-sec="fillstroke">
+              <div class="ms-sledit-seclabel">Fill &amp; stroke</div>
+              ${wrow('fill', swatchRow('fill', FILL_SWATCHES), 'Fill')}
+              ${prow(
+                'fillop',
+                'Fill opacity',
+                '<input type="range" class="ms-sledit-fillop" min="0" max="100" step="5">',
+              )}
+              ${wrow('stroke', swatchRow('stroke', STROKE_SWATCHES), 'Stroke')}
+              ${irow(
+                'width',
+                'Stroke width',
+                `<button data-width="2" title="Thin">${ICONS.wThin}</button>
+                 <button data-width="4" title="Medium">${ICONS.wMed}</button>
+                 <button data-width="8" title="Thick">${ICONS.wThick}</button>
+                 <input type="number" class="ms-sledit-strokew" min="1" max="64" step="1" title="Width (px)">`,
+              )}
+              ${irow(
+                'dash',
+                'Line style',
+                `<button data-dash="solid" title="Solid">${ICONS.dashSolid}</button>
+                 <button data-dash="dashed" title="Dashed">${ICONS.dashDashed}</button>
+                 <button data-dash="dotted" title="Dotted">${ICONS.dashDotted}</button>`,
+              )}
             </div>
-          </div>
-          <div class="ms-sledit-sec" data-sec="arrowtype">
-            <div class="ms-sledit-seclabel">Arrow type</div>
-            <!-- Label swaps to "Line type" on a line — see showPanel. -->
-            <div class="ms-sledit-row">
-              <button data-arrowtype="sharp" title="Sharp">${ICONS.arrowSharp}</button>
-              <button data-arrowtype="curved" title="Curved">${ICONS.arrowCurved}</button>
-              <button data-arrowtype="elbow" title="Elbow">${ICONS.arrowElbow}</button>
+            <div class="ms-sledit-sec" data-sec="typography">
+              <div class="ms-sledit-seclabel">Typography</div>
+              ${prow(
+                'text',
+                'Font',
+                `<select class="ms-sledit-font" title="Font family">
+                  <option>Arial</option><option>Calibri</option><option>Courier New</option>
+                  <option>Georgia</option><option>Impact</option><option>Tahoma</option>
+                  <option>Times New Roman</option><option>Verdana</option>
+                </select>`,
+              )}
+              ${prow(
+                'text',
+                'Size (px)',
+                '<input type="number" class="ms-sledit-fontsize" min="8" max="120" step="1" title="Font size (px)">',
+              )}
+              ${irow(
+                'text',
+                'Weight',
+                `<button data-style="bold" title="Bold"><b>B</b></button>
+                 <button data-style="italic" title="Italic"><i>I</i></button>
+                 <button data-style="underline" title="Underline"><u>U</u></button>`,
+              )}
+              ${irow(
+                'text',
+                'Align',
+                `<button data-align="left" title="Align left">${ICONS.alignLeft}</button>
+                 <button data-align="center" title="Align center">${ICONS.alignCenter}</button>
+                 <button data-align="right" title="Align right">${ICONS.alignRight}</button>`,
+              )}
+              ${wrow('text', swatchRow('text', TEXT_SWATCHES), 'Color')}
+              ${irow(
+                'list',
+                'List',
+                `<button data-list="bullet" title="Bulleted list — every line becomes an item. Exports as a real PowerPoint list">${ICONS.bulletList}</button>
+                 <button data-list="number" title="Numbered list — renumbers itself as you edit. Exports as a real PowerPoint list">${ICONS.numberList}</button>`,
+              )}
             </div>
-          </div>
-          <div class="ms-sledit-sec" data-sec="closepath">
-            <div class="ms-sledit-seclabel">Path</div>
-            <div class="ms-sledit-row">
-              <button data-style="closed" class="ms-sledit-closedbtn" title="Close the path into a fillable polygon">${ICONS.polygon}</button>
-              <span class="ms-sledit-mini">Closed polygon</span>
+            <div class="ms-sledit-sec" data-sec="linearrow">
+              <div class="ms-sledit-seclabel">Line &amp; arrow</div>
+              <!-- The "Arrow type" label becomes "Line type" on a line — see showPanel. -->
+              ${irow(
+                'arrowtype',
+                'Arrow type',
+                `<button data-arrowtype="sharp" title="Sharp">${ICONS.arrowSharp}</button>
+                 <button data-arrowtype="curved" title="Curved">${ICONS.arrowCurved}</button>
+                 <button data-arrowtype="elbow" title="Elbow">${ICONS.arrowElbow}</button>`,
+              )}
+              ${prow(
+                'arrowheads',
+                'Start',
+                `<select class="ms-sledit-arrowstart" title="Terminator at the arrow's first point">${headOptions}</select>`,
+              )}
+              ${prow(
+                'arrowheads',
+                'End',
+                `<select class="ms-sledit-arrowend" title="Terminator at the arrow's last point">${headOptions}</select>`,
+              )}
+              ${prow(
+                'headratio',
+                'Head size',
+                '<input type="range" class="ms-sledit-headratio" min="5" max="200" step="5">',
+                "Head length — a block arrow measures it against its height (PowerPoint's own scale), a tactical arrow against its spine",
+              )}
+              ${irow(
+                'tacbody',
+                'Body',
+                `<input type="number" class="ms-sledit-tacwidth" min="4" max="240" step="2" title="Body thickness (px)">
+                 <button data-style="taper" title="Taper the body toward the tail">${ICONS.taper}</button>`,
+              )}
+              ${irow(
+                'closepath',
+                'Path',
+                `<button data-style="closed" class="ms-sledit-closedbtn" title="Close the path into a fillable polygon">${ICONS.polygon}</button>`,
+                'Closed paths take a fill; open ones ignore it',
+              )}
             </div>
-          </div>
-          <div class="ms-sledit-sec" data-sec="arrowheads">
-            <div class="ms-sledit-seclabel">Arrowheads</div>
-            <div class="ms-sledit-row">
-              <span class="ms-sledit-mini">Start</span>
-              <select class="ms-sledit-arrowstart" title="Terminator at the arrow's first point">${headOptions}</select>
+            <div class="ms-sledit-sec" data-sec="symbol">
+              <div class="ms-sledit-seclabel">Symbol</div>
+              ${prow(
+                'milsym',
+                'Identity',
+                `<select class="ms-sledit-symaff" title="Standard identity — recolours the frame">${affiliationOptions}</select>`,
+              )}
+              ${prow(
+                'milsym',
+                'Status',
+                `<select class="ms-sledit-symstatus" title="Present or planned (dashed frame)">${statusOptions}</select>`,
+              )}
+              ${prow(
+                'milsym',
+                'Echelon',
+                `<select class="ms-sledit-symech" title="Echelon">${echelonOptions}</select>`,
+              )}
+              ${prow(
+                'milsym',
+                'HQ / TF',
+                `<select class="ms-sledit-symhq" title="Headquarters / task force / dummy">${hqOptions}</select>`,
+              )}
+              ${prow(
+                'milsym',
+                'Size (px)',
+                '<input type="number" class="ms-sledit-symsize" min="12" max="600" step="4" title="Symbol height (px)">',
+              )}
+              ${wrow(
+                'amplifiers',
+                `<button data-act="amplifiers" class="ms-sledit-wide" title="Edit the symbol's text amplifiers — unique designation, higher formation, DTG…">Amplifiers…</button>`,
+              )}
             </div>
-            <div class="ms-sledit-row">
-              <span class="ms-sledit-mini">End</span>
-              <select class="ms-sledit-arrowend" title="Terminator at the arrow's last point">${headOptions}</select>
+            <div class="ms-sledit-sec" data-sec="table">
+              <div class="ms-sledit-seclabel">Table</div>
+              ${irow(
+                'table',
+                'Rows / cols',
+                `<button data-act="tableRowAdd" title="Add a row at the bottom">${ICONS.rowAdd}</button>
+                 <button data-act="tableRowDel" title="Remove the last row">${ICONS.rowDel}</button>
+                 <button data-act="tableColAdd" title="Add a column on the right">${ICONS.colAdd}</button>
+                 <button data-act="tableColDel" title="Remove the last column">${ICONS.colDel}</button>`,
+              )}
+              ${irow(
+                'table',
+                'Header row',
+                `<button data-style="headerRow" title="Style the first row as a header">H</button>
+                 <input type="color" class="ms-sledit-headerfill" title="Header row fill">`,
+              )}
             </div>
-          </div>
-          <div class="ms-sledit-sec" data-sec="headratio">
-            <div class="ms-sledit-seclabel">Head size</div>
-            <input type="range" class="ms-sledit-headratio" min="5" max="200" step="5" title="Head length — a block arrow measures it against its height (PowerPoint's own scale), a tactical arrow against its spine">
-          </div>
-          <div class="ms-sledit-sec" data-sec="tacbody">
-            <div class="ms-sledit-seclabel">Body</div>
-            <div class="ms-sledit-row">
-              <input type="number" class="ms-sledit-tacwidth" min="4" max="240" step="2" title="Body thickness (px)">
-              <button data-style="taper" title="Taper the body toward the tail">${ICONS.taper}</button>
+            <!-- Geometry is the one section that reads the OBJECT, not the style
+                 defaults: host.getGeometry()/setGeometry() talk to the canvas. -->
+            <div class="ms-sledit-sec" data-sec="geometry">
+              <div class="ms-sledit-seclabel">Position &amp; size</div>
+              <div class="ms-sledit-grid2" data-row="geo">
+                ${mini('ms-sledit-geo-x', 'X', 'Left edge, in slide pixels')}
+                ${mini('ms-sledit-geo-y', 'Y', 'Top edge, in slide pixels')}
+                ${mini('ms-sledit-geo-w', 'W', 'Width, in slide pixels')}
+                ${mini('ms-sledit-geo-h', 'H', 'Height, in slide pixels')}
+              </div>
+              ${prow(
+                'geo',
+                'Angle',
+                '<input type="number" class="ms-sledit-geo-a" step="1" title="Rotation, in degrees">',
+              )}
+              ${prow(
+                'opacity',
+                'Opacity',
+                '<input type="range" class="ms-sledit-op" min="10" max="100" step="5">',
+              )}
             </div>
-          </div>
-          <div class="ms-sledit-sec" data-sec="milsym">
-            <div class="ms-sledit-seclabel">Symbol</div>
-            <div class="ms-sledit-row">
-              <select class="ms-sledit-symaff" title="Standard identity — recolours the frame">${affiliationOptions}</select>
+            <div class="ms-sledit-sec" data-sec="effects">
+              <div class="ms-sledit-seclabel">Effects</div>
+              ${prow(
+                'shadow',
+                'Shadow',
+                `<select class="ms-sledit-shadow" title="Drop shadow preset">${[
+                  'none',
+                  ...Object.keys(SHADOW_PRESETS),
+                  'custom',
+                ]
+                  .map(
+                    (k) =>
+                      `<option value="${k}">${k[0].toUpperCase()}${k.slice(1)}</option>`,
+                  )
+                  .join('')}</select>`,
+              )}
+              <!-- Concrete values, always shown: editing one turns a preset into
+                   'custom' on the next refresh, which is exactly bento's rule. -->
+              <div class="ms-sledit-grid2" data-row="shadowvals">
+                ${mini('ms-sledit-shx', 'X', 'Shadow offset X (px)')}
+                ${mini('ms-sledit-shy', 'Y', 'Shadow offset Y (px)')}
+              </div>
+              ${irow(
+                'shadowvals',
+                'Blur',
+                `<input type="number" class="ms-sledit-shblur" min="0" max="200" step="1" title="Shadow blur (px)">
+                 <input type="color" class="ms-sledit-shcolor" title="Shadow color">
+                 <input type="number" class="ms-sledit-shop" min="0" max="100" step="5" title="Shadow opacity (%)">`,
+              )}
+              ${prow(
+                'blur',
+                'Image blur',
+                '<input type="range" class="ms-sledit-blur" min="0" max="100" step="5" title="Gaussian blur — pictures only">',
+              )}
+              ${prow(
+                'blend',
+                'Blend',
+                `<select class="ms-sledit-blend" title="Composite mode. Drawn in the editor and in present mode; a native PowerPoint shape cannot carry it, so the export drops it.">${BLEND_OPTIONS.map(
+                  (b) => `<option value="${b}">${b[0].toUpperCase()}${b.slice(1)}</option>`,
+                ).join('')}</select>`,
+              )}
             </div>
-            <div class="ms-sledit-row">
-              <select class="ms-sledit-symstatus" title="Present or planned (dashed frame)">${statusOptions}</select>
+            <div class="ms-sledit-sec" data-sec="arrange">
+              <div class="ms-sledit-seclabel">Arrange</div>
+              ${irow(
+                'arrange',
+                'Align',
+                `<button data-act="alignLeft" data-need="2" title="Align left edges">${ICONS.objAlignLeft}</button>
+                 <button data-act="alignCenterH" data-need="2" title="Align horizontal centers">${ICONS.objAlignCenterH}</button>
+                 <button data-act="alignRight" data-need="2" title="Align right edges">${ICONS.objAlignRight}</button>
+                 <button data-act="alignTop" data-need="2" title="Align top edges">${ICONS.objAlignTop}</button>
+                 <button data-act="alignCenterV" data-need="2" title="Align vertical centers">${ICONS.objAlignCenterV}</button>
+                 <button data-act="alignBottom" data-need="2" title="Align bottom edges">${ICONS.objAlignBottom}</button>`,
+              )}
+              ${irow(
+                'arrange',
+                'Space',
+                `<button data-act="distributeH" data-need="3" title="Distribute horizontally">${ICONS.distributeH}</button>
+                 <button data-act="distributeV" data-need="3" title="Distribute vertically">${ICONS.distributeV}</button>`,
+              )}
+              ${irow(
+                'layers',
+                'Order',
+                `<button data-act="back" title="Send to back (Ctrl+Shift+[)">${ICONS.layerBack}</button>
+                 <button data-act="backward" title="Send backward (Ctrl+[)">${ICONS.layerBackward}</button>
+                 <button data-act="forward" title="Bring forward (Ctrl+])">${ICONS.layerForward}</button>
+                 <button data-act="front" title="Bring to front (Ctrl+Shift+])">${ICONS.layerFront}</button>`,
+              )}
+              ${irow(
+                'actions',
+                'Group',
+                `<button data-act="group" data-need="2" title="Group (Ctrl+G)">${ICONS.group}</button>
+                 <button data-act="ungroup" title="Ungroup (Ctrl+Shift+G)">${ICONS.ungroup}</button>
+                 <button data-act="flipH" title="Flip horizontal (Shift+H)">${ICONS.flipH}</button>
+                 <button data-act="flipV" title="Flip vertical (Shift+V)">${ICONS.flipV}</button>`,
+              )}
             </div>
-            <div class="ms-sledit-row">
-              <select class="ms-sledit-symech" title="Echelon">${echelonOptions}</select>
-            </div>
-            <div class="ms-sledit-row">
-              <select class="ms-sledit-symhq" title="Headquarters / task force / dummy">${hqOptions}</select>
-            </div>
-            <div class="ms-sledit-row">
-              <span class="ms-sledit-mini">Size</span>
-              <input type="number" class="ms-sledit-symsize" min="12" max="600" step="4" title="Symbol height (px)">
-            </div>
-          </div>
-          <div class="ms-sledit-sec" data-sec="amplifiers">
-            <div class="ms-sledit-row">
-              <button data-act="amplifiers" class="ms-sledit-wide" title="Edit the symbol's text amplifiers — unique designation, higher formation, DTG…">Amplifiers…</button>
-            </div>
-          </div>
-          <div class="ms-sledit-sec" data-sec="text">
-            <div class="ms-sledit-seclabel">Text</div>
-            <div class="ms-sledit-row">
-              <select class="ms-sledit-font" title="Font family">
-                <option>Arial</option><option>Calibri</option><option>Courier New</option>
-                <option>Georgia</option><option>Impact</option><option>Tahoma</option>
-                <option>Times New Roman</option><option>Verdana</option>
-              </select>
-              <input type="number" class="ms-sledit-fontsize" min="8" max="120" step="1" title="Font size (px)">
-            </div>
-            <!-- Six 30px buttons plus a separator do not fit the island's
-                 184px of content width, so the split is explicit rather than
-                 left to flex-wrap: weight here, alignment below, and ink on its
-                 own swatch row (the same markup stroke and fill use). -->
-            <div class="ms-sledit-row">
-              <button data-style="bold" title="Bold"><b>B</b></button>
-              <button data-style="italic" title="Italic"><i>I</i></button>
-              <button data-style="underline" title="Underline"><u>U</u></button>
-            </div>
-            <div class="ms-sledit-row">
-              <button data-align="left" title="Align left">${ICONS.alignLeft}</button>
-              <button data-align="center" title="Align center">${ICONS.alignCenter}</button>
-              <button data-align="right" title="Align right">${ICONS.alignRight}</button>
-            </div>
-            ${swatchRow('text', TEXT_SWATCHES)}
-          </div>
-          <div class="ms-sledit-sec" data-sec="list">
-            <div class="ms-sledit-seclabel">List</div>
-            <div class="ms-sledit-row">
-              <button data-list="bullet" title="Bulleted list — every line becomes an item. Exports as a real PowerPoint list">${ICONS.bulletList}</button>
-              <button data-list="number" title="Numbered list — renumbers itself as you edit. Exports as a real PowerPoint list">${ICONS.numberList}</button>
-            </div>
-          </div>
-          <div class="ms-sledit-sec" data-sec="table">
-            <div class="ms-sledit-seclabel">Table</div>
-            <div class="ms-sledit-row">
-              <button data-act="tableRowAdd" title="Add a row at the bottom">${ICONS.rowAdd}</button>
-              <button data-act="tableRowDel" title="Remove the last row">${ICONS.rowDel}</button>
-              <button data-act="tableColAdd" title="Add a column on the right">${ICONS.colAdd}</button>
-              <button data-act="tableColDel" title="Remove the last column">${ICONS.colDel}</button>
-            </div>
-            <div class="ms-sledit-row">
-              <button data-style="headerRow" title="Style the first row as a header">H</button>
-              <span class="ms-sledit-mini">Header row</span>
-              <input type="color" class="ms-sledit-headerfill" title="Header row fill">
-            </div>
-          </div>
-          <div class="ms-sledit-sec" data-sec="opacity">
-            <div class="ms-sledit-seclabel">Opacity</div>
-            <input type="range" class="ms-sledit-op" min="10" max="100" step="5">
-          </div>
-          <div class="ms-sledit-sec" data-sec="layers">
-            <div class="ms-sledit-seclabel">Layers</div>
-            <div class="ms-sledit-row">
-              <button data-act="back" title="Send to back (Ctrl+Shift+[)">${ICONS.layerBack}</button>
-              <button data-act="backward" title="Send backward (Ctrl+[)">${ICONS.layerBackward}</button>
-              <button data-act="forward" title="Bring forward (Ctrl+])">${ICONS.layerForward}</button>
-              <button data-act="front" title="Bring to front (Ctrl+Shift+])">${ICONS.layerFront}</button>
-            </div>
-          </div>
-          <div class="ms-sledit-sec" data-sec="arrange">
-            <div class="ms-sledit-seclabel">Arrange</div>
-            <div class="ms-sledit-row">
-              <button data-act="alignLeft" data-need="2" title="Align left edges">${ICONS.objAlignLeft}</button>
-              <button data-act="alignCenterH" data-need="2" title="Align horizontal centers">${ICONS.objAlignCenterH}</button>
-              <button data-act="alignRight" data-need="2" title="Align right edges">${ICONS.objAlignRight}</button>
-              <button data-act="distributeH" data-need="3" title="Distribute horizontally">${ICONS.distributeH}</button>
-            </div>
-            <div class="ms-sledit-row">
-              <button data-act="alignTop" data-need="2" title="Align top edges">${ICONS.objAlignTop}</button>
-              <button data-act="alignCenterV" data-need="2" title="Align vertical centers">${ICONS.objAlignCenterV}</button>
-              <button data-act="alignBottom" data-need="2" title="Align bottom edges">${ICONS.objAlignBottom}</button>
-              <button data-act="distributeV" data-need="3" title="Distribute vertically">${ICONS.distributeV}</button>
-            </div>
-          </div>
-          <div class="ms-sledit-sec" data-sec="actions">
-            <div class="ms-sledit-seclabel">Actions</div>
-            <div class="ms-sledit-row">
-              <button data-act="group" data-need="2" title="Group (Ctrl+G)">${ICONS.group}</button>
-              <button data-act="ungroup" title="Ungroup (Ctrl+Shift+G)">${ICONS.ungroup}</button>
-              <button data-act="flipH" title="Flip horizontal (Shift+H)">${ICONS.flipH}</button>
-              <button data-act="flipV" title="Flip vertical (Shift+V)">${ICONS.flipV}</button>
-            </div>
-            <div class="ms-sledit-row">
-              <button data-act="lock" class="ms-sledit-lockbtn" title="Lock / unlock (Ctrl+Shift+L)">${ICONS.lock}</button>
-              <button data-act="dup" title="Duplicate (Ctrl+D)">${ICONS.dup}</button>
-              <button data-act="del" title="Delete (Del)">${ICONS.del}</button>
-            </div>
-          </div>
           </div>
         </aside>
       </div>`;
@@ -1414,6 +1638,73 @@ export default class SlideEditorUI {
       d().headerFill = el.value;
       this._host.onStyleChanged('headerFill');
     });
+    // ── Effects ──────────────────────────────────────────────────────────────
+    bind('.ms-sledit-shadow', 'change', (el) => {
+      const preset = el.value as ShadowPreset;
+      d().shadowPreset = preset;
+      // Picking a named shadow stamps its numbers, so the value fields below
+      // always describe what is actually drawn. 'none' and 'custom' name no
+      // numbers of their own, so they keep whatever is there.
+      const p = preset === 'none' || preset === 'custom' ? undefined : SHADOW_PRESETS[preset];
+      if (p) {
+        d().shadowXPx = p.x;
+        d().shadowYPx = p.y;
+        d().shadowBlurPx = p.blur;
+        d().shadowColor = p.color;
+        d().shadowOpacity = p.opacity;
+      }
+      this._host.onStyleChanged('shadowPreset');
+      this.refreshPanelValues();
+    });
+    const shadowNum = (sel: string, key: 'shadowXPx' | 'shadowYPx' | 'shadowBlurPx') =>
+      bind(sel, 'change', (el) => {
+        const v = parseFloat(el.value);
+        if (!Number.isFinite(v)) return this.refreshPanelValues();
+        d()[key] = key === 'shadowBlurPx' ? Math.max(0, v) : v;
+        d().shadowPreset = 'custom';
+        this._host.onStyleChanged(key);
+        this.refreshPanelValues();
+      });
+    shadowNum('.ms-sledit-shx', 'shadowXPx');
+    shadowNum('.ms-sledit-shy', 'shadowYPx');
+    shadowNum('.ms-sledit-shblur', 'shadowBlurPx');
+    bind('.ms-sledit-shcolor', 'input', (el) => {
+      d().shadowColor = el.value;
+      d().shadowPreset = 'custom';
+      this._host.onStyleChanged('shadowColor');
+    });
+    bind('.ms-sledit-shop', 'change', (el) => {
+      const v = parseFloat(el.value);
+      if (!Number.isFinite(v)) return this.refreshPanelValues();
+      d().shadowOpacity = Math.min(1, Math.max(0, v / 100));
+      d().shadowPreset = 'custom';
+      this._host.onStyleChanged('shadowOpacity');
+      this.refreshPanelValues();
+    });
+    bind('.ms-sledit-blur', 'input', (el) => {
+      d().blurPct = Math.max(0, Math.min(100, Number(el.value) || 0));
+      this._host.onStyleChanged('blurPct');
+    });
+    bind('.ms-sledit-blend', 'change', (el) => {
+      d().blend = el.value as StyleDefaults['blend'];
+      this._host.onStyleChanged('blend');
+    });
+
+    // Geometry commits on `change` (blur / Enter / stepper), never on `input` —
+    // rewriting the frame per keystroke would fight a half-typed number and
+    // stack one undo entry per digit.
+    const geoField = (sel: string, key: keyof ObjectGeometry, min?: number) =>
+      bind(sel, 'change', (el) => {
+        const v = parseFloat(el.value);
+        if (!Number.isFinite(v)) return this.refreshGeometry(); // put the old value back
+        this._host.setGeometry?.({ [key]: min == null ? v : Math.max(min, v) });
+        this.refreshGeometry();
+      });
+    geoField('.ms-sledit-geo-x', 'x');
+    geoField('.ms-sledit-geo-y', 'y');
+    geoField('.ms-sledit-geo-w', 'w', 1);
+    geoField('.ms-sledit-geo-h', 'h', 1);
+    geoField('.ms-sledit-geo-a', 'angle');
     bind('.ms-sledit-arrowstart', 'change', (el) => {
       d().arrowStart = el.value as ArrowHead;
       this._host.onStyleChanged('arrowStart');
@@ -1598,53 +1889,80 @@ export default class SlideEditorUI {
       : 'Only applies between slide-view slides — no live map.';
   }
 
-  /** Show/hide the island and its sections for the given context. */
+  /**
+   * Show/hide the island for the given context. Visibility is decided per ROW
+   * (`data-row`), then each section shows itself only if it still has a visible
+   * row — that is what lets one "Fill & stroke" group serve a box, a table and
+   * an open line without ever standing there empty.
+   */
   public showPanel(ctx: PanelContext): void {
     this._ctx = ctx;
     const panel = this._panel;
     if (!panel) return;
-    const secs = SECTIONS_BY_CONTEXT[ctx.kind];
-    if (!secs.length) {
+    const rows = ROWS_BY_CONTEXT[ctx.kind];
+    if (!rows.length) {
       panel.style.display = 'none';
       return;
     }
     panel.style.display = '';
-    let firstShown = true;
-    panel.querySelectorAll('.ms-sledit-sec').forEach((el: any) => {
-      const name = el.dataset.sec as string;
+    panel.querySelectorAll('[data-row]').forEach((el: any) => {
+      const name = el.dataset.row as string;
       const visible =
-        secs.includes(name) ||
-        ((name === 'layers' || name === 'actions') && ctx.hasSelection) ||
+        rows.includes(name) ||
+        ((name === 'ops' || name === 'layers' || name === 'actions') && ctx.hasSelection) ||
+        // Effects are offered on a SELECTION only, never on tool defaults: an
+        // object is created without them, so an armed-tool shadow would sit
+        // there looking set and do nothing. Every kind can carry them, so they
+        // stay out of ROWS_BY_CONTEXT. Blur is a fabric image filter — there is
+        // no vector equivalent, hence the extra kind test.
+        ((name === 'shadow' || name === 'shadowvals' || name === 'blend') && ctx.hasSelection) ||
+        (name === 'blur' && ctx.hasSelection && ctx.kind === 'image') ||
+        // Geometry is single-object: a multi-selection has no one frame to show.
+        (name === 'geo' && ctx.count === 1) ||
         (name === 'arrange' && ctx.count > 1) ||
         // An open line can't show a fill it would ignore.
         ((name === 'fill' || name === 'fillop') &&
           ctx.closed &&
           (ctx.kind === 'line' || ctx.kind === 'labeledLine'));
       el.style.display = visible ? '' : 'none';
+    });
+    let firstShown = true;
+    panel.querySelectorAll('.ms-sledit-sec').forEach((sec: any) => {
+      const visible = Array.from(sec.querySelectorAll('[data-row]')).some(
+        (r: any) => r.style.display !== 'none',
+      );
+      sec.style.display = visible ? '' : 'none';
       // Rule above every section except the first one actually on screen. A CSS
       // adjacent-sibling selector can't express this: a display:none section
       // still matches as a sibling, so the first visible section would inherit
       // a stray divider from whatever is hidden above it.
-      el.classList.toggle('ms-sledit-sec-divided', visible && !firstShown);
+      sec.classList.toggle('ms-sledit-sec-divided', visible && !firstShown);
       if (visible) firstShown = false;
     });
+    const selName = panel.querySelector('.ms-sledit-selname');
+    if (selName) {
+      selName.textContent =
+        ctx.count > 1 ? `${ctx.count} elements` : SELECTION_LABELS[ctx.kind] ?? 'Selection';
+    }
+    // Geometry and opacity share a section, but a multi-selection shows only the
+    // opacity row — so the header says what is actually under it.
+    const geoLabel = panel.querySelector('.ms-sledit-sec[data-sec="geometry"] .ms-sledit-seclabel');
+    if (geoLabel) geoLabel.textContent = ctx.count === 1 ? 'Position & size' : 'Opacity';
     // The shape control is shared by arrows and lines — name it for whichever
     // is selected rather than always saying "Arrow type".
-    const shapeLabel = panel.querySelector(
-      '.ms-sledit-sec[data-sec="arrowtype"] .ms-sledit-seclabel',
-    );
+    const shapeLabel = panel.querySelector('[data-row="arrowtype"] > span');
     if (shapeLabel) {
       shapeLabel.textContent =
         ctx.kind === 'line' || ctx.kind === 'labeledLine' ? 'Line type' : 'Arrow type';
     }
     // A tactical arrow's heads are on/off, not shaped — the terminator kind is
     // ignored, so say what the control actually does here.
-    const headsLabel = panel.querySelector(
-      '.ms-sledit-sec[data-sec="arrowheads"] .ms-sledit-seclabel',
-    );
-    if (headsLabel) {
-      headsLabel.textContent = ctx.kind === 'tacarrow' ? 'Heads (None = no head)' : 'Arrowheads';
-    }
+    panel.querySelectorAll('[data-row="arrowheads"]').forEach((el: any) => {
+      el.title =
+        ctx.kind === 'tacarrow'
+          ? 'Tactical arrows draw a fixed head — only None (no head) differs here'
+          : 'Terminator drawn at this end of the arrow';
+    });
     this.refreshPanelValues();
   }
 
@@ -1736,6 +2054,61 @@ export default class SlideEditorUI {
       lockBtn.classList.toggle('active', this._ctx.locked);
       lockBtn.innerHTML = this._ctx.locked ? ICONS.unlock : ICONS.lock;
       lockBtn.title = this._ctx.locked ? 'Unlock (Ctrl+Shift+L)' : 'Lock (Ctrl+Shift+L)';
+    }
+    const shadowSel = q('.ms-sledit-shadow');
+    if (shadowSel) shadowSel.value = d.shadowPreset;
+    const shx = q('.ms-sledit-shx');
+    if (shx) shx.value = String(Math.round(d.shadowXPx));
+    const shy = q('.ms-sledit-shy');
+    if (shy) shy.value = String(Math.round(d.shadowYPx));
+    const shblur = q('.ms-sledit-shblur');
+    if (shblur) shblur.value = String(Math.round(d.shadowBlurPx));
+    const shcolor = q('.ms-sledit-shcolor');
+    if (shcolor) shcolor.value = d.shadowColor;
+    const shop = q('.ms-sledit-shop');
+    if (shop) shop.value = String(Math.round(d.shadowOpacity * 100));
+    const blurEl = q('.ms-sledit-blur');
+    if (blurEl) blurEl.value = String(Math.round(d.blurPct));
+    const blendEl = q('.ms-sledit-blend');
+    if (blendEl) blendEl.value = d.blend;
+    // The concrete shadow numbers only appear once there is a shadow to
+    // describe — same as bento, and it keeps the section quiet by default. Runs
+    // after showPanel's row pass (it calls this last), so this decision wins.
+    const showVals = this._ctx.hasSelection && d.shadowPreset !== 'none';
+    panel.querySelectorAll('[data-row="shadowvals"]').forEach((el: any) => {
+      el.style.display = showVals ? '' : 'none';
+    });
+    this.refreshGeometry();
+  }
+
+  /**
+   * Push the selected object's frame into the Position & size fields. Separate
+   * from refreshPanelValues so the canvas can call it on every drag/scale/rotate
+   * without re-syncing forty style controls — and it skips a field the user is
+   * currently typing in, which would otherwise fight the caret.
+   */
+  public refreshGeometry(): void {
+    const panel = this._panel;
+    if (!panel) return;
+    const geo = this._host.getGeometry?.() ?? null;
+    const active = document.activeElement;
+    const put = (sel: string, v: number | undefined) => {
+      const el = panel.querySelector(sel) as HTMLInputElement | null;
+      if (!el || el === active) return;
+      el.value = v == null ? '' : String(Math.round(v * 10) / 10);
+      el.disabled = v == null;
+    };
+    put('.ms-sledit-geo-x', geo?.x);
+    put('.ms-sledit-geo-y', geo?.y);
+    put('.ms-sledit-geo-w', geo?.w);
+    put('.ms-sledit-geo-h', geo?.h);
+    put('.ms-sledit-geo-a', geo?.angle);
+    const hField = panel.querySelector('.ms-sledit-geo-h') as HTMLInputElement | null;
+    if (hField && geo?.lockH) {
+      hField.disabled = true;
+      hField.title = 'Height follows the text — type into the box, or drag a corner';
+    } else if (hField) {
+      hField.title = 'Height, in slide pixels';
     }
   }
 
@@ -2245,9 +2618,6 @@ export default class SlideEditorUI {
       .ms-sledit-row {
         display: flex; align-items: center; gap: 5px; flex-wrap: wrap; row-gap: 5px;
       }
-      /* Presets on the left, the exact value on the right — two readable groups
-         instead of one undifferentiated strip. */
-      .ms-sledit-row .ms-sledit-strokew { margin-left: auto; }
       .ms-sledit-mini { font-size: 11px; color: var(--sl-text); opacity: 0.78; }
       /* Scoped to the whole rail, not just .ms-sledit-panel: the slide-level
          navigation section above it uses the same row markup and must not fall
@@ -2288,19 +2658,69 @@ export default class SlideEditorUI {
       /* The native dropdown list is OS-painted — without this it opens white
          against the dark rail. */
       .ms-sledit-props option { background: #181d23; color: #dde3e8; }
-      /* Arrowhead pickers: fixed-width labels so both selects line up, and no
-         wrapping, so each select keeps the whole row's remaining width. */
-      .ms-sledit-sec[data-sec="arrowheads"] .ms-sledit-row { flex-wrap: nowrap; }
-      .ms-sledit-sec[data-sec="arrowheads"] .ms-sledit-mini {
-        flex: 0 0 28px; text-align: right;
-      }
       .ms-sledit-props input[type="number"] { width: 54px; text-align: center; }
       .ms-sledit-props input[type="range"] { width: 100%; margin: 0; }
-      /* The symbol selects carry long labels ("Company / Battery / Troop") and
-         are one per row, so they take the rail's full content width. */
-      .ms-sledit-sec[data-sec="milsym"] .ms-sledit-row { flex-wrap: nowrap; }
-      .ms-sledit-sec[data-sec="milsym"] select { width: 100%; }
       .ms-sledit-wide { width: 100% !important; }
+
+      /* ————— property rows (bento's grammar: name left, control right) —————
+         Declared after the plain control styling above so the fixed control
+         column wins on source order, not on selector arithmetic. */
+
+      .ms-sledit-props .ms-sledit-prow {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 8px; min-height: 28px;
+      }
+      .ms-sledit-props .ms-sledit-prow > span:first-child {
+        flex: none; font-size: 11.5px; color: var(--sl-text); opacity: 0.82;
+      }
+      /* One control column, so every row's right edge lines up down the rail.
+         Sections with long option text widen it rather than truncate. */
+      .ms-sledit-props .ms-sledit-prow > select,
+      .ms-sledit-props .ms-sledit-prow > input,
+      .ms-sledit-props .ms-sledit-prow > .ms-sledit-iconset {
+        flex: none; width: var(--prow-ctl, 120px); min-width: 0; box-sizing: border-box;
+      }
+      .ms-sledit-props .ms-sledit-sec[data-sec="symbol"] { --prow-ctl: 138px; }
+      /* Align packs six buttons into one set, so that section trades label room
+         for control room and uses a smaller button. */
+      .ms-sledit-props .ms-sledit-sec[data-sec="arrange"] { --prow-ctl: 170px; }
+      .ms-sledit-props .ms-sledit-sec[data-sec="arrange"] .ms-sledit-iconset > button {
+        width: 24px; height: 25px;
+      }
+      .ms-sledit-props .ms-sledit-sec[data-sec="arrange"] .ms-sledit-iconset > button svg {
+        width: 15px; height: 15px;
+      }
+      .ms-sledit-props .ms-sledit-prow > input[type="number"] { text-align: left; }
+      .ms-sledit-props .ms-sledit-prow > .ms-sledit-iconset {
+        display: flex; align-items: center; justify-content: flex-end; gap: 3px;
+        flex-wrap: wrap; row-gap: 3px;
+      }
+      /* Six buttons in one set (Align) need to be tighter than the rail's
+         default 30px button box. */
+      .ms-sledit-props .ms-sledit-iconset > button { width: 27px; height: 26px; }
+      .ms-sledit-props .ms-sledit-iconset > input[type="number"] { width: 42px; text-align: center; }
+      .ms-sledit-props .ms-sledit-iconset > input[type="color"] { width: 32px; padding: 1px 2px; }
+      /* Rows whose control needs the rail's full width and already reads as its
+         own label: swatch strips, the Amplifiers button, the ops icons. */
+      .ms-sledit-wrow { display: flex; }
+      .ms-sledit-wrow > * { flex: 1; min-width: 0; }
+      /* Captioned variant: name above, full-width control below. */
+      .ms-sledit-caprow { flex-direction: column; gap: 5px; }
+      .ms-sledit-rowcap {
+        flex: none; font-size: 11.5px; color: var(--sl-text); opacity: 0.82;
+      }
+      .ms-sledit-props .ms-sledit-wrow > .ms-sledit-iconset { display: flex; gap: 4px; }
+      .ms-sledit-props .ms-sledit-wrow > .ms-sledit-iconset > button { flex: 1; width: auto; }
+      /* Geometry: two columns of labelled numbers — bento's ed-grid2. */
+      .ms-sledit-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+      .ms-sledit-mini2 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+      .ms-sledit-mini2 > span {
+        flex: none; min-width: 30px; font-size: 11px; color: var(--sl-dim);
+      }
+      .ms-sledit-props .ms-sledit-mini2 > input {
+        flex: 1; width: auto; min-width: 0; text-align: left;
+      }
+      .ms-sledit-props .ms-sledit-mini2 > input:disabled { opacity: 0.4; }
 
       /* Amplifier dialog — floats over the canvas. Centred rather than parked
          beside the properties rail, so it stays fully visible whatever width

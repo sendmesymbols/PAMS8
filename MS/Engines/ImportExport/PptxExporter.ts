@@ -58,6 +58,7 @@ import {
   DEFAULT_TAC_WIDTH,
   DEFAULT_TEXT_COLOR,
   blockArrowPoints,
+  parseColor,
 } from '../Briefing/OverlayFabric';
 import { renderMilSym } from '../Briefing/MilSymFactory';
 import { buildTacArrowOutline, outlineBounds } from '../Briefing/TacArrowGeometry';
@@ -837,6 +838,7 @@ class PptxExporter {
     if (emitted) {
       EngineLogger.success(ENGINE_NAME, `Slide annotations — ${emitted} native objects`);
     }
+    this._warnDroppedEffects(overlays);
   }
 
   /** Overlay strokeWidth is a fraction of view height → slide points. */
@@ -853,6 +855,54 @@ class PptxExporter {
 
   private _ovHex(c: string | undefined, fallback: string): string {
     return (c ?? fallback).replace('#', '').toUpperCase();
+  }
+
+  /**
+   * An overlay's drop shadow as pptx options, or undefined. PowerPoint states a
+   * shadow in polar terms — one distance plus an angle — so the model's x/y
+   * offsets are converted here; lengths are fractions of view height, hence the
+   * `* fit.h * 72` into points. Angle is degrees clockwise from east, which
+   * matches a y-down offset directly.
+   */
+  private _ovShadow(o: SlideOverlay, fit: ContainFit): any | undefined {
+    const sh = o.shadow;
+    if (!sh) return undefined;
+    const parsed = parseColor(sh.color);
+    const dx = sh.x ?? 0;
+    const dy = sh.y ?? 0;
+    const angle = Math.round(((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360);
+    return {
+      type: 'outer',
+      color: (parsed?.hex ?? '#000000').replace('#', '').toUpperCase(),
+      opacity: parsed?.alpha ?? 0.35,
+      blur: Math.round(Math.max(0, sh.blur ?? 0) * fit.h * 72 * 10) / 10,
+      offset: Math.round(Math.hypot(dx, dy) * fit.h * 72 * 10) / 10,
+      angle,
+    };
+  }
+
+  /**
+   * Effects a native pptx emit cannot represent. Blend modes and image blur are
+   * canvas compositing — there is no shape property for either, so they are
+   * dropped rather than approximated, and the log says so instead of letting the
+   * deck quietly come out different. (A table has no per-object shadow in
+   * `addTable`, so its shadow goes the same way.)
+   */
+  private _warnDroppedEffects(overlays: readonly SlideOverlay[]): void {
+    const dropped: string[] = [];
+    const n = (pred: (o: SlideOverlay) => boolean) => overlays.filter(pred).length;
+    const blends = n((o) => !!o.blend);
+    const blurs = n((o) => !!o.blur);
+    const tableShadows = n((o) => o.kind === 'table' && !!o.shadow);
+    if (blends) dropped.push(`${blends} blend mode${blends > 1 ? 's' : ''}`);
+    if (blurs) dropped.push(`${blurs} image blur${blurs > 1 ? 's' : ''}`);
+    if (tableShadows) dropped.push(`${tableShadows} table shadow${tableShadows > 1 ? 's' : ''}`);
+    if (dropped.length) {
+      EngineLogger.nextStep(
+        ENGINE_NAME,
+        `PowerPoint has no equivalent for ${dropped.join(', ')} — dropped from the native shapes`,
+      );
+    }
   }
 
   private _ovRotate(o: SlideOverlay): number | undefined {
@@ -896,6 +946,7 @@ class PptxExporter {
       // A bulleted paragraph needs room for its marker; 0 would clip it.
       margin: o.listStyle ? 2 : 0,
       rotate: this._ovRotate(o),
+      shadow: this._ovShadow(o, fit),
       transparency:
         o.opacity != null && o.opacity < 1 ? Math.round((1 - o.opacity) * 100) : undefined,
     });
@@ -978,6 +1029,7 @@ class PptxExporter {
       rotate: this._ovRotate(o),
       flipH: o.flipX || undefined,
       flipV: o.flipY || undefined,
+      shadow: this._ovShadow(o, fit),
       transparency:
         o.opacity != null && o.opacity < 1 ? Math.round((1 - o.opacity) * 100) : undefined,
     });
@@ -1010,6 +1062,7 @@ class PptxExporter {
       rotate: this._ovRotate(o),
       flipH: o.flipX || undefined,
       flipV: o.flipY || undefined,
+      shadow: this._ovShadow(o, fit),
       transparency:
         o.opacity != null && o.opacity < 1 ? Math.round((1 - o.opacity) * 100) : undefined,
     });
@@ -1061,6 +1114,7 @@ class PptxExporter {
             dashType: this._ovDashType(o),
           }
         : { color: 'FFFFFF', width: 0.5, transparency: 100 },
+      shadow: this._ovShadow(o, fit),
     });
   }
 
@@ -1094,6 +1148,7 @@ class PptxExporter {
           }
         : { color: 'FFFFFF', width: 0.5, transparency: 100 },
       rotate: this._ovRotate(o),
+      shadow: this._ovShadow(o, fit),
       // Mirrored box overlays — pptxgenjs writes these straight into the xfrm.
       flipH: o.flipX || undefined,
       flipV: o.flipY || undefined,
@@ -1133,6 +1188,7 @@ class PptxExporter {
           }
         : { color: 'FFFFFF', width: 0.5, transparency: 100 },
       rotate: this._ovRotate(o),
+      shadow: this._ovShadow(o, fit),
       flipH: o.flipX || undefined,
       flipV: o.flipY || undefined,
     });
@@ -1188,6 +1244,7 @@ class PptxExporter {
           o.kind === 'arrow' ? PPTX_ARROW_TYPES[o.arrowEnd ?? 'triangle'] : undefined,
         dashType: this._ovDashType(o),
       },
+      shadow: this._ovShadow(o, fit),
     });
   }
 

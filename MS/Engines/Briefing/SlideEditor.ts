@@ -17,7 +17,12 @@
  */
 
 import EngineLogger from '../../Support/EngineLogger';
-import type { Slide, SlideOverlay, SlideTransitionType } from './BriefingTypes';
+import type {
+  OverlayShadow,
+  Slide,
+  SlideOverlay,
+  SlideTransitionType,
+} from './BriefingTypes';
 import LaserTrail from './LaserTrail';
 import {
   applyLockState,
@@ -71,8 +76,15 @@ import {
   type CellHit,
   type NormalizedTable,
 } from './OverlayTable';
-import SlideEditorUI, { TOOL_DEFS } from './SlideEditorUI';
-import type { PanelContext, RailHost, StyleDefaults, StyleProp, Tool } from './SlideEditorUI';
+import SlideEditorUI, { SHADOW_PRESETS, TOOL_DEFS } from './SlideEditorUI';
+import type {
+  ObjectGeometry,
+  PanelContext,
+  RailHost,
+  StyleDefaults,
+  StyleProp,
+  Tool,
+} from './SlideEditorUI';
 
 const ENGINE_NAME = 'SlideEditor';
 const THUMB_WIDTH = 240;
@@ -203,6 +215,11 @@ const COPYABLE_STYLE_PROPS: readonly StyleProp[] = [
   'listStyle',
   'headerRow',
   'headerFill',
+  // Effects travel with a copied style: one prop rebuilds the whole shadow, so
+  // the preset is enough to carry X/Y/blur/colour with it.
+  'shadowPreset',
+  'blend',
+  'blurPct',
 ];
 
 type AlignMode = 'left' | 'centerH' | 'right' | 'top' | 'centerV' | 'bottom';
@@ -338,6 +355,14 @@ export default class SlideEditor {
     symHqTfDummy: DEFAULT_MILSYM_STATE.hqTfDummy,
     symSizePx: 64,
     symOptions: {},
+    shadowPreset: 'none',
+    shadowXPx: 0,
+    shadowYPx: 2,
+    shadowBlurPx: 10,
+    shadowColor: '#0a101c',
+    shadowOpacity: 0.25,
+    blend: 'normal',
+    blurPct: 0,
   };
 
   /** The symbol picker's flyout — created lazily the first time it's opened. */
@@ -593,6 +618,8 @@ export default class SlideEditor {
       onToolSelected: (t) => this._setTool(t),
       onAction: (act) => this._onAction(act),
       onStyleChanged: (prop) => this._onStyleChanged(prop),
+      getGeometry: () => this.getGeometry(),
+      setGeometry: (patch) => this.setGeometry(patch),
       rail: this._buildRailHost(),
       onLayoutChanged: () => this._resizeStageToFit(),
     });
@@ -953,6 +980,9 @@ export default class SlideEditor {
         this._replaceTable(t, {});
       }
       this._commit();
+      // A drag/scale/rotate just changed the numbers the Position & size fields
+      // are showing.
+      this._ui?.refreshGeometry();
     });
     this._fc.on('mouse:wheel', (opt: any) => this._onWheel(opt));
     this._fc.on('mouse:dblclick', (opt: any) => this._onDoubleClick(opt));
@@ -2228,6 +2258,13 @@ export default class SlideEditor {
     // bend/head edit would silently unlink and unlock the arrow.
     if (obj.data.groupId) rebuilt.data.groupId = obj.data.groupId;
     if (obj.data.locked) applyLockState(rebuilt, true);
+    // Effects are on the group, not in its geometry — same reasoning. The
+    // fabric.Shadow instance moves across as-is; every other rebuild path goes
+    // through fabricToOverlay/overlayToFabric and gets this for free.
+    if (obj.shadow) rebuilt.set('shadow', obj.shadow);
+    if (obj.globalCompositeOperation && obj.globalCompositeOperation !== 'source-over') {
+      rebuilt.set('globalCompositeOperation', obj.globalCompositeOperation);
+    }
     this._attachArrowControls(rebuilt);
     this._fc.add(rebuilt);
     if (idx >= 0) this._fc.moveTo(rebuilt, idx);
@@ -3572,12 +3609,91 @@ export default class SlideEditor {
       align: d.align,
       textColor: this._tableInk(),
       opacity: d.opacity,
+      // A table is regenerated from its model rather than patched, so its
+      // effects have to be stamped in model units here — _applyStyleTo never
+      // sees a table (see its early return).
+      shadow: this._shadowModel(),
+      blend: d.blend === 'normal' ? undefined : d.blend,
     });
+  }
+
+  /**
+   * The panel's shadow in MODEL units — offsets and blur as fractions of view
+   * height, the same normalization strokeWidth and fontSize use. undefined for
+   * "no shadow", which is what the model stores.
+   */
+  private _shadowModel(): OverlayShadow | undefined {
+    const d = this._defaults;
+    if (d.shadowPreset === 'none' || !this._H) return undefined;
+    return {
+      x: d.shadowXPx / this._H,
+      y: d.shadowYPx / this._H,
+      blur: Math.max(0, d.shadowBlurPx) / this._H,
+      color: withAlpha(d.shadowColor, d.shadowOpacity),
+    };
   }
 
   /** The path child that carries a linework group's stroke — always child 0. */
   private _lineworkPath(obj: any): any | null {
     return obj?.getObjects?.()?.[0] ?? null;
+  }
+
+  /**
+   * Read an object's effects into the panel defaults, naming the shadow after a
+   * preset when its numbers match one and 'custom' when they don't — so the
+   * dropdown tells the truth about a hand-tuned shadow instead of showing
+   * whichever preset was last picked.
+   */
+  private _readEffectsFrom(obj: any): void {
+    const d = this._defaults;
+    const sh = obj.shadow;
+    if (sh && (sh.blur || sh.offsetX || sh.offsetY)) {
+      const parsed = parseColor(sh.color) ?? { hex: '#0a101c', alpha: 1 };
+      d.shadowXPx = Math.round(sh.offsetX ?? 0);
+      d.shadowYPx = Math.round(sh.offsetY ?? 0);
+      d.shadowBlurPx = Math.round(Math.max(0, sh.blur ?? 0));
+      d.shadowColor = parsed.hex.toLowerCase();
+      d.shadowOpacity = parsed.alpha;
+      const match = Object.entries(SHADOW_PRESETS).find(
+        ([, p]) =>
+          p.x === d.shadowXPx &&
+          p.y === d.shadowYPx &&
+          p.blur === d.shadowBlurPx &&
+          p.color === d.shadowColor &&
+          Math.abs(p.opacity - d.shadowOpacity) < 0.02,
+      );
+      d.shadowPreset = (match?.[0] as StyleDefaults['shadowPreset']) ?? 'custom';
+    } else {
+      d.shadowPreset = 'none';
+    }
+    const blend = obj.globalCompositeOperation;
+    d.blend = !blend || blend === 'source-over' ? 'normal' : (blend as StyleDefaults['blend']);
+    const filterBlur = obj.filters?.[0]?.blur;
+    d.blurPct = obj.data?.kind === 'image' && filterBlur ? Math.round(filterBlur * 200) : 0;
+  }
+
+  /**
+   * A fabric.Shadow from the panel's shadow fields, or null for "no shadow".
+   * `nonScaling` keeps a resize from also scaling the shadow, which would change
+   * how heavy it reads for no reason the user asked for.
+   */
+  private _buildShadow(): any | null {
+    const fabric = (window as any).fabric;
+    const d = this._defaults;
+    if (!fabric || d.shadowPreset === 'none') return null;
+    return new fabric.Shadow({
+      color: withAlpha(d.shadowColor, d.shadowOpacity),
+      blur: Math.max(0, d.shadowBlurPx),
+      offsetX: d.shadowXPx,
+      offsetY: d.shadowYPx,
+      nonScaling: true,
+    });
+  }
+
+  /** Image blur: the panel's 0–100 maps onto fabric's 0–0.5 filter scale. */
+  private _buildBlurFilter(pct: number): any {
+    const fabric = (window as any).fabric;
+    return new fabric.Image.filters.Blur({ blur: Math.max(0, Math.min(100, pct)) / 200 });
   }
 
   private _applyStyleTo(obj: any, prop: StyleProp): void {
@@ -3589,6 +3705,27 @@ export default class SlideEditor {
     const linework = isLinework(obj);
     const dashVal = d.strokeDash === 'solid' ? undefined : d.strokeDash;
     switch (prop) {
+      // Every shadow field rebuilds the whole fabric.Shadow — it is one object,
+      // not five settable properties, so there is nothing to patch in place.
+      case 'shadowPreset':
+      case 'shadowXPx':
+      case 'shadowYPx':
+      case 'shadowBlurPx':
+      case 'shadowColor':
+      case 'shadowOpacity':
+        obj.set('shadow', this._buildShadow());
+        break;
+      case 'blend':
+        obj.set('globalCompositeOperation', d.blend === 'normal' ? 'source-over' : d.blend);
+        break;
+      case 'blurPct':
+        // fabric's Blur filter is an image filter; vector objects have no
+        // equivalent, so the panel only offers this on a picture.
+        if (kind === 'image' && obj.filters) {
+          obj.filters = d.blurPct > 0 ? [this._buildBlurFilter(d.blurPct)] : [];
+          obj.applyFilters();
+        }
+        break;
       case 'listStyle':
         if (kind === 'text') {
           // The marker characters live in the fabric text; the persisted model
@@ -3749,6 +3886,71 @@ export default class SlideEditor {
     this._ui?.showPanel(this._panelContextFor());
   }
 
+  // ── Position & size ────────────────────────────────────────────────────────
+  //
+  // The only panel section that reads and writes the OBJECT rather than the
+  // style defaults. Values are slide-canvas pixels (what the rest of the editor
+  // works in) — not the normalized model units — so the numbers match what the
+  // canvas and the rulers show, and a re-fit at a different zoom re-reads them.
+
+  /**
+   * The single selected overlay object, or null (a multi-selection has no one
+   * frame to show). Bound labels are filtered out for the same reason
+   * `_panelContextFor` counts in units: a labelled shape is one thing, and the
+   * frame the fields edit is the container's.
+   */
+  private _geometryTarget(): any | null {
+    const objs = this._unlockedSelection().filter((o: any) => !o.data.labelOf);
+    return objs.length === 1 && objs[0]?.data?.kind ? objs[0] : null;
+  }
+
+  private getGeometry(): ObjectGeometry | null {
+    const obj = this._geometryTarget();
+    if (!obj) return null;
+    return {
+      x: obj.left ?? 0,
+      y: obj.top ?? 0,
+      w: obj.getScaledWidth?.() ?? obj.width ?? 0,
+      h: obj.getScaledHeight?.() ?? obj.height ?? 0,
+      angle: obj.angle ?? 0,
+      lockH: obj.data.kind === 'text',
+    };
+  }
+
+  private setGeometry(patch: Partial<ObjectGeometry>): void {
+    const obj = this._geometryTarget();
+    if (!obj || !this._fc) return;
+    if (patch.x != null) obj.set('left', patch.x);
+    if (patch.y != null) obj.set('top', patch.y);
+    // Everything except text takes its size through scale, exactly as a
+    // corner-handle drag does. A Textbox instead owns a real `width` that its
+    // text reflows into (and a height it derives from the result), so scaling it
+    // would stretch the glyphs — width is set directly, and H is read-only.
+    const isText = obj.data.kind === 'text';
+    if (patch.w != null && isText) {
+      obj.set('width', Math.max(8, patch.w / (obj.scaleX || 1)));
+    } else if (patch.w != null && obj.width) {
+      obj.set('scaleX', Math.max(0.01, patch.w / obj.width));
+    }
+    if (patch.h != null && !isText && obj.height) {
+      obj.set('scaleY', Math.max(0.01, patch.h / obj.height));
+    }
+    if (patch.angle != null) obj.set('angle', patch.angle);
+    obj.setCoords();
+    // A table's gridlines and cell text are generated at a size, so a scaled
+    // Group has to be rebuilt rather than left stretched — same as a handle drag
+    // (see the object:modified handler).
+    if (obj.data.kind === 'table' && ((obj.scaleX ?? 1) !== 1 || (obj.scaleY ?? 1) !== 1)) {
+      this._replaceTable(obj, {});
+    }
+    // A label rides inside its container, so moving or resizing the container
+    // has to take the label with it.
+    const label = this._labelFor(obj);
+    if (label) this._layoutLabel(obj, label);
+    this._fc.requestRenderAll();
+    this._commit();
+  }
+
   /** Populate the properties island from the newly-selected object(s). */
   private _syncControlsFromSelection(): void {
     const obj: any = this._fc?.getActiveObject?.();
@@ -3772,6 +3974,7 @@ export default class SlideEditor {
     const kind = obj?.data?.kind;
     const d = this._defaults;
     if (!kind) return;
+    this._readEffectsFrom(obj);
 
     if (kind === 'table') {
       // A table's style lives on data.style — its children are regenerated, so

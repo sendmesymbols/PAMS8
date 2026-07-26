@@ -14,7 +14,7 @@
  */
 
 import { BOX_OVERLAY_KINDS } from './BriefingTypes';
-import type { ArrowHead, OverlayKind, SlideOverlay } from './BriefingTypes';
+import type { ArrowHead, OverlayBlend, OverlayKind, SlideOverlay } from './BriefingTypes';
 import { cleanAmplifiers, renderMilSym } from './MilSymFactory';
 import { buildTacArrowOutline } from './TacArrowGeometry';
 import { buildTableGroup, tableFromFabric } from './OverlayTable';
@@ -760,6 +760,7 @@ function makeMilSymPlaceholder(
 export function overlayToFabric(o: SlideOverlay, W: number, H: number): any | null {
   const obj = buildOverlayObject(o, W, H);
   if (!obj) return null;
+  applyEffects(obj, o, H);
   if (o.groupId) obj.data.groupId = o.groupId;
   if (o.labelOf && o.kind === 'text') obj.data.labelOf = o.labelOf;
   // Box kinds and images mirror via fabric's flip flags; point-based kinds carry
@@ -769,6 +770,39 @@ export function overlayToFabric(o: SlideOverlay, W: number, H: number): any | nu
   }
   if (o.locked) applyLockState(obj, true);
   return obj;
+}
+
+/**
+ * Shadow / blend / blur, applied AFTER the object is built rather than through
+ * the shared `common` props — a table is a Group assembled by OverlayTable and
+ * never sees `common`, so doing it here is what makes effects uniform across
+ * every kind. Shadow lengths denormalize against view height, exactly like
+ * strokeWidth, so the effect scales with the canvas.
+ */
+function applyEffects(obj: any, o: SlideOverlay, H: number): void {
+  const fabric = (window as any).fabric;
+  if (!fabric) return;
+  obj.set(
+    'shadow',
+    o.shadow
+      ? new fabric.Shadow({
+          color: o.shadow.color || 'rgba(0,0,0,0.35)',
+          blur: Math.max(0, (o.shadow.blur ?? 0) * H),
+          offsetX: (o.shadow.x ?? 0) * H,
+          offsetY: (o.shadow.y ?? 0) * H,
+          // Without this a scaled object's shadow scales with it, so resizing a
+          // shape would silently change how heavy its shadow reads.
+          nonScaling: true,
+        })
+      : null,
+  );
+  obj.set('globalCompositeOperation', o.blend ?? 'source-over');
+  // Blur is an image filter — there is no equivalent for vector objects in
+  // fabric 4.5, which is why the model documents it as image-only.
+  if (o.kind === 'image' && obj.filters) {
+    obj.filters = o.blur ? [new fabric.Image.filters.Blur({ blur: o.blur })] : [];
+    obj.applyFilters();
+  }
 }
 
 function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
@@ -964,6 +998,28 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
  * editor) back into the persisted model. Point-list kinds bake any
  * move/scale/rotate into the recovered points via the transform matrix.
  */
+/**
+ * Read shadow / blend / blur back off a fabric object. Called from the `base`
+ * block so every kind gets them, including the ones that return early. Absent
+ * effects write nothing, so an unstyled overlay persists exactly as before.
+ */
+function readEffects(base: SlideOverlay, obj: any, H: number): void {
+  const sh = obj.shadow;
+  if (sh && (sh.blur || sh.offsetX || sh.offsetY)) {
+    const r4 = (n: number) => Math.round((n / H) * 10000) / 10000;
+    base.shadow = {
+      x: r4(sh.offsetX ?? 0),
+      y: r4(sh.offsetY ?? 0),
+      blur: r4(Math.max(0, sh.blur ?? 0)),
+      color: sh.color || 'rgba(0,0,0,0.35)',
+    };
+  }
+  const blend = obj.globalCompositeOperation;
+  if (blend && blend !== 'source-over') base.blend = blend as OverlayBlend;
+  const blur = obj.filters?.[0]?.blur;
+  if (obj.data?.kind === 'image' && blur) base.blur = Math.round(blur * 1000) / 1000;
+}
+
 export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | null {
   const fabric = (window as any).fabric;
   const kind: OverlayKind | undefined = obj?.data?.kind;
@@ -986,6 +1042,7 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
   if (opacity != null) base.opacity = opacity;
   if (obj.data.groupId) base.groupId = obj.data.groupId;
   if (obj.data.locked) base.locked = true;
+  readEffects(base, obj, H);
   // Only box kinds and text ever carry flip flags (see overlayToFabric).
   if (obj.flipX) base.flipX = true;
   if (obj.flipY) base.flipY = true;

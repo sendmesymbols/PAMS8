@@ -70,6 +70,31 @@ export type ArrowHead =
   | 'diamondOutline';
 
 /**
+ * A drop shadow. `x`/`y`/`blur` are fractions of view height (see
+ * SlideOverlay.shadow); `color` is any CSS colour and normally carries alpha.
+ */
+export interface OverlayShadow {
+  x: number;
+  y: number;
+  blur: number;
+  color: string;
+}
+
+/**
+ * Composite modes offered for `SlideOverlay.blend` — the canvas
+ * globalCompositeOperation values that read as "blend modes" to a user. 'normal'
+ * is the absence of the field, never a stored value.
+ */
+export type OverlayBlend =
+  | 'multiply'
+  | 'screen'
+  | 'overlay'
+  | 'darken'
+  | 'lighten'
+  | 'difference'
+  | 'exclusion';
+
+/**
  * Box-geometry kinds persist identically (bbox + rotation + fill/stroke) and
  * regenerate their vertices from the bbox on load. Shared by OverlayFabric
  * and the slide editor's style plumbing.
@@ -189,6 +214,25 @@ export interface SlideOverlay {
    */
   flipX?: boolean;
   flipY?: boolean;
+  /**
+   * Drop shadow. Offsets and blur are fractions of view height, like
+   * `strokeWidth` and `fontSize`, so a shadow keeps its proportion at any canvas
+   * size. `color` carries its own alpha (rgba()), because a shadow is nearly
+   * always partly transparent. Absent = no shadow. Exports natively to PPTX.
+   */
+  shadow?: OverlayShadow;
+  /**
+   * Canvas composite mode; absent = 'normal'. Draws in the editor, in present
+   * mode and in any rasterized export. PowerPoint shapes have no equivalent, so
+   * a NATIVE pptx emit cannot carry it — the exporter logs what was dropped.
+   */
+  blend?: OverlayBlend;
+  /**
+   * image only — gaussian blur as a fraction of the image's own size (fabric's
+   * Blur filter scale, so 0.1 is already strong). Absent = sharp. Like `blend`,
+   * it is a canvas effect with no native pptx representation.
+   */
+  blur?: number;
   /**
    * image only — the picture itself, as a data URL. Self-contained like
    * `backgroundDataUrl`, so a briefing stays portable; decoding is cached and
