@@ -39,6 +39,13 @@ export const DEFAULT_TABLE_FILL = '#101418';
 export const DEFAULT_TABLE_FILL_OPACITY = 0.72;
 export const DEFAULT_TABLE_HEADER_FILL = '#2D6CDF';
 export const DEFAULT_TABLE_STROKE = '#FFFFFF';
+/**
+ * Cell ink. Unlike a free-text overlay — which sits on an unknown slide
+ * background and therefore defaults to the mid-tone `DEFAULT_TEXT_COLOR` — a
+ * table paints its own dark body and header fills, so its text is only ever
+ * read against those and stays light.
+ */
+export const DEFAULT_TABLE_TEXT_COLOR = '#FFFFFF';
 /** Fraction of view height, matching SlideOverlay.strokeWidth. */
 export const DEFAULT_TABLE_STROKE_WIDTH = 0.0015;
 
@@ -238,7 +245,7 @@ export function buildTableGroup(o: SlideOverlay, W: number, H: number): any | nu
 
   const fontPx = Math.max(6, (o.fontSize ?? 0.025) * H);
   const fontFamily = o.fontFamily || 'Arial';
-  const textColor = o.textColor ?? '#FFFFFF';
+  const textColor = o.textColor ?? DEFAULT_TABLE_TEXT_COLOR;
   const align = o.align ?? 'left';
 
   const colOff = offsets(t.colWidths);
@@ -366,7 +373,7 @@ export function tableFromFabric(obj: any): Partial<SlideOverlay> {
   if (st.italic) out.italic = true;
   if (st.underline) out.underline = true;
   if (st.align && st.align !== 'left') out.align = st.align;
-  out.textColor = st.textColor ?? '#FFFFFF';
+  out.textColor = st.textColor ?? DEFAULT_TABLE_TEXT_COLOR;
   return out;
 }
 

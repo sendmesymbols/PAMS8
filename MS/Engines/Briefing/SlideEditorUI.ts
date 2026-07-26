@@ -1,19 +1,32 @@
 /**
  * SlideEditorUI.ts
  *
- * Excalidraw-style chrome for the SlideEditor: a slim top tool strip (tools
- * with shortcut corner badges + slide navigation + save) and a floating
- * contextual properties island over the canvas (stroke/fill swatches, stroke
- * width & dash presets, text styling, opacity, layering, actions).
+ * PowerPoint-style three-pane chrome for the SlideEditor, modelled on
+ * bento/slides (MIT, © 2026 The Bento authors — https://bento.page):
+ *
+ *   topbar                      brand · title · undo/redo · tools · save
+ *   ├── rail        (left)      slide thumbnails, drag to reorder, ＋ New slide
+ *   ├── canvas wrap (centre)    the fabric stage, with the zoom + Slideshow
+ *   │                           pills parked in its bottom-right corner and the
+ *   │                           speaker-notes drawer folded away beneath it
+ *   └── props       (right)     collapsible sections — the slide's own
+ *                               properties when nothing is selected, the
+ *                               contextual style sections when something is
+ *
+ * Both side rails drag-resize (widths persisted), collapse to nothing via
+ * their chevron or `[` / `]`, and the centre keeps whatever is left. The
+ * geometry, spacing and interaction model are bento's; the palette is ours,
+ * read straight off the `--ms-*` custom properties ThemeManager publishes on
+ * :root, so the editor wears Ops Dark / Night Vision with the rest of the app.
  *
  * Pure DOM/CSS — owns building, event wiring and value sync; all editing
  * semantics stay in SlideEditor (the `EditorUIHost`). The UI writes changed
- * values into `host.defaults` and then notifies `host.onStyleChanged(prop)`,
- * mirroring how the previous single-bar implementation worked.
+ * values into `host.defaults` and then notifies `host.onStyleChanged(prop)`.
  */
 
 import type { ArrowHead, Slide } from './BriefingTypes';
-import type { ArrowType } from './OverlayFabric';
+import { DEFAULT_TEXT_COLOR, type ArrowType } from './OverlayFabric';
+import { BUILTIN_LAYOUTS, LAYOUT_INK_DIM } from './SlideLayouts';
 import {
   AFFILIATIONS,
   AMPLIFIER_GROUPS,
@@ -189,21 +202,48 @@ export interface ContextMenuState {
   canDeletePoint: boolean;
 }
 
+/**
+ * What the left rail needs from the briefing to render and act. Optional as a
+ * whole: an embedder that has no slide list simply gets no rail, and the
+ * editor's ◀ / ▶ navigation still works.
+ */
+export interface RailHost {
+  slides(): Array<{ title: string; thumb?: string }>;
+  current(): number;
+  /** Save the open slide and edit slide `index` instead. */
+  go(index: number): void;
+  move(from: number, to: number): void;
+  duplicate(index: number): void;
+  remove(index: number): void;
+  /** Append a slide seeded from a built-in layout, then open it. */
+  add(layoutId: string): void;
+}
+
 export interface EditorUIHost {
   defaults: StyleDefaults;
   onToolSelected(t: Tool): void;
   /**
-   * save | cancel | notes | prevSlide | nextSlide | present | help | toolLock |
+   * save | cancel | notes | prevSlide | nextSlide | present | presentFromStart |
+   * help | toolLock | undo | redo |
    * front | forward | backward | back | dup | del |
    * group | ungroup | lock | flipH | flipV |
    * copy | cut | paste | copyStyles | pasteStyles | selectAll |
    * alignLeft | alignCenterH | alignRight | alignTop | alignCenterV |
    * alignBottom | distributeH | distributeV |
-   * tableRowAdd | tableRowDel | tableColAdd | tableColDel
+   * tableRowAdd | tableRowDel | tableColAdd | tableColDel |
+   * zoomIn | zoomOut | zoomReset | amplifiers
    */
   onAction(act: string): void;
   /** host.defaults[prop] was already updated — apply to selection + commit. */
   onStyleChanged(prop: StyleProp): void;
+  /** Slide rail data + operations. Absent = no rail. */
+  rail?: RailHost;
+  /**
+   * A side rail was collapsed, expanded or resized, so the stage box changed
+   * size. SlideEditor refits the canvas. Optional — the editor also runs a
+   * ResizeObserver, this is just the immediate path.
+   */
+  onLayoutChanged?(): void;
 }
 
 export interface ToolDef {
@@ -244,6 +284,27 @@ export const TOOL_DEFS: ToolDef[] = [
 
 const STROKE_SWATCHES = ['#ffffff', '#1e1e1e', '#ff3b30', '#ffd166', '#2f9e44', '#339af0', '#f08c00'];
 const FILL_SWATCHES = ['#ffd166', '#ffc9c9', '#b2f2bb', '#a5d8ff', '#ffec99', '#ff3b30', '#1e1e1e'];
+/**
+ * Text ink. Leads with the background-agnostic default, then the two extremes —
+ * a slide's background is unknown, so reaching white (for dark imagery) or near
+ * black (for a blank slide) has to be one click, not a trip to the OS picker.
+ */
+const TEXT_SWATCHES = [
+  DEFAULT_TEXT_COLOR,
+  '#ffffff',
+  '#1e1e1e',
+  '#ff3b30',
+  '#ffd166',
+  '#2f9e44',
+  '#339af0',
+];
+
+/** Side-rail widths — bento's own defaults and bounds, in px. */
+const RAIL_DEFAULTS = { left: 188, right: 236 } as const;
+const RAIL_BOUNDS = { left: [110, 400], right: [190, 520] } as const;
+const RAIL_WIDTH_KEY = 'ms-sledit-rails';
+const RAIL_COLLAPSE_KEY = 'ms-sledit-rails-collapsed';
+const SECTION_COLLAPSE_KEY = 'ms-sledit-sections';
 
 // ── Inline SVG icons (no dependency) ─────────────────────────────────────────
 
@@ -326,7 +387,23 @@ const ICONS: Record<string, string> = {
   polygon: svg('<path d="M12 3.5l8.2 6-3.1 9.6H6.9L3.8 9.5z"/>'),
   toolLock: svg('<rect x="5" y="10.5" width="14" height="9.5" rx="1.8"/><path d="M8.2 10.5V8a3.8 3.8 0 017.6 0v2.5"/>'),
   help: svg('<circle cx="12" cy="12" r="8.8"/><path d="M9.6 9.4a2.5 2.5 0 114.3 1.8c-.9.8-1.9 1.3-1.9 2.6"/><circle cx="12" cy="17.2" r="0.9" fill="currentColor" stroke="none"/>'),
+  undo: svg('<path d="M4 9.5h9.5a5.5 5.5 0 010 11H7"/><path d="M8 5L3.5 9.5 8 14"/>'),
+  redo: svg('<path d="M20 9.5h-9.5a5.5 5.5 0 000 11H17"/><path d="M16 5l4.5 4.5L16 14"/>'),
+  plus: svg('<path d="M12 5.5v13M5.5 12h13"/>'),
+  slideshow: svg('<rect x="3" y="4.5" width="18" height="12.5" rx="1.8"/><path d="M8.5 20.5h7"/><path d="M10.6 8.8l4.6 2.6-4.6 2.6z" fill="currentColor" stroke="none"/>'),
 };
+
+/**
+ * The editor's own mark, echoing bento's stacked-tiles lockup but in our
+ * palette — one wide tile over two stacked ones, i.e. "a slide and its parts".
+ */
+const BRAND_MARK =
+  `<svg class="ms-sledit-mark" viewBox="0 0 32 32" width="17" height="17" aria-hidden="true">` +
+  `<rect width="32" height="32" rx="7" fill="var(--ms-accent, #64b4ff)" opacity="0.16"/>` +
+  `<rect x="5" y="5" width="7" height="22" rx="2.5" fill="var(--ms-accent, #64b4ff)" opacity="0.75"/>` +
+  `<rect x="14" y="5" width="13" height="10" rx="2.5" fill="var(--ms-accent, #64b4ff)"/>` +
+  `<rect x="14" y="17" width="13" height="10" rx="2.5" fill="currentColor" opacity="0.45"/>` +
+  `</svg>`;
 
 /** Right-click menu layout — `sep` rows render a divider. */
 interface CtxItem {
@@ -468,6 +545,18 @@ export default class SlideEditorUI {
   private _host: EditorUIHost;
   private _stage: HTMLElement | null = null;
   private _bar: HTMLElement | null = null;
+  private _rail: HTMLElement | null = null;
+  private _railThumbs: HTMLElement | null = null;
+  private _props: HTMLElement | null = null;
+  private _corner: HTMLElement | null = null;
+  private _layoutPicker: HTMLElement | null = null;
+  private _layoutDismiss: ((e: PointerEvent) => void) | null = null;
+  /** Rail drag-reorder: index being dragged, null when idle. */
+  private _railDrag: number | null = null;
+  private _panelW: { left: number; right: number } = {
+    left: RAIL_DEFAULTS.left,
+    right: RAIL_DEFAULTS.right,
+  };
   private _panel: HTMLElement | null = null;
   private _ctxMenu: HTMLElement | null = null;
   private _ctxDismiss: ((e: MouseEvent) => void) | null = null;
@@ -509,7 +598,7 @@ export default class SlideEditorUI {
       }">${ICONS[d.tool]}<kbd>${badge}</kbd></button>`;
     }).join('');
 
-    const swatchRow = (slot: 'stroke' | 'fill', colors: string[]): string => {
+    const swatchRow = (slot: 'stroke' | 'fill' | 'text', colors: string[]): string => {
       const none =
         slot === 'fill'
           ? `<button class="ms-sledit-sw none" data-slot="fill" data-color="" title="No fill">${ICONS.noFill}</button>`
@@ -520,7 +609,10 @@ export default class SlideEditorUI {
             `<button class="ms-sledit-sw" data-slot="${slot}" data-color="${c}" style="--sw:${c}" title="${c}"></button>`,
         )
         .join('');
-      return `<div class="ms-sledit-swatches">${none}${btns}<input type="color" class="ms-sledit-custom" data-slot="${slot}" title="Custom color"></div>`;
+      // The text slot's custom picker doubles as the one refreshPanelValues
+      // syncs, so it carries the legacy `.ms-sledit-textcolor` hook too.
+      const customClass = slot === 'text' ? 'ms-sledit-custom ms-sledit-textcolor' : 'ms-sledit-custom';
+      return `<div class="ms-sledit-swatches">${none}${btns}<input type="color" class="${customClass}" data-slot="${slot}" title="Custom color"></div>`;
     };
 
     const headOptions = ARROW_HEAD_OPTIONS.map(
@@ -534,36 +626,85 @@ export default class SlideEditorUI {
     const hqOptions = sidcOptions(HQ_TF_DUMMY);
 
     stage.innerHTML = `
-      <div class="ms-sledit-bar">
-        <span class="ms-sledit-tools">${toolButtons}<span class="ms-sledit-sep"></span><button data-act="toolLock" title="Keep the active shape tool armed after each draw — Q">${ICONS.toolLock}<kbd>Q</kbd></button></span>
-        <span class="ms-sledit-spring"></span>
-        <span class="ms-sledit-sep"></span>
-        <button data-act="zoomOut" title="Zoom out (Ctrl+−)">−</button>
-        <button data-act="zoomReset" class="ms-sledit-zoom" title="Reset zoom to 100% (Ctrl+0)">100%</button>
-        <button data-act="zoomIn" title="Zoom in (Ctrl++)">+</button>
-        <span class="ms-sledit-sep"></span>
-        <button data-act="help" class="ms-sledit-iconbtn" title="Keyboard shortcuts (?)">${ICONS.help}</button>
+      <div class="ms-sledit-topbar">
+        <span class="ms-sledit-brand">${BRAND_MARK}<b><i>Editor</i></b></span>
         <input type="text" class="ms-sledit-title" placeholder="Slide title" title="Slide title (saved with the slide)">
-        <button data-act="notes" class="ms-sledit-iconbtn" title="Toggle speaker notes">${ICONS.notes}</button>
-        <select class="ms-sledit-transition" title="Transition played entering this slide from another slide-view slide.">
-          <option value="">Cut</option>
-          <option value="fade">Fade</option>
-          <option value="pushLeft">Push Left</option>
-          <option value="pushRight">Push Right</option>
-          <option value="wipe">Wipe</option>
-        </select>
-        <span class="ms-sledit-sep"></span>
-        <button data-act="prevSlide" title="Save this slide and edit the previous one">◀</button>
-        <span class="ms-sledit-navcount">– / –</span>
-        <button data-act="nextSlide" title="Save this slide and edit the next one">▶</button>
-        <span class="ms-sledit-sep"></span>
-        <button data-act="present" title="Save this slide and start the slide show from here (Esc exits)">⛶ Slideshow</button>
-        <button data-act="save" title="Save annotations, title and notes to the slide">Save &amp; Close</button>
-        <button data-act="cancel" title="Discard changes">Cancel</button>
+        <span class="ms-sledit-group">
+          <button data-act="undo" class="ms-sledit-iconbtn" title="Undo (Ctrl+Z)">${ICONS.undo}</button>
+          <button data-act="redo" class="ms-sledit-iconbtn" title="Redo (Ctrl+Y)">${ICONS.redo}</button>
+        </span>
+        <span class="ms-sledit-tools">${toolButtons}<span class="ms-sledit-sep"></span><button data-act="toolLock" title="Keep the active shape tool armed after each draw — Q">${ICONS.toolLock}<kbd>Q</kbd></button></span>
+        <span class="ms-sledit-group ms-sledit-topright">
+          <select class="ms-sledit-transition" title="Transition played entering this slide from another slide-view slide.">
+            <option value="">Cut</option>
+            <option value="fade">Fade</option>
+            <option value="pushLeft">Push Left</option>
+            <option value="pushRight">Push Right</option>
+            <option value="wipe">Wipe</option>
+          </select>
+          <button data-act="notes" class="ms-sledit-iconbtn" title="Toggle speaker notes — opens a drawer under the slide">${ICONS.notes}</button>
+          <button data-act="help" class="ms-sledit-iconbtn" title="Keyboard shortcuts (?)">${ICONS.help}</button>
+          <button data-act="save" class="primary" title="Save annotations, title and notes to the slide">Save &amp; Close</button>
+          <button data-act="cancel" title="Discard changes">Cancel</button>
+        </span>
       </div>
-      <div class="ms-sledit-stagewrap">
-        <span class="ms-sledit-loading">Preparing slide…</span>
-        <div class="ms-sledit-panel" style="display:none">
+      <div class="ms-sledit-main">
+        <aside class="ms-sledit-rail">
+          <div class="ms-sledit-railthumbs"></div>
+          <button class="ms-sledit-addslide" title="New slide from a layout">${ICONS.plus}<span>New slide</span></button>
+        </aside>
+        <div class="ms-sledit-resizer" data-side="left" title="Drag to resize · double-click to reset">
+          <button class="ms-sledit-paneltoggle" data-side="left" type="button">‹</button>
+        </div>
+        <div class="ms-sledit-canvaswrap">
+          <!-- stagearea holds the canvas and the floating corner pills; the
+               notes drawer is its flex sibling, so opening it takes height from
+               the stage (which the ResizeObserver turns into a refit) instead of
+               covering the slide. -->
+          <div class="ms-sledit-stagearea">
+            <div class="ms-sledit-stagewrap">
+              <span class="ms-sledit-loading">Preparing slide…</span>
+            </div>
+            <div class="ms-sledit-cornerbr">
+              <div class="ms-sledit-zoombar">
+                <button data-act="zoomOut" title="Zoom out (Ctrl+−)">−</button>
+                <button data-act="zoomReset" class="ms-sledit-zoom" title="Reset zoom to 100% (Ctrl+0)">100%</button>
+                <button data-act="zoomIn" title="Zoom in (Ctrl++)">+</button>
+              </div>
+              <div class="ms-sledit-presentpill">
+                <button data-act="present" class="ms-sledit-pillmain" title="Save this slide and start the slide show from here (Esc exits)">${ICONS.slideshow}<span>Slideshow</span></button>
+                <button class="ms-sledit-pillcaret" type="button" title="More ways to present">▴</button>
+                <div class="ms-sledit-pillmenu">
+                  <button data-act="present">Present from this slide</button>
+                  <button data-act="presentFromStart">Present from the start</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ms-sledit-notesbar" style="display:none">
+            <div class="ms-sledit-noteshead">
+              ${ICONS.notes}<span>Speaker notes</span>
+              <span class="ms-sledit-spring"></span>
+              <button data-act="notes" class="ms-sledit-noteshide" type="button" title="Hide speaker notes">✕</button>
+            </div>
+            <textarea class="ms-sledit-notes" placeholder="Notes for the presenter — not shown to the audience…"></textarea>
+          </div>
+        </div>
+        <div class="ms-sledit-resizer" data-side="right" title="Drag to resize · double-click to reset">
+          <button class="ms-sledit-paneltoggle" data-side="right" type="button">›</button>
+        </div>
+        <aside class="ms-sledit-props">
+          <div class="ms-sledit-slidesecs">
+            <div class="ms-sledit-sec" data-sec="slide">
+              <div class="ms-sledit-seclabel">Slide</div>
+              <div class="ms-sledit-row ms-sledit-navrow">
+                <button data-act="prevSlide" title="Save this slide and edit the previous one">◀</button>
+                <span class="ms-sledit-navcount">– / –</span>
+                <button data-act="nextSlide" title="Save this slide and edit the next one">▶</button>
+              </div>
+            </div>
+          </div>
+          <div class="ms-sledit-panel" style="display:none">
           <div class="ms-sledit-sec" data-sec="stroke">
             <div class="ms-sledit-seclabel">Stroke</div>
             ${swatchRow('stroke', STROKE_SWATCHES)}
@@ -667,19 +808,19 @@ export default class SlideEditorUI {
             </div>
             <!-- Six 30px buttons plus a separator do not fit the island's
                  184px of content width, so the split is explicit rather than
-                 left to flex-wrap: weight and colour here, alignment below. -->
+                 left to flex-wrap: weight here, alignment below, and ink on its
+                 own swatch row (the same markup stroke and fill use). -->
             <div class="ms-sledit-row">
               <button data-style="bold" title="Bold"><b>B</b></button>
               <button data-style="italic" title="Italic"><i>I</i></button>
               <button data-style="underline" title="Underline"><u>U</u></button>
-              <span class="ms-sledit-minisep"></span>
-              <input type="color" class="ms-sledit-textcolor" title="Text color">
             </div>
             <div class="ms-sledit-row">
               <button data-align="left" title="Align left">${ICONS.alignLeft}</button>
               <button data-align="center" title="Align center">${ICONS.alignCenter}</button>
               <button data-align="right" title="Align right">${ICONS.alignRight}</button>
             </div>
+            ${swatchRow('text', TEXT_SWATCHES)}
           </div>
           <div class="ms-sledit-sec" data-sec="list">
             <div class="ms-sledit-seclabel">List</div>
@@ -744,14 +885,15 @@ export default class SlideEditorUI {
               <button data-act="del" title="Delete (Del)">${ICONS.del}</button>
             </div>
           </div>
-        </div>
-      </div>
-      <div class="ms-sledit-notesbar" style="display:none">
-        <div class="ms-sledit-noteshead">${ICONS.notes}<span>Speaker notes</span></div>
-        <textarea class="ms-sledit-notes" placeholder="Notes for the presenter — not shown to the audience…"></textarea>
+          </div>
+        </aside>
       </div>`;
 
-    this._bar = stage.querySelector('.ms-sledit-bar') as HTMLElement;
+    this._bar = stage.querySelector('.ms-sledit-topbar') as HTMLElement;
+    this._rail = stage.querySelector('.ms-sledit-rail') as HTMLElement;
+    this._railThumbs = stage.querySelector('.ms-sledit-railthumbs') as HTMLElement;
+    this._props = stage.querySelector('.ms-sledit-props') as HTMLElement;
+    this._corner = stage.querySelector('.ms-sledit-cornerbr') as HTMLElement;
     this._panel = stage.querySelector('.ms-sledit-panel') as HTMLElement;
     this.stageWrap = stage.querySelector('.ms-sledit-stagewrap') as HTMLElement;
     this.titleInput = stage.querySelector('.ms-sledit-title') as HTMLInputElement;
@@ -764,28 +906,398 @@ export default class SlideEditorUI {
 
     this._wireBar();
     this._wirePanel();
+    this._wireShell();
+    this._restorePanelWidths();
+    this._restoreCollapsedSections();
+    this.refreshRail();
     this.refreshPanelValues();
   }
 
   /**
-   * The canvas replaces stageWrap's content on every slide load — the panel
-   * lives inside stageWrap so it overlays the canvas, so re-attach it after.
+   * Kept for the canvas rebuild path in SlideEditor: the properties panel used
+   * to live inside stageWrap (overlaying the canvas), so wiping stageWrap
+   * detached it. It is docked in the right rail now and survives on its own —
+   * this only re-homes it if something ever tears it out.
    */
   public remountPanel(): void {
-    if (this._panel && this.stageWrap && !this.stageWrap.contains(this._panel)) {
-      this.stageWrap.appendChild(this._panel);
+    if (this._panel && this._props && !this._props.contains(this._panel)) {
+      this._props.appendChild(this._panel);
     }
   }
 
   // ── Event wiring ───────────────────────────────────────────────────────────
 
   private _wireBar(): void {
-    this._bar?.addEventListener('click', (e) => {
+    const dispatch = (e: Event) => {
       const el = (e.target as HTMLElement).closest('[data-tool],[data-act]') as HTMLElement | null;
       if (!el) return;
       if (el.dataset.tool) this._host.onToolSelected(el.dataset.tool as Tool);
       else this._host.onAction(el.dataset.act!);
+    };
+    // Four non-overlapping containers, so no click is ever dispatched twice.
+    // The properties rail keeps its own richer handler (_wirePanel), and the
+    // slide-level sections sit outside `.ms-sledit-panel`, hence the third; the
+    // notes drawer lives in the canvas column, so its ✕ needs the fourth.
+    this._bar?.addEventListener('click', dispatch);
+    this._corner?.addEventListener('click', dispatch);
+    this._props
+      ?.querySelector('.ms-sledit-slidesecs')
+      ?.addEventListener('click', dispatch as EventListener);
+    this._notesBar
+      ?.querySelector('.ms-sledit-noteshead')
+      ?.addEventListener('click', dispatch as EventListener);
+  }
+
+  // ── Shell: rails, resizers, section collapse, layout picker ────────────────
+
+  private _wireShell(): void {
+    const stage = this._stage;
+    if (!stage) return;
+
+    // Collapsible section headers. Every section — the panel's contextual ones
+    // and the slide-level ones — is built from the same seclabel + rows shape,
+    // so one delegated handler makes all of them collapsible with no per-
+    // section markup at all.
+    stage.addEventListener('click', (e) => {
+      const label = (e.target as HTMLElement).closest('.ms-sledit-seclabel') as HTMLElement | null;
+      if (!label) return;
+      const sec = label.closest('.ms-sledit-sec') as HTMLElement | null;
+      if (!sec) return;
+      sec.classList.toggle('collapsed');
+      this._persistCollapsedSections();
     });
+
+    for (const handle of Array.from(
+      stage.querySelectorAll('.ms-sledit-resizer'),
+    ) as HTMLElement[]) {
+      this._wireResizer(handle, handle.dataset.side as 'left' | 'right');
+    }
+
+    // The Slideshow pill's caret menu. Click-away is bound to the STAGE, not
+    // to document: the stage is full-screen so there is no "outside" to miss,
+    // and the listener dies with it instead of outliving every editor session.
+    const pill = stage.querySelector('.ms-sledit-presentpill') as HTMLElement | null;
+    pill?.querySelector('.ms-sledit-pillcaret')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      pill.classList.toggle('open');
+    });
+    stage.addEventListener(
+      'pointerdown',
+      (e) => {
+        if (pill && !pill.contains(e.target as Node)) pill.classList.remove('open');
+      },
+      true,
+    );
+
+    stage
+      .querySelector('.ms-sledit-addslide')
+      ?.addEventListener('click', (e) => this._openLayoutPicker(e.currentTarget as HTMLElement));
+  }
+
+  private _wireResizer(handle: HTMLElement, side: 'left' | 'right'): void {
+    const panelOf = () => (side === 'left' ? this._rail : this._props);
+    const toggle = handle.querySelector('.ms-sledit-paneltoggle') as HTMLElement | null;
+
+    toggle?.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      this.toggleSideRail(side);
+    });
+
+    handle.addEventListener('mousedown', (down) => {
+      if (down.target === toggle) return; // the chevron is a click, not a drag
+      const panel = panelOf();
+      if (!panel || panel.classList.contains('collapsed')) return;
+      down.preventDefault();
+      const startX = down.clientX;
+      const startW = this._panelW[side];
+      const [min, max] = RAIL_BOUNDS[side];
+      document.body.classList.add('ms-sledit-resizing');
+      const move = (ev: MouseEvent) => {
+        const dx = ev.clientX - startX;
+        this._panelW[side] = Math.min(max, Math.max(min, startW + (side === 'left' ? dx : -dx)));
+        this._applyPanelWidths();
+      };
+      const up = () => {
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', up);
+        document.body.classList.remove('ms-sledit-resizing');
+        this._persistPanelWidths();
+        // A narrower rail renders narrower thumbnails.
+        if (side === 'left') this.refreshRail();
+        this._host.onLayoutChanged?.();
+      };
+      window.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', up);
+    });
+
+    handle.addEventListener('dblclick', () => {
+      this._panelW[side] = RAIL_DEFAULTS[side];
+      this._applyPanelWidths();
+      this._persistPanelWidths();
+      this._host.onLayoutChanged?.();
+    });
+  }
+
+  /** Collapse / expand a side rail — the chevron, and `[` / `]`. */
+  public toggleSideRail(side: 'left' | 'right'): void {
+    const panel = side === 'left' ? this._rail : this._props;
+    if (!panel) return;
+    panel.classList.toggle('collapsed');
+    this._updateRailChevrons();
+    this._persistPanelWidths();
+    this._host.onLayoutChanged?.();
+  }
+
+  private _updateRailChevrons(): void {
+    for (const side of ['left', 'right'] as const) {
+      const panel = side === 'left' ? this._rail : this._props;
+      const btn = this._stage?.querySelector(
+        `.ms-sledit-paneltoggle[data-side="${side}"]`,
+      ) as HTMLElement | null;
+      if (!panel || !btn) continue;
+      const collapsed = panel.classList.contains('collapsed');
+      // The chevron points where clicking will move the boundary.
+      btn.textContent = side === 'left' ? (collapsed ? '›' : '‹') : collapsed ? '‹' : '›';
+      const what = side === 'left' ? 'slide list ([)' : 'properties (])';
+      btn.title = `${collapsed ? 'Show' : 'Hide'} ${what}`;
+    }
+  }
+
+  private _applyPanelWidths(): void {
+    this._rail?.style.setProperty('--railw', `${this._panelW.left}px`);
+    this._props?.style.setProperty('--railw', `${this._panelW.right}px`);
+  }
+
+  private _persistPanelWidths(): void {
+    try {
+      localStorage.setItem(RAIL_WIDTH_KEY, JSON.stringify(this._panelW));
+      localStorage.setItem(
+        RAIL_COLLAPSE_KEY,
+        JSON.stringify({
+          left: !!this._rail?.classList.contains('collapsed'),
+          right: !!this._props?.classList.contains('collapsed'),
+        }),
+      );
+    } catch {
+      /* storage disabled — widths just don't persist */
+    }
+  }
+
+  private _restorePanelWidths(): void {
+    try {
+      const saved = JSON.parse(localStorage.getItem(RAIL_WIDTH_KEY) ?? '{}');
+      for (const side of ['left', 'right'] as const) {
+        const [min, max] = RAIL_BOUNDS[side];
+        if (typeof saved[side] === 'number') {
+          this._panelW[side] = Math.min(max, Math.max(min, saved[side]));
+        }
+      }
+      const col = JSON.parse(localStorage.getItem(RAIL_COLLAPSE_KEY) ?? '{}');
+      if (col.left) this._rail?.classList.add('collapsed');
+      if (col.right) this._props?.classList.add('collapsed');
+    } catch {
+      /* corrupt storage — keep the defaults */
+    }
+    // A narrow window starts with both rails out of the way, so the canvas is
+    // what you see; the chevrons and [ / ] bring them back.
+    if (window.innerWidth < 900) {
+      this._rail?.classList.add('collapsed');
+      this._props?.classList.add('collapsed');
+    }
+    this._applyPanelWidths();
+    this._updateRailChevrons();
+  }
+
+  private _persistCollapsedSections(): void {
+    const closed = Array.from(
+      this._stage?.querySelectorAll('.ms-sledit-sec.collapsed') ?? [],
+    ).map((el) => (el as HTMLElement).dataset.sec ?? '');
+    try {
+      localStorage.setItem(SECTION_COLLAPSE_KEY, JSON.stringify(closed.filter(Boolean)));
+    } catch {
+      /* storage disabled */
+    }
+  }
+
+  private _restoreCollapsedSections(): void {
+    let closed: string[] = [];
+    try {
+      const raw = JSON.parse(localStorage.getItem(SECTION_COLLAPSE_KEY) ?? '[]');
+      if (Array.isArray(raw)) closed = raw;
+    } catch {
+      /* corrupt storage — everything starts open */
+    }
+    for (const name of closed) {
+      this._stage
+        ?.querySelector(`.ms-sledit-sec[data-sec="${CSS.escape(name)}"]`)
+        ?.classList.add('collapsed');
+    }
+  }
+
+  // ── Slide rail ─────────────────────────────────────────────────────────────
+
+  /** Rebuild the thumbnail strip from the host's slide list. */
+  public refreshRail(): void {
+    const rail = this._host.rail;
+    const box = this._railThumbs;
+    if (!box) return;
+    if (!rail) {
+      this._rail?.classList.add('ms-sledit-rail-off');
+      return;
+    }
+    const slides = rail.slides();
+    const current = rail.current();
+    const scroll = box.scrollTop;
+    box.innerHTML = slides
+      .map((s, i) => {
+        const label = this._escape(s.title || `Slide ${i + 1}`);
+        const face = s.thumb
+          ? `<img src="${s.thumb}" alt="">`
+          : `<span class="ms-sledit-thumbblank">${label}</span>`;
+        return `<div class="ms-sledit-thumb${
+          i === current ? ' active' : ''
+        }" data-i="${i}" draggable="true" title="${label}">
+            <span class="ms-sledit-thumbnum">${i + 1}</span>
+            <span class="ms-sledit-thumbtools">
+              <button data-rail="dup" data-i="${i}" title="Duplicate this slide">⧉</button>
+              <button data-rail="del" data-i="${i}" title="Delete this slide">✕</button>
+            </span>
+            ${face}
+          </div>`;
+      })
+      .join('');
+    box.scrollTop = scroll;
+    this._wireRailTiles();
+  }
+
+  private _wireRailTiles(): void {
+    const box = this._railThumbs;
+    const rail = this._host.rail;
+    if (!box || !rail) return;
+
+    box.onclick = (e) => {
+      const tool = (e.target as HTMLElement).closest('[data-rail]') as HTMLElement | null;
+      if (tool) {
+        e.stopPropagation();
+        const i = Number(tool.dataset.i);
+        if (tool.dataset.rail === 'dup') rail.duplicate(i);
+        else rail.remove(i);
+        return;
+      }
+      const tile = (e.target as HTMLElement).closest('.ms-sledit-thumb') as HTMLElement | null;
+      if (tile) rail.go(Number(tile.dataset.i));
+    };
+
+    // Drag-reorder, mirroring the slide sorter's own drop-marker behaviour.
+    box.ondragstart = (e) => {
+      const tile = (e.target as HTMLElement).closest('.ms-sledit-thumb') as HTMLElement | null;
+      if (!tile) return;
+      this._railDrag = Number(tile.dataset.i);
+      e.dataTransfer?.setData('text/plain', String(this._railDrag));
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+    };
+    box.ondragover = (e) => {
+      if (this._railDrag === null) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      const tile = (e.target as HTMLElement).closest('.ms-sledit-thumb') as HTMLElement | null;
+      this._clearRailMarkers();
+      if (!tile) return;
+      tile.classList.add(this._dropsBefore(e, tile) ? 'drop-before' : 'drop-after');
+    };
+    box.ondragleave = () => this._clearRailMarkers();
+    box.ondrop = (e) => {
+      e.preventDefault();
+      const from = this._railDrag;
+      this._railDrag = null;
+      this._clearRailMarkers();
+      if (from === null) return;
+      const tile = (e.target as HTMLElement).closest('.ms-sledit-thumb') as HTMLElement | null;
+      if (!tile) return;
+      const over = Number(tile.dataset.i);
+      let to = this._dropsBefore(e, tile) ? over : over + 1;
+      if (to > from) to -= 1;
+      if (to !== from) rail.move(from, to);
+    };
+    box.ondragend = () => {
+      this._railDrag = null;
+      this._clearRailMarkers();
+    };
+  }
+
+  private _dropsBefore(e: DragEvent, tile: HTMLElement): boolean {
+    const r = tile.getBoundingClientRect();
+    return e.clientY < r.top + r.height / 2;
+  }
+
+  private _clearRailMarkers(): void {
+    this._railThumbs
+      ?.querySelectorAll('.drop-before, .drop-after')
+      .forEach((el) => el.classList.remove('drop-before', 'drop-after'));
+  }
+
+  // ── New-slide layout picker ────────────────────────────────────────────────
+
+  private _openLayoutPicker(anchor: HTMLElement): void {
+    if (this._layoutPicker) {
+      this._closeLayoutPicker();
+      return;
+    }
+    const rail = this._host.rail;
+    if (!rail) return;
+
+    const pick = document.createElement('div');
+    pick.className = 'ms-sledit-layouts';
+    pick.innerHTML =
+      `<div class="ms-sledit-layoutshead">Built-in</div>
+       <div class="ms-sledit-layoutgrid">` +
+      BUILTIN_LAYOUTS.map(
+        (l) =>
+          `<button data-layout="${l.id}" title="New slide — ${this._escape(l.name)}">
+             <span class="ms-sledit-layoutpv">${l.preview}</span>
+             <span class="ms-sledit-layoutname">${this._escape(l.name)}</span>
+           </button>`,
+      ).join('') +
+      `</div>`;
+
+    // Opens upward from the rail's bottom button, clamped on-screen.
+    const r = anchor.getBoundingClientRect();
+    pick.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - 380))}px`;
+    pick.style.bottom = `${Math.max(8, window.innerHeight - r.top + 8)}px`;
+    // Inside the stage, not on document.body — closing the editor removes the
+    // stage, and with it any picker still open.
+    this._stage?.appendChild(pick);
+    this._layoutPicker = pick;
+
+    pick.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('[data-layout]') as HTMLElement | null;
+      if (!btn) return;
+      const id = btn.dataset.layout!;
+      this._closeLayoutPicker();
+      rail.add(id);
+    });
+
+    this._layoutDismiss = (ev: PointerEvent) => {
+      if (!pick.contains(ev.target as Node) && ev.target !== anchor) this._closeLayoutPicker();
+    };
+    setTimeout(() => document.addEventListener('pointerdown', this._layoutDismiss!, true));
+  }
+
+  private _closeLayoutPicker(): void {
+    if (this._layoutDismiss) {
+      document.removeEventListener('pointerdown', this._layoutDismiss, true);
+      this._layoutDismiss = null;
+    }
+    this._layoutPicker?.remove();
+    this._layoutPicker = null;
+  }
+
+  private _escape(s: string): string {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   private _wirePanel(): void {
@@ -803,10 +1315,13 @@ export default class SlideEditorUI {
         return;
       }
       if (el.dataset.color != null) {
-        const slot = el.dataset.slot as 'stroke' | 'fill';
+        const slot = el.dataset.slot as 'stroke' | 'fill' | 'text';
         if (slot === 'fill') {
           d().fill = el.dataset.color === '' ? null : el.dataset.color;
           this._host.onStyleChanged('fill');
+        } else if (slot === 'text') {
+          d().textColor = el.dataset.color as string;
+          this._host.onStyleChanged('textColor');
         } else {
           d().stroke = el.dataset.color;
           this._host.onStyleChanged('stroke');
@@ -893,6 +1408,7 @@ export default class SlideEditorUI {
     bind('.ms-sledit-textcolor', 'input', (el) => {
       d().textColor = el.value;
       this._host.onStyleChanged('textColor');
+      this.refreshPanelValues();
     });
     bind('.ms-sledit-headerfill', 'input', (el) => {
       d().headerFill = el.value;
@@ -1024,31 +1540,46 @@ export default class SlideEditorUI {
   }
 
   public updateNav(index: number, count: number): void {
-    if (!this._bar) return;
-    const counter = this._bar.querySelector('.ms-sledit-navcount');
+    const stage = this._stage;
+    if (!stage) return;
+    const counter = stage.querySelector('.ms-sledit-navcount');
     if (counter) counter.textContent = `${index + 1} / ${count}`;
-    const prev = this._bar.querySelector('[data-act="prevSlide"]') as HTMLButtonElement | null;
-    const next = this._bar.querySelector('[data-act="nextSlide"]') as HTMLButtonElement | null;
+    const prev = stage.querySelector('[data-act="prevSlide"]') as HTMLButtonElement | null;
+    const next = stage.querySelector('[data-act="nextSlide"]') as HTMLButtonElement | null;
     if (prev) prev.disabled = index <= 0;
     if (next) next.disabled = index >= count - 1;
-  }
-
-  public toggleNotes(): void {
-    if (!this._notesBar) return;
-    const opening = this._notesBar.style.display === 'none';
-    this._notesBar.style.display = opening ? '' : 'none';
-    if (opening) this.notesArea?.focus();
+    this.refreshRail();
   }
 
   /**
-   * Sync the notes textarea to `slide` — value always, and force the drawer
-   * open when the slide already has saved notes (never force-closes, so a
-   * drawer the user opened by hand stays open across navigation). Called on
-   * initial build and on every slide navigation within an open editor session.
+   * Show/hide the notes drawer under the slide. Closed is the resting state —
+   * notes are a presenter aid, not something worth a permanent slice of the
+   * window — so it is display:none rather than a collapsed section, and the
+   * caller refits the stage afterwards (see SlideEditor's 'notes' action).
+   */
+  public toggleNotes(): void {
+    if (!this._notesBar) return;
+    this._setNotesOpen(this._notesBar.style.display === 'none');
+    if (this._notesBar.style.display !== 'none') this.notesArea?.focus();
+  }
+
+  /** Drawer visibility + the top bar button's pressed look, kept in step. */
+  private _setNotesOpen(open: boolean): void {
+    if (!this._notesBar) return;
+    this._notesBar.style.display = open ? '' : 'none';
+    const btn = this._bar?.querySelector('[data-act="notes"]');
+    btn?.classList.toggle('active', open);
+  }
+
+  /**
+   * Sync the notes textarea to `slide` — value always, and open the drawer when
+   * the slide already has saved notes (never force-closes, so a drawer the user
+   * opened by hand stays open across navigation). Called on initial build and
+   * on every slide navigation.
    */
   public syncNotes(slide: Slide): void {
     if (this.notesArea) this.notesArea.value = slide.notes ?? '';
-    if (slide.notes && this._notesBar) this._notesBar.style.display = '';
+    if (slide.notes) this._setNotesOpen(true);
   }
 
   /**
@@ -1126,7 +1657,7 @@ export default class SlideEditorUI {
 
     panel.querySelectorAll('.ms-sledit-sw').forEach((el: any) => {
       const slot = el.dataset.slot;
-      const current = slot === 'fill' ? d.fill ?? '' : d.stroke;
+      const current = slot === 'fill' ? d.fill ?? '' : slot === 'text' ? d.textColor : d.stroke;
       el.classList.toggle(
         'active',
         (el.dataset.color || '').toLowerCase() === (current || '').toLowerCase(),
@@ -1208,9 +1739,9 @@ export default class SlideEditorUI {
     }
   }
 
-  /** Show the current canvas zoom in the tool strip. */
+  /** Show the current canvas zoom in the corner pill. */
   public setZoom(zoom: number): void {
-    const el = this._bar?.querySelector('.ms-sledit-zoom');
+    const el = this._stage?.querySelector('.ms-sledit-zoom');
     if (el) el.textContent = `${Math.round(zoom * 100)}%`;
   }
 
@@ -1344,123 +1875,372 @@ export default class SlideEditorUI {
     const style = document.createElement('style');
     style.id = 'ms-sledit-style';
     style.textContent = `
+      /* ————— token bridge —————
+         Geometry and interaction model are bento/slides'; the palette is ours.
+         ThemeManager publishes --ms-* on :root, so switching Ops Dark / Night
+         Vision retints the editor with the rest of the app. The base stays an
+         opaque #0d1117 on purpose: --ms-bg is translucent by design (app panels
+         float over the map) and a full-screen editor showing the map through
+         itself is noise, not depth. */
       #msSlideEditor {
+        --sl-surface: rgba(20, 25, 32, 0.98);
+        --sl-tint: var(--ms-bg-header, rgba(40, 80, 140, 0.10));
+        --sl-input: var(--ms-bg-input, rgba(255, 255, 255, 0.05));
+        --sl-line: var(--ms-border, rgba(255, 255, 255, 0.14));
+        --sl-line-soft: rgba(255, 255, 255, 0.08);
+        --sl-text: var(--ms-text, #dde3e8);
+        --sl-dim: var(--ms-text-dim, #8a97a5);
+        --sl-accent: var(--ms-accent, #64b4ff);
+        --sl-radius: var(--ms-radius, 9px);
+
         position: fixed; inset: 0; z-index: 9700; background: #0d1117;
         display: flex; flex-direction: column;
-        font: 12px/1.4 system-ui, sans-serif; color: #dde3e8;
+        font: 12px/1.4 var(--ms-menu-font, system-ui, sans-serif);
+        color: var(--sl-text);
       }
-      .ms-sledit-bar {
-        display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-        padding: 6px 10px; background: rgba(18,22,26,0.97);
-        border-bottom: 1px solid rgba(255,255,255,0.12);
+
+      /* ————— topbar ————— */
+
+      .ms-sledit-topbar {
+        display: flex; align-items: center; gap: 8px; flex: none;
+        padding: 7px 12px; background: var(--sl-surface);
+        background-image: linear-gradient(var(--sl-tint), var(--sl-tint));
+        border-bottom: 1px solid var(--sl-line);
+        z-index: 20;
       }
-      .ms-sledit-tools { display: inline-flex; align-items: center; gap: 3px; }
-      .ms-sledit-bar button {
-        background: rgba(255,255,255,0.08); color: #dde3e8;
-        border: 1px solid rgba(255,255,255,0.16); border-radius: 6px;
-        padding: 4px 8px; cursor: pointer; font: inherit; white-space: nowrap;
+      .ms-sledit-brand {
+        display: inline-flex; align-items: center; gap: 7px; flex: none;
+        font-size: 13px; white-space: nowrap; letter-spacing: 0.01em;
+        color: var(--sl-text);
       }
-      .ms-sledit-bar button:hover { background: rgba(255,255,255,0.16); }
-      .ms-sledit-bar button:disabled { opacity: 0.35; cursor: default; }
-      .ms-sledit-bar button:disabled:hover { background: rgba(255,255,255,0.08); }
+      .ms-sledit-brand b { font-weight: 650; }
+      .ms-sledit-brand i { font-style: normal; font-weight: 400; color: var(--sl-dim); }
+      .ms-sledit-mark { display: block; }
+      .ms-sledit-group { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+      /* Insert tools take the middle; save/cancel are pinned to the corner. */
+      .ms-sledit-tools {
+        display: inline-flex; align-items: center; gap: 3px;
+        flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none;
+      }
+      .ms-sledit-tools::-webkit-scrollbar { display: none; }
+      .ms-sledit-topright { margin-left: auto; }
+
+      .ms-sledit-topbar button {
+        background: var(--sl-input); color: var(--sl-text);
+        border: 1px solid var(--sl-line); border-radius: 7px;
+        padding: 5px 9px; cursor: pointer; font: inherit; white-space: nowrap;
+      }
+      .ms-sledit-topbar button:hover { background: rgba(255,255,255,0.14); }
+      .ms-sledit-topbar button:disabled { opacity: 0.35; cursor: default; }
+      .ms-sledit-topbar button:disabled:hover { background: var(--sl-input); }
       .ms-sledit-tools button {
-        position: relative; width: 36px; height: 34px; padding: 0;
+        position: relative; width: 34px; height: 32px; padding: 0;
         display: inline-flex; align-items: center; justify-content: center;
-        border-color: transparent; background: transparent;
+        border-color: transparent; background: transparent; flex: none;
       }
       .ms-sledit-tools button:hover { background: rgba(255,255,255,0.10); }
       .ms-sledit-tools button svg { width: 19px; height: 19px; display: block; }
       .ms-sledit-tools button kbd {
         position: absolute; right: 3px; bottom: 1px;
-        font-family: inherit; font-size: 8px; color: #7d8894; pointer-events: none;
+        font-family: inherit; font-size: 8px; color: var(--sl-dim); pointer-events: none;
       }
-      .ms-sledit-bar button.active, .ms-sledit-bar button.primary {
-        background: #2d6cdf; border-color: #2d6cdf; color: #fff;
+      .ms-sledit-topbar button.active, .ms-sledit-topbar button.primary {
+        background: var(--sl-accent); border-color: var(--sl-accent); color: #08121c;
+        font-weight: 600;
       }
-      .ms-sledit-tools button.active { background: rgba(45,108,223,0.85); }
-      .ms-sledit-tools button.active kbd { color: rgba(255,255,255,0.8); }
-      .ms-sledit-bar button.primary:hover { background: #3f7ceb; }
+      .ms-sledit-tools button.active { color: #08121c; }
+      .ms-sledit-tools button.active kbd { color: rgba(0,0,0,0.55); }
+      .ms-sledit-topbar button.primary:hover { filter: brightness(1.12); }
+      .ms-sledit-iconbtn { width: 32px; height: 32px; padding: 0 !important; display: inline-flex; align-items: center; justify-content: center; }
       .ms-sledit-iconbtn svg { width: 17px; height: 17px; display: block; }
-      .ms-sledit-navcount {
-        min-width: 46px; text-align: center; white-space: nowrap;
-        color: #8a97a5; font-variant-numeric: tabular-nums;
+      .ms-sledit-topbar input[type="text"] {
+        background: var(--sl-input); color: var(--sl-text);
+        border: 1px solid transparent; border-radius: 7px;
+        padding: 5px 8px; font: inherit; width: 200px; flex: none;
+        height: 30px; box-sizing: border-box;
       }
-      .ms-sledit-bar select, .ms-sledit-bar input[type="number"], .ms-sledit-bar input[type="text"] {
-        background: rgba(255,255,255,0.06); color: #dde3e8;
-        border: 1px solid rgba(255,255,255,0.16); border-radius: 5px;
-        padding: 3px 6px; font: inherit;
-        height: 26px; box-sizing: border-box;
+      .ms-sledit-topbar input[type="text"]:hover { border-color: var(--sl-line); }
+      .ms-sledit-topbar input[type="text"]:focus {
+        outline: none; border-color: var(--sl-accent); background: rgba(255,255,255,0.09);
       }
-      /* A select left with its native chrome reads as unstyled against the dark
-         bar — the OS paints the drop button and ignores the surrounding theme.
-         Drop the native appearance and draw our own chevron, as the panel does. */
-      .ms-sledit-bar select {
-        appearance: none; -webkit-appearance: none; cursor: pointer;
-        padding-right: 20px;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1.5l4 4 4-4' fill='none' stroke='%238a97a5' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-        background-repeat: no-repeat; background-position: right 6px center;
+      .ms-sledit-sep { width: 1px; align-self: stretch; background: var(--sl-line); margin: 0 3px; flex: none; }
+      /* The transition combo rides in the top bar rather than owning a row in
+         the properties rail — it is a per-slide setting you set once. */
+      .ms-sledit-topbar select {
+        background: var(--sl-input); color: var(--sl-text);
+        border: 1px solid var(--sl-line); border-radius: 7px;
+        padding: 4px 6px; font: inherit; height: 30px; box-sizing: border-box;
+        cursor: pointer; flex: none;
       }
-      .ms-sledit-bar select:hover:not(:disabled) { background-color: rgba(255,255,255,0.12); }
-      .ms-sledit-bar select:focus, .ms-sledit-bar input:focus {
-        outline: none; border-color: #2d6cdf;
-      }
+      .ms-sledit-topbar select:hover { background: rgba(255,255,255,0.14); }
+      .ms-sledit-topbar select:focus { outline: none; border-color: var(--sl-accent); }
       /* The native dropdown list is OS-painted — without this it opens white. */
-      .ms-sledit-bar option { background: #181d23; color: #dde3e8; }
-      .ms-sledit-title { width: 170px; }
+      .ms-sledit-topbar option { background: var(--sl-surface); color: var(--sl-text); }
       .ms-sledit-transition { width: 104px; }
       .ms-sledit-transition:disabled { opacity: 0.4; cursor: not-allowed; }
-      .ms-sledit-sep { width: 1px; align-self: stretch; background: rgba(255,255,255,0.14); margin: 0 3px; }
-      .ms-sledit-spring { flex: 1; }
+
+      /* ————— main layout ————— */
+
+      .ms-sledit-main { flex: 1; display: flex; min-height: 0; }
+
+      .ms-sledit-rail, .ms-sledit-props {
+        width: var(--railw, 188px); flex: none; overflow-y: auto;
+        background: var(--sl-surface);
+        background-image: linear-gradient(var(--sl-tint), var(--sl-tint));
+        scrollbar-width: thin;
+      }
+      .ms-sledit-rail {
+        border-right: 1px solid var(--sl-line);
+        display: flex; flex-direction: column; gap: 10px; padding: 12px;
+      }
+      .ms-sledit-props {
+        width: var(--railw, 236px);
+        border-left: 1px solid var(--sl-line); padding: 12px 14px 20px;
+      }
+      /* Collapsed rails keep their border as a hairline seam — the chevron on
+         the resizer stays reachable because the resizer is a sibling. */
+      .ms-sledit-rail.collapsed, .ms-sledit-props.collapsed {
+        width: 0; padding-left: 0; padding-right: 0; overflow: hidden;
+      }
+      .ms-sledit-rail-off { display: none; }
+
+      /* ————— resizer + collapse chevron ————— */
+
+      .ms-sledit-resizer {
+        position: relative; flex: none; width: 5px; cursor: col-resize;
+        background: transparent;
+      }
+      .ms-sledit-resizer:hover { background: rgba(100,180,255,0.18); }
+      body.ms-sledit-resizing { cursor: col-resize; user-select: none; }
+      .ms-sledit-paneltoggle {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 15px; height: 40px; padding: 0; cursor: pointer; z-index: 6;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--sl-surface); color: var(--sl-dim);
+        border: 1px solid var(--sl-line); border-radius: 5px;
+        font: inherit; font-size: 11px; line-height: 1;
+        opacity: 0; transition: opacity 0.14s ease;
+      }
+      .ms-sledit-main:hover .ms-sledit-paneltoggle { opacity: 1; }
+      .ms-sledit-paneltoggle:hover { color: var(--sl-text); border-color: var(--sl-accent); }
+
+      /* ————— slide rail ————— */
+
+      .ms-sledit-railthumbs {
+        display: flex; flex-direction: column; align-items: center; gap: 9px;
+        flex: 1; min-height: 0;
+      }
+      .ms-sledit-thumb {
+        position: relative; width: 100%; border: 2px solid var(--sl-line);
+        border-radius: 8px; overflow: hidden; cursor: pointer; flex: none;
+        background: #0f141b; aspect-ratio: 16 / 9;
+      }
+      .ms-sledit-thumb:hover { border-color: rgba(255,255,255,0.3); }
+      .ms-sledit-thumb.active { border-color: var(--sl-accent); }
+      /* pointer-events off so the tile owns every click AND every drag — a bare
+         <img> is natively draggable and would start its own image drag instead
+         of the tile's reorder. */
+      .ms-sledit-thumb img {
+        width: 100%; height: 100%; object-fit: cover; display: block;
+        pointer-events: none; -webkit-user-drag: none;
+      }
+      .ms-sledit-thumbblank {
+        display: flex; align-items: center; justify-content: center;
+        width: 100%; height: 100%; padding: 6px; text-align: center;
+        font-size: 10.5px; color: var(--sl-dim); overflow: hidden;
+      }
+      .ms-sledit-thumbnum {
+        position: absolute; top: 4px; left: 4px; z-index: 2;
+        font-size: 10px; font-weight: 600; color: var(--sl-text);
+        background: rgba(8,12,18,0.78); border-radius: 4px; padding: 1px 5px;
+        font-variant-numeric: tabular-nums;
+      }
+      .ms-sledit-thumbtools {
+        position: absolute; right: 4px; top: 4px; z-index: 2; display: none; gap: 2px;
+      }
+      .ms-sledit-thumb:hover .ms-sledit-thumbtools { display: flex; }
+      .ms-sledit-thumbtools button {
+        width: 19px; height: 19px; padding: 0; cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: rgba(8,12,18,0.85); color: var(--sl-text);
+        border: 1px solid var(--sl-line); border-radius: 4px;
+        font: inherit; font-size: 10px; line-height: 1;
+      }
+      .ms-sledit-thumbtools button:hover { background: var(--sl-accent); color: #08121c; }
+      /* Drop markers, drawn as an edge rather than a moving placeholder — the
+         same read as the slide sorter's insertion line. */
+      .ms-sledit-thumb.drop-before { box-shadow: 0 -3px 0 0 var(--sl-accent); }
+      .ms-sledit-thumb.drop-after { box-shadow: 0 3px 0 0 var(--sl-accent); }
+
+      .ms-sledit-addslide {
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+        width: 100%; flex: none; padding: 8px; cursor: pointer;
+        background: transparent; color: var(--sl-dim); font: inherit;
+        border: 1.5px dashed var(--sl-line); border-radius: 8px;
+      }
+      .ms-sledit-addslide:hover { color: var(--sl-text); border-color: var(--sl-accent); }
+      .ms-sledit-addslide svg { width: 15px; height: 15px; display: block; }
+
+      /* ————— canvas ————— */
+
+      .ms-sledit-canvaswrap {
+        flex: 1; min-width: 0; overflow: hidden;
+        display: flex; flex-direction: column;
+        background:
+          radial-gradient(circle at 1px 1px, rgba(255,255,255,0.055) 1px, transparent 0) 0 0 / 22px 22px,
+          #0d1117;
+      }
+      /* Takes whatever height the notes drawer leaves. The stage and the corner
+         pills both position against this, so neither can end up under a drawer. */
+      .ms-sledit-stagearea { flex: 1; min-height: 0; position: relative; }
+      .ms-sledit-stagewrap {
+        position: absolute; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        overflow: auto; padding: 12px;
+        /* Reserve the gutter: a scrollbar appearing mid-refit would shrink the
+           client box, which is exactly the measurement _computeFitSize reads. */
+        scrollbar-gutter: stable both-edges;
+      }
+      .ms-sledit-stagewrap canvas {
+        border-radius: 3px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.4);
+      }
+      .ms-sledit-loading { color: var(--sl-dim); font-size: 14px; }
+
+      /* ————— speaker-notes drawer ————— */
+
       .ms-sledit-notesbar {
-        display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
-        background: rgba(18,22,26,0.97); padding: 8px 10px 10px;
-        border-top: 1px solid rgba(255,255,255,0.12);
+        flex: none; display: flex; flex-direction: column; gap: 6px;
+        padding: 8px 12px 10px; background: var(--sl-surface);
+        background-image: linear-gradient(var(--sl-tint), var(--sl-tint));
+        border-top: 1px solid var(--sl-line);
       }
       .ms-sledit-noteshead {
         display: flex; align-items: center; gap: 6px;
         font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em;
-        text-transform: uppercase; color: #8a97a5;
+        text-transform: uppercase; color: var(--sl-dim);
       }
       .ms-sledit-noteshead svg { width: 14px; height: 14px; }
+      .ms-sledit-spring { flex: 1; }
+      .ms-sledit-noteshide {
+        border: 0; background: transparent; color: var(--sl-dim);
+        cursor: pointer; font: inherit; padding: 0 2px; line-height: 1;
+      }
+      .ms-sledit-noteshide:hover { color: var(--sl-text); }
       .ms-sledit-notes {
-        height: 64px; min-height: 40px; max-height: 40vh; resize: vertical;
-        background: rgba(255,255,255,0.05); color: #dde3e8;
-        border: 1px solid rgba(255,255,255,0.14); border-radius: 6px;
-        padding: 8px 10px; font: inherit; line-height: 1.5;
+        width: 100%; box-sizing: border-box;
+        height: 84px; min-height: 44px; max-height: 40vh; resize: vertical;
+        background: var(--sl-input); color: var(--sl-text);
+        border: 1px solid var(--sl-line); border-radius: 7px;
+        padding: 8px 9px; font: inherit; line-height: 1.5;
       }
-      .ms-sledit-notes:focus { outline: none; border-color: #2d6cdf; background: rgba(255,255,255,0.07); }
-      .ms-sledit-notes::placeholder { color: #6b7580; }
-      .ms-sledit-stagewrap {
-        flex: 1; display: flex; align-items: center; justify-content: center;
-        overflow: auto; padding: 12px; position: relative;
-      }
-      .ms-sledit-stagewrap canvas { border-radius: 4px; }
-      .ms-sledit-loading { color: #8a97a5; font-size: 14px; }
 
-      .ms-sledit-panel {
-        position: absolute; left: 14px; top: 14px; z-index: 6; width: 204px;
-        display: flex; flex-direction: column; gap: 9px;
-        background: rgba(24,29,35,0.97); border: 1px solid rgba(255,255,255,0.14);
-        border-radius: 10px; padding: 10px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.45);
-        max-height: calc(100% - 28px); overflow-y: auto;
+      /* ————— bottom-right pills: zoom + slideshow ————— */
+
+      .ms-sledit-cornerbr {
+        position: absolute; right: 14px; bottom: 14px; z-index: 8;
+        display: flex; align-items: center; gap: 8px;
       }
+      .ms-sledit-zoombar, .ms-sledit-presentpill {
+        display: flex; align-items: center; gap: 1px;
+        background: var(--sl-surface); border: 1px solid var(--sl-line);
+        border-radius: 999px; padding: 3px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.42);
+      }
+      .ms-sledit-cornerbr button {
+        background: transparent; color: var(--sl-text); border: 0;
+        border-radius: 999px; padding: 5px 10px; cursor: pointer;
+        font: inherit; white-space: nowrap;
+        display: inline-flex; align-items: center; gap: 6px;
+      }
+      .ms-sledit-cornerbr button:hover { background: rgba(255,255,255,0.12); }
+      .ms-sledit-cornerbr svg { width: 15px; height: 15px; display: block; }
+      .ms-sledit-zoom { min-width: 50px; justify-content: center; color: var(--sl-dim) !important; font-variant-numeric: tabular-nums; }
+      .ms-sledit-presentpill { position: relative; }
+      .ms-sledit-pillmain { font-weight: 600; }
+      .ms-sledit-pillcaret { padding: 5px 7px !important; color: var(--sl-dim) !important; font-size: 10px; }
+      .ms-sledit-pillmenu {
+        display: none; position: absolute; right: 0; bottom: calc(100% + 7px);
+        min-width: 196px; padding: 4px; flex-direction: column; gap: 1px;
+        background: var(--sl-surface); border: 1px solid var(--sl-line);
+        border-radius: var(--sl-radius); box-shadow: 0 12px 34px rgba(0,0,0,0.5);
+      }
+      .ms-sledit-presentpill.open .ms-sledit-pillmenu { display: flex; }
+      .ms-sledit-pillmenu button { justify-content: flex-start; width: 100%; border-radius: 6px; }
+
+      /* ————— new-slide layout picker ————— */
+
+      .ms-sledit-layouts {
+        position: fixed; z-index: 40; width: 360px; padding: 12px;
+        background: var(--sl-surface); border: 1px solid var(--sl-line);
+        border-radius: var(--sl-radius); box-shadow: 0 16px 44px rgba(0,0,0,0.55);
+      }
+      .ms-sledit-layoutshead {
+        font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+        text-transform: uppercase; color: var(--sl-dim); margin-bottom: 9px;
+      }
+      .ms-sledit-layoutgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+      .ms-sledit-layoutgrid button {
+        display: flex; flex-direction: column; gap: 5px; padding: 0; cursor: pointer;
+        background: none; border: 0; font: inherit; color: var(--sl-dim);
+      }
+      .ms-sledit-layoutpv {
+        display: block; border: 1px solid var(--sl-line); border-radius: 6px;
+        overflow: hidden; background: #12181f;
+      }
+      .ms-sledit-layoutpv svg { display: block; width: 100%; height: auto; aspect-ratio: 100 / 56; }
+      .ms-sledit-layoutgrid button:hover .ms-sledit-layoutpv { border-color: var(--sl-accent); }
+      .ms-sledit-layoutgrid button:hover { color: var(--sl-text); }
+      .ms-sledit-layoutname { font-size: 11px; text-align: center; }
+      /* Preview swatches mirror what the layout produces — see SlideLayouts.pv. */
+      .pv-paper { fill: #ffffff; }
+      .pv-accent { fill: var(--sl-accent); }
+      .pv-ink { fill: ${DEFAULT_TEXT_COLOR}; }
+      .pv-dim { fill: ${LAYOUT_INK_DIM}; }
+      .pv-scrim { fill: rgba(13,17,23,0.86); }
+      .pv-inkscrim { fill: rgba(255,255,255,0.9); }
+
+      /* ————— properties rail ————— */
+
+      .ms-sledit-slidesecs, .ms-sledit-panel {
+        display: flex; flex-direction: column; gap: 14px;
+      }
+      .ms-sledit-slidesecs { margin-bottom: 14px; }
+      .ms-sledit-navrow { justify-content: space-between; }
+      .ms-sledit-notes:focus { outline: none; border-color: var(--sl-accent); background: rgba(255,255,255,0.08); }
+      .ms-sledit-notes::placeholder { color: var(--sl-dim); }
+      .ms-sledit-navcount {
+        min-width: 46px; text-align: center; white-space: nowrap;
+        color: var(--sl-dim); font-variant-numeric: tabular-nums;
+      }
+
+      /* Collapsible sections: the label is the handle, everything after it is
+         the body. No per-section wrapper markup — see _wireShell. */
+      .ms-sledit-seclabel { cursor: pointer; user-select: none; }
+      .ms-sledit-seclabel::after {
+        content: '▾'; float: right; font-size: 9px; color: var(--sl-dim);
+        transition: transform 0.14s ease; transform-origin: center;
+      }
+      .ms-sledit-sec.collapsed > .ms-sledit-seclabel::after { content: '▸'; }
+      .ms-sledit-sec.collapsed > *:not(.ms-sledit-seclabel) { display: none; }
+
+      .ms-sledit-panel { padding: 0; }
       /* One vertical rhythm for every section: the section owns the gap between
          its label and its rows, so a multi-row section (text, align, actions)
          no longer has its rows touching. Hidden sections are display:none, so
-         the panel's own flex gap already skips them — section separation must
+         the rail's own flex gap already skips them — section separation must
          NOT come from adjacent-sibling borders, which would leave a stray rule
          above whichever section happens to be first-visible. */
-      .ms-sledit-sec { display: flex; flex-direction: column; gap: 5px; }
+      .ms-sledit-sec { display: flex; flex-direction: column; gap: 6px; }
       /* Applied by showPanel, not by a sibling selector — see the note there.
-         The panel's own 9px gap sits above the rule and this padding below it,
-         so the divider lands centred between two sections. */
+         The rail's own gap sits above the rule and this padding below it, so
+         the divider lands centred between two sections. */
       .ms-sledit-sec-divided {
-        border-top: 1px solid rgba(255,255,255,0.09); padding-top: 9px;
+        border-top: 1px solid var(--sl-line-soft); padding-top: 13px;
       }
       .ms-sledit-seclabel {
-        font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
-        text-transform: uppercase; color: #8a97a5;
+        font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
+        text-transform: uppercase; color: var(--sl-dim);
       }
       .ms-sledit-row {
         display: flex; align-items: center; gap: 5px; flex-wrap: wrap; row-gap: 5px;
@@ -1468,54 +2248,69 @@ export default class SlideEditorUI {
       /* Presets on the left, the exact value on the right — two readable groups
          instead of one undifferentiated strip. */
       .ms-sledit-row .ms-sledit-strokew { margin-left: auto; }
-      .ms-sledit-mini { font-size: 11px; color: #aab4be; }
-      .ms-sledit-minisep { width: 1px; height: 18px; background: rgba(255,255,255,0.14); margin: 0 2px; }
-      .ms-sledit-panel button {
-        background: rgba(255,255,255,0.07); color: #dde3e8;
-        border: 1px solid rgba(255,255,255,0.14); border-radius: 6px;
+      .ms-sledit-mini { font-size: 11px; color: var(--sl-text); opacity: 0.78; }
+      /* Scoped to the whole rail, not just .ms-sledit-panel: the slide-level
+         navigation section above it uses the same row markup and must not fall
+         back to unstyled native controls. */
+      .ms-sledit-props button {
+        background: var(--sl-input); color: var(--sl-text);
+        border: 1px solid var(--sl-line); border-radius: 6px;
         width: 30px; height: 28px; padding: 0; cursor: pointer; font: inherit;
         display: inline-flex; align-items: center; justify-content: center;
       }
-      .ms-sledit-panel button:hover { background: rgba(255,255,255,0.15); }
-      .ms-sledit-panel button.active { background: #2d6cdf; border-color: #2d6cdf; color: #fff; }
-      .ms-sledit-panel button:disabled { opacity: 0.32; cursor: default; }
-      .ms-sledit-panel button:disabled:hover { background: rgba(255,255,255,0.07); }
-      .ms-sledit-panel button svg { width: 17px; height: 17px; display: block; }
-      /* Same height as the buttons, so every control in a row lines up. */
-      .ms-sledit-panel select, .ms-sledit-panel input[type="number"] {
-        background: rgba(255,255,255,0.06); color: #dde3e8;
-        border: 1px solid rgba(255,255,255,0.16); border-radius: 6px;
-        height: 28px; padding: 0 6px; font: inherit;
+      .ms-sledit-props button:hover { background: rgba(255,255,255,0.15); }
+      .ms-sledit-props button.active {
+        background: var(--sl-accent); border-color: var(--sl-accent); color: #08121c;
       }
-      .ms-sledit-panel select { flex: 1; min-width: 0; cursor: pointer; }
-      .ms-sledit-panel select:hover { background: rgba(255,255,255,0.11); }
-      .ms-sledit-panel select:focus,
-      .ms-sledit-panel input[type="number"]:focus {
-        outline: none; border-color: #2d6cdf;
+      .ms-sledit-props button:disabled { opacity: 0.32; cursor: default; }
+      .ms-sledit-props button:disabled:hover { background: var(--sl-input); }
+      .ms-sledit-props button svg { width: 17px; height: 17px; display: block; }
+      /* Same height as the buttons, so every control in a row lines up. */
+      .ms-sledit-props select, .ms-sledit-props input[type="number"] {
+        background: var(--sl-input); color: var(--sl-text);
+        border: 1px solid var(--sl-line); border-radius: 6px;
+        height: 28px; padding: 0 6px; font: inherit; box-sizing: border-box;
+      }
+      /* A select left with its native chrome reads as unstyled against the dark
+         rail — the OS paints the drop button and ignores the surrounding theme.
+         Drop the native appearance and draw our own chevron. */
+      .ms-sledit-props select {
+        flex: 1; min-width: 0; cursor: pointer;
+        appearance: none; -webkit-appearance: none; padding-right: 20px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1.5l4 4 4-4' fill='none' stroke='%238a97a5' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 6px center;
+      }
+      .ms-sledit-props select:hover:not(:disabled) { background-color: rgba(255,255,255,0.11); }
+      .ms-sledit-props select:focus,
+      .ms-sledit-props input[type="number"]:focus {
+        outline: none; border-color: var(--sl-accent);
       }
       /* The native dropdown list is OS-painted — without this it opens white
-         against the dark island. */
-      .ms-sledit-panel option { background: #181d23; color: #dde3e8; }
+         against the dark rail. */
+      .ms-sledit-props option { background: #181d23; color: #dde3e8; }
       /* Arrowhead pickers: fixed-width labels so both selects line up, and no
          wrapping, so each select keeps the whole row's remaining width. */
       .ms-sledit-sec[data-sec="arrowheads"] .ms-sledit-row { flex-wrap: nowrap; }
       .ms-sledit-sec[data-sec="arrowheads"] .ms-sledit-mini {
         flex: 0 0 28px; text-align: right;
       }
-      .ms-sledit-panel input[type="number"] { width: 54px; text-align: center; }
-      .ms-sledit-panel input[type="range"] { width: 100%; margin: 0; }
+      .ms-sledit-props input[type="number"] { width: 54px; text-align: center; }
+      .ms-sledit-props input[type="range"] { width: 100%; margin: 0; }
       /* The symbol selects carry long labels ("Company / Battery / Troop") and
-         are one per row, so they take the island's full content width. */
+         are one per row, so they take the rail's full content width. */
       .ms-sledit-sec[data-sec="milsym"] .ms-sledit-row { flex-wrap: nowrap; }
       .ms-sledit-sec[data-sec="milsym"] select { width: 100%; }
-      .ms-sledit-wide { width: 100%; }
+      .ms-sledit-wide { width: 100% !important; }
 
-      /* Amplifier dialog — floats over the stage, next to the properties island. */
+      /* Amplifier dialog — floats over the canvas. Centred rather than parked
+         beside the properties rail, so it stays fully visible whatever width
+         the rails have been dragged to (or whether they are collapsed). */
       .ms-sledit-amps {
-        position: absolute; z-index: 30; top: 64px; left: 14px; width: 258px;
+        position: absolute; z-index: 30; top: 58px; left: 50%;
+        transform: translateX(-50%); width: 278px;
         max-height: calc(100% - 96px); display: flex; flex-direction: column;
-        background: rgba(24,29,35,0.98); border: 1px solid rgba(255,255,255,0.16);
-        border-radius: 10px; box-shadow: 0 12px 34px rgba(0,0,0,0.5);
+        background: var(--sl-surface); border: 1px solid var(--sl-line);
+        border-radius: var(--sl-radius); box-shadow: 0 12px 34px rgba(0,0,0,0.5);
       }
       .ms-sledit-ampshead {
         display: flex; align-items: center; justify-content: space-between;
@@ -1549,10 +2344,10 @@ export default class SlideEditorUI {
         width: 22px !important; height: 22px !important; border-radius: 5px !important;
         background: var(--sw) !important; border: 1px solid rgba(255,255,255,0.25) !important;
       }
-      .ms-sledit-sw.active { outline: 2px solid #2d6cdf; outline-offset: 1px; }
-      .ms-sledit-sw.none { background: rgba(255,255,255,0.05) !important; color: #8a97a5; }
+      .ms-sledit-sw.active { outline: 2px solid var(--sl-accent); outline-offset: 1px; }
+      .ms-sledit-sw.none { background: rgba(255,255,255,0.05) !important; color: var(--sl-dim); }
       .ms-sledit-sw.none svg { width: 15px; height: 15px; }
-      .ms-sledit-panel input[type="color"], .ms-sledit-custom {
+      .ms-sledit-props input[type="color"], .ms-sledit-custom {
         width: 22px; height: 22px; padding: 0; border: 1px solid rgba(255,255,255,0.25);
         border-radius: 5px; background: none; cursor: pointer;
       }
@@ -1612,10 +2407,12 @@ export default class SlideEditorUI {
         border-radius: 4px; padding: 1px 5px;
       }
 
+      /* Below the topbar, not under it — the banner is a child of the stage,
+         which now starts with a 46px-tall bar. */
       .ms-sledit-warn {
-        position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+        position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
         background: rgba(180,120,20,0.92); color: #fff; padding: 4px 12px;
-        border-radius: 6px; z-index: 2; pointer-events: none;
+        border-radius: 6px; z-index: 12; pointer-events: none;
       }
       .ms-sledit-toast {
         position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);

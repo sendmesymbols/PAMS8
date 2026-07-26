@@ -56,6 +56,7 @@ import {
 import {
   DEFAULT_BLOCK_HEAD_RATIO,
   DEFAULT_TAC_WIDTH,
+  DEFAULT_TEXT_COLOR,
   blockArrowPoints,
 } from '../Briefing/OverlayFabric';
 import { renderMilSym } from '../Briefing/MilSymFactory';
@@ -449,6 +450,9 @@ class PptxExporter {
 
     if (meta.title) {
       // Titles are HTML overlays in the app — re-draw as native pptx text.
+      // The slide beneath can be anything from dark imagery to a solid-white
+      // blank, so the glyphs carry their own contrast: white fill, thin dark
+      // outline, soft shadow. That reads on both, which a flat fill cannot.
       slide.addText(meta.title, {
         x: 0.3,
         y: 0.2,
@@ -457,6 +461,7 @@ class PptxExporter {
         fontSize: 24,
         bold: true,
         color: 'FFFFFF',
+        outline: { size: 0.75, color: '11161C' },
         shadow: { type: 'outer', color: '000000', blur: 3, offset: 1, angle: 45, opacity: 0.8 },
       });
     }
@@ -883,7 +888,9 @@ class PptxExporter {
       bold: !!o.bold,
       italic: !!o.italic,
       underline: o.underline ? { style: 'sng' } : undefined,
-      color: this._ovHex(o.textColor, 'FFFFFF'),
+      // Same background-agnostic ink the editor draws an untyped colour with,
+      // so a deck's text doesn't change shade on the way into PowerPoint.
+      color: this._ovHex(o.textColor, DEFAULT_TEXT_COLOR),
       align: o.align ?? 'left',
       valign: 'top',
       // A bulleted paragraph needs room for its marker; 0 would clip it.

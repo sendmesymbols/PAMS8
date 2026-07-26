@@ -38,6 +38,7 @@ import {
   styleSelectionControls,
   withAlpha,
   DEFAULT_BLOCK_HEAD_RATIO,
+  DEFAULT_TEXT_COLOR,
   DEFAULT_TAC_HEAD_RATIO,
   type ArrowType,
 } from './OverlayFabric';
@@ -57,6 +58,7 @@ import {
   DEFAULT_TABLE_COLS,
   DEFAULT_TABLE_HEADER_FILL,
   DEFAULT_TABLE_ROWS,
+  DEFAULT_TABLE_TEXT_COLOR,
   cellRectAt,
   emptyTable,
   nextCell,
@@ -70,7 +72,7 @@ import {
   type NormalizedTable,
 } from './OverlayTable';
 import SlideEditorUI, { TOOL_DEFS } from './SlideEditorUI';
-import type { PanelContext, StyleDefaults, StyleProp, Tool } from './SlideEditorUI';
+import type { PanelContext, RailHost, StyleDefaults, StyleProp, Tool } from './SlideEditorUI';
 
 const ENGINE_NAME = 'SlideEditor';
 const THUMB_WIDTH = 240;
@@ -109,6 +111,23 @@ export interface SlideEditorHost {
       slideTransition?: SlideTransitionType;
     },
   ): void;
+
+  // ── Slide rail ─────────────────────────────────────────────────────────────
+  // Optional as a group: an embedder that supplies none of these gets an editor
+  // with no left rail, navigating with ◀ / ▶ exactly as before. BriefingEngine
+  // supplies all of them — each one already exists on its public API.
+
+  /** Title + thumbnail per slide, in order. */
+  listSlides?(): Array<{ title: string; thumb?: string }>;
+  /** Reorder. The editor saves the open slide first. */
+  moveSlide?(from: number, to: number): void;
+  duplicateSlide?(index: number): void;
+  removeSlide?(index: number): void;
+  /**
+   * Append a slide seeded from a built-in layout id (see SlideLayouts) and
+   * return its index, or null if it could not be created.
+   */
+  addSlideFromLayout?(layoutId: string): number | null;
 }
 
 const BOX_TOOLS: ReadonlySet<Tool> = new Set([
@@ -284,6 +303,8 @@ export default class SlideEditor {
   private _undo: string[] = [];
   private _redo: string[] = [];
   private _commitTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Watches the stage box so a rail collapse/resize refits the canvas. */
+  private _stageObserver: ResizeObserver | null = null;
 
   private _defaults: StyleDefaults = {
     fontFamily: 'Arial',
@@ -292,7 +313,7 @@ export default class SlideEditor {
     italic: false,
     underline: false,
     align: 'left',
-    textColor: '#ffffff',
+    textColor: DEFAULT_TEXT_COLOR,
     fill: '#ffd166',
     fillOpacity: 0.35,
     stroke: '#ff3b30',
@@ -523,6 +544,8 @@ export default class SlideEditor {
       clearTimeout(this._commitTimer);
       this._commitTimer = null;
     }
+    this._stageObserver?.disconnect();
+    this._stageObserver = null;
     this._laser?.dispose();
     this._laser = null;
     // Same reason as the context menu below — the picker owns a document-level
@@ -570,9 +593,80 @@ export default class SlideEditor {
       onToolSelected: (t) => this._setTool(t),
       onAction: (act) => this._onAction(act),
       onStyleChanged: (prop) => this._onStyleChanged(prop),
+      rail: this._buildRailHost(),
+      onLayoutChanged: () => this._resizeStageToFit(),
     });
     this._ui.build(stage, slide);
     this._attachImageDrop(stage);
+    this._observeStageSize();
+  }
+
+  /**
+   * The left rail's view onto the briefing. Every operation saves the open
+   * slide first — the rail edits the slide LIST while the canvas holds unsaved
+   * work on one of its members, so committing before reordering or deleting is
+   * what keeps the two consistent. Returns undefined when the host supplies no
+   * slide-list operations, which hides the rail entirely.
+   */
+  private _buildRailHost(): RailHost | undefined {
+    const host = this._host;
+    if (!host?.listSlides) return undefined;
+    const reopen = (index: number) => {
+      const count = host.getSlideCount();
+      if (!count) {
+        this.close(false);
+        return;
+      }
+      void this._loadSlide(Math.max(0, Math.min(count - 1, index)));
+    };
+    return {
+      slides: () => host.listSlides?.() ?? [],
+      current: () => this._index,
+      go: (index) => {
+        if (index === this._index || this._opening) return;
+        this._saveCurrent();
+        void this._loadSlide(index);
+      },
+      move: (from, to) => {
+        this._saveCurrent();
+        host.moveSlide?.(from, to);
+        // The open slide may have shifted; follow it rather than the index.
+        reopen(from === this._index ? to : this._index);
+      },
+      duplicate: (index) => {
+        this._saveCurrent();
+        host.duplicateSlide?.(index);
+        reopen(index + 1);
+      },
+      remove: (index) => {
+        // Deleting the slide being edited would save it straight back, so the
+        // save is skipped in exactly that case.
+        if (index !== this._index) this._saveCurrent();
+        host.removeSlide?.(index);
+        reopen(index <= this._index ? this._index - 1 : this._index);
+      },
+      add: (layoutId) => {
+        this._saveCurrent();
+        const at = host.addSlideFromLayout?.(layoutId);
+        if (at == null) return;
+        void this._loadSlide(at);
+      },
+    };
+  }
+
+  /**
+   * Refit the canvas whenever the stage box changes size — a side rail
+   * collapsing, being dragged wider, or the window itself resizing (which
+   * nothing watched before this).
+   */
+  private _observeStageSize(): void {
+    const wrap = this._ui?.stageWrap;
+    if (!wrap || typeof ResizeObserver === 'undefined') return;
+    this._stageObserver?.disconnect();
+    // _resizeStageToFit returns early when the fit is unchanged, so a resize
+    // this observer itself provokes can never loop.
+    this._stageObserver = new ResizeObserver(() => this._resizeStageToFit());
+    this._stageObserver.observe(wrap);
   }
 
   private _onAction(act: string): void {
@@ -589,18 +683,30 @@ export default class SlideEditor {
       case 'nextSlide':
         void this._navigate(1);
         break;
-      case 'present': {
+      case 'present':
+      case 'presentFromStart': {
         // Save, close, then hand off to the host's present mode — the two
         // surfaces are mutually exclusive (BriefingEngine enforces the same).
         const host = this._host;
-        const index = this._index;
+        const index = act === 'presentFromStart' ? 0 : this._index;
         this._saveCurrent();
         this.close(false); // already saved
         host?.onPresent?.(index);
         break;
       }
+      case 'undo':
+        this._undoRedo(false);
+        break;
+      case 'redo':
+        this._undoRedo(true);
+        break;
       case 'notes':
         this._ui?.toggleNotes();
+        // Opening/closing the drawer changes how much vertical room the stage
+        // has — refit so the canvas never ends up taller than its container
+        // (which otherwise shows up as an unexpected scrollbar). The stage's
+        // ResizeObserver would catch it a frame later; this avoids the flash.
+        this._resizeStageToFit();
         // Opening/closing the drawer changes how much vertical room the stage
         // has — refit so the canvas never ends up taller than its container
         // (which otherwise shows up as an unexpected scrollbar).
@@ -2517,6 +2623,18 @@ export default class SlideEditor {
   // through `_replaceTable`, which rebuilds the object and swaps it on the
   // canvas while keeping the overlay id, z-order and selection.
 
+  /**
+   * Cell ink for a table taking the panel's defaults. A table paints its own
+   * dark body and header fills, against which `DEFAULT_TEXT_COLOR` — a mid-tone,
+   * because a *slide* background is unknown — barely reads, so the untouched
+   * default maps to the table's own light ink. Any other picked colour is the
+   * user's explicit choice and passes through.
+   */
+  private _tableInk(): string {
+    const picked = this._defaults.textColor;
+    return picked === DEFAULT_TEXT_COLOR ? DEFAULT_TABLE_TEXT_COLOR : picked;
+  }
+
   /** Compose a table model + bbox + style defaults into a fabric object. */
   private _buildTableObject(
     model: NormalizedTable,
@@ -2548,7 +2666,7 @@ export default class SlideEditor {
         italic: d.italic,
         underline: d.underline,
         align: d.align,
-        textColor: d.textColor,
+        textColor: this._tableInk(),
         opacity: d.opacity,
       },
       this._W,
@@ -2641,7 +2759,7 @@ export default class SlideEditor {
       fontStyle: style.italic ? 'italic' : 'normal',
       underline: !!style.underline,
       textAlign: style.align ?? 'left',
-      fill: style.textColor ?? '#FFFFFF',
+      fill: style.textColor ?? DEFAULT_TABLE_TEXT_COLOR,
       backgroundColor: 'rgba(45, 108, 223, 0.35)',
       hasControls: false,
       hasBorders: false,
@@ -3452,7 +3570,7 @@ export default class SlideEditor {
       italic: d.italic,
       underline: d.underline,
       align: d.align,
-      textColor: d.textColor,
+      textColor: this._tableInk(),
       opacity: d.opacity,
     });
   }
@@ -3933,6 +4051,13 @@ export default class SlideEditor {
             e.preventDefault();
             e.stopPropagation();
             this._setToolLock(!this._toolLock);
+            return;
+          }
+          // Bare [ / ] collapse the side rails (Ctrl+[ / Ctrl+] stay z-order).
+          if (k === '[' || k === ']') {
+            e.preventDefault();
+            e.stopPropagation();
+            this._ui?.toggleSideRail(k === '[' ? 'left' : 'right');
             return;
           }
           // Single-key tool shortcuts (Excalidraw layout).

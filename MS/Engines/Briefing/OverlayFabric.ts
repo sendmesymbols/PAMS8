@@ -21,9 +21,9 @@ import { buildTableGroup, tableFromFabric } from './OverlayTable';
 // Colour/dash helpers live in OverlayStyle so OverlayTable can share them
 // without the two modules importing each other. Re-exported here because the
 // editor and BriefingEngine have always imported them from this module.
-import { dashProps, overlayUuid, parseColor, withAlpha } from './OverlayStyle';
+import { DEFAULT_TEXT_COLOR, dashProps, overlayUuid, parseColor, withAlpha } from './OverlayStyle';
 
-export { dashProps, overlayUuid, parseColor, withAlpha };
+export { DEFAULT_TEXT_COLOR, dashProps, overlayUuid, parseColor, withAlpha };
 
 type BoxKind = (typeof BOX_OVERLAY_KINDS)[number];
 type ShapeKind = Exclude<BoxKind, 'rect' | 'ellipse'>;
@@ -814,7 +814,7 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
         fontStyle: o.italic ? 'italic' : 'normal',
         underline: !!o.underline,
         textAlign: o.align ?? 'left',
-        fill: o.textColor ?? '#FFFFFF',
+        fill: o.textColor ?? DEFAULT_TEXT_COLOR,
         angle: o.rotation ?? 0,
       });
       if (o.listStyle) tb.data.listStyle = o.listStyle;
@@ -1037,7 +1037,7 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
     if (obj.fontStyle === 'italic') base.italic = true;
     if (obj.underline) base.underline = true;
     if (obj.textAlign === 'center' || obj.textAlign === 'right') base.align = obj.textAlign;
-    base.textColor = parseColor(obj.fill)?.hex ?? '#FFFFFF';
+    base.textColor = parseColor(obj.fill)?.hex ?? DEFAULT_TEXT_COLOR;
     return base;
   }
 

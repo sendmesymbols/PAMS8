@@ -9,6 +9,20 @@
  * OverlayFabric re-exports all three, so existing importers are unaffected.
  */
 
+/**
+ * Default ink for every text-bearing overlay (free text, shape labels, table
+ * cells) and the editor's starting text colour.
+ *
+ * A slide's background is unknown by construction: a blank slide is solid
+ * white, a map slide is whatever the basemap happens to be (dark ops themes,
+ * bright imagery, anything between), and `captureIntoSlide()` can drop a map
+ * under overlays that were authored on white. So the default has to sit in the
+ * middle of the luminance range rather than at either end — this slate clears
+ * 4.8:1 on white and 4.4:1 on black, where the old '#FFFFFF' was invisible on
+ * every light background. Users can still pick any colour per object.
+ */
+export const DEFAULT_TEXT_COLOR = '#64748B';
+
 /** '#RGB' / '#RRGGBB' / 'rgb()' / 'rgba()' → hex + alpha. Null when unusable. */
 export function parseColor(c: any): { hex: string; alpha: number } | null {
   if (!c || typeof c !== 'string') return null;

@@ -41,6 +41,7 @@ import type SerializationEngine from '../ImportExport/SerializationEngine';
 import EngineLogger from '../../Support/EngineLogger';
 import settingsData from '../../Data/Settings.json';
 import { overlayToFabric, preloadOverlayImages } from './OverlayFabric';
+import { layoutById } from './SlideLayouts';
 import type { SlideEditorHost } from './SlideEditor';
 import type {
   BriefingDocument,
@@ -1714,6 +1715,32 @@ class BriefingEngine {
           ENGINE_NAME,
           `Slide "${s.title}" saved (${patch.overlays?.length ?? 0} annotations)`,
         );
+      },
+
+      // ── Slide rail ───────────────────────────────────────────────────────
+      // Each of these is an existing public method — the rail is a second view
+      // onto the same operations the floating panel and the sorter already
+      // drive, so all three stay in step through _refreshStrip / _refreshSorter.
+
+      listSlides: () =>
+        this._slides.map((s, i) => ({
+          title: s.title || `Slide ${i + 1}`,
+          thumb: s.thumbnailDataUrl,
+        })),
+      moveSlide: (from: number, to: number) => this.moveSlide(from, to),
+      duplicateSlide: (i: number) => {
+        this.duplicateSlide(i);
+      },
+      removeSlide: (i: number) => this.removeSlide(i),
+      addSlideFromLayout: (layoutId: string) => {
+        const layout = layoutById(layoutId);
+        const slide = this.addBlankSlide(layout && layout.id !== 'blank' ? layout.name : undefined);
+        if (!slide) return null;
+        const overlays = layout?.overlays() ?? [];
+        if (overlays.length) slide.overlays = overlays;
+        this._refreshStrip();
+        this._refreshSorter();
+        return this._slides.indexOf(slide);
       },
     };
   }
