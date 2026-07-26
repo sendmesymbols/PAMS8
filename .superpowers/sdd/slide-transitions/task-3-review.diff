@@ -1,0 +1,325 @@
+# Review package: Task 3 (snapshot diff, no commits)
+
+## BriefingEngine.ts
+diff --git a/.superpowers/sdd/slide-transitions/task-3-before/BriefingEngine.ts b/MS/Engines/Briefing/BriefingEngine.ts
+index 9f215f8..ec3997c 100644
+--- a/.superpowers/sdd/slide-transitions/task-3-before/BriefingEngine.ts
++++ b/MS/Engines/Briefing/BriefingEngine.ts
+@@ -94,30 +94,31 @@ class BriefingEngine {
+   private _strip: HTMLElement | null = null;
+   private _panelCountEl: HTMLElement | null = null;
+   private _panelMinimized = false;
+ 
+   // Slide-sorter UI
+   private _sorter: HTMLElement | null = null;
+   private _sorterGrid: HTMLElement | null = null;
+   private _sorterKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+   private _dragIndex: number | null = null;
+ 
+   // Slide editor + present-mode annotation overlays
+   private _slideEditor: any = null;
+   private _presentOverlay: { el: HTMLCanvasElement; canvas: any } | null = null;
+   /** Bumped by every _clearPresentOverlays() call — lets in-flight _buildOverlayCanvas builds detect any teardown, not just a slide change. */
+   private _overlayGeneration = 0;
++  private _activeTransition: ActiveBuild | null = null;
+ 
+   private constructor() {}
+ 
+   public static getInstance(): BriefingEngine {
+     if (!BriefingEngine._instance) {
+       BriefingEngine._instance = new BriefingEngine();
+     }
+     return BriefingEngine._instance;
+   }
+ 
+   // ── Lifecycle ──────────────────────────────────────────────────────────────
+ 
+   public start(view: MapView | SceneView, _serialEngine?: SerializationEngine): void {
+     this._view = view;
+     this._injectStyles();
+@@ -483,53 +484,74 @@ class BriefingEngine {
+ 
+   // ── Playback ───────────────────────────────────────────────────────────────
+ 
+   /**
+    * Fly to a slide, re-apply its layer/graphic visibility, then run its
+    * builds. Rapid Next/Prev is debounced: advances during an in-flight goTo
+    * are ignored (the transition itself swallows AbortError via .catch).
+    */
+   public async goToSlide(index: number): Promise<void> {
+     const v: any = this._view;
+     if (!v || index < 0 || index >= this._slides.length) return;
+     if (this._transitioning) return;
+     this._transitioning = true;
+ 
+     this._cancelBuilds();
+-    this._clearPresentOverlays();
++    this._cancelPresentTransition();
++    const prevSlide = this._current >= 0 ? this._slides[this._current] : null;
++    const prevOverlay = this._presentOverlay;
+     this._current = index;
+     const slide = this._slides[index];
+     this._refreshStrip();
+     this._updateCounter();
+ 
+     try {
+       const target = this._resolveGoToTarget(slide.view);
+       if (target) {
+         await v
+           .goTo(target, {
+             duration: slide.transitionMs ?? 1000,
+             easing: 'ease-in-out',
+           })
+           .catch(() => {}); // user-interrupt AbortError is expected
+       }
+     } finally {
+       this._transitioning = false;
+     }
+ 
+     this._applySlideState(slide);
+     this._runBuilds(slide);
+-    if (this._presentMode) this._renderPresentOverlays(slide);
++    if (!this._presentMode) return; // present mode was exited mid-navigation; _clearPresentOverlays already ran
++
++    const canAnimate =
++      !!prevSlide &&
++      !!prevOverlay &&
++      this._presentOverlay === prevOverlay &&
++      !!slide.slideTransition &&
++      this._isScreenOnly(prevSlide) &&
++      this._isScreenOnly(slide);
++
++    if (canAnimate) {
++      await this._transitionPresentOverlays(
++        prevOverlay!,
++        slide,
++        slide.slideTransition!,
++        slide.transitionMs ?? 1000,
++      );
++    } else {
++      this._renderPresentOverlays(slide); // disposes prevOverlay itself if it's still current
++    }
+   }
+ 
+   public async nextSlide(): Promise<void> {
+     if (this._current + 1 < this._slides.length) await this.goToSlide(this._current + 1);
+   }
+ 
+   public async prevSlide(): Promise<void> {
+     if (this._current > 0) await this.goToSlide(this._current - 1);
+   }
+ 
+   /**
+    * Headless slide apply for the PPTX exporter: jump (no animation) to the
+    * slide's view state and apply its visibility instantly. `revealedBuilds`
+    * is the number of leading build steps whose targets are shown — omit for
+    * the slide's final (all-revealed) state, pass 0..n for explode-builds.
+@@ -820,30 +842,39 @@ class BriefingEngine {
+       );
+     }
+     return clone;
+   }
+ 
+   private _cancelBuilds(): void {
+     const builds = this._activeBuilds;
+     this._activeBuilds = [];
+     for (const b of builds) {
+       try {
+         b.cancel();
+       } catch {}
+     }
+   }
+ 
++  /** Jump-cuts an in-flight slide transition to its end state (disposes the outgoing frame, keeps the incoming one). No-op if nothing is animating. */
++  private _cancelPresentTransition(): void {
++    const t = this._activeTransition;
++    this._activeTransition = null;
++    try {
++      t?.cancel();
++    } catch {}
++  }
++
+   // ── Present mode ───────────────────────────────────────────────────────────
+ 
+   /**
+    * Distraction-free playback: hides the HUD via a body class, clears the
+    * ArcGIS view UI, and drives navigation from the engine's OWN keydown
+    * listener (KeyboardShortcutManager swallows keys inside inputs and owns an
+    * Esc chain — present mode must not route through it).
+    */
+   public enterPresent(): void {
+     if (this._presentMode || !this._enabled) return;
+     if (!this._slides.length) {
+       EngineLogger.error(ENGINE_NAME, 'Cannot present: no slides captured');
+       return;
+     }
+     this.closeSorter();
+@@ -910,30 +941,31 @@ class BriefingEngine {
+     try {
+       if (v?.ui && this._savedUiComponents) v.ui.components = this._savedUiComponents;
+     } catch {}
+     this._savedUiComponents = null;
+ 
+     if (this._presentKeyHandler) {
+       document.removeEventListener('keydown', this._presentKeyHandler, true);
+       this._presentKeyHandler = null;
+     }
+     if (this._presentClickHandler && this._presentContainer) {
+       this._presentContainer.removeEventListener('click', this._presentClickHandler);
+     }
+     this._presentClickHandler = null;
+     this._presentContainer = null;
+ 
++    this._cancelPresentTransition();
+     this._clearPresentOverlays();
+     this.stopAutoplay();
+     this._removeCounter();
+     EngineLogger.success(ENGINE_NAME, 'Present mode exited');
+   }
+ 
+   public togglePresent(): void {
+     this._presentMode ? this.exitPresent() : this.enterPresent();
+   }
+ 
+   public startAutoplay(intervalMs?: number): void {
+     this.stopAutoplay();
+     const interval = intervalMs ?? Number(this._cfg.autoplayIntervalMs) ?? 5000;
+     this._autoplayTimer = window.setInterval(() => {
+       if (this._current + 1 >= this._slides.length) {
+@@ -1653,30 +1685,136 @@ class BriefingEngine {
+         // just slide navigation).
+         if (gen !== this._overlayGeneration || slide !== this._slides[this._current]) {
+           if (handle) {
+             try {
+               handle.canvas.dispose();
+             } catch {}
+             handle.el.remove();
+           }
+           return;
+         }
+         this._presentOverlay = handle;
+       })
+       .catch(() => {});
+   }
+ 
++  /**
++   * Crossfade/slide/wipe from `oldHandle` (the outgoing screen-only slide's
++   * overlay frame) into a freshly-built frame for `slide`, per `type`, over
++   * `durationMs`. Only ever called when both slides are screen-only — see
++   * the eligibility check in goToSlide. Leaves `_presentOverlay` pointing at
++   * the new frame once done; disposes `oldHandle` once it's no longer shown.
++   */
++  private async _transitionPresentOverlays(
++    oldHandle: { el: HTMLCanvasElement; canvas: any },
++    slide: Slide,
++    type: SlideTransitionType,
++    durationMs: number,
++  ): Promise<void> {
++    const gen = this._overlayGeneration;
++    const newHandle = await this._buildOverlayCanvas(slide);
++    // Stale if the slide changed OR present mode/view was torn down while the
++    // new frame was loading (same _overlayGeneration mechanism as
++    // _renderPresentOverlays — see Task 2 Step 2). Back out without touching
++    // _presentOverlay/oldHandle; whichever navigation/teardown is current
++    // owns disposing them.
++    if (gen !== this._overlayGeneration || slide !== this._slides[this._current]) {
++      if (newHandle) {
++        try {
++          newHandle.canvas.dispose();
++        } catch {}
++        newHandle.el.remove();
++      }
++      return;
++    }
++    const disposeOld = () => {
++      try {
++        oldHandle.canvas.dispose();
++      } catch {}
++      oldHandle.el.remove();
++    };
++    if (!newHandle) {
++      disposeOld();
++      this._presentOverlay = null;
++      return;
++    }
++
++    const oldEl = oldHandle.el;
++    const newEl = newHandle.el;
++    newEl.style.zIndex = '1'; // incoming frame always stacks above the outgoing one
++
++    const applyFrame = (t: number) => {
++      switch (type) {
++        case 'fade':
++          newEl.style.opacity = String(t);
++          oldEl.style.opacity = String(1 - t);
++          break;
++        case 'pushLeft':
++          newEl.style.transform = `translateX(${(1 - t) * 100}%)`;
++          oldEl.style.transform = `translateX(${-t * 100}%)`;
++          break;
++        case 'pushRight':
++          newEl.style.transform = `translateX(${-(1 - t) * 100}%)`;
++          oldEl.style.transform = `translateX(${t * 100}%)`;
++          break;
++        case 'wipe':
++          newEl.style.clipPath = `inset(0 ${(1 - t) * 100}% 0 0)`;
++          break;
++      }
++    };
++    applyFrame(0);
++
++    const finish = () => {
++      disposeOld();
++      newEl.style.opacity = '';
++      newEl.style.transform = '';
++      newEl.style.clipPath = '';
++      newEl.style.zIndex = '';
++      this._presentOverlay = newHandle;
++    };
++
++    await new Promise<void>((resolve) => {
++      const TweenMax = (window as any).TweenMax;
++      if (!TweenMax || durationMs <= 0) {
++        applyFrame(1);
++        finish();
++        resolve();
++        return;
++      }
++      const state = { t: 0 };
++      const tween = TweenMax.to(state, durationMs / 1000, {
++        t: 1,
++        onUpdate: () => applyFrame(state.t),
++        onComplete: () => {
++          finish();
++          resolve();
++        },
++      });
++      this._activeTransition = {
++        cancel: () => {
++          try {
++            tween?.kill?.();
++          } catch {}
++          applyFrame(1);
++          finish();
++          resolve();
++        },
++      };
++    });
++    this._activeTransition = null;
++  }
++
+   private _clearPresentOverlays(): void {
+     this._overlayGeneration++; // bump before the early-return: even "nothing to clear" invalidates pending builds
+     if (!this._presentOverlay) return;
+     try {
+       this._presentOverlay.canvas.dispose();
+     } catch {}
+     this._presentOverlay.el.remove();
+     this._presentOverlay = null;
+   }
+ 
+   // ── Present-mode counter HUD ───────────────────────────────────────────────
+ 
+   private _ensureCounter(): void {
+     if (this._counterEl) return;
+     const el = document.createElement('div');

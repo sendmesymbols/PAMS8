@@ -26,13 +26,6 @@ export interface CapturedViewState {
 
 export type BuildEffect = 'appear' | 'fade' | 'flyIn' | 'drawOn';
 
-/**
- * Present-mode transition played entering a screen-only ("slide view") slide
- * from another screen-only slide. Map-based slides never use this — their
- * view.goTo() pan/zoom is the transition.
- */
-export type SlideTransitionType = 'fade' | 'pushLeft' | 'pushRight' | 'wipe';
-
 export type OverlayKind =
   | 'text'
   | 'rect'
@@ -130,13 +123,8 @@ export interface Slide {
   graphicVisibility?: Record<string, boolean>;
   /** Ordered staged-reveal steps. */
   builds?: BuildStep[];
-  /** goTo duration entering this slide (ms). Also reused as the slideTransition duration. */
+  /** goTo duration entering this slide (ms). */
   transitionMs: number;
-  /**
-   * Present-mode transition played when both this slide and the one before it
-   * are screen-only. Absent = the existing instant cut. See SlideTransitionType.
-   */
-  slideTransition?: SlideTransitionType;
   /** Lazy; absent when the screenshot path is unavailable (3D-headless). */
   thumbnailDataUrl?: string;
   /** PowerPoint-like annotations added in the slide editor (normalized coords). */

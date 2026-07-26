@@ -17,7 +17,7 @@
  */
 
 import EngineLogger from '../../Support/EngineLogger';
-import type { Slide, SlideOverlay } from './BriefingTypes';
+import type { Slide, SlideOverlay, SlideTransitionType } from './BriefingTypes';
 import LaserTrail from './LaserTrail';
 import {
   buildArrowPath,
@@ -68,6 +68,7 @@ export interface SlideEditorHost {
       notes?: string;
       overlays?: SlideOverlay[];
       thumbnailDataUrl?: string;
+      slideTransition?: SlideTransitionType;
     },
   ): void;
 }
@@ -103,6 +104,9 @@ export default class SlideEditor {
   private _index = -1;
   private _W = 0;
   private _H = 0;
+  /** Natural screenshot pixel size — kept so the stage can be refit without reloading the background. */
+  private _srcW = 0;
+  private _srcH = 0;
   private _tool: Tool = 'select';
   private _opening = false;
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -200,6 +204,9 @@ export default class SlideEditor {
         notes: (this._ui?.notesArea?.value ?? '').trim() || undefined,
         overlays: overlays.length ? overlays : undefined,
         thumbnailDataUrl,
+        slideTransition: (this._ui?.transitionSelect?.value || undefined) as
+          | SlideTransitionType
+          | undefined,
       });
     } catch (err) {
       EngineLogger.error(ENGINE_NAME, `Save failed: ${err}`);
@@ -223,10 +230,8 @@ export default class SlideEditor {
     try {
       this._index = index;
       if (ui.titleInput) ui.titleInput.value = slide.title ?? '';
-      if (ui.notesArea) {
-        ui.notesArea.value = slide.notes ?? '';
-        if (slide.notes) ui.notesArea.style.display = '';
-      }
+      ui.syncNotes(slide);
+      ui.syncTransitionControl(slide);
       ui.updateNav(index, host.getSlideCount());
 
       try {
@@ -362,6 +367,10 @@ export default class SlideEditor {
       }
       case 'notes':
         this._ui?.toggleNotes();
+        // Opening/closing the drawer changes how much vertical room the stage
+        // has — refit so the canvas never ends up taller than its container
+        // (which otherwise shows up as an unexpected scrollbar).
+        this._resizeStageToFit();
         break;
       case 'del':
         this._deleteSelection();
@@ -448,14 +457,11 @@ export default class SlideEditor {
       this._stage!.appendChild(warn);
     }
 
-    const barH = ui.bar?.offsetHeight ?? 56;
-    const maxW = Math.max(320, window.innerWidth - 32);
-    const maxH = Math.max(180, window.innerHeight - barH - 48);
-    const srcW = size?.w ?? 1280;
-    const srcH = size?.h ?? 720;
-    const scale = Math.min(maxW / srcW, maxH / srcH, 1.5);
-    this._W = Math.max(320, Math.round(srcW * scale));
-    this._H = Math.max(180, Math.round(srcH * scale));
+    this._srcW = size?.w ?? 1280;
+    this._srcH = size?.h ?? 720;
+    const fit = this._computeFitSize();
+    this._W = fit.w;
+    this._H = fit.h;
 
     const canvasEl = document.createElement('canvas');
     canvasEl.width = this._W;
@@ -507,6 +513,55 @@ export default class SlideEditor {
       if (t && !String(t.text ?? '').trim()) this._fc.remove(t);
       this._commit();
     });
+    this._fc.requestRenderAll();
+  }
+
+  /**
+   * Fit `_srcW`x`_srcH` inside whatever room `.ms-sledit-stagewrap` currently
+   * has (measured live, so it always reflects the top bar + notes drawer's
+   * actual current height rather than an approximation of them).
+   */
+  private _computeFitSize(): { w: number; h: number } {
+    const wrap = this._ui?.stageWrap;
+    const boxW = wrap?.clientWidth ?? Math.max(320, window.innerWidth - 32);
+    const boxH = wrap?.clientHeight ?? Math.max(180, window.innerHeight - 104);
+    const maxW = Math.max(320, boxW - 24); // stagewrap's own 12px padding, both sides
+    const maxH = Math.max(180, boxH - 24);
+    const scale = Math.min(maxW / this._srcW, maxH / this._srcH, 1.5);
+    return {
+      w: Math.max(320, Math.round(this._srcW * scale)),
+      h: Math.max(180, Math.round(this._srcH * scale)),
+    };
+  }
+
+  /**
+   * Recompute the fit and rescale the live canvas (dimensions, background,
+   * every object) in place — cheaper than reloading the slide, and used
+   * whenever the notes drawer's open/closed state changes the stage's
+   * available height so the canvas never ends up larger than its container.
+   */
+  private _resizeStageToFit(): void {
+    if (!this._fc || !this._srcW || !this._srcH) return;
+    const { w: newW, h: newH } = this._computeFitSize();
+    if (newW === this._W && newH === this._H) return;
+    const ratio = newW / this._W;
+    this._fc.setDimensions({ width: newW, height: newH });
+    const bg = this._fc.backgroundImage;
+    if (bg) {
+      bg.scaleX = (bg.scaleX ?? 1) * ratio;
+      bg.scaleY = (bg.scaleY ?? 1) * ratio;
+    }
+    for (const obj of this._fc.getObjects() as any[]) {
+      obj.set({
+        left: (obj.left ?? 0) * ratio,
+        top: (obj.top ?? 0) * ratio,
+        scaleX: (obj.scaleX ?? 1) * ratio,
+        scaleY: (obj.scaleY ?? 1) * ratio,
+      });
+      obj.setCoords();
+    }
+    this._W = newW;
+    this._H = newH;
     this._fc.requestRenderAll();
   }
 

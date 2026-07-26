@@ -188,6 +188,8 @@ export default class SlideEditorUI {
 
   public titleInput: HTMLInputElement | null = null;
   public notesArea: HTMLTextAreaElement | null = null;
+  private _notesBar: HTMLElement | null = null;
+  public transitionSelect: HTMLSelectElement | null = null;
   public stageWrap: HTMLElement | null = null;
 
   constructor(host: EditorUIHost) {
@@ -231,15 +233,22 @@ export default class SlideEditorUI {
         <span class="ms-sledit-spring"></span>
         <input type="text" class="ms-sledit-title" placeholder="Slide title" title="Slide title (saved with the slide)">
         <button data-act="notes" class="ms-sledit-iconbtn" title="Toggle speaker notes">${ICONS.notes}</button>
+        <select class="ms-sledit-transition" title="Transition played entering this slide from another slide-view slide.">
+          <option value="">Cut</option>
+          <option value="fade">Fade</option>
+          <option value="pushLeft">Push Left</option>
+          <option value="pushRight">Push Right</option>
+          <option value="wipe">Wipe</option>
+        </select>
         <span class="ms-sledit-sep"></span>
         <button data-act="prevSlide" title="Save this slide and edit the previous one">◀</button>
         <span class="ms-sledit-navcount">– / –</span>
         <button data-act="nextSlide" title="Save this slide and edit the next one">▶</button>
+        <span class="ms-sledit-sep"></span>
         <button data-act="present" title="Save this slide and start the slide show from here (Esc exits)">⛶ Slideshow</button>
-        <button data-act="save" class="primary" title="Save annotations, title and notes to the slide">Save &amp; Close</button>
+        <button data-act="save" title="Save annotations, title and notes to the slide">Save &amp; Close</button>
         <button data-act="cancel" title="Discard changes">Cancel</button>
       </div>
-      <textarea class="ms-sledit-notes" placeholder="Speaker notes…" style="display:none"></textarea>
       <div class="ms-sledit-stagewrap">
         <span class="ms-sledit-loading">Preparing slide…</span>
         <div class="ms-sledit-panel" style="display:none">
@@ -325,16 +334,22 @@ export default class SlideEditorUI {
             </div>
           </div>
         </div>
+      </div>
+      <div class="ms-sledit-notesbar" style="display:none">
+        <div class="ms-sledit-noteshead">${ICONS.notes}<span>Speaker notes</span></div>
+        <textarea class="ms-sledit-notes" placeholder="Notes for the presenter — not shown to the audience…"></textarea>
       </div>`;
 
     this._bar = stage.querySelector('.ms-sledit-bar') as HTMLElement;
     this._panel = stage.querySelector('.ms-sledit-panel') as HTMLElement;
     this.stageWrap = stage.querySelector('.ms-sledit-stagewrap') as HTMLElement;
     this.titleInput = stage.querySelector('.ms-sledit-title') as HTMLInputElement;
+    this._notesBar = stage.querySelector('.ms-sledit-notesbar') as HTMLElement;
     this.notesArea = stage.querySelector('.ms-sledit-notes') as HTMLTextAreaElement;
+    this.transitionSelect = stage.querySelector('.ms-sledit-transition') as HTMLSelectElement;
     this.titleInput.value = slide.title ?? '';
-    this.notesArea.value = slide.notes ?? '';
-    if (slide.notes) this.notesArea.style.display = '';
+    this.syncNotes(slide);
+    this.syncTransitionControl(slide);
 
     this._wireBar();
     this._wirePanel();
@@ -477,8 +492,37 @@ export default class SlideEditorUI {
   }
 
   public toggleNotes(): void {
-    if (!this.notesArea) return;
-    this.notesArea.style.display = this.notesArea.style.display === 'none' ? '' : 'none';
+    if (!this._notesBar) return;
+    const opening = this._notesBar.style.display === 'none';
+    this._notesBar.style.display = opening ? '' : 'none';
+    if (opening) this.notesArea?.focus();
+  }
+
+  /**
+   * Sync the notes textarea to `slide` — value always, and force the drawer
+   * open when the slide already has saved notes (never force-closes, so a
+   * drawer the user opened by hand stays open across navigation). Called on
+   * initial build and on every slide navigation within an open editor session.
+   */
+  public syncNotes(slide: Slide): void {
+    if (this.notesArea) this.notesArea.value = slide.notes ?? '';
+    if (slide.notes && this._notesBar) this._notesBar.style.display = '';
+  }
+
+  /**
+   * Sync the transition select to `slide` — value, and disabled/tooltip
+   * based on whether it's screen-only (transitions only apply between two
+   * screen-only slides; see BriefingEngine._isScreenOnly). Called on initial
+   * build and on every slide navigation within an open editor session.
+   */
+  public syncTransitionControl(slide: Slide): void {
+    if (!this.transitionSelect) return;
+    const screenOnly = !slide.view?.extent && !slide.view?.camera;
+    this.transitionSelect.value = slide.slideTransition ?? '';
+    this.transitionSelect.disabled = !screenOnly;
+    this.transitionSelect.title = screenOnly
+      ? 'Transition played entering this slide from another slide-view slide.'
+      : 'Only applies between slide-view slides — no live map.';
   }
 
   /** Show/hide the island and its sections for the given context. */
@@ -605,14 +649,29 @@ export default class SlideEditorUI {
         padding: 3px 6px; font: inherit;
       }
       .ms-sledit-title { width: 170px; }
+      .ms-sledit-transition { width: 104px; }
+      .ms-sledit-transition:disabled { opacity: 0.4; cursor: not-allowed; }
       .ms-sledit-sep { width: 1px; align-self: stretch; background: rgba(255,255,255,0.14); margin: 0 3px; }
       .ms-sledit-spring { flex: 1; }
+      .ms-sledit-notesbar {
+        display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
+        background: rgba(18,22,26,0.97); padding: 8px 10px 10px;
+        border-top: 1px solid rgba(255,255,255,0.12);
+      }
+      .ms-sledit-noteshead {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em;
+        text-transform: uppercase; color: #8a97a5;
+      }
+      .ms-sledit-noteshead svg { width: 14px; height: 14px; }
       .ms-sledit-notes {
-        margin: 6px 10px 0; height: 54px; resize: vertical;
+        height: 64px; min-height: 40px; max-height: 40vh; resize: vertical;
         background: rgba(255,255,255,0.05); color: #dde3e8;
         border: 1px solid rgba(255,255,255,0.14); border-radius: 6px;
-        padding: 6px 8px; font: inherit;
+        padding: 8px 10px; font: inherit; line-height: 1.5;
       }
+      .ms-sledit-notes:focus { outline: none; border-color: #2d6cdf; background: rgba(255,255,255,0.07); }
+      .ms-sledit-notes::placeholder { color: #6b7580; }
       .ms-sledit-stagewrap {
         flex: 1; display: flex; align-items: center; justify-content: center;
         overflow: auto; padding: 12px; position: relative;

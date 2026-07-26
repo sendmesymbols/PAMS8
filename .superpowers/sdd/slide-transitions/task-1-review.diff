@@ -1,0 +1,118 @@
+# Review package: Task 1 (snapshot diff, no commits)
+
+## BriefingTypes.ts
+diff --git a/.superpowers/sdd/slide-transitions/task-1-before/BriefingTypes.ts b/MS/Engines/Briefing/BriefingTypes.ts
+index d47ed5b..80462de 100644
+--- a/.superpowers/sdd/slide-transitions/task-1-before/BriefingTypes.ts
++++ b/MS/Engines/Briefing/BriefingTypes.ts
+@@ -19,20 +19,27 @@ export interface CapturedViewState {
+   /** JSON of view.camera (3D). Present when captured in a SceneView. */
+   camera?: any;
+   /** The view.type at capture time — drives which of extent/camera to prefer. */
+   capturedIn: ViewKind;
+   /** 2D only. */
+   rotation?: number;
+ }
+ 
+ export type BuildEffect = 'appear' | 'fade' | 'flyIn' | 'drawOn';
+ 
++/**
++ * Present-mode transition played entering a screen-only ("slide view") slide
++ * from another screen-only slide. Map-based slides never use this — their
++ * view.goTo() pan/zoom is the transition.
++ */
++export type SlideTransitionType = 'fade' | 'pushLeft' | 'pushRight' | 'wipe';
++
+ export type OverlayKind =
+   | 'text'
+   | 'rect'
+   | 'ellipse'
+   | 'diamond'
+   | 'triangle'
+   | 'star'
+   | 'callout'
+   | 'line'
+   | 'arrow'
+@@ -116,22 +123,27 @@ export interface Slide {
+   title: string;
+   /** Speaker notes — reused by the PPTX exporter's addNotes(). */
+   notes?: string;
+   view: CapturedViewState;
+   /** LAYER_NAMES value (+ 'milSymbols') → visible. */
+   visibleLayers: Record<string, boolean>;
+   /** Optional per-graphic overrides by attributes.id (exceptions only). */
+   graphicVisibility?: Record<string, boolean>;
+   /** Ordered staged-reveal steps. */
+   builds?: BuildStep[];
+-  /** goTo duration entering this slide (ms). */
++  /** goTo duration entering this slide (ms). Also reused as the slideTransition duration. */
+   transitionMs: number;
++  /**
++   * Present-mode transition played when both this slide and the one before it
++   * are screen-only. Absent = the existing instant cut. See SlideTransitionType.
++   */
++  slideTransition?: SlideTransitionType;
+   /** Lazy; absent when the screenshot path is unavailable (3D-headless). */
+   thumbnailDataUrl?: string;
+   /** PowerPoint-like annotations added in the slide editor (normalized coords). */
+   overlays?: SlideOverlay[];
+   /**
+    * Lazy full-resolution capture-time screenshot. Falls back into the slide
+    * editor's background when the live map's symbol graphics are missing —
+    * e.g. this briefing was imported without also loading the plan/session
+    * its graphic ids point into. Absent when the screenshot path was
+    * unavailable at capture time (3D-headless) — same caveat as thumbnailDataUrl.
+
+## BriefingEngine.ts
+diff --git a/.superpowers/sdd/slide-transitions/task-1-before/BriefingEngine.ts b/MS/Engines/Briefing/BriefingEngine.ts
+index 8d76e18..00aa8af 100644
+--- a/.superpowers/sdd/slide-transitions/task-1-before/BriefingEngine.ts
++++ b/MS/Engines/Briefing/BriefingEngine.ts
+@@ -36,20 +36,21 @@ import type SerializationEngine from '../ImportExport/SerializationEngine';
+ import EngineLogger from '../../Support/EngineLogger';
+ import settingsData from '../../Data/Settings.json';
+ import { overlayToFabric } from './OverlayFabric';
+ import type { SlideEditorHost } from './SlideEditor';
+ import type {
+   BriefingDocument,
+   BuildStep,
+   CapturedViewState,
+   Slide,
+   SlideOverlay,
++  SlideTransitionType,
+ } from './BriefingTypes';
+ 
+ const ENGINE_NAME = 'BriefingEngine';
+ 
+ /** 3D-headless takeScreenshot hangs — never await a thumbnail longer than this. */
+ const THUMBNAIL_TIMEOUT_MS = 2500;
+ const THUMB_WIDTH = 240;
+ const THUMB_HEIGHT = 135;
+ /** Full-res editor background gets longer, but still bounded. */
+ const FULL_SCREENSHOT_TIMEOUT_MS = 8000;
+@@ -405,20 +406,25 @@ class BriefingEngine {
+     if (idx < 0) return;
+     this._slides[idx].title = title;
+     this._refreshStrip();
+   }
+ 
+   public setSlideNotes(ref: number | string, notes: string): void {
+     const idx = this._slideIndex(ref);
+     if (idx >= 0) this._slides[idx].notes = notes;
+   }
+ 
++  public setSlideTransition(ref: number | string, type?: SlideTransitionType): void {
++    const idx = this._slideIndex(ref);
++    if (idx >= 0) this._slides[idx].slideTransition = type;
++  }
++
+   /**
+    * Move a slide so it ends up at index `to`. The current-slide marker keeps
+    * following the slide it was on. Order is the persistence format — the
+    * exported BriefingDocument simply serializes the array.
+    */
+   public moveSlide(from: number | string, to: number): void {
+     const fromIdx = this._slideIndex(from);
+     if (fromIdx < 0) return;
+     const currentId = this._slides[this._current]?.id;
+     const [slide] = this._slides.splice(fromIdx, 1);

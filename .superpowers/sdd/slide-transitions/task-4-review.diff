@@ -1,0 +1,117 @@
+# Review package: Task 4 (snapshot diff, no commits)
+
+## BriefingEngine.ts
+diff --git a/.superpowers/sdd/slide-transitions/task-4-before/BriefingEngine.ts b/MS/Engines/Briefing/BriefingEngine.ts
+index d897b5e..5d4f7dd 100644
+--- a/.superpowers/sdd/slide-transitions/task-4-before/BriefingEngine.ts
++++ b/MS/Engines/Briefing/BriefingEngine.ts
+@@ -1416,44 +1416,73 @@ class BriefingEngine {
+ 
+     this._slides.forEach((slide, i) => {
+       const tile = document.createElement('div');
+       tile.className = 'ms-sorter-tile' + (i === this._current ? ' active' : '');
+       tile.draggable = true;
+       tile.title = `${slide.title}${slide.notes ? `\n${slide.notes}` : ''}`;
+       if (slide.thumbnailDataUrl) {
+         tile.style.backgroundImage = `url(${slide.thumbnailDataUrl})`;
+       }
+       const buildCount = slide.builds?.length ?? 0;
++      const screenOnly = this._isScreenOnly(slide);
++      const transitionOptions: Array<[string, string]> = [
++        ['', 'Cut'],
++        ['fade', 'Fade'],
++        ['pushLeft', 'Push Left'],
++        ['pushRight', 'Push Right'],
++        ['wipe', 'Wipe'],
++      ];
++      const transitionOptionsHtml = transitionOptions
++        .map(([value, label]) => {
++          const selected =
++            slide.slideTransition === value || (!slide.slideTransition && value === '');
++          return `<option value="${value}"${selected ? ' selected' : ''}>${label}</option>`;
++        })
++        .join('');
+       tile.innerHTML = `
+         <span class="ms-sorter-tile-num">${i + 1}</span>
+         ${buildCount ? `<span class="ms-sorter-tile-builds" title="${buildCount} build step(s)">⚡${buildCount}</span>` : ''}
+         <span class="ms-sorter-tile-title">${this._escapeHtml(slide.title)}</span>
+         <span class="ms-sorter-tile-actions">
++          <select class="ms-sorter-tile-transition" data-act="transition" ${screenOnly ? '' : 'disabled'} title="${screenOnly ? 'Transition played entering this slide from another slide-view slide.' : 'Only applies between slide-view slides — no live map.'}">${transitionOptionsHtml}</select>
+           <button class="ms-sorter-tile-btn" data-act="edit" title="Edit this slide — text, shapes, arrows, colors.">✎</button>
+           <button class="ms-sorter-tile-btn" data-act="dup" title="Duplicate this slide.">⧉</button>
+           <button class="ms-sorter-tile-btn" data-act="del" title="Remove this slide.">✕</button>
+         </span>`;
+ 
+       tile.addEventListener('click', (e) => {
+         const act = ((e.target as HTMLElement).closest('[data-act]') as HTMLElement | null)
+           ?.dataset.act;
+         if (act === 'del') {
+           this.removeSlide(i);
+         } else if (act === 'dup') {
+           this.duplicateSlide(i);
+         } else if (act === 'edit') {
+           // openSlideEditor closes the sorter itself.
+           void this.openSlideEditor(i);
++        } else if (act === 'transition') {
++          // Handled by its own 'change' listener below — clicking to open
++          // the dropdown must not also navigate to this slide.
+         } else {
+           void this.goToSlide(i);
+         }
+       });
++
++      const transitionSelect = tile.querySelector<HTMLSelectElement>(
++        '.ms-sorter-tile-transition',
++      );
++      transitionSelect?.addEventListener('change', () => {
++        this.setSlideTransition(
++          i,
++          (transitionSelect.value || undefined) as SlideTransitionType | undefined,
++        );
++      });
+       tile.addEventListener('dblclick', (e) => {
+         if ((e.target as HTMLElement).closest('[data-act]')) return;
+         const title = prompt('Slide title', slide.title);
+         if (title != null && title.trim()) this.renameSlide(i, title.trim());
+       });
+ 
+       tile.addEventListener('dragstart', (e) => {
+         this._dragIndex = i;
+         tile.classList.add('dragging');
+         if (e.dataTransfer) {
+@@ -2278,20 +2307,35 @@ class BriefingEngine {
+       .ms-sorter-tile-btn:hover {
+         color: var(--ms-accent, #EF9F27);
+         border-color: var(--ms-accent, #EF9F27);
+         background: rgba(239, 159, 39, 0.14);
+       }
+       .ms-sorter-tile-btn[data-act="del"]:hover {
+         color: #ff8d80;
+         border-color: var(--ms-danger, #DC3C30);
+         background: rgba(220, 60, 48, 0.16);
+       }
++      .ms-sorter-tile-transition {
++        height: 22px; padding: 0 4px;
++        border: 1px solid var(--ms-border, rgba(90, 140, 220, 0.25));
++        border-radius: var(--ms-radius-sm, 4px);
++        background: rgba(10, 13, 18, 0.82);
++        color: var(--ms-text-dim, rgba(155, 180, 215, 0.72));
++        font-size: 10px; line-height: 1; cursor: pointer;
++      }
++      .ms-sorter-tile-transition:hover:not(:disabled) {
++        color: var(--ms-accent, #EF9F27);
++        border-color: var(--ms-accent, #EF9F27);
++      }
++      .ms-sorter-tile-transition:disabled {
++        opacity: 0.35; cursor: not-allowed;
++      }
+ 
+       /* Drag-preview card — rendered offscreen only for setDragImage(). */
+       .ms-sorter-ghost {
+         position: fixed; top: -200px; left: -200px;
+         width: 176px; height: 99px; overflow: hidden;
+         border: 1px solid var(--ms-accent, #EF9F27);
+         border-radius: 8px;
+         background: linear-gradient(135deg, #1d2735, #12181f) center/cover no-repeat;
+         font-family: var(--ms-font, 'Segoe UI', system-ui, sans-serif);
+       }`;

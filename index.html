@@ -821,35 +821,146 @@
         margin: 1px 6px;
         background: var(--ms-divider);
       }
-      /* Briefing menu — mixes action buttons with inline settings rows, so it
-         needs more room than the plain action list and a couple of extras:
-         a section-header label and a two-up row for Prev/Next + Save/Load. */
+      /* Briefing menu — a master toggle, grouped action buttons, and inline
+         settings rows in sections. Same control sizing as every other
+         toolbar dropdown (.infobar-btn / .ms-select / .ms-input defaults) —
+         only the grouping and the toggle switches are new. */
       .briefing-menu {
-        min-width: 250px;
+        min-width: 260px;
+        gap: 2px;
       }
+      /* Whole-row toggle for the menu's own master switch (Briefing mode) —
+         same clickable-label pattern the original checkbox row used, just
+         restyled as a title instead of a plain option. */
+      .briefing-menu-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 6px 4px 7px;
+        font: 700 12px/1.2 var(--ms-font);
+        color: var(--ms-text);
+        cursor: pointer;
+      }
+      /* Section header. Also doubles as a whole-row toggle for sections
+         gated by their own feature flag (Export) — same pattern as above,
+         so scope is unambiguous: this switch only affects what's below it. */
       .briefing-menu-label {
-        margin: 2px 6px -2px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 4px 6px -2px;
         font: 700 10px/1.4 var(--ms-font);
         letter-spacing: 0.06em;
         text-transform: uppercase;
         color: var(--ms-accent);
         opacity: 0.85;
       }
-      .briefing-menu .drawstyle-row .ms-select,
-      .briefing-menu .drawstyle-row .ms-input {
+      label.briefing-menu-label {
+        cursor: pointer;
+      }
+      /* Equal-width action rows — every multi-button row is a balanced grid,
+         so no trailing odd button stretches to fill a row alone. */
+      .briefing-menu-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5px;
+      }
+      .briefing-menu-grid .infobar-btn {
+        width: 100%;
+        justify-content: center;
+      }
+      /* #infoDiv (ID) .ms-select/.ms-input rules elsewhere in this file
+         (50px / 140px, for the top-bar's own fields) outrank a class-only
+         override since every dropdown lives inside #infoDiv — this needs
+         the menu's own ID to actually win and keep these boxes readable. */
+      #briefingMenu .drawstyle-row .ms-select,
+      #briefingMenu .drawstyle-row .ms-input {
         width: 108px;
         padding: 4px 6px;
         font-size: var(--ms-fs-xs);
       }
-      .briefing-menu-row {
-        display: flex;
-        gap: 6px;
-        padding: 0 0;
+      .briefing-menu-sep {
+        height: 1px;
+        margin: 4px 2px;
+        background: var(--ms-divider);
       }
-      .briefing-menu-row .infobar-btn {
-        width: auto;
-        flex: 1 1 0;
-        justify-content: center;
+      /* Master feature-gate switch (Briefing mode / Export tools / and the
+         per-option toggles below) — a pill switch instead of a checkbox: a
+         bigger, unambiguous target that's easier to hit with a stylus tip
+         than a 15px box. */
+      .briefing-toggle {
+        position: relative;
+        flex: none;
+        width: 32px;
+        height: 18px;
+      }
+      .briefing-toggle input {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+      }
+      .briefing-toggle-track {
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--ms-border);
+        transition: background 0.15s ease, border-color 0.15s ease;
+        /* Visual only — clicks must pass through to the real (invisible)
+           checkbox positioned underneath, or the switch stops responding. */
+        pointer-events: none;
+      }
+      .briefing-toggle-track::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--ms-text-dim, #9ab8d8);
+        transition: transform 0.15s ease, background 0.15s ease;
+      }
+      .briefing-toggle input:checked + .briefing-toggle-track {
+        background: color-mix(in srgb, var(--ms-accent) 55%, transparent);
+        border-color: var(--ms-accent);
+      }
+      .briefing-toggle input:checked + .briefing-toggle-track::after {
+        transform: translateX(14px);
+        background: #fff;
+      }
+      .briefing-toggle input:focus-visible + .briefing-toggle-track {
+        outline: 2px solid var(--ms-accent);
+        outline-offset: 2px;
+      }
+      /* Thin, on-brand scrollbar for the overflow-y: auto menu body (base
+         rule on .demo-symbol-menu) instead of the raw OS default. */
+      .briefing-menu {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+      }
+      .briefing-menu::-webkit-scrollbar {
+        width: 7px;
+      }
+      .briefing-menu::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.16);
+        border-radius: 5px;
+        background-clip: padding-box;
+      }
+      .briefing-menu::-webkit-scrollbar-thumb:hover {
+        background: var(--ms-accent);
+        background-clip: padding-box;
+      }
+      .briefing-menu::-webkit-scrollbar-track {
+        background: transparent;
       }
       /* Toolbar-summoned widgets (Settings / API Test) start hidden */
       .ms-hidden { display: none !important; }
@@ -1930,34 +2041,44 @@
         <div class="infobar-menu-anchor">
           <button class="ms-btn infobar-btn" id="briefingMenuBtn" title="Briefing — capture map states as slides, present full-screen, edit slides, export a PowerPoint deck, and configure it all from one menu."><span class="infobar-icon">⛶</span>Briefing</button>
           <div id="briefingMenu" class="demo-symbol-menu infobar-action-menu briefing-menu">
-            <label class="drawstyle-row drawstyle-check">
-              <input class="ms-input" type="checkbox" id="briefingMenuEnable" title="Master switch for the Briefing engine (features.briefing) — capture slides, playback, present mode, staged-reveal builds." />
-              <span>Briefing mode</span>
+            <label class="briefing-menu-toggle-row" for="briefingMenuEnable" title="Master switch for the Briefing engine (features.briefing) — capture slides, playback, present mode, staged-reveal builds.">
+              <span>⛶ Briefing mode</span>
+              <span class="briefing-toggle">
+                <input type="checkbox" id="briefingMenuEnable" />
+                <span class="briefing-toggle-track"></span>
+              </span>
             </label>
-            <div class="infobar-menu-sep"></div>
+            <div class="briefing-menu-sep"></div>
 
             <div class="briefing-menu-label">Slides</div>
-            <button class="ms-btn infobar-btn" data-briefing-act="panel" title="Open the slide-strip panel — capture, thumbnails, quick navigation.">🎞 Slide Panel</button>
-            <button class="ms-btn ms-btn-primary infobar-btn" data-briefing-act="capture" title="Adds Current Map View as Slide">＋ Add Slide</button>
-            <button class="ms-btn infobar-btn" data-briefing-act="blank" title="Add an empty slide — the map stays untouched; open it in the slide editor to add text and shapes.">◻ Blank Slide</button>
-            <button class="ms-btn infobar-btn" data-briefing-act="recapture" title="Re-shoot the map into the selected slide — the image goes beneath the slide's annotations. With no slide selected, adds a new slide.">📷 Capture into Slide</button>
-            <div class="briefing-menu-row">
+            <button class="ms-btn primary infobar-btn" data-briefing-act="capture" title="Adds Current Map View as Slide. Tip: Ctrl+Shift+S anywhere.">＋ Add Slide</button>
+            <div class="briefing-menu-grid">
+              <button class="ms-btn infobar-btn" data-briefing-act="blank" title="Add an empty slide — the map stays untouched; open it in the slide editor to add text and shapes. Tip: Ctrl+Shift+B anywhere.">◻ Blank Slide</button>
+              <button class="ms-btn infobar-btn" data-briefing-act="recapture" title="Re-shoot the map into the selected slide — the image goes beneath the slide's annotations. With no slide selected, adds a new slide.">📷 Capture into Slide</button>
+            </div>
+            <div class="briefing-menu-grid">
+              <button class="ms-btn infobar-btn" data-briefing-act="panel" title="Open the slide-strip panel — capture, thumbnails, quick navigation. Tip: Ctrl+Shift+P toggles it from anywhere.">🎞 Slide Panel</button>
+              <button class="ms-btn infobar-btn" data-briefing-act="sorter" title="Open the slide sorter — drag to reorder, duplicate, or remove slides.">⊞ Slide Sorter</button>
+            </div>
+            <div class="briefing-menu-grid">
               <button class="ms-btn infobar-btn" data-briefing-act="prev" title="Previous slide (goTo transition).">◀ Prev</button>
               <button class="ms-btn infobar-btn" data-briefing-act="next" title="Next slide (goTo transition).">Next ▶</button>
             </div>
-            <button class="ms-btn infobar-btn" data-briefing-act="present" title="Toggle full-screen present mode — Esc exits, arrows/space/click advance.">▶ Present Mode</button>
-            <button class="ms-btn infobar-btn" data-briefing-act="sorter" title="Open the slide sorter — drag to reorder, duplicate, or remove slides.">⊞ Slide Sorter</button>
-            <button class="ms-btn infobar-btn" data-briefing-act="edit" title="Open the full-screen slide editor for the current slide — text, shapes, arrows, colors.">✎ Edit Current Slide</button>
-            <div class="briefing-menu-row">
+            <div class="briefing-menu-grid">
+              <button class="ms-btn infobar-btn" data-briefing-act="edit" title="Open the full-screen slide editor for the current slide — text, shapes, arrows, colors.">✎ Edit Slide</button>
+              <button class="ms-btn infobar-btn" data-briefing-act="present" title="Toggle full-screen present mode — Esc exits, arrows/space/click advance.">▶ Present</button>
+            </div>
+
+            <div class="briefing-menu-sep"></div>
+            <div class="briefing-menu-label">File</div>
+            <div class="briefing-menu-grid">
               <button class="ms-btn infobar-btn" data-briefing-act="save" title="Download this briefing as a JSON file.">⬇ Save JSON</button>
               <button class="ms-btn infobar-btn" data-briefing-act="load" title="Load a briefing JSON file.">⬆ Load JSON</button>
             </div>
-            <div class="briefing-menu-row">
-              <button class="ms-btn infobar-btn" data-briefing-act="importPptx" title="Import a PowerPoint (.pptx) — its text, shapes, pictures, tables and notes become editable slides appended to this briefing.">⬆ Import PPTX</button>
-            </div>
+            <button class="ms-btn infobar-btn" data-briefing-act="importPptx" title="Import a PowerPoint (.pptx) — its text, shapes, pictures, tables and notes become editable slides appended to this briefing.">⬆ Import PPTX</button>
 
-            <div class="infobar-menu-sep"></div>
-            <div class="briefing-menu-label">Playback settings</div>
+            <div class="briefing-menu-sep"></div>
+            <div class="briefing-menu-label">Playback</div>
             <div class="drawstyle-row">
               <span>Transition (ms)</span>
               <input class="ms-input" type="number" id="briefingMenuTransitionMs" min="0" max="5000" step="100" title="Default goTo duration when entering a slide (briefing.defaultTransitionMs). Stored per slide at capture time." />
@@ -1976,12 +2097,14 @@
               <input class="ms-input" type="number" id="briefingMenuAutoplayMs" min="500" max="60000" step="500" title="Delay between slides when autoplay is running (briefing.autoplayIntervalMs)." />
             </div>
 
-            <div class="infobar-menu-sep"></div>
-            <label class="drawstyle-row drawstyle-check">
-              <input class="ms-input" type="checkbox" id="briefingMenuExportEnable" title="Master switch for the PowerPoint deck exporter (features.exportTools)." />
-              <span>Export tools</span>
+            <div class="briefing-menu-sep"></div>
+            <label class="briefing-menu-label" for="briefingMenuExportEnable">
+              <span>Export (.pptx)</span>
+              <span class="briefing-toggle" title="Master switch for the PowerPoint deck exporter (features.exportTools).">
+                <input type="checkbox" id="briefingMenuExportEnable" />
+                <span class="briefing-toggle-track"></span>
+              </span>
             </label>
-            <div class="briefing-menu-label">Export (.pptx)</div>
             <div class="drawstyle-row">
               <span>Mode</span>
               <select class="ms-select" id="briefingMenuExportMode" title="Flat: one full screenshot per slide. Editable: simple lines/areas/text become native, selectable PowerPoint shapes over a basemap raster — exact in 2D, approximate in 3D (exportTools.mode).">
@@ -1996,15 +2119,21 @@
                 <option value="jpeg">JPEG (smaller file)</option>
               </select>
             </div>
-            <label class="drawstyle-row drawstyle-check">
-              <input class="ms-input" type="checkbox" id="briefingMenuExplodeBuilds" title="Emit one extra slide per staged-reveal build step (exportTools.explodeBuilds)." />
+            <label class="drawstyle-row">
               <span>Explode builds</span>
+              <span class="briefing-toggle" title="Emit one extra slide per staged-reveal build step (exportTools.explodeBuilds).">
+                <input type="checkbox" id="briefingMenuExplodeBuilds" />
+                <span class="briefing-toggle-track"></span>
+              </span>
             </label>
-            <label class="drawstyle-row drawstyle-check">
-              <input class="ms-input" type="checkbox" id="briefingMenuIncludeNotes" title="Attach each slide's notes as PowerPoint speaker notes (exportTools.includeNotes)." />
+            <label class="drawstyle-row">
               <span>Include speaker notes</span>
+              <span class="briefing-toggle" title="Attach each slide's notes as PowerPoint speaker notes (exportTools.includeNotes).">
+                <input type="checkbox" id="briefingMenuIncludeNotes" />
+                <span class="briefing-toggle-track"></span>
+              </span>
             </label>
-            <button class="ms-btn ms-btn-primary infobar-btn" id="briefingMenuExportBtn" data-briefing-act="export" title="Export a PowerPoint (.pptx) deck — one slide per captured briefing slide, or the current view if no slides exist, using the settings above.">⬒ Export PPTX</button>
+            <button class="ms-btn primary infobar-btn" id="briefingMenuExportBtn" data-briefing-act="export" title="Export a PowerPoint (.pptx) deck — one slide per captured briefing slide, or the current view if no slides exist, using the settings above.">⬒ Export PPTX</button>
           </div>
         </div>
 

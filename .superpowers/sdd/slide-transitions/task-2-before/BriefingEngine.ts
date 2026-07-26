@@ -16,11 +16,6 @@
  * loadBriefingFromFile). PowerPoint decks import as screen-only slides via
  * importPptxFromFile (PptxImporter), and captureIntoSlide re-shoots the map
  * into an existing slide beneath its annotations.
- *
- * Global shortcuts (see _attachGlobalShortcuts — separate from the shared
- * KeyboardShortcutManager, since Briefing is an optional dynamically-loaded
- * feature): Ctrl+Shift+S add slide, Ctrl+Shift+B add blank slide,
- * Ctrl+Shift+P toggle the panel.
  */
 
 import MapView from '@arcgis/core/views/MapView';
@@ -87,8 +82,6 @@ class BriefingEngine {
 
   // Present mode
   private _presentMode = false;
-  /** True only for a present session launched via the Slide Editor's Slideshow button — Esc then reopens the editor instead of just exiting to the base view. Reset at the top of every enterPresent() call. */
-  private _presentedFromEditor = false;
   private _savedUiComponents: any = null;
   private _presentKeyHandler: ((e: KeyboardEvent) => void) | null = null;
   private _presentClickHandler: ((e: MouseEvent) => void) | null = null;
@@ -101,8 +94,6 @@ class BriefingEngine {
   private _strip: HTMLElement | null = null;
   private _panelCountEl: HTMLElement | null = null;
   private _panelMinimized = false;
-  /** Ctrl+Shift+S / Ctrl+Shift+B / Ctrl+Shift+P — see _attachGlobalShortcuts(). Attached once in start(), detached in destroy(). */
-  private _globalShortcutHandler: ((e: KeyboardEvent) => void) | null = null;
 
   // Slide-sorter UI
   private _sorter: HTMLElement | null = null;
@@ -113,11 +104,6 @@ class BriefingEngine {
   // Slide editor + present-mode annotation overlays
   private _slideEditor: any = null;
   private _presentOverlay: { el: HTMLCanvasElement; canvas: any } | null = null;
-  /** Bumped by every _clearPresentOverlays() call — lets in-flight _buildOverlayCanvas builds detect any teardown, not just a slide change. */
-  private _overlayGeneration = 0;
-  private _activeTransition: ActiveBuild | null = null;
-  /** Bumped at the start of every _transitionPresentOverlays call — see that method for why. */
-  private _transitionSeq = 0;
 
   private constructor() {}
 
@@ -133,54 +119,7 @@ class BriefingEngine {
   public start(view: MapView | SceneView, _serialEngine?: SerializationEngine): void {
     this._view = view;
     this._injectStyles();
-    this._attachGlobalShortcuts();
     EngineLogger.success(ENGINE_NAME, 'BriefingEngine started');
-  }
-
-  /**
-   * Ctrl+Shift+S / Ctrl+Shift+B / Ctrl+Shift+P — add slide / add blank slide /
-   * toggle the Briefing panel, from anywhere. Bubble phase, like
-   * KeyboardShortcutManager (which doesn't bind these — checked against it,
-   * SlideEditor, and the harness in src/main.ts before picking them). Skips
-   * while typing in a field, while the Slide Editor is open (its own
-   * capture-phase tool shortcuts own the keyboard then), while Present mode
-   * is active (its own handler owns the keyboard then), and while the
-   * feature itself is disabled.
-   */
-  private _attachGlobalShortcuts(): void {
-    if (this._globalShortcutHandler) return;
-    this._globalShortcutHandler = (e: KeyboardEvent) => {
-      if (!this._enabled || this._presentMode || this._slideEditor?.isOpen()) return;
-      const el = e.target as HTMLElement | null;
-      const tag = el?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || el?.isContentEditable) {
-        return;
-      }
-      if (!(e.ctrlKey || e.metaKey) || !e.shiftKey) return;
-      switch (e.key.toLowerCase()) {
-        case 's':
-          e.preventDefault();
-          this.captureSlide();
-          this.openPanel();
-          break;
-        case 'b':
-          e.preventDefault();
-          this.addBlankSlide();
-          this.openPanel();
-          break;
-        case 'p':
-          e.preventDefault();
-          this.togglePanel();
-          break;
-      }
-    };
-    document.addEventListener('keydown', this._globalShortcutHandler);
-  }
-
-  private _detachGlobalShortcuts(): void {
-    if (!this._globalShortcutHandler) return;
-    document.removeEventListener('keydown', this._globalShortcutHandler);
-    this._globalShortcutHandler = null;
   }
 
   public onViewChanged(view: MapView | SceneView): void {
@@ -206,7 +145,6 @@ class BriefingEngine {
 
   public destroy(): void {
     this.disable();
-    this._detachGlobalShortcuts();
     if (this._panel) {
       this._panel.remove();
       this._panel = null;
@@ -555,9 +493,7 @@ class BriefingEngine {
     this._transitioning = true;
 
     this._cancelBuilds();
-    this._cancelPresentTransition();
-    const prevSlide = this._current >= 0 ? this._slides[this._current] : null;
-    const prevOverlay = this._presentOverlay;
+    this._clearPresentOverlays();
     this._current = index;
     const slide = this._slides[index];
     this._refreshStrip();
@@ -579,26 +515,7 @@ class BriefingEngine {
 
     this._applySlideState(slide);
     this._runBuilds(slide);
-    if (!this._presentMode) return; // present mode was exited mid-navigation; _clearPresentOverlays already ran
-
-    const canAnimate =
-      !!prevSlide &&
-      !!prevOverlay &&
-      this._presentOverlay === prevOverlay &&
-      !!slide.slideTransition &&
-      this._isScreenOnly(prevSlide) &&
-      this._isScreenOnly(slide);
-
-    if (canAnimate) {
-      await this._transitionPresentOverlays(
-        prevOverlay!,
-        slide,
-        slide.slideTransition!,
-        slide.transitionMs ?? 1000,
-      );
-    } else {
-      this._renderPresentOverlays(slide); // disposes prevOverlay itself if it's still current
-    }
+    if (this._presentMode) this._renderPresentOverlays(slide);
   }
 
   public async nextSlide(): Promise<void> {
@@ -619,7 +536,6 @@ class BriefingEngine {
     const v: any = this._view;
     if (!v || index < 0 || index >= this._slides.length) return null;
     this._cancelBuilds();
-    this._cancelPresentTransition();
     this._clearPresentOverlays();
     this._current = index;
     const slide = this._slides[index];
@@ -914,15 +830,6 @@ class BriefingEngine {
     }
   }
 
-  /** Jump-cuts an in-flight slide transition to its end state (disposes the outgoing frame, keeps the incoming one). No-op if nothing is animating. */
-  private _cancelPresentTransition(): void {
-    const t = this._activeTransition;
-    this._activeTransition = null;
-    try {
-      t?.cancel();
-    } catch {}
-  }
-
   // ── Present mode ───────────────────────────────────────────────────────────
 
   /**
@@ -940,7 +847,6 @@ class BriefingEngine {
     this.closeSorter();
     const v: any = this._view;
     this._presentMode = true;
-    this._presentedFromEditor = false; // only the editor's own onPresent callback (below) sets this true
     document.body.classList.add('ms-present-mode');
 
     try {
@@ -952,19 +858,11 @@ class BriefingEngine {
 
     this._presentKeyHandler = (e: KeyboardEvent) => {
       switch (e.key) {
-        case 'Escape': {
+        case 'Escape':
           e.stopPropagation();
           e.preventDefault();
-          // Slideshow launched from the Slide Editor is a preview of the
-          // slide being edited — Esc should return to editing it, not just
-          // exit to the base view (the editor already fully closed itself
-          // before presenting started; see the onPresent callback below).
-          const reopenAt = this._presentedFromEditor ? this._current : -1;
-          this._presentedFromEditor = false;
           this.exitPresent();
-          if (reopenAt >= 0) void this.openSlideEditor(reopenAt);
           break;
-        }
         case 'ArrowRight':
         case ' ':
         case 'PageDown':
@@ -1022,7 +920,6 @@ class BriefingEngine {
     this._presentClickHandler = null;
     this._presentContainer = null;
 
-    this._cancelPresentTransition();
     this._clearPresentOverlays();
     this.stopAutoplay();
     this._removeCounter();
@@ -1165,26 +1062,22 @@ class BriefingEngine {
     if (this._panel) this._panel.classList.remove('ms-visible');
   }
 
-  public togglePanel(): void {
-    this._panel?.classList.contains('ms-visible') ? this.closePanel() : this.openPanel();
-  }
-
   private _buildPanel(): void {
     const panel = document.createElement('div');
     panel.id = 'briefingPanel';
     panel.innerHTML = `
       <div class="ms-briefing-head" id="briefing-drag-handle">
-        <span class="ms-briefing-icon">⛶</span>
+        <span class="ms-briefing-icon">🎬</span>
         <span class="ms-briefing-title">Briefing</span>
         <span class="ms-briefing-count"></span>
         <span class="ms-briefing-head-spacer"></span>
         <button class="ms-briefing-iconbtn" data-act="minimize" title="Minimize">﹀</button>
-        <button class="ms-briefing-iconbtn" data-act="close" title="Close the briefing panel. Tip: Ctrl+Shift+P toggles it from anywhere.">✕</button>
+        <button class="ms-briefing-iconbtn" data-act="close" title="Close the briefing panel.">✕</button>
       </div>
       <div class="ms-briefing-body">
         <div class="ms-briefing-toolbar">
-          <button class="ms-briefing-btn primary" data-act="capture" title="Adds Current Map View as Slide. Tip: Ctrl+Shift+S anywhere.">＋ Add Slide</button>
-          <button class="ms-briefing-btn" data-act="blank" title="Add an empty slide — the map stays untouched; open it in the editor (✎) to add text and shapes. Tip: Ctrl+Shift+B anywhere.">◻ Blank Slide</button>
+          <button class="ms-briefing-btn primary" data-act="capture" title="Adds Current Map View as Slide">＋ Add Slide</button>
+          <button class="ms-briefing-btn" data-act="blank" title="Add an empty slide — the map stays untouched; open it in the editor (✎) to add text and shapes.">◻ Blank Slide</button>
           <button class="ms-briefing-btn" data-act="recapture" title="Re-shoot the map into the selected slide — the image goes beneath the slide's annotations. With no slide selected, adds a new slide.">📷 Capture into Slide</button>
           <button class="ms-briefing-btn" data-act="prev" title="Previous slide (goTo transition).">◀ Prev</button>
           <button class="ms-briefing-btn" data-act="next" title="Next slide (goTo transition).">Next ▶</button>
@@ -1201,22 +1094,6 @@ class BriefingEngine {
     this._panel = panel;
     this._strip = panel.querySelector('.ms-briefing-strip') as HTMLElement;
     this._panelCountEl = panel.querySelector('.ms-briefing-count') as HTMLElement;
-
-    // The strip only scrolls horizontally (overflow-x: auto); a plain mouse
-    // wheel reports vertical deltaY, which the browser does not remap to
-    // horizontal scroll on its own — only Shift+wheel or dragging the
-    // scrollbar did anything before this. Remap deltaY to scrollLeft
-    // ourselves; leave genuinely horizontal input (trackpad/Shift+wheel)
-    // to the browser's own default handling.
-    this._strip.addEventListener(
-      'wheel',
-      (e: WheelEvent) => {
-        if (e.deltaY === 0 || e.deltaX !== 0) return;
-        e.preventDefault();
-        this._strip!.scrollLeft += e.deltaY;
-      },
-      { passive: false },
-    );
 
     panel.addEventListener('click', (e) => {
       const btn = (e.target as HTMLElement).closest('[data-act]') as HTMLElement | null;
@@ -1510,27 +1387,11 @@ class BriefingEngine {
         tile.style.backgroundImage = `url(${slide.thumbnailDataUrl})`;
       }
       const buildCount = slide.builds?.length ?? 0;
-      const screenOnly = this._isScreenOnly(slide);
-      const transitionOptions: Array<[string, string]> = [
-        ['', 'Cut'],
-        ['fade', 'Fade'],
-        ['pushLeft', 'Push Left'],
-        ['pushRight', 'Push Right'],
-        ['wipe', 'Wipe'],
-      ];
-      const transitionOptionsHtml = transitionOptions
-        .map(([value, label]) => {
-          const selected =
-            slide.slideTransition === value || (!slide.slideTransition && value === '');
-          return `<option value="${value}"${selected ? ' selected' : ''}>${label}</option>`;
-        })
-        .join('');
       tile.innerHTML = `
         <span class="ms-sorter-tile-num">${i + 1}</span>
         ${buildCount ? `<span class="ms-sorter-tile-builds" title="${buildCount} build step(s)">⚡${buildCount}</span>` : ''}
         <span class="ms-sorter-tile-title">${this._escapeHtml(slide.title)}</span>
         <span class="ms-sorter-tile-actions">
-          <select class="ms-sorter-tile-transition" data-act="transition" ${screenOnly ? '' : 'disabled'} title="${screenOnly ? 'Transition played entering this slide from another slide-view slide.' : 'Only applies between slide-view slides — no live map.'}">${transitionOptionsHtml}</select>
           <button class="ms-sorter-tile-btn" data-act="edit" title="Edit this slide — text, shapes, arrows, colors.">✎</button>
           <button class="ms-sorter-tile-btn" data-act="dup" title="Duplicate this slide.">⧉</button>
           <button class="ms-sorter-tile-btn" data-act="del" title="Remove this slide.">✕</button>
@@ -1546,22 +1407,9 @@ class BriefingEngine {
         } else if (act === 'edit') {
           // openSlideEditor closes the sorter itself.
           void this.openSlideEditor(i);
-        } else if (act === 'transition') {
-          // Handled by its own 'change' listener below — clicking to open
-          // the dropdown must not also navigate to this slide.
         } else {
           void this.goToSlide(i);
         }
-      });
-
-      const transitionSelect = tile.querySelector<HTMLSelectElement>(
-        '.ms-sorter-tile-transition',
-      );
-      transitionSelect?.addEventListener('change', () => {
-        this.setSlideTransition(
-          i,
-          (transitionSelect.value || undefined) as SlideTransitionType | undefined,
-        );
       });
       tile.addEventListener('dblclick', (e) => {
         if ((e.target as HTMLElement).closest('[data-act]')) return;
@@ -1670,13 +1518,10 @@ class BriefingEngine {
       getSlide: (i: number) => this._slides[i] ?? null,
       getSlideCount: () => this._slides.length,
       onPresent: (i: number) => {
-        // Editor's ⛶ Slideshow — it saved & closed itself; present from
-        // there. Esc will reopen the editor (see enterPresent's Escape
-        // handler) since this present session originated from it.
+        // Editor's ⛶ Slideshow — it saved & closed itself; present from there.
         if (i >= 0 && i < this._slides.length) this._current = i;
         this._refreshStrip();
         this.enterPresent();
-        this._presentedFromEditor = true;
       },
       prepareBackground: async (i: number) => {
         // Screen-only slide (imported PPTX): the stored background IS the
@@ -1704,7 +1549,6 @@ class BriefingEngine {
         s.title = patch.title;
         s.notes = patch.notes;
         s.overlays = patch.overlays;
-        s.slideTransition = patch.slideTransition;
         if (patch.thumbnailDataUrl) s.thumbnailDataUrl = patch.thumbnailDataUrl;
         this._refreshStrip();
         EngineLogger.success(
@@ -1723,27 +1567,17 @@ class BriefingEngine {
    * draw their stored background contain-fit beneath the overlays, since the
    * map itself shows nothing for them.
    */
-  /**
-   * Build a fully-rendered, DOM-attached overlay canvas for `slide` without
-   * touching `_presentOverlay` — the caller decides what to do with the
-   * result (assign it immediately, or crossfade into it). Resolves `null` on
-   * the same early-outs the old inline version had (no fabric / nothing to
-   * draw). Async because screen-only slides load their background image.
-   */
-  private _buildOverlayCanvas(
-    slide: Slide,
-  ): Promise<{ el: HTMLCanvasElement; canvas: any } | null> {
+  private _renderPresentOverlays(slide: Slide): void {
+    this._clearPresentOverlays();
     const fabric = (window as any).fabric;
     const v: any = this._view;
     const screenBg = this._isScreenOnly(slide) ? slide.backgroundDataUrl : undefined;
-    if (!fabric || !v?.container || (!slide.overlays?.length && !screenBg)) {
-      return Promise.resolve(null);
-    }
+    if (!fabric || !v?.container || (!slide.overlays?.length && !screenBg)) return;
     const el = document.createElement('canvas');
     el.className = 'ms-briefing-overlay-canvas';
     v.container.appendChild(el);
     const sc = new fabric.StaticCanvas(el, { width: v.width, height: v.height });
-    const handle = { el, canvas: sc };
+    this._presentOverlay = { el, canvas: sc };
 
     // Map slides: overlays span the live view rect. Screen-only slides:
     // everything is normalized to the imported slide box — contain-fit it
@@ -1763,199 +1597,31 @@ class BriefingEngine {
 
     if (!screenBg) {
       draw({ x: 0, y: 0, w: v.width, h: v.height });
-      return Promise.resolve(handle);
-    }
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const iw = img.naturalWidth || 1;
-        const ih = img.naturalHeight || 1;
-        const scale = Math.min(v.width / iw, v.height / ih);
-        const fit = {
-          x: (v.width - iw * scale) / 2,
-          y: (v.height - ih * scale) / 2,
-          w: iw * scale,
-          h: ih * scale,
-        };
-        sc.setBackgroundColor('#101418');
-        sc.setBackgroundImage(
-          new fabric.Image(img, { left: fit.x, top: fit.y, scaleX: scale, scaleY: scale }),
-          () => {
-            draw(fit);
-            resolve(handle);
-          },
-        );
-      };
-      img.onerror = () => {
-        draw({ x: 0, y: 0, w: v.width, h: v.height });
-        resolve(handle);
-      };
-      img.src = screenBg;
-    });
-  }
-
-  /** Instant (non-animated) overlay swap — today's behavior, used whenever a transition doesn't apply. */
-  private _renderPresentOverlays(slide: Slide): void {
-    this._clearPresentOverlays();
-    const gen = this._overlayGeneration;
-    void this._buildOverlayCanvas(slide)
-      .then((handle) => {
-        // Stale if the slide changed OR present mode/view was torn down while
-        // the background image was loading (_clearPresentOverlays bumps the
-        // generation on every call, including ones that don't touch _current —
-        // exitPresent/onViewChanged/disable — so this catches those too, not
-        // just slide navigation).
-        if (gen !== this._overlayGeneration || slide !== this._slides[this._current]) {
-          if (handle) {
-            try {
-              handle.canvas.dispose();
-            } catch {}
-            handle.el.remove();
-          }
-          return;
-        }
-        this._presentOverlay = handle;
-      })
-      .catch(() => {});
-  }
-
-  /**
-   * Crossfade/slide/wipe from `oldHandle` (the outgoing screen-only slide's
-   * overlay frame) into a freshly-built frame for `slide`, per `type`, over
-   * `durationMs`. Only ever called when both slides are screen-only — see
-   * the eligibility check in goToSlide. Leaves `_presentOverlay` pointing at
-   * the new frame once done; disposes `oldHandle` once it's no longer shown.
-   */
-  private async _transitionPresentOverlays(
-    oldHandle: { el: HTMLCanvasElement; canvas: any },
-    slide: Slide,
-    type: SlideTransitionType,
-    durationMs: number,
-  ): Promise<void> {
-    const gen = this._overlayGeneration;
-    const seq = ++this._transitionSeq; // this call's ticket; any later call invalidates it even if slide/gen are unchanged
-    const newHandle = await this._buildOverlayCanvas(slide);
-    // Stale if: present mode/view was torn down (gen — same mechanism as
-    // _renderPresentOverlays, Task 2 Step 2), OR the slide changed, OR a
-    // newer _transitionPresentOverlays call has since started (seq — needed
-    // because this path never calls _clearPresentOverlays, so repeated
-    // navigation back to the SAME still-loading slide would otherwise pass
-    // both other checks and race the newer call). Back out without touching
-    // _presentOverlay/oldHandle; whichever call is current owns disposing them.
-    if (
-      gen !== this._overlayGeneration ||
-      slide !== this._slides[this._current] ||
-      seq !== this._transitionSeq
-    ) {
-      if (newHandle) {
-        try {
-          newHandle.canvas.dispose();
-        } catch {}
-        newHandle.el.remove();
-      }
       return;
     }
-    const disposeOld = () => {
-      try {
-        oldHandle.canvas.dispose();
-      } catch {}
-      oldHandle.el.remove();
-    };
-    if (!newHandle) {
-      disposeOld();
-      this._presentOverlay = null;
-      return;
-    }
-
-    const oldEl = oldHandle.el;
-    const newEl = newHandle.el;
-    newEl.style.zIndex = '41'; // must beat the .ms-briefing-overlay-canvas class's z-index:40, or the incoming frame paints BELOW the outgoing one and 'wipe' never becomes visible
-
-    // Final-review finding: .esri-view/.esri-view-root/.esri-view-surface do
-    // NOT clip overflow in @arcgis/core 5.0.19 (verified against the vendored
-    // CSS — the spec's opposite assumption was wrong). Scope a clip guard to
-    // the container for push types only, for this transition's duration, so a
-    // push can't bleed a transient horizontal scrollbar or (for a library
-    // consumer embedding the view in a non-full-bleed div) slide across the
-    // whole host page.
-    const container: HTMLElement | undefined = (this._view as any)?.container;
-    const isPush = type === 'pushLeft' || type === 'pushRight';
-    const savedPosition = container?.style.position ?? '';
-    const savedOverflow = container?.style.overflow ?? '';
-    if (container && isPush) {
-      container.style.position = 'relative';
-      container.style.overflow = 'hidden';
-    }
-
-    const applyFrame = (t: number) => {
-      switch (type) {
-        case 'fade':
-          // Only the incoming frame fades in — the outgoing frame stays at
-          // full opacity underneath. Fading both simultaneously let the live
-          // map bleed through at ~25% at the midpoint (final-review finding).
-          newEl.style.opacity = String(t);
-          break;
-        case 'pushLeft':
-          newEl.style.transform = `translateX(${(1 - t) * 100}%)`;
-          oldEl.style.transform = `translateX(${-t * 100}%)`;
-          break;
-        case 'pushRight':
-          newEl.style.transform = `translateX(${-(1 - t) * 100}%)`;
-          oldEl.style.transform = `translateX(${t * 100}%)`;
-          break;
-        case 'wipe':
-          newEl.style.clipPath = `inset(0 ${(1 - t) * 100}% 0 0)`;
-          break;
-      }
-    };
-    applyFrame(0);
-
-    const finish = () => {
-      disposeOld();
-      newEl.style.opacity = '';
-      newEl.style.transform = '';
-      newEl.style.clipPath = '';
-      newEl.style.zIndex = '';
-      if (container && isPush) {
-        container.style.position = savedPosition;
-        container.style.overflow = savedOverflow;
-      }
-      this._presentOverlay = newHandle;
-    };
-
-    await new Promise<void>((resolve) => {
-      const TweenMax = (window as any).TweenMax;
-      if (!TweenMax || durationMs <= 0) {
-        applyFrame(1);
-        finish();
-        resolve();
-        return;
-      }
-      const state = { t: 0 };
-      const tween = TweenMax.to(state, durationMs / 1000, {
-        t: 1,
-        onUpdate: () => applyFrame(state.t),
-        onComplete: () => {
-          finish();
-          resolve();
-        },
-      });
-      this._activeTransition = {
-        cancel: () => {
-          try {
-            tween?.kill?.();
-          } catch {}
-          applyFrame(1);
-          finish();
-          resolve();
-        },
+    const img = new Image();
+    img.onload = () => {
+      if (this._presentOverlay?.canvas !== sc) return; // slide changed meanwhile
+      const iw = img.naturalWidth || 1;
+      const ih = img.naturalHeight || 1;
+      const scale = Math.min(v.width / iw, v.height / ih);
+      const fit = {
+        x: (v.width - iw * scale) / 2,
+        y: (v.height - ih * scale) / 2,
+        w: iw * scale,
+        h: ih * scale,
       };
-    });
-    this._activeTransition = null;
+      sc.setBackgroundColor('#101418');
+      sc.setBackgroundImage(
+        new fabric.Image(img, { left: fit.x, top: fit.y, scaleX: scale, scaleY: scale }),
+        () => draw(fit),
+      );
+    };
+    img.onerror = () => draw({ x: 0, y: 0, w: v.width, h: v.height });
+    img.src = screenBg;
   }
 
   private _clearPresentOverlays(): void {
-    this._overlayGeneration++; // bump before the early-return: even "nothing to clear" invalidates pending builds
     if (!this._presentOverlay) return;
     try {
       this._presentOverlay.canvas.dispose();
@@ -2426,21 +2092,6 @@ class BriefingEngine {
         color: #ff8d80;
         border-color: var(--ms-danger, #DC3C30);
         background: rgba(220, 60, 48, 0.16);
-      }
-      .ms-sorter-tile-transition {
-        height: 22px; padding: 0 4px;
-        border: 1px solid var(--ms-border, rgba(90, 140, 220, 0.25));
-        border-radius: var(--ms-radius-sm, 4px);
-        background: rgba(10, 13, 18, 0.82);
-        color: var(--ms-text-dim, rgba(155, 180, 215, 0.72));
-        font-size: 10px; line-height: 1; cursor: pointer;
-      }
-      .ms-sorter-tile-transition:hover:not(:disabled) {
-        color: var(--ms-accent, #EF9F27);
-        border-color: var(--ms-accent, #EF9F27);
-      }
-      .ms-sorter-tile-transition:disabled {
-        opacity: 0.35; cursor: not-allowed;
       }
 
       /* Drag-preview card — rendered offscreen only for setDragImage(). */
