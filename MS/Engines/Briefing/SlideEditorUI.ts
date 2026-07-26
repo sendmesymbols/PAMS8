@@ -24,9 +24,10 @@
  * values into `host.defaults` and then notifies `host.onStyleChanged(prop)`.
  */
 
-import type { ArrowHead, OverlayBlend, Slide } from './BriefingTypes';
+import type { ArrowHead, OverlayBlend, Slide, SlideComment } from './BriefingTypes';
 import { DEFAULT_TEXT_COLOR, type ArrowType } from './OverlayFabric';
 import { BUILTIN_LAYOUTS, LAYOUT_INK_DIM } from './SlideLayouts';
+import { openCount } from './SlideCommentUtils';
 import {
   AFFILIATIONS,
   AMPLIFIER_GROUPS,
@@ -232,7 +233,7 @@ export interface ContextMenuState {
  * editor's ◀ / ▶ navigation still works.
  */
 export interface RailHost {
-  slides(): Array<{ title: string; thumb?: string }>;
+  slides(): Array<{ title: string; thumb?: string; openComments?: number }>;
   current(): number;
   /** Save the open slide and edit slide `index` instead. */
   go(index: number): void;
@@ -292,6 +293,12 @@ export interface EditorUIHost {
    * ResizeObserver, this is just the immediate path.
    */
   onLayoutChanged?(): void;
+  /** The open slide's threads — the Comments section's default scope. */
+  comments(): readonly SlideComment[];
+  /** Every thread in the briefing, for the "All slides" scope. */
+  allComments(): Array<{ slideIndex: number; comment: SlideComment }>;
+  /** Navigate to a thread — same slide opens it, another slide loads first. */
+  goToComment(slideIndex: number, commentId: string): void;
 }
 
 export interface ToolDef {
@@ -469,6 +476,7 @@ const ICONS: Record<string, string> = {
   distributeV: svg('<path d="M3.5 3.5h17M3.5 20.5h17"/><rect x="7" y="10.4" width="10" height="3.2" rx="1"/>'),
   polygon: svg('<path d="M12 3.5l8.2 6-3.1 9.6H6.9L3.8 9.5z"/>'),
   toolLock: svg('<rect x="5" y="10.5" width="14" height="9.5" rx="1.8"/><path d="M8.2 10.5V8a3.8 3.8 0 017.6 0v2.5"/>'),
+  comment: svg('<path d="M4 5h16v10.5H11l-4.5 3.5v-3.5H4z"/><path d="M8 8.6h8M8 11.6h5"/>'),
   help: svg('<circle cx="12" cy="12" r="8.8"/><path d="M9.6 9.4a2.5 2.5 0 114.3 1.8c-.9.8-1.9 1.3-1.9 2.6"/><circle cx="12" cy="17.2" r="0.9" fill="currentColor" stroke="none"/>'),
   undo: svg('<path d="M4 9.5h9.5a5.5 5.5 0 010 11H7"/><path d="M8 5L3.5 9.5 8 14"/>'),
   redo: svg('<path d="M20 9.5h-9.5a5.5 5.5 0 000 11H17"/><path d="M16 5l4.5 4.5L16 14"/>'),
@@ -556,6 +564,7 @@ const HELP_GROUPS: Array<{ title: string; rows: Array<[string, string]> }> = [
       ['Forward / backward', 'Ctrl+] / Ctrl+['],
       ['To front / to back', 'Ctrl+Shift+] / Ctrl+Shift+['],
       ['Keep tool armed', 'Q'],
+      ['Comment — click an annotation, a spot, or off the slide for the whole slide', 'N · Ctrl+Alt+M'],
     ],
   },
   {
@@ -784,6 +793,7 @@ export default class SlideEditorUI {
             <option value="pushRight">Push Right</option>
             <option value="wipe">Wipe</option>
           </select>
+          <button data-act="comment" class="ms-sledit-iconbtn" title="Comment (N or Ctrl+Alt+M) — click an annotation, a spot on the slide, or off the slide for the whole slide">${ICONS.comment}</button>
           <button data-act="notes" class="ms-sledit-iconbtn" title="Toggle speaker notes — opens a drawer under the slide">${ICONS.notes}</button>
           <button data-act="help" class="ms-sledit-iconbtn" title="Keyboard shortcuts (?)">${ICONS.help}</button>
           <button data-act="save" class="primary" title="Save annotations, title and notes to the slide">Save &amp; Close</button>
@@ -844,6 +854,14 @@ export default class SlideEditorUI {
                 <span class="ms-sledit-navcount">– / –</span>
                 <button data-act="nextSlide" title="Save this slide and edit the next one">▶</button>
               </div>
+            </div>
+            <div class="ms-sledit-sec" data-sec="comments">
+              <div class="ms-sledit-seclabel">Comments</div>
+              <label class="ms-sledit-prow" data-row="cmtscope" title="List comments from every slide, not just this one">
+                <span>All slides</span>
+                <input type="checkbox" class="ms-sledit-cmtall">
+              </label>
+              <div class="ms-sledit-cmtlist"></div>
             </div>
           </div>
           <div class="ms-sledit-panel" style="display:none">
@@ -1120,6 +1138,8 @@ export default class SlideEditorUI {
     this._corner = stage.querySelector('.ms-sledit-cornerbr') as HTMLElement;
     this._panel = stage.querySelector('.ms-sledit-panel') as HTMLElement;
     this.stageWrap = stage.querySelector('.ms-sledit-stagewrap') as HTMLElement;
+    const cmtAll = stage.querySelector('.ms-sledit-cmtall') as HTMLInputElement | null;
+    if (cmtAll) cmtAll.onchange = () => this.refreshComments();
     this.titleInput = stage.querySelector('.ms-sledit-title') as HTMLInputElement;
     this._notesBar = stage.querySelector('.ms-sledit-notesbar') as HTMLElement;
     this.notesArea = stage.querySelector('.ms-sledit-notes') as HTMLTextAreaElement;
@@ -1378,10 +1398,21 @@ export default class SlideEditorUI {
         const face = s.thumb
           ? `<img src="${s.thumb}" alt="">`
           : `<span class="ms-sledit-thumbblank">${label}</span>`;
+        // Every tile but the open one reads its count from `slides()` — the
+        // persisted copy BriefingEngine holds. The open slide's threads live
+        // in the editor's unsaved working array instead (host.comments()):
+        // resolving/adding/deleting a thread only reaches the persisted list
+        // on the next save, so reading `s.openComments` for the current tile
+        // would show a stale count until then.
+        const open = i === current ? openCount(this._host.comments()) : s.openComments;
+        const badge = open
+          ? `<span class="ms-sledit-thumbcmt" title="${open} open comment(s)">${open}</span>`
+          : '';
         return `<div class="ms-sledit-thumb${
           i === current ? ' active' : ''
         }" data-i="${i}" draggable="true" title="${label}">
             <span class="ms-sledit-thumbnum">${i + 1}</span>
+            ${badge}
             <span class="ms-sledit-thumbtools">
               <button data-rail="dup" data-i="${i}" title="Duplicate this slide">⧉</button>
               <button data-rail="del" data-i="${i}" title="Delete this slide">✕</button>
@@ -1458,6 +1489,44 @@ export default class SlideEditorUI {
     this._railThumbs
       ?.querySelectorAll('.drop-before, .drop-after')
       .forEach((el) => el.classList.remove('drop-before', 'drop-after'));
+  }
+
+  // ── Comments ───────────────────────────────────────────────────────────────
+
+  /** Redraw the Comments review section for the current scope. */
+  public refreshComments(): void {
+    const box = this._stage?.querySelector('.ms-sledit-cmtlist') as HTMLElement | null;
+    if (!box) return;
+    const all = (this._stage?.querySelector('.ms-sledit-cmtall') as HTMLInputElement)?.checked;
+    const rows = all
+      ? this._host.allComments()
+      : this._host.comments().map((comment) => ({ slideIndex: -1, comment }));
+    if (!rows.length) {
+      box.innerHTML = `<div class="ms-sledit-cmtempty">No comments${
+        all ? '' : ' on this slide'
+      } yet — press N and click.</div>`;
+      return;
+    }
+    box.innerHTML = rows
+      .map(({ slideIndex, comment: c }) => {
+        const replies = c.replies?.length ?? 0;
+        const where = c.overlayId ? 'annotation' : typeof c.x === 'number' ? 'point' : 'slide';
+        return (
+          `<button class="ms-sledit-cmtrow${c.resolved ? ' resolved' : ''}"` +
+          ` data-cmt-id="${this._escape(c.id)}" data-cmt-slide="${slideIndex}">` +
+          `<span class="ms-sledit-cmtrowhead"><b>${this._escape(c.author)}</b>` +
+          `<i>${all && slideIndex >= 0 ? `slide ${slideIndex + 1} · ` : ''}${where}` +
+          `${replies ? ` · ${replies} repl${replies === 1 ? 'y' : 'ies'}` : ''}</i></span>` +
+          `<span class="ms-sledit-cmtrowtext">${this._escape(c.text.slice(0, 120))}</span>` +
+          '</button>'
+        );
+      })
+      .join('');
+    box.onclick = (e) => {
+      const row = (e.target as HTMLElement).closest('[data-cmt-id]') as HTMLElement | null;
+      if (!row) return;
+      this._host.goToComment(Number(row.dataset.cmtSlide), row.dataset.cmtId!);
+    };
   }
 
   // ── New-slide layout picker ────────────────────────────────────────────────
@@ -2124,6 +2193,12 @@ export default class SlideEditorUI {
     btn?.classList.toggle('active', on);
   }
 
+  /** Reflect the 💬 comment tool's armed state in the topbar. */
+  public setCommentMode(on: boolean): void {
+    const btn = this._bar?.querySelector('[data-act="comment"]') as HTMLElement | null;
+    btn?.classList.toggle('active', on);
+  }
+
   // ── Right-click menu ───────────────────────────────────────────────────────
 
   public showContextMenu(clientX: number, clientY: number, state: ContextMenuState): void {
@@ -2477,6 +2552,157 @@ export default class SlideEditorUI {
       .ms-sledit-stagewrap canvas {
         border-radius: 3px;
         box-shadow: 0 10px 40px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.4);
+      }
+
+      /* review comments — markers over the canvas, popover panels on body */
+      .ms-sledit-thumbcmt {
+        position: absolute;
+        /* Bottom-left: top-left is the slide number, top-right is the
+           hover-revealed duplicate/delete pair (~40px wide) — bottom-left is
+           the only corner of .ms-sledit-thumb nothing else claims. Pure
+           indicator, so pointer-events is off too — it must never be able to
+           steal a click from a control a future layout change tucks under it. */
+        bottom: 4px; left: 4px;
+        min-width: 15px; height: 15px;
+        padding: 0 3px;
+        border-radius: 999px;
+        background: var(--sl-accent);
+        color: #10161d;
+        font: 700 9.5px/15px inherit;
+        text-align: center;
+        z-index: 3;
+        pointer-events: none;
+      }
+      .ms-sledit-cmtlayer { position: absolute; overflow: hidden; pointer-events: none; z-index: 12; }
+      .ms-sledit-cmtmarker {
+        position: absolute;
+        pointer-events: auto;
+        width: 19px; height: 19px;
+        border: none;
+        border-radius: 50% 50% 50% 3px;
+        background: var(--sl-accent);
+        color: #10161d;
+        font: 700 10px/19px inherit;
+        text-align: center;
+        padding: 0;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(3,7,12,0.45);
+      }
+      .ms-sledit-cmtmarker.resolved { opacity: 0.35; }
+      .ms-sledit-cmtmarker:hover { transform: scale(1.15); }
+      @keyframes ms-sledit-cmtpop {
+        0% { transform: scale(0.3); }
+        55% { transform: scale(1.35); }
+        100% { transform: scale(1); }
+      }
+      .ms-sledit-cmtmarker.fresh { animation: ms-sledit-cmtpop 0.45s ease-out; }
+      .ms-sledit-cmtpop {
+        position: fixed;
+        z-index: 10050;
+        width: 300px;
+        background: var(--sl-surface);
+        border: 1px solid var(--sl-line);
+        border-radius: 10px;
+        box-shadow: 0 18px 44px rgba(2,5,10,0.55);
+        padding: 11px 13px;
+        color: var(--sl-text);
+        font: 12.5px/1.45 inherit;
+      }
+      .ms-sledit-cmthead {
+        display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+        font-size: 10px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.07em; color: var(--sl-dim); margin-bottom: 8px;
+      }
+      .ms-sledit-cmtme {
+        border: none; background: none; padding: 0; cursor: pointer;
+        font: 600 10px/1.4 inherit; color: var(--sl-dim); white-space: nowrap;
+      }
+      .ms-sledit-cmtme:hover { color: var(--sl-text); }
+      .ms-sledit-cmtentries {
+        max-height: 220px; overflow-y: auto;
+        display: flex; flex-direction: column; gap: 8px;
+      }
+      .ms-sledit-cmtentry b { font-size: 12px; }
+      .ms-sledit-cmttime { font-size: 10.5px; color: var(--sl-dim); margin-left: 5px; }
+      .ms-sledit-cmtentry p { margin: 2px 0 0; font-size: 12.5px; white-space: pre-wrap; }
+      .ms-sledit-cmtname, .ms-sledit-cmttext, .ms-sledit-cmtreply {
+        width: 100%; box-sizing: border-box; margin-top: 8px;
+        font: inherit; font-size: 12.5px;
+        background: var(--sl-input); color: var(--sl-text);
+        border: 1px solid var(--sl-line); border-radius: 7px; padding: 6px 8px;
+      }
+      .ms-sledit-cmttext, .ms-sledit-cmtreply { resize: vertical; }
+      .ms-sledit-cmtname:focus, .ms-sledit-cmttext:focus, .ms-sledit-cmtreply:focus {
+        outline: none; border-color: var(--sl-accent);
+      }
+      .ms-sledit-cmtfoot { display: flex; gap: 6px; margin-top: 8px; }
+      .ms-sledit-cmtfoot button {
+        flex: 1; justify-content: center; padding: 5px 6px; font-size: 11.5px;
+        background: var(--sl-input); color: var(--sl-text);
+        border: 1px solid var(--sl-line); border-radius: 7px; cursor: pointer;
+      }
+      .ms-sledit-cmtfoot button:hover { background: rgba(255,255,255,0.12); }
+      .ms-sledit-cmtfoot button.primary {
+        background: var(--sl-accent); border-color: var(--sl-accent); color: #10161d; font-weight: 600;
+      }
+      .ms-sledit-cmtarmed .ms-sledit-canvaswrap,
+      .ms-sledit-cmtarmed .ms-sledit-canvaswrap canvas { cursor: crosshair !important; }
+      .ms-sledit-cmthl { position: absolute; pointer-events: none; z-index: 13; }
+      .ms-sledit-cmthl.element {
+        border: 2px dashed var(--sl-accent);
+        border-radius: 5px;
+        background: rgba(255,209,102,0.10);
+      }
+      .ms-sledit-cmthl.slide {
+        border: 2px dashed var(--sl-accent);
+        border-radius: 7px;
+        background: rgba(255,209,102,0.05);
+      }
+      .ms-sledit-cmthl.pin {
+        width: 0; height: 0;
+        font: 600 10px/1 ui-monospace, Consolas, monospace;
+        color: var(--sl-accent);
+        white-space: nowrap;
+        padding-left: 12px; padding-top: 2px;
+      }
+      .ms-sledit-cmthl.pin::before {
+        content: '';
+        position: absolute;
+        left: -5px; top: -5px;
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        border: 2.5px solid var(--sl-accent);
+        background: rgba(255,255,255,0.7);
+      }
+      .ms-sledit-cmtchip {
+        position: absolute;
+        z-index: 14;
+        pointer-events: none;
+        background: var(--sl-accent);
+        color: #10161d;
+        font: 700 10px/1 inherit;
+        padding: 5px 9px;
+        border-radius: 999px;
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(3,7,12,0.45);
+      }
+      .ms-sledit-cmtempty { font-size: 11px; color: var(--sl-dim); padding: 4px 2px 6px; }
+      .ms-sledit-cmtlist { display: flex; flex-direction: column; gap: 4px; }
+      .ms-sledit-cmtrow {
+        display: flex; flex-direction: column; gap: 2px;
+        text-align: left; width: 100%;
+        background: var(--sl-input); color: var(--sl-text);
+        border: 1px solid var(--sl-line); border-radius: 7px;
+        padding: 5px 7px; cursor: pointer; font: inherit;
+      }
+      .ms-sledit-cmtrow:hover { border-color: var(--sl-accent); }
+      .ms-sledit-cmtrow.resolved { opacity: 0.45; }
+      .ms-sledit-cmtrowhead { display: flex; gap: 6px; align-items: baseline; }
+      .ms-sledit-cmtrowhead b { font-size: 11.5px; }
+      .ms-sledit-cmtrowhead i { font-size: 10px; font-style: normal; color: var(--sl-dim); }
+      .ms-sledit-cmtrowtext {
+        font-size: 11.5px; color: var(--sl-dim);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
       .ms-sledit-loading { color: var(--sl-dim); font-size: 14px; }
 

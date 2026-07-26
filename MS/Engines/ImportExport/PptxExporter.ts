@@ -62,6 +62,12 @@ import {
 } from '../Briefing/OverlayFabric';
 import { renderMilSym } from '../Briefing/MilSymFactory';
 import { buildTacArrowOutline, outlineBounds } from '../Briefing/TacArrowGeometry';
+import {
+  commentAnchorEighths,
+  injectPptxComments,
+  PPTX_MIME,
+  type PptxCommentRecord,
+} from './PptxComments';
 
 const ENGINE_NAME = 'PptxExporter';
 
@@ -290,6 +296,11 @@ class PptxExporter {
     // Run diagnostics — so an all-raster editable export can explain itself.
     const stats = { shapes: 0 };
     let emitted = 0;
+    const commentRecords: PptxCommentRecord[] = [];
+    let skippedResolved = 0;
+    // pptxgenjs names slide parts in add order, so the pptx slide number is
+    // just the running emit count.
+    let pptxSlideNo = 0;
     if (slides.length && briefing) {
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
@@ -304,6 +315,10 @@ class PptxExporter {
             background: slide.backgroundDataUrl,
           }, stats);
           emitted++;
+          pptxSlideNo++;
+          this._collectComments(commentRecords, slide, pptxSlideNo, view, (n) => {
+            skippedResolved += n;
+          });
           continue;
         }
         const builds = slide.builds ?? [];
@@ -319,6 +334,14 @@ class PptxExporter {
               overlays: slide.overlays,
             }, stats);
             emitted++;
+            pptxSlideNo++;
+            // Only the first pptx slide of a build sequence carries the
+            // comments — otherwise every build frame would repeat them.
+            if (reveal === 0) {
+              this._collectComments(commentRecords, slide, pptxSlideNo, view, (n) => {
+                skippedResolved += n;
+              });
+            }
           }
         } else {
           await briefing.applySlideForExport(i);
@@ -329,15 +352,41 @@ class PptxExporter {
             overlays: slide.overlays,
           }, stats);
           emitted++;
+          pptxSlideNo++;
+          this._collectComments(commentRecords, slide, pptxSlideNo, view, (n) => {
+            skippedResolved += n;
+          });
         }
       }
     } else {
       // No briefing — export the current view as a one-slide deck.
       await this._addSlide(pptx, view, format, mode, { title: 'Current view' }, stats);
       emitted++;
+      pptxSlideNo++;
     }
 
-    await pptx.writeFile({ fileName });
+    // pptxgenjs cannot write comments, so the package is built in memory and
+    // reopened to inject them — which also means the download becomes ours.
+    const pkg: ArrayBuffer = await pptx.write({ outputType: 'arraybuffer' });
+    let blob: Blob;
+    if (commentRecords.length) {
+      try {
+        blob = await injectPptxComments(pkg, commentRecords);
+      } catch (err) {
+        // Comments are a best-effort addition on top of a deck that already
+        // succeeded (e.g. a slide with a failed screenshot can plausibly be
+        // missing the slide rels part injection needs) — losing the whole
+        // export over them would be far worse than losing just the comments.
+        EngineLogger.error(
+          ENGINE_NAME,
+          `Comment injection failed — deck exported WITHOUT comments: ${err}`,
+        );
+        blob = new Blob([pkg], { type: PPTX_MIME });
+      }
+    } else {
+      blob = new Blob([pkg], { type: PPTX_MIME });
+    }
+    this._downloadBlob(blob, fileName);
 
     if (mode === 'editable' && stats.shapes === 0) {
       EngineLogger.error(
@@ -349,8 +398,14 @@ class PptxExporter {
       ENGINE_NAME,
       `PPTX exported — ${emitted} slides${
         mode === 'editable' ? `, ${stats.shapes} editable shapes` : ''
-      } → ${fileName}`,
+      }${commentRecords.length ? `, ${commentRecords.length} comment entries` : ''} → ${fileName}`,
     );
+    if (skippedResolved) {
+      EngineLogger.nextStep(
+        ENGINE_NAME,
+        `${skippedResolved} resolved comment thread(s) were not exported`,
+      );
+    }
   }
 
   // ── Slide assembly ─────────────────────────────────────────────────────────
@@ -488,6 +543,65 @@ class PptxExporter {
       w = SLIDE_H_IN * imgAspect;
     }
     return { x: (SLIDE_W_IN - w) / 2, y: (SLIDE_H_IN - h) / 2, w, h };
+  }
+
+  /**
+   * Turn a briefing slide's threads into comment records positioned in
+   * eighth-points (1/8 pt = 1/576 in — the unit PowerPoint reads p:pos in; see
+   * PptxComments.ts). Resolved threads are skipped: a resolved comment is
+   * closed business. Replies become their own records at the SAME position,
+   * which is how PowerPoint threads co-located legacy comments.
+   */
+  private _collectComments(
+    into: PptxCommentRecord[],
+    slide: BriefingSlide,
+    pptxSlide: number,
+    view: any,
+    onSkipped: (n: number) => void,
+  ): void {
+    const threads = slide.comments ?? [];
+    if (!threads.length) return;
+    const fit = this._containFit(view);
+    let skipped = 0;
+    let stack = 0;
+    for (const c of threads) {
+      if (c.resolved) {
+        skipped++;
+        continue;
+      }
+      const ov = c.overlayId ? slide.overlays?.find((o) => o.id === c.overlayId) : undefined;
+      const hasPoint = typeof c.x === 'number' && typeof c.y === 'number';
+      const { x, y } = commentAnchorEighths(
+        fit,
+        ov,
+        hasPoint ? { x: c.x as number, y: c.y as number } : undefined,
+        stack,
+      );
+      // stack only advances for threads that actually fall through to the
+      // slide-corner fallback (no overlay, no point) — matches the arithmetic
+      // in commentAnchorEighths, which only consults stackIndex on that branch.
+      if (!ov && !hasPoint) stack++;
+      into.push({ slide: pptxSlide, author: c.author, at: c.at, text: c.text, x, y });
+      for (const r of c.replies ?? []) {
+        into.push({ slide: pptxSlide, author: r.author, at: r.at, text: r.text, x, y });
+      }
+    }
+    if (skipped) onSkipped(skipped);
+  }
+
+  /** Anchor-click download of an in-memory package. */
+  private _downloadBlob(blob: Blob, fileName: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoke on the next tick — revoking synchronously can cancel the download
+    // in some browsers.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   /** Natural pixel size of a data-URL image (null on decode failure). */

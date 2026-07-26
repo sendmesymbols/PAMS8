@@ -20,6 +20,7 @@ import EngineLogger from '../../Support/EngineLogger';
 import type {
   OverlayShadow,
   Slide,
+  SlideComment,
   SlideOverlay,
   SlideTransitionType,
 } from './BriefingTypes';
@@ -76,6 +77,7 @@ import {
   type CellHit,
   type NormalizedTable,
 } from './OverlayTable';
+import { CommentsLayer, type CommentsHost } from './SlideComments';
 import SlideEditorUI, { SHADOW_PRESETS, TOOL_DEFS } from './SlideEditorUI';
 import type {
   ObjectGeometry,
@@ -121,6 +123,7 @@ export interface SlideEditorHost {
       overlays?: SlideOverlay[];
       thumbnailDataUrl?: string;
       slideTransition?: SlideTransitionType;
+      comments?: SlideComment[];
     },
   ): void;
 
@@ -140,6 +143,8 @@ export interface SlideEditorHost {
    * return its index, or null if it could not be created.
    */
   addSlideFromLayout?(layoutId: string): number | null;
+  /** Every thread in the briefing — powers the Comments section's All-slides scope. */
+  listComments?(): Array<{ slideIndex: number; comment: SlideComment }>;
 }
 
 const BOX_TOOLS: ReadonlySet<Tool> = new Set([
@@ -319,6 +324,9 @@ export default class SlideEditor {
   private _panCleanup: (() => void) | null = null;
   private _undo: string[] = [];
   private _redo: string[] = [];
+  /** Working copy of the open slide's threads — collected by _saveCurrent. */
+  private _comments: SlideComment[] = [];
+  private _cmt: CommentsLayer | null = null;
   private _commitTimer: ReturnType<typeof setTimeout> | null = null;
   /** Watches the stage box so a rail collapse/resize refits the canvas. */
   private _stageObserver: ResizeObserver | null = null;
@@ -452,6 +460,7 @@ export default class SlideEditor {
         slideTransition: (this._ui?.transitionSelect?.value || undefined) as
           | SlideTransitionType
           | undefined,
+        comments: this._comments.length ? this._comments : undefined,
       });
     } catch (err) {
       EngineLogger.error(ENGINE_NAME, `Save failed: ${err}`);
@@ -474,8 +483,15 @@ export default class SlideEditor {
     this._opening = true;
     try {
       this._index = index;
+      // Populate the working array before updateNav repaints the rail, so the
+      // open slide's comment badge is read from the current slide's data.
+      this._comments = (slide.comments ?? []).map((c) => ({ ...c }));
       ui.hideContextMenu();
       ui.closeHelp();
+      // Navigating away must close the popover and disarm any armed placement — both
+      // hold references to the slide being left (ids, DOM, layer, canvas).
+      this._cmt?.closePopover();
+      this._cmt?.disarm();
       if (ui.titleInput) ui.titleInput.value = slide.title ?? '';
       ui.syncNotes(slide);
       ui.syncTransitionControl(slide);
@@ -521,6 +537,8 @@ export default class SlideEditor {
       this._redo = [];
       ui.setZoom(1); // fresh canvas per slide, so zoom always starts at 1:1
       this._setTool('select'); // never carry a draw tool across slides
+      this._cmt?.load();
+      this._ui?.refreshComments();
       if (bg.usedFallback) {
         this._showToast(
           'Live symbol graphics not found — showing the snapshot captured with this slide.',
@@ -573,6 +591,9 @@ export default class SlideEditor {
     this._stageObserver = null;
     this._laser?.dispose();
     this._laser = null;
+    this._cmt?.unmount();
+    this._cmt = null;
+    this._comments = [];
     // Same reason as the context menu below — the picker owns a document-level
     // click-away listener that has to go with its DOM.
     this._symPicker?.dispose();
@@ -622,8 +643,13 @@ export default class SlideEditor {
       setGeometry: (patch) => this.setGeometry(patch),
       rail: this._buildRailHost(),
       onLayoutChanged: () => this._resizeStageToFit(),
+      comments: () => this._comments,
+      allComments: () => this._host?.listComments?.() ?? [],
+      goToComment: (slideIndex, commentId) => this._goToComment(slideIndex, commentId),
     });
     this._ui.build(stage, slide);
+    this._cmt = new CommentsLayer(this._commentsHost());
+    this._cmt.onArmChange = (on) => this._ui?.setCommentMode(on);
     this._attachImageDrop(stage);
     this._observeStageSize();
   }
@@ -678,6 +704,26 @@ export default class SlideEditor {
         if (at == null) return;
         void this._loadSlide(at);
       },
+    };
+  }
+
+  /**
+   * The comment layer's view onto the editor. Ownership is one-way: this class
+   * holds `_comments` for the open slide and _saveCurrent collects it, exactly
+   * as the fabric canvas holds the working overlay state. The layer only reads
+   * and commits whole arrays, so there is a single place a comment change can
+   * enter the save path.
+   */
+  private _commentsHost(): CommentsHost {
+    return {
+      comments: () => this._comments,
+      setComments: (next) => {
+        this._comments = next;
+        this._ui?.refreshRail();
+        this._ui?.refreshComments();
+      },
+      canvas: () => this._fc,
+      size: () => ({ w: this._W, h: this._H }),
     };
   }
 
@@ -756,6 +802,9 @@ export default class SlideEditor {
         break;
       case 'toolLock':
         this._setToolLock(!this._toolLock);
+        break;
+      case 'comment':
+        this._toggleCommentMode();
         break;
       case 'del':
         this._deleteSelection();
@@ -912,6 +961,8 @@ export default class SlideEditor {
     // The properties island lives inside stageWrap (it overlays the canvas)
     // and the innerHTML reset above detached it — put it back.
     ui.remountPanel();
+    // Same reason as remountPanel above: the innerHTML reset detached the layer.
+    this._cmt?.mount(ui.stageWrap, canvasEl);
 
     this._fc = new fabric.Canvas(canvasEl, {
       preserveObjectStacking: true,
@@ -983,7 +1034,12 @@ export default class SlideEditor {
       // A drag/scale/rotate just changed the numbers the Position & size fields
       // are showing.
       this._ui?.refreshGeometry();
+      this._cmt?.refresh();
     });
+    // Overlay-anchored markers ride the object's live bounding box, so they
+    // have to be repositioned during the drag, not only on its commit.
+    this._fc.on('object:moving', () => this._cmt?.refresh());
+    this._fc.on('object:scaling', () => this._cmt?.refresh());
     this._fc.on('mouse:wheel', (opt: any) => this._onWheel(opt));
     this._fc.on('mouse:dblclick', (opt: any) => this._onDoubleClick(opt));
     this._fc.on('text:editing:exited', (e: any) => {
@@ -1056,6 +1112,7 @@ export default class SlideEditor {
     this._W = newW;
     this._H = newH;
     this._fc.requestRenderAll();
+    this._cmt?.refresh();
   }
 
   /** Transient bottom-center notice — CSS-driven fade so it needs no rAF. */
@@ -1301,6 +1358,7 @@ export default class SlideEditor {
     fc.zoomToPoint(new fabric.Point(about.x, about.y), next);
     fc.requestRenderAll();
     this._ui?.setZoom(next);
+    this._cmt?.refresh();
   }
 
   /** Back to 1:1, with the slide re-centred in the frame. */
@@ -1310,6 +1368,7 @@ export default class SlideEditor {
     fc.setViewportTransform([1, 0, 0, 1, 0, 0]);
     fc.requestRenderAll();
     this._ui?.setZoom(1);
+    this._cmt?.refresh();
   }
 
   /**
@@ -1323,6 +1382,7 @@ export default class SlideEditor {
     const move = (ev: MouseEvent) => {
       if (!this._fc) return;
       this._fc.relativePan(new fabric.Point(ev.clientX - last.x, ev.clientY - last.y));
+      this._cmt?.refresh();
       last = { x: ev.clientX, y: ev.clientY };
     };
     const end = () => this._endPan();
@@ -1346,6 +1406,7 @@ export default class SlideEditor {
   private _setTool(t: Tool): void {
     if (!this._fc) return;
     this._ui?.hideContextMenu();
+    this._cmt?.disarm(); // arming a tool cancels a pending comment placement
     if (t === 'image') {
       // Not a mode — picking a file is the whole interaction, so the armed tool
       // never changes and the strip button acts as a one-shot.
@@ -3333,6 +3394,41 @@ export default class SlideEditor {
     this._showToast(on ? 'Tool stays armed after each draw (Q)' : 'Tool reverts to Select (Q)');
   }
 
+  /**
+   * Arm/disarm the comment tool. Comment mode and the drawing tools are
+   * mutually exclusive and THIS class owns that rule — CommentsLayer has no
+   * view of the tool state. Comment mode is deliberately not a Tool, so the
+   * _setTool('select') every slide load performs cannot leave it armed.
+   */
+  private _toggleCommentMode(): void {
+    const stage = this._stage;
+    const layer = this._cmt;
+    if (!stage || !layer) return;
+    if (layer.armed) {
+      layer.disarm();
+      return;
+    }
+    this._setTool('select');
+    layer.arm(stage);
+  }
+
+  /**
+   * Open a thread from the review list. `slideIndex` < 0 means "this slide".
+   * A cross-slide jump goes through _loadSlide, which is async, so the thread
+   * id is parked on the layer and consumed at the end of its load() — opening
+   * it right after the call would race the rebuild.
+   */
+  private _goToComment(slideIndex: number, commentId: string): void {
+    if (slideIndex < 0 || slideIndex === this._index) {
+      this._cmt?.openThread(commentId);
+      return;
+    }
+    if (this._opening || !this._cmt) return;
+    this._cmt.pendingThread = commentId;
+    this._saveCurrent();
+    void this._loadSlide(slideIndex);
+  }
+
   // ── Right-click menu ───────────────────────────────────────────────────────
 
   private _onCanvasContextMenu(e: MouseEvent): void {
@@ -4105,6 +4201,10 @@ export default class SlideEditor {
           this._setTool('select');
           return;
         }
+        if (this._cmt?.armed) {
+          this._cmt.disarm();
+          return;
+        }
         if (this._tool !== 'select') {
           this._setTool('select');
           return;
@@ -4140,8 +4240,17 @@ export default class SlideEditor {
 
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.altKey) {
-        // Style clipboard — Excalidraw's Ctrl+Alt+C / Ctrl+Alt+V.
         const k = e.key.toLowerCase();
+        // Ctrl+Alt+M is PowerPoint's New Comment shortcut. Checked before the
+        // c/v-only guard below (which `return`s early for every other key),
+        // or this chord would never reach it.
+        if (k === 'm') {
+          e.preventDefault();
+          e.stopPropagation();
+          this._toggleCommentMode();
+          return;
+        }
+        // Style clipboard — Excalidraw's Ctrl+Alt+C / Ctrl+Alt+V.
         if (k !== 'c' && k !== 'v') return;
         e.preventDefault();
         e.stopPropagation();
@@ -4254,6 +4363,13 @@ export default class SlideEditor {
             e.preventDefault();
             e.stopPropagation();
             this._setToolLock(!this._toolLock);
+            return;
+          }
+          // 'c' is already the callout tool, so comments take 'n' (note).
+          if (k === 'n') {
+            e.preventDefault();
+            e.stopPropagation();
+            this._toggleCommentMode();
             return;
           }
           // Bare [ / ] collapse the side rails (Ctrl+[ / Ctrl+] stay z-order).

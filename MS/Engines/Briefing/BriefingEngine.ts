@@ -42,12 +42,14 @@ import EngineLogger from '../../Support/EngineLogger';
 import settingsData from '../../Data/Settings.json';
 import { overlayToFabric, preloadOverlayImages } from './OverlayFabric';
 import { layoutById } from './SlideLayouts';
+import { openCount } from './SlideCommentUtils';
 import type { SlideEditorHost } from './SlideEditor';
 import type {
   BriefingDocument,
   BuildStep,
   CapturedViewState,
   Slide,
+  SlideCommentEntry,
   SlideOverlay,
   SlideTransitionType,
 } from './BriefingTypes';
@@ -1057,12 +1059,50 @@ class BriefingEngine {
   // ── Persistence ────────────────────────────────────────────────────────────
 
   public exportBriefing(): BriefingDocument {
-    // version 6 = milsym overlays + block/tactical arrows; 5 = table overlays +
-    // text listStyle; 4 = slides may be screen-only (imported PPTX: no
-    // extent/camera, backgroundDataUrl is the slide); 3 = full-res background
-    // fallback; 2 = editor overlays. Import accepts 1–6 (every added field is
-    // optional, so it reads older documents unchanged).
-    return { version: 6, slides: this._slides.map((s) => ({ ...s })) };
+    // version 7 = review comments; 6 = milsym overlays + block/tactical arrows;
+    // 5 = table overlays + text listStyle; 4 = slides may be screen-only
+    // (imported PPTX: no extent/camera, backgroundDataUrl is the slide);
+    // 3 = full-res background fallback; 2 = editor overlays. Import accepts
+    // 1–7 (every added field is optional, so it reads older documents
+    // unchanged).
+    return { version: 7, slides: this._slides.map((s) => ({ ...s })) };
+  }
+
+  /**
+   * Every review comment in the briefing, flattened with a typed anchor — the
+   * entry point for scripting and tooling ("show me everything people flagged").
+   */
+  public listComments(): Array<{
+    slideIndex: number;
+    slideId: string;
+    id: string;
+    anchor:
+      | { type: 'overlay'; overlayId: string }
+      | { type: 'point'; x: number; y: number }
+      | { type: 'slide' };
+    author: string;
+    at: string;
+    text: string;
+    resolved: boolean;
+    replies: SlideCommentEntry[];
+  }> {
+    return this._slides.flatMap((s, slideIndex) =>
+      (s.comments ?? []).map((c) => ({
+        slideIndex,
+        slideId: s.id,
+        id: c.id,
+        anchor: c.overlayId
+          ? ({ type: 'overlay', overlayId: c.overlayId } as const)
+          : typeof c.x === 'number' && typeof c.y === 'number'
+            ? ({ type: 'point', x: c.x, y: c.y } as const)
+            : ({ type: 'slide' } as const),
+        author: c.author,
+        at: c.at,
+        text: c.text,
+        resolved: !!c.resolved,
+        replies: c.replies ?? [],
+      })),
+    );
   }
 
   public importBriefing(doc: BriefingDocument | null | undefined): void {
@@ -1391,8 +1431,13 @@ class BriefingEngine {
       if (slide.thumbnailDataUrl) {
         tile.style.backgroundImage = `url(${slide.thumbnailDataUrl})`;
       }
+      const open = openCount(slide.comments);
+      const cmtBadge = open
+        ? `<span class="ms-brief-cmt" title="${open} open comment(s)">${open}</span>`
+        : '';
       tile.innerHTML = `
         <span class="ms-briefing-tile-num">${i + 1}</span>
+        ${cmtBadge}
         <span class="ms-briefing-tile-title">${this._escapeHtml(slide.title)}</span>
         <button class="ms-briefing-tile-edit" title="Edit slide — text, shapes, arrows, colors.">✎</button>
         <button class="ms-briefing-tile-del" title="Remove this slide.">✕</button>`;
@@ -1708,6 +1753,7 @@ class BriefingEngine {
         s.title = patch.title;
         s.notes = patch.notes;
         s.overlays = patch.overlays;
+        s.comments = patch.comments;
         s.slideTransition = patch.slideTransition;
         if (patch.thumbnailDataUrl) s.thumbnailDataUrl = patch.thumbnailDataUrl;
         this._refreshStrip();
@@ -1726,7 +1772,12 @@ class BriefingEngine {
         this._slides.map((s, i) => ({
           title: s.title || `Slide ${i + 1}`,
           thumb: s.thumbnailDataUrl,
+          openComments: openCount(s.comments),
         })),
+      listComments: () =>
+        this._slides.flatMap((s, slideIndex) =>
+          (s.comments ?? []).map((comment) => ({ slideIndex, comment })),
+        ),
       moveSlide: (from: number, to: number) => this.moveSlide(from, to),
       duplicateSlide: (i: number) => {
         this.duplicateSlide(i);
@@ -2277,6 +2328,19 @@ class BriefingEngine {
       .ms-briefing-tile-del { right: 2px; color: #f1b0b0; }
       .ms-briefing-tile:hover .ms-briefing-tile-del,
       .ms-briefing-tile:hover .ms-briefing-tile-edit { opacity: 1; }
+      .ms-brief-cmt {
+        /* top-right is the hover-revealed edit/delete pair and the bottom edge
+           is the title bar, so this sits top-left instead, offset past
+           .ms-briefing-tile-num (top: 3px; left: 5px; 11px bold, no
+           background box — a 2-digit slide number spans roughly 5px to 21px)
+           with a few px of clearance. Pure indicator: pointer-events is off so
+           it can never intercept a click meant for a control beneath it. */
+        position: absolute; top: 3px; left: 26px;
+        min-width: 15px; height: 15px; padding: 0 3px;
+        border-radius: 999px; background: #ffd166; color: #10161d;
+        font: 700 9.5px/15px sans-serif; text-align: center; z-index: 3;
+        pointer-events: none;
+      }
 
       .ms-briefing-resize {
         position: absolute; top: 0; right: -4px; bottom: 0; width: 9px;

@@ -285,6 +285,41 @@ export interface SlideOverlay {
   labelOf?: string;
 }
 
+/** One authored message: the thread opener, or a reply. */
+export interface SlideCommentEntry {
+  id: string;
+  author: string;
+  text: string;
+  /** ISO datetime. */
+  at: string;
+}
+
+/**
+ * A review comment thread. Editor-only: never drawn in present mode, in
+ * thumbnails or in any rasterized export — but saved with the slide so it
+ * travels with the briefing, and emitted as a real PowerPoint comment by
+ * PptxExporter.
+ *
+ * Anchors, in the order they are checked: `overlayId` (pinned to an
+ * annotation), then `x`/`y` (a spot on the slide), then neither (the slide as a
+ * whole). Coordinates are normalized [0..1] like SlideOverlay's, so a thread
+ * stays put when the editor canvas is resized and maps straight into the PPTX
+ * contain-fit rectangle.
+ */
+export interface SlideComment extends SlideCommentEntry {
+  /**
+   * The overlay this thread is pinned to (`SlideOverlay.id`). Dangling ids are
+   * dropped on load, so deleting an annotation turns its threads into
+   * slide-level ones rather than orphaning them.
+   */
+  overlayId?: string;
+  /** Normalized point anchor. Used when there is no `overlayId`. */
+  x?: number;
+  y?: number;
+  resolved?: boolean;
+  replies?: SlideCommentEntry[];
+}
+
 export interface BuildStep {
   /** → graphic.attributes.id */
   graphicId: string;
@@ -321,6 +356,8 @@ export interface Slide {
   thumbnailDataUrl?: string;
   /** PowerPoint-like annotations added in the slide editor (normalized coords). */
   overlays?: SlideOverlay[];
+  /** Review comment threads — editor-only, never rendered. See SlideComment. */
+  comments?: SlideComment[];
   /**
    * Lazy full-resolution capture-time screenshot. Falls back into the slide
    * editor's background when the live map's symbol graphics are missing —
@@ -333,13 +370,12 @@ export interface Slide {
 
 export interface BriefingDocument {
   /**
-   * 6 = milsym overlays + block/tactical arrows; 5 = table overlays + text
-   * listStyle; 4 = slides may be screen-only (imported PPTX: no extent/camera);
-   * 3 = full-res backgroundDataUrl fallback; 2 = overlays; 1–6 accepted on
-   * import. A version-6 briefing opened by older code drops the new overlay
-   * kinds (buildOverlayObject returns null for an unknown kind) rather than
-   * failing to load.
+   * 7 = review comments; 6 = milsym overlays + block/tactical arrows; 5 = table
+   * overlays + text listStyle; 4 = slides may be screen-only (imported PPTX: no
+   * extent/camera); 3 = full-res backgroundDataUrl fallback; 2 = overlays; 1–7
+   * accepted on import. Every added field is optional, so newer documents
+   * degrade in older code rather than failing to load.
    */
-  version: 1 | 2 | 3 | 4 | 5 | 6;
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   slides: Slide[];
 }
