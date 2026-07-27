@@ -108,6 +108,8 @@ export default class PresentSession {
 
   private _blackout: 'none' | 'black' | 'white' = 'none';
   private _wentFullscreen = false;
+  /** performance.now() before which fullscreenchange is ours, not the briefer's. */
+  private _fsExemptUntil = 0;
   private _jumpBuffer = '';
 
   constructor(host: PresentHost) {
@@ -251,6 +253,9 @@ export default class PresentSession {
     document.addEventListener('mousemove', this._moveHandler);
 
     this._fsHandler = () => {
+      // Ignore fullscreen changes WE caused — popping the presenter panel out
+      // opens a window, which makes the browser drop fullscreen on this one.
+      if (performance.now() < this._fsExemptUntil) return;
       // The browser's own Esc / F11 leaves fullscreen without touching us —
       // follow it out rather than sitting in a half-exited state.
       if (this._active && this._wentFullscreen && !document.fullscreenElement) {
@@ -849,6 +854,25 @@ export default class PresentSession {
     }
   }
 
+  /**
+   * Called around the presenter panel opening or closing its own window. The
+   * popup steals focus, so the browser drops fullscreen on the map window and
+   * fires fullscreenchange — which, untreated, ends the show and closes the
+   * window that was just opened. Ignore that event, then take fullscreen back
+   * for the audience screen (still inside the click's transient activation, so
+   * the browser normally grants it; if it refuses, the show simply continues
+   * windowed).
+   */
+  private _exemptFullscreenChange(): void {
+    this._fsExemptUntil = performance.now() + 3000;
+    if (!this._wentFullscreen) return;
+    window.setTimeout(() => {
+      if (!this._active || document.fullscreenElement) return;
+      if (this._host.cfg().fullscreen === false) return;
+      void this._requestFullscreen();
+    }, 300);
+  }
+
   private async _exitFullscreen(): Promise<void> {
     if (!this._wentFullscreen) return;
     this._wentFullscreen = false;
@@ -893,6 +917,7 @@ export default class PresentSession {
         this._host
           .getSlides()
           .map((s, i) => ({ title: s.title || `Slide ${i + 1}`, thumb: s.thumbnailDataUrl })),
+      onWindowChange: () => this._exemptFullscreenChange(),
     });
     this._panel.mount(document);
     this._syncChrome();

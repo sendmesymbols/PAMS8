@@ -52,6 +52,13 @@ export interface PresenterHost {
   toggleBlackout(): void;
   exit(): void;
   listSlides(): PresenterSlideRef[];
+  /**
+   * The panel is about to open or close its own window. Opening a popup makes
+   * the browser drop fullscreen on the map window, and the session must not
+   * read that as "the briefer left the show" — see PresentSession's
+   * fullscreenchange handler.
+   */
+  onWindowChange?(): void;
 }
 
 const PANEL_CSS = `
@@ -297,6 +304,10 @@ export default class PresenterPanel {
    */
   public popOut(): boolean {
     if (this.isPoppedOut()) return true;
+    // Must run BEFORE window.open: the popup steals focus and the browser drops
+    // the map window out of fullscreen, which would otherwise end the show and
+    // take this new window down with it.
+    this._host.onWindowChange?.();
     let win: Window | null = null;
     try {
       win = window.open('', 'ms-presenter-view', 'width=620,height=820,menubar=no,toolbar=no');
@@ -320,6 +331,15 @@ export default class PresenterPanel {
     this.mount(win.document);
     const popBtn = this._root?.querySelector('[data-act="pop"]');
     if (popBtn) popBtn.textContent = '⧉ Dock';
+
+    // The host re-takes fullscreen on the map window shortly after this, which
+    // can pull focus back to it. Land focus on the briefer's window last, so
+    // the end state is: map fullscreen on the projector, this on top here.
+    window.setTimeout(() => {
+      try {
+        if (this._win && !this._win.closed) this._win.focus();
+      } catch {}
+    }, 700);
 
     // The briefer will be typing into this window, not the map one — forward
     // its transport keys so the deck still responds.
@@ -393,6 +413,7 @@ export default class PresenterPanel {
   public dock(): void {
     const win = this._win;
     this._win = null;
+    if (win) this._host.onWindowChange?.();
     if (win) {
       try {
         if (this._onWinKey) win.removeEventListener('keydown', this._onWinKey);
