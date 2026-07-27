@@ -1773,6 +1773,9 @@ class BriefingEngine {
           title: s.title || `Slide ${i + 1}`,
           thumb: s.thumbnailDataUrl,
           openComments: openCount(s.comments),
+          // Only reported for screen-only slides: a map-view slide's stored
+          // transition is ignored on playback, so badging it would lie.
+          slideTransition: this._isScreenOnly(s) ? s.slideTransition : undefined,
         })),
       listComments: () =>
         this._slides.flatMap((s, slideIndex) =>

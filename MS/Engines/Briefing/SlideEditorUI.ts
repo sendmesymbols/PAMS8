@@ -6,11 +6,12 @@
  *
  *   topbar                      brand · title · undo/redo · tools · save
  *   ├── rail        (left)      slide thumbnails, drag to reorder, ＋ New slide
- *   ├── canvas wrap (centre)    the fabric stage, with the zoom + Slideshow
- *   │                           pills parked in its bottom-right corner and the
- *   │                           speaker-notes drawer folded away beneath it
- *   └── props       (right)     collapsible sections — the slide's own
- *                               properties when nothing is selected, the
+ *   ├── canvas wrap (centre)    the fabric stage, with the slide-nav, zoom and
+ *   │                           Slideshow pills parked in its bottom-right
+ *   │                           corner and the speaker-notes drawer folded away
+ *   │                           beneath it
+ *   └── props       (right)     collapsible sections — the slide's own review
+ *                               comments when nothing is selected, the
  *                               contextual style sections when something is
  *
  * Both side rails drag-resize (widths persisted), collapse to nothing via
@@ -24,7 +25,13 @@
  * values into `host.defaults` and then notifies `host.onStyleChanged(prop)`.
  */
 
-import type { ArrowHead, OverlayBlend, Slide, SlideComment } from './BriefingTypes';
+import type {
+  ArrowHead,
+  OverlayBlend,
+  Slide,
+  SlideComment,
+  SlideTransitionType,
+} from './BriefingTypes';
 import { DEFAULT_TEXT_COLOR, type ArrowType } from './OverlayFabric';
 import { BUILTIN_LAYOUTS, LAYOUT_INK_DIM } from './SlideLayouts';
 import { openCount } from './SlideCommentUtils';
@@ -233,7 +240,13 @@ export interface ContextMenuState {
  * editor's ◀ / ▶ navigation still works.
  */
 export interface RailHost {
-  slides(): Array<{ title: string; thumb?: string; openComments?: number }>;
+  slides(): Array<{
+    title: string;
+    thumb?: string;
+    openComments?: number;
+    /** Set = the tile carries a transition badge. Absent = an instant cut. */
+    slideTransition?: SlideTransitionType;
+  }>;
   current(): number;
   /** Save the open slide and edit slide `index` instead. */
   go(index: number): void;
@@ -485,6 +498,37 @@ const ICONS: Record<string, string> = {
 };
 
 /**
+ * Rail-thumbnail transition badges, keyed by SlideTransitionType. Each glyph has
+ * to survive being drawn at 13px in a tile corner, so they lean on one strong
+ * gesture apiece — dissolving pair, direction of travel, hard wiping edge —
+ * rather than detail. The label is what the tooltip says.
+ */
+const TRANSITION_BADGES: Record<SlideTransitionType, { icon: string; label: string }> = {
+  fade: {
+    label: 'Fade',
+    icon: svg(
+      '<rect x="2.5" y="6" width="12" height="12" rx="1.6" opacity="0.4"/>' +
+        '<rect x="9.5" y="6" width="12" height="12" rx="1.6"/>',
+    ),
+  },
+  pushLeft: {
+    label: 'Push Left',
+    icon: svg('<path d="M3.5 4.5v15"/><path d="M20.5 12H8.5M13.5 6.5L8 12l5.5 5.5"/>'),
+  },
+  pushRight: {
+    label: 'Push Right',
+    icon: svg('<path d="M20.5 4.5v15"/><path d="M3.5 12h12M10.5 6.5L16 12l-5.5 5.5"/>'),
+  },
+  wipe: {
+    label: 'Wipe',
+    icon: svg(
+      '<rect x="3" y="5.5" width="18" height="13" rx="1.6"/>' +
+        '<path d="M4 6.5h7.5v11H4z" fill="currentColor" stroke="none"/>',
+    ),
+  },
+};
+
+/**
  * The editor's own mark, echoing bento's stacked-tiles lockup but in our
  * palette — one wide tile over two stacked ones, i.e. "a slide and its parts".
  */
@@ -697,6 +741,11 @@ export default class SlideEditorUI {
   private _notesBar: HTMLElement | null = null;
   public transitionSelect: HTMLSelectElement | null = null;
   public stageWrap: HTMLElement | null = null;
+  /** Go-to-slide field + the "/ n" beside it, and the values they last showed. */
+  private _navNum: HTMLInputElement | null = null;
+  private _navTotal: HTMLElement | null = null;
+  private _navIndex = 0;
+  private _navCount = 0;
 
   constructor(host: EditorUIHost) {
     this._host = host;
@@ -818,6 +867,19 @@ export default class SlideEditorUI {
               <span class="ms-sledit-loading">Preparing slide…</span>
             </div>
             <div class="ms-sledit-cornerbr">
+              <!-- Slide navigation sits with the zoom and Slideshow pills rather
+                   than in the properties rail: it acts on the canvas, and the
+                   rail can be collapsed away entirely. -->
+              <div class="ms-sledit-navbar">
+                <button data-act="prevSlide" title="Save this slide and edit the previous one">◀</button>
+                <span class="ms-sledit-navcount">
+                  <input type="text" class="ms-sledit-navnum" inputmode="numeric" autocomplete="off"
+                         spellcheck="false" aria-label="Slide number" value="–"
+                         title="Go to slide — type a number and press Enter">
+                  <span class="ms-sledit-navtotal">/ –</span>
+                </span>
+                <button data-act="nextSlide" title="Save this slide and edit the next one">▶</button>
+              </div>
               <div class="ms-sledit-zoombar">
                 <button data-act="zoomOut" title="Zoom out (Ctrl+−)">−</button>
                 <button data-act="zoomReset" class="ms-sledit-zoom" title="Reset zoom to 100% (Ctrl+0)">100%</button>
@@ -847,14 +909,6 @@ export default class SlideEditorUI {
         </div>
         <aside class="ms-sledit-props">
           <div class="ms-sledit-slidesecs">
-            <div class="ms-sledit-sec" data-sec="slide">
-              <div class="ms-sledit-seclabel">Slide</div>
-              <div class="ms-sledit-row ms-sledit-navrow">
-                <button data-act="prevSlide" title="Save this slide and edit the previous one">◀</button>
-                <span class="ms-sledit-navcount">– / –</span>
-                <button data-act="nextSlide" title="Save this slide and edit the next one">▶</button>
-              </div>
-            </div>
             <div class="ms-sledit-sec" data-sec="comments">
               <div class="ms-sledit-seclabel">Comments</div>
               <label class="ms-sledit-prow" data-row="cmtscope" title="List comments from every slide, not just this one">
@@ -1138,17 +1192,23 @@ export default class SlideEditorUI {
     this._corner = stage.querySelector('.ms-sledit-cornerbr') as HTMLElement;
     this._panel = stage.querySelector('.ms-sledit-panel') as HTMLElement;
     this.stageWrap = stage.querySelector('.ms-sledit-stagewrap') as HTMLElement;
+    this._navNum = stage.querySelector('.ms-sledit-navnum') as HTMLInputElement;
+    this._navTotal = stage.querySelector('.ms-sledit-navtotal') as HTMLElement;
     const cmtAll = stage.querySelector('.ms-sledit-cmtall') as HTMLInputElement | null;
     if (cmtAll) cmtAll.onchange = () => this.refreshComments();
     this.titleInput = stage.querySelector('.ms-sledit-title') as HTMLInputElement;
     this._notesBar = stage.querySelector('.ms-sledit-notesbar') as HTMLElement;
     this.notesArea = stage.querySelector('.ms-sledit-notes') as HTMLTextAreaElement;
     this.transitionSelect = stage.querySelector('.ms-sledit-transition') as HTMLSelectElement;
+    // The open tile's transition badge reads this control, so it has to redraw
+    // as soon as the choice changes rather than waiting for the save.
+    this.transitionSelect.onchange = () => this.refreshRail();
     this.titleInput.value = slide.title ?? '';
     this.syncNotes(slide);
     this.syncTransitionControl(slide);
 
     this._wireBar();
+    this._wireNavCount();
     this._wirePanel();
     this._wireShell();
     this._restorePanelWidths();
@@ -1190,6 +1250,47 @@ export default class SlideEditorUI {
     this._notesBar
       ?.querySelector('.ms-sledit-noteshead')
       ?.addEventListener('click', dispatch as EventListener);
+  }
+
+  /**
+   * The counter doubles as a go-to-slide field. Enter is the only thing that
+   * commits — Escape and losing focus put the current number back — because
+   * navigating saves the open slide, which is too much to hand to a stray click
+   * somewhere else in the chrome. Out-of-range entries clamp to the deck.
+   */
+  private _wireNavCount(): void {
+    const el = this._navNum;
+    if (!el) return;
+    const rail = this._host.rail;
+    if (!rail) {
+      // No slide list to jump around in — the arrows still work, so leave the
+      // number as the readout it was.
+      el.readOnly = true;
+      el.tabIndex = -1;
+      el.title = 'Slide number';
+      return;
+    }
+    const revert = () => {
+      el.value = this._navCount ? String(this._navIndex + 1) : '–';
+    };
+    el.onfocus = () => el.select();
+    el.onblur = revert;
+    el.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const n = parseInt(el.value, 10);
+        // Blur first: it reverts the field, so a rejected or clamped entry is
+        // never left sitting there, and updateNav repaints it after the jump.
+        el.blur();
+        if (!this._navCount || !Number.isFinite(n)) return;
+        const to = Math.min(Math.max(n, 1), this._navCount) - 1;
+        if (to !== this._navIndex) rail.go(to);
+      } else if (e.key === 'Escape') {
+        // The stage's own Escape handler does the blur (see SlideEditor's key
+        // ladder); this just drops the typed text before focus leaves.
+        revert();
+      }
+    };
   }
 
   // ── Shell: rails, resizers, section collapse, layout picker ────────────────
@@ -1408,11 +1509,19 @@ export default class SlideEditorUI {
         const badge = open
           ? `<span class="ms-sledit-thumbcmt" title="${open} open comment(s)">${open}</span>`
           : '';
+        // Same reasoning as the comment count: the open slide's transition is
+        // whatever the top-bar combo says, which only reaches the slide on save.
+        const trans = i === current ? this._pickedTransition() : s.slideTransition;
+        const tb = trans ? TRANSITION_BADGES[trans] : undefined;
+        const transBadge = tb
+          ? `<span class="ms-sledit-thumbtrans" title="Transition in: ${tb.label}">${tb.icon}</span>`
+          : '';
         return `<div class="ms-sledit-thumb${
           i === current ? ' active' : ''
         }" data-i="${i}" draggable="true" title="${label}">
             <span class="ms-sledit-thumbnum">${i + 1}</span>
             ${badge}
+            ${transBadge}
             <span class="ms-sledit-thumbtools">
               <button data-rail="dup" data-i="${i}" title="Duplicate this slide">⧉</button>
               <button data-rail="del" data-i="${i}" title="Delete this slide">✕</button>
@@ -1422,7 +1531,23 @@ export default class SlideEditorUI {
       })
       .join('');
     box.scrollTop = scroll;
+    // Holding the scroll position means the tile you just navigated to can be
+    // off-screen in a long deck, so pull it back — 'nearest' is a no-op when it
+    // is already visible, which keeps the strip still during comment refreshes.
+    (box.children[current] as HTMLElement | undefined)?.scrollIntoView({ block: 'nearest' });
     this._wireRailTiles();
+  }
+
+  /**
+   * The transition the open slide will be saved with: the top-bar combo's own
+   * value, since it only reaches the slide on save. Disabled means a map-view
+   * slide, whose stored value never plays (see syncTransitionControl) — no badge
+   * for those, matching what BriefingEngine reports for the other tiles.
+   */
+  private _pickedTransition(): SlideTransitionType | undefined {
+    const sel = this.transitionSelect;
+    if (!sel || sel.disabled) return undefined;
+    return (sel.value || undefined) as SlideTransitionType | undefined;
   }
 
   private _wireRailTiles(): void {
@@ -1902,8 +2027,10 @@ export default class SlideEditorUI {
   public updateNav(index: number, count: number): void {
     const stage = this._stage;
     if (!stage) return;
-    const counter = stage.querySelector('.ms-sledit-navcount');
-    if (counter) counter.textContent = `${index + 1} / ${count}`;
+    this._navIndex = index;
+    this._navCount = count;
+    if (this._navNum) this._navNum.value = String(index + 1);
+    if (this._navTotal) this._navTotal.textContent = `/ ${count}`;
     const prev = stage.querySelector('[data-act="prevSlide"]') as HTMLButtonElement | null;
     const next = stage.querySelector('[data-act="nextSlide"]') as HTMLButtonElement | null;
     if (prev) prev.disabled = index <= 0;
@@ -2335,7 +2462,6 @@ export default class SlideEditorUI {
         --sl-tint: var(--ms-bg-header, rgba(40, 80, 140, 0.10));
         --sl-input: var(--ms-bg-input, rgba(255, 255, 255, 0.05));
         --sl-line: var(--ms-border, rgba(255, 255, 255, 0.14));
-        --sl-line-soft: rgba(255, 255, 255, 0.08);
         --sl-text: var(--ms-text, #dde3e8);
         --sl-dim: var(--ms-text-dim, #8a97a5);
         --sl-accent: var(--ms-accent, #64b4ff);
@@ -2432,18 +2558,46 @@ export default class SlideEditorUI {
       .ms-sledit-main { flex: 1; display: flex; min-height: 0; }
 
       .ms-sledit-rail, .ms-sledit-props {
-        width: var(--railw, 188px); flex: none; overflow-y: auto;
+        width: var(--railw, 188px); flex: none;
         background: var(--sl-surface);
         background-image: linear-gradient(var(--sl-tint), var(--sl-tint));
-        scrollbar-width: thin;
       }
       .ms-sledit-rail {
         border-right: 1px solid var(--sl-line);
         display: flex; flex-direction: column; gap: 10px; padding: 12px;
+        /* The rail itself never scrolls — the thumbnail strip inside it does.
+           Scrolling the whole column would carry ＋ New slide off the bottom
+           (and, since the strip overflows visibly, bury it under the tiles). */
+        overflow: hidden;
       }
       .ms-sledit-props {
-        width: var(--railw, 236px);
+        width: var(--railw, 236px); overflow-y: auto;
         border-left: 1px solid var(--sl-line); padding: 12px 14px 20px;
+      }
+      /* Both scrollers wear a slim overlay-style bar instead of the platform's
+         wide light slab, which reads as a seam beside 188px of thumbnails. The
+         WebKit thumb is a pill inset by a transparent border; Firefox gets the
+         two-value scrollbar-color. Either way it only really shows on hover. */
+      .ms-sledit-railthumbs, .ms-sledit-props {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.14) transparent;
+      }
+      .ms-sledit-railthumbs:hover, .ms-sledit-props:hover {
+        scrollbar-color: rgba(255,255,255,0.3) transparent;
+      }
+      .ms-sledit-railthumbs::-webkit-scrollbar,
+      .ms-sledit-props::-webkit-scrollbar { width: 9px; background: transparent; }
+      .ms-sledit-railthumbs::-webkit-scrollbar-track,
+      .ms-sledit-props::-webkit-scrollbar-track { background: transparent; }
+      .ms-sledit-railthumbs::-webkit-scrollbar-thumb,
+      .ms-sledit-props::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.16);
+        border: 2px solid transparent; background-clip: content-box;
+        border-radius: 999px;
+      }
+      .ms-sledit-railthumbs:hover::-webkit-scrollbar-thumb,
+      .ms-sledit-props:hover::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.3); background-clip: content-box;
       }
       /* Collapsed rails keep their border as a hairline seam — the chevron on
          the resizer stays reachable because the resizer is a sibling. */
@@ -2477,6 +2631,10 @@ export default class SlideEditorUI {
       .ms-sledit-railthumbs {
         display: flex; flex-direction: column; align-items: center; gap: 9px;
         flex: 1; min-height: 0;
+        /* Takes the height the ＋ New slide button leaves and scrolls its own
+           overflow, so the button stays put however long the deck gets. The 2px
+           keeps the tiles' active border off the scrollbar pill. */
+        overflow-y: auto; overflow-x: hidden; padding-right: 2px;
       }
       .ms-sledit-thumb {
         position: relative; width: 100%; border: 2px solid var(--sl-line);
@@ -2503,6 +2661,18 @@ export default class SlideEditorUI {
         background: rgba(8,12,18,0.78); border-radius: 4px; padding: 1px 5px;
         font-variant-numeric: tabular-nums;
       }
+      /* Bottom-right — the last free corner (number top-left, tools top-right,
+         comment count bottom-left). Unlike those it keeps pointer events, so
+         hovering names the transition; a <span> is not natively draggable, so
+         the tile still owns the click and the reorder drag. */
+      .ms-sledit-thumbtrans {
+        position: absolute; bottom: 4px; right: 4px; z-index: 3;
+        width: 17px; height: 17px; border-radius: 4px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(8,12,18,0.78); color: var(--sl-text);
+      }
+      .ms-sledit-thumbtrans svg { width: 12px; height: 12px; display: block; }
+      .ms-sledit-thumb.active .ms-sledit-thumbtrans { color: var(--sl-accent); }
       .ms-sledit-thumbtools {
         position: absolute; right: 4px; top: 4px; z-index: 2; display: none; gap: 2px;
       }
@@ -2740,7 +2910,7 @@ export default class SlideEditorUI {
         position: absolute; right: 14px; bottom: 14px; z-index: 8;
         display: flex; align-items: center; gap: 8px;
       }
-      .ms-sledit-zoombar, .ms-sledit-presentpill {
+      .ms-sledit-navbar, .ms-sledit-zoombar, .ms-sledit-presentpill {
         display: flex; align-items: center; gap: 1px;
         background: var(--sl-surface); border: 1px solid var(--sl-line);
         border-radius: 999px; padding: 3px;
@@ -2753,8 +2923,36 @@ export default class SlideEditorUI {
         display: inline-flex; align-items: center; gap: 6px;
       }
       .ms-sledit-cornerbr button:hover { background: rgba(255,255,255,0.12); }
+      /* The first/last slide disables one arrow — it has to look spent, and stop
+         answering the hover, or the pill reads as broken rather than at its end. */
+      .ms-sledit-cornerbr button:disabled { opacity: 0.32; cursor: default; }
+      .ms-sledit-cornerbr button:disabled:hover { background: transparent; }
       .ms-sledit-cornerbr svg { width: 15px; height: 15px; display: block; }
       .ms-sledit-zoom { min-width: 50px; justify-content: center; color: var(--sl-dim) !important; font-variant-numeric: tabular-nums; }
+      /* "3 / 12", where the 3 is typeable. Carries its own padding to sit on the
+         same rhythm as the arrows either side of it, and the total wears the zoom
+         readout's dim ink so the editable half is the one that draws the eye. */
+      .ms-sledit-navcount {
+        display: inline-flex; align-items: center; gap: 3px;
+        padding: 0 3px; white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      .ms-sledit-navtotal { color: var(--sl-dim); }
+      /* Reads as part of the readout at rest — no box until you hover or focus
+         it, which is also the only cue needed that it takes typing. */
+      .ms-sledit-navnum {
+        width: 26px; padding: 2px 0; text-align: center;
+        font: inherit; font-variant-numeric: tabular-nums;
+        background: transparent; color: var(--sl-text);
+        border: 1px solid transparent; border-radius: 5px;
+      }
+      .ms-sledit-navnum:hover { border-color: var(--sl-line); }
+      .ms-sledit-navnum:focus {
+        outline: none; border-color: var(--sl-accent); background: var(--sl-input);
+      }
+      .ms-sledit-navnum:read-only {
+        color: var(--sl-dim); border-color: transparent; cursor: default;
+      }
       .ms-sledit-presentpill { position: relative; }
       .ms-sledit-pillmain { font-weight: 600; }
       .ms-sledit-pillcaret { padding: 5px 7px !important; color: var(--sl-dim) !important; font-size: 10px; }
@@ -2805,22 +3003,47 @@ export default class SlideEditorUI {
         display: flex; flex-direction: column; gap: 14px;
       }
       .ms-sledit-slidesecs { margin-bottom: 14px; }
-      .ms-sledit-navrow { justify-content: space-between; }
       .ms-sledit-notes:focus { outline: none; border-color: var(--sl-accent); background: rgba(255,255,255,0.08); }
       .ms-sledit-notes::placeholder { color: var(--sl-dim); }
-      .ms-sledit-navcount {
-        min-width: 46px; text-align: center; white-space: nowrap;
-        color: var(--sl-dim); font-variant-numeric: tabular-nums;
-      }
 
-      /* Collapsible sections: the label is the handle, everything after it is
-         the body. No per-section wrapper markup — see _wireShell. */
-      .ms-sledit-seclabel { cursor: pointer; user-select: none; }
-      .ms-sledit-seclabel::after {
-        content: '▾'; float: right; font-size: 9px; color: var(--sl-dim);
-        transition: transform 0.14s ease; transform-origin: center;
+      /* Collapsible sections: the whole label row is the handle — accent tick,
+         name, and the chevron chip at its right end. Everything after the label
+         is the body; no per-section wrapper markup — see _wireShell. Both marks
+         are pseudo-elements on purpose: showPanel rewrites some labels with
+         textContent, which would wipe a real child element. */
+      .ms-sledit-seclabel {
+        display: flex; align-items: center; gap: 8px;
+        cursor: pointer; user-select: none;
+        font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
+        text-transform: uppercase; color: var(--sl-dim);
+        transition: color 0.14s ease;
       }
-      .ms-sledit-sec.collapsed > .ms-sledit-seclabel::after { content: '▸'; }
+      .ms-sledit-seclabel:hover { color: var(--sl-text); }
+      /* Accent tick: what turns a dim uppercase line into a section heading. */
+      .ms-sledit-seclabel::before {
+        content: ''; flex: none; width: 3px; height: 11px; border-radius: 2px;
+        background: var(--sl-accent); opacity: 0.5;
+        transition: opacity 0.14s ease;
+      }
+      .ms-sledit-seclabel:hover::before { opacity: 1; }
+      /* The open/close affordance as a chip rather than a stray glyph — at 9px
+         and dim it disappeared into the header it was meant to operate. */
+      .ms-sledit-seclabel::after {
+        content: '▾'; margin-left: auto; flex: none;
+        width: 18px; height: 18px; box-sizing: border-box;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 10px; line-height: 1; color: var(--sl-text);
+        background: var(--sl-input); border: 1px solid var(--sl-line);
+        border-radius: 5px;
+        transition: transform 0.16s ease, background 0.14s ease,
+                    border-color 0.14s ease, color 0.14s ease;
+      }
+      .ms-sledit-seclabel:hover::after {
+        background: var(--sl-accent); border-color: transparent; color: #08121c;
+      }
+      /* Rotated rather than swapped for '▸': the turn is what reads as opening
+         and closing, and a swapped character cannot animate. */
+      .ms-sledit-sec.collapsed > .ms-sledit-seclabel::after { transform: rotate(-90deg); }
       .ms-sledit-sec.collapsed > *:not(.ms-sledit-seclabel) { display: none; }
 
       .ms-sledit-panel { padding: 0; }
@@ -2832,21 +3055,23 @@ export default class SlideEditorUI {
          above whichever section happens to be first-visible. */
       .ms-sledit-sec { display: flex; flex-direction: column; gap: 6px; }
       /* Applied by showPanel, not by a sibling selector — see the note there.
-         The rail's own gap sits above the rule and this padding below it, so
-         the divider lands centred between two sections. */
-      .ms-sledit-sec-divided {
-        border-top: 1px solid var(--sl-line-soft); padding-top: 13px;
-      }
-      .ms-sledit-seclabel {
-        font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
-        text-transform: uppercase; color: var(--sl-dim);
-      }
-      .ms-sledit-row {
-        display: flex; align-items: center; gap: 5px; flex-wrap: wrap; row-gap: 5px;
+         The rail's own gap sits above the seam and this padding below it, so the
+         divider lands centred between two sections. */
+      .ms-sledit-sec-divided { position: relative; padding-top: 15px; }
+      /* A seam between two groups rather than a table rule: it carries its
+         weight in the middle and fades out at both ends. Absolutely positioned
+         so it stays out of the section's flex flow — and out of the collapsed
+         rule above, which only hides real children, so a closed section keeps
+         its divider. */
+      .ms-sledit-sec-divided::before {
+        content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px;
+        background: linear-gradient(
+          90deg, transparent, var(--sl-line) 20%, var(--sl-line) 80%, transparent
+        );
       }
       .ms-sledit-mini { font-size: 11px; color: var(--sl-text); opacity: 0.78; }
       /* Scoped to the whole rail, not just .ms-sledit-panel: the slide-level
-         navigation section above it uses the same row markup and must not fall
+         sections above it (Comments) sit outside the panel and must not fall
          back to unstyled native controls. */
       .ms-sledit-props button {
         background: var(--sl-input); color: var(--sl-text);

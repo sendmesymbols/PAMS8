@@ -132,8 +132,17 @@ export interface SlideEditorHost {
   // with no left rail, navigating with ◀ / ▶ exactly as before. BriefingEngine
   // supplies all of them — each one already exists on its public API.
 
-  /** Title + thumbnail per slide, in order. */
-  listSlides?(): Array<{ title: string; thumb?: string }>;
+  /**
+   * Title + thumbnail per slide, in order, plus what the rail badges: the open
+   * comment count, and the transition played entering the slide (omitted when it
+   * could never play — see BriefingEngine._isScreenOnly).
+   */
+  listSlides?(): Array<{
+    title: string;
+    thumb?: string;
+    openComments?: number;
+    slideTransition?: SlideTransitionType;
+  }>;
   /** Reorder. The editor saves the open slide first. */
   moveSlide?(from: number, to: number): void;
   duplicateSlide?(index: number): void;
