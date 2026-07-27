@@ -425,7 +425,14 @@
   "briefing": {
     "defaultTransitionMs": 1000,
     "defaultEffect": "appear",
-    "autoplayIntervalMs": 5000
+    "autoplayIntervalMs": 5000,
+    "autoplayLoop": false,
+    "fullscreen": true,
+    "presenterPanel": false,
+    "controlsIdleMs": 2500,
+    "penColor": "#ff2d2d",
+    "penWidth": 0.0024,
+    "spotlightRadius": 0.12
   },
   "exportTools": {
     "mode": "flat",

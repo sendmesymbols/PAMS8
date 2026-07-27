@@ -2066,7 +2066,11 @@
             </div>
             <div class="briefing-menu-grid">
               <button class="ms-btn infobar-btn" data-briefing-act="edit" title="Open the full-screen slide editor for the current slide — text, shapes, arrows, colors, MIL-STD-2525D symbols (M) and block / attack arrows (B, W, U, F).">✎ Edit Slide</button>
-              <button class="ms-btn infobar-btn" data-briefing-act="present" title="Toggle full-screen present mode — Esc exits, arrows/space/click advance.">▶ Present</button>
+              <button class="ms-btn infobar-btn" data-briefing-act="present" title="Toggle the slideshow. Keys while presenting: → / Space / click advance · ← / right-click back · Home/End first/last · digits+Enter jump · B black · W white · G grid · N presenter view · L laser · P pen · S spotlight · E erase ink · [ ] spotlight size · T reset timer · A autoplay · F fullscreen · Esc exits.">▶ Present</button>
+            </div>
+            <div class="briefing-menu-grid">
+              <button class="ms-btn infobar-btn" data-briefing-act="presenter" title="Toggle the presenter view — speaker notes, elapsed timer, next-slide preview and a jump grid. Pops out to a second screen. Shortcut while presenting: N.">☰ Presenter View</button>
+              <button class="ms-btn infobar-btn" data-briefing-act="autoplay" title="Start / stop autoplay. In a slide with click-mode builds each tick reveals the next build group before moving on. Shortcut while presenting: A.">⏱ Autoplay</button>
             </div>
 
             <div class="briefing-menu-sep"></div>
@@ -2095,6 +2099,33 @@
             <div class="drawstyle-row">
               <span>Autoplay interval (ms)</span>
               <input class="ms-input" type="number" id="briefingMenuAutoplayMs" min="500" max="60000" step="500" title="Delay between slides when autoplay is running (briefing.autoplayIntervalMs)." />
+            </div>
+            <label class="drawstyle-row" for="briefingMenuAutoplayLoop">
+              <span>Autoplay loops</span>
+              <input type="checkbox" id="briefingMenuAutoplayLoop" title="Restart from the first slide instead of stopping when autoplay reaches the end (briefing.autoplayLoop)." />
+            </label>
+
+            <div class="briefing-menu-sep"></div>
+            <div class="briefing-menu-label">Present mode</div>
+            <label class="drawstyle-row" for="briefingMenuFullscreen">
+              <span>Fullscreen on present</span>
+              <input type="checkbox" id="briefingMenuFullscreen" title="Take the browser into real fullscreen when the slideshow starts. Leaving fullscreen (Esc / F11) also ends the slideshow (briefing.fullscreen)." />
+            </label>
+            <label class="drawstyle-row" for="briefingMenuPresenterPanel">
+              <span>Open presenter view</span>
+              <input type="checkbox" id="briefingMenuPresenterPanel" title="Show the presenter view as soon as the slideshow starts. N toggles it at any time (briefing.presenterPanel)." />
+            </label>
+            <div class="drawstyle-row">
+              <span>Hide controls after (ms)</span>
+              <input class="ms-input" type="number" id="briefingMenuIdleMs" min="600" max="20000" step="250" title="Idle delay before the control bar, counter and mouse cursor fade out while presenting. Any mouse movement brings them back (briefing.controlsIdleMs)." />
+            </div>
+            <div class="drawstyle-row">
+              <span>Pen colour</span>
+              <input class="ms-input" type="color" id="briefingMenuPenColor" title="Ink colour for the present-mode pen (P). Ink is session-only unless you keep it when the slideshow ends (briefing.penColor)." />
+            </div>
+            <div class="drawstyle-row">
+              <span>Spotlight radius</span>
+              <input class="ms-input" type="number" id="briefingMenuSpotRadius" min="0.03" max="0.6" step="0.01" title="Spotlight hole size (S) as a fraction of the view's smaller side. [ and ] resize it while presenting (briefing.spotlightRadius)." />
             </div>
 
             <div class="briefing-menu-sep"></div>

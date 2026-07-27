@@ -27,6 +27,31 @@ export interface CapturedViewState {
 export type BuildEffect = 'appear' | 'fade' | 'flyIn' | 'drawOn';
 
 /**
+ * When a build step fires, in a slide whose `buildMode` is 'click'. Mirrors
+ * PowerPoint's On Click / With Previous / After Previous.
+ *
+ * - `click`      — opens a new click group: nothing happens until the briefer advances.
+ * - `withPrev`   — joins the current group, starting at the group's own clock zero
+ *                  (+ its `delayMs`), so it plays alongside the step before it.
+ * - `afterPrev`  — joins the current group, starting where the previous step ENDS
+ *                  (+ its `delayMs`), so it plays in sequence off one click.
+ *
+ * Absent = `click`. Ignored entirely while `buildMode` is 'auto'.
+ */
+export type BuildTrigger = 'click' | 'withPrev' | 'afterPrev';
+
+/**
+ * How a slide's build steps are driven in present mode.
+ *
+ * - `auto`  — every step is scheduled at its absolute `delayMs` from slide-enter,
+ *             on one shared clock. The original (and default) behaviour.
+ * - `click` — steps are grouped by their `trigger` and each group waits for the
+ *             briefer to advance. Space / → / click reveal the next group; only
+ *             once every group is out does advancing move to the next slide.
+ */
+export type SlideBuildMode = 'auto' | 'click';
+
+/**
  * Present-mode transition played entering a screen-only ("slide view") slide
  * from another screen-only slide. Map-based slides never use this — their
  * view.goTo() pan/zoom is the transition.
@@ -324,12 +349,18 @@ export interface BuildStep {
   /** → graphic.attributes.id */
   graphicId: string;
   effect: BuildEffect;
-  /** Offset from slide-enter (steps share one clock, so they can overlap). */
+  /**
+   * In 'auto' mode: offset from slide-enter (steps share one clock, so they can
+   * overlap). In 'click' mode: offset from this step's own group start, which
+   * `trigger` defines — see BuildTrigger.
+   */
   delayMs: number;
   /** 0 for instant 'appear'. */
   durationMs: number;
   /** flyIn only: map-units offset the graphic starts at, animating to 0,0. */
   flyFrom?: { dx: number; dy: number };
+  /** Absent = 'click'. Only consulted when the slide's buildMode is 'click'. */
+  trigger?: BuildTrigger;
 }
 
 export interface Slide {
@@ -345,6 +376,11 @@ export interface Slide {
   graphicVisibility?: Record<string, boolean>;
   /** Ordered staged-reveal steps. */
   builds?: BuildStep[];
+  /**
+   * Absent = 'auto' — the original timer-driven behaviour, so every briefing
+   * authored before step-through existed plays back unchanged. See SlideBuildMode.
+   */
+  buildMode?: SlideBuildMode;
   /** goTo duration entering this slide (ms). Also reused as the slideTransition duration. */
   transitionMs: number;
   /**
@@ -370,12 +406,13 @@ export interface Slide {
 
 export interface BriefingDocument {
   /**
-   * 7 = review comments; 6 = milsym overlays + block/tactical arrows; 5 = table
-   * overlays + text listStyle; 4 = slides may be screen-only (imported PPTX: no
-   * extent/camera); 3 = full-res backgroundDataUrl fallback; 2 = overlays; 1–7
-   * accepted on import. Every added field is optional, so newer documents
-   * degrade in older code rather than failing to load.
+   * 8 = per-slide buildMode + per-step build triggers; 7 = review comments;
+   * 6 = milsym overlays + block/tactical arrows; 5 = table overlays + text
+   * listStyle; 4 = slides may be screen-only (imported PPTX: no extent/camera);
+   * 3 = full-res backgroundDataUrl fallback; 2 = overlays; 1–8 accepted on
+   * import. Every added field is optional, so newer documents degrade in older
+   * code rather than failing to load.
    */
-  version: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
   slides: Slide[];
 }

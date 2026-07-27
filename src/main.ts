@@ -2403,6 +2403,12 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     const transitionMsInput = document.getElementById('briefingMenuTransitionMs') as HTMLInputElement | null;
     const effectSelect = document.getElementById('briefingMenuEffect') as HTMLSelectElement | null;
     const autoplayMsInput = document.getElementById('briefingMenuAutoplayMs') as HTMLInputElement | null;
+    const autoplayLoopChk = document.getElementById('briefingMenuAutoplayLoop') as HTMLInputElement | null;
+    const fullscreenChk = document.getElementById('briefingMenuFullscreen') as HTMLInputElement | null;
+    const presenterPanelChk = document.getElementById('briefingMenuPresenterPanel') as HTMLInputElement | null;
+    const idleMsInput = document.getElementById('briefingMenuIdleMs') as HTMLInputElement | null;
+    const penColorInput = document.getElementById('briefingMenuPenColor') as HTMLInputElement | null;
+    const spotRadiusInput = document.getElementById('briefingMenuSpotRadius') as HTMLInputElement | null;
     const exportModeSelect = document.getElementById('briefingMenuExportMode') as HTMLSelectElement | null;
     const exportFormatSelect = document.getElementById('briefingMenuExportFormat') as HTMLSelectElement | null;
     const explodeBuildsChk = document.getElementById('briefingMenuExplodeBuilds') as HTMLInputElement | null;
@@ -2427,6 +2433,12 @@ function updateStylusPerSymbolUI(cls: string | null): void {
       if (transitionMsInput) transitionMsInput.value = String(briefing.defaultTransitionMs ?? 1000);
       if (effectSelect) effectSelect.value = briefing.defaultEffect ?? 'appear';
       if (autoplayMsInput) autoplayMsInput.value = String(briefing.autoplayIntervalMs ?? 5000);
+      if (autoplayLoopChk) autoplayLoopChk.checked = briefing.autoplayLoop === true;
+      if (fullscreenChk) fullscreenChk.checked = briefing.fullscreen !== false;
+      if (presenterPanelChk) presenterPanelChk.checked = briefing.presenterPanel === true;
+      if (idleMsInput) idleMsInput.value = String(briefing.controlsIdleMs ?? 2500);
+      if (penColorInput) penColorInput.value = briefing.penColor ?? '#ff2d2d';
+      if (spotRadiusInput) spotRadiusInput.value = String(briefing.spotlightRadius ?? 0.12);
       if (exportModeSelect) exportModeSelect.value = exportTools.mode === 'editable' ? 'editable' : 'flat';
       if (exportFormatSelect) exportFormatSelect.value = exportTools.format === 'jpeg' ? 'jpeg' : 'png';
       if (explodeBuildsChk) explodeBuildsChk.checked = exportTools.explodeBuilds === true;
@@ -2446,6 +2458,27 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     );
     autoplayMsInput?.addEventListener('change', () =>
       publishSetting(['briefing', 'autoplayIntervalMs'], Math.max(500, Number(autoplayMsInput.value) || 500)),
+    );
+    autoplayLoopChk?.addEventListener('change', () =>
+      publishSetting(['briefing', 'autoplayLoop'], autoplayLoopChk.checked),
+    );
+    fullscreenChk?.addEventListener('change', () =>
+      publishSetting(['briefing', 'fullscreen'], fullscreenChk.checked),
+    );
+    presenterPanelChk?.addEventListener('change', () =>
+      publishSetting(['briefing', 'presenterPanel'], presenterPanelChk.checked),
+    );
+    idleMsInput?.addEventListener('change', () =>
+      publishSetting(['briefing', 'controlsIdleMs'], Math.max(600, Number(idleMsInput.value) || 2500)),
+    );
+    penColorInput?.addEventListener('change', () =>
+      publishSetting(['briefing', 'penColor'], penColorInput.value),
+    );
+    spotRadiusInput?.addEventListener('change', () =>
+      publishSetting(
+        ['briefing', 'spotlightRadius'],
+        Math.min(0.6, Math.max(0.03, Number(spotRadiusInput.value) || 0.12)),
+      ),
     );
     exportModeSelect?.addEventListener('change', () =>
       publishSetting(['exportTools', 'mode'], exportModeSelect.value),
@@ -2495,6 +2528,26 @@ function updateStylusPerSymbolUI(cls: string | null): void {
           break;
         case 'present':
           be ? be.togglePresent() : warnNotReady();
+          break;
+        case 'presenter':
+          // The presenter view only exists inside a running slideshow — start
+          // one first if the briefer went straight for the notes.
+          if (!be) {
+            warnNotReady();
+          } else {
+            if (!be.isPresenting()) be.enterPresent();
+            be.togglePresenterPanel();
+          }
+          break;
+        case 'autoplay':
+          if (!be) {
+            warnNotReady();
+          } else if (be.isAutoplaying()) {
+            be.stopAutoplay();
+          } else {
+            if (!be.isPresenting()) be.enterPresent();
+            be.startAutoplay();
+          }
           break;
         case 'sorter':
           be ? be.toggleSorter() : warnNotReady();

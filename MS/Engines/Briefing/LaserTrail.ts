@@ -1,11 +1,17 @@
 /**
  * LaserTrail.ts
  *
- * Ephemeral laser-pointer trail for the SlideEditor's fabric canvas. Points
- * collected while the pointer is dragged render on fabric's upper canvas
- * (`contextTop`) via requestAnimationFrame and decay away over ~1 s — the
- * width/alpha easing follows Excalidraw's laserTrails.ts (DECAY_TIME /
- * DECAY_LENGTH easeOut mapping). Nothing here is ever persisted.
+ * Ephemeral laser-pointer trail. Points collected while the pointer is dragged
+ * render via requestAnimationFrame and decay away over ~1 s — the width/alpha
+ * easing follows Excalidraw's laserTrails.ts (DECAY_TIME / DECAY_LENGTH easeOut
+ * mapping). Nothing here is ever persisted.
+ *
+ * Two targets, picked by what the constructor is handed:
+ *   • a fabric.Canvas  — the SlideEditor. Paints on fabric's upper canvas
+ *     (`contextTop`) through the canvas viewportTransform, so the beam tracks
+ *     the artboard when the editor is zoomed or panned.
+ *   • an HTMLCanvasElement — present mode's annotator FX layer. No fabric, no
+ *     viewport transform: points are already in canvas pixels.
  *
  * fabric.js 4.5 is a CDN global (`window.fabric`) — never import it.
  */
@@ -23,14 +29,55 @@ interface TrailPoint {
   t: number;
 }
 
+/** What the renderer needs, whichever target it was handed. */
+interface TrailSurface {
+  ctx: CanvasRenderingContext2D;
+  clear: () => void;
+  /** fabric viewportTransform, or null when painting straight onto a canvas. */
+  vpt: number[] | null;
+  zoom: number;
+}
+
 export default class LaserTrail {
-  private _fc: any; // fabric.Canvas
+  private _fc: any = null; // fabric.Canvas, when constructed from one
+  private _el: HTMLCanvasElement | null = null; // raw canvas, when constructed from one
   private _pts: TrailPoint[] = [];
   private _raf = 0;
   private _down = false;
 
-  constructor(fc: any) {
-    this._fc = fc;
+  constructor(target: any) {
+    if (typeof HTMLCanvasElement !== 'undefined' && target instanceof HTMLCanvasElement) {
+      this._el = target;
+    } else {
+      this._fc = target;
+    }
+  }
+
+  /**
+   * Resolve the paint surface for this frame. Returns null once the target is
+   * gone (canvas detached, fabric canvas disposed), which stops the loop.
+   */
+  private _surface(): TrailSurface | null {
+    if (this._el) {
+      const ctx = this._el.getContext('2d');
+      if (!ctx) return null;
+      const el = this._el;
+      return {
+        ctx,
+        clear: () => ctx.clearRect(0, 0, el.width, el.height),
+        vpt: null,
+        zoom: 1,
+      };
+    }
+    const fc = this._fc;
+    const ctx = fc?.contextTop;
+    if (!ctx) return null;
+    return {
+      ctx,
+      clear: () => fc.clearContext(ctx),
+      vpt: fc.viewportTransform ?? null,
+      zoom: fc.getZoom?.() || 1,
+    };
   }
 
   public onDown(x: number, y: number): void {
@@ -56,7 +103,7 @@ export default class LaserTrail {
       this._raf = 0;
     }
     try {
-      this._fc?.clearContext?.(this._fc.contextTop);
+      this._surface()?.clear();
     } catch {}
   }
 
@@ -67,22 +114,21 @@ export default class LaserTrail {
 
   private _render(): void {
     this._raf = 0;
-    const fc = this._fc;
-    const ctx = fc?.contextTop;
-    if (!ctx) return;
+    const surface = this._surface();
+    if (!surface) return;
+    const { ctx, vpt, zoom } = surface;
 
     const now = performance.now();
     this._pts = this._pts.filter((p) => now - p.t < DECAY_TIME_MS);
-    fc.clearContext(ctx);
+    surface.clear();
 
     const pts = this._pts;
     if (pts.length >= 2) {
       ctx.save();
-      // Points arrive in scene coordinates but contextTop paints in screen
-      // space, so the canvas viewport transform has to be applied here or the
-      // trail lands somewhere else entirely once the editor is zoomed/panned.
-      const vpt = fc.viewportTransform;
-      const zoom = fc.getZoom?.() || 1;
+      // In the editor, points arrive in scene coordinates but contextTop paints
+      // in screen space, so the canvas viewport transform has to be applied here
+      // or the trail lands somewhere else entirely once zoomed/panned. On a raw
+      // canvas (present mode) there is no transform and vpt is null.
       if (vpt) ctx.transform(vpt[0], vpt[1], vpt[2], vpt[3], vpt[4], vpt[5]);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
