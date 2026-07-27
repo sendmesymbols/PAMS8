@@ -46,9 +46,10 @@ import GraphicsLayerManager, {
 import type SerializationEngine from '../ImportExport/SerializationEngine';
 import EngineLogger from '../../Support/EngineLogger';
 import settingsData from '../../Data/Settings.json';
-import { overlayToFabric, preloadOverlayImages } from './OverlayFabric';
+import { composeOverlayThumbnail } from './OverlayFabric';
 import { layoutById } from './SlideLayouts';
 import { openCount } from './SlideCommentUtils';
+import { pruneLinks } from './SlideLinks';
 import PresentSession from './Present/PresentSession';
 import { type BuildGroup, revealedIds, type ScheduledStep } from './Present/BuildSequencer';
 import type { SlideEditorHost } from './SlideEditor';
@@ -131,6 +132,9 @@ class BriefingEngine {
         getIndex: () => this._current,
         cfg: () => this._cfg,
         goToSlide: (i: number) => this.goToSlide(i),
+        firstVisibleIndex: () => this.firstVisibleIndex(),
+        lastVisibleIndex: () => this.lastVisibleIndex(),
+        nextVisibleIndex: (from: number, dir: 1 | -1) => this.nextVisibleIndex(from, dir),
         isScreenOnly: (s: Slide) => this._isScreenOnly(s),
         openSlideEditor: (i: number) => void this.openSlideEditor(i),
         cancelBuilds: () => this._cancelBuilds(),
@@ -431,45 +435,14 @@ class BriefingEngine {
   }
 
   /**
-   * Draw a slide's overlays onto a fresh map thumbnail via an offscreen
-   * StaticCanvas. Resolves undefined when there is nothing to compose or
-   * fabric is unavailable — callers fall back to the plain map shot.
+   * Draw a slide's overlays onto a fresh map thumbnail. Shared with
+   * PptxImporter — see OverlayFabric.composeOverlayThumbnail.
    */
   private _composeThumbnail(
     mapThumb: string,
     overlays: readonly SlideOverlay[] | undefined,
   ): Promise<string | undefined> {
-    const fabric = (window as any).fabric;
-    if (!fabric || !overlays?.length) return Promise.resolve(undefined);
-    // Picture overlays need their decode cache warm before overlayToFabric.
-    return preloadOverlayImages(overlays).then(() => new Promise<string | undefined>((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const w = img.naturalWidth || THUMB_WIDTH;
-          const h = img.naturalHeight || THUMB_HEIGHT;
-          const sc = new fabric.StaticCanvas(null, { width: w, height: h });
-          sc.setBackgroundImage(new fabric.Image(img), () => {
-            try {
-              for (const o of overlays) {
-                const obj = overlayToFabric(o, w, h);
-                if (obj) sc.add(obj);
-              }
-              sc.renderAll();
-              const out = sc.toDataURL({ format: 'jpeg', quality: 0.72 });
-              sc.dispose();
-              resolve(out);
-            } catch {
-              resolve(undefined);
-            }
-          });
-        } catch {
-          resolve(undefined);
-        }
-      };
-      img.onerror = () => resolve(undefined);
-      img.src = mapThumb;
-    }));
+    return composeOverlayThumbnail(mapThumb, overlays);
   }
 
   public getSlides(): readonly Slide[] {
@@ -503,6 +476,64 @@ class BriefingEngine {
   public setSlideTransition(ref: number | string, type?: SlideTransitionType): void {
     const idx = this._slideIndex(ref);
     if (idx >= 0) this._slides[idx].slideTransition = type;
+  }
+
+  // ── Hidden slides ──────────────────────────────────────────────────────────
+
+  /**
+   * PowerPoint's "Hide Slide": the slide stays in the deck and keeps its
+   * number, but playback steps over it. `hidden` omitted toggles.
+   *
+   * Only the STEPPING paths skip it — goToSlide(), the sorter tiles and a typed
+   * slide number all still reach a hidden slide on purpose, because that is how
+   * you author one.
+   */
+  public setSlideHidden(ref: number | string, hidden?: boolean): void {
+    const idx = this._slideIndex(ref);
+    if (idx < 0) return;
+    const slide = this._slides[idx];
+    const next = hidden ?? !slide.hidden;
+    slide.hidden = next || undefined; // absent, not `false` — keeps the JSON clean
+    this._refreshStrip();
+    EngineLogger.nextStep(
+      ENGINE_NAME,
+      `Slide ${idx + 1} "${slide.title}" ${next ? 'hidden — skipped in playback' : 'shown again'}`,
+    );
+  }
+
+  public toggleSlideHidden(ref: number | string): void {
+    this.setSlideHidden(ref);
+  }
+
+  /** Index of the first slide playback would show, or -1 when every slide is hidden. */
+  public firstVisibleIndex(): number {
+    return this._slides.findIndex((s) => !s.hidden);
+  }
+
+  /** Index of the last slide playback would show, or -1 when every slide is hidden. */
+  public lastVisibleIndex(): number {
+    for (let i = this._slides.length - 1; i >= 0; i--) {
+      if (!this._slides[i].hidden) return i;
+    }
+    return -1;
+  }
+
+  /**
+   * The next visible slide in `dir` from `from` (exclusive), or -1 when there is
+   * none. Every stepping path goes through here, so the skip rule lives in one
+   * place — a hidden slide is passed over even when several sit in a row, and a
+   * briefer standing ON a hidden slide still steps out of it correctly.
+   */
+  public nextVisibleIndex(from: number, dir: 1 | -1): number {
+    for (let i = from + dir; i >= 0 && i < this._slides.length; i += dir) {
+      if (!this._slides[i].hidden) return i;
+    }
+    return -1;
+  }
+
+  /** How many slides playback will skip — drives the sorter's count line. */
+  private _hiddenCount(): number {
+    return this._slides.reduce((n, s) => n + (s.hidden ? 1 : 0), 0);
   }
 
   /**
@@ -629,14 +660,15 @@ class BriefingEngine {
   /**
    * In present mode this is one briefer ADVANCE, so a slide with click-mode
    * builds reveals its next group before moving on. Outside present mode it is
-   * a plain slide step, as before.
+   * a plain slide step — over hidden slides, so stepping matches playback.
    */
   public async nextSlide(): Promise<void> {
     if (this._presentSession?.isActive()) {
       await this._presentSession.advance();
       return;
     }
-    if (this._current + 1 < this._slides.length) await this.goToSlide(this._current + 1);
+    const next = this.nextVisibleIndex(this._current, 1);
+    if (next >= 0) await this.goToSlide(next);
   }
 
   public async prevSlide(): Promise<void> {
@@ -644,7 +676,8 @@ class BriefingEngine {
       await this._presentSession.back();
       return;
     }
-    if (this._current > 0) await this.goToSlide(this._current - 1);
+    const prev = this.nextVisibleIndex(this._current, -1);
+    if (prev >= 0) await this.goToSlide(prev);
   }
 
   /**
@@ -1046,13 +1079,14 @@ class BriefingEngine {
   // ── Persistence ────────────────────────────────────────────────────────────
 
   public exportBriefing(): BriefingDocument {
-    // version 7 = review comments; 6 = milsym overlays + block/tactical arrows;
-    // 5 = table overlays + text listStyle; 4 = slides may be screen-only
+    // version 10 = hidden slides; 9 = overlay links; 8 = per-slide buildMode +
+    // build triggers; 7 = review comments; 6 = milsym overlays + block/tactical
+    // arrows; 5 = table overlays + text listStyle; 4 = slides may be screen-only
     // (imported PPTX: no extent/camera, backgroundDataUrl is the slide);
     // 3 = full-res background fallback; 2 = editor overlays. Import accepts
-    // 1–7 (every added field is optional, so it reads older documents
+    // 1–10 (every added field is optional, so it reads older documents
     // unchanged).
-    return { version: 7, slides: this._slides.map((s) => ({ ...s })) };
+    return { version: 10, slides: this._slides.map((s) => ({ ...s })) };
   }
 
   /**
@@ -1100,8 +1134,18 @@ class BriefingEngine {
     this._cancelBuilds();
     this._slides = doc.slides.map((s) => ({ ...s }));
     this._current = -1;
+    // A link whose target slide was deleted in another session would look
+    // clickable in the editor and do nothing in present mode — same dangling
+    // reference `labelOf` and comment anchors drop on load.
+    const droppedLinks = pruneLinks(this._slides);
     this._refreshStrip();
     EngineLogger.success(ENGINE_NAME, `Briefing imported — ${this._slides.length} slides`);
+    if (droppedLinks) {
+      EngineLogger.nextStep(
+        ENGINE_NAME,
+        `${droppedLinks} link${droppedLinks > 1 ? 's' : ''} pointed at slides that are no longer in the briefing — dropped`,
+      );
+    }
     // Surface completion + slide count by popping the strip open — importing
     // a briefing with no visible feedback otherwise looks like it did nothing.
     this.openPanel();
@@ -1173,7 +1217,11 @@ class BriefingEngine {
         EngineLogger.success(
           ENGINE_NAME,
           `Imported ${result.slides.length} slide(s) from "${file.name}"` +
-            (firstNew ? ` — appended after slide ${firstNew}` : ''),
+            (firstNew ? ` — appended after slide ${firstNew}` : '') +
+            ((): string => {
+              const h = result.slides.filter((s) => s.hidden).length;
+              return h ? ` · ${h} came in hidden (PowerPoint had them hidden too)` : '';
+            })(),
         );
       } catch (err) {
         EngineLogger.error(ENGINE_NAME, `PPTX import failed: ${err}`);
@@ -1413,8 +1461,14 @@ class BriefingEngine {
     this._strip.innerHTML = '';
     this._slides.forEach((slide, i) => {
       const tile = document.createElement('div');
-      tile.className = 'ms-briefing-tile' + (i === this._current ? ' active' : '');
-      tile.title = `${slide.title}${slide.notes ? `\n${slide.notes}` : ''}\n(click: go to · dblclick/✎: edit)`;
+      tile.className =
+        'ms-briefing-tile' +
+        (i === this._current ? ' active' : '') +
+        (slide.hidden ? ' ms-hidden-slide' : '');
+      tile.title =
+        `${slide.title}${slide.notes ? `\n${slide.notes}` : ''}` +
+        `${slide.hidden ? '\nHidden — skipped in playback' : ''}` +
+        `\n(click: go to · dblclick/✎: edit)`;
       if (slide.thumbnailDataUrl) {
         tile.style.backgroundImage = `url(${slide.thumbnailDataUrl})`;
       }
@@ -1426,10 +1480,15 @@ class BriefingEngine {
         <span class="ms-briefing-tile-num">${i + 1}</span>
         ${cmtBadge}
         <span class="ms-briefing-tile-title">${this._escapeHtml(slide.title)}</span>
+        <button class="ms-briefing-tile-hide" title="${
+          slide.hidden ? 'Hidden — click to show in playback.' : 'Hide this slide from playback.'
+        }">${slide.hidden ? '🚫' : '👁'}</button>
         <button class="ms-briefing-tile-edit" title="Edit slide — text, shapes, arrows, colors.">✎</button>
         <button class="ms-briefing-tile-del" title="Remove this slide.">✕</button>`;
       tile.addEventListener('click', (e) => {
-        if ((e.target as HTMLElement).closest('.ms-briefing-tile-edit')) {
+        if ((e.target as HTMLElement).closest('.ms-briefing-tile-hide')) {
+          this.toggleSlideHidden(i);
+        } else if ((e.target as HTMLElement).closest('.ms-briefing-tile-edit')) {
           void this.openSlideEditor(i);
         } else if ((e.target as HTMLElement).closest('.ms-briefing-tile-del')) {
           this.removeSlide(i);
@@ -1438,7 +1497,11 @@ class BriefingEngine {
         }
       });
       tile.addEventListener('dblclick', (e) => {
-        if ((e.target as HTMLElement).closest('.ms-briefing-tile-del, .ms-briefing-tile-edit')) {
+        if (
+          (e.target as HTMLElement).closest(
+            '.ms-briefing-tile-del, .ms-briefing-tile-edit, .ms-briefing-tile-hide',
+          )
+        ) {
           return;
         }
         void this.openSlideEditor(i);
@@ -1525,8 +1588,10 @@ class BriefingEngine {
 
     const count = this._sorter!.querySelector('.ms-sorter-count');
     if (count) {
+      const hidden = this._hiddenCount();
       count.textContent =
-        this._slides.length === 1 ? '1 slide' : `${this._slides.length} slides`;
+        (this._slides.length === 1 ? '1 slide' : `${this._slides.length} slides`) +
+        (hidden ? ` · ${hidden} hidden` : '');
     }
 
     if (!this._slides.length) {
@@ -1539,9 +1604,14 @@ class BriefingEngine {
 
     this._slides.forEach((slide, i) => {
       const tile = document.createElement('div');
-      tile.className = 'ms-sorter-tile' + (i === this._current ? ' active' : '');
+      tile.className =
+        'ms-sorter-tile' +
+        (i === this._current ? ' active' : '') +
+        (slide.hidden ? ' ms-hidden-slide' : '');
       tile.draggable = true;
-      tile.title = `${slide.title}${slide.notes ? `\n${slide.notes}` : ''}`;
+      tile.title =
+        `${slide.title}${slide.notes ? `\n${slide.notes}` : ''}` +
+        `${slide.hidden ? '\nHidden — skipped in playback' : ''}`;
       if (slide.thumbnailDataUrl) {
         tile.style.backgroundImage = `url(${slide.thumbnailDataUrl})`;
       }
@@ -1567,6 +1637,11 @@ class BriefingEngine {
         <span class="ms-sorter-tile-title">${this._escapeHtml(slide.title)}</span>
         <span class="ms-sorter-tile-actions">
           <select class="ms-sorter-tile-transition" data-act="transition" ${screenOnly ? '' : 'disabled'} title="${screenOnly ? 'Transition played entering this slide from another slide-view slide.' : 'Only applies between slide-view slides — no live map.'}">${transitionOptionsHtml}</select>
+          <button class="ms-sorter-tile-btn" data-act="hide" title="${
+            slide.hidden
+              ? 'Hidden — click to show in playback.'
+              : 'Hide this slide from playback (it stays in the deck).'
+          }">${slide.hidden ? '🚫' : '👁'}</button>
           <button class="ms-sorter-tile-btn" data-act="edit" title="Edit this slide — text, shapes, arrows, colors.">✎</button>
           <button class="ms-sorter-tile-btn" data-act="dup" title="Duplicate this slide.">⧉</button>
           <button class="ms-sorter-tile-btn" data-act="del" title="Remove this slide.">✕</button>
@@ -1577,6 +1652,8 @@ class BriefingEngine {
           ?.dataset.act;
         if (act === 'del') {
           this.removeSlide(i);
+        } else if (act === 'hide') {
+          this.toggleSlideHidden(i);
         } else if (act === 'dup') {
           this.duplicateSlide(i);
         } else if (act === 'edit') {
@@ -1764,12 +1841,14 @@ class BriefingEngine {
           // Only reported for screen-only slides: a map-view slide's stored
           // transition is ignored on playback, so badging it would lie.
           slideTransition: this._isScreenOnly(s) ? s.slideTransition : undefined,
+          hidden: s.hidden,
         })),
       listComments: () =>
         this._slides.flatMap((s, slideIndex) =>
           (s.comments ?? []).map((comment) => ({ slideIndex, comment })),
         ),
       moveSlide: (from: number, to: number) => this.moveSlide(from, to),
+      toggleSlideHidden: (i: number) => this.toggleSlideHidden(i),
       duplicateSlide: (i: number) => {
         this.duplicateSlide(i);
       },
@@ -2029,15 +2108,20 @@ class BriefingEngine {
         background: rgba(0,0,0,0.55); color: #eef2f5; font-size: 10px;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
-      .ms-briefing-tile-del, .ms-briefing-tile-edit {
+      .ms-briefing-tile-del, .ms-briefing-tile-edit, .ms-briefing-tile-hide {
         position: absolute; top: 2px; width: 18px; height: 18px;
         border: none; border-radius: 3px; background: rgba(0,0,0,0.6);
         font-size: 10px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity 0.12s ease;
       }
+      .ms-briefing-tile-hide { right: 42px; color: #cfd6dd; }
       .ms-briefing-tile-edit { right: 22px; color: #9ecbff; }
       .ms-briefing-tile-del { right: 2px; color: #f1b0b0; }
       .ms-briefing-tile:hover .ms-briefing-tile-del,
-      .ms-briefing-tile:hover .ms-briefing-tile-edit { opacity: 1; }
+      .ms-briefing-tile:hover .ms-briefing-tile-edit,
+      .ms-briefing-tile:hover .ms-briefing-tile-hide { opacity: 1; }
+      /* A hidden slide's own toggle stays visible without hover — otherwise the
+         only clue the tile is dimmed on purpose is the struck-through number. */
+      .ms-briefing-tile.ms-hidden-slide .ms-briefing-tile-hide { opacity: 1; }
       .ms-brief-cmt {
         /* top-right is the hover-revealed edit/delete pair and the bottom edge
            is the title bar, so this sits top-left instead, offset past
@@ -2070,7 +2154,11 @@ class BriefingEngine {
         .ms-briefing-btn { min-height: 38px; padding: 8px 12px; }
         .ms-briefing-iconbtn { width: 32px; height: 32px; font-size: 16px; }
         .ms-briefing-tile { width: 128px; height: 76px; }
-        .ms-briefing-tile-del, .ms-briefing-tile-edit { opacity: 1; width: 22px; height: 22px; }
+        .ms-briefing-tile-del, .ms-briefing-tile-edit, .ms-briefing-tile-hide {
+          opacity: 1; width: 22px; height: 22px;
+        }
+        .ms-briefing-tile-hide { right: 50px; }
+        .ms-briefing-tile-edit { right: 26px; }
         .ms-briefing-resize { width: 16px; right: -8px; }
       }
 
@@ -2213,6 +2301,28 @@ class BriefingEngine {
         background: rgba(10, 13, 18, 0.78);
         border: 1px solid rgba(229, 165, 64, 0.35);
         border-radius: 10px;
+      }
+      /* Hidden slides (PowerPoint's "Hide Slide") — same treatment in the slide
+         strip and the sorter. A scrim dims the THUMBNAIL only: it is generated
+         first, so the number, title and controls (all positioned, all later in
+         the DOM) still paint above it at full strength and stay clickable.
+         PowerPoint strikes the slide number through; so do we. */
+      .ms-briefing-tile.ms-hidden-slide::before,
+      .ms-sorter-tile.ms-hidden-slide::before {
+        content: ''; position: absolute; inset: 0;
+        background: rgba(8, 11, 16, 0.66);
+        pointer-events: none;
+      }
+      .ms-briefing-tile.ms-hidden-slide:hover::before,
+      .ms-sorter-tile.ms-hidden-slide:hover::before { background: rgba(8, 11, 16, 0.34); }
+      .ms-briefing-tile.ms-hidden-slide .ms-briefing-tile-num,
+      .ms-sorter-tile.ms-hidden-slide .ms-sorter-tile-num {
+        text-decoration: line-through;
+        text-decoration-thickness: 2px;
+      }
+      .ms-briefing-tile.ms-hidden-slide .ms-briefing-tile-title,
+      .ms-sorter-tile.ms-hidden-slide .ms-sorter-tile-title {
+        font-style: italic; color: var(--ms-text-dim, rgba(155, 180, 215, 0.72));
       }
       .ms-sorter-tile-actions {
         position: absolute; top: 5px; right: 5px; display: none; gap: 4px;

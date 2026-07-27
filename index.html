@@ -2065,8 +2065,8 @@
               <button class="ms-btn infobar-btn" data-briefing-act="next" title="Next slide (goTo transition).">Next ▶</button>
             </div>
             <div class="briefing-menu-grid">
-              <button class="ms-btn infobar-btn" data-briefing-act="edit" title="Open the full-screen slide editor for the current slide — text, shapes, arrows, colors, MIL-STD-2525D symbols (M) and block / attack arrows (B, W, U, F).">✎ Edit Slide</button>
-              <button class="ms-btn infobar-btn" data-briefing-act="present" title="Toggle the slideshow. Keys while presenting: → / Space / click advance · ← / right-click back · Home/End first/last · digits+Enter jump · B black · W white · G grid · N presenter view · L laser · P pen · S spotlight · E erase ink · [ ] spotlight size · T reset timer · A autoplay · F fullscreen · Esc exits.">▶ Present</button>
+              <button class="ms-btn infobar-btn" data-briefing-act="edit" title="Open the full-screen slide editor for the current slide — text, shapes, arrows, colors, MIL-STD-2525D symbols (M) and block / attack arrows (B, W, U, F). Right-click an object → Link… to make it jump to another slide when clicked in present mode; Ctrl+click a linked object to go to its target while editing.">✎ Edit Slide</button>
+              <button class="ms-btn infobar-btn" data-briefing-act="present" title="Toggle the slideshow. Clicking a linked annotation jumps to its target instead of advancing. Keys while presenting: → / Space / click advance · ← / right-click back · Home/End first/last · digits+Enter jump · B black · W white · G grid · N presenter view · L laser · P pen · S spotlight · E erase ink · [ ] spotlight size · T reset timer · A autoplay · F fullscreen · Esc exits.">▶ Present</button>
             </div>
             <div class="briefing-menu-grid">
               <button class="ms-btn infobar-btn" data-briefing-act="presenter" title="Toggle the presenter view — speaker notes, elapsed timer, next-slide preview and a jump grid. Pops out to a second screen. Shortcut while presenting: N.">☰ Presenter View</button>
@@ -2079,7 +2079,7 @@
               <button class="ms-btn infobar-btn" data-briefing-act="save" title="Download this briefing as a JSON file.">⬇ Save JSON</button>
               <button class="ms-btn infobar-btn" data-briefing-act="load" title="Load a briefing JSON file.">⬆ Load JSON</button>
             </div>
-            <button class="ms-btn infobar-btn" data-briefing-act="importPptx" title="Import a PowerPoint (.pptx) — its text, shapes, pictures, tables and notes become editable slides appended to this briefing.">⬆ Import PPTX</button>
+            <button class="ms-btn infobar-btn" data-briefing-act="importPptx" title="Import a PowerPoint (.pptx) — its text, shapes, pictures, tables, notes and slide-to-slide hyperlinks become editable slides appended to this briefing. External URL links are dropped.">⬆ Import PPTX</button>
 
             <div class="briefing-menu-sep"></div>
             <div class="briefing-menu-label">Playback</div>
@@ -2164,7 +2164,7 @@
                 <span class="briefing-toggle-track"></span>
               </span>
             </label>
-            <button class="ms-btn primary infobar-btn" id="briefingMenuExportBtn" data-briefing-act="export" title="Export a PowerPoint (.pptx) deck — one slide per captured briefing slide, or the current view if no slides exist, using the settings above.">⬒ Export PPTX</button>
+            <button class="ms-btn primary infobar-btn" id="briefingMenuExportBtn" data-briefing-act="export" title="Export a PowerPoint (.pptx) deck — one slide per captured briefing slide, or the current view if no slides exist, using the settings above. Annotation links become real PowerPoint hyperlinks; relative jumps are resolved to a fixed slide, and 'last viewed' / 'end show' are dropped (see the engine log).">⬒ Export PPTX</button>
           </div>
         </div>
 

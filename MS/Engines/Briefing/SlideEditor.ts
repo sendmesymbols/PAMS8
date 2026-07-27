@@ -18,6 +18,7 @@
 
 import EngineLogger from '../../Support/EngineLogger';
 import type {
+  OverlayLink,
   OverlayShadow,
   Slide,
   SlideComment,
@@ -78,6 +79,9 @@ import {
   type NormalizedTable,
 } from './OverlayTable';
 import { CommentsLayer, type CommentsHost } from './SlideComments';
+import { isUsableLink, linkLabel, linkTooltip, normalizeLink, resolveLink } from './SlideLinks';
+import { LinkBadgeLayer } from './SlideLinkBadges';
+import SlideLinkDialog from './SlideLinkDialog';
 import SlideEditorUI, { SHADOW_PRESETS, TOOL_DEFS } from './SlideEditorUI';
 import type {
   ObjectGeometry,
@@ -142,11 +146,14 @@ export interface SlideEditorHost {
     thumb?: string;
     openComments?: number;
     slideTransition?: SlideTransitionType;
+    hidden?: boolean;
   }>;
   /** Reorder. The editor saves the open slide first. */
   moveSlide?(from: number, to: number): void;
   duplicateSlide?(index: number): void;
   removeSlide?(index: number): void;
+  /** Flip a slide between hidden and shown in playback — see Slide.hidden. */
+  toggleSlideHidden?(index: number): void;
   /**
    * Append a slide seeded from a built-in layout id (see SlideLayouts) and
    * return its index, or null if it could not be created.
@@ -167,7 +174,11 @@ const BOX_TOOLS: ReadonlySet<Tool> = new Set([
   'blockArrowDouble',
   'chevron',
 ]);
-/** Box tools whose geometry can't reflow from width/height — drag-preview via scale. */
+/**
+ * Box tools whose geometry can't reflow from width/height — their drag preview
+ * is rebuilt from the live box on every move (see _onMouseMove) so what you
+ * drag out is exactly what mouse-up commits.
+ */
 const SCALED_BOX_TOOLS: ReadonlySet<Tool> = new Set([
   'diamond',
   'star',
@@ -193,7 +204,6 @@ const SYMBOL_STYLE_PROPS: ReadonlySet<StyleProp> = new Set<StyleProp>([
   'symSizePx',
   'symOptions',
 ]);
-const SCALE_BASE = 100;
 /** The kinds SCALED_BOX_TOOLS produces — makeShapeObject's own parameter type. */
 type ScaledBoxKind =
   | 'diamond'
@@ -336,6 +346,14 @@ export default class SlideEditor {
   /** Working copy of the open slide's threads — collected by _saveCurrent. */
   private _comments: SlideComment[] = [];
   private _cmt: CommentsLayer | null = null;
+  /** 🔗 pips over linked objects — DOM, never fabric. See SlideLinkBadges. */
+  private _linkBadges: LinkBadgeLayer | null = null;
+  private _linkDialog: SlideLinkDialog | null = null;
+  /**
+   * Slide index last navigated away from, for a followed 'last slide viewed'
+   * link. Null until the editor has changed slides at least once.
+   */
+  private _lastViewedIndex: number | null = null;
   private _commitTimer: ReturnType<typeof setTimeout> | null = null;
   /** Watches the stage box so a rail collapse/resize refits the canvas. */
   private _stageObserver: ResizeObserver | null = null;
@@ -491,6 +509,9 @@ export default class SlideEditor {
 
     this._opening = true;
     try {
+      // Where a 'last slide viewed' link goes when followed in the editor. Set
+      // before _index moves, and only for a real previous slide (-1 on first open).
+      if (this._index >= 0 && this._index !== index) this._lastViewedIndex = this._index;
       this._index = index;
       // Populate the working array before updateNav repaints the rail, so the
       // open slide's comment badge is read from the current slide's data.
@@ -546,7 +567,11 @@ export default class SlideEditor {
       this._redo = [];
       ui.setZoom(1); // fresh canvas per slide, so zoom always starts at 1:1
       this._setTool('select'); // never carry a draw tool across slides
+      // load() prunes dangling anchors and redraws the comment markers itself;
+      // the link badges have no such pass, so they are drawn here — without
+      // this, a freshly opened slide shows no 🔗 until the first pan or drag.
       this._cmt?.load();
+      this._linkBadges?.refresh();
       this._ui?.refreshComments();
       if (bg.usedFallback) {
         this._showToast(
@@ -602,6 +627,14 @@ export default class SlideEditor {
     this._laser = null;
     this._cmt?.unmount();
     this._cmt = null;
+    this._linkBadges?.unmount();
+    this._linkBadges = null;
+    // Owns a capture-phase document keydown listener, so it has to go with its DOM.
+    this._linkDialog?.dispose();
+    this._linkDialog = null;
+    // Slide history is per-session: reopening the editor must not let a
+    // 'last slide viewed' link jump to where the PREVIOUS session had been.
+    this._lastViewedIndex = null;
     this._comments = [];
     // Same reason as the context menu below — the picker owns a document-level
     // click-away listener that has to go with its DOM.
@@ -659,6 +692,11 @@ export default class SlideEditor {
     this._ui.build(stage, slide);
     this._cmt = new CommentsLayer(this._commentsHost());
     this._cmt.onArmChange = (on) => this._ui?.setCommentMode(on);
+    this._linkBadges = new LinkBadgeLayer({
+      canvas: () => this._fc,
+      tooltip: (link) => linkTooltip(link, this._briefingSlides()),
+      onOpen: (overlayId) => this._openLinkDialogFor(overlayId),
+    });
     this._attachImageDrop(stage);
     this._observeStageSize();
   }
@@ -712,6 +750,13 @@ export default class SlideEditor {
         const at = host.addSlideFromLayout?.(layoutId);
         if (at == null) return;
         void this._loadSlide(at);
+      },
+      toggleHidden: (index) => {
+        // Pure metadata on the briefing's own slide record — nothing the editor
+        // holds unsaved is touched, so unlike duplicate/remove there is no
+        // _saveCurrent and no reopen. Just repaint the rail.
+        host.toggleSlideHidden?.(index);
+        this._ui?.refreshRail();
       },
     };
   }
@@ -835,6 +880,19 @@ export default class SlideEditor {
         break;
       case 'lock':
         this._toggleLock();
+        break;
+      case 'link':
+        this._openLinkDialog();
+        break;
+      case 'followLink': {
+        // The menu row acts on the selection, so it follows the first selected
+        // object that actually has a link.
+        const linked = this._selectedObjects().find((o) => isUsableLink(o.data?.link));
+        if (linked) this._followLink(linked);
+        break;
+      }
+      case 'unlink':
+        this._applyLinkToSelection(null);
         break;
       case 'flipH':
         this._flipSelection('x');
@@ -972,6 +1030,7 @@ export default class SlideEditor {
     ui.remountPanel();
     // Same reason as remountPanel above: the innerHTML reset detached the layer.
     this._cmt?.mount(ui.stageWrap, canvasEl);
+    this._linkBadges?.mount(ui.stageWrap, canvasEl);
 
     this._fc = new fabric.Canvas(canvasEl, {
       preserveObjectStacking: true,
@@ -1043,12 +1102,12 @@ export default class SlideEditor {
       // A drag/scale/rotate just changed the numbers the Position & size fields
       // are showing.
       this._ui?.refreshGeometry();
-      this._cmt?.refresh();
+      this._refreshMarkers();
     });
     // Overlay-anchored markers ride the object's live bounding box, so they
     // have to be repositioned during the drag, not only on its commit.
-    this._fc.on('object:moving', () => this._cmt?.refresh());
-    this._fc.on('object:scaling', () => this._cmt?.refresh());
+    this._fc.on('object:moving', () => this._refreshMarkers());
+    this._fc.on('object:scaling', () => this._refreshMarkers());
     this._fc.on('mouse:wheel', (opt: any) => this._onWheel(opt));
     this._fc.on('mouse:dblclick', (opt: any) => this._onDoubleClick(opt));
     this._fc.on('text:editing:exited', (e: any) => {
@@ -1121,7 +1180,7 @@ export default class SlideEditor {
     this._W = newW;
     this._H = newH;
     this._fc.requestRenderAll();
-    this._cmt?.refresh();
+    this._refreshMarkers();
   }
 
   /** Transient bottom-center notice — CSS-driven fade so it needs no rAF. */
@@ -1367,7 +1426,7 @@ export default class SlideEditor {
     fc.zoomToPoint(new fabric.Point(about.x, about.y), next);
     fc.requestRenderAll();
     this._ui?.setZoom(next);
-    this._cmt?.refresh();
+    this._refreshMarkers();
   }
 
   /** Back to 1:1, with the slide re-centred in the frame. */
@@ -1377,7 +1436,7 @@ export default class SlideEditor {
     fc.setViewportTransform([1, 0, 0, 1, 0, 0]);
     fc.requestRenderAll();
     this._ui?.setZoom(1);
-    this._cmt?.refresh();
+    this._refreshMarkers();
   }
 
   /**
@@ -1391,7 +1450,7 @@ export default class SlideEditor {
     const move = (ev: MouseEvent) => {
       if (!this._fc) return;
       this._fc.relativePan(new fabric.Point(ev.clientX - last.x, ev.clientY - last.y));
-      this._cmt?.refresh();
+      this._refreshMarkers();
       last = { x: ev.clientX, y: ev.clientY };
     };
     const end = () => this._endPan();
@@ -1540,6 +1599,14 @@ export default class SlideEditor {
   private _onMouseDown(opt: any): void {
     if (!this._fc) return;
     const t = this._tool;
+    // Ctrl / Cmd + click follows a link, which is PowerPoint's own edit-mode
+    // gesture. Select mode only: every armed tool already owns a click, and
+    // fabric's skipTargetFind is on for them so there is nothing to hit-test
+    // against. Fabric's multi-select key is shiftKey, so this is free.
+    if (t === 'select' && (opt?.e?.ctrlKey || opt?.e?.metaKey)) {
+      const obj = this._linkObjectAt(opt.e);
+      if (obj && this._followLink(obj)) return;
+    }
     if (t === 'select' || t === 'freehand' || t === 'highlighter') return;
     const fabric = (window as any).fabric;
     const p = this._fc.getPointer(opt.e);
@@ -1661,12 +1728,11 @@ export default class SlideEditor {
     } else if (SCALED_BOX_TOOLS.has(t)) {
       obj = makeShapeObject(
         t as ScaledBoxKind,
-        { left: p.x, top: p.y, width: SCALE_BASE, height: SCALE_BASE },
+        { left: p.x, top: p.y, width: 1, height: 1 },
         style,
         { opacity: d.opacity },
         { headRatio: d.blockHeadRatio },
       );
-      obj.set({ scaleX: 0.02, scaleY: 0.02 });
     } else if (t === 'line') {
       obj = new fabric.Line([p.x, p.y, p.x, p.y], {
         stroke: style.stroke,
@@ -1726,12 +1792,26 @@ export default class SlideEditor {
         ry: Math.abs(p.y - startY) / 2,
       });
     } else if (SCALED_BOX_TOOLS.has(t)) {
-      obj.set({
-        left: Math.min(startX, p.x),
-        top: Math.min(startY, p.y),
-        scaleX: Math.max(0.02, Math.abs(p.x - startX) / SCALE_BASE),
-        scaleY: Math.max(0.02, Math.abs(p.y - startY) / SCALE_BASE),
-      });
+      // Rebuilt from the live box rather than scaled, exactly as mouse-up
+      // commits it — the arrow preview does the same. Scaling would multiply
+      // strokeWidth by the object's scale (fabric's default) and stretch the
+      // head/notch/corner measures, so the shape visibly changed on release.
+      this._fc.remove(obj);
+      const rebuilt = makeShapeObject(
+        t as ScaledBoxKind,
+        {
+          left: Math.min(startX, p.x),
+          top: Math.min(startY, p.y),
+          width: Math.abs(p.x - startX),
+          height: Math.abs(p.y - startY),
+        },
+        this._creationStyle(),
+        { opacity: this._defaults.opacity },
+        { headRatio: this._defaults.blockHeadRatio },
+      );
+      rebuilt.set({ selectable: false, evented: false });
+      this._fc.add(rebuilt);
+      this._drawing.obj = rebuilt;
     } else {
       obj.set({ x2: p.x, y2: p.y });
     }
@@ -1791,9 +1871,16 @@ export default class SlideEditor {
     }
 
     const isLineKind = t === 'line';
+    const isScaledBox = SCALED_BOX_TOOLS.has(t);
+    // A scaled-box preview is built at the live drag box with its own floor
+    // clamp, so its dimensions can't answer "did the user actually drag?" —
+    // measure the drag itself.
+    const upPt = isScaledBox ? this._fc.getPointer(opt.e) : null;
     const degenerate = isLineKind
       ? Math.hypot((obj.x2 ?? 0) - (obj.x1 ?? 0), (obj.y2 ?? 0) - (obj.y1 ?? 0)) < 4
-      : obj.getScaledWidth() < 4 && obj.getScaledHeight() < 4;
+      : isScaledBox
+        ? Math.abs(upPt!.x - startX) < 4 && Math.abs(upPt!.y - startY) < 4
+        : obj.getScaledWidth() < 4 && obj.getScaledHeight() < 4;
     if (degenerate) {
       this._fc.remove(obj);
       if (!this._toolLock) this._setTool('select');
@@ -1801,8 +1888,8 @@ export default class SlideEditor {
     }
 
     let finalObj: any = obj;
-    if (SCALED_BOX_TOOLS.has(t)) {
-      const p = this._fc.getPointer(opt.e);
+    if (isScaledBox) {
+      const p = upPt!;
       this._fc.remove(obj);
       finalObj = makeShapeObject(
         t as ScaledBoxKind,
@@ -3017,6 +3104,152 @@ export default class SlideEditor {
     }
   }
 
+  // ── Annotation links ───────────────────────────────────────────────────────
+  //
+  // A link lives on the object (obj.data.link, persisted by fabricToOverlay) and
+  // means "clicking this in present mode navigates". Nothing here draws: the 🔗
+  // badge is DOM (LinkBadgeLayer) and the panel chip is a text summary.
+
+  /**
+   * Every slide in the briefing, for the link dialog's target list and for
+   * naming a link's target. Built from the host's existing getSlide/getSlideCount
+   * rather than a new host method — the editor already navigates with those.
+   */
+  private _briefingSlides(): Slide[] {
+    const host = this._host;
+    if (!host) return [];
+    const out: Slide[] = [];
+    for (let i = 0; i < host.getSlideCount(); i++) {
+      const s = host.getSlide(i);
+      if (s) out.push(s);
+    }
+    return out;
+  }
+
+  /** Keep both marker layers in step — they ride the same object boxes. */
+  private _refreshMarkers(): void {
+    this._cmt?.refresh();
+    this._linkBadges?.refresh();
+  }
+
+  /** Push the selection's link into the panel's chip row. */
+  private _syncLinkChip(): void {
+    const objs = this._selectedObjects();
+    const links = objs.map((o) => o.data?.link).filter((l) => isUsableLink(l));
+    if (!objs.length) {
+      this._ui?.setLinkChip('No link', false);
+      return;
+    }
+    // "Mixed" covers both differing links and some-linked/some-not, because in
+    // either case there is no single value the chip could honestly show.
+    const same =
+      links.length === objs.length &&
+      links.every((l) => JSON.stringify(l) === JSON.stringify(links[0]));
+    if (!links.length) this._ui?.setLinkChip('No link', false);
+    else if (same) this._ui?.setLinkChip(linkLabel(links[0], this._briefingSlides()), true);
+    else this._ui?.setLinkChip('Mixed', true);
+  }
+
+  /**
+   * The linked object under a pointer event, or null. Probes past the active
+   * selection (skipGroup) so Ctrl+clicking one member of a multi-selection
+   * follows THAT object's link rather than hitting the ActiveSelection wrapper,
+   * which carries no `data`. skipTargetFind is bypassed the same way the text
+   * tool's label probe does it.
+   */
+  private _linkObjectAt(e: MouseEvent): any | null {
+    const fc = this._fc;
+    if (!fc) return null;
+    const prevSkip = fc.skipTargetFind;
+    fc.skipTargetFind = false;
+    const obj: any = fc.findTarget?.(e, true) ?? null;
+    fc.skipTargetFind = prevSkip;
+    return obj?.data?.kind && isUsableLink(obj.data.link) ? obj : null;
+  }
+
+  /**
+   * Open a linked object's target slide. Saves the open slide first — the same
+   * rule `_goToComment` follows, because navigating away with unsaved
+   * annotations on the canvas would lose them.
+   *
+   * Returns true when the click was consumed, including for a link that goes
+   * nowhere: the object is visibly a link, so swallowing the gesture and saying
+   * why beats silently doing nothing.
+   */
+  private _followLink(obj: any): boolean {
+    const link = obj?.data?.link;
+    if (!isUsableLink(link)) return false;
+    const slides = this._briefingSlides();
+    const resolved = resolveLink(link, slides, this._index, this._lastViewedIndex);
+    if (resolved === 'endShow') {
+      this._showToast('This link ends the show — it only does something in present mode.');
+      return true;
+    }
+    if (!resolved) {
+      // 'next' on the last slide, 'last viewed' before anything else was opened,
+      // or a target that has since left the briefing.
+      this._showToast(`Nothing to open — ${linkLabel(link, slides).toLowerCase()} has no target.`);
+      return true;
+    }
+    if (resolved.index === this._index) {
+      this._showToast('This link points at the slide you are already editing.');
+      return true;
+    }
+    if (this._opening) return true;
+    this._saveCurrent();
+    void this._loadSlide(resolved.index);
+    return true;
+  }
+
+  /** Select one object by overlay id, then open the dialog on it (badge click). */
+  private _openLinkDialogFor(overlayId: string): void {
+    const obj = this._overlayObjects().find((o) => o.data?.id === overlayId);
+    if (obj) this._selectObjects(this._cohortFor(obj));
+    this._openLinkDialog();
+  }
+
+  private _openLinkDialog(): void {
+    const stage = this._stage;
+    const objs = this._unlockedSelection();
+    if (!stage || !objs.length) return;
+    const links = objs.map((o) => o.data?.link).filter((l) => isUsableLink(l));
+    const same =
+      links.length === objs.length &&
+      links.every((l) => JSON.stringify(l) === JSON.stringify(links[0]));
+    if (!this._linkDialog) this._linkDialog = new SlideLinkDialog();
+    this._linkDialog.show(stage, {
+      slides: this._briefingSlides(),
+      currentIndex: this._index,
+      link: same && links.length ? links[0] : null,
+      count: objs.length,
+      mixed: !!links.length && !same,
+      onApply: (link) => this._applyLinkToSelection(link),
+    });
+  }
+
+  /**
+   * Set (or with null, clear) the link on every unlocked selected object. Goes
+   * through the normal commit path, so it lands in undo/redo like any other
+   * property change.
+   */
+  private _applyLinkToSelection(link: OverlayLink | null): void {
+    const objs = this._unlockedSelection();
+    if (!objs.length) return;
+    const normalized = link ? normalizeLink(link) : null;
+    let changed = 0;
+    for (const o of objs) {
+      const had = isUsableLink(o.data?.link);
+      if (normalized) o.data.link = normalized;
+      else if (had) delete o.data.link;
+      else continue;
+      changed++;
+    }
+    if (!changed) return;
+    this._commit();
+    this._refreshMarkers();
+    this._syncLinkChip();
+  }
+
   // ── Selection helpers ──────────────────────────────────────────────────────
 
   /** Selected overlay objects — an ActiveSelection is already reported as its members. */
@@ -3468,6 +3701,7 @@ export default class SlideEditor {
       canUngroup: objs.some((o) => !!o.data.groupId),
       canPaste: SlideEditor._clipboard.length > 0,
       canPasteStyles: !!SlideEditor._styleClipboard,
+      hasLink: objs.some((o) => isUsableLink(o.data?.link)),
     });
   }
 
@@ -3989,6 +4223,7 @@ export default class SlideEditor {
 
   private _syncPanelContext(): void {
     this._ui?.showPanel(this._panelContextFor());
+    this._syncLinkChip();
   }
 
   // ── Position & size ────────────────────────────────────────────────────────
@@ -4090,7 +4325,8 @@ export default class SlideEditor {
       d.bold = !!st.bold;
       d.italic = !!st.italic;
       d.underline = !!st.underline;
-      d.align = st.align === 'center' || st.align === 'right' ? st.align : 'left';
+      d.align =
+        st.align === 'center' || st.align === 'right' || st.align === 'justify' ? st.align : 'left';
       d.textColor = st.textColor ?? d.textColor;
       d.fill = st.fill ?? d.fill;
       d.fillOpacity = st.fillOpacity ?? d.fillOpacity;
@@ -4106,7 +4342,10 @@ export default class SlideEditor {
       d.bold = obj.fontWeight === 'bold';
       d.italic = obj.fontStyle === 'italic';
       d.underline = !!obj.underline;
-      d.align = obj.textAlign === 'center' || obj.textAlign === 'right' ? obj.textAlign : 'left';
+      d.align =
+        obj.textAlign === 'center' || obj.textAlign === 'right' || obj.textAlign === 'justify'
+          ? obj.textAlign
+          : 'left';
       d.textColor = parseColor(obj.fill)?.hex ?? d.textColor;
       d.listStyle = obj.data.listStyle ?? null;
     } else if (kind === 'milsym') {
@@ -4165,6 +4404,13 @@ export default class SlideEditor {
   private _attachKeys(): void {
     this._keyHandler = (e: KeyboardEvent) => {
       if (!this._stage) return;
+      // The link dialog is modal and owns the keyboard while open: it handles
+      // its own Esc / Enter, and none of the editor's single-key tool shortcuts
+      // should fire behind it. This handler is registered first (both are
+      // capture-phase on document), so the dialog cannot stop it — the editor
+      // has to stand down, the way the Esc ladder below already defers to the
+      // help sheet, context menu and symbol picker.
+      if (this._linkDialog?.isOpen) return;
       const target = e.target as HTMLElement | null;
       const inInput =
         !!target &&

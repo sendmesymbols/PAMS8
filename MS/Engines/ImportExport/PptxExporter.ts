@@ -61,6 +61,11 @@ import {
   parseColor,
 } from '../Briefing/OverlayFabric';
 import { renderMilSym } from '../Briefing/MilSymFactory';
+import {
+  isUsableLink,
+  resolveJumpForExport,
+  UNEXPORTABLE_JUMPS,
+} from '../Briefing/SlideLinks';
 import { buildTacArrowOutline, outlineBounds } from '../Briefing/TacArrowGeometry';
 import {
   commentAnchorEighths,
@@ -193,6 +198,41 @@ interface ContainFit {
   h: number;
 }
 
+/** An internal-slide hyperlink, in pptxgenjs' option shape. */
+interface PptxHyperlink {
+  /** 1-based pptx slide number — pptxgenjs names parts in add order. */
+  slide: number;
+  tooltip?: string;
+}
+
+/**
+ * Everything the overlay emit needs to turn an OverlayLink into a pptx slide
+ * number. Built once per export (see the pre-pass in `exportBriefing`) because
+ * a link on the first slide can target the last one, so the mapping must be
+ * complete before any shape is written.
+ */
+interface LinkExportCtx {
+  /** Briefing Slide.id → the pptx slide number of the FIRST part it emits. */
+  numberById: ReadonlyMap<string, number>;
+  /** Slide.id in briefing order — resolves relative jumps to a fixed slide. */
+  order: readonly string[];
+  /**
+   * Parallel to `order`: is that slide hidden? A relative jump baked into the
+   * deck must land where PLAYBACK would land, so 'next' steps over hidden
+   * slides here exactly as it does in present mode.
+   */
+  hidden: readonly boolean[];
+  /** Index into `order` of the slide currently being emitted. */
+  index: number;
+  /**
+   * Overlay ids whose link could not be written, by reason — see
+   * `_warnDroppedLinks`. Sets rather than counters because `explodeBuilds` emits
+   * the same overlays once per build frame, and the log should report how many
+   * LINKS were lost, not how many times each was skipped.
+   */
+  dropped: { unexportable: Set<string>; missing: Set<string>; table: Set<string> };
+}
+
 /** Bounds for the editable overlay so a pathological plan can't bloat the deck. */
 const MAX_SHAPES_PER_SLIDE = 250;
 const MAX_POINTS_PER_PATH = 250;
@@ -301,9 +341,33 @@ class PptxExporter {
     // pptxgenjs names slide parts in add order, so the pptx slide number is
     // just the running emit count.
     let pptxSlideNo = 0;
+    // Overlay links point at a briefing slide, but pptxgenjs wants the pptx
+    // slide NUMBER — and with explodeBuilds one briefing slide becomes several
+    // pptx slides. A link on slide 1 can target slide 9, so the whole mapping
+    // has to exist before the first shape is emitted; the per-slide emit counts
+    // are deterministic, so a cheap pre-pass gets it.
+    const numberById = new Map<string, number>();
+    let firstPartNo = 0;
+    for (const s of slides) {
+      numberById.set(s.id, firstPartNo + 1);
+      // Mirrors the emit loop below exactly — a screen-only slide is one part;
+      // an exploded build sequence is base + one frame per step.
+      const screenOnly = !s.view?.extent && !s.view?.camera && !!s.backgroundDataUrl;
+      const builds = s.builds ?? [];
+      firstPartNo += !screenOnly && explodeBuilds && builds.length ? builds.length + 1 : 1;
+    }
+    const linkCtx: LinkExportCtx = {
+      numberById,
+      order: slides.map((s) => s.id),
+      hidden: slides.map((s) => !!s.hidden),
+      index: 0,
+      dropped: { unexportable: new Set(), missing: new Set(), table: new Set() },
+    };
     if (slides.length && briefing) {
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
+        // Which slide's relative jumps ('next', 'prev') are being resolved.
+        linkCtx.index = i;
         // Screen-only slide (imported PPTX — no extent/camera): its stored
         // background IS the slide. Nothing to apply to the map, no screenshot,
         // no Mode-B projection.
@@ -312,7 +376,9 @@ class PptxExporter {
             title: slide.title,
             notes: includeNotes ? slide.notes : undefined,
             overlays: slide.overlays,
+            links: linkCtx,
             background: slide.backgroundDataUrl,
+            hidden: slide.hidden,
           }, stats);
           emitted++;
           pptxSlideNo++;
@@ -332,6 +398,10 @@ class PptxExporter {
               title: slide.title + suffix,
               notes: includeNotes ? slide.notes : undefined,
               overlays: slide.overlays,
+              links: linkCtx,
+              // Every frame of an exploded build inherits the flag — a hidden
+              // slide must not leak back in as a run of visible build frames.
+              hidden: slide.hidden,
             }, stats);
             emitted++;
             pptxSlideNo++;
@@ -350,6 +420,8 @@ class PptxExporter {
             title: slide.title,
             notes: includeNotes ? slide.notes : undefined,
             overlays: slide.overlays,
+            links: linkCtx,
+            hidden: slide.hidden,
           }, stats);
           emitted++;
           pptxSlideNo++;
@@ -394,11 +466,14 @@ class PptxExporter {
         'No graphics could become editable shapes on this export — only simple lines/areas (freehand, AutoShape) and text labels convert; unit icons and decorated tactical graphics always stay in the image. In 3D, graphics behind the camera or beyond the horizon also stay in the image.',
       );
     }
+    const hiddenOut = slides.reduce((n, s) => n + (s.hidden ? 1 : 0), 0);
     EngineLogger.success(
       ENGINE_NAME,
       `PPTX exported — ${emitted} slides${
         mode === 'editable' ? `, ${stats.shapes} editable shapes` : ''
-      }${commentRecords.length ? `, ${commentRecords.length} comment entries` : ''} → ${fileName}`,
+      }${commentRecords.length ? `, ${commentRecords.length} comment entries` : ''}${
+        hiddenOut ? `, ${hiddenOut} hidden (PowerPoint skips them too)` : ''
+      } → ${fileName}`,
     );
     if (skippedResolved) {
       EngineLogger.nextStep(
@@ -406,6 +481,33 @@ class PptxExporter {
         `${skippedResolved} resolved comment thread(s) were not exported`,
       );
     }
+    this._warnDroppedLinks(linkCtx);
+  }
+
+  /**
+   * What the link emit could not carry into PowerPoint. Each case is a real
+   * limitation rather than a bug, so it is reported instead of approximated:
+   *
+   * - `unexportable` — 'last slide viewed' / 'end show'. pptxgenjs can only
+   *   write a fixed slide link, and pointing either of these at a concrete
+   *   slide would be silently WRONG, not merely lossy. Inside PAMS they still
+   *   work; only the exported deck loses them.
+   * - `missing`      — a relative jump with nowhere to go ('next' on the last
+   *   slide), so there is no slide number to write.
+   * - `table`        — PowerPoint puts a table in a graphicFrame, which has no
+   *   `a:hlinkClick`; only shapes, text boxes and pictures can carry one.
+   */
+  private _warnDroppedLinks(ctx: LinkExportCtx): void {
+    const parts: string[] = [];
+    const { unexportable, missing, table } = ctx.dropped;
+    if (unexportable.size) parts.push(`${unexportable.size} × 'last viewed' / 'end show'`);
+    if (missing.size) parts.push(`${missing.size} jump(s) with no target slide`);
+    if (table.size) parts.push(`${table.size} link(s) on tables`);
+    if (!parts.length) return;
+    EngineLogger.nextStep(
+      ENGINE_NAME,
+      `Links PowerPoint cannot represent — dropped: ${parts.join(', ')}`,
+    );
   }
 
   // ── Slide assembly ─────────────────────────────────────────────────────────
@@ -419,13 +521,23 @@ class PptxExporter {
       title?: string;
       notes?: string;
       overlays?: readonly SlideOverlay[];
+      /** Absent when there is no briefing (the single-view export path). */
+      links?: LinkExportCtx;
       /** Screen-only slide raster — used instead of a live map screenshot. */
       background?: string;
+      /**
+       * Briefing slide marked hidden. Emitted as a real hidden PowerPoint slide
+       * (`<p:sld show="0">`) rather than dropped, so the deck round-trips: the
+       * content survives, and PowerPoint skips it in its own slideshow exactly
+       * as present mode does.
+       */
+      hidden?: boolean;
     },
     stats?: { shapes: number },
   ): Promise<void> {
     const slide = pptx.addSlide();
     slide.background = { color: '101418' };
+    if (meta.hidden) slide.hidden = true;
 
     // Mode B: find graphics that can become native shapes and hide them so
     // the raster underneath holds everything else. 2D is exact; 3D projects
@@ -501,7 +613,7 @@ class PptxExporter {
     // They are screen-space, so they emit natively in BOTH modes and need
     // no projection.
     if (meta.overlays?.length) {
-      this._emitOverlays(slide, meta.overlays, fit);
+      this._emitOverlays(slide, meta.overlays, fit, meta.links);
     }
 
     if (meta.title) {
@@ -933,26 +1045,83 @@ class PptxExporter {
     slide: any,
     overlays: readonly SlideOverlay[],
     fit: ContainFit,
+    links?: LinkExportCtx,
   ): void {
     let emitted = 0;
+    let linked = 0;
     for (const o of overlays) {
       try {
-        if (o.kind === 'text') this._emitOverlayText(slide, o, fit);
-        else if (o.kind === 'image') this._emitOverlayImage(slide, o, fit);
-        else if (o.kind === 'milsym') this._emitOverlayMilSym(slide, o, fit);
+        const link = this._overlayHyperlink(o, links);
+        if (link) linked++;
+        if (o.kind === 'text') this._emitOverlayText(slide, o, fit, link);
+        else if (o.kind === 'image') this._emitOverlayImage(slide, o, fit, link);
+        else if (o.kind === 'milsym') this._emitOverlayMilSym(slide, o, fit, link);
         else if (o.kind === 'table') this._emitOverlayTable(slide, o, fit);
-        else if (o.kind === 'tacArrow') this._emitOverlayTacArrow(slide, o, fit);
-        else if (OVERLAY_SHAPE_TYPES[o.kind]) this._emitOverlayBox(slide, o, fit);
-        else this._emitOverlayPath(slide, o, fit); // line | arrow | freehand | highlight
+        else if (o.kind === 'tacArrow') this._emitOverlayTacArrow(slide, o, fit, link);
+        else if (OVERLAY_SHAPE_TYPES[o.kind]) this._emitOverlayBox(slide, o, fit, link);
+        else this._emitOverlayPath(slide, o, fit, link); // line | arrow | freehand | highlight
         emitted++;
       } catch (err) {
         EngineLogger.error(ENGINE_NAME, `Annotation emit failed (${o?.kind}): ${err}`);
       }
     }
     if (emitted) {
-      EngineLogger.success(ENGINE_NAME, `Slide annotations — ${emitted} native objects`);
+      EngineLogger.success(
+        ENGINE_NAME,
+        `Slide annotations — ${emitted} native objects${linked ? `, ${linked} linked` : ''}`,
+      );
     }
     this._warnDroppedEffects(overlays);
+  }
+
+  /**
+   * An overlay's link as a pptxgenjs hyperlink option, or undefined.
+   *
+   * Relative jumps are resolved to a fixed slide here — the choice made when
+   * this feature was designed: pptxgenjs writes only `hlinksldjump`, so 'next'
+   * exports as a hard link to whatever followed at export time. The link stays
+   * relative inside PAMS; only the deck degrades. Anything that cannot be
+   * expressed at all is tallied for `_warnDroppedLinks` rather than guessed at.
+   */
+  private _overlayHyperlink(
+    o: SlideOverlay,
+    ctx: LinkExportCtx | undefined,
+  ): PptxHyperlink | undefined {
+    if (!ctx || !isUsableLink(o.link)) return undefined;
+    // A table is a graphicFrame in OOXML and has no a:hlinkClick to hang this on.
+    if (o.kind === 'table') {
+      ctx.dropped.table.add(o.id);
+      return undefined;
+    }
+    const tooltip = String(o.link.tooltip ?? '').trim() || undefined;
+
+    if (o.link.slideId) {
+      const slide = ctx.numberById.get(o.link.slideId);
+      // pruneLinks already dropped dangling ids on load, so this is the
+      // belt-and-braces case of a link written by something else.
+      if (!slide) {
+        ctx.dropped.missing.add(o.id);
+        return undefined;
+      }
+      return tooltip ? { slide, tooltip } : { slide };
+    }
+
+    if ((UNEXPORTABLE_JUMPS as readonly string[]).includes(o.link.jump!)) {
+      ctx.dropped.unexportable.add(o.id);
+      return undefined;
+    }
+    const index = resolveJumpForExport(
+      o.link,
+      ctx.order.length,
+      ctx.index,
+      (i) => ctx.hidden[i] === true,
+    );
+    const slide = index == null ? undefined : ctx.numberById.get(ctx.order[index]);
+    if (!slide) {
+      ctx.dropped.missing.add(o.id);
+      return undefined;
+    }
+    return tooltip ? { slide, tooltip } : { slide };
   }
 
   /** Overlay strokeWidth is a fraction of view height → slide points. */
@@ -1024,7 +1193,12 @@ class PptxExporter {
     return ((Math.round(o.rotation) % 360) + 360) % 360 || undefined;
   }
 
-  private _emitOverlayText(slide: any, o: SlideOverlay, fit: ContainFit): void {
+  private _emitOverlayText(
+    slide: any,
+    o: SlideOverlay,
+    fit: ContainFit,
+    hyperlink?: PptxHyperlink,
+  ): void {
     const fontPt = Math.min(96, Math.max(6, Math.round((o.fontSize ?? 0.03) * fit.h * 72)));
     // A list becomes real PowerPoint list paragraphs — one run per line with a
     // bullet — rather than literal '•' characters, so PowerPoint keeps
@@ -1063,6 +1237,9 @@ class PptxExporter {
       shadow: this._ovShadow(o, fit),
       transparency:
         o.opacity != null && o.opacity < 1 ? Math.round((1 - o.opacity) * 100) : undefined,
+      // Shape-level, so the whole text box is the click target — the object
+      // link the model stores, not a per-run one.
+      hyperlink,
     });
   }
 
@@ -1132,7 +1309,12 @@ class PptxExporter {
   }
 
   /** Picture overlays go out as real pptx pictures — the src is already a data URL. */
-  private _emitOverlayImage(slide: any, o: SlideOverlay, fit: ContainFit): void {
+  private _emitOverlayImage(
+    slide: any,
+    o: SlideOverlay,
+    fit: ContainFit,
+    hyperlink?: PptxHyperlink,
+  ): void {
     if (!o.src) return;
     slide.addImage({
       data: o.src,
@@ -1146,6 +1328,7 @@ class PptxExporter {
       shadow: this._ovShadow(o, fit),
       transparency:
         o.opacity != null && o.opacity < 1 ? Math.round((1 - o.opacity) * 100) : undefined,
+      hyperlink,
     });
   }
 
@@ -1157,7 +1340,12 @@ class PptxExporter {
    * printed. This is the whole reason a milsym overlay stores a SIDC and not a
    * bitmap — export resolution is decided at export time.
    */
-  private _emitOverlayMilSym(slide: any, o: SlideOverlay, fit: ContainFit): void {
+  private _emitOverlayMilSym(
+    slide: any,
+    o: SlideOverlay,
+    fit: ContainFit,
+    hyperlink?: PptxHyperlink,
+  ): void {
     if (!o.sidc) return;
     const hIn = Math.max(0.02, o.h * fit.h);
     const render = renderMilSym(o.sidc, o.symOptions, hIn * PPTX_EXPORT_DPI * MILSYM_EXPORT_SCALE);
@@ -1179,6 +1367,7 @@ class PptxExporter {
       shadow: this._ovShadow(o, fit),
       transparency:
         o.opacity != null && o.opacity < 1 ? Math.round((1 - o.opacity) * 100) : undefined,
+      hyperlink,
     });
   }
 
@@ -1187,7 +1376,12 @@ class PptxExporter {
    * regenerated at export scale so curves stay smooth. It lands as an editable
    * PowerPoint freeform.
    */
-  private _emitOverlayTacArrow(slide: any, o: SlideOverlay, fit: ContainFit): void {
+  private _emitOverlayTacArrow(
+    slide: any,
+    o: SlideOverlay,
+    fit: ContainFit,
+    hyperlink?: PptxHyperlink,
+  ): void {
     const pts = (o.points ?? []).map((p) => ({
       x: (fit.x + p.x * fit.w) * PPTX_EXPORT_DPI,
       y: (fit.y + p.y * fit.h) * PPTX_EXPORT_DPI,
@@ -1229,10 +1423,16 @@ class PptxExporter {
           }
         : { color: 'FFFFFF', width: 0.5, transparency: 100 },
       shadow: this._ovShadow(o, fit),
+      hyperlink,
     });
   }
 
-  private _emitOverlayBox(slide: any, o: SlideOverlay, fit: ContainFit): void {
+  private _emitOverlayBox(
+    slide: any,
+    o: SlideOverlay,
+    fit: ContainFit,
+    hyperlink?: PptxHyperlink,
+  ): void {
     // Block arrows are native presets, but pptxgenjs can't write a shape's
     // adjustment values — so a head size other than OOXML's own default would
     // silently change on export. Those go out as exact custGeom instead: still
@@ -1241,7 +1441,7 @@ class PptxExporter {
       BLOCK_ARROW_KINDS.has(o.kind) &&
       Math.abs((o.headRatio ?? DEFAULT_BLOCK_HEAD_RATIO) - DEFAULT_BLOCK_HEAD_RATIO) > 0.01
     ) {
-      this._emitOverlayBlockArrowGeom(slide, o, fit);
+      this._emitOverlayBlockArrowGeom(slide, o, fit, hyperlink);
       return;
     }
     const alpha = (o.fillOpacity ?? 1) * (o.opacity ?? 1);
@@ -1266,6 +1466,7 @@ class PptxExporter {
       // Mirrored box overlays — pptxgenjs writes these straight into the xfrm.
       flipH: o.flipX || undefined,
       flipV: o.flipY || undefined,
+      hyperlink,
     });
   }
 
@@ -1274,7 +1475,12 @@ class PptxExporter {
    * vertices. Rotation and mirroring still ride on the xfrm, so only the
    * "preset with handles" affordance is lost — see _emitOverlayBox.
    */
-  private _emitOverlayBlockArrowGeom(slide: any, o: SlideOverlay, fit: ContainFit): void {
+  private _emitOverlayBlockArrowGeom(
+    slide: any,
+    o: SlideOverlay,
+    fit: ContainFit,
+    hyperlink?: PptxHyperlink,
+  ): void {
     const w = Math.max(0.02, o.w * fit.w);
     const h = Math.max(0.02, o.h * fit.h);
     const alpha = (o.fillOpacity ?? 1) * (o.opacity ?? 1);
@@ -1305,11 +1511,17 @@ class PptxExporter {
       shadow: this._ovShadow(o, fit),
       flipH: o.flipX || undefined,
       flipV: o.flipY || undefined,
+      hyperlink,
     });
   }
 
   /** line / arrow / freehand — custGeom path; arrows get a triangle head. */
-  private _emitOverlayPath(slide: any, o: SlideOverlay, fit: ContainFit): void {
+  private _emitOverlayPath(
+    slide: any,
+    o: SlideOverlay,
+    fit: ContainFit,
+    hyperlink?: PptxHyperlink,
+  ): void {
     const rawPts = o.points ?? [];
     // Elbow linework renders as a dogleg — export the orthogonal waypoints it
     // actually draws, for arrows and lines alike.
@@ -1359,6 +1571,7 @@ class PptxExporter {
         dashType: this._ovDashType(o),
       },
       shadow: this._ovShadow(o, fit),
+      hyperlink,
     });
   }
 

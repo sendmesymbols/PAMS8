@@ -19,6 +19,11 @@
  *   - pictures                      → composited in document order into ONE
  *                                      background raster (backgroundDataUrl)
  *   - notes slides                  → slide.notes
+ *   - a:hlinkClick on a shape/pic   → SlideOverlay.link (slide jumps and
+ *                                      relative jumps only; a linked picture
+ *                                      gets an invisible rect hotspot, since
+ *                                      the picture itself is flattened away.
+ *                                      External URLs are dropped.)
  *
  * Imported slides are "screen-only": `view` has neither extent nor camera,
  * so playback leaves the map untouched and the editor / present mode / PPTX
@@ -28,8 +33,9 @@
  * this loads until the first import.
  */
 
-import { overlayUuid } from '../Briefing/OverlayFabric';
-import type { ArrowHead, Slide, SlideOverlay, ViewKind } from '../Briefing/BriefingTypes';
+import { composeOverlayThumbnail, overlayUuid } from '../Briefing/OverlayFabric';
+import type { ArrowHead, LinkJump, Slide, SlideOverlay, ViewKind } from '../Briefing/BriefingTypes';
+import { jumpFromPptAction, normalizeLink } from '../Briefing/SlideLinks';
 import { loadPptxGenJS } from './PptxExporter';
 
 export interface PptxImportOptions {
@@ -150,16 +156,83 @@ function resolveTarget(baseDir: string, target: string): string {
 function relTargets(
   relsDoc: Document | null,
   baseDir: string,
-): Map<string, { target: string; type: string }> {
-  const map = new Map<string, { target: string; type: string }>();
+): Map<string, RelTarget> {
+  const map = new Map<string, RelTarget>();
   for (const rel of allByLocal(relsDoc, 'Relationship')) {
     const id = rel.getAttribute('Id');
     const target = rel.getAttribute('Target');
     if (id && target) {
-      map.set(id, { target: resolveTarget(baseDir, target), type: rel.getAttribute('Type') ?? '' });
+      // An external target is a URL, not a part path — resolving it against the
+      // part directory would mangle it ("https://x" → "https:/x"), so it is
+      // kept verbatim and flagged instead.
+      const external = rel.getAttribute('TargetMode') === 'External';
+      map.set(id, {
+        target: external ? target : resolveTarget(baseDir, target),
+        type: rel.getAttribute('Type') ?? '',
+        external,
+      });
     }
   }
   return map;
+}
+
+interface RelTarget {
+  target: string;
+  type: string;
+  external: boolean;
+}
+
+/**
+ * A hyperlink as it exists mid-parse: a slide TARGET PATH rather than a
+ * Slide.id, because the ids of slides not yet parsed do not exist yet. Resolved
+ * to a real OverlayLink in a second pass once every slide has been read — see
+ * the end of parsePptx.
+ */
+interface RawLink {
+  /** Zip path of the target slide part, e.g. 'ppt/slides/slide3.xml'. */
+  targetPath?: string;
+  jump?: LinkJump;
+  tooltip?: string;
+}
+
+/**
+ * `a:hlinkClick` on a shape's or picture's `p:cNvPr` → a RawLink, or null when
+ * there is nothing usable there. Three shapes of link exist in the wild:
+ *
+ * - `action="ppaction://hlinksldjump"` + `r:id` → a specific slide (the rel's
+ *   Target is that slide's part).
+ * - `action="ppaction://hlinkshowjump?jump=…"` → a relative jump; `r:id` is
+ *   empty because no relationship is needed.
+ * - an external `r:id` with no action → a URL, which the briefing model does
+ *   not carry; the caller counts it as skipped.
+ *
+ * `noaction`, `hlinkfile`, `program`, media and OLE actions are all "not a
+ * navigation" and return null.
+ */
+function readHlink(
+  cNvPr: Element | null,
+  rels: Map<string, RelTarget>,
+  onExternal: () => void,
+): RawLink | null {
+  const hl = cNvPr ? childByLocal(cNvPr, 'hlinkClick') : null;
+  if (!hl) return null;
+  const action = hl.getAttribute('action');
+  const tooltip = (hl.getAttribute('tooltip') || '').trim() || undefined;
+
+  const jump = jumpFromPptAction(action);
+  if (jump) return { jump, tooltip };
+
+  const rid = ridOf(hl, 'id');
+  const rel = rid ? rels.get(rid) : undefined;
+  if (!rel) return null;
+  if (rel.external) {
+    onExternal();
+    return null;
+  }
+  // Only a slide relationship is navigation; a hlinkfile/program action
+  // pointing at some other part is not.
+  if (!rel.type.endsWith('/slide')) return null;
+  return { targetPath: rel.target, tooltip };
 }
 
 /** First a:solidFill under `parent` → hex + alpha (a:alpha is thousandths of a percent). */
@@ -188,7 +261,7 @@ interface TextInfo {
   underline?: boolean;
   color?: string;
   fontFamily?: string;
-  align?: 'left' | 'center' | 'right';
+  align?: 'left' | 'center' | 'right' | 'justify';
   /**
    * Set when a paragraph carries an EXPLICIT a:buChar / a:buAutoNum. Bullets
    * inherited from a layout placeholder are deliberately not inferred — the
@@ -216,7 +289,10 @@ function extractText(txBody: Element | null): TextInfo | null {
       const algn = pPr?.getAttribute('algn');
       if (algn === 'ctr') align = 'center';
       else if (algn === 'r') align = 'right';
-      else if (algn) align = 'left';
+      // just / justLow / dist / thaiDist all read as justified — we only model one.
+      else if (algn === 'just' || algn === 'justLow' || algn === 'dist' || algn === 'thaiDist') {
+        align = 'justify';
+      } else if (algn) align = 'left';
     }
     // First paragraph that declares a bullet wins — one overlay text box has a
     // single listStyle. buNone anywhere is respected as "not a list".
@@ -382,6 +458,40 @@ function lnInfo(spPr: Element | null): LnInfo {
   };
 }
 
+/** Slide titles longer than this are elided — they're a strip label, not prose. */
+const MAX_DERIVED_TITLE = 60;
+
+/**
+ * Name a slide that has no real title placeholder.
+ *
+ * Only a `p:ph` of type title/ctrTitle sets `slide.title` during the walk, and
+ * plenty of decks never use one — a large plain text box is just as common. Those
+ * decks used to import as "Imported slide 1…57", which is useless in the slide
+ * strip and the jump grid. Fall back to whichever text most looks like a heading:
+ * biggest type wins, ties broken by whatever sits highest on the slide.
+ */
+function titleFromOverlays(overlays: readonly SlideOverlay[]): string | undefined {
+  let best: SlideOverlay | undefined;
+  for (const o of overlays) {
+    if (o.kind !== 'text' || !o.text?.trim()) continue;
+    if (
+      !best ||
+      (o.fontSize ?? 0) > (best.fontSize ?? 0) ||
+      ((o.fontSize ?? 0) === (best.fontSize ?? 0) && o.y < best.y)
+    ) {
+      best = o;
+    }
+  }
+  // A heading is its first non-empty line — bullet bodies would otherwise drag
+  // their whole content into the title.
+  const line = best?.text
+    ?.split('\n')
+    .map((s) => s.trim())
+    .find(Boolean);
+  if (!line) return undefined;
+  return line.length > MAX_DERIVED_TITLE ? `${line.slice(0, MAX_DERIVED_TITLE - 1)}…` : line;
+}
+
 function loadImage(dataUrl: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -469,7 +579,10 @@ export async function parsePptx(
     return cached;
   };
 
-  const parseSlide = async (slidePath: string, index: number): Promise<Slide | null> => {
+  const parseSlide = async (
+    slidePath: string,
+    index: number,
+  ): Promise<{ slide: Slide; rawLinks: Map<string, RawLink> } | null> => {
     const slideDoc = await readXml(slidePath);
     if (!slideDoc) {
       warnings.push(`Slide ${index + 1}: unreadable XML — skipped`);
@@ -483,6 +596,8 @@ export async function parsePptx(
     );
 
     const overlays: SlideOverlay[] = [];
+    /** overlay id → its unresolved link. Keyed so the second pass is a lookup. */
+    const rawLinks = new Map<string, RawLink>();
     const pics: Array<{ x: number; y: number; w: number; h: number; dataUrl: string }> = [];
     let title: string | undefined;
 
@@ -698,7 +813,25 @@ export async function parsePptx(
       return out;
     };
 
+    /**
+     * Attach one element's hyperlink to every overlay it produced. A single
+     * `p:sp` can yield several (a custGeom's subpaths, or a shape plus its text
+     * box) and PowerPoint's link belongs to the shape as a whole, so each piece
+     * becomes clickable — which is also what makes the shape+label pair behave
+     * like one button.
+     */
+    const linkOverlaysFrom = (el: Element, ownerTag: string, firstIndex: number): void => {
+      if (overlays.length <= firstIndex) return;
+      const cNvPr = childByLocal(childByLocal(el, ownerTag), 'cNvPr');
+      const raw = readHlink(cNvPr, rels, () =>
+        bump('external URL link dropped (briefings link between slides only)'),
+      );
+      if (!raw) return;
+      for (let i = firstIndex; i < overlays.length; i++) rawLinks.set(overlays[i].id, raw);
+    };
+
     const handleSp = (sp: Element): void => {
+      const firstOverlay = overlays.length;
       const spPr = childByLocal(sp, 'spPr');
       const phEl = firstByLocal(sp, 'ph');
       const phType = phEl?.getAttribute('type') ?? (phEl ? 'body' : null);
@@ -753,9 +886,11 @@ export async function parsePptx(
         if (box) emitText(box, textInfo);
         else bump('text without position skipped (no slide/layout geometry)');
       }
+      linkOverlaysFrom(sp, 'nvSpPr', firstOverlay);
     };
 
     const handleCxn = (cxn: Element): void => {
+      const firstOverlay = overlays.length;
       const spPr = childByLocal(cxn, 'spPr');
       const box = readXfrm(childByLocal(spPr, 'xfrm'), currentCtx);
       if (!box) {
@@ -763,6 +898,7 @@ export async function parsePptx(
         return;
       }
       pushOverlay(connectorOverlay(box, lnInfo(spPr)));
+      linkOverlaysFrom(cxn, 'nvCxnSpPr', firstOverlay);
     };
 
     const handlePic = async (pic: Element): Promise<void> => {
@@ -793,6 +929,32 @@ export async function parsePptx(
         h: ny(box.h),
         dataUrl: `data:${mime};base64,${await file.async('base64')}`,
       });
+      // Pictures are composited into the flat background, so a linked one has
+      // no overlay of its own to carry the link. Give it an invisible hotspot
+      // over the same box instead: a fill-less, stroke-less rect that draws
+      // nothing, exports as a real linked shape, and is selectable (and
+      // restylable into a visible button) in the slide editor.
+      const raw = readHlink(
+        childByLocal(childByLocal(pic, 'nvPicPr'), 'cNvPr'),
+        rels,
+        () => bump('external URL link dropped (briefings link between slides only)'),
+      );
+      if (raw) {
+        const hotspot: SlideOverlay = {
+          id: overlayUuid(),
+          kind: 'rect',
+          x: nx(box.x),
+          y: ny(box.y),
+          w: Math.max(0.001, nx(box.w)),
+          h: Math.max(0.001, ny(box.h)),
+        };
+        const before = overlays.length;
+        pushOverlay(hotspot);
+        // Skipped when the overlay cap was already reached — then there is no
+        // object to link and the link goes with it.
+        if (overlays.length > before) rawLinks.set(hotspot.id, raw);
+        else bump('picture link dropped (overlay cap reached)');
+      }
     };
 
     /**
@@ -993,26 +1155,78 @@ export async function parsePptx(
       thumb.height = tH;
       thumb.getContext('2d')?.drawImage(canvas, 0, 0, tW, tH);
       thumbnailDataUrl = thumb.toDataURL('image/jpeg', 0.72);
+      // The raster above is background colour + pictures ONLY, so a text-heavy
+      // slide would thumbnail blank. Flatten the overlays on top for the strip,
+      // sorter, jump grid and presenter preview. `backgroundDataUrl` stays
+      // overlay-free on purpose — present mode draws the overlays over it, and
+      // baking them in would render everything twice.
+      if (overlays.length) {
+        thumbnailDataUrl =
+          (await composeOverlayThumbnail(thumbnailDataUrl, overlays)) ?? thumbnailDataUrl;
+      }
     }
 
     return {
-      id: overlayUuid(),
-      title: title || `Imported slide ${index + 1}`,
-      notes,
-      // Screen-only: no extent/camera — playback leaves the map untouched.
-      view: { capturedIn: opts.capturedIn },
-      visibleLayers: {},
-      transitionMs: opts.defaultTransitionMs ?? 1000,
-      overlays: overlays.length ? overlays : undefined,
-      backgroundDataUrl,
-      thumbnailDataUrl,
+      slide: {
+        id: overlayUuid(),
+        title: title || titleFromOverlays(overlays) || `Imported slide ${index + 1}`,
+        notes,
+        // Screen-only: no extent/camera — playback leaves the map untouched.
+        view: { capturedIn: opts.capturedIn },
+        visibleLayers: {},
+        transitionMs: opts.defaultTransitionMs ?? 1000,
+        // PowerPoint's "Hide Slide" is `<p:sld show="0">` on the slide part's
+        // own root. Absent (the overwhelmingly common case) = shown.
+        hidden: slideDoc.documentElement.getAttribute('show') === '0' || undefined,
+        overlays: overlays.length ? overlays : undefined,
+        backgroundDataUrl,
+        thumbnailDataUrl,
+      },
+      rawLinks,
     };
   };
 
   const slides: Slide[] = [];
+  /** Slide part path → the Slide it became. Only parsed slides are in here. */
+  const slideByPath = new Map<string, Slide>();
+  const pendingLinks: Array<{ slide: Slide; rawLinks: Map<string, RawLink> }> = [];
   for (let i = 0; i < slidePaths.length; i++) {
-    const slide = await parseSlide(slidePaths[i], i);
-    if (slide) slides.push(slide);
+    const parsed = await parseSlide(slidePaths[i], i);
+    if (!parsed) continue;
+    slides.push(parsed.slide);
+    slideByPath.set(slidePaths[i], parsed.slide);
+    if (parsed.rawLinks.size) pendingLinks.push({ slide: parsed.slide, rawLinks: parsed.rawLinks });
+  }
+
+  // Second pass: a link's target slide may not have been parsed when the link
+  // was read, so only now can a target PATH become a Slide.id.
+  let linked = 0;
+  let unresolved = 0;
+  for (const { slide, rawLinks } of pendingLinks) {
+    for (const o of slide.overlays ?? []) {
+      const raw = rawLinks.get(o.id);
+      if (!raw) continue;
+      const link = raw.jump
+        ? { jump: raw.jump, tooltip: raw.tooltip }
+        : (() => {
+            const target = raw.targetPath ? slideByPath.get(raw.targetPath) : undefined;
+            // Points at a slide the import dropped, or one past MAX_SLIDES.
+            return target ? { slideId: target.id, tooltip: raw.tooltip } : null;
+          })();
+      const normalized = normalizeLink(link);
+      if (normalized) {
+        o.link = normalized;
+        linked++;
+      } else {
+        unresolved++;
+      }
+    }
+  }
+  if (linked) warnings.push(`Imported ${linked} slide link${linked > 1 ? 's' : ''}`);
+  if (unresolved) {
+    warnings.push(
+      `${unresolved} link${unresolved > 1 ? 's' : ''} pointed at a slide that was not imported — dropped`,
+    );
   }
 
   for (const [what, n] of skipped) {

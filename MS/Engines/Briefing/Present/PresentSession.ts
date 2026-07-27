@@ -11,6 +11,8 @@
  *                 click-to-advance / right-click-to-go-back on the view
  *   • overlays  — the fabric StaticCanvas frame per slide, and the
  *                 fade / push / wipe transitions between screen-only slides
+ *   • links     — a click inside a linked annotation navigates (pointer cursor
+ *                 on hover); a click anywhere else still advances
  *   • builds    — the step-through cursor over BuildSequencer's click groups
  *   • chrome    — auto-hiding control bar, slide counter, progress bar,
  *                 blackout / whiteout, idle cursor hiding
@@ -27,8 +29,9 @@ import EngineLogger from '../../../Support/EngineLogger';
 import PresentAnnotator, { type PresentTool } from './PresentAnnotator';
 import PresenterPanel, { type PresenterSlideRef } from './PresenterPanel';
 import { type BuildGroup, buildModeOf, groupSteps, type ScheduledStep } from './BuildSequencer';
-import type { Slide, SlideTransitionType } from '../BriefingTypes';
-import { overlayToFabric, preloadOverlayImages } from '../OverlayFabric';
+import type { Slide, SlideOverlay, SlideTransitionType } from '../BriefingTypes';
+import { composeOverlayThumbnail, overlayToFabric, preloadOverlayImages } from '../OverlayFabric';
+import { linkAtPoint, resolveLink } from '../SlideLinks';
 
 const ENGINE_NAME = 'BriefingEngine';
 
@@ -36,6 +39,13 @@ const ENGINE_NAME = 'BriefingEngine';
 export interface OverlayHandle {
   el: HTMLCanvasElement;
   canvas: any;
+  /**
+   * The canvas-pixel rect the slide's normalized overlay coordinates were drawn
+   * into: the whole canvas for a map slide, the contain-fit box of the imported
+   * raster for a screen-only one. Kept on the handle so link hit-testing uses
+   * exactly the rect the frame was painted with, rather than recomputing it.
+   */
+  fit: { x: number; y: number; w: number; h: number };
 }
 
 /** What PresentSession needs back from BriefingEngine. */
@@ -45,6 +55,15 @@ export interface PresentHost {
   getIndex(): number;
   cfg(): any;
   goToSlide(index: number): Promise<void>;
+  /**
+   * Hidden-slide skipping. Playback steps through these rather than ±1, so a
+   * slide marked `hidden` is passed over — but goToSlide() still reaches one on
+   * purpose (jump grid, typed number, an annotation link). All three return -1
+   * when there is no such slide, including when the whole deck is hidden.
+   */
+  firstVisibleIndex(): number;
+  lastVisibleIndex(): number;
+  nextVisibleIndex(from: number, dir: 1 | -1): number;
   isScreenOnly(slide: Slide): boolean;
   openSlideEditor(index: number): void;
   /** Cancel every in-flight build timer/tween and restore its target. */
@@ -68,7 +87,6 @@ export default class PresentSession {
   /** Esc reopens the Slide Editor only when the session was launched from it. */
   private _fromEditor = false;
 
-  private _savedUiComponents: any = null;
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private _clickHandler: ((e: MouseEvent) => void) | null = null;
   private _contextHandler: ((e: MouseEvent) => void) | null = null;
@@ -95,6 +113,16 @@ export default class PresentSession {
   /** Bumped at the start of every _transitionOverlays call — see that method. */
   private _transitionSeq = 0;
 
+  // Annotation links
+  /**
+   * The slide index navigated away from most recently — the target of a
+   * 'last slide viewed' link. Null until the first slide change, which is why
+   * such a link does nothing on the opening slide.
+   */
+  private _lastViewedIndex: number | null = null;
+  /** Whether the container is currently showing the link pointer. */
+  private _linkCursorOn = false;
+
   // Step-through builds
   private _groups: BuildGroup[] = [];
   private _cursor = 0;
@@ -110,7 +138,19 @@ export default class PresentSession {
   private _wentFullscreen = false;
   /** performance.now() before which fullscreenchange is ours, not the briefer's. */
   private _fsExemptUntil = 0;
+  /** A pop-out cost us fullscreen; retake it on the next gesture in this window. */
+  private _fsRearm = false;
   private _jumpBuffer = '';
+
+  /**
+   * One-slot cache for the presenter panel's big "On screen now" preview. These
+   * are full-resolution rasters (up to 1920px JPEG), so exactly one is kept —
+   * one per slide would balloon a long deck. See _nowPreview().
+   */
+  private _previewId: string | null = null;
+  private _previewUrl: string | undefined;
+  /** Slide id whose preview is being composed right now (async), if any. */
+  private _previewBusy: string | null = null;
 
   constructor(host: PresentHost) {
     this._host = host;
@@ -130,19 +170,21 @@ export default class PresentSession {
       EngineLogger.error(ENGINE_NAME, 'Cannot present: no slides captured');
       return;
     }
+    if (this._host.firstVisibleIndex() < 0) {
+      EngineLogger.error(
+        ENGINE_NAME,
+        `Cannot present: all ${slides.length} slide(s) are hidden — unhide one first`,
+      );
+      return;
+    }
     const v: any = this._host.getView();
     this._active = true;
     this._fromEditor = !!opts?.fromEditor;
     this._blackout = 'none';
     this._jumpBuffer = '';
+    // Hides the HUD and, via .ms-present-mode .esri-ui, every view widget —
+    // built-in or added with view.ui.add(). No save/restore state to leak.
     document.body.classList.add('ms-present-mode');
-
-    try {
-      this._savedUiComponents = v?.ui ? [...(v.ui.components ?? [])] : null;
-      if (v?.ui) v.ui.components = [];
-    } catch {
-      this._savedUiComponents = null;
-    }
 
     this._container = v?.container ?? null;
     this._attachInput();
@@ -161,7 +203,10 @@ export default class PresentSession {
 
     const index = this._host.getIndex();
     if (index < 0) {
-      void this._host.goToSlide(0);
+      // Opening cold — start on the first slide playback would actually show.
+      // Resuming (below) does NOT re-home: presenting "from current slide" onto
+      // a hidden one is a deliberate act, exactly as in PowerPoint.
+      void this._host.goToSlide(this._host.firstVisibleIndex());
     } else {
       // Resuming on a slide the map already shows: keep it fully built rather
       // than yanking its graphics away. ← still steps back through the builds.
@@ -189,12 +234,6 @@ export default class PresentSession {
 
     if (!opts?.silent) this._offerToKeepInk();
 
-    const v: any = this._host.getView();
-    try {
-      if (v?.ui && this._savedUiComponents) v.ui.components = this._savedUiComponents;
-    } catch {}
-    this._savedUiComponents = null;
-
     this._detachInput();
     this.cancelTransition();
     this.clearOverlays();
@@ -204,11 +243,14 @@ export default class PresentSession {
     this._panel?.destroy();
     this._panel = null;
     this._panelOpen = false;
+    this._clearPreview();
     this._removeChrome();
     this._blackout = 'none';
     this._groups = [];
     this._cursor = 0;
     this._enterFullyBuilt = false;
+    this._fsRearm = false;
+    this._fsExemptUntil = 0;
     void this._exitFullscreen();
 
     EngineLogger.success(ENGINE_NAME, 'Present mode exited');
@@ -235,10 +277,14 @@ export default class PresentSession {
     document.addEventListener('keydown', this._keyHandler, true);
 
     this._clickHandler = (e: MouseEvent) => {
+      this._tryRearmFullscreen(); // real gesture — the only moment fullscreen can be retaken
       // A tool owns the pointer; the annotator already swallowed the event, but
       // guard anyway in case the click landed outside its canvas.
       if (this._annotator && this._annotator.tool !== 'none') return;
       if (e.button !== 0) return;
+      // A linked annotation under the cursor navigates instead of advancing;
+      // anywhere else still advances, exactly as before links existed.
+      if (this._followLinkAt(e)) return;
       void this.advance();
     };
     this._contextHandler = (e: MouseEvent) => {
@@ -249,7 +295,10 @@ export default class PresentSession {
     this._container?.addEventListener('click', this._clickHandler);
     this._container?.addEventListener('contextmenu', this._contextHandler);
 
-    this._moveHandler = () => this._wake();
+    this._moveHandler = (e: MouseEvent) => {
+      this._wake();
+      this._updateLinkCursor(e);
+    };
     document.addEventListener('mousemove', this._moveHandler);
 
     this._fsHandler = () => {
@@ -283,6 +332,10 @@ export default class PresentSession {
     this._contextHandler = null;
     if (this._moveHandler) document.removeEventListener('mousemove', this._moveHandler);
     this._moveHandler = null;
+    // Never leave the view stuck on the link pointer after the show ends.
+    if (this._linkCursorOn && this._container) this._container.style.cursor = '';
+    this._linkCursorOn = false;
+    this._lastViewedIndex = null;
     if (this._fsHandler) document.removeEventListener('fullscreenchange', this._fsHandler);
     this._fsHandler = null;
     if (this._resizeHandler) window.removeEventListener('resize', this._resizeHandler);
@@ -312,6 +365,7 @@ export default class PresentSession {
       e.preventDefault();
     };
     this._wake();
+    this._tryRearmFullscreen(); // real gesture — the only moment fullscreen can be retaken
 
     // Digit accumulation: "12" then Enter jumps to slide 12.
     if (/^[0-9]$/.test(e.key)) {
@@ -369,11 +423,11 @@ export default class PresentSession {
         return;
       case 'Home':
         stop();
-        void this._jumpTo(0);
+        void this._jumpTo(this._host.firstVisibleIndex());
         return;
       case 'End':
         stop();
-        void this._jumpTo(this._host.getSlides().length - 1);
+        void this._jumpTo(this._host.lastVisibleIndex());
         return;
       case '[':
         stop();
@@ -439,8 +493,8 @@ export default class PresentSession {
 
   /**
    * One briefer advance: reveal the slide's next build group if any remain,
-   * otherwise move to the next slide. At the very end, autoplay either loops
-   * or stops; a manual advance simply does nothing.
+   * otherwise move to the next slide — skipping any marked hidden. At the very
+   * end, autoplay either loops or stops; a manual advance simply does nothing.
    */
   public async advance(): Promise<void> {
     if (!this._active) return;
@@ -450,13 +504,16 @@ export default class PresentSession {
       this._syncChrome();
       return;
     }
-    const index = this._host.getIndex();
-    const total = this._host.getSlides().length;
-    if (index + 1 < total) {
-      await this._host.goToSlide(index + 1);
+    const next = this._host.nextVisibleIndex(this._host.getIndex(), 1);
+    if (next >= 0) {
+      await this._host.goToSlide(next);
     } else if (this._autoplayTimer !== null) {
-      if (this._host.cfg().autoplayLoop === true) await this._host.goToSlide(0);
-      else this.stopAutoplay();
+      const first = this._host.firstVisibleIndex();
+      if (this._host.cfg().autoplayLoop === true && first >= 0) {
+        await this._host.goToSlide(first);
+      } else {
+        this.stopAutoplay();
+      }
     }
   }
 
@@ -464,7 +521,7 @@ export default class PresentSession {
    * One step back. Within a slide this SNAPS to the previous build state rather
    * than playing effects in reverse — predictable, and it matches what a
    * briefer wants when they overshot. At the top of a slide it moves to the
-   * previous slide, entered fully built.
+   * previous visible slide, entered fully built.
    */
   public async back(): Promise<void> {
     if (!this._active) return;
@@ -476,10 +533,10 @@ export default class PresentSession {
       this._syncChrome();
       return;
     }
-    const index = this._host.getIndex();
-    if (index > 0) {
+    const prev = this._host.nextVisibleIndex(this._host.getIndex(), -1);
+    if (prev >= 0) {
       this._enterFullyBuilt = true;
-      await this._host.goToSlide(index - 1);
+      await this._host.goToSlide(prev);
     }
   }
 
@@ -493,6 +550,68 @@ export default class PresentSession {
     await this._host.goToSlide(index);
   }
 
+  // ── Annotation links ───────────────────────────────────────────────────────
+
+  /**
+   * The linked overlay under a mouse event, or null. Overlay coordinates are
+   * normalized to the frame's own fit rect — the whole canvas on a map slide,
+   * the letterboxed raster box on a screen-only one — so the event is converted
+   * through the CURRENT frame's rect rather than the view's.
+   */
+  private _linkTargetAt(e: MouseEvent): SlideOverlay | null {
+    const slide = this._currentSlide();
+    const handle = this._overlay;
+    if (!slide?.overlays?.length || !handle) return null;
+    const rect = handle.el.getBoundingClientRect();
+    const { fit } = handle;
+    if (!(fit.w > 0) || !(fit.h > 0)) return null;
+    return linkAtPoint(
+      slide.overlays,
+      (e.clientX - rect.left - fit.x) / fit.w,
+      (e.clientY - rect.top - fit.y) / fit.h,
+    );
+  }
+
+  /**
+   * Navigate if the click landed on a linked annotation. Returns true when the
+   * click was consumed — including when the link resolved to nowhere, because a
+   * click on something the briefer can see is clickable should never fall
+   * through to "advance" and look like a misfire.
+   */
+  private _followLinkAt(e: MouseEvent): boolean {
+    const target = this._linkTargetAt(e);
+    if (!target) return false;
+    const slides = this._host.getSlides();
+    const resolved = resolveLink(
+      target.link,
+      slides,
+      this._host.getIndex(),
+      this._lastViewedIndex,
+    );
+    if (resolved === 'endShow') {
+      this.exit();
+      return true;
+    }
+    if (resolved) void this._jumpTo(resolved.index);
+    return true;
+  }
+
+  /**
+   * Pointer cursor over a linked annotation — the only affordance present mode
+   * gives, and what tells the briefer a shape is a button. Restored to the
+   * view's own cursor on the way out, so nothing is left changed after exit.
+   */
+  private _updateLinkCursor(e: MouseEvent): void {
+    const container: HTMLElement | null = this._container;
+    if (!container) return;
+    // An annotation tool owns the pointer; its own cursor must win.
+    const over =
+      (!this._annotator || this._annotator.tool === 'none') && !!this._linkTargetAt(e);
+    if (over === this._linkCursorOn) return;
+    this._linkCursorOn = over;
+    container.style.cursor = over ? 'pointer' : '';
+  }
+
   // ── Slide-change hooks, driven by BriefingEngine.goToSlide ─────────────────
 
   /**
@@ -501,6 +620,11 @@ export default class PresentSession {
    */
   public beginSlideChange(): OverlayHandle | null {
     this.cancelTransition();
+    // Remember where we are leaving FROM, so a 'last slide viewed' link can get
+    // back. Every navigation path funnels through the engine's goToSlide, which
+    // calls this first — so this is the one place that needs to record it.
+    const from = this._host.getIndex();
+    if (from >= 0) this._lastViewedIndex = from;
     return this._overlay;
   }
 
@@ -588,12 +712,13 @@ export default class PresentSession {
     el.className = 'ms-briefing-overlay-canvas';
     v.container.appendChild(el);
     const sc = new fabric.StaticCanvas(el, { width: W, height: H });
-    const handle: OverlayHandle = { el, canvas: sc };
+    const handle: OverlayHandle = { el, canvas: sc, fit: { x: 0, y: 0, w: W, h: H } };
 
     // Map slides: overlays span the live view rect. Screen-only slides:
     // everything is normalized to the imported slide box — contain-fit it
     // (like the editor/exporter do) and offset the overlays into that rect.
     const draw = (fit: { x: number; y: number; w: number; h: number }) => {
+      handle.fit = fit;
       for (const o of slide.overlays ?? []) {
         const obj = overlayToFabric(o, fit.w, fit.h);
         if (!obj) continue;
@@ -858,19 +983,38 @@ export default class PresentSession {
    * Called around the presenter panel opening or closing its own window. The
    * popup steals focus, so the browser drops fullscreen on the map window and
    * fires fullscreenchange — which, untreated, ends the show and closes the
-   * window that was just opened. Ignore that event, then take fullscreen back
-   * for the audience screen (still inside the click's transient activation, so
-   * the browser normally grants it; if it refuses, the show simply continues
-   * windowed).
+   * window that was just opened.
+   *
+   * Two things happen here, and only the first can be automatic. Fullscreen
+   * CANNOT simply be re-requested: once the popup has focus the map window is a
+   * background document, and browsers refuse requestFullscreen from one — there
+   * is no transient user activation left either. So the re-entry is armed and
+   * fires on the briefer's next click or keypress ON THE MAP WINDOW, which is a
+   * genuine gesture the browser will honour.
    */
   private _exemptFullscreenChange(): void {
     this._fsExemptUntil = performance.now() + 3000;
-    if (!this._wentFullscreen) return;
-    window.setTimeout(() => {
-      if (!this._active || document.fullscreenElement) return;
-      if (this._host.cfg().fullscreen === false) return;
-      void this._requestFullscreen();
-    }, 300);
+    if (this._wentFullscreen && this._host.cfg().fullscreen !== false) {
+      this._fsRearm = true;
+      this._wake(); // surface the counter so its restore hint is actually read
+      this._syncChrome();
+    }
+  }
+
+  /**
+   * One-shot fullscreen re-entry, called from the real user-gesture handlers
+   * (keydown / view click / control-bar click) so the request carries the
+   * activation the browser requires. No-op unless a pop-out actually cost us
+   * fullscreen.
+   */
+  private _tryRearmFullscreen(): void {
+    if (!this._fsRearm || !this._active) return;
+    if (document.fullscreenElement) {
+      this._fsRearm = false;
+      return;
+    }
+    this._fsRearm = false;
+    void this._requestFullscreen().then(() => this._syncChrome());
   }
 
   private async _exitFullscreen(): Promise<void> {
@@ -904,6 +1048,7 @@ export default class PresentSession {
     if (!open) {
       this._panel?.destroy();
       this._panel = null;
+      this._clearPreview();
       this._syncChrome();
       return;
     }
@@ -914,13 +1059,73 @@ export default class PresentSession {
       toggleBlackout: () => this._setBlackout(this._blackout === 'black' ? 'none' : 'black'),
       exit: () => this.exit(),
       listSlides: (): PresenterSlideRef[] =>
-        this._host
-          .getSlides()
-          .map((s, i) => ({ title: s.title || `Slide ${i + 1}`, thumb: s.thumbnailDataUrl })),
-      onWindowChange: () => this._exemptFullscreenChange(),
+        this._host.getSlides().map((s, i) => ({
+          title: s.title || `Slide ${i + 1}`,
+          thumb: s.thumbnailDataUrl,
+          // The jump grid still lists hidden slides — a briefer answering a
+          // question mid-show needs to be able to reach one — but marks them,
+          // so nobody jumps to one thinking it is part of the running deck.
+          hidden: s.hidden,
+        })),
+      onWindowChange: () => {
+        this._exemptFullscreenChange();
+        // The panel's window state flips just AFTER this callback returns, and
+        // the full-resolution preview is only wanted once it is popped out —
+        // re-push on the next tick so the big box fills in immediately rather
+        // than waiting for the briefer to advance a slide.
+        window.setTimeout(() => this._syncChrome(), 0);
+      },
     });
     this._panel.mount(document);
     this._syncChrome();
+  }
+
+  /**
+   * A READABLE "On screen now" image for `slide`. The rail thumbnail is 240px
+   * wide; blown up to fill the popped-out panel's preview box it is unreadable,
+   * which is the whole complaint. Prefer the capture-time full-resolution
+   * screenshot (`backgroundDataUrl`, up to 1920px) with the slide's annotations
+   * composited on top — the same recipe the strip thumbnails use, just not
+   * squeezed through 240px first.
+   *
+   * Composing is async, so the first call for an annotated slide returns
+   * undefined (the panel shows the thumbnail meanwhile) and repaints when the
+   * image lands. Returns undefined for good when there is no full-res capture
+   * at all — a 3D-headless slide has neither.
+   */
+  private _nowPreview(slide: Slide): string | undefined {
+    if (this._previewId === slide.id) return this._previewUrl;
+    const base = slide.backgroundDataUrl;
+    if (!base) return undefined;
+    // Nothing to draw over it — the capture IS the preview, no compose needed.
+    if (!slide.overlays?.length) {
+      this._previewId = slide.id;
+      this._previewUrl = base;
+      return base;
+    }
+    if (this._previewBusy === slide.id) return undefined; // already on its way
+    this._previewBusy = slide.id;
+    void composeOverlayThumbnail(base, slide.overlays, 0.9)
+      .then((url) => {
+        // Stale: the briefer moved on while this composed (a newer request has
+        // taken over _previewBusy), so this image is for a slide nobody is on.
+        if (this._previewBusy !== slide.id) return;
+        this._previewBusy = null;
+        this._previewId = slide.id;
+        this._previewUrl = url ?? base;
+        this._syncChrome();
+      })
+      .catch(() => {
+        if (this._previewBusy === slide.id) this._previewBusy = null;
+      });
+    return undefined;
+  }
+
+  /** Drop the cached full-res preview — it is the session's largest single object. */
+  private _clearPreview(): void {
+    this._previewId = null;
+    this._previewUrl = undefined;
+    this._previewBusy = null;
   }
 
   /**
@@ -959,7 +1164,7 @@ export default class PresentSession {
         this.stopAutoplay();
         return;
       }
-      const last = this._host.getIndex() + 1 >= this._host.getSlides().length;
+      const last = this._host.nextVisibleIndex(this._host.getIndex(), 1) < 0;
       if (last && this._cursor >= this._groups.length && this._host.cfg().autoplayLoop !== true) {
         this.stopAutoplay();
         this._syncChrome();
@@ -1026,6 +1231,7 @@ export default class PresentSession {
       e.preventDefault();
       e.stopPropagation();
       this._wake();
+      this._tryRearmFullscreen(); // real gesture — the only moment fullscreen can be retaken
       switch (act) {
         case 'prev':
           void this.back();
@@ -1102,9 +1308,12 @@ export default class PresentSession {
     const jump = this._jumpBuffer ? ` · go to ${this._jumpBuffer}…` : '';
     const build =
       this._groups.length > 0 ? ` · build ${this._cursor}/${this._groups.length}` : '';
+    // Popping the presenter panel out costs fullscreen and it can only come
+    // back on a gesture here — say so, or the map window just looks broken.
+    const fs = this._fsRearm ? ' · click here to restore fullscreen' : '';
     this._counterEl.textContent = slide
-      ? `${index + 1} / ${slides.length} — ${slide.title}${build}${jump}`
-      : `${slides.length} slides${jump}`;
+      ? `${index + 1} / ${slides.length} — ${slide.title}${build}${jump}${fs}`
+      : `${slides.length} slides${jump}${fs}`;
   }
 
   /** Push current state into every piece of chrome. Cheap; call freely. */
@@ -1135,17 +1344,27 @@ export default class PresentSession {
       const slides = this._host.getSlides();
       const index = this._host.getIndex();
       const slide = slides[index];
-      const next = slides[index + 1];
+      // What the NEXT advance will actually put on the audience screen, so the
+      // preview never promises a slide playback is about to skip.
+      const nextIndex = this._host.nextVisibleIndex(index, 1);
+      const next = nextIndex >= 0 ? slides[nextIndex] : undefined;
       this._panel.update({
         index,
         total: slides.length,
         title: slide?.title ?? '',
         notes: slide?.notes ?? '',
         current: slide
-          ? { title: slide.title || `Slide ${index + 1}`, thumb: slide.thumbnailDataUrl }
+          ? {
+              title: slide.title || `Slide ${index + 1}`,
+              thumb: slide.thumbnailDataUrl,
+              // Only the popped-out panel renders the big preview box (see the
+              // .ms-presenter-now CSS) — don't pay for a full-res compose while
+              // the panel is docked over the live map and the box is hidden.
+              full: this._panel.isPoppedOut() ? this._nowPreview(slide) : undefined,
+            }
           : null,
         next: next
-          ? { title: next.title || `Slide ${index + 2}`, thumb: next.thumbnailDataUrl }
+          ? { title: next.title || `Slide ${nextIndex + 1}`, thumb: next.thumbnailDataUrl }
           : null,
         buildRevealed: this._cursor,
         buildTotal: this._groups.length,
@@ -1161,6 +1380,16 @@ export default class PresentSession {
     const style = document.createElement('style');
     style.id = 'ms-present-style';
     style.textContent = `
+      /* Hide EVERY view widget, not just the SDK's default set. Setting
+         view.ui.components = [] only drops built-ins (zoom / compass /
+         navigation-toggle / attribution) — anything added with view.ui.add(),
+         such as the harness's Undo button parked on the bottom-right zoom
+         stack, is a custom widget and survives it. One rule covers both, and
+         it restores itself when the body class goes.
+         Safe for our own layers: the overlay frame and the annotator canvases
+         are appended to view.container, a SIBLING of .esri-ui, not a child. */
+      .ms-present-mode .esri-ui { display: none !important; }
+
       .ms-present-annotator { position: absolute; inset: 0; }
 
       /* Blacks/whites the audience screen: above the control bar, counter and

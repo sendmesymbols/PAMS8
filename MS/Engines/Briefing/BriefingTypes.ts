@@ -95,6 +95,39 @@ export type ArrowHead =
   | 'diamondOutline';
 
 /**
+ * A relative navigation target — PowerPoint's `ppaction://hlinkshowjump?jump=…`
+ * family. Stated relatively rather than as a slide id so a nav button keeps
+ * meaning "next" after the briefing is reordered in the sorter.
+ *
+ * `lastViewed` returns to wherever the briefer came from (PowerPoint's
+ * `lastslideviewed`); `endShow` leaves present mode.
+ */
+export type LinkJump = 'next' | 'prev' | 'first' | 'last' | 'lastViewed' | 'endShow';
+
+/**
+ * A click target on an annotation — PowerPoint's "link on this shape", stored
+ * at object level rather than per text run, and emitted as a real
+ * `a:hlinkClick` on the shape's `p:cNvPr`.
+ *
+ * Exactly one of `slideId` / `jump` is set; an OverlayLink with neither is
+ * meaningless and is dropped on load. A fixed target is held as a `Slide.id`
+ * and never as an index, so reordering slides cannot silently repoint a link —
+ * and an id naming a slide that no longer exists is pruned on load, the same
+ * rule `SlideOverlay.labelOf` and `SlideComment.overlayId` follow.
+ */
+export interface OverlayLink {
+  /** → Slide.id. Mutually exclusive with `jump`. */
+  slideId?: string;
+  /** Relative navigation. Mutually exclusive with `slideId`. */
+  jump?: LinkJump;
+  /**
+   * Hover text. Round-trips to and from the PPTX `a:hlinkClick/@tooltip`;
+   * absent = the editor shows the resolved target name instead.
+   */
+  tooltip?: string;
+}
+
+/**
  * A drop shadow. `x`/`y`/`blur` are fractions of view height (see
  * SlideOverlay.shadow); `color` is any CSS colour and normally carries alpha.
  */
@@ -233,6 +266,16 @@ export interface SlideOverlay {
   /** Editor lock — still selectable (so it can be unlocked) but not movable, resizable, restylable or erasable. */
   locked?: boolean;
   /**
+   * Click target. Any overlay kind may carry one: clicking inside its box in
+   * present mode navigates instead of advancing. Absent = not clickable, which
+   * is every overlay authored before links existed. See OverlayLink.
+   *
+   * A fill-less, stroke-less `rect` carrying only a link is the invisible
+   * hotspot the PPTX importer uses for links it finds on elements that have no
+   * overlay of their own (pictures, which are flattened into the background).
+   */
+  link?: OverlayLink;
+  /**
    * Mirrored geometry, box kinds and images — point-based kinds mirror their
    * `points` instead, and text is never mirrored. On boxes it shows only on the
    * asymmetric shapes (triangle, callout). Maps to PPTX xfrm flipH / flipV.
@@ -272,7 +315,7 @@ export interface SlideOverlay {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
-  align?: 'left' | 'center' | 'right';
+  align?: 'left' | 'center' | 'right' | 'justify';
   textColor?: string;
   /**
    * text only — turns the box into a one-level list: every line becomes an
@@ -374,6 +417,15 @@ export interface Slide {
   visibleLayers: Record<string, boolean>;
   /** Optional per-graphic overrides by attributes.id (exceptions only). */
   graphicVisibility?: Record<string, boolean>;
+  /**
+   * Skipped during playback — PowerPoint's "Hide Slide". The slide stays in the
+   * deck, keeps its number, and is still reachable by clicking its tile or
+   * typing its number: only the STEPPING paths (advance / back / Home / End /
+   * autoplay, and nextSlide / prevSlide outside present mode) pass it over.
+   * Exports as a real hidden PowerPoint slide (`<p:sld show="0">`) and imports
+   * back from one. Absent = visible.
+   */
+  hidden?: boolean;
   /** Ordered staged-reveal steps. */
   builds?: BuildStep[];
   /**
@@ -406,13 +458,14 @@ export interface Slide {
 
 export interface BriefingDocument {
   /**
+   * 10 = hidden slides; 9 = overlay links (slide-to-slide hyperlinks);
    * 8 = per-slide buildMode + per-step build triggers; 7 = review comments;
    * 6 = milsym overlays + block/tactical arrows; 5 = table overlays + text
    * listStyle; 4 = slides may be screen-only (imported PPTX: no extent/camera);
-   * 3 = full-res backgroundDataUrl fallback; 2 = overlays; 1–8 accepted on
+   * 3 = full-res backgroundDataUrl fallback; 2 = overlays; 1–10 accepted on
    * import. Every added field is optional, so newer documents degrade in older
    * code rather than failing to load.
    */
-  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
   slides: Slide[];
 }

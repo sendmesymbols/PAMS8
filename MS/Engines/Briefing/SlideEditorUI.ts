@@ -35,6 +35,7 @@ import type {
 import { DEFAULT_TEXT_COLOR, type ArrowType } from './OverlayFabric';
 import { BUILTIN_LAYOUTS, LAYOUT_INK_DIM } from './SlideLayouts';
 import { openCount } from './SlideCommentUtils';
+import { LinkBadgeLayer } from './SlideLinkBadges';
 import {
   AFFILIATIONS,
   AMPLIFIER_GROUPS,
@@ -74,7 +75,7 @@ export interface StyleDefaults {
   bold: boolean;
   italic: boolean;
   underline: boolean;
-  align: 'left' | 'center' | 'right';
+  align: 'left' | 'center' | 'right' | 'justify';
   textColor: string;
   /** null = no fill. */
   fill: string | null;
@@ -232,6 +233,8 @@ export interface ContextMenuState {
   canPasteStyles: boolean;
   /** The menu was opened on a vertex handle of a linework object with a point to spare. */
   canDeletePoint: boolean;
+  /** At least one selected object carries a link — gates the Remove-link row. */
+  hasLink: boolean;
 }
 
 /**
@@ -246,6 +249,8 @@ export interface RailHost {
     openComments?: number;
     /** Set = the tile carries a transition badge. Absent = an instant cut. */
     slideTransition?: SlideTransitionType;
+    /** Set = skipped in playback; the tile renders dimmed and struck through. */
+    hidden?: boolean;
   }>;
   current(): number;
   /** Save the open slide and edit slide `index` instead. */
@@ -253,6 +258,8 @@ export interface RailHost {
   move(from: number, to: number): void;
   duplicate(index: number): void;
   remove(index: number): void;
+  /** Flip slide `index` between hidden and shown — PowerPoint's "Hide Slide". */
+  toggleHidden(index: number): void;
   /** Append a slide seeded from a built-in layout, then open it. */
   add(layoutId: string): void;
 }
@@ -472,6 +479,7 @@ const ICONS: Record<string, string> = {
   alignLeft: svg('<path d="M4.5 6h15M4.5 10.5h9M4.5 15h13M4.5 19.5h7"/>'),
   alignCenter: svg('<path d="M4.5 6h15M7.5 10.5h9M5.5 15h13M8.5 19.5h7"/>'),
   alignRight: svg('<path d="M4.5 6h15M10.5 10.5h9M6.5 15h13M12.5 19.5h7"/>'),
+  alignJustify: svg('<path d="M4.5 6h15M4.5 10.5h15M4.5 15h15M4.5 19.5h9"/>'),
   noFill: svg('<rect x="4.5" y="4.5" width="15" height="15" rx="2"/><path d="M6 18L18 6"/>'),
   group: svg('<rect x="3.5" y="3.5" width="9" height="9" rx="1.4"/><rect x="11.5" y="11.5" width="9" height="9" rx="1.4"/>'),
   ungroup: svg('<rect x="3.5" y="3.5" width="8" height="8" rx="1.4" stroke-dasharray="2.6 2"/><rect x="12.5" y="12.5" width="8" height="8" rx="1.4" stroke-dasharray="2.6 2"/>'),
@@ -549,8 +557,14 @@ interface CtxItem {
   sep?: true;
   /** Minimum selected-object count for this row to be enabled. */
   min?: number;
-  /** Extra state flag that must also be true. */
-  needs?: 'canGroup' | 'canUngroup' | 'canPaste' | 'canPasteStyles' | 'canDeletePoint';
+  /**
+   * Extra state flag that must also be true — any boolean field of
+   * ContextMenuState. Derived rather than listed, so adding a flag to the state
+   * makes it usable here without a second edit (and can't go stale).
+   */
+  needs?: {
+    [K in keyof ContextMenuState]: ContextMenuState[K] extends boolean ? K : never;
+  }[keyof ContextMenuState];
   /** Omit the row entirely when unavailable, instead of greying it out. */
   hideWhenOff?: true;
 }
@@ -577,6 +591,17 @@ const CTX_ITEMS: CtxItem[] = [
   { act: 'forward', label: 'Bring forward', hint: 'Ctrl+]', min: 1 },
   { act: 'backward', label: 'Send backward', hint: 'Ctrl+[', min: 1 },
   { act: 'back', label: 'Send to back', hint: 'Ctrl+Shift+[', min: 1 },
+  { sep: true },
+  { act: 'link', label: 'Link…', min: 1 },
+  {
+    act: 'followLink',
+    label: 'Go to link target',
+    hint: 'Ctrl+click',
+    needs: 'hasLink',
+    hideWhenOff: true,
+    min: 1,
+  },
+  { act: 'unlink', label: 'Remove link', needs: 'hasLink', hideWhenOff: true, min: 1 },
   { sep: true },
   { act: 'lock', label: 'Lock', hint: 'Ctrl+Shift+L', min: 1 },
   { act: 'dup', label: 'Duplicate', hint: 'Ctrl+D', min: 1 },
@@ -609,6 +634,8 @@ const HELP_GROUPS: Array<{ title: string; rows: Array<[string, string]> }> = [
       ['To front / to back', 'Ctrl+Shift+] / Ctrl+Shift+['],
       ['Keep tool armed', 'Q'],
       ['Comment — click an annotation, a spot, or off the slide for the whole slide', 'N · Ctrl+Alt+M'],
+      ['Link an object to a slide — right-click → Link…, or the 🔗 badge', '—'],
+      ['Go to a link target', 'Ctrl+click the object'],
     ],
   },
   {
@@ -855,7 +882,7 @@ export default class SlideEditorUI {
           <button class="ms-sledit-addslide" title="New slide from a layout">${ICONS.plus}<span>New slide</span></button>
         </aside>
         <div class="ms-sledit-resizer" data-side="left" title="Drag to resize · double-click to reset">
-          <button class="ms-sledit-paneltoggle" data-side="left" type="button">‹</button>
+          <button class="ms-sledit-paneltoggle" data-side="left" type="button"></button>
         </div>
         <div class="ms-sledit-canvaswrap">
           <!-- stagearea holds the canvas and the floating corner pills; the
@@ -905,7 +932,7 @@ export default class SlideEditorUI {
           </div>
         </div>
         <div class="ms-sledit-resizer" data-side="right" title="Drag to resize · double-click to reset">
-          <button class="ms-sledit-paneltoggle" data-side="right" type="button">›</button>
+          <button class="ms-sledit-paneltoggle" data-side="right" type="button"></button>
         </div>
         <aside class="ms-sledit-props">
           <div class="ms-sledit-slidesecs">
@@ -985,7 +1012,8 @@ export default class SlideEditorUI {
                 'Align',
                 `<button data-align="left" title="Align left">${ICONS.alignLeft}</button>
                  <button data-align="center" title="Align center">${ICONS.alignCenter}</button>
-                 <button data-align="right" title="Align right">${ICONS.alignRight}</button>`,
+                 <button data-align="right" title="Align right">${ICONS.alignRight}</button>
+                 <button data-align="justify" title="Justify — stretch every line but the last to the box width">${ICONS.alignJustify}</button>`,
               )}
               ${wrow('text', swatchRow('text', TEXT_SWATCHES), 'Color')}
               ${irow(
@@ -1144,6 +1172,17 @@ export default class SlideEditorUI {
                 `<select class="ms-sledit-blend" title="Composite mode. Drawn in the editor and in present mode; a native PowerPoint shape cannot carry it, so the export drops it.">${BLEND_OPTIONS.map(
                   (b) => `<option value="${b}">${b[0].toUpperCase()}${b.slice(1)}</option>`,
                 ).join('')}</select>`,
+              )}
+            </div>
+            <!-- Where a click on this object goes in present mode. The chip is a
+                 read-only summary that opens the dialog; ✕ clears the link. -->
+            <div class="ms-sledit-sec" data-sec="link">
+              <div class="ms-sledit-seclabel">Link</div>
+              ${irow(
+                'link',
+                'Click',
+                `<button class="ms-sledit-linkchip" data-act="link" title="Choose the slide this object jumps to when clicked in present mode">No link</button>
+                 <button class="ms-sledit-linkclear" data-act="unlink" title="Remove link">✕</button>`,
               )}
             </div>
             <div class="ms-sledit-sec" data-sec="arrange">
@@ -1401,8 +1440,11 @@ export default class SlideEditorUI {
       ) as HTMLElement | null;
       if (!panel || !btn) continue;
       const collapsed = panel.classList.contains('collapsed');
-      // The chevron points where clicking will move the boundary.
-      btn.textContent = side === 'left' ? (collapsed ? '›' : '‹') : collapsed ? '‹' : '›';
+      // The chevron points where clicking will move the boundary. A data-dir
+      // rather than textContent: the button's marks are pseudo-elements, and
+      // writing text into it would sit a stray glyph between them.
+      btn.dataset.dir =
+        side === 'left' ? (collapsed ? 'right' : 'left') : collapsed ? 'left' : 'right';
       const what = side === 'left' ? 'slide list ([)' : 'properties (])';
       btn.title = `${collapsed ? 'Show' : 'Hide'} ${what}`;
     }
@@ -1516,13 +1558,18 @@ export default class SlideEditorUI {
         const transBadge = tb
           ? `<span class="ms-sledit-thumbtrans" title="Transition in: ${tb.label}">${tb.icon}</span>`
           : '';
-        return `<div class="ms-sledit-thumb${
-          i === current ? ' active' : ''
-        }" data-i="${i}" draggable="true" title="${label}">
+        return `<div class="ms-sledit-thumb${i === current ? ' active' : ''}${
+          s.hidden ? ' ms-hidden-slide' : ''
+        }" data-i="${i}" draggable="true" title="${label}${
+          s.hidden ? ' — hidden, skipped in playback' : ''
+        }">
             <span class="ms-sledit-thumbnum">${i + 1}</span>
             ${badge}
             ${transBadge}
             <span class="ms-sledit-thumbtools">
+              <button data-rail="hide" data-i="${i}" title="${
+                s.hidden ? 'Hidden — click to show in playback' : 'Hide this slide from playback'
+              }">${s.hidden ? '🚫' : '👁'}</button>
               <button data-rail="dup" data-i="${i}" title="Duplicate this slide">⧉</button>
               <button data-rail="del" data-i="${i}" title="Delete this slide">✕</button>
             </span>
@@ -1561,6 +1608,7 @@ export default class SlideEditorUI {
         e.stopPropagation();
         const i = Number(tool.dataset.i);
         if (tool.dataset.rail === 'dup') rail.duplicate(i);
+        else if (tool.dataset.rail === 'hide') rail.toggleHidden(i);
         else rail.remove(i);
         return;
       }
@@ -2106,6 +2154,9 @@ export default class SlideEditorUI {
       const visible =
         rows.includes(name) ||
         ((name === 'ops' || name === 'layers' || name === 'actions') && ctx.hasSelection) ||
+        // A link belongs to an object, so it is offered on a selection only —
+        // never as a tool default, which would have nothing to attach to.
+        (name === 'link' && ctx.hasSelection) ||
         // Effects are offered on a SELECTION only, never on tool defaults: an
         // object is created without them, so an armed-tool shadow would sit
         // there looking set and do nothing. Every kind can carry them, so they
@@ -2308,6 +2359,27 @@ export default class SlideEditorUI {
     }
   }
 
+  /**
+   * Put the selection's link into the panel's chip row. `label` is what
+   * SlideLinks.linkLabel produced (or a mixed-selection note); `linked` gates
+   * the ✕. Called on every selection change and after the dialog applies, the
+   * same way refreshGeometry keeps the frame fields honest.
+   */
+  public setLinkChip(label: string, linked: boolean): void {
+    const panel = this._panel;
+    if (!panel) return;
+    const chip = panel.querySelector('.ms-sledit-linkchip') as HTMLElement | null;
+    const clear = panel.querySelector('.ms-sledit-linkclear') as HTMLButtonElement | null;
+    if (chip) {
+      chip.textContent = label;
+      // Deliberately NOT `.active`: that class means "toggled on" in this panel
+      // and fills the button with the accent colour, which a value chip must not
+      // inherit (its text then sits light-on-light).
+      chip.classList.toggle('linked', linked);
+    }
+    if (clear) clear.disabled = !linked;
+  }
+
   /** Show the current canvas zoom in the corner pill. */
   public setZoom(zoom: number): void {
     const el = this._stage?.querySelector('.ms-sledit-zoom');
@@ -2466,6 +2538,12 @@ export default class SlideEditorUI {
         --sl-dim: var(--ms-text-dim, #8a97a5);
         --sl-accent: var(--ms-accent, #64b4ff);
         --sl-radius: var(--ms-radius, 9px);
+        /* Collapse marks, drawn as masks painted in currentColor rather than as
+           text: the ▾ / ‹ glyphs sat a pixel off-centre and moved with whatever
+           font --ms-menu-font resolves to. Both rest pointing DOWN — rotation is
+           what aims them, so one token serves the section headers and the rails. */
+        --sl-chev: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="black" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+        --sl-grip: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 17"><circle cx="1.5" cy="1.5" r="1.5"/><circle cx="1.5" cy="8.5" r="1.5"/><circle cx="1.5" cy="15.5" r="1.5"/></svg>');
 
         position: fixed; inset: 0; z-index: 9700; background: #0d1117;
         display: flex; flex-direction: column;
@@ -2616,15 +2694,40 @@ export default class SlideEditorUI {
       body.ms-sledit-resizing { cursor: col-resize; user-select: none; }
       .ms-sledit-paneltoggle {
         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        width: 15px; height: 40px; padding: 0; cursor: pointer; z-index: 6;
+        width: 15px; height: 44px; padding: 0; cursor: pointer; z-index: 6;
         display: flex; align-items: center; justify-content: center;
         background: var(--sl-surface); color: var(--sl-dim);
         border: 1px solid var(--sl-line); border-radius: 5px;
-        font: inherit; font-size: 11px; line-height: 1;
+        font: inherit; line-height: 1;
         opacity: 0; transition: opacity 0.14s ease;
       }
       .ms-sledit-main:hover .ms-sledit-paneltoggle { opacity: 1; }
       .ms-sledit-paneltoggle:hover { color: var(--sl-text); border-color: var(--sl-accent); }
+      /* Grip dots at rest, chevron once you're on it: the seam is a col-resize
+         handle as much as a collapse button, and a lone chevron advertised only
+         the click. The two marks are stacked and cross-faded so neither reflows
+         the other — hence position: absolute rather than a swap. ::after is the
+         shared down chevron; data-dir aims it where the boundary will move. */
+      .ms-sledit-paneltoggle::before,
+      .ms-sledit-paneltoggle::after {
+        content: ''; position: absolute; background: currentColor;
+        -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+        -webkit-mask-position: center; mask-position: center;
+        -webkit-mask-size: contain; mask-size: contain;
+        transition: opacity 0.14s ease;
+      }
+      .ms-sledit-paneltoggle::before {
+        width: 3px; height: 17px;
+        -webkit-mask-image: var(--sl-grip); mask-image: var(--sl-grip);
+      }
+      .ms-sledit-paneltoggle::after {
+        width: 11px; height: 11px; opacity: 0;
+        -webkit-mask-image: var(--sl-chev); mask-image: var(--sl-chev);
+      }
+      .ms-sledit-paneltoggle[data-dir="left"]::after { transform: rotate(90deg); }
+      .ms-sledit-paneltoggle[data-dir="right"]::after { transform: rotate(-90deg); }
+      .ms-sledit-paneltoggle:hover::before { opacity: 0; }
+      .ms-sledit-paneltoggle:hover::after { opacity: 1; }
 
       /* ————— slide rail ————— */
 
@@ -2685,6 +2788,25 @@ export default class SlideEditorUI {
         font: inherit; font-size: 10px; line-height: 1;
       }
       .ms-sledit-thumbtools button:hover { background: var(--sl-accent); color: #08121c; }
+      /* Hidden slide (PowerPoint's "Hide Slide"): scrim over the thumbnail only —
+         z-index 1 keeps it under the number/tools/transition badges (2, 2, 3), so
+         they stay legible and clickable. Struck-through number, as in the sorter.
+         Its own 🚫 toggle stays out without hover, or a dimmed tile in a long rail
+         gives no clue why. */
+      .ms-sledit-thumb.ms-hidden-slide::before {
+        content: ''; position: absolute; inset: 0; z-index: 1;
+        background: rgba(8,12,18,0.66); pointer-events: none;
+      }
+      .ms-sledit-thumb.ms-hidden-slide:hover::before { background: rgba(8,12,18,0.32); }
+      .ms-sledit-thumb.ms-hidden-slide .ms-sledit-thumbnum {
+        text-decoration: line-through; color: var(--sl-dim);
+      }
+      .ms-sledit-thumb.ms-hidden-slide .ms-sledit-thumbtools { display: flex; }
+      .ms-sledit-thumb.ms-hidden-slide .ms-sledit-thumbtools button[data-rail="dup"],
+      .ms-sledit-thumb.ms-hidden-slide .ms-sledit-thumbtools button[data-rail="del"] {
+        display: none;
+      }
+      .ms-sledit-thumb.ms-hidden-slide:hover .ms-sledit-thumbtools button { display: inline-flex; }
       /* Drop markers, drawn as an edge rather than a moving placeholder — the
          same read as the slide sorter's insertion line. */
       .ms-sledit-thumb.drop-before { box-shadow: 0 -3px 0 0 var(--sl-accent); }
@@ -2743,6 +2865,7 @@ export default class SlideEditorUI {
         z-index: 3;
         pointer-events: none;
       }
+      ${LinkBadgeLayer.styles()}
       .ms-sledit-cmtlayer { position: absolute; overflow: hidden; pointer-events: none; z-index: 12; }
       .ms-sledit-cmtmarker {
         position: absolute;
@@ -3007,10 +3130,13 @@ export default class SlideEditorUI {
       .ms-sledit-notes::placeholder { color: var(--sl-dim); }
 
       /* Collapsible sections: the whole label row is the handle — accent tick,
-         name, and the chevron chip at its right end. Everything after the label
-         is the body; no per-section wrapper markup — see _wireShell. Both marks
-         are pseudo-elements on purpose: showPanel rewrites some labels with
-         textContent, which would wipe a real child element. */
+         chevron, then the name. Everything after the label is the body; no
+         per-section wrapper markup — see _wireShell. Both marks are
+         pseudo-elements on purpose: showPanel rewrites some labels with
+         textContent, which would wipe a real child element. That leaves ::after
+         generated last, so both are pulled ahead of the name with negative
+         order — the label's own text is an anonymous flex item, which cannot be
+         ordered and therefore always sits at 0. */
       .ms-sledit-seclabel {
         display: flex; align-items: center; gap: 8px;
         cursor: pointer; user-select: none;
@@ -3021,25 +3147,25 @@ export default class SlideEditorUI {
       .ms-sledit-seclabel:hover { color: var(--sl-text); }
       /* Accent tick: what turns a dim uppercase line into a section heading. */
       .ms-sledit-seclabel::before {
-        content: ''; flex: none; width: 3px; height: 11px; border-radius: 2px;
+        content: ''; order: -2; flex: none;
+        width: 3px; height: 11px; border-radius: 2px;
         background: var(--sl-accent); opacity: 0.5;
         transition: opacity 0.14s ease;
       }
       .ms-sledit-seclabel:hover::before { opacity: 1; }
-      /* The open/close affordance as a chip rather than a stray glyph — at 9px
-         and dim it disappeared into the header it was meant to operate. */
+      /* The open/close mark leads the name, disclosure-triangle fashion, so the
+         eye meets the state before the label — and so the whole family of
+         collapsing surfaces (this, the symbol picker's tree) reads the same. It
+         carries no chip: painted in currentColor it brightens with the label on
+         hover, which is the same signal the chip's fill was buying. */
       .ms-sledit-seclabel::after {
-        content: '▾'; margin-left: auto; flex: none;
-        width: 18px; height: 18px; box-sizing: border-box;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 10px; line-height: 1; color: var(--sl-text);
-        background: var(--sl-input); border: 1px solid var(--sl-line);
-        border-radius: 5px;
-        transition: transform 0.16s ease, background 0.14s ease,
-                    border-color 0.14s ease, color 0.14s ease;
-      }
-      .ms-sledit-seclabel:hover::after {
-        background: var(--sl-accent); border-color: transparent; color: #08121c;
+        content: ''; order: -1; flex: none; width: 11px; height: 11px;
+        background: currentColor;
+        -webkit-mask-image: var(--sl-chev); mask-image: var(--sl-chev);
+        -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+        -webkit-mask-position: center; mask-position: center;
+        -webkit-mask-size: contain; mask-size: contain;
+        transition: transform 0.16s ease;
       }
       /* Rotated rather than swapped for '▸': the turn is what reads as opening
          and closing, and a swapped character cannot animate. */
@@ -3141,6 +3267,26 @@ export default class SlideEditorUI {
       .ms-sledit-props .ms-sledit-sec[data-sec="arrange"] .ms-sledit-iconset > button svg {
         width: 15px; height: 15px;
       }
+      /* The link chip is a text summary, not an icon: it takes the row's spare
+         width and reads left-aligned, with the ✕ pinned beside it. */
+      .ms-sledit-props .ms-sledit-sec[data-sec="link"] { --prow-ctl: 156px; }
+      .ms-sledit-props .ms-sledit-linkchip {
+        flex: 1; width: auto !important; min-width: 0; height: 26px;
+        text-align: left; padding: 0 7px; overflow: hidden;
+        text-overflow: ellipsis; white-space: nowrap;
+      }
+      /* A linked chip reads as "there is a value here", not as a pressed toggle:
+         accent ink on a faint accent wash, keeping the dark panel background so
+         the text stays legible (~8:1). */
+      .ms-sledit-props .ms-sledit-linkchip.linked {
+        color: #9dc0ff;
+        border-color: rgba(45,108,223,0.7);
+        background: rgba(45,108,223,0.14);
+      }
+      .ms-sledit-props .ms-sledit-linkchip.linked:hover {
+        background: rgba(45,108,223,0.24);
+      }
+      .ms-sledit-props .ms-sledit-linkclear { flex: none; }
       .ms-sledit-props .ms-sledit-prow > input[type="number"] { text-align: left; }
       .ms-sledit-props .ms-sledit-prow > .ms-sledit-iconset {
         display: flex; align-items: center; justify-content: flex-end; gap: 3px;

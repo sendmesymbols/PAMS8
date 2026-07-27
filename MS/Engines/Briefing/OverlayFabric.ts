@@ -18,6 +18,7 @@ import type { ArrowHead, OverlayBlend, OverlayKind, SlideOverlay } from './Brief
 import { cleanAmplifiers, renderMilSym } from './MilSymFactory';
 import { buildTacArrowOutline } from './TacArrowGeometry';
 import { buildTableGroup, tableFromFabric } from './OverlayTable';
+import { isUsableLink, normalizeLink } from './SlideLinks';
 // Colour/dash helpers live in OverlayStyle so OverlayTable can share them
 // without the two modules importing each other. Re-exported here because the
 // editor and BriefingEngine have always imported them from this module.
@@ -763,6 +764,10 @@ export function overlayToFabric(o: SlideOverlay, W: number, H: number): any | nu
   applyEffects(obj, o, H);
   if (o.groupId) obj.data.groupId = o.groupId;
   if (o.labelOf && o.kind === 'text') obj.data.labelOf = o.labelOf;
+  // A link is not a visual property — nothing here draws it (the editor's 🔗
+  // badge is DOM, see SlideComments' rule) — it just has to survive the
+  // fabric round-trip, so it rides in `data` like groupId and locked.
+  if (isUsableLink(o.link)) obj.data.link = o.link;
   // Box kinds and images mirror via fabric's flip flags; point-based kinds carry
   // their mirroring inside `points`, and text is never mirrored (see _flipSelection).
   if ((o.flipX || o.flipY) && (isBoxKind(o.kind) || o.kind === 'image' || o.kind === 'milsym')) {
@@ -1042,6 +1047,11 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
   if (opacity != null) base.opacity = opacity;
   if (obj.data.groupId) base.groupId = obj.data.groupId;
   if (obj.data.locked) base.locked = true;
+  // Normalized rather than trusted: `data.link` may have come from a paste, a
+  // hand-edited document or an import. Every kind returns from `base`, so this
+  // one line covers all of them.
+  const link = normalizeLink(obj.data.link);
+  if (link) base.link = link;
   readEffects(base, obj, H);
   // Only box kinds and text ever carry flip flags (see overlayToFabric).
   if (obj.flipX) base.flipX = true;
@@ -1093,7 +1103,9 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
     }
     if (obj.fontStyle === 'italic') base.italic = true;
     if (obj.underline) base.underline = true;
-    if (obj.textAlign === 'center' || obj.textAlign === 'right') base.align = obj.textAlign;
+    if (obj.textAlign === 'center' || obj.textAlign === 'right' || obj.textAlign === 'justify') {
+      base.align = obj.textAlign;
+    }
     base.textColor = parseColor(obj.fill)?.hex ?? DEFAULT_TEXT_COLOR;
     return base;
   }
@@ -1199,4 +1211,59 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
   // still write opacity explicitly or it would darken on reload.
   if (kind === 'highlight') base.opacity = Number(Number(obj.opacity ?? 0.45).toFixed(3));
   return base;
+}
+
+/**
+ * Draw a slide's overlays onto a base raster via an offscreen StaticCanvas and
+ * return the flattened JPEG. Used for every slide thumbnail that has to show
+ * annotations as well as imagery — BriefingEngine's capture path and
+ * PptxImporter's imported slides, which would otherwise thumbnail as bare
+ * pictures with none of their text.
+ *
+ * Resolves undefined when there is nothing to compose or fabric is
+ * unavailable; callers fall back to the plain base image.
+ *
+ * NOTE this is for THUMBNAILS only. A screen-only slide's `backgroundDataUrl`
+ * must stay overlay-free: present mode and the editor draw the overlays over
+ * it, so baking them in would render everything twice.
+ */
+export function composeOverlayThumbnail(
+  base: string,
+  overlays: readonly SlideOverlay[] | undefined,
+  quality = 0.72,
+): Promise<string | undefined> {
+  const fabric = (window as any).fabric;
+  if (!fabric || !base || !overlays?.length) return Promise.resolve(undefined);
+  // Picture overlays need their decode cache warm before overlayToFabric.
+  return preloadOverlayImages(overlays).then(
+    () =>
+      new Promise<string | undefined>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const w = img.naturalWidth || 1;
+            const h = img.naturalHeight || 1;
+            const sc = new fabric.StaticCanvas(null, { width: w, height: h });
+            sc.setBackgroundImage(new fabric.Image(img), () => {
+              try {
+                for (const o of overlays) {
+                  const obj = overlayToFabric(o, w, h);
+                  if (obj) sc.add(obj);
+                }
+                sc.renderAll();
+                const out = sc.toDataURL({ format: 'jpeg', quality });
+                sc.dispose();
+                resolve(out);
+              } catch {
+                resolve(undefined);
+              }
+            });
+          } catch {
+            resolve(undefined);
+          }
+        };
+        img.onerror = () => resolve(undefined);
+        img.src = base;
+      }),
+  );
 }
