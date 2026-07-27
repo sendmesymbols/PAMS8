@@ -10,12 +10,13 @@
     "copy-assets": "node -e \"const fs=require('fs');if(!fs.existsSync('public/assets')){fs.cpSync('node_modules/@arcgis/core/assets','public/assets',{recursive:true});console.log('Copied @arcgis/core assets -> public/assets')}\"",
     "copy-data": "node -e \"const fs=require('fs');fs.cpSync('MS/Data','dist/MS/Data',{recursive:true});console.log('Copied MS/Data -> dist/MS/Data')\"",
     "copy-thirdparty": "node -e \"const fs=require('fs');fs.cpSync('MS/ThirdParty','dist/MS/ThirdParty',{recursive:true});console.log('Copied MS/ThirdParty -> dist/MS/ThirdParty')\"",
+    "copy-styles": "node -e \"const fs=require('fs');fs.cpSync('MS/Styles','dist/MS/Styles',{recursive:true});console.log('Copied MS/Styles -> dist/MS/Styles')\"",
     "predev": "npm run copy-assets",
     "prebuild": "npm run copy-assets",
     "preview": "vite preview",
     "dev": "vite",
-    "dev:dist": "vite build && npm run copy-data && npm run copy-thirdparty && vite --mode dist",
-    "build": "vite build && npm run copy-data && npm run copy-thirdparty && tsc -p tsconfig.build.json"
+    "dev:dist": "vite build && npm run copy-data && npm run copy-thirdparty && npm run copy-styles && vite --mode dist",
+    "build": "vite build && npm run copy-data && npm run copy-thirdparty && npm run copy-styles && tsc -p tsconfig.build.json"
   },
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.4",
